@@ -230,8 +230,18 @@ end
 
 local SAMPLE_DUR = 10
 
+-- master switch (the tick box on the "Buff Bars" sidebar row); on unless explicitly turned off
+function ns.BarsOn()
+    local g = CueRulesDB and CueRulesDB.barGroup
+    return not (g and g.enabled == false)
+end
+
 function ns.Bars_Update()
     if not ns.bars then return end
+    if not ns.BarsOn() then
+        for _, bar in ipairs(ns.bars) do local fr = frames[bar]; if fr then fr:Hide() end end
+        return
+    end
     local now = GetTime()
     local combat = (UnitAffectingCombat and UnitAffectingCombat("player")) or false
     local list = {}

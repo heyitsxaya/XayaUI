@@ -20,6 +20,8 @@ Conditions.lua
 Sound.lua
 Visual.lua
 QoL.lua
+CursorTracker.lua
+CursorReminders.lua
 Bars.lua
 Profile.lua
 Engine.lua

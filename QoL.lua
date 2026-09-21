@@ -110,12 +110,18 @@ function ns.QoL_Refresh(box)
     else
         fr:SetBackdrop(nil)
     end
-    local show = box.enabled
+    local show = box.enabled and ns.QoLOn()
     if show and not ns.unlocked and not ns.Ignored(box.showCombat) then
         local inCombat = (UnitAffectingCombat("player") or InCombatLockdown()) and true or false
         show = (box.showCombat == "yes") == inCombat
     end
     fr:SetShown(show and true or false)
+end
+
+-- master switch (the tick box on the "Stat Tracking" sidebar row); on unless explicitly turned off
+function ns.QoLOn()
+    local t = CueRulesDB and CueRulesDB.qol
+    return not (t and t.enabled == false)
 end
 
 function ns.QoL_RefreshAll()

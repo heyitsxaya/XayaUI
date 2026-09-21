@@ -9,6 +9,9 @@ local addonName, ns = ...
 
 local frames = setmetatable({}, { __mode = "k" }) -- rule -> frame
 ns.unlocked = false
+ns.moveUnlocked = {}   -- per-rule "movement unlocked" (session only); set from the lock icon on the sidebar rows
+local function Unl(rule) return (ns.unlocked or ns.moveUnlocked[rule]) and true or false end
+function ns.IsMoveUnlocked(rule) return Unl(rule) end
 
 -------------------------------------------------------------------------------
 -- Preview state (transient, never saved). Keyed by rule / bar object.
@@ -109,7 +112,9 @@ local function SetArt(tex, rule, v)
     local base = { 0, 1, 0, 1 }
     local kind = ns.Val(v.kind)
     if kind == "spellicon" then
-        local ok, t = pcall(C_Spell.GetSpellTexture, rule.spellID)
+        local sid = tonumber(rule.spellID) or 0
+        if sid == 0 then sid = tonumber(rule.buffID) or 0 end   -- no cooldown spell: use the aura's icon
+        local ok, t = pcall(C_Spell.GetSpellTexture, sid)
         tex:SetTexture(ok and t or nil)
         local z = 0.08 + clamp(v.zoom or 0, 0, 0.3)
         base = { z, 1 - z, z, 1 - z }
@@ -197,15 +202,142 @@ ns.selectedVisual = nil
 local SNAP_GRID, SNAP_NEAR = 10, 10
 local SNAP_LABELS = { free = "Free Move", grid = "Grid (10 px)", auras = "Other Auras' Edges & Centres", center = "Screen Centre Lines" }
 
+-- border colour for an unlocked display: white while hovered (this is the box a click will hit), orange when
+-- selected, cyan otherwise. A faint white wash on hover makes it readable over busy art.
+local function PaintBorder(r, f)
+    if not (Unl(r) and f.SetBackdropBorderColor) then return end
+    if f.hovered then f:SetBackdropBorderColor(1, 1, 1, 1)
+    elseif r == ns.selectedVisual then f:SetBackdropBorderColor(1, 0.6, 0.1, 1)
+    else f:SetBackdropBorderColor(0.2, 0.8, 1, 1) end
+    if f.hoverTex then f.hoverTex:SetShown(f.hovered and true or false) end
+end
 local function PaintBorders()
-    for r, f in pairs(frames) do
-        if ns.unlocked and f.SetBackdropBorderColor then
-            if r == ns.selectedVisual then f:SetBackdropBorderColor(1, 0.6, 0.1, 1)
-            else f:SetBackdropBorderColor(0.2, 0.8, 1, 1) end
-        end
-    end
+    for r, f in pairs(frames) do PaintBorder(r, f) end
 end
 function ns.SelectVisual(rule) ns.selectedVisual = rule; PaintBorders() end
+
+-------------------------------------------------------------------------------
+-- Folders are containers. A folder can define alpha, scale, strata / level and a screen position (relative to the
+-- screen, its parent folder or another game frame) that its rules' displays inherit, and is either STATIC (each display
+-- keeps its own X / Y inside the container; the default) or DYNAMIC (the addon lays the visible displays out itself and
+-- ignores their own X / Y).
+-------------------------------------------------------------------------------
+local containers = {}
+local REL_FRAMES = { player = "PlayerFrame", target = "TargetFrame", focus = "FocusFrame", minimap = "Minimap", chat = "ChatFrame1" }
+local function DynAncestor(folderId)
+    local id, guard = folderId, 0
+    while id and guard < 32 do
+        local f = ns.FolderById(id)
+        if not f then return nil end
+        if f.cType == "dynamic" then return f end
+        id, guard = f.parent, guard + 1
+    end
+end
+local function Container(f)
+    local c = containers[f.id]
+    if not c then c = CreateFrame("Frame", nil, UIParent); c:SetSize(1, 1); containers[f.id] = c end
+    c:SetSize(math.max(1, f.cW or 1), math.max(1, f.cH or 1))
+    if c.SetClipsChildren then c:SetClipsChildren(f.cClip and true or false) end
+    local pf = f.parent and ns.FolderById(f.parent)
+    local parentC = pf and Container(pf) or UIParent
+    if c:GetParent() ~= parentC then c:SetParent(parentC) end
+    local target = parentC
+    local rel = f.cRel
+    local gname = (rel == "custom") and f.cFrame or REL_FRAMES[rel]
+    local g = gname and gname ~= "" and _G[gname]
+    if g and g.GetCenter and g ~= c then target = g end
+    local sc = math.max(0.1, f.cScale or 1)
+    c:SetScale(sc)
+    c:SetAlpha(f.cAlpha or 1)
+    if f.cStrata then c:SetFrameStrata(f.cStrata) end
+    if (f.cLevel or 0) > 0 then c:SetFrameLevel(f.cLevel) end
+    c:ClearAllPoints()
+    c:SetPoint(f.cPoint or "CENTER", target, f.cRelPoint or f.cPoint or "CENTER", (f.cX or 0) / sc, (f.cY or 0) / sc)
+    return c
+end
+-- the frame a rule's display hangs from, and its dynamic-group ancestor (if any)
+local function ParentFor(rule)
+    if rule.cursorConv and ns.CursorReminderFolder then   -- converted at-cursor reminder: hangs from the cursor group
+        local cf = ns.CursorReminderFolder()
+        if cf then return Container(cf), cf end
+    end
+    if not rule.folder then return UIParent end
+    local d = DynAncestor(rule.folder)
+    local f = d or ns.FolderById(rule.folder)
+    if not f then return UIParent end
+    return Container(f), d
+end
+local function ApplyStrata(fr, folderId)
+    local strata, level
+    local id, guard = folderId, 0
+    while id and guard < 32 do
+        local f = ns.FolderById(id)
+        if not f then break end
+        strata = strata or f.cStrata
+        if not level and (f.cLevel or 0) > 0 then level = f.cLevel end
+        id, guard = f.parent, guard + 1
+    end
+    strata = strata or "HIGH"
+    if fr:GetFrameStrata() ~= strata then fr:SetFrameStrata(strata) end
+    if level and fr:GetFrameLevel() ~= level then fr:SetFrameLevel(level) end
+end
+local function LayoutDynamic(df)
+    if not df then return end
+    local items = {}
+    for _, r in ipairs(ns.rules or {}) do
+        local fr = frames[r]
+        if fr and fr:IsShown() and ((r.folder and DynAncestor(r.folder) == df)
+            or (r.cursorConv and ns.CursorReminderFolder and ns.CursorReminderFolder() == df)) then
+            items[#items + 1] = { fr = fr, w = fr:GetWidth(), h = fr:GetHeight() }
+        end
+    end
+    if #items == 0 then return end
+    local dir = df.cGrowth or "RIGHT"
+    local horiz = (dir == "RIGHT" or dir == "LEFT" or dir == "HCENTER")
+    local sp = df.cSpacing or 4
+    local limit = horiz and (df.cW or 0) or (df.cH or 0)   -- 0 = no wrapping
+    -- split into lines along the main axis
+    local lines, line, used = {}, {}, 0
+    for _, it in ipairs(items) do
+        local len = horiz and it.w or it.h
+        if #line > 0 and limit > 0 and used + sp + len > limit then
+            lines[#lines + 1] = line; line, used = {}, 0
+        end
+        used = (#line == 0) and len or (used + sp + len)
+        line[#line + 1] = it
+    end
+    lines[#lines + 1] = line
+    local container = Container(df)
+    local crossOff = 0
+    for _, ln in ipairs(lines) do
+        local pos, cur, prevLen, cross = {}, 0, 0, 0
+        for i, it in ipairs(ln) do
+            local len = horiz and it.w or it.h
+            if i == 1 then cur = 0 else cur = cur + prevLen / 2 + sp + len / 2 end
+            pos[i], prevLen = cur, len
+            cross = math.max(cross, horiz and it.h or it.w)
+        end
+        local shift = 0
+        if dir == "HCENTER" or dir == "VCENTER" then
+            local n = #ln
+            local lead = pos[1] - (horiz and ln[1].w or ln[1].h) / 2
+            local trail = pos[n] + (horiz and ln[n].w or ln[n].h) / 2
+            shift = (lead + trail) / 2
+        end
+        local co = crossOff + cross / 2
+        for i, it in ipairs(ln) do
+            local p = pos[i] - shift
+            local x, y = 0, 0
+            if dir == "RIGHT" or dir == "HCENTER" then x = p; y = -co
+            elseif dir == "LEFT" then x = -p; y = -co
+            elseif dir == "DOWN" or dir == "VCENTER" then y = -p; x = co
+            elseif dir == "UP" then y = p; x = co end
+            it.fr:ClearAllPoints()
+            it.fr:SetPoint("CENTER", container, "CENTER", x, y)
+        end
+        crossOff = crossOff + cross + sp
+    end
+end
 
 local function SnapMode() return (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.snapMode) or "free" end
 
@@ -309,6 +441,12 @@ local function GetFrame(rule)
     fr.label = fr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     fr.label:SetPoint("BOTTOM", fr, "TOP", 0, 2)
 
+    -- hover highlight (unlocked only): faint white wash; the border itself turns white in PaintBorder
+    fr.hoverTex = fr:CreateTexture(nil, "OVERLAY", nil, 7)
+    fr.hoverTex:SetAllPoints()
+    fr.hoverTex:SetColorTexture(1, 1, 1, 0.18)
+    fr.hoverTex:Hide()
+
     -- pulsing glow ring (built-in Blizzard button border, additive)
     fr.glow = fr:CreateTexture(nil, "OVERLAY")
     fr.glow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
@@ -345,12 +483,21 @@ local function GetFrame(rule)
     fr.absorb:SetFontObject(GameFontNormal)
     fr.absorb:Hide()
 
+    fr:SetScript("OnEnter", function(self)
+        if not Unl(rule) then return end
+        self.hovered = true
+        PaintBorder(rule, self)
+    end)
+    fr:SetScript("OnLeave", function(self)
+        self.hovered = false
+        PaintBorder(rule, self)
+    end)
     fr:SetScript("OnDragStart", function(self)
-        if ns.unlocked then self.wasDragged = true; self:StartMoving() end
+        if Unl(rule) then self.wasDragged = true; self:StartMoving() end
     end)
     -- left click (without dragging) selects the aura and opens it in the editor; right click opens the move / snap / edit menu
     fr:SetScript("OnMouseUp", function(self, button)
-        if not ns.unlocked then return end
+        if not Unl(rule) then return end
         if self.wasDragged then self.wasDragged = false; return end
         if button == "LeftButton" then
             ns.SelectVisual(rule)
@@ -363,13 +510,15 @@ local function GetFrame(rule)
     fr:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
         local cx, cy = self:GetCenter()
-        local ux, uy = UIParent:GetCenter()
-        local s = self:GetEffectiveScale() / UIParent:GetEffectiveScale()
+        local parent, dyn = ParentFor(rule)
+        local ux, uy = parent:GetCenter()
+        local s = self:GetEffectiveScale() / parent:GetEffectiveScale()
         rule.visual.x = math.floor((cx * s - ux) + 0.5)
         rule.visual.y = math.floor((cy * s - uy) + 0.5)
         rule.visual.x, rule.visual.y = ns.SnapPosition(rule, self, rule.visual.x, rule.visual.y)
         fr:ClearAllPoints()
-        fr:SetPoint("CENTER", UIParent, "CENTER", rule.visual.x, rule.visual.y)
+        fr:SetPoint("CENTER", parent, "CENTER", rule.visual.x, rule.visual.y)
+        if dyn then LayoutDynamic(dyn) end
         if ns.OnPositionChanged then ns.OnPositionChanged(rule) end
     end)
     -- smooth animation: the engine ticks 5x per second, which made the wipe / fades step. While one of those
@@ -469,8 +618,12 @@ function ns.RefreshVisual(rule)
     local v = rule.visual
     local fr = GetFrame(rule)
     fr:SetSize(math.max(8, v.w or 128), math.max(8, v.h or 128))
+    local parent, dyn = ParentFor(rule)
+    if fr:GetParent() ~= parent then fr:SetParent(parent) end
+    ApplyStrata(fr, rule.folder)
     fr:ClearAllPoints()
-    fr:SetPoint("CENTER", UIParent, "CENTER", v.x or 0, v.y or 0)
+    fr:SetPoint("CENTER", parent, "CENTER", v.x or 0, v.y or 0)
+    if dyn then LayoutDynamic(dyn) end
     fr.baseAlpha = v.alpha or 1
     fr:SetAlpha(fr.baseAlpha)
     fr.tex:SetBlendMode(v.additive and "ADD" or "BLEND")
@@ -533,13 +686,14 @@ function ns.RefreshVisual(rule)
     if v.count then StyleText(fr.count, fr, v.count, "BOTTOMRIGHT") end
     if v.absorb then StyleText(fr.absorb, fr, v.absorb, "TOP") end
     fr.label:SetText(rule.name)
-    fr:EnableMouse(ns.unlocked)
-    if ns.unlocked then
+    fr:EnableMouse(Unl(rule))
+    if Unl(rule) then
         fr:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-        if rule == ns.selectedVisual then fr:SetBackdropBorderColor(1, 0.6, 0.1, 1)
-        else fr:SetBackdropBorderColor(0.2, 0.8, 1, 1) end
+        PaintBorder(rule, fr)
         fr.label:Show()
     else
+        fr.hovered = false
+        if fr.hoverTex then fr.hoverTex:Hide() end
         fr:SetBackdrop(nil)
         fr.label:Hide()
     end
@@ -857,7 +1011,19 @@ function ns.SetVisualShown(rule, shown)
     local fr = GetFrame(rule)
     local pv = ns.IsPreview(rule, "visual")
     if not rule.visual.enabled and not pv then fr:Hide() return end
-    if ns.unlocked or pv or shown then fr:Show() else fr:Hide() end
+    if Unl(rule) or pv or shown then fr:Show() else fr:Hide() end
+    local dyn = rule.folder and DynAncestor(rule.folder)
+    if dyn then LayoutDynamic(dyn) end
+end
+
+function ns.SetMoveUnlocked(objs, on)
+    for _, r in ipairs(objs or {}) do
+        ns.moveUnlocked[r] = on and true or nil
+        if r.visual then
+            ns.RefreshVisual(r)
+            ns.SetVisualShown(r, ns.runtime and ns.runtime[r] and ns.runtime[r].visualWanted)
+        end
+    end
 end
 
 function ns.RefreshAllVisuals()

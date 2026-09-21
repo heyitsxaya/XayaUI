@@ -92,6 +92,15 @@ local function SpellTex(id)
     return (ok and tx) or 134400
 end
 
+-- A text box that suggests spells by name (popup list with icons, wired up by AttachSearch in the widget walker).
+-- pick(id) is called with the chosen spell ID. get() is always empty so the box clears after a pick.
+local function SearchBox(order, pick, name)
+    return { type = "input", name = name or "Search by spell name", order = order, width = "double",
+        desc = "Type part of a spell name. A list with icons pops up; click one (or press Enter for the first) to fill in its spell ID. Also accepts an ID.",
+        arg = { xuiSearch = pick },
+        get = function() return "" end, set = function() end }
+end
+
 local function SpellTip(id)
     if not id or id == 0 then return "Type a spell ID to see its icon and description." end
     local txt = SpellName(id) .. "  [" .. id .. "]"
@@ -189,6 +198,34 @@ end
 -- Three-click tick boxes: click 1 = selected, click 2 = NOT (must NOT be this), click 3 = back to unselected.
 -- Stored per key in a set: true = selected, "not" = NOT. Nothing stored anywhere = "All" (no restriction); while
 -- no box is selected, every box (bar the NOT ones) displays as ticked.
+-- Specialization / Role: a tick box heading that reveals square single-choice boxes (click the chosen one again to
+-- clear it) with "All" at the bottom. Nothing chosen = no restriction, same as before. `ld()` returns rule.load;
+-- useKey (specUse / roleUse) = false makes the saved choice ignored without deleting it.
+function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, useKey)
+    local function isOn()
+        local u = ld()[useKey]
+        if u == nil then return ns.SetActive(getSet()) end
+        return u and true or false
+    end
+    local body = {}
+    for i, ch in ipairs(choices) do
+        body["c" .. i] = { type = "toggle", order = i, width = "full", name = ch.text,
+            desc = "Click to choose only this one. Click it again to clear the choice.",
+            get = function() return getSet()[ch.id] == true end,
+            set = function(_, v) local s = getSet(); wipe(s); if v then s[ch.id] = true end; onChange() end }
+    end
+    body.all = { type = "toggle", order = 100, width = "full", name = "All",
+        desc = "Any is fine (no restriction). Nothing chosen means the same; this just states it.",
+        get = function() return getSet()["*"] == true end,
+        set = function(_, v) local s = getSet(); wipe(s); if v then s["*"] = true end; onChange() end }
+    return { type = "group", inline = true, name = "", order = order, hidden = hiddenFn, args = {
+        use = { type = "toggle", order = 1, width = "full", name = name,
+            desc = "Tick to restrict this rule by " .. name:lower() .. ". The choices open below only while this is ticked; unticking keeps them but ignores them.",
+            get = isOn, set = function(_, v) ld()[useKey] = v and true or false; onChange() end },
+        body = { type = "group", inline = true, name = "", order = 2, hidden = function() return not isOn() end, args = body },
+    } }
+end
+
 local function TriGroup(name, order, hiddenFn, getSet, choices, onChange)
     local function hasOn(set) for _, v in pairs(set) do if v == true then return true end end return false end
     local args = {
@@ -451,6 +488,7 @@ local function BuildRule(i, rule)
             },
             spellName = { type = "description", order = 3, width = "double", fontSize = "medium",
                 name = function() return SpellName(rule.spellID) end },
+            spellSearch = SearchBox(3.2, function(id) rule.spellID = id; Changed(rule); Notify() end),
             spellPick = {
                 type = "select", name = "Or pick from your spellbook (current spec, active spells)", order = 3.5, width = "double",
                 values = function()
@@ -476,14 +514,15 @@ local function BuildRule(i, rule)
                 { desc = "Only used if the game reports no charge data. Auto-detection normally wins." }),
             detected = { type = "description", order = 6, width = "full", name = function() return DetectedMax(rule.spellID) end },
             buffHeader = { type = "header", name = "Buff / Aura", order = 10 },
+            buffState = Sel(rule, "buffState", "State", 11, BUFF_VALUES, BUFF_ORDER, on, { width = "double" }),
+            buffSearch = SearchBox(11.5, function(id) rule.buffID = id; Changed(rule); Notify() end),
             buffID = {
-                type = "input", name = "Aura spell ID", order = 11, width = "half",
+                type = "input", name = "Aura spell ID", order = 12, width = "half",
                 get = function() return tostring(rule.buffID) end,
                 set = function(_, v) rule.buffID = tonumber(v) or 0; Changed(rule); Notify() end,
             },
-            buffName = { type = "description", order = 12, width = "double", fontSize = "medium",
+            buffName = { type = "description", order = 13, width = "double", fontSize = "medium",
                 name = function() return SpellName(rule.buffID) end },
-            buffState = Sel(rule, "buffState", "State", 13, BUFF_VALUES, BUFF_ORDER, on, { width = "double" }),
         },
     }
 
@@ -660,8 +699,8 @@ local function BuildRule(i, rule)
             if rule.load.instance == "yes" then bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].instance = true end
         end
     end
-    loadArgs.specs = TriGroup("Specialization", 71, noMatch, specSet, SpecChoices(), onSpecRole)
-    loadArgs.roles = TriGroup("Role", 72, noMatch, roleSet, RoleChoices(), onSpecRole)
+    loadArgs.specs = ns.RadioGroup("Specialization", 71, noMatch, specSet, SpecChoices(), onSpecRole, function() return rule.load end, "specUse")
+    loadArgs.roles = ns.RadioGroup("Role", 72, noMatch, roleSet, RoleChoices(), onSpecRole, function() return rule.load end, "roleUse")
     -- A folder's Never / Always overrides this rule's load mode and match conditions (talents still apply). Values stay stored.
     local function folderLoadOv() return ns.FolderLoadOverride(rule) end
     loadArgs.folderOv = { type = "description", order = 0.2, width = "full", fontSize = "medium",
@@ -970,6 +1009,10 @@ local function BuildRule(i, rule)
         }),
         sound = Banner("sound", "Sound", 3, soundEnable, soundBody),
     } }
+    -- cue kinds: a Display rule has no sound banner, a Sound rule has no display / text banners
+    actions.args.display.hidden = function() return not ns.KindHas(rule, "visual") end
+    actions.args.text.hidden = function() return not ns.KindHas(rule, "visual") end
+    actions.args.sound.hidden = function() return not ns.KindHas(rule, "sound") end
 
     ---------------------------------------------------------------- Rule tab
     local ruleTab = {
@@ -1009,11 +1052,43 @@ local function BuildRule(i, rule)
         },
     }
 
+    for _, g in ipairs({ ruleTab, trigger, load, actions }) do
+        ns.LockArgs(g.args, function() return ns.IsEditLocked(rule) end)
+    end
     return {
         type = "group", childGroups = "tab", order = 1000 + i,
         name = function() return (rule.enabled and "" or "|cff888888") .. rule.name end,
         args = { rule = ruleTab, trigger = trigger, load = load, actions = actions },
     }
+end
+
+-- Edit lock: a rule (or a folder, which covers everything inside it) can be made read-only from the sidebar.
+function ns.IsEditLocked(x)
+    if x and x.editLocked then return true end
+    local id, guard = x and x.folder, 0
+    while id and guard < 32 do
+        local f = ns.FolderById(id)
+        if not f then return false end
+        if f.editLocked then return true end
+        id, guard = f.parent, guard + 1
+    end
+    return false
+end
+-- disables every leaf option while locked() is true (collapse / expand controls stay usable; groups are left alone
+-- because a disabled group would also disable those controls)
+function ns.LockArgs(args, locked)
+    for _, o in pairs(args or {}) do
+        if o.type == "group" then
+            ns.LockArgs(o.args, locked)
+        elseif not (type(o.desc) == "string" and o.desc:find("^Expand or collapse")) then
+            local orig = o.disabled
+            o.disabled = function(...)
+                if locked() then return true end
+                if type(orig) == "function" then return orig(...) end
+                return orig
+            end
+        end
+    end
 end
 
 local function TokenHelp()
@@ -1093,6 +1168,7 @@ local function BuildBar(i, bar)
             name = { type = "input", name = "Name", order = 1, width = "double",
                 get = function() return bar.name end, set = function(_, v) if v ~= "" then bar.name = v end; Notify() end },
             enabled = Tog(bar, "enabled", "Enabled", 2, onN),
+            buffSearch = SearchBox(2.9, function(id) bar.buffID = id; on(); Notify() end),
             buffID = { type = "input", name = "Aura spell ID", order = 3, width = "half",
                 get = function() return tostring(bar.buffID) end,
                 set = function(_, v) bar.buffID = tonumber(v) or 0; on(); Notify() end },
@@ -1106,7 +1182,7 @@ local function BuildBar(i, bar)
                 func = function()
                     for idx, b in ipairs(ns.bars) do if b == bar then table.remove(ns.bars, idx); break end end
                     ns.Bars_Drop(bar); ns.MarkDirty(); Notify()
-                    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "bars", "allbars")
+                    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allbars")
                 end },
         },
     }
@@ -1185,6 +1261,18 @@ local function BuildProfiles()
     local a = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "Your rules are personal. Nothing is shared unless you export it, and a fresh install starts empty. Export produces a text string you can paste to a friend; they paste it under 'Import' to add it to their own setup." },
+        exportTotal = { type = "execute", name = "Export total profile  (everything, one click)", order = 0.5, width = "full",
+            desc = "Bundles ALL rules with their folders and container settings, all buff bars and all QoL elements into one export string, ignoring the ticks below. The text appears just under this button.",
+            func = function()
+                local all = { rules = true, bars = true, qol = true }
+                local txt, err = ns.Profile_Encode(ns.Profile_Snapshot(all, (profileName ~= "" and profileName) or "Total profile"))
+                exportText = txt or ("Could not export: " .. tostring(err))
+                profileMsg = txt and ("Exported everything: " .. ns.Profile_Describe(ns.Profile_Snapshot(all, "")) .. ". Copy the text below.") or ""
+                Notify()
+            end },
+        totalBox = { type = "input", name = "Total profile text  (click, Ctrl+A, Ctrl+C)", order = 0.6, width = "full", multiline = 4,
+            hidden = function() return exportText == nil or exportText == "" end,
+            get = function() return exportText end, set = function() end },
         exportH = { type = "header", name = "Export What You Have", order = 1 },
         incRules = Tog(exportInc, "rules", "Cooldown + Aura rules (with their folders)", 2, function() end, { width = "double" }),
         incBars = Tog(exportInc, "bars", "Buff bars (and their group layout)", 3, function() end, { width = "double" }),
@@ -1227,8 +1315,22 @@ local function BuildProfiles()
         savedH = { type = "header", name = "Profiles Saved on This Computer", order = 20 },
         saveName = { type = "input", name = "Profile name", order = 21, width = "double",
             get = function() return profileName end, set = function(_, v) profileName = v or "" end },
-        save = { type = "execute", name = "Save current setup", order = 22, width = "double",
-            desc = "Saves a snapshot of the parts ticked under Export. Saving with an existing name updates it.",
+        savePick = { type = "select", name = "Or pick an existing profile to overwrite", order = 21.5, width = "double",
+            values = function() local v = {}; for _, p in ipairs(ns.Profiles()) do v[p.name] = p.name end return v end,
+            sorting = function() local o = {}; for _, p in ipairs(ns.Profiles()) do o[#o + 1] = p.name end table.sort(o, function(x, y) return tostring(x):lower() < tostring(y):lower() end) return o end,
+            get = function() for _, p in ipairs(ns.Profiles()) do if p.name == profileName then return p.name end end end,
+            set = function(_, v) profileName = v or ""; Notify() end },
+        save = { type = "execute", order = 22, width = "double",
+            name = function()
+                for _, p in ipairs(ns.Profiles()) do if p.name == profileName then return "Save and overwrite '" .. profileName .. "'" end end
+                return "Save current setup"
+            end,
+            desc = "Saves a snapshot of the parts ticked under Export. If the name matches an existing profile, that profile is replaced after you confirm.",
+            confirm = function()
+                for _, p in ipairs(ns.Profiles()) do if p.name == profileName then return true end end
+                return false
+            end,
+            confirmText = "Overwrite the saved profile with your current setup? Its old contents are lost.",
             func = function()
                 local ok, msg = ns.Profile_Save(profileName, exportInc)
                 profileMsg = ok and ("Profile '" .. profileName .. "' " .. msg .. ".") or ("|cffff5555" .. msg .. "|r")
@@ -1260,6 +1362,60 @@ end
 -- Top level: horizontal tabs. Each of the first three has a tree with an "All" node.
 -------------------------------------------------------------------------------
 local newOpts = { sound = false, visual = false } -- what "+ New rule" turns on
+-- A Display Cues rule is display-only and a Sound Cues rule is sound-only: the one output it has starts on.
+-- Everywhere else the two "New rules ..." tick boxes decide. (r.folder must already be set.)
+local function ApplyNewOpts(r)
+    local k = ns.RuleKind(r)
+    if k == "display" then r.visual.enabled, r.sound.enabled = true, false
+    elseif k == "sound" then r.sound.enabled, r.visual.enabled = true, false
+    else
+        r.sound.enabled = newOpts.sound and true or false
+        r.visual.enabled = newOpts.visual and true or false
+    end
+end
+
+-- "+ New rule" opens an intermediate page (like WeakAuras' display-type list) instead of creating a blank rule.
+-- Sound Cues folders skip it: they only hold sound rules, so there is nothing to choose.
+local picker = nil   -- { folder = id|nil } while the page is open
+local function CreateRuleOfType(typ, fid)
+    local r = ns.NewRule()
+    r.name = "Rule " .. (#ns.rules + 1)
+    r.folder = fid
+    ApplyNewOpts(r)
+    local v = r.visual
+    if typ and ns.KindHas(r, "visual") then
+        v.enabled = true
+        if typ == "icon" then v.kind = "spellicon"; v.w, v.h = 64, 64; v.desatOnCD = true
+        elseif typ == "progresstex" then v.fill.enabled = true
+        elseif typ == "text" then v.text.enabled = true; v.texAlpha = 0 end
+    end
+    ns.rules[#ns.rules + 1] = r
+    Notify()
+    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(r))
+end
+local function StartNewRule(fid)
+    if ns.RuleKind({ folder = fid }) == "sound" then CreateRuleOfType(nil, fid); return end
+    picker = { folder = fid }
+    Notify()
+    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "all")
+end
+local function PickType(typ)
+    local p = picker
+    picker = nil
+    if typ == "bar" then
+        local b = ns.NewBar()
+        b.name = "Buff bar " .. (#ns.bars + 1)
+        ns.bars[#ns.bars + 1] = b
+        pcall(ns.Bars_Refresh, b)
+        ns.MarkDirty(); Notify()
+        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allbars", "bar" .. #ns.bars)
+    elseif typ == "import" then
+        Notify()
+        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "profiles")
+    else
+        CreateRuleOfType(typ, p and p.folder)
+    end
+end
 
 local function FolderRuleCount(f)
     return #FolderRules(f.id)
@@ -1362,9 +1518,93 @@ local function FolderLoadGroup(f)
     return g
 end
 
+-- Folder = container: group type (static / dynamic) plus alpha, scale, strata / level and screen position.
+-- ns function (not a local) to stay under Lua's 200-locals-per-chunk limit.
+function ns.FolderContainerGroup(f)
+    local function apply() ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end
+    local POINTS = { "CENTER", "TOP", "BOTTOM", "LEFT", "RIGHT", "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }
+    local PV = {}
+    for _, p in ipairs(POINTS) do PV[p] = p:sub(1, 1) .. p:sub(2):lower() end
+    PV.TOPLEFT, PV.TOPRIGHT, PV.BOTTOMLEFT, PV.BOTTOMRIGHT = "Top left", "Top right", "Bottom left", "Bottom right"
+    local STRATA = { "inherit", "BACKGROUND", "LOW", "MEDIUM", "HIGH", "DIALOG", "FULLSCREEN", "FULLSCREEN_DIALOG", "TOOLTIP" }
+    local SV = { inherit = "(default - High)", BACKGROUND = "Background", LOW = "Low", MEDIUM = "Medium", HIGH = "High", DIALOG = "Dialog",
+        FULLSCREEN = "Fullscreen", FULLSCREEN_DIALOG = "Fullscreen dialog", TOOLTIP = "Tooltip" }
+    local RELS = { "screen", "player", "target", "focus", "minimap", "chat", "custom" }
+    local RV = { screen = "Screen centre (or the parent folder)", player = "Player frame", target = "Target frame", focus = "Focus frame",
+        minimap = "Minimap", chat = "Main chat frame", custom = "Another frame (type its name)" }
+    local function isDyn() return f.cType == "dynamic" end
+    local g = { type = "group", inline = true, order = 5.4, name = "Group Type & Container",
+        hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end,
+        args = {
+            note = { type = "description", order = 0, width = "full", fontSize = "small",
+                name = "Every folder is a container for the displays inside it (and inside its subfolders). Static: each display keeps its own position. Dynamic: the addon lays the visible displays out itself and ignores their own X / Y. The container settings below apply to everything inside. Width / height give the container a fixed box (also what the anchor point refers to); a dynamic group wraps onto a new row / column when its items would exceed that size." },
+        } }
+    AddSquareRadio(g.args, "ctype", 1, { static = "Static group  (items keep their own positions)", dynamic = "Dynamic group  (positions its items automatically)" },
+        { "static", "dynamic" }, function() return isDyn() and "dynamic" or "static" end,
+        function(v) f.cType = (v == "dynamic") and "dynamic" or nil; apply() end)
+    g.args.growth = { type = "select", name = "Grow direction", order = 2, width = "double", hidden = function() return not isDyn() end,
+        values = { RIGHT = "Right", LEFT = "Left", DOWN = "Down", UP = "Up", HCENTER = "Centred, horizontal", VCENTER = "Centred, vertical" },
+        sorting = { "RIGHT", "LEFT", "DOWN", "UP", "HCENTER", "VCENTER" },
+        get = function() return f.cGrowth or "RIGHT" end, set = function(_, v) f.cGrowth = v; apply() end }
+    g.args.spacing = { type = "range", name = "Spacing between items", order = 2.1, width = "double", min = 0, max = 200, step = 1,
+        hidden = function() return not isDyn() end,
+        get = function() return f.cSpacing or 4 end, set = function(_, v) f.cSpacing = v; apply() end }
+    g.args.alpha = { type = "range", name = "Group opacity", order = 3, width = "double", min = 0, max = 1, step = 0.05,
+        get = function() return f.cAlpha or 1 end, set = function(_, v) f.cAlpha = (v < 1) and v or nil; apply() end }
+    g.args.scale = { type = "range", name = "Group scale", order = 3.1, width = "double", min = 0.25, max = 3, step = 0.05,
+        get = function() return f.cScale or 1 end, set = function(_, v) f.cScale = (v ~= 1) and v or nil; apply() end }
+    g.args.width = { type = "range", name = "Container width (0 = automatic)", order = 3.05, width = "double", min = 0, max = 1500, step = 1,
+        get = function() return f.cW or 0 end, set = function(_, v) f.cW = (v > 0) and v or nil; apply() end }
+    g.args.height = { type = "range", name = "Container height (0 = automatic)", order = 3.06, width = "double", min = 0, max = 1500, step = 1,
+        get = function() return f.cH or 0 end, set = function(_, v) f.cH = (v > 0) and v or nil; apply() end }
+    g.args.clip = { type = "toggle", name = "Clip contents to the container size (hide anything outside it)", order = 3.07, width = "full",
+        get = function() return f.cClip and true or false end, set = function(_, v) f.cClip = v and true or nil; apply() end }
+    g.args.strata = { type = "select", name = "Layer (strata)", order = 3.2, width = "double", values = SV, sorting = STRATA,
+        get = function() return f.cStrata or "inherit" end, set = function(_, v) f.cStrata = (v ~= "inherit") and v or nil; apply() end }
+    g.args.level = { type = "range", name = "Z-index within the layer (0 = automatic)", order = 3.3, width = "double", min = 0, max = 200, step = 1,
+        get = function() return f.cLevel or 0 end, set = function(_, v) f.cLevel = (v > 0) and v or nil; apply() end }
+    g.args.relH = { type = "header", name = "Position", order = 4 }
+    g.args.rel = { type = "select", name = "Relative to", order = 4.1, width = "double", values = RV, sorting = RELS,
+        get = function() return f.cRel or "screen" end, set = function(_, v) f.cRel = (v ~= "screen") and v or nil; apply() end }
+    g.args.relName = { type = "input", name = "Frame name", order = 4.2, width = "double", hidden = function() return f.cRel ~= "custom" end,
+        desc = "The global name of any frame, e.g. PlayerFrame or MultiBarBottomLeft. If it does not exist the group falls back to the screen.",
+        get = function() return f.cFrame or "" end, set = function(_, v) f.cFrame = (v ~= "") and v or nil; apply() end }
+    g.args.point = { type = "select", name = "This group's anchor point", order = 4.3, values = PV, sorting = POINTS,
+        get = function() return f.cPoint or "CENTER" end, set = function(_, v) f.cPoint = (v ~= "CENTER") and v or nil; apply() end }
+    g.args.relPoint = { type = "select", name = "Point on the frame it is relative to", order = 4.4, values = PV, sorting = POINTS,
+        get = function() return f.cRelPoint or f.cPoint or "CENTER" end, set = function(_, v) f.cRelPoint = v; apply() end }
+    g.args.x = { type = "range", name = "X offset", order = 4.5, width = "double", min = -1500, max = 1500, step = 1, softMin = -600, softMax = 600,
+        get = function() return f.cX or 0 end, set = function(_, v) f.cX = (v ~= 0) and v or nil; apply() end }
+    g.args.y = { type = "range", name = "Y offset", order = 4.6, width = "double", min = -1500, max = 1500, step = 1, softMin = -600, softMax = 600,
+        get = function() return f.cY or 0 end, set = function(_, v) f.cY = (v ~= 0) and v or nil; apply() end }
+    return g
+end
+
+local function FolderSoundGroup(f)
+    return {
+        type = "group", inline = true, order = 5.6, name = "Sound Channel for This Folder",
+        hidden = function() return ns.RuleKind({ folder = f.id }) == "display" end,
+        args = {
+            note = { type = "description", order = 0, width = "full", fontSize = "small",
+                name = "Forces every rule in this folder and its subfolders to play on this channel, whatever the rule itself says. Nothing on the rules is changed: a rule that leaves the folder uses its own channel again. A subfolder's own choice beats the folder above it." },
+            channel = { type = "select", name = "Enforced sound channel", order = 1, width = "double",
+                values = CHANNEL_VALUES, sorting = CHANNEL_ORDER,
+                get = function() return f.soundChannel or "none" end,
+                set = function(_, v) f.soundChannel = (v ~= "none") and v or nil; ns.MarkDirty(); Notify() end },
+            inherited = { type = "description", order = 2, width = "full", fontSize = "medium",
+                hidden = function() if f.soundChannel then return true end; return not ns.FolderSoundChannelFrom(f.parent) end,
+                name = function()
+                    local ch, of = ns.FolderSoundChannelFrom(f.parent)
+                    if not ch then return "" end
+                    return "Inherited from folder |cffffd100" .. tostring(of and of.name) .. "|r: " .. tostring(ch)
+                end },
+        },
+    }
+end
+
 local function BuildFolder(k, f)
     local dinfo, dpos = ns.DefaultFolderInfo(f.default)
-    return {
+    local g = {
         type = "group", order = dpos and (10 + dpos) or (100 + k),
         name = function() return (f.parent and f.name or tostring(f.name):upper()) .. " (" .. FolderRuleCount(f) .. ")" end,
         args = {
@@ -1372,14 +1612,7 @@ local function BuildFolder(k, f)
                 get = function() return f.name end, set = function(_, v) if v ~= "" then f.name = v end; Notify() end },
             newRule = { type = "execute", name = "+ New rule in this folder", order = 2, width = "double",
                 func = function()
-                    local r = ns.NewRule()
-                    r.name = "Rule " .. (#ns.rules + 1)
-                    r.folder = f.id
-                    r.sound.enabled = newOpts.sound and true or false
-                    r.visual.enabled = newOpts.visual and true or false
-                    ns.rules[#ns.rules + 1] = r
-                    Notify()
-                    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(r))
+                    StartNewRule(f.id)
                 end },
             newSub = { type = "execute", name = "+ New subfolder", order = 2.5, width = "double",
                 func = function()
@@ -1391,12 +1624,23 @@ local function BuildFolder(k, f)
                 func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = true; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
             disableAll = { type = "execute", name = "Disable all rules in this folder (and subfolders)", order = 4, width = "double",
                 func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
+            pausePv = { type = "toggle", name = "Pause preview animations", order = 4.5, width = "double",
+                hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end,
+                desc = "Freezes the sample countdown, the fades and the flash in every preview while the images stay on screen. Untick to resume. This is the same switch as on All Rules and on each rule, so it pauses every preview, not only this folder's.",
+                get = function() return ns.previewPaused end,
+                set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
             note = { type = "description", order = 5, width = "full", fontSize = "small",
                 name = "Use the eye and headphone icons next to this folder in the sidebar to preview every rule inside it at once." },
             defaultNote = { type = "description", order = 5.2, width = "full", fontSize = "small",
                 hidden = function() return not dinfo end, name = dinfo and dinfo.note or "" },
             loadOverride = FolderLoadGroup(f),
-            applyText = FolderApplyGroup(f),
+            soundChannel = FolderSoundGroup(f),
+            container = ns.FolderContainerGroup(f),
+            applyText = (function()
+                local g = FolderApplyGroup(f)
+                g.hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end
+                return g
+            end)(),
             delete = { type = "execute", name = "Delete folder (contents move up one level)", order = 9, width = "double",
                 confirm = true, confirmText = "Delete this folder? The rules and subfolders inside are kept and move up one level.",
                 func = function()
@@ -1408,6 +1652,8 @@ local function BuildFolder(k, f)
                 end },
         },
     }
+    ns.LockArgs(g.args, function() return ns.IsEditLocked({ folder = f.id }) end)
+    return g
 end
 
 local function BuildOptions()
@@ -1419,13 +1665,7 @@ local function BuildOptions()
                 name = "Rules that watch a cooldown, a buff and your talents, then play a sound and/or show a texture. Pick a rule on the left, or add one. The eye and headphone icons in the sidebar preview a rule (or a whole folder / everything) without changing it." },
             newRule = { type = "execute", name = "+ New rule", order = 1,
                 func = function()
-                    local r = ns.NewRule()
-                    r.name = "Rule " .. (#ns.rules + 1)
-                    r.sound.enabled = newOpts.sound and true or false
-                    r.visual.enabled = newOpts.visual and true or false
-                    ns.rules[#ns.rules + 1] = r
-                    Notify()
-                    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(r))
+                    StartNewRule(nil)
                 end },
             newFolder = { type = "execute", name = "+ New folder", order = 2,
                 func = function()
@@ -1439,6 +1679,10 @@ local function BuildOptions()
             newVisual = { type = "toggle", name = "New rules show a texture / icon", order = 4, width = "double",
                 desc = "Applied when you press + New rule. Off by default; you can still change it on the rule's Conditions tab.",
                 get = function() return newOpts.visual end, set = function(_, v) newOpts.visual = v end },
+            askSounds = { type = "toggle", name = "Ask before previewing many sounds at once", order = 4.5, width = "double",
+                desc = "When on, the headphone icon on a row that covers several sounds asks first. Turned off by ticking 'Don't ask me again' in that box.",
+                get = function() local u = CueRulesDB and CueRulesDB.ui; return not (u and u.skipSoundAllPrompt) end,
+                set = function(_, v) local u = CueRulesDB and CueRulesDB.ui; if u then u.skipSoundAllPrompt = (not v) or nil end end },
             unlock = { type = "execute", order = 5, width = "double",
                 name = function() return ns.unlocked and "Lock visuals" or "Unlock visuals (drag on screen)" end,
                 func = function() ns.ToggleUnlock(); Notify() end },
@@ -1447,7 +1691,7 @@ local function BuildOptions()
                 get = function() return ns.previewPaused end,
                 set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
             defaults = { type = "execute", name = "Add Default Categories", order = 5.5, width = "double",
-                desc = "Adds any of Display Cues, Sound Cues and Advanced Rule Tracking that are missing at the top level. Existing folders and rules are not touched.",
+                desc = "Adds any of Display Cues, Sound Cues, Hybrid Cues and Advanced Cue Tracking that are missing at the top level. Existing folders and rules are not touched.",
                 func = function()
                     local n = ns.EnsureDefaultFolders(true)
                     ns.Print(n > 0 and ("added " .. n .. " default categor" .. (n == 1 and "y" or "ies")) or "the default categories are already there")
@@ -1477,18 +1721,46 @@ local function BuildOptions()
         name = "Rules that are enabled and whose load conditions and talents match right now (cooldown / buff state is not part of this). Same rules as under All Rules; this list updates as your situation changes." }
     notArgs.info = { type = "description", order = 0, width = "full", fontSize = "medium",
         name = "Rules that are disabled, or whose load conditions or talents do not match right now." }
-    -- Loaded / Not Loaded are the topmost root rows of the All Rules tree (siblings above ALL RULES)
-    all.order = 3
+    -- All Rules is the first root row; a blank divider row follows its tree, then the Loaded / Not Loaded filters
+    all.order = 1
+    -- type picker (shown in place of the All Rules page while `picker` is set)
+    do
+        local function Entry(order, icon, title, desc, typ)
+            return { type = "execute", order = order, width = "full",
+                name = "|TInterface\\Icons\\" .. icon .. ":28|t  |cffffd100" .. title .. "|r  -  " .. desc,
+                func = function() PickType(typ) end }
+        end
+        for _, k in ipairs({ "intro", "newRule", "newFolder", "newSound", "newVisual", "askSounds", "unlock", "pausePv", "defaults", "seed" }) do
+            local a = all.args[k]
+            if a then
+                local orig = a.hidden
+                a.hidden = function(...) if picker then return true end; if type(orig) == "function" then return orig(...) end; return orig end
+            end
+        end
+        all.args.pickerHdr = { type = "header", order = 0.1, name = "Choose what this rule shows", hidden = function() return not picker end }
+        all.args.pickIcon = Entry(0.2, "Spell_Holy_PowerWordShield", "Icon", "Shows a spell icon with an optional cooldown overlay", "icon")
+        all.args.pickBar = Entry(0.3, "Ability_Rogue_Sprint", "Progress Bar", "Shows a progress bar with name, timer, and icon (creates a Buff Bar)", "bar")
+        all.args.pickProg = Entry(0.4, "Spell_Nature_TimeStop", "Progress Texture", "Shows a texture that changes based on duration", "progresstex")
+        all.args.pickText = Entry(0.5, "INV_Misc_Note_01", "Text", "Shows one or more lines of text, which can include dynamic information", "text")
+        all.args.pickTex = Entry(0.6, "INV_Misc_Gem_Variety_01", "Texture", "Shows a custom texture", "texture")
+        all.args.pickExtH = { type = "header", order = 0.7, name = "External", hidden = function() return not picker end }
+        all.args.pickImport = Entry(0.8, "INV_Scroll_03", "Import", "Import from an encoded string (opens the Profiles tab)", "import")
+        all.args.pickCancel = { type = "execute", order = 0.9, name = "Cancel", width = "half", func = function() picker = nil; Notify() end }
+        for _, k in ipairs({ "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickImport", "pickCancel" }) do
+            all.args[k].hidden = function() return not picker end
+        end
+    end
     local track = { type = "group", name = "All Rules", order = 1, childGroups = "tree", args = {
-        loaded = { type = "group", order = 1, childGroups = "tree",
+        loaded = { type = "group", order = 3, childGroups = "tree",
             name = function() return "LOADED (" .. nLoaded .. ")" end, args = loadedArgs },
-        notloaded = { type = "group", order = 2, childGroups = "tree",
+        spacer = { type = "group", order = 2, name = " ", disabled = true, args = {} },
+        notloaded = { type = "group", order = 4, childGroups = "tree",
             name = function() return "NOT LOADED (" .. nNot .. ")" end, args = notArgs },
         all = all } }
 
     ---------------------------------------------------------- Buff Bars
     local allBars = {
-        type = "group", name = "ALL BARS", order = 1, childGroups = "tree",
+        type = "group", name = "Buff Bars", order = 2, childGroups = "tree",
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "Timer bars for buffs on you. Layout options below apply to the whole group. The eye icon in the sidebar previews a bar (or all of them)." },
@@ -1499,7 +1771,7 @@ local function BuildOptions()
             newBar = { type = "execute", name = "+ New buff bar", order = 1, width = "double",
                 func = function()
                     ns.Bars_NewBar(); Notify()
-                    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "bars", "allbars", "bar" .. #ns.bars)
+                    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allbars", "bar" .. #ns.bars)
                 end },
             layoutH = { type = "header", name = "Group Layout", order = 2 },
             layout = Sel(CueRulesDB.barGroup, "layout", "Arrange the bars", 3, BAR_LAYOUT, BAR_LAYOUT_ORDER,
@@ -1516,11 +1788,10 @@ local function BuildOptions()
         },
     }
     for i, bar in ipairs(ns.bars or {}) do allBars.args["bar" .. i] = BuildBar(i, bar) end
-    local bars = { type = "group", name = "Buff Bars", order = 4, childGroups = "tree", args = { allbars = allBars } }
 
     ---------------------------------------------------------- QoL
     local allQol = {
-        type = "group", name = "ALL BOXES", order = 1, childGroups = "tree",
+        type = "group", name = "Stat Tracking", order = 1, childGroups = "tree",
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "Small quality-of-life displays. Stats text boxes: build your own layout from {tokens}, then drag it where you want it." },
@@ -1533,10 +1804,20 @@ local function BuildOptions()
         },
     }
     for i, box in ipairs(ns.qolBoxes or {}) do allQol.args["box" .. i] = BuildBox(i, box) end
-    local qol = { type = "group", name = "QoL Elements", order = 5, childGroups = "tree", args = { allqol = allQol } }
+    -- Stat Tracking off (tick box on its sidebar row): nothing is listed or shown
+    for k, v in pairs(allQol.args) do v.hidden = function() return not ns.QoLOn() end end
+    for k, v in pairs(allBars.args) do
+        local orig = v.hidden
+        v.hidden = function(...)
+            if not ns.BarsOn() then return true end
+            if type(orig) == "function" then return orig(...) end
+            return orig
+        end
+    end
+    local qol = { type = "group", name = "QoL Elements", order = 5, childGroups = "tree", args = { allqol = allQol, allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil, allbars = allBars } }
 
     return { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, bars = bars, qol = qol, profiles = BuildProfiles() } }
+        args = { cooldowns = track, qol = qol, profiles = BuildProfiles() } }
 end
 
 AceConfigRegistry:RegisterOptionsTable(APP, BuildOptions)
@@ -1706,6 +1987,41 @@ local function GroupState(objs, kind)
     return 0.5
 end
 
+local soundAllDlg
+local function ConfirmAllSounds(count, cb)
+    local ui = CueRulesDB and CueRulesDB.ui
+    if ui and ui.skipSoundAllPrompt then cb(); return end
+    if not soundAllDlg then
+        local f = CreateFrame("Frame", "XayaUISoundAllDialog", UIParent, "BackdropTemplate")
+        f:SetSize(390, 170); f:SetPoint("CENTER"); f:SetFrameStrata("TOOLTIP"); f:EnableMouse(true)
+        f:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true, tileSize = 32, edgeSize = 32, insets = { left = 11, right = 12, top = 12, bottom = 11 } })
+        f.text = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        f.text:SetPoint("TOP", 0, -24); f.text:SetWidth(340)
+        f.check = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
+        f.check:SetPoint("BOTTOMLEFT", 22, 52)
+        f.checkLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        f.checkLabel:SetPoint("LEFT", f.check, "RIGHT", 2, 0)
+        f.checkLabel:SetText("Don't ask me again")
+        f.yes = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        f.yes:SetSize(110, 24); f.yes:SetPoint("BOTTOMRIGHT", f, "BOTTOM", -8, 20); f.yes:SetText(YES)
+        f.no = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        f.no:SetSize(110, 24); f.no:SetPoint("BOTTOMLEFT", f, "BOTTOM", 8, 20); f.no:SetText(NO)
+        f.no:SetScript("OnClick", function() f:Hide() end)
+        f.yes:SetScript("OnClick", function()
+            if f.check:GetChecked() and CueRulesDB and CueRulesDB.ui then CueRulesDB.ui.skipSoundAllPrompt = true end
+            f:Hide()
+            if f.cb then local c = f.cb; f.cb = nil; c() end
+        end)
+        tinsert(UISpecialFrames, "XayaUISoundAllDialog")
+        soundAllDlg = f
+    end
+    soundAllDlg.cb = cb
+    soundAllDlg.check:SetChecked(false)
+    soundAllDlg.text:SetText("Play all " .. count .. " sounds at once? They will loop together until you switch the preview off.")
+    soundAllDlg:Show()
+end
+
 local function MakeToggle(button, kind)
     local b = CreateFrame("Button", nil, button)
     b:SetSize(15, 15)
@@ -1718,9 +2034,13 @@ local function MakeToggle(button, kind)
         local objs = self.objs
         if not objs or #objs == 0 then return end
         local on = GroupState(objs, self.kind) < 1
-        ns.SetPreview(objs, self.kind, on)
-        if ns.DecorateTrees then ns.DecorateTrees() end
-        Notify()
+        local kindNow = self.kind
+        local function go()
+            ns.SetPreview(objs, kindNow, on)
+            if ns.DecorateTrees then ns.DecorateTrees() end
+            Notify()
+        end
+        if on and kindNow == "sound" and #objs > 1 then ConfirmAllSounds(#objs, go) else go() end
     end)
     b:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -1883,6 +2203,38 @@ end
 local function AskRename(current, cb) ShowPopup("XAYAUI_RENAME", "Rename", { current = current, cb = cb }) end
 local function AskConfirm(text, cb) ShowPopup("XAYAUI_CONFIRM", text, { cb = cb }) end
 
+-- Display <-> Sound: build equivalent rules in the other bucket from what each rule tracks (spell, aura, talents, states).
+-- Load conditions start blank and the new rule starts disabled with its one output ticked, so turning it on is a single switch.
+local function ConvertFolder(src, mode)
+    local toKey = (src.default == "display") and "sound" or "display"
+    local dst
+    for _, f in ipairs(ns.folders) do if not f.parent and f.default == toKey then dst = f; break end end
+    if not dst then ns.Print("that category is missing - press 'Add Default Categories' on All Rules first"); return end
+    local rules = FolderRules(src.id)
+    if #rules == 0 then ns.Print("nothing inside '" .. tostring(src.name) .. "' to " .. mode); return end
+    local sub = ns.NewFolder((mode == "copy" and "Copied from " or "Moved from ") .. tostring(src.name), dst.id)
+    for _, r in ipairs(rules) do
+        local n = ns.NewRule()
+        n.name = r.name
+        for _, k in ipairs({ "spellID", "maxCharges", "cdState", "buffID", "buffState", "talentMode" }) do n[k] = r[k] end
+        n.talents = ns.Copy(r.talents or {})
+        n.folder = sub.id
+        n.enabled = false
+        if toKey == "sound" then n.sound.enabled, n.visual.enabled = true, false
+        else n.visual.enabled, n.sound.enabled = true, false end
+        ns.rules[#ns.rules + 1] = n
+        pcall(ns.RefreshVisual, n)
+    end
+    if mode == "transform" then
+        for _, r in ipairs(rules) do
+            for idx, x in ipairs(ns.rules) do if x == r then table.remove(ns.rules, idx); break end end
+            pcall(ns.DropVisual, r)
+        end
+    end
+    ns.MarkDirty(); Notify()
+    ns.Print((mode == "copy" and "copied " or "moved ") .. #rules .. " rule(s) into '" .. tostring(dst.name) .. "' (disabled; turn them on and pick a " .. (toKey == "sound" and "sound" or "display") .. ")")
+end
+
 local function SelectRoot() pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "all") end
 
 local function DeleteRule(rule)
@@ -1980,6 +2332,12 @@ local function RowMenu(button, root)
     local rule = n and ns.rules and ns.rules[tonumber(n)]
     if rule then
         root:CreateTitle((rule.name and rule.name ~= "") and rule.name or "Rule")
+        if ns.IsEditLocked(rule) then
+            root:CreateTitle("|cffff6060Edits blocked|r")
+            root:CreateButton("Duplicate", function() DuplicateRule(rule) end)
+            root:CreateButton("Copy Settings", function() ruleClip = { name = rule.name, data = ns.Copy(rule) }; Notify() end)
+            return true
+        end
         root:CreateButton("Rename", function() AskRename(rule.name, function(t) rule.name = t; pcall(ns.RefreshVisual, rule); ns.MarkDirty(); Notify() end) end)
         root:CreateButton("Duplicate", function() DuplicateRule(rule) end)
         root:CreateButton("Copy Settings", function() ruleClip = { name = rule.name, data = ns.Copy(rule) }; Notify(); ns.Print("copied settings of '" .. tostring(rule.name) .. "'") end)
@@ -1997,14 +2355,7 @@ local function RowMenu(button, root)
         root:CreateTitle(fold.name)
         root:CreateButton("Rename", function() AskRename(fold.name, function(t) fold.name = t; ns.MarkDirty(); Notify() end) end)
         root:CreateButton("New Rule Here", function()
-            local r = ns.NewRule()
-            r.name = "Rule " .. (#ns.rules + 1)
-            r.folder = fold.id
-            r.sound.enabled = newOpts.sound and true or false
-            r.visual.enabled = newOpts.visual and true or false
-            ns.rules[#ns.rules + 1] = r
-            Notify()
-            pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(r))
+            StartNewRule(fold.id)
         end)
         root:CreateButton("New Subfolder", function()
             local nf = ns.NewFolder("Folder " .. (#ns.folders + 1), fold.id)
@@ -2016,6 +2367,15 @@ local function RowMenu(button, root)
             ns.MarkDirty(); Notify()
             pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(nf))
         end)
+        if not fold.parent and (fold.default == "display" or fold.default == "sound") then
+            local to = (fold.default == "display") and "Sound" or "Display"
+            root:CreateDivider()
+            root:CreateButton("Copy " .. fold.name .. " to " .. to .. " Cues", function() ConvertFolder(fold, "copy") end)
+            root:CreateButton("Transform " .. fold.name .. " to " .. to .. " Cues", function()
+                AskConfirm("Transform every rule in '" .. tostring(fold.name) .. "' into " .. to .. " Cues? The originals are removed.", function() ConvertFolder(fold, "transform") end)
+            end)
+            root:CreateDivider()
+        end
         root:CreateButton("Enable All Rules Inside", function() for _, r in ipairs(FolderRules(fold.id)) do r.enabled = true; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
         root:CreateButton("Disable All Rules Inside", function() for _, r in ipairs(FolderRules(fold.id)) do r.enabled = false; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
         AddPasteMenu(root, "Paste Settings Into Rules Here", function() return FolderRules(fold.id) end,
@@ -2041,7 +2401,7 @@ local function RowMenu(button, root)
             AskConfirm("Delete the bar '" .. tostring(bar.name) .. "'?", function()
                 for idx, b in ipairs(ns.bars) do if b == bar then table.remove(ns.bars, idx); break end end
                 ns.Bars_Drop(bar); ns.MarkDirty(); Notify()
-                pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "bars", "allbars")
+                pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allbars")
             end)
         end)
         return true
@@ -2068,13 +2428,7 @@ local function RowMenu(button, root)
     if last == "all" then
         root:CreateTitle("All Rules")
         root:CreateButton("New Rule", function()
-            local r = ns.NewRule()
-            r.name = "Rule " .. (#ns.rules + 1)
-            r.sound.enabled = newOpts.sound and true or false
-            r.visual.enabled = newOpts.visual and true or false
-            ns.rules[#ns.rules + 1] = r
-            Notify()
-            pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(r))
+            StartNewRule(nil)
         end)
         root:CreateButton("New Folder", function()
             local nf = ns.NewFolder("Folder " .. (#ns.folders + 1))
@@ -2124,11 +2478,11 @@ end
 
 -- Header rows (the root row and every top-level folder) get a tinted banner so each reads as its own group.
 local BANNER_TINT = {
-    root = { 1, 0.78, 0 }, loaded = { 0.1, 0.85, 0.75 }, notloaded = { 0.95, 0.2, 0.2 }, display = { 0.1, 0.5, 1 }, sound = { 0.1, 0.75, 0.3 }, advanced = { 0.75, 0.25, 1 }, other = { 0.7, 0.7, 0.75 },
+    root = { 1, 0.78, 0 }, loaded = { 0.1, 0.85, 0.75 }, notloaded = { 0.95, 0.2, 0.2 }, display = { 0.1, 0.5, 1 }, sound = { 0.1, 0.75, 0.3 }, hybrid = { 1, 0.5, 0.1 }, advanced = { 0.75, 0.25, 1 }, cursor = { 0.95, 0.35, 0.75 }, other = { 0.7, 0.7, 0.75 },
 }
 local function BannerTint(uv)
     local last = uv and tostring(uv):match("([^\001]*)$")
-    if last == "all" or last == "allbars" or last == "allboxes" then return BANNER_TINT.root end
+    if last == "all" or last == "allbars" or last == "allqol" or last == "allcursor" then return BANNER_TINT.root end
     if last == "loaded" then return BANNER_TINT.loaded end
     if last == "notloaded" then return BANNER_TINT.notloaded end
     local f = last and ns.FolderById and ns.FolderById(last)
@@ -2139,54 +2493,47 @@ end
 local function PaintBanner(button)
     local c = BannerTint(button.uniquevalue)
     -- Root rows (ALL RULES, LOADED, NOT LOADED, ALL BARS, ALL BOXES): one shared soft style, white text, thin outline,
-    -- 15% smaller than the earlier bold look, drawn in small caps. WoW fonts have no small-caps feature, so the label is
-    -- rebuilt from separate font strings: first letter of each word full size, the rest capitals at 80% size.
+    -- 15% smaller than the earlier bold look, drawn in capitals.
     local fs = button.text
     if fs and fs.GetFont then
-        if not button.xuiFont then local f, sz, fl = fs:GetFont(); button.xuiFont = { f, sz, fl } end
+        if not button.xuiFont then local f, sz, fl = fs:GetFont(); local r, g, b, a = fs:GetTextColor(); button.xuiFont = { f, sz, fl, r, g, b, a } end
         local uv = button.uniquevalue and tostring(button.uniquevalue)
-        local isRoot = uv and (uv == "all" or uv == "allbars" or uv == "allboxes" or uv == "loaded" or uv == "notloaded") or false
+        local isRoot = uv and (uv == "all" or uv == "allbars" or uv == "allqol" or uv == "allcursor" or uv == "loaded" or uv == "notloaded") or false
         if isRoot then
-            local text = fs:GetText() or ""
+            -- One font string, all capitals, one size: the earlier small-caps version stitched separate font strings
+            -- together and left a visible gap after every capital and every space.
             local size = math.floor((button.xuiFont[2] + 2) * 0.85 * 10 + 0.5) / 10
-            local sc = button.xuiSC
-            if not sc then sc = { segs = {} }; button.xuiSC = sc end
-            if sc.text ~= text or sc.size ~= size then
-                sc.text, sc.size = text, size
-                -- split into runs
-                local runs = {}
-                local function push(str, small)
-                    local r = runs[#runs]
-                    if r and r.small == small then r.str = r.str .. str else runs[#runs + 1] = { str = str, small = small } end
-                end
-                local newWord = true
-                for ch in text:gmatch("[%z\1-\127\194-\244][\128-\191]*") do
-                    if ch == " " then push(ch, false); newWord = true
-                    elseif ch:match("%a") then
-                        if newWord then push(ch:upper(), false); newWord = false else push(ch:upper(), true) end
-                    else push(ch, false); newWord = false end
-                end
-                for i, r in ipairs(runs) do
-                    local seg = sc.segs[i]
-                    if not seg then seg = button:CreateFontString(nil, "OVERLAY"); sc.segs[i] = seg end
-                    seg:SetFont(button.xuiFont[1], r.small and size * 0.8 or size, "OUTLINE")
-                    seg:SetTextColor(1, 1, 1, 1)
-                    seg:SetText(r.str)
-                    seg:ClearAllPoints()
-                    if i == 1 then seg:SetPoint("BOTTOMLEFT", fs, "BOTTOMLEFT", 0, 0)
-                    else seg:SetPoint("BOTTOMLEFT", sc.segs[i - 1], "BOTTOMRIGHT", 0, 0) end
-                    seg:Show()
-                end
-                for i = #runs + 1, #sc.segs do sc.segs[i]:Hide() end
-            end
-            fs:SetAlpha(0)
+            for _, seg in ipairs(button.xuiSC and button.xuiSC.segs or {}) do seg:Hide() end
+            fs:SetFont(button.xuiFont[1], size, "OUTLINE")
+            fs:SetTextColor(1, 1, 1, 1)
+            local text = fs:GetText() or ""
+            local up = text:upper()
+            if up ~= text then fs:SetText(up) end
+            fs:SetAlpha(1)
             button.xuiIsSC = true
         elseif button.xuiIsSC then
+            fs:SetFont(button.xuiFont[1], button.xuiFont[2], button.xuiFont[3])
+            fs:SetTextColor(button.xuiFont[4] or 1, button.xuiFont[5] or 0.82, button.xuiFont[6] or 0, button.xuiFont[7] or 1)
             fs:SetAlpha(1)
             for _, seg in ipairs(button.xuiSC and button.xuiSC.segs or {}) do seg:Hide() end
             if button.xuiSC then button.xuiSC.text = nil end
             button.xuiIsSC = nil
         end
+    end
+    -- blank divider row between All Rules and the Loaded / Not Loaded filters: a thin line, no text
+    local isSpacer = button.uniquevalue and tostring(button.uniquevalue):match("([^\001]+)$") == "spacer"
+    if isSpacer then
+        if not button.xuiDivider then
+            button.xuiDivider = button:CreateTexture(nil, "ARTWORK")
+            button.xuiDivider:SetHeight(1)
+            button.xuiDivider:SetColorTexture(0.6, 0.6, 0.65, 0.45)
+        end
+        button.xuiDivider:ClearAllPoints()
+        button.xuiDivider:SetPoint("LEFT", button, "LEFT", 6, 0)
+        button.xuiDivider:SetPoint("RIGHT", button, "RIGHT", -6, 0)
+        button.xuiDivider:Show()
+    elseif button.xuiDivider then
+        button.xuiDivider:Hide()
     end
     if not c then
         if button.xuiBanner then button.xuiBanner:Hide(); button.xuiBannerBar:Hide() end
@@ -2249,11 +2596,115 @@ local function PaintGuides(button)
     for i = #bars + 1, #guides do guides[i]:Hide() end
 end
 
+-- Right-hand pair on rule / folder rows: [movement lock] [edit lock]
+function ns.MakeSideToggle(button, kind)
+    local b = CreateFrame("Button", nil, button)
+    b:SetSize(15, 15)
+    b:SetFrameLevel(button:GetFrameLevel() + 3)
+    b.tex = b:CreateTexture(nil, "ARTWORK")
+    b.tex:SetAllPoints()
+    b.kind = kind
+    if kind == "edit" then
+        b.tex:SetTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up")
+        b.slash = b:CreateTexture(nil, "OVERLAY")
+        b.slash:SetColorTexture(1, 0.15, 0.15, 1)
+        b.slash:SetSize(20, 2)
+        b.slash:SetPoint("CENTER")
+        b.slash:SetRotation(math.rad(45))
+    end
+    b:SetScript("OnClick", function(self)
+        if self.kind == "move" then
+            ns.SetMoveUnlocked(self.xuiObjs, not self.xuiOn)
+        elseif self.xuiFolder then
+            local f = self.xuiFolder
+            f.editLocked = (not f.editLocked) or nil
+        else
+            for _, r in ipairs(self.xuiObjs or {}) do r.editLocked = (not self.xuiOn) or nil end
+        end
+        ns.MarkDirty()
+        if ns.DecorateTrees then ns.DecorateTrees() end
+        Notify()
+    end)
+    b:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        if self.kind == "move" then
+            GameTooltip:SetText(self.xuiOn and "Movement unlocked" or "Movement locked")
+            GameTooltip:AddLine(self.xuiOn and "Drag the displays on screen. Click to lock them again." or "Click to unlock this row's on-screen displays so you can drag them.", 1, 1, 1, true)
+        else
+            GameTooltip:SetText(self.xuiOn and "Edits blocked" or "Editable")
+            GameTooltip:AddLine(self.xuiOn and "Settings here are read-only. Click to allow edits again." or "Click to block edits: settings here become read-only.", 1, 1, 1, true)
+        end
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    return b
+end
+
+function ns.PaintSide(button, rules, vis, folder)
+    local showEdit = folder ~= nil or #rules > 0
+    local showMove = vis and #vis > 0
+    local off = 4
+    if showEdit then
+        if not button.xuiEdit then button.xuiEdit = ns.MakeSideToggle(button, "edit") end
+        local b = button.xuiEdit
+        local locked
+        if folder then locked = folder.editLocked and true or false
+        else
+            locked = true
+            for _, r in ipairs(rules) do if not r.editLocked then locked = false; break end end
+        end
+        b.xuiOn, b.xuiObjs, b.xuiFolder = locked, rules, folder
+        b.slash:SetShown(locked)
+        b.tex:SetDesaturated(locked)
+        b.tex:SetAlpha(locked and 0.7 or 1)
+        b:ClearAllPoints(); b:SetPoint("RIGHT", button, "RIGHT", -off, 0)
+        b:Show()
+        off = off + 19
+    elseif button.xuiEdit then button.xuiEdit:Hide() end
+    if showMove then
+        if not button.xuiMove then button.xuiMove = ns.MakeSideToggle(button, "move") end
+        local b = button.xuiMove
+        local n = 0
+        for _, r in ipairs(vis) do if ns.IsMoveUnlocked(r) then n = n + 1 end end
+        b.xuiOn, b.xuiObjs = (n == #vis), vis
+        b.tex:SetTexture(n == 0 and "Interface\\PetBattles\\PetBattle-LockIcon" or "Interface\\CURSOR\\UI-Cursor-Move")
+        b.tex:SetAlpha(n == 0 and 0.85 or (n == #vis and 1 or 0.6))
+        b:ClearAllPoints(); b:SetPoint("RIGHT", button, "RIGHT", -off, 0)
+        b:Show()
+        off = off + 19
+    elseif button.xuiMove then button.xuiMove:Hide() end
+    if button.text then button.text:SetPoint("RIGHT", button, "RIGHT", -math.max(off, button.xuiIconR or 0), 2) end
+end
+
+local ROW_TOGGLES = {
+    allqol = { title = "Stat Tracking on / off",
+        tip = "Unticked: every stats box is hidden on screen and nothing is listed here. Your boxes are kept.",
+        get = function() return ns.QoLOn() end,
+        set = function(v) CueRulesDB.qol = CueRulesDB.qol or {}; CueRulesDB.qol.enabled = v; pcall(ns.QoL_RefreshAll) end },
+    allcursor = { title = "Cursor Tracker on / off",
+        tip = "Ticked: a texture follows your mouse cursor (off by default). Your settings are kept when unticked.",
+        get = function() return ns.CursorOn() end,
+        set = function(v) CueRulesDB.cursor = CueRulesDB.cursor or {}; CueRulesDB.cursor.enabled = v; if ns.Cursor_Apply then ns.Cursor_Apply() end end },
+    allbars = { title = "Buff Bars on / off",
+        tip = "Unticked: every buff bar is hidden on screen and nothing is listed here. Your bars are kept.",
+        get = function() return ns.BarsOn() end,
+        set = function(v) CueRulesDB.barGroup.enabled = v; pcall(ns.Bars_RefreshAll) end },
+}
+
 -- Left cluster, in order:  [collapse arrow] [eye] [headphone]  text
 local function DecorateButton(button)
     PaintBanner(button)
     PaintGuides(button)
     local vis, snd = Resolve(button.uniquevalue)
+    local rawObjs = vis
+    -- cue kinds: the eye only covers rules that have a display, the headphone only rules that have a sound
+    local function only(list, what)
+        if not list then return list end
+        local o = {}
+        for _, x in ipairs(list) do if ns.KindHas(x, what) then o[#o + 1] = x end end
+        return o
+    end
+    vis, snd = only(vis, "visual"), only(snd, "sound")
     local tree = button.obj
     if not button.xuiDrag then
         button.xuiDrag = true
@@ -2265,7 +2716,12 @@ local function DecorateButton(button)
     end
     local level = button.level or 1
     local canExpand = button.toggle and button.toggle:IsShown() and true or false
-    local hasIcons = vis and #vis > 0
+    local hasIcons = (vis and #vis > 0) or (snd and #snd > 0)
+    -- top-level roots (All Rules / Loaded / Not Loaded) carry no eye or headphone; their lock icons stay
+    do
+        local rootKey = tostring(button.uniquevalue or ""):match("([^\001]+)$")
+        if rootKey == "all" or rootKey == "loaded" or rootKey == "notloaded" then hasIcons = false end
+    end
     if button.text then
         button.text:SetWordWrap(false)
         button.text:SetPoint("RIGHT", button, "RIGHT", -4, 2)
@@ -2291,6 +2747,39 @@ local function DecorateButton(button)
     elseif button.xuiChev then
         button.xuiChev:Hide()
     end
+    -- QoL rows (Stat Tracking, Buff Bars): a left-aligned tick box is the on/off switch for the whole element
+    local toggleCfg = ROW_TOGGLES[tostring(button.uniquevalue or "")]
+    if toggleCfg then
+        if not button.xuiStatCheck then
+            local cb = CreateFrame("CheckButton", nil, button, "UICheckButtonTemplate")
+            cb:SetSize(22, 22)
+            cb:SetFrameLevel(button:GetFrameLevel() + 3)
+            cb:SetScript("OnClick", function(self)
+                local cfg = ROW_TOGGLES[tostring(button.uniquevalue or "")]
+                if not cfg then return end
+                cfg.set(self:GetChecked() and true or false)
+                ns.MarkDirty(); Notify()
+            end)
+            cb:SetScript("OnEnter", function(self)
+                local cfg = ROW_TOGGLES[tostring(button.uniquevalue or "")]
+                if not cfg then return end
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(cfg.title)
+                GameTooltip:AddLine(cfg.tip, 1, 1, 1, true)
+                GameTooltip:Show()
+            end)
+            cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            button.xuiStatCheck = cb
+        end
+        local cb = button.xuiStatCheck
+        cb:ClearAllPoints()
+        cb:SetPoint("LEFT", button, "LEFT", x0 + CHEV_W + 4, 0)
+        cb:SetChecked(toggleCfg.get())
+        cb:Show()
+    elseif button.xuiStatCheck then
+        button.xuiStatCheck:Hide()
+    end
+    button.xuiIconR = 0
     if hasIcons then
         if not button.xuiEye then
             button.xuiEye = MakeToggle(button, "visual")
@@ -2300,18 +2789,34 @@ local function DecorateButton(button)
             if not objs or #objs == 0 then b:Hide(); return end
             b.objs = objs
             b:ClearAllPoints()
-            b:SetPoint("LEFT", button, "LEFT", sx, 0)
+            b:SetPoint("RIGHT", button, "RIGHT", -sx, 0)
             local st = GroupState(objs, kind)
             b.tex:SetDesaturated(st == 0)
             b.tex:SetAlpha(st == 1 and 1 or (st == 0.5 and 0.7 or 0.35))
             b:Show()
         end
-        paint(button.xuiEye, vis, "visual", x0 + CHEV_W)
-        paint(button.xuiHead, snd, "sound", x0 + CHEV_W + ICON_W)
+        -- eye and headphone live in fixed columns on the RIGHT, just left of the movement / edit locks
+        paint(button.xuiEye, vis, "visual", 4 + 19 * 3)
+        paint(button.xuiHead, snd, "sound", 4 + 19 * 2)
+        button.xuiIconR = (vis and #vis > 0) and (4 + 19 * 3 + ICON_W + 3) or ((snd and #snd > 0) and (4 + 19 * 2 + ICON_W + 3) or 0)
     elseif button.xuiEye then
         button.xuiEye:Hide(); button.xuiHead:Hide()
     end
-    if button.text then button.text:SetPoint("LEFT", button, "LEFT", x0 + CHEV_W + ICON_W * 2 + 3, 2) end
+    do
+        local rk = tostring(button.uniquevalue or ""):match("([^\001]+)$")
+        local iconSlots = toggleCfg and 26 or 0   -- only the on / off tick box sits left of the label now
+        if button.text then button.text:SetPoint("LEFT", button, "LEFT", x0 + CHEV_W + iconSlots + 3, 2) end
+    end
+    -- right side: movement lock + edit lock (rule, folder and all-rules rows only)
+    do
+        local rules = {}
+        for _, o in ipairs(rawObjs or {}) do if o.visual then rules[#rules + 1] = o end end
+        local lastKey = tostring(button.uniquevalue or ""):match("([^\001]+)$") or ""
+        local folder = lastKey:match("^f%d") and ns.FolderById(lastKey) or nil
+        local vr = {}
+        for _, o in ipairs(vis or {}) do if o.visual then vr[#vr + 1] = o end end
+        ns.PaintSide(button, rules, vr, folder)
+    end
 end
 
 local function DecorateTree(tree)
@@ -2332,13 +2837,183 @@ local function DecorateTree(tree)
         if b:IsShown() then DecorateButton(b)
         else
             if b.xuiEye then b.xuiEye:Hide(); b.xuiHead:Hide() end
+            if b.xuiEdit then b.xuiEdit:Hide() end
+            if b.xuiMove then b.xuiMove:Hide() end
             if b.xuiBanner then b.xuiBanner:Hide(); b.xuiBannerBar:Hide() end
+            if b.xuiDivider then b.xuiDivider:Hide() end
         end
     end
 end
 
 -- Full Blizzard spell tooltip on the talent icon (an AceGUI Icon whose option carries arg.xuiSpell = the talent row).
 -- AceGUI clears callbacks when a widget is recycled, so this re-checks on every pass instead of flagging the widget.
+-------------------------------------------------------------------------------
+-- Spell-name search: the game has no "search spells by name" call, so the first time a search box is used the addon
+-- walks spell IDs 1..SI_MAX in small time slices (about 4 ms per frame) and remembers every ID that has a name.
+-- The list stays in memory until /reload. Spellbook spells are listed first.
+-------------------------------------------------------------------------------
+local AttachSearch
+do
+local SI = { names = {}, ids = {}, n = 0, nextId = 1, running = false }
+local SI_MAX = 1900000
+local siFrame
+local function SI_Start()
+    if SI.running or SI.nextId > SI_MAX then return end
+    SI.running = true
+    siFrame = siFrame or CreateFrame("Frame")
+    siFrame:SetScript("OnUpdate", function(self)
+        local ok = pcall(function()
+            local t0 = debugprofilestop()
+            local getn = C_Spell.GetSpellName
+            while SI.nextId <= SI_MAX and debugprofilestop() - t0 < 4 do
+                local last = math.min(SI.nextId + 499, SI_MAX)
+                for id = SI.nextId, last do
+                    local nm = getn(id)
+                    if nm and nm ~= "" then local n = SI.n + 1; SI.n = n; SI.names[n] = nm:lower(); SI.ids[n] = id end
+                end
+                SI.nextId = last + 1
+            end
+        end)
+        if not ok or SI.nextId > SI_MAX then SI.running = false; self:SetScript("OnUpdate", nil) end
+    end)
+end
+
+local function SearchSpells(q)
+    local res, seen = {}, {}
+    q = (q or ""):lower():match("^%s*(.-)%s*$")
+    if q == "" then return res end
+    local num = tonumber(q)
+    if num then
+        local ok, nm = pcall(C_Spell.GetSpellName, num)
+        if ok and nm then res[1] = num; seen[num] = true end
+    end
+    for _, sp in ipairs(ns.BuildSpellList() or {}) do
+        if sp.name and sp.name:lower():find(q, 1, true) and not seen[sp.id] then res[#res + 1] = sp.id; seen[sp.id] = true end
+    end
+    local names, ids = SI.names, SI.ids
+    for pass = 1, 2 do
+        for i = 1, SI.n do
+            if #res >= 80 then break end
+            local st = names[i]:find(q, 1, true)
+            if st and ((pass == 1) == (st == 1)) and not seen[ids[i]] then res[#res + 1] = ids[i]; seen[ids[i]] = true end
+        end
+    end
+    return res
+end
+
+local SP, SP_ROWS, SP_ROW_H = nil, 8, 24
+local function SP_Render()
+    if not SP then return end
+    local r, total = SP.results or {}, #(SP.results or {})
+    for i = 1, SP_ROWS do
+        local row, id = SP.rows[i], r[SP.offset + i]
+        if id then
+            row.id = id
+            row.icon:SetTexture(SpellTex(id))
+            local okn, nm = pcall(C_Spell.GetSpellName, id)
+            row.text:SetText(((okn and nm) or "?") .. "  |cff888888[" .. id .. "]|r")
+            row:Show()
+        else row:Hide() end
+    end
+    local msg = ""
+    if SI.running then msg = ("Indexing spell names... %d%%  "):format(math.floor(SI.nextId / SI_MAX * 100)) end
+    if total == 0 then msg = msg .. "No match yet"
+    elseif total > SP_ROWS then msg = msg .. total .. " results - scroll for more" end
+    SP.footer:SetText(msg)
+end
+local function SP_Hide() if SP then SP:Hide(); SP.owner = nil end end
+local function SP_Pick(id)
+    local eb = SP and SP.owner
+    if not (eb and eb.xuiSearchFn and id) then return end
+    local fn = eb.xuiSearchFn
+    SP_Hide()
+    eb:SetText(""); eb:ClearFocus()
+    fn(id)
+end
+local function SP_Build()
+    if SP then return SP end
+    SP = CreateFrame("Frame", "XayaUISpellSearch", UIParent, "BackdropTemplate")
+    SP:SetFrameStrata("TOOLTIP"); SP:SetClampedToScreen(true); SP:EnableMouse(true); SP:EnableMouseWheel(true)
+    SP:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    SP:SetBackdropColor(0.05, 0.05, 0.08, 0.97); SP:SetBackdropBorderColor(0.6, 0.5, 0.1, 1)
+    SP:SetSize(340, SP_ROWS * SP_ROW_H + 22)
+    SP.rows, SP.offset, SP.results = {}, 0, {}
+    for i = 1, SP_ROWS do
+        local b = CreateFrame("Button", nil, SP)
+        b:SetHeight(SP_ROW_H)
+        b:SetPoint("TOPLEFT", SP, "TOPLEFT", 2, -2 - (i - 1) * SP_ROW_H)
+        b:SetPoint("TOPRIGHT", SP, "TOPRIGHT", -2, -2 - (i - 1) * SP_ROW_H)
+        b.icon = b:CreateTexture(nil, "ARTWORK"); b.icon:SetSize(20, 20); b.icon:SetPoint("LEFT", 2, 0)
+        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        b.text:SetPoint("LEFT", b.icon, "RIGHT", 6, 0); b.text:SetPoint("RIGHT", -4, 0); b.text:SetJustifyH("LEFT")
+        b.hl = b:CreateTexture(nil, "HIGHLIGHT"); b.hl:SetAllPoints(); b.hl:SetColorTexture(1, 0.82, 0, 0.18)
+        -- mouse DOWN so the pick lands before the edit box loses focus
+        b:SetScript("OnMouseDown", function(self) SP_Pick(self.id) end)
+        b:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            if not pcall(GameTooltip.SetSpellByID, GameTooltip, self.id) then GameTooltip:SetText("Spell " .. tostring(self.id)) end
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        SP.rows[i] = b
+    end
+    SP.footer = SP:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    SP.footer:SetPoint("BOTTOMLEFT", 6, 5); SP.footer:SetJustifyH("LEFT")
+    SP:SetScript("OnMouseWheel", function(self, d)
+        local maxOff = math.max(0, #self.results - SP_ROWS)
+        self.offset = math.max(0, math.min(maxOff, self.offset - d * 2))
+        SP_Render()
+    end)
+    local acc = 0
+    SP:SetScript("OnUpdate", function(self, e)
+        if self.owner and not self.owner:IsVisible() then SP_Hide(); return end
+        if SI.running then
+            acc = acc + e
+            if acc > 0.6 and self.owner then acc = 0; self.results = SearchSpells(self.owner:GetText()); SP_Render() end
+        end
+    end)
+    SP:Hide()
+    return SP
+end
+local function SP_Update(eb)
+    local q = eb:GetText() or ""
+    if #q < 2 and not tonumber(q) then SP_Hide(); return end
+    SP_Build()
+    SP.owner = eb
+    SP.results, SP.offset = SearchSpells(q), 0
+    SP:ClearAllPoints()
+    SP:SetPoint("TOPLEFT", eb, "BOTTOMLEFT", -4, -2)
+    SP:SetWidth(math.max(340, eb:GetWidth() + 8))
+    SP:Show()
+    SP_Render()
+end
+AttachSearch = function(w)
+    local eb = w.editbox
+    if not eb then return end
+    local opt = w.GetUserData and w:GetUserData("option")
+    eb.xuiSearchFn = opt and type(opt.arg) == "table" and opt.arg.xuiSearch or nil
+    if eb.xuiSearchFn and not eb.xuiSearchHooked then
+        eb.xuiSearchHooked = true
+        eb:HookScript("OnEditFocusGained", function(self) if self.xuiSearchFn then SI_Start() end end)
+        eb:HookScript("OnTextChanged", function(self, user)
+            if not (self.xuiSearchFn and user) then return end
+            SI_Start()
+            self.xuiStamp = (self.xuiStamp or 0) + 1
+            local stamp = self.xuiStamp
+            C_Timer.After(0.15, function() if self.xuiStamp == stamp and self:HasFocus() then SP_Update(self) end end)
+        end)
+        eb:HookScript("OnEnterPressed", function(self)
+            if self.xuiSearchFn and SP and SP:IsShown() and SP.owner == self and SP.results[1] then SP_Pick(SP.results[1]) end
+        end)
+        eb:HookScript("OnEscapePressed", function(self) if SP and SP.owner == self then SP_Hide() end end)
+        eb:HookScript("OnEditFocusLost", function(self)
+            C_Timer.After(0.2, function() if SP and SP.owner == self and not self:HasFocus() then SP_Hide() end end)
+        end)
+    end
+end
+
+end
+
 local function SpellIconLeave() GameTooltip:Hide() end
 local function SpellIconEnter(widget)
     local opt = widget.GetUserData and widget:GetUserData("option")
@@ -2365,6 +3040,7 @@ end
 local function Walk(w, depth)
     if not w or depth > 14 then return end
     if w.type == "Icon" then AttachSpellTip(w) end
+    if w.type == "EditBox" then AttachSearch(w) end
     if w.type == "TreeGroup" then DecorateTree(w) end
     for _, c in ipairs(w.children or {}) do Walk(c, depth + 1) end
 end

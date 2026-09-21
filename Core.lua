@@ -278,6 +278,7 @@ function ns.RuleKind(rule)
     local top = ns.TopFolder(rule and rule.folder)
     local d = top and top.default
     if d == "display" or d == "sound" then return d end
+    if d == "cursor" then return "display" end   -- Mouse Cursor category: visual-only
     return "hybrid"
 end
 -- what = "visual" | "sound"
@@ -448,6 +449,7 @@ f:SetScript("OnEvent", function(_, _, name)
     f:UnregisterEvent("ADDON_LOADED")
     if ns.OnDBReady then ns.OnDBReady() end
     if ns.QoL_OnDBReady then ns.QoL_OnDBReady() end
+    if ns.Cursor_OnDBReady then ns.Cursor_OnDBReady() end
 end)
 
 -------------------------------------------------------------------------------
@@ -509,9 +511,14 @@ SlashCmdList["XAYAUI"] = function(msg)
         if ns.Probe then ns.Probe(tonumber(arg)) end
     elseif cmd == "seed" then
         if ns.rules then ns.SeedRules() end
+    elseif cmd == "cursor" then
+        if ns.Cursor_Toggle then
+            local on = ns.Cursor_Toggle()
+            ns.Print("cursor tracker " .. (on and "ON" or "OFF"))
+        end
     elseif cmd == "unlock" then
         if ns.ToggleUnlock then ns.ToggleUnlock() end
     else
-        ns.Print("commands: /xui (settings) | /xui status | /xui probe <spellID> | /xui unlock | /xui seed")
+        ns.Print("commands: /xui (settings) | /xui status | /xui probe <spellID> | /xui unlock | /xui cursor | /xui seed")
     end
 end

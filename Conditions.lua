@@ -337,10 +337,15 @@ end
 -------------------------------------------------------------------------------
 -- Tick-box sets: value true = must be one of these, "not" = must NOT be this. Empty set = no restriction.
 -- Passes when the value is not marked "not" and, if any true entries exist, is one of them.
+-- The key "*" is the explicit "All" choice of the Specialization / Role radios: it restricts nothing.
+function ns.SetActive(set)
+    for k in pairs(set or {}) do if k ~= "*" then return true end end
+    return false
+end
 function ns.SetMatch(set, value)
     if set[value] == "not" then return false end
     local hasOn = false
-    for _, st in pairs(set) do if st == true then hasOn = true; break end end
+    for k, st in pairs(set) do if st == true and k ~= "*" then hasOn = true; break end end
     if hasOn then return set[value] == true end
     return true
 end
@@ -430,14 +435,14 @@ function ns.CheckContext(rule, ctx)
         checks[#checks + 1] = { key = "instance type", ok = known(ctx.instanceType, ctx.instanceType ~= nil and ns.SetMatch(load.instanceTypes, ctx.instanceType)) }
     end
     -- multi-select sets (empty / missing = any); the old single specID / role are still honoured for saved rules
-    if load.specs and next(load.specs) then
+    if load.specUse ~= false and ns.SetActive(load.specs) then
         checks[#checks + 1] = { key = "spec", ok = known(ctx.specID, ctx.specID ~= nil and ns.SetMatch(load.specs, tostring(ctx.specID))) }
-    elseif (load.specID or 0) > 0 then
+    elseif load.specUse ~= false and (load.specID or 0) > 0 then
         checks[#checks + 1] = { key = "spec", ok = known(ctx.specID, ctx.specID == load.specID) }
     end
-    if load.roles and next(load.roles) then
+    if load.roleUse ~= false and ns.SetActive(load.roles) then
         checks[#checks + 1] = { key = "role", ok = known(ctx.role, ctx.role ~= nil and ns.SetMatch(load.roles, ctx.role)) }
-    elseif not ns.Ignored(load.role) then
+    elseif load.roleUse ~= false and not ns.Ignored(load.role) then
         checks[#checks + 1] = { key = "role", ok = known(ctx.role, ctx.role == load.role) }
     end
     if #checks == 0 then return true end
