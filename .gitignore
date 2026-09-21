@@ -1,0 +1,20 @@
+# Audio is NOT tracked: the bundled sounds came from WeakAuras/Power Auras (CC NonCommercial/Attribution, GPL-2.0)
+# and other sources with their own terms. Add your own files locally; see Media/Audio/README.md.
+Media/Audio/*
+!Media/Audio/README.md
+!Media/Audio/Custom/
+Media/Audio/Custom/*
+!Media/Audio/Custom/.gitkeep
+*.ogg
+*.mp3
+*.wav
+
+# editor / OS / backups
+*.bak
+*.orig
+.DS_Store
+Thumbs.db
+
+# Extracted Blizzard UI art converted from Xaya's Iconography folder: personal use only
+Media/Graphics/*
+!Media/Graphics/README.md
