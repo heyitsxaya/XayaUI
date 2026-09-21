@@ -335,6 +335,16 @@ end
 -- Each read is pcall'd; an unreadable value is nil (unknown) and a rule that
 -- restricts on an unknown value does not fire.
 -------------------------------------------------------------------------------
+-- Tick-box sets: value true = must be one of these, "not" = must NOT be this. Empty set = no restriction.
+-- Passes when the value is not marked "not" and, if any true entries exist, is one of them.
+function ns.SetMatch(set, value)
+    if set[value] == "not" then return false end
+    local hasOn = false
+    for _, st in pairs(set) do if st == true then hasOn = true; break end end
+    if hasOn then return set[value] == true end
+    return true
+end
+
 ns.LOAD_TRI = {
     { key = "combat", label = "Combat", yes = "Only in combat", no = "Only out of combat",
       read = function() return UnitAffectingCombat("player") or InCombatLockdown() end },
@@ -403,6 +413,9 @@ local function known(v, result) if v == nil then return nil end return result en
 
 function ns.CheckContext(rule, ctx)
     local load = rule.load or {}
+    local ov, ovFolder = ns.FolderLoadOverride(rule)   -- a folder's Never / Always beats the rule's own load mode
+    if ov == "never" then return false, "load: never (folder " .. tostring(ovFolder and ovFolder.name) .. ")" end
+    if ov == "always" then return true end
     if load.mode == "never" then return false, "load: never" end
     if load.mode == "always" then return true end
     local checks = {}
@@ -414,12 +427,17 @@ function ns.CheckContext(rule, ctx)
         end
     end
     if load.instanceTypes and next(load.instanceTypes) then
-        checks[#checks + 1] = { key = "instance type", ok = known(ctx.instanceType, load.instanceTypes[ctx.instanceType] and true or false) }
+        checks[#checks + 1] = { key = "instance type", ok = known(ctx.instanceType, ctx.instanceType ~= nil and ns.SetMatch(load.instanceTypes, ctx.instanceType)) }
     end
-    if (load.specID or 0) > 0 then
+    -- multi-select sets (empty / missing = any); the old single specID / role are still honoured for saved rules
+    if load.specs and next(load.specs) then
+        checks[#checks + 1] = { key = "spec", ok = known(ctx.specID, ctx.specID ~= nil and ns.SetMatch(load.specs, tostring(ctx.specID))) }
+    elseif (load.specID or 0) > 0 then
         checks[#checks + 1] = { key = "spec", ok = known(ctx.specID, ctx.specID == load.specID) }
     end
-    if not ns.Ignored(load.role) then
+    if load.roles and next(load.roles) then
+        checks[#checks + 1] = { key = "role", ok = known(ctx.role, ctx.role ~= nil and ns.SetMatch(load.roles, ctx.role)) }
+    elseif not ns.Ignored(load.role) then
         checks[#checks + 1] = { key = "role", ok = known(ctx.role, ctx.role == load.role) }
     end
     if #checks == 0 then return true end
@@ -449,12 +467,12 @@ function ns.Evaluate(rule, ctx)
     info.buffOK = ns.CheckBuffState(rule, info.present)
     info.ctxOK, info.ctxFail = ns.CheckContext(rule, ctx)
     info.talentOK, info.talentDetail = ns.CheckTalents(rule)
-    -- the three core dropdowns must be chosen ("none" counts as a choice)
+    -- the core cooldown / buff dropdowns must be chosen ("none" counts as a choice)
     info.missing = {}
     local function unset(v) return v == nil or v == "" end
     if unset(rule.cdState) then info.missing[#info.missing + 1] = "cooldown state" end
     if unset(rule.buffState) then info.missing[#info.missing + 1] = "buff state" end
-    if unset(rule.talentMode) then info.missing[#info.missing + 1] = "talent condition" end
+    -- talents are optional: a blank talentMode counts as "ignore talents"
     info.result = (info.cdOK == true) and (info.buffOK == true) and info.ctxOK
         and (info.talentOK == true) and (#info.missing == 0)
     return info.result, info

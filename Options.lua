@@ -37,6 +37,8 @@ local BUFF_ORDER = { "none", "missing", "present" }
 local TRI_ORDER = { "none", "yes", "no" }
 local TALENT_STATE = { known = "must be KNOWN", notKnown = "must NOT be known" }
 local TALENT_STATE_ORDER = { "known", "notKnown" }
+local TALENT_MODE_USED = { all = "ALL listed talents must match", any = "ANY one listed talent is enough" }
+local TALENT_MODE_USED_ORDER = { "all", "any" }
 local TALENT_MODE = { none = "(none - ignore talents)", all = "ALL listed talents must match", any = "ANY one listed talent is enough" }
 local TALENT_MODE_ORDER = { "none", "all", "any" }
 local LOAD_MODE = { never = "Never load", always = "Always load", all = "Match ALL of the conditions below", any = "Match ANY of the conditions below" }
@@ -82,6 +84,20 @@ local function SpellName(id)
     local ok, n = pcall(C_Spell.GetSpellName, id)
     if ok and n then return n end
     return "|cffff5555(unknown spell ID)|r"
+end
+
+local function SpellTex(id)
+    if not id or id == 0 then return 134400 end
+    local ok, tx = pcall(C_Spell.GetSpellTexture, id)
+    return (ok and tx) or 134400
+end
+
+local function SpellTip(id)
+    if not id or id == 0 then return "Type a spell ID to see its icon and description." end
+    local txt = SpellName(id) .. "  [" .. id .. "]"
+    local ok, d = pcall(C_Spell.GetSpellDescription, id)
+    if ok and type(d) == "string" and d ~= "" then txt = txt .. "\n\n" .. d end
+    return txt
 end
 
 local function DetectedMax(id)
@@ -143,6 +159,70 @@ local function SpecValues()
     return v, order
 end
 
+-- Multi-select tick boxes for Specialization / Role. Storage: rule.load.specs {[specID]=true} and
+-- rule.load.roles {[ROLE]=true}; an EMPTY set means "All" (no restriction). The "All" box shows every box ticked.
+local function SpecChoices()
+    local list = {}
+    local n = (GetNumSpecializations and GetNumSpecializations()) or 0
+    for i = 1, n do
+        local id, name, icon, _
+        if C_SpecializationInfo and C_SpecializationInfo.GetSpecializationInfo then
+            id, name, _, icon = C_SpecializationInfo.GetSpecializationInfo(i)
+        elseif GetSpecializationInfo then
+            id, name, _, icon = GetSpecializationInfo(i)
+        end
+        if id then
+            list[#list + 1] = { key = i .. ":" .. id, id = tostring(id),
+                text = (icon and ("|T" .. icon .. ":18:18|t  ") or "") .. (name or tostring(id)) }
+        end
+    end
+    return list
+end
+local ROLE_TEX = "|TInterface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES:18:18:0:0:64:64:%s|t  %s"
+local function RoleChoices()
+    return {
+        { key = "1_TANK",    id = "TANK",    text = ROLE_TEX:format("0:19:22:41", "Tank") },
+        { key = "2_HEALER",  id = "HEALER",  text = ROLE_TEX:format("20:39:1:20", "Healer") },
+        { key = "3_DAMAGER", id = "DAMAGER", text = ROLE_TEX:format("20:39:22:41", "Damage") },
+    }
+end
+-- Three-click tick boxes: click 1 = selected, click 2 = NOT (must NOT be this), click 3 = back to unselected.
+-- Stored per key in a set: true = selected, "not" = NOT. Nothing stored anywhere = "All" (no restriction); while
+-- no box is selected, every box (bar the NOT ones) displays as ticked.
+local function TriGroup(name, order, hiddenFn, getSet, choices, onChange)
+    local function hasOn(set) for _, v in pairs(set) do if v == true then return true end end return false end
+    local args = {
+        all = { type = "toggle", name = "All", order = 0, width = "double",
+            desc = "No restriction. Click a box below once to select it, twice for NOT, a third time to clear it.",
+            get = function() return next(getSet()) == nil end,
+            set = function(_, v) if v then wipe(getSet()) end onChange() end },
+    }
+    for i, ch in ipairs(choices) do
+        args["c" .. i] = { type = "toggle", tristate = true, order = i, width = "double",
+            desc = "Click: selected. Click again: NOT (must not be this). Click again: cleared.",
+            name = function()
+                if getSet()[ch.id] == "not" then return "|cffff5555NOT|r  " .. ch.text end
+                return ch.text
+            end,
+            get = function()
+                local set = getSet()
+                local st = set[ch.id]
+                if st == true then return true end
+                if st == "not" then return nil end
+                if not hasOn(set) then return true end
+                return false
+            end,
+            set = function(_, v)
+                local set = getSet()
+                if v == true then set[ch.id] = true
+                elseif v == nil then set[ch.id] = "not"
+                else set[ch.id] = nil end
+                onChange()
+            end }
+    end
+    return { type = "group", inline = true, name = name, order = order, hidden = hiddenFn, args = args }
+end
+
 -------------------------------------------------------------------------------
 -- Status text (used by the Rule tab and the debug tray)
 -------------------------------------------------------------------------------
@@ -199,6 +279,22 @@ local function Sel(t, k, name, order, vals, ord, on, extra)
         get = function() return t[k] end, set = function(_, v) t[k] = v; on() end }
     if extra then for kk, vv in pairs(extra) do o[kk] = vv end end
     return o
+end
+-- Mutually exclusive choice drawn as SQUARE check boxes (AceConfig's own radio style draws round buttons).
+-- Adds one toggle per choice to `args` as <prefix>_<i>; ticking one unticks the others; clicking the ticked one does nothing.
+-- Returns the list of generated keys.
+local function AddSquareRadio(args, prefix, order, values, ord, getV, setV, opts)
+    opts = opts or {}
+    local keys = {}
+    for i, k in ipairs(ord) do
+        local key = prefix .. "_" .. i
+        keys[#keys + 1] = key
+        args[key] = { type = "toggle", order = order + i * 0.01, width = "full", name = values[k], desc = opts.desc,
+            hidden = opts.hidden,
+            get = function() return getV() == k end,
+            set = function(_, v) if v then setV(k) end end }
+    end
+    return keys
 end
 local function FontSel(t, order, on)
     return { type = "select", name = "Font", order = order,
@@ -394,15 +490,28 @@ local function BuildRule(i, rule)
     ------------------------------------------------------------ Conditions
     local function noMatch() local m = rule.load.mode; return m == "never" or m == "always" end
     local loadArgs = {
-        talentHeader = { type = "header", name = "Talents", order = 1 },
-        talentMode = Sel(rule, "talentMode", "Talent requirement", 2, TALENT_MODE, TALENT_MODE_ORDER, function() Changed(rule); Notify() end,
-            { width = "double", desc = "ALL: every listed talent must match. ANY: one match is enough. Add talents below." }),
+        talentUse = { type = "toggle", name = "Talents", order = 1, width = "double",
+            desc = "Tick to require certain talents. Unticked = talents are ignored. The talent list appears below once ticked.",
+            get = function() return rule.talentMode == "all" or rule.talentMode == "any" end,
+            set = function(_, v)
+                if v then
+                    if rule.talentMode ~= "all" and rule.talentMode ~= "any" then rule.talentMode = "any" end
+                    bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].talents = true
+                else
+                    rule.talentMode = "none"
+                end
+                Changed(rule); Notify()
+            end },
+        ctxHeader = { type = "header", name = "Match Conditions (Party, Raid, Instance, Resting...)", order = 20, hidden = noMatch },
+    }
+    -- Talent list: only rendered once Talents is ticked, as a collapsible attachment (starts collapsed)
+    local talentBody = {
         talentAdd = {
             type = "select", name = "Add a talent from your current build", order = 3, width = "double",
             values = function()
                 local v = {}
                 for _, t in ipairs(ns.BuildTalentList()) do
-                    v[tostring(t.id)] = t.name .. (t.choice and "  (choice node)" or "") .. "  [" .. t.id .. "]"
+                    v[tostring(t.id)] = "|T" .. SpellTex(t.id) .. ":16|t " .. t.name .. (t.choice and "  (choice node)" or "") .. "  [" .. t.id .. "]"
                 end
                 return v
             end,
@@ -421,54 +530,162 @@ local function BuildRule(i, rule)
             type = "execute", name = "Add an empty talent row (type an ID)", order = 4, width = "double",
             func = function() rule.talents[#rule.talents + 1] = { id = 0, state = "known" }; Changed(rule); Notify() end,
         },
-        ctxHeader = { type = "header", name = "Match Conditions (Party, Raid, Instance, Resting...)", order = 20, hidden = noMatch },
     }
+    AddSquareRadio(talentBody, "talentMode", 2, TALENT_MODE_USED, TALENT_MODE_USED_ORDER,
+        function() return rule.talentMode end,
+        function(v) rule.talentMode = v; Changed(rule); Notify() end,
+        { desc = "ALL: every listed talent must match. ANY: one match is enough. Add talents below." })
+    local function talentsOn() return rule.talentMode == "all" or rule.talentMode == "any" end
+    loadArgs.talents = { type = "group", inline = true, name = "Talent List", order = 1.5, hidden = function() return not talentsOn() end,
+        args = {
+            open = { type = "toggle", name = "Show options", order = 1,
+                desc = "Expand or collapse the talent list. Collapsing never changes any setting.",
+                get = function() return bannerOpen[rule] and bannerOpen[rule].talents and true or false end,
+                set = function(_, v) bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].talents = v and true or nil; Notify() end },
+            body = { type = "group", inline = true, name = "", order = 2,
+                hidden = function() return not (bannerOpen[rule] and bannerOpen[rule].talents) end, args = talentBody },
+        } }
     loadArgs.loadHeader = { type = "header", name = "When Should This Rule Load?", order = 0 }
-    loadArgs.loadMode = Sel(rule.load, "mode", "", 0.5, LOAD_MODE, LOAD_MODE_ORDER, function() Changed(rule); Notify() end,
-        { style = "radio", width = "full",
-          get = function() return rule.load.mode or "all" end,
-          desc = "Never: the rule never loads. Always: ignore every load condition. Match: use the conditions below (ALL must be true, or ANY one is enough). Only conditions you set count." })
+    local loadModeKeys = AddSquareRadio(loadArgs, "loadMode", 0.5, LOAD_MODE, LOAD_MODE_ORDER,
+        function() return rule.load.mode or "all" end,
+        function(v) rule.load.mode = v; Changed(rule); Notify() end,
+        { desc = "Never: the rule never loads. Always: ignore every load condition. Match: use the conditions below (ALL must be true, or ANY one is enough). Only conditions you set count." })
     for j, t in ipairs(rule.talents) do
-        loadArgs["talent" .. j] = {
+        talentBody["talent" .. j] = {
             type = "group", inline = true, order = 5 + j * 0.01,
             name = function() return "Talent " .. j .. ": " .. SpellName(t.id) end,
             args = {
-                icon = { type = "description", name = "", order = 0, width = "full", fontSize = "medium",
-                    image = function() local ok, tx = pcall(C_Spell.GetSpellTexture, t.id); return ok and tx or nil end,
-                    imageWidth = 28, imageHeight = 28 },
+                icon = { type = "execute", name = "", order = 0, width = 0.35,
+                    image = function() return SpellTex(t.id) end,
+                    imageWidth = 28, imageHeight = 28,
+                    arg = { xuiSpell = t },   -- read by the widget walker below, which attaches the full Blizzard spell tooltip
+                    func = function() end },
                 id = { type = "input", name = "Spell ID", order = 1, width = "half",
                     get = function() return tostring(t.id) end,
                     set = function(_, v) t.id = tonumber(v) or 0; Changed(rule); Notify() end },
-                state = Sel(t, "state", "Must be", 2, TALENT_STATE, TALENT_STATE_ORDER, on),
+                state = Sel(t, "state", "Requirement", 2, TALENT_STATE, TALENT_STATE_ORDER, on),
                 remove = { type = "execute", name = "Remove", order = 3, width = "half",
                     func = function() table.remove(rule.talents, j); Changed(rule); Notify() end },
             },
         }
     end
+    -- One three-click toggle per condition: unselected (ignored) -> green "yes" text -> red "not" text -> unselected
+    local TRI_TEXT = {
+        combat     = { "In Combat", "Not In Combat" },
+        group      = { "In A Group", "Not In A Group" },
+        raid       = { "In A Raid Group", "Not In A Raid Group" },
+        instance   = { "In An Instance", "Not In An Instance" },
+        mythicPlus = { "In A Mythic+", "Not In A Mythic+" },
+        encounter  = { "In A Boss Encounter", "Not In A Boss Encounter" },
+        mounted    = { "Mounted", "Not Mounted" },
+        resting    = { "In A Resting Area", "Not In A Resting Area" },
+    }
     for n, c in ipairs(ns.LOAD_TRI) do
+        local txt = TRI_TEXT[c.key] or { c.yes, c.no }
         loadArgs["tri_" .. c.key] = {
-            type = "select", name = c.label, order = 30 + n, width = "double", hidden = noMatch,
-            values = { none = "(none - ignore)", yes = c.yes, no = c.no }, sorting = TRI_ORDER,
-            get = function() return rule.load[c.key] end,
-            set = function(_, v) rule.load[c.key] = v; Changed(rule) end,
+            type = "toggle", tristate = true, order = 30 + n, width = "double", hidden = noMatch,
+            desc = "Click once: " .. c.yes .. ". Click again: " .. c.no .. ". Click a third time: ignored (unselected).",
+            name = function()
+                local st = rule.load[c.key]
+                if st == "yes" then return "|cff55ff55" .. txt[1] .. "|r" end
+                if st == "no" then return "|cffff5555" .. txt[2] .. "|r" end
+                return c.label
+            end,
+            get = function()
+                local st = rule.load[c.key]
+                if st == "yes" then return true end
+                if st == "no" then return nil end
+                return false
+            end,
+            set = function(_, v)
+                if v == true then rule.load[c.key] = "yes"
+                elseif v == nil then rule.load[c.key] = "no"
+                else rule.load[c.key] = "none" end
+                Changed(rule)
+            end,
         }
     end
     loadArgs.instTypeHeader = { type = "header", name = "Instance Type (None Ticked = Any)", order = 60, hidden = noMatch }
-    loadArgs.instanceTypes = {
-        type = "multiselect", name = "", order = 61, width = "full", hidden = noMatch,
-        values = ns.INSTANCE_TYPES,
-        get = function(_, k) return rule.load.instanceTypes[k] and true or false end,
-        set = function(_, k, v) rule.load.instanceTypes[k] = v or nil; Changed(rule) end,
-    }
+    local instChoices = {}
+    for _, k in ipairs(ns.INSTANCE_TYPE_ORDER) do instChoices[#instChoices + 1] = { id = k, text = ns.INSTANCE_TYPES[k] } end
+    loadArgs.instanceTypes = TriGroup("Instance Type", 61, noMatch,
+        function() rule.load.instanceTypes = rule.load.instanceTypes or {}; return rule.load.instanceTypes end,
+        instChoices, function() Changed(rule); Notify() end)
     loadArgs.classHeader = { type = "header", name = "Specialization / Role", order = 70, hidden = noMatch }
-    loadArgs.specID = {
-        type = "select", name = "Specialization", order = 71, width = "double", hidden = noMatch,
-        values = function() local v = SpecValues(); return v end,
-        sorting = function() local _, o = SpecValues(); return o end,
-        get = function() if rule.load.specID ~= nil then return tostring(rule.load.specID) end end,
-        set = function(_, v) rule.load.specID = tonumber(v) or 0; Changed(rule) end,
-    }
-    loadArgs.role = Sel(rule.load, "role", "Role", 72, ROLE_VALUES, ROLE_ORDER, on, { width = "double", hidden = noMatch })
+    local function LoadSet(field, legacy, legacyOK)
+        local ld = rule.load
+        ld[field] = ld[field] or {}
+        -- one-time migration of the old single-choice value
+        if next(ld[field]) == nil and ld[legacy] ~= nil and legacyOK(ld[legacy]) then
+            ld[field][tostring(ld[legacy])] = true
+        end
+        ld[legacy] = nil
+        return ld[field]
+    end
+    local function specSet() return LoadSet("specs", "specID", function(v) return type(v) == "number" and v > 0 end) end
+    local function roleSet() return LoadSet("roles", "role", function(v) return v ~= "none" and v ~= "" end) end
+    local function onSpecRole() Changed(rule); Notify() end
+    -- Instance Options: types + Mythic+ + Boss encounter sit right under "Instance" and only show when Instance is
+    -- "Only inside an instance", or when any of them already holds a setting (so an active restriction is never hidden).
+    local function instSubActive()
+        local ld = rule.load
+        if next(ld.instanceTypes or {}) then return true end
+        return not ns.Ignored(ld.mythicPlus) or not ns.Ignored(ld.encounter)
+    end
+    local function instHidden()
+        return noMatch() or not (rule.load.instance == "yes" or instSubActive())
+    end
+    local instOrder
+    for n, c in ipairs(ns.LOAD_TRI) do if c.key == "instance" then instOrder = 30 + n end end
+    if instOrder then
+        -- mirror of the Talents attachment: a collapsible "Instance Options" group with a "Show options" tick
+        local instBody = { instanceTypes = loadArgs.instanceTypes, tri_mythicPlus = loadArgs.tri_mythicPlus, tri_encounter = loadArgs.tri_encounter }
+        loadArgs.instanceTypes, loadArgs.tri_mythicPlus, loadArgs.tri_encounter, loadArgs.instTypeHeader = nil, nil, nil, nil
+        instBody.instanceTypes.order = 1
+        instBody.tri_mythicPlus.order = 2
+        instBody.tri_encounter.order = 3
+        loadArgs.instanceOptions = { type = "group", inline = true, name = "Instance Options", order = instOrder + 0.1, hidden = instHidden,
+            args = {
+                open = { type = "toggle", name = "Show options", order = 1,
+                    desc = "Expand or collapse the instance options. Collapsing never changes any setting.",
+                    get = function() return bannerOpen[rule] and bannerOpen[rule].instance and true or false end,
+                    set = function(_, v) bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].instance = v and true or nil; Notify() end },
+                body = { type = "group", inline = true, name = "", order = 2,
+                    hidden = function() return not (bannerOpen[rule] and bannerOpen[rule].instance) end, args = instBody },
+            } }
+        -- ticking Instance (green "In An Instance") opens the group, like ticking Talents
+        local prevSet = loadArgs.tri_instance.set
+        loadArgs.tri_instance.set = function(info, v)
+            prevSet(info, v)
+            if rule.load.instance == "yes" then bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].instance = true end
+        end
+    end
+    loadArgs.specs = TriGroup("Specialization", 71, noMatch, specSet, SpecChoices(), onSpecRole)
+    loadArgs.roles = TriGroup("Role", 72, noMatch, roleSet, RoleChoices(), onSpecRole)
+    -- A folder's Never / Always overrides this rule's load mode and match conditions (talents still apply). Values stay stored.
+    local function folderLoadOv() return ns.FolderLoadOverride(rule) end
+    loadArgs.folderOv = { type = "description", order = 0.2, width = "full", fontSize = "medium",
+        hidden = function() return not folderLoadOv() end,
+        name = function()
+            local ov, of = folderLoadOv()
+            if not ov then return "" end
+            return "|cffffd100Overridden by folder " .. tostring(of and of.name) .. "|r: " .. (ov == "never" and "Never" or "Always")
+                .. ". Your own load settings below are kept and apply again if this rule leaves the folder. Talents still apply."
+        end }
+    local lockKeys = { "instanceTypes", "specs", "roles" }
+    for _, k in ipairs(loadModeKeys) do lockKeys[#lockKeys + 1] = k end
+    for _, c in ipairs(ns.LOAD_TRI) do lockKeys[#lockKeys + 1] = "tri_" .. c.key end
+    for _, k in ipairs(lockKeys) do
+        local a = loadArgs[k]
+        if a then
+            local prev = a.disabled
+            a.disabled = function(...)
+                if folderLoadOv() then return true end
+                if type(prev) == "function" then return prev(...) end
+                return prev
+            end
+        end
+    end
     local load = { type = "group", name = "Load", order = 4, args = loadArgs }
 
     ---------------------------------------------------------------- Actions
@@ -513,7 +730,7 @@ local function BuildRule(i, rule)
             fadeH = { type = "header", name = "Fade, Opacity & Flash as the Buff Runs Out", order = 30 },
             fadeGrey = Tog(V, "fadeGrey", "Fade gradually as the buff runs out", 31, on, { width = "double",
                 desc = "Uses the Aura spell ID from the Trigger tab. Uses readable aura times; when Blizzard hides them (combat) it tries Blizzard's duration-object curves (experimental). Needs the aura present, so set Show to 'While the buff is present'. Preview shows a sample cycle." }),
-            fadeMode = Sel(V, "fadeMode", "Fade to", 32, { none = "(none - grey)", color = "A colour" }, { "none", "color" }, on,
+            fadeMode = Sel(V, "fadeMode", "Fade to", 32, { none = "(none - grey)", color = "A colour", transparent = "Transparent" }, { "none", "color", "transparent" }, on,
                 { disabled = function() return not V.fadeGrey end }),
             fadeColor = Col(V, "fadeColor", "Fade colour", 33, on,
                 { disabled = function() return not (V.fadeGrey and ns.Val(V.fadeMode) == "color") end }),
@@ -726,6 +943,10 @@ local function BuildRule(i, rule)
     tex.args.x, tex.args.y, tex.args.unlock = pos.args.x, pos.args.y, pos.args.unlock
     display.args.trigger.order = 0
     local dispBody = { trigger = display.args.trigger,
+        pausePv = { type = "toggle", name = "Pause preview animations", order = 0.5, width = "double",
+            desc = "Freezes the sample countdown, the fades and the flash in every preview while the images stay on screen. Untick to resume.",
+            get = function() return ns.previewPaused end,
+            set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
         texture = Sub("texture", "Texture", 1, tex.args),
         overlay = Sub("overlay", "Overlay Layer", 2, overlay.args, function() return not OV.enabled end),
         opacity = Sub("opacity", "Opacity & Fill", 3, opacity.args) }
@@ -751,30 +972,8 @@ local function BuildRule(i, rule)
     } }
 
     ---------------------------------------------------------------- Rule tab
-    local pasteGroup = {
-        type = "group", inline = true, name = "Copy & Paste Settings", order = 20, args = {
-            copy = { type = "execute", name = "Copy This Rule's Settings", order = 1, width = "double",
-                func = function() ruleClip = { name = rule.name, data = ns.Copy(rule) }; Notify() end },
-            clipInfo = { type = "description", order = 2, width = "full", fontSize = "medium",
-                name = function() return ruleClip and ("Clipboard: |cffffd100" .. tostring(ruleClip.name) .. "|r") or "Clipboard is empty. Copy a rule first (here, or right-click a rule in the sidebar)." end },
-            all = { type = "toggle", name = "All Sections", order = 3, width = "double",
-                get = function() return PasteCount() == #PASTE_ORDER end,
-                set = function(_, v) for _, k in ipairs(PASTE_ORDER) do pasteSel[k] = v or nil end; Notify() end },
-            sections = { type = "multiselect", name = "Paste These Sections", order = 4, width = "full", values = PASTE_LABELS,
-                get = function(_, k) return pasteSel[k] and true or false end,
-                set = function(_, k, v) pasteSel[k] = v or nil; Notify() end },
-            note = { type = "description", order = 5, width = "full", fontSize = "small",
-                name = "Nothing is selected by default, so nothing is overwritten until you tick sections. The rule's name, folder and enabled state are never pasted." },
-            paste = { type = "execute", order = 6, width = "double",
-                name = "Paste Selected Sections Into This Rule",
-                disabled = function() return not ruleClip or PasteCount() == 0 end,
-                confirm = function() return "Overwrite these sections of '" .. tostring(rule.name) .. "' with settings from '" .. tostring(ruleClip and ruleClip.name) .. "'?\n" .. PasteSummary() end,
-                func = function() if PasteInto(rule) then Notify() end end },
-        },
-    }
     local ruleTab = {
         type = "group", name = "Rule", order = 1, args = {
-            pasteGroup = pasteGroup,
             name = { type = "input", name = "Name", order = 1, width = "double",
                 get = function() return rule.name end,
                 set = function(_, v) if v ~= "" then rule.name = v end; Notify() end },
@@ -1103,16 +1302,6 @@ local function FolderApplyGroup(f)
                 get = function() return st().decimals end, set = function(_, v) st().decimals = v end },
             decimalBelow = { type = "range", name = "Tenths Only Below (Seconds, 0 = Leave As Is)", order = 9, min = 0, max = 30, step = 1, width = "double",
                 get = function() return st().decimalBelow or 0 end, set = function(_, v) st().decimalBelow = v > 0 and v or nil end },
-            pasteAll = { type = "execute", order = 30, width = "double",
-                name = function() return "Paste Copied Rule's Selected Sections Into " .. nRules() .. " Rule(s) Here" end,
-                desc = "Uses the clipboard and the section ticks from any rule's Copy & Paste Settings group.",
-                disabled = function() return not ruleClip or PasteCount() == 0 end,
-                confirm = function() return "Overwrite the selected sections on every rule in this folder (and subfolders) with settings from '" .. tostring(ruleClip and ruleClip.name) .. "'?\n" .. PasteSummary() end,
-                func = function()
-                    local n = 0
-                    for _, r in ipairs(FolderRules(f.id)) do if PasteInto(r) then n = n + 1 end end
-                    Notify(); ns.Print(("pasted into %d rule(s) in folder '%s'"):format(n, f.name))
-                end },
             apply = { type = "execute", order = 20, width = "double",
                 name = function() return "Apply to " .. nRules() .. " Rule(s)" end,
                 confirm = true, confirmText = "Overwrite the chosen text settings on every rule in this folder (and its subfolders)?",
@@ -1146,10 +1335,38 @@ local function FolderApplyGroup(f)
     }
 end
 
+local LOAD_OV_VALUES = {
+    none = "Don't Override (Each Rule Uses Its Own Load Conditions)",
+    never = "Never (No Rule in This Folder Loads)",
+    always = "Always (Ignore Each Rule's Load Conditions)",
+}
+local LOAD_OV_ORDER = { "none", "never", "always" }
+local function FolderLoadGroup(f)
+    local g = {
+        type = "group", inline = true, order = 5.5, name = "Load Conditions for This Folder",
+        args = {
+            note = { type = "description", order = 0, width = "full", fontSize = "small",
+                name = "Overrides the Load tab of every rule in this folder and its subfolders while they are inside it. Nothing on the rules is changed: a rule that leaves the folder uses its own load conditions again. Talent requirements still apply. A subfolder's own choice beats the folder above it." },
+            inherited = { type = "description", order = 2, width = "full", fontSize = "medium",
+                hidden = function() if f.loadOverride then return true end; return not ns.FolderLoadOverrideFrom(f.parent) end,
+                name = function()
+                    local ov, of = ns.FolderLoadOverrideFrom(f.parent)
+                    if not ov then return "" end
+                    return "Inherited from folder |cffffd100" .. tostring(of and of.name) .. "|r: " .. (ov == "never" and "Never" or "Always")
+                end },
+        },
+    }
+    AddSquareRadio(g.args, "mode", 0.9, LOAD_OV_VALUES, LOAD_OV_ORDER,
+        function() return f.loadOverride or "none" end,
+        function(v) f.loadOverride = (v == "never" or v == "always") and v or nil; ns.MarkDirty(); Notify() end)
+    return g
+end
+
 local function BuildFolder(k, f)
+    local dinfo, dpos = ns.DefaultFolderInfo(f.default)
     return {
-        type = "group", order = 100 + k,
-        name = function() return f.name .. " (" .. FolderRuleCount(f) .. ")" end,
+        type = "group", order = dpos and (10 + dpos) or (100 + k),
+        name = function() return (f.parent and f.name or tostring(f.name):upper()) .. " (" .. FolderRuleCount(f) .. ")" end,
         args = {
             name = { type = "input", name = "Folder name", order = 1, width = "double",
                 get = function() return f.name end, set = function(_, v) if v ~= "" then f.name = v end; Notify() end },
@@ -1176,6 +1393,9 @@ local function BuildFolder(k, f)
                 func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
             note = { type = "description", order = 5, width = "full", fontSize = "small",
                 name = "Use the eye and headphone icons next to this folder in the sidebar to preview every rule inside it at once." },
+            defaultNote = { type = "description", order = 5.2, width = "full", fontSize = "small",
+                hidden = function() return not dinfo end, name = dinfo and dinfo.note or "" },
+            loadOverride = FolderLoadGroup(f),
             applyText = FolderApplyGroup(f),
             delete = { type = "execute", name = "Delete folder (contents move up one level)", order = 9, width = "double",
                 confirm = true, confirmText = "Delete this folder? The rules and subfolders inside are kept and move up one level.",
@@ -1193,7 +1413,7 @@ end
 local function BuildOptions()
     ---------------------------------------------------------- Cooldown + Aura Tracking
     local all = {
-        type = "group", name = "All rules", order = 1, childGroups = "tree",
+        type = "group", name = "ALL RULES", order = 1, childGroups = "tree",
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "Rules that watch a cooldown, a buff and your talents, then play a sound and/or show a texture. Pick a rule on the left, or add one. The eye and headphone icons in the sidebar preview a rule (or a whole folder / everything) without changing it." },
@@ -1222,6 +1442,17 @@ local function BuildOptions()
             unlock = { type = "execute", order = 5, width = "double",
                 name = function() return ns.unlocked and "Lock visuals" or "Unlock visuals (drag on screen)" end,
                 func = function() ns.ToggleUnlock(); Notify() end },
+            pausePv = { type = "toggle", name = "Pause preview animations", order = 5.2, width = "double",
+                desc = "Freezes the sample countdown, the fades and the flash in every preview and unlocked display while the images stay on screen. Untick to resume.",
+                get = function() return ns.previewPaused end,
+                set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
+            defaults = { type = "execute", name = "Add Default Categories", order = 5.5, width = "double",
+                desc = "Adds any of Display Cues, Sound Cues and Advanced Rule Tracking that are missing at the top level. Existing folders and rules are not touched.",
+                func = function()
+                    local n = ns.EnsureDefaultFolders(true)
+                    ns.Print(n > 0 and ("added " .. n .. " default categor" .. (n == 1 and "y" or "ies")) or "the default categories are already there")
+                    Notify()
+                end },
             seed = { type = "execute", name = "Add Vengeance DH test rules", order = 6, width = "double",
                 func = function() ns.SeedRules() end },
         },
@@ -1243,24 +1474,28 @@ local function BuildOptions()
         else notArgs["rule" .. i] = g; nNot = nNot + 1 end
     end
     loadedArgs.info = { type = "description", order = 0, width = "full", fontSize = "medium",
-        name = "Rules that are enabled and whose load conditions and talents match right now (cooldown / buff state is not part of this). Same rules as under All rules; this list updates as your situation changes." }
+        name = "Rules that are enabled and whose load conditions and talents match right now (cooldown / buff state is not part of this). Same rules as under All Rules; this list updates as your situation changes." }
     notArgs.info = { type = "description", order = 0, width = "full", fontSize = "medium",
         name = "Rules that are disabled, or whose load conditions or talents do not match right now." }
-    -- three primary tabs: All Rules | Loaded | Not Loaded (each holds a tree with its own root row)
-    local track = { type = "group", name = "All Rules", order = 1, childGroups = "tree", args = { all = all } }
-    local loadedTab = { type = "group", order = 2, childGroups = "tree",
-        name = function() return "Loaded (" .. nLoaded .. ")" end,
-        args = { loaded = { type = "group", order = 1, childGroups = "tree", name = "Loaded Rules", args = loadedArgs } } }
-    local notLoadedTab = { type = "group", order = 3, childGroups = "tree",
-        name = function() return "Not Loaded (" .. nNot .. ")" end,
-        args = { notloaded = { type = "group", order = 1, childGroups = "tree", name = "Not Loaded Rules", args = notArgs } } }
+    -- Loaded / Not Loaded are the topmost root rows of the All Rules tree (siblings above ALL RULES)
+    all.order = 3
+    local track = { type = "group", name = "All Rules", order = 1, childGroups = "tree", args = {
+        loaded = { type = "group", order = 1, childGroups = "tree",
+            name = function() return "LOADED (" .. nLoaded .. ")" end, args = loadedArgs },
+        notloaded = { type = "group", order = 2, childGroups = "tree",
+            name = function() return "NOT LOADED (" .. nNot .. ")" end, args = notArgs },
+        all = all } }
 
     ---------------------------------------------------------- Buff Bars
     local allBars = {
-        type = "group", name = "All bars", order = 1, childGroups = "tree",
+        type = "group", name = "ALL BARS", order = 1, childGroups = "tree",
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "Timer bars for buffs on you. Layout options below apply to the whole group. The eye icon in the sidebar previews a bar (or all of them)." },
+            pausePv = { type = "toggle", name = "Pause preview animations", order = 1.5, width = "double",
+                desc = "Freezes the sample countdown, the fades and the flash in every preview and unlocked display while the images stay on screen. Untick to resume.",
+                get = function() return ns.previewPaused end,
+                set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
             newBar = { type = "execute", name = "+ New buff bar", order = 1, width = "double",
                 func = function()
                     ns.Bars_NewBar(); Notify()
@@ -1285,7 +1520,7 @@ local function BuildOptions()
 
     ---------------------------------------------------------- QoL
     local allQol = {
-        type = "group", name = "All boxes", order = 1, childGroups = "tree",
+        type = "group", name = "ALL BOXES", order = 1, childGroups = "tree",
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "Small quality-of-life displays. Stats text boxes: build your own layout from {tokens}, then drag it where you want it." },
@@ -1301,7 +1536,7 @@ local function BuildOptions()
     local qol = { type = "group", name = "QoL Elements", order = 5, childGroups = "tree", args = { allqol = allQol } }
 
     return { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, loadedTab = loadedTab, notloadedTab = notLoadedTab, bars = bars, qol = qol, profiles = BuildProfiles() } }
+        args = { cooldowns = track, bars = bars, qol = qol, profiles = BuildProfiles() } }
 end
 
 AceConfigRegistry:RegisterOptionsTable(APP, BuildOptions)
@@ -1309,6 +1544,17 @@ AceConfigDialog:SetDefaultSize(APP, 1000, 680)
 
 function ns.OnRulesChanged() Notify() end
 function ns.OnPositionChanged() Notify() end
+
+-- open the window (if needed) and jump to a rule; used by clicking an aura on screen while unlocked
+function ns.EditRule(rule)
+    if not ns.rules then return end
+    if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then
+        local ok, err = pcall(AceConfigDialog.Open, AceConfigDialog, APP)
+        if not ok then ns.Print("could not open the window: " .. tostring(err)) return end
+    end
+    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(rule))
+    Notify()
+end
 
 local firstOpen = true
 function ns.ToggleUI()
@@ -1692,6 +1938,42 @@ local function AddMoveMenu(root, obj, kind)
     end
 end
 
+-- Copy / paste lives only in the right-click menu. Ticks are session-only; nothing is ticked by default, so nothing is overwritten
+-- until sections are chosen. Returning MenuResponse.Refresh keeps the submenu open while ticking (unverified in game: if the
+-- game ignores it, the menu simply closes after each tick).
+local PASTE_MENU_LABELS = {
+    ids = "Trigger: Spell ID, Max Charges, Aura ID", states = "Conditions: Cooldown + Buff State", talents = "Talents",
+    load = "Load Conditions", display = "Display (Not Position or Text)", position = "Display: Position (X / Y)",
+    textDur = "Text: Buff Duration", textCnt = "Text: Stacks / Charges Count", textAbs = "Text: Shield / Absorb Amount",
+    sound = "Audio: Sound, Channel and Repeat",
+}
+local function AddPasteMenu(root, label, getTargets, describe)
+    local sub = root:CreateButton(label)
+    local refresh = MenuResponse and MenuResponse.Refresh
+    sub:CreateTitle(ruleClip and ("Copied: " .. tostring(ruleClip.name)) or "Nothing copied yet (use Copy Settings)")
+    for _, k in ipairs(PASTE_ORDER) do
+        sub:CreateCheckbox(PASTE_MENU_LABELS[k] or k,
+            function() return pasteSel[k] and true or false end,
+            function() pasteSel[k] = (not pasteSel[k]) or nil; return refresh end)
+    end
+    sub:CreateDivider()
+    sub:CreateButton("Select All Sections", function() for _, k in ipairs(PASTE_ORDER) do pasteSel[k] = true end; return refresh end)
+    sub:CreateButton("Clear Selection", function() for _, k in ipairs(PASTE_ORDER) do pasteSel[k] = nil end; return refresh end)
+    sub:CreateDivider()
+    sub:CreateButton("Paste Selected Sections", function()
+        if not ruleClip then ns.Print("nothing copied yet: right-click a rule and choose Copy Settings first") return end
+        if PasteCount() == 0 then ns.Print("no sections selected: tick the sections to paste in the Paste Settings menu first") return end
+        local targets = getTargets()
+        local warn = (pasteSel.ids and #targets > 1) and "\n|cffff8040Trigger IDs are selected: every one of these rules will track the same spell and aura.|r" or ""
+        AskConfirm("Overwrite these sections on " .. describe() .. " with settings from '" .. tostring(ruleClip.name) .. "'?\n" .. PasteSummary() .. warn,
+            function()
+                local n = 0
+                for _, r in ipairs(targets) do if PasteInto(r) then n = n + 1 end end
+                Notify(); ns.Print(("pasted into %d rule(s)"):format(n))
+            end)
+    end)
+end
+
 local function RowMenu(button, root)
     local last = LastKey(button.uniquevalue) or ""
     local n = last:match("^rule(%d+)$")
@@ -1701,12 +1983,7 @@ local function RowMenu(button, root)
         root:CreateButton("Rename", function() AskRename(rule.name, function(t) rule.name = t; pcall(ns.RefreshVisual, rule); ns.MarkDirty(); Notify() end) end)
         root:CreateButton("Duplicate", function() DuplicateRule(rule) end)
         root:CreateButton("Copy Settings", function() ruleClip = { name = rule.name, data = ns.Copy(rule) }; Notify(); ns.Print("copied settings of '" .. tostring(rule.name) .. "'") end)
-        root:CreateButton("Paste Settings (Selected Sections)", function()
-            if not ruleClip then ns.Print("nothing copied yet") return end
-            if PasteCount() == 0 then ns.Print("tick the sections to paste first (Rule tab > Copy & Paste Settings)") return end
-            AskConfirm("Overwrite these sections of '" .. tostring(rule.name) .. "' with settings from '" .. tostring(ruleClip.name) .. "'?\n" .. PasteSummary(),
-                function() if PasteInto(rule) then Notify() end end)
-        end)
+        AddPasteMenu(root, "Paste Settings", function() return { rule } end, function() return "'" .. tostring(rule.name) .. "'" end)
         root:CreateButton(rule.enabled and "Disable" or "Enable", function()
             rule.enabled = not rule.enabled; pcall(ns.RefreshVisual, rule); ns.MarkDirty(); Notify()
         end)
@@ -1741,6 +2018,8 @@ local function RowMenu(button, root)
         end)
         root:CreateButton("Enable All Rules Inside", function() for _, r in ipairs(FolderRules(fold.id)) do r.enabled = true; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
         root:CreateButton("Disable All Rules Inside", function() for _, r in ipairs(FolderRules(fold.id)) do r.enabled = false; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
+        AddPasteMenu(root, "Paste Settings Into Rules Here", function() return FolderRules(fold.id) end,
+            function() return "every rule in '" .. tostring(fold.name) .. "' (and its subfolders)" end)
         AddMoveMenu(root, fold, "folder")
         root:CreateDivider()
         root:CreateButton("Delete Folder (Contents Move Up)", function()
@@ -1807,17 +2086,173 @@ local function RowMenu(button, root)
     return false
 end
 
+-- Blizzard's Menu code (Blizzard_Menu/Menu.lua) gives a menu the strata FULLSCREEN_DIALOG, or TOOLTIP when its owner region is
+-- at TOOLTIP strata. The options window is also FULLSCREEN_DIALOG and sits higher in level, so the menu opened behind it.
+-- Fix: use an invisible TOOLTIP-strata frame laid over the clicked row as the menu's owner region.
+local menuOwner
+local function MenuOwner(button)
+    if not menuOwner then
+        menuOwner = CreateFrame("Frame", nil, UIParent)
+        menuOwner:SetFrameStrata("TOOLTIP")
+        menuOwner:EnableMouse(false)
+    end
+    menuOwner:ClearAllPoints()
+    menuOwner:SetPoint("TOPLEFT", button, "TOPLEFT")
+    menuOwner:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT")
+    menuOwner:Show()
+    return menuOwner
+end
+
 local function ShowRowMenu(button)
     if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the context menu needs the game's MenuUtil, which is not available") return end
     local shown = false
-    local ok, err = pcall(MenuUtil.CreateContextMenu, button, function(_, root)
+    local ok, err = pcall(MenuUtil.CreateContextMenu, MenuOwner(button), function(_, root)
+        -- Menu.lua runs root-registered acquired callbacks for every menu and submenu it opens, so submenus (e.g. Move To) are
+        -- raised above the options window too.
+        if root.AddMenuAcquiredCallback then
+            root:AddMenuAcquiredCallback(function(menu)
+                if menu and menu.SetFrameStrata then
+                    pcall(menu.SetFrameStrata, menu, "TOOLTIP")
+                    if menu.Raise then pcall(menu.Raise, menu) end
+                end
+            end)
+        end
         shown = RowMenu(button, root)
     end)
     if not ok then ns.Print("context menu error: " .. tostring(err)) end
 end
 
+-- Header rows (the root row and every top-level folder) get a tinted banner so each reads as its own group.
+local BANNER_TINT = {
+    root = { 1, 0.78, 0 }, loaded = { 0.1, 0.85, 0.75 }, notloaded = { 0.95, 0.2, 0.2 }, display = { 0.1, 0.5, 1 }, sound = { 0.1, 0.75, 0.3 }, advanced = { 0.75, 0.25, 1 }, other = { 0.7, 0.7, 0.75 },
+}
+local function BannerTint(uv)
+    local last = uv and tostring(uv):match("([^\001]*)$")
+    if last == "all" or last == "allbars" or last == "allboxes" then return BANNER_TINT.root end
+    if last == "loaded" then return BANNER_TINT.loaded end
+    if last == "notloaded" then return BANNER_TINT.notloaded end
+    local f = last and ns.FolderById and ns.FolderById(last)
+    if f and not f.parent then
+        return (type(f.default) == "string" and BANNER_TINT[f.default]) or BANNER_TINT.other
+    end
+end
+local function PaintBanner(button)
+    local c = BannerTint(button.uniquevalue)
+    -- Root rows (ALL RULES, LOADED, NOT LOADED, ALL BARS, ALL BOXES): one shared soft style, white text, thin outline,
+    -- 15% smaller than the earlier bold look, drawn in small caps. WoW fonts have no small-caps feature, so the label is
+    -- rebuilt from separate font strings: first letter of each word full size, the rest capitals at 80% size.
+    local fs = button.text
+    if fs and fs.GetFont then
+        if not button.xuiFont then local f, sz, fl = fs:GetFont(); button.xuiFont = { f, sz, fl } end
+        local uv = button.uniquevalue and tostring(button.uniquevalue)
+        local isRoot = uv and (uv == "all" or uv == "allbars" or uv == "allboxes" or uv == "loaded" or uv == "notloaded") or false
+        if isRoot then
+            local text = fs:GetText() or ""
+            local size = math.floor((button.xuiFont[2] + 2) * 0.85 * 10 + 0.5) / 10
+            local sc = button.xuiSC
+            if not sc then sc = { segs = {} }; button.xuiSC = sc end
+            if sc.text ~= text or sc.size ~= size then
+                sc.text, sc.size = text, size
+                -- split into runs
+                local runs = {}
+                local function push(str, small)
+                    local r = runs[#runs]
+                    if r and r.small == small then r.str = r.str .. str else runs[#runs + 1] = { str = str, small = small } end
+                end
+                local newWord = true
+                for ch in text:gmatch("[%z\1-\127\194-\244][\128-\191]*") do
+                    if ch == " " then push(ch, false); newWord = true
+                    elseif ch:match("%a") then
+                        if newWord then push(ch:upper(), false); newWord = false else push(ch:upper(), true) end
+                    else push(ch, false); newWord = false end
+                end
+                for i, r in ipairs(runs) do
+                    local seg = sc.segs[i]
+                    if not seg then seg = button:CreateFontString(nil, "OVERLAY"); sc.segs[i] = seg end
+                    seg:SetFont(button.xuiFont[1], r.small and size * 0.8 or size, "OUTLINE")
+                    seg:SetTextColor(1, 1, 1, 1)
+                    seg:SetText(r.str)
+                    seg:ClearAllPoints()
+                    if i == 1 then seg:SetPoint("BOTTOMLEFT", fs, "BOTTOMLEFT", 0, 0)
+                    else seg:SetPoint("BOTTOMLEFT", sc.segs[i - 1], "BOTTOMRIGHT", 0, 0) end
+                    seg:Show()
+                end
+                for i = #runs + 1, #sc.segs do sc.segs[i]:Hide() end
+            end
+            fs:SetAlpha(0)
+            button.xuiIsSC = true
+        elseif button.xuiIsSC then
+            fs:SetAlpha(1)
+            for _, seg in ipairs(button.xuiSC and button.xuiSC.segs or {}) do seg:Hide() end
+            if button.xuiSC then button.xuiSC.text = nil end
+            button.xuiIsSC = nil
+        end
+    end
+    if not c then
+        if button.xuiBanner then button.xuiBanner:Hide(); button.xuiBannerBar:Hide() end
+        return
+    end
+    if not button.xuiBanner then
+        button.xuiBanner = button:CreateTexture(nil, "BACKGROUND", nil, -2)
+        button.xuiBanner:SetAllPoints()
+        button.xuiBannerBar = button:CreateTexture(nil, "BACKGROUND", nil, -1)
+        button.xuiBannerBar:SetPoint("TOPLEFT"); button.xuiBannerBar:SetPoint("BOTTOMLEFT"); button.xuiBannerBar:SetWidth(6)
+    end
+    local b, bar = button.xuiBanner, button.xuiBannerBar
+    b:SetColorTexture(c[1], c[2], c[3], 0.5)
+    pcall(b.SetGradient, b, "HORIZONTAL", CreateColor(c[1], c[2], c[3], 0.85), CreateColor(c[1], c[2], c[3], 0.2))
+    bar:SetColorTexture(c[1], c[2], c[3], 1)
+    b:Show(); bar:Show()
+end
+
+-- Tree-chart guide bars: every row inside a top-level folder repeats that folder's colour as a vertical bar at the
+-- left edge (a continuation of the folder's own banner bar), and each deeper folder level adds one more, lighter
+-- and thinner bar, indented one step. Rows directly under the Loaded / Not Loaded roots continue that root's colour.
+local function PaintGuides(button)
+    local guides = button.xuiGuides
+    local bars = {}
+    local uv = button.uniquevalue
+    if uv then
+        local segs = {}
+        for seg in tostring(uv):gmatch("[^\001]+") do segs[#segs + 1] = seg end
+        local L = #segs
+        local c = L >= 2 and BannerTint(segs[2]) or nil
+        if c then
+            for j = 2, L - 1 do
+                local depth = j - 2
+                local mix = 0.22 * depth
+                bars[#bars + 1] = { x = (j == 2) and 0 or 8 * depth, w = (j == 2) and 6 or 4,
+                    r = c[1] + (1 - c[1]) * mix, g = c[2] + (1 - c[2]) * mix, b = c[3] + (1 - c[3]) * mix,
+                    a = math.max(0.5, 1 - 0.12 * depth) }
+            end
+        elseif L == 2 and (segs[1] == "loaded" or segs[1] == "notloaded") then
+            local rc = BannerTint(segs[1])
+            if rc then bars[1] = { x = 0, w = 6, r = rc[1], g = rc[2], b = rc[3], a = 1 } end
+        end
+    end
+    if #bars == 0 and not guides then return end
+    guides = guides or {}
+    button.xuiGuides = guides
+    for i, bar in ipairs(bars) do
+        local t = guides[i]
+        if not t then
+            t = button:CreateTexture(nil, "BACKGROUND", nil, -1)
+            guides[i] = t
+        end
+        t:ClearAllPoints()
+        t:SetPoint("TOPLEFT", button, "TOPLEFT", bar.x, 0)
+        t:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", bar.x, 0)
+        t:SetWidth(bar.w)
+        t:SetColorTexture(bar.r, bar.g, bar.b, bar.a)
+        t:Show()
+    end
+    for i = #bars + 1, #guides do guides[i]:Hide() end
+end
+
 -- Left cluster, in order:  [collapse arrow] [eye] [headphone]  text
 local function DecorateButton(button)
+    PaintBanner(button)
+    PaintGuides(button)
     local vis, snd = Resolve(button.uniquevalue)
     local tree = button.obj
     if not button.xuiDrag then
@@ -1835,21 +2270,15 @@ local function DecorateButton(button)
         button.text:SetWordWrap(false)
         button.text:SetPoint("RIGHT", button, "RIGHT", -4, 2)
     end
-    -- hide Blizzard's tiny +/- only where our arrow replaces it (still "shown", so canExpand stays readable)
+    -- Every row of a level uses the same fixed slots: [arrow 16][eye 17][headphone 17][text]. A row without an arrow or
+    -- without icons keeps its (empty) slots, so the text of all rows on one level lines up. Blizzard's tiny +/- is hidden
+    -- (still "shown", so canExpand stays readable) because our arrow replaces it on every expandable row.
+    local CHEV_W, ICON_W = 16, 17
+    local x0 = 8 * level - 6
     if button.toggle then
-        button.toggle:SetAlpha((canExpand and hasIcons) and 0 or 1)
-        button.toggle:EnableMouse(not (canExpand and hasIcons))
+        button.toggle:SetAlpha(canExpand and 0 or 1)
+        button.toggle:EnableMouse(not canExpand)
     end
-    if not hasIcons then
-        if button.xuiEye then button.xuiEye:Hide(); button.xuiHead:Hide() end
-        if button.xuiChev then button.xuiChev:Hide() end
-        return
-    end
-    if not button.xuiEye then
-        button.xuiEye = MakeToggle(button, "visual")
-        button.xuiHead = MakeToggle(button, "sound")
-    end
-    local x = 8 * level - 6
     if canExpand then
         if not button.xuiChev then button.xuiChev = MakeChevron(button) end
         local st = tree and (tree.status or tree.localstatus)
@@ -1857,26 +2286,32 @@ local function DecorateButton(button)
         button.xuiChev:SetNormalTexture(expanded and 130821 or 130838)
         button.xuiChev:SetPushedTexture(expanded and 130820 or 130836)
         button.xuiChev:ClearAllPoints()
-        button.xuiChev:SetPoint("LEFT", button, "LEFT", x, 0)
+        button.xuiChev:SetPoint("LEFT", button, "LEFT", x0, 0)
         button.xuiChev:Show()
-        x = x + 16
     elseif button.xuiChev then
         button.xuiChev:Hide()
     end
-    local function paint(b, objs, kind)
-        if not objs or #objs == 0 then b:Hide(); return end
-        b.objs = objs
-        b:ClearAllPoints()
-        b:SetPoint("LEFT", button, "LEFT", x, 0)
-        x = x + 17
-        local st = GroupState(objs, kind)
-        b.tex:SetDesaturated(st == 0)
-        b.tex:SetAlpha(st == 1 and 1 or (st == 0.5 and 0.7 or 0.35))
-        b:Show()
+    if hasIcons then
+        if not button.xuiEye then
+            button.xuiEye = MakeToggle(button, "visual")
+            button.xuiHead = MakeToggle(button, "sound")
+        end
+        local function paint(b, objs, kind, sx)
+            if not objs or #objs == 0 then b:Hide(); return end
+            b.objs = objs
+            b:ClearAllPoints()
+            b:SetPoint("LEFT", button, "LEFT", sx, 0)
+            local st = GroupState(objs, kind)
+            b.tex:SetDesaturated(st == 0)
+            b.tex:SetAlpha(st == 1 and 1 or (st == 0.5 and 0.7 or 0.35))
+            b:Show()
+        end
+        paint(button.xuiEye, vis, "visual", x0 + CHEV_W)
+        paint(button.xuiHead, snd, "sound", x0 + CHEV_W + ICON_W)
+    elseif button.xuiEye then
+        button.xuiEye:Hide(); button.xuiHead:Hide()
     end
-    paint(button.xuiEye, vis, "visual")
-    paint(button.xuiHead, snd, "sound")
-    if button.text then button.text:SetPoint("LEFT", button, "LEFT", x + 3, 2) end
+    if button.text then button.text:SetPoint("LEFT", button, "LEFT", x0 + CHEV_W + ICON_W * 2 + 3, 2) end
 end
 
 local function DecorateTree(tree)
@@ -1894,12 +2329,42 @@ local function DecorateTree(tree)
         end
     end
     for _, b in ipairs(tree.buttons or {}) do
-        if b:IsShown() then DecorateButton(b) elseif b.xuiEye then b.xuiEye:Hide(); b.xuiHead:Hide() end
+        if b:IsShown() then DecorateButton(b)
+        else
+            if b.xuiEye then b.xuiEye:Hide(); b.xuiHead:Hide() end
+            if b.xuiBanner then b.xuiBanner:Hide(); b.xuiBannerBar:Hide() end
+        end
+    end
+end
+
+-- Full Blizzard spell tooltip on the talent icon (an AceGUI Icon whose option carries arg.xuiSpell = the talent row).
+-- AceGUI clears callbacks when a widget is recycled, so this re-checks on every pass instead of flagging the widget.
+local function SpellIconLeave() GameTooltip:Hide() end
+local function SpellIconEnter(widget)
+    local opt = widget.GetUserData and widget:GetUserData("option")
+    local row = opt and type(opt.arg) == "table" and opt.arg.xuiSpell
+    local id = row and row.id
+    GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
+    if id and id > 0 then
+        local ok = pcall(GameTooltip.SetSpellByID, GameTooltip, id)
+        if not ok then GameTooltip:SetText("Unknown spell ID " .. tostring(id)) end
+    else
+        GameTooltip:SetText("Type a spell ID to see its tooltip.")
+    end
+    GameTooltip:Show()
+end
+local function AttachSpellTip(w)
+    local opt = w.GetUserData and w:GetUserData("option")
+    if not (opt and type(opt.arg) == "table" and opt.arg.xuiSpell) then return end
+    if not (w.events and w.events.OnEnter == SpellIconEnter) then
+        w:SetCallback("OnEnter", SpellIconEnter)
+        w:SetCallback("OnLeave", SpellIconLeave)
     end
 end
 
 local function Walk(w, depth)
-    if not w or depth > 8 then return end
+    if not w or depth > 14 then return end
+    if w.type == "Icon" then AttachSpellTip(w) end
     if w.type == "TreeGroup" then DecorateTree(w) end
     for _, c in ipairs(w.children or {}) do Walk(c, depth + 1) end
 end
@@ -1920,6 +2385,97 @@ local function SelectedRule()
     return idx and ns.rules and ns.rules[idx]
 end
 
+-------------------------------------------------------------------------------
+-- Window chrome: a close X (top right) and a collapse arrow (shrinks the window to
+-- just the XayaUI banner). Collapse state is session-only and resets when the window closes.
+-------------------------------------------------------------------------------
+local ARROW_OPEN, ARROW_COLLAPSED = "Interface\\Buttons\\Arrow-Up-Up", "Interface\\Buttons\\Arrow-Down-Up"
+
+local function SetCollapsed(of, collapsed)
+    local c = of and of.xuiChrome
+    local fr = of and of.frame
+    if not (c and fr) then return end
+    collapsed = collapsed and true or false
+    if (c.collapsed or false) == collapsed then return end
+    c.collapsed = collapsed
+    if collapsed then
+        c.hidden = {}
+        for _, child in ipairs({ fr:GetChildren() }) do
+            if child ~= c.title and child ~= c.arrow and child ~= c.close and child:IsShown() then
+                c.hidden[#c.hidden + 1] = child
+                child:Hide()
+            end
+        end
+        fr:SetBackdropColor(0, 0, 0, 0)
+        fr:SetBackdropBorderColor(0, 0, 0, 0)
+        fr:EnableMouse(false)
+        -- keep the X visible too, on the other side of the banner
+        c.close:ClearAllPoints()
+        c.close:SetPoint("LEFT", of.titlebg, "RIGHT", 36, 0)
+        c.arrow.tex:SetTexture(ARROW_COLLAPSED)
+        -- the window body is gone, so keep the button next to the banner instead of the (invisible) corner
+        c.arrow:ClearAllPoints()
+        c.arrow:SetPoint("RIGHT", of.titlebg, "LEFT", -36, 0)
+    else
+        for _, child in ipairs(c.hidden or {}) do child:Show() end
+        c.hidden = nil
+        fr:SetBackdropColor(0, 0, 0, 1)
+        fr:SetBackdropBorderColor(1, 1, 1, 1)
+        fr:EnableMouse(true)
+        c.close:ClearAllPoints()
+        c.close:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -6, -6)
+        c.close:Show()
+        c.arrow.tex:SetTexture(ARROW_OPEN)
+        c.arrow:ClearAllPoints()
+        c.arrow:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -36, -6)
+    end
+end
+
+local function EnsureChrome(of)
+    local fr = of and of.frame
+    if not (fr and of.titlebg and of.titletext) then return end
+    local c = of.xuiChrome
+    if not c then
+        c = {}
+        of.xuiChrome = c
+        c.title = of.titletext:GetParent()
+
+        c.close = CreateFrame("Button", nil, fr, "UIPanelCloseButton")
+        c.close:SetSize(26, 26)
+        c.close:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -6, -6)
+        c.close:SetFrameLevel(fr:GetFrameLevel() + 10)
+        c.close:SetScript("OnClick", function() AceConfigDialog:Close(APP) end)
+
+        -- boxed button (same skin as the Close button), just left of the X
+        c.arrow = CreateFrame("Button", nil, fr, "UIPanelButtonTemplate")
+        c.arrow:SetSize(26, 26)
+        c.arrow:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -36, -6)
+        c.arrow:SetFrameLevel(fr:GetFrameLevel() + 10)
+        c.arrow.tex = c.arrow:CreateTexture(nil, "OVERLAY")
+        c.arrow.tex:SetSize(16, 16)
+        c.arrow.tex:SetPoint("CENTER", 0, 0)
+        c.arrow.tex:SetTexture(ARROW_OPEN)
+        c.arrow:SetScript("OnClick", function() SetCollapsed(of, not c.collapsed) end)
+        c.arrow:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+            GameTooltip:SetText(c.collapsed and "Expand the window" or "Collapse to the banner")
+            GameTooltip:Show()
+        end)
+        c.arrow:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+        -- AceGUI recycles Frame widgets: undo everything on release so other addons' windows stay untouched
+        local orig = of.OnRelease
+        of.OnRelease = function(self, ...)
+            SetCollapsed(self, false)
+            c.close:Hide()
+            c.arrow:Hide()
+            if orig then return orig(self, ...) end
+        end
+    end
+    c.arrow:Show()
+    c.close:Show()
+end
+
 local driver, acc = CreateFrame("Frame"), 0
 local sigAcc, lastSig = 0, nil
 driver:SetScript("OnUpdate", function(_, e)
@@ -1929,6 +2485,7 @@ driver:SetScript("OnUpdate", function(_, e)
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
     local fr = of and of.frame
     if ns.AnyPreview() and not (fr and fr:IsShown()) then ns.ClearPreview() end
+    if fr and fr:IsShown() then pcall(EnsureChrome, of) end
     if fr and fr:IsShown() and ns.DecorateTrees then ns.DecorateTrees(of) end
     if fr and fr:IsShown() and ns.rules then
         sigAcc = sigAcc + 1
@@ -1944,7 +2501,7 @@ driver:SetScript("OnUpdate", function(_, e)
             end
         end
     end
-    if fr and fr:IsShown() then
+    if fr and fr:IsShown() and not (of.xuiChrome and of.xuiChrome.collapsed) then
         if not tray then tray = BuildTray(); ApplyTrayState() end
         if tray.anchoredTo ~= fr then
             tray:ClearAllPoints()

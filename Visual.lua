@@ -23,6 +23,18 @@ function ns.ClearPreview()
     for _, set in pairs(ns.previewSets) do for k in pairs(set) do set[k] = nil end end
     if ns.MarkDirty then ns.MarkDirty() end
 end
+-- Pause switch for previews: freezes the sample countdown and the flash pulse while the images stay on screen.
+local pauseAt, pausedTotal = nil, 0
+ns.previewPaused = false
+function ns.SampleTime() return (pauseAt or GetTime()) - pausedTotal end
+function ns.SetPreviewPaused(on)
+    on = on and true or false
+    if on == ns.previewPaused then return end
+    ns.previewPaused = on
+    if on then pauseAt = GetTime()
+    else pausedTotal = pausedTotal + (GetTime() - (pauseAt or GetTime())); pauseAt = nil end
+    if ns.MarkDirty then ns.MarkDirty() end
+end
 function ns.AnyPreview()
     for _, set in pairs(ns.previewSets) do if next(set) then return true end end
     return false
@@ -178,6 +190,84 @@ ns.FmtRemaining = FmtRemaining
 -------------------------------------------------------------------------------
 -- Frame
 -------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-- On-screen selection, snapping and the right-click menu (only while visuals are unlocked)
+-------------------------------------------------------------------------------
+ns.selectedVisual = nil
+local SNAP_GRID, SNAP_NEAR = 10, 10
+local SNAP_LABELS = { free = "Free Move", grid = "Grid (10 px)", auras = "Other Auras' Edges & Centres", center = "Screen Centre Lines" }
+
+local function PaintBorders()
+    for r, f in pairs(frames) do
+        if ns.unlocked and f.SetBackdropBorderColor then
+            if r == ns.selectedVisual then f:SetBackdropBorderColor(1, 0.6, 0.1, 1)
+            else f:SetBackdropBorderColor(0.2, 0.8, 1, 1) end
+        end
+    end
+end
+function ns.SelectVisual(rule) ns.selectedVisual = rule; PaintBorders() end
+
+local function SnapMode() return (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.snapMode) or "free" end
+
+-- x, y are offsets of the frame centre from the screen centre (UI units). Returns the snapped offsets.
+function ns.SnapPosition(rule, fr, x, y)
+    local mode = SnapMode()
+    if mode == "grid" then
+        return math.floor(x / SNAP_GRID + 0.5) * SNAP_GRID, math.floor(y / SNAP_GRID + 0.5) * SNAP_GRID
+    elseif mode == "center" then
+        if math.abs(x) <= SNAP_NEAR then x = 0 end
+        if math.abs(y) <= SNAP_NEAR then y = 0 end
+        return x, y
+    elseif mode == "auras" then
+        local ux, uy = UIParent:GetCenter()
+        local w, h = fr:GetWidth() / 2, fr:GetHeight() / 2
+        local bestX, bestY, dX, dY = nil, nil, SNAP_NEAR + 1, SNAP_NEAR + 1
+        for r, o in pairs(frames) do
+            if r ~= rule and o:IsShown() and o:GetCenter() then
+                local s = o:GetEffectiveScale() / UIParent:GetEffectiveScale()
+                local ocx, ocy = o:GetCenter()
+                ocx, ocy = ocx * s - ux, ocy * s - uy
+                local ow, oh = o:GetWidth() * s / 2, o:GetHeight() * s / 2
+                -- my left / centre / right against their left / centre / right (and the same vertically)
+                for _, mine in ipairs({ -w, 0, w }) do
+                    for _, theirs in ipairs({ ocx - ow, ocx, ocx + ow }) do
+                        local d = math.abs((x + mine) - theirs)
+                        if d < dX then dX = d; bestX = theirs - mine end
+                    end
+                end
+                for _, mine in ipairs({ -h, 0, h }) do
+                    for _, theirs in ipairs({ ocy - oh, ocy, ocy + oh }) do
+                        local d = math.abs((y + mine) - theirs)
+                        if d < dY then dY = d; bestY = theirs - mine end
+                    end
+                end
+            end
+        end
+        if bestX and dX <= SNAP_NEAR then x = math.floor(bestX + 0.5) end
+        if bestY and dY <= SNAP_NEAR then y = math.floor(bestY + 0.5) end
+    end
+    return x, y
+end
+
+function ns.ShowVisualMenu(rule, anchor)
+    if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the menu API is not available in this client.") return end
+    MenuUtil.CreateContextMenu(anchor, function(_, root)
+        root:CreateTitle(rule.name or "Aura")
+        local function radio(parent, mode)
+            parent:CreateRadio(SNAP_LABELS[mode], function() return SnapMode() == mode end, function()
+                CueRulesDB.ui = CueRulesDB.ui or {}
+                CueRulesDB.ui.snapMode = mode
+                ns.Print("aura positioning: " .. SNAP_LABELS[mode])
+            end)
+        end
+        radio(root, "free")
+        local snap = root:CreateButton("Snap To")
+        radio(snap, "grid"); radio(snap, "auras"); radio(snap, "center")
+        root:CreateDivider()
+        root:CreateButton("Edit This Aura", function() if ns.EditRule then ns.EditRule(rule) end end)
+    end)
+end
+
 local function GetFrame(rule)
     local fr = frames[rule]
     if fr then return fr end
@@ -256,7 +346,19 @@ local function GetFrame(rule)
     fr.absorb:Hide()
 
     fr:SetScript("OnDragStart", function(self)
-        if ns.unlocked then self:StartMoving() end
+        if ns.unlocked then self.wasDragged = true; self:StartMoving() end
+    end)
+    -- left click (without dragging) selects the aura and opens it in the editor; right click opens the move / snap / edit menu
+    fr:SetScript("OnMouseUp", function(self, button)
+        if not ns.unlocked then return end
+        if self.wasDragged then self.wasDragged = false; return end
+        if button == "LeftButton" then
+            ns.SelectVisual(rule)
+            if ns.EditRule then ns.EditRule(rule) end
+        elseif button == "RightButton" then
+            ns.SelectVisual(rule)
+            ns.ShowVisualMenu(rule, self)
+        end
     end)
     fr:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
@@ -265,6 +367,7 @@ local function GetFrame(rule)
         local s = self:GetEffectiveScale() / UIParent:GetEffectiveScale()
         rule.visual.x = math.floor((cx * s - ux) + 0.5)
         rule.visual.y = math.floor((cy * s - uy) + 0.5)
+        rule.visual.x, rule.visual.y = ns.SnapPosition(rule, self, rule.visual.x, rule.visual.y)
         fr:ClearAllPoints()
         fr:SetPoint("CENTER", UIParent, "CENTER", rule.visual.x, rule.visual.y)
         if ns.OnPositionChanged then ns.OnPositionChanged(rule) end
@@ -433,7 +536,8 @@ function ns.RefreshVisual(rule)
     fr:EnableMouse(ns.unlocked)
     if ns.unlocked then
         fr:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-        fr:SetBackdropBorderColor(0.2, 0.8, 1, 1)
+        if rule == ns.selectedVisual then fr:SetBackdropBorderColor(1, 0.6, 0.1, 1)
+        else fr:SetBackdropBorderColor(0.2, 0.8, 1, 1) end
         fr.label:Show()
     else
         fr:SetBackdrop(nil)
@@ -441,6 +545,10 @@ function ns.RefreshVisual(rule)
     end
     ns.UpdateVisualText(rule, ns.runtime and ns.runtime[rule] and ns.runtime[rule].info)
 end
+
+-- Preview / unlock sample: a timer that starts at 12.3 s and counts down to 0, then repeats, so the tenths-of-a-second
+-- switch (Tenths Only Below) can be watched. The wipe, fades and text all read the same clock.
+local SAMPLE_DURATION = 12.3
 
 -- Dynamic, per-tick parts: desaturation, duration text, stacks/charges text.
 function ns.UpdateVisualText(rule, info, fxOnly)
@@ -464,8 +572,8 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     end
     local sfrac
     if frac == nil and sample then
-        rem = 8 - (GetTime() % 8)
-        sfrac = rem / 8
+        rem = SAMPLE_DURATION - (ns.SampleTime() % SAMPLE_DURATION)
+        sfrac = rem / SAMPLE_DURATION
     end
     local f = frac or sfrac
 
@@ -516,9 +624,18 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     local cr, cg, cb, ca = bt[1] or 1, bt[2] or 1, bt[3] or 1, bt[4] or 1
     local greyDone, colorDone = false, false
     if v.fadeGrey then
-        local toColor = ns.Val(v.fadeMode) == "color"
+        local fmode = ns.Val(v.fadeMode)
+        local toColor = fmode == "color"
+        if fmode == "transparent" then
+            -- fade the whole texture out toward fully transparent (handled with the opacity below)
+            fr.fadeToClear = true
+        else
+            fr.fadeToClear = false
+        end
         if f ~= nil then
-            if toColor then
+            if fmode == "transparent" then
+                -- no colour change
+            elseif toColor then
                 local fc = v.fadeColor or { 1, 0.1, 0.1, 1 }
                 local k = 1 - f
                 cr = cr + ((fc[1] or 1) - cr) * k
@@ -529,7 +646,9 @@ function ns.UpdateVisualText(rule, info, fxOnly)
                 d = math.max(d, 1 - f)
             end
         elseif dobj then
-            if toColor then
+            if fmode == "transparent" then
+                -- handled by the alpha curve below
+            elseif toColor then
                 local fc = v.fadeColor or { 1, 0.1, 0.1, 1 }
                 local cv = ColorCurve("c", { fc[1] or 1, fc[2] or 1, fc[3] or 1, fc[4] or 1 }, { cr, cg, cb, ca })
                 if cv then
@@ -555,6 +674,17 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         alpha = alpha * oa
     end
     local alphaDone = false
+    if v.fadeGrey and fr.fadeToClear then
+        if f ~= nil then
+            alpha = alpha * f
+        elseif dobj then
+            local cv = NumCurve("t", 0, alpha)
+            if cv then
+                local okr, res = pcall(dobj.EvaluateRemainingPercent, dobj, cv)
+                if okr and res ~= nil then alphaDone = pcall(fr.SetAlpha, fr, res) end
+            end
+        end
+    end
     if v.fadeAlpha then
         local mn = clamp(v.fadeAlphaMin or 0.15, 0, 1)
         local mx = clamp(v.fadeAlphaMax or 1, 0, 1)
@@ -570,7 +700,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     end
     local fl = v.flash
     if fl and fl.enabled and rem and rem > 0 and rem <= (fl.threshold or 3) then
-        local wave = 0.5 + 0.5 * math.sin(GetTime() * (fl.speed or 3) * 2 * math.pi)
+        local wave = 0.5 + 0.5 * math.sin((sample and ns.SampleTime() or GetTime()) * (fl.speed or 3) * 2 * math.pi)
         alpha = alpha * (0.2 + 0.8 * wave)
     end
     if not alphaDone then fr:SetAlpha(alpha) end
@@ -605,8 +735,16 @@ function ns.UpdateVisualText(rule, info, fxOnly)
 
     -- keep the effects above animating every frame between engine ticks (only while a time source exists)
     local wantsFx = (fl2 and fl2.enabled) or v.fadeAlpha or v.fadeGrey or (v.flash and v.flash.enabled)
-    fr.fxRule = (wantsFx and (f ~= nil or dobj ~= nil)) and rule or nil
+    -- tenths of a second must move every frame (the engine tick is only 5x per second), so while the duration text is in its
+    -- decimal range it is redrawn from here too
+    local tx = v.text
+    local wantsTenths = tx and tx.enabled and tx.decimals and rem ~= nil and rem > 0 and rem < (tx.decimalBelow or 5)
+    fr.fxRule = ((wantsFx or wantsTenths) and (f ~= nil or dobj ~= nil)) and rule or nil
     fr.fxInfo = info
+    if wantsTenths then
+        fr.text:SetText(FmtRemaining(rem, tx.decimals, tx.decimalBelow))
+        fr.text:Show()
+    end
     if fxOnly then return end
 
     -- stacks / charges text
@@ -708,7 +846,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     end
     if fr.cd then fr.cd:Hide() end
     if sample then
-        fr.text:SetText("12.3"); fr.text:Show()
+        fr.text:SetText(FmtRemaining(rem or SAMPLE_DURATION, t.decimals, t.decimalBelow)); fr.text:Show()
     else
         fr.text:Hide()
     end

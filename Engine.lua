@@ -36,13 +36,13 @@ local function Step()
             if result and not rt.active then
                 rt.active = true
                 rt.lastPlay = now
-                ns.PlaySound(rule.sound)
-                ns.Log("|cff55ff55FIRED|r %s%s", rule.name, (rule.sound.enabled and rule.sound.value ~= "") and "  (sound)" or "")
+                if ns.KindHas(rule, "sound") then ns.PlaySound(ns.EffectiveSound(rule)) end
+                ns.Log("|cff55ff55FIRED|r %s%s", rule.name, (rule.sound.enabled and rule.sound.value ~= "" and ns.KindHas(rule, "sound")) and "  (sound)" or "")
             elseif result and rt.active then
                 local rep = rule.repeatSec or 0
                 if rep > 0 and (now - rt.lastPlay) >= rep then
                     rt.lastPlay = now
-                    ns.PlaySound(rule.sound)
+                    if ns.KindHas(rule, "sound") then ns.PlaySound(ns.EffectiveSound(rule)) end
                     ns.Log("repeat  %s", rule.name)
                 end
             elseif not result then
@@ -52,7 +52,7 @@ local function Step()
                 rt.active = false
             end
             local wanted = false
-            if rule.visual.enabled then
+            if rule.visual.enabled and ns.KindHas(rule, "visual") then
                 local trig = rule.visual.trigger
                 if trig == "buffActive" then
                     wanted = info and info.present == true or false
@@ -70,16 +70,16 @@ local function Step()
         end
         -- Preview (transient, set from the sidebar eye / headphone icons): force-show the visual and/or
         -- loop the sound without touching the rule's own switches or conditions.
-        if ns.IsPreview(rule, "visual") then
+        if ns.IsPreview(rule, "visual") and ns.KindHas(rule, "visual") then
             rt.visualWanted = true
             ns.SetVisualShown(rule, true)
             ns.UpdateVisualText(rule, rt.info)
         end
-        if ns.IsPreview(rule, "sound") then
+        if ns.IsPreview(rule, "sound") and ns.KindHas(rule, "sound") then
             local iv = ((rule.repeatSec or 0) > 0) and math.max(0.5, rule.repeatSec) or 2
             if now - (rt.pvLast or 0) >= iv then
                 rt.pvLast = now
-                ns.PlaySoundPreview(rule.sound)
+                ns.PlaySoundPreview(ns.EffectiveSound(rule))
             end
         else
             rt.pvLast = nil

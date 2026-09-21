@@ -93,7 +93,7 @@ ns.RULE_DEFAULTS = {
         glow = false,
         outline = { enabled = false, width = 2, color = { 1, 0.82, 0, 1 }, pulse = false }, -- shape-following outline glow (1-10 px)
         fadeGrey = false,      -- fade gradually as the buff runs out (grey by default, or to fadeColor)
-        -- fadeMode: blank/none = grey (desaturate) | color
+        -- fadeMode: blank/none = grey (desaturate) | color | transparent
         fadeColor = { 1, 0.1, 0.1, 1 },
         fadeAlpha = false,     -- also fade the opacity as the buff runs out (down to fadeAlphaMin x opacity)
         fadeAlphaMin = 0.15,
@@ -180,7 +180,12 @@ ns.BAR_GROUP_DEFAULTS = { spacing = 3, x = 0, y = -120 }   -- layout blank = man
 function ns.NewBar() return Copy(ns.BAR_DEFAULTS) end
 
 function ns.NewFolder(name, parent)
-    local id = "f" .. tostring(time()) .. tostring(math.random(1000, 9999))
+    local id
+    repeat
+        id = "f" .. tostring(time()) .. tostring(math.random(1000, 9999))
+        local dup
+        for _, x in ipairs(ns.folders) do if x.id == id then dup = true; break end end
+    until not dup
     local f = { id = id, name = name or "Folder", parent = parent }   -- parent = id of the folder this one is nested in (nil = top level)
     ns.folders[#ns.folders + 1] = f
     return f
@@ -189,6 +194,158 @@ end
 function ns.FolderOf(rule)
     if not rule.folder then return nil end
     for _, f in ipairs(ns.folders or {}) do if f.id == rule.folder then return f end end
+end
+
+function ns.FolderById(id)
+    if not id then return nil end
+    for _, f in ipairs(ns.folders or {}) do if f.id == id then return f end end
+end
+
+-- Folder load override. folder.loadOverride = nil | "never" | "always". The nearest folder (starting at the given id, then its
+-- parents) that sets one wins. Nothing is written to the rules, so a rule that leaves the folder is back to its own load settings.
+-- Returns the override and the folder that sets it.
+function ns.FolderLoadOverrideFrom(folderId)
+    local id, guard = folderId, 0
+    while id and guard < 32 do
+        local f = ns.FolderById(id)
+        if not f then return nil end
+        if f.loadOverride == "never" or f.loadOverride == "always" then return f.loadOverride, f end
+        id, guard = f.parent, guard + 1
+    end
+    return nil
+end
+function ns.FolderLoadOverride(rule)
+    return ns.FolderLoadOverrideFrom(rule and rule.folder)
+end
+
+-- Default top-level categories. Created once per profile (flag ui.defaultFolders); a top-level folder that already has the same
+-- name is adopted rather than duplicated; a deleted default is not brought back unless force is true (the All Rules page button).
+-- The category a rule sits in decides its KIND: Display Cues = visual only, Sound Cues = sound only, everything else
+-- (Hybrid Cues, Advanced Cue Tracking, custom folders, unfiled rules) = both.
+ns.DEFAULT_FOLDERS = {
+    { key = "display",  name = "Display Cues",           note = "Default category. Visual-only rules: texture, icon or text. No sound options." },
+    { key = "sound",    name = "Sound Cues",             note = "Default category. Sound-only rules. No display options." },
+    { key = "hybrid",   name = "Hybrid Cues",            note = "Default category. Rules with both a display and a sound." },
+    { key = "advanced", name = "Advanced Cue Tracking",  note = "Default category. Rules that combine several conditions (cooldown state, buff, talents, load conditions). Also the intended home for combination rules once they exist." },
+}
+local OLD_DEFAULT_NAMES = { advanced = "Advanced Rule Tracking" }
+function ns.DefaultFolderInfo(key)
+    for i, d in ipairs(ns.DEFAULT_FOLDERS) do if d.key == key then return d, i end end
+end
+local DEFAULTS_VERSION = 2
+function ns.EnsureDefaultFolders(force)
+    local ui = CueRulesDB and CueRulesDB.ui
+    if not ui or not ns.folders then return 0 end
+    if (ui.defaultFoldersV or 0) >= DEFAULTS_VERSION and not force then return 0 end
+    -- profiles that already had the three original defaults only gain the new Hybrid category (a default the user deleted stays deleted)
+    local upgrading = ui.defaultFolders and not force
+    ui.defaultFolders = true
+    ui.defaultFoldersV = DEFAULTS_VERSION
+    local added = 0
+    for _, d in ipairs(ns.DEFAULT_FOLDERS) do
+        local have
+        for _, f in ipairs(ns.folders) do
+            if not f.parent and (f.default == d.key
+                or (not f.default and type(f.name) == "string" and (f.name:lower() == d.name:lower()
+                    or (OLD_DEFAULT_NAMES[d.key] and f.name:lower() == OLD_DEFAULT_NAMES[d.key]:lower())))) then
+                have = f; break
+            end
+        end
+        if have then
+            have.default = d.key
+            if OLD_DEFAULT_NAMES[d.key] and have.name == OLD_DEFAULT_NAMES[d.key] then have.name = d.name end   -- renamed default
+        elseif not upgrading or d.key == "hybrid" then
+            local nf = ns.NewFolder(d.name)
+            nf.default = d.key
+            added = added + 1
+        end
+    end
+    return added
+end
+
+-- Top-level ancestor folder of a folder id (or nil).
+function ns.TopFolder(folderId)
+    local id, guard, top = folderId, 0, nil
+    while id and guard < 32 do
+        local f = ns.FolderById(id)
+        if not f then return top end
+        top, id, guard = f, f.parent, guard + 1
+    end
+    return top
+end
+-- "display" | "sound" | "hybrid": decided by the top-level category the rule sits in; everything else counts as hybrid.
+function ns.RuleKind(rule)
+    local top = ns.TopFolder(rule and rule.folder)
+    local d = top and top.default
+    if d == "display" or d == "sound" then return d end
+    return "hybrid"
+end
+-- what = "visual" | "sound"
+function ns.KindHas(rule, what)
+    local k = ns.RuleKind(rule)
+    if k == "hybrid" then return true end
+    return (k == "display") == (what == "visual")
+end
+
+-- Sound channel enforced by a folder (nearest ancestor wins). Nothing is written to the rules.
+function ns.FolderSoundChannelFrom(folderId)
+    local id, guard = folderId, 0
+    while id and guard < 32 do
+        local f = ns.FolderById(id)
+        if not f then return nil end
+        if f.soundChannel and f.soundChannel ~= "" and f.soundChannel ~= "none" then return f.soundChannel, f end
+        id, guard = f.parent, guard + 1
+    end
+end
+-- The sound table the engine plays: the rule's own, with the folder-enforced channel applied.
+function ns.EffectiveSound(rule)
+    local s = rule and rule.sound
+    if not s then return s end
+    local ch = ns.FolderSoundChannelFrom(rule.folder)
+    if not ch then return s end
+    local c = {}
+    for k, v in pairs(s) do c[k] = v end
+    c.channel = ch
+    return c
+end
+
+-- One-time: every rule that existed before the cue kinds counts as Hybrid. Whatever sat under Display Cues or Sound Cues
+-- moves under Hybrid Cues (same-named subfolders are merged, nothing is deleted).
+local function MergeFolderInto(src, dstParentId)
+    local existing
+    for _, f in ipairs(ns.folders) do
+        if f ~= src and f.parent == dstParentId and f.name == src.name then existing = f; break end
+    end
+    if not existing then src.parent = dstParentId; return end
+    for _, r in ipairs(ns.rules or {}) do if r.folder == src.id then r.folder = existing.id end end
+    local kids = {}
+    for _, f in ipairs(ns.folders) do if f.parent == src.id then kids[#kids + 1] = f end end
+    for _, k in ipairs(kids) do MergeFolderInto(k, existing.id) end
+    for i, f in ipairs(ns.folders) do if f == src then table.remove(ns.folders, i); break end end
+end
+function ns.MigrateToHybrid()
+    local ui = CueRulesDB and CueRulesDB.ui
+    if not ui or ui.hybridMigrated or not ns.folders or not ns.rules then return 0 end
+    local hybrid
+    for _, f in ipairs(ns.folders) do if not f.parent and f.default == "hybrid" then hybrid = f; break end end
+    if not hybrid then return 0 end
+    ui.hybridMigrated = true
+    local moved = 0
+    for _, key in ipairs({ "display", "sound" }) do
+        local src
+        for _, f in ipairs(ns.folders) do if not f.parent and f.default == key then src = f; break end end
+        if src then
+            for _, r in ipairs(ns.rules) do if r.folder == src.id then r.folder = hybrid.id; moved = moved + 1 end end
+            local kids = {}
+            for _, f in ipairs(ns.folders) do if f.parent == src.id then kids[#kids + 1] = f end end
+            for _, k in ipairs(kids) do MergeFolderInto(k, hybrid.id) end
+        end
+    end
+    -- count everything now under Hybrid for the message
+    local n = 0
+    for _, r in ipairs(ns.rules) do if ns.RuleKind(r) == "hybrid" and r.folder then n = n + 1 end end
+    if n > 0 then ns.hybridMigratedCount = n end
+    return n
 end
 
 -- Fonts: blank/none = the game's default font. Built-ins plus every LibSharedMedia font that is loaded.
@@ -272,6 +429,9 @@ local function InitDB()
     ns.qolBoxes = CueRulesDB.qol.boxes
     CueRulesDB.folders = CueRulesDB.folders or {}
     ns.folders = CueRulesDB.folders
+    ns.EnsureDefaultFolders()
+    local nHyb = ns.MigrateToHybrid()
+    if nHyb and nHyb > 0 then ns.Print(nHyb .. " existing rules are now under Hybrid Cues (they keep both their display and sound options).") end
     CueRulesDB.bars = CueRulesDB.bars or {}
     for _, b in ipairs(CueRulesDB.bars) do Merge(b, ns.BAR_DEFAULTS) end
     ns.bars = CueRulesDB.bars

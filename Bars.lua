@@ -264,7 +264,7 @@ function ns.Bars_Update()
                     fr.timerMode = false
                 elseif sample and present ~= true then
                     dur = SAMPLE_DUR
-                    rem = SAMPLE_DUR - (now % SAMPLE_DUR)
+                    rem = SAMPLE_DUR - (ns.SampleTime() % SAMPLE_DUR)
                     fr.timerMode = false
                 end
                 fr.bar:SetStatusBarColor(unpack4(bar.fillColor))
