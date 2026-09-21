@@ -14,9 +14,12 @@ Open it with `/xui` or `/xayaui` (also under Options > AddOns).
 
 Every dropdown starts blank so you must make a choice; the cooldown, buff and talent conditions must be chosen (or set to "(none)") before a rule can fire.
 
-## Midnight (12.x) limits, honestly stated
+## Midnight (12.x) limitations
 
-Blizzard's Midnight API changes make much combat data *secret*. XayaUI only uses values the game exposes without secrecy, never tries to defeat it, and stays silent when it cannot tell. Consequences: buff-missing detection can be unavailable in some restricted content, stat boxes keep their last readable value during restricted content, and Blizzard can change any of this in a hotfix. See Blizzard's [Combat Philosophy and Addon Disarmament in Midnight](https://news.blizzard.com/en-us/article/24246290/combat-philosophy-and-addon-disarmament-in-midnight) and the [UI Add-On Development Policy](https://us.forums.blizzard.com/en/wow/t/ui-add-on-development-policy/24534). This addon is and will stay free, with visible source.
+Blizzard's Midnight API changes make much combat data *secret*. XayaUI only uses values the game exposes without the secrecy flag. Buff-missing detection can be unavailable in some restricted content, stat boxes keep their *last* readable value during restricted content, and Blizzard can change any of this in a hotfix. (See Blizzard's [Combat Philosophy and Addon Disarmament in Midnight](https://news.blizzard.com/en-us/article/24246290/combat-philosophy-and-addon-disarmament-in-midnight) and the [UI Add-On Development Policy](https://us.forums.blizzard.com/en/wow/t/ui-add-on-development-policy/24534) for more information.) 
+
+This addon is and will stay free, with visible source.
+This addon is for personal use only. Forks are welcome and the community is always welcome to collaborate for improvements. This is an AI-coded project and review from skilled developers is actively welcomed for performance/ux/ui improvements <3 
 
 ## Install
 
