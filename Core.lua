@@ -17,6 +17,24 @@ function ns.Print(...)
     print("|cff33ccffXayaUI|r: " .. table.concat(parts, " "))
 end
 
+-------------------------------------------------------------------------------
+-- Addon Settings > Advanced Debugging: when CueRulesDB.ui.advancedDebug is on, XayaUI's own Lua errors are also
+-- printed to the chat window as a system-style message, on top of whatever BugSack / the default UI error frame
+-- already does. The previous error handler is chained (never replaced), so other addons are unaffected. Filters
+-- on the addon's own folder name in the error text so other addons' errors are not spammed into chat.
+-------------------------------------------------------------------------------
+do
+    local prevHandler = geterrorhandler()
+    seterrorhandler(function(msg)
+        local text = tostring(msg)
+        local ok, on = pcall(function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug end)
+        if ok and on and text:find(addonName, 1, true) and DEFAULT_CHAT_FRAME then
+            DEFAULT_CHAT_FRAME:AddMessage("|cffff5555[XayaUI Error]|r " .. text, 1, 0.35, 0.35)
+        end
+        if prevHandler then return prevHandler(msg) end
+    end)
+end
+
 -- In-game event log (shown in the settings window's debug console tray).
 ns.logBuf = {}
 function ns.Log(fmt, ...)
@@ -91,9 +109,12 @@ ns.RULE_DEFAULTS = {
         alpha = 1,
         additive = false,
         glow = false,
-        outline = { enabled = false, width = 2, color = { 1, 0.82, 0, 1 }, pulse = false }, -- shape-following outline glow (1-10 px)
-        fadeGrey = false,      -- fade gradually as the buff runs out (grey by default, or to fadeColor)
-        -- fadeMode: blank/none = grey (desaturate) | color | transparent
+        -- outline glow: style auto | border | shape. border = pixel border (width / gap / color) + optional soft glow; shape = follows the art
+        outline = { enabled = false, style = "auto", width = 2, gap = 0, color = { 1, 0.82, 0, 1 }, pulse = false,
+            borderOn = true, glowOn = true, glowSize = 8, glowAlpha = 0.6, glowSame = true, glowColor = { 1, 0.82, 0, 1 } },
+        keepAspect = true,     -- Width and Height change together (the ratio at the moment you move a slider)
+        fadeGrey = false,      -- fade gradually as the buff runs out (gray by default, or to fadeColor)
+        -- fadeMode: blank/none = gray (desaturate) | color | transparent
         fadeColor = { 1, 0.1, 0.1, 1 },
         fadeAlpha = false,     -- also fade the opacity as the buff runs out (down to fadeAlphaMin x opacity)
         fadeAlphaMin = 0.15,
@@ -105,6 +126,11 @@ ns.RULE_DEFAULTS = {
             tex = "",
             tint = { 1, 1, 1, 1 }, desaturate = false, additive = false,
             alpha = 1,         -- opacity of the overlay on its own
+            -- Progress-texture rules (visual.fill.enabled) link the base's opacity/greying to this layer by
+            -- default: the overlay never greys and never dims below 1, the base opens at a reduced opacity that
+            -- tracks Overlay opacity to keep their original ratio, and the base greys automatically iff a tint is
+            -- selected (desaturate mirrors recolor). advanced=true breaks that link so all of those are manual again.
+            advanced = false,
         },
         fill = {               -- progress-bar style wipe as the buff runs out (readable aura times only)
             enabled = false,
@@ -114,6 +140,7 @@ ns.RULE_DEFAULTS = {
         },
         flash = { enabled = false, threshold = 3, speed = 3 },  -- pulse the opacity when <= threshold seconds remain
         desatOnCD = false,     -- desaturate while the cooldown spell is on cooldown
+        requireOnBar = false,  -- only show while this rule's spell/buff is currently placed on an action bar
         oocAlpha = 1,          -- opacity multiplier while out of combat (1 = same)
         border = { enabled = false, size = 1, color = { 0, 0, 0, 1 } },
         bg = { enabled = false, color = { 0, 0, 0, 0.5 } },
@@ -227,12 +254,13 @@ ns.DEFAULT_FOLDERS = {
     { key = "sound",    name = "Sound Cues",             note = "Default category. Sound-only rules. No display options." },
     { key = "hybrid",   name = "Hybrid Cues",            note = "Default category. Rules with both a display and a sound." },
     { key = "advanced", name = "Advanced Cue Tracking",  note = "Default category. Rules that combine several conditions (cooldown state, buff, talents, load conditions). Also the intended home for combination rules once they exist." },
+    { key = "cursor",   name = "Mouse Cursor Cues",      note = "Default category. Its settings live in QoL Elements > Cursor Tracker." },
 }
-local OLD_DEFAULT_NAMES = { advanced = "Advanced Rule Tracking" }
+local OLD_DEFAULT_NAMES = { advanced = "Advanced Rule Tracking", cursor = "Mouse Cursor" }
 function ns.DefaultFolderInfo(key)
     for i, d in ipairs(ns.DEFAULT_FOLDERS) do if d.key == key then return d, i end end
 end
-local DEFAULTS_VERSION = 2
+local DEFAULTS_VERSION = 3
 function ns.EnsureDefaultFolders(force)
     local ui = CueRulesDB and CueRulesDB.ui
     if not ui or not ns.folders then return 0 end
@@ -254,7 +282,7 @@ function ns.EnsureDefaultFolders(force)
         if have then
             have.default = d.key
             if OLD_DEFAULT_NAMES[d.key] and have.name == OLD_DEFAULT_NAMES[d.key] then have.name = d.name end   -- renamed default
-        elseif not upgrading or d.key == "hybrid" then
+        elseif not upgrading or d.key == "hybrid" or d.key == "cursor" then
             local nf = ns.NewFolder(d.name)
             nf.default = d.key
             added = added + 1
@@ -349,6 +377,28 @@ function ns.MigrateToHybrid()
     return n
 end
 
+-- One-time: every currently ACTIVE display (rule on + display on + a visual kind) becomes a progress texture
+-- (visual.fill.enabled). Base art and the overlay layer are cropped together by that wipe, so they act as one unit.
+-- The previous fill switch is kept in rule.progressBackup so it can be restored.
+function ns.MigrateToProgress()
+    local ui = CueRulesDB and CueRulesDB.ui
+    if not ui or ui.progressMigrated or not ns.rules then return 0 end
+    ui.progressMigrated = true
+    local n = 0
+    for _, r in ipairs(ns.rules) do
+        local v = r.visual
+        if r.enabled and type(v) == "table" and v.enabled and ns.KindHas(r, "visual") then
+            if type(v.fill) ~= "table" then v.fill = { enabled = false, reverse = false, min = 0, max = 1 } end
+            if not v.fill.enabled then
+                r.progressBackup = { fillEnabled = false }
+                v.fill.enabled = true
+                n = n + 1
+            end
+        end
+    end
+    return n
+end
+
 -- Fonts: blank/none = the game's default font. Built-ins plus every LibSharedMedia font that is loaded.
 local BUILTIN_FONTS = {
     frizqt = { "Friz Quadrata", "Fonts\\FRIZQT__.TTF" },
@@ -419,6 +469,8 @@ local function InitDB()
     CueRulesDB.version = CueRulesDB.version or 1
     CueRulesDB.ui = CueRulesDB.ui or {}
     if CueRulesDB.ui.trayOpen == nil then CueRulesDB.ui.trayOpen = true end
+    -- Advanced Debugging defaults ON (recommended): XayaUI's own Lua errors print to chat as a system message.
+    if CueRulesDB.ui.advancedDebug == nil then CueRulesDB.ui.advancedDebug = true end
     for _, r in ipairs(CueRulesDB.rules) do ns.NormalizeRule(r) end
     ns.rules = CueRulesDB.rules
     CueRulesDB.qol = CueRulesDB.qol or {}
@@ -433,6 +485,8 @@ local function InitDB()
     ns.EnsureDefaultFolders()
     local nHyb = ns.MigrateToHybrid()
     if nHyb and nHyb > 0 then ns.Print(nHyb .. " existing rules are now under Hybrid Cues (they keep both their display and sound options).") end
+    local nProg = ns.MigrateToProgress()
+    if nProg and nProg > 0 then ns.Print(nProg .. " active display(s) were converted to progress textures (base and overlay wipe together).") end
     CueRulesDB.bars = CueRulesDB.bars or {}
     for _, b in ipairs(CueRulesDB.bars) do Merge(b, ns.BAR_DEFAULTS) end
     ns.bars = CueRulesDB.bars

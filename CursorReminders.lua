@@ -16,6 +16,11 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 
+-- Removed for now (Xaya, 2026-09-21): flip this back to true to restore the At-Cursor Reminders feature
+-- (options page entry + the folder it builds). Nothing else in this file changed; ns.CursorReminders_* stays
+-- intact so re-enabling is a one-line change.
+ns.CURSOR_REMINDERS_ENABLED = false
+
 local ANCHOR_NAME = "XayaUICursorAnchor"
 local SUB_NAME = "At-Cursor Reminders"
 local anchor
@@ -72,10 +77,11 @@ end
 local function NewId() return "c" .. tostring(time()) .. tostring(math.random(1000, 9999)) end
 
 local function EnsureFolders()
+    if not ns.CURSOR_REMINDERS_ENABLED then return nil end
     local cfg = Cfg()
     local top
     for _, f in ipairs(ns.folders) do if not f.parent and f.default == "cursor" then top = f; break end end
-    if not top then top = ns.NewFolder("Mouse Cursor"); top.default = "cursor" end
+    if not top then top = ns.NewFolder("Mouse Cursor Cues"); top.default = "cursor" end
     local sub = ns.FolderById(cfg.remFolderId)
     if not sub or sub.parent ~= top.id then
         sub = nil
@@ -95,7 +101,7 @@ local function Configure()
     f.cPoint, f.cRelPoint, f.cScale, f.cAlpha = "CENTER", "CENTER", 1, 1
     f.cSpacing, f.cW, f.cH = cfg.remSpacing or 4, 0, 0
     local side = cfg.remSide or "above"
-    -- Visual.lua's dynamic layout puts a row's TOP edge on the container centre (row: HCENTER) and a column's LEFT edge on it (column: VCENTER)
+    -- Visual.lua's dynamic layout puts a row's TOP edge on the container center (row: HCENTER) and a column's LEFT edge on it (column: VCENTER)
     if side == "above" then f.cGrowth, f.cX, f.cY = "HCENTER", 0, dist + size
     elseif side == "below" then f.cGrowth, f.cX, f.cY = "HCENTER", 0, -dist
     elseif side == "right" then f.cGrowth, f.cX, f.cY = "VCENTER", dist, 0
@@ -131,7 +137,7 @@ function ns.CursorReminders_Apply()
     local cfg = Cfg()
     if not cfg then return end
     ns.CursorReminders_Revert()
-    if cfg.remOn then
+    if cfg.remOn and ns.CURSOR_REMINDERS_ENABLED then
         local _, sub = EnsureFolders()
         Configure()
         SetTracking(true)
@@ -175,6 +181,24 @@ function ns.CursorReminders_Layout()
 end
 
 function ns.CursorReminders_OnDBReady()
+    if not ns.CURSOR_REMINDERS_ENABLED then
+        -- Purge a leftover "At-Cursor Reminders" subfolder from before this was switched off, but only if it is
+        -- empty (no rules point at it) - never touches a folder that still holds something.
+        local cfg = Cfg()
+        for i = #ns.folders, 1, -1 do
+            local f = ns.folders[i]
+            if f.name == SUB_NAME and f.default ~= "cursor" then
+                local used = false
+                for _, r in ipairs(ns.rules or {}) do if r.folder == f.id then used = true; break end end
+                for _, sf in ipairs(ns.folders) do if sf.parent == f.id then used = true; break end end
+                if not used then
+                    table.remove(ns.folders, i)
+                    if cfg and cfg.remFolderId == f.id then cfg.remFolderId = "" end
+                end
+            end
+        end
+        return
+    end
     local cfg = Cfg()
     if cfg and cfg.remOn then SetTracking(true); Configure() end
 end
@@ -189,7 +213,8 @@ function ns.CursorTrackerGroup(Notify)
     local function off() return not C().remOn end
     local SIDE_V = { above = "Above the cursor", below = "Below the cursor", left = "Left of the cursor", right = "Right of the cursor" }
     local SIDE_O = { "above", "below", "left", "right" }
-    g.args.reminders = { type = "group", inline = true, name = "At-Cursor Reminders", order = 36, args = {
+    g.args.reminders = { type = "group", inline = true, name = "At-Cursor Reminders", order = 36,
+        hidden = function() return not ns.CURSOR_REMINDERS_ENABLED end, args = {
         intro = { type = "description", order = 0, width = "full",
             name = function()
                 local n, skipped = ns.CursorReminders_Count()
@@ -220,5 +245,7 @@ function ns.CursorTrackerGroup(Notify)
             desc = "Rebuilds the reminders from your current rules (picks up rules you added or changed since the switch was ticked).",
             func = function() ns.CursorReminders_Apply(); Notify() end },
     } }
+    -- the reminder options are drawn only while the conversion switch is on
+    ns.GateRest(ns, g.args.reminders.args, "cur_rem", "Reminder options", 3, function() return C().remOn end, { intro = true, remOn = true })
     return g
 end

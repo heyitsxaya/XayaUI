@@ -3,13 +3,13 @@
 --
 -- A small texture that follows the mouse cursor. Options: texture (built-in, one of the
 -- local graphics, or a custom file path), height capped at 52 px, opacity, colorizer
--- (solid / class / rainbow / texture's own colours), sparkle trail, and reactions to the
--- global cooldown (GCD) and to spell casting (recolour / rescale the cursor ring, plus an
+-- (solid / class / rainbow / texture's own colors), sparkle trail, and reactions to the
+-- global cooldown (GCD) and to spell casting (recolor / rescale the cursor ring, plus an
 -- optional progress sweep ring).
 --
 -- Midnight note: cooldown / cast times may be SECRET values in restricted content. We never
 -- compare or do arithmetic on a secret; if times are unreadable the sweep is tried through
--- duration objects (pcall) and otherwise the reaction is state-only (recolour / rescale).
+-- duration objects (pcall) and otherwise the reaction is state-only (recolor / rescale).
 -- When the master switch is off nothing is created or polled.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
@@ -33,22 +33,23 @@ ns.CURSOR_DEFAULTS = {
     enabled = false,
     -- cursor texture
     tex = "ring", customPath = "", size = 36, opacity = 1, offsetX = 0, offsetY = 0,
-    -- colorizer: solid | class | rainbow | none (texture's own colours)
+    -- colorizer: solid | class | rainbow | none (texture's own colors)
     colorMode = "solid", color = { 0.55, 0.2, 0.8 }, rainbowSpeed = 0.3,
     -- visibility
     showCombat = "none", hideMouselook = false,
     -- sparkle trail
     trailOn = false, trailTex = "sparkle", trailSize = 12, trailRate = 3, trailLife = 0.6,
     trailSpread = 6, trailOpacity = 1, trailOwnColor = false, trailColor = { 1, 0.85, 0.4 },
-    -- global cooldown reaction
-    gcdOn = false, gcdSweep = true, gcdRingTex = "ringthick", gcdRingSize = 44, gcdRingOpacity = 0.8,
-    gcdRingColor = { 0.55, 0.2, 0.8 }, gcdReverse = false,
-    gcdRecolor = false, gcdColor = { 1, 0.8, 0.2 }, gcdScale = 1, gcdAlphaMult = 1,
+    -- global cooldown reaction (effects are drawn ON the cursor icon and follow its texture, size and scale)
+    gcdOn = false, gcdSwipe = true, gcdOutline = false, gcdWipe = false, gcdGradient = false, gcdFade = false,
+    gcdRecolor = false, gcdColor = { 1, 0.8, 0.2 }, gcdDir = "up", gcdReverse = false, gcdFxOpacity = 0.8,
+    gcdOutlineScale = 1.25, gcdScale = 1, gcdAlphaMult = 1,
     gcdOnlyInstances = false, gcdCombatOnly = false,
-    -- spell casting reaction
-    castOn = false, castSweep = true, castRingTex = "ring", castRingSize = 50, castRingOpacity = 0.9,
-    castRingColor = { 1, 0.45, 0.1 }, castReverse = false,
-    castRecolor = true, castColor = { 1, 0.5, 0.1 }, castScale = 1.15, castAlphaMult = 1,
+    -- spell casting reaction: same effect set; by default it reads the GCD choices (castSame)
+    castOn = false, castSame = true,
+    castSwipe = true, castOutline = false, castWipe = false, castGradient = false, castFade = false,
+    castRecolor = true, castColor = { 1, 0.5, 0.1 }, castDir = "up", castReverse = false, castFxOpacity = 0.9,
+    castOutlineScale = 1.25, castScale = 1.15, castAlphaMult = 1,
 }
 
 local function CopyVal(v) if type(v) == "table" then return { unpack(v) } end return v end
@@ -58,7 +59,7 @@ local function IsSecret(v) return ns.IsSecret and ns.IsSecret(v) or false end
 function ns.CursorOn() local c = Cfg(); return c and c.enabled and true or false end
 
 -------------------------------------------------------------------------------
--- texture + colour helpers
+-- texture + color helpers
 -------------------------------------------------------------------------------
 local lgIndex
 local function ResolveTex(key, custom)
@@ -104,14 +105,24 @@ end
 -------------------------------------------------------------------------------
 -- frames
 -------------------------------------------------------------------------------
-local fr, tex, tf, sw, gcdCd, castCd
+local fr, tex, tf, sw, fxSwipe, fxOutline, fxWipe, fxGrad
 local NPART = 48
 local particles, activeN = {}, 0
 local lastX, lastY, spawnAcc = nil, nil, 0
 local mod = { color = nil, scale = 1, alpha = 1 }
 local curKey, curState = nil, nil
 local pollAcc = 0
+local prog, fadeMul = nil, nil
+local fxOn = {}
 local Layout
+
+-- reaction settings: casting reads the GCD's choices while "castSame" is ticked
+local EFFECT_KEYS = { "Swipe", "Outline", "Wipe", "Gradient", "Fade", "Recolor", "Color", "Dir", "Reverse", "FxOpacity", "OutlineScale", "Scale", "AlphaMult" }
+local function K(cfg, P, name)
+    if P == "cast" and cfg.castSame then return cfg["gcd" .. name] end
+    return cfg[P .. name]
+end
+ns.CURSOR_EFFECT_KEYS = EFFECT_KEYS
 
 local function ClearTrail()
     for i = 1, #particles do local p = particles[i]; p.on = false; p.tex:Hide() end
@@ -243,43 +254,114 @@ local function Compute(cfg)
     end
 end
 
-local function SetupSweep(cdf, texKey, size, opacity, color, reverse)
-    local path = ResolveTex(texKey)
+local function SetupCd(cdf, path, scale, opacity, color, reverse)
+    local w, h = fr:GetSize()
     cdf:ClearAllPoints()
     cdf:SetPoint("CENTER", fr, "CENTER", 0, 0)
-    local h = math.max(8, math.min(MAXH, size or 40))
-    cdf:SetSize(h, h)
+    cdf:SetSize(w * scale, h * scale)
     cdf:SetSwipeTexture(path)
     local c = color or { 1, 1, 1 }
     cdf:SetSwipeColor(c[1] or 1, c[2] or 1, c[3] or 1, opacity or 1)
     cdf:SetReverse(reverse and true or false)
 end
 
-local function ApplyState(cfg, state, kind, st, du)
-    curState = state
-    mod.color, mod.scale, mod.alpha = nil, 1, 1
-    gcdCd:Hide(); castCd:Hide()
-    if state == "gcd" then
-        if cfg.gcdRecolor then mod.color = cfg.gcdColor or { 1, 1, 1 } end
-        mod.scale, mod.alpha = cfg.gcdScale or 1, cfg.gcdAlphaMult or 1
-        if cfg.gcdSweep then
-            SetupSweep(gcdCd, cfg.gcdRingTex, cfg.gcdRingSize, cfg.gcdRingOpacity, cfg.gcdRingColor, cfg.gcdReverse)
-            gcdCd:Show()
-            if not StartSweep(gcdCd, st, du, "gcd") then gcdCd:Hide() end
-        end
-    elseif state == "cast" then
-        if cfg.castRecolor then mod.color = cfg.castColor or { 1, 1, 1 } end
-        mod.scale, mod.alpha = cfg.castScale or 1, cfg.castAlphaMult or 1
-        if cfg.castSweep then
-            SetupSweep(castCd, cfg.castRingTex, cfg.castRingSize, cfg.castRingOpacity, cfg.castRingColor, cfg.castReverse)
-            castCd:Show()
-            if not StartSweep(castCd, st, du, kind) then castCd:Hide() end
-        end
+-- show only the leading fraction f (0-1) of a texture that is laid over the cursor icon, growing from the given edge
+local function Crop(t, w, h, f, dir)
+    if f <= 0.002 then t:Hide(); return end
+    if f > 1 then f = 1 end
+    t:ClearAllPoints()
+    if dir == "down" then
+        t:SetPoint("TOPLEFT", fr, "TOPLEFT"); t:SetPoint("TOPRIGHT", fr, "TOPRIGHT"); t:SetHeight(h * f); t:SetTexCoord(0, 1, 0, f)
+    elseif dir == "right" then
+        t:SetPoint("BOTTOMLEFT", fr, "BOTTOMLEFT"); t:SetPoint("TOPLEFT", fr, "TOPLEFT"); t:SetWidth(w * f); t:SetTexCoord(0, f, 0, 1)
+    elseif dir == "left" then
+        t:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT"); t:SetPoint("TOPRIGHT", fr, "TOPRIGHT"); t:SetWidth(w * f); t:SetTexCoord(1 - f, 1, 0, 1)
+    else
+        t:SetPoint("BOTTOMLEFT", fr, "BOTTOMLEFT"); t:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT"); t:SetHeight(h * f); t:SetTexCoord(0, 1, 1 - f, 1)
     end
-    Layout(cfg)
+    t:Show()
 end
 
--- sizes, texture, colour of the base cursor texture (uses the current reaction modifiers)
+-- progress numbers for the wipe / gradient / fade effects (readable times; the GCD falls back to an estimate)
+local function ProgressFor(state, st, du)
+    if st and du and du > 0 then return { start = st, dur = du } end
+    if state == "gcd" then
+        local dur = 1.5
+        local ok, h = pcall(GetHaste)
+        if ok and type(h) == "number" and not IsSecret(h) then dur = math.max(0.75, 1.5 / (1 + h / 100)) end
+        return { start = GetTime(), dur = dur, est = true }
+    end
+end
+
+local function UpdateFx(cfg)
+    if not prog or not curState then return end
+    local P = curState
+    local p = (GetTime() - prog.start) / prog.dur
+    if p < 0 then p = 0 elseif p > 1 then p = 1 end
+    local rev = K(cfg, P, "Reverse")
+    local f = rev and p or (1 - p)
+    local w, h = fr:GetSize()
+    local dir = K(cfg, P, "Dir") or "up"
+    if fxOn.wipe then Crop(fxWipe, w, h, f, dir) end
+    if fxOn.grad then Crop(fxGrad, w, h, f, dir) end
+    if fxOn.fade then
+        local m = K(cfg, P, "AlphaMult") or 1
+        fadeMul = m + (1 - m) * (rev and (1 - p) or p)
+    end
+end
+
+local function ApplyState(cfg, state, kind, st, du)
+    if state and not cfg[state .. "On"] then state = nil end   -- a reaction that is switched off never draws anything
+    curState = state
+    mod.color, mod.scale, mod.alpha = nil, 1, 1
+    prog, fadeMul = nil, nil
+    fxOn.wipe, fxOn.grad, fxOn.fade = false, false, false
+    fxSwipe:Hide(); fxOutline:Hide(); fxWipe:Hide(); fxGrad:Hide()
+    if state then
+        local P = state
+        local c = K(cfg, P, "Color") or { 1, 1, 1 }
+        if K(cfg, P, "Recolor") then mod.color = c end
+        mod.scale, mod.alpha = K(cfg, P, "Scale") or 1, K(cfg, P, "AlphaMult") or 1
+        Layout(cfg)      -- sizes the cursor first: every effect below is sized from it
+        local path = ResolveTex(cfg.tex, cfg.customPath)
+        local op, rev = K(cfg, P, "FxOpacity") or 0.8, K(cfg, P, "Reverse")
+        if K(cfg, P, "Swipe") then
+            SetupCd(fxSwipe, path, 1, op, c, rev)
+            fxSwipe:Show()
+            if not StartSweep(fxSwipe, st, du, kind) then fxSwipe:Hide() end
+        end
+        if K(cfg, P, "Outline") then
+            SetupCd(fxOutline, ResolveTex("ringthick"), K(cfg, P, "OutlineScale") or 1.25, op, c, rev)
+            fxOutline:Show()
+            if not StartSweep(fxOutline, st, du, kind) then fxOutline:Hide() end
+        end
+        local wantWipe, wantGrad, wantFade = K(cfg, P, "Wipe"), K(cfg, P, "Gradient"), K(cfg, P, "Fade")
+        if wantWipe or wantGrad or wantFade then
+            prog = ProgressFor(state, st, du)
+            if prog then
+                fxOn.wipe, fxOn.grad, fxOn.fade = wantWipe and true or false, wantGrad and true or false, wantFade and true or false
+                if fxOn.wipe then fxWipe:SetTexture(path); fxWipe:SetVertexColor(c[1] or 1, c[2] or 1, c[3] or 1, op) end
+                if fxOn.grad then
+                    fxGrad:SetTexture(path)
+                    local dir = K(cfg, P, "Dir") or "up"
+                    local r, g, b = c[1] or 1, c[2] or 1, c[3] or 1
+                    local dim, bright = CreateColor(r, g, b, op * 0.15), CreateColor(r, g, b, op)
+                    local orient = (dir == "up" or dir == "down") and "VERTICAL" or "HORIZONTAL"
+                    local lo, hi = dim, bright                    -- lo = bottom / left edge, hi = top / right edge
+                    if dir == "down" or dir == "left" then lo, hi = bright, dim end
+                    if not pcall(fxGrad.SetGradient, fxGrad, orient, lo, hi) then fxGrad:SetVertexColor(r, g, b, op) end
+                end
+                tex:SetAlpha(fxOn.wipe and 0.3 or 1)     -- the wipe reveals the icon over a dimmed copy of itself
+            end
+        end
+    else
+        Layout(cfg)
+    end
+    if not (state and prog and fxOn.wipe) then tex:SetAlpha(1) end
+    UpdateFx(cfg)
+end
+
+-- sizes, texture, color of the base cursor texture (uses the current reaction modifiers)
 function Layout(cfg)
     local path, tw, th = ResolveTex(cfg.tex, cfg.customPath)
     local h = math.max(8, math.min(MAXH, (cfg.size or 36) * (mod.scale or 1)))
@@ -301,7 +383,8 @@ local function OnUpdate(self, el)
     self:ClearAllPoints()
     self:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x + (cfg.offsetX or 0), y + (cfg.offsetY or 0))
     local ml = cfg.hideMouselook and IsMouselooking and IsMouselooking() or false
-    self:SetAlpha(ml and 0 or (cfg.opacity or 1) * (mod.alpha or 1))
+    if prog then UpdateFx(cfg) end
+    self:SetAlpha(ml and 0 or (cfg.opacity or 1) * (fadeMul or mod.alpha or 1))
     sw:SetAlpha(ml and 0 or 1)
     if cfg.colorMode == "rainbow" and not mod.color then tex:SetVertexColor(BaseColor(cfg)) end
     if cfg.trailOn and not ml then TrailMove(cfg, x, y); lastX, lastY = x, y
@@ -319,6 +402,9 @@ local function OnUpdate(self, el)
                 ApplyState(cfg, state, kind, st, du)
             end
         end
+    elseif curState or curKey then   -- both reactions were switched off while one was drawn: clear it now
+        curKey = nil
+        ApplyState(cfg, nil)
     end
 end
 
@@ -344,7 +430,9 @@ local function Ensure()
         c:Hide()
         return c
     end
-    gcdCd, castCd = MakeCd(), MakeCd()
+    fxSwipe, fxOutline = MakeCd(), MakeCd()
+    fxWipe = sw:CreateTexture(nil, "ARTWORK"); fxWipe:Hide()
+    fxGrad = sw:CreateTexture(nil, "ARTWORK", nil, 1); fxGrad:Hide()
     tf = CreateFrame("Frame", nil, UIParent)
     tf:SetFrameStrata("TOOLTIP"); tf:SetFrameLevel(90)
     tf:SetAllPoints(UIParent)
@@ -369,7 +457,8 @@ function ns.Cursor_Apply()
     if not show then
         if fr then
             fr:Hide(); sw:Hide(); tf:Hide()
-            gcdCd:Hide(); castCd:Hide()
+            fxSwipe:Hide(); fxOutline:Hide(); fxWipe:Hide(); fxGrad:Hide()
+            prog, fadeMul = nil, nil
             ClearTrail()
         end
         curKey, curState = nil, nil
@@ -380,6 +469,7 @@ function ns.Cursor_Apply()
     curKey = nil                 -- force the reaction state to be re-evaluated
     mod.color, mod.scale, mod.alpha = nil, 1, 1
     Layout(cfg)
+    ApplyState(cfg, nil)        -- clears any reaction effects still drawn (e.g. after a setting was switched off)
     fr:Show(); sw:Show(); tf:Show()
 end
 
@@ -419,7 +509,7 @@ function ns.CursorTrackerGroup(Notify)
     local function rng(key, name, order, min, max, step, extra)
         return merge({ type = "range", name = name, order = order, min = min, max = max, step = step,
             get = function() return C()[key] or min end,
-            set = function(_, v) C()[key] = v; apply() end }, extra)
+            set = function(_, v) C()[key] = v; ns.Cursor_Apply() end }, extra)   -- no Notify: rebuilding the page mid-drag broke the slider
     end
     local function sel(key, name, order, vals, ord, extra)
         return merge({ type = "select", name = name, order = order, values = vals, sorting = ord,
@@ -429,7 +519,7 @@ function ns.CursorTrackerGroup(Notify)
     local function clr(key, name, order, extra)
         return merge({ type = "color", name = name, order = order, hasAlpha = false,
             get = function() local c = C()[key] or { 1, 1, 1 }; return c[1], c[2], c[3] end,
-            set = function(_, r, g, b) C()[key] = { r, g, b }; apply() end }, extra)
+            set = function(_, r, g, b) C()[key] = { r, g, b }; ns.Cursor_Apply() end }, extra)
     end
     local function off() return not C().enabled end
 
@@ -446,13 +536,83 @@ function ns.CursorTrackerGroup(Notify)
 
     local COMBAT_V = { none = "Always", yes = "Only in combat", no = "Only out of combat" }
     local COMBAT_O = { "none", "yes", "no" }
-    local COLOR_V = { solid = "Solid colour", class = "Class colour", rainbow = "Rainbow cycle", none = "Texture's own colours" }
+    local COLOR_V = { solid = "Solid color", class = "Class color", rainbow = "Rainbow cycle", none = "Texture's own colors" }
     local COLOR_O = { "solid", "class", "rainbow", "none" }
 
-    local function gcdOff() return not C().enabled or not C().gcdOn end
-    local function castOff() return not C().enabled or not C().castOn end
+    local DIR_V = { up = "Up", down = "Down", left = "Left", right = "Right" }
+    local DIR_O = { "up", "down", "left", "right" }
+    -- one reaction group (GCD or casting). Every effect is drawn ON the cursor icon, so it takes the icon's texture,
+    -- size and scale; casting reads the GCD's choices while "Same as Global Cooldown" is ticked.
+    local function react(P, title, order)
+        local function dis() return not C().enabled or not C()[P .. "On"] end
+        local function hid() return P == "cast" and C().castSame and true or false end
+        local function eff(n)   -- the value that is actually used (casting reads the GCD's while "same" is ticked)
+            local c = C()
+            if P == "cast" and c.castSame then return c["gcd" .. n] end
+            return c[P .. n]
+        end
+        local function anyOf(...) for _, n in ipairs({ ... }) do if eff(n) then return true end end return false end
+        -- an option is only shown while it can change something that is actually drawn
+        local REL = {
+            Color = function() return anyOf("Swipe", "Outline", "Wipe", "Gradient", "Recolor") end,
+            Dir = function() return anyOf("Wipe", "Gradient") end,
+            Reverse = function() return anyOf("Swipe", "Outline", "Wipe", "Gradient", "Fade") end,
+            FxOpacity = function() return anyOf("Swipe", "Outline", "Wipe", "Gradient") end,
+            OutlineScale = function() return anyOf("Outline") end,
+        }
+        local function fx(name, label, o, kind, extra, ...)
+            local key = P .. name
+            local d
+            if kind == "tog" then d = tog(key, label, o, extra)
+            elseif kind == "rng" then d = rng(key, label, o, ...)
+            elseif kind == "sel" then d = sel(key, label, o, ...)
+            else d = clr(key, label, o, extra) end
+            local rel = REL[name]
+            d.disabled = dis
+            d.hidden = function() return hid() or not C()[P .. "On"] or (rel and not rel()) or false end
+            return d
+        end
+        local a = {
+            on = tog(P .. "On", P == "gcd" and "React to the global cooldown" or "React to spell casting and channeling", 1, { width = "full",
+                desc = P == "cast" and "Casting takes priority over the GCD reaction while it lasts." or nil }),
+        }
+        if P == "cast" then
+            a.castSame = tog("castSame", "Same as Global Cooldown", 2, { width = "full", disabled = dis,
+                hidden = function() return not C().castOn end,
+                desc = "Casting uses exactly the effects, color, direction and opacity chosen under Global Cooldown. Unticking copies the current Global Cooldown choices here so you can change them.",
+                set = function(_, v)
+                    local c = C()
+                    if not v then for _, n in ipairs(ns.CURSOR_EFFECT_KEYS) do c["cast" .. n] = CopyVal(c["gcd" .. n]) end end
+                    c.castSame = v and true or false
+                    ns.Cursor_Apply(); Notify()
+                end })
+        end
+        a.swipe = fx("Swipe", "Swipe overlay", 3, "tog", { desc = "The cursor's own shape is swiped clockwise over the duration, like a cooldown swipe. Works even when the game hides the times." })
+        a.outline = fx("Outline", "Moving outline", 4, "tog", { desc = "A ring around the cursor that sweeps over the duration. Its size is a multiple of the cursor size." })
+        a.wipe = fx("Wipe", "Wipe", 5, "tog", { desc = "The cursor is revealed edge to edge (over a dimmed copy) in the chosen direction. Needs readable times; the GCD is estimated from your haste when the game hides it." })
+        a.gradient = fx("Gradient", "Gradient fill", 6, "tog", { desc = "A color gradient in the cursor's shape fills in the chosen direction. Same timing rules as Wipe." })
+        a.fade = fx("Fade", "Transparency fade", 7, "tog", { desc = "The cursor's opacity moves from the 'Start opacity' below to full over the duration." })
+        a.recolor = fx("Recolor", "Recolor the cursor", 8, "tog")
+        a.color = fx("Color", "Effect color", 9, "clr")
+        a.dir = fx("Dir", "Direction", 10, "sel", nil, DIR_V, DIR_O)
+        a.reverse = fx("Reverse", "Fill instead of drain", 11, "tog", { desc = "Wipe, gradient and swipe drain by default; ticked they fill up." })
+        a.fxOpacity = fx("FxOpacity", "Effect opacity", 12, "rng", nil, 0.05, 1, 0.05, { isPercent = true })
+        a.outlineScale = fx("OutlineScale", "Outline size (x cursor)", 13, "rng", nil, 1, 1.8, 0.05)
+        a.scale = fx("Scale", "Cursor scale", 14, "rng", nil, 0.5, 2, 0.05, { desc = "Multiplies the cursor height; still capped at " .. MAXH .. " px. Effects follow it." })
+        a.alphaMult = fx("AlphaMult", "Start opacity", 15, "rng", nil, 0.1, 1, 0.05, { isPercent = true, desc = "Cursor opacity while this is active (the start value when Transparency fade is on)." })
+        if P == "gcd" then
+            a.inst = tog("gcdOnlyInstances", "Only in instances", 16, { disabled = dis, hidden = function() return not C().gcdOn end })
+            a.combat = tog("gcdCombatOnly", "Only in combat", 17, { disabled = dis, hidden = function() return not C().gcdOn end })
+        end
+        -- the effect options are drawn only while the reaction is switched on; the whole group only while the tracker is on
+        local top = { on = a.on }
+        a.on = nil
+        ns.GateRest(ns, a, "cur_" .. P .. "_fx", "Effects", 2, function() return C()[P .. "On"] end, {})
+        top["pane_cur_" .. P .. "_fx"] = a["pane_cur_" .. P .. "_fx"]
+        return ns.GatedPane(ns, "cur_" .. P, title, order, function() return C().enabled end, top)
+    end
 
-    return {
+    local g = {
         type = "group", name = "Cursor Tracker", order = 2,
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
@@ -474,8 +634,8 @@ function ns.CursorTrackerGroup(Notify)
             } },
 
             colorizer = { type = "group", inline = true, name = "Colorizer", order = 20, disabled = off, args = {
-                colorMode = sel("colorMode", "Colour mode", 1, COLOR_V, COLOR_O, { desc = "Also colours the sparkle trail (unless the trail has its own colour)." }),
-                color = clr("color", "Colour", 2, { hidden = function() return C().colorMode ~= "solid" end }),
+                colorMode = sel("colorMode", "Color mode", 1, COLOR_V, COLOR_O, { desc = "Also colors the sparkle trail (unless the trail has its own color)." }),
+                color = clr("color", "Color", 2, { hidden = function() return C().colorMode ~= "solid" end }),
                 rainbowSpeed = rng("rainbowSpeed", "Rainbow speed", 3, 0.05, 2, 0.05, { hidden = function() return C().colorMode ~= "rainbow" end }),
             } },
 
@@ -483,47 +643,17 @@ function ns.CursorTrackerGroup(Notify)
                 trailOn = tog("trailOn", "Enable sparkle trail", 1, { width = "full", desc = "Sparkles spawn as the cursor moves and fade out. Nothing spawns while the cursor is still." }),
                 trailTex = sel("trailTex", "Sparkle texture", 2, builtV, builtO, { disabled = function() return off() or not C().trailOn end }),
                 trailSize = rng("trailSize", "Sparkle size (px)", 3, 4, 24, 1, { disabled = function() return off() or not C().trailOn end }),
-                trailRate = rng("trailRate", "Density (per 20 px moved)", 4, 1, 10, 1, { disabled = function() return off() or not C().trailOn end }),
+                trailRate = rng("trailRate", "Density", 4, 1, 10, 1, { desc = "Sparkles per 20 px the cursor moves.", disabled = function() return off() or not C().trailOn end }),
                 trailLife = rng("trailLife", "Lifetime (s)", 5, 0.2, 2, 0.1, { disabled = function() return off() or not C().trailOn end }),
                 trailSpread = rng("trailSpread", "Spread (px)", 6, 0, 20, 1, { disabled = function() return off() or not C().trailOn end }),
                 trailOpacity = rng("trailOpacity", "Trail opacity", 7, 0.05, 1, 0.05, { isPercent = true, disabled = function() return off() or not C().trailOn end }),
-                trailOwnColor = tog("trailOwnColor", "Use a separate trail colour", 8, { disabled = function() return off() or not C().trailOn end }),
-                trailColor = clr("trailColor", "Trail colour", 9, { disabled = function() return off() or not C().trailOn end,
+                trailOwnColor = tog("trailOwnColor", "Separate trail color", 8, { disabled = function() return off() or not C().trailOn end }),
+                trailColor = clr("trailColor", "Trail color", 9, { disabled = function() return off() or not C().trailOn end,
                     hidden = function() return not C().trailOwnColor end }),
             } },
 
-            gcd = { type = "group", inline = true, name = "Global Cooldown", order = 40, disabled = off, args = {
-                gcdOn = tog("gcdOn", "React to the global cooldown", 1, { width = "full" }),
-                gcdSweep = tog("gcdSweep", "Show a GCD sweep ring", 2, { disabled = gcdOff,
-                    desc = "A ring that drains (or fills) over the GCD. If the game hides the GCD times, the addon tries the duration-object route; if that fails the ring is skipped and only the recolour / rescale below applies." }),
-                gcdRingTex = sel("gcdRingTex", "Ring texture", 3, builtV, builtO, { disabled = gcdOff }),
-                gcdRingSize = rng("gcdRingSize", "Ring height (px)", 4, 8, MAXH, 1, { disabled = gcdOff }),
-                gcdRingOpacity = rng("gcdRingOpacity", "Ring opacity", 5, 0.05, 1, 0.05, { isPercent = true, disabled = gcdOff }),
-                gcdRingColor = clr("gcdRingColor", "Ring colour", 6, { disabled = gcdOff }),
-                gcdReverse = tog("gcdReverse", "Fill instead of drain", 7, { disabled = gcdOff }),
-                gcdRecolor = tog("gcdRecolor", "Recolour the cursor during the GCD", 8, { disabled = gcdOff }),
-                gcdColor = clr("gcdColor", "GCD colour", 9, { disabled = gcdOff, hidden = function() return not C().gcdRecolor end }),
-                gcdScale = rng("gcdScale", "Cursor scale during GCD", 10, 0.5, 2, 0.05, { disabled = gcdOff, desc = "Multiplies the cursor height; still capped at " .. MAXH .. " px." }),
-                gcdAlphaMult = rng("gcdAlphaMult", "Cursor opacity during GCD (x)", 11, 0.1, 1, 0.05, { disabled = gcdOff, isPercent = true }),
-                gcdOnlyInstances = tog("gcdOnlyInstances", "Only in instances", 12, { disabled = gcdOff }),
-                gcdCombatOnly = tog("gcdCombatOnly", "Only in combat", 13, { disabled = gcdOff }),
-            } },
-
-            cast = { type = "group", inline = true, name = "Spell Casting", order = 50, disabled = off, args = {
-                castOn = tog("castOn", "React to spell casting and channeling", 1, { width = "full",
-                    desc = "Casting takes priority over the GCD reaction while it lasts." }),
-                castSweep = tog("castSweep", "Show a cast progress ring", 2, { disabled = castOff,
-                    desc = "Ring that follows your cast or channel. Needs readable cast times (or duration objects); otherwise only the recolour / rescale below applies." }),
-                castRingTex = sel("castRingTex", "Ring texture", 3, builtV, builtO, { disabled = castOff }),
-                castRingSize = rng("castRingSize", "Ring height (px)", 4, 8, MAXH, 1, { disabled = castOff }),
-                castRingOpacity = rng("castRingOpacity", "Ring opacity", 5, 0.05, 1, 0.05, { isPercent = true, disabled = castOff }),
-                castRingColor = clr("castRingColor", "Ring colour", 6, { disabled = castOff }),
-                castReverse = tog("castReverse", "Fill instead of drain", 7, { disabled = castOff }),
-                castRecolor = tog("castRecolor", "Recolour the cursor while casting", 8, { disabled = castOff }),
-                castColor = clr("castColor", "Casting colour", 9, { disabled = castOff, hidden = function() return not C().castRecolor end }),
-                castScale = rng("castScale", "Cursor scale while casting", 10, 0.5, 2, 0.05, { disabled = castOff }),
-                castAlphaMult = rng("castAlphaMult", "Cursor opacity while casting (x)", 11, 0.1, 1, 0.05, { disabled = castOff, isPercent = true }),
-            } },
+            gcd = react("gcd", "Global Cooldown", 40),
+            cast = react("cast", "Spell Casting", 50),
 
             vis = { type = "group", inline = true, name = "Visibility", order = 60, disabled = off, args = {
                 showCombat = sel("showCombat", "Show", 1, COMBAT_V, COMBAT_O),
@@ -540,4 +670,14 @@ function ns.CursorTrackerGroup(Notify)
                 end },
         },
     }
+    -- everything under the enable switch is drawn only while the tracker is on, as collapsible panes
+    local ga, en = g.args, function() return C().enabled end
+    local ta = ga.trail.args
+    ns.GatePane(ns, ta, "cur_trailcol", "Trail color", 8.5, function() return C().trailOwnColor end, { "trailColor" })
+    ns.GateRest(ns, ta, "cur_trail", "Trail options", 2, function() return C().trailOn end, { trailOn = true })
+    for _, k in ipairs({ "look", "colorizer", "trail", "vis" }) do
+        local grp = ga[k]
+        ga[k] = ns.GatedPane(ns, "cur_" .. k, grp.name, grp.order, en, grp.args)
+    end
+    return g
 end

@@ -9,6 +9,9 @@ ns.runtime = setmetatable({}, { __mode = "k" }) -- rule -> { active, lastPlay, v
 local dirty = true
 local TICK = 0.2
 local acc = 0
+local snapAcc = 0
+local SNAP_EVERY = 5   -- seconds between auto status snapshots while in combat
+local wasInCombat = false
 
 local function RT(rule)
     local rt = ns.runtime[rule]
@@ -18,6 +21,7 @@ end
 
 local function Step()
     if not ns.rules then return end
+    if ns.RefreshActionBarSpells then ns.RefreshActionBarSpells() end
     local ctx = ns.ReadContext()
     local now = GetTime()
     for _, rule in ipairs(ns.rules) do
@@ -59,6 +63,11 @@ local function Step()
                 elseif trig == "condition" then
                     wanted = result and true or false
                 end   -- blank / none: nothing is shown
+                -- gate: never show while the rule's identifying spell isn't currently on an action bar
+                if wanted and rule.visual.requireOnBar and ns.SpellOnActionBar then
+                    local checkID = (rule.spellID and rule.spellID ~= 0) and rule.spellID or rule.buffID
+                    if not ns.SpellOnActionBar(checkID) then wanted = false end
+                end
             end
             rt.visualWanted = wanted
             ns.SetVisualShown(rule, wanted)
@@ -105,11 +114,19 @@ for _, e in ipairs({
     "PLAYER_ENTERING_WORLD", "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_CHARGES",
     "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "GROUP_ROSTER_UPDATE",
     "ZONE_CHANGED_NEW_AREA", "PLAYER_SPECIALIZATION_CHANGED", "TRAIT_CONFIG_UPDATED", "SPELLS_CHANGED",
+    "ACTIONBAR_SLOT_CHANGED", "UPDATE_BONUS_ACTIONBAR", "ACTIONBAR_PAGE_CHANGED", "UPDATE_SHAPESHIFT_FORM",
 }) do f:RegisterEvent(e) end
 f:RegisterUnitEvent("UNIT_AURA", "player")
 f:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_ENTERING_WORLD" and ns.ClearSecrecyCache then ns.ClearSecrecyCache() end
     if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "TRAIT_CONFIG_UPDATED" or event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" then ns.talentList = nil; ns.spellList = nil end
+    -- auto-capture status into the ring-buffer log at combat start/end, since /xui status can't be typed mid-fight
+    if event == "PLAYER_REGEN_DISABLED" then
+        snapAcc = 0
+        if ns.LogStatusSnapshot then ns.LogStatusSnapshot("combat start") end
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        if ns.LogStatusSnapshot then ns.LogStatusSnapshot("combat end") end
+    end
     dirty = true
 end)
 f:SetScript("OnUpdate", function(_, elapsed)
@@ -119,4 +136,15 @@ f:SetScript("OnUpdate", function(_, elapsed)
         acc = 0
         Step()
     end
+    local inCombat = (UnitAffectingCombat and UnitAffectingCombat("player")) or false
+    if inCombat then
+        snapAcc = snapAcc + elapsed
+        if snapAcc >= SNAP_EVERY then
+            snapAcc = 0
+            if ns.LogStatusSnapshot then ns.LogStatusSnapshot("combat tick") end
+        end
+    else
+        snapAcc = 0
+    end
+    wasInCombat = inCombat
 end)

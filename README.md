@@ -12,6 +12,8 @@ Open it with `/xui` or `/xayaui` (also under Options > AddOns).
 
 **QoL Elements.** Customizable stats text boxes built from `{tokens}` such as `{crit}`, `{haste}`, `{mastery}`, `{vers}`.
 
+**Cursor Tracker** (QoL Elements, off by default; `/xui cursor`). A texture that follows the mouse pointer: built-in rings, adjustable shapes (circle, square, triangle, diamond, pentagon, hexagon, star with line thickness and inner fill), any local graphic or your own file, max height 52 px. Options for opacity, offset, color (solid, class, rainbow), a sparkle trail, and reactions to the global cooldown and spell casting (swipe, moving outline, wipe, gradient fill, transparency fade, recolor, scale). Its sub-category **At-Cursor Reminders** shows the spell icons of your rules' displays next to the cursor (above, below, left or right), either as duplicates in a Mouse Cursor folder or by converting the rules in place, for all rules or only the ones you switch on, with options for duration text, icon size, border and glow.
+
 Every dropdown starts blank so you must make a choice; the cooldown, buff and talent conditions must be chosen (or set to "(none)") before a rule can fire.
 
 ## Midnight (12.x) limitations

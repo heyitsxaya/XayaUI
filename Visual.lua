@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 -- Visual.lua : one texture frame per rule, shown/hidden by the engine.
 -- Rotation / mirror / flip, recolor, border, background, pulsing glow ring,
--- shape-following OUTLINE glow (1-10 px, colour, pulse), fade-to-grey as the
+-- shape-following OUTLINE glow (1-10 px, color, pulse), fade-to-gray as the
 -- buff runs out, desaturate on cooldown, buff-duration text, stacks/charges text.
 -- Drag-to-position while unlocked (/xui unlock).
 -------------------------------------------------------------------------------
@@ -12,6 +12,7 @@ ns.unlocked = false
 ns.moveUnlocked = {}   -- per-rule "movement unlocked" (session only); set from the lock icon on the sidebar rows
 local function Unl(rule) return (ns.unlocked or ns.moveUnlocked[rule]) and true or false end
 function ns.IsMoveUnlocked(rule) return Unl(rule) end
+local pairOf, tempUnl = {}, {}   -- session-only paired-aura links (both directions) and the auras a pair unlocked for its partner
 
 -------------------------------------------------------------------------------
 -- Preview state (transient, never saved). Keyed by rule / bar object.
@@ -46,7 +47,7 @@ end
 local function clamp(x, a, b) if x < a then return a elseif x > b then return b end return x end
 
 -------------------------------------------------------------------------------
--- Texture coordinates: crop/base rect + mirror/flip + rotation about centre.
+-- Texture coordinates: crop/base rect + mirror/flip + rotation about center.
 -- The image is scaled by (|cos|+|sin|) so a square texture stays fully visible.
 -------------------------------------------------------------------------------
 local function ApplyCoords(tex, v, base)
@@ -200,9 +201,9 @@ ns.FmtRemaining = FmtRemaining
 -------------------------------------------------------------------------------
 ns.selectedVisual = nil
 local SNAP_GRID, SNAP_NEAR = 10, 10
-local SNAP_LABELS = { free = "Free Move", grid = "Grid (10 px)", auras = "Other Auras' Edges & Centres", center = "Screen Centre Lines" }
+local SNAP_LABELS = { free = "Free Move", grid = "Grid (10 px)", auras = "Other Auras' Edges & Centers", center = "Screen Center Lines" }
 
--- border colour for an unlocked display: white while hovered (this is the box a click will hit), orange when
+-- border color for an unlocked display: white while hovered (this is the box a click will hit), orange when
 -- selected, cyan otherwise. A faint white wash on hover makes it readable over busy art.
 local function PaintBorder(r, f)
     if not (Unl(r) and f.SetBackdropBorderColor) then return end
@@ -280,6 +281,8 @@ local function ApplyStrata(fr, folderId)
     strata = strata or "HIGH"
     if fr:GetFrameStrata() ~= strata then fr:SetFrameStrata(strata) end
     if level and fr:GetFrameLevel() ~= level then fr:SetFrameLevel(level) end
+    if fr.txtHolder then fr.txtHolder:SetFrameLevel(fr:GetFrameLevel() + 10) end
+    if fr.cd then fr.cd:SetFrameLevel(fr:GetFrameLevel() + 10) end
 end
 local function LayoutDynamic(df)
     if not df then return end
@@ -341,7 +344,7 @@ end
 
 local function SnapMode() return (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.snapMode) or "free" end
 
--- x, y are offsets of the frame centre from the screen centre (UI units). Returns the snapped offsets.
+-- x, y are offsets of the frame center from the screen center (UI units). Returns the snapped offsets.
 function ns.SnapPosition(rule, fr, x, y)
     local mode = SnapMode()
     if mode == "grid" then
@@ -360,7 +363,7 @@ function ns.SnapPosition(rule, fr, x, y)
                 local ocx, ocy = o:GetCenter()
                 ocx, ocy = ocx * s - ux, ocy * s - uy
                 local ow, oh = o:GetWidth() * s / 2, o:GetHeight() * s / 2
-                -- my left / centre / right against their left / centre / right (and the same vertically)
+                -- my left / center / right against their left / center / right (and the same vertically)
                 for _, mine in ipairs({ -w, 0, w }) do
                     for _, theirs in ipairs({ ocx - ow, ocx, ocx + ow }) do
                         local d = math.abs((x + mine) - theirs)
@@ -381,10 +384,152 @@ function ns.SnapPosition(rule, fr, x, y)
     return x, y
 end
 
+-------------------------------------------------------------------------------
+-- Snap targets: pin a display to the edge of a Blizzard frame. `pos` = side + alignment along that side.
+-- Frame names for the action bars follow the retail names [MEMORY: unverified for this build]; a name that does not exist
+-- is skipped, and a missing target leaves the display where its own X / Y put it.
+-------------------------------------------------------------------------------
+local SNAP_TARGETS = {
+    { key = "player", label = "Player Frame", frames = { "PlayerFrame" } },
+    { key = "target", label = "Target Frame", frames = { "TargetFrame" } },
+    { key = "focus",  label = "Focus Frame", frames = { "FocusFrame" } },
+    { key = "party",  label = "Party Frames", frames = { "PartyFrame" } },
+    { key = "buff",   label = "Buffs", frames = { "BuffFrame" } },
+    { key = "debuff", label = "Debuffs", frames = { "DebuffFrame" } },
+    { key = "chat",   label = "Chat Frame", frames = { "ChatFrame1" } },
+    { key = "bar1",   label = "Action Bar 1 (Main)", frames = { "MainActionBar", "MainMenuBar" } },
+    { key = "bar2",   label = "Action Bar 2 (Bottom Left)", frames = { "MultiBarBottomLeft" } },
+    { key = "bar3",   label = "Action Bar 3 (Bottom Right)", frames = { "MultiBarBottomRight" } },
+    { key = "bar4",   label = "Action Bar 4 (Right)", frames = { "MultiBarRight" } },
+    { key = "bar5",   label = "Action Bar 5 (Right 2)", frames = { "MultiBarLeft" } },
+    { key = "bar6",   label = "Action Bar 6", frames = { "MultiBar5" } },
+    { key = "bar7",   label = "Action Bar 7", frames = { "MultiBar6" } },
+    { key = "bar8",   label = "Action Bar 8", frames = { "MultiBar7" } },
+}
+local SNAP_POS = {
+    { "TOP_LEFT", "Top Left" }, { "TOP_CENTER", "Top Center" }, { "TOP_RIGHT", "Top Right" },
+    { "RIGHT_TOP", "Right Top" }, { "RIGHT_CENTER", "Right Center" }, { "RIGHT_BOTTOM", "Right Bottom" },
+    { "BOTTOM_RIGHT", "Bottom Right" }, { "BOTTOM_CENTER", "Bottom Center" }, { "BOTTOM_LEFT", "Bottom Left" },
+    { "LEFT_BOTTOM", "Left Bottom" }, { "LEFT_CENTER", "Left Center" }, { "LEFT_TOP", "Left Top" },
+}
+-- my point -> the target's point, so the display sits OUTSIDE the target on the chosen side
+local SNAP_ANCHOR = {
+    TOP_LEFT = { "BOTTOMLEFT", "TOPLEFT" }, TOP_CENTER = { "BOTTOM", "TOP" }, TOP_RIGHT = { "BOTTOMRIGHT", "TOPRIGHT" },
+    RIGHT_TOP = { "TOPLEFT", "TOPRIGHT" }, RIGHT_CENTER = { "LEFT", "RIGHT" }, RIGHT_BOTTOM = { "BOTTOMLEFT", "BOTTOMRIGHT" },
+    BOTTOM_RIGHT = { "TOPRIGHT", "BOTTOMRIGHT" }, BOTTOM_CENTER = { "TOP", "BOTTOM" }, BOTTOM_LEFT = { "TOPLEFT", "BOTTOMLEFT" },
+    LEFT_BOTTOM = { "BOTTOMRIGHT", "BOTTOMLEFT" }, LEFT_CENTER = { "RIGHT", "LEFT" }, LEFT_TOP = { "TOPRIGHT", "TOPLEFT" },
+}
+local function SnapFrame(v)
+    local sn = v and v.snap
+    if not (sn and sn.target) then return nil end
+    for _, t in ipairs(SNAP_TARGETS) do
+        if t.key == sn.target then
+            for _, n in ipairs(t.frames) do
+                local g = _G[n]
+                if g and g.GetCenter then return g end
+            end
+        end
+    end
+end
+-- one place decides where a display is anchored: to its snap target when it has one, else to its container
+local function Place(fr, rule, parent)
+    local v = rule.visual
+    local g = SnapFrame(v)
+    fr:ClearAllPoints()
+    if g then
+        local a = SNAP_ANCHOR[v.snap.pos or "TOP_CENTER"] or SNAP_ANCHOR.TOP_CENTER
+        fr:SetPoint(a[1], g, a[2], v.x or 0, v.y or 0)   -- x / y are fine offsets from the snap point
+    else
+        fr:SetPoint("CENTER", parent, "CENTER", v.x or 0, v.y or 0)
+    end
+end
+-- read where the frame is now and store it as the display's own X / Y (dragging always leaves any snap target)
+local function CommitDrag(rule, fr, useSnap)
+    local v = rule.visual
+    v.snap = nil
+    local parent, dyn = ParentFor(rule)
+    local cx, cy = fr:GetCenter()
+    if not cx then return end
+    local ux, uy = parent:GetCenter()
+    local s = fr:GetEffectiveScale() / parent:GetEffectiveScale()
+    v.x = math.floor((cx * s - ux) + 0.5)
+    v.y = math.floor((cy * s - uy) + 0.5)
+    if useSnap then v.x, v.y = ns.SnapPosition(rule, fr, v.x, v.y) end
+    Place(fr, rule, parent)
+    if dyn then LayoutDynamic(dyn) end
+    if ns.OnPositionChanged then ns.OnPositionChanged(rule) end
+end
+function ns.SnapToTarget(rule, key, pos)
+    local v = rule.visual
+    if not key then
+        v.snap = nil
+    else
+        v.snap = { target = key, pos = pos or "TOP_CENTER" }
+        v.x, v.y = 0, 0
+        if not SnapFrame(v) then ns.Print("that frame does not exist in this client, so the aura keeps its own position.") end
+    end
+    ns.RefreshVisual(rule)
+    if ns.OnPositionChanged then ns.OnPositionChanged(rule) end
+end
+-- Center on the current reference: the snap target's axis when snapped, otherwise the screen (the folder container's origin).
+function ns.CenterVisual(rule, axis)
+    local v = rule.visual
+    if v.snap and v.snap.target then
+        local side = tostring(v.snap.pos or "TOP_CENTER"):match("^(%u+)_")
+        if axis == "h" and (side == "TOP" or side == "BOTTOM") then v.snap.pos = side .. "_CENTER"; v.x = 0
+        elseif axis == "v" and (side == "LEFT" or side == "RIGHT") then v.snap.pos = side .. "_CENTER"; v.y = 0
+        else ns.Print("this aura is snapped to that side of the frame; choose a top / bottom (horizontal) or left / right (vertical) snap to center along it.") return end
+    elseif axis == "h" then v.x = 0
+    else v.y = 0 end
+    ns.RefreshVisual(rule)
+    if ns.OnPositionChanged then ns.OnPositionChanged(rule) end
+end
+-- Paired auras (session only): dragging one drags the other with it. Pairing unlocks the partner for movement, and
+-- locking (or unpairing) puts that back.
+function ns.PairedWith(rule) return pairOf[rule] end
+function ns.ClearPair(rule)
+    local o = pairOf[rule]
+    if not o then return end
+    pairOf[rule], pairOf[o] = nil, nil
+    for _, r in ipairs({ rule, o }) do
+        if tempUnl[r] then tempUnl[r] = nil; ns.SetMoveUnlocked({ r }, false) end
+    end
+end
+function ns.SetPair(rule, other)
+    ns.ClearPair(rule)
+    if not other or other == rule then return end
+    ns.ClearPair(other)
+    pairOf[rule], pairOf[other] = other, rule
+    for _, r in ipairs({ rule, other }) do
+        if not Unl(r) then tempUnl[r] = true; ns.SetMoveUnlocked({ r }, true) end
+    end
+end
+
 function ns.ShowVisualMenu(rule, anchor)
     if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the menu API is not available in this client.") return end
     MenuUtil.CreateContextMenu(anchor, function(_, root)
         root:CreateTitle(rule.name or "Aura")
+        local v = rule.visual
+        local st = root:CreateButton("Snap Target")
+        st:CreateRadio("None (free position)", function() return not (v.snap and v.snap.target) end, function() ns.SnapToTarget(rule, nil) end)
+        for _, t in ipairs(SNAP_TARGETS) do
+            local sub = st:CreateButton(t.label)
+            for _, p in ipairs(SNAP_POS) do
+                sub:CreateRadio(p[2], function() return (v.snap and v.snap.target == t.key and v.snap.pos == p[1]) and true or false end,
+                    function() ns.SnapToTarget(rule, t.key, p[1]) end)
+            end
+        end
+        root:CreateButton("Center Vertically", function() ns.CenterVisual(rule, "v") end)
+        root:CreateButton("Center Horizontally", function() ns.CenterVisual(rule, "h") end)
+        local pr = root:CreateButton("Paired Aura")
+        if pr.SetScrollMode then pr:SetScrollMode(320) end
+        pr:CreateRadio("None", function() return pairOf[rule] == nil end, function() ns.ClearPair(rule) end)
+        for _, o in ipairs(ns.rules or {}) do
+            if o ~= rule and o.visual and frames[o] then
+                pr:CreateRadio(o.name or "Aura", function() return pairOf[rule] == o end, function() ns.SetPair(rule, o) end)
+            end
+        end
+        root:CreateDivider()
         local function radio(parent, mode)
             parent:CreateRadio(SNAP_LABELS[mode], function() return SnapMode() == mode end, function()
                 CueRulesDB.ui = CueRulesDB.ui or {}
@@ -393,7 +538,7 @@ function ns.ShowVisualMenu(rule, anchor)
             end)
         end
         radio(root, "free")
-        local snap = root:CreateButton("Snap To")
+        local snap = root:CreateButton("Drag Snapping")
         radio(snap, "grid"); radio(snap, "auras"); radio(snap, "center")
         root:CreateDivider()
         root:CreateButton("Edit This Aura", function() if ns.EditRule then ns.EditRule(rule) end end)
@@ -461,12 +606,23 @@ local function GetFrame(rule)
     pulse:SetDuration(0.5)
 
     -- duration text: our own FontString (readable values) ...
-    fr.text = fr:CreateFontString(nil, "OVERLAY")
+    -- all texts live on a holder frame ABOVE the cooldown widget, overlay layer and outline (frame level +10),
+    -- so no progress texture or wipe can ever cover them
+    fr.txtHolder = CreateFrame("Frame", nil, fr)
+    fr.txtHolder:SetAllPoints()
+    fr.txtHolder:SetFrameLevel(fr:GetFrameLevel() + 10)
+    fr.txtHolder:EnableMouse(false)
+    fr.label:SetParent(fr.txtHolder)
+    fr.text = fr.txtHolder:CreateFontString(nil, "OVERLAY", nil, 7)
     fr.text:SetFontObject(GameFontNormal)
     fr.text:Hide()
-    -- ... and a Blizzard Cooldown widget as the fallback when the numbers are secret
+    -- ... and a Blizzard Cooldown widget as the fallback when the numbers are secret. Its own built-in countdown
+    -- digits are a SEPARATE draw path from fr.text (used only when the exact remaining time is secret, i.e. almost
+    -- always in combat) and were left at fr's own frame level, so the overlay texture / outline could still cover
+    -- them even after txtHolder was added for fr.text / fr.count / fr.absorb. Match txtHolder's elevated level.
     local okc, cd = pcall(CreateFrame, "Cooldown", nil, fr, "CooldownFrameTemplate")
     if okc and cd then
+        cd:SetFrameLevel(fr:GetFrameLevel() + 10)
         cd:SetAllPoints()
         pcall(cd.SetDrawSwipe, cd, false)
         pcall(cd.SetDrawEdge, cd, false)
@@ -476,10 +632,10 @@ local function GetFrame(rule)
         fr.cd = cd
     end
     -- stacks / charges text
-    fr.count = fr:CreateFontString(nil, "OVERLAY")
+    fr.count = fr.txtHolder:CreateFontString(nil, "OVERLAY", nil, 7)
     fr.count:SetFontObject(GameFontNormal)
     fr.count:Hide()
-    fr.absorb = fr:CreateFontString(nil, "OVERLAY")
+    fr.absorb = fr.txtHolder:CreateFontString(nil, "OVERLAY", nil, 7)
     fr.absorb:SetFontObject(GameFontNormal)
     fr.absorb:Hide()
 
@@ -493,7 +649,23 @@ local function GetFrame(rule)
         PaintBorder(rule, self)
     end)
     fr:SetScript("OnDragStart", function(self)
-        if Unl(rule) then self.wasDragged = true; self:StartMoving() end
+        if not Unl(rule) then return end
+        self.wasDragged = true
+        -- a paired aura rides along: anchor it to this one at its current offset for the length of the drag
+        local o = pairOf[rule]
+        local of = o and frames[o]
+        self.pairRule, self.pairFr = nil, nil
+        if of and of:IsShown() and Unl(o) then
+            local ax, ay = self:GetCenter()
+            local bx, by = of:GetCenter()
+            if ax and bx then
+                local sA, sB = self:GetEffectiveScale(), of:GetEffectiveScale()
+                of:ClearAllPoints()
+                of:SetPoint("CENTER", self, "CENTER", (bx * sB - ax * sA) / sB, (by * sB - ay * sA) / sB)
+                self.pairRule, self.pairFr = o, of
+            end
+        end
+        self:StartMoving()
     end)
     -- left click (without dragging) selects the aura and opens it in the editor; right click opens the move / snap / edit menu
     fr:SetScript("OnMouseUp", function(self, button)
@@ -509,17 +681,12 @@ local function GetFrame(rule)
     end)
     fr:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
-        local cx, cy = self:GetCenter()
-        local parent, dyn = ParentFor(rule)
-        local ux, uy = parent:GetCenter()
-        local s = self:GetEffectiveScale() / parent:GetEffectiveScale()
-        rule.visual.x = math.floor((cx * s - ux) + 0.5)
-        rule.visual.y = math.floor((cy * s - uy) + 0.5)
-        rule.visual.x, rule.visual.y = ns.SnapPosition(rule, self, rule.visual.x, rule.visual.y)
-        fr:ClearAllPoints()
-        fr:SetPoint("CENTER", parent, "CENTER", rule.visual.x, rule.visual.y)
-        if dyn then LayoutDynamic(dyn) end
-        if ns.OnPositionChanged then ns.OnPositionChanged(rule) end
+        CommitDrag(rule, self, true)
+        if self.pairFr then
+            local pr, pf = self.pairRule, self.pairFr
+            self.pairRule, self.pairFr = nil, nil
+            CommitDrag(pr, pf, false)   -- the partner keeps the offset it had; it is re-anchored to its own container
+        end
     end)
     -- smooth animation: the engine ticks 5x per second, which made the wipe / fades step. While one of those
     -- effects is active, re-run just that part every rendered frame from the stored (absolute) expiry time.
@@ -558,52 +725,123 @@ local function PixelUnit(fr)
     return u
 end
 
+-- Outline styles: "border" = a crisp pixel border (own thickness, gap and color) with an optional soft glow around it,
+-- drawn from solid strips on whole screen pixels; "shape" = copies of the art pushed outward (follows non-rectangular art).
+-- Automatic picks the border for spell icons and the shape outline for everything else.
+local function OutlineStyle(v)
+    local st = v.outline and v.outline.style or "auto"
+    if st == "auto" then st = (v.kind == "spellicon") and "border" or "shape" end
+    return st
+end
+-- four strips forming a rectangular ring around the frame, from `inner` to `outer` pixels outside its edge
+local function RingStrips(fr, list, at, inner, outer, r, g, b, a, blend)
+    for k = 0, 3 do
+        local t = list[at + k]
+        if not t then
+            t = fr.olHolder:CreateTexture(nil, "ARTWORK")
+            list[at + k] = t
+        end
+        t:ClearAllPoints()
+        if k == 0 then          -- top (full width, including the corners)
+            t:SetPoint("BOTTOMLEFT", fr, "TOPLEFT", -outer, inner); t:SetPoint("TOPRIGHT", fr, "TOPRIGHT", outer, outer)
+        elseif k == 1 then      -- bottom
+            t:SetPoint("TOPLEFT", fr, "BOTTOMLEFT", -outer, -inner); t:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", outer, -outer)
+        elseif k == 2 then      -- left (between the top and bottom strips)
+            t:SetPoint("TOPLEFT", fr, "TOPLEFT", -outer, inner); t:SetPoint("BOTTOMRIGHT", fr, "BOTTOMLEFT", -inner, -inner)
+        else                    -- right
+            t:SetPoint("TOPLEFT", fr, "TOPRIGHT", inner, inner); t:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", outer, -inner)
+        end
+        t:SetColorTexture(r, g, b, a)
+        t:SetBlendMode(blend)
+        t:Show()
+    end
+end
+local function LayoutPixelBorder(fr, v)
+    local o = v.outline
+    fr.olPx = fr.olPx or {}
+    local list = fr.olPx
+    local u = PixelUnit(fr)
+    local function px(n) return math.max(0, math.floor(n + 0.5)) * u end
+    local used = 0
+    local bw, gap = clamp(math.floor((o.width or 2) + 0.5), 1, 10), clamp(math.floor((o.gap or 0) + 0.5), 0, 8)
+    local c = o.color or { 1, 0.82, 0, 1 }
+    if o.borderOn ~= false then
+        RingStrips(fr, list, used + 1, px(gap), px(gap + bw), c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1, "BLEND")
+        used = used + 4
+    end
+    if o.glowOn ~= false then
+        local gs = clamp(math.floor((o.glowSize or 8) + 0.5), 1, 24)
+        local ga = clamp(o.glowAlpha or 0.6, 0.05, 1)
+        local gc = (o.glowSame == false and o.glowColor) or c
+        local rings = math.min(gs, 12)
+        local t = math.max(1, math.floor(gs / rings + 0.5))     -- pixels per ring
+        local start = gap + ((o.borderOn ~= false) and bw or 0)
+        for i = 1, rings do
+            local inner, outer = start + (i - 1) * t, start + i * t
+            local fall = (1 - (i - 0.5) / rings)
+            RingStrips(fr, list, used + 1, px(inner), px(outer), gc[1] or 1, gc[2] or 1, gc[3] or 1, ga * fall * fall * (gc[4] or 1), "ADD")
+            used = used + 4
+        end
+    end
+    for i = used + 1, #list do list[i]:Hide() end
+end
+local function HidePixelBorder(fr)
+    for i = 1, #(fr.olPx or {}) do fr.olPx[i]:Hide() end
+end
+
 local function LayoutOutline(fr, rule, v)
     local o = v.outline
     if not (o and o.enabled) then
         for i = 1, #fr.ol do fr.ol[i]:Hide() end
+        HidePixelBorder(fr)
         fr.olAnim:Stop()
         return
     end
-    local w = clamp(math.floor((o.width or 2) + 0.5), 1, 10)
-    local c = o.color or { 1, 0.82, 0, 1 }
-    local u = PixelUnit(fr)
-    -- concentric rings (up to 4) so the stroke is filled all the way from the art to `w` px, with enough
-    -- samples per ring that there are no gaps; offsets snapped to whole pixels; duplicates removed
-    local offsets, seen = {}, {}
-    local rings = math.min(w, 4)
-    for k = 1, rings do
-        local r = w * k / rings
-        local n = clamp(math.ceil(2 * math.pi * r / 1.25), 8, 48)
-        for j = 0, n - 1 do
-            local ang = j * 2 * math.pi / n + (k % 2) * math.pi / n
-            local dx = math.floor(math.cos(ang) * r / u + 0.5) * u
-            local dy = math.floor(math.sin(ang) * r / u + 0.5) * u
-            local key = dx .. "," .. dy
-            if not seen[key] then seen[key] = true; offsets[#offsets + 1] = { dx, dy } end
+    if OutlineStyle(v) == "border" then
+        for i = 1, #fr.ol do fr.ol[i]:Hide() end
+        LayoutPixelBorder(fr, v)
+    else
+        HidePixelBorder(fr)
+        local w = clamp(math.floor((o.width or 2) + 0.5), 1, 10)
+        local c = o.color or { 1, 0.82, 0, 1 }
+        local u = PixelUnit(fr)
+        -- concentric rings (up to 4) so the stroke is filled all the way from the art to `w` px, with enough
+        -- samples per ring that there are no gaps; offsets snapped to whole pixels; duplicates removed
+        local offsets, seen = {}, {}
+        local rings = math.min(w, 4)
+        for k = 1, rings do
+            local r = w * k / rings
+            local n = clamp(math.ceil(2 * math.pi * r / 1.25), 8, 48)
+            for j = 0, n - 1 do
+                local ang = j * 2 * math.pi / n + (k % 2) * math.pi / n
+                local dx = math.floor(math.cos(ang) * r / u + 0.5) * u
+                local dy = math.floor(math.sin(ang) * r / u + 0.5) * u
+                local key = dx .. "," .. dy
+                if not seen[key] then seen[key] = true; offsets[#offsets + 1] = { dx, dy } end
+            end
         end
-    end
-    for i = #fr.ol + 1, #offsets do
-        local t = fr.olHolder:CreateTexture(nil, "ARTWORK")
-        pcall(t.SetSnapToPixelGrid, t, false)
-        pcall(t.SetTexelSnappingBias, t, 0)
-        t:Hide()
-        fr.ol[i] = t
-    end
-    for i = 1, #fr.ol do
-        local t = fr.ol[i]
-        local off = offsets[i]
-        if off then
-            t:ClearAllPoints()
-            t:SetPoint("TOPLEFT", fr, "TOPLEFT", off[1], off[2])
-            t:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", off[1], off[2])
-            SetArt(t, rule, v)
-            t:SetDesaturated(true)   -- so the colour below is the colour you see, not the art's own hues
-            t:SetVertexColor(c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1)
-            t:SetBlendMode(v.additive and "ADD" or "BLEND")
-            t:Show()
-        else
+        for i = #fr.ol + 1, #offsets do
+            local t = fr.olHolder:CreateTexture(nil, "ARTWORK")
+            pcall(t.SetSnapToPixelGrid, t, false)
+            pcall(t.SetTexelSnappingBias, t, 0)
             t:Hide()
+            fr.ol[i] = t
+        end
+        for i = 1, #fr.ol do
+            local t = fr.ol[i]
+            local off = offsets[i]
+            if off then
+                t:ClearAllPoints()
+                t:SetPoint("TOPLEFT", fr, "TOPLEFT", off[1], off[2])
+                t:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", off[1], off[2])
+                SetArt(t, rule, v)
+                t:SetDesaturated(true)   -- so the color below is the color you see, not the art's own hues
+                t:SetVertexColor(c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1)
+                t:SetBlendMode(v.additive and "ADD" or "BLEND")
+                t:Show()
+            else
+                t:Hide()
+            end
         end
     end
     if o.pulse then
@@ -621,8 +859,7 @@ function ns.RefreshVisual(rule)
     local parent, dyn = ParentFor(rule)
     if fr:GetParent() ~= parent then fr:SetParent(parent) end
     ApplyStrata(fr, rule.folder)
-    fr:ClearAllPoints()
-    fr:SetPoint("CENTER", parent, "CENTER", v.x or 0, v.y or 0)
+    Place(fr, rule, parent)
     if dyn then LayoutDynamic(dyn) end
     fr.baseAlpha = v.alpha or 1
     fr:SetAlpha(fr.baseAlpha)
@@ -633,12 +870,17 @@ function ns.RefreshVisual(rule)
     fr.tex:SetAlpha(clamp(v.texAlpha or 1, 0, 1))
     -- overlay layer (own tint / desaturate / blend / opacity)
     local ov = v.overlay
+    -- Progress-texture rules (v.fill.enabled) default to a locked base+overlay layering, unless ov.advanced is on:
+    -- the overlay never greys (stays the "clean" top layer) and the base greys automatically iff it's tinted, to
+    -- sharpen the tint (see Core.lua's visual.overlay comment and the Options.lua "Advanced customization" toggle).
+    local progLocked = (v.fill and v.fill.enabled) and not (ov and ov.advanced)
     fr.tex2On = ov and ov.enabled and true or false
     if fr.tex2On then
         SetOverlayArt(fr.tex2, rule, v)
         local ot = ov.tint or { 1, 1, 1, 1 }
         fr.tex2:SetVertexColor(ot[1] or 1, ot[2] or 1, ot[3] or 1, ot[4] or 1)
-        pcall(fr.tex2.SetDesaturation, fr.tex2, ov.desaturate and 1 or 0)
+        local ovDesatOn = (not progLocked) and ov.desaturate
+        pcall(fr.tex2.SetDesaturation, fr.tex2, ovDesatOn and 1 or 0)
         fr.tex2:SetBlendMode(ov.additive and "ADD" or "BLEND")
         fr.tex2:SetAlpha(clamp(ov.alpha or 1, 0, 1))
         fr.tex2:Show()
@@ -647,7 +889,8 @@ function ns.RefreshVisual(rule)
     end
     -- base recolor: optional desaturation first, then the tint multiplies what is left (tint works with additive too)
     local tint = v.tint or { 1, 1, 1, 1 }
-    fr.baseDesat = v.desaturate and 1 or 0
+    local baseDesatOn = progLocked and v.recolor or v.desaturate
+    fr.baseDesat = baseDesatOn and 1 or 0
     fr.baseTint = v.recolor and tint or { 1, 1, 1, 1 }
     if v.recolor then
         fr.tex:SetVertexColor(tint[1] or 1, tint[2] or 1, tint[3] or 1, tint[4] or 1)
@@ -771,7 +1014,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         return c or nil
     end
 
-    -- fade: desaturate (grey) or blend vertex colour toward a chosen colour as the buff runs out; grey while on cooldown
+    -- fade: desaturate (gray) or blend vertex color toward a chosen color as the buff runs out; gray while on cooldown
     local d = fr.baseDesat or 0
     if v.desatOnCD and info and info.cd and info.cd.onCd then d = 1 end
     local bt = fr.baseTint or { 1, 1, 1, 1 }
@@ -788,7 +1031,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         end
         if f ~= nil then
             if fmode == "transparent" then
-                -- no colour change
+                -- no color change
             elseif toColor then
                 local fc = v.fadeColor or { 1, 0.1, 0.1, 1 }
                 local k = 1 - f
@@ -1018,6 +1261,7 @@ end
 
 function ns.SetMoveUnlocked(objs, on)
     for _, r in ipairs(objs or {}) do
+        if not on and pairOf[r] then ns.ClearPair(r) end
         ns.moveUnlocked[r] = on and true or nil
         if r.visual then
             ns.RefreshVisual(r)
@@ -1035,6 +1279,7 @@ end
 
 function ns.ToggleUnlock()
     ns.unlocked = not ns.unlocked
+    if not ns.unlocked then for r in pairs(pairOf) do ns.ClearPair(r) end end
     ns.Print(ns.unlocked and "visuals UNLOCKED: drag them, then /xui unlock again to lock."
         or "visuals locked.")
     ns.RefreshAllVisuals()

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 -- Bars.lua : "Buff Bars" umbrella. Timer bars for player buffs, styled after
--- the options EllesmereUI's Tracking Bars offer (fill/background colour, texture,
+-- the options EllesmereUI's Tracking Bars offer (fill/background color, texture,
 -- orientation, reverse fill, spark, border, icon, name/timer/stacks text,
 -- visibility, group layout). Display only.
 --
@@ -101,7 +101,7 @@ end
 
 local function GetFrame(bar) return frames[bar] or Create(bar) end
 
--- Static styling (size, colours, texture, fonts). Called on every option change.
+-- Static styling (size, colors, texture, fonts). Called on every option change.
 function ns.Bars_Refresh(bar)
     local fr = GetFrame(bar)
     local w, h = bar.width or 220, bar.height or 22

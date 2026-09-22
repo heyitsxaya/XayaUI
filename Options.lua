@@ -201,7 +201,10 @@ end
 -- Specialization / Role: a tick box heading that reveals square single-choice boxes (click the chosen one again to
 -- clear it) with "All" at the bottom. Nothing chosen = no restriction, same as before. `ld()` returns rule.load;
 -- useKey (specUse / roleUse) = false makes the saved choice ignored without deleting it.
-function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, useKey)
+-- rule + bannerKey are optional: when given, the choice list opens/closes exactly like the Talent list (the same
+-- bannerOpen table and ns.ArrowToggle +/- button), and unticking "use" clears the choices below instead of only
+-- disabling them - so a rule that shows "All" really has nothing recorded, not a hidden leftover pick.
+function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, useKey, rule, bannerKey)
     local function isOn()
         local u = ld()[useKey]
         if u == nil then return ns.SetActive(getSet()) end
@@ -218,11 +221,31 @@ function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, use
         desc = "Any is fine (no restriction). Nothing chosen means the same; this just states it.",
         get = function() return getSet()["*"] == true end,
         set = function(_, v) local s = getSet(); wipe(s); if v then s["*"] = true end; onChange() end }
+    local useArg = { type = "toggle", order = 1, width = "full", name = name,
+        desc = "Tick to restrict this rule by " .. name:lower() .. ". The choices open below once ticked, same as the Talent list. Unticking clears them and removes the restriction: this rule then fires for any " .. name:lower() .. ".",
+        get = isOn,
+        set = function(_, v)
+            ld()[useKey] = v and true or false
+            if v then
+                if rule and bannerKey then bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule][bannerKey] = nil end
+            else
+                wipe(getSet())
+            end
+            onChange()
+        end }
+    if rule and bannerKey then
+        local arrow = ns.ArrowToggle(rule, bannerKey, 1.5)
+        arrow.hidden = function() return not isOn() end
+        return { type = "group", inline = true, name = "", order = order, hidden = hiddenFn, args = {
+            use = useArg,
+            open = arrow,
+            pane = { type = "group", inline = true, name = "", order = 2,
+                hidden = function() return not (isOn() and ns.ArrowOpen(rule, bannerKey)) end, args = body },
+        } }
+    end
     return { type = "group", inline = true, name = "", order = order, hidden = hiddenFn, args = {
-        use = { type = "toggle", order = 1, width = "full", name = name,
-            desc = "Tick to restrict this rule by " .. name:lower() .. ". The choices open below only while this is ticked; unticking keeps them but ignores them.",
-            get = isOn, set = function(_, v) ld()[useKey] = v and true or false; onChange() end },
-        body = { type = "group", inline = true, name = "", order = 2, hidden = function() return not isOn() end, args = body },
+        use = useArg,
+        pane = ns.GatedPane(ld(), "radio_" .. useKey, name .. " choices", 2, isOn, body),
     } }
 end
 
@@ -258,6 +281,51 @@ local function TriGroup(name, order, hiddenFn, getSet, choices, onChange)
             end }
     end
     return { type = "group", inline = true, name = name, order = order, hidden = hiddenFn, args = args }
+end
+
+-------------------------------------------------------------------------------
+-- Gated panes. Options that only matter while something is switched on live in a collapsible pane that is not
+-- drawn at all until that switch is on (arrow header = expand / collapse; open by default; session-only; never
+-- changes a setting). ns.GatedPane builds one, ns.GatePane moves named options of an existing args table into
+-- one, ns.GateRest moves everything except the listed keys. `owner` is any table that identifies whose pane it
+-- is (a rule, a bar, ns), so every rule / bar remembers its own open / closed state.
+-- The header's desc must keep starting with "Expand or collapse": ns.LockArgs leaves those controls usable.
+-- Moving an option into a pane drops its old `disabled` (the pane not being drawn replaces it).
+-------------------------------------------------------------------------------
+do
+    local shut = setmetatable({}, { __mode = "k" })
+    local OPEN = "|TInterface\\Buttons\\Arrow-Down-Up:16:16|t"
+    local CLOSED = "|TInterface\\ChatFrame\\ChatFrameExpandArrow:16:16|t"
+    function ns.GatedPane(owner, id, title, order, gate, args)
+        local function isShut() return shut[owner] and shut[owner][id] and true or false end
+        return { type = "group", inline = true, name = "", order = order,
+            hidden = function() return not gate() end,
+            args = {
+                hdr = { type = "execute", order = 1, width = "full", arg = { xuiLeft = true },
+                    name = function() return (isShut() and CLOSED or OPEN) .. "  " .. title end,
+                    desc = "Expand or collapse this section. Collapsing never changes any setting.",
+                    func = function()
+                        shut[owner] = shut[owner] or {}
+                        shut[owner][id] = (not isShut()) or nil
+                        Notify()
+                    end },
+                body = { type = "group", inline = true, name = "", order = 2, hidden = isShut, args = args },
+            } }
+    end
+    local function Move(owner, args, id, title, order, gate, keys)
+        local body = {}
+        for _, k in ipairs(keys) do
+            local opt = args[k]
+            if opt then opt.disabled = nil; body[k] = opt; args[k] = nil end
+        end
+        args["pane_" .. id] = ns.GatedPane(owner, id, title, order, gate, body)
+    end
+    function ns.GatePane(owner, args, id, title, order, gate, keys) Move(owner, args, id, title, order, gate, keys) end
+    function ns.GateRest(owner, args, id, title, order, gate, keep)
+        local keys = {}
+        for k in pairs(args) do if not keep[k] then keys[#keys + 1] = k end end
+        Move(owner, args, id, title, order, gate, keys)
+    end
 end
 
 -------------------------------------------------------------------------------
@@ -311,6 +379,21 @@ local function Tog(t, k, name, order, on, extra)
     if extra then for kk, vv in pairs(extra) do o[kk] = vv end end
     return o
 end
+-- width / height sliders that move together while "Maintain aspect ratio" (V.keepAspect, on by default) is not switched off
+function ns.AspectSet(V, key, other, on)
+    return function(_, val)
+        local kw, ow = V[key] or 128, V[other] or 128
+        if V.keepAspect ~= false and kw > 0 then
+            local ratio = ow / kw
+            local nv = val * ratio
+            if nv > 512 then nv = 512; val = nv / ratio elseif nv < 8 then nv = 8; val = nv / ratio end
+            V[key], V[other] = math.min(512, math.max(8, math.floor(val + 0.5))), math.floor(nv + 0.5)
+        else
+            V[key] = val
+        end
+        on()
+    end
+end
 local function Sel(t, k, name, order, vals, ord, on, extra)
     local o = { type = "select", name = name, order = order, values = vals, sorting = ord,
         get = function() return t[k] end, set = function(_, v) t[k] = v; on() end }
@@ -340,14 +423,14 @@ local function FontSel(t, order, on)
         get = function() return t.font end, set = function(_, v) t.font = v; on() end }
 end
 
--- Shared text styling controls (font, size, outline, placement, offsets, colour)
+-- Shared text styling controls (font, size, outline, placement, offsets, color)
 local function TextStyleArgs(t, on, base, opts)
     opts = opts or {}
     local a = {}
     a.font = FontSel(t, base + 1, on)
     a.size = Rng(t, "size", "Text size", base + 2, 6, 96, 1, on)
     a.outline = Sel(t, "outline", "Outline", base + 3, TEXT_OUTLINE, TEXT_OUTLINE_ORDER, on)
-    a.color = Col(t, "color", "Text colour", base + 4, on)
+    a.color = Col(t, "color", "Text color", base + 4, on)
     a.place = Sel(t, "place", "Placement", base + 5, TEXT_PLACE, TEXT_PLACE_ORDER, on,
         { desc = "Inner: inside the texture edge. Outer: outside it (not applicable to Center)." })
     a.anchor = Sel(t, "anchor", "Position", base + 6, TEXT_ANCHOR, TEXT_ANCHOR_ORDER, on)
@@ -472,10 +555,30 @@ end
 
 -- which banners (Display Options / Text / Sound) are expanded, per rule; everything starts collapsed
 local bannerOpen = setmetatable({}, { __mode = "k" })
+-- A group's options are open unless the user collapsed them (bannerOpen[rule][key] == false). The +/- button flips that.
+function ns.ArrowOpen(rule, key) local b = bannerOpen[rule]; return not (b and b[key] == false) end
+function ns.ArrowToggle(rule, key, order)
+    return { type = "execute", order = order, width = "normal",
+        name = function()
+            return (ns.ArrowOpen(rule, key) and "|TInterface\\Buttons\\UI-MinusButton-Up:16:16|t" or "|TInterface\\Buttons\\UI-PlusButton-Up:16:16|t") .. "  Options"
+        end,
+        desc = "Open or close the options below. Closing never changes any setting.",
+        arg = { xuiLeft = true },
+        func = function()
+            bannerOpen[rule] = bannerOpen[rule] or {}
+            local b = bannerOpen[rule]
+            if b[key] == false then b[key] = nil else b[key] = false end
+            Notify()
+        end }
+end
 
 local function BuildRule(i, rule)
     local V = rule.visual
     local function on() Changed(rule) end
+    -- Progress-texture (visual.fill.enabled) base/overlay layers are opacity+tint linked by default; see Core.lua
+    -- visual.overlay.advanced and the "Advanced customization" toggle at the bottom of Opacity & Fill.
+    local OV, FL = V.overlay, V.fill
+    local function ProgLocked() return FL.enabled and not OV.advanced end
 
     ---------------------------------------------------------------- Trigger
     local trigger = {
@@ -535,7 +638,7 @@ local function BuildRule(i, rule)
             set = function(_, v)
                 if v then
                     if rule.talentMode ~= "all" and rule.talentMode ~= "any" then rule.talentMode = "any" end
-                    bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].talents = true
+                    bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].talents = nil   -- ticking shows the list
                 else
                     rule.talentMode = "none"
                 end
@@ -577,12 +680,9 @@ local function BuildRule(i, rule)
     local function talentsOn() return rule.talentMode == "all" or rule.talentMode == "any" end
     loadArgs.talents = { type = "group", inline = true, name = "Talent List", order = 1.5, hidden = function() return not talentsOn() end,
         args = {
-            open = { type = "toggle", name = "Show options", order = 1,
-                desc = "Expand or collapse the talent list. Collapsing never changes any setting.",
-                get = function() return bannerOpen[rule] and bannerOpen[rule].talents and true or false end,
-                set = function(_, v) bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].talents = v and true or nil; Notify() end },
+            open = ns.ArrowToggle(rule, "talents", 1),
             body = { type = "group", inline = true, name = "", order = 2,
-                hidden = function() return not (bannerOpen[rule] and bannerOpen[rule].talents) end, args = talentBody },
+                hidden = function() return not ns.ArrowOpen(rule, "talents") end, args = talentBody },
         } }
     loadArgs.loadHeader = { type = "header", name = "When Should This Rule Load?", order = 0 }
     local loadModeKeys = AddSquareRadio(loadArgs, "loadMode", 0.5, LOAD_MODE, LOAD_MODE_ORDER,
@@ -650,7 +750,7 @@ local function BuildRule(i, rule)
     loadArgs.instanceTypes = TriGroup("Instance Type", 61, noMatch,
         function() rule.load.instanceTypes = rule.load.instanceTypes or {}; return rule.load.instanceTypes end,
         instChoices, function() Changed(rule); Notify() end)
-    loadArgs.classHeader = { type = "header", name = "Specialization / Role", order = 70, hidden = noMatch }
+    loadArgs.classHeader = { type = "header", name = "Specialization / Role", order = 0.55, hidden = noMatch }
     local function LoadSet(field, legacy, legacyOK)
         local ld = rule.load
         ld[field] = ld[field] or {}
@@ -685,22 +785,19 @@ local function BuildRule(i, rule)
         instBody.tri_encounter.order = 3
         loadArgs.instanceOptions = { type = "group", inline = true, name = "Instance Options", order = instOrder + 0.1, hidden = instHidden,
             args = {
-                open = { type = "toggle", name = "Show options", order = 1,
-                    desc = "Expand or collapse the instance options. Collapsing never changes any setting.",
-                    get = function() return bannerOpen[rule] and bannerOpen[rule].instance and true or false end,
-                    set = function(_, v) bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].instance = v and true or nil; Notify() end },
+                open = ns.ArrowToggle(rule, "instance", 1),
                 body = { type = "group", inline = true, name = "", order = 2,
-                    hidden = function() return not (bannerOpen[rule] and bannerOpen[rule].instance) end, args = instBody },
+                    hidden = function() return not ns.ArrowOpen(rule, "instance") end, args = instBody },
             } }
         -- ticking Instance (green "In An Instance") opens the group, like ticking Talents
         local prevSet = loadArgs.tri_instance.set
         loadArgs.tri_instance.set = function(info, v)
             prevSet(info, v)
-            if rule.load.instance == "yes" then bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].instance = true end
+            if rule.load.instance == "yes" then bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].instance = nil end
         end
     end
-    loadArgs.specs = ns.RadioGroup("Specialization", 71, noMatch, specSet, SpecChoices(), onSpecRole, function() return rule.load end, "specUse")
-    loadArgs.roles = ns.RadioGroup("Role", 72, noMatch, roleSet, RoleChoices(), onSpecRole, function() return rule.load end, "roleUse")
+    loadArgs.specs = ns.RadioGroup("Specialization", 0.6, noMatch, specSet, SpecChoices(), onSpecRole, function() return rule.load end, "specUse", rule, "specs")
+    loadArgs.roles = ns.RadioGroup("Role", 0.7, noMatch, roleSet, RoleChoices(), onSpecRole, function() return rule.load end, "roleUse", rule, "roles")
     -- A folder's Never / Always overrides this rule's load mode and match conditions (talents still apply). Values stay stored.
     local function folderLoadOv() return ns.FolderLoadOverride(rule) end
     loadArgs.folderOv = { type = "description", order = 0.2, width = "full", fontSize = "medium",
@@ -729,6 +826,19 @@ local function BuildRule(i, rule)
 
     ---------------------------------------------------------------- Actions
     -- 1) Display Options  (texture -> position)
+    -- outline glow: its options only show while it is on (borderless "shape" style has no border / glow settings)
+    do
+        local o = V.outline
+        if o.style == nil then o.style = "auto" end
+        for k, dv in pairs({ borderOn = true, glowOn = true, glowSame = true, gap = 0, glowSize = 8, glowAlpha = 0.6 }) do if o[k] == nil then o[k] = dv end end
+        if not o.glowColor then o.glowColor = { 1, 0.82, 0, 1 } end
+    end
+    local OL_STYLE = { auto = "Automatic (border for icons, art shape for textures)", border = "Pixel border + glow", shape = "Follow the art's shape" }
+    local OL_STYLE_ORDER = { "auto", "border", "shape" }
+    local function olStyleNow() local st = V.outline.style or "auto"; if st == "auto" then st = (V.kind == "spellicon") and "border" or "shape" end return st end
+    local function olHide() return not V.outline.enabled end
+    local function olBorderHide() return not V.outline.enabled or olStyleNow() ~= "border" end
+    local function olGlowHide() return olBorderHide() or V.outline.glowOn == false end
     local tex = {
         type = "group", inline = true, name = "Texture", order = 10, args = {
             kind = Sel(V, "kind", "Source", 1, TEX_KIND, TEX_KIND_ORDER, function() Changed(rule); Notify() end, { width = "double" }),
@@ -752,48 +862,74 @@ local function BuildRule(i, rule)
                     Changed(rule); Notify()
                 end },
             sizeH = { type = "header", name = "Size & Orientation", order = 10 },
-            w = Rng(V, "w", "Width", 11, 8, 512, 1, on),
-            h = Rng(V, "h", "Height", 12, 8, 512, 1, on),
+            w = Rng(V, "w", "Width", 11, 8, 512, 1, on, { set = ns.AspectSet(V, "w", "h", on) }),
+            h = Rng(V, "h", "Height", 12, 8, 512, 1, on, { set = ns.AspectSet(V, "h", "w", on) }),
+            keepAspect = { type = "toggle", name = "Maintain aspect ratio", order = 12.5, width = "double",
+                desc = "On (default): changing Width or Height changes the other one too, keeping the proportions they have when you move the slider. Off: they move independently.",
+                get = function() return V.keepAspect ~= false end,
+                set = function(_, v) V.keepAspect = v and true or false; on() end },
             rotation = Rng(V, "rotation", "Rotation (degrees)", 14, 0, 360, 1, on,
-                { desc = "Rotates the art about its centre. Works best on square sizes; a square image shrinks slightly at diagonal angles so it is never cropped." }),
+                { desc = "Rotates the art about its center. Works best on square sizes; a square image shrinks slightly at diagonal angles so it is never cropped." }),
             flipH = Tog(V, "flipH", "Mirror (flip horizontally)", 15, on),
             flipV = Tog(V, "flipV", "Flip vertically", 16, on),
             zoom = Rng(V, "zoom", "Zoom / crop edges", 17, 0, 0.3, 0.01, on),
-            colorH = { type = "header", name = "Colour & Blend", order = 20 },
+            colorH = { type = "header", name = "Color & Blend", order = 20 },
             additive = Tog(V, "additive", "Additive blend", 21, on),
             desaturate = Tog(V, "desaturate", "Desaturate the base texture", 22, on,
-                { width = "double", desc = "Removes the art's own colours first. On its own this greys it; with a tint below it gives an even, precise recolour (the tint multiplies the grey art)." }),
+                { width = "double", desc = "Removes the art's own colors first. On its own this grays it; with a tint below it gives an even, precise recolor (the tint multiplies the gray art). Progress textures grey the base automatically whenever it's tinted (see Advanced customization under Opacity & Fill) and lock this control while that's on.",
+                  disabled = function() return ProgLocked() end,
+                  get = function() if ProgLocked() then return V.recolor and true or false end return V.desaturate and true or false end }),
             recolor = Tog(V, "recolor", "Tint the base texture", 23, on,
-                { desc = "Multiplies the (optionally desaturated) art by this colour. With 'Additive blend' on, the colour is tinted before it is added to the screen." }),
-            tint = Col(V, "tint", "Tint colour", 23.5, on, { disabled = function() return not V.recolor end }),
+                { desc = "Multiplies the (optionally desaturated) art by this color. With 'Additive blend' on, the color is tinted before it is added to the screen." }),
+            tint = Col(V, "tint", "Tint color", 23.5, on, { disabled = function() return not V.recolor end }),
             fadeH = { type = "header", name = "Fade, Opacity & Flash as the Buff Runs Out", order = 30 },
             fadeGrey = Tog(V, "fadeGrey", "Fade gradually as the buff runs out", 31, on, { width = "double",
                 desc = "Uses the Aura spell ID from the Trigger tab. Uses readable aura times; when Blizzard hides them (combat) it tries Blizzard's duration-object curves (experimental). Needs the aura present, so set Show to 'While the buff is present'. Preview shows a sample cycle." }),
-            fadeMode = Sel(V, "fadeMode", "Fade to", 32, { none = "(none - grey)", color = "A colour", transparent = "Transparent" }, { "none", "color", "transparent" }, on,
+            fadeMode = Sel(V, "fadeMode", "Fade to", 32, { none = "(none - gray)", color = "A color", transparent = "Transparent" }, { "none", "color", "transparent" }, on,
                 { disabled = function() return not V.fadeGrey end }),
-            fadeColor = Col(V, "fadeColor", "Fade colour", 33, on,
+            fadeColor = Col(V, "fadeColor", "Fade color", 33, on,
                 { disabled = function() return not (V.fadeGrey and ns.Val(V.fadeMode) == "color") end }),
             flashOn = Tog(V.flash, "enabled", "Flash when about to expire", 34, on, { width = "double" }),
             flashAt = Rng(V.flash, "threshold", "Start flashing at (seconds left)", 35, 1, 15, 0.5, on,
                 { disabled = function() return not V.flash.enabled end }),
             flashSpeed = Rng(V.flash, "speed", "Flash speed (pulses per second)", 36, 1, 8, 0.5, on,
                 { disabled = function() return not V.flash.enabled end }),
-            desatOnCD = Tog(V, "desatOnCD", "Grey out while the spell is on cooldown", 37, on, { width = "double" }),
+            desatOnCD = Tog(V, "desatOnCD", "Gray out while the spell is on cooldown", 37, on, { width = "double" }),
+            requireOnBar = Tog(V, "requireOnBar", "Only show while this ability is on an action bar", 37.5, on, { width = "double",
+                desc = "Uses the Cooldown Spell ID (or the Aura spell ID if no Cooldown Spell ID is set). Hides the display whenever that spell is not currently placed on any of your 12 action bars, even if the rule would otherwise fire. Off by default so existing rules are unaffected." }),
             fxH = { type = "header", name = "Glow & Outline", order = 40 },
             glow = Tog(V, "glow", "Pulsing glow", 41, on),
-            olOn = Tog(V.outline, "enabled", "Outline glow (follows the shape)", 42, on, { width = "double" }),
-            olWidth = Rng(V.outline, "width", "Outline width (px)", 43, 1, 10, 1, on, { disabled = function() return not V.outline.enabled end }),
-            olColor = Col(V.outline, "color", "Outline colour", 44, on, { disabled = function() return not V.outline.enabled end }),
-            olPulse = Tog(V.outline, "pulse", "Pulse the outline", 45, on, { disabled = function() return not V.outline.enabled end }),
+            olOn = Tog(V.outline, "enabled", "Outline glow (pixel border + glow)", 42, on, { width = "double",
+                desc = "A crisp pixel border with an optional soft glow around it. Spell icons use this by default; other art can pick it under Outline style." }),
+            olStyle = Sel(V.outline, "style", "Outline style", 42.1, OL_STYLE, OL_STYLE_ORDER, on, { width = "double", hidden = olHide }),
+            olBorderOn = Tog(V.outline, "borderOn", "Pixel border", 42.2, on, { hidden = olHide }),
+            olWidth = Rng(V.outline, "width", "Border thickness (px)", 43, 1, 10, 1, on, { hidden = olHide }),
+            olGap = Rng(V.outline, "gap", "Gap between the art and the border (px)", 43.5, 0, 8, 1, on, { hidden = olBorderHide }),
+            olColor = Col(V.outline, "color", "Border color", 44, on, { hidden = olHide }),
+            olGlowOn = Tog(V.outline, "glowOn", "Glow around the border", 44.2, on, { hidden = olBorderHide }),
+            olGlowSize = Rng(V.outline, "glowSize", "Glow size (px)", 44.3, 1, 24, 1, on, { hidden = olGlowHide }),
+            olGlowAlpha = Rng(V.outline, "glowAlpha", "Glow strength", 44.4, 0.05, 1, 0.05, on, { isPercent = true, hidden = olGlowHide }),
+            olGlowSame = Tog(V.outline, "glowSame", "Glow uses the border color", 44.5, on, { hidden = olGlowHide }),
+            olGlowColor = Col(V.outline, "glowColor", "Glow color", 44.6, on, { hidden = function() return olGlowHide() or V.outline.glowSame ~= false end }),
+            olPulse = Tog(V.outline, "pulse", "Pulse the outline", 45, on, { hidden = olHide }),
             frameH = { type = "header", name = "Border & Background", order = 50 },
             bdOn = Tog(V.border, "enabled", "Border", 51, on),
             bdSize = Rng(V.border, "size", "Border size (px)", 52, 1, 8, 1, on, { disabled = function() return not V.border.enabled end }),
-            bdColor = Col(V.border, "color", "Border colour", 53, on, { disabled = function() return not V.border.enabled end }),
+            bdColor = Col(V.border, "color", "Border color", 53, on, { disabled = function() return not V.border.enabled end }),
             bgOn = Tog(V.bg, "enabled", "Background fill", 54, on),
-            bgColor = Col(V.bg, "color", "Background colour", 55, on, { disabled = function() return not V.bg.enabled end }),
+            bgColor = Col(V.bg, "color", "Background color", 55, on, { disabled = function() return not V.bg.enabled end }),
         },
     }
-    local OV = V.overlay
+    do   -- each switch's dependent options sit in a pane that is drawn only while the switch is on
+        local a, fc = tex.args, tex.args.fadeColor
+        ns.GatePane(rule, a, "recolor", "Tint options", 23.5, function() return V.recolor end, { "tint" })
+        ns.GatePane(rule, a, "fadeGrey", "Fade options", 31.5, function() return V.fadeGrey end, { "fadeMode", "fadeColor" })
+        fc.disabled = function() return ns.Val(V.fadeMode) ~= "color" end   -- a choice inside the pane, not an on/off switch
+        ns.GatePane(rule, a, "flash", "Flash options", 34.5, function() return V.flash.enabled end, { "flashAt", "flashSpeed" })
+        ns.GatePane(rule, a, "outline", "Outline options", 42.5, function() return V.outline.enabled end, { "olWidth", "olColor", "olPulse" })
+        ns.GatePane(rule, a, "border", "Border options", 51.5, function() return V.border.enabled end, { "bdSize", "bdColor" })
+        ns.GatePane(rule, a, "bg", "Background options", 54.5, function() return V.bg.enabled end, { "bgColor" })
+    end
     local ovOn = function() return OV.enabled end
     local overlay = {
         type = "group", inline = true, name = "Overlay Texture (Second Layer, Drawn on Top of the Base)", order = 11, args = {
@@ -815,27 +951,43 @@ local function BuildRule(i, rule)
                     if k == "0" then OV.tex = "" else OV.kind, OV.tex = "file", k end
                     Changed(rule); Notify()
                 end },
-            tint = Col(OV, "tint", "Overlay tint colour", 6, on, { disabled = function() return not OV.enabled end }),
+            tint = Col(OV, "tint", "Overlay tint color", 6, on, { disabled = function() return not OV.enabled end }),
             desaturate = Tog(OV, "desaturate", "Desaturate the overlay first", 7, on,
-                { width = "double", disabled = function() return not OV.enabled end }),
+                { width = "double", disabled = function() return not OV.enabled or ProgLocked() end,
+                  desc = "Progress textures keep the top layer ungreyed by default (Advanced customization under Opacity & Fill overrides this).",
+                  get = function() if ProgLocked() then return false end return OV.desaturate and true or false end }),
             additive = Tog(OV, "additive", "Additive blend for the overlay", 8, on,
                 { width = "double", disabled = function() return not OV.enabled end }),
             note = { type = "description", order = 9, width = "full", fontSize = "small",
-                name = "The overlay shares the base's size, rotation, mirror and zoom. Tint the base underneath (or desaturate it) on the Colour & blend line above; opacity of each layer is set under Opacity & fill." },
+                name = "The overlay shares the base's size, rotation, mirror and zoom. Tint the base underneath (or desaturate it) on the Color & blend line above; opacity of each layer is set under Opacity & fill." },
         },
     }
-    local FL = V.fill
+    for _, k in ipairs({ "source", "tint", "desaturate", "additive" }) do overlay.args[k].disabled = nil end   -- the Overlay Layer section is not drawn while the overlay is off
     local FILL_DIR = { none = "(none - shrinks toward the bottom)", bottom = "Shrinks toward the bottom", top = "Shrinks toward the top",
         left = "Shrinks toward the left", right = "Shrinks toward the right" }
     local opacity = {
         type = "group", inline = true, name = "Opacity & Fill", order = 12, args = {
             alpha = Rng(V, "alpha", "Overall opacity (everything)", 1, 0, 1, 0.05, on),
-            texAlpha = Rng(V, "texAlpha", "Base texture opacity", 2, 0, 1, 0.05, on),
-            ovAlpha = Rng(OV, "alpha", "Overlay opacity", 3, 0, 1, 0.05, on, { disabled = function() return not OV.enabled end }),
+            texAlpha = Rng(V, "texAlpha", "Base texture opacity", 2, 0, 1, 0.05, on,
+                { disabled = function() return ProgLocked() end,
+                  desc = "Progress textures link this to Overlay opacity below, preserving their ratio, unless Advanced customization (bottom of this section) is on." }),
+            ovAlpha = Rng(OV, "alpha", "Overlay opacity", 3, 0, 1, 0.05, on, { disabled = function() return not OV.enabled end,
+                set = function(_, val)
+                    if ProgLocked() then
+                        local prevOv = OV.alpha or 1
+                        if prevOv < 0.0001 then prevOv = 1 end
+                        local ratio = (V.texAlpha or 1) / prevOv
+                        OV.alpha = val
+                        V.texAlpha = math.min(1, math.max(0, ratio * val))
+                    else
+                        OV.alpha = val
+                    end
+                    on()
+                end }),
             oocAlpha = Rng(V, "oocAlpha", "Opacity multiplier out of combat", 4, 0, 1, 0.05, on, { width = "double" }),
             fadeH = { type = "header", name = "Fade Opacity as the Buff Runs Out", order = 10 },
             fadeAlpha = Tog(V, "fadeAlpha", "Fade opacity", 11, on, { width = "double",
-                desc = "Opacity multiplier goes from the value at full duration to the value at expiry. Independent of the grey / colour fade. Needs the aura present: set 'Show' to 'While the buff is present'." }),
+                desc = "Opacity multiplier goes from the value at full duration to the value at expiry. Independent of the gray / color fade. Needs the aura present: set 'Show' to 'While the buff is present'." }),
             fadeAlphaMax = Rng(V, "fadeAlphaMax", "Opacity at full duration", 12, 0, 1, 0.05, on,
                 { width = "double", disabled = function() return not V.fadeAlpha end }),
             fadeAlphaMin = Rng(V, "fadeAlphaMin", "Opacity at expiry", 13, 0, 1, 0.05, on,
@@ -851,10 +1003,19 @@ local function BuildRule(i, rule)
                 { width = "double", disabled = function() return not FL.enabled end }),
             fillMin = Rng(FL, "min", "Fill shown at expiry", 25, 0, 1, 0.05, on,
                 { width = "double", disabled = function() return not FL.enabled end }),
+            advH = { type = "header", name = "Advanced", order = 29, hidden = function() return not FL.enabled end },
+            advanced = Tog(OV, "advanced", "Advanced customization (override the linked base/overlay opacity and tint defaults)", 30,
+                function() Changed(rule); Notify() end,
+                { width = "full", hidden = function() return not FL.enabled end,
+                  desc = "Progress textures default to a locked base+overlay layering: the base opens at a reduced opacity tied to Overlay opacity above, greys automatically only when tinted, and the overlay never greys or dims. Tick this to set the base opacity, base grey and overlay grey independently instead." }),
         },
     }
+    ns.GatePane(rule, opacity.args, "fadeAlpha", "Fade opacity options", 11.5, function() return V.fadeAlpha end, { "fadeAlphaMax", "fadeAlphaMin" })
+    ns.GatePane(rule, opacity.args, "fill", "Wipe options", 21.5, function() return FL.enabled end, { "fillDir", "fillRev", "fillMax", "fillMin" })
+    opacity.args.ovAlpha.disabled = nil
+    opacity.args.ovAlpha.hidden = function() return not OV.enabled end   -- belongs to the overlay switch, which lives in the Texture section
     local pos = {
-        type = "group", inline = true, name = "Position (Offset From Screen Centre)", order = 20, args = {
+        type = "group", inline = true, name = "Position (Offset From Screen Center)", order = 20, args = {
             x = Rng(V, "x", "X", 1, -1200, 1200, 1, on),
             y = Rng(V, "y", "Y", 2, -800, 800, 1, on),
             unlock = { type = "execute", order = 3, width = "double",
@@ -883,15 +1044,19 @@ local function BuildRule(i, rule)
           desc = "Default 5. At or above this many seconds the time shows as whole numbers." })
     durArgs.note = { type = "description", order = 40, fontSize = "small", width = "full",
         name = "While Blizzard hides aura numbers in combat, the time comes from Blizzard's own duration display, so it may be unavailable or styled slightly differently. Unlock visuals, or use the eye icon, to preview a sample and position the text." }
+    ns.GatePane(rule, durArgs, "decimals", "Tenths options", 2.5, function() return T.decimals end, { "decimalBelow" })
+    ns.GateRest(rule, durArgs, "dur", "Text options", 5, function() return T.enabled end, { enabled = true })
     local cntArgs = TextStyleArgs(C, on, 10)
     cntArgs.enabled = Tog(C, "enabled", "Show a count", 1, on, { desc = "Aura stacks or spell charges. Experimental under Midnight secrecy: the number can only be displayed, not compared." })
     cntArgs.source = Sel(C, "source", "Count of", 2, COUNT_SOURCE, COUNT_SOURCE_ORDER, on)
+    ns.GateRest(rule, cntArgs, "cnt", "Count options", 5, function() return C.enabled end, { enabled = true })
     local AB = V.absorb
     local absArgs = TextStyleArgs(AB, on, 10)
     absArgs.enabled = Tog(AB, "enabled", "Show shield / absorb amount", 1, on, { desc = "Experimental under Midnight secrecy: the amount can only be displayed, not compared or used as a condition." })
     absArgs.source = Sel(AB, "source", "Amount from", 2, ABSORB_SOURCE, ABSORB_SOURCE_ORDER, on)
     absArgs.abbreviate = Tog(AB, "abbreviate", "Abbreviate (12.3K / 1.2M)", 3, on)
     absArgs.hideZero = Tog(AB, "hideZero", "Hide when zero", 4, on, { desc = "Only works when the number is readable; a secret amount is shown as-is." })
+    ns.GateRest(rule, absArgs, "abs", "Absorb options", 5, function() return AB.enabled end, { enabled = true })
     local text = {
         type = "group", inline = true, name = "Text", order = 2, args = {
             dur = { type = "group", inline = true, name = "Buff Duration Text", order = 1, args = durArgs },
@@ -941,19 +1106,24 @@ local function BuildRule(i, rule)
         },
     }
 
-    -- Collapsible banners: an enable tick box + a "Show options" tick box; the options only render while open.
+    -- Collapsible banners: the "Show ..." tick box turns the element on AND shows its options; a +/- button beside it
+    -- closes or reopens them (open by default while the element is on). Nothing shows while it is off.
     local function Banner(key, name, order, enableArg, bodyArgs)
-        local function st() bannerOpen[rule] = bannerOpen[rule] or {}; return bannerOpen[rule] end
+        local function isOn() local ok, v = pcall(enableArg.get, {}); return ok and v and true or false end
         enableArg.order = 1
+        local prevSet = enableArg.set
+        enableArg.set = function(info, v, ...)
+            if prevSet then prevSet(info, v, ...) end
+            if v then local b = bannerOpen[rule]; if b then b[key] = nil end end   -- ticking always shows the options
+        end
+        local arrow = ns.ArrowToggle(rule, key, 2)
+        arrow.hidden = function() return not isOn() end
         return {
             type = "group", inline = true, name = name, order = order, args = {
                 enable = enableArg,
-                open = { type = "toggle", name = "Show options", order = 2,
-                    desc = "Expand or collapse this banner's options. Collapsing never changes any setting.",
-                    get = function() return st()[key] and true or false end,
-                    set = function(_, v) st()[key] = v and true or nil; Notify() end },
+                open = arrow,
                 body = { type = "group", inline = true, name = "", order = 10,
-                    hidden = function() return not st()[key] end, args = bodyArgs },
+                    hidden = function() return not (isOn() and ns.ArrowOpen(rule, key)) end, args = bodyArgs },
             },
         }
     end
@@ -964,7 +1134,7 @@ local function BuildRule(i, rule)
         return {
             type = "group", inline = true, name = "", order = order, hidden = hiddenFn,
             args = {
-                hdr = { type = "execute", order = 1, width = "full",
+                hdr = { type = "execute", order = 1, width = "full", arg = { xuiLeft = true },
                     name = function() return (subst()[key] and ARROW_OPEN or ARROW_CLOSED) .. "  " .. title end,
                     desc = "Expand or collapse this section. Collapsing never changes any setting.",
                     func = function() subst()[key] = (not subst()[key]) or nil; Notify() end },
@@ -977,7 +1147,7 @@ local function BuildRule(i, rule)
     tex.args.addOverlay = Tog(OV, "enabled", "Add Overlay Layer", 4, function() Changed(rule); Notify() end, { width = "double",
         desc = "Adds a second texture layer directly below this box that you can tint separately." })
     overlay.args.enabled = nil
-    tex.args.posH = { type = "header", name = "Position (Offset From Screen Centre)", order = 4.5 }
+    tex.args.posH = { type = "header", name = "Position (Offset From Screen Center)", order = 4.5 }
     pos.args.x.order, pos.args.y.order, pos.args.unlock.order = 4.6, 4.7, 4.8
     tex.args.x, tex.args.y, tex.args.unlock = pos.args.x, pos.args.y, pos.args.unlock
     display.args.trigger.order = 0
@@ -1001,13 +1171,13 @@ local function BuildRule(i, rule)
             Changed(rule); Notify()
         end }
     local actions = { type = "group", name = "Conditions", order = 3, args = {
-        display = Banner("display", "Display Options", 1, display.args.enabled, dispBody),
+        display = Banner("display", "Display Options", 1, display.args.enabled, dispBody, function() return V.enabled and true or false end),
         text = Banner("text", "Text", 2, textEnable, {
             dur = Sub("dur", "Buff Duration Text", 1, durArgs),
             cnt = Sub("cnt", "Stacks / Charges Count", 2, cntArgs),
             abs = Sub("abs", "Shield / Absorb Amount", 3, absArgs),
-        }),
-        sound = Banner("sound", "Sound", 3, soundEnable, soundBody),
+        }, function() return (T.enabled or C.enabled or AB.enabled) and true or false end),
+        sound = Banner("sound", "Sound", 3, soundEnable, soundBody, function() return rule.sound.enabled and true or false end),
     } }
     -- cue kinds: a Display rule has no sound banner, a Sound rule has no display / text banners
     actions.args.display.hidden = function() return not ns.KindHas(rule, "visual") end
@@ -1094,7 +1264,7 @@ end
 local function TokenHelp()
     local t = { "Tokens you can use (case-insensitive):" }
     for _, k in ipairs(ns.QOL_STAT_ORDER) do t[#t + 1] = "{" .. k .. "}  " .. ns.QOL_STATS[k].desc end
-    t[#t + 1] = "WoW colour codes also work in the format, e.g. typing |cffffd100||cffffd100gold||r|r shows |cffffd100gold|r."
+    t[#t + 1] = "WoW color codes also work in the format, e.g. typing |cffffd100||cffffd100gold||r|r shows |cffffd100gold|r."
     t[#t + 1] = "Blizzard hides stats while auras are restricted (combat, M+, encounters): a stat then keeps its last readable value, or shows ? if it was never readable."
     return table.concat(t, "\n")
 end
@@ -1127,7 +1297,7 @@ local function BuildBox(i, box)
                 get = function() return box.outline end, set = function(_, v) box.outline = v; ns.QoL_Refresh(box) end },
             justify = { type = "select", name = "Alignment", order = 13, values = JUSTIFY, sorting = JUSTIFY_ORDER,
                 get = function() return box.justify end, set = function(_, v) box.justify = v; ns.QoL_Refresh(box) end },
-            color = { type = "color", name = "Colour", order = 14, hasAlpha = true,
+            color = { type = "color", name = "Color", order = 14, hasAlpha = true,
                 get = function() local c = box.color or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] or 1 end,
                 set = function(_, r, g, b, a) box.color = { r, g, b, a }; ns.QoL_Refresh(box) end },
             alpha = { type = "range", name = "Opacity", order = 15, min = 0.05, max = 1, step = 0.05,
@@ -1136,7 +1306,7 @@ local function BuildBox(i, box)
                 get = function() return box.decimals end, set = function(_, v) box.decimals = v; ns.QoL_Refresh(box) end },
             showCombat = { type = "select", name = "Show", order = 17, values = SHOW_COMBAT, sorting = SHOW_COMBAT_ORDER,
                 get = function() return box.showCombat end, set = function(_, v) box.showCombat = v; ns.QoL_Refresh(box) end },
-            posHeader = { type = "header", name = "Position (Offset From Screen Centre)", order = 20 },
+            posHeader = { type = "header", name = "Position (Offset From Screen Center)", order = 20 },
             x = { type = "range", name = "X", order = 21, min = -1500, max = 1500, step = 1,
                 get = function() return box.x end, set = function(_, v) box.x = v; ns.QoL_Refresh(box) end },
             y = { type = "range", name = "Y", order = 22, min = -900, max = 900, step = 1,
@@ -1194,15 +1364,15 @@ local function BuildBar(i, bar)
             vertical = Tog(bar, "vertical", "Vertical orientation", 4, on),
             reverse = Tog(bar, "reverse", "Fill up as time passes (instead of draining)", 5, on, { width = "double" }),
             alpha = Rng(bar, "alpha", "Opacity", 6, 0, 1, 0.05, on),
-            colH = { type = "header", name = "Texture & Colours", order = 10 },
+            colH = { type = "header", name = "Texture & Colors", order = 10 },
             texture = Sel(bar, "texture", "Bar texture", 11, function() local v = ns.BarTextureList(); return v end,
                 function() local _, o = ns.BarTextureList(); return o end, on, { width = "double" }),
-            fill = Col(bar, "fillColor", "Fill colour", 12, on),
-            bg = Col(bar, "bgColor", "Background colour", 13, on),
+            fill = Col(bar, "fillColor", "Fill color", 12, on),
+            bg = Col(bar, "bgColor", "Background color", 13, on),
             spark = Tog(bar, "spark", "Show spark", 14, on),
             borderH = { type = "header", name = "Border", order = 20 },
             borderSize = Rng(bar, "borderSize", "Border size (px, 0 = none)", 21, 0, 8, 1, on),
-            borderColor = Col(bar, "borderColor", "Border colour", 22, on),
+            borderColor = Col(bar, "borderColor", "Border color", 22, on),
             posH = { type = "header", name = "Position (Used When the Group Layout Is Manual)", order = 30 },
             x = Rng(bar, "x", "X", 31, -1500, 1500, 1, on),
             y = Rng(bar, "y", "Y", 32, -900, 900, 1, on),
@@ -1235,6 +1405,14 @@ local function BuildBar(i, bar)
             stackAnchor = Sel(bar, "stackAnchor", "Stacks position", 33, BAR_ANCHOR, BAR_ANCHOR_ORDER, on),
         },
     }
+    do   -- name / timer / stacks options are drawn only while that element is switched on
+        local a, cn = text.args, text.args.customName
+        ns.GatePane(bar, a, "decimals", "Tenths options", 24.5, function() return bar.decimals end, { "decimalBelow" })
+        ns.GatePane(bar, a, "name", "Name options", 11.5, function() return bar.showName end, { "nameMode", "customName", "nameSize", "nameAnchor" })
+        cn.disabled = function() return ns.Val(bar.nameMode) ~= "custom" end   -- a choice inside the pane, not an on/off switch
+        ns.GatePane(bar, a, "timer", "Timer options", 21.5, function() return bar.showTimer end, { "timerSize", "timerAnchor", "decimals", "pane_decimals" })
+        ns.GatePane(bar, a, "stacks", "Stacks options", 31.5, function() return bar.showStacks end, { "stackSize", "stackAnchor" })
+    end
     return {
         type = "group", childGroups = "tab", order = 10 + i,
         name = function() return (bar.enabled and "" or "|cff888888") .. bar.name end,
@@ -1255,6 +1433,28 @@ local function ParseImport()
     if (importText or ""):match("%S") then
         importSnap, importErr = ns.Profile_Decode(importText)
     end
+end
+
+local function AddonVersion()
+    local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+    local ok, v = pcall(get, addonName, "Version")
+    return (ok and v) or "?"
+end
+
+-- Addon Settings: the addon's own behavior, as opposed to any one rule's. Sits last (far right) in the tab bar.
+local function BuildAddonSettings()
+    return { type = "group", name = "Addon Settings", order = 7, args = {
+        intro = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = function() return "XayaUI v" .. AddonVersion() .. ". Settings here affect the whole addon, not any one rule." end },
+        debugHeader = { type = "header", name = "Debugging", order = 10 },
+        advancedDebug = { type = "toggle", name = "Advanced Debugging (recommended)", order = 11, width = "full",
+            desc = "When a Lua error happens inside XayaUI, print it to the chat window as a system message (in addition to whatever BugSack or the default Lua-error UI already does). Off: XayaUI stays silent about its own errors in chat.",
+            get = function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug and true or false end,
+            set = function(_, v)
+                CueRulesDB.ui = CueRulesDB.ui or {}
+                CueRulesDB.ui.advancedDebug = v and true or false
+            end },
+    } }
 end
 
 local function BuildProfiles()
@@ -1376,6 +1576,38 @@ end
 
 -- "+ New rule" opens an intermediate page (like WeakAuras' display-type list) instead of creating a blank rule.
 -- Sound Cues folders skip it: they only hold sound rules, so there is nothing to choose.
+-- Smart Categories: a virtual root whose sub-lists are filled from what each rule actually does (nothing is moved or
+-- forced into a folder; a rule that shows an icon AND text appears under both). Buff bars come from their own list.
+ns.SMART_CATS = {
+    { key = "smart_icon",    name = "Icons" },
+    { key = "smart_progtex", name = "Progress Textures" },
+    { key = "smart_bar",     name = "Progress Bars" },
+    { key = "smart_tex",     name = "Textures" },
+    { key = "smart_text",    name = "Text" },
+    { key = "smart_sound",   name = "Sounds" },
+}
+function ns.SmartMatch(rule, key)
+    if not rule then return false end
+    if key == "smart_sound" then
+        return (rule.sound and rule.sound.enabled and ns.KindHas(rule, "sound")) and true or false
+    end
+    local v = rule.visual
+    if not (v and v.enabled and ns.KindHas(rule, "visual")) then return false end
+    local isIcon = ns.Val(v.kind) == "spellicon"
+    local fill = v.fill and v.fill.enabled and true or false
+    if key == "smart_icon" then return isIcon end
+    if key == "smart_progtex" then return fill end
+    if key == "smart_text" then return (v.text and v.text.enabled) and true or false end
+    if key == "smart_tex" then return (not isIcon) and (not fill) and (v.texAlpha == nil or v.texAlpha > 0) end
+    return false
+end
+function ns.SmartAny(rule)
+    for _, c in ipairs(ns.SMART_CATS) do
+        if c.key ~= "smart_bar" and ns.SmartMatch(rule, c.key) then return true end
+    end
+    return false
+end
+
 local picker = nil   -- { folder = id|nil } while the page is open
 local function CreateRuleOfType(typ, fid)
     local r = ns.NewRule()
@@ -1386,7 +1618,10 @@ local function CreateRuleOfType(typ, fid)
     if typ and ns.KindHas(r, "visual") then
         v.enabled = true
         if typ == "icon" then v.kind = "spellicon"; v.w, v.h = 64, 64; v.desatOnCD = true
-        elseif typ == "progresstex" then v.fill.enabled = true
+        elseif typ == "progresstex" then
+            v.fill.enabled = true
+            v.overlay.enabled = true      -- progress textures are two-layered by default: base (reduced opacity below) + overlay (full)
+            v.texAlpha = 0.35              -- reduced base opacity; ratio to Overlay opacity (1) is preserved while locked (see ProgLocked)
         elseif typ == "text" then v.text.enabled = true; v.texAlpha = 0 end
     end
     ns.rules[#ns.rules + 1] = r
@@ -1399,6 +1634,100 @@ local function StartNewRule(fid)
     Notify()
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "all")
 end
+-- Auto-populate: one rule per spell of the current class / spec whose base cooldown is >= the folder's threshold.
+-- Rules already in this folder (or its subfolders) for the same spell are skipped, so it is safe to run again after a
+-- respec or a talent change.
+local autoMsg = {}   -- folder id -> last result line
+local AUTO_SCOPE_VALUES = {
+    spec = "This specialization only (rules load only on this spec)",
+    any  = "Any specialization (rules load on every spec)",
+}
+-- Settings live in CueRulesDB.ui.auto (one global set, used by the sidebar row "AUTO-POPULATE RULES"), not on each folder.
+function ns.AutoCfg()
+    CueRulesDB.ui = CueRulesDB.ui or {}
+    local a = CueRulesDB.ui.auto
+    if not a then a = {}; CueRulesDB.ui.auto = a end
+    if a.minCD == nil then a.minCD = 30 end
+    if a.scope == nil then a.scope = "spec" end
+    if a.talents == nil then a.talents = true end
+    if a.enabled == nil then a.enabled = true end
+    return a
+end
+-- destination folder id (nil = top level). Default: the Hybrid Cues category.
+function ns.AutoDest(a)
+    if a.dest == "none" then return nil end
+    if a.dest and ns.FolderById(a.dest) then return a.dest end
+    for _, f in ipairs(ns.folders or {}) do
+        if not f.parent and f.default == "hybrid" then return f.id end
+    end
+    return nil
+end
+function ns.AutoHave(fid)
+    local have = {}
+    local list = fid and FolderRules(fid) or {}
+    if not fid then for _, r in ipairs(ns.rules or {}) do if not r.folder then list[#list + 1] = r end end end
+    for _, r in ipairs(list) do if (tonumber(r.spellID) or 0) ~= 0 then have[r.spellID] = true end end
+    return have
+end
+local function AutoPopulate()
+    local a = ns.AutoCfg()
+    local fid = ns.AutoDest(a)
+    local minSec = tonumber(a.minCD) or 30
+    local list = ns.CollectCooldownSpells(minSec, a.talents ~= false)
+    local have = ns.AutoHave(fid)
+    local specID = ns.CurrentSpecID and ns.CurrentSpecID()
+    local specOnly = (a.scope or "spec") == "spec"
+    local kit = SOUNDKIT and SOUNDKIT.RAID_WARNING and tostring(SOUNDKIT.RAID_WARNING) or ""
+    local made, skipped = 0, 0
+    for _, sp in ipairs(list) do
+        if have[sp.id] then
+            skipped = skipped + 1
+        else
+            local r = ns.NewRule()
+            r.name = sp.name
+            r.folder = fid
+            ApplyNewOpts(r)
+            if not r.sound.enabled and not r.visual.enabled then r.sound.enabled = true end   -- Hybrid folders: sound by default
+            r.spellID = sp.id
+            r.cdState, r.buffState, r.talentMode = "ready", "none", "none"
+            if sp.talent then r.talents, r.talentMode = { { id = sp.id, state = "known" } }, "all" end
+            if specOnly and specID then r.load.specs = { [tostring(specID)] = true } end
+            r.enabled = a.enabled ~= false
+            if r.sound.enabled then r.sound.source, r.sound.value = "kit", kit end
+            if r.visual.enabled then
+                local v = r.visual
+                v.kind, v.trigger, v.w, v.h, v.desatOnCD = "spellicon", "condition", 64, 64, true
+                v.x, v.y = ((made % 8) - 3.5) * 68, -60 * math.floor(made / 8)
+            end
+            ns.rules[#ns.rules + 1] = r
+            made = made + 1
+        end
+    end
+    for _, r in ipairs(ns.rules) do if r.folder == fid then pcall(ns.RefreshVisual, r) end end
+    ns.MarkDirty()
+    if ns.OnRulesChanged then pcall(ns.OnRulesChanged) end
+    autoMsg.last = ("Added %d rule(s); %d already in that folder were skipped."):format(made, skipped)
+    ns.Print("auto-populate: " .. autoMsg.last)
+    Notify()
+end
+local function AutoPreview()
+    local a = ns.AutoCfg()
+    local ok, list = pcall(ns.CollectCooldownSpells, tonumber(a.minCD) or 30, a.talents ~= false)
+    if not ok or type(list) ~= "table" then return "Could not read your spellbook / talents right now." end
+    local have = ns.AutoHave(ns.AutoDest(a))
+    local fresh, names = 0, {}
+    for _, sp in ipairs(list) do
+        if not have[sp.id] then
+            fresh = fresh + 1
+            if #names < 12 then names[#names + 1] = ("%s (%ss)"):format(sp.name, (math.floor(sp.cd * 10 + 0.5) / 10)) end
+        end
+    end
+    local line = ("%d spell(s) match, %d new."):format(#list, fresh)
+    if #names > 0 then line = line .. " Next: " .. table.concat(names, ", ") .. (fresh > #names and ", ..." or "") end
+    if autoMsg.last then line = line .. "\n|cff80ff80" .. autoMsg.last .. "|r" end
+    return line
+end
+
 local function PickType(typ)
     local p = picker
     picker = nil
@@ -1530,7 +1859,7 @@ function ns.FolderContainerGroup(f)
     local SV = { inherit = "(default - High)", BACKGROUND = "Background", LOW = "Low", MEDIUM = "Medium", HIGH = "High", DIALOG = "Dialog",
         FULLSCREEN = "Fullscreen", FULLSCREEN_DIALOG = "Fullscreen dialog", TOOLTIP = "Tooltip" }
     local RELS = { "screen", "player", "target", "focus", "minimap", "chat", "custom" }
-    local RV = { screen = "Screen centre (or the parent folder)", player = "Player frame", target = "Target frame", focus = "Focus frame",
+    local RV = { screen = "Screen center (or the parent folder)", player = "Player frame", target = "Target frame", focus = "Focus frame",
         minimap = "Minimap", chat = "Main chat frame", custom = "Another frame (type its name)" }
     local function isDyn() return f.cType == "dynamic" end
     local g = { type = "group", inline = true, order = 5.4, name = "Group Type & Container",
@@ -1543,7 +1872,7 @@ function ns.FolderContainerGroup(f)
         { "static", "dynamic" }, function() return isDyn() and "dynamic" or "static" end,
         function(v) f.cType = (v == "dynamic") and "dynamic" or nil; apply() end)
     g.args.growth = { type = "select", name = "Grow direction", order = 2, width = "double", hidden = function() return not isDyn() end,
-        values = { RIGHT = "Right", LEFT = "Left", DOWN = "Down", UP = "Up", HCENTER = "Centred, horizontal", VCENTER = "Centred, vertical" },
+        values = { RIGHT = "Right", LEFT = "Left", DOWN = "Down", UP = "Up", HCENTER = "Centered, horizontal", VCENTER = "Centered, vertical" },
         sorting = { "RIGHT", "LEFT", "DOWN", "UP", "HCENTER", "VCENTER" },
         get = function() return f.cGrowth or "RIGHT" end, set = function(_, v) f.cGrowth = v; apply() end }
     g.args.spacing = { type = "range", name = "Spacing between items", order = 2.1, width = "double", min = 0, max = 200, step = 1,
@@ -1604,6 +1933,21 @@ end
 
 local function BuildFolder(k, f)
     local dinfo, dpos = ns.DefaultFolderInfo(f.default)
+    if f.default == "cursor" and not f.parent then
+        -- Mouse Cursor Cues: no folder tools here; the only content is a jump to the Cursor Tracker settings
+        return {
+            type = "group", order = dpos and (10 + dpos) or (100 + k),
+            name = function() return tostring(f.name):upper() .. " (" .. FolderRuleCount(f) .. ")" end,
+            args = {
+                note = { type = "description", order = 1, width = "full", fontSize = "medium",
+                    name = "The mouse cursor texture and its at-cursor reminders are set up in QoL Elements." },
+                configure = { type = "execute", order = 2, width = "double", name = "Configure in QoL settings",
+                    func = function()
+                        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allcursor")
+                    end },
+            },
+        }
+    end
     local g = {
         type = "group", order = dpos and (10 + dpos) or (100 + k),
         name = function() return (f.parent and f.name or tostring(f.name):upper()) .. " (" .. FolderRuleCount(f) .. ")" end,
@@ -1710,8 +2054,10 @@ local function BuildOptions()
     end
     local okc, ctx = pcall(ns.ReadContext)
     local loadedArgs, notArgs, nLoaded, nNot = {}, {}, 0, 0
+    local ruleGroups = {}
     for i, rule in ipairs(ns.rules or {}) do
         local g = BuildRule(i, rule)
+        ruleGroups[i] = g
         local fld = rule.folder and groups[rule.folder]
         if fld then fld.args["rule" .. i] = g else all.args["rule" .. i] = g end
         if okc and ns.IsLoaded(rule, ctx) then loadedArgs["rule" .. i] = g; nLoaded = nLoaded + 1
@@ -1756,6 +2102,32 @@ local function BuildOptions()
         spacer = { type = "group", order = 2, name = " ", disabled = true, args = {} },
         notloaded = { type = "group", order = 4, childGroups = "tree",
             name = function() return "NOT LOADED (" .. nNot .. ")" end, args = notArgs },
+        autopop = { type = "group", order = 5, name = "AUTO-POPULATE RULES", args = {
+            intro = { type = "description", order = 0, width = "full", fontSize = "medium",
+                name = "Creates one rule per spell of your current class and specialization whose base cooldown is at least the number of seconds below (rule: fires when the spell comes off cooldown). Spells that are talents also require that talent. Spells already in the chosen folder are skipped, so you can run it again after a respec." },
+            run = { type = "execute", name = "Auto-populate rules now", order = 1, width = "double",
+                func = function() AutoPopulate() end },
+            minCD = { type = "input", name = "Minimum cooldown (seconds)", order = 2, width = "normal",
+                desc = "Uses each spell's BASE cooldown (talent and haste reductions are not applied). For charge spells it uses the recharge time per charge when the game exposes it.",
+                get = function() return tostring(ns.AutoCfg().minCD) end,
+                set = function(_, v) local n = tonumber(v); if n and n >= 0 then ns.AutoCfg().minCD = n end; ns.MarkDirty(); Notify() end },
+            dest = { type = "select", name = "Add the rules to this folder", order = 3, width = "double",
+                values = function() local v = FolderValues(); return v end,
+                sorting = function() local _, o = FolderValues(); return o end,
+                get = function() local a = ns.AutoCfg(); return a.dest or ns.AutoDest(a) or "none" end,
+                set = function(_, v) ns.AutoCfg().dest = v; ns.MarkDirty(); Notify() end },
+            scope = { type = "select", name = "Specialization", order = 4, width = "double",
+                values = AUTO_SCOPE_VALUES, sorting = { "spec", "any" },
+                get = function() return ns.AutoCfg().scope end,
+                set = function(_, v) ns.AutoCfg().scope = v; ns.MarkDirty(); Notify() end },
+            talents = { type = "toggle", name = "Include talents I have not picked (rule only loads when the talent is known)", order = 5, width = "full",
+                get = function() return ns.AutoCfg().talents ~= false end,
+                set = function(_, v) ns.AutoCfg().talents = v and true or false; ns.MarkDirty(); Notify() end },
+            enabled = { type = "toggle", name = "Create the rules already enabled", order = 6, width = "full",
+                get = function() return ns.AutoCfg().enabled ~= false end,
+                set = function(_, v) ns.AutoCfg().enabled = v and true or false; ns.MarkDirty(); Notify() end },
+            preview = { type = "description", order = 7, width = "full", fontSize = "small", name = function() return AutoPreview() end },
+        } },
         all = all } }
 
     ---------------------------------------------------------- Buff Bars
@@ -1789,6 +2161,33 @@ local function BuildOptions()
     }
     for i, bar in ipairs(ns.bars or {}) do allBars.args["bar" .. i] = BuildBar(i, bar) end
 
+    ---------------------------------------------------------- Smart Categories (virtual root under All Rules)
+    do
+        local smartArgs, total = {}, 0
+        smartArgs.info = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = "Collects rules by what they actually do, without moving them out of their own folders. A rule that shows an icon and text appears under both. Buff bars are listed under Progress Bars. Lists update as you change rules; empty ones are hidden." }
+        for k, cat in ipairs(ns.SMART_CATS) do
+            local args, n = {}, 0
+            if cat.key == "smart_bar" then
+                for j = 1, #(ns.bars or {}) do
+                    local bg = allBars.args["bar" .. j]
+                    if bg then args["bar" .. j] = bg; n = n + 1 end
+                end
+                total = total + n
+            else
+                for i, rule in ipairs(ns.rules or {}) do
+                    if ns.SmartMatch(rule, cat.key) then args["rule" .. i] = ruleGroups[i]; n = n + 1 end
+                end
+            end
+            smartArgs[cat.key] = { type = "group", order = k, childGroups = "tree",
+                name = function() return cat.name .. " (" .. n .. ")" end,
+                hidden = function() return n == 0 end, args = args }
+        end
+        for _, rule in ipairs(ns.rules or {}) do if ns.SmartAny(rule) then total = total + 1 end end
+        track.args.smart = { type = "group", order = 5, childGroups = "tree",
+            name = function() return "SMART CATEGORIES (" .. total .. ")" end, args = smartArgs }
+    end
+
     ---------------------------------------------------------- QoL
     local allQol = {
         type = "group", name = "Stat Tracking", order = 1, childGroups = "tree",
@@ -1817,7 +2216,7 @@ local function BuildOptions()
     local qol = { type = "group", name = "QoL Elements", order = 5, childGroups = "tree", args = { allqol = allQol, allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil, allbars = allBars } }
 
     return { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, qol = qol, profiles = BuildProfiles() } }
+        args = { cooldowns = track, qol = qol, profiles = BuildProfiles(), settings = BuildAddonSettings() } }
 end
 
 AceConfigRegistry:RegisterOptionsTable(APP, BuildOptions)
@@ -1968,6 +2367,18 @@ local function Resolve(uv)
     if n then local b = ns.bars and ns.bars[tonumber(n)]; if b then return { b }, nil end return nil end
     if last:match("^f%d") then
         local l = FolderRules(last)
+        return l, l
+    end
+    if last == "smart" or last:match("^smart_") then
+        if last == "smart_bar" then
+            local l = {}
+            for _, b in ipairs(ns.bars or {}) do l[#l + 1] = b end
+            return l, nil
+        end
+        local l = {}
+        for _, r in ipairs(ns.rules or {}) do
+            if (last == "smart" and ns.SmartAny(r)) or (last ~= "smart" and ns.SmartMatch(r, last)) then l[#l + 1] = r end
+        end
         return l, l
     end
     if last == "loaded" or last == "notloaded" then
@@ -2478,13 +2889,14 @@ end
 
 -- Header rows (the root row and every top-level folder) get a tinted banner so each reads as its own group.
 local BANNER_TINT = {
-    root = { 1, 0.78, 0 }, loaded = { 0.1, 0.85, 0.75 }, notloaded = { 0.95, 0.2, 0.2 }, display = { 0.1, 0.5, 1 }, sound = { 0.1, 0.75, 0.3 }, hybrid = { 1, 0.5, 0.1 }, advanced = { 0.75, 0.25, 1 }, cursor = { 0.95, 0.35, 0.75 }, other = { 0.7, 0.7, 0.75 },
+    root = { 1, 0.78, 0 }, loaded = { 0.1, 0.85, 0.75 }, notloaded = { 0.95, 0.2, 0.2 }, display = { 0.1, 0.5, 1 }, sound = { 0.1, 0.75, 0.3 }, hybrid = { 1, 0.5, 0.1 }, advanced = { 0.75, 0.25, 1 }, smart = { 0.3, 0.8, 1 }, cursor = { 0.95, 0.35, 0.75 }, other = { 0.7, 0.7, 0.75 },
 }
 local function BannerTint(uv)
     local last = uv and tostring(uv):match("([^\001]*)$")
-    if last == "all" or last == "allbars" or last == "allqol" or last == "allcursor" then return BANNER_TINT.root end
+    if last == "all" or last == "allbars" or last == "allqol" or last == "allcursor" or last == "autopop" then return BANNER_TINT.root end
     if last == "loaded" then return BANNER_TINT.loaded end
     if last == "notloaded" then return BANNER_TINT.notloaded end
+    if last == "smart" then return BANNER_TINT.smart end
     local f = last and ns.FolderById and ns.FolderById(last)
     if f and not f.parent then
         return (type(f.default) == "string" and BANNER_TINT[f.default]) or BANNER_TINT.other
@@ -2498,11 +2910,38 @@ local function PaintBanner(button)
     if fs and fs.GetFont then
         if not button.xuiFont then local f, sz, fl = fs:GetFont(); local r, g, b, a = fs:GetTextColor(); button.xuiFont = { f, sz, fl, r, g, b, a } end
         local uv = button.uniquevalue and tostring(button.uniquevalue)
-        local isRoot = uv and (uv == "all" or uv == "allbars" or uv == "allqol" or uv == "allcursor" or uv == "loaded" or uv == "notloaded") or false
-        if isRoot then
+        local isRoot = uv and (uv == "all" or uv == "allbars" or uv == "allqol" or uv == "allcursor" or uv == "loaded" or uv == "notloaded" or uv == "smart" or uv == "autopop") or false
+        -- Sizes (all relative to the default row font): sub-categories (nested folders, Smart Categories lists) +20%;
+        -- categories / cue types (top-level folders) +15% then +20%; primary categories (root rows) 15% above the categories.
+        local lastKey = uv and uv:match("([^\001]+)$") or ""
+        local fld = lastKey:match("^f%d") and ns.FolderById and ns.FolderById(lastKey) or nil
+        local isSub = (fld and fld.parent and true) or lastKey:match("^smart_") ~= nil
+        local base = button.xuiFont[2]
+        -- 2026-09-21: an extra x0.85 across the board - the previous +20% pass ran text into the row below.
+        local catSize = math.floor(base * 1.15 * 1.2 * 0.85 * 10 + 0.5) / 10
+        local subSize = math.floor(base * 1.2 * 0.85 * 10 + 0.5) / 10
+        local cueSize = catSize
+        local isCue = (not isRoot) and (not isSub) and c ~= nil
+        if not button.xuiH0 then button.xuiH0 = button:GetHeight() end
+        local want = button.xuiH0
+        if isRoot then want = math.max(button.xuiH0, math.floor(catSize * 1.15 + 8)) elseif isCue then want = math.max(button.xuiH0, math.floor(catSize + 8)) elseif isSub then want = math.max(button.xuiH0, math.floor(subSize + 8)) end
+        if math.abs(button:GetHeight() - want) > 0.5 then button:SetHeight(want) end
+        if isSub then
+            for _, seg in ipairs(button.xuiSC and button.xuiSC.segs or {}) do seg:Hide() end
+            fs:SetFont(button.xuiFont[1], subSize, button.xuiFont[3])
+            fs:SetTextColor(button.xuiFont[4] or 1, button.xuiFont[5] or 0.82, button.xuiFont[6] or 0, button.xuiFont[7] or 1)
+            fs:SetAlpha(1)
+            button.xuiIsSC = true
+        elseif isCue then
+            for _, seg in ipairs(button.xuiSC and button.xuiSC.segs or {}) do seg:Hide() end
+            fs:SetFont(button.xuiFont[1], cueSize, button.xuiFont[3])
+            fs:SetTextColor(button.xuiFont[4] or 1, button.xuiFont[5] or 0.82, button.xuiFont[6] or 0, button.xuiFont[7] or 1)
+            fs:SetAlpha(1)
+            button.xuiIsSC = true
+        elseif isRoot then
             -- One font string, all capitals, one size: the earlier small-caps version stitched separate font strings
             -- together and left a visible gap after every capital and every space.
-            local size = math.floor((button.xuiFont[2] + 2) * 0.85 * 10 + 0.5) / 10
+            local size = math.floor(cueSize * 1.15 * 10 + 0.5) / 10
             for _, seg in ipairs(button.xuiSC and button.xuiSC.segs or {}) do seg:Hide() end
             fs:SetFont(button.xuiFont[1], size, "OUTLINE")
             fs:SetTextColor(1, 1, 1, 1)
@@ -2552,9 +2991,9 @@ local function PaintBanner(button)
     b:Show(); bar:Show()
 end
 
--- Tree-chart guide bars: every row inside a top-level folder repeats that folder's colour as a vertical bar at the
+-- Tree-chart guide bars: every row inside a top-level folder repeats that folder's color as a vertical bar at the
 -- left edge (a continuation of the folder's own banner bar), and each deeper folder level adds one more, lighter
--- and thinner bar, indented one step. Rows directly under the Loaded / Not Loaded roots continue that root's colour.
+-- and thinner bar, indented one step. Rows directly under the Loaded / Not Loaded roots continue that root's color.
 local function PaintGuides(button)
     local guides = button.xuiGuides
     local bars = {}
@@ -2572,6 +3011,9 @@ local function PaintGuides(button)
                     r = c[1] + (1 - c[1]) * mix, g = c[2] + (1 - c[2]) * mix, b = c[3] + (1 - c[3]) * mix,
                     a = math.max(0.5, 1 - 0.12 * depth) }
             end
+        elseif segs[1] == "smart" and L >= 2 then
+            local rc = BANNER_TINT.smart
+            bars[1] = { x = 0, w = 6, r = rc[1], g = rc[2], b = rc[3], a = 1 }
         elseif L == 2 and (segs[1] == "loaded" or segs[1] == "notloaded") then
             local rc = BannerTint(segs[1])
             if rc then bars[1] = { x = 0, w = 6, r = rc[1], g = rc[2], b = rc[3], a = 1 } end
@@ -2685,6 +3127,10 @@ local ROW_TOGGLES = {
         tip = "Ticked: a texture follows your mouse cursor (off by default). Your settings are kept when unticked.",
         get = function() return ns.CursorOn() end,
         set = function(v) CueRulesDB.cursor = CueRulesDB.cursor or {}; CueRulesDB.cursor.enabled = v; if ns.Cursor_Apply then ns.Cursor_Apply() end end },
+    ["allcursor\001reminders"] = { title = "At-Cursor Reminders on / off",
+        tip = "Ticked: the spell icons of your rules' displays are shown next to the mouse cursor (which rules: see this pane). Off by default; your choices are kept when unticked.",
+        get = function() return CueRulesDB.cursor and CueRulesDB.cursor.remOn and true or false end,
+        set = function(v) CueRulesDB.cursor = CueRulesDB.cursor or {}; CueRulesDB.cursor.remOn = v; if ns.CursorReminders_Apply then ns.CursorReminders_Apply() end end },
     allbars = { title = "Buff Bars on / off",
         tip = "Unticked: every buff bar is hidden on screen and nothing is listed here. Your bars are kept.",
         get = function() return ns.BarsOn() end,
@@ -2720,7 +3166,7 @@ local function DecorateButton(button)
     -- top-level roots (All Rules / Loaded / Not Loaded) carry no eye or headphone; their lock icons stay
     do
         local rootKey = tostring(button.uniquevalue or ""):match("([^\001]+)$")
-        if rootKey == "all" or rootKey == "loaded" or rootKey == "notloaded" then hasIcons = false end
+        if rootKey == "all" or rootKey == "loaded" or rootKey == "notloaded" or rootKey == "smart" then hasIcons = false end
     end
     if button.text then
         button.text:SetWordWrap(false)
@@ -3037,8 +3483,56 @@ local function AttachSpellTip(w)
     end
 end
 
+-- Left-aligned section headers: AceGUI centers Heading text between two lines and Button text. Only widgets inside XayaUI's
+-- own window are touched, and everything is put back when the widget is released (AceGUI recycles widgets across addons).
+function ns.LeftRestore(w)
+    if w.type == "Heading" and w.label then
+        w.label:ClearAllPoints(); w.label:SetPoint("TOP"); w.label:SetPoint("BOTTOM"); w.label:SetJustifyH("CENTER")
+        w.left:Show()
+        w.left:ClearAllPoints(); w.left:SetPoint("LEFT", 3, 0); w.left:SetPoint("RIGHT", w.label, "LEFT", -5, 0)
+        w.right:ClearAllPoints(); w.right:SetPoint("RIGHT", -3, 0); w.right:SetPoint("LEFT", w.label, "RIGHT", 5, 0)
+    elseif w.type == "Button" and w.text then
+        w.text:SetJustifyH("CENTER")
+    end
+    w.xuiLeftOn = nil
+end
+function ns.HookRelease(w)
+    if w.xuiRelHook then return end
+    w.xuiRelHook = true
+    local orig = w.OnRelease
+    w.OnRelease = function(self, ...)
+        if self.xuiLeftOn then ns.LeftRestore(self) end
+        if orig then return orig(self, ...) end
+    end
+end
+function ns.LeftAlign(w)
+    if w.type == "Heading" and w.label and w.left and w.right then
+        local t = w.label:GetText()
+        if not t or t == "" then return end
+        if w.xuiLeftOn and not w.right:IsShown() then w.xuiLeftOn = nil end   -- re-acquired with new text: lay it out again
+        if w.xuiLeftOn then return end
+        ns.HookRelease(w)
+        w.xuiLeftOn = true
+        w.label:ClearAllPoints()
+        w.label:SetPoint("TOPLEFT", w.frame, "TOPLEFT", 4, 0); w.label:SetPoint("BOTTOMLEFT", w.frame, "BOTTOMLEFT", 4, 0)
+        w.label:SetJustifyH("LEFT")
+        w.left:Hide()
+        w.right:ClearAllPoints()
+        w.right:SetPoint("RIGHT", w.frame, "RIGHT", -3, 0); w.right:SetPoint("LEFT", w.label, "RIGHT", 8, 0)
+        w.right:Show()
+    elseif w.type == "Button" and w.text then
+        local opt = w.GetUserData and w:GetUserData("option")
+        if opt and type(opt.arg) == "table" and opt.arg.xuiLeft then
+            if not w.xuiLeftOn then ns.HookRelease(w); w.xuiLeftOn = true; w.text:SetJustifyH("LEFT") end
+        elseif w.xuiLeftOn then
+            ns.LeftRestore(w)
+        end
+    end
+end
+
 local function Walk(w, depth)
     if not w or depth > 14 then return end
+    if w.type == "Heading" or w.type == "Button" then ns.LeftAlign(w) end
     if w.type == "Icon" then AttachSpellTip(w) end
     if w.type == "EditBox" then AttachSearch(w) end
     if w.type == "TreeGroup" then DecorateTree(w) end
@@ -3048,6 +3542,15 @@ end
 function ns.DecorateTrees(root)
     root = root or (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP])
     if root then pcall(Walk, root, 0) end
+end
+-- decorate right after every (re)draw of the window, so left-aligned headers do not flash centered before the next 0.25 s pass
+do
+    ns.origOpen = AceConfigDialog.Open
+    AceConfigDialog.Open = function(self, app, ...)
+        local a, b, c = ns.origOpen(self, app, ...)
+        if app == APP then pcall(ns.DecorateTrees) end
+        return a, b, c
+    end
 end
 
 local function SelectedRule()

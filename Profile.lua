@@ -4,7 +4,7 @@
 --
 -- A snapshot holds: rules (with folders), buff bars (+ group layout), QoL boxes.
 -- Export string:  XUI1:<checksum>:<base64 of JSON>.   Import NEVER runs code:
--- the string is parsed by the data-only reader below, then normalised.
+-- the string is parsed by the data-only reader below, then normalized.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 
@@ -62,7 +62,7 @@ local function Enc(v, out, depth)
     end
 end
 
--- Neutralise WoW hyperlink / BNet escapes in imported text (colour codes stay allowed).
+-- Neutralize WoW hyperlink / BNet escapes in imported text (color codes stay allowed).
 local function Clean(s) return (s:gsub("|([HhKk])", "||%1")) end
 
 local function Decode(str)

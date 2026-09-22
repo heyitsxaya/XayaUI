@@ -2,7 +2,7 @@
 -- QoL.lua : quality-of-life elements. Currently: customizable stats text boxes.
 --
 -- Format string uses {tokens}, e.g. "Crit {crit}  Haste {haste}". Standard WoW
--- colour escapes (|cffRRGGBB...|r) also work inside the format.
+-- color escapes (|cffRRGGBB...|r) also work inside the format.
 --
 -- Midnight note: patch 12.0.5 made player-stat APIs return SECRET values while
 -- auras are restricted (combat / M+ / encounters). We never try to read those.

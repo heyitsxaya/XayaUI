@@ -111,16 +111,24 @@ local function FrameMatches(frame, id)
 end
 
 local function FindCDMFrame(id)
+    -- several viewers can hold a frame for the same spell (buff icon, buff bar, cooldown): an ACTIVE match wins,
+    -- otherwise the first match is returned (so an inactive placeholder cannot hide a live aura)
+    local firstFr, firstName
     for _, vname in ipairs(VIEWERS) do
         local v = _G[vname]
         if v and v.GetChildren then
             local kids = { v:GetChildren() }
             for i = 1, #kids do
                 local fr = kids[i]
-                if fr and FrameMatches(fr, id) then return fr, vname end
+                if fr and FrameMatches(fr, id) then
+                    local okA, act = pcall(function() return (fr.wasSetFromAura == true) or (fr.auraInstanceID ~= nil) end)
+                    if okA and act then return fr, vname end
+                    if not firstFr then firstFr, firstName = fr, vname end
+                end
             end
         end
     end
+    return firstFr, firstName
 end
 
 -- Are aura reads restricted (secret) right now?
@@ -196,7 +204,14 @@ function ns.BuffPresent(id)
     local fr, vname = FindCDMFrame(id)
     if fr then
         local active = (fr.wasSetFromAura == true) or (fr.auraInstanceID ~= nil)
-        return active and true or false, "CDM frame (" .. vname .. ")", active and MakeRef(nil, fr) or nil
+        -- diagnostic detail for /xui status: what the frame actually reports (secret-safe, no arithmetic)
+        local okd, detail = pcall(function()
+            local iid = fr.auraInstanceID
+            return ("iid=%s wasAura=%s shown=%s"):format(
+                iid == nil and "nil" or (issecret(iid) and "secret" or tostring(iid)),
+                tostring(fr.wasSetFromAura == true), tostring(fr:IsShown() and true or false))
+        end)
+        return active and true or false, "CDM frame (" .. vname .. (okd and (": " .. detail) or "") .. ")", active and MakeRef(nil, fr) or nil
     end
     -- No proof of presence. "nil" only means MISSING if the read can be trusted.
     if api == "nil" then
@@ -205,6 +220,45 @@ function ns.BuffPresent(id)
         return nil, "unknown: restricted + spell not readable + not in CDM"
     end
     return nil, "unreadable (" .. api .. ")"
+end
+
+-------------------------------------------------------------------------------
+-- Is this spell currently placed on an action bar (any of the 12 standard bars, main paging included)?
+-- Rebuilt at most once per engine tick (ns.RefreshActionBarSpells), so this is a cheap lookup.
+-------------------------------------------------------------------------------
+local actionBarSpells = {}
+-- HasAction (global) is deprecated since 12.0.0 in favor of C_ActionBar.HasAction; prefer the new one, fall back
+-- to the old global for safety on builds where the shim is still present.
+local function SlotHasAction(slot)
+    if C_ActionBar and C_ActionBar.HasAction then
+        local ok, v = pcall(C_ActionBar.HasAction, slot)
+        if ok then return v end
+    end
+    local ok, v = pcall(HasAction, slot)
+    return ok and v or false
+end
+function ns.RefreshActionBarSpells()
+    local set = {}
+    for slot = 1, 180 do   -- covers the 12 standard bars incl. stance/vehicle paging (1-120) plus extra bar pages
+        if SlotHasAction(slot) then
+            local okI, atype, id = pcall(GetActionInfo, slot)
+            if okI and not issecret(atype) and not issecret(id) then
+                if atype == "spell" and id then
+                    set[id] = true
+                elseif atype == "macro" and id and GetMacroSpell then
+                    local okm, mSpellID = pcall(GetMacroSpell, id)
+                    if okm and mSpellID then set[mSpellID] = true end
+                end
+            end
+        end
+    end
+    actionBarSpells = set
+end
+-- id may be a spell OR an item's associated spell is not resolved here (items on bars are rare for rule targets;
+-- only the spell case is handled, which covers class/talent abilities). Unverified: macro-cast spells, vehicle bars.
+function ns.SpellOnActionBar(id)
+    if not id or id == 0 then return true end   -- nothing to require -> do not gate
+    return actionBarSpells[id] == true
 end
 
 -- Talents in the player's current class/spec/hero trees (for the options dropdown).
@@ -274,6 +328,58 @@ function ns.BuildSpellList()
     table.sort(list, function(a, b) if a.name == b.name then return a.id < b.id end return a.name < b.name end)
     ns.spellList = list
     return list
+end
+
+-- Base cooldown of a spell in seconds (0 = none / unreadable). Uses the static base cooldown (talent / haste reductions are NOT
+-- applied) and, for charge spells, the per-charge recharge time when the game lets us read it (it is secret in combat).
+local function BaseCooldownSec(sid)
+    local best = 0
+    local fn = (C_Spell and C_Spell.GetSpellBaseCooldown) or GetSpellBaseCooldown
+    if fn then
+        local ok, ms = pcall(fn, sid)
+        if ok and not issecret(ms) and type(ms) == "number" and ms > 0 then best = ms / 1000 end
+    end
+    if C_Spell and C_Spell.GetSpellCharges then
+        local ok, ch = pcall(C_Spell.GetSpellCharges, sid)
+        if ok and type(ch) == "table" then
+            local d = ch.cooldownDuration
+            if not issecret(d) and type(d) == "number" and d > best then best = d end
+        end
+    end
+    return best
+end
+ns.BaseCooldownSec = BaseCooldownSec
+
+-- Spells whose base cooldown is >= minSec, for the CURRENT class + specialization:
+--   * every active spell in the spellbook (class + current spec + general lines), and
+--   * every active talent in the class / spec / hero trees, including talents that are not picked (includeUnpicked).
+-- Each entry: { id, name, icon, cd, talent = true when the spell is also a talent }.
+function ns.CollectCooldownSpells(minSec, includeUnpicked)
+    minSec = tonumber(minSec) or 0
+    local out, byId = {}, {}
+    local isTalent = {}
+    for _, t in ipairs(ns.BuildTalentList()) do isTalent[t.id] = t end
+    for _, sp in ipairs(ns.BuildSpellList()) do
+        local cd = BaseCooldownSec(sp.id)
+        if cd > 0 and cd >= minSec then
+            local e = { id = sp.id, name = sp.name, icon = sp.icon, cd = cd, talent = isTalent[sp.id] and true or nil }
+            byId[sp.id] = e; out[#out + 1] = e
+        end
+    end
+    if includeUnpicked then
+        for _, t in ipairs(ns.BuildTalentList()) do
+            if not byId[t.id] then
+                local cd = BaseCooldownSec(t.id)
+                if cd > 0 and cd >= minSec then
+                    local okT, icon = pcall(C_Spell.GetSpellTexture, t.id)
+                    local e = { id = t.id, name = t.name, icon = okT and icon or nil, cd = cd, talent = true }
+                    byId[t.id] = e; out[#out + 1] = e
+                end
+            end
+        end
+    end
+    table.sort(out, function(a, b) if a.name == b.name then return a.id < b.id end return a.name < b.name end)
+    return out
 end
 
 function ns.CheckBuffState(rule, present)
@@ -395,6 +501,8 @@ local function CurrentSpec()
     return id, role
 end
 
+function ns.CurrentSpecID() local id = CurrentSpec(); return id end
+
 function ns.ReadContext()
     local ctx = {}
     for _, c in ipairs(ns.LOAD_TRI) do
@@ -434,7 +542,7 @@ function ns.CheckContext(rule, ctx)
     if load.instanceTypes and next(load.instanceTypes) then
         checks[#checks + 1] = { key = "instance type", ok = known(ctx.instanceType, ctx.instanceType ~= nil and ns.SetMatch(load.instanceTypes, ctx.instanceType)) }
     end
-    -- multi-select sets (empty / missing = any); the old single specID / role are still honoured for saved rules
+    -- multi-select sets (empty / missing = any); the old single specID / role are still honored for saved rules
     if load.specUse ~= false and ns.SetActive(load.specs) then
         checks[#checks + 1] = { key = "spec", ok = known(ctx.specID, ctx.specID ~= nil and ns.SetMatch(load.specs, tostring(ctx.specID))) }
     elseif load.specUse ~= false and (load.specID or 0) > 0 then
@@ -538,6 +646,28 @@ function ns.Probe(spellID)
     if C_Secrets and C_Secrets.ShouldCooldownsBeSecret then
         local okk, cv = pcall(C_Secrets.ShouldCooldownsBeSecret)
         ns.Print("  cooldown reads restricted now: " .. Show(okk and cv or "error"))
+    end
+end
+
+-- Same detail as /xui status, but written to the ring-buffer log (ns.Log) instead of chat, so it can be read
+-- from the settings window's debug console tray AFTER a fight without typing anything while in combat.
+function ns.LogStatusSnapshot(tag)
+    if not ns.rules or #ns.rules == 0 then return end
+    local ctx = ns.ReadContext()
+    ns.Log("-- status snapshot (%s) -- spec=%s role=%s combat=%s", tostring(tag or "?"),
+        tostring(ctx.specID), tostring(ctx.role), tostring(ctx.combat))
+    for i, r in ipairs(ns.rules) do
+        if r.enabled then
+            local ok, res, info = pcall(ns.Evaluate, r, ctx)
+            if ok then
+                ns.Log("#%d %s result=%s | cd:%s(%s) buff:%s(%s via %s) ctx:%s talent:%s",
+                    i, r.name, tostring(res), tostring(r.cdState), tostring(info.cdOK),
+                    tostring(r.buffState), tostring(info.buffOK), tostring(info.buffSource),
+                    tostring(info.ctxOK), tostring(info.talentOK))
+            else
+                ns.Log("#%d %s ERROR: %s", i, r.name, tostring(res))
+            end
+        end
     end
 end
 
