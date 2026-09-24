@@ -504,6 +504,7 @@ f:SetScript("OnEvent", function(_, _, name)
     if ns.OnDBReady then ns.OnDBReady() end
     if ns.QoL_OnDBReady then ns.QoL_OnDBReady() end
     if ns.Cursor_OnDBReady then ns.Cursor_OnDBReady() end
+    if ns.Recycle_OnDBReady then ns.Recycle_OnDBReady() end
 end)
 
 -------------------------------------------------------------------------------
