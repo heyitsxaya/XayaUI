@@ -1207,14 +1207,10 @@ local function BuildRule(i, rule)
             status = { type = "description", order = 4, width = "full", fontSize = "medium", name = function() return StatusText(rule) end },
             refresh = { type = "execute", name = "Refresh status", order = 5, func = Notify },
             delete = {
-                type = "execute", name = "Delete this rule", order = 9,
-                confirm = true, confirmText = "Delete this rule?",
+                type = "execute", name = "Delete this rule (goes to Recycle Bin)", order = 9,
+                confirm = true, confirmText = "Delete this rule? It moves to the Recycle Bin (QoL Elements tab) until you restore or empty it.",
                 func = function()
-                    for idx, r in ipairs(ns.rules) do
-                        if r == rule then table.remove(ns.rules, idx); break end
-                    end
-                    ns.DropVisual(rule)
-                    ns.MarkDirty()
+                    ns.Recycle_TrashRule(rule)
                     Notify()
                     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "all")
                 end,
@@ -1314,12 +1310,10 @@ local function BuildBox(i, box)
             unlock = { type = "execute", order = 23, width = "double",
                 name = function() return ns.unlocked and "Lock (stop dragging)" or "Unlock (drag on screen)" end,
                 func = function() ns.ToggleUnlock(); Notify() end },
-            delete = { type = "execute", name = "Delete this box", order = 30, confirm = true, confirmText = "Delete this stats box?",
+            delete = { type = "execute", name = "Delete this box (goes to Recycle Bin)", order = 30, confirm = true,
+                confirmText = "Delete this stats box? It moves to the Recycle Bin until you restore or empty it.",
                 func = function()
-                    for idx, b in ipairs(ns.qolBoxes) do
-                        if b == box then table.remove(ns.qolBoxes, idx); break end
-                    end
-                    ns.QoL_Drop(box)
+                    ns.Recycle_TrashBox(box)
                     Notify()
                     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allqol")
                 end },
@@ -1348,10 +1342,10 @@ local function BuildBar(i, bar)
             icon = Sel(bar, "icon", "Icon", 7, BAR_ICON, BAR_ICON_ORDER, on, { width = "double" }),
             note = { type = "description", order = 8, fontSize = "small", width = "full",
                 name = "Buff bars are display-only. While Blizzard hides aura times (combat), the bar uses an experimental Blizzard duration object and may show full or empty. Use the eye icon in the sidebar to preview." },
-            delete = { type = "execute", name = "Delete this bar", order = 20, confirm = true, confirmText = "Delete this buff bar?",
+            delete = { type = "execute", name = "Delete this bar (goes to Recycle Bin)", order = 20, confirm = true,
+                confirmText = "Delete this buff bar? It moves to the Recycle Bin until you restore or empty it.",
                 func = function()
-                    for idx, b in ipairs(ns.bars) do if b == bar then table.remove(ns.bars, idx); break end end
-                    ns.Bars_Drop(bar); ns.MarkDirty(); Notify()
+                    ns.Recycle_TrashBar(bar); Notify()
                     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allbars")
                 end },
         },
@@ -1985,12 +1979,10 @@ local function BuildFolder(k, f)
                 g.hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end
                 return g
             end)(),
-            delete = { type = "execute", name = "Delete folder (contents move up one level)", order = 9, width = "double",
-                confirm = true, confirmText = "Delete this folder? The rules and subfolders inside are kept and move up one level.",
+            delete = { type = "execute", name = "Delete folder (contents move up one level; folder goes to Recycle Bin)", order = 9, width = "double",
+                confirm = true, confirmText = "Delete this folder? The rules and subfolders inside are kept and move up one level; the folder itself moves to the Recycle Bin until you restore or empty it.",
                 func = function()
-                    for _, r in ipairs(ns.rules) do if r.folder == f.id then r.folder = f.parent end end
-                    for _, ff in ipairs(ns.folders) do if ff.parent == f.id then ff.parent = f.parent end end
-                    for idx, ff in ipairs(ns.folders) do if ff == f then table.remove(ns.folders, idx); break end end
+                    ns.Recycle_TrashFolder(f)
                     Notify()
                     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "all")
                 end },
@@ -2213,7 +2205,7 @@ local function BuildOptions()
             return orig
         end
     end
-    local qol = { type = "group", name = "QoL Elements", order = 5, childGroups = "tree", args = { allqol = allQol, allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil, allbars = allBars } }
+    local qol = { type = "group", name = "QoL Elements", order = 5, childGroups = "tree", args = { allqol = allQol, allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil, allbars = allBars, allrecycle = (ns.RecycleBinGroup and ns.RecycleBinGroup(Notify)) or nil } }
 
     return { type = "group", name = "XayaUI", childGroups = "tab",
         args = { cooldowns = track, qol = qol, profiles = BuildProfiles(), settings = BuildAddonSettings() } }
@@ -2649,8 +2641,7 @@ end
 local function SelectRoot() pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "all") end
 
 local function DeleteRule(rule)
-    for idx, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, idx); break end end
-    ns.DropVisual(rule); ns.MarkDirty(); Notify(); SelectRoot()
+    ns.Recycle_TrashRule(rule); Notify(); SelectRoot()
 end
 local function DuplicateRule(rule)
     local c = ns.Copy(rule)
@@ -2676,10 +2667,7 @@ local function DuplicateFolder(f, parentId, top)
     return nf
 end
 local function DeleteFolder(f)
-    for _, r in ipairs(ns.rules) do if r.folder == f.id then r.folder = f.parent end end
-    for _, ff in ipairs(ns.folders) do if ff.parent == f.id then ff.parent = f.parent end end
-    for idx, ff in ipairs(ns.folders) do if ff == f then table.remove(ns.folders, idx); break end end
-    ns.MarkDirty(); Notify(); SelectRoot()
+    ns.Recycle_TrashFolder(f); Notify(); SelectRoot()
 end
 
 local function AddMoveMenu(root, obj, kind)
@@ -2758,7 +2746,7 @@ local function RowMenu(button, root)
         end)
         AddMoveMenu(root, rule, "rule")
         root:CreateDivider()
-        root:CreateButton("Delete", function() AskConfirm("Delete the rule '" .. tostring(rule.name) .. "'?", function() DeleteRule(rule) end) end)
+        root:CreateButton("Delete", function() AskConfirm("Delete the rule '" .. tostring(rule.name) .. "'? It moves to the Recycle Bin until you restore or empty it.", function() DeleteRule(rule) end) end)
         return true
     end
     local fold = last:match("^f%d") and FolderById(last)
@@ -2794,7 +2782,7 @@ local function RowMenu(button, root)
         AddMoveMenu(root, fold, "folder")
         root:CreateDivider()
         root:CreateButton("Delete Folder (Contents Move Up)", function()
-            AskConfirm("Delete the folder '" .. fold.name .. "'? Its rules and subfolders are kept and move up one level.", function() DeleteFolder(fold) end)
+            AskConfirm("Delete the folder '" .. fold.name .. "'? Its rules and subfolders are kept and move up one level; the folder itself moves to the Recycle Bin until you restore or empty it.", function() DeleteFolder(fold) end)
         end)
         return true
     end
@@ -2809,9 +2797,8 @@ local function RowMenu(button, root)
         end)
         root:CreateDivider()
         root:CreateButton("Delete", function()
-            AskConfirm("Delete the bar '" .. tostring(bar.name) .. "'?", function()
-                for idx, b in ipairs(ns.bars) do if b == bar then table.remove(ns.bars, idx); break end end
-                ns.Bars_Drop(bar); ns.MarkDirty(); Notify()
+            AskConfirm("Delete the bar '" .. tostring(bar.name) .. "'? It moves to the Recycle Bin until you restore or empty it.", function()
+                ns.Recycle_TrashBar(bar); Notify()
                 pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allbars")
             end)
         end)
@@ -2828,9 +2815,8 @@ local function RowMenu(button, root)
         end)
         root:CreateDivider()
         root:CreateButton("Delete", function()
-            AskConfirm("Delete the box '" .. tostring(box.name) .. "'?", function()
-                for idx, b in ipairs(ns.qolBoxes) do if b == box then table.remove(ns.qolBoxes, idx); break end end
-                ns.QoL_Drop(box); ns.MarkDirty(); Notify()
+            AskConfirm("Delete the box '" .. tostring(box.name) .. "'? It moves to the Recycle Bin until you restore or empty it.", function()
+                ns.Recycle_TrashBox(box); Notify()
                 pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allqol")
             end)
         end)
