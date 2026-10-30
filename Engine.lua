@@ -23,6 +23,7 @@ local function Step()
     if not ns.rules then return end
     if ns.RefreshActionBarSpells then ns.RefreshActionBarSpells() end
     local ctx = ns.ReadContext()
+    ns.tickID = (ns.tickID or 0) + 1
     local now = GetTime()
     for _, rule in ipairs(ns.rules) do
         local rt = RT(rule)

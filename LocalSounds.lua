@@ -286,4 +286,12 @@ ns.LocalSounds = {
     { "[BW Jim] 8", "Interface\\AddOns\\XayaUI\\Media\\Audio\\BW\\Jim\\8.ogg" },
     { "[BW Jim] 9", "Interface\\AddOns\\XayaUI\\Media\\Audio\\BW\\Jim\\9.ogg" },
     { "[BW Jim] 10", "Interface\\AddOns\\XayaUI\\Media\\Audio\\BW\\Jim\\10.ogg" },
+    { "[Details] Details Horn", "Interface\\AddOns\\XayaUI\\Media\\Audio\\Details\\Details Horn.ogg" },
+    { "[Details] Details Truck", "Interface\\AddOns\\XayaUI\\Media\\Audio\\Details\\Details Truck.ogg" },
+    { "[Details] Details Warning", "Interface\\AddOns\\XayaUI\\Media\\Audio\\Details\\Details Warning 100.ogg" },
+    { "[Details] Details Bass Drop", "Interface\\AddOns\\XayaUI\\Media\\Audio\\Details\\bassdrop2.mp3" },
+    { "[Details] Details Gun1", "Interface\\AddOns\\XayaUI\\Media\\Audio\\Details\\sound_gun2.ogg" },
+    { "[Details] Details Gun2", "Interface\\AddOns\\XayaUI\\Media\\Audio\\Details\\sound_gun3.ogg" },
+    { "[Details] Details Jedi1", "Interface\\AddOns\\XayaUI\\Media\\Audio\\Details\\sound_jedi1.ogg" },
+    { "[Details] Details Whip1", "Interface\\AddOns\\XayaUI\\Media\\Audio\\Details\\sound_whip1.ogg" },
 }

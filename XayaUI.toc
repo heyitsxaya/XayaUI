@@ -17,6 +17,8 @@ LocalSounds.lua
 LocalGraphics.lua
 Core.lua
 Conditions.lua
+Triggers.lua
+Outcomes.lua
 Sound.lua
 Visual.lua
 QoL.lua

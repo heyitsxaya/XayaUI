@@ -400,6 +400,8 @@ local function Sel(t, k, name, order, vals, ord, on, extra)
     if extra then for kk, vv in pairs(extra) do o[kk] = vv end end
     return o
 end
+-- Shared option builders for other files (Triggers.lua builds its rows with these). A table, so no new top-level local.
+ns.UI = { Sel = Sel, Rng = Rng, Tog = Tog, Changed = Changed, Notify = Notify, SpellName = SpellName, SpellTex = SpellTex, SearchBox = SearchBox }
 -- Mutually exclusive choice drawn as SQUARE check boxes (AceConfig's own radio style draws round buttons).
 -- Adds one toggle per choice to `args` as <prefix>_<i>; ticking one unticks the others; clicking the ticked one does nothing.
 -- Returns the list of generated keys.
@@ -504,11 +506,12 @@ end
 -------------------------------------------------------------------------------
 local ruleClip = nil          -- { name = "...", data = <deep copy of the source rule> }
 local pasteSel = {}           -- section key -> true (shared by the Rule tab, folder pages and the right-click menu)
-local PASTE_ORDER = { "ids", "states", "talents", "load", "display", "position", "textDur", "textCnt", "textAbs", "sound" }
+local PASTE_ORDER = { "ids", "states", "talents", "extra", "load", "display", "position", "textDur", "textCnt", "textAbs", "sound" }
 local PASTE_LABELS = {
     ids = "Trigger: Spell ID, Max Charges and Aura ID",
     states = "Conditions: Cooldown State and Buff State",
     talents = "Talents (Requirement Mode and List)",
+    extra = "Additional Triggers (list and combine mode)",
     load = "Load Conditions (Never / Always / Match, Combat, Group, Raid...)",
     display = "Display: Texture, Overlay, Opacity, Fade, Glow, Outline, Border (not Position or Text)",
     position = "Display: Position (X / Y)",
@@ -522,6 +525,7 @@ local function PasteApply(key, dst, src)
     if key == "ids" then dst.spellID, dst.maxCharges, dst.buffID = src.spellID, src.maxCharges, src.buffID
     elseif key == "states" then dst.cdState, dst.buffState = src.cdState, src.buffState
     elseif key == "talents" then dst.talents, dst.talentMode = C(src.talents or {}), src.talentMode
+    elseif key == "extra" then dst.extra = C(src.extra or { list = {} })
     elseif key == "load" then dst.load = C(src.load or {})
     elseif key == "display" then
         for k, val in pairs(src.visual or {}) do
@@ -628,6 +632,46 @@ local function BuildRule(i, rule)
                 name = function() return SpellName(rule.buffID) end },
         },
     }
+
+    -- Triggers are added by hand: Cooldown and Buff / Aura only show once added (or while they hold data).
+    -- Hiding never changes saved values; "Remove" resets that section.
+    for _, k in ipairs({ "cdHeader", "spellID", "spellName", "spellSearch", "spellPick", "cdState", "maxCharges", "detected" }) do
+        local o = trigger.args[k]
+        if o then o.hidden = function() return not ns.CooldownUsed(rule) end end
+    end
+    for _, k in ipairs({ "buffHeader", "buffState", "buffSearch", "buffID", "buffName" }) do
+        local o = trigger.args[k]
+        if o then o.hidden = function() return not ns.BuffUsed(rule) end end
+    end
+    trigger.args.cdRemove = { type = "execute", name = "Remove the Cooldown trigger", order = 7, width = "double",
+        desc = "Clears this rule's Cooldown spell, max charges and state.",
+        hidden = function() return not ns.CooldownUsed(rule) end,
+        func = function() rule.useCooldown = false; rule.spellID = 0; rule.maxCharges = 0; rule.cdState = nil; Changed(rule); Notify() end }
+    trigger.args.buffRemove = { type = "execute", name = "Remove the Buff / Aura trigger", order = 14, width = "double",
+        desc = "Clears this rule's aura ID and state.",
+        hidden = function() return not ns.BuffUsed(rule) end,
+        func = function() rule.useBuff = false; rule.buffID = 0; rule.buffState = nil; Changed(rule); Notify() end }
+    -- Additional trigger rows (Triggers.lua). A failure there must never take the whole options tree down.
+    if ns.BuildExtraTriggerArgs then
+        local okx, xa = pcall(ns.BuildExtraTriggerArgs, rule, ns.UI)
+        if okx then for k, v in pairs(xa) do trigger.args[k] = v end
+        elseif not ns.extraUiErr then ns.extraUiErr = true; ns.Print("additional triggers UI error: " .. tostring(xa)) end
+    end
+    -- Outcomes (Outcomes.lua). An outcome rule follows its parent's triggers: its own trigger sections are hidden and the
+    -- combination row builder takes their place. A normal rule gets the Outcomes list instead, on its Conditions tab (below).
+    local outcomeArgs
+    if rule.parentUid then
+        for _, o in pairs(trigger.args) do o.hidden = function() return true end end
+        if ns.BuildWhenArgs then
+            local okw, wa = pcall(ns.BuildWhenArgs, rule, ns.UI)
+            if okw then for k, v in pairs(wa) do trigger.args[k] = v end
+            elseif not ns.whenUiErr then ns.whenUiErr = true; ns.Print("outcome UI error: " .. tostring(wa)) end
+        end
+    elseif ns.BuildOutcomeArgs then
+        local oko, oa = pcall(ns.BuildOutcomeArgs, rule, ns.UI)
+        if oko then outcomeArgs = oa
+        elseif not ns.outcomeUiErr then ns.outcomeUiErr = true; ns.Print("outcomes UI error: " .. tostring(oa)) end
+    end
 
     ------------------------------------------------------------ Conditions
     local function noMatch() local m = rule.load.mode; return m == "never" or m == "always" end
@@ -1143,13 +1187,13 @@ local function BuildRule(i, rule)
             },
         }
     end
-    -- Texture box: position sits above Size & Orientation; "Add Overlay Layer" lives here and reveals the overlay
-    tex.args.addOverlay = Tog(OV, "enabled", "Add Overlay Layer", 4, function() Changed(rule); Notify() end, { width = "double",
-        desc = "Adds a second texture layer directly below this box that you can tint separately." })
+    -- "Add Overlay Layer" lives in the Animation Options section (not the Texture box) and reveals the overlay settings below it
+    local addOverlay = Tog(OV, "enabled", "Add Overlay Layer", 1, function() Changed(rule); Notify() end, { width = "double",
+        desc = "Adds a second texture layer on top of this one that you can tint separately." })
     overlay.args.enabled = nil
-    tex.args.posH = { type = "header", name = "Position (Offset From Screen Center)", order = 4.5 }
-    pos.args.x.order, pos.args.y.order, pos.args.unlock.order = 4.6, 4.7, 4.8
-    tex.args.x, tex.args.y, tex.args.unlock = pos.args.x, pos.args.y, pos.args.unlock
+    -- Position is its own collapsible section (between Texture and Overlay Layer), no longer inside the Texture box
+    pos.args.x.order, pos.args.y.order, pos.args.unlock.order = 1, 2, 3
+    local posArgs = { x = pos.args.x, y = pos.args.y, unlock = pos.args.unlock }
     display.args.trigger.order = 0
     local dispBody = { trigger = display.args.trigger,
         pausePv = { type = "toggle", name = "Pause preview animations", order = 0.5, width = "double",
@@ -1157,7 +1201,11 @@ local function BuildRule(i, rule)
             get = function() return ns.previewPaused end,
             set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
         texture = Sub("texture", "Texture", 1, tex.args),
-        overlay = Sub("overlay", "Overlay Layer", 2, overlay.args, function() return not OV.enabled end),
+        position = Sub("position", "Position (Offset From Screen Center)", 1.5, posArgs),
+        anim = Sub("anim", "Animation Options", 2, {
+            addOverlay = addOverlay,
+            overlay = Sub("overlay", "Overlay Layer", 2, overlay.args, function() return not OV.enabled end),
+        }),
         opacity = Sub("opacity", "Opacity & Fill", 3, opacity.args) }
     local soundEnable = sound.args.soundEnabled
     local soundBody = {}
@@ -1183,6 +1231,7 @@ local function BuildRule(i, rule)
     actions.args.display.hidden = function() return not ns.KindHas(rule, "visual") end
     actions.args.text.hidden = function() return not ns.KindHas(rule, "visual") end
     actions.args.sound.hidden = function() return not ns.KindHas(rule, "sound") end
+    if outcomeArgs then for k, v in pairs(outcomeArgs) do actions.args[k] = v end end
 
     ---------------------------------------------------------------- Rule tab
     local ruleTab = {
@@ -1210,6 +1259,7 @@ local function BuildRule(i, rule)
                 type = "execute", name = "Delete this rule", order = 9,
                 confirm = true, confirmText = "Delete this rule?",
                 func = function()
+                    if ns.DeleteOutcomesOf then ns.DeleteOutcomesOf(rule) end
                     for idx, r in ipairs(ns.rules) do
                         if r == rule then table.remove(ns.rules, idx); break end
                     end
@@ -2055,13 +2105,33 @@ local function BuildOptions()
     local okc, ctx = pcall(ns.ReadContext)
     local loadedArgs, notArgs, nLoaded, nNot = {}, {}, 0, 0
     local ruleGroups = {}
+    local byRule, nested = {}, {}
     for i, rule in ipairs(ns.rules or {}) do
         local g = BuildRule(i, rule)
-        ruleGroups[i] = g
-        local fld = rule.folder and groups[rule.folder]
-        if fld then fld.args["rule" .. i] = g else all.args["rule" .. i] = g end
-        if okc and ns.IsLoaded(rule, ctx) then loadedArgs["rule" .. i] = g; nLoaded = nLoaded + 1
-        else notArgs["rule" .. i] = g; nNot = nNot + 1 end
+        if rule.parentUid and ns.FindParentRule and ns.FindParentRule(rule) then
+            -- an outcome is shown inside its parent rule (Conditions tab), not as its own list entry
+            nested[#nested + 1] = { rule = rule, g = g }
+        else
+            byRule[rule] = g
+            ruleGroups[i] = g
+            local fld = rule.folder and groups[rule.folder]
+            if fld then fld.args["rule" .. i] = g else all.args["rule" .. i] = g end
+            if okc and ns.IsLoaded(rule, ctx) then loadedArgs["rule" .. i] = g; nLoaded = nLoaded + 1
+            else notArgs["rule" .. i] = g; nNot = nNot + 1 end
+        end
+    end
+    if ns.EmbedOutcome then
+        local cnt = {}
+        for _, o in ipairs(nested) do
+            local par = ns.FindParentRule(o.rule)
+            local pg = par and byRule[par]
+            if pg then
+                cnt[par] = (cnt[par] or 0) + 1
+                if o.rule.folder ~= par.folder then o.rule.folder = par.folder end
+                local oke, err = pcall(ns.EmbedOutcome, pg, o.g, o.rule, cnt[par])
+                if not oke and not ns.embedErr then ns.embedErr = true; ns.Print("outcome embed error: " .. tostring(err)) end
+            end
+        end
     end
     loadedArgs.info = { type = "description", order = 0, width = "full", fontSize = "medium",
         name = "Rules that are enabled and whose load conditions and talents match right now (cooldown / buff state is not part of this). Same rules as under All Rules; this list updates as your situation changes." }
@@ -2176,14 +2246,14 @@ local function BuildOptions()
                 total = total + n
             else
                 for i, rule in ipairs(ns.rules or {}) do
-                    if ns.SmartMatch(rule, cat.key) then args["rule" .. i] = ruleGroups[i]; n = n + 1 end
+                    if ruleGroups[i] and ns.SmartMatch(rule, cat.key) then args["rule" .. i] = ruleGroups[i]; n = n + 1 end
                 end
             end
             smartArgs[cat.key] = { type = "group", order = k, childGroups = "tree",
                 name = function() return cat.name .. " (" .. n .. ")" end,
                 hidden = function() return n == 0 end, args = args }
         end
-        for _, rule in ipairs(ns.rules or {}) do if ns.SmartAny(rule) then total = total + 1 end end
+        for _, rule in ipairs(ns.rules or {}) do if not rule.parentUid and ns.SmartAny(rule) then total = total + 1 end end
         track.args.smart = { type = "group", order = 5, childGroups = "tree",
             name = function() return "SMART CATEGORIES (" .. total .. ")" end, args = smartArgs }
     end
@@ -2629,6 +2699,7 @@ local function ConvertFolder(src, mode)
         n.name = r.name
         for _, k in ipairs({ "spellID", "maxCharges", "cdState", "buffID", "buffState", "talentMode" }) do n[k] = r[k] end
         n.talents = ns.Copy(r.talents or {})
+        n.extra = ns.Copy(r.extra or { list = {} })
         n.folder = sub.id
         n.enabled = false
         if toKey == "sound" then n.sound.enabled, n.visual.enabled = true, false
@@ -2649,12 +2720,14 @@ end
 local function SelectRoot() pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "all") end
 
 local function DeleteRule(rule)
+    if ns.DeleteOutcomesOf then ns.DeleteOutcomesOf(rule) end
     for idx, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, idx); break end end
     ns.DropVisual(rule); ns.MarkDirty(); Notify(); SelectRoot()
 end
 local function DuplicateRule(rule)
     local c = ns.Copy(rule)
     c.name = ((rule.name and rule.name ~= "") and rule.name or "Rule") .. " Copy"
+    if ns.CloneOutcomes then ns.CloneOutcomes(rule, c) end
     ns.rules[#ns.rules + 1] = c
     pcall(ns.RefreshVisual, c)
     ns.MarkDirty(); Notify()
@@ -2668,8 +2741,10 @@ local function DuplicateFolder(f, parentId, top)
             local c = ns.Copy(r); c.folder = nf.id
             ns.rules[#ns.rules + 1] = c
             pcall(ns.RefreshVisual, c)
+            if ns.RememberCopy then ns.RememberCopy(r, c) end
         end
     end
+    if ns.RemapCopies then ns.RemapCopies() end
     local kids = {}
     for _, ff in ipairs(ns.folders) do if ff.parent == f.id and ff ~= nf then kids[#kids + 1] = ff end end
     for _, ff in ipairs(kids) do DuplicateFolder(ff, nf.id, false) end
@@ -2706,6 +2781,7 @@ end
 -- game ignores it, the menu simply closes after each tick).
 local PASTE_MENU_LABELS = {
     ids = "Trigger: Spell ID, Max Charges, Aura ID", states = "Conditions: Cooldown + Buff State", talents = "Talents",
+    extra = "Additional Triggers",
     load = "Load Conditions", display = "Display (Not Position or Text)", position = "Display: Position (X / Y)",
     textDur = "Text: Buff Duration", textCnt = "Text: Stacks / Charges Count", textAbs = "Text: Shield / Absorb Amount",
     sound = "Audio: Sound, Channel and Repeat",

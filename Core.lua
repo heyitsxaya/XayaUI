@@ -82,6 +82,14 @@ ns.RULE_DEFAULTS = {
     -- Talent requirements: a list of { id = spellID, state = "known" | "notKnown" } combined by talentMode
     talents = {},
     talentMode = nil,       -- (blank) | none | all | any   [required]  (all = every talent must match, any = at least one)
+    -- Additional triggers (Triggers.lua): typed rows combined by extra.mode (blank / all = every row, any = one is enough),
+    -- then ANDed with the cooldown, buff, talent and load settings. Plain data only: no code is ever stored here.
+    extra = { list = {} },
+    uid = nil,              -- set when the rule first gets an outcome (Outcomes.lua)
+    parentUid = nil,        -- set on an outcome: the uid of the rule whose triggers it follows
+    when = { list = {} },   -- outcome combination rows: { ref, neg, op = "and" | "or" }
+    useCooldown = false,    -- the Cooldown trigger section was added by hand (also shown whenever it holds data)
+    useBuff = false,        -- same for Buff / Aura
     folder = nil,           -- id of the user folder this rule sits in (nil = top level)
 
     -- Load conditions (context): tri-state (blank/none = ignore) | yes | no
@@ -446,6 +454,8 @@ function ns.NormalizeRule(r)
         if r[k] ~= nil then r.load[k] = r[k]; r[k] = nil end
     end
     Merge(r, ns.RULE_DEFAULTS)
+    if ns.NormalizeExtra then ns.NormalizeExtra(r) end
+    if ns.NormalizeWhen then ns.NormalizeWhen(r) end
     -- legacy "any" -> "none" (explicit "ignore")
     for _, k in ipairs({ "cdState", "buffState", "talentState" }) do if r[k] == "any" then r[k] = "none" end end
     for k, v in pairs(r.load) do if v == "any" and k ~= "mode" then r.load[k] = "none" end end

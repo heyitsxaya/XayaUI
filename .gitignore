@@ -18,3 +18,7 @@ Thumbs.db
 # Extracted Blizzard UI art converted from Xaya's Iconography folder: personal use only
 Media/Graphics/*
 !Media/Graphics/README.md
+
+# Claude Code handoff notes (local only)
+CLAUDE-CODE-HANDOFF.md
+HANDOFF-TO-CLAUDE-CODE-*.md

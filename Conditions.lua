@@ -571,8 +571,18 @@ end
 -------------------------------------------------------------------------------
 -- Full rule evaluation. Returns result(bool), info(table)
 -------------------------------------------------------------------------------
+-- One evaluation per rule per engine tick: outcome rules read their parent's result, so the parent must not be read twice.
+-- Only used inside the engine (ns.tickID is set there) and only for the SAME ctx table.
+local evalCache = setmetatable({}, { __mode = "k" })
 function ns.Evaluate(rule, ctx)
     ctx = ctx or ns.ReadContext()
+    local c = ns.tickID and evalCache[rule]
+    if c and c.tick == ns.tickID and c.ctx == ctx then return c.res, c.info end
+    if rule.parentUid and ns.EvaluateOutcome then
+        local res, oinfo = ns.EvaluateOutcome(rule, ctx)
+        if ns.tickID then evalCache[rule] = { tick = ns.tickID, ctx = ctx, res = res, info = oinfo } end
+        return res, oinfo
+    end
     local info = { ctx = ctx }
     info.cd = ns.ReadCooldown(rule)
     info.present, info.buffSource, info.buffRef = ns.BuffPresent(rule.buffID)
@@ -580,14 +590,27 @@ function ns.Evaluate(rule, ctx)
     info.buffOK = ns.CheckBuffState(rule, info.present)
     info.ctxOK, info.ctxFail = ns.CheckContext(rule, ctx)
     info.talentOK, info.talentDetail = ns.CheckTalents(rule)
+    if ns.CheckExtraTriggers then info.extraOK, info.extraDetail, info.extraRows = ns.CheckExtraTriggers(rule) else info.extraOK = true end
     -- the core cooldown / buff dropdowns must be chosen ("none" counts as a choice)
     info.missing = {}
     local function unset(v) return v == nil or v == "" end
-    if unset(rule.cdState) then info.missing[#info.missing + 1] = "cooldown state" end
-    if unset(rule.buffState) then info.missing[#info.missing + 1] = "buff state" end
+    -- Triggers are added by hand (Triggers.lua): a section only needs its state chosen once it is "used" (added from the
+    -- menu, or an ID is set). A rule with no trigger at all and both states blank cannot fire; both states set to "none"
+    -- is still the explicit "load conditions only" rule.
+    local hasExtra = type(rule.extra) == "table" and type(rule.extra.list) == "table" and #rule.extra.list > 0
+    local cdUsed = rule.useCooldown == true or (tonumber(rule.spellID) or 0) ~= 0
+    local buffUsed = rule.useBuff == true or (tonumber(rule.buffID) or 0) ~= 0
+    local anyTrigger = cdUsed or buffUsed or hasExtra
+    if not anyTrigger and unset(rule.cdState) and unset(rule.buffState) then
+        info.missing[#info.missing + 1] = "a trigger (none added yet)"
+    else
+        if unset(rule.cdState) and (cdUsed or not anyTrigger) then info.missing[#info.missing + 1] = "cooldown state" end
+        if unset(rule.buffState) and (buffUsed or not anyTrigger) then info.missing[#info.missing + 1] = "buff state" end
+    end
     -- talents are optional: a blank talentMode counts as "ignore talents"
     info.result = (info.cdOK == true) and (info.buffOK == true) and info.ctxOK
-        and (info.talentOK == true) and (#info.missing == 0)
+        and (info.talentOK == true) and (info.extraOK == true) and (#info.missing == 0)
+    if ns.tickID then evalCache[rule] = { tick = ns.tickID, ctx = ctx, res = info.result, info = info } end
     return info.result, info
 end
 
@@ -606,6 +629,8 @@ function ns.WhyNot(info)
     if info.cdOK ~= true then t[#t + 1] = "cooldown=" .. tostring(info.cdOK) end
     if info.buffOK ~= true then t[#t + 1] = "buff=" .. tostring(info.buffOK) .. " (" .. tostring(info.buffSource) .. ")" end
     if info.talentOK ~= true then t[#t + 1] = "talent=" .. tostring(info.talentOK) end
+    if info.extraOK ~= true then t[#t + 1] = "extra=" .. tostring(info.extraOK) .. " (" .. tostring(info.extraDetail) .. ")" end
+    if info.outcome and info.whenOK ~= true then t[#t + 1] = "combination=" .. tostring(info.whenOK) .. " (" .. tostring(info.whenDetail) .. ")" end
     if not info.ctxOK then t[#t + 1] = "load:" .. tostring(info.ctxFail) end
     return table.concat(t, ", ")
 end
@@ -660,10 +685,10 @@ function ns.LogStatusSnapshot(tag)
         if r.enabled then
             local ok, res, info = pcall(ns.Evaluate, r, ctx)
             if ok then
-                ns.Log("#%d %s result=%s | cd:%s(%s) buff:%s(%s via %s) ctx:%s talent:%s",
+                ns.Log("#%d %s result=%s | cd:%s(%s) buff:%s(%s via %s) ctx:%s talent:%s extra:%s",
                     i, r.name, tostring(res), tostring(r.cdState), tostring(info.cdOK),
                     tostring(r.buffState), tostring(info.buffOK), tostring(info.buffSource),
-                    tostring(info.ctxOK), tostring(info.talentOK))
+                    tostring(info.ctxOK), tostring(info.talentOK), tostring(info.extraOK))
             else
                 ns.Log("#%d %s ERROR: %s", i, r.name, tostring(res))
             end
