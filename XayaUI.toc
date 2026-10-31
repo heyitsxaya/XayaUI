@@ -3,6 +3,7 @@
 ## Notes: Xaya's personal UI toolkit. Rule-based sound cues and alerts (buff, cooldown, talent, load conditions). Commands: /xui, /xayaui
 ## Author: Xaya
 ## Version: 0.5.5
+## X-Date: 2026-10-31
 ## SavedVariables: CueRulesDB
 ## OptionalDeps: LibSharedMedia-3.0
 ## AddonCompartmentFunc: XayaUI_OnCompartmentClick
@@ -21,11 +22,8 @@ Triggers.lua
 Outcomes.lua
 Sound.lua
 Visual.lua
-QoL.lua
-CursorTracker.lua
-CursorReminders.lua
-Bars.lua
 Profile.lua
 Engine.lua
+AddonInfo.lua
 Options.lua
 Skin.lua

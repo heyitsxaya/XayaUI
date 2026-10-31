@@ -1,9 +1,10 @@
 # Third-party components
 
-- **Ace3** libraries in `Libs/` (LibStub, CallbackHandler-1.0, AceGUI-3.0, AceConfig-3.0 with its Registry/Cmd/Dialog): BSD-licensed, copyright the Ace3 authors. Vendored unmodified from the BuzzardAuras addon's `Libs` folder (an unmodified copy of upstream Ace3 as far as we know). Upstream: https://www.wowace.com/projects/ace3
+- **Ace3** libraries in `Libs/` (LibStub, CallbackHandler-1.0, AceGUI-3.0, AceConfig-3.0 with its Registry/Cmd/Dialog): BSD-licensed, copyright the Ace3 authors. Vendored unmodified from the BuzzardAuras addon's `Libs` folder (an unmodified copy of upstream Ace3 as far as we know). Upstream: https://www.wowace.com/projects/ace3. The Ace3 license text is kept in `Libs/LICENSE-Ace3.txt`. LibStub is Public Domain (credits: Kaelten, Cladhaire, ckknight, Mikk, Ammo, Nevcairiel, joshborke).
 - **Texture IDs** in `TextureList.lua` are numeric FileDataIDs of Blizzard's own game art; no Blizzard art is redistributed.
 - **Sounds**: none are included. (Earlier local builds used sounds from WeakAuras and Power Auras; those carry Creative Commons licenses with NonCommercial/Attribution terms and are deliberately not in this repository.)
 - **Local media, never committed**: `Media/Audio/BW` (from BigWigs: All Rights Reserved; several packs CC BY-NC; the Heroes voice lines are Blizzard-owned), `Media/Audio/WA` and `PA`, `Media/Graphics` (extracted Blizzard UI art converted to TGA). Personal use only; do not redistribute.
-- Ideas only, no code copied: BuffReminders (PolyForm Shield), BuzzardAuras, WeakAuras (GPL-2.0), EllesmereUI.
+- Ideas only, no code copied (a verbatim line-comparison of XayaUI's own Lua against the installed copies of these addons, run 2026-10-31, found only generic Blizzard-API idioms): BuffReminders (zerbi / Andrea Zerbini, PolyForm Shield 1.0.0), Buzzard Auras (Serina), WeakAuras (The WeakAuras Team, GPL-2.0), EllesmereUI (Ellesmere, all rights reserved). The in-game "Addon Info" tab lists these credits with links.
+- **QoL Elements are out of the repository for now** (stat text boxes, Cursor Tracker + At-Cursor Reminders, Buff Bars: `QoL.lua`, `CursorTracker.lua`, `CursorReminders.lua`, `Bars.lua`, `Media/Cursor/`). They are git-ignored and not loaded. The Buff Bars option set was styled after EllesmereUI's Tracking Bars (ideas only); re-add that credit to the in-game tab when Buff Bars returns.
 
 World of Warcraft and Blizzard Entertainment are trademarks of Blizzard Entertainment, Inc. This project is not affiliated with or endorsed by Blizzard.

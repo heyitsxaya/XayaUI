@@ -347,7 +347,7 @@ function ns.Profile_Apply(snap, mode)
 
     if IsTbl(snap.qol) then
         if replace then
-            for _, b in ipairs(ns.qolBoxes) do ns.QoL_Drop(b) end
+            for _, b in ipairs(ns.qolBoxes) do if ns.QoL_Drop then ns.QoL_Drop(b) end end
             wipe(ns.qolBoxes)
         end
         for _, b in ipairs(snap.qol) do

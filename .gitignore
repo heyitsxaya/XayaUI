@@ -22,3 +22,12 @@ Media/Graphics/*
 # Claude Code handoff notes (local only)
 CLAUDE-CODE-HANDOFF.md
 HANDOFF-TO-CLAUDE-CODE-*.md
+
+# QoL Elements: taken out for the time being (stat text boxes, cursor tracker + at-cursor reminders, buff bars).
+# The files stay on disk but are not loaded (see XayaUI.toc) and not published. To bring them back: delete these
+# lines, re-add the four files to XayaUI.toc after Visual.lua, then `git add` them.
+QoL.lua
+CursorTracker.lua
+CursorReminders.lua
+Bars.lua
+Media/Cursor/*

@@ -397,6 +397,14 @@ local function SkinButton(w)
             fs:SetFont(font, 15, flags)
             fs:SetTextColor(1, 1, 1)
         end
+        if arg and type(arg.xuiArrow) == "function" then
+            if not f.xuiArrowTex then f.xuiArrowTex = f:CreateTexture(nil, "OVERLAY"); f.xuiArrowTex:SetSize(16, 16) end
+            local at = f.xuiArrowTex
+            local okOpen, open = pcall(arg.xuiArrow)
+            at:ClearAllPoints(); at:SetPoint("RIGHT", f, "RIGHT", -8, 0)
+            at:SetTexture((okOpen and open) and "Interface\\Buttons\\Arrow-Down-Up" or "Interface\\ChatFrame\\ChatFrameExpandArrow")
+            at:SetVertexColor(0.8, 0.5, 1); at:Show()
+        elseif f.xuiArrowTex then f.xuiArrowTex:Hide() end
     else
         HideRegions(f, f:GetHighlightTexture())
         Flat(f, { 0.04, 0.04, 0.04, 0.7 }, { 0.25, 0.25, 0.25, 1 })
@@ -407,6 +415,7 @@ local function SkinButton(w)
     end
     PaintActions(w, arg)
     OnRelease(w, function(self)
+        if self.frame.xuiArrowTex then self.frame.xuiArrowTex:Hide() end
         HideActions(self.frame)
         ShowRegions(self.frame)
         FlatHide(self.frame)
@@ -415,7 +424,13 @@ local function SkinButton(w)
 end
 
 local function SkinInline(w)
-    PaneColors(w.border, { 0.04, 0.04, 0.04, A() * 0.5 }, { 0.25, 0.25, 0.25 })
+    local opt = w.GetUserData and w:GetUserData("option")
+    local flat = opt and type(opt.arg) == "table" and opt.arg.xuiFlat   -- no box: content sits directly on the pane (Addon Info tab)
+    if flat and w.border and w.border.SetBackdropColor then
+        w.border:SetBackdropColor(0, 0, 0, 0); w.border:SetBackdropBorderColor(0, 0, 0, 0)
+    else
+        PaneColors(w.border, { 0.04, 0.04, 0.04, A() * 0.5 }, { 0.25, 0.25, 0.25 })
+    end
     OnRelease(w, function(self) PaneColors(self.border, { 0.1, 0.1, 0.1, 0.5 }, { 0.4, 0.4, 0.4 }) end)
 end
 

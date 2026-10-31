@@ -2302,7 +2302,7 @@ local function BuildOptions()
                 func = function() ns.ToggleUnlock(); Notify() end },
         },
     }
-    for i, bar in ipairs(ns.bars or {}) do allBars.args["bar" .. i] = BuildBar(i, bar) end
+    for i, bar in ipairs(ns.BarsOn and ns.bars or {}) do allBars.args["bar" .. i] = BuildBar(i, bar) end
 
     ---------------------------------------------------------- Smart Categories (virtual root under All Rules)
     do
@@ -2362,7 +2362,7 @@ local function BuildOptions()
             tokens = { type = "description", order = 2, width = "full", fontSize = "small", name = TokenHelp },
         },
     }
-    for i, box in ipairs(ns.qolBoxes or {}) do allQol.args["box" .. i] = BuildBox(i, box) end
+    for i, box in ipairs(ns.QoLOn and ns.qolBoxes or {}) do allQol.args["box" .. i] = BuildBox(i, box) end
     -- Stat Tracking off (tick box on its sidebar row): nothing is listed or shown
     for k, v in pairs(allQol.args) do v.hidden = function() return not ns.QoLOn() end end
     for k, v in pairs(allBars.args) do
@@ -2373,10 +2373,11 @@ local function BuildOptions()
             return orig
         end
     end
-    local qol = { type = "group", name = "QoL Elements", order = 5, childGroups = "tree", args = { allqol = allQol, allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil, allbars = allBars } }
+    -- QoL Elements (stat boxes, cursor tracker, buff bars) are switched off for now: their files are not in XayaUI.toc, so ns.QoLOn is nil and the tab is skipped.
+    local qol = ns.QoLOn and { type = "group", name = "QoL Elements", order = 5, childGroups = "tree", args = { allqol = allQol, allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil, allbars = allBars } } or nil
 
     return { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, qol = qol, profiles = BuildProfiles(), settings = BuildAddonSettings() } }
+        args = { cooldowns = track, qol = qol, profiles = BuildProfiles(), info = ns.BuildAddonInfo and ns.BuildAddonInfo() or nil, settings = BuildAddonSettings() } }
 end
 
 -- skipValidation: the options tree is very large (every rule repeats in several lists); Ace's one-off type check of it can exceed
@@ -3624,9 +3625,45 @@ local function DecorateTree(tree)
         tree.xuiHooked = true
         local orig = tree.RefreshTree
         tree.RefreshTree = function(self, ...)
+<<<<<<< Updated upstream
             orig(self, ...)
             for _, b in ipairs(self.buttons or {}) do if b:IsShown() then DecorateButton(b) end end
             if ns.SnapAll then ns.SnapAll(self) end   -- same pass as AceGUI's layout, so the All Rules block never shows a stale position
+=======
+            local tf = self.treeframe
+            -- SnapAll re-anchors one button; AceGUI reuses buttons for different lines, so restore the plain top-down chain first.
+            local bs = self.buttons or {}
+            for i = 2, #bs do
+                bs[i]:ClearAllPoints()
+                bs[i]:SetPoint("TOPRIGHT", bs[i - 1], "BOTTOMRIGHT", 0, 0)
+                bs[i]:SetPoint("TOPLEFT", bs[i - 1], "BOTTOMLEFT", 0, 0)
+            end
+            -- AceGUI sizes the visible window assuming 18px rows; XUI rows are taller, so scale the height it sees.
+            local avg = math.max(18, self.xuiAvgRow or 18)
+            local args = { ... }
+            local function run()
+                local h = tf:GetHeight()
+                local fake = (h - 20) * 18 / self.xuiAvgRow0 + 20
+                tf.GetHeight = function() return fake end
+                local ok, err = pcall(orig, self, unpack(args))
+                tf.GetHeight = nil
+                if not ok then geterrorhandler()(err) end
+                local sum, n = 0, 0
+                for _, b in ipairs(self.buttons or {}) do
+                    if b:IsShown() then DecorateButton(b); sum = sum + b:GetHeight(); n = n + 1 end
+                end
+                return n > 0 and sum / n or 18
+            end
+            self.xuiAvgRow0 = avg
+            local newAvg = run()
+            if newAvg > avg + 0.5 or newAvg < avg - 0.5 then
+                self.xuiAvgRow = math.max(18, newAvg)
+                self.xuiAvgRow0 = self.xuiAvgRow
+                run()
+            else
+                self.xuiAvgRow = math.max(18, newAvg)
+            end
+>>>>>>> Stashed changes
         end
         local status = tree.status or tree.localstatus
         if status and not status.xuiWide then
