@@ -402,6 +402,44 @@ local function Sel(t, k, name, order, vals, ord, on, extra)
 end
 -- Shared option builders for other files (Triggers.lua builds its rows with these). A table, so no new top-level local.
 ns.UI = { Sel = Sel, Rng = Rng, Tog = Tog, Changed = Changed, Notify = Notify, SpellName = SpellName, SpellTex = SpellTex, SearchBox = SearchBox }
+
+-- Cooldown "State" dropdown. For a spell the game positively reports as having NO charges, the list is shortened to
+-- the two states that exist for it ("Cooldown ready" / "On cooldown"). They are the same stored values as before
+-- (ready / empty), so saved rules, exports and outcomes are unchanged. Charge spells, spells whose charge data
+-- cannot be read, and an unset spell keep the full list.
+function ns.IsNoChargeSpell(rule)
+    local id = tonumber(rule.spellID) or 0
+    if id == 0 or (tonumber(rule.maxCharges) or 0) > 1 then return false end
+    local ok, ch = pcall(C_Spell.GetSpellCharges, id)
+    if not ok then return false end
+    if ch == nil then return true end                      -- the game returns nothing for a spell without charges
+    if type(ch) ~= "table" then return false end
+    local okm, m = pcall(function() return ch.maxCharges end)
+    if not okm or m == nil or ns.IsSecret(m) or type(m) ~= "number" then return false end
+    return m < 2
+end
+function ns.CdStateSelect(rule, on)
+    local single = {
+        none = CD_VALUES.none,
+        ready = "Cooldown ready  (off cooldown)",
+        empty = "On cooldown",
+        hasCharge = "Has a charge / available  (same as 'Cooldown ready' for this spell)",
+        notReady = "Not fully ready  (same as 'On cooldown' for this spell)",
+    }
+    local o = Sel(rule, "cdState", "State", 4,
+        function() return ns.IsNoChargeSpell(rule) and single or CD_VALUES end,
+        function()
+            if not ns.IsNoChargeSpell(rule) then return CD_ORDER end
+            local ord = { "none", "ready", "empty" }
+            -- an older rule may still hold one of the two redundant values: keep it visible so the box is not blank
+            if rule.cdState == "hasCharge" or rule.cdState == "notReady" then ord[#ord + 1] = rule.cdState end
+            return ord
+        end,
+        on, { width = "double" })
+    o.desc = "For a spell WITHOUT charges: 'Cooldown ready' = its cooldown is not running (the global cooldown is ignored); " ..
+             "'On cooldown' = its own cooldown is running. Spells with charges show the full list."
+    return o
+end
 -- Mutually exclusive choice drawn as SQUARE check boxes (AceConfig's own radio style draws round buttons).
 -- Adds one toggle per choice to `args` as <prefix>_<i>; ticking one unticks the others; clicking the ticked one does nothing.
 -- Returns the list of generated keys.
@@ -616,7 +654,7 @@ local function BuildRule(i, rule)
                 end,
                 set = function(_, v) rule.spellID = tonumber(v) or 0; Changed(rule); Notify() end,
             },
-            cdState = Sel(rule, "cdState", "State", 4, CD_VALUES, CD_ORDER, on, { width = "double" }),
+            cdState = ns.CdStateSelect(rule, on),
             maxCharges = Rng(rule, "maxCharges", "Max charges override (0 = auto)", 5, 0, 6, 1, on,
                 { desc = "Only used if the game reports no charge data. Auto-detection normally wins." }),
             detected = { type = "description", order = 6, width = "full", name = function() return DetectedMax(rule.spellID) end },
@@ -656,6 +694,10 @@ local function BuildRule(i, rule)
         local okx, xa = pcall(ns.BuildExtraTriggerArgs, rule, ns.UI)
         if okx then for k, v in pairs(xa) do trigger.args[k] = v end
         elseif not ns.extraUiErr then ns.extraUiErr = true; ns.Print("additional triggers UI error: " .. tostring(xa)) end
+    end
+    if ns.DecorateBuiltinTriggers then   -- numbering, order and Move up / Move down for Cooldown and Buff / Aura
+        local okd, errd = pcall(ns.DecorateBuiltinTriggers, rule, trigger.args)
+        if not okd and not ns.decorErr then ns.decorErr = true; ns.Print("trigger order UI error: " .. tostring(errd)) end
     end
     -- Outcomes (Outcomes.lua). An outcome rule follows its parent's triggers: its own trigger sections are hidden and the
     -- combination row builder takes their place. A normal rule gets the Outcomes list instead, on its Conditions tab (below).
@@ -2289,7 +2331,9 @@ local function BuildOptions()
         args = { cooldowns = track, qol = qol, profiles = BuildProfiles(), settings = BuildAddonSettings() } }
 end
 
-AceConfigRegistry:RegisterOptionsTable(APP, BuildOptions)
+-- skipValidation: the options tree is very large (every rule repeats in several lists); Ace's one-off type check of it can exceed
+-- the game's script time limit ("script ran too long") when the window first opens.
+AceConfigRegistry:RegisterOptionsTable(APP, BuildOptions, true)
 AceConfigDialog:SetDefaultSize(APP, 1000, 680)
 
 function ns.OnRulesChanged() Notify() end
@@ -2684,6 +2728,33 @@ end
 local function AskRename(current, cb) ShowPopup("XAYAUI_RENAME", "Rename", { current = current, cb = cb }) end
 local function AskConfirm(text, cb) ShowPopup("XAYAUI_CONFIRM", text, { cb = cb }) end
 
+-- Export one rule (right-click > Export): shows the export text in a popup, selected, ready for Ctrl+C.
+StaticPopupDialogs["XAYAUI_EXPORT"] = {
+    text = "%s", button1 = CLOSE, hasEditBox = true, editBoxWidth = 360, maxLetters = 0, timeout = 0, whileDead = true,
+    hideOnEscape = true, preferredIndex = 3,
+    OnShow = function(self, data)
+        local eb = PopupEditBox(self)
+        if eb then
+            if eb.SetMaxLetters then eb:SetMaxLetters(0) end
+            eb:SetText((data and data.text) or ""); eb:HighlightText(); eb:SetFocus()
+        end
+    end,
+    EditBoxOnTextChanged = function(eb)
+        local data = eb:GetParent().data
+        if data and data.text and eb:GetText() ~= data.text then eb:SetText(data.text); eb:HighlightText() end   -- read-only
+    end,
+    EditBoxOnEnterPressed = function(eb) eb:GetParent():Hide() end,
+    EditBoxOnEscapePressed = function(eb) eb:GetParent():Hide() end,
+}
+ns.UI.ExportRule = function(rule)
+    local snap = ns.Profile_SnapshotRule(rule, tostring(rule.name or "Rule"))
+    local txt, err = ns.Profile_Encode(snap)
+    if not txt then ns.Print("could not export '" .. tostring(rule.name) .. "': " .. tostring(err)); return end
+    local n = #snap.rules - 1
+    ShowPopup("XAYAUI_EXPORT", "Export of '" .. tostring(rule.name) .. "'" .. (n > 0 and (" (+" .. n .. " condition" .. (n > 1 and "s" or "") .. ")") or "")
+        .. "\nCtrl+C to copy, then paste it into Profiles > Import on the other character or account.", { text = txt })
+end
+
 -- Display <-> Sound: build equivalent rules in the other bucket from what each rule tracks (spell, aura, talents, states).
 -- Load conditions start blank and the new rule starts disabled with its one output ticked, so turning it on is a single switch.
 local function ConvertFolder(src, mode)
@@ -2822,11 +2893,13 @@ local function RowMenu(button, root)
         if ns.IsEditLocked(rule) then
             root:CreateTitle("|cffff6060Edits blocked|r")
             root:CreateButton("Duplicate", function() DuplicateRule(rule) end)
+            root:CreateButton("Export", function() ns.UI.ExportRule(rule) end)
             root:CreateButton("Copy Settings", function() ruleClip = { name = rule.name, data = ns.Copy(rule) }; Notify() end)
             return true
         end
         root:CreateButton("Rename", function() AskRename(rule.name, function(t) rule.name = t; pcall(ns.RefreshVisual, rule); ns.MarkDirty(); Notify() end) end)
         root:CreateButton("Duplicate", function() DuplicateRule(rule) end)
+        root:CreateButton("Export", function() ns.UI.ExportRule(rule) end)
         root:CreateButton("Copy Settings", function() ruleClip = { name = rule.name, data = ns.Copy(rule) }; Notify(); ns.Print("copied settings of '" .. tostring(rule.name) .. "'") end)
         AddPasteMenu(root, "Paste Settings", function() return { rule } end, function() return "'" .. tostring(rule.name) .. "'" end)
         root:CreateButton(rule.enabled and "Disable" or "Enable", function()

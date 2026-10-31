@@ -617,6 +617,10 @@ end
 -- "Loaded" = enabled, load conditions pass and talent requirement passes (cooldown / buff state are NOT part of it).
 function ns.IsLoaded(rule, ctx)
     if not rule.enabled then return false end
+    if rule.parentUid and ns.FindParentRule then   -- an outcome loads exactly when its parent does
+        local p = ns.FindParentRule(rule)
+        if p then return ns.IsLoaded(p, ctx) end
+    end
     local ok, c = pcall(ns.CheckContext, rule, ctx or ns.ReadContext())
     if not ok or c ~= true then return false end
     local okT, t = pcall(ns.CheckTalents, rule)
@@ -707,9 +711,13 @@ function ns.PrintStatus()
         local res, info = ns.Evaluate(r, ctx)
         ns.Print(("#%d %s [%s] result=%s | cd:%s(%s) buff:%s(%s via %s) ctx:%s talent:%s(known=%s)"):format(
             i, r.name, r.enabled and "on" or "off", tostring(res),
-            r.cdState, tostring(info.cdOK), r.buffState, tostring(info.buffOK),
-            info.buffSource or "?", tostring(info.ctxOK), tostring(info.talentOK),
+            tostring(r.cdState), tostring(info.cdOK), tostring(r.buffState), tostring(info.buffOK),
+            tostring(info.buffSource or "?"), tostring(info.ctxOK), tostring(info.talentOK),
             tostring(info.talentDetail)))
-        ns.Print("    cooldown: " .. (info.cd.why or "?"))
+        ns.Print("    cooldown: " .. ((info.cd and info.cd.why) or "?"))
+        if ns.ExplainRule then
+            local okx, line = pcall(ns.ExplainRule, r, ctx)
+            ns.Print("    " .. (okx and line or ("explain failed: " .. tostring(line))))
+        end
     end
 end

@@ -28,6 +28,18 @@ function ns.FindParentRule(rule)
     end
 end
 
+-- Rewrite the "x<N>" references of this rule's outcomes. fn(N) returns the new ref string, or nil to drop the reference.
+function ns.RemapOutcomeRefs(parent, fn)
+    for _, o in ipairs(ns.OutcomesOf(parent)) do
+        if type(o.when) == "table" and type(o.when.list) == "table" then
+            for _, t in ipairs(o.when.list) do
+                local n = type(t.ref) == "string" and t.ref:match("^x(%d+)$")
+                if n then t.ref = fn(tonumber(n)) end
+            end
+        end
+    end
+end
+
 function ns.OutcomesOf(parent)
     local out = {}
     if type(parent.uid) ~= "string" then return out end
@@ -118,8 +130,9 @@ function ns.EvaluateOutcome(rule, ctx)
     if rule.buffID ~= p.buffID then rule.buffID = p.buffID end
     if rule.maxCharges ~= p.maxCharges then rule.maxCharges = p.maxCharges end
     info.cdOK, info.buffOK, info.extraOK = true, true, true
-    info.ctxOK, info.ctxFail = ns.CheckContext(rule, ctx)
-    info.talentOK, info.talentDetail = ns.CheckTalents(rule)
+    -- load conditions live in ONE place: the parent rule's Load tab. An outcome never has its own.
+    info.ctxOK, info.ctxFail = ns.CheckContext(p, ctx)
+    info.talentOK, info.talentDetail = ns.CheckTalents(p)
     local list = (type(rule.when) == "table" and type(rule.when.list) == "table") and rule.when.list or {}
     info.whenOK, info.whenDetail = EvalWhen(list, p, pr, pi)
     info.result = (info.ctxOK == true) and (info.talentOK == true) and (info.whenOK == true)
@@ -133,13 +146,14 @@ local function RefChoices(p)
     local v, o = {}, {}
     local function add(k, label) v[k] = label; o[#o + 1] = k end
     if p then
-        if ns.CooldownUsed(p) then add("cd", "Cooldown trigger") end
-        if ns.BuffUsed(p) then add("buff", "Buff / Aura trigger") end
+        local P = ns.TriggerPositions and ns.TriggerPositions(p)
+        if ns.CooldownUsed(p) then add("cd", "Trigger " .. ((P and P.cd) or 1) .. ":  Cooldown") end
+        if ns.BuffUsed(p) then add("buff", "Trigger " .. ((P and P.buff) or 1) .. ":  Buff / Aura") end
         if p.talentMode == "all" or p.talentMode == "any" then add("talents", "Talents requirement") end
         local list = type(p.extra) == "table" and p.extra.list or {}
         for i, t in ipairs(list) do
             local d = ns.TRIGGER_TYPES and ns.TRIGGER_TYPES[t.type]
-            add("x" .. i, "Trigger " .. i .. ":  " .. (d and d.label or "unknown type"))
+            add("x" .. i, "Trigger " .. ((P and P.xs[i]) or i) .. ":  " .. (d and d.label or "unknown type"))
         end
         add("parent", "The parent rule fires (all it requires)")
     end
@@ -151,8 +165,8 @@ function ns.BuildOutcomeArgs(rule, H)
     local args = {}
     args.oHeader = { type = "header", name = "Outcomes", order = 60 }
     args.oHelp = { type = "description", order = 60.1, width = "full", fontSize = "medium",
-        name = "This rule's own sound and display fire when ALL of its triggers match (unchanged). An outcome is an extra rule that follows these triggers but fires its OWN sound and display when its own combination is true, "
-            .. "for example 'Cooldown ready AND NOT Totem active'. Each outcome appears below as 'Condition 1', 'Condition 2' ... with its own combination, sound, display and load conditions, so everything for this rule stays on this page." }
+        name = "This rule only holds the triggers. It has no sound or display of its own once it has an outcome: each outcome below is its own combination of these triggers and carries its own sound and display, "
+            .. "for example 'Cooldown ready AND NOT Totem active'. Load conditions come from this rule's Load tab. The first outcome you add starts with a copy of this rule's current sound and display." }
     args.oAdd = { type = "execute", name = "Add an outcome", order = 60.2, width = "double",
         desc = "Creates a new rule next to this one, linked to it. Turn on its sound or display on its Conditions tab.",
         func = function()
@@ -161,6 +175,10 @@ function ns.BuildOutcomeArgs(rule, H)
             n.name = tostring(rule.name) .. " - outcome " .. (#ns.OutcomesOf(rule) + 1)
             n.parentUid = rule.uid
             n.folder = rule.folder
+            if #ns.OutcomesOf(rule) == 0 then   -- the rule stops playing its own sound / display now, so hand them to the first outcome
+                if type(rule.sound) == "table" then n.sound = ns.Copy(rule.sound) end
+                if type(rule.visual) == "table" then n.visual = ns.Copy(rule.visual) end
+            end
             ns.rules[#ns.rules + 1] = n
             pcall(ns.RefreshVisual, n)
             ns.MarkDirty()
@@ -271,10 +289,9 @@ function ns.EmbedOutcome(pg, og, rule, k)
                 end },
             when = sub(og.args.trigger, 1, "When this condition fires"),
             act  = sub(og.args.actions, 2, "Sound and display"),
-            load = sub(og.args.load, 3, "Load conditions"),
             rule = sub(og.args.rule, 4, "Name, enable and delete"),
         } }
-    for _, key in ipairs({ "when", "act", "load", "rule" }) do
+    for _, key in ipairs({ "when", "act", "rule" }) do
         local g = host["oc" .. k].args[key]
         if g then g.hidden = function() return rule.ocCollapsed == true end end
     end
@@ -323,4 +340,44 @@ function ns.RemapCopies()
         end
     end
     copies = nil
+end
+
+-- Does this rule have outcomes? (cached once per engine tick; the options window recomputes on demand)
+local hasOut, hasTick = {}, nil
+function ns.HasOutcomes(rule)
+    if rule.parentUid or type(rule.uid) ~= "string" then return false end
+    if ns.tickID == nil or hasTick ~= ns.tickID then
+        hasOut = {}
+        for _, r in ipairs(ns.rules or {}) do
+            if type(r.parentUid) == "string" then hasOut[r.parentUid] = true end
+        end
+        hasTick = ns.tickID
+    end
+    return hasOut[rule.uid] == true
+end
+
+
+-- One line saying WHY a rule or outcome does / does not fire right now (used by /xui status).
+function ns.ExplainRule(rule, ctx)
+    local function tv(v) return v == true and "true" or (v == false and "false" or "UNKNOWN") end
+    local p = rule.parentUid and ns.FindParentRule(rule) or rule
+    if not p then return "parent rule not found" end
+    local _, pi = ns.Evaluate(p, ctx)
+    local parts = {}
+    if ns.CooldownUsed(p) then parts[#parts + 1] = "cd=" .. tv(pi.cdOK) end
+    if ns.BuffUsed(p) then parts[#parts + 1] = "buff=" .. tv(pi.buffOK) end
+    local list = type(p.extra) == "table" and type(p.extra.list) == "table" and p.extra.list or {}
+    for i, t in ipairs(list) do
+        parts[#parts + 1] = "x" .. i .. "(" .. tostring(t.type) .. ")=" .. tv(pi.extraRows and pi.extraRows[i])
+    end
+    parts[#parts + 1] = "load=" .. tv(pi.ctxOK) .. ((pi.ctxOK ~= true and pi.ctxFail) and (" [" .. tostring(pi.ctxFail) .. "]") or "")
+    parts[#parts + 1] = "talents=" .. tv(pi.talentOK)
+    local s = (rule.parentUid and "outcome of '" .. tostring(p.name) .. "': " or "triggers: ") .. table.concat(parts, "  ")
+    if pi.extraDetail and pi.extraOK ~= true then s = s .. "  | extra: " .. tostring(pi.extraDetail) end
+    if rule.parentUid then
+        local _, oi = ns.Evaluate(rule, ctx)
+        s = s .. "  | combination=" .. tv(oi and oi.whenOK) .. " (" .. tostring(oi and oi.whenDetail) .. ")"
+        s = s .. "  | sound plays=" .. tostring(ns.KindHas(rule, "sound") and rule.sound and rule.sound.enabled == true)
+    end
+    return s
 end

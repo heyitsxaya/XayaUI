@@ -319,6 +319,8 @@ function ns.RuleKind(rule)
 end
 -- what = "visual" | "sound"
 function ns.KindHas(rule, what)
+    -- a rule that has outcomes has no sound / display of its own: its outcomes carry them
+    if ns.HasOutcomes and ns.HasOutcomes(rule) then return false end
     local k = ns.RuleKind(rule)
     if k == "hybrid" then return true end
     return (k == "display") == (what == "visual")
@@ -571,6 +573,8 @@ SlashCmdList["XAYAUI"] = function(msg)
         if ns.IconReport then ns.IconReport() end
     elseif cmd == "status" then
         if ns.PrintStatus then ns.PrintStatus() end
+    elseif cmd == "debuffs" then
+        if ns.ProbeDebuffs then ns.ProbeDebuffs(arg) end
     elseif cmd == "probe" then
         if ns.Probe then ns.Probe(tonumber(arg)) end
     elseif cmd == "seed" then
@@ -583,6 +587,6 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif cmd == "unlock" then
         if ns.ToggleUnlock then ns.ToggleUnlock() end
     else
-        ns.Print("commands: /xui (settings) | /xui status | /xui probe <spellID> | /xui unlock | /xui cursor | /xui seed")
+        ns.Print("commands: /xui (settings) | /xui status | /xui probe <spellID> | /xui debuffs [target|focus] | /xui unlock | /xui cursor | /xui seed")
     end
 end

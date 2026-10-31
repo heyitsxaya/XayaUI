@@ -212,6 +212,19 @@ function ns.Profile_Snapshot(include, name)
     return snap
 end
 
+-- One rule (plus its outcomes, which are part of it). No folders: the rule lands at the top level when imported.
+function ns.Profile_SnapshotRule(rule, name)
+    local snap = { v = 1, name = name or "", addonVersion = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addonName, "Version")) or "" }
+    local list = { ns.Copy(rule) }
+    if ns.OutcomesOf and not rule.parentUid then
+        for _, o in ipairs(ns.OutcomesOf(rule)) do list[#list + 1] = ns.Copy(o) end
+    end
+    for _, r in ipairs(list) do r.folder = nil end
+    snap.rules = list
+    snap.folders = {}
+    return snap
+end
+
 function ns.Profile_Encode(snap)
     local out = {}
     local ok, err = pcall(Enc, snap, out, 0)
@@ -286,6 +299,20 @@ function ns.Profile_Apply(snap, mode)
             end
         end
         for _, a in ipairs(added) do a.nf.parent = a.oldParent and map[a.oldParent] or nil end
+        -- outcomes link to their parent by uid: give imported uids that already exist here a fresh value, and re-point the links
+        local haveUid, uidMap = {}, {}
+        for _, r in ipairs(ns.rules) do if type(r.uid) == "string" then haveUid[r.uid] = true end end
+        if ns.NewUID then
+            for _, r in ipairs(snap.rules) do
+                if IsTbl(r) and type(r.uid) == "string" and haveUid[r.uid] then uidMap[r.uid] = ns.NewUID(); haveUid[uidMap[r.uid]] = true end
+            end
+            for _, r in ipairs(snap.rules) do
+                if IsTbl(r) then
+                    if type(r.uid) == "string" and uidMap[r.uid] then r.uid = uidMap[r.uid] end
+                    if type(r.parentUid) == "string" and uidMap[r.parentUid] then r.parentUid = uidMap[r.parentUid] end
+                end
+            end
+        end
         for _, r in ipairs(snap.rules) do
             if IsTbl(r) then
                 ns.NormalizeRule(r)
