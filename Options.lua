@@ -3626,6 +3626,7 @@ local function DecorateTree(tree)
         tree.RefreshTree = function(self, ...)
             orig(self, ...)
             for _, b in ipairs(self.buttons or {}) do if b:IsShown() then DecorateButton(b) end end
+            if ns.SnapAll then ns.SnapAll(self) end   -- same pass as AceGUI's layout, so the All Rules block never shows a stale position
         end
         local status = tree.status or tree.localstatus
         if status and not status.xuiWide then

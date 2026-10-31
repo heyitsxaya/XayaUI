@@ -252,24 +252,49 @@ end
 
 -- Pin the All Rules block (its row, its folders and Auto-Populate) to the bottom of the left pane while there is spare room.
 -- AceGUI chains the rows top-down, so the "all" row is re-anchored below its predecessor with the spare height as an offset.
+-- The block is its own partition of the tree: a thin divider sits above the "all" row, and every pass first resets the whole
+-- chain to AceGUI's plain top-down anchors. AceGUI reuses button frames and never re-anchors them, so without the reset a frame
+-- that once carried the spare-height offset kept it after it started showing a different row (the "pop").
 local function SnapAll(w)
     local btns = {}
     for _, b in ipairs(w.buttons or {}) do if b:IsShown() then btns[#btns + 1] = b end end
     local idx
-    for i, b in ipairs(btns) do if tostring(b.uniquevalue or "") == "all" then idx = i end end
-    if not idx or idx == 1 or not w.treeframe then return end
-    local used = 10
-    for _, b in ipairs(btns) do used = used + b:GetHeight() end
-    local free = w.showscroll and 0 or math.max(0, w.treeframe:GetHeight() - 8 - used)
-    local prev, b = btns[idx - 1], btns[idx]
-    b:ClearAllPoints()
-    b:SetPoint("TOPRIGHT", prev, "BOTTOMRIGHT", 0, -free)
-    b:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -free)
+    for i, b in ipairs(btns) do
+        if i > 1 then
+            local prev = btns[i - 1]
+            b:ClearAllPoints()
+            b:SetPoint("TOPRIGHT", prev, "BOTTOMRIGHT", 0, 0)
+            b:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, 0)
+        end
+        if tostring(b.uniquevalue or "") == "all" then idx = i end
+    end
+    for _, b in ipairs(w.buttons or {}) do if b.xuiPart then b.xuiPart:Hide() end end
+    if not idx or not w.treeframe then return end
+    local b = btns[idx]
+    if idx > 1 then
+        local used = 10
+        for _, x in ipairs(btns) do used = used + x:GetHeight() end
+        local free = w.showscroll and 0 or math.max(0, w.treeframe:GetHeight() - 8 - used)
+        local prev = btns[idx - 1]
+        b:ClearAllPoints()
+        b:SetPoint("TOPRIGHT", prev, "BOTTOMRIGHT", 0, -free)
+        b:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -free)
+    end
+    if not b.xuiPart then
+        b.xuiPart = b:CreateTexture(nil, "ARTWORK")
+        b.xuiPart:SetHeight(1)
+        b.xuiPart:SetColorTexture(0.3, 0.3, 0.3, 1)
+    end
+    b.xuiPart:ClearAllPoints()
+    b.xuiPart:SetPoint("BOTTOMLEFT", b, "TOPLEFT", 4, 0)
+    b.xuiPart:SetPoint("BOTTOMRIGHT", b, "TOPRIGHT", -4, 0)
+    b.xuiPart:Show()
 end
+ns.SnapAll = function(w) if SkinOn() then pcall(SnapAll, w) end end
 
 local function SkinTree(w)
     PaneColors(w.treeframe, { 0.03, 0.03, 0.03, A() * 0.6 }, { 0.3, 0.3, 0.3 })
-    pcall(SnapAll, w)
+    ns.SnapAll(w)
     -- wider gutter between the right pane's border and its text / controls (AceGUI's default is 10px)
     local pad = Pad()
     if w.xuiPadApplied ~= pad and w.content and w.border then
