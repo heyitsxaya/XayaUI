@@ -250,26 +250,59 @@ local function SkinTabGroup(w)
     end)
 end
 
--- Pin the All Rules block (its row, its folders and Auto-Populate) to the bottom of the left pane while there is spare room.
--- AceGUI chains the rows top-down, so the "all" row is re-anchored below its predecessor with the spare height as an offset.
-local function SnapAll(w)
+-- All Rules band: the All Rules block (its row, its folders / rules when expanded, and Auto-Populate) is its own band at the
+-- bottom of the same tree frame. AceGUI chains every row to the row above it, so the band is cut loose from that chain and
+-- anchored to the frame's bottom edge instead (its position depends only on its own height, never on the rows above it);
+-- the rows above keep AceGUI's chain. The band is laid out inside RefreshTree, right after the rows are rebuilt and resized,
+-- so no frame is ever drawn in the old position, and every refresh first puts the rows back on AceGUI's own chain so a
+-- recycled row can never keep a stale offset.
+local function ResetChain(w)
+    local tf, btns = w.treeframe, w.buttons
+    if not tf or not btns then return end
+    local r = w.showscroll and -22 or 0
+    for i, b in ipairs(btns) do
+        b:ClearAllPoints()
+        if i == 1 then
+            b:SetPoint("TOPRIGHT", tf, "TOPRIGHT", r, -10)
+            b:SetPoint("TOPLEFT", tf, "TOPLEFT", 0, -10)
+        else
+            b:SetPoint("TOPRIGHT", btns[i - 1], "BOTTOMRIGHT", 0, 0)
+            b:SetPoint("TOPLEFT", btns[i - 1], "BOTTOMLEFT", 0, 0)
+        end
+    end
+end
+
+local function PartitionAllRules(w)
+    local tf = w.treeframe
+    if not tf or not w.buttons then return end
+    if w.xuiPart then ResetChain(w); w.xuiPart = nil end
+    if not SkinOn() or w.showscroll then return end   -- scrolling list: rows stay in AceGUI's own order
     local btns = {}
-    for _, b in ipairs(w.buttons or {}) do if b:IsShown() then btns[#btns + 1] = b end end
+    for _, b in ipairs(w.buttons) do if b:IsShown() then btns[#btns + 1] = b end end
     local idx
     for i, b in ipairs(btns) do if tostring(b.uniquevalue or "") == "all" then idx = i end end
-    if not idx or idx == 1 or not w.treeframe then return end
-    local used = 10
-    for _, b in ipairs(btns) do used = used + b:GetHeight() end
-    local free = w.showscroll and 0 or math.max(0, w.treeframe:GetHeight() - 8 - used)
-    local prev, b = btns[idx - 1], btns[idx]
-    b:ClearAllPoints()
-    b:SetPoint("TOPRIGHT", prev, "BOTTOMRIGHT", 0, -free)
-    b:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -free)
+    if not idx or idx == 1 then return end
+    local topH, botH = 10, 0
+    for i, b in ipairs(btns) do if i < idx then topH = topH + b:GetHeight() else botH = botH + b:GetHeight() end end
+    if topH + botH + 8 >= tf:GetHeight() then return end   -- no spare room: the band simply follows the rows above it
+    local first = btns[idx]
+    first:ClearAllPoints()
+    first:SetPoint("TOPRIGHT", tf, "BOTTOMRIGHT", 0, botH + 8)
+    first:SetPoint("TOPLEFT", tf, "BOTTOMLEFT", 0, botH + 8)
+    w.xuiPart = true
 end
 
 local function SkinTree(w)
     PaneColors(w.treeframe, { 0.03, 0.03, 0.03, A() * 0.6 }, { 0.3, 0.3, 0.3 })
-    pcall(SnapAll, w)
+    if not w.xuiPartHooked then   -- re-partition inside every refresh (outermost wrapper: runs after Options.lua's row decorating)
+        w.xuiPartHooked = true
+        local origRefresh = w.RefreshTree
+        w.RefreshTree = function(self, ...)
+            origRefresh(self, ...)
+            pcall(PartitionAllRules, self)
+        end
+    end
+    pcall(PartitionAllRules, w)
     -- wider gutter between the right pane's border and its text / controls (AceGUI's default is 10px)
     local pad = Pad()
     if w.xuiPadApplied ~= pad and w.content and w.border then
@@ -287,6 +320,7 @@ local function SkinTree(w)
         end
     end
     OnRelease(w, function(self)
+        if self.xuiPart then pcall(ResetChain, self); self.xuiPart = nil end
         if self.xuiPadApplied and self.content and self.border then
             self.content:ClearAllPoints()
             self.content:SetPoint("TOPLEFT", self.border, "TOPLEFT", 10, -10)
@@ -372,6 +406,15 @@ local function SkinButton(w)
             fs:SetFont(font, 15, flags)
             fs:SetTextColor(1, 1, 1)
         end
+        if arg and type(arg.xuiArrow) == "function" then
+            if fs and w.xuiFont then fs:SetFont(w.xuiFont[1], 18, w.xuiFont[3]) end   -- h2
+            if not f.xuiArrowTex then f.xuiArrowTex = f:CreateTexture(nil, "OVERLAY"); f.xuiArrowTex:SetSize(16, 16) end
+            local at = f.xuiArrowTex
+            local okOpen, open = pcall(arg.xuiArrow)
+            at:ClearAllPoints(); at:SetPoint("RIGHT", f, "RIGHT", -8, 0)
+            at:SetTexture((okOpen and open) and "Interface\\Buttons\\Arrow-Down-Up" or "Interface\\ChatFrame\\ChatFrameExpandArrow")
+            at:SetVertexColor(0.8, 0.5, 1); at:Show()
+        elseif f.xuiArrowTex then f.xuiArrowTex:Hide() end
     else
         HideRegions(f, f:GetHighlightTexture())
         Flat(f, { 0.04, 0.04, 0.04, 0.7 }, { 0.25, 0.25, 0.25, 1 })
@@ -382,6 +425,7 @@ local function SkinButton(w)
     end
     PaintActions(w, arg)
     OnRelease(w, function(self)
+        if self.frame.xuiArrowTex then self.frame.xuiArrowTex:Hide() end
         HideActions(self.frame)
         ShowRegions(self.frame)
         FlatHide(self.frame)
@@ -390,8 +434,17 @@ local function SkinButton(w)
 end
 
 local function SkinInline(w)
-    PaneColors(w.border, { 0.04, 0.04, 0.04, A() * 0.5 }, { 0.25, 0.25, 0.25 })
-    OnRelease(w, function(self) PaneColors(self.border, { 0.1, 0.1, 0.1, 0.5 }, { 0.4, 0.4, 0.4 }) end)
+    local opt = w.GetUserData and w:GetUserData("option")
+    local oa = opt and type(opt.arg) == "table" and opt.arg or nil
+    local flat, box = oa and oa.xuiFlat, oa and oa.xuiBox   -- xuiFlat: no box at all; xuiBox: square 1px box, 10% more opaque (Addon Info tab)
+    if (flat or box) and w.border and w.border.SetBackdropColor then
+        w.border:SetBackdropColor(0, 0, 0, 0); w.border:SetBackdropBorderColor(0, 0, 0, 0)   -- hide AceGUI's rounded border
+        if box then Flat(w.border, { 0.04, 0.04, 0.04, math.min(1, A() * 0.5 + 0.10) }, { 0.3, 0.3, 0.3, 1 }) else FlatHide(w.border) end
+    else
+        if w.border then FlatHide(w.border) end
+        PaneColors(w.border, { 0.04, 0.04, 0.04, A() * 0.5 }, { 0.25, 0.25, 0.25 })
+    end
+    OnRelease(w, function(self) if self.border then FlatHide(self.border) end; PaneColors(self.border, { 0.1, 0.1, 0.1, 0.5 }, { 0.4, 0.4, 0.4 }) end)
 end
 
 -- clickable list row (a Label whose option carries arg.xuiRow = function): flat box, hover highlight, click runs the function
@@ -511,6 +564,19 @@ local function Walk(w, depth)
         local opt = w.GetUserData and w:GetUserData("option")
         local fn = opt and type(opt.arg) == "table" and opt.arg.xuiRow
         if fn then SkinRow(w, fn) end
+        local h1 = opt and type(opt.arg) == "table" and tonumber(opt.arg.xuiH1)
+        if h1 and w.label then
+            if not w.xuiH1Font then local a1, a2, a3 = w.label:GetFont(); w.xuiH1Font = { a1, a2, a3 } end
+            w.label:SetFont(w.xuiH1Font[1], h1, w.xuiH1Font[3])
+            local need = w.label:GetStringHeight() + 6
+            local key = math.floor(h1) .. "x" .. math.floor(need)
+            if math.abs(w.frame:GetHeight() - need) > 0.5 and w.xuiH1Key ~= key then
+                w.xuiH1Key = key
+                w.frame:SetHeight(need); w.frame.height = need
+                if w.parent and w.parent.DoLayout then w.parent:DoLayout() end
+            end
+            OnRelease(w, function(self) if self.xuiH1Font and self.label then self.label:SetFont(unpack(self.xuiH1Font)) end; self.xuiH1Key = nil end)
+        end
     end
     for _, c in ipairs(w.children or {}) do Walk(c, depth + 1) end
 end
