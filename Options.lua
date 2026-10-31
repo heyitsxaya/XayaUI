@@ -1717,6 +1717,10 @@ local function CreateRuleOfType(typ, fid)
             v.texAlpha = 0.35              -- reduced base opacity; ratio to Overlay opacity (1) is preserved while locked (see ProgLocked)
         elseif typ == "text" then v.text.enabled = true; v.texAlpha = 0 end
     end
+    if typ == "sound" then   -- sound cue: plays a sound, shows nothing
+        if type(r.sound) == "table" then r.sound.enabled = true end
+        if type(r.visual) == "table" then r.visual.enabled = false end
+    end
     ns.rules[#ns.rules + 1] = r
     Notify()
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(r))
@@ -2224,11 +2228,12 @@ local function BuildOptions()
         all.args.pickText = Entry(0.6, TI("text", "INV_Misc_Note_01"), "Text", "Shows one or more lines of text, which can include dynamic information", "text")
         all.args.pickTex = Entry(0.3, TI("sttexture", "INV_Misc_Gem_Variety_01"), "Texture", "Shows a custom texture", "texture")
         all.args.pickDGroup = Entry(0.65, TI("dyngroup", "INV_Misc_Bag_10_Blue"), "Dynamic Group", "A container whose elements get dynamic, moving X / Y positions based on what is detected (e.g. only the active defensives line up)", "dgroup")
+        all.args.pickSound = Entry(0.62, TI("sound", "INV_Misc_Note_01"), "Sound Cue", "Plays a sound when its conditions are met, with no display", "sound")
         all.args.pickSGroup = Entry(0.63, TI("stgroup", "INV_Misc_Bag_10"), "Static Group", "A container with a fixed X / Y for the group and for every element in it", "sgroup")
         all.args.pickExtH = { type = "header", order = 0.7, name = "External", hidden = function() return not picker end }
         all.args.pickImport = Entry(0.8, TI("import", "INV_Scroll_03"), "Import", "Import from an encoded string (opens the Profiles tab)", "import")
         all.args.pickCancel = { type = "execute", order = 0.9, name = "Cancel", width = "half", func = function() picker = nil; Notify() end }
-        for _, k in ipairs({ "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickDGroup", "pickSGroup", "pickImport", "pickCancel" }) do
+        for _, k in ipairs({ "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickSound", "pickDGroup", "pickSGroup", "pickImport", "pickCancel" }) do
             all.args[k].hidden = function() return not picker end
         end
     end

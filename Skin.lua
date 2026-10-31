@@ -405,8 +405,33 @@ local function SkinRow(w, fn)
     end
     f.xuiHL:Show()
     Flat(f, { 0.04, 0.04, 0.04, 0.35 + A() * 0.4 }, { 0.25, 0.25, 0.25, 1 })
-    if w.label then w.label:SetJustifyV("MIDDLE") end
+    -- icon in its own column (left), thin divider, then the title + description text
+    local img, lab = w.image, w.label
+    if img and lab and w.imageshown then
+        local iw, ih = img:GetWidth(), img:GetHeight()
+        local fw = f.width or f:GetWidth() or 0
+        img:ClearAllPoints(); img:SetPoint("LEFT", f, "LEFT", 8, 0)
+        lab:ClearAllPoints(); lab:SetPoint("LEFT", img, "RIGHT", 18, 0)
+        lab:SetWidth(math.max(60, fw - 8 - iw - 18 - 8))
+        lab:SetJustifyV("MIDDLE")
+        if not f.xuiSep then f.xuiSep = f:CreateTexture(nil, "BORDER"); f.xuiSep:SetColorTexture(0.3, 0.3, 0.3, 1); f.xuiSep:SetWidth(1) end
+        f.xuiSep:ClearAllPoints()
+        f.xuiSep:SetPoint("TOP", f, "TOP", 0, -4); f.xuiSep:SetPoint("BOTTOM", f, "BOTTOM", 0, 4)
+        f.xuiSep:SetPoint("LEFT", img, "RIGHT", 8, 0)
+        f.xuiSep:Show()
+        local need = math.max(ih, lab:GetStringHeight()) + 12
+        local key = math.floor(fw) .. "x" .. math.floor(need)
+        if math.abs(f:GetHeight() - need) > 0.5 and w.xuiRowKey ~= key then
+            w.xuiRowKey = key
+            f:SetHeight(need); f.height = need
+            if w.parent and w.parent.DoLayout then w.parent:DoLayout() end
+        end
+    elseif lab then
+        lab:SetJustifyV("MIDDLE")
+    end
     OnRelease(w, function(self)
+        if self.frame.xuiSep then self.frame.xuiSep:Hide() end
+        self.xuiRowKey = nil
         self.frame:EnableMouse(false); self.frame:SetScript("OnMouseUp", nil)
         if self.frame.xuiHL then self.frame.xuiHL:Hide() end
         FlatHide(self.frame)
@@ -425,6 +450,7 @@ ns.TYPE_ICONS.stgroup = 1120185   -- static groups use this game icon (file ID) 
 ns.TYPE_ICONS.progressbar = ICON_DIR .. "progresstex"   -- the old progress-texture crop now marks progress bars
 ns.TYPE_ICONS.progresstex = ICON_DIR .. "sttexture"      -- the old texture crop now marks progress textures
 ns.TYPE_ICONS.sttexture = 1323036                         -- textures use this game icon (file ID)
+ns.TYPE_ICONS.sound = ICON_DIR .. "stgroup"                -- the red rune crop now marks sound cues
 ns.TYPE_ICONS.import = 252269                             -- import uses this game icon (file ID)
 function ns.TypeIcon(key, fallback)
     if SkinOn() and ns.TYPE_ICONS[key] then return ns.TYPE_ICONS[key] end
@@ -433,7 +459,10 @@ end
 -- which icon a rule or folder gets (nil = none, e.g. a sound-only rule)
 function ns.TypeKey(rule)
     local v = type(rule.visual) == "table" and rule.visual or nil
-    if not v or not v.enabled then return nil end
+    if not v or not v.enabled then
+        if type(rule.sound) == "table" and rule.sound.enabled then return "sound" end
+        return nil
+    end
     if type(v.fill) == "table" and v.fill.enabled then return "progresstex" end
     if v.kind == "spellicon" then return "icon" end
     if type(v.text) == "table" and v.text.enabled and (tonumber(v.texAlpha) or 1) == 0 then return "text" end
