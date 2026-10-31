@@ -587,6 +587,6 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif cmd == "unlock" then
         if ns.ToggleUnlock then ns.ToggleUnlock() end
     else
-        ns.Print("commands: /xui (settings) | /xui status | /xui probe <spellID> | /xui debuffs [target|focus] | /xui unlock | /xui cursor | /xui seed")
+        ns.Print("commands: /xui (settings) | /xui status | /xui probe <spellID> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui seed")
     end
 end

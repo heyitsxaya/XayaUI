@@ -167,7 +167,7 @@ function ns.BuildOutcomeArgs(rule, H)
     args.oHelp = { type = "description", order = 60.1, width = "full", fontSize = "medium",
         name = "This rule only holds the triggers. It has no sound or display of its own once it has an outcome: each outcome below is its own combination of these triggers and carries its own sound and display, "
             .. "for example 'Cooldown ready AND NOT Totem active'. Load conditions come from this rule's Load tab. The first outcome you add starts with a copy of this rule's current sound and display." }
-    args.oAdd = { type = "execute", name = "Add an outcome", order = 60.2, width = "double",
+    args.oAdd = { type = "execute", name = "Add an outcome", order = 60.2, width = "double", arg = { xuiRed = true },
         desc = "Creates a new rule next to this one, linked to it. Turn on its sound or display on its Conditions tab.",
         func = function()
             rule.uid = rule.uid or ns.NewUID()
@@ -222,7 +222,7 @@ function ns.BuildWhenArgs(rule, H)
             end
             return "Fires when:  " .. table.concat(parts) .. "\n|cff888888AND is evaluated before OR.|r"
         end }
-    args.wAdd = { type = "execute", name = "Add a condition", order = 0.3, width = "double",
+    args.wAdd = { type = "execute", name = "Add a condition", order = 0.3, width = "double", arg = { xuiRed = true },
         func = function()
             if #W.list >= MAX_TERMS then ns.Print("an outcome can hold at most " .. MAX_TERMS .. " conditions"); return end
             W.list[#W.list + 1] = { op = "and", neg = false }
@@ -248,9 +248,29 @@ function ns.BuildWhenArgs(rule, H)
                 if v ~= nil and t.neg then v = not v end
                 return "Right now: " .. ((v == true and "|cff55ff55true|r") or (v == false and "|cffff5555false|r") or "|cffffd100unknown|r")
             end }
-        row.remove = { type = "execute", name = "Remove", order = 5, width = "half",
-            func = function() table.remove(W.list, j); onN() end }
-        args["w" .. j] = { type = "group", inline = true, order = 1 + j, name = "Condition " .. j, args = row }
+        local function del() table.remove(W.list, j); onN() end
+        local function swap(d)
+            local other = W.list[j + d]
+            if not other then return end
+            W.list[j], W.list[j + d] = other, W.list[j]
+            onN()
+        end
+        local function dup()
+            if #W.list >= MAX_TERMS then ns.Print("an outcome can hold at most " .. MAX_TERMS .. " conditions"); return end
+            table.insert(W.list, j + 1, ns.Copy(t))
+            onN()
+        end
+        local actions = function()
+            return { up = (j > 1) and function() swap(-1) end or false, down = (j < #W.list) and function() swap(1) end or false, copy = dup, del = del }
+        end
+        if ns.GatedPane and ns.SkinRows and ns.SkinRows() then
+            local pane = ns.GatedPane(rule, "wcond" .. j, j .. ".  Condition", 1 + j, function() return true end, row)
+            pane.args.hdr.arg.xuiActions = actions
+            args["w" .. j] = pane
+        else
+            row.remove = { type = "execute", name = "Remove", order = 5, width = "half", func = del }
+            args["w" .. j] = { type = "group", inline = true, order = 1 + j, name = "Condition " .. j, args = row }
+        end
     end
     return args
 end
@@ -259,6 +279,34 @@ end
 -------------------------------------------------------------------------------
 -- Bundling: outcomes are shown inside their parent rule instead of as separate list entries.
 -------------------------------------------------------------------------------
+-- Row actions for an outcome shown on its parent's Conditions tab (arrow up / down, duplicate, remove)
+local function MoveOutcome(rule, dir)
+    local par = ns.FindParentRule(rule)
+    if not par then return end
+    local list, pos = ns.OutcomesOf(par), nil
+    for i, r in ipairs(list) do if r == rule then pos = i end end
+    local other = pos and list[pos + dir]
+    if not other then return end
+    local ia, ib
+    for i, r in ipairs(ns.rules) do if r == rule then ia = i elseif r == other then ib = i end end
+    if not (ia and ib) then return end
+    ns.rules[ia], ns.rules[ib] = ns.rules[ib], ns.rules[ia]
+    ns.MarkDirty(); ns.UI.Notify()
+end
+local function CopyOutcome(rule)
+    local c = ns.Copy(rule)
+    c.uid = nil
+    c.name = ((rule.name and rule.name ~= "") and rule.name or "Outcome") .. " Copy"
+    for i, r in ipairs(ns.rules) do if r == rule then table.insert(ns.rules, i + 1, c); break end end
+    pcall(ns.RefreshVisual, c)
+    ns.MarkDirty(); ns.UI.Notify()
+end
+local function RemoveOutcome(rule)
+    for i, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, i); break end end
+    pcall(ns.DropVisual, rule)
+    ns.MarkDirty(); ns.UI.Notify()
+end
+
 -- Put an outcome's settings (its own combination, sound / display, load conditions, name) on the parent's Conditions tab.
 function ns.EmbedOutcome(pg, og, rule, k)
     local host = pg.args and pg.args.actions and pg.args.actions.args
@@ -267,12 +315,23 @@ function ns.EmbedOutcome(pg, og, rule, k)
         if not g then return nil end
         return { type = "group", inline = true, order = order, name = name, args = g.args }
     end
-    host["oc" .. k] = { type = "group", inline = true, order = 100 + k,
-        name = function() return "Condition " .. k .. ":  " .. tostring(rule.name) .. (rule.enabled and "" or "  (disabled)") end,
+    local OPEN = "|TInterface\\Buttons\\Arrow-Down-Up:16:16|t"
+    local CLOSED = "|TInterface\\ChatFrame\\ChatFrameExpandArrow:16:16|t"
+    host["oc" .. k] = { type = "group", inline = true, order = 100 + k, name = "",
         args = {
-            toggle = { type = "execute", order = 0.1, width = "half",
-                name = function() return rule.ocCollapsed and "Expand" or "Collapse" end,
-                desc = "Show or hide this condition's settings. The note below stays visible.",
+            hdr = { type = "execute", order = 0.05, width = "full",
+                arg = { xuiLeft = true, xuiActions = function()
+                    local pr = ns.FindParentRule(rule)
+                    local n = pr and #ns.OutcomesOf(pr) or 1
+                    return {
+                        up = (k > 1) and function() MoveOutcome(rule, -1) end or false,
+                        down = (k < n) and function() MoveOutcome(rule, 1) end or false,
+                        copy = function() CopyOutcome(rule) end,
+                        del = function() RemoveOutcome(rule) end,
+                    }
+                end },
+                name = function() return (rule.ocCollapsed and CLOSED or OPEN) .. "  " .. k .. ".  " .. tostring(rule.name) .. (rule.enabled and "" or "  (disabled)") end,
+                desc = "Expand or collapse this condition's settings. The note below stays visible.",
                 func = function() rule.ocCollapsed = (not rule.ocCollapsed) or nil; ns.MarkDirty(); ns.UI.Notify() end },
             note = { type = "input", order = 0.2, width = "double",
                 name = "Note (what this condition fires for)",
@@ -368,7 +427,7 @@ function ns.ExplainRule(rule, ctx)
     if ns.BuffUsed(p) then parts[#parts + 1] = "buff=" .. tv(pi.buffOK) end
     local list = type(p.extra) == "table" and type(p.extra.list) == "table" and p.extra.list or {}
     for i, t in ipairs(list) do
-        parts[#parts + 1] = "x" .. i .. "(" .. tostring(t.type) .. ")=" .. tv(pi.extraRows and pi.extraRows[i])
+        parts[#parts + 1] = "x" .. i .. "(" .. tostring(t.type) .. ")=" .. tv(pi.extraRows and pi.extraRows[i]) .. ((pi.extraWhys and pi.extraWhys[i]) and (" [" .. tostring(pi.extraWhys[i]) .. "]") or "")
     end
     parts[#parts + 1] = "load=" .. tv(pi.ctxOK) .. ((pi.ctxOK ~= true and pi.ctxFail) and (" [" .. tostring(pi.ctxFail) .. "]") or "")
     parts[#parts + 1] = "talents=" .. tv(pi.talentOK)

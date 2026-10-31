@@ -148,12 +148,12 @@ Add("talentKnown", {
 -- 2. Action Usable  (WA: "Action Usable")
 Add("actionUsable", {
     label = "Spell Usable (Action Usable)", wa = "Action Usable", group = "Spell",
-    note = "Usable = the game would let you cast it now (known, enough resource, proc requirements met). Not enough resource = usable except for the resource cost. Cooldown is NOT part of this; use the Cooldown section for that.",
+    note = "Usable = the game would let you cast it now (known, enough resource, proc requirements met). Not enough resource = usable except for the resource cost. 'Is usable' does NOT look at the cooldown (a spell on cooldown still counts as usable); pick 'Usable AND off cooldown' to include it (the global cooldown is ignored).",
     fields = {
         { key = "spellID", kind = "spell", label = "Spell ID", required = true },
         { key = "state", kind = "select", label = "State", required = true, vals = {
-            values = { usable = "Is usable", unusable = "Is NOT usable", noPower = "Lacks the resource (mana, energy...)" },
-            order = { "usable", "unusable", "noPower" } } },
+            values = { usable = "Is usable", unusable = "Is NOT usable", noPower = "Lacks the resource (mana, energy...)", ready = "Usable AND off cooldown (ready to press)" },
+            order = { "usable", "ready", "unusable", "noPower" } } },
     },
     check = function(t)
         local id = tonumber(t.spellID)
@@ -161,12 +161,46 @@ Add("actionUsable", {
         if C_Spell and C_Spell.IsSpellUsable then usable, noPower = Call(C_Spell.IsSpellUsable, id) end
         if usable == nil then return nil, "usability unreadable" end
         if t.state == "usable" then return usable == true
+        elseif t.state == "ready" then
+            if usable ~= true then return false end
+            local okc, cd = pcall(C_Spell.GetSpellCooldown, id)
+            if not okc or type(cd) ~= "table" then return nil, "cooldown unreadable" end
+            local act, gcd = Field(cd, "isActive"), Field(cd, "isOnGCD")
+            if act == nil then return nil, "cooldown unreadable" end
+            return not (act and gcd ~= true), act and gcd ~= true and "on cooldown" or nil
         elseif t.state == "unusable" then return usable == false
         elseif t.state == "noPower" then
             if noPower == nil then return nil, "resource check unreadable" end
             return noPower == true
         end
         return nil
+    end,
+})
+
+-- 2b. Cooldown (any spell)  (WA: "Cooldown Progress (Spell)")
+-- The rule's built-in "1. Cooldown" section holds ONE spell. This is the same check as a repeatable row, so a rule can watch
+-- several cooldowns at once (each row is x1, x2 ... in Outcome combinations). Reuses ns.ReadCooldown / ns.CheckCooldownState
+-- (Conditions.lua), so charges and the global-cooldown handling behave exactly like the built-in section.
+Add("cooldown", {
+    label = "Cooldown (any spell)", wa = "Cooldown Progress (Spell)", group = "Spell",
+    note = "Watches ONE spell's cooldown. Add this trigger once per spell to track several cooldowns in the same rule. 'Fully ready' = off cooldown (all charges back); 'Has a charge' = at least one use available. The global cooldown is ignored. Unreadable in combat = unknown, and a rule that depends on an unknown input does not fire.",
+    new = { state = "ready", maxCharges = 0 },
+    fields = {
+        { key = "spellID", kind = "spell", label = "Spell ID", required = true },
+        { key = "state", kind = "select", label = "State", required = true, vals = {
+            values = { ready = "Fully ready (off cooldown / max charges)", hasCharge = "Has a charge / available",
+                       notReady = "Not fully ready (on cooldown)", empty = "Empty / on cooldown (experimental for multi-charge)" },
+            order = { "ready", "hasCharge", "notReady", "empty" } } },
+        { key = "maxCharges", kind = "range", label = "Max charges override (0 = auto-detect)", min = 0, max = 6, step = 1 },
+    },
+    check = function(t)
+        local pseudo = { spellID = tonumber(t.spellID), maxCharges = tonumber(t.maxCharges) or 0, cdState = t.state }
+        if not (ns.ReadCooldown and ns.CheckCooldownState) then return nil, "cooldown reader missing" end
+        local info = ns.ReadCooldown(pseudo)
+        if not info or not info.known then return nil, info and info.why or "cooldown unreadable" end
+        local v = ns.CheckCooldownState(pseudo, info)
+        if v == nil then return nil, "state unreadable" end
+        return v, info.why
     end,
 })
 
@@ -419,8 +453,25 @@ Add("resource", {
 
 -- 13. Player State  (WA: "Conditions")
 -- /xui debuffs [target|focus]: shows exactly what the game lets us read about your debuffs on that unit right now.
-function ns.ProbeDebuffs(unit)
-    unit = (unit == "focus") and "focus" or "target"
+-- EUI's own net for "a debuff I put on the target": look the aura up BY NAME with the engine-enforced ownership filter.
+-- Returns "found" | "none" | "secret" | "error: <text>". Whether it works in combat is what /xui debuffs reports.
+function ns.TargetAuraByName(unit, id)
+    if not (C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName and C_Spell and C_Spell.GetSpellName) then return "api missing" end
+    local okn, nm = pcall(C_Spell.GetSpellName, id)
+    if not okn or type(nm) ~= "string" or issecret(nm) or nm == "" then return "no spell name" end
+    local ok, a = pcall(C_UnitAuras.GetAuraDataBySpellName, unit, nm, "HARMFUL|PLAYER")
+    if not ok then return "error: " .. tostring(a):gsub("^.-:%d+: ", "") end
+    if a == nil then return "none" end
+    if issecret(a) then return "secret" end
+    if type(a) == "table" then return "found" end
+    return "none"
+end
+function ns.ProbeDebuffs(arg)
+    -- "/xui debuffs", "/xui debuffs focus", "/xui debuffs 204598", "/xui debuffs target 204598"
+    local word, num = tostring(arg or ""):match("^%s*(%a*)%s*(%d*)")
+    if word == "" and num == "" then num = tostring(arg or ""):match("(%d+)") or "" end
+    local unit = (word == "focus") and "focus" or "target"
+    ns.probeDebuffID = tonumber(num)
     ns.Print(("debuff probe: unit=%s exists=%s inCombat=%s"):format(unit, tostring(Bool(UnitExists, unit)), tostring(Bool(UnitAffectingCombat, "player"))))
     if not (C_UnitAuras and C_UnitAuras.GetUnitAuras) then ns.Print("  C_UnitAuras.GetUnitAuras is missing") return end
     local ok, err = pcall(function()
@@ -435,6 +486,7 @@ function ns.ProbeDebuffs(unit)
         end
     end)
     if not ok then ns.Print("  the call failed: " .. tostring(err)) end
+    ns.Print("  by-name lookup (the method EllesmereUI uses): use /xui debuffs <unit> <spellID>  ->  " .. (ns.probeDebuffID and tostring(ns.TargetAuraByName(unit, ns.probeDebuffID)) or "give a spell ID, e.g. /xui debuffs target 204598"))
 end
 
 -- 3b. Target Debuff (yours)  (WA: Aura trigger, unit = target, debuff type, "my auras only")
@@ -442,11 +494,12 @@ end
 -- as "absent" when nothing was hidden AND you are out of combat; otherwise the answer is unknown and the rule does not fire.
 Add("targetDebuff", {
     label = "Target Debuff (yours)", wa = "Aura (debuff on target, my auras only)", group = "Aura",
-    note = "True while a debuff cast BY YOU is on your target (or focus). Use the ID of the DEBUFF, not the ability you press: they usually differ (Sigil of Flame: ability 204596, debuff 204598). Midnight hides enemy aura details in combat, so inside combat this may read 'unknown' and then the rule will not fire; out of combat it is exact. 'Absent' is never reported while you are in combat.",
-    new = { unit = "target", state = "yes" },
+    note = "True while a debuff cast BY YOU is on your target (or focus). Use the ID of the DEBUFF, not the ability you press: they usually differ (Sigil of Flame: ability 204596, debuff 204598). Midnight hides enemy aura details in combat, so inside combat this may read 'unknown' and then the rule will not fire; out of combat it is exact. In combat, 'absent' is reported only when the Cooldown Manager icon for this spell is inactive (target only; option below).",
+    new = { unit = "target", state = "yes", cdmAbsent = "yes" },
     fields = {
         { key = "spellID", kind = "spell", label = "Debuff spell ID", required = true },
         { key = "cdmID", kind = "spell", label = "Cooldown Manager spell ID  (optional: usually the ability, e.g. 204596)", required = false },
+        { key = "cdmAbsent", kind = "select", label = "In combat: an INACTIVE Cooldown Manager icon means 'debuff absent'  (blank = yes)", required = false, vals = YN("Yes", "No - stay unknown in combat") },
         { key = "unit", kind = "select", label = "On which unit", required = true, vals = { values = { target = "Target", focus = "Focus" }, order = { "target", "focus" } } },
         { key = "state", kind = "select", label = "State", required = true, vals = YN("Debuff is on the unit", "Debuff is NOT on the unit") },
     },
@@ -479,12 +532,23 @@ Add("targetDebuff", {
         if found == true then return YesNo(t, true) end
         -- Cooldown Manager fallback, POSITIVE answers only: Blizzard marks a Cooldown Manager icon as aura-driven with plain
         -- (non-secret) fields, which stay readable in combat. Unverified for target debuffs; see /xui probe <id>.
-        local function CdmActive(i)
-            if not i or i == 0 or not ns.BuffPresent then return false end
+        -- true = icon active, false = an icon exists and is inactive, nil = no icon / unreadable. Only icons count.
+        local function CdmState(i)
+            if not i or i == 0 or not ns.BuffPresent then return nil end
             local okp, pr, src = pcall(ns.BuffPresent, i)
-            return okp and pr == true and type(src) == "string" and src:find("CDM frame", 1, true) ~= nil
+            if not okp or type(src) ~= "string" or not src:find("CDM frame", 1, true) then return nil end
+            return pr
         end
-        if CdmActive(id) or CdmActive(tonumber(t.cdmID)) then return YesNo(t, true), "seen in the Cooldown Manager" end
+        -- Only when the aura list could NOT be read cleanly (a complete readable list is trusted over the icon). The icon is the
+        -- TARGET's debuff (Blizzard's buff viewer rebinds on target change; /xui probe shows unit=target), so focus never uses it.
+        -- Seen in game 2026-10-30: debuff up -> iid=secret unit=target; debuff gone -> iid=nil unit=nil (one sample each).
+        if (found ~= false or sawHidden) and unit == "target" then
+            local ca, cb = CdmState(id), CdmState(tonumber(t.cdmID))
+            if ca == true or cb == true then return YesNo(t, true), "seen in the Cooldown Manager" end
+            if (ca == false or cb == false) and t.cdmAbsent ~= "no" then
+                return YesNo(t, false), "Cooldown Manager icon inactive (in combat)"
+            end
+        end
         if readErr then return nil, readErr end
         if found == nil or sawHidden then return nil, "your debuffs on the " .. unit .. " are hidden right now" end
         if Bool(UnitAffectingCombat, "player") ~= false then return nil, "cannot confirm 'absent' in combat" end
@@ -555,25 +619,27 @@ function ns.CheckExtraTriggers(rule)
     local anyTrue, anyFalse, anyNil = false, false, false
     local firstWhy
     local rows = {}   -- rows[i] = true / false / nil (unknown) for additional trigger i; outcomes read this
+    local whys = {}   -- whys[i] = the trigger's own explanation (shown by /xui status)
     for i, t in ipairs(list) do
         local r, d = ns.CheckTrigger(t)
         rows[i] = r
+        whys[i] = d
         if r == true then anyTrue = true
         elseif r == false then anyFalse = true
         else anyNil = true; firstWhy = firstWhy or ("row " .. i .. ": " .. tostring(d or "not readable right now")) end
     end
     if X.mode == "any" then
-        if anyTrue then return true, "any: matched", rows end
-        if anyNil then return nil, "any: unknown (" .. tostring(firstWhy) .. ")", rows end
-        return false, "any: none matched", rows
+        if anyTrue then return true, "any: matched", rows, whys end
+        if anyNil then return nil, "any: unknown (" .. tostring(firstWhy) .. ")", rows, whys end
+        return false, "any: none matched", rows, whys
     end
-    if anyFalse then return false, "all: a trigger is false", rows end
-    if anyNil then return nil, "all: unknown (" .. tostring(firstWhy) .. ")", rows end
-    return true, "all: matched", rows
+    if anyFalse then return false, "all: a trigger is false", rows, whys end
+    if anyNil then return nil, "all: unknown (" .. tostring(firstWhy) .. ")", rows, whys end
+    return true, "all: matched", rows, whys
 end
 
 -- Clean a rule's extra block (saved or imported). Data only: unknown types are kept (shown as unknown, never fire).
-local NUMERIC = { "spellID", "talentID", "itemID", "count", "window", "minSec", "cdmID" }
+local NUMERIC = { "spellID", "talentID", "itemID", "count", "window", "minSec", "cdmID", "maxCharges" }
 function ns.NormalizeExtra(r)
     if type(r.extra) ~= "table" then r.extra = { list = {} } end
     local X = r.extra
@@ -661,6 +727,7 @@ end
 -- Number, order and Move up / Move down for the two built-in triggers (their options are defined in Options.lua).
 function ns.DecorateBuiltinTriggers(rule, args)
     local P = ns.TriggerPositions(rule)
+    local function changed() ns.UI.Changed(rule); ns.UI.Notify() end
     local function setup(tok, label, keys, removeKey, used)
         local pos = P[tok]
         if not pos then return end
@@ -668,14 +735,25 @@ function ns.DecorateBuiltinTriggers(rule, args)
             local o = args[k]
             if o then o.order = pos * 100 + (tonumber(o.order) or 0) end
         end
-        args[keys[1]].name = pos .. ".  " .. label
-        local base = args[removeKey] and args[removeKey].order or (pos * 100 + 50)
-        args[tok .. "Up"] = { type = "execute", name = "Move up", order = base + 0.1, width = "half",
-            hidden = function() return not used(rule) or pos <= 1 end,
-            func = function() ns.MoveTrigger(rule, pos, -1); ns.UI.Changed(rule); ns.UI.Notify() end }
-        args[tok .. "Down"] = { type = "execute", name = "Move down", order = base + 0.2, width = "half",
-            hidden = function() return not used(rule) or pos >= #P.seq end,
-            func = function() ns.MoveTrigger(rule, pos, 1); ns.UI.Changed(rule); ns.UI.Notify() end }
+        local title = "Trigger " .. pos .. ":  " .. label
+        local skinned = ns.SkinRows and ns.SkinRows()
+        if not (ns.GatePane and skinned) then   -- skin off: keep the old numbered header with the text buttons
+            args[keys[1]].name = pos .. ".  " .. label
+            return
+        end
+        local rm = args[removeKey]
+        local removeFn = rm and rm.func
+        if rm then rm.hidden = true end              -- the red X in the row header replaces the Remove button
+        if args[keys[1]] then args[keys[1]].hidden = true end   -- the row header already carries the title
+        ns.GatePane(rule, args, "trig_" .. tok, title, pos * 100, function() return used(rule) end, keys)
+        local pane = args["pane_trig_" .. tok]
+        pane.args.hdr.arg.xuiActions = function()
+            return {
+                up = (pos > 1) and function() ns.MoveTrigger(rule, pos, -1); changed() end or false,
+                down = (pos < #P.seq) and function() ns.MoveTrigger(rule, pos, 1); changed() end or false,
+                del = removeFn,
+            }
+        end
     end
     setup("cd", "Cooldown", { "cdHeader", "spellID", "spellName", "spellSearch", "spellPick", "cdState", "maxCharges", "detected", "cdRemove" }, "cdRemove", ns.CooldownUsed)
     setup("buff", "Buff / Aura", { "buffHeader", "buffState", "buffSearch", "buffID", "buffName", "buffRemove" }, "buffRemove", ns.BuffUsed)
@@ -845,26 +923,49 @@ function ns.BuildExtraTriggerArgs(rule, H)
                 local word = (r == true and "|cff55ff55true|r") or (r == false and "|cffff5555false|r") or "|cffffd100unknown|r"
                 return "Right now: " .. word .. (d and ("  -  " .. tostring(d)) or "")
             end }
-        row.remove = { type = "execute", name = "Remove", order = 91, width = "half",
-            func = function()
-                local sq = ns.TriggerSequence(rule)
-                local seen = 0
-                for i, tk in ipairs(sq) do
-                    if tk == "x" then seen = seen + 1; if seen == j then table.remove(sq, i); break end end
-                end
-                if ns.RemapOutcomeRefs then   -- outcome conditions that pointed at this row lose it; later rows shift down by one
-                    ns.RemapOutcomeRefs(rule, function(n) if n == j then return nil elseif n > j then return "x" .. (n - 1) end return "x" .. n end)
-                end
-                table.remove(X.list, j)
-                rule.trigOrder = sq
-                onN()
-            end }
-        row.up = { type = "execute", name = "Move up", order = 92, width = "half", hidden = function() return pos <= 1 end,
-            func = function() ns.MoveTrigger(rule, pos, -1); onN() end }
-        row.down = { type = "execute", name = "Move down", order = 93, width = "half", hidden = function() return pos >= #P.seq end,
-            func = function() ns.MoveTrigger(rule, pos, 1); onN() end }
-        args["x" .. j] = { type = "group", inline = true, order = pos * 100,
-            name = function() return pos .. ".  " .. (def and def.label or "Unknown trigger") end, args = row }
+        local function removeFn()
+            local sq = ns.TriggerSequence(rule)
+            local seen = 0
+            for i, tk in ipairs(sq) do
+                if tk == "x" then seen = seen + 1; if seen == j then table.remove(sq, i); break end end
+            end
+            if ns.RemapOutcomeRefs then   -- outcome conditions that pointed at this row lose it; later rows shift down by one
+                ns.RemapOutcomeRefs(rule, function(n) if n == j then return nil elseif n > j then return "x" .. (n - 1) end return "x" .. n end)
+            end
+            table.remove(X.list, j)
+            rule.trigOrder = sq
+            onN()
+        end
+        local function copyFn()
+            if #X.list >= MAX_ROWS then ns.Print("a rule can hold at most " .. MAX_ROWS .. " additional triggers"); return end
+            table.insert(X.list, j + 1, ns.Copy(t))
+            local sq = ns.TriggerSequence(rule)
+            local seen = 0
+            for i, tk in ipairs(sq) do
+                if tk == "x" then seen = seen + 1; if seen == j then table.insert(sq, i + 1, "x"); break end end
+            end
+            rule.trigOrder = sq
+            if ns.RemapOutcomeRefs then ns.RemapOutcomeRefs(rule, function(n) if n > j then return "x" .. (n + 1) end return "x" .. n end) end
+            onN()
+        end
+        local title = "Trigger " .. pos .. ":  " .. (def and def.label or "Unknown trigger")
+        local actions = function()
+            return {
+                up = (pos > 1) and function() ns.MoveTrigger(rule, pos, -1); onN() end or false,
+                down = (pos < #P.seq) and function() ns.MoveTrigger(rule, pos, 1); onN() end or false,
+                copy = copyFn, del = removeFn,
+            }
+        end
+        if ns.GatedPane and ns.SkinRows and ns.SkinRows() then
+            local pane = ns.GatedPane(rule, "trig_x" .. j, title, pos * 100, function() return true end, row)
+            pane.args.hdr.arg.xuiActions = actions
+            args["x" .. j] = pane
+        else
+            row.remove = { type = "execute", name = "Remove", order = 91, width = "half", func = removeFn }
+            row.up = { type = "execute", name = "Up", order = 92, width = "half", hidden = function() return pos <= 1 end, func = function() ns.MoveTrigger(rule, pos, -1); onN() end }
+            row.down = { type = "execute", name = "Down", order = 93, width = "half", hidden = function() return pos >= #P.seq end, func = function() ns.MoveTrigger(rule, pos, 1); onN() end }
+            args["x" .. j] = { type = "group", inline = true, order = pos * 100, name = title, args = row }
+        end
     end
     return args
 end

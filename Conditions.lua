@@ -207,9 +207,11 @@ function ns.BuffPresent(id)
         -- diagnostic detail for /xui status: what the frame actually reports (secret-safe, no arithmetic)
         local okd, detail = pcall(function()
             local iid = fr.auraInstanceID
-            return ("iid=%s wasAura=%s shown=%s"):format(
+            local u = fr.auraDataUnit
+            return ("iid=%s wasAura=%s shown=%s unit=%s"):format(
                 iid == nil and "nil" or (issecret(iid) and "secret" or tostring(iid)),
-                tostring(fr.wasSetFromAura == true), tostring(fr:IsShown() and true or false))
+                tostring(fr.wasSetFromAura == true), tostring(fr:IsShown() and true or false),
+                u == nil and "nil" or (issecret(u) and "secret" or tostring(u)))
         end)
         return active and true or false, "CDM frame (" .. vname .. (okd and (": " .. detail) or "") .. ")", active and MakeRef(nil, fr) or nil
     end
@@ -590,7 +592,7 @@ function ns.Evaluate(rule, ctx)
     info.buffOK = ns.CheckBuffState(rule, info.present)
     info.ctxOK, info.ctxFail = ns.CheckContext(rule, ctx)
     info.talentOK, info.talentDetail = ns.CheckTalents(rule)
-    if ns.CheckExtraTriggers then info.extraOK, info.extraDetail, info.extraRows = ns.CheckExtraTriggers(rule) else info.extraOK = true end
+    if ns.CheckExtraTriggers then info.extraOK, info.extraDetail, info.extraRows, info.extraWhys = ns.CheckExtraTriggers(rule) else info.extraOK = true end
     -- the core cooldown / buff dropdowns must be chosen ("none" counts as a choice)
     info.missing = {}
     local function unset(v) return v == nil or v == "" end
