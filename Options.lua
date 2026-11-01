@@ -3353,9 +3353,9 @@ local function BuildOptions()
         all.args.pickDGroup = Entry(0.65, TI("dyngroup", "INV_Misc_Bag_10_Blue"), "Dynamic Group", "A container whose elements move to fit what is detected", "dgroup")
         all.args.pickSound = Entry(0.62, TI("sound", "INV_Misc_Note_01"), "Sound Cue", "Plays a sound when its conditions are met, with no display", "sound")
         all.args.pickSGroup = Entry(0.63, TI("stgroup", "INV_Misc_Bag_10"), "Static Group", "A container with fixed X / Y positions for its elements", "sgroup")
-        all.args.pickExtH = { type = "header", order = 0.7, name = "External", hidden = function() return not picker end }
         all.args.pickCustom = Entry(0.64, 1669494, "Custom", "A blank rule with no display, sound or cues", "custom")
-        all.args.pickImport = Entry(0.8, TI("import", "INV_Scroll_03"), "Import", "Import from an encoded string (opens the Profiles tab)", "import")
+        all.args.pickImport = Entry(0.66, TI("import", "INV_Scroll_03"), "Import", "Import from an encoded string (opens the Profiles tab)", "import")
+        all.args.pickGap = { type = "description", order = 0.85, width = "full", fontSize = "large", name = " \n ", hidden = function() return not picker end }   -- empty rows: keeps Cancel clear of the last row
         all.args.pickCancel = { type = "execute", order = 0.9, name = "Cancel", width = "half", func = function() picker = nil; local o = ns.pickOrigin; ns.pickOrigin = nil; Notify(); ns.GoHome(o) end }
         for _, k in ipairs({ "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickSound", "pickDGroup", "pickSGroup", "pickCustom", "pickImport", "pickCancel" }) do
             all.args[k].hidden = function() return not picker end
@@ -3433,7 +3433,7 @@ local function BuildOptions()
                         if inScope(i) and ns.SmartMatch(rule, cat.key) then args["rule" .. i] = ruleGroups[i]; n = n + 1 end
                     end
                 end
-                for _, ak in ipairs({ "newRule", "pickerHdr", "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickSound", "pickDGroup", "pickSGroup", "pickCustom", "pickExtH", "pickImport", "pickCancel" }) do
+                for _, ak in ipairs({ "newRule", "pickerHdr", "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickSound", "pickDGroup", "pickSGroup", "pickCustom", "pickImport", "pickGap", "pickCancel" }) do
                     if all.args[ak] then args[ak] = all.args[ak] end
                 end
                 smartArgs[cat.key] = { type = "group", order = k, childGroups = "tree",
