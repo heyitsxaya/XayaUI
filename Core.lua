@@ -132,6 +132,8 @@ ns.RULE_DEFAULTS = {
         fadeAlphaMin = 0.15,
         fadeAlphaMax = 1,      -- opacity multiplier at full duration (fade goes fadeAlphaMax -> fadeAlphaMin)
         texAlpha = 1,          -- opacity of the BASE texture on its own (alpha = overall opacity of everything)
+        -- strata (BACKGROUND..TOOLTIP) / level (1-10000): blank until chosen = follow the group, else HIGH / automatic.
+        -- The same two optional fields exist on text, count and absorb below (blank = same layer as the texture, +10 levels).
         overlay = {            -- optional second texture layer on top of the base
             enabled = false,
             -- source: blank/none = same art as the base | other (pick kind + tex below)

@@ -480,6 +480,30 @@ local function TextStyleArgs(t, on, base, opts)
     return a
 end
 
+-- Frame strata + frame level controls, shared by the Texture section and each Text section. Stored on the section's own
+-- table as t.strata (blank = inherit) and t.level (blank = automatic); Visual.lua validates both before use.
+do   -- (in a block: this file is close to Lua's limit of 200 top-level locals)
+local LAYER_ORDER = { "inherit", "BACKGROUND", "LOW", "MEDIUM", "HIGH", "DIALOG", "FULLSCREEN", "FULLSCREEN_DIALOG", "TOOLTIP" }
+local LAYER_NAMES = { BACKGROUND = "Background (lowest)", LOW = "Low", MEDIUM = "Medium", HIGH = "High", DIALOG = "Dialog",
+    FULLSCREEN = "Fullscreen", FULLSCREEN_DIALOG = "Fullscreen dialog", TOOLTIP = "Tooltip (highest)" }
+function ns.LayerArgs(t, on, base, inheritLabel, what)
+    local vals = { inherit = inheritLabel }
+    for k, n in pairs(LAYER_NAMES) do vals[k] = n end
+    return {
+        layerH = { type = "header", name = "Layer (Frame Strata)", order = base },
+        strata = { type = "select", name = "Frame strata", order = base + 1, width = "double", values = vals, sorting = LAYER_ORDER,
+            desc = "Which layer " .. what .. " is drawn in. Anything on a higher strata is drawn above everything on a lower one, whatever their frame levels. "
+                .. "Background < Low < Medium < High < Dialog < Fullscreen < Fullscreen dialog < Tooltip. Tooltip and the two Fullscreen layers can sit above Blizzard's own panels.",
+            get = function() return t.strata or "inherit" end,
+            set = function(_, v) t.strata = (v ~= "inherit") and v or nil; on() end },
+        level = { type = "range", name = "Frame level within the strata (0 = automatic)", order = base + 2, width = "double", min = 0, max = 200, step = 1,
+            desc = "Draw order among frames on the same strata: a higher number is drawn on top. 0 lets the addon choose.",
+            get = function() return t.level or 0 end,
+            set = function(_, v) t.level = (v > 0) and v or nil; on() end },
+    }
+end
+end
+
 -------------------------------------------------------------------------------
 -- Rule group
 -------------------------------------------------------------------------------
@@ -576,7 +600,7 @@ local PASTE_LABELS = {
     talents = "Talents (Requirement Mode and List)",
     extra = "Additional Triggers (list and combine mode)",
     load = "Load Conditions (Never / Always / Match, Combat, Group, Raid...)",
-    display = "Display: Texture, Overlay, Opacity, Fade, Glow, Outline, Border (not Position or Text)",
+    display = "Display: Texture, Overlay, Opacity, Fade, Glow, Outline, Border, Layer / Strata (not Position or Text)",
     position = "Display: Position (X / Y)",
     textDur = "Text: Buff Duration",
     textCnt = "Text: Stacks / Charges Count",
@@ -1030,6 +1054,8 @@ local function BuildRule(i, rule)
             bgColor = Col(V.bg, "color", "Background color", 55, on, { disabled = function() return not V.bg.enabled end }),
         },
     }
+    -- frame strata / level of the texture (also carries the overlay layer, outline, border and glow; text follows it unless set separately)
+    for k, o in pairs(ns.LayerArgs(V, on, 60, "(inherit - from the group, else High)", "this texture, with its overlay, outline, border and glow,")) do tex.args[k] = o end
     do   -- each switch's dependent options sit in a pane that is drawn only while the switch is on
         local a, fc = tex.args, tex.args.fadeColor
         ns.GatePane(rule, a, "recolor", "Tint options", 23.5, function() return V.recolor end, { "tint" })
@@ -1155,10 +1181,12 @@ local function BuildRule(i, rule)
     durArgs.note = { type = "description", order = 40, fontSize = "small", width = "full",
         name = "While Blizzard hides aura numbers in combat, the time comes from Blizzard's own duration display, so it may be unavailable or styled slightly differently. Unlock visuals, or use the eye icon, to preview a sample and position the text." }
     ns.GatePane(rule, durArgs, "decimals", "Tenths options", 2.5, function() return T.decimals end, { "decimalBelow" })
+    for k, o in pairs(ns.LayerArgs(T, on, 20, "(inherit - same layer as the texture)", "the duration text (and Blizzard's own countdown digits)")) do durArgs[k] = o end
     ns.GateRest(rule, durArgs, "dur", "Text options", 5, function() return T.enabled end, { enabled = true })
     local cntArgs = TextStyleArgs(C, on, 10)
     cntArgs.enabled = Tog(C, "enabled", "Show a count", 1, on, { desc = "Aura stacks or spell charges. Experimental under Midnight secrecy: the number can only be displayed, not compared." })
     cntArgs.source = Sel(C, "source", "Count of", 2, COUNT_SOURCE, COUNT_SOURCE_ORDER, on)
+    for k, o in pairs(ns.LayerArgs(C, on, 20, "(inherit - same layer as the texture)", "the stacks / charges count")) do cntArgs[k] = o end
     ns.GateRest(rule, cntArgs, "cnt", "Count options", 5, function() return C.enabled end, { enabled = true })
     local AB = V.absorb
     local absArgs = TextStyleArgs(AB, on, 10)
@@ -1166,6 +1194,7 @@ local function BuildRule(i, rule)
     absArgs.source = Sel(AB, "source", "Amount from", 2, ABSORB_SOURCE, ABSORB_SOURCE_ORDER, on)
     absArgs.abbreviate = Tog(AB, "abbreviate", "Abbreviate (12.3K / 1.2M)", 3, on)
     absArgs.hideZero = Tog(AB, "hideZero", "Hide when zero", 4, on, { desc = "Only works when the number is readable; a secret amount is shown as-is." })
+    for k, o in pairs(ns.LayerArgs(AB, on, 20, "(inherit - same layer as the texture)", "the shield / absorb amount")) do absArgs[k] = o end
     ns.GateRest(rule, absArgs, "abs", "Absorb options", 5, function() return AB.enabled end, { enabled = true })
     local text = {
         type = "group", inline = true, name = "Text", order = 2, args = {

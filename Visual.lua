@@ -268,9 +268,43 @@ local function ParentFor(rule)
     if not f then return UIParent end
     return Container(f), d
 end
-local function ApplyStrata(fr, folderId)
+-- Frame strata / level as a rule-level setting (Conditions tab > Texture and each Text section). Saved values are plain
+-- strings / numbers; anything else (a hand-edited or imported profile) is ignored, so a bad value can never reach SetFrameStrata.
+local STRATA_OK = { BACKGROUND = true, LOW = true, MEDIUM = true, HIGH = true, DIALOG = true, FULLSCREEN = true,
+    FULLSCREEN_DIALOG = true, TOOLTIP = true }
+local function LayerStrata(s) if type(s) == "string" and STRATA_OK[s] then return s end return nil end
+local function LayerLevel(n)
+    n = tonumber(n)
+    if not n or n ~= n or n < 1 then return nil end
+    return math.min(10000, math.floor(n))
+end
+-- Put one child frame on its own strata / level, or back to following its parent (strata) / parent + 10 (level).
+-- "Fixed" stops the engine from dragging an explicitly placed child along when the parent's layer changes.
+local function SetChildLayer(f, strata, level)
+    if not f then return end
+    local p = f:GetParent()
+    local ts = strata or (p and p:GetFrameStrata()) or "HIGH"
+    if f.SetFixedFrameStrata then pcall(f.SetFixedFrameStrata, f, strata ~= nil) end
+    if f:GetFrameStrata() ~= ts then f:SetFrameStrata(ts) end
+    local tl = level or ((p and p:GetFrameLevel() or 0) + 10)
+    if f.SetFixedFrameLevel then pcall(f.SetFixedFrameLevel, f, level ~= nil) end
+    if f:GetFrameLevel() ~= tl then f:SetFrameLevel(tl) end
+end
+-- Each text element has its own strata / level: duration (and the Blizzard countdown widget that stands in for it
+-- while the time is secret), stacks / charges count, and absorb amount. Unset = same layer as the texture, +10 levels.
+local function ApplyTextLayers(fr, v)
+    local t, c, a = v.text or {}, v.count or {}, v.absorb or {}
+    SetChildLayer(fr.txtHolder, LayerStrata(t.strata), LayerLevel(t.level))
+    SetChildLayer(fr.cd, LayerStrata(t.strata), LayerLevel(t.level))
+    SetChildLayer(fr.cntHolder, LayerStrata(c.strata), LayerLevel(c.level))
+    SetChildLayer(fr.absHolder, LayerStrata(a.strata), LayerLevel(a.level))
+end
+-- Texture layer: the rule's own setting wins, then the nearest group that sets one, then High. The same frame carries the
+-- overlay layer, outline, border and glow, so they all move together.
+local function ApplyStrata(fr, rule)
+    local v = rule.visual or {}
     local strata, level
-    local id, guard = folderId, 0
+    local id, guard = rule.folder, 0
     while id and guard < 32 do
         local f = ns.FolderById(id)
         if not f then break end
@@ -278,11 +312,20 @@ local function ApplyStrata(fr, folderId)
         if not level and (f.cLevel or 0) > 0 then level = f.cLevel end
         id, guard = f.parent, guard + 1
     end
-    strata = strata or "HIGH"
+    strata = LayerStrata(v.strata) or LayerStrata(strata) or "HIGH"
+    level = LayerLevel(v.level) or LayerLevel(level)
     if fr:GetFrameStrata() ~= strata then fr:SetFrameStrata(strata) end
-    if level and fr:GetFrameLevel() ~= level then fr:SetFrameLevel(level) end
-    if fr.txtHolder then fr.txtHolder:SetFrameLevel(fr:GetFrameLevel() + 10) end
-    if fr.cd then fr.cd:SetFrameLevel(fr:GetFrameLevel() + 10) end
+    if level then
+        if fr:GetFrameLevel() ~= level then fr:SetFrameLevel(level) end
+        fr.xuiLevelSet = true
+    elseif fr.xuiLevelSet then   -- an explicit level was removed: go back to the engine's default (parent + 1)
+        local p = fr:GetParent()
+        fr:SetFrameLevel((p and p:GetFrameLevel() or 0) + 1)
+        fr.xuiLevelSet = nil
+    end
+    -- children that follow the texture: outline holder sits just below it
+    if fr.olHolder then fr.olHolder:SetFrameLevel(math.max(0, fr:GetFrameLevel() - 1)) end
+    ApplyTextLayers(fr, v)
 end
 local function LayoutDynamic(df)
     if not df then return end
@@ -636,11 +679,20 @@ local function GetFrame(rule)
         cd:Hide()
         fr.cd = cd
     end
-    -- stacks / charges text
-    fr.count = fr.txtHolder:CreateFontString(nil, "OVERLAY", nil, 7)
+    -- stacks / charges text and absorb text each get their own holder so each can sit on its own strata / level
+    -- (see ApplyTextLayers); by default they share the duration text's layer
+    fr.cntHolder = CreateFrame("Frame", nil, fr)
+    fr.cntHolder:SetAllPoints()
+    fr.cntHolder:SetFrameLevel(fr:GetFrameLevel() + 10)
+    fr.cntHolder:EnableMouse(false)
+    fr.absHolder = CreateFrame("Frame", nil, fr)
+    fr.absHolder:SetAllPoints()
+    fr.absHolder:SetFrameLevel(fr:GetFrameLevel() + 10)
+    fr.absHolder:EnableMouse(false)
+    fr.count = fr.cntHolder:CreateFontString(nil, "OVERLAY", nil, 7)
     fr.count:SetFontObject(GameFontNormal)
     fr.count:Hide()
-    fr.absorb = fr.txtHolder:CreateFontString(nil, "OVERLAY", nil, 7)
+    fr.absorb = fr.absHolder:CreateFontString(nil, "OVERLAY", nil, 7)
     fr.absorb:SetFontObject(GameFontNormal)
     fr.absorb:Hide()
 
@@ -863,7 +915,7 @@ function ns.RefreshVisual(rule)
     fr:SetSize(math.max(8, v.w or 128), math.max(8, v.h or 128))
     local parent, dyn = ParentFor(rule)
     if fr:GetParent() ~= parent then fr:SetParent(parent) end
-    ApplyStrata(fr, rule.folder)
+    ApplyStrata(fr, rule)
     Place(fr, rule, parent)
     if dyn then LayoutDynamic(dyn) end
     fr.baseAlpha = v.alpha or 1
