@@ -69,8 +69,8 @@ local function EnsureBackground(tab)
     if tab.xuiBG then return tab.xuiBG end
     local bg = tab:CreateTexture(nil, "BACKGROUND")
     bg:SetTexture("Interface\\Buttons\\WHITE8X8")
-    bg:SetPoint("TOPLEFT", tab, "TOPLEFT", 1, -2)
-    bg:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -1, 2)
+    bg:SetPoint("TOPLEFT", tab, "TOPLEFT", 1, -3)
+    bg:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -1, 0)
     tab.xuiBG = bg
     return bg
 end
@@ -153,7 +153,10 @@ local function StyleTab(chat)
         text:ClearAllPoints()
         text:SetPoint("CENTER", tab, "CENTER", 0, -1)
     end
-    if tab.SetHeight then tab:SetHeight(tonumber(s.tabHeight) or 22) end
+    -- Height 0 = Blizzard's own height. Changing it moves the first tab (anchored by its bottom) away from the others (centered in the
+    -- dock's scroll frame), so the added tabs floated above the chat; a custom height therefore also re-anchors the dock (T.FixDock).
+    local h = tonumber(s.tabHeightCustom) or 0
+    if h > 0 and tab.SetHeight then tab:SetHeight(h) end
     if tab.conversationIcon then
         tab.conversationIcon:ClearAllPoints()
         tab.conversationIcon:SetPoint("RIGHT", text or tab, "LEFT", -1, 0)
@@ -187,6 +190,23 @@ local function StyleTab(chat)
     end
 end
 
+-- Keep the docked tabs level with the first tab when a custom tab height is set: the dock's scroll frame starts at the top of the
+-- first (or combat log) tab and is as tall as the tabs.
+function T.FixDock()
+    local s = Store()
+    local h = s and tonumber(s.tabHeightCustom) or 0
+    local dock = _G.GeneralDockManager
+    if h <= 0 or not On(s) or not dock or not dock.scrollFrame or not dock.primary or not dock.overflowButton then return end
+    local log = _G.COMBATLOG
+    local first = (log and log.isDocked and TabOf(log)) or TabOf(dock.primary)
+    if not first then return end
+    local sf = dock.scrollFrame
+    sf:ClearAllPoints()
+    sf:SetPoint("TOPLEFT", first, "TOPRIGHT", 0, 0)
+    sf:SetPoint("RIGHT", dock.overflowButton, "LEFT", 0, 0)
+    sf:SetHeight(h)
+end
+
 local pendingDock
 local function RefreshDock()
     if pendingDock then return end
@@ -195,6 +215,7 @@ local function RefreshDock()
         pendingDock = nil
         -- tab widths change with the selector text: let Blizzard lay the docked tabs out again
         if _G.FCFDock_UpdateTabs and _G.GENERAL_CHAT_DOCK then pcall(_G.FCFDock_UpdateTabs, _G.GENERAL_CHAT_DOCK, true) end
+        pcall(T.FixDock)
     end)
 end
 
@@ -210,6 +231,9 @@ function T.Apply(s)
                 local st = Store()
                 if On(st) then pcall(T.UpdateTab, tab, selected) end
             end)
+        end
+        if type(_G.FCFDock_ScrollToSelectedTab) == "function" then
+            Try("hookScroll", hooksecurefunc, "FCFDock_ScrollToSelectedTab", function() local st = Store(); if On(st) then pcall(T.FixDock) end end)
         end
         if type(_G.FCFDock_SelectWindow) == "function" then
             Try("hookSelect", hooksecurefunc, "FCFDock_SelectWindow", function()

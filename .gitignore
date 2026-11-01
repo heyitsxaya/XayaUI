@@ -31,3 +31,7 @@ CursorTracker.lua
 CursorReminders.lua
 Bars.lua
 Media/Cursor/*
+
+# CC0 (public domain) sounds ARE tracked: Kenney "Interface Sounds" 1.0, see Media/Audio/CC0/CREDITS.md
+!Media/Audio/CC0/
+!Media/Audio/CC0/**

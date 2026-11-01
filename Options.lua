@@ -2070,6 +2070,16 @@ local function BuildAddonSettings()
                 desc = "The strip under the window with the live rule status and event log. Off: it is not drawn at all (turn it back on here).",
                 get = function() return ns.DebugConsoleOn() end,
                 set = function(_, v) Ui().hideTray = (not v) or nil; Notify() end },
+            gameDump = { type = "group", inline = true, name = "Game Data Capture (separate tool)", order = 30, args = {
+                gdText = { type = "description", order = 1, fontSize = "medium",
+                    name = "Pulls every class, spec, talent, spell description, spellbook entry, piece of gear, and set-bonus line the game will give an addon, and records which auras each ability you press causes and for how long. It is a separate addon (XayaUI_GameDump) with its own saved-data file, so nothing here touches your rules or profile." },
+                gdOpen = { type = "execute", name = "Open Game Data Capture", order = 2, width = "double",
+                    func = function()
+                        local g = _G.XayaUIGameDump
+                        if g and g.Toggle then g.Toggle()
+                        else ns.Print("XayaUI_GameDump is not loaded. Enable the XayaUI_GameDump addon, then /reload.") end
+                    end },
+            } },
         } },
     } }
 end

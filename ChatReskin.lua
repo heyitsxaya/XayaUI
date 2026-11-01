@@ -34,7 +34,7 @@ ns.CHAT_DEFAULTS = {
     tabTextR = 0.75, tabTextG = 0.75, tabTextB = 0.75, tabClassWhispers = true, tabDimInactive = true,
     tabBackdrop = true, tabBgR = 0, tabBgG = 0, tabBgB = 0, tabBgAlpha = 45,
     tabBgSelR = 0.18, tabBgSelG = 0.18, tabBgSelB = 0.18, tabBgSelAlpha = 80,
-    tabFadeUntilHover = false, tabHeight = 22,
+    tabFadeUntilHover = false, tabHeightCustom = 0,
     -- message text (timestamp format seeded from Xaya's old ElvUI profile)
     timeStampFormat = "%H:%M:%S ", timeStampLocalTime = false, useCustomTimeColor = true, timeR = 0.7, timeG = 0.7, timeB = 0.7,
     shortChannels = true, hideChannels = false, url = true, hyperlinkHover = true,
@@ -473,7 +473,7 @@ function ns.BuildChatTab(Notify)
                 tabBgAlpha = rng("Tab background opacity (%)", "tabBgAlpha", 20, 0, 100),
                 tabBgSelCol = col("Selected tab background color", "tabBgSelR", "tabBgSelG", "tabBgSelB", 21),
                 tabBgSelAlpha = rng("Selected tab background opacity (%)", "tabBgSelAlpha", 22, 0, 100),
-                tabHeight = rng("Tab height", "tabHeight", 23, 16, 40),
+                tabHeight = rng("Tab height (0 = Blizzard's own height; other values re-anchor the tab dock)", "tabHeightCustom", 23, 0, 40),
                 tabFade = tog("Show tab names and the copy button only while the mouse is over the chat or its tab", "tabFadeUntilHover", 24),
             } },
             text = { type = "group", name = "Text & Links", order = 3, args = {
