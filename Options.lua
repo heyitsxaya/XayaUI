@@ -2230,7 +2230,9 @@ function ns.SmartMatch(rule, key)
         for _, c in ipairs(ns.CuesOf(rule)) do if ns.SmartMatch(c, key) then return true end end
     end
     if key == "smart_sound" then
-        return (rule.sound and rule.sound.enabled and ns.KindHas(rule, "sound")) and true or false
+        -- "Play a sound" ticked but no sound chosen is not a sound: it would play nothing
+        local sv = rule.sound and rule.sound.value
+        return (rule.sound and rule.sound.enabled and sv ~= nil and sv ~= "" and ns.KindHas(rule, "sound")) and true or false
     end
     local v = rule.visual
     if not (v and v.enabled and ns.KindHas(rule, "visual")) then return false end
