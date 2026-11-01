@@ -543,6 +543,68 @@ f:SetScript("OnEvent", function(_, _, name)
 end)
 
 -------------------------------------------------------------------------------
+-- Settings > Debugging > "All Actions" combat log filter (default ON).
+-- Adds (or refreshes) a third entry in Blizzard's Combat Log Config filter list named "All Actions" with every message type
+-- ticked and every source / destination ticked. It only edits Blizzard's saved filter list (Blizzard_CombatLog_Filters); it
+-- never changes which filter is selected and never touches "My actions" / "What happened to me?". It controls what the Combat
+-- Log chat tab shows; it does NOT give addons access to combat log events (Midnight restricts that separately).
+-------------------------------------------------------------------------------
+local ALL_ACTIONS = "All Actions"
+function ns.CombatLogAllActionsOn() local u = CueRulesDB and CueRulesDB.ui; return not (u and u.allActionsFilter == false) end
+
+-- Returns ok, status text. force = load Blizzard_CombatLog first if it is not loaded yet (used by the settings toggle).
+function ns.ApplyAllActionsFilter(force)
+    if not ns.CombatLogAllActionsOn() then return false, "off" end
+    local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
+    local load = C_AddOns and C_AddOns.LoadAddOn or LoadAddOn
+    if not isLoaded("Blizzard_CombatLog") then
+        if not force then return false, "Blizzard_CombatLog not loaded yet" end
+        pcall(load, "Blizzard_CombatLog")
+        if not isLoaded("Blizzard_CombatLog") then return false, "could not load Blizzard_CombatLog" end
+    end
+    local store = _G.Blizzard_CombatLog_Filters
+    local genEvents, genFlags = _G.Blizzard_CombatLog_GenerateFullEventList, _G.Blizzard_CombatLog_GenerateFullFlagList
+    if type(store) ~= "table" or type(store.filters) ~= "table" then return false, "Blizzard filter list not available" end
+    if not (genEvents and genFlags and _G.DEFAULT_COMBATLOG_FILTER_TEMPLATE) then return false, "Blizzard filter helpers missing (client changed?)" end
+
+    local idx
+    for i, flt in ipairs(store.filters) do if flt.name == ALL_ACTIONS then idx = i; break end end
+    local flt = idx and store.filters[idx]
+    local created = false
+    if not flt then
+        flt = CopyTable(_G.DEFAULT_COMBATLOG_FILTER_TEMPLATE)   -- same template Blizzard's "Add Filter" button uses
+        created = true
+    end
+    flt.name, flt.tooltip, flt.quickButtonName = ALL_ACTIONS, ALL_ACTIONS, ALL_ACTIONS
+    if created then flt.hasQuickButton = true end
+    flt.settings = flt.settings or CopyTable(_G.COMBATLOG_DEFAULT_SETTINGS or {})
+    flt.settings.fullText = true   -- "Use Verbose Mode"
+    -- One rule: every event type, any source, any destination (every checkbox on the Message Sources / Message Types tabs).
+    flt.filters = { { eventList = genEvents(), sourceFlags = genFlags(true), destFlags = genFlags(true) } }
+    if created then store.filters[#store.filters + 1] = flt end
+
+    -- If this filter is the one currently shown, push the refreshed rule to the client now.
+    if _G.Blizzard_CombatLog_CurrentSettings == flt and C_CombatLog and C_CombatLog.ApplyFilterSettings then
+        pcall(C_CombatLog.ApplyFilterSettings, flt)
+        if C_CombatLog.RefilterEntries then pcall(C_CombatLog.RefilterEntries) end
+    end
+    return true, created and "created" or "refreshed"
+end
+
+local clFrame = CreateFrame("Frame")
+clFrame:RegisterEvent("ADDON_LOADED")
+clFrame:RegisterEvent("PLAYER_LOGIN")
+clFrame:SetScript("OnEvent", function(_, event, name)
+    if event == "ADDON_LOADED" and name ~= "Blizzard_CombatLog" then return end
+    C_Timer.After(0, function()   -- next frame: Blizzard's own ADDON_LOADED handler has finished by then
+        local ok, res, why = pcall(ns.ApplyAllActionsFilter)
+        if not ok then ns.Log("All Actions combat log filter: Lua error: %s", tostring(res))
+        elseif res then ns.Log("All Actions combat log filter %s.", tostring(why))
+        elseif why ~= "off" and why ~= "Blizzard_CombatLog not loaded yet" then ns.Log("All Actions combat log filter skipped: %s", tostring(why)) end
+    end)
+end)
+
+-------------------------------------------------------------------------------
 -- Seed rules (Xaya's Vengeance DH test set). Usage: /xui seed
 -------------------------------------------------------------------------------
 function ns.SeedRules()
