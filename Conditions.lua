@@ -518,6 +518,11 @@ function ns.ReadContext()
         if not issecret(id) then ctx.specID = id end
         if not issecret(role) then ctx.role = role end
     end
+    -- active hero talent specialization (SubTreeID); 0 = none chosen yet; absent when the API is missing
+    if C_ClassTalents and C_ClassTalents.GetActiveHeroTalentSpec then
+        local okH, hid = pcall(C_ClassTalents.GetActiveHeroTalentSpec)
+        if okH and not issecret(hid) then ctx.hero = tonumber(hid) or 0 end
+    end
     return ctx
 end
 
@@ -554,6 +559,9 @@ function ns.CheckContext(rule, ctx)
         checks[#checks + 1] = { key = "role", ok = known(ctx.role, ctx.role ~= nil and ns.SetMatch(load.roles, ctx.role)) }
     elseif load.roleUse ~= false and not ns.Ignored(load.role) then
         checks[#checks + 1] = { key = "role", ok = known(ctx.role, ctx.role == load.role) }
+    end
+    if load.heroUse ~= false and ns.SetActive(load.heroes) then
+        checks[#checks + 1] = { key = "hero talents", ok = known(ctx.hero, ctx.hero ~= nil and ctx.hero > 0 and ns.SetMatch(load.heroes, tostring(ctx.hero))) }
     end
     if #checks == 0 then return true end
     if load.mode == "any" then

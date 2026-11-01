@@ -656,6 +656,12 @@ function ns.NormalizeExtra(r)
         end
     end
     X.list = clean
+    for _, t in ipairs(clean) do
+        if type(t.name) ~= "string" then t.name = nil else t.name = t.name:gsub("[%c|]", ""):sub(1, 30); if t.name == "" then t.name = nil end end
+    end
+    for _, k in ipairs({ "cdName", "buffName" }) do
+        if type(r[k]) ~= "string" then r[k] = nil else r[k] = r[k]:gsub("[%c|]", ""):sub(1, 30); if r[k] == "" then r[k] = nil end end
+    end
     if type(r.trigOrder) ~= "table" then r.trigOrder = nil
     else
         local seq = {}
@@ -702,6 +708,36 @@ end
 
 -- Swap the trigger at place a with its neighbour (dir = -1 up, +1 down). Moving one additional row past another swaps
 -- the two rows, and outcome conditions that point at them are re-pointed so they keep meaning the same trigger.
+-- Custom trigger names. tok = "cd" | "buff" | "x" (j = row index for "x"). A name replaces the number in the pane header;
+-- dropdowns show "Name (Trigger N):  Type" so the number is never lost.
+function ns.TriggerName(rule, tok, j)
+    local n
+    if tok == "cd" then n = rule.cdName elseif tok == "buff" then n = rule.buffName
+    else local t = type(rule.extra) == "table" and rule.extra.list and rule.extra.list[j]; n = t and t.name end
+    if type(n) == "string" and n:match("%S") then return n end
+end
+function ns.TriggerHeader(rule, tok, j, pos, label)
+    local n = ns.TriggerName(rule, tok, j)
+    return (n or ("Trigger " .. pos)) .. ":  " .. label
+end
+function ns.TriggerChoiceLabel(rule, tok, j, pos, label)
+    local n = ns.TriggerName(rule, tok, j)
+    if n then return n .. " (Trigger " .. pos .. "):  " .. label end
+    return "Trigger " .. pos .. ":  " .. label
+end
+function ns.TriggerNameArg(rule, tok, j, order, onChange)
+    return { type = "input", order = order, width = "full", name = "Name  (optional: replaces the trigger number)",
+        desc = "Up to 30 characters. The number stays visible in brackets wherever triggers are listed in a dropdown.",
+        get = function() return ns.TriggerName(rule, tok, j) or "" end,
+        set = function(_, v)
+            v = tostring(v or ""):gsub("[%c|]", ""):sub(1, 30)
+            if v:match("^%s*$") then v = nil end
+            if tok == "cd" then rule.cdName = v elseif tok == "buff" then rule.buffName = v
+            else local t = rule.extra.list[j]; if t then t.name = v end end
+            onChange()
+        end }
+end
+
 function ns.MoveTrigger(rule, a, dir)
     local seq = ns.TriggerSequence(rule)
     local b = a + dir
@@ -735,7 +771,11 @@ function ns.DecorateBuiltinTriggers(rule, args)
             local o = args[k]
             if o then o.order = pos * 100 + (tonumber(o.order) or 0) end
         end
-        local title = "Trigger " .. pos .. ":  " .. label
+        local title = ns.TriggerHeader(rule, tok, nil, pos, label)
+        local nameKey = tok .. "Rename"
+        args[nameKey] = ns.TriggerNameArg(rule, tok, nil, 0.5, changed)
+        keys = { unpack(keys) }; keys[#keys + 1] = nameKey
+        args[nameKey].order = pos * 100 + 0.5
         local skinned = ns.SkinRows and ns.SkinRows()
         if not (ns.GatePane and skinned) then   -- skin off: keep the old numbered header with the text buttons
             args[keys[1]].name = pos .. ".  " .. label
@@ -751,6 +791,20 @@ function ns.DecorateBuiltinTriggers(rule, args)
             return {
                 up = (pos > 1) and function() ns.MoveTrigger(rule, pos, -1); changed() end or false,
                 down = (pos < #P.seq) and function() ns.MoveTrigger(rule, pos, 1); changed() end or false,
+                copy = (tok == "cd") and function()
+                    local X = rule.extra
+                    if #X.list >= 12 then ns.Print("a rule can hold at most 12 additional triggers"); return end
+                    local t = { type = "cooldown", spellID = tonumber(rule.spellID) or 0, state = (rule.cdState and not ns.Ignored(rule.cdState)) and rule.cdState or "ready", maxCharges = tonumber(rule.maxCharges) or 0 }
+                    local sq = ns.TriggerSequence(rule)
+                    local at, jx = #sq + 1, 0
+                    for i, tk in ipairs(sq) do if tk == "cd" then at = i + 1 end end
+                    for i = 1, at - 1 do if sq[i] == "x" then jx = jx + 1 end end
+                    table.insert(X.list, jx + 1, t)
+                    table.insert(sq, at, "x")
+                    rule.trigOrder = sq
+                    if ns.RemapOutcomeRefs then ns.RemapOutcomeRefs(rule, function(n) if n > jx then return "x" .. (n + 1) end return "x" .. n end) end
+                    changed()
+                end or nil,
                 del = removeFn,
             }
         end
@@ -948,7 +1002,8 @@ function ns.BuildExtraTriggerArgs(rule, H)
             if ns.RemapOutcomeRefs then ns.RemapOutcomeRefs(rule, function(n) if n > j then return "x" .. (n + 1) end return "x" .. n end) end
             onN()
         end
-        local title = "Trigger " .. pos .. ":  " .. (def and def.label or "Unknown trigger")
+        local title = ns.TriggerHeader(rule, "x", j, pos, def and def.label or "Unknown trigger")
+        row.rename = ns.TriggerNameArg(rule, "x", j, 0.5, onN)
         local actions = function()
             return {
                 up = (pos > 1) and function() ns.MoveTrigger(rule, pos, -1); onN() end or false,
@@ -968,4 +1023,24 @@ function ns.BuildExtraTriggerArgs(rule, H)
         end
     end
     return args
+end
+
+-- The number a numeric extra trigger (Item Count, Class Resource) is reading right now, for condition comparisons. nil = unreadable (never guessed).
+function ns.TriggerNumber(t)
+    if type(t) ~= "table" then return nil end
+    if t.type == "itemCount" then
+        local id = tonumber(t.itemID)
+        if not id or id == 0 then return nil end
+        local fn = (C_Item and C_Item.GetItemCount) or GetItemCount
+        local bank, uses = t.includeBank and true or false, t.includeCharges and true or false
+        local c = Call(fn, id, bank, uses, bank)
+        return type(c) == "number" and c or nil
+    elseif t.type == "resource" then
+        local nm = POWER_NAMES[t.power]
+        local e = nm and Enum and Enum.PowerType and Enum.PowerType[nm[2]]
+        if e == nil then return nil end
+        local v = Call(UnitPower, "player", e)
+        return type(v) == "number" and v or nil
+    end
+    return nil
 end

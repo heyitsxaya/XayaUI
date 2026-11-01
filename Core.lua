@@ -323,6 +323,10 @@ function ns.RuleKind(rule)
 end
 -- what = "visual" | "sound"
 function ns.KindHas(rule, what)
+    if rule.isCue then   -- a cue is exactly one kind of thing, whatever folder its rule is in
+        if what == "sound" then return rule.cueKind == "sound" end
+        return rule.cueKind ~= "sound" and rule.cueKind ~= "custom"
+    end
     -- a rule that has outcomes has no sound / display of its own: its outcomes carry them
     if ns.HasOutcomes and ns.HasOutcomes(rule) then return false end
     local k = ns.RuleKind(rule)
@@ -419,8 +423,14 @@ local BUILTIN_FONTS = {
     arialn = { "Arial Narrow", "Fonts\\ARIALN.TTF" },
     skurri = { "Skurri", "Fonts\\SKURRI.TTF" },
     morpheus = { "Morpheus", "Fonts\\MORPHEUS.TTF" },
+    -- bundled open-source fonts (SIL OFL, see Media\\Fonts\\OFL-*.txt). A new font file needs a full game restart to load.
+    firasans = { "Fira Sans", "Interface\\AddOns\\XayaUI\\Media\\Fonts\\FiraSans-Regular.ttf" },
+    lato = { "Lato", "Interface\\AddOns\\XayaUI\\Media\\Fonts\\Lato-Regular.ttf" },
+    ptsans = { "PT Sans", "Interface\\AddOns\\XayaUI\\Media\\Fonts\\PT_Sans-Web-Regular.ttf" },
+    barlow = { "Barlow", "Interface\\AddOns\\XayaUI\\Media\\Fonts\\Barlow-Regular.ttf" },
+    firamono = { "Fira Mono", "Interface\\AddOns\\XayaUI\\Media\\Fonts\\FiraMono-Regular.ttf" },
 }
-local BUILTIN_FONT_ORDER = { "frizqt", "arialn", "skurri", "morpheus" }
+local BUILTIN_FONT_ORDER = { "frizqt", "arialn", "skurri", "morpheus", "firasans", "lato", "ptsans", "barlow", "firamono" }
 function ns.FontList()
     local values, order = { none = "(none - game default)" }, { "none" }
     for _, k in ipairs(BUILTIN_FONT_ORDER) do values[k] = BUILTIN_FONTS[k][1]; order[#order + 1] = k end
@@ -462,6 +472,7 @@ function ns.NormalizeRule(r)
     Merge(r, ns.RULE_DEFAULTS)
     if ns.NormalizeExtra then ns.NormalizeExtra(r) end
     if ns.NormalizeWhen then ns.NormalizeWhen(r) end
+    if ns.NormalizeCues then ns.NormalizeCues(r) end
     -- legacy "any" -> "none" (explicit "ignore")
     for _, k in ipairs({ "cdState", "buffState", "talentState" }) do if r[k] == "any" then r[k] = "none" end end
     for k, v in pairs(r.load) do if v == "any" and k ~= "mode" then r.load[k] = "none" end end
@@ -489,6 +500,10 @@ local function InitDB()
     if CueRulesDB.ui.advancedDebug == nil then CueRulesDB.ui.advancedDebug = true end
     for _, r in ipairs(CueRulesDB.rules) do ns.NormalizeRule(r) end
     ns.rules = CueRulesDB.rules
+    if ns.MigrateCues then
+        local ok, n = pcall(ns.MigrateCues)
+        if ok and n and n > 0 then ns.Print(n .. " existing sounds / displays were moved into Cues (each condition now lists them under THEN; a full backup of your rules was saved first).") end
+    end
     CueRulesDB.qol = CueRulesDB.qol or {}
     CueRulesDB.qol.boxes = CueRulesDB.qol.boxes or {}
     for _, b in ipairs(CueRulesDB.qol.boxes) do

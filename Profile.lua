@@ -249,6 +249,20 @@ function ns.Profile_Decode(str)
     return snap
 end
 
+-- Generic helpers reused by the Theme system (Theme.lua): same data-only JSON reader / writer, base64 and checksum.
+function ns.Json_Encode(v)
+    local out = {}
+    local ok, err = pcall(Enc, v, out, 0)
+    if not ok then return nil, err end
+    return table.concat(out)
+end
+function ns.Json_Decode(str)
+    local ok, v = pcall(Decode, str)
+    if not ok then return nil, v end
+    return v
+end
+ns.B64Enc, ns.B64Dec, ns.Checksum = b64enc, b64dec, checksum
+
 -- Plain-language description of a snapshot (for the import preview).
 function ns.Profile_Describe(snap)
     local function n(t) return type(t) == "table" and #t or 0 end

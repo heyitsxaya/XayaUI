@@ -34,7 +34,9 @@ function ns.RemapOutcomeRefs(parent, fn)
         if type(o.when) == "table" and type(o.when.list) == "table" then
             for _, t in ipairs(o.when.list) do
                 local n = type(t.ref) == "string" and t.ref:match("^x(%d+)$")
-                if n then t.ref = fn(tonumber(n)) end
+                local nn = (not n) and type(t.ref) == "string" and t.ref:match("^n:x(%d+)$")
+                if n then t.ref = fn(tonumber(n))
+                elseif nn then local r = fn(tonumber(nn)); t.ref = r and ("n:" .. r) or nil end
             end
         end
     end
@@ -58,14 +60,17 @@ function ns.NormalizeWhen(r)
     if type(r.when.list) == "table" then
         for _, t in ipairs(r.when.list) do
             if type(t) == "table" and #clean < MAX_TERMS then
+                local cmp = t.cmp
+                if cmp ~= ">" and cmp ~= ">=" and cmp ~= "<=" and cmp ~= "<" then cmp = "==" end
                 clean[#clean + 1] = { ref = (type(t.ref) == "string" and #t.ref <= 12) and t.ref or nil,
-                                      neg = t.neg == true, op = (t.op == "or") and "or" or "and" }
+                                      neg = t.neg == true, op = (t.op == "or") and "or" or "and", cmp = cmp, num = tonumber(t.num) or 0 }
             end
         end
     end
     r.when.list = clean
     -- display-only extras for the bundled view (plain data)
     if type(r.note) ~= "string" or r.note == "" then r.note = nil else r.note = r.note:sub(1, 200) end
+    if type(r.description) ~= "string" or r.description == "" then r.description = nil else r.description = r.description:sub(1, 500) end
     if r.ocCollapsed ~= true then r.ocCollapsed = nil end
 end
 
@@ -91,15 +96,76 @@ local function RefValue(ref, p, pr, pi)
     return nil
 end
 
+local function IsNumRef(ref) return type(ref) == "string" and ref:sub(1, 2) == "n:" end
+ns.IsNumRef = IsNumRef
+
+-- The number behind a numeric check, or nil when the game will not tell us (secret in combat etc.): nil makes the check unknown, never a guess.
+local function NumRef(ref, p, pi)
+    local now = GetTime()
+    local function SpellID() local id = tonumber(p.spellID) or 0; return id ~= 0 and id or nil end
+    if ref == "n:cdCharges" then
+        local id = SpellID(); if not id then return nil end
+        local ok, ch = pcall(C_Spell.GetSpellCharges, id)
+        if ok and type(ch) == "table" then
+            local c = ch.currentCharges
+            if type(c) == "number" and not issecret(c) then return c end
+            return nil
+        end
+        if pi.cd and pi.cd.known then return pi.cd.onCd and 0 or 1 end
+        return nil
+    elseif ref == "n:cdRemain" then
+        local id = SpellID(); if not id then return nil end
+        local ok, cd = pcall(C_Spell.GetSpellCooldown, id)
+        if not ok or type(cd) ~= "table" then return nil end
+        local st, du, act, gcd = cd.startTime, cd.duration, cd.isActive, cd.isOnGCD
+        if issecret(st) or issecret(du) or issecret(act) or issecret(gcd) then return nil end
+        if not act or gcd or type(du) ~= "number" or du <= 0 or type(st) ~= "number" then return 0 end
+        return math.max(0, st + du - now)
+    elseif ref == "n:buffStacks" then
+        if pi.present == false then return 0 end
+        if pi.present == true and pi.buffRef then
+            local a = pi.buffRef.applications
+            if type(a) == "number" and not issecret(a) then return math.max(a, 1) end
+            if a == nil then return 1 end
+        end
+        return nil
+    elseif ref == "n:buffRemain" then
+        if pi.present == false then return 0 end
+        if pi.present == true and pi.buffRef and type(pi.buffRef.expiration) == "number" and pi.buffRef.expiration > 0 then
+            return math.max(0, pi.buffRef.expiration - now)
+        end
+        return nil
+    end
+    local n = tonumber(ref:match("^n:x(%d+)$"))
+    if n and type(p.extra) == "table" and type(p.extra.list) == "table" and ns.TriggerNumber then return ns.TriggerNumber(p.extra.list[n]) end
+    return nil
+end
+ns.NumRef = NumRef
+
+local function CmpNum(op, a, b)
+    if type(a) ~= "number" or type(b) ~= "number" then return nil end
+    if op == ">" then return a > b elseif op == ">=" then return a >= b elseif op == "<=" then return a <= b
+    elseif op == "<" then return a < b end
+    return a == b
+end
+
+-- One check: true / false / nil (unknown).
+local function CheckValue(t, p, pr, pi)
+    if IsNumRef(t.ref) then return CmpNum(t.cmp, NumRef(t.ref, p, pi), tonumber(t.num) or 0) end
+    local v = RefValue(t.ref, p, pr, pi)
+    if v ~= nil and t.neg then v = not v end
+    return v
+end
+ns.CheckValue = CheckValue
+
 -- true / false / nil, detail. (A AND B) OR (C) ... with per-condition NOT.
 local function EvalWhen(list, p, pr, pi)
     if #list == 0 then return nil, "no conditions added" end
     local groups, cur = {}, nil
     local why
     for i, t in ipairs(list) do
-        local v = RefValue(t.ref, p, pr, pi)
-        if v == nil then why = why or ("condition " .. i .. (t.ref and " is unknown or its trigger was removed" or " has nothing chosen")) end
-        if v ~= nil and t.neg then v = not v end
+        local v = CheckValue(t, p, pr, pi)
+        if v == nil then why = why or ("check " .. i .. (t.ref and " is unknown or its trigger was removed" or " has nothing chosen")) end
         if i == 1 or t.op == "or" then cur = { anyFalse = false, anyNil = false }; groups[#groups + 1] = cur end
         if v == false then cur.anyFalse = true elseif v == nil then cur.anyNil = true end
     end
@@ -116,6 +182,7 @@ local function EvalWhen(list, p, pr, pi)
 end
 
 function ns.EvaluateOutcome(rule, ctx)
+    if rule.isCue and ns.EvaluateCue then return ns.EvaluateCue(rule, ctx) end
     local info = { ctx = ctx, missing = {}, outcome = true }
     local p = ns.FindParentRule(rule)
     if not p then
@@ -142,148 +209,183 @@ end
 -------------------------------------------------------------------------------
 -- Options UI (called from Options.lua BuildRule; H = ns.UI)
 -------------------------------------------------------------------------------
-local function RefChoices(p)
+local function RefChoices(p)  -- also exported below
     local v, o = {}, {}
     local function add(k, label) v[k] = label; o[#o + 1] = k end
     if p then
         local P = ns.TriggerPositions and ns.TriggerPositions(p)
-        if ns.CooldownUsed(p) then add("cd", "Trigger " .. ((P and P.cd) or 1) .. ":  Cooldown") end
-        if ns.BuffUsed(p) then add("buff", "Trigger " .. ((P and P.buff) or 1) .. ":  Buff / Aura") end
+        if ns.CooldownUsed(p) then add("cd", ns.TriggerChoiceLabel(p, "cd", nil, (P and P.cd) or 1, "Cooldown")) end
+        if ns.BuffUsed(p) then add("buff", ns.TriggerChoiceLabel(p, "buff", nil, (P and P.buff) or 1, "Buff / Aura")) end
         if p.talentMode == "all" or p.talentMode == "any" then add("talents", "Talents requirement") end
         local list = type(p.extra) == "table" and p.extra.list or {}
         for i, t in ipairs(list) do
             local d = ns.TRIGGER_TYPES and ns.TRIGGER_TYPES[t.type]
-            add("x" .. i, "Trigger " .. ((P and P.xs[i]) or i) .. ":  " .. (d and d.label or "unknown type"))
+            add("x" .. i, ns.TriggerChoiceLabel(p, "x", i, (P and P.xs[i]) or i, d and d.label or "unknown type"))
         end
         add("parent", "The parent rule fires (all it requires)")
+        if ns.CooldownUsed(p) then
+            add("n:cdCharges", "Cooldown: charges  (number)")
+            add("n:cdRemain", "Cooldown: seconds left  (number)")
+        end
+        if ns.BuffUsed(p) then
+            add("n:buffStacks", "Buff / Aura: stacks  (number)")
+            add("n:buffRemain", "Buff / Aura: seconds left  (number)")
+        end
+        for i, t in ipairs(list) do
+            if t.type == "itemCount" or t.type == "resource" then
+                add("n:x" .. i, "Trigger " .. ((P and P.xs[i]) or i) .. ":  " .. ((t.type == "itemCount") and "item count" or "resource amount") .. "  (number)")
+            end
+        end
     end
     return v, o
 end
 
 -- On the parent: list its outcomes and add new ones.
+function ns.RefChoicesFor(p) return RefChoices(p) end
+
+-- On the parent (Conditions tab): the intro and the Add button. Each condition itself is added by EmbedOutcome below.
 function ns.BuildOutcomeArgs(rule, H)
     local args = {}
-    args.oHeader = { type = "header", name = "Outcomes", order = 60 }
+    args.oHeader = { type = "header", name = "Conditions", order = 60 }
     args.oHelp = { type = "description", order = 60.1, width = "full", fontSize = "medium",
-        name = "This rule only holds the triggers. It has no sound or display of its own once it has an outcome: each outcome below is its own combination of these triggers and carries its own sound and display, "
-            .. "for example 'Cooldown ready AND NOT Totem active'. Load conditions come from this rule's Load tab. The first outcome you add starts with a copy of this rule's current sound and display." }
-    args.oAdd = { type = "execute", name = "Add an outcome", order = 60.2, width = "double", arg = { xuiRed = true },
-        desc = "Creates a new rule next to this one, linked to it. Turn on its sound or display on its Conditions tab.",
+        name = "A condition is  IF  checks are met  THEN  cues play. Make the cues on the Cues tab, then pick them under THEN. Load conditions come from the Load tab." }
+    args.oAdd = { type = "execute", name = "Add a condition", order = 60.2, width = "double", arg = { xuiRed = true },
+        desc = "Creates a new condition for this rule. It starts as: IF the first trigger is true.",
         func = function()
             rule.uid = rule.uid or ns.NewUID()
             local n = ns.NewRule()
-            n.name = tostring(rule.name) .. " - outcome " .. (#ns.OutcomesOf(rule) + 1)
+            n.name = "Condition " .. (#ns.ConditionsOf(rule) + 1)
             n.parentUid = rule.uid
             n.folder = rule.folder
-            if #ns.OutcomesOf(rule) == 0 then   -- the rule stops playing its own sound / display now, so hand them to the first outcome
-                if type(rule.sound) == "table" then n.sound = ns.Copy(rule.sound) end
-                if type(rule.visual) == "table" then n.visual = ns.Copy(rule.visual) end
-            end
+            n.sound.enabled, n.visual.enabled = false, false
+            local _, pk = ns.RefChoicesFor(rule)
+            n.when = { list = { { ref = pk and pk[1] or nil, neg = false, op = "and", cmp = "==", num = 0 } } }
             ns.rules[#ns.rules + 1] = n
-            pcall(ns.RefreshVisual, n)
             ns.MarkDirty()
-            H.Notify()
+            ;(H.NotifyTwice or H.Notify)()
         end }
-    for i, o in ipairs(ns.OutcomesOf(rule)) do
-        args["o" .. i] = { type = "description", order = 61 + i, width = "full", fontSize = "medium",
-            name = function()
-                local ok, res = pcall(ns.Evaluate, o, ns.ReadContext())
-                local word = (not ok and "|cffffd100error|r") or (res and "|cff55ff55true|r") or "|cffff5555false|r"
-                return "|cffffd100" .. tostring(o.name) .. "|r  -  now " .. word .. (o.enabled and "" or "  (disabled)")
-            end }
-    end
     return args
 end
 
--- On an outcome: the row builder.
-function ns.BuildWhenArgs(rule, H)
+-- On the parent (Cues tab): intro and the "Add a cue" dropdown.
+function ns.BuildCueArgs(rule, H)
+    local args = {}
+    args.cHeader = { type = "header", name = "Cues", order = 60 }
+    args.cHelp = { type = "description", order = 60.1, width = "full", fontSize = "medium",
+        name = "A cue is something that happens: a sound, text, a texture or an icon. Create them here, then choose when they happen on the Conditions tab." }
+    local vals = {}
+    for _, k in ipairs(ns.CUE_KINDS) do vals[k] = ns.CUE_KIND_LABEL[k] end
+    args.cAdd = { type = "select", order = 60.2, width = "double", name = "Add a cue", values = vals, sorting = ns.CUE_KINDS,
+        desc = "Pick what kind of cue to create. It is added below.",
+        get = function() return nil end,
+        set = function(_, v)
+            rule.uid = rule.uid or ns.NewUID()
+            if ns.NewCueRule(rule, v) then (H.NotifyTwice or H.Notify)() end
+        end }
+    return args
+end
+
+function ns.BuildWhenArgs(rule, H) return {} end
+
+local CMP_VALUES = { ["=="] = "=", [">"] = ">", [">="] = ">=", ["<="] = "<=", ["<"] = "<" }
+local CMP_ORDER = { "==", ">", ">=", "<=", "<" }
+local ONLY_EQ, ONLY_EQ_ORDER = { ["=="] = "=" }, { "==" }
+local TF_VALUES = { ["true"] = "TRUE", ["false"] = "FALSE" }
+local TF_ORDER = { "true", "false" }
+
+-- The IF rows, the THEN picker and the live status of one condition. Returns an args table.
+local function ConditionBody(rule, H)
     local args = {}
     if type(rule.when) ~= "table" then ns.NormalizeWhen(rule) end
     local W = rule.when
-    local p = ns.FindParentRule(rule)
-    local function on() H.Changed(rule) end
-    local function onN() H.Changed(rule); H.Notify() end
-
-    args.wHeader = { type = "header", name = "Combination", order = 0 }
-    args.wParent = { type = "description", order = 0.1, width = "full", fontSize = "medium",
-        name = function()
-            local pp = ns.FindParentRule(rule)
-            if not pp then return "|cffff5555The parent rule was not found (deleted?). This outcome cannot fire.|r" end
-            return "Follows the triggers of:  |cffffd100" .. tostring(pp.name) .. "|r" end }
-    args.wExpr = { type = "description", order = 0.2, width = "full", fontSize = "medium",
-        name = function()
-            local pp = ns.FindParentRule(rule)
-            local vals = RefChoices(pp)
-            if #W.list == 0 then return "Add conditions below. AND is evaluated before OR." end
-            local parts = {}
-            for i, t in ipairs(W.list) do
-                local lbl = (t.ref and vals[t.ref]) or "(nothing chosen)"
-                parts[#parts + 1] = (i > 1 and (t.op == "or" and "  |cff88ccffOR|r  " or "  |cff88ccffAND|r  ") or "") .. (t.neg and "|cffff8040NOT|r " or "") .. lbl
-            end
-            return "Fires when:  " .. table.concat(parts) .. "\n|cff888888AND is evaluated before OR.|r"
-        end }
-    args.wAdd = { type = "execute", name = "Add a condition", order = 0.3, width = "double", arg = { xuiRed = true },
-        func = function()
-            if #W.list >= MAX_TERMS then ns.Print("an outcome can hold at most " .. MAX_TERMS .. " conditions"); return end
-            W.list[#W.list + 1] = { op = "and", neg = false }
-            onN()
-        end }
+    local function onN() H.Changed(rule); (H.NotifyTwice or H.Notify)() end
+    local function collapsed() return rule.ocCollapsed == true end
+    local function locked() return ns.IsEditLocked and ns.IsEditLocked(rule) end
+    local function refChoices() return RefChoices(ns.FindParentRule(rule)) end
+    args.ifLabel = { type = "description", order = 10, width = "full", fontSize = "medium", hidden = collapsed, name = "|cffffd100IF|r" }
     for j, t in ipairs(W.list) do
-        local row = {}
+        local o = 10 + j
         if j > 1 then
-            row.op = H.Sel(t, "op", "Joined to the previous with", 1, { ["and"] = "AND", ["or"] = "OR" }, { "and", "or" }, onN, { width = "double" })
+            args["j" .. j] = { type = "select", order = o, width = "relative", relWidth = 0.14, name = "", arg = { xuiTextLeft = true }, hidden = collapsed,
+                values = { ["and"] = "AND", ["or"] = "OR" }, sorting = { "and", "or" },
+                get = function() return t.op end,
+                set = function(_, v) t.op = v; onN() end, disabled = locked }
         end
-        row.ref = { type = "select", name = "Check", order = 2, width = "double",
-            values = function() local v = RefChoices(ns.FindParentRule(rule)); return v end,
-            sorting = function() local _, o = RefChoices(ns.FindParentRule(rule)); return o end,
-            get = function() return t.ref end, set = function(_, v) t.ref = v; onN() end }
-        row.neg = H.Tog(t, "neg", "NOT (invert this condition)", 3, onN, { width = "double" })
-        row.status = { type = "description", order = 4, width = "double", fontSize = "medium",
-            name = function()
-                local pp = ns.FindParentRule(rule)
-                if not pp then return "Right now: |cffffd100unknown|r" end
-                local ok, pr, pi = pcall(function() local a, b = ns.Evaluate(pp, ns.ReadContext()); return a, b end)
-                if not ok then return "Right now: |cffffd100unknown|r" end
-                local v = RefValue(t.ref, pp, pr, pi)
-                if v ~= nil and t.neg then v = not v end
-                return "Right now: " .. ((v == true and "|cff55ff55true|r") or (v == false and "|cffff5555false|r") or "|cffffd100unknown|r")
-            end }
-        local function del() table.remove(W.list, j); onN() end
-        local function swap(d)
-            local other = W.list[j + d]
-            if not other then return end
-            W.list[j], W.list[j + d] = other, W.list[j]
-            onN()
-        end
-        local function dup()
-            if #W.list >= MAX_TERMS then ns.Print("an outcome can hold at most " .. MAX_TERMS .. " conditions"); return end
-            table.insert(W.list, j + 1, ns.Copy(t))
-            onN()
-        end
-        local actions = function()
-            return { up = (j > 1) and function() swap(-1) end or false, down = (j < #W.list) and function() swap(1) end or false, copy = dup, del = del }
-        end
-        if ns.GatedPane and ns.SkinRows and ns.SkinRows() then
-            local pane = ns.GatedPane(rule, "wcond" .. j, j .. ".  Condition", 1 + j, function() return true end, row)
-            pane.args.hdr.arg.xuiActions = actions
-            args["w" .. j] = pane
-        else
-            row.remove = { type = "execute", name = "Remove", order = 5, width = "half", func = del }
-            args["w" .. j] = { type = "group", inline = true, order = 1 + j, name = "Condition " .. j, args = row }
-        end
+        args["r" .. j] = { type = "select", order = o + 0.01, width = "relative", relWidth = (j == 1) and 0.48 or 0.34, name = "", arg = { xuiTextLeft = true }, hidden = collapsed,
+            desc = "What to check.",
+            values = function() local v = refChoices(); return v end,
+            sorting = function() local _, od = refChoices(); return od end,
+            get = function() return t.ref end,
+            set = function(_, v) t.ref = v; if IsNumRef(v) then t.neg = false end; onN() end,
+            disabled = locked }
+        args["c" .. j] = { type = "select", order = o + 0.02, width = "relative", relWidth = 0.16, name = "", arg = { xuiTextLeft = true }, hidden = collapsed,
+            values = function() return IsNumRef(t.ref) and CMP_VALUES or ONLY_EQ end,
+            sorting = function() return IsNumRef(t.ref) and CMP_ORDER or ONLY_EQ_ORDER end,
+            get = function() return IsNumRef(t.ref) and (t.cmp or "==") or "==" end,
+            set = function(_, v) t.cmp = v; onN() end,
+            disabled = function() return not IsNumRef(t.ref) or locked() end }
+        args["b" .. j] = { type = "select", order = o + 0.03, width = "relative", relWidth = 0.2, name = "", arg = { xuiTextLeft = true }, values = TF_VALUES, sorting = TF_ORDER,
+            hidden = function() return collapsed() or IsNumRef(t.ref) end,
+            get = function() return t.neg and "false" or "true" end,
+            set = function(_, v) t.neg = (v == "false"); onN() end, disabled = locked }
+        args["n" .. j] = { type = "input", order = o + 0.03, width = "relative", relWidth = 0.2, name = "",
+            hidden = function() return collapsed() or not IsNumRef(t.ref) end,
+            get = function() return tostring(t.num or 0) end,
+            set = function(_, v) t.num = tonumber(v) or 0; onN() end, disabled = locked }
+        args["x" .. j] = { type = "execute", order = o + 0.04, width = "relative", relWidth = 0.1, name = "X", hidden = collapsed,
+            desc = "Remove this check.",
+            func = function() table.remove(W.list, j); onN() end, disabled = locked }
     end
+    args.add = { type = "select", order = 60, width = "relative", relWidth = 0.34, name = "", arg = { xuiTextLeft = true }, hidden = collapsed,
+        desc = "Add another check to this condition. AND needs both, OR needs either (AND is evaluated before OR).",
+        values = { none = "+ add check...", ["and"] = "AND", ["or"] = "OR" }, sorting = { "none", "and", "or" },
+        get = function() return "none" end,
+        set = function(_, v)
+            if v == "and" or v == "or" then
+                if #W.list >= MAX_TERMS then ns.Print("a condition can hold at most " .. MAX_TERMS .. " checks"); return end
+                W.list[#W.list + 1] = { op = v, neg = false, cmp = "==", num = 0 }
+                onN()
+            end
+        end, disabled = locked }
+    local function hasCues() local p = ns.FindParentRule(rule); return p and #ns.CuesOf(p) > 0 end
+    args.thenNone = { type = "description", order = 70, width = "full", fontSize = "medium",
+        hidden = function() return collapsed() or hasCues() end,
+        name = "|cffffd100THEN|r  |cff888888no cues yet. Create one on the Cues tab.|r" }
+    args.thenPick = { type = "multiselect", dialogControl = "Dropdown", order = 70, width = "full", name = "THEN", arg = { xuiSide = true },
+        hidden = function() return collapsed() or not hasCues() end,
+        desc = "The cues that play while this condition is true.",
+        values = function()
+            local v, p = {}, ns.FindParentRule(rule)
+            if p then for _, c in ipairs(ns.CuesOf(p)) do v[c.cueKey or "?"] = ns.CueLabel(c) .. "  (" .. (ns.CUE_KIND_LABEL[c.cueKind] or "") .. ")" end end
+            return v
+        end,
+        get = function(_, key) for _, k in ipairs(rule.thenCues or {}) do if k == key then return true end end return false end,
+        set = function(_, key, val)
+            local list, out = rule.thenCues or {}, {}
+            for _, k in ipairs(list) do if k ~= key then out[#out + 1] = k end end
+            if val then out[#out + 1] = key end
+            rule.thenCues = (#out > 0) and out or nil
+            ns.MarkDirty(); H.Changed(rule)
+        end, disabled = locked }
+    args.status = { type = "description", order = 80, width = "full", fontSize = "medium", hidden = collapsed,
+        name = function()
+            local ok, res = pcall(ns.Evaluate, rule, ns.ReadContext())
+            local word = (not ok and "|cffffd100error|r") or (res and "|cff55ff55TRUE|r") or "|cffff5555FALSE|r"
+            return "Right now: " .. word
+        end }
     return args
 end
 
-
 -------------------------------------------------------------------------------
--- Bundling: outcomes are shown inside their parent rule instead of as separate list entries.
+-- Bundling: conditions are shown on their parent's Conditions tab, cues on its Cues tab.
 -------------------------------------------------------------------------------
--- Row actions for an outcome shown on its parent's Conditions tab (arrow up / down, duplicate, remove)
-local function MoveOutcome(rule, dir)
+local function SiblingList(rule)
     local par = ns.FindParentRule(rule)
-    if not par then return end
-    local list, pos = ns.OutcomesOf(par), nil
+    if not par then return {} end
+    return rule.isCue and ns.CuesOf(par) or ns.ConditionsOf(par)
+end
+local function MoveOutcome(rule, dir)
+    local list, pos = SiblingList(rule), nil
     for i, r in ipairs(list) do if r == rule then pos = i end end
     local other = pos and list[pos + dir]
     if not other then return end
@@ -291,69 +393,133 @@ local function MoveOutcome(rule, dir)
     for i, r in ipairs(ns.rules) do if r == rule then ia = i elseif r == other then ib = i end end
     if not (ia and ib) then return end
     ns.rules[ia], ns.rules[ib] = ns.rules[ib], ns.rules[ia]
-    ns.MarkDirty(); ns.UI.Notify()
+    ns.MarkDirty(); (ns.UI.NotifyTwice or ns.UI.Notify)()
 end
 local function CopyOutcome(rule)
     local c = ns.Copy(rule)
     c.uid = nil
-    c.name = ((rule.name and rule.name ~= "") and rule.name or "Outcome") .. " Copy"
+    if rule.isCue then
+        local par = ns.FindParentRule(rule)
+        if par then c.cueKey = ns.CueKey(par) end
+        c.cueName = ns.CueLabel(rule) .. " copy"
+    else
+        c.name = ((rule.name and rule.name ~= "") and rule.name or "Condition") .. " Copy"
+    end
     for i, r in ipairs(ns.rules) do if r == rule then table.insert(ns.rules, i + 1, c); break end end
     pcall(ns.RefreshVisual, c)
-    ns.MarkDirty(); ns.UI.Notify()
+    ns.MarkDirty(); (ns.UI.NotifyTwice or ns.UI.Notify)()
 end
 local function RemoveOutcome(rule)
-    for i, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, i); break end end
-    pcall(ns.DropVisual, rule)
-    ns.MarkDirty(); ns.UI.Notify()
+    if rule.isCue then ns.DeleteCue(rule)
+    else
+        for i, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, i); break end end
+        pcall(ns.DropVisual, rule)
+    end
+    ns.MarkDirty(); (ns.UI.NotifyTwice or ns.UI.Notify)()
 end
 
--- Put an outcome's settings (its own combination, sound / display, load conditions, name) on the parent's Conditions tab.
+local OPEN = "|TInterface\\Buttons\\Arrow-Down-Up:16:16|t"
+local CLOSED = "|TInterface\\ChatFrame\\ChatFrameExpandArrow:16:16|t"
+local function Header(rule, titleFn, edit)
+    return { type = "execute", order = 0.05, width = "full",
+        arg = { xuiLeft = true, xuiEdit = edit, xuiActions = function()
+            local list, pos = SiblingList(rule), nil
+            for i, r in ipairs(list) do if r == rule then pos = i end end
+            return {
+                up = (pos and pos > 1) and function() MoveOutcome(rule, -1) end or false,
+                down = (pos and pos < #list) and function() MoveOutcome(rule, 1) end or false,
+                copy = function() CopyOutcome(rule) end,
+                del = function() RemoveOutcome(rule) end,
+            }
+        end },
+        name = function() return (rule.ocCollapsed and CLOSED or OPEN) .. (edit and "" or ("  " .. titleFn())) end,
+        desc = "Expand or collapse.",
+        func = function() rule.ocCollapsed = (not rule.ocCollapsed) or nil; ns.MarkDirty(); ns.UI.Notify() end }
+end
+
+local function EmbedCondition(pg, rule, k)
+    local host = pg.args and pg.args.conditions and pg.args.conditions.args
+    if not host then return end
+    local function locked() return ns.IsEditLocked and ns.IsEditLocked(rule) end
+    local g = { type = "group", inline = true, order = 100 + k, name = "", args = {} }
+    local function dot()
+        local ok, res = pcall(ns.Evaluate, rule, ns.ReadContext())
+        return (not ok and "|cffffd100o|r") or (res and "|cff55ff55o|r") or "|cffff5555o|r"
+    end
+    g.args.hdr = Header(rule, function() return tostring(rule.name) end, {
+        get = function() return tostring(rule.name or "") end,
+        set = function(v) v = tostring(v or ""):sub(1, 60); if v:match("%S") then rule.name = v; ns.MarkDirty(); ns.UI.Notify() end end,
+        hint = function() return dot() .. (rule.enabled == false and "  (off)" or "") end,
+    })
+    g.args.enabled = { type = "toggle", order = 0.2, width = "half", name = "On",
+        desc = "Turn this condition on or off. An off condition never plays its cues.",
+        get = function() return rule.enabled ~= false end,
+        set = function(_, v) rule.enabled = v and true or false; ns.MarkDirty(); ns.UI.Notify() end, disabled = locked }
+    for key, a in pairs(ConditionBody(rule, ns.UI)) do g.args[key] = a end
+    host["oc" .. k] = g
+end
+
+local function EmbedCue(pg, og, rule, k)
+    local host = pg.args and pg.args.cues and pg.args.cues.args
+    if not host then return end
+    local function locked() return ns.IsEditLocked and ns.IsEditLocked(rule) end
+    local function collapsed() return rule.ocCollapsed == true end
+    local g = { type = "group", inline = true, order = 100 + k, name = "", args = {} }
+    g.args.hdr = Header(rule, function() return ns.CueLabel(rule) end, {
+        get = function() return ns.CueLabel(rule) end,
+        set = function(v)
+            v = tostring(v or ""):sub(1, 60)
+            if v:match("%S") and v ~= ns.CueDefaultLabel(rule) then rule.cueName = v else rule.cueName = nil end
+            ns.MarkDirty(); ns.UI.Notify()
+        end,
+        hint = function() if rule.cueName then return ns.CueDefaultLabel(rule) end return ns.CUE_KIND_LABEL[rule.cueKind] or "" end,
+    })
+    g.args.desc = { type = "input", order = 0.2, width = "full", name = "Description", arg = { xuiSide = true }, hidden = collapsed,
+        get = function() return rule.cueDesc or "" end,
+        set = function(_, v) v = tostring(v or ""):sub(1, 300); rule.cueDesc = (v:match("%S")) and v or nil; ns.MarkDirty() end, disabled = locked }
+    local acts = (og.args.actions and og.args.actions.args) or {}
+    local function put(key, src)
+        if not src then return end
+        local orig = src.hidden
+        src.hidden = function(...) if collapsed() then return true end; if type(orig) == "function" then return orig(...) end; return orig end
+        g.args[key] = src
+    end
+    local parts = og.args.actions and og.args.actions.xuiParts
+    local function box(key, order, title, args)
+        local grp = { type = "group", inline = true, order = order, name = title or "", args = args }
+        put(key, grp); grp.order = order
+    end
+    local function sub(key, order, node) if node then put(key, node); node.order = order end end
+    if parts and (rule.cueKind == "sound" or rule.cueKind == "text" or rule.cueKind == "texture" or rule.cueKind == "icon") then
+        -- a cue is always on: no "Show ..." tick box, no Options +/- and no "Show when" menu (that is what Conditions decides)
+        if rule.cueKind == "sound" then
+            rule.sound.enabled = true
+            box("snd", 3, "Sound", parts.soundBody)
+        else
+            rule.visual.enabled = true; rule.visual.trigger = "condition"
+            if rule.cueKind == "text" then
+                parts.ensureText()
+                box("txt", 3, "Text", parts.textBody)
+            else
+                box("tex", 3, (rule.cueKind == "icon") and "Icon Options" or "Texture Options", parts.tex)
+                sub("color", 4, parts.colorSub)
+                sub("pos", 5, parts.posSub)
+                sub("anim", 6, parts.animSub)
+                local tx = acts.text
+                if tx then put("text", tx); tx.order = 7 end
+            end
+        end
+    else
+        g.args.custom = { type = "description", order = 5, width = "full", fontSize = "medium", hidden = collapsed,
+            name = "|cff888888Custom cues will run your own Lua. This is not available yet: it will be off by default, switched on per rule, and never run from an imported rule without your consent.|r" }
+    end
+    host["oq" .. k] = g
+end
+
+-- Put a child rule on its parent: a condition on the Conditions tab, a cue on the Cues tab.
 function ns.EmbedOutcome(pg, og, rule, k)
-    local host = pg.args and pg.args.actions and pg.args.actions.args
-    if not host or not og.args then return end
-    local function sub(g, order, name)
-        if not g then return nil end
-        return { type = "group", inline = true, order = order, name = name, args = g.args }
-    end
-    local OPEN = "|TInterface\\Buttons\\Arrow-Down-Up:16:16|t"
-    local CLOSED = "|TInterface\\ChatFrame\\ChatFrameExpandArrow:16:16|t"
-    host["oc" .. k] = { type = "group", inline = true, order = 100 + k, name = "",
-        args = {
-            hdr = { type = "execute", order = 0.05, width = "full",
-                arg = { xuiLeft = true, xuiActions = function()
-                    local pr = ns.FindParentRule(rule)
-                    local n = pr and #ns.OutcomesOf(pr) or 1
-                    return {
-                        up = (k > 1) and function() MoveOutcome(rule, -1) end or false,
-                        down = (k < n) and function() MoveOutcome(rule, 1) end or false,
-                        copy = function() CopyOutcome(rule) end,
-                        del = function() RemoveOutcome(rule) end,
-                    }
-                end },
-                name = function() return (rule.ocCollapsed and CLOSED or OPEN) .. "  " .. k .. ".  " .. tostring(rule.name) .. (rule.enabled and "" or "  (disabled)") end,
-                desc = "Expand or collapse this condition's settings. The note below stays visible.",
-                func = function() rule.ocCollapsed = (not rule.ocCollapsed) or nil; ns.MarkDirty(); ns.UI.Notify() end },
-            note = { type = "input", order = 0.2, width = "double",
-                name = "Note (what this condition fires for)",
-                desc = "Free text for you. Stays visible while the condition is collapsed.",
-                get = function() return rule.note or "" end,
-                set = function(_, v) v = tostring(v or ""):sub(1, 200); rule.note = (v ~= "") and v or nil; ns.MarkDirty() end,
-                disabled = function() return ns.IsEditLocked and ns.IsEditLocked(rule) end },
-            summary = { type = "description", order = 0.3, width = "full", fontSize = "medium",
-                hidden = function() return not rule.ocCollapsed end,
-                name = function()
-                    local ok, res = pcall(ns.Evaluate, rule, ns.ReadContext())
-                    local word = (not ok and "|cffffd100error|r") or (res and "|cff55ff55true|r") or "|cffff5555false|r"
-                    return (rule.note and ("|cffffffff" .. rule.note .. "|r  -  ") or "|cff888888(no note)|r  -  ") .. "now " .. word
-                end },
-            when = sub(og.args.trigger, 1, "When this condition fires"),
-            act  = sub(og.args.actions, 2, "Sound and display"),
-            rule = sub(og.args.rule, 4, "Name, enable and delete"),
-        } }
-    for _, key in ipairs({ "when", "act", "rule" }) do
-        local g = host["oc" .. k].args[key]
-        if g then g.hidden = function() return rule.ocCollapsed == true end end
-    end
+    if rule.isCue then return EmbedCue(pg, og, rule, k) end
+    return EmbedCondition(pg, rule, k)
 end
 
 function ns.DeleteOutcomesOf(parent)
@@ -408,7 +574,7 @@ function ns.HasOutcomes(rule)
     if ns.tickID == nil or hasTick ~= ns.tickID then
         hasOut = {}
         for _, r in ipairs(ns.rules or {}) do
-            if type(r.parentUid) == "string" then hasOut[r.parentUid] = true end
+            if type(r.parentUid) == "string" and not r.isCue then hasOut[r.parentUid] = true end
         end
         hasTick = ns.tickID
     end

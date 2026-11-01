@@ -20,9 +20,11 @@ Core.lua
 Conditions.lua
 Triggers.lua
 Outcomes.lua
+Cues.lua
 Sound.lua
 Visual.lua
 Profile.lua
+Theme.lua
 Engine.lua
 AddonInfo.lua
 Options.lua

@@ -510,6 +510,33 @@ function ns.SetPair(rule, other)
     end
 end
 
+-- Linked auras (saved on the rule as rule.link = a shared id): dragging any member moves every other member by the same amount, so
+-- their positions relative to each other are kept. Hold SHIFT when you start a drag to move just that one (its offset to the others
+-- then changes, which is the new relative position). Members that are snapped to a game frame are left where they are.
+function ns.LinkMembers(rule)
+    local out = {}
+    local id = rule and rule.link
+    if not id then return out end
+    for _, o in ipairs(ns.rules or {}) do if o ~= rule and o.link == id and o.visual then out[#out + 1] = o end end
+    return out
+end
+function ns.LinkAura(rule, other)
+    if not (rule and other and rule ~= other) then return end
+    local id = other.link or rule.link or ("L" .. tostring(time()) .. tostring(math.random(1000, 9999)))
+    -- joining another group moves the whole of the old group's membership with the dragged rule's choice: keep it simple, only this rule joins
+    other.link, rule.link = id, id
+    if ns.MarkDirty then ns.MarkDirty() end
+end
+function ns.UnlinkAura(rule)
+    if not (rule and rule.link) then return end
+    local id = rule.link
+    rule.link = nil
+    local left, last = 0, nil
+    for _, o in ipairs(ns.rules or {}) do if o.link == id then left = left + 1; last = o end end
+    if left == 1 then last.link = nil end   -- a link of one is no link
+    if ns.MarkDirty then ns.MarkDirty() end
+end
+
 function ns.ShowVisualMenu(rule, anchor)
     if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the menu API is not available in this client.") return end
     MenuUtil.CreateContextMenu(anchor, function(_, root)
@@ -522,6 +549,17 @@ function ns.ShowVisualMenu(rule, anchor)
             for _, p in ipairs(SNAP_POS) do
                 sub:CreateRadio(p[2], function() return (v.snap and v.snap.target == t.key and v.snap.pos == p[1]) and true or false end,
                     function() ns.SnapToTarget(rule, t.key, p[1]) end)
+            end
+        end
+        do
+            local lk = root:CreateButton("Linked Auras (move together)")
+            if lk.SetScrollMode then lk:SetScrollMode(320) end
+            lk:CreateRadio("Not linked", function() return not rule.link end, function() ns.UnlinkAura(rule) end)
+            for _, o in ipairs(ns.rules or {}) do
+                if o ~= rule and o.visual then
+                    lk:CreateRadio(o.name or "Aura", function() return rule.link ~= nil and o.link == rule.link end,
+                        function() if rule.link and o.link == rule.link then ns.UnlinkAura(rule) else ns.LinkAura(rule, o) end end)
+                end
             end
         end
         root:CreateButton("Center Vertically", function() ns.CenterVisual(rule, "v") end)
@@ -670,6 +708,33 @@ local function GetFrame(rule)
                 self.pairRule, self.pairFr = o, of
             end
         end
+        -- linked auras ride along unless SHIFT is held: shown ones are anchored to this frame at their current offset for the drag
+        self.linkRides, self.linkHidden, self.linkStart = nil, nil, nil
+        if rule.link and not IsShiftKeyDown() then
+            local sv = rule.visual
+            local pA = ParentFor(rule)
+            if not (sv.snap and sv.snap.target) then self.linkStart = { sv.x or 0, sv.y or 0, pA } end
+            local ax, ay = self:GetCenter()
+            for _, o in ipairs(ns.LinkMembers(rule)) do
+                local ov = o.visual
+                if not (ov.snap and ov.snap.target) then
+                    local of2 = frames[o]
+                    if of2 and of2:IsShown() and ax then
+                        local bx, by = of2:GetCenter()
+                        if bx then
+                            local sA, sB = self:GetEffectiveScale(), of2:GetEffectiveScale()
+                            of2:ClearAllPoints()
+                            of2:SetPoint("CENTER", self, "CENTER", (bx * sB - ax * sA) / sB, (by * sB - ay * sA) / sB)
+                            self.linkRides = self.linkRides or {}
+                            self.linkRides[#self.linkRides + 1] = { o, of2 }
+                        end
+                    elseif self.linkStart then
+                        self.linkHidden = self.linkHidden or {}
+                        self.linkHidden[#self.linkHidden + 1] = o   -- not on screen right now: shifted by the same amount in its saved X / Y
+                    end
+                end
+            end
+        end
         self:StartMoving()
     end)
     -- left click (without dragging) selects the aura and opens it in the editor; right click opens the move / snap / edit menu
@@ -687,6 +752,17 @@ local function GetFrame(rule)
     fr:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
         CommitDrag(rule, self, true)
+        if self.linkRides then
+            for _, p in ipairs(self.linkRides) do CommitDrag(p[1], p[2], false) end
+        end
+        if self.linkHidden and self.linkStart then
+            local dx, dy = (rule.visual.x or 0) - self.linkStart[1], (rule.visual.y or 0) - self.linkStart[2]
+            for _, o in ipairs(self.linkHidden) do
+                local ov = o.visual
+                if ParentFor(o) == self.linkStart[3] then ov.x, ov.y = (ov.x or 0) + dx, (ov.y or 0) + dy; pcall(ns.RefreshVisual, o) end
+            end
+        end
+        self.linkRides, self.linkHidden, self.linkStart = nil, nil, nil
         if self.pairFr then
             local pr, pf = self.pairRule, self.pairFr
             self.pairRule, self.pairFr = nil, nil
