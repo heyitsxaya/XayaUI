@@ -94,10 +94,12 @@ end
 
 -- A text box that suggests spells by name (popup list with icons, wired up by AttachSearch in the widget walker).
 -- pick(id) is called with the chosen spell ID. get() is always empty so the box clears after a pick.
-local function SearchBox(order, pick, name)
-    return { type = "input", name = name or "Search by spell name", order = order, width = "double",
-        desc = "Type part of a spell name. A list with icons pops up; click one (or press Enter for the first) to fill in its spell ID. Also accepts an ID.",
-        arg = { xuiSearch = pick },
+local function SearchBox(order, pick, name, kind)
+    local item = kind == "item"
+    return { type = "input", name = name or (item and "Search by item name" or "Search by spell name"), order = order, width = "double",
+        desc = item and "Type part of an item name (every word, any order; * matches anything). A list with icons pops up; click one (or press Enter for the first) to fill in its item ID. Also accepts an ID. Finds items in your bags, bank and worn gear, plus every item your game client has already seen; an item it has never loaded will not appear, so type its ID instead (Wowhead shows it in the URL)."
+            or "Type part of a spell name. A list with icons pops up; click one (or press Enter for the first) to fill in its spell ID. Also accepts an ID.",
+        arg = { xuiSearch = pick, xuiSearchKind = kind },
         get = function() return "" end, set = function() end }
 end
 
@@ -5142,35 +5144,67 @@ local AttachSearch
 do
 local SI = { names = {}, ids = {}, n = 0, nextId = 1, running = false }
 local SI_MAX = 1900000
-local siFrame
-local function SI_Start()
-    if SI.running or SI.nextId > SI_MAX then return end
-    SI.running = true
-    siFrame = siFrame or CreateFrame("Frame")
-    siFrame:SetScript("OnUpdate", function(self)
+local SX = {}   -- item-search helpers in one table (this file is close to Lua's 200-locals limit)
+local function StartScan(S, max, getn)
+    if S.running or S.nextId > max or not getn then return end
+    S.running = true
+    S.frame = S.frame or CreateFrame("Frame")
+    S.frame:SetScript("OnUpdate", function(self)
         local ok = pcall(function()
             local t0 = debugprofilestop()
-            local getn = C_Spell.GetSpellName
-            while SI.nextId <= SI_MAX and debugprofilestop() - t0 < 4 do
-                local last = math.min(SI.nextId + 499, SI_MAX)
-                for id = SI.nextId, last do
+            while S.nextId <= max and debugprofilestop() - t0 < 4 do
+                local last = math.min(S.nextId + 499, max)
+                for id = S.nextId, last do
                     local nm = getn(id)
-                    if nm and nm ~= "" then local n = SI.n + 1; SI.n = n; SI.names[n] = nm:lower(); SI.ids[n] = id end
+                    if nm and nm ~= "" then local n = S.n + 1; S.n = n; S.names[n] = nm:lower(); S.ids[n] = id end
                 end
-                SI.nextId = last + 1
+                S.nextId = last + 1
             end
         end)
-        if not ok or SI.nextId > SI_MAX then SI.running = false; self:SetScript("OnUpdate", nil) end
+        if not ok or S.nextId > max then S.running = false; self:SetScript("OnUpdate", nil) end
     end)
 end
+-- Item names: the client only knows the names of items it has already loaded (no way to list every item in the game), so this index
+-- holds those; the items you carry / wear are added fresh on every search (OwnedItems).
+SX.II = { names = {}, ids = {}, n = 0, nextId = 1, running = false }
+SX.II_MAX = 300000
+function SX.Start(kind)
+    if kind == "item" then StartScan(SX.II, SX.II_MAX, C_Item and C_Item.GetItemNameByID)
+    else StartScan(SI, SI_MAX, C_Spell.GetSpellName) end
+end
+function SX.OwnedItems()
+    local out, seen = {}, {}
+    local function addId(id)
+        pcall(function()
+            if type(id) == "number" and id > 0 and not seen[id] then
+                local nm = C_Item.GetItemNameByID(id)
+                if type(nm) == "string" and nm ~= "" then seen[id] = true; out[#out + 1] = { id = id, name = nm } end
+            end
+        end)
+    end
+    for slot = 1, 19 do local ok, id = pcall(GetInventoryItemID, "player", slot); if ok then addId(id) end end
+    if C_Container and C_Container.GetContainerNumSlots then
+        for bag = 0, 12 do
+            local ok, n = pcall(C_Container.GetContainerNumSlots, bag)
+            if ok and type(n) == "number" then
+                for s = 1, n do
+                    local ok2, info = pcall(C_Container.GetContainerItemInfo, bag, s)
+                    if ok2 and type(info) == "table" then addId(info.itemID) end
+                end
+            end
+        end
+    end
+    return out
+end
 
-local function SearchSpells(q)
+local function SearchSpells(q, kind)
+    local item = kind == "item"
     local res, seen = {}, {}
     q = (q or ""):lower():match("^%s*(.-)%s*$")
     if q == "" then return res end
     local num = tonumber(q)
     if num then
-        local ok, nm = pcall(C_Spell.GetSpellName, num)
+        local ok, nm = pcall(item and C_Item.GetItemNameByID or C_Spell.GetSpellName, num)
         if ok and nm then res[1] = num; seen[num] = true end
     end
     -- No syntax to remember: every word must appear in the name, in any order; "*" matches anything. Exact names rank first,
@@ -5195,11 +5229,16 @@ local function SearchSpells(q)
             local t = buckets[rank(nm)]; t[#t + 1] = id
         end
     end
-    for _, sp in ipairs(ns.BuildSpellList() or {}) do
-        if sp.name then consider(sp.id, sp.name:lower()) end
+    if item then
+        for _, it in ipairs(SX.OwnedItems()) do consider(it.id, it.name:lower()) end
+    else
+        for _, sp in ipairs(ns.BuildSpellList() or {}) do
+            if sp.name then consider(sp.id, sp.name:lower()) end
+        end
     end
-    local names, ids = SI.names, SI.ids
-    for i = 1, SI.n do consider(ids[i], names[i]) end
+    local S = item and SX.II or SI
+    local names, ids = S.names, S.ids
+    for i = 1, S.n do consider(ids[i], names[i]) end
     for _, t in ipairs(buckets) do
         for _, id in ipairs(t) do
             if #res >= 80 then return res end
@@ -5217,14 +5256,18 @@ local function SP_Render()
         local row, id = SP.rows[i], r[SP.offset + i]
         if id then
             row.id = id
-            row.icon:SetTexture(SpellTex(id))
-            local okn, nm = pcall(C_Spell.GetSpellName, id)
+            if SP.kind == "item" then
+                local oki, ic = pcall(C_Item.GetItemIconByID, id)
+                row.icon:SetTexture((oki and ic) or 134400)
+            else row.icon:SetTexture(SpellTex(id)) end
+            local okn, nm = pcall(SP.kind == "item" and C_Item.GetItemNameByID or C_Spell.GetSpellName, id)
             row.text:SetText(((okn and nm) or "?") .. "  |cff888888[" .. id .. "]|r")
             row:Show()
         else row:Hide() end
     end
     local msg = ""
-    if SI.running then msg = ("Indexing spell names... %d%%  "):format(math.floor(SI.nextId / SI_MAX * 100)) end
+    local S, smax = (SP.kind == "item") and SX.II or SI, (SP.kind == "item") and SX.II_MAX or SI_MAX
+    if S.running then msg = ("Indexing %s names... %d%%  "):format(SP.kind == "item" and "item" or "spell", math.floor(S.nextId / smax * 100)) end
     if total == 0 then msg = msg .. "No match yet"
     elseif total > SP_ROWS then msg = msg .. total .. " results - scroll for more" end
     SP.footer:SetText(msg)
@@ -5259,7 +5302,9 @@ local function SP_Build()
         b:SetScript("OnMouseDown", function(self) SP_Pick(self.id) end)
         b:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            if not pcall(GameTooltip.SetSpellByID, GameTooltip, self.id) then GameTooltip:SetText("Spell " .. tostring(self.id)) end
+            if SP.kind == "item" then
+                if not pcall(GameTooltip.SetItemByID, GameTooltip, self.id) then GameTooltip:SetText("Item " .. tostring(self.id)) end
+            elseif not pcall(GameTooltip.SetSpellByID, GameTooltip, self.id) then GameTooltip:SetText("Spell " .. tostring(self.id)) end
             GameTooltip:Show()
         end)
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -5275,9 +5320,9 @@ local function SP_Build()
     local acc = 0
     SP:SetScript("OnUpdate", function(self, e)
         if self.owner and not self.owner:IsVisible() then SP_Hide(); return end
-        if SI.running then
+        if ((self.kind == "item") and SX.II.running) or (self.kind ~= "item" and SI.running) then
             acc = acc + e
-            if acc > 0.6 and self.owner then acc = 0; self.results = SearchSpells(self.owner:GetText()); SP_Render() end
+            if acc > 0.6 and self.owner then acc = 0; self.results = SearchSpells(self.owner:GetText(), self.kind); SP_Render() end
         end
     end)
     SP:Hide()
@@ -5288,7 +5333,8 @@ local function SP_Update(eb)
     if #q < 2 and not tonumber(q) then SP_Hide(); return end
     SP_Build()
     SP.owner = eb
-    SP.results, SP.offset = SearchSpells(q), 0
+    SP.kind = eb.xuiSearchKind
+    SP.results, SP.offset = SearchSpells(q, SP.kind), 0
     SP:ClearAllPoints()
     SP:SetPoint("TOPLEFT", eb, "BOTTOMLEFT", -4, -2)
     SP:SetWidth(math.max(340, eb:GetWidth() + 8))
@@ -5300,12 +5346,13 @@ AttachSearch = function(w)
     if not eb then return end
     local opt = w.GetUserData and w:GetUserData("option")
     eb.xuiSearchFn = opt and type(opt.arg) == "table" and opt.arg.xuiSearch or nil
+    eb.xuiSearchKind = opt and type(opt.arg) == "table" and opt.arg.xuiSearchKind or nil
     if eb.xuiSearchFn and not eb.xuiSearchHooked then
         eb.xuiSearchHooked = true
-        eb:HookScript("OnEditFocusGained", function(self) if self.xuiSearchFn then SI_Start() end end)
+        eb:HookScript("OnEditFocusGained", function(self) if self.xuiSearchFn then SX.Start(self.xuiSearchKind) end end)
         eb:HookScript("OnTextChanged", function(self, user)
             if not (self.xuiSearchFn and user) then return end
-            SI_Start()
+            SX.Start(self.xuiSearchKind)
             self.xuiStamp = (self.xuiStamp or 0) + 1
             local stamp = self.xuiStamp
             C_Timer.After(0.15, function() if self.xuiStamp == stamp and self:HasFocus() then SP_Update(self) end end)

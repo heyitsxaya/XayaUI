@@ -907,6 +907,7 @@ local function FieldArgs(rule, t, f, H, order, row)
             set = function(_, v) t[k] = tonumber(v) or 0; onN() end }
         row[k .. "Name"] = { type = "description", order = order + 0.1, width = "double", fontSize = "medium",
             name = function() return ItemName(t[k]) end }
+        row[k .. "Search"] = H.SearchBox(order + 0.2, function(id) t[k] = id; onN() end, nil, "item")
     elseif f.kind == "select" then
         if f.dyn then
             row[k] = { type = "select", name = f.label, order = order, width = "double",
