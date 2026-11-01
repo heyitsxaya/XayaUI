@@ -314,7 +314,7 @@ function ns.ChatReskin_Debug()
 end
 
 -------------------------------------------------------------------------------
--- Options page (own toolbar page "Chat", like Creator / Cursor)
+-- Options page (toolbar page "QoL UI Updates" > "ElvUI Chat Reskin")
 -------------------------------------------------------------------------------
 function ns.BuildChatTab(Notify)
     local s = ns.chatDB
@@ -344,9 +344,10 @@ function ns.BuildChatTab(Notify)
             get = function() return s[rf], s[gf], s[bf], 1 end,
             set = function(_, r, g, b) s[rf], s[gf], s[bf] = r, g, b; Re() end }
     end
-    return {
-        type = "group", name = "ElvUI Chat Reskin", order = 6, childGroups = "tree",
-        hidden = ns.PageHidden("chat"),
+    -- Page "QoL UI Updates" (toolbar button). Each QoL UI feature is one entry nested under it;
+    -- ElvUI Chat Reskin is the first. Its four sections are tabs inside that entry.
+    local chatReskin = {
+        type = "group", name = "ElvUI Chat Reskin", order = 1, childGroups = "tab",
         args = {
             general = { type = "group", name = "General", order = 1, args = {
                 blocked = { type = "description", order = 1, width = "full", fontSize = "medium",
@@ -389,5 +390,10 @@ function ns.BuildChatTab(Notify)
                 repN = rng("Repeats allowed", "numAllowedCombatRepeat", 22, 1, 20),
             } },
         },
+    }
+    return {
+        type = "group", name = "QoL UI Updates", order = 6, childGroups = "tree",
+        hidden = ns.PageHidden("qolui"),
+        args = { chatreskin = chatReskin },
     }
 end

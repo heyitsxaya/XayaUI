@@ -195,7 +195,7 @@ local function EnsureToolbar(of)
             if ns.ToggleUnlock then ns.ToggleUnlock() end
             if ns.UI and ns.UI.Notify then ns.UI.Notify() end
         end)
-        local ch = ToolButton(bar, "Interface\\Icons\\INV_Misc_Note_01", "Chat", function() if ns.UI and ns.UI.Chat then ns.UI.Chat() end end)
+        local ch = ToolButton(bar, "Interface\\Icons\\INV_Misc_Note_01", "QoL UI Updates", function() if ns.UI and ns.UI.QoLUI then ns.UI.QoLUI() end end)
         ch:SetPoint("LEFT", cu, "RIGHT", 14, 0)
         bar.chatBtn = ch
         lk:SetPoint("LEFT", ch, "RIGHT", 14, 0)
@@ -289,7 +289,7 @@ local function SkinFrame(of)
     bar:ClearAllPoints(); bar:SetPoint("TOPLEFT", fr, "TOPLEFT", 17, -34); bar:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -17, -34)
     bar:SetShown(not collapsed)
     if bar.cursorBtn then bar.cursorBtn:SetActive(ns.pageOpen == "cursor") end
-    if bar.chatBtn then bar.chatBtn:SetActive(ns.pageOpen == "chat") end
+    if bar.chatBtn then bar.chatBtn:SetActive(ns.pageOpen == "qolui") end
     if bar.settingsBtn then bar.settingsBtn:SetActive(ns.pageOpen == "settings") end   -- the Settings button is lit while the settings pages are open
     bar.lock:SetLabel(ns.unlocked and "Lock Positions" or "Unlock Positions")
     local c = of.content
