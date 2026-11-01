@@ -195,7 +195,7 @@ local function MakeRef(aura, frame)
     end
     return ref
 end
-function ns.BuffPresent(id)
+local function BuffPresentRaw(id)
     if not id or id == 0 then return nil, "no buff" end
     -- A real aura table proves presence, in any context.
     local api, aura = ReadAuraAPI(id)
@@ -222,6 +222,89 @@ function ns.BuffPresent(id)
         return nil, "unknown: restricted + spell not readable + not in CDM"
     end
     return nil, "unreadable (" .. api .. ")"
+end
+
+-------------------------------------------------------------------------------
+-- Buff time left.
+-- Tier 1: the aura table's own numbers (readable only).
+-- Tier 2: the game's duration object (C_UnitAuras.GetAuraDuration -> GetRemainingDuration / GetTotalDuration). Used only
+--         when the answer is a plain number; a secret answer is never compared or divided (Blizzard blocks that).
+-- Tier 3 (opt-in per rule, rule.buffEstimate): when the game hides the time, estimate it as "moment the buff appeared +
+--         the duration last seen while it was readable". Marked ref.estimated. Wrong for buffs that get refreshed or
+--         extended while up (no appear event happens), so it is never on by default.
+-------------------------------------------------------------------------------
+local presentSince, seenAbsent = {}, {}
+local function LearnedTable()
+    if type(CueRulesDB) ~= "table" then return nil end
+    if type(CueRulesDB.learnedAuraDur) ~= "table" then CueRulesDB.learnedAuraDur = {} end
+    return CueRulesDB.learnedAuraDur
+end
+
+-- returns expiration, totalDuration (either may be nil), note
+local function DurationObjectTimes(iid)
+    if not (C_UnitAuras and C_UnitAuras.GetAuraDuration) then return nil, nil, "no duration API" end
+    local ok, obj = pcall(C_UnitAuras.GetAuraDuration, "player", iid)
+    if not ok then return nil, nil, "duration object call refused" end
+    if obj == nil then return nil, nil, "no duration object" end
+    if issecret(obj) or type(obj) ~= "table" and type(obj) ~= "userdata" then return nil, nil, "duration object unusable" end
+    local okR, rem = pcall(function() return obj:GetRemainingDuration() end)
+    if not okR then return nil, nil, "remaining time call failed" end
+    if issecret(rem) then return nil, nil, "remaining time is secret" end
+    if type(rem) ~= "number" then return nil, nil, "remaining time missing" end
+    local okT, tot = pcall(function() return obj:GetTotalDuration() end)
+    if not (okT and type(tot) == "number" and not issecret(tot) and tot > 0) then tot = nil end
+    return GetTime() + rem, tot, "duration object"
+end
+
+function ns.BuffPresent(id)
+    local present, src, ref = BuffPresentRaw(id)
+    if not id or id == 0 then return present, src, ref end
+    local now = GetTime()
+    -- appear / disappear tracking for the opt-in estimate (only a seen absence makes an appearance count)
+    if present == false then
+        seenAbsent[id] = true; presentSince[id] = nil
+    elseif present == true then
+        if not presentSince[id] and seenAbsent[id] then presentSince[id] = now end
+    end
+    if present ~= true or type(ref) ~= "table" then return present, src, ref end
+    local note
+    if not ref.expiration then
+        local okI, has = pcall(function() return ref.instanceID ~= nil end)
+        if okI and has then
+            local exp, tot
+            exp, tot, note = DurationObjectTimes(ref.instanceID)
+            if exp then
+                ref.expiration = exp
+                if tot then ref.duration = tot end
+                ref.timeSource = "duration object"
+            end
+        end
+    end
+    if ref.expiration then
+        ref.timeSource = ref.timeSource or "aura API"
+        if ref.duration and ref.duration > 0 then
+            local L = LearnedTable()
+            if L then L[id] = ref.duration end
+        end
+    else
+        ref.timeNote = note or "no readable time"
+    end
+    return present, (src or "") .. " | time: " .. (ref.timeSource or ref.timeNote), ref
+end
+
+-- Opt-in estimate (tier 3). Called by ns.Evaluate when rule.buffEstimate is on; leaves readable data alone.
+function ns.ApplyBuffEstimate(rule, info)
+    local ref = info.buffRef
+    if not (rule.buffEstimate and info.present == true and type(ref) == "table") or ref.expiration then return end
+    local id = rule.buffID
+    local since, L = presentSince[id], LearnedTable()
+    local dur = L and L[id]
+    if since and type(dur) == "number" and dur > 0 then
+        ref.expiration, ref.duration, ref.estimated, ref.timeSource = since + dur, dur, true, "estimate"
+        info.buffSource = tostring(info.buffSource):gsub(" | time: .*$", "") .. " | time: estimate (appeared + learned " .. string.format("%.1f", dur) .. "s)"
+    else
+        info.buffSource = tostring(info.buffSource) .. " | estimate unavailable (" .. (since and "duration never seen readable" or "appearance not observed") .. ")"
+    end
 end
 
 -------------------------------------------------------------------------------
@@ -613,6 +696,7 @@ function ns.Evaluate(rule, ctx)
     local info = { ctx = ctx }
     info.cd = ns.ReadCooldown(rule)
     info.present, info.buffSource, info.buffRef = ns.BuffPresent(rule.buffID)
+    if rule.buffEstimate then ns.ApplyBuffEstimate(rule, info) end
     info.cdOK = ns.CheckCooldownState(rule, info.cd)
     info.buffOK = ns.CheckBuffState(rule, info.present)
     info.ctxOK, info.ctxFail = ns.CheckContext(rule, ctx)

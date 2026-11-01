@@ -866,6 +866,10 @@ local function BuildRule(i, rule)
             },
             buffName = { type = "description", order = 13, width = "double", fontSize = "medium",
                 name = function() return SpellName(rule.buffID) end },
+            buffEstimate = { type = "toggle", name = "Estimate time left when the game hides it", order = 13.5, width = "full",
+                desc = "In combat the game often hides how long an aura has left, so \"seconds left\" conditions cannot be checked. When on, XayaUI estimates it as the moment the buff appeared plus the duration it last saw while readable. Wrong for buffs that get refreshed or extended while up. Off = a hidden time stays unknown and the condition does not fire.",
+                get = function() return rule.buffEstimate == true end,
+                set = function(_, v) rule.buffEstimate = v and true or nil; Changed(rule); Notify() end },
         },
     }
 
@@ -875,7 +879,7 @@ local function BuildRule(i, rule)
         local o = trigger.args[k]
         if o then o.hidden = function() return not ns.CooldownUsed(rule) end end
     end
-    for _, k in ipairs({ "buffHeader", "buffState", "buffSearch", "buffID", "buffName" }) do
+    for _, k in ipairs({ "buffHeader", "buffState", "buffSearch", "buffID", "buffName", "buffEstimate" }) do
         local o = trigger.args[k]
         if o then o.hidden = function() return not ns.BuffUsed(rule) end end
     end
@@ -886,7 +890,7 @@ local function BuildRule(i, rule)
     trigger.args.buffRemove = { type = "execute", name = "Remove", order = 14, width = "half",
         desc = "Remove the Buff / Aura trigger: clears this rule's aura ID and state.",
         hidden = function() return not ns.BuffUsed(rule) end,
-        func = function() rule.useBuff = false; rule.buffID = 0; rule.buffState = nil; Changed(rule); Notify() end }
+        func = function() rule.useBuff = false; rule.buffID = 0; rule.buffState = nil; rule.buffEstimate = nil; Changed(rule); Notify() end }
     -- Additional trigger rows (Triggers.lua). A failure there must never take the whole options tree down.
     if ns.BuildExtraTriggerArgs then
         local okx, xa = pcall(ns.BuildExtraTriggerArgs, rule, ns.UI)
