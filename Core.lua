@@ -589,6 +589,9 @@ SlashCmdList["XAYAUI"] = function(msg)
             yn(ns.ToggleUI), yn(ns.rules), yn(LibStub and LibStub("AceConfigDialog-3.0", true)),
             yn(LibStub and LibStub("AceConfigRegistry-3.0", true)), yn(LibStub and LibStub("AceGUI-3.0", true))))
         ns.Print("debug: OptionsLoaded=" .. tostring(ns.optionsLoaded) .. " OptionsError=" .. tostring(ns.optionsError))
+    elseif cmd == "perf" then
+        ns.perf = ns.perf or { n = 0 }; ns.perf.show = not ns.perf.show
+        ns.Print("rebuild timing " .. (ns.perf.show and "ON: every window rebuild prints build + skin milliseconds" or "OFF"))
     elseif cmd == "icons" then
         if ns.IconReport then ns.IconReport() end
     elseif cmd == "status" then

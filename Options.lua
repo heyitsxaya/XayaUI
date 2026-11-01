@@ -5236,8 +5236,16 @@ end
 do
     ns.origOpen = AceConfigDialog.Open
     AceConfigDialog.Open = function(self, app, ...)
+        local t0 = debugprofilestop and debugprofilestop() or 0
         local a, b, c = ns.origOpen(self, app, ...)
+        local t1 = debugprofilestop and debugprofilestop() or 0
         if app == APP then pcall(ns.DecorateTrees) end
+        if app == APP and debugprofilestop then
+            local t2 = debugprofilestop()
+            ns.perf = ns.perf or { n = 0 }
+            ns.perf.n = ns.perf.n + 1; ns.perf.build, ns.perf.skin = t1 - t0, t2 - t1
+            if ns.perf.show then print(string.format("|cffffd100XayaUI|r rebuild #%d: build %.0f ms + skin %.0f ms", ns.perf.n, t1 - t0, t2 - t1)) end
+        end
         return a, b, c
     end
 end

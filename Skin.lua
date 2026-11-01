@@ -654,12 +654,12 @@ local function SkinButton(w)
         if fs and not w.xuiFont then
             local font, size, flags = fs:GetFont()
             w.xuiFont = { font, size, flags }
-            fs:SetFont(font, 15, flags)
+            fs:SetFont(font, ns.H3_SIZE, flags)
             fs:SetTextColor(1, 1, 1)
         end
         if fs then fs:ClearAllPoints(); fs:SetPoint("LEFT", f, "LEFT", 0, 0); fs:SetPoint("RIGHT", f, "RIGHT", -30, 0); fs:SetJustifyH("LEFT"); w.xuiTextMoved = true end
         if arg and type(arg.xuiArrow) == "function" then
-            if fs and w.xuiFont then fs:SetFont(w.xuiFont[1], 18, w.xuiFont[3]) end   -- h2
+            if fs and w.xuiFont then fs:SetFont(w.xuiFont[1], ns.H3_SIZE, w.xuiFont[3]) end   -- same size as every other header
             if not f.xuiArrowTex then f.xuiArrowTex = f:CreateTexture(nil, "OVERLAY"); f.xuiArrowTex:SetSize(16, 16) end
             local at = f.xuiArrowTex
             local okOpen, open = pcall(arg.xuiArrow)
@@ -1096,6 +1096,7 @@ end
 -- rows flex to the pane: controls on one row share the leftover width; a control alone on its row spans the pane. A dropdown is
 -- never narrower than its longest option. Runs before AceGUI's Flow layout, which then places everything; ApplyGaps adds the
 -- column gutter afterwards.
+ns.H3_SIZE = 16   -- the single header size (Heading widgets and collapsible section headers)
 local NOFLEX = { Icon = true, Label = true, InteractiveLabel = true, Heading = true, ColorPicker = true, Image = true }
 local GAP = 10        -- gutter between free-flowing controls
 local GRID_GAP = 30   -- gutter between the two columns of the grid (WeakAuras uses a wide column gap)
@@ -1193,11 +1194,27 @@ if FlowFn then
         -- Nested boxes (a group inside a group) measure their children before text has wrapped, so the box can end up shorter than
         -- its contents. One more layout pass fixes it. It runs RIGHT NOW (same frame): a pass on the next frame made every pane
         -- visibly jump after it drew, which is part of the "blink". The second pass is marked so it never schedules a third.
+        -- PERF (2026-11-01): the second pass used to run for EVERY container, so each nesting level doubled the work and opening a big
+        -- pane froze the window (the old pane stayed on screen meanwhile). Now it only runs when the pane holds nested boxes AND its
+        -- size signature changed since the last finished layout.
         if content.xuiSecond then content.xuiSecond = nil
         elseif content.obj and content.obj.DoLayout then
-            content.xuiSecond = true
-            local ok = pcall(content.obj.DoLayout, content.obj)
-            content.xuiSecond = nil
+            local nested = false
+            local hsum = 0
+            for _, ch in ipairs(children) do
+                local ty = ch.type
+                if ty == "InlineGroup" or ty == "SimpleGroup" then nested = true end
+                hsum = hsum + (ch.frame and ch.frame:GetHeight() or 0)
+            end
+            local sig = math.floor(content.width or content:GetWidth() or 0) .. ":" .. #children .. ":" .. math.floor(hsum)
+            if nested and content.xuiSig ~= sig then
+                content.xuiSecond = true
+                pcall(content.obj.DoLayout, content.obj)
+                content.xuiSecond = nil
+                local h2 = 0
+                for _, ch in ipairs(children) do h2 = h2 + (ch.frame and ch.frame:GetHeight() or 0) end
+                content.xuiSig = math.floor(content.width or content:GetWidth() or 0) .. ":" .. #children .. ":" .. math.floor(h2)
+            end
         end
     end
     AceGUI:RegisterLayout("XUIFlow", XUIFlowFn)
@@ -1206,7 +1223,7 @@ local function FlexOn(w)
     if not XUIFlowFn or w.xuiFlexed or w.LayoutFunc ~= FlowFn then return end
     w.xuiFlexed = true
     w.LayoutFunc = XUIFlowFn
-    AddRest(w, "flex", function(self) if self.LayoutFunc == XUIFlowFn then self.LayoutFunc = FlowFn end; self.xuiFlexed = nil end)
+    AddRest(w, "flex", function(self) if self.LayoutFunc == XUIFlowFn then self.LayoutFunc = FlowFn end; self.xuiFlexed = nil; if self.content then self.content.xuiSig = nil end end)
     pcall(w.DoLayout, w)
 end
 
@@ -1334,6 +1351,15 @@ local function Walk(w, depth)
             edge:SetAllPoints(); edge:SetFrameLevel(pf:GetFrameLevel())
             edge:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
             edge:SetBackdropBorderColor(0.4, 0.4, 0.45, 1)
+        end
+    elseif t == "Heading" then
+        -- ONE header size across the whole UI (section titles between the lines, collapsible headers, "Description" etc.)
+        if w.label and not w.xuiH3 then
+            local f1, f2, f3 = w.label:GetFont()
+            w.xuiH3 = { f1, f2, f3 }
+            w.label:SetFont(f1, ns.H3_SIZE, f3)
+            if w.frame and w.frame:GetHeight() < ns.H3_SIZE + 6 then w.frame:SetHeight(ns.H3_SIZE + 6); w.frame.height = ns.H3_SIZE + 6 end
+            OnRelease(w, function(self) if self.xuiH3 and self.label then self.label:SetFont(unpack(self.xuiH3)) end; self.xuiH3 = nil end)
         end
     elseif t == "Label" then
         local opt = w.GetUserData and w:GetUserData("option")
