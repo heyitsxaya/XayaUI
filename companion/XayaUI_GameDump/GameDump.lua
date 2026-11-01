@@ -204,15 +204,29 @@ local function ReadSpellData(id, rec)
     end
 end
 
+-- Ask the game to load one spell's text and read it when it arrives. IDs the game does not know (stale list entries) are
+-- flagged `missing` and skipped: asking the game to load them raises an error. Returns true when a callback is pending.
+local function RequestText(id, rec, onDone)
+    if C_Spell.DoesSpellExist and not C_Spell.DoesSpellExist(id) then rec.missing = true; return false end
+    if Spell and Spell.CreateFromSpellID then
+        local ok = pcall(function()
+            Spell:CreateFromSpellID(id):ContinueOnSpellLoad(function()
+                pcall(ReadSpellData, id, rec)
+                if onDone then onDone() end
+            end)
+        end)
+        if not ok then rec.bad = true; return false end
+        return true
+    end
+    pcall(ReadSpellData, id, rec)
+    return false
+end
+
 local function LoadTexts(idList, store)
     for _, id in ipairs(idList) do
         if type(id) == "number" and not store[id] then
             store[id] = {}
-            if Spell and Spell.CreateFromSpellID then
-                Spell:CreateFromSpellID(id):ContinueOnSpellLoad(function() pcall(ReadSpellData, id, store[id]) end)
-            else
-                pcall(ReadSpellData, id, store[id])
-            end
+            RequestText(id, store[id])
         end
     end
 end
@@ -226,13 +240,16 @@ local function FinishStatic(out)
         nC = nC + 1
         for _, n in pairs(c.nodes) do nN = nN + 1; nE = nE + #n.e end
     end
-    local nTT, nNone = 0, 0
+    local nTT, nNone, nMiss = 0, 0, 0
     for _, r in pairs(out.spells) do
         nSp = nSp + 1
-        if r.d then nDesc = nDesc + 1 elseif r.tt then nTT = nTT + 1 else nNone = nNone + 1 end
+        if r.d then nDesc = nDesc + 1
+        elseif r.missing or r.bad then nMiss = nMiss + 1
+        elseif r.tt then nTT = nTT + 1
+        else nNone = nNone + 1 end
     end
-    out.summary = { classes = nC, nodes = nN, entries = nE, spells = nSp, withDescription = nDesc, tooltipOnly = nTT, noText = nNone, errors = #out.errors }
-    Say(("static scan done: %d classes, %d nodes, %d entries, %d spells: %d with a description, %d with tooltip text only, %d with no text, %d errors. Click \"Save to disk\" (or /reload) to write it."):format(nC, nN, nE, nSp, nDesc, nTT, nNone, #out.errors))
+    out.summary = { classes = nC, nodes = nN, entries = nE, spells = nSp, withDescription = nDesc, tooltipOnly = nTT, noText = nNone, unknownToGame = nMiss, extraFromList = out.extraFromList, errors = #out.errors }
+    Say(("static scan done: %d classes, %d nodes, %d entries, %d spells: %d with a description, %d tooltip only, %d no text, %d IDs the game does not know, %d errors. Click \"Save to disk\" (or /reload) to write it."):format(nC, nN, nE, nSp, nDesc, nTT, nNone, nMiss, #out.errors))
 end
 
 function GD.RunStatic()
@@ -276,16 +293,7 @@ function GD.RunStatic()
                 local last = math.min(pos + 99, #ids)
                 for k = pos, last do
                     local id = ids[k]
-                    if Spell and Spell.CreateFromSpellID then
-                        pending = pending + 1
-                        local sp = Spell:CreateFromSpellID(id)
-                        sp:ContinueOnSpellLoad(function()
-                            pending = pending - 1
-                            pcall(ReadSpellData, id, out.spells[id])
-                        end)
-                    elseif C_Spell.RequestLoadSpellData then
-                        pcall(C_Spell.RequestLoadSpellData, id)
-                    end
+                    if RequestText(id, out.spells[id], function() pending = pending - 1 end) then pending = pending + 1 end
                 end
                 pos = last + 1
                 Progress(("requesting spell text: %d of %d"):format(last, #ids))
@@ -299,21 +307,20 @@ function GD.RunStatic()
                 local last = math.min(pos + 299, #ids)
                 for k = pos, last do
                     local rec = out.spells[ids[k]]
-                    if not rec.d then pcall(ReadSpellData, ids[k], rec) end
+                    if not rec.d and not rec.missing and not rec.bad then pcall(ReadSpellData, ids[k], rec) end
                 end
                 pos = last + 1
                 Progress(("retry pass %d: %d of %d"):format(pass + 1, last, #ids))
                 if pos > #ids then
                     local missing = 0
-                    for _, r in pairs(out.spells) do if not r.d then missing = missing + 1 end end
+                    for _, r in pairs(out.spells) do if not r.d and not r.missing and not r.bad then missing = missing + 1 end end
                     pass = pass + 1
                     if missing == 0 or pass >= 5 then stage = 5
                     else
                         pos = 1; waitUntil = GetTime() + 3
                         for _, id in ipairs(ids) do
-                            if not out.spells[id].d and Spell and Spell.CreateFromSpellID then
-                                Spell:CreateFromSpellID(id):ContinueOnSpellLoad(function() pcall(ReadSpellData, id, out.spells[id]) end)
-                            end
+                            local r = out.spells[id]
+                            if not r.d and not r.missing and not r.bad then RequestText(id, r) end
                         end
                     end
                 end
