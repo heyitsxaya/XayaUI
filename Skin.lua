@@ -368,6 +368,51 @@ local function ResetChain(w)
         end
     end
 end
+-- Smooth scrolling for the sidebar: AceGUI scrolls the tree by whole ROWS (each notch of the wheel / step of the scrollbar redraws the
+-- list one row further), which feels like paging. After a refresh that moved the list by a few rows, slide the first row (the rest are
+-- chained to it) from where the old top row was back to its slot over ~0.1 s. The text is already in its final place, only the
+-- anchor offset of the first row is animated, and ResetChain puts the real anchors back at the end (and on every refresh).
+local SCROLL_ANIM = 0.10
+local function SmoothScroll(w)
+    local tf, btns = w.treeframe, w.buttons
+    if not (tf and btns and btns[1] and w.showscroll and SkinOn()) then return end
+    local st = w.status or w.localstatus
+    local v = st and st.scrollvalue
+    if not v then return end
+    local last = w.xuiLastScroll
+    w.xuiLastScroll = v
+    if last == nil or last == v or math.abs(v - last) > 4 then return end
+    local b1 = btns[1]
+    if not b1:IsShown() then return end
+    local off0 = b1:GetHeight() * math.min(math.abs(v - last), 3) * ((v > last) and -1 or 1)   -- down: start one row lower; up: one row higher
+    local drv = w.xuiSmoothDrv
+    if not drv then
+        drv = CreateFrame("Frame", nil, tf)
+        w.xuiSmoothDrv = drv
+        drv:Hide()
+    end
+    local t = 0
+    local function Put(off)
+        local pad, r = TopPad(w), w.showscroll and -22 or 0
+        b1:ClearAllPoints()
+        b1:SetPoint("TOPRIGHT", tf, "TOPRIGHT", r, -pad + off)
+        b1:SetPoint("TOPLEFT", tf, "TOPLEFT", 0, -pad + off)
+    end
+    if tf.SetClipsChildren then tf:SetClipsChildren(true) end
+    Put(off0)
+    drv:SetScript("OnUpdate", function(self, dt)
+        t = t + (dt or 0)
+        if t >= SCROLL_ANIM or not b1:IsShown() or not tf:IsVisible() then
+            self:SetScript("OnUpdate", nil); self:Hide()
+            pcall(ResetChain, w)
+            return
+        end
+        local k = 1 - t / SCROLL_ANIM
+        Put(off0 * k * k)   -- ease out
+    end)
+    drv:Show()
+end
+
 -- the rule tree (the one that has the All Rules row) carries the search box at its top
 local function EnsureTreeSearch(w)
     local has = false
@@ -555,6 +600,7 @@ local function SkinTree(w)
             self.xuiLines = lines
             if tf.SetClipsChildren then tf:SetClipsChildren(true) end
             pcall(PartitionAllRules, self)
+            pcall(SmoothScroll, self)
         end
     end
     pcall(PartitionAllRules, w)

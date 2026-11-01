@@ -107,8 +107,51 @@ POWER_ORDER[#POWER_ORDER + 1] = "runes"
 local STATE_VALUES = {
     alive = "Alive", vehicle = "In a vehicle", pvp = "PvP flagged", pet = "Has a pet", moving = "Moving",
     afk = "Away from keyboard", target = "Has a target", focus = "Has a focus target",
+    stunned = "Stunned", incapacitated = "Feared / charmed / incapacitated", rooted = "Rooted", silenced = "Silenced",
 }
-local STATE_ORDER = { "alive", "vehicle", "pvp", "pet", "moving", "afk", "target", "focus" }
+local STATE_ORDER = { "alive", "vehicle", "pvp", "pet", "moving", "afk", "target", "focus", "stunned", "incapacitated", "rooted", "silenced" }
+
+-- Loss of control (stun, fear, root, silence ...) on YOU, from C_LossOfControl. true / false / nil (unreadable: API missing, secret values).
+-- locType names are Blizzard's own strings; the wiki only documents "SCHOOL_INTERRUPT" as an example, so the sets below are the
+-- names the default Loss of Control frame uses and are NOT confirmed against the live game (use /xui loc to see what the game reports).
+local LOC_SETS = {
+    stunned = { STUN = true, STUN_MECHANIC = true },
+    incapacitated = { FEAR = true, FEAR_MECHANIC = true, CHARM = true, CONFUSE = true, DISORIENT = true, POSSESS = true },
+    rooted = { ROOT = true },
+    silenced = { SILENCE = true },
+}
+function ns.PlayerHasLossOfControl(what)
+    local set = LOC_SETS[what]
+    local LOC = C_LossOfControl
+    if not (set and LOC and LOC.GetActiveLossOfControlDataCount and LOC.GetActiveLossOfControlData) then return nil end
+    local okc, n = pcall(LOC.GetActiveLossOfControlDataCount)
+    if not okc or type(n) ~= "number" or issecret(n) then return nil end
+    for i = 1, n do
+        local ok, d = pcall(LOC.GetActiveLossOfControlData, i)
+        if not ok or issecret(d) then return nil end
+        if type(d) == "table" then
+            local lt = d.locType
+            if issecret(lt) then return nil end
+            if lt and set[lt] then return true end
+        end
+    end
+    return false
+end
+-- /xui loc: prints what the game reports right now (to learn the real locType names)
+function ns.ProbeLossOfControl()
+    local LOC = C_LossOfControl
+    if not (LOC and LOC.GetActiveLossOfControlDataCount) then ns.Print("loss of control: API missing"); return end
+    local okc, n = pcall(LOC.GetActiveLossOfControlDataCount)
+    if not okc or issecret(n) then ns.Print("loss of control: count unreadable"); return end
+    ns.Print("loss of control effects on you: " .. tostring(n))
+    for i = 1, (tonumber(n) or 0) do
+        local ok, d = pcall(LOC.GetActiveLossOfControlData, i)
+        if ok and type(d) == "table" and not issecret(d) then
+            local lt = issecret(d.locType) and "<secret>" or tostring(d.locType)
+            ns.Print(("  %d: locType=%s spellID=%s text=%s"):format(i, lt, issecret(d.spellID) and "<secret>" or tostring(d.spellID), issecret(d.displayText) and "<secret>" or tostring(d.displayText)))
+        else ns.Print("  " .. i .. ": unreadable") end
+    end
+end
 
 -- true / false / nil: IsPlayerSpell and C_SpellBook.IsSpellKnown agree it is known (either one proves it)
 local function KnownState(id)
@@ -626,7 +669,8 @@ Add("playerState", {
         elseif w == "moving" then local sp = Call(GetUnitSpeed, "player"); if type(sp) == "number" then v = sp > 0 end
         elseif w == "afk" then v = Bool(UnitIsAFK, "player")
         elseif w == "target" then v = Bool(UnitExists, "target")
-        elseif w == "focus" then v = Bool(UnitExists, "focus") end
+        elseif w == "focus" then v = Bool(UnitExists, "focus")
+        elseif LOC_SETS[w] then v = ns.PlayerHasLossOfControl(w) end
         return YesNo(t, v)
     end,
 })

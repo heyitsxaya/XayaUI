@@ -3261,18 +3261,20 @@ local function BuildOptions()
                 a.hidden = function(...) if picker then return true end; if type(orig) == "function" then return orig(...) end; return orig end
             end
         end
+        -- Picker descriptions are kept to ONE line (about 55 characters) on purpose: a row that wraps to 2-3 lines was measured before
+        -- its real width was known and came out too short, so the next row / the External header / Cancel drew over it.
         all.args.pickerHdr = { type = "header", order = 0.1, name = "Choose what this rule shows", hidden = function() return not picker end }
         local TI = ns.TypeIcon or function(_, f) return f end
         all.args.pickIcon = Entry(0.2, TI("icon", "Spell_Holy_PowerWordShield"), "Icon", "Shows a spell icon with an optional cooldown overlay", "icon")
-        all.args.pickBar = Entry(0.4, TI("progressbar", "Ability_Rogue_Sprint"), "Progress Bar", "Shows a progress bar with name, timer, and icon (creates a Buff Bar)", "bar")
+        all.args.pickBar = Entry(0.4, TI("progressbar", "Ability_Rogue_Sprint"), "Progress Bar", "A bar with name, timer and icon (creates a Buff Bar)", "bar")
         all.args.pickProg = Entry(0.5, TI("progresstex", "Spell_Nature_TimeStop"), "Progress Texture", "Shows a texture that changes based on duration", "progresstex")
-        all.args.pickText = Entry(0.6, TI("text", "INV_Misc_Note_01"), "Text", "Shows one or more lines of text, which can include dynamic information", "text")
+        all.args.pickText = Entry(0.6, TI("text", "INV_Misc_Note_01"), "Text", "One or more lines of text, with dynamic information", "text")
         all.args.pickTex = Entry(0.3, TI("sttexture", "INV_Misc_Gem_Variety_01"), "Texture", "Shows a custom texture", "texture")
-        all.args.pickDGroup = Entry(0.65, TI("dyngroup", "INV_Misc_Bag_10_Blue"), "Dynamic Group", "A container whose elements get dynamic, moving X / Y positions based on what is detected (e.g. only the active defensives line up)", "dgroup")
+        all.args.pickDGroup = Entry(0.65, TI("dyngroup", "INV_Misc_Bag_10_Blue"), "Dynamic Group", "A container whose elements move to fit what is detected", "dgroup")
         all.args.pickSound = Entry(0.62, TI("sound", "INV_Misc_Note_01"), "Sound Cue", "Plays a sound when its conditions are met, with no display", "sound")
-        all.args.pickSGroup = Entry(0.63, TI("stgroup", "INV_Misc_Bag_10"), "Static Group", "A container with a fixed X / Y for the group and for every element in it", "sgroup")
+        all.args.pickSGroup = Entry(0.63, TI("stgroup", "INV_Misc_Bag_10"), "Static Group", "A container with fixed X / Y positions for its elements", "sgroup")
         all.args.pickExtH = { type = "header", order = 0.7, name = "External", hidden = function() return not picker end }
-        all.args.pickCustom = Entry(0.64, 1669494, "Custom", "A completely blank rule: no display, no sound, no cues. Build everything yourself", "custom")
+        all.args.pickCustom = Entry(0.64, 1669494, "Custom", "A blank rule with no display, sound or cues", "custom")
         all.args.pickImport = Entry(0.8, TI("import", "INV_Scroll_03"), "Import", "Import from an encoded string (opens the Profiles tab)", "import")
         all.args.pickCancel = { type = "execute", order = 0.9, name = "Cancel", width = "half", func = function() picker = nil; local o = ns.pickOrigin; ns.pickOrigin = nil; Notify(); ns.GoHome(o) end }
         for _, k in ipairs({ "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickSound", "pickDGroup", "pickSGroup", "pickCustom", "pickImport", "pickCancel" }) do
@@ -3525,6 +3527,19 @@ function ns.ToggleUI()
             firstOpen = false
             pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "smartcat", "all")
         end
+    end
+end
+-- Window strata: AceGUI opens its frame at FULLSCREEN_DIALOG, which covers Blizzard dialogs / alert boxes (StaticPopups are DIALOG).
+-- Drop the options window to HIGH (still above the HUD and unlocked displays) so an alert box always shows over it. XayaUI's own
+-- popups and menus set TOOLTIP strata themselves, so they stay above the window. (do-block: this chunk is near Lua's 200-local limit)
+do
+    local function LowerWindow()
+        local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+        if of and of.frame and of.frame.SetFrameStrata then pcall(of.frame.SetFrameStrata, of.frame, "HIGH") end
+    end
+    ns.LowerWindowStrata = LowerWindow
+    if hooksecurefunc then
+        hooksecurefunc(AceConfigDialog, "Open", function(_, app) if app == APP then LowerWindow() end end)
     end
 end
 ns.optionsLoaded = true

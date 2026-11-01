@@ -606,6 +606,8 @@ SlashCmdList["XAYAUI"] = function(msg)
         if ns.Probe then ns.Probe(tonumber(arg)) end
     elseif cmd == "talents" then
         if ns.TalentCommand then ns.TalentCommand(arg) end
+    elseif cmd == "loc" then
+        if ns.ProbeLossOfControl then ns.ProbeLossOfControl() end
     elseif cmd == "seed" then
         if ns.rules then ns.SeedRules() end
     elseif cmd == "cursor" then
@@ -616,6 +618,6 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif cmd == "unlock" then
         if ns.ToggleUnlock then ns.ToggleUnlock() end
     else
-        ns.Print("commands: /xui (settings) | /xui status | /xui probe <spellID> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui seed | /xui talents [status|<name>]")
+        ns.Print("commands: /xui (settings) | /xui status | /xui probe <spellID> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui seed | /xui talents [status|<name>] | /xui loc")
     end
 end
