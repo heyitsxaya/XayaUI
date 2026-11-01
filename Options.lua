@@ -1543,7 +1543,50 @@ local function BuildRule(i, rule)
                 set = function(_, v) local t = getTbl(); t.snd = t.snd or { enabled = true, source = "kit", value = "" }; t.snd.channel = v; ns.MarkDirty() end },
         } }
     end
-    local actionsTab = { type = "group", name = "Actions", order = 3.5, args = ns.ActionsPane and ns.ActionsPane(rule, Notify, { sound = actions.args.sound, finishSound = finishSound }) or {} }
+    local actionsTab = { type = "group", name = "Actions", order = 3.5, args = ns.ActionsPane and ns.ActionsPane(rule, Notify, { finishSound = finishSound }) or {} }
+    -- Older rules that show / play things directly (from before cues): listed read-only with a button that moves them into cues.
+    local function legacyKinds()
+        if rule.isCue or rule.parentUid or (ns.HasOutcomes and ns.HasOutcomes(rule)) then return nil end
+        local vis = V.enabled and ns.KindHas(rule, "visual")
+        local snd = rule.sound and rule.sound.enabled and ns.KindHas(rule, "sound")
+        if not (vis or snd) then return nil end
+        return vis, snd
+    end
+    actionsTab.args.legacy = { type = "group", inline = true, order = 0.1, name = "Older rule", hidden = function() return not legacyKinds() end, args = {
+        note = { type = "description", order = 1, width = "full", fontSize = "medium",
+            name = function()
+                local vis, snd = legacyKinds()
+                local what = {}
+                if vis then what[#what + 1] = (T.enabled or C.enabled or AB.enabled) and "a display with text" or "a display" end
+                if snd then what[#what + 1] = "a sound" end
+                return "This rule still has " .. table.concat(what, " and ") .. " set directly on it, from before cues existed. Convert it to move that into the Cues tab with every setting kept."
+            end },
+        convert = { type = "execute", order = 2, width = "double", name = "Convert to cue",
+            func = function()
+                local vis, snd = legacyKinds()
+                rule.uid = rule.uid or ns.NewUID()
+                if vis then
+                    local kind = (ns.Val(V.kind) == "spellicon") and "icon" or ((V.text and V.text.enabled and (V.texAlpha or 1) <= 0) and "text" or "texture")
+                    local cue = ns.NewCueRule(rule, kind)
+                    if cue then
+                        cue.visual = ns.Copy(V)   -- everything, including when it shows
+                        cue.visual.enabled = true
+                        pcall(ns.RefreshVisual, cue)
+                    end
+                end
+                if snd then
+                    local cue = ns.NewCueRule(rule, "sound")
+                    if cue then
+                        cue.sound = ns.Copy(rule.sound); cue.sound.enabled = true
+                        cue.repeatSec = rule.repeatSec
+                    end
+                end
+                V.enabled = false
+                rule.sound.enabled = false
+                pcall(ns.RefreshVisual, rule)
+                Changed(rule); ns.MarkDirty(); Notify()
+            end },
+    } }
     actionsTab.xuiParts = actions.xuiParts
     if outcomeArgs then for k, v in pairs(outcomeArgs) do conditionsTab.args[k] = v end end
     if cueArgs then for k, v in pairs(cueArgs) do cuesTab.args[k] = v end end

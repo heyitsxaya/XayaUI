@@ -216,7 +216,7 @@ function ns.ActionsPane(rule, Notify, extra)
             get = function() return CodeAllowed() end,
             set = function(_, v) CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.allowCode = v and true or nil; ns.MarkDirty(); Notify() end },
         init = Phase("init", "On Initialization", 1, "Runs once when the rule loads: after a /reload or login, a spec change, or when its load conditions become true."),
-        start = Phase("start", "During", 2, "Runs when the rule starts (its trigger becomes true). The sound and repeat below are also played while it is active."),
+        start = Phase("start", "During", 2, "Runs when the rule starts (its trigger becomes true)."),
         finish = Phase("finish", "After It Ends", 3, "Runs when the rule stops (its trigger becomes false)."),
     }
     return args
