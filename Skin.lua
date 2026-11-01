@@ -466,10 +466,12 @@ local function SkinTree(w)
                 local moved = self.xuiLastSelUV ~= uv   -- a genuinely new selection still scrolls into view; a rebuild does not
                 self.xuiLastSelUV = uv
                 self:RefreshTree(moved and true or nil)
+                if ns.Trace then ns.Trace("tree re-select, pane rebuild") end
                 self:Fire("OnGroupSelected", uv)
                 return
             end
             self.xuiLastSelUV = uv
+            if ns.Trace then ns.Trace("tree new selection") end
             return origSelect(self, uv, ...)
         end
         AddRest(w, "sel", function(self) self.Select = origSelect; self.xuiSelHooked = nil end)
@@ -478,6 +480,7 @@ local function SkinTree(w)
         w.xuiPartHooked = true
         local origRefresh = w.RefreshTree
         w.RefreshTree = function(self, ...)
+            if ns.Trace then ns.Trace("tree RefreshTree") end
             -- AceGUI sizes its scroll window assuming 18px rows, but ours are taller and of different heights. So we choose the number
             -- of visible lines ourselves: refresh with a pretend height, measure the rows that really got drawn, and adjust until they
             -- fit between the top of the list and the Addon Info link. The scrollbar then always covers every row (the last rows can
@@ -823,6 +826,7 @@ local function SkinRow(w, fn)
                 if C_Timer and C_Timer.After then
                     C_Timer.After(0, function()
                         self.xuiRowBusy = nil
+                        if ns.Trace then ns.Trace("row re-measure (runs a frame LATE)") end
                         if not (w.frame == self and w.label and w.image and self.xuiMinH) then return end
                         Place()
                         local th = math.ceil(w.label:GetStringHeight()) + 2

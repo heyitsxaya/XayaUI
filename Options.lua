@@ -4748,7 +4748,7 @@ local function DecorateButton(button)
         button.xuiDrag = true
         button:RegisterForDrag("LeftButton")
         button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        button:HookScript("OnClick", function(self, mouse) if mouse == "RightButton" then ShowRowMenu(self) else ns.MultiClick(self, mouse) end end)
+        button:HookScript("OnClick", function(self, mouse) ns.Trace("click"); if mouse == "RightButton" then ShowRowMenu(self) else ns.MultiClick(self, mouse) end end)
         button:HookScript("OnDragStart", StartDrag)
         button:HookScript("OnDragStop", StopDrag)
     end
@@ -5264,8 +5264,18 @@ function ns.DecorateTrees(root)
 end
 -- decorate right after every (re)draw of the window, so left-aligned headers do not flash centered before the next 0.25 s pass
 do
+    -- /xui perf: trace of what happens after a click, in FRAMES. Anything that lands on a later frame than the click is a visible
+    -- intermediate state (the cause of a blink), so the trace shows exactly which step is late.
+    local fno, fclick = 0, 0
+    local tf = CreateFrame("Frame"); tf:SetScript("OnUpdate", function() fno = fno + 1 end)
+    function ns.Trace(tag)
+        if not (ns.perf and ns.perf.show) then return end
+        if tag == "click" then fclick = fno end
+        print(string.format("|cffffd100XayaUI|r trace +%d frame(s): %s", fno - fclick, tag))
+    end
     ns.origOpen = AceConfigDialog.Open
     AceConfigDialog.Open = function(self, app, ...)
+        if app == APP then ns.Trace("Open (full window rebuild)") end
         local t0 = debugprofilestop and debugprofilestop() or 0
         local a, b, c = ns.origOpen(self, app, ...)
         local t1 = debugprofilestop and debugprofilestop() or 0
