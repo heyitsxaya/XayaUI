@@ -246,6 +246,14 @@ function ns.Profile_Decode(str)
     local ok, snap = pcall(Decode, json)
     if not ok then return nil, "could not read the data: " .. tostring(snap) end
     if type(snap) ~= "table" or snap.v ~= 1 then return nil, "unsupported profile version" end
+    -- custom code is never taken from an import: an imported string can only ever hold settings, not something that runs
+    if type(snap.rules) == "table" then
+        for _, r in ipairs(snap.rules) do
+            if type(r) == "table" and type(r.actions) == "table" then
+                for _, a in pairs(r.actions) do if type(a) == "table" then a.code, a.codeOn = nil, nil end end
+            end
+        end
+    end
     return snap
 end
 

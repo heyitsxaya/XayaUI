@@ -1331,6 +1331,15 @@ function ns.UpdateVisualText(rule, info, fxOnly)
 end
 
 -- Show/hide as driven by the engine (ignored while unlocked / previewing: everything shows)
+-- the frames that show this rule (its own display plus the displays of its cues), for glow actions
+function ns.VisualFramesOf(rule)
+    local out = {}
+    if frames[rule] then out[#out + 1] = frames[rule] end
+    if rule.uid and ns.CuesOf then
+        for _, c in ipairs(ns.CuesOf(rule)) do if frames[c] then out[#out + 1] = frames[c] end end
+    end
+    return out
+end
 function ns.SetVisualShown(rule, shown)
     local fr = GetFrame(rule)
     local pv = ns.IsPreview(rule, "visual")

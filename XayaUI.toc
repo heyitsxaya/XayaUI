@@ -21,6 +21,7 @@ Conditions.lua
 Triggers.lua
 Outcomes.lua
 Cues.lua
+Actions.lua
 Sound.lua
 Visual.lua
 Profile.lua

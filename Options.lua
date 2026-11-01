@@ -1507,12 +1507,47 @@ local function BuildRule(i, rule)
         ensureText = function() if not (T.enabled or C.enabled or AB.enabled) then T.enabled = true end end,
     }
     -- cue kinds: a Display rule has no sound banner, a Sound rule has no display / text banners
-    actions.args.note = { type = "description", order = 0, width = "full", fontSize = "medium",
-        hidden = function() return not (ns.HasOutcomes and ns.HasOutcomes(rule)) end,
-        name = "This rule has Conditions, so its effects are created on the Cues tab and selected under THEN on the Conditions tab. Actions are for simple effects that don't need conditions. To use them, remove all of this rule's conditions." }
     actions.args.display.hidden = function() return not ns.KindHas(rule, "visual") end
     actions.args.text.hidden = function() return not ns.KindHas(rule, "visual") end
     actions.args.sound.hidden = function() return not ns.KindHas(rule, "sound") end
+    -- The Actions tab is the WeakAuras-style one (Actions.lua): On Initialization / During / After It Ends. The rule's own sound (with
+    -- repeat) is the "During" sound; its own display / text from before cues existed stay available in a collapsed pane while they are on.
+    local finishSound = function(getTbl)
+        return { type = "group", inline = true, name = "Play a sound", order = 30, args = {
+            on = { type = "toggle", name = "Play a sound", order = 1, width = "full",
+                get = function() local t = getTbl(); return t.snd and t.snd.enabled and true or false end,
+                set = function(_, v) local t = getTbl(); t.snd = t.snd or { enabled = false, source = "kit", value = "", channel = "Master" }; t.snd.enabled = v and true or false; ns.MarkDirty(); Notify() end },
+            pick = { type = "select", name = "Sound", order = 2, width = "double",
+                hidden = function() local t = getTbl(); return not (t.snd and t.snd.enabled) end,
+                values = function() EnsureSounds(); return soundValues end,
+                sorting = function() EnsureSounds(); return soundSorting end,
+                get = function()
+                    EnsureSounds()
+                    local sn = getTbl().snd
+                    if not sn then return nil end
+                    for idx, it in ipairs(soundList) do if it.source == sn.source and it.value == sn.value then return tostring(idx) end end
+                end,
+                set = function(_, v)
+                    local t = getTbl(); t.snd = t.snd or { enabled = true, source = "kit", value = "", channel = "Master" }
+                    if v == "0" then t.snd.value = ""; return end
+                    local it = soundList[tonumber(v)]
+                    if it then t.snd.source, t.snd.value = it.source, it.value end
+                    ns.MarkDirty()
+                end },
+            test = { type = "execute", name = "Test sound", order = 3, width = "half",
+                hidden = function() local t = getTbl(); return not (t.snd and t.snd.enabled) end,
+                func = function() ns.PlaySoundPreview(getTbl().snd) end },
+            channel = { type = "select", name = "Sound channel", order = 4, values = CHANNEL_VALUES, sorting = CHANNEL_ORDER,
+                hidden = function() local t = getTbl(); return not (t.snd and t.snd.enabled) end,
+                get = function() local sn = getTbl().snd; return sn and sn.channel or "Master" end,
+                set = function(_, v) local t = getTbl(); t.snd = t.snd or { enabled = true, source = "kit", value = "" }; t.snd.channel = v; ns.MarkDirty() end },
+        } }
+    end
+    local actionsTab = { type = "group", name = "Actions", order = 3.5, args = ns.ActionsPane and ns.ActionsPane(rule, Notify, { sound = actions.args.sound, finishSound = finishSound }) or {} }
+    actionsTab.args.legacy = ns.GatedPane(rule, "legacyDisp", "This rule's own display and text (older rules; new ones use Cues)", 9,
+        function() return (V.enabled or T.enabled or C.enabled or AB.enabled) and ns.KindHas(rule, "visual") end,
+        { display = actions.args.display, text = actions.args.text })
+    actionsTab.xuiParts = actions.xuiParts
     if outcomeArgs then for k, v in pairs(outcomeArgs) do conditionsTab.args[k] = v end end
     if cueArgs then for k, v in pairs(cueArgs) do cuesTab.args[k] = v end end
 
@@ -1571,7 +1606,7 @@ local function BuildRule(i, rule)
         },
     }
 
-    for _, g in ipairs({ ruleTab, trigger, load, conditionsTab, cuesTab, actions }) do
+    for _, g in ipairs({ ruleTab, trigger, load, conditionsTab, cuesTab, actionsTab }) do
         ns.LockArgs(g.args, function() return ns.IsEditLocked(rule) end)
     end
     return {
@@ -1582,7 +1617,7 @@ local function BuildRule(i, rule)
             if nm == "" then return "|cff888888Unnamed rule|r" end
             return (rule.enabled and "" or "|cff888888") .. nm
         end,
-        args = { rule = ruleTab, trigger = trigger, cues = cuesTab, conditions = conditionsTab, actions = actions, load = load },
+        args = { rule = ruleTab, trigger = trigger, cues = cuesTab, conditions = conditionsTab, actions = actionsTab, load = load },
     }
 end
 

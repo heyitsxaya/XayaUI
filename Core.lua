@@ -473,6 +473,7 @@ function ns.NormalizeRule(r)
     if ns.NormalizeExtra then ns.NormalizeExtra(r) end
     if ns.NormalizeWhen then ns.NormalizeWhen(r) end
     if ns.NormalizeCues then ns.NormalizeCues(r) end
+    if ns.NormalizeActions then ns.NormalizeActions(r) end
     -- legacy "any" -> "none" (explicit "ignore")
     for _, k in ipairs({ "cdState", "buffState", "talentState" }) do if r[k] == "any" then r[k] = "none" end end
     for k, v in pairs(r.load) do if v == "any" and k ~= "mode" then r.load[k] = "none" end end

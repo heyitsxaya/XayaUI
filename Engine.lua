@@ -43,9 +43,16 @@ local function Step()
                 end
             end
             rt.info = info
+            -- Actions tab: On Initialization (the rule's load conditions hold), During start, After It Ends
+            if not rule.parentUid and ns.RunActions then
+                if info and info.ctxOK then
+                    if not rt.inited then rt.inited = true; ns.RunActions(rule, "init") end
+                elseif info and info.ctxOK == false then rt.inited = nil end
+            end
             if result and not rt.active then
                 rt.active = true
                 rt.lastPlay = now
+                if not rule.parentUid and ns.RunActions then ns.RunActions(rule, "start") end
                 if ns.KindHas(rule, "sound") then ns.PlaySound(ns.EffectiveSound(rule)) end
                 ns.Log("|cff55ff55FIRED|r %s%s", rule.name, (rule.sound.enabled and rule.sound.value ~= "" and ns.KindHas(rule, "sound")) and "  (sound)" or "")
             elseif result and rt.active then
@@ -58,6 +65,7 @@ local function Step()
             elseif not result then
                 if rt.active then
                     ns.Log("cleared %s: %s", rule.name, info and ns.WhyNot(info) or "error")
+                    if not rule.parentUid and ns.RunActions then ns.RunActions(rule, "finish") end
                 end
                 rt.active = false
             end
@@ -79,7 +87,9 @@ local function Step()
             ns.SetVisualShown(rule, wanted)
             if wanted then ns.UpdateVisualText(rule, info) end
         else
+            if rt.active and not rule.parentUid and ns.RunActions then ns.RunActions(rule, "finish") end
             rt.active = false
+            rt.inited = nil
             rt.visualWanted = false
             ns.SetVisualShown(rule, false)
         end
