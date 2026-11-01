@@ -365,25 +365,82 @@ local function ConditionBody(rule, H)
     args.thenNone = { type = "description", order = 70, width = "full", fontSize = "medium",
         hidden = function() return collapsed() or hasCues() end,
         name = "|cffffd100THEN|r  |cff888888no cues yet. Create one on the Cues tab.|r" }
-    args.thenPick = { type = "multiselect", dialogControl = "Dropdown", order = 70, width = "full", name = "THEN", arg = { xuiSide = true },
-        hidden = function() return collapsed() or not hasCues() end,
-        desc = "The cues that play while this condition is true.",
-        values = function()
-            local v, p = {}, ns.FindParentRule(rule)
-            if p then for _, c in ipairs(ns.CuesOf(p)) do v[c.cueKey or "?"] = ns.CueLabel(c) .. "  (" .. (ns.CUE_KIND_LABEL[c.cueKind] or "") .. ")" end end
-            return v
-        end,
-        get = function(_, key) for _, k in ipairs(rule.thenCues or {}) do if k == key then return true end end return false end,
-        set = function(_, key, val)
-            local list, out = rule.thenCues or {}, {}
-            for _, k in ipairs(list) do if k ~= key then out[#out + 1] = k end end
-            if val then out[#out + 1] = key end
-            rule.thenCues = (#out > 0) and out or nil
-            if not val and rule.thenMods then   -- a cue that is no longer listed loses its modifiers
-                rule.thenMods[key] = nil
-                if next(rule.thenMods) == nil then rule.thenMods = nil end
+    -- THEN: laid out like IF. A "THEN" line, then one cue per row; a second cue is added with "+ add cue... > AND", which adds an AND row
+    -- (no multi-select menu). The data is still the list rule.thenCues; an AND row that has no cue yet is only a screen state (pendingAnd).
+    ns.pendingAnd = ns.pendingAnd or setmetatable({}, { __mode = "k" })
+    local function cueChoices(own)   -- every cue not already used by another THEN row
+        local vals, order = {}, {}
+        local p = ns.FindParentRule(rule)
+        if p then
+            local used = {}
+            for _, k in ipairs(rule.thenCues or {}) do if k ~= own then used[k] = true end end
+            for _, c in ipairs(ns.CuesOf(p)) do
+                local k = c.cueKey or "?"
+                if not used[k] then vals[k] = ns.CueLabel(c) .. "  (" .. (ns.CUE_KIND_LABEL[c.cueKind] or "") .. ")"; order[#order + 1] = k end
             end
-            ns.MarkDirty(); H.Changed(rule)
+        end
+        return vals, order
+    end
+    local function dropMods(key)   -- a cue that is no longer listed loses its modifiers
+        if key and rule.thenMods then
+            rule.thenMods[key] = nil
+            if next(rule.thenMods) == nil then rule.thenMods = nil end
+        end
+    end
+    local function thenCount() return #(rule.thenCues or {}) end
+    local function pending() return ns.pendingAnd[rule] and 1 or 0 end
+    local function rowShown(i) return not collapsed() and hasCues() and i <= math.max(thenCount() + pending(), 1) end
+    args.thenLabel = { type = "description", order = 70, width = "full", fontSize = "medium",
+        hidden = function() return collapsed() or not hasCues() end, name = "|cffffd100THEN|r" }
+    for i = 1, 40 do
+        local o = 70 + i / 100
+        if i > 1 then
+            args["ta" .. i] = { type = "select", order = o, width = "relative", relWidth = 0.14, name = "", arg = { xuiTextLeft = true, xuiFitText = true },
+                hidden = function() return not rowShown(i) end,
+                values = { ["and"] = "AND" }, sorting = { "and" },
+                get = function() return "and" end, set = function() end, disabled = locked }
+        end
+        args["tc" .. i] = { type = "select", order = o + 0.001, width = "relative", relWidth = (i == 1) and 0.88 or 0.74, name = "", arg = { xuiTextLeft = true },
+            hidden = function() return not rowShown(i) end,
+            desc = "A cue that plays while this condition is true. To play more than one, use + add cue... below.",
+            values = function() local v = cueChoices((rule.thenCues or {})[i]); return v end,
+            sorting = function() local _, od = cueChoices((rule.thenCues or {})[i]); return od end,
+            get = function() return (rule.thenCues or {})[i] end,
+            set = function(_, v)
+                local list = rule.thenCues or {}
+                if list[i] == v then return end
+                dropMods(list[i])
+                list[i] = v
+                rule.thenCues = list
+                ns.pendingAnd[rule] = nil
+                ns.MarkDirty(); onN()
+            end, disabled = locked }
+        args["tx" .. i] = { type = "execute", order = o + 0.002, width = "relative", relWidth = 0.06, name = "X", arg = { xuiDel = true },
+            hidden = function() return not rowShown(i) or (i == 1 and thenCount() == 0) end,
+            desc = "Remove this cue from the condition (the cue itself is kept on the Cues tab).",
+            func = function()
+                local list = rule.thenCues or {}
+                if i > #list then ns.pendingAnd[rule] = nil
+                else
+                    dropMods(list[i])
+                    table.remove(list, i)
+                    rule.thenCues = (#list > 0) and list or nil
+                end
+                ns.MarkDirty(); onN()
+            end, disabled = locked }
+    end
+    args.thenAdd = { type = "select", order = 70.5, width = "relative", relWidth = 0.34, name = "", arg = { xuiTextLeft = true },
+        hidden = function()
+            if collapsed() or not hasCues() or thenCount() == 0 or pending() > 0 then return true end
+            return next((cueChoices(nil))) == nil
+        end,
+        desc = "Add another cue to this condition. AND plays it as well.",
+        values = { none = "+ add cue...", ["and"] = "AND" }, sorting = { "none", "and" },
+        get = function() return "none" end,
+        set = function(_, v)
+            if v ~= "and" then return end
+            ns.pendingAnd[rule] = true
+            onN()
         end, disabled = locked }
 
     -- Modifiers: while this condition is true, change how a listed display cue looks (glow, desaturate, opacity).
