@@ -1,4 +1,3 @@
-e89a6a13a709fd3068802e7a111b0ed7  .gitignore
 26e9540d8df952b38eb5076a2343c696  Actions.lua
 7d05993a4e637d583da8bc9dd98c51e2  AddonInfo.lua
 39160b6ad5cc597f56721a85a493988d  Bars.lua
@@ -25,7 +24,7 @@ e938c9780a7c318c447b3aca4e5f6561  Skin.lua
 46f77b8a678f39da1db320a4883ae59f  TalentDump.lua
 7d0e35ac661d1db2569cdea98562ba17  TextureList.lua
 2eb619fcab7a4b577137c9f7d8a8c042  Theme.lua
-e148bf4c2889a7690aed81595743d71a  Triggers.lua
-259c6ed897e99c2b6393be3aba915558  Visual.lua
-70c224f472905babcac249e715e2a0a5  XayaUI.toc
+abda2c034ace4533fc5eb83e84f77022  Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  UserMedia.lua
+259c6ed897e99c2b6393be3aba915558  Visual.lua
+8f67c5e6c7daec9e7dd4cda963b26316  XayaUI.toc
