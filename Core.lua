@@ -540,6 +540,7 @@ f:SetScript("OnEvent", function(_, _, name)
     if ns.OnDBReady then ns.OnDBReady() end
     if ns.QoL_OnDBReady then ns.QoL_OnDBReady() end
     if ns.Cursor_OnDBReady then ns.Cursor_OnDBReady() end
+    if ns.ChatReskin_OnDBReady then ns.ChatReskin_OnDBReady() end
 end)
 
 -------------------------------------------------------------------------------
@@ -615,9 +616,11 @@ SlashCmdList["XAYAUI"] = function(msg)
             local on = ns.Cursor_Toggle()
             ns.Print("cursor tracker " .. (on and "ON" or "OFF"))
         end
+    elseif cmd == "chat" then
+        if ns.ChatReskin_Debug then ns.ChatReskin_Debug() end
     elseif cmd == "unlock" then
         if ns.ToggleUnlock then ns.ToggleUnlock() end
     else
-        ns.Print("commands: /xui (settings) | /xui status | /xui probe <spellID> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui seed | /xui talents [status|<name>] | /xui loc")
+        ns.Print("commands: /xui (settings) | /xui status | /xui probe <spellID> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui seed | /xui talents [status|<name>] | /xui loc")
     end
 end
