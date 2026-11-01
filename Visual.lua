@@ -291,10 +291,15 @@ local function LayoutDynamic(df)
         local fr = frames[r]
         if fr and fr:IsShown() and ((r.folder and DynAncestor(r.folder) == df)
             or (r.cursorConv and ns.CursorReminderFolder and ns.CursorReminderFolder() == df)) then
-            items[#items + 1] = { fr = fr, w = fr:GetWidth(), h = fr:GetHeight() }
+            items[#items + 1] = { fr = fr, w = fr:GetWidth(), h = fr:GetHeight(), name = tostring(r.name or ""):lower() }
         end
     end
     if #items == 0 then return end
+    if df.cSort == "asc" or df.cSort == "desc" then   -- Sort items (group option); ties keep rule order
+        for i, it in ipairs(items) do it.i = i end
+        local asc = df.cSort == "asc"
+        table.sort(items, function(a, b) if a.name == b.name then return a.i < b.i end if asc then return a.name < b.name end return a.name > b.name end)
+    end
     local dir = df.cGrowth or "RIGHT"
     local horiz = (dir == "RIGHT" or dir == "LEFT" or dir == "HCENTER")
     local sp = df.cSpacing or 4

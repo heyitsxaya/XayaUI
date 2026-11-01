@@ -262,7 +262,7 @@ ns.DEFAULT_FOLDERS = {
     { key = "sound",    name = "Sound Cues",             note = "Default category. Sound-only rules. No display options." },
     { key = "hybrid",   name = "Hybrid Cues",            note = "Default category. Rules with both a display and a sound." },
     { key = "advanced", name = "Advanced Cue Tracking",  note = "Default category. Rules that combine several conditions (cooldown state, buff, talents, load conditions). Also the intended home for combination rules once they exist." },
-    { key = "cursor",   name = "Mouse Cursor Cues",      note = "Default category. Its settings live in QoL Elements > Cursor Tracker." },
+    { key = "cursor",   name = "Mouse Cursor Cues",      note = "Default category. Its settings live in QoL Elements > Cursor Tracker (QoL Elements is switched off for now)." },
 }
 local OLD_DEFAULT_NAMES = { advanced = "Advanced Rule Tracking", cursor = "Mouse Cursor" }
 function ns.DefaultFolderInfo(key)

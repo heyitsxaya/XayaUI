@@ -114,6 +114,31 @@ local function ToolButton(parent, icon, label, onClick)
     return b
 end
 
+-- Rule search box: nested at the top of the All Rules sidebar, above the Loaded row. Typing filters the rule lists (ns.treeFilter).
+local function MakeSearchBox(parent)
+    local sb = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
+    sb:SetAutoFocus(false); sb:SetHeight(20)
+    sb:SetFontObject("ChatFontNormal")
+    sb.hint = sb:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    sb.hint:SetPoint("LEFT", 6, 0); sb.hint:SetText("Search rules")
+    local function refreshHint(self) sb.hint:SetShown(self:GetText() == "" and not self:HasFocus()) end
+    sb:SetScript("OnEditFocusGained", refreshHint)
+    sb:SetScript("OnEditFocusLost", refreshHint)
+    sb:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
+    sb:SetScript("OnTextChanged", function(self)
+        refreshHint(self)
+        local q = (self:GetText() or ""):lower()
+        if q == ns.treeFilter then return end
+        ns.treeFilter = q
+        filterStamp = filterStamp + 1
+        local stamp = filterStamp
+        C_Timer.After(0.25, function() if stamp == filterStamp and ns.UI and ns.UI.Notify then ns.UI.Notify() end end)
+    end)
+    sb:SetText(ns.treeFilter or "")
+    refreshHint(sb)
+    return sb
+end
+
 local function EnsureToolbar(of)
     local fr = of.frame
     local bar = fr.xuiToolbar
@@ -131,25 +156,6 @@ local function EnsureToolbar(of)
         end)
         lk:SetPoint("LEFT", im, "RIGHT", 14, 0)
         bar.lock = lk
-        local sb = CreateFrame("EditBox", nil, bar, "InputBoxTemplate")
-        sb:SetAutoFocus(false); sb:SetSize(180, 18); sb:SetPoint("RIGHT", bar, "RIGHT", -4, 0)
-        sb:SetFontObject("ChatFontNormal")
-        sb.hint = sb:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        sb.hint:SetPoint("LEFT", 6, 0); sb.hint:SetText("Search rules")
-        local function refreshHint(self) sb.hint:SetShown(self:GetText() == "" and not self:HasFocus()) end
-        sb:SetScript("OnEditFocusGained", refreshHint)
-        sb:SetScript("OnEditFocusLost", refreshHint)
-        sb:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
-        sb:SetScript("OnTextChanged", function(self)
-            refreshHint(self)
-            local q = (self:GetText() or ""):lower()
-            if q == ns.treeFilter then return end
-            ns.treeFilter = q
-            filterStamp = filterStamp + 1
-            local stamp = filterStamp
-            C_Timer.After(0.25, function() if stamp == filterStamp and ns.UI and ns.UI.Notify then ns.UI.Notify() end end)
-        end)
-        bar.search = sb
         fr.xuiToolbar = bar
     end
     return bar
@@ -256,33 +262,80 @@ end
 -- the rows above keep AceGUI's chain. The band is laid out inside RefreshTree, right after the rows are rebuilt and resized,
 -- so no frame is ever drawn in the old position, and every refresh first puts the rows back on AceGUI's own chain so a
 -- recycled row can never keep a stale offset.
+local SEARCH_PAD = 36   -- room kept above the first row for the search box
+local function TopPad(w)
+    local shown = (w.xuiSearchBox and w.xuiSearchBox:IsShown()) or (w.xuiSelBar and w.xuiSelBar:IsShown())
+    return shown and SEARCH_PAD or 10
+end
 local function ResetChain(w)
     local tf, btns = w.treeframe, w.buttons
     if not tf or not btns then return end
     local r = w.showscroll and -22 or 0
+    local pad = TopPad(w)
     for i, b in ipairs(btns) do
         b:ClearAllPoints()
         if i == 1 then
-            b:SetPoint("TOPRIGHT", tf, "TOPRIGHT", r, -10)
-            b:SetPoint("TOPLEFT", tf, "TOPLEFT", 0, -10)
+            b:SetPoint("TOPRIGHT", tf, "TOPRIGHT", r, -pad)
+            b:SetPoint("TOPLEFT", tf, "TOPLEFT", 0, -pad)
         else
             b:SetPoint("TOPRIGHT", btns[i - 1], "BOTTOMRIGHT", 0, 0)
             b:SetPoint("TOPLEFT", btns[i - 1], "BOTTOMLEFT", 0, 0)
         end
     end
 end
+-- the rule tree (the one that has the All Rules row) carries the search box at its top
+local function EnsureTreeSearch(w)
+    local has = false
+    for _, b in ipairs(w.buttons or {}) do if b:IsShown() and tostring(b.uniquevalue or "") == "all" then has = true; break end end
+    has = has and SkinOn()
+    local sb = w.xuiSearchBox
+    if has and not sb and w.treeframe then
+        sb = MakeSearchBox(w.treeframe)
+        sb:SetFrameLevel(w.treeframe:GetFrameLevel() + 3)
+        sb:SetPoint("TOPLEFT", w.treeframe, "TOPLEFT", 12, -8)
+        sb:SetPoint("TOPRIGHT", w.treeframe, "TOPRIGHT", -12, -8)
+        w.xuiSearchBox = sb
+    end
+    -- multi-select bar: while rules are selected it replaces the search box with "Delete N" / "Clear" right where the list is
+    local nSel = (has and ns.MultiCount and ns.MultiCount()) or 0
+    local bar = w.xuiSelBar
+    if has and not bar and w.treeframe then
+        bar = CreateFrame("Frame", nil, w.treeframe)
+        bar:SetHeight(22)
+        bar:SetFrameLevel(w.treeframe:GetFrameLevel() + 4)
+        bar:SetPoint("TOPLEFT", w.treeframe, "TOPLEFT", 12, -7)
+        bar:SetPoint("TOPRIGHT", w.treeframe, "TOPRIGHT", -12, -7)
+        bar.clr = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
+        bar.clr:SetSize(58, 22); bar.clr:SetPoint("RIGHT", 0, 0); bar.clr:SetText("Clear")
+        bar.clr:SetScript("OnClick", function() if ns.MultiClear then ns.MultiClear() end end)
+        bar.mv = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
+        bar.mv:SetSize(64, 22); bar.mv:SetPoint("RIGHT", bar.clr, "LEFT", -4, 0); bar.mv:SetText("Move to...")
+        bar.mv:SetScript("OnClick", function(self) if ns.MultiMoveMenu then ns.MultiMoveMenu(self) end end)
+        bar.del = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
+        bar.del:SetHeight(22); bar.del:SetPoint("LEFT", 0, 0); bar.del:SetPoint("RIGHT", bar.mv, "LEFT", -4, 0)
+        bar.del:SetScript("OnClick", function() if ns.MultiDelete then ns.MultiDelete() end end)
+        w.xuiSelBar = bar
+    end
+    if bar then
+        bar:SetShown(nSel > 0)
+        if nSel > 0 then bar.del:SetText(("Delete %d"):format(nSel)) end
+    end
+    if sb then sb:SetShown(has and nSel == 0) end
+end
 
 local function PartitionAllRules(w)
     local tf = w.treeframe
     if not tf or not w.buttons then return end
-    if w.xuiPart then ResetChain(w); w.xuiPart = nil end
+    EnsureTreeSearch(w)
+    local pad = TopPad(w)
+    if w.xuiPart or pad ~= 10 or w.xuiTopApplied then ResetChain(w); w.xuiPart = nil; w.xuiTopApplied = (pad ~= 10) and pad or nil end
     if not SkinOn() or w.showscroll then return end   -- scrolling list: rows stay in AceGUI's own order
     local btns = {}
     for _, b in ipairs(w.buttons) do if b:IsShown() then btns[#btns + 1] = b end end
     local idx
     for i, b in ipairs(btns) do if tostring(b.uniquevalue or "") == "all" then idx = i end end
     if not idx or idx == 1 then return end
-    local topH, botH = 10, 0
+    local topH, botH = pad, 0
     for i, b in ipairs(btns) do if i < idx then topH = topH + b:GetHeight() else botH = botH + b:GetHeight() end end
     if topH + botH + 8 >= tf:GetHeight() then return end   -- no spare room: the band simply follows the rows above it
     local first = btns[idx]
@@ -298,7 +351,24 @@ local function SkinTree(w)
         w.xuiPartHooked = true
         local origRefresh = w.RefreshTree
         w.RefreshTree = function(self, ...)
-            origRefresh(self, ...)
+            -- AceGUI sizes its scroll window assuming 18px rows; our rows are taller, so rows ran past the bottom of the sidebar
+            -- (over Addon Info). While it refreshes, report a proportionally shorter height so the visible-line count matches the
+            -- real row height, then clip anything left over.
+            local tf = self.treeframe
+            local avg = self.xuiAvgH
+            local scaled = false
+            if SkinOn() and tf and avg and avg > 19 and not rawget(tf, "GetHeight") then
+                local real = tf.GetHeight
+                tf.GetHeight = function(f) return real(f) * 18 / avg end
+                scaled = true
+            end
+            local ok, err = pcall(origRefresh, self, ...)
+            if scaled then tf.GetHeight = nil end
+            if not ok then error(err, 0) end
+            if tf and tf.SetClipsChildren then tf:SetClipsChildren(SkinOn()) end
+            local sum, cnt = 0, 0
+            for _, b in ipairs(self.buttons or {}) do if b:IsShown() then sum = sum + b:GetHeight(); cnt = cnt + 1 end end
+            self.xuiAvgH = cnt > 0 and (sum / cnt) or nil
             pcall(PartitionAllRules, self)
         end
     end
@@ -320,7 +390,9 @@ local function SkinTree(w)
         end
     end
     OnRelease(w, function(self)
-        if self.xuiPart then pcall(ResetChain, self); self.xuiPart = nil end
+        if self.xuiSearchBox then self.xuiSearchBox:Hide() end
+        if self.xuiSelBar then self.xuiSelBar:Hide() end
+        if self.xuiPart or self.xuiTopApplied then pcall(ResetChain, self); self.xuiPart = nil; self.xuiTopApplied = nil end
         if self.xuiPadApplied and self.content and self.border then
             self.content:ClearAllPoints()
             self.content:SetPoint("TOPLEFT", self.border, "TOPLEFT", 10, -10)
@@ -457,34 +529,43 @@ local function SkinRow(w, fn)
         f.xuiHL:SetAllPoints(); f.xuiHL:SetColorTexture(1, 0.82, 0, 0.12)
     end
     f.xuiHL:Show()
-    Flat(f, { 0.04, 0.04, 0.04, 0.35 + A() * 0.4 }, { 0.25, 0.25, 0.25, 1 })
+    Flat(f, { 0.04, 0.04, 0.04, 0.35 + A() * 0.4 }, { 0, 0, 0, 0 })   -- fill only: no outline around each row
     -- icon in its own column (left), thin divider, then the title + description text
     local img, lab = w.image, w.label
     if img and lab and w.imageshown then
         local iw, ih = img:GetWidth(), img:GetHeight()
-        local fw = f.width or f:GetWidth() or 0
-        img:ClearAllPoints(); img:SetPoint("LEFT", f, "LEFT", 8, 0)
-        lab:ClearAllPoints(); lab:SetPoint("LEFT", img, "RIGHT", 18, 0)
-        lab:SetWidth(math.max(60, fw - 8 - iw - 18 - 8))
-        lab:SetJustifyV("MIDDLE")
-        if not f.xuiSep then f.xuiSep = f:CreateTexture(nil, "BORDER"); f.xuiSep:SetColorTexture(0.3, 0.3, 0.3, 1); f.xuiSep:SetWidth(1) end
-        f.xuiSep:ClearAllPoints()
-        f.xuiSep:SetPoint("TOP", f, "TOP", 0, -4); f.xuiSep:SetPoint("BOTTOM", f, "BOTTOM", 0, 4)
-        f.xuiSep:SetPoint("LEFT", img, "RIGHT", 8, 0)
-        f.xuiSep:Show()
-        local need = math.max(ih, lab:GetStringHeight()) + 12
-        local key = math.floor(fw) .. "x" .. math.floor(need)
-        if math.abs(f:GetHeight() - need) > 0.5 and w.xuiRowKey ~= key then
-            w.xuiRowKey = key
+        local function Place()   -- icon column, divider, text column (AceGUI re-anchors these on every layout, so this runs again after one)
+            local fw = f:GetWidth() or 0   -- the real width now (AceGUI's cached f.width goes stale when the scrollbar appears)
+            img:ClearAllPoints(); img:SetPoint("LEFT", f, "LEFT", 8, 0)
+            lab:ClearAllPoints(); lab:SetPoint("LEFT", img, "RIGHT", 18, 0)
+            lab:SetWidth(math.max(60, fw - 8 - iw - 18 - 16))
+            lab:SetJustifyV("MIDDLE")
+            if not f.xuiSep then f.xuiSep = f:CreateTexture(nil, "BORDER"); f.xuiSep:SetColorTexture(0.3, 0.3, 0.3, 1); f.xuiSep:SetWidth(1) end
+            f.xuiSep:ClearAllPoints()
+            f.xuiSep:SetPoint("TOP", f, "TOP", 0, -6); f.xuiSep:SetPoint("BOTTOM", f, "BOTTOM", 0, 6)
+            f.xuiSep:SetPoint("LEFT", img, "RIGHT", 8, 0)
+            f.xuiSep:Show()
+        end
+        Place()
+        local need = math.max(ih, math.ceil(lab:GetStringHeight()) + 2) + 20   -- the extra pixels are the gap between rows now that the outline is gone
+        f.xuiMinH = need   -- floor: AceGUI's Label resets its frame height to the unwrapped text height on layout
+        if not rawget(f, "SetHeight") then
+            local real = f.SetHeight
+            f.SetHeight = function(self, h) real(self, math.max(h or 0, self.xuiMinH or 0)) end
+        end
+        if math.abs(f:GetHeight() - need) > 0.5 then
             f:SetHeight(need); f.height = need
             if w.parent and w.parent.DoLayout then w.parent:DoLayout() end
+            Place()
         end
+        f.height = need
     elseif lab then
         lab:SetJustifyV("MIDDLE")
     end
     OnRelease(w, function(self)
         if self.frame.xuiSep then self.frame.xuiSep:Hide() end
         self.xuiRowKey = nil
+        self.frame.xuiMinH = nil; self.frame.SetHeight = nil
         self.frame:EnableMouse(false); self.frame:SetScript("OnMouseUp", nil)
         if self.frame.xuiHL then self.frame.xuiHL:Hide() end
         FlatHide(self.frame)
@@ -560,6 +641,20 @@ local function Walk(w, depth)
     elseif t == "TreeGroup" then SkinTree(w)
     elseif t == "Button" then SkinButton(w)
     elseif t == "InlineGroup" then SkinInline(w)
+    elseif t == "Dropdown" or t == "Dropdown-Pullout" then
+        -- the open list was see-through (text over the page): give every dropdown list a solid dark panel
+        local pf = (t == "Dropdown") and w.pullout and w.pullout.frame or w.frame
+        if pf and not pf.xuiDD then
+            pf.xuiDD = true
+            pf:SetFrameStrata("TOOLTIP")
+            if pf.SetBackdrop then pf:SetBackdrop(nil) end
+            local bg = pf:CreateTexture(nil, "BACKGROUND", nil, -8)
+            bg:SetAllPoints(); bg:SetColorTexture(0.05, 0.05, 0.06, 1)
+            local edge = CreateFrame("Frame", nil, pf, "BackdropTemplate")
+            edge:SetAllPoints(); edge:SetFrameLevel(pf:GetFrameLevel())
+            edge:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+            edge:SetBackdropBorderColor(0.4, 0.4, 0.45, 1)
+        end
     elseif t == "Label" then
         local opt = w.GetUserData and w:GetUserData("option")
         local fn = opt and type(opt.arg) == "table" and opt.arg.xuiRow

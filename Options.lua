@@ -516,6 +516,30 @@ local function FolderPath(f)
     return unpack(p)
 end
 
+-- Which list a sidebar row belongs to: "loaded", "notloaded" or "all" (first path segment under the Rules tab)
+function ns.ScopeOfUV(uv)
+    local seg = uv and tostring(uv):match("^([^\001]+)")
+    return (seg == "notloaded" or seg == "all") and seg or "loaded"
+end
+function ns.CurrentScope()
+    if not AceConfigDialog.GetStatusTable then return "loaded" end
+    local st = AceConfigDialog:GetStatusTable(APP, { "cooldowns" })
+    return ns.ScopeOfUV(st and st.groups and st.groups.selected)
+end
+-- A new, still-empty group is listed in the list it was created from (empty groups default to Loaded)
+function ns.PlaceNewGroup(f, scope)
+    f.xuiScope = (scope == "notloaded") and "notloaded" or nil
+    local p = { "cooldowns", (scope == "notloaded" or scope == "all") and scope or "loaded" }
+    for _, c in ipairs(FolderChain(f)) do p[#p + 1] = c.id end
+    return unpack(p)
+end
+-- Same group, reached through the Loaded list (new groups open here so they show highlighted under Loaded)
+function ns.FolderLoadedPath(f)
+    local p = { "cooldowns", "loaded" }
+    for _, c in ipairs(FolderChain(f)) do p[#p + 1] = c.id end
+    return unpack(p)
+end
+
 local function FolderValues()
     local v, o = { none = "(none - top level)" }, { "none" }
     for _, f in ipairs(ns.folders or {}) do
@@ -891,8 +915,8 @@ local function BuildRule(i, rule)
         name = function()
             local ov, of = folderLoadOv()
             if not ov then return "" end
-            return "|cffffd100Overridden by folder " .. tostring(of and of.name) .. "|r: " .. (ov == "never" and "Never" or "Always")
-                .. ". Your own load settings below are kept and apply again if this rule leaves the folder. Talents still apply."
+            return "|cffffd100Overridden by group " .. tostring(of and of.name) .. "|r: " .. (ov == "never" and "Never" or "Always")
+                .. ". Your own load settings below are kept and apply again if this rule leaves the group. Talents still apply."
         end }
     local lockKeys = { "instanceTypes", "specs", "roles" }
     for _, k in ipairs(loadModeKeys) do lockKeys[#lockKeys + 1] = k end
@@ -1285,7 +1309,7 @@ local function BuildRule(i, rule)
                 get = function() return rule.enabled end,
                 set = function(_, v) rule.enabled = v; Changed(rule); Notify() end },
             folder = {
-                type = "select", name = "Folder", order = 3, width = "double",
+                type = "select", name = "Group", order = 3, width = "double",
                 values = function() local v = FolderValues(); return v end,
                 sorting = function() local _, o = FolderValues(); return o end,
                 get = function() return rule.folder or "none" end,
@@ -1550,12 +1574,175 @@ local function BuildAddonSettings()
     } }
 end
 
+-------------------------------------------------------------------------------
+-- Class / Spec Rule Creator tab. "Add Vengeance DH test rules" makes (or finds) the static group "VDH Test Rules" and opens a
+-- tick list of auras; "Add ticked auras" then adds one SKELETON rule per tick to that group: aura present, nothing shown or
+-- played yet (what each rule does is still to be defined, GitHub issue "Define what Class/Spec Rule Creator rules do").
+-------------------------------------------------------------------------------
+-- id = the buff aura's spell ID, filled in ONLY where it is confirmed by Xaya's own logs / screenshots (src says where).
+-- nil = the ID box starts empty and she enters it; the "game says" text beside each box reads the name live from the game.
+local BuildClassCreator   -- the only main-chunk local the creator adds (Lua allows 200); its helpers live inside the do-block
+do
+local VDH_AURAS = {
+    { key = "demonspikes", name = "Demon Spikes", id = 203819, src = "from the old seed rule in Core.lua; NOT independently confirmed (203720 is the ability, not the buff). Check the 'game says' text." },
+    { key = "fierybrand", name = "Fiery Brand", note = "204021 is the cast, not a buff ID" },
+    { key = "metamorphosis", name = "Metamorphosis", id = 187827, src = "your debug log (Vengeance Metamorphosis buff)" },
+    { key = "darkness", name = "Darkness", note = "196718 is the ability; buff ID not found" },
+    { key = "soulbarrier", name = "Soul Barrier" },
+    { key = "lastresort", name = "Last Resort" },
+    { key = "calcifiedspikes", name = "Calcified Spikes", note = "389720 is the talent; buff ID not found" },
+    { key = "incorruptible", name = "Incorruptible Spirit" },
+    { key = "ruinousbulwark", name = "Ruinous Bulwark" },
+    { key = "armyunto", name = "Army Unto Oneself" },
+    { key = "evasiveaction", name = "Evasive Action" },
+    { key = "immolationaura", name = "Immolation Aura", id = 258920, src = "your debug log (Immolation Aura)" },
+    { key = "soulmonger", name = "Soulmonger", id = 391234, src = "your debug log / tooltip screenshot" },
+    { key = "soulfragments", name = "Soul Fragments" },
+    { key = "painbringer", name = "Painbringer" },
+    { key = "untetheredrage", name = "Untethered Rage", id = 1270476, src = "your request tracker" },
+    { key = "revelinpain", name = "Revel in Pain" },
+    { key = "feastofsouls", name = "Feast of Souls" },
+    { key = "furyaldrachi", name = "Fury of the Aldrachi" },
+    { key = "artofglaive", name = "Art of the Glaive" },
+    { key = "reaversmark", name = "Reaver's Mark" },
+    { key = "seethinganger", name = "Seething Anger" },
+    { key = "thrill1", name = "Thrill of the Fight", id = 442686, src = "your Tracked Buffs list (first entry)" },
+    { key = "thrill2", name = "Thrill of the Fight", id = 1227062, src = "your Tracked Buffs list (second entry)" },
+    { key = "voidfall", name = "Voidfall", note = "1253304 may be the talent, not an aura" },
+    { key = "catastrophe", name = "Catastrophe" },
+    { key = "doomsayer", name = "Doomsayer" },
+    { key = "felfirefist", name = "Felfire Fist" },
+    { key = "soulcarver", name = "Soul Carver" },
+    { key = "sigilflame", name = "Sigil of Flame" },
+    { key = "sigilmisery", name = "Sigil of Misery" },
+    { key = "sigilchains", name = "Sigil of Chains" },
+}
+local VDH_GROUP, VDH_SPEC = "VDH Test Rules", 581   -- 581 = Vengeance
+local creatorSel, creatorMsg, creatorOpen = {}, nil, false   -- ticks / message / list shown: this session only
+local function CreatorIDs()
+    CueRulesDB.ui = CueRulesDB.ui or {}
+    CueRulesDB.ui.creatorIDs = CueRulesDB.ui.creatorIDs or {}   -- IDs she typed (kept with the profile); 0 = cleared
+    return CueRulesDB.ui.creatorIDs
+end
+local function AuraID(a)
+    local v = CreatorIDs()[a.key]
+    if v == nil then return a.id end
+    v = tonumber(v)
+    return (v and v > 0) and v or nil
+end
+local function AuraStatus(a)
+    local id = AuraID(a)
+    if not id then return "|cffff8080ID needed|r" .. (a.note and ("  |cff999999" .. a.note .. "|r") or "") end
+    local ok, nm = pcall(C_Spell.GetSpellName, id)
+    if not ok or not nm then return "|cffff8080the game has no spell with this ID|r" end
+    local want, have = a.name:lower(), nm:lower()
+    if have == want or have:find(want, 1, true) or want:find(have, 1, true) then return "|cff80ff80game says: " .. nm .. "|r" end
+    return "|cffffb040game says: " .. nm .. " (name differs - check the ID)|r"
+end
+local function FindVDHGroup()
+    for _, f in ipairs(ns.folders or {}) do if not f.parent and f.name == VDH_GROUP then return f end end
+end
+local function OpenVDHList()
+    local grp, made = FindVDHGroup(), false
+    if not grp then grp = ns.NewFolder(VDH_GROUP); made = true end   -- no cType = static group
+    creatorOpen = true
+    creatorMsg = made and ("Created the static group |cffffd100" .. VDH_GROUP .. "|r (it shows under All Rules). Tick the auras below, then press Add ticked auras.")
+        or ("The static group |cffffd100" .. VDH_GROUP .. "|r already exists; new rules are added to it.")
+    ns.MarkDirty(); if ns.OnRulesChanged then pcall(ns.OnRulesChanged) end
+    Notify()
+end
+local function AddTickedAuras()
+    local grp = FindVDHGroup()
+    if not grp then creatorMsg = "|cffffb040The group is missing - press Add Vengeance DH test rules again.|r"; Notify(); return end
+    local have = {}
+    for _, r in ipairs(ns.rules or {}) do if r.folder == grp.id and (tonumber(r.buffID) or 0) ~= 0 then have[r.buffID] = true end end
+    local made, noID, dup, ticked = 0, {}, 0, 0
+    for _, a in ipairs(VDH_AURAS) do
+        if creatorSel[a.key] then
+            ticked = ticked + 1
+            local id = AuraID(a)
+            if not id then noID[#noID + 1] = a.name
+            elseif have[id] then dup = dup + 1
+            else
+                local r = ns.NewRule()
+                r.name = a.name
+                r.folder = grp.id
+                r.useBuff, r.buffID, r.buffState = true, id, "present"
+                r.cdState, r.talentMode = "none", "none"
+                r.load.specs = { [tostring(VDH_SPEC)] = true }
+                ns.rules[#ns.rules + 1] = r
+                have[id] = true
+                creatorSel[a.key] = nil
+                made = made + 1
+            end
+        end
+    end
+    if ticked == 0 then creatorMsg = "|cffffb040Tick at least one aura first.|r"
+    else
+        local line = ("Added %d rule(s) to %s."):format(made, VDH_GROUP)
+        if dup > 0 then line = line .. (" %d already in the group (same ID), skipped."):format(dup) end
+        if #noID > 0 then line = line .. " |cffffb040No ID yet, skipped: " .. table.concat(noID, ", ") .. ".|r" end
+        creatorMsg = line
+        if made > 0 then ns.MarkDirty(); if ns.OnRulesChanged then pcall(ns.OnRulesChanged) end end
+    end
+    ns.Print("rule creator: " .. (creatorMsg:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")))
+    Notify()
+end
+function BuildClassCreator()
+    local function shown() return not creatorOpen end
+    local args = {
+        intro = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = "Pick a class / spec set, tick the auras to track, and XayaUI makes a skeleton rule for each one: it watches for the aura being present, and shows or plays nothing yet. Set what each rule does afterwards under All Rules." },
+        apHdr = { type = "header", order = 0.1, name = "Auto-populate my class / spec" },
+        apInfo = { type = "description", order = 0.2, width = "full", fontSize = "medium",
+            name = function()
+                local specID = ns.CurrentSpecID and ns.CurrentSpecID()
+                local okS, _, specName = pcall(GetSpecializationInfoByID, specID or 0)
+                return "Detected: |cffffd100" .. (UnitClass("player") or "?") .. " - " .. ((okS and specName) or "unknown spec") .. "|r. Creates one skeleton rule (cooldown ready) for each cooldown spell in your spellbook, sorted into Defensive / Offensive / Utility groups inside the static group '<Class> <Spec> - autorule population' (it appears under ALL RULES, and the window jumps to it). Spells not on the curated list for your spec go to Unsorted." end },
+        apTalents = { type = "toggle", order = 0.3, width = "full", name = "Include talents I have not picked (rule only loads when the talent is known)",
+            get = function() return ns.AutoCfg().talents ~= false end,
+            set = function(_, v) ns.AutoCfg().talents = v and true or false; ns.MarkDirty(); Notify() end },
+        apRun = { type = "execute", order = 0.4, width = "double", name = "Auto-populate rules now",
+            func = function()
+                local _, m = ns.ClassAutoPopulate(ns.AutoCfg().talents ~= false)
+                creatorMsg = m; ns.Print("auto-populate: " .. tostring(m)); Notify()
+            end },
+        vdhHdr = { type = "header", order = 1, name = "Vengeance Demon Hunter" },
+        open = { type = "execute", order = 2, width = "double", name = "Add Vengeance DH test rules",
+            desc = "Creates the static group 'VDH Test Rules' (or finds it) and shows the list of auras to tick.",
+            func = OpenVDHList },
+        msg = { type = "description", order = 0.5, width = "full", fontSize = "medium", name = function() return creatorMsg or "" end,
+            hidden = function() return not creatorMsg end },
+        idNote = { type = "description", order = 4, width = "full", fontSize = "small", hidden = shown,
+            name = "ID = the aura's buff spell ID. Only IDs confirmed in your own logs are filled in; the rest are blank for you to enter (hover a name for the source). 'game says' is read live from the game, so a wrong ID shows up as a different name." },
+        add = { type = "execute", order = 5, width = "double", name = "Add ticked auras", hidden = shown, func = AddTickedAuras },
+        none = { type = "execute", order = 6, width = "normal", name = "Untick all", hidden = shown,
+            func = function() wipe(creatorSel); Notify() end },
+        close = { type = "execute", order = 7, width = "half", name = "Hide list", hidden = shown,
+            func = function() creatorOpen = false; Notify() end },
+    }
+    for i, a in ipairs(VDH_AURAS) do
+        local o = 100 + i * 3
+        args["pick_" .. a.key] = { type = "toggle", order = o, width = 1.3, name = a.name, hidden = shown,
+            desc = a.src and ("ID source: " .. a.src) or (a.note or "No confirmed ID yet - enter it in the box."),
+            get = function() return creatorSel[a.key] and true or false end,
+            set = function(_, v) creatorSel[a.key] = v and true or nil end }
+        args["id_" .. a.key] = { type = "input", order = o + 1, width = 0.6, name = "", hidden = shown,
+            get = function() local id = AuraID(a); return id and tostring(id) or "" end,
+            set = function(_, v) local n = tonumber(v); CreatorIDs()[a.key] = (n and n > 0) and math.floor(n) or 0; ns.MarkDirty(); Notify() end }
+        args["st_" .. a.key] = { type = "description", order = o + 2, width = 1.5, fontSize = "medium", hidden = shown,
+            name = function() return AuraStatus(a) end }
+    end
+    return { type = "group", name = "Class/Spec Rule Creator", order = 2, args = args }
+end
+end   -- do (class/spec creator)
+
 local function BuildProfiles()
     local a = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "Your rules are personal. Nothing is shared unless you export it, and a fresh install starts empty. Export produces a text string you can paste to a friend; they paste it under 'Import' to add it to their own setup." },
         exportTotal = { type = "execute", name = "Export total profile  (everything, one click)", order = 0.5, width = "full",
-            desc = "Bundles ALL rules with their folders and container settings, all buff bars and all QoL elements into one export string, ignoring the ticks below. The text appears just under this button.",
+            desc = "Bundles ALL rules with their groups and container settings, all buff bars and all QoL elements into one export string, ignoring the ticks below. The text appears just under this button.",
             func = function()
                 local all = { rules = true, bars = true, qol = true }
                 local txt, err = ns.Profile_Encode(ns.Profile_Snapshot(all, (profileName ~= "" and profileName) or "Total profile"))
@@ -1567,7 +1754,7 @@ local function BuildProfiles()
             hidden = function() return exportText == nil or exportText == "" end,
             get = function() return exportText end, set = function() end },
         exportH = { type = "header", name = "Export What You Have", order = 1 },
-        incRules = Tog(exportInc, "rules", "Cooldown + Aura rules (with their folders)", 2, function() end, { width = "double" }),
+        incRules = Tog(exportInc, "rules", "Cooldown + Aura rules (with their groups)", 2, function() end, { width = "double" }),
         incBars = Tog(exportInc, "bars", "Buff bars (and their group layout)", 3, function() end, { width = "double" }),
         incQol = Tog(exportInc, "qol", "QoL elements", 4, function() end, { width = "double" }),
         gen = { type = "execute", name = "Generate export text", order = 5, width = "double",
@@ -1600,7 +1787,7 @@ local function BuildProfiles()
             confirmText = "Replace the included parts of your current setup? This cannot be undone.",
             func = function()
                 local c = ns.Profile_Apply(importSnap, importMode)
-                profileMsg = ("Imported %d rule(s), %d folder(s), %d bar(s), %d QoL box(es)."):format(c.rules, c.folders, c.bars, c.qol)
+                profileMsg = ("Imported %d rule(s), %d group(s), %d bar(s), %d QoL box(es)."):format(c.rules, c.folders, c.bars, c.qol)
                 ns.Print(profileMsg)
                 Notify()
             end },
@@ -1803,7 +1990,7 @@ local function AutoPopulate()
     for _, r in ipairs(ns.rules) do if r.folder == fid then pcall(ns.RefreshVisual, r) end end
     ns.MarkDirty()
     if ns.OnRulesChanged then pcall(ns.OnRulesChanged) end
-    autoMsg.last = ("Added %d rule(s); %d already in that folder were skipped."):format(made, skipped)
+    autoMsg.last = ("Added %d rule(s); %d already in that group were skipped."):format(made, skipped)
     ns.Print("auto-populate: " .. autoMsg.last)
     Notify()
 end
@@ -1825,6 +2012,65 @@ local function AutoPreview()
     return line
 end
 
+-- Class / spec auto-populate (Class/Spec Rule Creator tab): one skeleton rule per cooldown spell of the current spec, sorted into
+-- Defensive / Offensive / Utility folders inside one parent folder "<Class> <Spec> - autorule population". The sorting tables are
+-- curated by spell NAME (never by ID, so no ID is guessed; a name that is not in the spellbook is simply never matched). Spells
+-- that are not in the spec's table go to "Unsorted". Only cooldown spells are found (auras cannot be listed from the spellbook).
+local SPEC_SORT = {
+    -- Demon Hunter / Vengeance. Curated by Claude from general class knowledge, NOT checked against game data: edit freely.
+    [581] = {
+        Defensive = { "Demon Spikes", "Fiery Brand", "Metamorphosis", "Darkness", "Soul Barrier", "Blur", "Netherwalk" },
+        Offensive = { "Fel Devastation", "Soul Carver", "The Hunt", "Sigil of Flame", "Immolation Aura", "Fracture", "Soul Cleave", "Spirit Bomb", "Throw Glaive", "Felblade" },
+        Utility   = { "Sigil of Misery", "Sigil of Chains", "Sigil of Silence", "Chaos Nova", "Disrupt", "Imprison", "Consume Magic", "Torment", "Infernal Strike", "Vengeful Retreat", "Spectral Sight", "Glide" },
+    },
+}
+function ns.ClassAutoPopulate(includeUnpicked)
+    local specID = ns.CurrentSpecID and ns.CurrentSpecID()
+    if not specID then return false, "Could not read your specialization right now." end
+    local className = UnitClass("player") or "Class"
+    local okS, _, specName = pcall(GetSpecializationInfoByID, specID)
+    if not okS or not specName then specName = "spec " .. tostring(specID) end
+    local ok, list = pcall(ns.CollectCooldownSpells, 0, includeUnpicked)
+    if not ok or type(list) ~= "table" or #list == 0 then return false, "Found no cooldown spells in your spellbook right now." end
+    local parentName = className .. " " .. specName .. " - autorule population"
+    local parent
+    for _, f in ipairs(ns.folders) do if not f.parent and f.name == parentName then parent = f; break end end
+    parent = parent or ns.NewFolder(parentName)
+    local function Sub(name)
+        for _, f in ipairs(ns.folders) do if f.parent == parent.id and f.name == name then return f end end
+        return ns.NewFolder(name, parent.id)
+    end
+    Sub("Defensive"); Sub("Offensive"); Sub("Utility")
+    local lookup, curated = {}, SPEC_SORT[specID]
+    if curated then for folder, names in pairs(curated) do for _, n in ipairs(names) do lookup[n:lower()] = folder end end end
+    local have = {}
+    for _, r in ipairs(FolderRules(parent.id)) do if (tonumber(r.spellID) or 0) ~= 0 then have[r.spellID] = true end end
+    local made, skipped, counts = 0, 0, {}
+    for _, sp in ipairs(list) do
+        if have[sp.id] then skipped = skipped + 1
+        else
+            local fname = lookup[(sp.name or ""):lower()] or "Unsorted"
+            local dest = Sub(fname)
+            local r = ns.NewRule()
+            r.name, r.folder, r.spellID = sp.name, dest.id, sp.id
+            r.useCooldown = true
+            r.cdState, r.buffState, r.talentMode = "ready", "none", "none"
+            if sp.talent then r.talents, r.talentMode = { { id = sp.id, state = "known" } }, "all" end
+            r.load.specs = { [tostring(specID)] = true }
+            ns.rules[#ns.rules + 1] = r
+            have[sp.id] = true
+            made = made + 1; counts[fname] = (counts[fname] or 0) + 1
+        end
+    end
+    if made > 0 then ns.MarkDirty(); if ns.OnRulesChanged then pcall(ns.OnRulesChanged) end end
+    local parts = {}
+    for _, k in ipairs({ "Defensive", "Offensive", "Utility", "Unsorted" }) do if counts[k] then parts[#parts + 1] = k .. " " .. counts[k] end end
+    local msg = ("%s: added %d rule(s) (%s); %d already there."):format(parentName, made, #parts > 0 and table.concat(parts, ", ") or "none", skipped)
+    if not curated then msg = msg .. " There is no curated Defensive / Offensive / Utility list for this spec yet, so everything went to Unsorted." end
+    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(parent))   -- show the new group right away
+    return true, msg
+end
+
 ns.UI.NewRule = function() StartNewRule(nil) end
 local function PickType(typ)
     local p = picker
@@ -1840,8 +2086,9 @@ local function PickType(typ)
         -- a rule group is a folder (the container): nested inside the folder the picker was opened from, top level otherwise
         local nf = ns.NewFolder((typ == "dgroup" and "Dynamic Group " or "Static Group ") .. (#ns.folders + 1), p and p.folder)
         if typ == "dgroup" then nf.cType = "dynamic" end
+        local path = { ns.PlaceNewGroup(nf, nf.parent and ns.CurrentScope() or "loaded") }
         ns.MarkDirty(); Notify()
-        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(nf))
+        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(path))
     elseif typ == "import" then
         Notify()
         pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "profiles")
@@ -1870,10 +2117,10 @@ local function FolderApplyGroup(f)
     local function nRules() return #FolderRules(f.id) end
     return {
         type = "group", inline = true, order = 6,
-        name = "Apply Text Settings to All Rules in This Folder",
+        name = "Apply Text Settings to All Rules in This Group",
         args = {
             note = { type = "description", order = 0, width = "full", fontSize = "small",
-                name = "Choose which text elements to change and what to change, then press Apply. A blank choice (or 0) leaves that setting alone. Includes rules in subfolders. Nothing is changed until you press Apply." },
+                name = "Choose which text elements to change and what to change, then press Apply. A blank choice (or 0) leaves that setting alone. Includes rules in nested groups. Nothing is changed until you press Apply." },
             targets = { type = "multiselect", name = "Text Elements to Change", order = 1, width = "full", values = TARGETS,
                 get = function(_, k) return st().targets[k] and true or false end,
                 set = function(_, k, v) st().targets[k] = v and true or nil end },
@@ -1894,7 +2141,7 @@ local function FolderApplyGroup(f)
                 get = function() return st().decimalBelow or 0 end, set = function(_, v) st().decimalBelow = v > 0 and v or nil end },
             apply = { type = "execute", order = 20, width = "double",
                 name = function() return "Apply to " .. nRules() .. " Rule(s)" end,
-                confirm = true, confirmText = "Overwrite the chosen text settings on every rule in this folder (and its subfolders)?",
+                confirm = true, confirmText = "Overwrite the chosen text settings on every rule in this group (and its nested groups)?",
                 func = function()
                     local c = st()
                     local keys = { dur = "text", cnt = "count", abs = "absorb" }
@@ -1919,7 +2166,7 @@ local function FolderApplyGroup(f)
                         n = n + 1
                     end
                     ns.MarkDirty(); Notify()
-                    ns.Print(("applied text settings to %d rule(s) in folder '%s'"):format(n, f.name))
+                    ns.Print(("applied text settings to %d rule(s) in group '%s'"):format(n, f.name))
                 end },
         },
     }
@@ -1927,22 +2174,22 @@ end
 
 local LOAD_OV_VALUES = {
     none = "Don't Override (Each Rule Uses Its Own Load Conditions)",
-    never = "Never (No Rule in This Folder Loads)",
+    never = "Never (No Rule in This Group Loads)",
     always = "Always (Ignore Each Rule's Load Conditions)",
 }
 local LOAD_OV_ORDER = { "none", "never", "always" }
 local function FolderLoadGroup(f)
     local g = {
-        type = "group", inline = true, order = 5.5, name = "Load Conditions for This Folder",
+        type = "group", inline = true, order = 5.5, name = "Load Conditions for This Group",
         args = {
             note = { type = "description", order = 0, width = "full", fontSize = "small",
-                name = "Overrides the Load tab of every rule in this folder and its subfolders while they are inside it. Nothing on the rules is changed: a rule that leaves the folder uses its own load conditions again. Talent requirements still apply. A subfolder's own choice beats the folder above it." },
+                name = "Overrides the Load tab of every rule in this group and its nested groups while they are inside it. Nothing on the rules is changed: a rule that leaves the group uses its own load conditions again. Talent requirements still apply. A nested group's own choice beats the group above it." },
             inherited = { type = "description", order = 2, width = "full", fontSize = "medium",
                 hidden = function() if f.loadOverride then return true end; return not ns.FolderLoadOverrideFrom(f.parent) end,
                 name = function()
                     local ov, of = ns.FolderLoadOverrideFrom(f.parent)
                     if not ov then return "" end
-                    return "Inherited from folder |cffffd100" .. tostring(of and of.name) .. "|r: " .. (ov == "never" and "Never" or "Always")
+                    return "Inherited from group |cffffd100" .. tostring(of and of.name) .. "|r: " .. (ov == "never" and "Never" or "Always")
                 end },
         },
     }
@@ -1964,14 +2211,14 @@ function ns.FolderContainerGroup(f)
     local SV = { inherit = "(default - High)", BACKGROUND = "Background", LOW = "Low", MEDIUM = "Medium", HIGH = "High", DIALOG = "Dialog",
         FULLSCREEN = "Fullscreen", FULLSCREEN_DIALOG = "Fullscreen dialog", TOOLTIP = "Tooltip" }
     local RELS = { "screen", "player", "target", "focus", "minimap", "chat", "custom" }
-    local RV = { screen = "Screen center (or the parent folder)", player = "Player frame", target = "Target frame", focus = "Focus frame",
+    local RV = { screen = "Screen center (or the parent group)", player = "Player frame", target = "Target frame", focus = "Focus frame",
         minimap = "Minimap", chat = "Main chat frame", custom = "Another frame (type its name)" }
     local function isDyn() return f.cType == "dynamic" end
     local g = { type = "group", inline = true, order = 5.4, name = "Group Type & Container",
         hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end,
         args = {
             note = { type = "description", order = 0, width = "full", fontSize = "small",
-                name = "Every folder is a container for the displays inside it (and inside its subfolders). Static: each display keeps its own position. Dynamic: the addon lays the visible displays out itself and ignores their own X / Y. The container settings below apply to everything inside. Width / height give the container a fixed box (also what the anchor point refers to); a dynamic group wraps onto a new row / column when its items would exceed that size." },
+                name = "Every group is a container for the displays inside it (and inside its nested groups). Static: each display keeps its own position. Dynamic: the addon lays the visible displays out itself and ignores their own X / Y. The container settings below apply to everything inside. Width / height give the container a fixed box (also what the anchor point refers to); a dynamic group wraps onto a new row / column when its items would exceed that size." },
         } }
     AddSquareRadio(g.args, "ctype", 1, { static = "Static group  (items keep their own positions)", dynamic = "Dynamic group  (positions its items automatically)" },
         { "static", "dynamic" }, function() return isDyn() and "dynamic" or "static" end,
@@ -1983,6 +2230,10 @@ function ns.FolderContainerGroup(f)
     g.args.spacing = { type = "range", name = "Spacing between items", order = 2.1, width = "double", min = 0, max = 200, step = 1,
         hidden = function() return not isDyn() end,
         get = function() return f.cSpacing or 4 end, set = function(_, v) f.cSpacing = v; apply() end }
+    g.args.sort = { type = "select", name = "Sort items", order = 2.2, width = "double", hidden = function() return not isDyn() end,
+        values = { none = "None (in rule order)", asc = "By name, A to Z", desc = "By name, Z to A" },
+        sorting = { "none", "asc", "desc" },
+        get = function() return f.cSort or "none" end, set = function(_, v) f.cSort = (v ~= "none") and v or nil; apply() end }
     g.args.alpha = { type = "range", name = "Group opacity", order = 3, width = "double", min = 0, max = 1, step = 0.05,
         get = function() return f.cAlpha or 1 end, set = function(_, v) f.cAlpha = (v < 1) and v or nil; apply() end }
     g.args.scale = { type = "range", name = "Group scale", order = 3.1, width = "double", min = 0.25, max = 3, step = 0.05,
@@ -2014,13 +2265,84 @@ function ns.FolderContainerGroup(f)
     return g
 end
 
+-- Static group tools (WeakAuras Group): Align, Distribute and Space the displays inside the group by editing their own X / Y.
+-- ns function (not a local) to stay under Lua's 200-locals-per-chunk limit.
+function ns.FolderArrangeGroup(f)
+    local gap = 8
+    local function items()
+        local l = {}
+        for _, r in ipairs(FolderRules(f.id)) do
+            local v = r.visual
+            if type(v) == "table" and v.enabled then l[#l + 1] = r end
+        end
+        return l
+    end
+    local function R(n) return math.floor(n + 0.5) end
+    local function done(n, what)
+        for _, r in ipairs(items()) do pcall(ns.RefreshVisual, r) end
+        ns.MarkDirty(); Notify()
+        ns.Print(("%s: %d display(s) in group '%s'"):format(what, n, tostring(f.name)))
+    end
+    local function Act(what, fn)
+        local l = items()
+        if #l < 2 then ns.Print("a group needs at least two displays to " .. what:lower()); return end
+        fn(l); done(#l, what)
+    end
+    local function dims(r) local v = r.visual; return tonumber(v.x) or 0, tonumber(v.y) or 0, tonumber(v.w) or 0, tonumber(v.h) or 0 end
+    local function alignX(mode) Act("Align", function(l)
+        local lo, hi = math.huge, -math.huge
+        for _, r in ipairs(l) do local x, _, w = dims(r); lo = math.min(lo, x - w / 2); hi = math.max(hi, x + w / 2) end
+        for _, r in ipairs(l) do local _, _, w = dims(r)
+            r.visual.x = R(mode == "left" and lo + w / 2 or mode == "right" and hi - w / 2 or (lo + hi) / 2) end
+    end) end
+    local function alignY(mode) Act("Align", function(l)
+        local top, bot = -math.huge, math.huge
+        for _, r in ipairs(l) do local _, y, _, h = dims(r); top = math.max(top, y + h / 2); bot = math.min(bot, y - h / 2) end
+        for _, r in ipairs(l) do local _, _, _, h = dims(r)
+            r.visual.y = R(mode == "top" and top - h / 2 or mode == "bottom" and bot + h / 2 or (top + bot) / 2) end
+    end) end
+    local function distribute(horiz) Act("Distribute", function(l)
+        table.sort(l, function(a, b) local ax, ay = dims(a); local bx, by = dims(b); if horiz then return ax < bx end return ay > by end)
+        local n = #l
+        local ax, ay = dims(l[1]); local bx, by = dims(l[n])
+        for i, r in ipairs(l) do
+            if horiz then r.visual.x = R(ax + (bx - ax) * (i - 1) / (n - 1)) else r.visual.y = R(ay + (by - ay) * (i - 1) / (n - 1)) end
+        end
+    end) end
+    local function space(horiz) Act("Space", function(l)
+        table.sort(l, function(a, b) local ax, ay = dims(a); local bx, by = dims(b); if horiz then return ax < bx end return ay > by end)
+        local cur
+        for i, r in ipairs(l) do
+            local x, y, w, h = dims(r)
+            if horiz then
+                if i == 1 then cur = x + w / 2 else r.visual.x = R(cur + gap + w / 2); cur = r.visual.x + w / 2 end
+            else
+                if i == 1 then cur = y - h / 2 else r.visual.y = R(cur - gap - h / 2); cur = r.visual.y - h / 2 end
+            end
+        end
+    end) end
+    local function B(order, name, fn) return { type = "execute", order = order, width = 1.1, name = name, func = fn } end
+    return { type = "group", inline = true, order = 5.45, name = "Align & Arrange (Static Group)",
+        hidden = function() return f.cType == "dynamic" or not ns.KindHas({ folder = f.id }, "visual") end,
+        args = {
+            note = { type = "description", order = 0, width = "full", fontSize = "small",
+                name = "Like WeakAuras' Group tools: these edit the X / Y of the displays inside this group (and nested groups) so they line up, spread out evenly, or sit a fixed gap apart. Use Unlock visuals to see the result." },
+            l = B(1, "Align left", function() alignX("left") end), c = B(2, "Align center", function() alignX("center") end), r = B(3, "Align right", function() alignX("right") end),
+            t = B(4, "Align top", function() alignY("top") end), m = B(5, "Align middle", function() alignY("middle") end), b = B(6, "Align bottom", function() alignY("bottom") end),
+            dh = B(7, "Distribute horizontally", function() distribute(true) end), dv = B(8, "Distribute vertically", function() distribute(false) end),
+            gap = { type = "range", order = 9, width = "double", name = "Gap for Space (pixels)", min = 0, max = 200, step = 1,
+                get = function() return gap end, set = function(_, v) gap = v end },
+            sh = B(10, "Space horizontally", function() space(true) end), sv = B(11, "Space vertically", function() space(false) end),
+        } }
+end
+
 local function FolderSoundGroup(f)
     return {
-        type = "group", inline = true, order = 5.6, name = "Sound Channel for This Folder",
+        type = "group", inline = true, order = 5.6, name = "Sound Channel for This Group",
         hidden = function() return ns.RuleKind({ folder = f.id }) == "display" end,
         args = {
             note = { type = "description", order = 0, width = "full", fontSize = "small",
-                name = "Forces every rule in this folder and its subfolders to play on this channel, whatever the rule itself says. Nothing on the rules is changed: a rule that leaves the folder uses its own channel again. A subfolder's own choice beats the folder above it." },
+                name = "Forces every rule in this group and its nested groups to play on this channel, whatever the rule itself says. Nothing on the rules is changed: a rule that leaves the group uses its own channel again. A nested group's own choice beats the group above it." },
             channel = { type = "select", name = "Enforced sound channel", order = 1, width = "double",
                 values = CHANNEL_VALUES, sorting = CHANNEL_ORDER,
                 get = function() return f.soundChannel or "none" end,
@@ -2030,7 +2352,7 @@ local function FolderSoundGroup(f)
                 name = function()
                     local ch, of = ns.FolderSoundChannelFrom(f.parent)
                     if not ch then return "" end
-                    return "Inherited from folder |cffffd100" .. tostring(of and of.name) .. "|r: " .. tostring(ch)
+                    return "Inherited from group |cffffd100" .. tostring(of and of.name) .. "|r: " .. tostring(ch)
                 end },
         },
     }
@@ -2063,41 +2385,48 @@ local function BuildFolder(k, f)
         end,
         name = function() return (f.parent and f.name or tostring(f.name):upper()) .. " (" .. FolderRuleCount(f) .. ")" end,
         args = {
-            name = { type = "input", name = "Folder name", order = 1, width = "double",
+            name = { type = "input", name = "Group name", order = 1, width = "double",
                 get = function() return f.name end, set = function(_, v) if v ~= "" then f.name = v end; Notify() end },
-            newRule = { type = "execute", name = "+ New rule in this folder", order = 2, width = "double",
+            deleteTop = { type = "execute", name = "|cffff6060Delete this group|r", order = 1.5, width = 1,
+                desc = "Its rules and nested groups are kept and move up one level. Keyboard: press Delete while this group is open.",
+                confirm = true, confirmText = "Delete this group? The rules and nested groups inside are kept and move up one level.",
+                func = function() ns.DeleteFolderById(f.id) end },
+            newRule = { type = "execute", name = "+ New rule in this group", order = 2, width = "double",
                 func = function()
                     StartNewRule(f.id)
                 end },
-            newSub = { type = "execute", name = "+ New subfolder", order = 2.5, width = "double",
+            newSub = { type = "execute", name = "+ New nested group", order = 2.5, width = "double",
                 func = function()
-                    local nf = ns.NewFolder("Folder " .. (#ns.folders + 1), f.id)
+                    local nf = ns.NewFolder("Group " .. (#ns.folders + 1), f.id)
+                    local scope = ns.CurrentScope()
+                    local path = { ns.PlaceNewGroup(nf, scope) }
                     Notify()
-                    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(nf))
+                    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(path))
                 end },
-            enableAll = { type = "execute", name = "Enable all rules in this folder (and subfolders)", order = 3, width = "double",
+            enableAll = { type = "execute", name = "Enable all rules in this group (and nested groups)", order = 3, width = "double",
                 func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = true; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
-            disableAll = { type = "execute", name = "Disable all rules in this folder (and subfolders)", order = 4, width = "double",
+            disableAll = { type = "execute", name = "Disable all rules in this group (and nested groups)", order = 4, width = "double",
                 func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
             pausePv = { type = "toggle", name = "Pause preview animations", order = 4.5, width = "double",
                 hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end,
-                desc = "Freezes the sample countdown, the fades and the flash in every preview while the images stay on screen. Untick to resume. This is the same switch as on All Rules and on each rule, so it pauses every preview, not only this folder's.",
+                desc = "Freezes the sample countdown, the fades and the flash in every preview while the images stay on screen. Untick to resume. This is the same switch as on All Rules and on each rule, so it pauses every preview, not only this group's.",
                 get = function() return ns.previewPaused end,
                 set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
             note = { type = "description", order = 5, width = "full", fontSize = "small",
-                name = "Use the eye and headphone icons next to this folder in the sidebar to preview every rule inside it at once." },
+                name = "Use the eye and headphone icons next to this group in the sidebar to preview every rule inside it at once." },
             defaultNote = { type = "description", order = 5.2, width = "full", fontSize = "small",
                 hidden = function() return not dinfo end, name = dinfo and dinfo.note or "" },
             loadOverride = FolderLoadGroup(f),
             soundChannel = FolderSoundGroup(f),
             container = ns.FolderContainerGroup(f),
+            arrange = ns.FolderArrangeGroup(f),
             applyText = (function()
                 local g = FolderApplyGroup(f)
                 g.hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end
                 return g
             end)(),
-            delete = { type = "execute", name = "Delete folder (contents move up one level)", order = 9, width = "double",
-                confirm = true, confirmText = "Delete this folder? The rules and subfolders inside are kept and move up one level.",
+            delete = { type = "execute", name = "Delete group (contents move up one level)", order = 9, width = "double",
+                confirm = true, confirmText = "Delete this group? The rules and nested groups inside are kept and move up one level.",
                 func = function()
                     for _, r in ipairs(ns.rules) do if r.folder == f.id then r.folder = f.parent end end
                     for _, ff in ipairs(ns.folders) do if ff.parent == f.id then ff.parent = f.parent end end
@@ -2117,16 +2446,10 @@ local function BuildOptions()
         type = "group", name = "ALL RULES", order = 1, childGroups = "tree",
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "Rules that watch a cooldown, a buff and your talents, then play a sound and/or show a texture. Pick a rule on the left, or add one. The eye and headphone icons in the sidebar preview a rule (or a whole folder / everything) without changing it." },
+                name = "Rules that watch a cooldown, a buff and your talents, then play a sound and/or show a texture. Pick a rule on the left, or add one. The eye and headphone icons in the sidebar preview a rule (or a whole group / everything) without changing it." },
             newRule = { type = "execute", name = "+ New rule", order = 1,
                 func = function()
                     StartNewRule(nil)
-                end },
-            newFolder = { type = "execute", name = "+ New folder", order = 2,
-                func = function()
-                    local f = ns.NewFolder("Folder " .. (#ns.folders + 1))
-                    Notify()
-                    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "all", f.id)
                 end },
             newSound = { type = "toggle", name = "New rules play a sound", order = 3, width = "double",
                 desc = "Applied when you press + New rule. Off by default; you can still change it on the rule's Conditions tab.",
@@ -2145,15 +2468,7 @@ local function BuildOptions()
                 desc = "Freezes the sample countdown, the fades and the flash in every preview and unlocked display while the images stay on screen. Untick to resume.",
                 get = function() return ns.previewPaused end,
                 set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
-            defaults = { type = "execute", name = "Add Default Categories", order = 5.5, width = "double",
-                desc = "Adds any of Display Cues, Sound Cues, Hybrid Cues and Advanced Cue Tracking that are missing at the top level. Existing folders and rules are not touched.",
-                func = function()
-                    local n = ns.EnsureDefaultFolders(true)
-                    ns.Print(n > 0 and ("added " .. n .. " default categor" .. (n == 1 and "y" or "ies")) or "the default categories are already there")
-                    Notify()
-                end },
-            seed = { type = "execute", name = "Add Vengeance DH test rules", order = 6, width = "double",
-                func = function() ns.SeedRules() end },
+            -- "Add Default Categories" button removed for now (2026-10-31): folders are the grouping tool; Smart Categories do the by-type sorting.
         },
     }
     local groups = {}
@@ -2237,7 +2552,7 @@ local function BuildOptions()
             all.args[k].hidden = function() return not picker end
         end
     end
-    local track = { type = "group", name = "All Rules", order = 1, childGroups = "tree", args = {
+    local track = { type = "group", name = "Rules", order = 1, childGroups = "tree", args = {
         loaded = { type = "group", order = 1, childGroups = "tree",
             name = function() return "LOADED (" .. nLoaded .. ")" end, args = loadedArgs },
         spacer = { type = "group", order = 2.5, name = " ", disabled = true, args = {} },
@@ -2245,32 +2560,7 @@ local function BuildOptions()
         spacer0 = { type = "group", order = 0.5, name = " ", disabled = true, args = {} },   -- divider above Loaded   -- divider between Loaded and Not Loaded
         notloaded = { type = "group", order = 2, childGroups = "tree",
             name = function() return "NOT LOADED (" .. nNot .. ")" end, args = notArgs },
-        autopop = { type = "group", order = 4, name = "AUTO-POPULATE RULES", args = {
-            intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "Creates one rule per spell of your current class and specialization whose base cooldown is at least the number of seconds below (rule: fires when the spell comes off cooldown). Spells that are talents also require that talent. Spells already in the chosen folder are skipped, so you can run it again after a respec." },
-            run = { type = "execute", name = "Auto-populate rules now", order = 1, width = "double",
-                func = function() AutoPopulate() end },
-            minCD = { type = "input", name = "Minimum cooldown (seconds)", order = 2, width = "normal",
-                desc = "Uses each spell's BASE cooldown (talent and haste reductions are not applied). For charge spells it uses the recharge time per charge when the game exposes it.",
-                get = function() return tostring(ns.AutoCfg().minCD) end,
-                set = function(_, v) local n = tonumber(v); if n and n >= 0 then ns.AutoCfg().minCD = n end; ns.MarkDirty(); Notify() end },
-            dest = { type = "select", name = "Add the rules to this folder", order = 3, width = "double",
-                values = function() local v = FolderValues(); return v end,
-                sorting = function() local _, o = FolderValues(); return o end,
-                get = function() local a = ns.AutoCfg(); return a.dest or ns.AutoDest(a) or "none" end,
-                set = function(_, v) ns.AutoCfg().dest = v; ns.MarkDirty(); Notify() end },
-            scope = { type = "select", name = "Specialization", order = 4, width = "double",
-                values = AUTO_SCOPE_VALUES, sorting = { "spec", "any" },
-                get = function() return ns.AutoCfg().scope end,
-                set = function(_, v) ns.AutoCfg().scope = v; ns.MarkDirty(); Notify() end },
-            talents = { type = "toggle", name = "Include talents I have not picked (rule only loads when the talent is known)", order = 5, width = "full",
-                get = function() return ns.AutoCfg().talents ~= false end,
-                set = function(_, v) ns.AutoCfg().talents = v and true or false; ns.MarkDirty(); Notify() end },
-            enabled = { type = "toggle", name = "Create the rules already enabled", order = 6, width = "full",
-                get = function() return ns.AutoCfg().enabled ~= false end,
-                set = function(_, v) ns.AutoCfg().enabled = v and true or false; ns.MarkDirty(); Notify() end },
-            preview = { type = "description", order = 7, width = "full", fontSize = "small", name = function() return AutoPreview() end },
-        } },
+        -- AUTO-POPULATE RULES moved to the Class/Spec Rule Creator tab (2026-10-31)
         all = all } }
 
     ---------------------------------------------------------- Buff Bars
@@ -2302,7 +2592,7 @@ local function BuildOptions()
                 func = function() ns.ToggleUnlock(); Notify() end },
         },
     }
-    for i, bar in ipairs(ns.bars or {}) do allBars.args["bar" .. i] = BuildBar(i, bar) end
+    for i, bar in ipairs(ns.BarsOn and ns.bars or {}) do allBars.args["bar" .. i] = BuildBar(i, bar) end
 
     ---------------------------------------------------------- Smart Categories (virtual root under All Rules)
     do
@@ -2316,7 +2606,7 @@ local function BuildOptions()
                 return (scope == "loaded" and loadedArgs[key] ~= nil) or (scope == "not" and notArgs[key] ~= nil)
             end
             smartArgs.info = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "Collects rules by what they actually do, without moving them out of their own folders. A rule that shows an icon and text appears under both. Buff bars are listed under Progress Bars. Lists update as you change rules; empty ones are hidden." }
+                name = "Collects rules by what they actually do, without moving them out of their own groups. A rule that shows an icon and text appears under both. Buff bars are listed under Progress Bars. Lists update as you change rules; empty ones are hidden." }
             for k, cat in ipairs(ns.SMART_CATS) do
                 local args, n = {}, 0
                 if cat.key == "smart_bar" then
@@ -2343,9 +2633,55 @@ local function BuildOptions()
                 name = function() return "SMART CATEGORIES (" .. total .. ")" end,
                 hidden = scope ~= "all" and function() return total == 0 end or nil, args = smartArgs }
         end
-        -- (no Smart Categories inside All Rules: Loaded / Not Loaded carry them, and All Rules already lists every rule)
-        loadedArgs.smart = MakeSmart("loaded", 1)
-        notArgs.smart = MakeSmart("not", 1)
+        -- Smart Categories also sit at the top of All Rules (collapsed until opened; the tree only expands what you open)
+        all.args.smart = MakeSmart("all", 0.95)
+        -- (Smart Categories removed from Loaded / Not Loaded; they live under All Rules)
+    end
+
+    ---------------------------------------------------------- Groups inside Loaded / Not Loaded
+    -- A rule that lives in a group is listed under that group (nested like in All Rules) in whichever of Loaded / Not Loaded it
+    -- belongs to; groups with nothing in that state are left out. Ungrouped rules stay in the flat list. Moving a rule into a group
+    -- therefore shows up in these lists on the next refresh.
+    do
+        local function Scoped(f, scopeArgs, allowEmpty)
+            local g = groups[f.id]
+            if not g then return nil end
+            local kids, count = {}, 0
+            for i, rule in ipairs(ns.rules or {}) do
+                if ruleGroups[i] and rule.folder == f.id and scopeArgs["rule" .. i] then kids["rule" .. i] = ruleGroups[i]; count = count + 1 end
+            end
+            for _, sf in ipairs(ns.folders or {}) do
+                if sf.parent == f.id and sf.id ~= f.id then
+                    local n, c = Scoped(sf, scopeArgs, allowEmpty)
+                    if n then kids[sf.id] = n; count = count + c end
+                end
+            end
+            if count == 0 and not next(kids) and not (#FolderRules(f.id) == 0 and ((allowEmpty == "loaded" and f.xuiScope ~= "notloaded") or (allowEmpty == "notloaded" and f.xuiScope == "notloaded"))) then return nil end   -- an empty group is listed in the list it was created from (Loaded by default)
+            local args = {}
+            for k, v in pairs(g.args or {}) do
+                if not (type(k) == "string" and (k:match("^rule%d+$") or k:match("^f%d+$"))) then args[k] = v end
+            end
+            for k, v in pairs(kids) do args[k] = v end
+            return { type = "group", order = g.order, childGroups = "tree",
+                name = function() return tostring(f.name):upper() .. " (" .. count .. ")" end, args = args }, count
+        end
+        local function Apply(scopeArgs, allowEmpty)
+            local top, moved = {}, {}
+            for _, f in ipairs(ns.folders or {}) do
+                if not (f.parent and groups[f.parent]) then
+                    local n = Scoped(f, scopeArgs, allowEmpty)
+                    if n then top[f.id] = n end
+                end
+            end
+            for i, rule in ipairs(ns.rules or {}) do
+                local key = "rule" .. i
+                if scopeArgs[key] and rule.folder and groups[rule.folder] then moved[#moved + 1] = key end
+            end
+            for _, key in ipairs(moved) do scopeArgs[key] = nil end   -- listed under their group instead
+            for id, n in pairs(top) do scopeArgs[id] = n end
+        end
+        Apply(loadedArgs, "loaded")
+        Apply(notArgs, "notloaded")
     end
 
     ---------------------------------------------------------- QoL
@@ -2362,7 +2698,7 @@ local function BuildOptions()
             tokens = { type = "description", order = 2, width = "full", fontSize = "small", name = TokenHelp },
         },
     }
-    for i, box in ipairs(ns.qolBoxes or {}) do allQol.args["box" .. i] = BuildBox(i, box) end
+    for i, box in ipairs(ns.QoLOn and ns.qolBoxes or {}) do allQol.args["box" .. i] = BuildBox(i, box) end
     -- Stat Tracking off (tick box on its sidebar row): nothing is listed or shown
     for k, v in pairs(allQol.args) do v.hidden = function() return not ns.QoLOn() end end
     for k, v in pairs(allBars.args) do
@@ -2373,10 +2709,15 @@ local function BuildOptions()
             return orig
         end
     end
-    local qol = { type = "group", name = "QoL Elements", order = 5, childGroups = "tree", args = { allqol = allQol, allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil, allbars = allBars } }
+    -- QoL Elements (stat boxes, cursor tracker, buff bars) are switched off for now: their files are not in XayaUI.toc, so ns.QoLOn is nil and the tab is skipped.
+    local qol = ns.QoLOn and { type = "group", name = "QoL Elements", order = 5, childGroups = "tree", args = { allqol = allQol, allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil, allbars = allBars } } or nil
 
+    -- Addon Info is not in the tab strip: the "Addon Info" link in the window's bottom-left corner opens it (ns.infoOpen) and it
+    -- goes away again as soon as another tab is picked.
+    local infoGroup = ns.BuildAddonInfo and ns.BuildAddonInfo() or nil
+    if infoGroup then infoGroup.order = 8; infoGroup.hidden = function() return not ns.infoOpen end end
     return { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, qol = qol, profiles = BuildProfiles(), settings = BuildAddonSettings() } }
+        args = { cooldowns = track, creator = BuildClassCreator(), qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = BuildAddonSettings() } }
 end
 
 -- skipValidation: the options tree is very large (every rule repeats in several lists); Ace's one-off type check of it can exceed
@@ -2734,6 +3075,7 @@ local function StopDrag(button)
     local ok, target = DropTarget(tb, kind, obj)
     if not ok then return end
     if kind == "rule" then
+        if ns.MultiHas and ns.MultiHas(obj) and ns.MultiCount() > 1 then ns.MultiMove(target); return end   -- dragging one selected rule moves them all
         if obj.folder == target then return end
         obj.folder = target
         ns.MarkDirty(); Notify()
@@ -2840,7 +3182,7 @@ local function MakeReorderArrow(button, dir)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         if self:IsEnabled() then
             GameTooltip:SetText(self.dir < 0 and "Move up" or "Move down")
-            GameTooltip:AddLine("Changes the order within this list. Rules inside a folder stay in that folder.", 1, 1, 1, true)
+            GameTooltip:AddLine("Changes the order within this list. Rules inside a group stay in that group.", 1, 1, 1, true)
         else
             GameTooltip:SetText(self.dir < 0 and "Already first" or "Already last")
         end
@@ -2942,7 +3284,7 @@ local function ConvertFolder(src, mode)
     local toKey = (src.default == "display") and "sound" or "display"
     local dst
     for _, f in ipairs(ns.folders) do if not f.parent and f.default == toKey then dst = f; break end end
-    if not dst then ns.Print("that category is missing - press 'Add Default Categories' on All Rules first"); return end
+    if not dst then ns.Print("that category group is missing - create a group for it under All Rules first"); return end
     local rules = FolderRules(src.id)
     if #rules == 0 then ns.Print("nothing inside '" .. tostring(src.name) .. "' to " .. mode); return end
     local sub = ns.NewFolder((mode == "copy" and "Copied from " or "Moved from ") .. tostring(src.name), dst.id)
@@ -3009,9 +3351,13 @@ local function DeleteFolder(f)
     ns.MarkDirty(); Notify(); SelectRoot()
 end
 
+function ns.DeleteFolderById(id) local f = FolderById(id); if f then DeleteFolder(f) end end
+
 local function AddMoveMenu(root, obj, kind)
-    local sub = root:CreateButton("Move To")
+    local multi = kind == "rule" and ns.MultiHas and ns.MultiHas(obj) and ns.MultiCount() > 1
+    local sub = root:CreateButton(multi and ("Move " .. ns.MultiCount() .. " Selected To") or "Move To")
     sub:CreateButton("Top Level (All Rules)", function()
+        if multi then ns.MultiMove(nil); return end
         if kind == "rule" then obj.folder = nil else obj.parent = nil end
         ns.MarkDirty(); Notify()
     end)
@@ -3019,6 +3365,7 @@ local function AddMoveMenu(root, obj, kind)
         if not (kind == "folder" and IsInFolder(f.id, obj.id)) then
             local depth = #FolderChain(f) - 1
             sub:CreateButton(string.rep("    ", depth) .. f.name, function()
+                if multi then ns.MultiMove(f.id); return end
                 if kind == "rule" then obj.folder = f.id else obj.parent = f.id end
                 ns.MarkDirty(); Notify()
                 if kind == "rule" then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(obj))
@@ -3098,10 +3445,11 @@ local function RowMenu(button, root)
         root:CreateButton("New Rule Here", function()
             StartNewRule(fold.id)
         end)
-        root:CreateButton("New Subfolder", function()
-            local nf = ns.NewFolder("Folder " .. (#ns.folders + 1), fold.id)
+        root:CreateButton("New Nested Group", function()
+            local nf = ns.NewFolder("Group " .. (#ns.folders + 1), fold.id)
+            local path = { ns.PlaceNewGroup(nf, ns.ScopeOfUV(button.uniquevalue)) }   -- same list as the parent row
             Notify()
-            pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(nf))
+            pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(path))
         end)
         root:CreateButton("Duplicate", function()
             local nf = DuplicateFolder(fold, fold.parent, true)
@@ -3120,11 +3468,11 @@ local function RowMenu(button, root)
         root:CreateButton("Enable All Rules Inside", function() for _, r in ipairs(FolderRules(fold.id)) do r.enabled = true; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
         root:CreateButton("Disable All Rules Inside", function() for _, r in ipairs(FolderRules(fold.id)) do r.enabled = false; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
         AddPasteMenu(root, "Paste Settings Into Rules Here", function() return FolderRules(fold.id) end,
-            function() return "every rule in '" .. tostring(fold.name) .. "' (and its subfolders)" end)
+            function() return "every rule in '" .. tostring(fold.name) .. "' (and its nested groups)" end)
         AddMoveMenu(root, fold, "folder")
         root:CreateDivider()
-        root:CreateButton("Delete Folder (Contents Move Up)", function()
-            AskConfirm("Delete the folder '" .. fold.name .. "'? Its rules and subfolders are kept and move up one level.", function() DeleteFolder(fold) end)
+        root:CreateButton("Delete Group (Contents Move Up)", function()
+            AskConfirm("Delete the group '" .. fold.name .. "'? Its rules and nested groups are kept and move up one level.", function() DeleteFolder(fold) end)
         end)
         return true
     end
@@ -3171,10 +3519,10 @@ local function RowMenu(button, root)
         root:CreateButton("New Rule", function()
             StartNewRule(nil)
         end)
-        root:CreateButton("New Folder", function()
-            local nf = ns.NewFolder("Folder " .. (#ns.folders + 1))
+        root:CreateButton("New Group", function()
+            local nf = ns.NewFolder("Group " .. (#ns.folders + 1))
             Notify()
-            pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(nf))
+            pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, ns.FolderLoadedPath(nf))
         end)
         return true
     end
@@ -3489,9 +3837,117 @@ local ROW_TOGGLES = {
 }
 
 -- Left cluster, in order:  [collapse arrow] [eye] [headphone]  text
+-- Multi-select delete: Ctrl+click toggles a rule row, Shift+click selects the visible rule rows between the last clicked row and
+-- this one (either direction). Selected rows get a purple wash in every list they appear in. "Delete N selected" (bottom-left of the window) deletes them
+-- after a confirmation. A plain click on any row, or "Clear selection", drops the selection.
+do
+    local sel, anchor = {}, nil   -- sel[rule] = true
+    local function RuleOfButton(button)
+        local last = tostring(button.uniquevalue or ""):match("([^\001]+)$") or ""
+        local n = tonumber(last:match("^rule(%d+)$"))
+        return n and ns.rules and ns.rules[n]
+    end
+    function ns.MultiCount() local n = 0; for _ in pairs(sel) do n = n + 1 end; return n end
+    function ns.MultiReset() wipe(sel); anchor = nil end
+    function ns.MultiHas(rule) return sel[rule] and true or false end
+    -- move every selected rule into group fid (nil = top level)
+    function ns.MultiMove(fid)
+        local n = 0
+        for r in pairs(sel) do
+            if r.folder ~= fid then r.folder = fid; n = n + 1 end
+            -- outcomes embedded in a rule follow their parent's group (same rule as the single-rule move)
+        end
+        local keep = {}
+        for r in pairs(sel) do keep[#keep + 1] = r end
+        ns.MultiReset()
+        ns.MarkDirty(); Notify()
+        if ns.DecorateTrees then ns.DecorateTrees() end
+        local g = fid and FolderById(fid)
+        ns.Print(("moved %d rule(s) to %s"):format(#keep, g and tostring(g.name) or "the top level"))
+    end
+    -- "Move to..." menu for the selection bar
+    function ns.MultiMoveMenu(owner)
+        if not (MenuUtil and MenuUtil.CreateContextMenu) then return end
+        pcall(MenuUtil.CreateContextMenu, MenuOwner(owner), function(_, root)
+            if root.AddMenuAcquiredCallback then
+                root:AddMenuAcquiredCallback(function(menu)
+                    if menu and menu.SetFrameStrata then pcall(menu.SetFrameStrata, menu, "TOOLTIP"); if menu.Raise then pcall(menu.Raise, menu) end end
+                end)
+            end
+            root:CreateTitle("Move " .. ns.MultiCount() .. " selected rule(s) to")
+            root:CreateButton("Top Level (no group)", function() ns.MultiMove(nil) end)
+            for _, f in ipairs(ns.folders or {}) do
+                root:CreateButton(string.rep("    ", #FolderChain(f) - 1) .. tostring(f.name), function() ns.MultiMove(f.id) end)
+            end
+        end)
+    end
+    function ns.MultiClear() ns.MultiReset(); if ns.DecorateTrees then ns.DecorateTrees() end end
+    function ns.MultiClick(button, mouse)
+        if mouse ~= "LeftButton" then return end
+        local ctrl, shift = IsControlKeyDown(), IsShiftKeyDown()
+        local rule = RuleOfButton(button)
+        if not (ctrl or shift) then
+            -- a plain click drops the selection and becomes the start point for the next Shift+click (the row still opens as usual)
+            if next(sel) then wipe(sel); if ns.DecorateTrees then ns.DecorateTrees() end end
+            if rule then anchor = rule end
+            return
+        end
+        if not rule then return end
+        if shift and anchor and anchor ~= rule and button.obj and button.obj.buttons then
+            -- range from the start point to this row, either direction; if the start rule is listed twice, take the nearer row
+            local btns, hits, target = button.obj.buttons, {}, nil
+            for i, b in ipairs(btns) do
+                if b:IsShown() then
+                    if RuleOfButton(b) == anchor then hits[#hits + 1] = i end
+                    if b == button then target = i end
+                end
+            end
+            if target and #hits > 0 then
+                local from = hits[1]
+                for _, i in ipairs(hits) do if math.abs(i - target) < math.abs(from - target) then from = i end end
+                for i = math.min(from, target), math.max(from, target) do
+                    local b = btns[i]
+                    local r = b:IsShown() and RuleOfButton(b)
+                    if r then sel[r] = true end
+                end
+                if ns.DecorateTrees then ns.DecorateTrees() end
+                return
+            end
+        end
+        sel[rule] = (not sel[rule]) or nil
+        anchor = rule
+        if ns.DecorateTrees then ns.DecorateTrees() end
+    end
+    function ns.MultiPaint(button)
+        local rule = RuleOfButton(button)
+        local on = rule and sel[rule]
+        if on and not button.xuiMultiTex then
+            button.xuiMultiTex = button:CreateTexture(nil, "BACKGROUND", nil, 1)
+            button.xuiMultiTex:SetAllPoints()
+            button.xuiMultiTex:SetColorTexture(0.75, 0.25, 1, 0.38)
+        end
+        if button.xuiMultiTex then button.xuiMultiTex:SetShown(on and true or false) end
+    end
+    function ns.MultiDelete()
+        local list = {}
+        for r in pairs(sel) do list[#list + 1] = r end
+        if #list == 0 then return end
+        StaticPopup_Show("XAYAUI_CONFIRM", ("Delete %d selected rule(s)? This cannot be undone."):format(#list), nil, { cb = function()
+            for _, rule in ipairs(list) do
+                if ns.DeleteOutcomesOf then pcall(ns.DeleteOutcomesOf, rule) end
+                for idx, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, idx); break end end
+                pcall(ns.DropVisual, rule)
+            end
+            ns.MultiReset()
+            ns.MarkDirty(); Notify(); SelectRoot()
+        end })
+    end
+end
+
 local function DecorateButton(button)
     PaintBanner(button)
     PaintGuides(button)
+    ns.MultiPaint(button)
     local vis, snd = Resolve(button.uniquevalue)
     local rawObjs = vis
     -- cue kinds: the eye only covers rules that have a display, the headphone only rules that have a sound
@@ -3507,7 +3963,7 @@ local function DecorateButton(button)
         button.xuiDrag = true
         button:RegisterForDrag("LeftButton")
         button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        button:HookScript("OnClick", function(self, mouse) if mouse == "RightButton" then ShowRowMenu(self) end end)
+        button:HookScript("OnClick", function(self, mouse) if mouse == "RightButton" then ShowRowMenu(self) else ns.MultiClick(self, mouse) end end)
         button:HookScript("OnDragStart", StartDrag)
         button:HookScript("OnDragStop", StopDrag)
     end
@@ -3919,6 +4375,38 @@ local function SelectedRule()
     return idx and ns.rules and ns.rules[idx]
 end
 
+-- Selected group in the sidebar (last path segment is a group id), or nil.
+function ns.SelectedGroup()
+    if not AceConfigDialog.GetStatusTable then return nil end
+    local root = AceConfigDialog:GetStatusTable(APP)
+    local tab = root and root.groups and root.groups.selected
+    if tab ~= "cooldowns" then return nil end
+    local st = AceConfigDialog:GetStatusTable(APP, { tab })
+    local sel = st and st.groups and st.groups.selected
+    local last = sel and tostring(sel):match("([^\001]+)$")
+    return last and FolderById(last) or nil
+end
+-- Del key: delete the multi-selected rules, else the open rule, else the open group. Always asks first.
+function ns.DeleteKey()
+    if ns.MultiCount() > 0 then ns.MultiDelete(); return true end
+    local rule = SelectedRule()
+    if rule then
+        AskConfirm("Delete the rule '" .. tostring(rule.name) .. "'? This cannot be undone.", function()
+            if ns.DeleteOutcomesOf then pcall(ns.DeleteOutcomesOf, rule) end
+            for idx, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, idx); break end end
+            pcall(ns.DropVisual, rule)
+            ns.MarkDirty(); Notify(); SelectRoot()
+        end)
+        return true
+    end
+    local g = ns.SelectedGroup()
+    if g then
+        AskConfirm("Delete the group '" .. tostring(g.name) .. "'? Its rules and nested groups are kept and move up one level.", function() ns.DeleteFolderById(g.id) end)
+        return true
+    end
+    return false
+end
+
 -------------------------------------------------------------------------------
 -- Window chrome: a close X (top right) and a collapse arrow (shrinks the window to
 -- just the XayaUI banner). Collapse state is session-only and resets when the window closes.
@@ -3997,10 +4485,61 @@ local function EnsureChrome(of)
         end)
         c.arrow:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
+        -- Addon Info: a small muted link in the bottom-left corner, outside the normal interaction area
+        c.info = CreateFrame("Button", nil, fr)
+        c.info:SetSize(80, 16)
+        c.info:SetPoint("BOTTOMLEFT", fr, "BOTTOMLEFT", 20, 14)
+        c.info:SetFrameLevel(fr:GetFrameLevel() + 10)
+        c.info.text = c.info:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        c.info.text:SetPoint("LEFT", 0, 0); c.info.text:SetText("Addon Info")
+        c.info:SetScript("OnEnter", function(self) self.text:SetTextColor(1, 0.82, 0) end)
+        c.info:SetScript("OnLeave", function(self) self.text:SetTextColor(0.5, 0.5, 0.5) end)
+        c.info.text:SetTextColor(0.5, 0.5, 0.5)
+        c.info:SetScript("OnClick", function()
+            ns.infoOpen = true
+            Notify()
+            pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "info")
+        end)
+
+        if not fr.xuiDelKey then
+            fr.xuiDelKey = true
+            fr:EnableKeyboard(true)
+            fr:HookScript("OnKeyDown", function(self, key)
+                local handled = false
+                if key == "DELETE" then handled = ns.DeleteKey() end
+                if self.SetPropagateKeyboardInput then self:SetPropagateKeyboardInput(not handled) end
+            end)
+        end
+        -- multi-select delete links (shown only while rules are selected)
+        c.delSel = CreateFrame("Button", nil, fr)
+        c.delSel:SetHeight(16)
+        c.delSel:SetPoint("BOTTOMLEFT", fr, "BOTTOMLEFT", 110, 14)
+        c.delSel:SetFrameLevel(fr:GetFrameLevel() + 10)
+        c.delSel.text = c.delSel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        c.delSel.text:SetPoint("LEFT", 0, 0); c.delSel.text:SetTextColor(1, 0.3, 0.3)
+        c.delSel:SetScript("OnClick", function() ns.MultiDelete() end)
+        c.delSel:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText("Ctrl+click rule rows to select, Shift+click for a range")
+            GameTooltip:Show()
+        end)
+        c.delSel:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        c.clr = CreateFrame("Button", nil, fr)
+        c.clr:SetHeight(16); c.clr:SetWidth(70)
+        c.clr:SetFrameLevel(fr:GetFrameLevel() + 10)
+        c.clr.text = c.clr:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        c.clr.text:SetPoint("LEFT", 0, 0); c.clr.text:SetText("Clear selection")
+        c.clr:SetScript("OnClick", function() ns.MultiClear() end)
+        c.delSel:Hide(); c.clr:Hide()
+
         -- AceGUI recycles Frame widgets: undo everything on release so other addons' windows stay untouched
         local orig = of.OnRelease
         of.OnRelease = function(self, ...)
             SetCollapsed(self, false)
+            ns.infoOpen = false
+            ns.MultiReset()
+            c.delSel:Hide(); c.clr:Hide()
+            c.info:Hide()
             c.close:Hide()
             c.arrow:Hide()
             if orig then return orig(self, ...) end
@@ -4008,6 +4547,36 @@ local function EnsureChrome(of)
     end
     c.arrow:Show()
     c.close:Show()
+    if c.info and not c.collapsed then c.info:Show() end
+    -- first time the window opens in a session: every top-level group / Smart Categories list under Rules, Loaded and Not Loaded starts collapsed
+    if not ns.sessionCollapsed and AceConfigDialog.GetStatusTable then
+        local st = AceConfigDialog:GetStatusTable(APP, { "cooldowns" })
+        if st and st.groups then
+            ns.sessionCollapsed = true
+            for uv, on in pairs(st.groups) do
+                if on and type(uv) == "string" then
+                    local _, n = uv:gsub("\001", "\001")
+                    if n == 1 then st.groups[uv] = nil end
+                end
+            end
+            Notify()
+        end
+    end
+    if c.delSel then
+        local n = ns.MultiCount and ns.MultiCount() or 0
+        if n > 0 and not c.collapsed then
+            c.delSel.text:SetText(("Delete %d selected rule%s"):format(n, n == 1 and "" or "s"))
+            c.delSel:SetWidth(c.delSel.text:GetStringWidth() + 4)
+            c.clr:ClearAllPoints(); c.clr:SetPoint("LEFT", c.delSel, "RIGHT", 12, 0)
+            c.delSel:Hide(); c.clr:Hide()   -- bottom-left duplicate removed: the sidebar bar has Delete / Move to / Clear
+        else c.delSel:Hide(); c.clr:Hide() end
+    end
+    -- the Addon Info page lasts only until another tab is picked
+    if ns.infoOpen then
+        local st = AceConfigDialog.GetStatusTable and AceConfigDialog:GetStatusTable(APP)
+        local tab = st and st.groups and st.groups.selected
+        if tab and tab ~= "info" then ns.infoOpen = false; Notify() end
+    end
 end
 
 local driver, acc = CreateFrame("Frame"), 0
