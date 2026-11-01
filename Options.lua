@@ -1505,7 +1505,7 @@ local function BuildRule(i, rule)
         type = "group", name = "Rule", order = 1, args = {
             name = { type = "input", name = "Name", order = 1, width = "double",
                 get = function() return rule.name end,
-                set = function(_, v) if v ~= "" then rule.name = v end; Notify() end },
+                set = function(_, v) rule.name = tostring(v or ""):sub(1, 60); pcall(ns.RefreshVisual, rule); ns.MarkDirty(); Notify() end },
             enabled = { type = "toggle", name = "Enabled", order = 2,
                 get = function() return rule.enabled end,
                 set = function(_, v) rule.enabled = v; Changed(rule); Notify() end },
@@ -1561,7 +1561,11 @@ local function BuildRule(i, rule)
     return {
         type = "group", childGroups = "tab", order = 1000 + i,
         hidden = function() local q = ns.treeFilter; return q and q ~= "" and not tostring(rule.name or ""):lower():find(q, 1, true) end,
-        name = function() return (rule.enabled and "" or "|cff888888") .. rule.name end,
+        name = function()
+            local nm = tostring(rule.name or "")
+            if nm == "" then return "|cff888888Unnamed rule|r" end
+            return (rule.enabled and "" or "|cff888888") .. nm
+        end,
         args = { rule = ruleTab, trigger = trigger, cues = cuesTab, conditions = conditionsTab, actions = actions, load = load },
     }
 end
@@ -2154,7 +2158,7 @@ end
 local picker = nil   -- { folder = id|nil } while the page is open
 local function CreateRuleOfType(typ, fid)
     local r = ns.NewRule()
-    r.name = "Rule " .. (#ns.rules + 1)
+    r.name = ""   -- new rules are not auto-named: the sidebar row opens a name box for it instead
     r.folder = fid
     ApplyNewOpts(r)
     local v = r.visual
@@ -2172,6 +2176,7 @@ local function CreateRuleOfType(typ, fid)
         if type(r.visual) == "table" then r.visual.enabled = false end
     end
     ns.rules[#ns.rules + 1] = r
+    ns.pendingRename = r
     Notify()
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(r))
     ns.pickOrigin = nil
@@ -4534,6 +4539,41 @@ do
     end
 end
 
+-- Rename a rule right in the sidebar: a text box over the row's name (double-click the row, or it opens by itself for a new rule).
+function ns.SidebarRename(button)
+    local rn = tostring(button.uniquevalue or ""):match("rule(%d+)$")
+    local rule = rn and ns.rules and ns.rules[tonumber(rn)]
+    if not rule or (ns.IsEditLocked and ns.IsEditLocked(rule)) then return end
+    local eb = button.xuiRenameEB
+    if not eb then
+        eb = CreateFrame("EditBox", nil, button)
+        eb:SetAutoFocus(false); eb:SetHeight(22); eb:SetMaxLetters(60); eb:SetTextInsets(6, 6, 0, 0)
+        eb:SetFontObject(GameFontHighlight)
+        eb.bg = eb:CreateTexture(nil, "BACKGROUND"); eb.bg:SetAllPoints(); eb.bg:SetColorTexture(0, 0, 0, 1)
+        eb.ln = eb:CreateTexture(nil, "ARTWORK"); eb.ln:SetHeight(1); eb.ln:SetPoint("BOTTOMLEFT"); eb.ln:SetPoint("BOTTOMRIGHT"); eb.ln:SetColorTexture(0.75, 0.25, 1, 1)
+        eb:SetScript("OnEscapePressed", function(self) self.xuiCancel = true; self:ClearFocus() end)
+        eb:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+        eb:SetScript("OnEditFocusLost", function(self)
+            local r = self.xuiRule
+            self:Hide()
+            if self.xuiCancel then self.xuiCancel = nil; return end
+            if r then
+                r.name = tostring(self:GetText() or ""):sub(1, 60)
+                pcall(ns.RefreshVisual, r); ns.MarkDirty(); Notify()
+            end
+        end)
+        button.xuiRenameEB = eb
+    end
+    eb.xuiRule = rule
+    eb:SetFrameLevel(button:GetFrameLevel() + 8)
+    eb:ClearAllPoints()
+    local left = button.text and button.text:GetLeft() and button:GetLeft() and (button.text:GetLeft() - button:GetLeft() - 6) or 40
+    eb:SetPoint("LEFT", button, "LEFT", math.max(4, left), 0)
+    eb:SetPoint("RIGHT", button, "RIGHT", -52, 0)
+    eb:SetText(tostring(rule.name or ""))
+    eb:Show(); eb:SetFocus(); eb:HighlightText()
+end
+
 local function DecorateButton(button)
     PaintBanner(button)
     PaintGuides(button)
@@ -4571,6 +4611,19 @@ local function DecorateButton(button)
         button:HookScript("OnClick", function(self, mouse) if mouse == "RightButton" then ShowRowMenu(self) else ns.MultiClick(self, mouse) end end)
         button:HookScript("OnDragStart", StartDrag)
         button:HookScript("OnDragStop", StopDrag)
+    end
+    if not button.xuiDblHooked then
+        button.xuiDblHooked = true
+        button:HookScript("OnDoubleClick", function(self) if ns.SidebarRename then ns.SidebarRename(self) end end)
+    end
+    if button.xuiRenameEB and button.xuiRenameEB:IsShown() and not button.xuiRenameEB:HasFocus() then button.xuiRenameEB:Hide() end
+    do   -- a rule that was just created (no name yet) opens its name box in the sidebar
+        local pr = ns.pendingRename
+        local rnum = tostring(button.uniquevalue or ""):match("rule(%d+)$")
+        if pr and rnum and ns.rules[tonumber(rnum)] == pr and C_Timer then
+            ns.pendingRename = nil
+            C_Timer.After(0.15, function() if button:IsShown() and ns.SidebarRename then ns.SidebarRename(button) end end)
+        end
     end
     local level = (button.level or 1) - (inSC and 2 or 0)
     if level < 1 then level = 1 end
