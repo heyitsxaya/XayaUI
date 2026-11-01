@@ -1886,7 +1886,7 @@ end
 function ns.SelStyle() local u = CueRulesDB and CueRulesDB.ui; return (u and u.selStyle == "bar") and "bar" or "text" end
 function ns.ParentGradientOn() local u = CueRulesDB and CueRulesDB.ui; return not (u and u.parentGradient == false) end
 function ns.SidebarSpellIcons() local u = CueRulesDB and CueRulesDB.ui; return not (u and u.sidebarSpellIcons == false) end
-function ns.GridOn() local u = CueRulesDB and CueRulesDB.ui; return not (u and u.gridLayout == false) end
+function ns.GridOn() return true end   -- two-column grid is always on (no longer an option)
 function ns.CondensedOn() local u = CueRulesDB and CueRulesDB.ui; return u and u.condensedList == true or false end
 function ns.DebugConsoleOn() local u = CueRulesDB and CueRulesDB.ui; return not (u and u.hideTray) end
 
@@ -1913,10 +1913,6 @@ local function BuildAddonSettings()
                 desc = "Drops the icons and the taller rows from the left-hand rule list and shows plain, compact rows with the +/- toggle on the left.",
                 get = function() return ns.CondensedOn() end,
                 set = function(_, v) Ui().condensedList = v and true or false; Repaint() end },
-            gridLayout = { type = "toggle", name = "Two-column grid in the option panes (WeakAuras-style alignment)", order = 24, width = "full",
-                desc = "Controls line up in two equal columns with a wide gutter; a control that is too wide for a column (long dropdown lists, text boxes) spans both. Off: controls flow side by side at their natural width.",
-                get = function() return ns.GridOn() end,
-                set = function(_, v) Ui().gridLayout = v and true or false; Repaint() end },
             sidebarSpellIcons = { type = "toggle", name = "Show a rule's spell / buff icon in the rule list", order = 23, width = "full",
                 desc = "Rules that track a spell or buff show that spell's icon in the left-hand list instead of the generic type icon. Each rule can override this in its Display Options (Sidebar icon).",
                 get = function() return ns.SidebarSpellIcons() end,
