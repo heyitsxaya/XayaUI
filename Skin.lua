@@ -1482,6 +1482,33 @@ local function Walk(w, depth)
                 end
             end
         end
+        -- texture pickers (opt.arg.xuiTexPick): big preview rows. AceGUI's pullout lays rows out at a fixed 16 px, so re-space them after it opens;
+        -- the closed box keeps a small icon so it doesn't outgrow its line.
+        if t == "Dropdown" and w.pullout and not w.xuiTexPick then
+            local o2 = w.GetUserData and w:GetUserData("option")
+            if o2 and type(o2.arg) == "table" and o2.arg.xuiTexPick then
+                w.xuiTexPick = true
+                local po, origOpen, origSetText = w.pullout, w.pullout.Open, w.SetText
+                local ROW = ns.TEX_PICK_ROW or 60
+                po.Open = function(self, ...)
+                    origOpen(self, ...)
+                    local height = 8
+                    for i, item in pairs(self.items) do
+                        item.frame:SetHeight(ROW)
+                        if item.highlight then item.highlight:SetHeight(ROW - 2) end
+                        item:SetPoint("TOP", self.itemFrame, "TOP", 0, -2 - (i - 1) * ROW)
+                        height = height + ROW
+                    end
+                    self.itemFrame:SetHeight(height)
+                    self.frame:SetHeight(math.min(height + 26, self.maxHeight or height + 26))
+                    if self.FixScroll then self:FixScroll() end
+                end
+                local function small(s) return s and (s:gsub("(|T[^|:]+):%d+:%d+|t", "%1:22:22|t")) end
+                w.SetText = function(self, s) return origSetText(self, small(s)) end
+                if w.text then w.text:SetText(small(w.text:GetText())) end
+                AddRest(w, "texpick", function(self) self.xuiTexPick = nil; self.SetText = origSetText; if self.pullout then self.pullout.Open = origOpen end end)
+            end
+        end
         -- the open list was see-through (text over the page): give every dropdown list a solid dark panel
         local pf = (t == "Dropdown") and w.pullout and w.pullout.frame or w.frame
         if pf and not pf.xuiDD then

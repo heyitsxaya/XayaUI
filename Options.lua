@@ -136,20 +136,23 @@ local function EnsureSounds()
 end
 
 -- Texture presets (Blizzard alert art, with inline preview icons)
+-- Preview size in the "Or pick art" lists (was 22 px): icon height, and the row is a little taller. Skin.lua lays the rows out.
+ns.TEX_PICK_ICON, ns.TEX_PICK_ROW = 56, 60
 local texValues, texSorting
 local function EnsureTextures()
     if texValues then return end
     texValues, texSorting = {}, {}
     for i, t in ipairs(ns.TextureList or {}) do
         local k = tostring(t[1])
-        texValues[k] = ("|T%d:22|t  %s"):format(t[1], t[2])
+        texValues[k] = ("|T%d:%d:%d|t  %s"):format(t[1], ns.TEX_PICK_ICON, ns.TEX_PICK_ICON, t[2])
         texSorting[i] = k
     end
     texValues["0"] = "(none)"
     table.insert(texSorting, 1, "0")
     -- local graphics (Media\\Graphics, from LocalGraphics.lua); the stored value is the file path
     for _, g in ipairs(ns.LocalGraphics or {}) do
-        texValues[g[2]] = ("|T%s:22:22|t  %s"):format(g[2], g[1])
+        local gw = math.min(ns.TEX_PICK_ICON * 2, math.max(8, math.floor(ns.TEX_PICK_ICON * (g[3] or 1) / math.max(1, g[4] or 1) + 0.5)))   -- keep the picture's proportions
+        texValues[g[2]] = ("|T%s:%d:%d|t  %s"):format(g[2], ns.TEX_PICK_ICON, gw, g[1])
         texSorting[#texSorting + 1] = g[2]
     end
 end
@@ -1137,6 +1140,7 @@ local function BuildRule(i, rule)
                 get = function() return tostring(V.tex or "") end,
                 set = function(_, v) V.tex = v; Changed(rule) end },
             preset = { type = "select", name = "Or pick art (Blizzard alerts + your Media\\Graphics)", order = 3, width = "double",
+                arg = { xuiTexPick = true },
                 hidden = function() return V.kind == "spellicon" end,
                 values = function() EnsureTextures(); return texValues end,
                 sorting = function() EnsureTextures(); return texSorting end,
@@ -1233,6 +1237,7 @@ local function BuildRule(i, rule)
                 get = function() return tostring(OV.tex or "") end,
                 set = function(_, val) OV.tex = val; Changed(rule) end },
             preset = { type = "select", name = "Or pick art (Blizzard alerts + your Media\\Graphics)", order = 5, width = "double",
+                arg = { xuiTexPick = true },
                 hidden = function() return not (OV.enabled and ns.Val(OV.source) == "other") or OV.kind == "spellicon" end,
                 values = function() EnsureTextures(); return texValues end,
                 sorting = function() EnsureTextures(); return texSorting end,
