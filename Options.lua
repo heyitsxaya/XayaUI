@@ -1493,7 +1493,7 @@ local function BuildRule(i, rule)
     -- cue kinds: a Display rule has no sound banner, a Sound rule has no display / text banners
     actions.args.note = { type = "description", order = 0, width = "full", fontSize = "medium",
         hidden = function() return not (ns.HasOutcomes and ns.HasOutcomes(rule)) end,
-        name = "This rule has Conditions, so what it does is set with Cues (Cues tab) and chosen under THEN on the Conditions tab. Actions are for simple effects that need no conditions; remove all conditions to use them." }
+        name = "This rule has Conditions, so its effects are created on the Cues tab and selected under THEN on the Conditions tab. Actions are for simple effects that don't need conditions. To use them, remove all of this rule's conditions." }
     actions.args.display.hidden = function() return not ns.KindHas(rule, "visual") end
     actions.args.text.hidden = function() return not ns.KindHas(rule, "visual") end
     actions.args.sound.hidden = function() return not ns.KindHas(rule, "sound") end
