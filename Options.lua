@@ -2070,7 +2070,7 @@ function BuildClassCreator()
             name = function()
                 local specID = ns.CurrentSpecID and ns.CurrentSpecID()
                 local okS, _, specName = pcall(GetSpecializationInfoByID, specID or 0)
-                return "Detected: |cffffd100" .. (UnitClass("player") or "?") .. " - " .. ((okS and specName) or "unknown spec") .. "|r. Creates one skeleton rule (cooldown ready) for each cooldown spell in your spellbook, sorted into Defensive / Offensive / Utility groups inside the static group '<Class> <Spec> - autorule population' (it appears under Smart Categories, and the window jumps to it). Spells not on the curated list for your spec go to Unsorted." end },
+                return "Detected: |cffffd100" .. (UnitClass("player") or "?") .. " - " .. ((okS and specName) or "unknown spec") .. "|r. For Death Knight, Hunter, Paladin and Warlock (all specs) it makes skeleton rules for cooldowns, auras and procs, sorted into Cooldowns / Auras / Procs and then Defensive / Offensive / Utility / Unsorted inside the static group '<Class> <Spec> - autorule population', and flags each rule (kind, role, talent / hero / glow ...). Other specs get one skeleton rule (cooldown ready) per spellbook cooldown, sorted by the curated list. The window jumps to the new group." end },
         apTalents = { type = "toggle", order = 0.3, width = "full", name = "Include talents I have not picked (rule only loads when the talent is known)",
             get = function() return ns.AutoCfg().talents ~= false end,
             set = function(_, v) ns.AutoCfg().talents = v and true or false; ns.MarkDirty(); Notify() end },
@@ -2078,6 +2078,14 @@ function BuildClassCreator()
             func = function()
                 local _, m = ns.ClassAutoPopulate(ns.AutoCfg().talents ~= false)
                 creatorMsg = m; ns.Print("auto-populate: " .. tostring(m)); Notify()
+            end },
+        talHdr = { type = "header", order = 0.6, name = "All talents (every class and spec)" },
+        talInfo = { type = "description", order = 0.61, width = "full", fontSize = "medium",
+            name = function() return (ns.TalentStatus and ns.TalentStatus() or "") .. " Reads every class, spec and hero talent tree from the game (not from a fixed list), so it follows the current patch. In chat: /xui talents, /xui talents status, /xui talents <name>." end },
+        talScan = { type = "execute", order = 0.62, width = "double", name = "Scan all talents now",
+            func = function()
+                local ok, m = ns.ScanAllTalents(function(_, msg) creatorMsg = msg; Notify() end)
+                creatorMsg = m; ns.Print(m); Notify()
             end },
         vdhHdr = { type = "header", order = 1, name = "Vengeance Demon Hunter" },
         open = { type = "execute", order = 2, width = "double", name = "Add Vengeance DH test rules",
@@ -2408,7 +2416,7 @@ local SPEC_SORT = {
         Utility   = { "Sigil of Misery", "Sigil of Chains", "Sigil of Silence", "Chaos Nova", "Disrupt", "Imprison", "Consume Magic", "Torment", "Infernal Strike", "Vengeful Retreat", "Spectral Sight", "Glide" },
     },
 }
-function ns.ClassAutoPopulate(includeUnpicked)
+function ns.AutoPopulateSpellbook(includeUnpicked)   -- old path: spellbook cooldowns only (specs with no entry in ClassData.lua)
     local specID = ns.CurrentSpecID and ns.CurrentSpecID()
     if not specID then return false, "Could not read your specialization right now." end
     local className = UnitClass("player") or "Class"
@@ -2454,6 +2462,121 @@ function ns.ClassAutoPopulate(includeUnpicked)
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(parent))   -- show the new group right away
     return true, msg
 end
+
+-- Data-driven auto-populate (ClassData.lua: Death Knight, Hunter, Paladin, Warlock - all 12 specs). One skeleton rule per entry of the
+-- CURRENT spec, in  "<Class> <Spec> - autorule population" > Cooldowns | Auras | Procs > Defensive | Offensive | Utility | Unsorted.
+-- Every rule is also FLAGGED on the rule itself so it can be sorted later: r.autoKind ("cd" | "aura" | "proc"), r.autoRole, r.autoFlags
+-- (talent, hero, glow, charges, rt, inferred, midnight) and r.autoSrc. Target debuffs are in the data and flagged "debuff" but get NO rule:
+-- the rule engine only reads auras on YOU. IDs are checked against the live game; ones that no longer exist are skipped and counted.
+do   -- block-scoped: Options.lua's main chunk is close to Lua's 200-local limit
+local KIND_FOLDER = { cd = "Cooldowns", aura = "Auras", proc = "Procs" }
+local function AutoPopulateData(specID, data, includeUnpicked)
+    local className = UnitClass("player") or data.class or "Class"
+    local okS, _, specName = pcall(GetSpecializationInfoByID, specID)
+    if not okS or not specName then specName = data.spec or ("spec " .. tostring(specID)) end
+    local parentName = className .. " " .. specName .. " - autorule population"
+    local parent
+    for _, f in ipairs(ns.folders) do if not f.parent and f.name == parentName then parent = f; break end end
+    parent = parent or ns.NewFolder(parentName)
+    local function Sub(name, pid)
+        for _, f in ipairs(ns.folders) do if f.parent == pid and f.name == name then return f end end
+        return ns.NewFolder(name, pid)
+    end
+    local have = { cd = {}, buff = {} }
+    for _, r in ipairs(FolderRules(parent.id)) do
+        if r.autoKind == "aura" or r.autoKind == "proc" then
+            if (tonumber(r.buffID) or 0) ~= 0 then have.buff[r.buffID] = true end
+        elseif (tonumber(r.spellID) or 0) ~= 0 then have.cd[r.spellID] = true end   -- cooldown rules, including ones from the old spellbook path
+    end
+    local cdName, dataCd = {}, {}
+    for _, e in ipairs(data.entries) do if e.kind == "cd" then cdName[e.name] = true; dataCd[e.id] = true end end
+    local counts, made, skipped, gone, noCd, talentOff, debuffs, extra = {}, 0, 0, 0, 0, 0, 0, 0
+    local function Put(kind, role, r)
+        local kf = Sub(KIND_FOLDER[kind], parent.id)
+        r.folder = Sub(role, kf.id).id
+        r.load.specs = { [tostring(specID)] = true }
+        ns.rules[#ns.rules + 1] = r
+        made = made + 1
+        local k = KIND_FOLDER[kind] .. "/" .. role
+        counts[k] = (counts[k] or 0) + 1
+    end
+    for _, e in ipairs(data.entries) do
+        if e.kind == "debuff" then debuffs = debuffs + 1
+        else
+            local okN, nm = pcall(C_Spell.GetSpellName, e.id)
+            if not okN or not nm then gone = gone + 1
+            else
+                local fl = {}
+                for _, k in ipairs({ "talent", "hero", "glow", "charges", "rt", "totem", "selfBuff", "inferred" }) do if e[k] then fl[#fl + 1] = k end end
+                if e.mn then fl[#fl + 1] = "midnight" end
+                local function Tag(r)
+                    r.autoKind, r.autoRole, r.autoFlags, r.autoSrc = e.kind, e.role, table.concat(fl, ","), "ClassData 2026-11-01"
+                end
+                if e.kind == "cd" then
+                    if have.cd[e.id] then skipped = skipped + 1
+                    elseif e.talent and not includeUnpicked and ns.ReadTalentKnown(e.id) == false then talentOff = talentOff + 1
+                    else
+                        local base = ns.BaseCooldownSec and ns.BaseCooldownSec(e.id) or 0
+                        if base <= 0 and not e.charges then noCd = noCd + 1   -- no cooldown to watch: a "ready" rule would always be true
+                        else
+                            local r = ns.NewRule()
+                            r.name, r.spellID, r.useCooldown = nm, e.id, true
+                            r.cdState, r.buffState, r.talentMode = "ready", "none", "none"
+                            if e.talent then r.talents, r.talentMode = { { id = e.id, state = "known" } }, "all" end
+                            Tag(r); Put("cd", e.role, r); have.cd[e.id] = true
+                        end
+                    end
+                else   -- aura / proc: a buff on you
+                    if have.buff[e.id] then skipped = skipped + 1
+                    else
+                        local r = ns.NewRule()
+                        r.name = cdName[nm] and (nm .. (e.kind == "proc" and " (proc)" or " (aura)")) or nm
+                        r.buffID, r.useBuff, r.buffState = e.id, true, "present"
+                        r.cdState, r.talentMode = "none", "none"
+                        Tag(r); Put(e.kind, e.role, r); have.buff[e.id] = true
+                    end
+                end
+            end
+        end
+    end
+    -- spellbook cooldowns the data does not list (new patch spells, off-list talents) still come in, flagged "spellbook"
+    local ok, list = pcall(ns.CollectCooldownSpells, 0, includeUnpicked)
+    if ok and type(list) == "table" then
+        local lookup = {}
+        for folder, names in pairs(SPEC_SORT[specID] or {}) do for _, n in ipairs(names) do lookup[n:lower()] = folder end end
+        for _, sp in ipairs(list) do
+            if not dataCd[sp.id] and not have.cd[sp.id] then
+                local r = ns.NewRule()
+                r.name, r.spellID, r.useCooldown = sp.name, sp.id, true
+                r.cdState, r.buffState, r.talentMode = "ready", "none", "none"
+                if sp.talent then r.talents, r.talentMode = { { id = sp.id, state = "known" } }, "all" end
+                r.autoKind, r.autoRole, r.autoFlags, r.autoSrc = "cd", lookup[(sp.name or ""):lower()] or "Unsorted", "spellbook" .. (sp.talent and ",talent" or ""), "spellbook scan"
+                Put("cd", r.autoRole, r); have.cd[sp.id] = true; extra = extra + 1
+            end
+        end
+    end
+    if made > 0 then ns.MarkDirty(); if ns.OnRulesChanged then pcall(ns.OnRulesChanged) end end
+    local keys = {}
+    for k in pairs(counts) do keys[#keys + 1] = k end
+    table.sort(keys)
+    local parts = {}
+    for _, k in ipairs(keys) do parts[#parts + 1] = k .. " " .. counts[k] end
+    local msg = ("%s: added %d rule(s) (%s); %d already there."):format(parentName, made, #parts > 0 and table.concat(parts, ", ") or "none", skipped)
+    if extra > 0 then msg = msg .. (" %d of them are spellbook cooldowns the data did not list."):format(extra) end
+    if gone > 0 then msg = msg .. (" %d data entries skipped: no such spell in this game version."):format(gone) end
+    if noCd > 0 then msg = msg .. (" %d abilities skipped: no cooldown to watch."):format(noCd) end
+    if talentOff > 0 then msg = msg .. (" %d talent cooldowns skipped (talent not picked, option off)."):format(talentOff) end
+    if debuffs > 0 then msg = msg .. (" %d target debuffs are listed in the data but no rules were made (rules only read auras on you)."):format(debuffs) end
+    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(parent))
+    return true, msg
+end
+function ns.ClassAutoPopulate(includeUnpicked)
+    local specID = ns.CurrentSpecID and ns.CurrentSpecID()
+    local data = specID and ns.CLASS_AURA_DATA and ns.CLASS_AURA_DATA[specID]
+    if data then return AutoPopulateData(specID, data, includeUnpicked) end
+    return ns.AutoPopulateSpellbook(includeUnpicked)
+end
+end   -- do
 
 ns.UI.NewRule = function() StartNewRule(nil) end
 local function PickType(typ)
