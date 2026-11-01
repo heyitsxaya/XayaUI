@@ -130,7 +130,8 @@ local function ToolButton(parent, icon, label, onClick)
     b.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
     b:SetScript("OnClick", onClick)
     b:SetScript("OnEnter", function(self) self.text:SetTextColor(1, 1, 1) end)
-    b:SetScript("OnLeave", function(self) self.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3]) end)
+    b:SetScript("OnLeave", function(self) if self.active then self.text:SetTextColor(1, 1, 1) else self.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3]) end end)
+    function b:SetActive(on) self.active = on and true or false; if self.active then self.text:SetTextColor(1, 1, 1) else self.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3]) end end
     function b:SetLabel(t) self.text:SetText(t); self:SetWidth(20 + self.text:GetStringWidth() + 6) end
     b:SetLabel(label)
     return b
@@ -187,6 +188,7 @@ local function EnsureToolbar(of)
         -- Settings sits at the far right of the same line, cog icon on its left
         local st = ToolButton(bar, "Interface\\Icons\\INV_Misc_Gear_01", "Settings", function() if ns.UI and ns.UI.Settings then ns.UI.Settings() end end)
         st:SetPoint("RIGHT", bar, "RIGHT", 0, 0)
+        bar.settingsBtn = st
         fr.xuiToolbar = bar
     end
     return bar
@@ -270,6 +272,7 @@ local function SkinFrame(of)
     local bar = EnsureToolbar(of)
     bar:ClearAllPoints(); bar:SetPoint("TOPLEFT", fr, "TOPLEFT", 17, -34); bar:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -17, -34)
     bar:SetShown(not collapsed)
+    if bar.settingsBtn then bar.settingsBtn:SetActive(ns.pageOpen == "settings") end   -- the Settings button is lit while the settings pages are open
     bar.lock:SetLabel(ns.unlocked and "Lock Positions" or "Unlock Positions")
     local c = of.content
     local p1 = { c:GetPoint(1) }
