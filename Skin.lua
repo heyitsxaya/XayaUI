@@ -188,11 +188,14 @@ local function EnsureToolbar(of)
         cr:SetPoint("LEFT", im, "RIGHT", 14, 0)
         local ex = ToolButton(bar, 132763, "Export", function() if ns.UI and ns.UI.Export then ns.UI.Export() end end)
         ex:SetPoint("LEFT", cr, "RIGHT", 14, 0)
+        local cu = ToolButton(bar, "Interface\\Icons\\Spell_Nature_StarFall", "Cursor", function() if ns.UI and ns.UI.Cursor then ns.UI.Cursor() end end)
+        cu:SetPoint("LEFT", ex, "RIGHT", 14, 0)
+        bar.cursorBtn = cu
         local lk = ToolButton(bar, "Interface\\PetBattles\\PetBattle-LockIcon", "Lock Positions", function()
             if ns.ToggleUnlock then ns.ToggleUnlock() end
             if ns.UI and ns.UI.Notify then ns.UI.Notify() end
         end)
-        lk:SetPoint("LEFT", ex, "RIGHT", 14, 0)
+        lk:SetPoint("LEFT", cu, "RIGHT", 14, 0)
         bar.lock = lk
         lk:Hide()   -- the Unlock Positions button is gone from the top bar (every level has its own in-line unlock); the object stays so nothing that sets its label breaks
         -- Settings sits at the far right of the same line, cog icon on its left
@@ -282,6 +285,7 @@ local function SkinFrame(of)
     local bar = EnsureToolbar(of)
     bar:ClearAllPoints(); bar:SetPoint("TOPLEFT", fr, "TOPLEFT", 17, -34); bar:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -17, -34)
     bar:SetShown(not collapsed)
+    if bar.cursorBtn then bar.cursorBtn:SetActive(ns.pageOpen == "cursor") end
     if bar.settingsBtn then bar.settingsBtn:SetActive(ns.pageOpen == "settings") end   -- the Settings button is lit while the settings pages are open
     bar.lock:SetLabel(ns.unlocked and "Lock Positions" or "Unlock Positions")
     local c = of.content

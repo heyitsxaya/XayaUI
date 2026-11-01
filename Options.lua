@@ -2638,6 +2638,7 @@ function ns.OpenPage(key)
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, (key == "settings" and skinned) and "set_ui" or key)
 end
 ns.UI.Creator = function() ns.OpenPage("creator") end
+ns.UI.Cursor = function() ns.OpenPage("cursor") end
 ns.UI.Settings = function()
     -- the Settings button is a switch: a second click leaves the settings pages and brings the Rules tabs back
     if ns.pageOpen == "settings" and ns.SkinRows and ns.SkinRows() then
@@ -3488,7 +3489,7 @@ local function BuildOptions()
     track.hidden = function() return SettingsOn() and true or false end
     smartcat.hidden = function() return SettingsOn() and true or false end
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, smartcat = smartcat, creator = BuildClassCreator(), qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = settings, set_ui = setUi, set_debug = setDbg } }
+        args = { cooldowns = track, smartcat = smartcat, creator = BuildClassCreator(), cursor = ns.BuildCursorTab and ns.BuildCursorTab(Notify) or nil, qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = settings, set_ui = setUi, set_debug = setDbg } }
     pcall(ns.SmartOpen)
     pcall(ns.ApplyTreeFilter, out)
     if ns.SkinRows and ns.SkinRows() then pcall(ns.InfoPass, out) end   -- the info icons are part of the skin
