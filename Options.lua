@@ -668,14 +668,30 @@ end
 function ns.IsCategoryRoot(f) return f and f.default ~= nil and not f.parent end
 
 local function FolderValues()
+    -- depth-first: every group is listed right under its parent, indented one step per level; category buckets and cue-type
+    -- folders are never listed (their children are shown as if they sat one level up)
     local v, o = { none = "(none - top level)" }, { "none" }
+    local kids = {}
     for _, f in ipairs(ns.folders or {}) do
-      if not ns.IsCategoryRoot(f) and not ns.CueTransparent(f) then   -- category buckets / cue-type folders are never offered
-        local names = {}
-        for _, c in ipairs(FolderChain(f)) do if not ns.CueTransparent(c) then names[#names + 1] = c.name end end
-        v[f.id] = table.concat(names, " / "); o[#o + 1] = f.id
-      end
+        local p = f.parent or false
+        kids[p] = kids[p] or {}
+        kids[p][#kids[p] + 1] = f
     end
+    local seen = {}
+    local function walk(pid, depth)
+        for _, f in ipairs(kids[pid] or {}) do
+            if not seen[f.id] then
+                seen[f.id] = true
+                local hidden = ns.IsCategoryRoot(f) or ns.CueTransparent(f)
+                if not hidden then
+                    v[f.id] = string.rep("      ", depth) .. (depth > 0 and "|cff888888-|r " or "") .. tostring(f.name)
+                    o[#o + 1] = f.id
+                end
+                walk(f.id, hidden and depth or depth + 1)
+            end
+        end
+    end
+    walk(false, 0)
     return v, o
 end
 
@@ -3894,9 +3910,13 @@ local function AddMoveMenu(root, obj, kind)
         if kind == "rule" then obj.folder = nil else obj.parent = nil end
         ns.MarkDirty(); Notify()
     end)
-    for _, f in ipairs(ns.folders or {}) do
-        if not ns.IsCategoryRoot(f) and not ns.CueTransparent(f) and not (kind == "folder" and IsInFolder(f.id, obj.id)) then
-            local depth = #FolderChain(f) - 1
+    local _, fOrder = FolderValues()
+    for _, fid in ipairs(fOrder) do
+        local f = fid ~= "none" and FolderById(fid)
+        if f and not (kind == "folder" and IsInFolder(f.id, obj.id)) then
+            local depth = 0
+            for _, c in ipairs(FolderChain(f)) do if not ns.CueTransparent(c) then depth = depth + 1 end end
+            depth = depth - 1
             sub:CreateButton(string.rep("    ", depth) .. f.name, function()
                 if multi then ns.MultiMove(f.id); return end
                 if kind == "rule" then obj.folder = f.id else obj.parent = f.id end
@@ -4469,9 +4489,13 @@ do
             end
             root:CreateTitle("Move " .. ns.MultiCount() .. " selected rule(s) to")
             root:CreateButton("Top Level (no group)", function() ns.MultiMove(nil) end)
-            for _, f in ipairs(ns.folders or {}) do
-                if not ns.IsCategoryRoot(f) and not ns.CueTransparent(f) then
-                    root:CreateButton(string.rep("    ", #FolderChain(f) - 1) .. tostring(f.name), function() ns.MultiMove(f.id) end)
+            local _, fOrder = FolderValues()
+            for _, fid in ipairs(fOrder) do
+                local f = fid ~= "none" and FolderById(fid)
+                if f then
+                    local depth = 0
+                    for _, c in ipairs(FolderChain(f)) do if not ns.CueTransparent(c) then depth = depth + 1 end end
+                    root:CreateButton(string.rep("    ", depth - 1) .. tostring(f.name), function() ns.MultiMove(f.id) end)
                 end
             end
         end)
