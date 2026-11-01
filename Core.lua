@@ -550,7 +550,8 @@ end)
 -- Log chat tab shows; it does NOT give addons access to combat log events (Midnight restricts that separately).
 -------------------------------------------------------------------------------
 local ALL_ACTIONS = "All Actions"
-function ns.CombatLogAllActionsOn() local u = CueRulesDB and CueRulesDB.ui; return not (u and u.allActionsFilter == false) end
+-- OFF by default since the 2026-11-01 hotfix (experimental: see issue #142); it only runs when Xaya turns it on.
+function ns.CombatLogAllActionsOn() local u = CueRulesDB and CueRulesDB.ui; return (u and u.allActionsFilter == true) or false end
 
 -- Returns ok, status text. force = load Blizzard_CombatLog first if it is not loaded yet (used by the settings toggle).
 function ns.ApplyAllActionsFilter(force)
@@ -586,13 +587,9 @@ function ns.ApplyAllActionsFilter(force)
     flt.filters = { { eventList = genEvents(), sourceFlags = genFlags(true), destFlags = genFlags(true) } }
     if created then store.filters[#store.filters + 1] = flt end
 
-    -- If this filter is the one currently shown, push the refreshed rule to the client now.
-    if _G.Blizzard_CombatLog_CurrentSettings == flt and C_CombatLog and C_CombatLog.ApplyFilterSettings then
-        pcall(C_CombatLog.ApplyFilterSettings, flt)
-        if C_CombatLog.RefilterEntries then pcall(C_CombatLog.RefilterEntries) end
-    end
-    -- Blizzard only rebuilds the quick-button bar when something asks it to; ask now so the new button appears without a /reload.
-    if type(_G.Blizzard_CombatLog_Update_QuickButtons) == "function" then pcall(_G.Blizzard_CombatLog_Update_QuickButtons) end
+    -- 2026-11-01 hotfix: do NOT call Blizzard_CombatLog_Update_QuickButtons / C_CombatLog.ApplyFilterSettings from here. Running
+    -- Blizzard's combat log code from addon code triggered "XayaUI has been blocked from an action only available to the Blizzard
+    -- UI" (the exact blocked function was not shown in the popup). The button appears the next time Blizzard rebuilds its own bar.
     return true, created and "created" or "refreshed"
 end
 
