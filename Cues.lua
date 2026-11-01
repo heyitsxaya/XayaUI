@@ -90,12 +90,17 @@ function ns.EvaluateCue(rule, ctx)
     local info = { ctx = ctx, missing = {}, outcome = true, cue = true }
     local p = ns.FindParentRule(rule)
     if not p then info.missing[1] = "parent rule not found"; info.result = false; return false, info end
-    local _, pi = ns.Evaluate(p, ctx)
+    local pr, pi = ns.Evaluate(p, ctx)
     info.cd, info.present, info.buffSource, info.buffRef = pi.cd, pi.present, pi.buffSource, pi.buffRef
     if rule.spellID ~= p.spellID then rule.spellID = p.spellID end
     if rule.buffID ~= p.buffID then rule.buffID = p.buffID end
     if rule.maxCharges ~= p.maxCharges then rule.maxCharges = p.maxCharges end
     local key = rule.cueKey
+    -- a rule with no conditions at all: its cues simply follow the rule's own trigger
+    if #ns.ConditionsOf(p) == 0 then
+        info.result = pr and true or false
+        return info.result, info
+    end
     for _, c in ipairs(ns.ConditionsOf(p)) do
         if c.enabled ~= false and type(c.thenCues) == "table" then
             for _, k in ipairs(c.thenCues) do

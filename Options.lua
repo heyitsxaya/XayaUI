@@ -2151,6 +2151,9 @@ ns.SMART_CATS = {
 }
 function ns.SmartMatch(rule, key)
     if not rule then return false end
+    if not rule.isCue and rule.uid and ns.CuesOf then   -- a rule counts under every type its cues have
+        for _, c in ipairs(ns.CuesOf(rule)) do if ns.SmartMatch(c, key) then return true end end
+    end
     if key == "smart_sound" then
         return (rule.sound and rule.sound.enabled and ns.KindHas(rule, "sound")) and true or false
     end
@@ -2176,188 +2179,31 @@ local function CreateRuleOfType(typ, fid)
     local r = ns.NewRule()
     r.name = ""   -- new rules are not auto-named: the sidebar row opens a name box for it instead
     r.folder = fid
-    ApplyNewOpts(r)
-    local v = r.visual
-    if typ and ns.KindHas(r, "visual") then
-        v.enabled = true
-        if typ == "icon" then v.kind = "spellicon"; v.w, v.h = 64, 64; v.desatOnCD = true
-        elseif typ == "progresstex" then
-            v.fill.enabled = true
-            v.overlay.enabled = true      -- progress textures are two-layered by default: base (reduced opacity below) + overlay (full)
-            v.texAlpha = 0.35              -- reduced base opacity; ratio to Overlay opacity (1) is preserved while locked (see ProgLocked)
-        elseif typ == "text" then v.text.enabled = true; v.texAlpha = 0 end
-    end
-    if typ == "sound" then   -- sound cue: plays a sound, shows nothing
-        if type(r.sound) == "table" then r.sound.enabled = true end
-        if type(r.visual) == "table" then r.visual.enabled = false end
-    end
     ns.rules[#ns.rules + 1] = r
+    if typ == "custom" then
+        -- fully blank: no display, no sound, no cues, nothing pre-loaded
+        r.visual.enabled, r.sound.enabled = false, false
+    elseif typ then
+        -- the chosen type becomes the rule's first cue (Cues tab), already set up for that type; the rule itself shows / plays nothing
+        r.visual.enabled, r.sound.enabled = false, false
+        local kind = (typ == "icon" and "icon") or (typ == "text" and "text") or (typ == "sound" and "sound") or "texture"
+        r.uid = r.uid or ns.NewUID()
+        local cue = ns.NewCueRule(r, kind)
+        if cue then
+            local v = cue.visual
+            if typ == "icon" then v.kind = "spellicon"; v.w, v.h = 64, 64; v.desatOnCD = true
+            elseif typ == "progresstex" then
+                v.fill.enabled = true
+                v.overlay.enabled = true      -- progress textures are two-layered by default: base (reduced opacity below) + overlay (full)
+                v.texAlpha = 0.35              -- reduced base opacity; ratio to Overlay opacity (1) is preserved while locked (see ProgLocked)
+            elseif typ == "text" then v.text.enabled = true; v.texAlpha = 0 end
+        end
+    end
     ns.pendingRename = r
     Notify()
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(r))
     ns.pickOrigin = nil
 end
-local function StartNewRule(fid)
-    if ns.RuleKind({ folder = fid }) == "sound" then CreateRuleOfType(nil, fid); return end
-    if not picker then ns.pickOrigin = ns.CurrentTab() end
-    picker = { folder = fid }
-    Notify()
-    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "smartcat", "all")
-end
--- Auto-populate: one rule per spell of the current class / spec whose base cooldown is >= the folder's threshold.
--- Rules already in this folder (or its subfolders) for the same spell are skipped, so it is safe to run again after a
--- respec or a talent change.
-local autoMsg = {}   -- folder id -> last result line
-local AUTO_SCOPE_VALUES = {
-    spec = "This specialization only (rules load only on this spec)",
-    any  = "Any specialization (rules load on every spec)",
-}
--- Settings live in CueRulesDB.ui.auto (one global set, used by the sidebar row "AUTO-POPULATE RULES"), not on each folder.
-function ns.AutoCfg()
-    CueRulesDB.ui = CueRulesDB.ui or {}
-    local a = CueRulesDB.ui.auto
-    if not a then a = {}; CueRulesDB.ui.auto = a end
-    if a.minCD == nil then a.minCD = 30 end
-    if a.scope == nil then a.scope = "spec" end
-    if a.talents == nil then a.talents = true end
-    if a.enabled == nil then a.enabled = true end
-    return a
-end
--- destination folder id (nil = top level). Default: the Hybrid Cues category.
-function ns.AutoDest(a)
-    if a.dest == "none" then return nil end
-    if a.dest and ns.FolderById(a.dest) then return a.dest end
-    for _, f in ipairs(ns.folders or {}) do
-        if not f.parent and f.default == "hybrid" then return f.id end
-    end
-    return nil
-end
-function ns.AutoHave(fid)
-    local have = {}
-    local list = fid and FolderRules(fid) or {}
-    if not fid then for _, r in ipairs(ns.rules or {}) do if not r.folder then list[#list + 1] = r end end end
-    for _, r in ipairs(list) do if (tonumber(r.spellID) or 0) ~= 0 then have[r.spellID] = true end end
-    return have
-end
-local function AutoPopulate()
-    local a = ns.AutoCfg()
-    local fid = ns.AutoDest(a)
-    local minSec = tonumber(a.minCD) or 30
-    local list = ns.CollectCooldownSpells(minSec, a.talents ~= false)
-    local have = ns.AutoHave(fid)
-    local specID = ns.CurrentSpecID and ns.CurrentSpecID()
-    local specOnly = (a.scope or "spec") == "spec"
-    local kit = SOUNDKIT and SOUNDKIT.RAID_WARNING and tostring(SOUNDKIT.RAID_WARNING) or ""
-    local made, skipped = 0, 0
-    for _, sp in ipairs(list) do
-        if have[sp.id] then
-            skipped = skipped + 1
-        else
-            local r = ns.NewRule()
-            r.name = sp.name
-            r.folder = fid
-            ApplyNewOpts(r)
-            if not r.sound.enabled and not r.visual.enabled then r.sound.enabled = true end   -- Hybrid folders: sound by default
-            r.spellID = sp.id
-            r.cdState, r.buffState, r.talentMode = "ready", "none", "none"
-            if sp.talent then r.talents, r.talentMode = { { id = sp.id, state = "known" } }, "all" end
-            if specOnly and specID then r.load.specs = { [tostring(specID)] = true } end
-            r.enabled = a.enabled ~= false
-            if r.sound.enabled then r.sound.source, r.sound.value = "kit", kit end
-            if r.visual.enabled then
-                local v = r.visual
-                v.kind, v.trigger, v.w, v.h, v.desatOnCD = "spellicon", "condition", 64, 64, true
-                v.x, v.y = ((made % 8) - 3.5) * 68, -60 * math.floor(made / 8)
-            end
-            ns.rules[#ns.rules + 1] = r
-            made = made + 1
-        end
-    end
-    for _, r in ipairs(ns.rules) do if r.folder == fid then pcall(ns.RefreshVisual, r) end end
-    ns.MarkDirty()
-    if ns.OnRulesChanged then pcall(ns.OnRulesChanged) end
-    autoMsg.last = ("Added %d rule(s); %d already in that group were skipped."):format(made, skipped)
-    ns.Print("auto-populate: " .. autoMsg.last)
-    Notify()
-end
-local function AutoPreview()
-    local a = ns.AutoCfg()
-    local ok, list = pcall(ns.CollectCooldownSpells, tonumber(a.minCD) or 30, a.talents ~= false)
-    if not ok or type(list) ~= "table" then return "Could not read your spellbook / talents right now." end
-    local have = ns.AutoHave(ns.AutoDest(a))
-    local fresh, names = 0, {}
-    for _, sp in ipairs(list) do
-        if not have[sp.id] then
-            fresh = fresh + 1
-            if #names < 12 then names[#names + 1] = ("%s (%ss)"):format(sp.name, (math.floor(sp.cd * 10 + 0.5) / 10)) end
-        end
-    end
-    local line = ("%d spell(s) match, %d new."):format(#list, fresh)
-    if #names > 0 then line = line .. " Next: " .. table.concat(names, ", ") .. (fresh > #names and ", ..." or "") end
-    if autoMsg.last then line = line .. "\n|cff80ff80" .. autoMsg.last .. "|r" end
-    return line
-end
-
--- Class / spec auto-populate (Class/Spec Rule Creator tab): one skeleton rule per cooldown spell of the current spec, sorted into
--- Defensive / Offensive / Utility folders inside one parent folder "<Class> <Spec> - autorule population". The sorting tables are
--- curated by spell NAME (never by ID, so no ID is guessed; a name that is not in the spellbook is simply never matched). Spells
--- that are not in the spec's table go to "Unsorted". Only cooldown spells are found (auras cannot be listed from the spellbook).
-local SPEC_SORT = {
-    -- Demon Hunter / Vengeance. Curated by Claude from general class knowledge, NOT checked against game data: edit freely.
-    [581] = {
-        Defensive = { "Demon Spikes", "Fiery Brand", "Metamorphosis", "Darkness", "Soul Barrier", "Blur", "Netherwalk" },
-        Offensive = { "Fel Devastation", "Soul Carver", "The Hunt", "Sigil of Flame", "Immolation Aura", "Fracture", "Soul Cleave", "Spirit Bomb", "Throw Glaive", "Felblade" },
-        Utility   = { "Sigil of Misery", "Sigil of Chains", "Sigil of Silence", "Chaos Nova", "Disrupt", "Imprison", "Consume Magic", "Torment", "Infernal Strike", "Vengeful Retreat", "Spectral Sight", "Glide" },
-    },
-}
-function ns.ClassAutoPopulate(includeUnpicked)
-    local specID = ns.CurrentSpecID and ns.CurrentSpecID()
-    if not specID then return false, "Could not read your specialization right now." end
-    local className = UnitClass("player") or "Class"
-    local okS, _, specName = pcall(GetSpecializationInfoByID, specID)
-    if not okS or not specName then specName = "spec " .. tostring(specID) end
-    local ok, list = pcall(ns.CollectCooldownSpells, 0, includeUnpicked)
-    if not ok or type(list) ~= "table" or #list == 0 then return false, "Found no cooldown spells in your spellbook right now." end
-    local parentName = className .. " " .. specName .. " - autorule population"
-    local parent
-    for _, f in ipairs(ns.folders) do if not f.parent and f.name == parentName then parent = f; break end end
-    parent = parent or ns.NewFolder(parentName)
-    local function Sub(name)
-        for _, f in ipairs(ns.folders) do if f.parent == parent.id and f.name == name then return f end end
-        return ns.NewFolder(name, parent.id)
-    end
-    Sub("Defensive"); Sub("Offensive"); Sub("Utility")
-    local lookup, curated = {}, SPEC_SORT[specID]
-    if curated then for folder, names in pairs(curated) do for _, n in ipairs(names) do lookup[n:lower()] = folder end end end
-    local have = {}
-    for _, r in ipairs(FolderRules(parent.id)) do if (tonumber(r.spellID) or 0) ~= 0 then have[r.spellID] = true end end
-    local made, skipped, counts = 0, 0, {}
-    for _, sp in ipairs(list) do
-        if have[sp.id] then skipped = skipped + 1
-        else
-            local fname = lookup[(sp.name or ""):lower()] or "Unsorted"
-            local dest = Sub(fname)
-            local r = ns.NewRule()
-            r.name, r.folder, r.spellID = sp.name, dest.id, sp.id
-            r.useCooldown = true
-            r.cdState, r.buffState, r.talentMode = "ready", "none", "none"
-            if sp.talent then r.talents, r.talentMode = { { id = sp.id, state = "known" } }, "all" end
-            r.load.specs = { [tostring(specID)] = true }
-            ns.rules[#ns.rules + 1] = r
-            have[sp.id] = true
-            made = made + 1; counts[fname] = (counts[fname] or 0) + 1
-        end
-    end
-    if made > 0 then ns.MarkDirty(); if ns.OnRulesChanged then pcall(ns.OnRulesChanged) end end
-    local parts = {}
-    for _, k in ipairs({ "Defensive", "Offensive", "Utility", "Unsorted" }) do if counts[k] then parts[#parts + 1] = k .. " " .. counts[k] end end
-    local msg = ("%s: added %d rule(s) (%s); %d already there."):format(parentName, made, #parts > 0 and table.concat(parts, ", ") or "none", skipped)
-    if not curated then msg = msg .. " There is no curated Defensive / Offensive / Utility list for this spec yet, so everything went to Unsorted." end
-    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(parent))   -- show the new group right away
-    return true, msg
-end
-
-ns.UI.NewRule = function() StartNewRule(nil) end
 local function PickType(typ)
     local p = picker
     picker = nil
@@ -3017,9 +2863,10 @@ local function BuildOptions()
         all.args.pickSound = Entry(0.62, TI("sound", "INV_Misc_Note_01"), "Sound Cue", "Plays a sound when its conditions are met, with no display", "sound")
         all.args.pickSGroup = Entry(0.63, TI("stgroup", "INV_Misc_Bag_10"), "Static Group", "A container with a fixed X / Y for the group and for every element in it", "sgroup")
         all.args.pickExtH = { type = "header", order = 0.7, name = "External", hidden = function() return not picker end }
+        all.args.pickCustom = Entry(0.64, 1669494, "Custom", "A completely blank rule: no display, no sound, no cues. Build everything yourself", "custom")
         all.args.pickImport = Entry(0.8, TI("import", "INV_Scroll_03"), "Import", "Import from an encoded string (opens the Profiles tab)", "import")
         all.args.pickCancel = { type = "execute", order = 0.9, name = "Cancel", width = "half", func = function() picker = nil; local o = ns.pickOrigin; ns.pickOrigin = nil; Notify(); ns.GoHome(o) end }
-        for _, k in ipairs({ "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickSound", "pickDGroup", "pickSGroup", "pickImport", "pickCancel" }) do
+        for _, k in ipairs({ "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickSound", "pickDGroup", "pickSGroup", "pickCustom", "pickImport", "pickCancel" }) do
             all.args[k].hidden = function() return not picker end
         end
     end
@@ -3095,7 +2942,7 @@ local function BuildOptions()
                         if inScope(i) and ns.SmartMatch(rule, cat.key) then args["rule" .. i] = ruleGroups[i]; n = n + 1 end
                     end
                 end
-                for _, ak in ipairs({ "newRule", "pickerHdr", "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickSound", "pickDGroup", "pickSGroup", "pickExtH", "pickImport", "pickCancel" }) do
+                for _, ak in ipairs({ "newRule", "pickerHdr", "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickSound", "pickDGroup", "pickSGroup", "pickCustom", "pickExtH", "pickImport", "pickCancel" }) do
                     if all.args[ak] then args[ak] = all.args[ak] end
                 end
                 smartArgs[cat.key] = { type = "group", order = k, childGroups = "tree",
