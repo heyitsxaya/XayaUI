@@ -429,7 +429,7 @@ local function Sel(t, k, name, order, vals, ord, on, extra)
 end
 -- Shared option builders for other files (Triggers.lua builds its rows with these). A table, so no new top-level local.
 -- a rebuild that grows or shrinks the page needs a second pass a moment later, or the scroll area keeps its old height (content clips, no scrollbar)
-ns.UI = { NotifyTwice = function() Notify(); if C_Timer then C_Timer.After(0.1, Notify) end end, Sel = Sel, Rng = Rng, Tog = Tog, Changed = Changed, Notify = Notify, SpellName = SpellName, SpellTex = SpellTex, SearchBox = SearchBox }
+ns.UI = { NotifyTwice = function() Notify() end, Sel = Sel, Rng = Rng, Tog = Tog, Changed = Changed, Notify = Notify, SpellName = SpellName, SpellTex = SpellTex, SearchBox = SearchBox }
 
 -- Cooldown "State" dropdown. For a spell the game positively reports as having NO charges, the list is shortened to
 -- the two states that exist for it ("Cooldown ready" / "On cooldown"). They are the same stored values as before
