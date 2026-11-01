@@ -1481,6 +1481,18 @@ local function BuildRule(i, rule)
                 end,
             },
             test = { type = "execute", name = "Test sound", order = 3, width = "half", func = function() ns.PlaySoundPreview(rule.sound) end },
+            soundPath = { type = "input", name = "Or type a sound file path  (.ogg or .mp3, inside Interface\\AddOns)", order = 3.5, width = "full",
+                desc = "For your own sound without editing any list. Example: Interface\\AddOns\\XayaUI_Media\\Sounds\\ding.ogg  (keep your sounds in XayaUI_Media, not in the XayaUI folder, so a XayaUI update never deletes them). The game accepts .ogg and .mp3 (warcraft.wiki.gg PlaySoundFile); .wav is not confirmed. The file must exist before you log in or /reload. Leave empty to use the list above.",
+                get = function() if rule.sound.source == "file" then return tostring(rule.sound.value or "") end return "" end,
+                set = function(_, v)
+                    v = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                    if v == "" then if rule.sound.source == "file" then rule.sound.value = "" end; ns.MarkDirty(); return end
+                    local low = v:lower():gsub("/", "\\")
+                    if not (low:match("%.ogg$") or low:match("%.mp3$")) then ns.Print("sound files must end in .ogg or .mp3 (not changed)"); return end
+                    if not low:match("^interface\\addons\\") then ns.Print("the path must start with Interface\\AddOns\\ : WoW plays addon sound files only from there (not changed)"); return end
+                    rule.sound.source, rule.sound.value = "file", (v:gsub("/", "\\"))
+                    ns.MarkDirty(); Notify()
+                end },
             repeatSec = { type = "range", name = "Repeat every (seconds, 0 = once)", order = 4, width = "double",
                 min = 0, max = 10, step = 0.1,
                 get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v end },
@@ -1792,6 +1804,12 @@ local function BuildRule(i, rule)
         },
     }
 
+    -- "Save changes" bar (Drafts.lua) at the top of every tab of a rule (not of its cues / conditions, which are part of the rule's page)
+    if ns.DraftArgs and not rule.parentUid then
+        for _, g in ipairs({ ruleTab, trigger, load, conditionsTab, cuesTab, actionsTab }) do
+            for k, v in pairs(ns.DraftArgs(rule)) do g.args["draft_" .. k] = v end
+        end
+    end
     for _, g in ipairs({ ruleTab, trigger, load, conditionsTab, cuesTab, actionsTab }) do
         ns.LockArgs(g.args, function() return ns.IsEditLocked(rule) end)
     end
@@ -2070,6 +2088,34 @@ local function BuildAddonSettings()
                 desc = "The strip under the window with the live rule status and event log. Off: it is not drawn at all (turn it back on here).",
                 get = function() return ns.DebugConsoleOn() end,
                 set = function(_, v) Ui().hideTray = (not v) or nil; Notify() end },
+            consoleWin = { type = "toggle", name = "Console window (separate from this window)", order = 13, width = "full",
+                desc = "The same event log as the strip under this window, but in its own movable, resizable window. It keeps collecting lines while this window is closed and during combat. Also: /xui console.",
+                get = function() return ns.ConsoleWindowOn and ns.ConsoleWindowOn() or false end,
+                set = function(_, v) if ns.ConsoleWindow then ns.ConsoleWindow(v and true or false) end end },
+            consoleCopy = { type = "execute", name = "Copy the console text", order = 13.5, width = "double",
+                desc = "Opens a box with every console line as plain text, selected and ready for Ctrl+C.",
+                func = function() if ns.CopyConsole then ns.CopyConsole() end end },
+            bug = { type = "group", inline = true, name = "Bug report", order = 20, args = {
+                bugInfo = { type = "description", order = 1, fontSize = "medium",
+                    name = function()
+                        local total, kinds = 0, 0
+                        if ns.ErrorCount then total, kinds = ns.ErrorCount() end
+                        return "XayaUI keeps its own Lua errors (" .. total .. " so far, " .. kinds .. " different) and saves them between sessions. The report holds the version, the game build, those errors and the last console lines. It never includes your character name, realm, or the contents of your rules. Send it to Xaya or paste it into a GitHub issue."
+                    end },
+                bugText = { type = "input", name = "What happened  (optional)", order = 2, width = "full", multiline = 4,
+                    get = function() return Ui().bugText or "" end,
+                    set = function(_, v) v = tostring(v or ""):sub(1, 600); Ui().bugText = (v ~= "") and v or nil end },
+                bugAddons = { type = "toggle", name = "Also list my loaded addons", order = 3, width = "full",
+                    desc = "Off by default: your addon list says a lot about you. Turn on if the problem may be a clash with another addon.",
+                    get = function() return Ui().bugAddons and true or false end,
+                    set = function(_, v) Ui().bugAddons = v and true or nil end },
+                bugMake = { type = "execute", name = "Create bug report", order = 4, width = "double",
+                    desc = "Opens a box with the report, selected and ready for Ctrl+C. Also: /xui bug.",
+                    func = function() if ns.ShowBugReport then ns.ShowBugReport() end end },
+                bugClear = { type = "execute", name = "Clear the error log", order = 5, width = "normal", confirm = true,
+                    confirmText = "Clear XayaUI's saved Lua errors?",
+                    func = function() if ns.ClearErrorLog then ns.ClearErrorLog() end; Notify() end },
+            } },
             gameDump = { type = "group", inline = true, name = "Game Data Capture (separate tool)", order = 30, args = {
                 gdText = { type = "description", order = 1, fontSize = "medium",
                     name = "Pulls every class, spec, talent, spell description, spellbook entry, piece of gear, and set-bonus line the game will give an addon, and records which auras each ability you press causes and for how long. It is a separate addon (XayaUI_GameDump) with its own saved-data file, so nothing here touches your rules or profile." },
@@ -2423,11 +2469,15 @@ local function CreateRuleOfType(typ, fid)
     elseif typ then
         -- the chosen type becomes the rule's first cue (Cues tab), already set up for that type; the rule itself shows / plays nothing
         r.visual.enabled, r.sound.enabled = false, false
-        local kind = (typ == "icon" and "icon") or (typ == "text" and "text") or (typ == "sound" and "sound") or "texture"
+        -- one explicit cue kind per picker row: Icon -> icon cue, Texture / Progress Texture -> texture cue, Text -> text cue, Sound -> sound cue
+        local CUE_FOR_TYPE = { icon = "icon", text = "text", sound = "sound", texture = "texture", progresstex = "texture" }
+        local kind = CUE_FOR_TYPE[typ] or "texture"
         r.uid = r.uid or ns.NewUID()
         local cue = ns.NewCueRule(r, kind)
+        if ns.Log then ns.Log("new rule: picker row '%s' -> cue kind '%s' (cue made: %s)", tostring(typ), kind, tostring(cue ~= nil)) end
         if cue then
             local v = cue.visual
+            if kind ~= "icon" and ns.Val(v.kind) == "spellicon" then v.kind = nil end   -- only an Icon row may start as a spell icon
             if typ == "icon" then v.kind = "spellicon"; v.w, v.h = 64, 64; v.desatOnCD = true
             elseif typ == "progresstex" then
                 v.fill.enabled = true
@@ -2437,6 +2487,7 @@ local function CreateRuleOfType(typ, fid)
         end
     end
     ns.pendingRename = r
+    if ns.DraftNew then ns.DraftNew(r) end   -- never saved yet: Save changes keeps it, closing the window first moves it to Drafts
     Notify()
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(r))
     ns.pickOrigin = nil
@@ -2752,6 +2803,7 @@ function ns.OpenPage(key)
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, (key == "settings" and skinned) and "set_ui" or key)
 end
 ns.UI.Creator = function() ns.OpenPage("creator") end
+ns.UI.Drafts = function() ns.OpenPage("drafts") end
 ns.UI.Cursor = function()   -- the Cursor options live under QoL UI Updates > Cursor now (no tab of their own)
     ns.pageOpen = nil; ns.infoOpen = false
     Notify()
@@ -3615,7 +3667,7 @@ local function BuildOptions()
     track.hidden = function() return SettingsOn() and true or false end
     smartcat.hidden = function() return SettingsOn() and true or false end
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, smartcat = smartcat, creator = BuildClassCreator(), qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = settings, set_ui = setUi, set_debug = setDbg } }
+        args = { cooldowns = track, smartcat = smartcat, creator = BuildClassCreator(), qol = qol, profiles = BuildProfiles(), drafts = ns.BuildDraftsPage and ns.BuildDraftsPage() or nil, info = infoGroup, settings = settings, set_ui = setUi, set_debug = setDbg } }
     pcall(ns.SmartOpen)
     pcall(ns.ApplyTreeFilter, out)
     if ns.SkinRows and ns.SkinRows() then pcall(ns.InfoPass, out) end   -- the info icons are part of the skin
@@ -3666,7 +3718,16 @@ do
     end
     ns.LowerWindowStrata = LowerWindow
     if hooksecurefunc then
-        hooksecurefunc(AceConfigDialog, "Open", function(_, app) if app == APP then LowerWindow() end end)
+        hooksecurefunc(AceConfigDialog, "Open", function(_, app)
+            if app ~= APP then return end
+            LowerWindow()
+            if ns.DraftsOnOpen then pcall(ns.DraftsOnOpen) end   -- remember every rule's saved version
+            local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+            if of and of.frame and not of.frame.xuiDraftHook then   -- window closed (button, Esc, toggle): unsaved rules go to Drafts
+                of.frame.xuiDraftHook = true
+                of.frame:HookScript("OnHide", function() if ns.DraftsOnClose then pcall(ns.DraftsOnClose) end end)
+            end
+        end)
     end
 end
 ns.optionsLoaded = true
@@ -3715,6 +3776,12 @@ local function BuildTray()
     t.clear:SetPoint("TOPRIGHT", -6, -3)
     t.clear:SetText("Clear")
     t.clear:SetScript("OnClick", function() t.log:Clear(); if ns.logBuf then wipe(ns.logBuf) end end)
+
+    t.copy = CreateFrame("Button", nil, t, "UIPanelButtonTemplate")
+    t.copy:SetSize(56, 18)
+    t.copy:SetPoint("RIGHT", t.clear, "LEFT", -4, 0)
+    t.copy:SetText("Copy")
+    t.copy:SetScript("OnClick", function() if ns.CopyConsole then ns.CopyConsole() end end)
 
     t.status = t:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     t.status:SetPoint("TOPLEFT", 10, -(HEADER_H + 4))

@@ -27,6 +27,10 @@ do
     local prevHandler = geterrorhandler()
     seterrorhandler(function(msg)
         local text = tostring(msg)
+        if text:find(addonName, 1, true) and ns.CaptureError then   -- kept in the error log for the bug report (Console.lua)
+            local okS, stack = pcall(debugstack, 2, 10, 0)
+            pcall(ns.CaptureError, text, okS and stack or "")
+        end
         local ok, on = pcall(function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug end)
         if ok and on and text:find(addonName, 1, true) and DEFAULT_CHAT_FRAME then
             DEFAULT_CHAT_FRAME:AddMessage("|cffff5555[XayaUI Error]|r " .. text, 1, 0.35, 0.35)
@@ -48,6 +52,7 @@ function ns.Log(fmt, ...)
         for i = 301, n do b[i] = nil end
     end
     if ns.LogSink then ns.LogSink(line) end
+    if ns.ConsoleSink then ns.ConsoleSink(line) end   -- the separate console window (Console.lua)
 end
 
 -- Deep-copy helper for defaults.
@@ -622,7 +627,11 @@ SlashCmdList["XAYAUI"] = function(msg)
         if ns.ToggleUnlock then ns.ToggleUnlock() end
     elseif cmd == "media" then
         if ns.UserMediaReport then ns.UserMediaReport() end
+    elseif cmd == "console" then
+        if ns.ConsoleWindow then ns.ConsoleWindow() end
+    elseif cmd == "bug" then
+        if ns.ShowBugReport then ns.ShowBugReport() end
     else
-        ns.Print("commands: /xui (settings) | /xui status | /xui probe <spellID> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui seed | /xui talents [status|<name>] | /xui loc | /xui media")
+        ns.Print("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui seed | /xui talents [status|<name>] | /xui loc | /xui media")
     end
 end

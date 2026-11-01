@@ -30,6 +30,8 @@ end
 
 -- Rewrite the "x<N>" references of this rule's outcomes. fn(N) returns the new ref string, or nil to drop the reference.
 function ns.RemapOutcomeRefs(parent, fn)
+    local tm = type(parent.trigMode) == "string" and parent.trigMode:match("^x(%d+)$")   -- the "activates when" choice follows its trigger too
+    if tm then parent.trigMode = fn(tonumber(tm)) end
     for _, o in ipairs(ns.OutcomesOf(parent)) do
         if type(o.when) == "table" and type(o.when.list) == "table" then
             for _, t in ipairs(o.when.list) do
@@ -87,6 +89,10 @@ local function RefValue(ref, p, pr, pi)
         if p.talentMode == "all" or p.talentMode == "any" then return pi.talentOK end
     elseif ref == "parent" then
         if pr == true then return true end
+        if pi.trigMode and pi.trigMode ~= "all" then   -- "activates when ANY / one trigger": the triggers' combined value, not each one alone
+            if pi.trigTri == false or pi.ctxOK == false or pi.talentOK == false then return false end
+            return nil
+        end
         if pi.cdOK == false or pi.buffOK == false or pi.talentOK == false or pi.extraOK == false or pi.ctxOK == false then return false end
         return nil
     elseif type(ref) == "string" then
@@ -443,82 +449,119 @@ local function ConditionBody(rule, H)
             onN()
         end, disabled = locked }
 
-    -- Modifiers: while this condition is true, change how a listed display cue looks (glow, desaturate, opacity).
-    -- One picker chooses which listed cue the three controls edit. Sounds and speech have no look, so they are not offered.
+    -- Modifiers, per THEN row: under each listed display cue a box "Modify this cue for this condition set". Ticked, it opens color tint,
+    -- desaturate, glow, opacity and frame strata; each one is "no change" until you set it. They apply only while this condition is true.
+    -- Sounds and speech have no look, so they get no box. When two true conditions set the same thing, the later condition wins.
     local VIS_KIND = { text = true, texture = true, icon = true }
-    local function listed(key) for _, k in ipairs(rule.thenCues or {}) do if k == key then return true end end return false end
-    local function modChoices()
-        local vals, order = {}, {}
-        local p = ns.FindParentRule(rule)
-        if p then
-            for _, c in ipairs(ns.CuesOf(p)) do
-                if VIS_KIND[c.cueKind] and c.cueKey and listed(c.cueKey) then
-                    vals[c.cueKey] = ns.CueLabel(c); order[#order + 1] = c.cueKey
-                end
-            end
-        end
-        return vals, order
+    local function keyAt(i) return (rule.thenCues or {})[i] end
+    local function visCue(i)   -- the display cue at THEN row i, or nil
+        local k, p = keyAt(i), ns.FindParentRule(rule)
+        if not (k and p) then return nil end
+        for _, c in ipairs(ns.CuesOf(p)) do if c.cueKey == k and VIS_KIND[c.cueKind] then return c end end
     end
-    local function modKey()
-        local vals, order = modChoices()
-        ns.modPick = ns.modPick or setmetatable({}, { __mode = "k" })
-        local k = ns.modPick[rule]
-        if k and vals[k] then return k end
-        return order[1]
-    end
-    local function noMods() local _, order = modChoices(); return collapsed() or #order == 0 end
-    local function modGet(field)
-        local k = modKey()
-        local m = k and type(rule.thenMods) == "table" and rule.thenMods[k] or nil
-        return m and m[field]
-    end
-    local function modSet(field, v)
-        local k = modKey()
-        if not k then return end
+    local function mget(i) local k = keyAt(i); local m = k and type(rule.thenMods) == "table" and rule.thenMods[k] or nil; return m end
+    local function mset(i, field, v)
+        local k = keyAt(i); if not k then return end
         rule.thenMods = rule.thenMods or {}
         local m = rule.thenMods[k] or {}
         m[field] = v
-        rule.thenMods[k] = next(m) and m or nil
-        if next(rule.thenMods) == nil then rule.thenMods = nil end
+        rule.thenMods[k] = m
         ns.MarkDirty(); onN()
     end
-    local function tri(field, onWord, offWord, keepWord)
-        return {
-            values = { keep = keepWord, on = onWord, off = offWord }, sorting = { "keep", "on", "off" },
-            get = function() local v = modGet(field); if v == true then return "on" elseif v == false then return "off" end return "keep" end,
-            set = function(_, v) modSet(field, (v == "on") and true or (v == "off") and false or nil) end,
-        }
+    local function modsOn(i) local m = mget(i); return m ~= nil and m.on ~= false and next(m) ~= nil and (m.on == true or m.glow ~= nil or m.desat ~= nil or m.alpha ~= nil or m.tint ~= nil or m.strata ~= nil) end
+    local function noRow(i) return collapsed() or not visCue(i) end
+    local function noOpts(i) return noRow(i) or not modsOn(i) end
+    local STRATA_VALUES, STRATA_ORDER = { keep = "Frame strata: no change" }, { "keep" }
+    for _, k in ipairs(ns.MOD_STRATA or {}) do STRATA_VALUES[k] = "Frame strata: " .. k:lower():gsub("_", " "); STRATA_ORDER[#STRATA_ORDER + 1] = k end
+    local function triSel(i, field, label, onWord, offWord, o, rw)
+        return { type = "select", order = o, width = "relative", relWidth = rw, name = "", arg = { xuiTextLeft = true }, hidden = function() return noOpts(i) end,
+            values = { keep = label .. ": no change", on = onWord, off = offWord }, sorting = { "keep", "on", "off" },
+            get = function() local m = mget(i); local v = m and m[field]; if v == true then return "on" elseif v == false then return "off" end return "keep" end,
+            set = function(_, v) mset(i, field, (v == "on") and true or (v == "off") and false or nil) end, disabled = locked }
     end
-    args.modLabel = { type = "description", order = 71, width = "full", fontSize = "medium", hidden = noMods,
-        name = "|cffffd100AND CHANGE|r  |cff888888while this condition is true (the later condition wins if two disagree):|r" }
-    args.modCue = { type = "select", order = 71.1, width = "relative", relWidth = 0.48, name = "", arg = { xuiTextLeft = true }, hidden = noMods,
-        desc = "Which of the cues listed under THEN the three settings next to it apply to.",
-        values = function() local v = modChoices(); return v end,
-        sorting = function() local _, o = modChoices(); return o end,
-        get = function() return modKey() end,
-        set = function(_, v) ns.modPick = ns.modPick or setmetatable({}, { __mode = "k" }); ns.modPick[rule] = v; onN() end, disabled = locked }
-    local g = tri("glow", "Glow: on", "Glow: off", "Glow: no change")
-    args.modGlow = { type = "select", order = 71.2, width = "relative", relWidth = 0.24, name = "", arg = { xuiTextLeft = true }, hidden = noMods,
-        desc = "Turn the cue's pulsing glow on or off while this condition is true. No change keeps the cue's own Display setting.",
-        values = g.values, sorting = g.sorting, get = g.get, set = g.set, disabled = locked }
-    local d = tri("desat", "Desaturate", "Full color", "Color: no change")
-    args.modDesat = { type = "select", order = 71.3, width = "relative", relWidth = 0.26, name = "", arg = { xuiTextLeft = true }, hidden = noMods,
-        desc = "Gray the cue out (or force full color) while this condition is true. No change keeps the cue's own Display setting.",
-        values = d.values, sorting = d.sorting, get = d.get, set = d.set, disabled = locked }
-    args.modAlpha = { type = "select", order = 71.4, width = "relative", relWidth = 0.34, name = "", arg = { xuiTextLeft = true }, hidden = noMods,
-        desc = "Replace the cue's opacity while this condition is true. No change keeps the cue's own Display setting.",
-        values = { keep = "Opacity: no change", set = "Opacity: set to..." }, sorting = { "keep", "set" },
-        get = function() return modGet("alpha") ~= nil and "set" or "keep" end,
-        set = function(_, v) modSet("alpha", (v == "set") and (modGet("alpha") or 0.5) or nil) end, disabled = locked }
-    args.modAlphaN = { type = "input", order = 71.5, width = "relative", relWidth = 0.2, name = "", hidden = function() return noMods() or modGet("alpha") == nil end,
-        desc = "Opacity in percent, 0 (invisible) to 100 (solid).",
-        get = function() return tostring(math.floor((modGet("alpha") or 0.5) * 100 + 0.5)) end,
-        set = function(_, v) local n = tonumber(v); if n then modSet("alpha", math.max(0, math.min(100, n)) / 100) end end, disabled = locked }
+    for i = 1, math.min(40, #(rule.thenCues or {}) + 1) do
+        local o = 70 + i / 100 + 0.003
+        args["tm" .. i] = { type = "toggle", order = o, width = "full", name = "Modify this cue for this condition set",
+            hidden = function() return noRow(i) end,
+            desc = "Tick to change how this cue looks while THIS condition is true: color tint, desaturate, glow, opacity and frame strata. Each setting stays 'no change' until you set it. Unticking keeps your values but stops applying them.",
+            get = function() return modsOn(i) end,
+            set = function(_, v)
+                if v then mset(i, "on", true)
+                else
+                    local m = mget(i); if m then m.on = false; ns.MarkDirty(); onN() end
+                end
+            end, disabled = locked }
+        args["mt" .. i] = { type = "select", order = o + 0.0001, width = "relative", relWidth = 0.28, name = "", arg = { xuiTextLeft = true }, hidden = function() return noOpts(i) end,
+            desc = "Replace the cue's color tint while this condition is true.",
+            values = { keep = "Color tint: no change", set = "Color tint: set..." }, sorting = { "keep", "set" },
+            get = function() local m = mget(i); return (m and m.tint) and "set" or "keep" end,
+            set = function(_, v) mset(i, "tint", (v == "set") and (((mget(i) or {}).tint) or { 1, 0.2, 0.2, 1 }) or nil) end, disabled = locked }
+        args["mtc" .. i] = { type = "color", hasAlpha = true, order = o + 0.0002, width = "relative", relWidth = 0.1, name = "",
+            hidden = function() local m = mget(i); return noOpts(i) or not (m and m.tint) end,
+            get = function() local m = mget(i); local t = m and m.tint or { 1, 1, 1, 1 }; return t[1] or 1, t[2] or 1, t[3] or 1, t[4] or 1 end,
+            set = function(_, r, g, b, a) mset(i, "tint", { r, g, b, a or 1 }) end, disabled = locked }
+        args["md" .. i] = triSel(i, "desat", "Desaturate", "Desaturate: on", "Desaturate: off (full color)", o + 0.0003, 0.3)
+        args["mg" .. i] = triSel(i, "glow", "Glow", "Glow: on", "Glow: off", o + 0.0004, 0.26)
+        args["ma" .. i] = { type = "select", order = o + 0.0005, width = "relative", relWidth = 0.3, name = "", arg = { xuiTextLeft = true }, hidden = function() return noOpts(i) end,
+            desc = "Replace the cue's opacity (alpha: 0 invisible, 100 solid) while this condition is true. Alpha and opacity are the same setting in WoW, so there is one box for both.",
+            values = { keep = "Opacity: no change", set = "Opacity: set..." }, sorting = { "keep", "set" },
+            get = function() local m = mget(i); return (m and m.alpha ~= nil) and "set" or "keep" end,
+            set = function(_, v) mset(i, "alpha", (v == "set") and (((mget(i) or {}).alpha) or 0.5) or nil) end, disabled = locked }
+        args["man" .. i] = { type = "input", order = o + 0.0006, width = "relative", relWidth = 0.14, name = "",
+            hidden = function() local m = mget(i); return noOpts(i) or not (m and m.alpha ~= nil) end,
+            desc = "Opacity in percent, 0 (invisible) to 100 (solid).",
+            get = function() local m = mget(i); return tostring(math.floor(((m and m.alpha) or 0.5) * 100 + 0.5)) end,
+            set = function(_, v) local n = tonumber(v); if n then mset(i, "alpha", math.max(0, math.min(100, n)) / 100) end end, disabled = locked }
+        args["ms" .. i] = { type = "select", order = o + 0.0007, width = "relative", relWidth = 0.5, name = "", arg = { xuiTextLeft = true }, hidden = function() return noOpts(i) end,
+            desc = "Move the cue to another frame strata while this condition is true. Higher strata draw above lower ones (BACKGROUND is lowest).",
+            values = STRATA_VALUES, sorting = STRATA_ORDER,
+            get = function() local m = mget(i); return (m and m.strata) or "keep" end,
+            set = function(_, v) mset(i, "strata", (v ~= "keep") and v or nil) end, disabled = locked }
+    end
+
+    -- Live result, step by step: each check on its own line with its own TRUE / FALSE and the running answer after adding it
+    -- (AND is evaluated before OR, so the running answer is the whole expression up to that line), then the final answer.
+    local function TF(v) return (v == true and "|cff55ff55TRUE|r") or (v == false and "|cffff5555FALSE|r") or "|cffffd100UNKNOWN|r" end
     args.status = { type = "description", order = 80, width = "full", fontSize = "medium", hidden = collapsed,
         name = function()
-            local ok, res = pcall(ns.Evaluate, rule, ns.ReadContext())
-            local word = (not ok and "|cffffd100error|r") or (res and "|cff55ff55TRUE|r") or "|cffff5555FALSE|r"
-            return "Right now: " .. word .. "     |cff888888Each check's light:  |r|cff55ff55green|r|cff888888 = met,  |r|cffff5555red|r|cff888888 = not met,  |r|cffffd100yellow|r|cff888888 = unknown.|r"
+            local ctx = ns.ReadContext()
+            local okE, res, info = pcall(ns.Evaluate, rule, ctx)
+            local lines = {}
+            local p = ns.FindParentRule(rule)
+            if p and #W.list > 0 then
+                local okP, pr, pi = pcall(ns.Evaluate, p, ctx)
+                if okP and pi then
+                    local choices = RefChoices(p)
+                    for i, t in ipairs(W.list) do
+                        local okc, v = pcall(CheckValue, t, p, pr, pi)
+                        if not okc then v = nil end
+                        local what = t.ref and (choices[t.ref] or "a trigger that was removed") or "nothing chosen yet"
+                        local detail
+                        if IsNumRef(t.ref) then
+                            local okn, cur = pcall(NumRef, t.ref, p, pi)
+                            what = what:gsub("%s*%(number%)", "")
+                            local nowTxt = "not readable"
+                            if okn and type(cur) == "number" then nowTxt = (string.format("%.1f", cur):gsub("%.0$", "")) end
+                            detail = what .. "  " .. (CMP_VALUES[t.cmp or "=="] or "=") .. "  " .. tostring(t.num or 0)
+                                .. "  |cff888888(now: " .. nowTxt .. ")|r"
+                        else
+                            detail = what .. "  is  " .. (t.neg and "FALSE" or "TRUE")
+                        end
+                        local prefix = (i > 1) and ("|cffffd100" .. ((t.op == "or") and "OR" or "AND") .. "|r  ") or ""
+                        local part = {}
+                        for k = 1, i do part[k] = W.list[k] end
+                        local okr, run = pcall(EvalWhen, part, p, pr, pi)
+                        lines[#lines + 1] = ("%s%d.  %s   |cff888888check|r %s   |cff888888so far|r %s"):format(prefix, i, detail, TF(v), TF(okr and run or nil))
+                    end
+                end
+            end
+            local word = (not okE and "|cffffd100error|r") or TF(res and true or false)
+            lines[#lines + 1] = "|cffffd100Final, right now:|r " .. word .. "     |cff888888green = met,  red = not met,  yellow = unknown (hidden in combat, or not set up yet)|r"
+            if okE and info and not res and #W.list > 0 then
+                if info.ctxOK == false then lines[#lines + 1] = "|cffff5555Blocked by the Load tab:|r " .. tostring(info.ctxFail or "load conditions not met") end
+                if info.talentOK == false then lines[#lines + 1] = "|cffff5555Blocked by the Talents tab.|r" end
+            end
+            return table.concat(lines, "\n")
         end }
     return args
 end

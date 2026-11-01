@@ -719,8 +719,17 @@ function ns.Evaluate(rule, ctx)
         if unset(rule.buffState) and (buffUsed or not anyTrigger) then info.missing[#info.missing + 1] = "buff state" end
     end
     -- talents are optional: a blank talentMode counts as "ignore talents"
-    info.result = (info.cdOK == true) and (info.buffOK == true) and info.ctxOK
-        and (info.talentOK == true) and (info.extraOK == true) and (#info.missing == 0)
+    -- Triggers combine as ALL (default) unless the rule's "activates when" setting names ANY or one trigger (Triggers.lua CombineTriggers).
+    local trigOK, trigTri
+    if ns.CombineTriggers then trigOK, trigTri = ns.CombineTriggers(rule, info) end
+    if trigOK == nil then
+        trigOK = (info.cdOK == true) and (info.buffOK == true) and (info.extraOK == true)
+        info.trigMode = "all"
+    else
+        info.trigMode, info.trigTri = rule.trigMode, trigTri
+    end
+    info.trigOK = trigOK
+    info.result = trigOK and info.ctxOK and (info.talentOK == true) and (#info.missing == 0)
     if ns.tickID then evalCache[rule] = { tick = ns.tickID, ctx = ctx, res = info.result, info = info } end
     return info.result, info
 end

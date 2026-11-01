@@ -188,12 +188,14 @@ local function EnsureToolbar(of)
         cr:SetPoint("LEFT", im, "RIGHT", 14, 0)
         local ex = ToolButton(bar, 132763, "Export", function() if ns.UI and ns.UI.Export then ns.UI.Export() end end)
         ex:SetPoint("LEFT", cr, "RIGHT", 14, 0)
+        local dfb = ToolButton(bar, "Interface\\Icons\\INV_Misc_Note_05", "Drafts", function() if ns.UI and ns.UI.Drafts then ns.UI.Drafts() end end)
+        dfb:SetPoint("LEFT", ex, "RIGHT", 14, 0)
         -- no Cursor button here: the Cursor options live only on the QoL UI Updates tab (Xaya, 2026-11-01)
         local lk = ToolButton(bar, "Interface\\PetBattles\\PetBattle-LockIcon", "Lock Positions", function()
             if ns.ToggleUnlock then ns.ToggleUnlock() end
             if ns.UI and ns.UI.Notify then ns.UI.Notify() end
         end)
-        lk:SetPoint("LEFT", ex, "RIGHT", 14, 0)
+        lk:SetPoint("LEFT", dfb, "RIGHT", 14, 0)
         bar.lock = lk
         lk:Hide()   -- the Unlock Positions button is gone from the top bar (every level has its own in-line unlock); the object stays so nothing that sets its label breaks
         -- Settings sits at the far right of the same line, cog icon on its left

@@ -782,6 +782,8 @@ function ns.NormalizeExtra(r)
     for _, k in ipairs({ "cdName", "buffName" }) do
         if type(r[k]) ~= "string" then r[k] = nil else r[k] = r[k]:gsub("[%c|]", ""):sub(1, 30); if r[k] == "" then r[k] = nil end end
     end
+    -- which trigger activates the rule: nil / "all" (every trigger), "any" (one is enough), or one trigger by reference: "cd", "buff", "x<row>"
+    if r.trigMode ~= "any" and r.trigMode ~= "cd" and r.trigMode ~= "buff" and not (type(r.trigMode) == "string" and r.trigMode:match("^x%d+$") and #r.trigMode <= 4) then r.trigMode = nil end
     if type(r.trigOrder) ~= "table" then r.trigOrder = nil
     else
         local seq = {}
@@ -814,6 +816,41 @@ function ns.TriggerSequence(rule)
     end
     while nxs < nx do nxs = nxs + 1; seq[#seq + 1] = "x" end
     return seq
+end
+
+-- Every trigger of a rule with its truth value right now, in trigger order: { { ref = "cd"|"buff"|"x<j>", tok, j, pos, v = true|false|nil }, ... }.
+-- `info` is the table ns.Evaluate returns for the rule. v == nil means unknown (never fires). Built-ins that are not in use are not listed.
+function ns.TriggerValues(rule, info)
+    local out, rows, jx = {}, (info and info.extraRows) or {}, 0
+    for pos, tok in ipairs(ns.TriggerSequence(rule)) do
+        if tok == "cd" then out[#out + 1] = { ref = "cd", tok = tok, pos = pos, v = info and info.cdOK }
+        elseif tok == "buff" then out[#out + 1] = { ref = "buff", tok = tok, pos = pos, v = info and info.buffOK }
+        else jx = jx + 1; out[#out + 1] = { ref = "x" .. jx, tok = tok, j = jx, pos = pos, v = rows[jx] } end
+    end
+    return out
+end
+-- The truth value of one trigger by reference, or nil when the reference no longer points at a trigger.
+function ns.TriggerValueOf(rule, info, ref)
+    for _, e in ipairs(ns.TriggerValues(rule, info)) do if e.ref == ref then return e.v, true end end
+    return nil, false
+end
+-- Combine the triggers by rule.trigMode. Returns nil when the mode is the default (ALL: the caller keeps its own combination), otherwise
+-- (boolean that decides whether the rule fires, tri-state true / false / nil for conditions that read "the parent rule fires").
+function ns.CombineTriggers(rule, info)
+    local m = rule.trigMode
+    if m == nil or m == "all" then return nil end
+    local vals = ns.TriggerValues(rule, info)
+    if m == "any" then
+        if #vals == 0 then return true, true end
+        local anyT, anyN = false, false
+        for _, e in ipairs(vals) do if e.v == true then anyT = true elseif e.v == nil then anyN = true end end
+        if anyT then return true, true end
+        if anyN then return false, nil end   -- (not an and / or expression: false and x or y always gives y)
+        return false, false
+    end
+    local v, found = ns.TriggerValueOf(rule, info, m)
+    if not found then return nil end   -- the chosen trigger was removed: back to ALL
+    return v == true, v
 end
 
 -- { seq = {...}, cd = place or nil, buff = place or nil, xs = { place of row 1, place of row 2, ... } }
@@ -889,6 +926,20 @@ function ns.TriggerNameArg(rule, tok, j, order, onChange)
         end }
 end
 
+-- "TRUE" / "FALSE" / "UNKNOWN" (green / red / yellow) for one trigger as it is right now. tok = "cd" | "buff" | "x" (j = row). A trigger that
+-- is not readable in combat shows UNKNOWN: unknown never fires.
+function ns.TriggerLightText(rule, tok, j)
+    local ok, v = pcall(function()
+        local _, info = ns.Evaluate(rule, ns.ReadContext())
+        local ref = (tok == "x") and ("x" .. tostring(j)) or tok
+        local val = ns.TriggerValueOf(rule, info, ref)
+        return val
+    end)
+    if not ok then return "|cffffd100ERROR|r" end
+    if v == true then return "|cff55ff55TRUE|r" elseif v == false then return "|cffff5555FALSE|r" end
+    return "|cffffd100UNKNOWN|r"
+end
+
 local GLYPH_OPEN = "|TInterface\\Buttons\\Arrow-Down-Up:16:16|t"
 local GLYPH_CLOSED = "|TInterface\\ChatFrame\\ChatFrameExpandArrow:16:16|t"
 -- Trigger pane header = the same header a cue or condition has: arrow + "Trigger 1:  Cooldown", and the optional name typed in the
@@ -906,7 +957,7 @@ function ns.TriggerPaneHeader(pane, rule, tok, j, title, onChange)
         title = function() return title end,
         get = function() return nameArg.get() end,
         set = function(v) nameArg.set(nil, v) end,
-        hint = function() return "" end,
+        hint = function() return ns.TriggerLightText(rule, tok, j) end,   -- TRUE / FALSE / UNKNOWN right now, to the right of the title
     }
     a.xuiSub = function() return " " end   -- makes room for the name box under the title
 end
@@ -1106,8 +1157,8 @@ function ns.BuildExtraTriggerArgs(rule, H)
 
     args.xHeader = { type = "header", name = "Triggers", order = 0 }
     args.xHelp = { type = "description", order = 0.1, width = "full", fontSize = "medium",
-        name = "A new rule has no triggers. Add the ones it needs, one at a time. Cooldown and Buff / Aura always apply together; the other triggers combine with each other (see below), then also have to match. "
-            .. "Talents and Load conditions are on their own tabs." }
+        name = "A new rule has no triggers. Add the ones it needs, one at a time. By default every trigger has to be true; with two or more triggers, 'This rule is activated by' lets ANY trigger, or just one of them, switch the rule on. "
+            .. "Each trigger shows a TRUE / FALSE / UNKNOWN light in its header. Talents and Load conditions are on their own tabs." }
 
     -- Cooldown and Buff / Aura are added from the same menu; the other types become rows. Already-added built-ins are not offered again.
     local BUILTIN = { _cooldown = "Spell:  Cooldown / charges", _buff = "Aura:  Buff / Aura" }
@@ -1140,10 +1191,37 @@ function ns.BuildExtraTriggerArgs(rule, H)
             sq[#sq + 1] = "x"; rule.trigOrder = sq
             onN()
         end }
+    -- Which trigger activates the rule. Default = ALL (every trigger, as before). ANY = one true trigger is enough. Or one trigger alone decides;
+    -- the others then still show their lights but do not gate the rule. Conditions can still read every trigger individually.
+    local function ActivateChoices()
+        local vals, order = { all = "ALL triggers must be true (default)", any = "ANY trigger: one true trigger activates the rule" }, { "all", "any" }
+        local Q = ns.TriggerPositions(rule)
+        for _, tk in ipairs(Q.seq) do
+            if tk == "cd" then vals.cd = "Only " .. ns.TriggerChoiceLabel(rule, "cd", nil, Q.cd or 1, "Cooldown"); order[#order + 1] = "cd"
+            elseif tk == "buff" then vals.buff = "Only " .. ns.TriggerChoiceLabel(rule, "buff", nil, Q.buff or 1, "Buff / Aura"); order[#order + 1] = "buff" end
+        end
+        for j, t in ipairs(X.list) do
+            local d = TYPES[t.type]
+            local k = "x" .. j
+            vals[k] = "Only " .. ns.TriggerChoiceLabel(rule, "x", j, Q.xs[j] or j, d and d.label or "unknown type"); order[#order + 1] = k
+        end
+        return vals, order
+    end
+    args.xActivate = { type = "select", name = "This rule is activated by", order = 0.25, width = "double",
+        desc = "Which trigger switches the rule on. ALL needs every trigger true (the old behavior). ANY needs just one of them. Choosing one trigger makes that trigger alone decide; the others no longer have to be true, but their lights still show. Conditions on the Conditions tab can still read every trigger separately.",
+        hidden = function() return #ns.TriggerSequence(rule) < 2 end,
+        values = function() local v = ActivateChoices(); return v end,
+        sorting = function() local _, o = ActivateChoices(); return o end,
+        get = function()
+            local v = ActivateChoices()
+            local m = rule.trigMode or "all"
+            return v[m] and m or "all"
+        end,
+        set = function(_, v) rule.trigMode = (v ~= "all") and v or nil; onN() end }
     args.xMode = H.Sel(X, "mode", "Combine the additional triggers", 0.3,
         { all = "ALL of them must be true", any = "ANY one of them is enough" }, { "all", "any" }, onN,
-        { width = "double", hidden = function() return #X.list < 2 end,
-          desc = "Blank counts as ALL. This only combines the additional triggers with each other." })
+        { width = "double", hidden = function() return #X.list < 2 or (rule.trigMode ~= nil and rule.trigMode ~= "all") end,
+          desc = "Blank counts as ALL. This only combines the additional triggers with each other. It is not used while 'This rule is activated by' is set to ANY or to one trigger." })
 
     local P = ns.TriggerPositions(rule)
     for j, t in ipairs(X.list) do

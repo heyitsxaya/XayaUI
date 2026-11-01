@@ -8,6 +8,10 @@ local KIND_OK = {}
 for _, k in ipairs(ns.CUE_KINDS) do KIND_OK[k] = true end
 ns.CUE_KIND_LABEL = { sound = "Sound", speech = "Speech", text = "Text", texture = "Texture", icon = "Icon", custom = "Custom" }
 local MAX_CUES = 40
+-- Frame strata a condition may give a cue (low to high). TOOLTIP is left out on purpose: art there would sit above every window.
+ns.MOD_STRATA = { "BACKGROUND", "LOW", "MEDIUM", "HIGH", "DIALOG", "FULLSCREEN", "FULLSCREEN_DIALOG" }
+ns.MOD_STRATA_OK = {}
+for _, k in ipairs(ns.MOD_STRATA) do ns.MOD_STRATA_OK[k] = true end
 
 function ns.CuesOf(p)
     local out = {}
@@ -124,11 +128,13 @@ function ns.EvaluateCue(rule, ctx)
                         if not hit then by = c.name end
                         hit = true
                         local m = type(c.thenMods) == "table" and c.thenMods[key] or nil
-                        if type(m) == "table" then
+                        if type(m) == "table" and m.on ~= false then   -- on == false: the "modify this cue" box is unticked, values are kept but ignored
                             mods = mods or {}
                             if m.glow ~= nil then mods.glow = m.glow end
                             if m.desat ~= nil then mods.desat = m.desat end
                             if m.alpha ~= nil then mods.alpha = m.alpha end
+                            if m.tint ~= nil then mods.tint = m.tint end
+                            if m.strata ~= nil then mods.strata = m.strata end
                         end
                     end
                     break
@@ -154,13 +160,19 @@ function ns.NormalizeCues(r)
         for _, k in ipairs(r.thenCues) do if type(k) == "string" and #k <= 12 and #out < MAX_CUES then out[#out + 1] = k end end
         r.thenCues = (#out > 0) and out or nil
     else r.thenCues = nil end
-    -- per-cue modifiers of a condition: only for cues it lists; glow / desat are true or false (absent = leave the cue as it is), alpha is 0 to 1
+    -- per-cue modifiers of a condition: only for cues it lists; on = the 'modify this cue' box; glow / desat are true or false (absent = leave the cue as it is), alpha is 0 to 1, tint is {r,g,b,a}, strata is a frame strata name
     if type(r.thenMods) == "table" and not r.isCue and r.thenCues then
         local out = {}
         for _, k in ipairs(r.thenCues) do
             local m = r.thenMods[k]
             if type(m) == "table" then
                 local n = {}
+                if m.on == false then n.on = false elseif m.on == true then n.on = true end
+                if type(m.tint) == "table" then
+                    local r, g, b, a = tonumber(m.tint[1]), tonumber(m.tint[2]), tonumber(m.tint[3]), tonumber(m.tint[4]) or 1
+                    if r and g and b then n.tint = { math.max(0, math.min(1, r)), math.max(0, math.min(1, g)), math.max(0, math.min(1, b)), math.max(0, math.min(1, a)) } end
+                end
+                if type(m.strata) == "string" and ns.MOD_STRATA_OK[m.strata] then n.strata = m.strata end
                 if type(m.glow) == "boolean" then n.glow = m.glow end
                 if type(m.desat) == "boolean" then n.desat = m.desat end
                 if type(m.alpha) == "number" and m.alpha == m.alpha then n.alpha = math.max(0, math.min(1, m.alpha)) end

@@ -1178,6 +1178,10 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         end
     end
     if mods and mods.desat ~= nil then greyDone = false end   -- an explicit condition choice beats the buff-timer fade
+    if mods and mods.tint then   -- a condition's color tint replaces the cue's own tint (and any fade color) while it is true
+        cr, cg, cb, ca = mods.tint[1] or 1, mods.tint[2] or 1, mods.tint[3] or 1, mods.tint[4] or 1
+        colorDone = false
+    end
     if not greyDone then pcall(fr.tex.SetDesaturation, fr.tex, d) end
     if not colorDone then fr.tex:SetVertexColor(cr, cg, cb, ca) end
 
@@ -1219,6 +1223,14 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         alpha = alpha * (0.2 + 0.8 * wave)
     end
     if not alphaDone then fr:SetAlpha(alpha) end
+    -- frame strata from a true condition; when no condition asks for one any more, back to the folder's strata
+    if mods and mods.strata then
+        if fr:GetFrameStrata() ~= mods.strata then pcall(fr.SetFrameStrata, fr, mods.strata) end
+        fr.xuiModStrata = true
+    elseif fr.xuiModStrata then
+        fr.xuiModStrata = nil
+        ApplyStrata(fr, rule.folder)
+    end
 
     -- progress-bar wipe (readable / sample fraction only; secret durations cannot be measured in Lua)
     local fl2 = v.fill

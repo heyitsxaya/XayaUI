@@ -5,6 +5,10 @@
 --
 -- Shapes: circle = a square texture cut with a circular mask; diamond = a Line region as thick as it is long, drawn at 45 degrees
 -- (SetRotation only turns the image inside a texture, so it cannot turn a solid square into a diamond); square and star are plain textures.
+-- Style "Outline" (circle, square, diamond): only the perimeter, drawn as Line regions with an adjustable thickness (a circle is a 64-sided
+-- polygon). Every line hangs off one small anchor frame that follows the cursor, so moving the cursor costs a single SetPoint.
+-- Shape "Game cursor art": a Blizzard cursor picture (or a path you type) drawn at the cursor. WoW does not let an addon hide the real pointer,
+-- so this is drawn IN ADDITION to it. (SetCursor can swap the real pointer, but warcraft.wiki.gg states it has no effect over the 3D world.)
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 
@@ -13,8 +17,18 @@ local SHAPES = {
     square  = { "Square",  "Interface\\Buttons\\WHITE8X8",  "BLEND" },
     diamond = { "Diamond", "Interface\\Buttons\\WHITE8X8",  "BLEND" },
     star    = { "Star",    "Interface\\Cooldown\\star4",    "ADD"   },
+    art     = { "Game cursor art", "Interface\\Cursor\\Point", "BLEND" },
 }
-local SHAPE_ORDER = { "circle", "square", "diamond", "star" }
+local SHAPE_ORDER = { "circle", "square", "diamond", "star", "art" }
+local OUTLINE_OK = { circle = true, square = true, diamond = true }
+-- Pictures from the game's own Interface\\Cursor folder. Taxi is the path warcraft.wiki.gg uses in its SetCursor example; Point is the
+-- one CursorTrail already uses. NEITHER HAS BEEN CHECKED IN GAME as a texture: a green square means the path is wrong. Anything else: type a path.
+local ART = {
+    point = { "Hand (Interface\\Cursor\\Point)", "Interface\\Cursor\\Point" },
+    taxi  = { "Taxi (Interface\\Cursor\\Taxi)",  "Interface\\Cursor\\Taxi"  },
+    custom = { "My own path (type it below)", nil },
+}
+local ART_ORDER = { "point", "taxi", "custom" }
 
 ns.CURSORHIGHLIGHT_DEFAULTS = {
     enabled = false,
@@ -24,6 +38,11 @@ ns.CURSORHIGHLIGHT_DEFAULTS = {
     opacity = 0.35,
     combatOnly = false,
     hideMouselook = true,
+    style = "fill",        -- fill | outline
+    thickness = 3,         -- outline line thickness in pixels
+    art = "point",
+    artPath = "",
+    keepColors = false,    -- game cursor art: keep the picture's own colors instead of tinting it
 }
 
 local function CopyVal(v)
@@ -41,12 +60,18 @@ local function Ensure()
     end
     if type(c.color) ~= "table" then c.color = CopyVal(ns.CURSORHIGHLIGHT_DEFAULTS.color) end
     if not SHAPES[c.shape] then c.shape = "circle" end
+    if c.style ~= "outline" then c.style = "fill" end
+    c.thickness = math.max(1, math.min(12, tonumber(c.thickness) or 3))
+    if not ART[c.art] then c.art = "point" end
+    if type(c.artPath) ~= "string" then c.artPath = "" end
     return c
 end
 ns.CursorHighlight_Cfg = Ensure
 
 -- runtime ---------------------------------------------------------------------
-local frame, tex, mask, line
+local frame, anchor, tex, mask, line
+local ringLines = {}
+local MAX_LINES = 64
 
 local function Build()
     if frame then return end
@@ -54,6 +79,9 @@ local function Build()
     frame:SetFrameStrata("TOOLTIP"); frame:SetFrameLevel(70)   -- under the gradient trail (level 80)
     frame:SetAllPoints(UIParent)
     frame:EnableMouse(false)
+    anchor = CreateFrame("Frame", nil, frame)
+    anchor:SetSize(1, 1)
+    anchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", 0, 0)
     tex = frame:CreateTexture(nil, "ARTWORK")
     tex:Hide()
     if frame.CreateMaskTexture then
@@ -74,48 +102,105 @@ local function SetMasked(on)
     elseif not on and masked then pcall(tex.RemoveMaskTexture, tex, mask); masked = false end
 end
 
+local function HideRing()
+    for _, l in ipairs(ringLines) do l:Hide() end
+end
+-- one outline segment from (x1,y1) to (x2,y2), measured from the cursor
+local function Segment(i, x1, y1, x2, y2, t, col)
+    if i > MAX_LINES or not frame.CreateLine then return end
+    local l = ringLines[i]
+    if not l then l = frame:CreateLine(nil, "ARTWORK"); ringLines[i] = l end
+    l:SetStartPoint("CENTER", anchor, x1, y1)
+    l:SetEndPoint("CENTER", anchor, x2, y2)
+    l:SetThickness(t)
+    l:SetColorTexture(col[1], col[2], col[3], 1)
+    l:Show()
+end
+
+-- lay out whatever the settings ask for; runs when a setting changes, never per frame
+local function Layout(c)
+    local col = c.color or { 1, 1, 1 }
+    local size, op = c.size or 56, c.opacity or 0.35
+    tex:Hide(); if line then line:Hide() end; HideRing()
+    frame:SetAlpha(1)
+    if c.style == "outline" and OUTLINE_OK[c.shape] then
+        local r, t, n = size / 2, c.thickness or 3, 0
+        if c.shape == "circle" then
+            local N = 64
+            for k = 0, N - 1 do
+                local a1, a2 = (k / N) * 2 * math.pi, ((k + 1) / N) * 2 * math.pi
+                n = n + 1; Segment(n, r * math.cos(a1), r * math.sin(a1), r * math.cos(a2), r * math.sin(a2), t, col)
+            end
+        elseif c.shape == "square" then
+            local pts = { { -r, -r }, { r, -r }, { r, r }, { -r, r } }
+            for k = 1, 4 do
+                local p, q = pts[k], pts[k % 4 + 1]
+                n = n + 1; Segment(n, p[1], p[2], q[1], q[2], t, col)
+            end
+        else   -- diamond: a square turned 45 degrees (corner to corner = size)
+            local pts = { { 0, -r }, { r, 0 }, { 0, r }, { -r, 0 } }
+            for k = 1, 4 do
+                local p, q = pts[k], pts[k % 4 + 1]
+                n = n + 1; Segment(n, p[1], p[2], q[1], q[2], t, col)
+            end
+        end
+        frame.xuiOpacity = op   -- each line is drawn solid; the opacity setting is the whole frame's alpha
+        frame:SetAlpha(op)
+        return
+    end
+    frame.xuiOpacity = 1
+    if c.shape == "diamond" and line then
+        local d = size * 0.5 * 0.70710678
+        line:SetStartPoint("CENTER", anchor, -d, -d)
+        line:SetEndPoint("CENTER", anchor, d, d)
+        line:SetThickness(size)
+        line:SetColorTexture(col[1], col[2], col[3], op)
+        line:Show()
+        return
+    end
+    local sh = SHAPES[c.shape] or SHAPES.circle
+    local path = sh[2]
+    if c.shape == "art" then
+        path = (c.art == "custom") and (c.artPath ~= "" and c.artPath or nil) or (ART[c.art] and ART[c.art][2])
+    end
+    tex:SetTexture(path)
+    tex:SetBlendMode(sh[3])
+    SetMasked(c.shape == "circle")
+    if c.shape == "art" and c.keepColors then tex:SetVertexColor(1, 1, 1, op) else tex:SetVertexColor(col[1], col[2], col[3], op) end
+    tex:SetSize(size, size)
+    tex:ClearAllPoints()
+    tex:SetPoint("CENTER", anchor, "CENTER", 0, 0)
+    tex:Show()
+end
+
+local hiddenNow = false
 local function OnUpdate()
     local c = CueRulesDB and CueRulesDB.cursorHighlight
     if not c then return end
     local hide = (c.hideMouselook and IsMouselooking and IsMouselooking())
         or (c.combatOnly and not (UnitAffectingCombat and UnitAffectingCombat("player")))
-    if hide then tex:Hide(); if line then line:Hide() end; return end
+    hide = hide and true or false
+    if hide ~= hiddenNow then
+        hiddenNow = hide
+        frame:SetAlpha(hide and 0 or (frame.xuiOpacity or 1))
+    end
+    if hide then return end
     local x, y = GetCursorPosition()
     local s = UIParent:GetEffectiveScale()
-    x, y = x / s, y / s
-    local col = c.color or { 1, 1, 1 }
-    local size, op = c.size or 56, c.opacity or 0.35
-    if c.shape == "diamond" and line then
-        tex:Hide()
-        local d = size * 0.5 * 0.70710678
-        line:SetStartPoint("BOTTOMLEFT", UIParent, x - d, y - d)
-        line:SetEndPoint("BOTTOMLEFT", UIParent, x + d, y + d)
-        line:SetThickness(size)
-        line:SetColorTexture(col[1], col[2], col[3], op)
-        line:Show()
-    else
-        if line then line:Hide() end
-        tex:SetVertexColor(col[1], col[2], col[3], op)
-        tex:SetSize(size, size)
-        tex:ClearAllPoints()
-        tex:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
-        tex:Show()
-    end
+    anchor:ClearAllPoints()
+    anchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / s, y / s)
 end
 
 function ns.CursorHighlight_Apply()
     local c = Ensure()
     if not c then return end
     if not c.enabled then
-        if frame then frame:SetScript("OnUpdate", nil); tex:Hide(); if line then line:Hide() end; frame:Hide() end
+        if frame then frame:SetScript("OnUpdate", nil); tex:Hide(); if line then line:Hide() end; HideRing(); frame:Hide() end
         return
     end
     Build()
-    local sh = SHAPES[c.shape] or SHAPES.circle
-    tex:SetTexture(sh[2])
-    tex:SetBlendMode(sh[3])
-    if line then line:SetBlendMode(sh[3]) end
-    SetMasked(c.shape == "circle")
+    Layout(c)
+    hiddenNow = false
     frame:Show()
     frame:SetScript("OnUpdate", OnUpdate)
 end
@@ -146,6 +231,29 @@ function ns.BuildCursorHighlightTab(Notify)
                     shape = { type = "select", order = 1, name = "Shape", values = shapeValues, sorting = SHAPE_ORDER,
                         get = function() return C().shape end,
                         set = function(_, v) C().shape = v; Changed() end },
+                    style = { type = "select", order = 1.5, name = "Style", values = { fill = "Filled", outline = "Outline only (just the perimeter line)" }, sorting = { "fill", "outline" },
+                        desc = "Outline draws only the edge of a circle, square or diamond, so you can see what is under the cursor.",
+                        hidden = function() return not OUTLINE_OK[C().shape] end,
+                        get = function() return C().style end,
+                        set = function(_, v) C().style = v; Changed() end },
+                    thickness = { type = "range", order = 1.6, name = "Outline thickness", min = 1, max = 12, step = 1,
+                        hidden = function() return not (OUTLINE_OK[C().shape] and C().style == "outline") end,
+                        get = function() return C().thickness end,
+                        set = function(_, v) C().thickness = v; Changed() end },
+                    art = { type = "select", order = 1.7, name = "Game cursor picture", values = function() local t = {}; for k, v in pairs(ART) do t[k] = v[1] end; return t end, sorting = ART_ORDER,
+                        desc = "A picture from the game's own Interface\\Cursor folder, drawn at the cursor IN ADDITION to the real pointer (an addon cannot hide the real pointer). Not yet checked in game: a green square means the path is wrong.",
+                        hidden = function() return C().shape ~= "art" end,
+                        get = function() return C().art end,
+                        set = function(_, v) C().art = v; Changed() end },
+                    artPath = { type = "input", order = 1.8, name = "Picture path", width = "double",
+                        desc = "Full in-game path, for example Interface\\Cursor\\Taxi. .blp, .tga or .png with power-of-two sides. Files inside Interface\\AddOns work too.",
+                        hidden = function() return C().shape ~= "art" or C().art ~= "custom" end,
+                        get = function() return C().artPath end,
+                        set = function(_, v) C().artPath = tostring(v or ""):sub(1, 200); Changed() end },
+                    keepColors = { type = "toggle", order = 1.9, width = "double", name = "Keep the picture's own colors (no tint)",
+                        hidden = function() return C().shape ~= "art" end,
+                        get = function() return C().keepColors and true or false end,
+                        set = function(_, v) C().keepColors = v and true or false; Changed() end },
                     color = { type = "color", order = 2, name = "Color", hasAlpha = false,
                         get = function() local col = C().color; return col[1], col[2], col[3] end,
                         set = function(_, r, g, b) C().color = { r, g, b }; Changed() end },
