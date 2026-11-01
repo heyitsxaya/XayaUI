@@ -548,6 +548,28 @@ Add("resource", {
     end,
 })
 
+-- 12b. Buff / Aura on you, repeatable  (WA: Aura trigger, unit = player, buff). The rule's built-in "Buff / Aura" section holds ONE buff and can
+-- be added once; this row is the same check (ns.BuffPresent: aura API, then the Cooldown Manager icon) so a rule can watch several
+-- personal buffs at once. Each row is its own trigger number; combine them with the ALL / ANY switch under the trigger list.
+Add("buffAura", {
+    label = "Buff / Aura (yours) - add as many as you need", wa = "Aura (buff on player)", group = "Aura",
+    note = "True while the buff is on you. Same reading as the rule's built-in Buff / Aura section (aura API; in combat the Cooldown Manager icon when the buff is tracked there). Use the ID of the BUFF. If the game hides the buff in combat and it is not in your Cooldown Manager, the answer is 'unknown' and the rule will not fire.",
+    new = { state = "yes" },
+    fields = {
+        { key = "spellID", kind = "spell", label = "Buff spell ID", required = true },
+        { key = "state", kind = "select", label = "State", required = true, vals = YN("Buff is present", "Buff is MISSING") },
+    },
+    check = function(t)
+        local id = tonumber(t.spellID) or 0
+        if id == 0 then return nil, "not set: Buff spell ID" end
+        if not ns.BuffPresent then return nil, "buff reader missing" end
+        local ok, present, src = pcall(ns.BuffPresent, id)
+        if not ok then return nil, "error: " .. tostring(present) end
+        if present == nil then return nil, src or "unreadable" end
+        return YesNo(t, present), src
+    end,
+})
+
 -- 13. Player State  (WA: "Conditions")
 -- /xui debuffs [target|focus]: shows exactly what the game lets us read about your debuffs on that unit right now.
 -- EUI's own net for "a debuff I put on the target": look the aura up BY NAME with the engine-enforced ownership filter.
