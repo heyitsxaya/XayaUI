@@ -1268,6 +1268,19 @@ if FlowFn then
             if obj.LayoutFinished then pcall(obj.LayoutFinished, obj, lw, (lh or 0) + (okS and extra or 0)) end
         end
         pcall(ApplyGaps, children)
+        -- A nested box can change height AFTER its parent has already flowed (its own layout runs later, from the content's size-change
+        -- event, or a row re-measures), and the parent never heard about it: the sections below drew over the grown box (Cues > Texture
+        -- Options overlapping Color & Transparency until the window was widened). Compare with the height the parent last measured
+        -- (xuiSeenH, recorded at the end of the parent's own flow) and make the parent flow again. Climbs the same way, one level per
+        -- layout, and only fires when the height really changed, so it cannot loop.
+        if obj and SkinOn() and obj.frame and obj.parent and obj.parent.DoLayout and (obj.type == "InlineGroup" or obj.type == "SimpleGroup") then
+            local seen, par = obj.xuiSeenH, obj.parent
+            if seen and math.abs(seen - (obj.frame:GetHeight() or 0)) > 0.5 and not par.xuiRelaying then
+                par.xuiRelaying = true
+                pcall(par.DoLayout, par)
+                par.xuiRelaying = nil
+            end
+        end
         -- Nested boxes (a group inside a group) measure their children before text has wrapped, so the box can end up shorter than
         -- its contents. One more layout pass fixes it. It runs RIGHT NOW (same frame): a pass on the next frame made every pane
         -- visibly jump after it drew, which is part of the "blink". The second pass is marked so it never schedules a third.
@@ -1292,6 +1305,9 @@ if FlowFn then
                 for _, ch in ipairs(children) do h2 = h2 + (ch.frame and ch.frame:GetHeight() or 0) end
                 content.xuiSig = math.floor(content.width or content:GetWidth() or 0) .. ":" .. #children .. ":" .. math.floor(h2)
             end
+        end
+        for _, ch in ipairs(children) do   -- remember what height this flow measured for each box (see the check above)
+            if ch.frame then ch.xuiSeenH = ch.frame:GetHeight() end
         end
     end
     AceGUI:RegisterLayout("XUIFlow", XUIFlowFn)
