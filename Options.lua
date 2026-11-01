@@ -328,8 +328,12 @@ do
         return { type = "group", inline = true, name = "", order = order,
             hidden = function() return not gate() end,
             args = {
-                hdr = { type = "execute", order = 1, width = "full", arg = { xuiLeft = true },
-                    name = function() return (isShut() and CLOSED or OPEN) .. "  " .. title end,
+                hdr = { type = "execute", order = 1, width = "full",
+                    arg = { xuiLeft = true, xuiArrowLeft = true, xuiArrow = function() return not isShut() end },
+                    name = function()
+                        if ns.SkinRows and ns.SkinRows() then return title end   -- skin draws a vertically centred arrow itself
+                        return (isShut() and CLOSED or OPEN) .. "  " .. title
+                    end,
                     desc = "Expand or collapse this section. Collapsing never changes any setting.",
                     func = function()
                         shut[owner] = shut[owner] or {}

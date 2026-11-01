@@ -787,6 +787,7 @@ function ns.DecorateBuiltinTriggers(rule, args)
         if args[keys[1]] then args[keys[1]].hidden = true end   -- the row header already carries the title
         ns.GatePane(rule, args, "trig_" .. tok, title, pos * 100, function() return used(rule) end, keys)
         local pane = args["pane_trig_" .. tok]
+        pane.args.hdr.arg.xuiSub = function() if ns.TriggerName(rule, tok, nil) then return "Trigger " .. pos end end
         pane.args.hdr.arg.xuiActions = function()
             return {
                 up = (pos > 1) and function() ns.MoveTrigger(rule, pos, -1); changed() end or false,
@@ -1014,6 +1015,7 @@ function ns.BuildExtraTriggerArgs(rule, H)
         if ns.GatedPane and ns.SkinRows and ns.SkinRows() then
             local pane = ns.GatedPane(rule, "trig_x" .. j, title, pos * 100, function() return true end, row)
             pane.args.hdr.arg.xuiActions = actions
+            pane.args.hdr.arg.xuiSub = function() if ns.TriggerName(rule, "x", j) then return "Trigger " .. pos end end
             args["x" .. j] = pane
         else
             row.remove = { type = "execute", name = "Remove", order = 91, width = "half", func = removeFn }

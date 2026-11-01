@@ -657,13 +657,34 @@ local function SkinButton(w)
             fs:SetFont(font, ns.H3_SIZE, flags)
             fs:SetTextColor(1, 1, 1)
         end
-        if fs then fs:ClearAllPoints(); fs:SetPoint("LEFT", f, "LEFT", 0, 0); fs:SetPoint("RIGHT", f, "RIGHT", -30, 0); fs:SetJustifyH("LEFT"); w.xuiTextMoved = true end
+        local arrowL = arg and arg.xuiArrowLeft and type(arg.xuiArrow) == "function"
+        local subTxt = arg and type(arg.xuiSub) == "function" and select(2, pcall(arg.xuiSub)) or nil
+        if type(subTxt) ~= "string" or subTxt == "" then subTxt = nil end
+        local lx = arrowL and 22 or 0
+        if fs then
+            fs:ClearAllPoints()
+            if subTxt then fs:SetPoint("TOPLEFT", f, "TOPLEFT", lx, -3) else fs:SetPoint("LEFT", f, "LEFT", lx, 0) end
+            fs:SetPoint("RIGHT", f, "RIGHT", -30, 0); fs:SetJustifyH("LEFT"); w.xuiTextMoved = true
+        end
+        -- grey second line (e.g. "Trigger 1" under a renamed trigger)
+        if subTxt then
+            if not f.xuiSubFS then f.xuiSubFS = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall") end
+            local sf = f.xuiSubFS
+            sf:ClearAllPoints(); sf:SetPoint("TOPLEFT", f, "TOPLEFT", lx, -3 - ns.H3_SIZE - 4)
+            sf:SetTextColor(0.6, 0.6, 0.6); sf:SetJustifyH("LEFT"); sf:SetText(subTxt); sf:Show()
+        elseif f.xuiSubFS then f.xuiSubFS:Hide() end
+        local wantH = subTxt and (ns.H3_SIZE + 26) or 24
+        if math.abs((f:GetHeight() or 0) - wantH) > 0.5 and (subTxt or w.xuiSubH) then
+            f:SetHeight(wantH); f.height = wantH; w.xuiSubH = subTxt and true or nil
+            if w.parent and w.parent.DoLayout then w.parent:DoLayout() end
+        end
         if arg and type(arg.xuiArrow) == "function" then
             if fs and w.xuiFont then fs:SetFont(w.xuiFont[1], ns.H3_SIZE, w.xuiFont[3]) end   -- same size as every other header
             if not f.xuiArrowTex then f.xuiArrowTex = f:CreateTexture(nil, "OVERLAY"); f.xuiArrowTex:SetSize(16, 16) end
             local at = f.xuiArrowTex
             local okOpen, open = pcall(arg.xuiArrow)
-            at:ClearAllPoints(); at:SetPoint("RIGHT", f, "RIGHT", -8, 0)
+            at:ClearAllPoints()
+            if arrowL then at:SetPoint("LEFT", f, "LEFT", 2, 0) else at:SetPoint("RIGHT", f, "RIGHT", -8, 0) end
             at:SetTexture((okOpen and open) and "Interface\\Buttons\\Arrow-Down-Up" or "Interface\\ChatFrame\\ChatFrameExpandArrow")
             at:SetVertexColor(0.8, 0.5, 1); at:Show()
         elseif f.xuiArrowTex then f.xuiArrowTex:Hide() end
@@ -681,6 +702,8 @@ local function SkinButton(w)
     OnRelease(w, function(self)
         if self.frame.xuiNameEB then self.frame.xuiNameEB:Hide(); self.frame.xuiNameHint:Hide() end
         if self.frame.xuiArrowTex then self.frame.xuiArrowTex:Hide() end
+        if self.frame.xuiSubFS then self.frame.xuiSubFS:Hide() end
+        if self.xuiSubH then self.frame:SetHeight(24); self.frame.height = 24; self.xuiSubH = nil end
         HideActions(self.frame)
         ShowRegions(self.frame)
         FlatHide(self.frame)
