@@ -13,6 +13,61 @@ local function LSM()
     return LibStub and LibStub("LibSharedMedia-3.0", true)
 end
 
+-- LocalSounds.lua indexes audio files that are NOT shipped with the addon (licensing), so on another player's
+-- machine most of those entries point at files that do not exist. The WoW client has no "does this file exist"
+-- call, so each folder of LocalSounds is probed once per session: mute the file, ask the client to play it
+-- (PlaySoundFile returns willPlay = false when the file is missing), stop it, unmute it. Two samples per folder
+-- are enough because a folder is either installed or it is not. If the client cannot mute, nothing is probed
+-- (never makes noise) and the entries are all kept.
+local dirOK = {}
+local function Probe(path)
+    if type(PlaySoundFile) ~= "function" or type(MuteSoundFile) ~= "function" or type(UnmuteSoundFile) ~= "function" then
+        return true
+    end
+    pcall(MuteSoundFile, path)
+    local ok, willPlay, handle = pcall(PlaySoundFile, path, "Master")
+    if ok and handle and type(StopSound) == "function" then pcall(StopSound, handle) end
+    pcall(UnmuteSoundFile, path)
+    if not ok then return true end   -- API error: do not hide anything on a guess
+    return willPlay and true or false
+end
+
+local function FolderAvailable(dir, entries)
+    local c = dirOK[dir]
+    if c ~= nil then return c end
+    local tries = 0
+    c = false
+    for _, e in ipairs(entries) do
+        tries = tries + 1
+        if Probe(e) then c = true; break end
+        if tries >= 2 then break end
+    end
+    dirOK[dir] = c
+    return c
+end
+
+-- LocalSounds entries whose files exist on this machine (cached for the session)
+local availableLocal
+function ns.AvailableLocalSounds()
+    if availableLocal then return availableLocal end
+    local byDir, order = {}, {}
+    for _, s in ipairs(ns.LocalSounds or {}) do
+        local path = s[2]
+        local dir = type(path) == "string" and path:match("^(.*)[\\/][^\\/]*$") or ""
+        if not byDir[dir] then byDir[dir] = {}; order[#order + 1] = dir end
+        local t = byDir[dir]; t[#t + 1] = path
+    end
+    local ok = {}
+    for _, dir in ipairs(order) do ok[dir] = FolderAvailable(dir, byDir[dir]) end
+    availableLocal = {}
+    for _, s in ipairs(ns.LocalSounds or {}) do
+        local path = s[2]
+        local dir = type(path) == "string" and path:match("^(.*)[\\/][^\\/]*$") or ""
+        if ok[dir] then availableLocal[#availableLocal + 1] = s end
+    end
+    return availableLocal
+end
+
 -- Returns list of { label=, source=, value= }
 function ns.BuildSoundList()
     local out = {}
@@ -23,7 +78,7 @@ function ns.BuildSoundList()
             end
         end
     end
-    for _, s in ipairs(ns.LocalSounds or {}) do
+    for _, s in ipairs(ns.AvailableLocalSounds()) do
         out[#out + 1] = { label = s[1], source = "file", value = s[2] }
     end
     local lsm = LSM()
