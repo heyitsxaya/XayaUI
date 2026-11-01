@@ -1964,19 +1964,6 @@ local function BuildAddonSettings()
                 desc = "The strip under the window with the live rule status and event log. Off: it is not drawn at all (turn it back on here).",
                 get = function() return ns.DebugConsoleOn() end,
                 set = function(_, v) Ui().hideTray = (not v) or nil; Notify() end },
-            combatLogHeader = { type = "header", name = "Combat Log", order = 20 },
-            allActionsFilter = { type = "toggle", name = "EXPERIMENTAL: keep an \"All Actions\" combat log filter (every message type and source on)", order = 21, width = "full",
-                desc = "OFF by default: an earlier version of this made WoW show \"XayaUI has been blocked from an action only available to the Blizzard UI\" (issue #142). If that popup comes back, turn this off. Adds a third filter named \"All Actions\" to the Combat Log Config list (next to \"My actions\" and \"What happened to me?\") with every Message Source and Message Type ticked, and keeps it that way on every login. It does not change which filter is selected or edit your other two. Off: XayaUI stops refreshing it; an existing \"All Actions\" filter is left alone (delete it in Combat Log Config). This only changes what the Combat Log chat tab shows; it does not give addons any extra combat data.",
-                get = function() return ns.CombatLogAllActionsOn() end,
-                set = function(_, v)
-                    Ui().allActionsFilter = v and true or false
-                    if v and ns.ApplyAllActionsFilter then
-                        local ok, res, why = pcall(ns.ApplyAllActionsFilter, true)
-                        ns.Print(ok and res and ("All Actions combat log filter " .. tostring(why) .. ". It shows as a button on the Combat Log tab (and in Combat Log Config).")
-                            or ("could not add the All Actions combat log filter: " .. tostring(ok and why or res)))
-                    end
-                    Notify()
-                end },
         } },
     } }
 end
