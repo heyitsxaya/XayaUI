@@ -2100,7 +2100,7 @@ local function BuildProfiles()
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "Your rules are personal. Nothing is shared unless you export it, and a fresh install starts empty. Export produces a text string you can paste to a friend; they paste it under 'Import' to add it to their own setup." },
         exportTotal = { type = "execute", name = "Export total profile  (everything, one click)", order = 0.5, width = "full",
-            desc = "Bundles ALL rules with their groups and container settings, all buff bars and all QoL elements into one export string, ignoring the ticks below. The text appears just under this button.",
+            desc = "Bundles ALL rules with their groups and container settings into one export string (buff bars and QoL elements too, when those are switched on), ignoring the ticks below. The text appears just under this button.",
             func = function()
                 local all = { rules = true, bars = true, qol = true }
                 local txt, err = ns.Profile_Encode(ns.Profile_Snapshot(all, (profileName ~= "" and profileName) or "Total profile"))
@@ -2113,8 +2113,8 @@ local function BuildProfiles()
             get = function() return exportText end, set = function() end },
         exportH = { type = "header", name = "Export What You Have", order = 1 },
         incRules = Tog(exportInc, "rules", "Cooldown + Aura rules (with their groups)", 2, function() end, { width = "double" }),
-        incBars = Tog(exportInc, "bars", "Buff bars (and their group layout)", 3, function() end, { width = "double" }),
-        incQol = Tog(exportInc, "qol", "QoL elements", 4, function() end, { width = "double" }),
+        incBars = Tog(exportInc, "bars", "Buff bars (and their group layout)", 3, function() end, { width = "double", hidden = function() return not ns.BarsOn end }),
+        incQol = Tog(exportInc, "qol", "QoL elements", 4, function() end, { width = "double", hidden = function() return not ns.QoLOn end }),
         gen = { type = "execute", name = "Generate export text", order = 5, width = "double",
             func = function()
                 local txt, err = ns.Profile_Encode(ns.Profile_Snapshot(exportInc, profileName))

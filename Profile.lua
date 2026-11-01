@@ -204,11 +204,12 @@ function ns.Profile_Snapshot(include, name)
         snap.rules = ns.Copy(ns.rules)
         snap.folders = ns.Copy(ns.folders)
     end
-    if include.bars then
+    -- Buff bars and QoL elements are switched off for now (their files are not loaded): nothing of them is exported
+    if include.bars and ns.BarsOn then
         snap.bars = ns.Copy(ns.bars)
         snap.barGroup = ns.Copy(CueRulesDB.barGroup)
     end
-    if include.qol then snap.qol = ns.Copy(ns.qolBoxes) end
+    if include.qol and ns.QoLOn then snap.qol = ns.Copy(ns.qolBoxes) end
     return snap
 end
 
