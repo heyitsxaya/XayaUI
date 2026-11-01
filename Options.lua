@@ -1937,7 +1937,7 @@ local function BuildAddonSettings()
                     Ui().allActionsFilter = v and true or false
                     if v and ns.ApplyAllActionsFilter then
                         local ok, res, why = pcall(ns.ApplyAllActionsFilter, true)
-                        ns.Print(ok and res and ("All Actions combat log filter " .. tostring(why) .. ". Reopen Combat Log Config to see it.")
+                        ns.Print(ok and res and ("All Actions combat log filter " .. tostring(why) .. ". It shows as a button on the Combat Log tab (and in Combat Log Config).")
                             or ("could not add the All Actions combat log filter: " .. tostring(ok and why or res)))
                     end
                     Notify()

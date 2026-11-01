@@ -576,7 +576,10 @@ function ns.ApplyAllActionsFilter(force)
         created = true
     end
     flt.name, flt.tooltip, flt.quickButtonName = ALL_ACTIONS, ALL_ACTIONS, ALL_ACTIONS
-    if created then flt.hasQuickButton = true end
+    -- Always show it as a button on the Combat Log tab's quick bar (next to "My actions" / "What happened to me?"), solo, party and raid.
+    -- (A hand-made filter of the same name may have had "Show Quick Button" off, which hides the button.)
+    flt.hasQuickButton = true
+    flt.quickButtonDisplay = { solo = true, party = true, raid = true }
     flt.settings = flt.settings or CopyTable(_G.COMBATLOG_DEFAULT_SETTINGS or {})
     flt.settings.fullText = true   -- "Use Verbose Mode"
     -- One rule: every event type, any source, any destination (every checkbox on the Message Sources / Message Types tabs).
@@ -588,6 +591,8 @@ function ns.ApplyAllActionsFilter(force)
         pcall(C_CombatLog.ApplyFilterSettings, flt)
         if C_CombatLog.RefilterEntries then pcall(C_CombatLog.RefilterEntries) end
     end
+    -- Blizzard only rebuilds the quick-button bar when something asks it to; ask now so the new button appears without a /reload.
+    if type(_G.Blizzard_CombatLog_Update_QuickButtons) == "function" then pcall(_G.Blizzard_CombatLog_Update_QuickButtons) end
     return true, created and "created" or "refreshed"
 end
 
