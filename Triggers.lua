@@ -101,6 +101,8 @@ local POWER_NAMES = {
 }
 local POWER_VALUES, POWER_ORDER = {}, { "comboPoints", "holyPower", "soulShards", "chi", "arcaneCharges", "essence" }
 for k, v in pairs(POWER_NAMES) do POWER_VALUES[k] = v[1] end
+POWER_VALUES.runes = "Runes (Death Knight)"   -- not an Enum.PowerType read: counted with GetRuneCooldown (see ReadyRunes)
+POWER_ORDER[#POWER_ORDER + 1] = "runes"
 
 local STATE_VALUES = {
     alive = "Alive", vehicle = "In a vehicle", pvp = "PvP flagged", pet = "Has a pet", moving = "Moving",
@@ -412,9 +414,22 @@ Add("weaponEnchant", {
     end,
 })
 
+-- Ready runes (0-6), or nil + reason when they cannot be read (not a Death Knight). Shared by "dkRunes" and Class Resource > Runes.
+local function ReadyRunes()
+    local ready = 0
+    for i = 1, 6 do
+        local _, _, r = Call(GetRuneCooldown, i)
+        if r == nil then return nil, "runes unreadable (not a Death Knight?)" end
+        if r then ready = ready + 1 end
+    end
+    return ready
+end
+ns.ReadyRunes = ReadyRunes
+
 -- 11. Death Knight Runes  (WA: "Death Knight Rune")
+-- Kept so existing rules keep working; new triggers pick "Runes (Death Knight)" under Class Resource instead (hideFromMenu).
 Add("dkRunes", {
-    label = "Death Knight Runes Ready", wa = "Death Knight Rune", group = "Class resource",
+    label = "Death Knight Runes Ready", wa = "Death Knight Rune", group = "Class resource", hideFromMenu = true,
     note = "Counts runes that are ready to use. Only meaningful on a Death Knight (elsewhere it is unknown, so the rule never fires). Runes are documented as not secret; verify in game.",
     new = { count = 2 },
     fields = {
@@ -422,27 +437,28 @@ Add("dkRunes", {
         { key = "count", kind = "range", label = "Number of runes", min = 0, max = 6, step = 1 },
     },
     check = function(t)
-        local ready = 0
-        for i = 1, 6 do
-            local _, _, r = Call(GetRuneCooldown, i)
-            if r == nil then return nil, "runes unreadable (not a Death Knight?)" end
-            if r then ready = ready + 1 end
-        end
+        local ready, why = ReadyRunes()
+        if ready == nil then return nil, why end
         return Cmp(t.op, ready, tonumber(t.count) or 0)
     end,
 })
 
 -- 12. Secondary resource  (WA: "Power" / "Evoker Essence", restricted to the resources Midnight leaves readable)
 Add("resource", {
-    label = "Class Resource (combo points, holy power...)", wa = "Power / Evoker Essence", group = "Class resource",
-    note = "Secondary resources only. Mana, rage, energy, focus, runic power and other PRIMARY resources are secret in Midnight and are not offered. 'Similar to combo points / holy power' is the wiki's wording; each resource needs one in-game check.",
+    label = "Class Resource (combo points, runes, holy power...)", wa = "Power / Evoker Essence / Death Knight Rune", group = "Class resource",
+    note = "Pick the resource in 'Class resource type'. Runes (Death Knight) counts runes that are ready; it is unknown on other classes, so the rule never fires there. Secondary resources only. Mana, rage, energy, focus, runic power and other PRIMARY resources are secret in Midnight and are not offered. 'Similar to combo points / holy power' is the wiki's wording; each resource needs one in-game check.",
     new = { count = 3 },
     fields = {
-        { key = "power", kind = "select", label = "Resource", required = true, vals = { values = POWER_VALUES, order = POWER_ORDER } },
+        { key = "power", kind = "select", label = "Class resource type", required = true, vals = { values = POWER_VALUES, order = POWER_ORDER } },
         { key = "op", kind = "select", label = "Amount is", required = true, vals = { values = OPS, order = OPS_ORDER } },
         { key = "count", kind = "range", label = "Amount", min = 0, max = 10, step = 1 },
     },
     check = function(t)
+        if t.power == "runes" then
+            local ready, why = ReadyRunes()
+            if ready == nil then return nil, why end
+            return Cmp(t.op, ready, tonumber(t.count) or 0)
+        end
         local nm = POWER_NAMES[t.power]
         local e = nm and Enum and Enum.PowerType and Enum.PowerType[nm[2]]
         if e == nil then return nil, "resource type unknown to this client" end
@@ -931,7 +947,7 @@ function ns.BuildExtraTriggerArgs(rule, H)
         if not ns.BuffUsed(rule) then values._buff = BUILTIN._buff end
         for _, key in ipairs(ORDER) do
             local d = TYPES[key]
-            values[key] = d.group .. ":  " .. d.label
+            if not d.hideFromMenu then values[key] = d.group .. ":  " .. d.label end
         end
         for k in pairs(values) do order[#order + 1] = k end
         table.sort(order, function(a, b) return values[a] < values[b] end)
@@ -1037,6 +1053,8 @@ function ns.TriggerNumber(t)
         local bank, uses = t.includeBank and true or false, t.includeCharges and true or false
         local c = Call(fn, id, bank, uses, bank)
         return type(c) == "number" and c or nil
+    elseif t.type == "dkRunes" or (t.type == "resource" and t.power == "runes") then
+        return (ReadyRunes())
     elseif t.type == "resource" then
         local nm = POWER_NAMES[t.power]
         local e = nm and Enum and Enum.PowerType and Enum.PowerType[nm[2]]
