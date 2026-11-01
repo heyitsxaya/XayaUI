@@ -38,6 +38,13 @@ function ns.CueDefaultLabel(cue)
     end
     return (ns.CUE_KIND_LABEL[cue.cueKind] or "Cue") .. " " .. math.max(n, 1)
 end
+-- Header title in the Cues tab, same pattern as "Trigger 1:  Cooldown": "Cue 1:  Sound 1" (position among the rule's cues, then the kind and its own count).
+function ns.CueHeaderTitle(cue)
+    local p = ns.FindParentRule(cue)
+    local pos = 1
+    if p then for i, c in ipairs(ns.CuesOf(p)) do if c == cue then pos = i; break end end end
+    return "Cue " .. pos .. ":  " .. ns.CueDefaultLabel(cue)
+end
 function ns.CueLabel(cue)
     if type(cue.cueName) == "string" and cue.cueName:match("%S") then return cue.cueName end
     return ns.CueDefaultLabel(cue)

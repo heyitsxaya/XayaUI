@@ -5,7 +5,7 @@ ddb15a5231f8855cbbf9bf95ef616be1  ChatReskin.lua
 53dc1f5b7fa7028cee7ba868b366190e  ClassData.lua
 4d1ef9591f9ba2cafb96623996c2dc6b  Conditions.lua
 ba12e4de14bc40d995a6e89e8c8f2192  Core.lua
-2ee6cfdef77ceccd8f9235d4c7c96def  Cues.lua
+94369e1aeb1148f381626c744e8e4a69  Cues.lua
 ba241e46458e8e4296563689c7708a51  CursorReminders.lua
 d2509a979a6adfeecb7534d619c9c500  CursorTracker.lua
 48275ca3bd3ff733152e4eec452c3a63  CursorTrail.lua
@@ -14,7 +14,7 @@ d32239bcb673463ab874e80d47fae504  LICENSE
 849eb9638bc7e6e491d6a5839018e8b6  LocalGraphics.lua
 3d5c0adc9166b49ebf4d2da7cc1d02ed  LocalSounds.lua
 fc62c0f0b2744bc8204778488562ad67  Options.lua
-dd680e7b67add56a6d3481317faa9634  Outcomes.lua
+cad5ba76d97a4bc99b1de0f796dbcef8  Outcomes.lua
 23bf6278d3ac2ac5f79e3e42b2b914a3  Profile.lua
 6927ad26f4e5218baef5961cca11e634  QoL.lua
 8cfc3e5ac1c30aaf3a0263fbc559f453  README.md

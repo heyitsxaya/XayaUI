@@ -619,7 +619,7 @@ local function EmbedCue(pg, og, rule, k)
     local function collapsed() return rule.ocCollapsed == true end
     local g = { type = "group", inline = true, order = 100 + k, name = "", arg = { xuiIndent = ns.BODY_INDENT or 20 }, args = {} }
     g.args.hdr = Header(rule, function() return ns.CueLabel(rule) end, {
-        title = function() return ns.CueDefaultLabel(rule) end,   -- e.g. "Sound 1": the number is the title; the name is typed beneath it
+        title = function() return ns.CueHeaderTitle(rule) end,   -- e.g. "Cue 1:  Sound 1": the number is the title; the name is typed beneath it
         get = function() return (type(rule.cueName) == "string" and rule.cueName:match("%S")) and rule.cueName or "" end,
         set = function(v)
             v = tostring(v or ""):sub(1, 60)
