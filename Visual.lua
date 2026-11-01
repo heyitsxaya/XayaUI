@@ -108,16 +108,37 @@ local function AtlasBase(name)
     return { 0, 1, 0, 1 }
 end
 
+-- Icon source for icon rules (v.iconSrc): auto = the first trigger's spell/item; spell / item = an ID chosen on the cue;
+-- file = a picture the user supplied (a path inside an AddOns folder; should be square, at most 200x200).
+local function IconTexture(rule, v)
+    local src = v.iconSrc or "auto"
+    if src == "file" then
+        local p = tostring(v.iconPath or ""):gsub("/", "\\")
+        if p == "" then return nil, true end
+        return tonumber(p) or p, true
+    elseif src == "spell" then
+        local ok, t = pcall(C_Spell.GetSpellTexture, tonumber(v.iconSpell) or 0)
+        return ok and t or nil
+    elseif src == "item" then
+        local ok, t = pcall(C_Item.GetItemIconByID, tonumber(v.iconItem) or 0)
+        return ok and t or nil
+    end
+    local sid = tonumber(rule.spellID) or 0
+    if sid == 0 then sid = tonumber(rule.buffID) or 0 end   -- an old-style icon rule that owns its own spell
+    if sid ~= 0 then local ok, t = pcall(C_Spell.GetSpellTexture, sid); if ok and t then return t end end
+    local parent = rule.parentUid and ns.FindParentRule and ns.FindParentRule(rule) or nil
+    if ns.TriggerIcon then return (ns.TriggerIcon(parent or rule)) end
+end
+ns.IconTexture = IconTexture
+
 -- Paint the rule's art onto any texture (main image and the outline copies).
 local function SetArt(tex, rule, v)
     local base = { 0, 1, 0, 1 }
     local kind = ns.Val(v.kind)
     if kind == "spellicon" then
-        local sid = tonumber(rule.spellID) or 0
-        if sid == 0 then sid = tonumber(rule.buffID) or 0 end   -- no cooldown spell: use the aura's icon
-        local ok, t = pcall(C_Spell.GetSpellTexture, sid)
-        tex:SetTexture(ok and t or nil)
-        local z = 0.08 + clamp(v.zoom or 0, 0, 0.3)
+        local t, custom = IconTexture(rule, v)
+        tex:SetTexture(t or 134400)   -- question mark until something resolves
+        local z = (custom and 0 or 0.08) + clamp(v.zoom or 0, 0, 0.3)   -- game icons have a baked-in border (crop 8%); your own art is shown whole
         base = { z, 1 - z, z, 1 - z }
     elseif kind and v.tex and v.tex ~= "" then
         if kind == "atlas" then

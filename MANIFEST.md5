@@ -14,7 +14,7 @@ c9f9e1b6a31430fa11d90a8de6b96ad9  CursorTrail.lua
 d32239bcb673463ab874e80d47fae504  LICENSE
 849eb9638bc7e6e491d6a5839018e8b6  LocalGraphics.lua
 960527812ae3320ddb20bf54304ea537  LocalSounds.lua
-08cbad36bedd4bbdba8114a83ebdd697  Options.lua
+fbf86a97616ed9e2d3586b11797eb3e5  Options.lua
 e3b03d222669e5396c1a4cf24b352bf5  Outcomes.lua
 23bf6278d3ac2ac5f79e3e42b2b914a3  Profile.lua
 6927ad26f4e5218baef5961cca11e634  QoL.lua
@@ -25,7 +25,7 @@ e938c9780a7c318c447b3aca4e5f6561  Skin.lua
 46f77b8a678f39da1db320a4883ae59f  TalentDump.lua
 7d0e35ac661d1db2569cdea98562ba17  TextureList.lua
 2eb619fcab7a4b577137c9f7d8a8c042  Theme.lua
-a642710c664d40a9224915d69517d1de  Triggers.lua
-da1993029534f9ed739afab68e5cd33e  Visual.lua
-c7c23b4a7d9cefc1bdab6ba3ee51c229  XayaUI.toc
+e148bf4c2889a7690aed81595743d71a  Triggers.lua
+259c6ed897e99c2b6393be3aba915558  Visual.lua
+70c224f472905babcac249e715e2a0a5  XayaUI.toc
 016e3c3cd548b76d489b55e1d9531c2f  UserMedia.lua

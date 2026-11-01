@@ -804,6 +804,38 @@ function ns.TriggerPositions(rule)
     return p
 end
 
+-- The icon of the first trigger (in the rule's trigger order) that names a spell or an item. Returns texture, short description.
+-- Cue and condition rows follow their parent rule, so callers pass the parent.
+function ns.TriggerIcon(rule)
+    if type(rule) ~= "table" then return nil end
+    local function spellTex(id)
+        id = tonumber(id) or 0; if id == 0 then return nil end
+        local ok, tx = pcall(C_Spell.GetSpellTexture, id); if ok and tx then return tx end
+    end
+    local function itemTex(id)
+        id = tonumber(id) or 0; if id == 0 then return nil end
+        local ok, tx = pcall(C_Item.GetItemIconByID, id); if ok and tx then return tx end
+    end
+    local j = 0
+    for pos, tk in ipairs(ns.TriggerSequence(rule)) do
+        local tx, what
+        if tk == "cd" then tx, what = spellTex(rule.spellID), "the cooldown spell"
+        elseif tk == "buff" then tx, what = spellTex(rule.buffID), "the aura"
+        else
+            j = j + 1
+            local row = type(rule.extra) == "table" and rule.extra.list and rule.extra.list[j]
+            local def = row and TYPES[row.type]
+            if def then
+                for _, f in ipairs(def.fields) do
+                    if f.kind == "spell" then tx = spellTex(row[f.key]); if tx then what = "its spell" break end
+                    elseif f.kind == "item" then tx = itemTex(row[f.key]); if tx then what = "its item" break end end
+                end
+            end
+        end
+        if tx then return tx, ("trigger " .. pos .. ", " .. what) end
+    end
+end
+
 -- Swap the trigger at place a with its neighbour (dir = -1 up, +1 down). Moving one additional row past another swaps
 -- the two rows, and outcome conditions that point at them are re-pointed so they keep meaning the same trigger.
 -- Custom trigger names. tok = "cd" | "buff" | "x" (j = row index for "x"). A name replaces the number in the pane header;

@@ -10,6 +10,7 @@ Rules saved in XayaUI point at these files by path, so they keep working after a
      Sounds\     sound files
    Pictures: .png, .tga, .blp or .jpg. Width and height must each be a power of two (16, 32, 64, 128, 256, 512...). They do not need to
    be square. PNG must be listed with its .png ending (the script does this). Sounds: .ogg or .mp3.
+   Icons\ must be SQUARE and at most 200x200 pixels (the script skips any that are not; in practice 32, 64 or 128 because of the power-of-two rule).
    Subfolders are fine. Avoid spaces and odd characters in file names.
 2. Run Update-UserMedia.py (needs Python 3; double-click it or run: python Update-UserMedia.py). It scans the folders, checks each picture's
    size, and rewrites UserMedia.lua. It prints a warning for any file the game will probably not draw.

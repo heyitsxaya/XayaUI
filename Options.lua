@@ -76,7 +76,9 @@ local JUSTIFY = { none = "(none - left)", LEFT = "Left", CENTER = "Center", RIGH
 local JUSTIFY_ORDER = { "none", "LEFT", "CENTER", "RIGHT" }
 local SHOW_COMBAT = { none = "(none - always)", yes = "Only in combat", no = "Only out of combat" }
 local SHOW_COMBAT_ORDER = { "none", "yes", "no" }
-local TEX_KIND = { none = "(none)", file = "Texture ID / path", atlas = "Atlas name", spellicon = "Spell icon (of the cooldown spell)" }
+local TEX_KIND = { none = "(none)", file = "Texture ID / path", atlas = "Atlas name (advanced)", spellicon = "Icon (from a spell or item)" }
+ns.ICON_SRC = { auto = "Automatic: the icon of the first trigger", spell = "A spell (search or ID)", item = "An item (search or ID)", file = "My own icon file" }
+ns.ICON_SRC_ORDER = { "auto", "spell", "item", "file" }
 local TEX_KIND_ORDER = { "none", "file", "atlas", "spellicon" }
 
 local function SpellName(id)
@@ -1132,9 +1134,81 @@ local function BuildRule(i, rule)
     local function olHide() return not V.outline.enabled end
     local function olBorderHide() return not V.outline.enabled or olStyleNow() ~= "border" end
     local function olGlowHide() return olBorderHide() or V.outline.glowOn == false end
+    if rule.cueKind == "icon" and V.kind ~= "spellicon" then V.kind = "spellicon" end   -- icon cues never use texture sources
     local tex = {
         type = "group", inline = true, name = "Texture", order = 10, args = {
-            kind = Sel(V, "kind", "Source", 1, TEX_KIND, TEX_KIND_ORDER, function() Changed(rule); Notify() end, { width = "double" }),
+            kind = Sel(V, "kind", "Source", 1, TEX_KIND, TEX_KIND_ORDER, function() Changed(rule); Notify() end,
+                { width = "double", hidden = function() return V.kind == "spellicon" end,
+                  desc = "An atlas is a named piece of Blizzard's built-in UI art, looked up by name instead of by file. Advanced: most people can ignore it and use 'Texture ID / path' or the art list." }),
+            iconSrc = Sel(V, "iconSrc", "Icon source", 1, ns.ICON_SRC, ns.ICON_SRC_ORDER, function() Changed(rule); Notify() end,
+                { width = "double", hidden = function() return V.kind ~= "spellicon" end, get = function() return V.iconSrc or "auto" end,
+                  desc = "Automatic follows the rule's triggers: the first one that has a spell or an item supplies the icon. Or search a spell or item yourself, or point at your own icon file." }),
+            iconAuto = { type = "description", order = 1.1, width = "full", fontSize = "medium",
+                hidden = function() return V.kind ~= "spellicon" or (V.iconSrc or "auto") ~= "auto" end,
+                name = function()
+                    local owner = (rule.parentUid and ns.FindParentRule and ns.FindParentRule(rule)) or rule
+                    local tx, what = ns.TriggerIcon(owner)
+                    if tx then return "|T" .. tostring(tx) .. ":24|t  Using the icon from " .. tostring(what) end
+                    return "|cffffd100No trigger has a spell or item yet.|r Add one on the Trigger tab, or choose another icon source."
+                end },
+            iconSpell = { type = "input", name = "Spell ID", order = 1.2, width = "half",
+                hidden = function() return V.kind ~= "spellicon" or V.iconSrc ~= "spell" end,
+                get = function() return tostring(V.iconSpell or 0) end,
+                set = function(_, x) V.iconSpell = tonumber(x) or 0; Changed(rule); Notify() end },
+            iconSpellName = { type = "description", order = 1.21, width = "double", fontSize = "medium",
+                hidden = function() return V.kind ~= "spellicon" or V.iconSrc ~= "spell" end,
+                name = function() return SpellName(tonumber(V.iconSpell) or 0) end },
+            iconSpellSearch = (function()
+                local sb = SearchBox(1.22, function(id) V.iconSpell = id; Changed(rule); Notify() end)
+                sb.hidden = function() return V.kind ~= "spellicon" or V.iconSrc ~= "spell" end
+                return sb
+            end)(),
+            iconItem = { type = "input", name = "Item ID", order = 1.3, width = "half",
+                hidden = function() return V.kind ~= "spellicon" or V.iconSrc ~= "item" end,
+                get = function() return tostring(V.iconItem or 0) end,
+                set = function(_, x) V.iconItem = tonumber(x) or 0; Changed(rule); Notify() end },
+            iconItemName = { type = "description", order = 1.31, width = "double", fontSize = "medium",
+                hidden = function() return V.kind ~= "spellicon" or V.iconSrc ~= "item" end,
+                name = function()
+                    local id = tonumber(V.iconItem) or 0
+                    if id == 0 then return "" end
+                    local ok, nm = pcall(C_Item.GetItemNameByID, id)
+                    if ok and nm then return nm end
+                    if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, id) end
+                    return "|cffaaaaaa(item name not loaded yet)|r"
+                end },
+            iconItemSearch = (function()
+                local sb = SearchBox(1.32, function(id) V.iconItem = id; Changed(rule); Notify() end, nil, "item")
+                sb.hidden = function() return V.kind ~= "spellicon" or V.iconSrc ~= "item" end
+                return sb
+            end)(),
+            iconMine = { type = "select", name = "Pick one of my icons (XayaUI_Media\\Icons)", order = 1.4, width = "double",
+                hidden = function() return V.kind ~= "spellicon" or V.iconSrc ~= "file" end,
+                values = function()
+                    local vals = { [""] = "(none picked)" }
+                    for _, g in ipairs(ns.LocalGraphics or {}) do if g[1]:find("^%[User icon%]") then vals[g[2]] = g[1] end end
+                    return vals
+                end,
+                sorting = function()
+                    local keys = {}
+                    for _, g in ipairs(ns.LocalGraphics or {}) do if g[1]:find("^%[User icon%]") then keys[#keys + 1] = g[2] end end
+                    table.sort(keys); table.insert(keys, 1, ""); return keys
+                end,
+                get = function() return V.iconPath or "" end,
+                set = function(_, x) V.iconPath = x; Changed(rule); Notify() end },
+            iconPath = { type = "input", name = "Or a file path (inside an AddOns folder), or a file ID", order = 1.5, width = "double",
+                hidden = function() return V.kind ~= "spellicon" or V.iconSrc ~= "file" end,
+                desc = "Example: Interface\\AddOns\\XayaUI_Media\\Icons\\myicon.png. The picture must be SQUARE and no bigger than 200x200 pixels (sizes like 32, 64 or 128 work best; the game needs powers of two). The game cannot report a file's size to XayaUI, so a wrong size is not detected here. The art is shown whole (no edge crop).",
+                get = function() return tostring(V.iconPath or "") end,
+                set = function(_, x) V.iconPath = tostring(x or ""):gsub("^%s+", ""):gsub("%s+$", ""); Changed(rule); Notify() end },
+            iconPathNote = { type = "description", order = 1.6, width = "full", fontSize = "small",
+                hidden = function() return V.kind ~= "spellicon" or V.iconSrc ~= "file" end,
+                name = function()
+                    local p = tostring(V.iconPath or "")
+                    if p == "" or tonumber(p) then return "|cff888888Square, at most 200x200 pixels. Put icons in Interface\\AddOns\\XayaUI_Media\\Icons and run Update-UserMedia.py to check them.|r" end
+                    if not p:lower():find("^interface[\\/]") then return "|cffff5555That path does not start with Interface\\ - the game only loads files from inside its Interface folder.|r" end
+                    return "|T" .. p .. ":24|t  |cff888888Preview. Square, at most 200x200.|r"
+                end },
             tex = { type = "input", name = "Texture ID / path / atlas name", order = 2, width = "double",
                 hidden = function() return V.kind == "spellicon" end,
                 get = function() return tostring(V.tex or "") end,

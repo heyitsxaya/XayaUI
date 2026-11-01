@@ -64,7 +64,8 @@ def main():
             w, h = dims
             if not (pow2(w) and pow2(h)): warnings.append("%dx%d is not a power of two, the game may draw it blank" % (w, h))
             if " " in rel: warnings.append("space in the file name")
-            if kind == "icon" and w != h: warnings.append("icon is not square (%dx%d)" % (w, h))
+            if kind == "icon" and (w != h or w > 200 or h > 200):
+                print("SKIP  %s: icons must be square and at most 200x200 pixels (this one is %dx%d); resize it and run this again" % (rel, w, h)); continue
             for m in warnings: print("WARN  %s: %s" % (rel, m))
             label = os.path.splitext(os.path.basename(rel))[0]
             gl.append('        { %s, %s, %d, %d, %s },' % (lua(label), lua(rel), w, h, lua(kind)))
