@@ -708,7 +708,7 @@ local function PaintNameEdit(w, arg)
     local f = w.frame
     local ed = arg and arg.xuiEdit
     if not ed then
-        if f.xuiNameEB then f.xuiNameEB:Hide(); f.xuiNameHint:Hide() end
+        if f.xuiNameEB then f.xuiNameEB:Hide(); f.xuiNameHint:Hide(); if f.xuiNamePH then f.xuiNamePH:Hide() end end
         return
     end
     local eb = f.xuiNameEB
@@ -736,8 +736,24 @@ local function PaintNameEdit(w, arg)
     end
     eb.xuiSpec = ed
     eb:SetFrameLevel(f:GetFrameLevel() + 3)
-    eb:ClearAllPoints(); eb:SetPoint("LEFT", f, "LEFT", 30, 0); eb:SetWidth(220)
+    eb:ClearAllPoints()
+    if ed.title then   -- number is the header title; this box (the optional name) goes beneath it, smaller and grey
+        eb:SetHeight(16); eb:SetFontObject(GameFontNormalSmall); eb:SetTextColor(0.65, 0.65, 0.65)
+        eb:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -(3 + ns.H3_SIZE + 3)); eb:SetWidth(220)
+        if not f.xuiNamePH then
+            f.xuiNamePH = eb:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            f.xuiNamePH:SetPoint("LEFT", eb, "LEFT", 6, 0); f.xuiNamePH:SetTextColor(0.4, 0.4, 0.4); f.xuiNamePH:SetText("name (optional)")
+            eb:HookScript("OnTextChanged", function(self) if f.xuiNamePH then f.xuiNamePH:SetShown(self:GetText() == "" and not self:HasFocus()) end end)
+            eb:HookScript("OnEditFocusGained", function() f.xuiNamePH:Hide() end)
+            eb:HookScript("OnEditFocusLost", function(self) f.xuiNamePH:SetShown(self:GetText() == "") end)
+        end
+    else
+        eb:SetHeight(22); eb:SetFontObject(GameFontHighlight); eb:SetTextColor(1, 1, 1)
+        eb:SetPoint("LEFT", f, "LEFT", 30, 0); eb:SetWidth(220)
+        if f.xuiNamePH then f.xuiNamePH:Hide() end
+    end
     if not eb:HasFocus() then eb:SetText(tostring(ed.get() or "")); eb:SetCursorPosition(0) end
+    if ed.title and f.xuiNamePH then f.xuiNamePH:SetShown(eb:GetText() == "" and not eb:HasFocus()) end
     eb:Show()
     local h = f.xuiNameHint
     h:ClearAllPoints(); h:SetPoint("LEFT", eb, "RIGHT", 8, 0)

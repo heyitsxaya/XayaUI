@@ -422,7 +422,7 @@ local OPEN = "|TInterface\\Buttons\\Arrow-Down-Up:16:16|t"
 local CLOSED = "|TInterface\\ChatFrame\\ChatFrameExpandArrow:16:16|t"
 local function Header(rule, titleFn, edit)
     return { type = "execute", order = 0.05, width = "full",
-        arg = { xuiLeft = true, xuiEdit = edit, xuiActions = function()
+        arg = { xuiLeft = true, xuiEdit = edit, xuiSub = (edit and edit.title) and function() return " " end or nil, xuiActions = function()
             local list, pos = SiblingList(rule), nil
             for i, r in ipairs(list) do if r == rule then pos = i end end
             return {
@@ -432,7 +432,7 @@ local function Header(rule, titleFn, edit)
                 del = function() RemoveOutcome(rule) end,
             }
         end },
-        name = function() return (rule.ocCollapsed and CLOSED or OPEN) .. (edit and "" or ("  " .. titleFn())) end,
+        name = function() return (rule.ocCollapsed and CLOSED or OPEN) .. ((edit and not edit.title) and "" or ("  " .. ((edit and edit.title) and edit.title() or titleFn()))) end,
         desc = "Expand or collapse.",
         func = function() rule.ocCollapsed = (not rule.ocCollapsed) or nil; ns.MarkDirty(); ns.UI.Notify() end }
 end
@@ -446,9 +446,12 @@ local function EmbedCondition(pg, rule, k)
         local ok, res = pcall(ns.Evaluate, rule, ns.ReadContext())
         return (not ok and "|cffffd100o|r") or (res and "|cff55ff55o|r") or "|cffff5555o|r"
     end
+    local function condPos() local list = SiblingList(rule); for i, r in ipairs(list) do if r == rule then return i end end return 1 end
+    local function autoName(n) return type(n) ~= "string" or n:match("^%s*$") or n:match("^Condition %d+$") end   -- "Condition 3" was the auto name, not a chosen one
     g.args.hdr = Header(rule, function() return tostring(rule.name) end, {
-        get = function() return tostring(rule.name or "") end,
-        set = function(v) v = tostring(v or ""):sub(1, 60); if v:match("%S") then rule.name = v; ns.MarkDirty(); ns.UI.Notify() end end,
+        title = function() return "Condition " .. condPos() end,   -- the number is the title; the name is typed beneath it
+        get = function() if autoName(rule.name) then return "" end return tostring(rule.name) end,
+        set = function(v) v = tostring(v or ""):sub(1, 60); rule.name = v:match("%S") and v or ("Condition " .. condPos()); ns.MarkDirty(); ns.UI.Notify() end,
         hint = function() return dot() .. (rule.enabled == false and "  (off)" or "") end,
     })
     g.args.enabled = { type = "toggle", order = 0.2, width = "half", name = "On",
@@ -466,13 +469,14 @@ local function EmbedCue(pg, og, rule, k)
     local function collapsed() return rule.ocCollapsed == true end
     local g = { type = "group", inline = true, order = 100 + k, name = "", args = {} }
     g.args.hdr = Header(rule, function() return ns.CueLabel(rule) end, {
-        get = function() return ns.CueLabel(rule) end,
+        title = function() return ns.CueDefaultLabel(rule) end,   -- e.g. "Sound 1": the number is the title; the name is typed beneath it
+        get = function() return (type(rule.cueName) == "string" and rule.cueName:match("%S")) and rule.cueName or "" end,
         set = function(v)
             v = tostring(v or ""):sub(1, 60)
             if v:match("%S") and v ~= ns.CueDefaultLabel(rule) then rule.cueName = v else rule.cueName = nil end
             ns.MarkDirty(); ns.UI.Notify()
         end,
-        hint = function() if rule.cueName then return ns.CueDefaultLabel(rule) end return ns.CUE_KIND_LABEL[rule.cueKind] or "" end,
+        hint = function() return "" end,
     })
     g.args.descH = { type = "header", order = 0.15, name = "Description", hidden = collapsed }
     g.args.descGap = { type = "description", order = 0.25, width = "full", name = " ", fontSize = "large", hidden = collapsed }

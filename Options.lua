@@ -5318,10 +5318,26 @@ local function SP_Hide() if SP then SP:Hide(); SP.owner = nil end end
 local function SP_Pick(id)
     local eb = SP and SP.owner
     if not (eb and eb.xuiSearchFn and id) then return end
-    local fn = eb.xuiSearchFn
+    local fn, kind = eb.xuiSearchFn, eb.xuiSearchKind
     SP_Hide()
     eb:SetText(""); eb:ClearFocus()
-    fn(id)
+    local ok, err = pcall(fn, id)   -- an error in the pick handler used to vanish and leave the ID box unchanged
+    if not ok then ns.Print("search pick failed: " .. tostring(err)) end
+end
+
+-- Hovering a result must never open the "compare with equipped gear" tooltips (Blizzard adds them on its own for items).
+function SX.NoCompare()
+    if GameTooltip_HideShoppingTooltips then pcall(GameTooltip_HideShoppingTooltips, GameTooltip) end
+    for _, n in ipairs({ "ShoppingTooltip1", "ShoppingTooltip2" }) do local f = _G[n]; if f and f.Hide then f:Hide() end end
+end
+function SX.HookCompare()
+    if SX.compareHooked then return end
+    SX.compareHooked = true
+    if hooksecurefunc and type(GameTooltip_ShowCompareItem) == "function" then
+        hooksecurefunc("GameTooltip_ShowCompareItem", function()
+            if SP and SP.tipRow and GameTooltip:GetOwner() == SP.tipRow then SX.NoCompare() end
+        end)
+    end
 end
 local function SP_Build()
     if SP then return SP end
@@ -5344,12 +5360,16 @@ local function SP_Build()
         b:SetScript("OnMouseDown", function(self) SP_Pick(self.id) end)
         b:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            SX.HookCompare(); SP.tipRow = self
+            GameTooltip.supportsItemComparison = false
             if SP.kind == "item" then
                 if not pcall(GameTooltip.SetItemByID, GameTooltip, self.id) then GameTooltip:SetText("Item " .. tostring(self.id)) end
             elseif not pcall(GameTooltip.SetSpellByID, GameTooltip, self.id) then GameTooltip:SetText("Spell " .. tostring(self.id)) end
             GameTooltip:Show()
+            SX.NoCompare()
+            if C_Timer then C_Timer.After(0, function() if SP and SP.tipRow == self then SX.NoCompare() end end) end
         end)
-        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide(); GameTooltip.supportsItemComparison = nil; if SP then SP.tipRow = nil end; SX.NoCompare() end)
         SP.rows[i] = b
     end
     SP.footer = SP:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")

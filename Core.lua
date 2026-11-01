@@ -620,7 +620,9 @@ SlashCmdList["XAYAUI"] = function(msg)
         if ns.ChatReskin_Debug then ns.ChatReskin_Debug() end
     elseif cmd == "unlock" then
         if ns.ToggleUnlock then ns.ToggleUnlock() end
+    elseif cmd == "media" then
+        if ns.UserMediaReport then ns.UserMediaReport() end
     else
-        ns.Print("commands: /xui (settings) | /xui status | /xui probe <spellID> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui seed | /xui talents [status|<name>] | /xui loc")
+        ns.Print("commands: /xui (settings) | /xui status | /xui probe <spellID> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui seed | /xui talents [status|<name>] | /xui loc | /xui media")
     end
 end

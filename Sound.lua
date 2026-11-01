@@ -81,6 +81,9 @@ function ns.BuildSoundList()
     for _, s in ipairs(ns.AvailableLocalSounds()) do
         out[#out + 1] = { label = s[1], source = "file", value = s[2] }
     end
+    for _, s in ipairs(ns.UserSounds or {}) do   -- the player's own files (XayaUI_Media addon); not probed, they are listed on purpose
+        out[#out + 1] = { label = s[1], source = "file", value = s[2] }
+    end
     local lsm = LSM()
     if lsm then
         local names = {}
@@ -105,6 +108,9 @@ function ns.SoundLabel(s)
     end
     if s.source == "lsm" then return s.value end
     for _, l in ipairs(ns.LocalSounds or {}) do
+        if l[2] == s.value then return l[1] end
+    end
+    for _, l in ipairs(ns.UserSounds or {}) do
         if l[2] == s.value then return l[1] end
     end
     return s.value

@@ -815,17 +815,16 @@ function ns.TriggerName(rule, tok, j)
     if type(n) == "string" and n:match("%S") then return n end
 end
 function ns.TriggerHeader(rule, tok, j, pos, label)
-    local n = ns.TriggerName(rule, tok, j)
-    return (n or ("Trigger " .. pos)) .. ":  " .. label
+    return "Trigger " .. pos .. ":  " .. label   -- the number is always the title; a custom name sits beneath it in grey (xuiSub)
 end
 function ns.TriggerChoiceLabel(rule, tok, j, pos, label)
     local n = ns.TriggerName(rule, tok, j)
-    if n then return n .. " (Trigger " .. pos .. "):  " .. label end
+    if n then return "Trigger " .. pos .. " (" .. n .. "):  " .. label end
     return "Trigger " .. pos .. ":  " .. label
 end
 function ns.TriggerNameArg(rule, tok, j, order, onChange)
-    return { type = "input", order = order, width = "full", name = "Name  (optional: replaces the trigger number)",
-        desc = "Up to 30 characters. The number stays visible in brackets wherever triggers are listed in a dropdown.",
+    return { type = "input", order = order, width = "full", name = "Name  (optional: shown in grey under the trigger number)",
+        desc = "Up to 30 characters. The trigger number always stays in the title; the name appears beneath it and in brackets in dropdowns.",
         get = function() return ns.TriggerName(rule, tok, j) or "" end,
         set = function(_, v)
             v = tostring(v or ""):gsub("[%c|]", ""):sub(1, 30)
@@ -858,6 +857,16 @@ function ns.MoveTrigger(rule, a, dir)
     rule.trigOrder = seq
 end
 
+-- A ruled line with a blank gap above and below, placed just before trigger number `pos` (not before the first) so that several
+-- triggers read as separate blocks. Each trigger's own options sit at pos*100 .. pos*100+99, so pos*100-3..-1 is free.
+function ns.TriggerDivider(args, key, pos, hiddenFn)
+    if not pos or pos <= 1 then return end
+    local function mk(t) t.hidden = hiddenFn; return t end
+    args[key .. "SpA"] = mk({ type = "description", order = pos * 100 - 3, width = "full", fontSize = "small", name = " " })
+    args[key]          = mk({ type = "header", order = pos * 100 - 2, name = "" })
+    args[key .. "SpB"] = mk({ type = "description", order = pos * 100 - 1, width = "full", fontSize = "small", name = " " })
+end
+
 -- Number, order and Move up / Move down for the two built-in triggers (their options are defined in Options.lua).
 function ns.DecorateBuiltinTriggers(rule, args)
     local P = ns.TriggerPositions(rule)
@@ -884,8 +893,9 @@ function ns.DecorateBuiltinTriggers(rule, args)
         if rm then rm.hidden = true end              -- the red X in the row header replaces the Remove button
         if args[keys[1]] then args[keys[1]].hidden = true end   -- the row header already carries the title
         ns.GatePane(rule, args, "trig_" .. tok, title, pos * 100, function() return used(rule) end, keys)
+        ns.TriggerDivider(args, "div_" .. tok, pos, function() return not used(rule) end)
         local pane = args["pane_trig_" .. tok]
-        pane.args.hdr.arg.xuiSub = function() if ns.TriggerName(rule, tok, nil) then return "Trigger " .. pos end end
+        pane.args.hdr.arg.xuiSub = function() return ns.TriggerName(rule, tok, nil) end
         pane.args.hdr.arg.xuiActions = function()
             return {
                 up = (pos > 1) and function() ns.MoveTrigger(rule, pos, -1); changed() end or false,
@@ -1114,13 +1124,15 @@ function ns.BuildExtraTriggerArgs(rule, H)
         if ns.GatedPane and ns.SkinRows and ns.SkinRows() then
             local pane = ns.GatedPane(rule, "trig_x" .. j, title, pos * 100, function() return true end, row)
             pane.args.hdr.arg.xuiActions = actions
-            pane.args.hdr.arg.xuiSub = function() if ns.TriggerName(rule, "x", j) then return "Trigger " .. pos end end
+            pane.args.hdr.arg.xuiSub = function() return ns.TriggerName(rule, "x", j) end
             args["x" .. j] = pane
+            ns.TriggerDivider(args, "divx" .. j, pos)
         else
             row.remove = { type = "execute", name = "Remove", order = 91, width = "half", func = removeFn }
             row.up = { type = "execute", name = "Up", order = 92, width = "half", hidden = function() return pos <= 1 end, func = function() ns.MoveTrigger(rule, pos, -1); onN() end }
             row.down = { type = "execute", name = "Down", order = 93, width = "half", hidden = function() return pos >= #P.seq end, func = function() ns.MoveTrigger(rule, pos, 1); onN() end }
             args["x" .. j] = { type = "group", inline = true, order = pos * 100, name = title, args = row }
+            ns.TriggerDivider(args, "divx" .. j, pos)
         end
     end
     return args
