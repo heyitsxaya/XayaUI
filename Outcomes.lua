@@ -492,11 +492,14 @@ local function EmbedCue(pg, og, rule, k)
         put(key, grp); grp.order = order
     end
     local function sub(key, order, node) if node then put(key, node); node.order = order end end
-    if parts and (rule.cueKind == "sound" or rule.cueKind == "text" or rule.cueKind == "texture" or rule.cueKind == "icon") then
+    if parts and (rule.cueKind == "sound" or rule.cueKind == "speech" or rule.cueKind == "text" or rule.cueKind == "texture" or rule.cueKind == "icon") then
         -- a cue is always on: no "Show ..." tick box, no Options +/- and no "Show when" menu (that is what Conditions decides)
         if rule.cueKind == "sound" then
             rule.sound.enabled = true
             box("snd", 3, "Sound", parts.soundBody)
+        elseif rule.cueKind == "speech" then
+            rule.sound.enabled = true; rule.sound.source = "tts"
+            box("spk", 3, "Speech", parts.speechBody)
         else
             rule.visual.enabled = true; rule.visual.trigger = "condition"
             if rule.cueKind == "text" then

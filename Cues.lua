@@ -3,10 +3,10 @@
 -- so the existing sound / display engine and editors are reused. A cue fires while ANY enabled condition that lists it is true.
 local addonName, ns = ...
 
-ns.CUE_KINDS = { "sound", "text", "texture", "icon", "custom" }
+ns.CUE_KINDS = { "sound", "speech", "text", "texture", "icon", "custom" }
 local KIND_OK = {}
 for _, k in ipairs(ns.CUE_KINDS) do KIND_OK[k] = true end
-ns.CUE_KIND_LABEL = { sound = "Sound", text = "Text", texture = "Texture", icon = "Icon", custom = "Custom" }
+ns.CUE_KIND_LABEL = { sound = "Sound", speech = "Speech", text = "Text", texture = "Texture", icon = "Icon", custom = "Custom" }
 local MAX_CUES = 40
 
 function ns.CuesOf(p)
@@ -60,8 +60,9 @@ function ns.NewCueRule(parent, kind)
     n.isCue, n.cueKind, n.cueKey = true, kind, ns.CueKey(parent)
     n.folder = parent.folder
     n.name = tostring(parent.name or "") .. " (cue)"
-    n.sound.enabled = (kind == "sound")
-    n.visual.enabled = (kind ~= "sound" and kind ~= "custom")
+    n.sound.enabled = (kind == "sound" or kind == "speech")
+    n.visual.enabled = (kind ~= "sound" and kind ~= "speech" and kind ~= "custom")
+    if kind == "speech" then n.sound.source, n.sound.value = "tts", "" end   -- a speech cue is a sound whose source is text-to-speech
     n.visual.trigger = "condition"
     if kind == "icon" then n.visual.kind = "spellicon" end
     ns.rules[#ns.rules + 1] = n

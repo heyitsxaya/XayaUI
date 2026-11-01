@@ -110,6 +110,33 @@ function ns.SoundLabel(s)
     return s.value
 end
 
+-- Text-to-speech (WoW's own C_VoiceChat). Voices come from this machine's installed voice packs, so the list is read at
+-- runtime and may be empty. 12.0+ signature: SpeakText(voiceID, text, rate, volume [, overlap]); volume 0-100.
+function ns.GetTtsVoices()
+    local out = {}
+    if C_VoiceChat and C_VoiceChat.GetTtsVoices then
+        local ok, list = pcall(C_VoiceChat.GetTtsVoices)
+        if ok and type(list) == "table" then
+            for _, v in ipairs(list) do
+                if type(v) == "table" and tonumber(v.voiceID) then out[#out + 1] = { voiceID = tonumber(v.voiceID), name = tostring(v.name or v.voiceID) } end
+            end
+        end
+    end
+    return out
+end
+local function Clamp(v, lo, hi, d) v = tonumber(v); if not v then return d end; return math.max(lo, math.min(hi, v)) end
+function ns.Speak(s)
+    local text = tostring(s and s.value or "")
+    if not text:match("%S") then return end
+    if not (C_VoiceChat and C_VoiceChat.SpeakText) then return end
+    local voices = ns.GetTtsVoices()
+    if #voices == 0 then return end   -- no voice installed on this machine: nothing to do
+    local id = voices[1].voiceID
+    local want = tonumber(s.voice)
+    if want then for _, v in ipairs(voices) do if v.voiceID == want then id = want; break end end end
+    pcall(C_VoiceChat.SpeakText, id, text, Clamp(s.rate, -10, 10, 0), Clamp(s.ttsVolume, 0, 100, 100))
+end
+
 -- Play regardless of the rule's "Play a sound" switch (used by Test / Preview).
 function ns.PlaySoundPreview(s)
     if not s then return end
@@ -122,7 +149,9 @@ end
 function ns.PlaySound(s)
     if not s or not s.enabled or s.value == "" then return end
     local channel = ns.Val(s.channel) or "Master"
-    if s.source == "kit" then
+    if s.source == "tts" then
+        ns.Speak(s)
+    elseif s.source == "kit" then
         PlaySound(tonumber(s.value), channel)
     elseif s.source == "lsm" then
         local lsm = LSM()

@@ -105,7 +105,7 @@ ns.RULE_DEFAULTS = {
 
     sound = {
         enabled = false,    -- chosen per rule (see "+ New rule")
-        source = "kit",     -- kit | lsm | file
+        source = "kit",     -- kit | lsm | file | tts (tts: value = the text, voice / rate / ttsVolume beside it)
         value = "",
         -- channel: blank until chosen (Master is used when blank)
     },
@@ -328,8 +328,8 @@ end
 -- what = "visual" | "sound"
 function ns.KindHas(rule, what)
     if rule.isCue then   -- a cue is exactly one kind of thing, whatever folder its rule is in
-        if what == "sound" then return rule.cueKind == "sound" end
-        return rule.cueKind ~= "sound" and rule.cueKind ~= "custom"
+        if what == "sound" then return rule.cueKind == "sound" or rule.cueKind == "speech" end   -- speech plays through the sound pipeline
+        return rule.cueKind ~= "sound" and rule.cueKind ~= "speech" and rule.cueKind ~= "custom"
     end
     -- a rule that has outcomes has no sound / display of its own: its outcomes carry them
     if ns.HasOutcomes and ns.HasOutcomes(rule) then return false end

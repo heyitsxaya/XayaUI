@@ -1394,6 +1394,40 @@ local function BuildRule(i, rule)
         },
     }
 
+    -- 3b) Speech (text-to-speech cue): a sound whose source is "tts"; shown only on Speech cues (see Outcomes.lua)
+    local speechBody = {
+        text = { type = "input", name = "Text to speak", order = 1, width = "full",
+            desc = "Spoken when the cue fires. Plain text; no tokens yet.",
+            get = function() return rule.sound.value or "" end,
+            set = function(_, v) rule.sound.source = "tts"; rule.sound.value = tostring(v or ""):sub(1, 200) end },
+        voice = { type = "select", name = "Voice", order = 2, width = "double",
+            desc = "Voices come from the voice packs installed on this computer, so other players may see a different list.",
+            values = function()
+                local v = { ["0"] = "(first available voice)" }
+                for _, it in ipairs(ns.GetTtsVoices()) do v[tostring(it.voiceID)] = it.name end
+                return v
+            end,
+            sorting = function()
+                local s = { "0" }
+                for _, it in ipairs(ns.GetTtsVoices()) do s[#s + 1] = tostring(it.voiceID) end
+                return s
+            end,
+            get = function() return tostring(rule.sound.voice or 0) end,
+            set = function(_, v) v = tonumber(v); rule.sound.voice = (v and v ~= 0) and v or nil end },
+        test = { type = "execute", name = "Test speech", order = 3, width = "half", func = function() ns.PlaySoundPreview(rule.sound) end },
+        rate = { type = "range", name = "Speed", order = 4, width = "double", min = -10, max = 10, step = 1,
+            get = function() return rule.sound.rate or 0 end, set = function(_, v) rule.sound.rate = v end },
+        vol = { type = "range", name = "Speech volume", order = 5, width = "double", min = 0, max = 100, step = 5,
+            get = function() return rule.sound.ttsVolume or 100 end, set = function(_, v) rule.sound.ttsVolume = v end },
+        repeatSec = { type = "range", name = "Repeat every (seconds, 0 = once)", order = 6, width = "double", min = 0, max = 10, step = 0.1,
+            get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v end },
+        none = { type = "description", order = 7, fontSize = "small",
+            hidden = function() return #ns.GetTtsVoices() > 0 end,
+            name = "|cffff8800No text-to-speech voice is installed on this computer, so nothing will be spoken.|r" },
+        note = { type = "description", order = 9, fontSize = "small",
+            name = "Speech plays through the game's text-to-speech settings. Use the headphone icon in the sidebar to loop it while you edit." },
+    }
+
     -- Collapsible banners: the "Show ..." tick box turns the element on AND shows its options; a +/- button beside it
     -- closes or reopens them (open by default while the element is on). Nothing shows while it is off.
     local function Banner(key, name, order, enableArg, bodyArgs)
@@ -1508,6 +1542,7 @@ local function BuildRule(i, rule)
         animSub = Sub("cq_anim", "Animation Options", 1, animArgs),
         textBody = { dur = Sub("cq_dur", "Buff Duration Text", 1, durArgs), cnt = Sub("cq_cnt", "Stacks / Charges Count", 2, cntArgs), abs = Sub("cq_abs", "Shield / Absorb Amount", 3, absArgs) },
         soundBody = soundBody,
+        speechBody = speechBody,
         ensureText = function() if not (T.enabled or C.enabled or AB.enabled) then T.enabled = true end end,
     }
     -- cue kinds: a Display rule has no sound banner, a Sound rule has no display / text banners
