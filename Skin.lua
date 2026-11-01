@@ -519,22 +519,75 @@ end
 local function SkinTree(w)
     TraceGroupFire(w, "tree")
     PaneColors(w.treeframe, { 0.03, 0.03, 0.03, A() * 0.6 }, { 0.3, 0.3, 0.3 })
-    -- Dragging the sidebar separator blanked the whole window. Run AceGUI's release handler guarded: an error is printed (so it can be
-    -- reported) and the options window is rebuilt, instead of leaving the half-laid-out blank window.
+    -- Dragging the sidebar separator. AceGUI's own drag (StartSizing on the tree frame, then on release SetHeight(0) + ClearAllPoints +
+    -- re-anchor + OnWidthSet + DoLayout) fights the skin: OnSizeChanged runs the skin's multi-pass RefreshTree on EVERY mouse move
+    -- (it temporarily swaps tf.GetHeight), and the release re-anchors the frame the skin's band is anchored to. That blanked the window.
+    -- This replaces it for every tree (Rules, Smart Categories, QoL UI Updates, ...): nothing is re-anchored and no refresh runs while
+    -- dragging; only the width changes (clamped), the sidebar rows follow because they are anchored to the frame. On release, one
+    -- deferred pass recomputes the content width, refreshes the rows and lays the pane out. Any error there rebuilds the window.
     do
-        local dr = w.dragger
-        if dr and not dr.xuiSafe then
-            dr.xuiSafe = true
-            local orig = dr:GetScript("OnMouseUp")
-            if orig then
-                dr:SetScript("OnMouseUp", function(f, ...)
-                    local ok, err = pcall(orig, f, ...)
-                    if not ok then
-                        ns.Print("sidebar resize error (please report): " .. tostring(err))
-                        if ns.UI and ns.UI.Notify then pcall(ns.UI.Notify) end
-                    end
+        local dr, tf = w.dragger, w.treeframe
+        if dr and tf and not dr.xuiSafeDrag then
+            dr.xuiSafeDrag = true
+            local MIN_TREE, MIN_PANE = 180, 360
+            local origSize = tf:GetScript("OnSizeChanged")
+            local running
+            local function Status() return w.status or w.localstatus end
+            local function Limits()
+                local st = Status()
+                local fw = (st and st.fullwidth) or (w.frame and w.frame:GetWidth()) or 0
+                return MIN_TREE, math.max(MIN_TREE, math.min(400, fw - MIN_PANE))
+            end
+            local function Fail(err)
+                ns.Print("sidebar resize error (please report): " .. tostring(err))
+                if ns.UI and ns.UI.Notify then pcall(ns.UI.Notify) end
+            end
+            local function Finish()
+                if not running then return end
+                running = nil
+                dr:SetScript("OnUpdate", nil)
+                local st = Status()
+                local lo, hi = Limits()
+                local width = math.max(lo, math.min(hi, tf:GetWidth() or lo))
+                tf:SetWidth(width)   -- while OnSizeChanged is still off: the deferred pass below does the single refresh
+                tf:SetScript("OnSizeChanged", origSize)
+                if st then st.treewidth = width end
+                pcall(w.Fire, w, "OnTreeResize", width)
+                C_Timer.After(0, function()
+                    if w.treeframe ~= tf or not tf:IsVisible() then return end
+                    local ok, err = pcall(function()
+                        local st2 = Status()
+                        if st2 and st2.fullwidth then w:OnWidthSet(st2.fullwidth) end
+                        w:RefreshTree()
+                        w:DoLayout()
+                    end)
+                    if not ok then Fail(err) end
                 end)
             end
+            dr:SetScript("OnMouseDown", function(f, button)
+                if button and button ~= "LeftButton" then return end
+                if running then Finish() end
+                local scale = tf:GetEffectiveScale()
+                if not scale or scale <= 0 then return end
+                local startX, startW = GetCursorPosition() / scale, tf:GetWidth()
+                local lastW = startW
+                running = true
+                tf:SetScript("OnSizeChanged", nil)   -- no refresh while the width is changing
+                dr:SetScript("OnUpdate", function()
+                    local ok, err = pcall(function()
+                        if not IsMouseButtonDown("LeftButton") then Finish(); return end
+                        local lo, hi = Limits()
+                        local nw = math.max(lo, math.min(hi, startW + GetCursorPosition() / scale - startX))
+                        if math.abs(nw - lastW) >= 1 then lastW = nw; tf:SetWidth(nw) end
+                    end)
+                    if not ok then
+                        running = nil; dr:SetScript("OnUpdate", nil); tf:SetScript("OnSizeChanged", origSize)
+                        Fail(err)
+                    end
+                end)
+            end)
+            dr:SetScript("OnMouseUp", function() local ok, err = pcall(Finish); if not ok then Fail(err) end end)
+            dr:SetScript("OnHide", function() pcall(Finish) end)
         end
     end
     if not w.xuiSelHooked then
