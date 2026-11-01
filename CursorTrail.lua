@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- CursorTrail.lua : the "Cursor" tab. A gradient trail that follows the mouse cursor.
+-- CursorTrail.lua : the Gradient Cursor Trail tab (QoL UI Updates > Cursor). A gradient trail that follows the mouse cursor.
 --
 -- * OFF by default. While off nothing is created, polled or drawn.
 -- * Pre-populated with gradient presets; "Custom" lets you build your own with 2 to 6 colors.
@@ -19,12 +19,21 @@ local NPT  = 48         -- texture pool size (most dots on screen at once)
 
 ns.CURSORTRAIL_MAXC = MAXC
 
--- shape name -> label, texture, blend mode   (Blizzard textures that ship with the game client)
+-- shape name -> label, texture, blend mode, kind   (Blizzard textures that ship with the game client)
+-- kind: "tex" = the texture as is | "circle" = a square cut with a circular mask | "diamond" = a Line as thick as it is long, at 45 degrees
+--       "line" = one Line from each dot back to the one dropped before it (a smooth ribbon).
+-- The cursor arrow and hand use Blizzard's cursor art (Interface\\Cursor\\Point and Interact); those two paths are from memory and were not
+-- checked in game, so if either shows as a green square the path is wrong.
 local SHAPES = {
-    star   = { "Spark",  "Interface\\Cooldown\\star4",      "ADD"   },
-    square = { "Square", "Interface\\Buttons\\WHITE8X8",    "BLEND" },
+    star    = { "Spark",         "Interface\\Cooldown\\star4",      "ADD",   "tex"     },
+    square  = { "Square",        "Interface\\Buttons\\WHITE8X8",    "BLEND", "tex"     },
+    circle  = { "Circle",        "Interface\\Buttons\\WHITE8X8",    "BLEND", "circle"  },
+    diamond = { "Diamond",       "Interface\\Buttons\\WHITE8X8",    "BLEND", "diamond" },
+    line    = { "Smooth line",   "Interface\\Buttons\\WHITE8X8",    "BLEND", "line"    },
+    arrow   = { "Cursor arrow",  "Interface\\Cursor\\Point",        "BLEND", "tex"     },
+    hand    = { "Hand",          "Interface\\Cursor\\Interact",     "BLEND", "tex"     },
 }
-local SHAPE_ORDER = { "star", "square" }
+local SHAPE_ORDER = { "star", "circle", "square", "diamond", "line", "arrow", "hand" }
 
 -- Pre-configured gradients (head of the trail first). 3 to 6 colors each.
 local PRESETS = {
@@ -102,6 +111,7 @@ end
 local frame, dots
 local stops
 local lastX, lastY
+local lastDropX, lastDropY   -- the dot dropped most recently (the "line" shape joins each dot to the one before it)
 local activeN = 0
 
 local function Build()
@@ -114,14 +124,22 @@ local function Build()
     for i = 1, NPT do
         local t = frame:CreateTexture(nil, "ARTWORK")
         t:Hide()
-        dots[i] = { tex = t, on = false, born = 0, x = 0, y = 0 }
+        local m
+        if frame.CreateMaskTexture then
+            m = frame:CreateMaskTexture()
+            m:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+            m:SetAllPoints(t)
+        end
+        local ln
+        if frame.CreateLine then ln = frame:CreateLine(nil, "ARTWORK"); ln:Hide() end
+        dots[i] = { tex = t, mask = m, line = ln, masked = false, on = false, born = 0, x = 0, y = 0 }
     end
 end
 
 local function ClearAll()
     if not dots then return end
-    for i = 1, NPT do local d = dots[i]; d.on = false; d.tex:Hide() end
-    activeN, lastX, lastY = 0, nil, nil
+    for i = 1, NPT do local d = dots[i]; d.on = false; d.tex:Hide(); if d.line then d.line:Hide() end end
+    activeN, lastX, lastY, lastDropX, lastDropY = 0, nil, nil, nil, nil
 end
 
 local function Drop(c, x, y)
@@ -129,6 +147,8 @@ local function Drop(c, x, y)
         local d = dots[i]
         if not d.on then
             d.on = true; d.born = GetTime(); d.x, d.y = x, y
+            d.px, d.py = lastDropX, lastDropY
+            lastDropX, lastDropY = x, y
             activeN = activeN + 1
             return
         end
@@ -141,7 +161,8 @@ local function OnUpdate()
     local now = GetTime()
     local life = math.max(0.1, c.length or 0.6)
     local size, op = c.size or 18, c.opacity or 1
-    local blend = (SHAPES[c.shape] or SHAPES.star)[3]
+    local sh = SHAPES[c.shape] or SHAPES.star
+    local blend, kind = sh[3], sh[4]
 
     -- add dots along the path the cursor traveled since the last frame
     local x, y = GetCursorPosition()
@@ -149,7 +170,7 @@ local function OnUpdate()
     x, y = x / s, y / s
     local hidden = c.hideMouselook and IsMouselooking and IsMouselooking()
     if hidden then
-        lastX, lastY = nil, nil
+        lastX, lastY, lastDropX, lastDropY = nil, nil, nil, nil
     else
         if lastX then
             local dx, dy = x - lastX, y - lastY
@@ -175,17 +196,41 @@ local function OnUpdate()
         if d.on then
             local f = (now - d.born) / life
             if f >= 1 then
-                d.on = false; activeN = activeN - 1; d.tex:Hide()
+                d.on = false; activeN = activeN - 1; d.tex:Hide(); if d.line then d.line:Hide() end
             else
                 local r, g, b = Grad(stops, rev and (1 - f) or f)
-                local t = d.tex
-                t:SetVertexColor(r, g, b, op * (1 - f))
-                t:SetBlendMode(blend)
+                local a = op * (1 - f)
                 local sz = size * (1 - 0.45 * f)
-                t:SetSize(sz, sz)
-                t:ClearAllPoints()
-                t:SetPoint("CENTER", UIParent, "BOTTOMLEFT", d.x, d.y)
-                t:Show()
+                local ln = d.line
+                if kind == "diamond" and ln then
+                    d.tex:Hide()
+                    local h = sz * 0.5 * 0.70710678
+                    ln:SetStartPoint("BOTTOMLEFT", UIParent, d.x - h, d.y - h)
+                    ln:SetEndPoint("BOTTOMLEFT", UIParent, d.x + h, d.y + h)
+                    ln:SetThickness(sz)
+                    ln:SetColorTexture(r, g, b, a)
+                    ln:SetBlendMode(blend)
+                    ln:Show()
+                elseif kind == "line" and ln then
+                    d.tex:Hide()
+                    if d.px then
+                        ln:SetStartPoint("BOTTOMLEFT", UIParent, d.px, d.py)
+                        ln:SetEndPoint("BOTTOMLEFT", UIParent, d.x, d.y)
+                        ln:SetThickness(math.max(2, sz * 0.5))
+                        ln:SetColorTexture(r, g, b, a)
+                        ln:SetBlendMode(blend)
+                        ln:Show()
+                    else ln:Hide() end
+                else
+                    if ln then ln:Hide() end
+                    local t = d.tex
+                    t:SetVertexColor(r, g, b, a)
+                    t:SetBlendMode(blend)
+                    t:SetSize(sz, sz)
+                    t:ClearAllPoints()
+                    t:SetPoint("CENTER", UIParent, "BOTTOMLEFT", d.x, d.y)
+                    t:Show()
+                end
             end
         end
     end
@@ -201,8 +246,16 @@ function ns.CursorTrail_Apply()
     end
     Build()
     stops = Stops(c)
-    local tex = (SHAPES[c.shape] or SHAPES.star)[2]
-    for i = 1, NPT do dots[i].tex:SetTexture(tex) end
+    local sh = SHAPES[c.shape] or SHAPES.star
+    for i = 1, NPT do
+        local d = dots[i]
+        d.tex:SetTexture(sh[2])
+        local want = (sh[4] == "circle") and d.mask ~= nil
+        if want and not d.masked then pcall(d.tex.AddMaskTexture, d.tex, d.mask); d.masked = true
+        elseif not want and d.masked then pcall(d.tex.RemoveMaskTexture, d.tex, d.mask); d.masked = false end
+        d.on = false; d.tex:Hide(); if d.line then d.line:Hide() end
+    end
+    lastDropX, lastDropY = nil, nil
     frame:Show()
     frame:SetScript("OnUpdate", OnUpdate)
 end
@@ -267,8 +320,7 @@ function ns.BuildCursorTab(Notify)
     end
 
     return {
-        type = "group", name = "Cursor", order = 5.5,
-        hidden = ns.PageHidden and ns.PageHidden("cursor") or false,
+        type = "group", name = "Gradient Cursor Trail", order = 2,
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "A gradient trail that follows your mouse cursor. Off by default." },
@@ -310,4 +362,11 @@ function ns.BuildCursorTab(Notify)
             custom = custom,
         },
     }
+end
+
+-- The whole Cursor page (left tree entry of QoL UI Updates): Cursor Highlight is the first tab, Gradient Cursor Trail the second.
+function ns.BuildCursorGroup(Notify)
+    local hl = ns.BuildCursorHighlightTab and ns.BuildCursorHighlightTab(Notify) or nil
+    local tr = ns.BuildCursorTab(Notify)
+    return { type = "group", name = "Cursor", order = 2, childGroups = "tab", args = { highlight = hl, trail = tr } }
 end

@@ -2717,7 +2717,11 @@ function ns.OpenPage(key)
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, (key == "settings" and skinned) and "set_ui" or key)
 end
 ns.UI.Creator = function() ns.OpenPage("creator") end
-ns.UI.Cursor = function() ns.OpenPage("cursor") end
+ns.UI.Cursor = function()   -- the Cursor options live under QoL UI Updates > Cursor now (no tab of their own)
+    ns.pageOpen = nil; ns.infoOpen = false
+    Notify()
+    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "cursor")
+end
 ns.UI.Settings = function()
     -- the Settings button is a switch: a second click leaves the settings pages and brings the Rules tabs back
     if ns.pageOpen == "settings" and ns.SkinRows and ns.SkinRows() then
@@ -3547,7 +3551,7 @@ local function BuildOptions()
     -- QoL Elements (stat boxes, cursor tracker, buff bars) are switched off for now: their files are not in XayaUI.toc, so ns.QoLOn is nil and the tab is skipped.
     -- Tab "QoL UI Updates": left tree, options in the right pane. ElvUI Chat Reskin is always first (order 1); the older
     -- QoL Elements entries (stat boxes, cursor tracker, buff bars) follow it, and only exist while their files are loaded.
-    local qolArgs = { chatreskin = ns.BuildChatTab and ns.BuildChatTab(Notify) or nil }
+    local qolArgs = { chatreskin = ns.BuildChatTab and ns.BuildChatTab(Notify) or nil, cursor = ns.BuildCursorGroup and ns.BuildCursorGroup(Notify) or nil }
     if ns.QoLOn then
         qolArgs.allqol = allQol
         qolArgs.allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil
@@ -3576,7 +3580,7 @@ local function BuildOptions()
     track.hidden = function() return SettingsOn() and true or false end
     smartcat.hidden = function() return SettingsOn() and true or false end
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, smartcat = smartcat, creator = BuildClassCreator(), cursor = ns.BuildCursorTab and ns.BuildCursorTab(Notify) or nil, qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = settings, set_ui = setUi, set_debug = setDbg } }
+        args = { cooldowns = track, smartcat = smartcat, creator = BuildClassCreator(), qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = settings, set_ui = setUi, set_debug = setDbg } }
     pcall(ns.SmartOpen)
     pcall(ns.ApplyTreeFilter, out)
     if ns.SkinRows and ns.SkinRows() then pcall(ns.InfoPass, out) end   -- the info icons are part of the skin

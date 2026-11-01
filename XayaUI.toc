@@ -30,6 +30,7 @@ Visual.lua
 Profile.lua
 Theme.lua
 Engine.lua
+CursorHighlight.lua
 CursorTrail.lua
 ChatReskin.lua
 AddonInfo.lua
