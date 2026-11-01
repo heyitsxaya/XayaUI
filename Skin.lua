@@ -295,7 +295,25 @@ local function PaneColors(frame, bg, border)
     if frame and frame.SetBackdropColor then frame:SetBackdropColor(bg[1], bg[2], bg[3], bg[4]); frame:SetBackdropBorderColor(border[1], border[2], border[3], 1) end
 end
 
+-- /xui perf: time every pane / tab switch (OnGroupSelected) so the slow or late step can be named
+local function TraceGroupFire(w, what)
+    if w.xuiFireTraced then return end
+    w.xuiFireTraced = true
+    local orig = w.Fire
+    w.Fire = function(self, ev, ...)
+        if ev ~= "OnGroupSelected" or not (ns.perf and ns.perf.show) then return orig(self, ev, ...) end
+        ns.Trace("click"); ns.Trace(what .. " switch -> " .. tostring((...)))
+        local t0 = debugprofilestop()
+        local r1, r2 = orig(self, ev, ...)
+        ns.Trace(string.format("%s switch built in %.0f ms", what, debugprofilestop() - t0))
+        if C_Timer then C_Timer.After(0, function() ns.Trace("next frame after " .. what .. " switch (anything below this ran late)") end) end
+        return r1, r2
+    end
+    AddRest(w, "firetrace", function(self) rawset(self, "Fire", nil); self.xuiFireTraced = nil end)
+end
+
 local function SkinTabGroup(w)
+    TraceGroupFire(w, "tab")
     do local pb, pd = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 }), TC("xui-pane", "border", { 0.3, 0.3, 0.3, 1 }); PaneColors(w.border, { pb[1], pb[2], pb[3], A() * 0.6 }, pd) end
     for _, tab in ipairs(w.tabs or {}) do
         if tab:IsShown() then
@@ -434,6 +452,7 @@ local function PartitionAllRules(w)
 end
 
 local function SkinTree(w)
+    TraceGroupFire(w, "tree")
     PaneColors(w.treeframe, { 0.03, 0.03, 0.03, A() * 0.6 }, { 0.3, 0.3, 0.3 })
     -- Dragging the sidebar separator blanked the whole window. Run AceGUI's release handler guarded: an error is printed (so it can be
     -- reported) and the options window is rebuilt, instead of leaving the half-laid-out blank window.
