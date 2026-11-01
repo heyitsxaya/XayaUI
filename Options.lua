@@ -670,9 +670,9 @@ function ns.IsCategoryRoot(f) return f and f.default ~= nil and not f.parent end
 local function FolderValues()
     local v, o = { none = "(none - top level)" }, { "none" }
     for _, f in ipairs(ns.folders or {}) do
-      if not ns.IsCategoryRoot(f) then
+      if not ns.IsCategoryRoot(f) and not ns.CueTransparent(f) then   -- category buckets / cue-type folders are never offered
         local names = {}
-        for _, c in ipairs(FolderChain(f)) do names[#names + 1] = c.name end
+        for _, c in ipairs(FolderChain(f)) do if not ns.CueTransparent(c) then names[#names + 1] = c.name end end
         v[f.id] = table.concat(names, " / "); o[#o + 1] = f.id
       end
     end
@@ -3895,7 +3895,7 @@ local function AddMoveMenu(root, obj, kind)
         ns.MarkDirty(); Notify()
     end)
     for _, f in ipairs(ns.folders or {}) do
-        if not ns.IsCategoryRoot(f) and not (kind == "folder" and IsInFolder(f.id, obj.id)) then
+        if not ns.IsCategoryRoot(f) and not ns.CueTransparent(f) and not (kind == "folder" and IsInFolder(f.id, obj.id)) then
             local depth = #FolderChain(f) - 1
             sub:CreateButton(string.rep("    ", depth) .. f.name, function()
                 if multi then ns.MultiMove(f.id); return end
@@ -4470,7 +4470,7 @@ do
             root:CreateTitle("Move " .. ns.MultiCount() .. " selected rule(s) to")
             root:CreateButton("Top Level (no group)", function() ns.MultiMove(nil) end)
             for _, f in ipairs(ns.folders or {}) do
-                if not ns.IsCategoryRoot(f) then
+                if not ns.IsCategoryRoot(f) and not ns.CueTransparent(f) then
                     root:CreateButton(string.rep("    ", #FolderChain(f) - 1) .. tostring(f.name), function() ns.MultiMove(f.id) end)
                 end
             end
