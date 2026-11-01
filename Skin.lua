@@ -755,16 +755,36 @@ local function PaintNameEdit(w, arg)
     eb:ClearAllPoints()
     if ed.title then   -- number is the header title; this box (the optional name) goes beneath it, smaller and gray
         eb:SetHeight(16); eb:SetFontObject(GameFontNormalSmall); eb:SetTextColor(0.65, 0.65, 0.65)
-        eb:SetPoint("TOPLEFT", f, "TOPLEFT", 20 - (tonumber(arg and arg.xuiHeadOut) or 0), -(3 + ns.H3_SIZE + 3)); eb:SetWidth(220)
+        -- start under the title TEXT: the title is "<arrow glyph>  Trigger 1:  Cooldown", so measure the glyph and its spaces
+        local pre = 0
+        do
+            local txt = w.text and w.text:GetText() or ""
+            local glyph = txt:match("^(|T.-|t%s*)")
+            if glyph and w.text.GetFont then
+                if not ns.xuiMeasure then
+                    ns.xuiMeasure = UIParent:CreateFontString(nil, "OVERLAY")
+                    ns.xuiMeasure:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -4000, 4000); ns.xuiMeasure:SetAlpha(0)
+                end
+                local m = ns.xuiMeasure
+                local font, size, flags = w.text:GetFont()
+                if font then
+                    m:SetFont(font, size, flags)
+                    m:SetText("l"); local w0 = m:GetStringWidth() or 0
+                    m:SetText(glyph .. "l"); pre = math.max(0, (m:GetStringWidth() or 0) - w0)
+                end
+            end
+        end
+        eb:SetTextInsets(0, 6, 0, 0)
+        eb:SetPoint("TOPLEFT", f, "TOPLEFT", pre - (tonumber(arg and arg.xuiHeadOut) or 0), -(3 + ns.H3_SIZE + 7)); eb:SetWidth(220)
         if not f.xuiNamePH then
             f.xuiNamePH = eb:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-            f.xuiNamePH:SetPoint("LEFT", eb, "LEFT", 6, 0); f.xuiNamePH:SetTextColor(0.4, 0.4, 0.4); f.xuiNamePH:SetText("name (optional)")
+            f.xuiNamePH:SetPoint("LEFT", eb, "LEFT", 0, 0); f.xuiNamePH:SetTextColor(0.4, 0.4, 0.4); f.xuiNamePH:SetText("name (optional)")
             eb:HookScript("OnTextChanged", function(self) if f.xuiNamePH then f.xuiNamePH:SetShown(self:GetText() == "" and not self:HasFocus()) end end)
             eb:HookScript("OnEditFocusGained", function() f.xuiNamePH:Hide() end)
             eb:HookScript("OnEditFocusLost", function(self) f.xuiNamePH:SetShown(self:GetText() == "") end)
         end
     else
-        eb:SetHeight(22); eb:SetFontObject(GameFontHighlight); eb:SetTextColor(1, 1, 1)
+        eb:SetHeight(22); eb:SetFontObject(GameFontHighlight); eb:SetTextColor(1, 1, 1); eb:SetTextInsets(6, 6, 0, 0)
         eb:SetPoint("LEFT", f, "LEFT", 30 - (tonumber(arg and arg.xuiHeadOut) or 0), 0); eb:SetWidth(220)
         if f.xuiNamePH then f.xuiNamePH:Hide() end
     end
@@ -809,7 +829,7 @@ local function SkinButton(w)
             sf:ClearAllPoints(); sf:SetPoint("TOPLEFT", f, "TOPLEFT", lx, -3 - ns.H3_SIZE - 4)
             sf:SetTextColor(0.6, 0.6, 0.6); sf:SetJustifyH("LEFT"); sf:SetText(subTxt); sf:Show()
         elseif f.xuiSubFS then f.xuiSubFS:Hide() end
-        local wantH = subTxt and (ns.H3_SIZE + 26) or 24
+        local wantH = subTxt and (ns.H3_SIZE + 30) or 24
         if math.abs((f:GetHeight() or 0) - wantH) > 0.5 and (subTxt or w.xuiSubH) then
             f:SetHeight(wantH); f.height = wantH; w.xuiSubH = subTxt and true or nil
             if w.parent and w.parent.DoLayout then w.parent:DoLayout() end
@@ -1295,6 +1315,7 @@ end
 -- never narrower than its longest option. Runs before AceGUI's Flow layout, which then places everything; ApplyGaps adds the
 -- column gutter afterwards.
 ns.H3_SIZE = 16   -- the single header size (Heading widgets and collapsible section headers)
+ns.H2_SIZE = 14   -- inside trigger / cue / condition panes: "Description" and every yellow field label ("Sound", "State", "IF", "THEN") use this size
 ns.BODY_INDENT = 20   -- trigger / cue / condition panes: the header sits flush left and everything under it is indented by this much
 local NOFLEX = { Icon = true, Label = true, InteractiveLabel = true, Heading = true, ColorPicker = true, Image = true }
 local GAP = 10        -- gutter between free-flowing controls
@@ -1542,6 +1563,15 @@ local function SideLabel(w, kind)
     Apply()
 end
 
+-- is this widget inside a trigger / cue / condition pane (a group indented by arg.xuiIndent)?
+local function InPane(w)
+    local p, n = w.parent, 0
+    while p and n < 14 do
+        if p.xuiIndent then return true end
+        p = p.parent; n = n + 1
+    end
+    return false
+end
 local function Walk(w, depth)
     if not w or depth > 14 then return end
     local t = w.type
@@ -1626,8 +1656,9 @@ local function Walk(w, depth)
         if w.label and not w.xuiH3 then
             local f1, f2, f3 = w.label:GetFont()
             w.xuiH3 = { f1, f2, f3 }
-            w.label:SetFont(f1, ns.H3_SIZE, f3)
-            if w.frame and w.frame:GetHeight() < ns.H3_SIZE + 6 then w.frame:SetHeight(ns.H3_SIZE + 6); w.frame.height = ns.H3_SIZE + 6 end
+            local hs = InPane(w) and ns.H2_SIZE or ns.H3_SIZE
+            w.label:SetFont(f1, hs, f3)
+            if w.frame and w.frame:GetHeight() < hs + 6 then w.frame:SetHeight(hs + 6); w.frame.height = hs + 6 end
             OnRelease(w, function(self) if self.xuiH3 and self.label then self.label:SetFont(unpack(self.xuiH3)) end; self.xuiH3 = nil end)
         end
     elseif t == "Label" then
@@ -1646,6 +1677,18 @@ local function Walk(w, depth)
                 if w.parent and w.parent.DoLayout then w.parent:DoLayout() end
             end
             OnRelease(w, function(self) if self.xuiH1Font and self.label then self.label:SetFont(unpack(self.xuiH1Font)) end; self.xuiH1Key = nil end)
+        end
+    end
+    -- yellow field labels inside those panes ("Sound", "State", "Spell ID" ...) share the "Description" heading size
+    if (t == "Dropdown" or t == "EditBox" or t == "Slider") and w.label and not w.xuiH2L and InPane(w) then
+        local o3 = w.GetUserData and w:GetUserData("option")
+        if not (o3 and type(o3.arg) == "table" and o3.arg.xuiSide) then
+            local f1, f2, f3 = w.label:GetFont()
+            if f1 then
+                w.xuiH2L = { f1, f2, f3 }
+                w.label:SetFont(f1, ns.H2_SIZE, f3)
+                AddRest(w, "h2label", function(self) if self.xuiH2L and self.label then self.label:SetFont(unpack(self.xuiH2L)) end; self.xuiH2L = nil end)
+            end
         end
     end
     if t == "Slider" then pcall(SkinSlider, w)

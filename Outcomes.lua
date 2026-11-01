@@ -302,7 +302,7 @@ local function ConditionBody(rule, H)
     local function collapsed() return rule.ocCollapsed == true end
     local function locked() return ns.IsEditLocked and ns.IsEditLocked(rule) end
     local function refChoices() return RefChoices(ns.FindParentRule(rule)) end
-    args.ifLabel = { type = "description", order = 10, width = "full", fontSize = "medium", hidden = collapsed, name = "|cffffd100IF|r" }
+    args.ifLabel = { type = "description", order = 10, width = "full", fontSize = "medium", hidden = collapsed, arg = { xuiH1 = ns.H2_SIZE or 14 }, name = "|cffffd100IF|r" }
     for j, t in ipairs(W.list) do
         local o = 10 + j
         if j > 1 then
@@ -362,7 +362,7 @@ local function ConditionBody(rule, H)
             end
         end, disabled = locked }
     local function hasCues() local p = ns.FindParentRule(rule); return p and #ns.CuesOf(p) > 0 end
-    args.thenNone = { type = "description", order = 70, width = "full", fontSize = "medium",
+    args.thenNone = { type = "description", order = 70, width = "full", fontSize = "medium", arg = { xuiH1 = ns.H2_SIZE or 14 },
         hidden = function() return collapsed() or hasCues() end,
         name = "|cffffd100THEN|r  |cff888888no cues yet. Create one on the Cues tab.|r" }
     -- THEN: laid out like IF. A "THEN" line, then one cue per row; a second cue is added with "+ add cue... > AND", which adds an AND row
@@ -390,7 +390,7 @@ local function ConditionBody(rule, H)
     local function thenCount() return #(rule.thenCues or {}) end
     local function pending() return ns.pendingAnd[rule] and 1 or 0 end
     local function rowShown(i) return not collapsed() and hasCues() and i <= math.max(thenCount() + pending(), 1) end
-    args.thenLabel = { type = "description", order = 70, width = "full", fontSize = "medium",
+    args.thenLabel = { type = "description", order = 70, width = "full", fontSize = "medium", arg = { xuiH1 = ns.H2_SIZE or 14 },
         hidden = function() return collapsed() or not hasCues() end, name = "|cffffd100THEN|r" }
     for i = 1, 40 do
         local o = 70 + i / 100

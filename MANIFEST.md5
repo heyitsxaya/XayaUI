@@ -14,11 +14,11 @@ d32239bcb673463ab874e80d47fae504  LICENSE
 849eb9638bc7e6e491d6a5839018e8b6  LocalGraphics.lua
 3d5c0adc9166b49ebf4d2da7cc1d02ed  LocalSounds.lua
 fc62c0f0b2744bc8204778488562ad67  Options.lua
-cad5ba76d97a4bc99b1de0f796dbcef8  Outcomes.lua
+16469b6a7122ba842b50f4ce97c7747d  Outcomes.lua
 23bf6278d3ac2ac5f79e3e42b2b914a3  Profile.lua
 6927ad26f4e5218baef5961cca11e634  QoL.lua
 8cfc3e5ac1c30aaf3a0263fbc559f453  README.md
-b6c56057e7668ba7ea6d0d7131851122  Skin.lua
+b16c8dcf998d17fbd47a402326d25135  Skin.lua
 454d9c7477395f84a1f31950034b8c75  Sound.lua
 8cf86a37819a573a0bea3749fa323711  THIRD_PARTY.md
 46f77b8a678f39da1db320a4883ae59f  TalentDump.lua
