@@ -314,7 +314,7 @@ function ns.ChatReskin_Debug()
 end
 
 -------------------------------------------------------------------------------
--- Options page (toolbar page "QoL UI Updates" > "ElvUI Chat Reskin")
+-- Options page (tab "QoL UI Updates" > left tree entry "ElvUI Chat Reskin")
 -------------------------------------------------------------------------------
 function ns.BuildChatTab(Notify)
     local s = ns.chatDB
@@ -344,8 +344,7 @@ function ns.BuildChatTab(Notify)
             get = function() return s[rf], s[gf], s[bf], 1 end,
             set = function(_, r, g, b) s[rf], s[gf], s[bf] = r, g, b; Re() end }
     end
-    -- Page "QoL UI Updates" (toolbar button). Each QoL UI feature is one entry nested under it;
-    -- ElvUI Chat Reskin is the first. Its four sections are tabs inside that entry.
+    -- One entry in the left tree of the "QoL UI Updates" tab (built in Options.lua); its four sections are tabs in the right pane.
     local chatReskin = {
         type = "group", name = "ElvUI Chat Reskin", order = 1, childGroups = "tab",
         args = {
@@ -391,9 +390,5 @@ function ns.BuildChatTab(Notify)
             } },
         },
     }
-    return {
-        type = "group", name = "QoL UI Updates", order = 6, childGroups = "tree",
-        hidden = ns.PageHidden("qolui"),
-        args = { chatreskin = chatReskin },
-    }
+    return chatReskin
 end
