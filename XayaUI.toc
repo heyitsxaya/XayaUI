@@ -33,6 +33,8 @@ Engine.lua
 CursorHighlight.lua
 CursorTrail.lua
 ChatReskin.lua
+ChatText.lua
+ChatTabs.lua
 AddonInfo.lua
 Options.lua
 Skin.lua

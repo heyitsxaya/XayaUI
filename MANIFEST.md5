@@ -1,7 +1,9 @@
 a1620bdf32daf4d160b6252169fa9586  Actions.lua
 64964bb6b85ba8f6d5a1cedfe929ff52  AddonInfo.lua
 39160b6ad5cc597f56721a85a493988d  Bars.lua
-ddb15a5231f8855cbbf9bf95ef616be1  ChatReskin.lua
+5de284d49a6d0daa9184a14b11411b61  ChatReskin.lua
+76c114e3afb56d2a8820e6a753946482  ChatTabs.lua
+e13412c9b9f981664587033ebe80c7d0  ChatText.lua
 53dc1f5b7fa7028cee7ba868b366190e  ClassData.lua
 4d1ef9591f9ba2cafb96623996c2dc6b  Conditions.lua
 ba12e4de14bc40d995a6e89e8c8f2192  Core.lua
@@ -27,4 +29,4 @@ dedd1c1374248cf74b433a0fadbe8367  Skin.lua
 bb99c003ea37c94dd6df64d62376ab05  Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  UserMedia.lua
 55910162cbddac1052b7be44d4fdf734  Visual.lua
-ade09d15ee501a3818e6dd73f0575fb3  XayaUI.toc
+cf4cc2dd3f858a23b3c9477892e6b4e0  XayaUI.toc
