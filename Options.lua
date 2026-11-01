@@ -1544,9 +1544,6 @@ local function BuildRule(i, rule)
         } }
     end
     local actionsTab = { type = "group", name = "Actions", order = 3.5, args = ns.ActionsPane and ns.ActionsPane(rule, Notify, { sound = actions.args.sound, finishSound = finishSound }) or {} }
-    actionsTab.args.legacy = ns.GatedPane(rule, "legacyDisp", "This rule's own display and text (older rules; new ones use Cues)", 9,
-        function() return (V.enabled or T.enabled or C.enabled or AB.enabled) and ns.KindHas(rule, "visual") end,
-        { display = actions.args.display, text = actions.args.text })
     actionsTab.xuiParts = actions.xuiParts
     if outcomeArgs then for k, v in pairs(outcomeArgs) do conditionsTab.args[k] = v end end
     if cueArgs then for k, v in pairs(cueArgs) do cuesTab.args[k] = v end end
