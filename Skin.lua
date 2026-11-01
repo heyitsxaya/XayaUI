@@ -131,7 +131,17 @@ local function ToolButton(parent, icon, label, onClick)
     b:SetScript("OnClick", onClick)
     b:SetScript("OnEnter", function(self) self.text:SetTextColor(1, 1, 1) end)
     b:SetScript("OnLeave", function(self) if self.active then self.text:SetTextColor(1, 1, 1) else self.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3]) end end)
-    function b:SetActive(on) self.active = on and true or false; if self.active then self.text:SetTextColor(1, 1, 1) else self.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3]) end end
+    function b:SetActive(on)
+        self.active = on and true or false
+        -- lit = the same boxed look as a selected tab (colour alone was lost under the theme's text colour)
+        if self.active then
+            Flat(self, TC("xui-tab-selected", "bg", { 0.12, 0.05, 0.2, 0.9 }), TC("xui-tab-selected", "border", { 0.75, 0.4, 1, 1 }), { -5, -5, -2, -2 })
+            self.text:SetTextColor(1, 1, 1)
+        else
+            FlatHide(self)
+            self.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
+        end
+    end
     function b:SetLabel(t) self.text:SetText(t); self:SetWidth(20 + self.text:GetStringWidth() + 6) end
     b:SetLabel(label)
     return b
@@ -377,6 +387,24 @@ local function EnsureTreeSearch(w)
         w.xuiSelBar = bar
     end
     if bar then
+        -- same flat look as every other button (the red Blizzard art is hidden); Delete keeps the red primary tint
+        for _, key in ipairs({ "del", "mv", "clr" }) do
+            local b = bar[key]
+            if b then
+                if not b.xuiFlatBtn then
+                    b.xuiFlatBtn = true
+                    HideRegions(b, nil)
+                    local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(0) end
+                    local fs = b:GetFontString(); if fs then fs:ClearAllPoints(); fs:SetPoint("CENTER") end
+                    b:HookScript("OnEnter", function(self) local f = self:GetFontString(); if f then f:SetTextColor(1, 1, 1) end end)
+                    b:HookScript("OnLeave", function(self) local f = self:GetFontString(); if f then f:SetTextColor(GOLD[1], GOLD[2], GOLD[3]) end end)
+                end
+                local cl = (key == "del") and "xui-button-primary" or "xui-button"
+                Flat(b, TC(cl, "bg", { 0.04, 0.04, 0.04, 0.7 }), TC(cl, "border", { 0.25, 0.25, 0.25, 1 }))
+                local fs = b:GetFontString()
+                if fs then local c = TC(cl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]); TF(fs) end
+            end
+        end
         bar:SetShown(nSel > 0)
         if nSel > 0 then bar.del:SetText(("Delete %d"):format(nSel)) end
     end
