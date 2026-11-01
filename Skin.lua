@@ -794,6 +794,31 @@ local function SkinRow(w, fn)
             Place()
         end
         f.height = need
+        -- The text only wraps correctly once the row has its real width (a 3-line description measured too early left the row
+        -- too short, and the next heading / button drew over it). Measure again whenever the row's width changes.
+        if not f.xuiRowSized then
+            f.xuiRowSized = true
+            f:HookScript("OnSizeChanged", function(self, nw)
+                if not self.xuiMinH or self.xuiRowBusy or not nw or nw < 150 then return end
+                if self.xuiLastW and math.abs(self.xuiLastW - nw) < 1 then return end
+                self.xuiLastW = nw
+                self.xuiRowBusy = true
+                if C_Timer and C_Timer.After then
+                    C_Timer.After(0, function()
+                        self.xuiRowBusy = nil
+                        if not (w.frame == self and w.label and w.image and self.xuiMinH) then return end
+                        Place()
+                        local th = math.ceil(w.label:GetStringHeight()) + 2
+                        local nn = math.max(ih, th) + 40
+                        if math.abs(nn - self.xuiMinH) > 0.5 then
+                            self.xuiMinH = nn; self.height = nn
+                            self:SetHeight(nn)
+                            if w.parent and w.parent.DoLayout then w.parent:DoLayout() end
+                        end
+                    end)
+                else self.xuiRowBusy = nil end
+            end)
+        end
     elseif lab then
         lab:SetJustifyV("MIDDLE")
     end
@@ -802,6 +827,7 @@ local function SkinRow(w, fn)
         if self.image then self.image:SetTexCoord(0, 1, 0, 1) end   -- recycled label: undo the icon crop
         self.xuiRowKey = nil
         self.frame.xuiMinH = nil; self.frame.SetHeight = nil
+        self.frame.xuiLastW = nil; self.frame.xuiRowBusy = nil
         self.frame:EnableMouse(false); self.frame:SetScript("OnMouseUp", nil)
         if self.frame.xuiHL then self.frame.xuiHL:Hide() end
         FlatHide(self.frame)
