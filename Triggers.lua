@@ -272,6 +272,44 @@ Add("itemEquipped", {
     end,
 })
 
+-- 5b. Item Usable  (the item twin of "Spell Usable (Action Usable)"; WA: Action Usable on an item / Cooldown Progress (Item))
+Add("itemUsable", {
+    label = "Item Usable", wa = "Action Usable / Cooldown Progress (Item)", group = "Item",
+    note = "Usable = you carry the item and the game would let you use it now. 'Is usable' does NOT look at the item's cooldown; pick 'Usable AND off cooldown' to include it (a global-cooldown-length wait is ignored). Needs the item ID, or use the name search.",
+    fields = {
+        { key = "itemID", kind = "item", label = "Item ID", required = true },
+        { key = "state", kind = "select", label = "State", required = true, vals = {
+            values = { usable = "Is usable", ready = "Usable AND off cooldown (ready to use)", unusable = "Is NOT usable (or not carried)", noPower = "Lacks the resource (mana...)" },
+            order = { "usable", "ready", "unusable", "noPower" } } },
+    },
+    check = function(t)
+        local id = tonumber(t.itemID)
+        if not id or id == 0 then return nil, "no item" end
+        local fn = (C_Item and C_Item.GetItemCount) or GetItemCount
+        local have = Call(fn, id)
+        if type(have) ~= "number" then return nil, "item count unreadable" end
+        local usable, noPower
+        if C_Item and C_Item.IsUsableItem then usable, noPower = Call(C_Item.IsUsableItem, id) else usable, noPower = Call(IsUsableItem, id) end
+        if usable == nil then return nil, "usability unreadable" end
+        local carried = have > 0
+        if t.state == "usable" then return carried and usable == true
+        elseif t.state == "unusable" then return not (carried and usable == true)
+        elseif t.state == "noPower" then
+            if noPower == nil then return nil, "resource check unreadable" end
+            return carried and noPower == true
+        elseif t.state == "ready" then
+            if not (carried and usable == true) then return false end
+            local cfn = (C_Container and C_Container.GetItemCooldown) or GetItemCooldown
+            local start, dur = Call(cfn, id)
+            if type(start) ~= "number" or type(dur) ~= "number" then return nil, "cooldown unreadable" end
+            if dur <= 1.5 or start == 0 then return true end   -- no cooldown, or only the global cooldown
+            local left = start + dur - GetTime()
+            return left <= 0, left > 0 and "on cooldown" or nil
+        end
+        return nil
+    end,
+})
+
 -- 6. Stance / Form  (WA: "Stance/Form/Aura")
 function ns.TriggerFormChoices()
     local values, order = { ["0"] = "No form / stance" }, { "0" }
