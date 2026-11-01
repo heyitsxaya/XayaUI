@@ -1,4 +1,4 @@
--- XayaUI: Actions. The things a rule DOES (as opposed to Cues, which are things it shows / plays) at three moments, modelled on the
+-- XayaUI: Actions. The things a rule DOES (as opposed to Cues, which are things it shows / plays) at three moments, modeled on the
 -- WeakAuras Actions tab: On Initialization (the rule loads), During (the rule starts), After It Ends (the rule stops).
 -- Each moment can send a chat message, glow a frame and run custom code; "During" also has the rule's sound (with repeat), "After" a sound.
 -- Storage: rule.actions = { init = {...}, start = {...}, finish = {...} }
@@ -30,7 +30,7 @@ function ns.ActionsOf(rule, phase)
 end
 local function Existing(rule, phase) return rule.actions and rule.actions[phase] end
 
--- Sanitise what comes from saved data / imports (called from NormalizeRule). Custom code is NEVER kept from an import (see Profile.lua).
+-- Sanitize what comes from saved data / imports (called from NormalizeRule). Custom code is NEVER kept from an import (see Profile.lua).
 function ns.NormalizeActions(r)
     if type(r.actions) ~= "table" then r.actions = nil; return end
     local keep
@@ -162,7 +162,7 @@ function ns.ActionsPane(rule, Notify, extra)
                 get = On(phase, "msgOn"), set = function(_, v) put(phase, "msgOn", v and true or nil); Notify() end },
             msgType = { type = "select", order = 11, width = "double", name = "Message type", values = CHAT_TYPES, sorting = CHAT_ORDER,
                 hidden = Off(phase, "msgOn"),
-                desc = "Print, red text and read-aloud only ever reach you. Say / Yell / Group send to other players: WoW blocks automated messages to Say and Yell outside instances, and in Midnight addons cannot send chat during a Mythic+ run, a PvP match or a boss encounter (alpha notes; not re-checked on the live client).",
+                desc = "Print, red text, and read-aloud only ever reach you. Say / Yell / Group send to other players: WoW blocks automated messages to Say and Yell outside instances, and in Midnight addons cannot send chat during a Mythic+ run, a PvP match, or a boss encounter (alpha notes; not re-checked on the live client).",
                 get = function() return get(phase, "msgType") or "PRINT" end, set = function(_, v) put(phase, "msgType", v) end },
             msg = { type = "input", order = 12, width = "full", name = "Message  (%n = rule name, %s = spell name, %b = buff name)",
                 hidden = Off(phase, "msgOn"),
@@ -170,7 +170,7 @@ function ns.ActionsPane(rule, Notify, extra)
             -- glow -------------------------------------------------------
             glowOn = { type = "toggle", order = 20, width = "full",
                 name = (phase == "finish") and "Stop a glow on a frame" or "Glow a frame",
-                desc = "Uses the LibCustomGlow library that WeakAuras, ElvUI and BigWigs install. If none of them is loaded there is nothing to glow with.",
+                desc = "Uses the LibCustomGlow library that WeakAuras, ElvUI, and BigWigs install. If none of them is loaded there is nothing to glow with.",
                 get = On(phase, "glowOn"), set = function(_, v) put(phase, "glowOn", v and true or nil); Notify() end },
             glowTarget = { type = "select", order = 21, width = "double", name = "Glow",
                 values = { self = "This rule's own display (and its cues)", frame = "Another frame (type its name)" }, sorting = { "self", "frame" },

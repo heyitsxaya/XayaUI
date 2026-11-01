@@ -12,9 +12,9 @@ local WHITE8 = "Interface\\Buttons\\WHITE8X8"
 local GOLD = { 1, 0.82, 0, 1 }
 local TH = ns.Theme
 if TH then TH.Bind("label", GOLD) end
--- style-sheet colour for a class property ({r,g,b,a}); falls back to the given colour when Theme.lua is missing
+-- style-sheet color for a class property ({r,g,b,a}); falls back to the given color when Theme.lua is missing
 local function TC(class, prop, fb) if TH then return TH.Col(class, prop, fb) end return fb end
--- theme font + size on a fontstring (colour is set by the caller)
+-- theme font + size on a fontstring (color is set by the caller)
 local function TF(fs) if TH and fs then pcall(TH.Style, fs, nil) end end
 local function TR(fs) if TH and fs then pcall(TH.Restore, fs) end end
 local function SkinOn() return not (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.skinOff) end
@@ -133,7 +133,7 @@ local function ToolButton(parent, icon, label, onClick)
     b:SetScript("OnLeave", function(self) if self.active then self.text:SetTextColor(1, 1, 1) else self.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3]) end end)
     function b:SetActive(on)
         self.active = on and true or false
-        -- lit = the same boxed look as a selected tab (colour alone was lost under the theme's text colour)
+        -- lit = the same boxed look as a selected tab (color alone was lost under the theme's text color)
         if self.active then
             Flat(self, TC("xui-tab-selected", "bg", { 0.12, 0.05, 0.2, 0.9 }), TC("xui-tab-selected", "border", { 0.75, 0.4, 1, 1 }), { -5, -5, -2, -2 })
             self.text:SetTextColor(1, 1, 1)
@@ -650,7 +650,7 @@ local function SkinTree(w)
 end
 
 -- Row action icons on a header button (arg.xuiActions = function returning { up, down, copy, del }; a function runs on click,
--- false shows the icon greyed out, nil leaves the slot empty). Slots are fixed so icons line up from row to row.
+-- false shows the icon grayed out, nil leaves the slot empty). Slots are fixed so icons line up from row to row.
 local ACT_SLOTS = { { "up", -76 }, { "down", -52 }, { "copy", -28 }, { "del", -4 } }
 local ACT_TIP = { up = "Move up", down = "Move down", copy = "Duplicate", del = "Remove" }
 local function MakeAction(f, key)
@@ -703,7 +703,7 @@ local function PaintActions(w, arg)
     end
 end
 
--- Header title you can click and rename (arg.xuiEdit = { get, set, hint }): a borderless text box in the header; the hint (dark grey) sits to its right.
+-- Header title you can click and rename (arg.xuiEdit = { get, set, hint }): a borderless text box in the header; the hint (dark gray) sits to its right.
 local function PaintNameEdit(w, arg)
     local f = w.frame
     local ed = arg and arg.xuiEdit
@@ -737,7 +737,7 @@ local function PaintNameEdit(w, arg)
     eb.xuiSpec = ed
     eb:SetFrameLevel(f:GetFrameLevel() + 3)
     eb:ClearAllPoints()
-    if ed.title then   -- number is the header title; this box (the optional name) goes beneath it, smaller and grey
+    if ed.title then   -- number is the header title; this box (the optional name) goes beneath it, smaller and gray
         eb:SetHeight(16); eb:SetFontObject(GameFontNormalSmall); eb:SetTextColor(0.65, 0.65, 0.65)
         eb:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -(3 + ns.H3_SIZE + 3)); eb:SetWidth(220)
         if not f.xuiNamePH then
@@ -785,7 +785,7 @@ local function SkinButton(w)
             if subTxt then fs:SetPoint("TOPLEFT", f, "TOPLEFT", lx, -3) else fs:SetPoint("LEFT", f, "LEFT", lx, 0) end
             fs:SetPoint("RIGHT", f, "RIGHT", -30, 0); fs:SetJustifyH("LEFT"); w.xuiTextMoved = true
         end
-        -- grey second line (e.g. "Trigger 1" under a renamed trigger)
+        -- gray second line (e.g. "Trigger 1" under a renamed trigger)
         if subTxt then
             if not f.xuiSubFS then f.xuiSubFS = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall") end
             local sf = f.xuiSubFS

@@ -137,7 +137,7 @@ function ns.MigrateCues()
     local DB = CueRulesDB
     if not DB or not ns.rules or (DB.cuesVer or 0) >= 2 then return 0 end
     if not DB.backupPreCues then DB.backupPreCues = ns.Copy(DB.rules) end   -- full in-game copy of every rule before the first migration
-    -- repair cue keys that normalisation cleared
+    -- repair cue keys that normalization cleared
     for _, r in ipairs(ns.rules) do
         if r.isCue and not r.cueKey then local p = ns.FindParentRule(r); if p then r.cueKey = ns.CueKey(p) end end
     end

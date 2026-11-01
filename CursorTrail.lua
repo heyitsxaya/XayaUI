@@ -9,7 +9,7 @@
 -- * Not run in game when written (2026-11-01): the texture paths and the look need an in-game check.
 --
 -- How it draws: a fixed pool of textures (no per-frame allocation). Each frame the cursor position
--- is read; points are dropped along the path it travelled. A dot's age picks its place on the
+-- is read; points are dropped along the path it traveled. A dot's age picks its place on the
 -- gradient (head = first color, tail = last color) and fades it out.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
@@ -143,7 +143,7 @@ local function OnUpdate()
     local size, op = c.size or 18, c.opacity or 1
     local blend = (SHAPES[c.shape] or SHAPES.star)[3]
 
-    -- add dots along the path the cursor travelled since the last frame
+    -- add dots along the path the cursor traveled since the last frame
     local x, y = GetCursorPosition()
     local s = UIParent:GetEffectiveScale()
     x, y = x / s, y / s

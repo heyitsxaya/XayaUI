@@ -2,13 +2,13 @@
 -- Theme.lua : the XayaUI style sheet.
 --
 -- Two layers:
---   TOKENS  = the palette (accent, label, text, window / pane / border, button, tab, tree colours ...).
+--   TOKENS  = the palette (accent, label, text, window / pane / border, button, tab, tree colors ...).
 --   CLASSES = general element classes (xui-window, xui-pane, xui-tab, xui-button, xui-heading ...). Each class says which token
---             supplies its background / border / text colour. Every class can be overridden on its own, so a user can recolour
+--             supplies its background / border / text color. Every class can be overridden on its own, so a user can recolor
 --             "all buttons" or "all headings" without touching anything else.
 -- Plus a font and a size (S / M / L). A theme is plain data (numbers and strings), so import / export never runs code.
 --
--- Base themes:  "default" (XUI purple)  |  "class" (follows the character's class colour, or a class picked by hand)  |  a saved theme.
+-- Base themes:  "default" (XUI purple)  |  "class" (follows the character's class color, or a class picked by hand)  |  a saved theme.
 -- Saved in CueRulesDB.theme (the active one) and CueRulesDB.themes[name] (saved ones).
 -------------------------------------------------------------------------------
 local addonName, ns = ...
@@ -27,7 +27,7 @@ T.TOKENS = {
     { "text",          "Body text",           "Text",       { 0.96, 0.96, 0.98, 1.00 }, "Checkbox text, rule names in the list" },
     { "textMuted",     "Muted text",          "Text",       { 0.60, 0.60, 0.65, 1.00 }, "Hints and disabled items" },
     { "windowBg",      "Window",              "Surfaces",   { 0.06, 0.06, 0.06, 1.00 }, "Window background (opacity follows /xuiskin alpha)" },
-    { "paneBg",        "Panes",               "Surfaces",   { 0.04, 0.04, 0.04, 1.00 }, "Sidebar, option panes and group boxes" },
+    { "paneBg",        "Panes",               "Surfaces",   { 0.04, 0.04, 0.04, 1.00 }, "Sidebar, option panes, and group boxes" },
     { "border",        "Borders",             "Surfaces",   { 0.30, 0.30, 0.30, 1.00 }, "Window and pane outlines" },
     { "titleBar",      "Title bar",           "Surfaces",   { 0.13, 0.13, 0.13, 1.00 }, "The strip behind the window title" },
     { "buttonBg",      "Button",              "Buttons",    { 0.04, 0.04, 0.04, 0.70 }, "Ordinary buttons" },
@@ -104,7 +104,7 @@ function T.ClassColor(file)
     return { 0.75, 0.25, 1, 1 }
 end
 
--- The "class" base: the XUI structure with the class colour driving every accent-like token.
+-- The "class" base: the XUI structure with the class color driving every accent-like token.
 function T.ClassPalette(file)
     local c = T.ClassColor(file)
     local light = Mix(c, { 1, 1, 1, 1 }, 0.35)
@@ -168,7 +168,7 @@ function T.Resolve()
     end
 end
 
--- colour of a class property: the class override, else the token the class points at. Always returns a fresh {r,g,b,a}.
+-- color of a class property: the class override, else the token the class points at. Always returns a fresh {r,g,b,a}.
 function T.Col(class, prop, fallback)
     local th = CueRulesDB and CueRulesDB.theme
     local def = T.CLASS[class]
@@ -198,7 +198,7 @@ local function FontWorks(path)
     return ok and res and true or false
 end
 
--- Paint a fontstring with the theme: remember its original font / size / colour so Restore can undo it.
+-- Paint a fontstring with the theme: remember its original font / size / color so Restore can undo it.
 function T.Style(fs, class, opts)
     if not (fs and fs.SetFont and fs.GetFont) then return end
     if not fs.xuiTheme then
@@ -228,9 +228,9 @@ end
 -------------------------------------------------------------------------------
 -- Changing the theme
 -------------------------------------------------------------------------------
--- While the colour picker is open (scrubbing the wheel fires a change on every mouse move) the options window must NOT be rebuilt:
+-- While the color picker is open (scrubbing the wheel fires a change on every mouse move) the options window must NOT be rebuilt:
 -- AceGUI recycles its widgets on a rebuild, and the picker keeps calling the old widget, which by then belongs to a different option,
--- so the colour lands on the wrong setting. Repaints are queued and run once the picker closes.
+-- so the color lands on the wrong setting. Repaints are queued and run once the picker closes.
 local queue, qticker = {}, nil
 function T.Defer(fn)
     if not (ColorPickerFrame and ColorPickerFrame.IsShown and ColorPickerFrame:IsShown() and C_Timer) then fn(); return end
@@ -261,7 +261,7 @@ function T.SetBase(base, classPick)
     local th = DB(); if not th then return end
     th.base = base
     th.classPick = classPick
-    th.tokens = {}   -- a new base starts clean; individual colours are re-picked on top of it
+    th.tokens = {}   -- a new base starts clean; individual colors are re-picked on top of it
     th.classes = {}
     T.Changed()
 end
@@ -419,13 +419,13 @@ function T.BuildArgs(refresh)
     local function say(m) msg = m or ""; refresh() end
 
     args.intro = { type = "description", order = nx(), width = "full", fontSize = "medium",
-        name = "The style sheet: one palette, plus general classes (window, pane, tab, button, heading, text, rule list ...) that each take their colours from it. Change a colour once and everything of that class follows. Class overrides below change just one kind of element." }
+        name = "The style sheet: one palette, plus general classes (window, pane, tab, button, heading, text, rule list ...) that each take their colors from it. Change a color once and everything of that class follows. Class overrides below change just one kind of element." }
 
     args.baseHdr = { type = "header", order = nx(), name = "Base theme" }
     args.base = { type = "select", order = nx(), width = "double", name = "Theme",
-        desc = "XUI default (purple), Class colours (follows your character's class), or a theme you saved or imported.",
+        desc = "XUI default (purple), Class colors (follows your character's class), or a theme you saved or imported.",
         values = function()
-            local v = { default = "XUI default (purple)", class = "Class colours" }
+            local v = { default = "XUI default (purple)", class = "Class colors" }
             for _, n in ipairs(T.SavedNames()) do v["saved:" .. n] = "Saved: " .. n end
             return v
         end,
@@ -443,8 +443,8 @@ function T.BuildArgs(refresh)
             if n then T.Load(n) else T.SetBase(v, v == "class" and (DB() and DB().classPick) or nil) end
             refresh()
         end }
-    args.classPick = { type = "select", order = nx(), width = "double", name = "Class colour source",
-        desc = "Which class colour drives the theme. Automatic uses the character you are playing.",
+    args.classPick = { type = "select", order = nx(), width = "double", name = "Class color source",
+        desc = "Which class color drives the theme. Automatic uses the character you are playing.",
         hidden = function() local th = DB(); return not (th and th.base == "class") end,
         values = function()
             local v = { auto = "Automatic (current character)" }
@@ -464,7 +464,7 @@ function T.BuildArgs(refresh)
 
     args.fontHdr = { type = "header", order = nx(), name = "Font and size" }
     args.font = { type = "select", order = nx(), width = "double", name = "Font",
-        desc = "Applies to the window title, tabs, buttons and the rule list. Fonts added to the Media/Fonts folder need a full game restart before they load.",
+        desc = "Applies to the window title, tabs, buttons, and the rule list. Fonts added to the Media/Fonts folder need a full game restart before they load.",
         values = function() local v = ns.FontList and ns.FontList() or { none = "(none)" }; return v end,
         sorting = function() local _, ord = ns.FontList(); return ord end,
         get = function() return T.FontKey() end,
@@ -496,7 +496,7 @@ function T.BuildArgs(refresh)
     -- class overrides
     local ov = { type = "group", order = nx(), name = "Class overrides", inline = true, args = {
         info = { type = "description", order = 0, width = "full",
-            name = "Every element belongs to a general class. By default a class takes its colour from the palette above; pick a colour here to change only that class. 'Reset' returns it to the palette." } } }
+            name = "Every element belongs to a general class. By default a class takes its color from the palette above; pick a color here to change only that class. 'Reset' returns it to the palette." } } }
     local po = 1
     for _, c in ipairs(T.CLASSES) do
         local cls, label, map = c[1], c[2], c[3]
@@ -520,7 +520,7 @@ function T.BuildArgs(refresh)
     args.overrides = ov
 
     -- save / import / export
-    args.shareHdr = { type = "header", order = nx(), name = "Save, import and export" }
+    args.shareHdr = { type = "header", order = nx(), name = "Save, import, and export" }
     local saveName = ""
     args.saveName = { type = "input", order = nx(), width = "normal", name = "Name", get = function() return saveName end, set = function(_, v) saveName = v end }
     args.save = { type = "execute", order = nx(), width = "half", name = "Save",
@@ -535,7 +535,7 @@ function T.BuildArgs(refresh)
         desc = "Export fills this; to import, paste a theme string here and press Import.",
         get = function() return exportText end, set = function(_, v) exportText = v end }
     args.import = { type = "execute", order = nx(), width = "normal", name = "Import theme from box",
-        desc = "Applies the pasted theme (and saves it under the Name above if one is typed). Theme strings contain colours, a font name and a size only.",
+        desc = "Applies the pasted theme (and saves it under the Name above if one is typed). Theme strings contain colors, a font name, and a size only.",
         func = function()
             local ok, e = T.Import(exportText, saveName ~= "" and saveName or nil)
             say(ok and "Theme imported." or e)

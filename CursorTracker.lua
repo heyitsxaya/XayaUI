@@ -579,7 +579,7 @@ function ns.CursorTrackerGroup(Notify)
         if P == "cast" then
             a.castSame = tog("castSame", "Same as Global Cooldown", 2, { width = "full", disabled = dis,
                 hidden = function() return not C().castOn end,
-                desc = "Casting uses exactly the effects, color, direction and opacity chosen under Global Cooldown. Unticking copies the current Global Cooldown choices here so you can change them.",
+                desc = "Casting uses exactly the effects, color, direction, and opacity chosen under Global Cooldown. Unticking copies the current Global Cooldown choices here so you can change them.",
                 set = function(_, v)
                     local c = C()
                     if not v then for _, n in ipairs(ns.CURSOR_EFFECT_KEYS) do c["cast" .. n] = CopyVal(c["gcd" .. n]) end end
@@ -595,7 +595,7 @@ function ns.CursorTrackerGroup(Notify)
         a.recolor = fx("Recolor", "Recolor the cursor", 8, "tog")
         a.color = fx("Color", "Effect color", 9, "clr")
         a.dir = fx("Dir", "Direction", 10, "sel", nil, DIR_V, DIR_O)
-        a.reverse = fx("Reverse", "Fill instead of drain", 11, "tog", { desc = "Wipe, gradient and swipe drain by default; ticked they fill up." })
+        a.reverse = fx("Reverse", "Fill instead of drain", 11, "tog", { desc = "Wipe, gradient, and swipe drain by default; ticked they fill up." })
         a.fxOpacity = fx("FxOpacity", "Effect opacity", 12, "rng", nil, 0.05, 1, 0.05, { isPercent = true })
         a.outlineScale = fx("OutlineScale", "Outline size (x cursor)", 13, "rng", nil, 1, 1.8, 0.05)
         a.scale = fx("Scale", "Cursor scale", 14, "rng", nil, 0.5, 2, 0.05, { desc = "Multiplies the cursor height; still capped at " .. MAXH .. " px. Effects follow it." })

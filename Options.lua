@@ -99,7 +99,7 @@ end
 local function SearchBox(order, pick, name, kind)
     local item = kind == "item"
     return { type = "input", name = name or (item and "Search by item name" or "Search by spell name"), order = order, width = "double",
-        desc = item and "Type part of an item name (every word, any order; * matches anything). A list with icons pops up; click one (or press Enter for the first) to fill in its item ID. Also accepts an ID. Finds items in your bags, bank and worn gear, plus every item your game client has already seen; an item it has never loaded will not appear, so type its ID instead (Wowhead shows it in the URL)."
+        desc = item and "Type part of an item name (every word, any order; * matches anything). A list with icons pops up; click one (or press Enter for the first) to fill in its item ID. Also accepts an ID. Finds items in your bags, bank, and worn gear, plus every item your game client has already seen; an item it has never loaded will not appear, so type its ID instead (Wowhead shows it in the URL)."
             or "Type part of a spell name. A list with icons pops up; click one (or press Enter for the first) to fill in its spell ID. Also accepts an ID.",
         arg = { xuiSearch = pick, xuiSearchKind = kind },
         get = function() return "" end, set = function() end }
@@ -338,7 +338,7 @@ do
                 hdr = { type = "execute", order = 1, width = "full",
                     arg = { xuiLeft = true, xuiArrowLeft = true, xuiArrow = function() return not isShut() end },
                     name = function()
-                        if ns.SkinRows and ns.SkinRows() then return title end   -- skin draws a vertically centred arrow itself
+                        if ns.SkinRows and ns.SkinRows() then return title end   -- skin draws a vertically centered arrow itself
                         return (isShut() and CLOSED or OPEN) .. "  " .. title
                     end,
                     desc = "Expand or collapse this section. Collapsing never changes any setting.",
@@ -559,7 +559,7 @@ function ns.CueTransparent(f)
     if not f then return false end
     if ns.CueTop(f) then return true end
     if f.default == "display" or f.default == "sound" or f.default == "hybrid" or f.default == "advanced" or f.default == "cursor" then return true end
-    do   -- a default category that lost its flag (renamed / re-created) is still recognised by its name
+    do   -- a default category that lost its flag (renamed / re-created) is still recognized by its name
         local nm0 = tostring(f.name or ""):lower()
         if not f.parent then
             for _, d in ipairs(ns.DEFAULT_FOLDERS or {}) do if d.name:lower() == nm0 then return true end end
@@ -745,7 +745,7 @@ local ruleClip = nil          -- { name = "...", data = <deep copy of the source
 local pasteSel = {}           -- section key -> true (shared by the Rule tab, folder pages and the right-click menu)
 local PASTE_ORDER = { "ids", "states", "talents", "extra", "load", "display", "position", "textDur", "textCnt", "textAbs", "sound" }
 local PASTE_LABELS = {
-    ids = "Trigger: Spell ID, Max Charges and Aura ID",
+    ids = "Trigger: Spell ID, Max Charges, and Aura ID",
     states = "Conditions: Cooldown State and Buff State",
     talents = "Talents (Requirement Mode and List)",
     extra = "Additional Triggers (list and combine mode)",
@@ -755,7 +755,7 @@ local PASTE_LABELS = {
     textDur = "Text: Buff Duration",
     textCnt = "Text: Stacks / Charges Count",
     textAbs = "Text: Shield / Absorb Amount",
-    sound = "Audio: Sound, Channel and Repeat",
+    sound = "Audio: Sound, Channel, and Repeat",
 }
 local function PasteApply(key, dst, src)
     local C = ns.Copy
@@ -880,7 +880,7 @@ local function BuildRule(i, rule)
         if o then o.hidden = function() return not ns.BuffUsed(rule) end end
     end
     trigger.args.cdRemove = { type = "execute", name = "Remove", order = 7, width = "half",
-        desc = "Remove the Cooldown trigger: clears this rule's Cooldown spell, max charges and state.",
+        desc = "Remove the Cooldown trigger: clears this rule's Cooldown spell, max charges, and state.",
         hidden = function() return not ns.CooldownUsed(rule) end,
         func = function() rule.useCooldown = false; rule.spellID = 0; rule.maxCharges = 0; rule.cdState = nil; Changed(rule); Notify() end }
     trigger.args.buffRemove = { type = "execute", name = "Remove", order = 14, width = "half",
@@ -1244,7 +1244,7 @@ local function BuildRule(i, rule)
             colorH = { type = "header", name = "Color & Blend", order = 20 },
             additive = Tog(V, "additive", "Additive blend", 21, on),
             desaturate = Tog(V, "desaturate", "Desaturate the base texture", 22, on,
-                { width = "double", desc = "Removes the art's own colors first. On its own this grays it; with a tint below it gives an even, precise recolor (the tint multiplies the gray art). Progress textures grey the base automatically whenever it's tinted (see Advanced customization under Opacity & Fill) and lock this control while that's on.",
+                { width = "double", desc = "Removes the art's own colors first. On its own this grays it; with a tint below it gives an even, precise recolor (the tint multiplies the gray art). Progress textures gray the base automatically whenever it's tinted (see Advanced customization under Opacity & Fill) and lock this control while that's on.",
                   disabled = function() return ProgLocked() end,
                   get = function() if ProgLocked() then return V.recolor and true or false end return V.desaturate and true or false end }),
             recolor = Tog(V, "recolor", "Tint the base texture", 23, on,
@@ -1323,12 +1323,12 @@ local function BuildRule(i, rule)
             tint = Col(OV, "tint", "Overlay tint color", 6, on, { disabled = function() return not OV.enabled end }),
             desaturate = Tog(OV, "desaturate", "Desaturate the overlay first", 7, on,
                 { width = "double", disabled = function() return not OV.enabled or ProgLocked() end,
-                  desc = "Progress textures keep the top layer ungreyed by default (Advanced customization under Opacity & Fill overrides this).",
+                  desc = "Progress textures keep the top layer ungrayed by default (Advanced customization under Opacity & Fill overrides this).",
                   get = function() if ProgLocked() then return false end return OV.desaturate and true or false end }),
             additive = Tog(OV, "additive", "Additive blend for the overlay", 8, on,
                 { width = "double", disabled = function() return not OV.enabled end }),
             note = { type = "description", order = 9, width = "full", fontSize = "small",
-                name = "The overlay shares the base's size, rotation, mirror and zoom. Tint the base underneath (or desaturate it) on the Color & blend line above; opacity of each layer is set under Opacity & fill." },
+                name = "The overlay shares the base's size, rotation, mirror, and zoom. Tint the base underneath (or desaturate it) on the Color & blend line above; opacity of each layer is set under Opacity & fill." },
         },
     }
     for _, k in ipairs({ "source", "tint", "desaturate", "additive" }) do overlay.args[k].disabled = nil end   -- the Overlay Layer section is not drawn while the overlay is off
@@ -1376,7 +1376,7 @@ local function BuildRule(i, rule)
             advanced = Tog(OV, "advanced", "Advanced customization (override the linked base/overlay opacity and tint defaults)", 30,
                 function() Changed(rule); Notify() end,
                 { width = "full", hidden = function() return not FL.enabled end,
-                  desc = "Progress textures default to a locked base+overlay layering: the base opens at a reduced opacity tied to Overlay opacity above, greys automatically only when tinted, and the overlay never greys or dims. Tick this to set the base opacity, base grey and overlay grey independently instead." }),
+                  desc = "Progress textures default to a locked base+overlay layering: the base opens at a reduced opacity tied to Overlay opacity above, grays automatically only when tinted, and the overlay never grays or dims. Tick this to set the base opacity, base gray, and overlay gray independently instead." }),
         },
     }
     ns.GatePane(rule, opacity.args, "fadeAlpha", "Fade opacity options", 11.5, function() return V.fadeAlpha end, { "fadeAlphaMax", "fadeAlphaMin" })
@@ -1581,7 +1581,7 @@ local function BuildRule(i, rule)
     end
     local dispBody = { trigger = display.args.trigger,
         pausePv = { type = "toggle", name = "Pause preview animations", order = 0.5, width = "double",
-            desc = "Freezes the sample countdown, the fades and the flash in every preview while the images stay on screen. Untick to resume.",
+            desc = "Freezes the sample countdown, the fades, and the flash in every preview while the images stay on screen. Untick to resume.",
             get = function() return ns.previewPaused end,
             set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
         texture = Sub("texture", "Texture", 1, tex.args),
@@ -2173,7 +2173,7 @@ function BuildClassCreator()
             name = function()
                 local specID = ns.CurrentSpecID and ns.CurrentSpecID()
                 local okS, _, specName = pcall(GetSpecializationInfoByID, specID or 0)
-                return "Detected: |cffffd100" .. (UnitClass("player") or "?") .. " - " .. ((okS and specName) or "unknown spec") .. "|r. For Death Knight, Hunter, Paladin and Warlock (all specs) it makes skeleton rules for cooldowns, auras and procs, sorted into Cooldowns / Auras / Procs and then Defensive / Offensive / Utility / Unsorted inside the static group '<Class> <Spec> - autorule population', and flags each rule (kind, role, talent / hero / glow ...). Other specs get one skeleton rule (cooldown ready) per spellbook cooldown, sorted by the curated list. The window jumps to the new group." end },
+                return "Detected: |cffffd100" .. (UnitClass("player") or "?") .. " - " .. ((okS and specName) or "unknown spec") .. "|r. For Death Knight, Hunter, Paladin, and Warlock (all specs) it makes skeleton rules for cooldowns, auras, and procs, sorted into Cooldowns / Auras / Procs and then Defensive / Offensive / Utility / Unsorted inside the static group '<Class> <Spec> - autorule population', and flags each rule (kind, role, talent / hero / glow ...). Other specs get one skeleton rule (cooldown ready) per spellbook cooldown, sorted by the curated list. The window jumps to the new group." end },
         apTalents = { type = "toggle", order = 0.3, width = "full", name = "Include talents I have not picked (rule only loads when the talent is known)",
             get = function() return ns.AutoCfg().talents ~= false end,
             set = function(_, v) ns.AutoCfg().talents = v and true or false; ns.MarkDirty(); Notify() end },
@@ -2184,7 +2184,7 @@ function BuildClassCreator()
             end },
         talHdr = { type = "header", order = 0.6, name = "All talents (every class and spec)" },
         talInfo = { type = "description", order = 0.61, width = "full", fontSize = "medium",
-            name = function() return (ns.TalentStatus and ns.TalentStatus() or "") .. " Reads every class, spec and hero talent tree from the game (not from a fixed list), so it follows the current patch. In chat: /xui talents, /xui talents status, /xui talents <name>." end },
+            name = function() return (ns.TalentStatus and ns.TalentStatus() or "") .. " Reads every class, spec, and hero talent tree from the game (not from a fixed list), so it follows the current patch. In chat: /xui talents, /xui talents status, /xui talents <name>." end },
         talScan = { type = "execute", order = 0.62, width = "double", name = "Scan all talents now",
             func = function()
                 local ok, m = ns.ScanAllTalents(function(_, msg) creatorMsg = msg; Notify() end)
@@ -3023,7 +3023,7 @@ local function BuildFolder(k, f)
                 confirm = true, confirmText = "Delete this group? The rules and nested groups inside are kept and move up one level.",
                 func = function() ns.DeleteFolderById(f.id) end },
             deleteAllTop = { type = "execute", name = "|cffff6060Delete group and all contents|r", order = 1.6, width = 1,
-                desc = "Deletes this group, every nested group and every rule inside them. This cannot be undone.",
+                desc = "Deletes this group, every nested group, and every rule inside them. This cannot be undone.",
                 confirm = true, confirmText = "Delete this group AND all rules and nested groups inside it? This cannot be undone.",
                 func = function() ns.DeleteFolderAllById(f.id) end },
             newRule = { type = "execute", name = "+ New rule in this group", order = 2, width = "double",
@@ -3044,7 +3044,7 @@ local function BuildFolder(k, f)
                 func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
             pausePv = { type = "toggle", name = "Pause preview animations", order = 4.5, width = "double",
                 hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end,
-                desc = "Freezes the sample countdown, the fades and the flash in every preview while the images stay on screen. Untick to resume. This is the same switch as on Smart Categories and on each rule, so it pauses every preview, not only this group's.",
+                desc = "Freezes the sample countdown, the fades, and the flash in every preview while the images stay on screen. Untick to resume. This is the same switch as on Smart Categories and on each rule, so it pauses every preview, not only this group's.",
                 get = function() return ns.previewPaused end,
                 set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
             note = { type = "description", order = 5, width = "full", fontSize = "small",
@@ -3090,7 +3090,7 @@ local function BuildFolder(k, f)
     local dispArgs = take({ "arrange", "applyText" })
     dispArgs.placement = { type = "group", inline = true, order = 1, name = "Opacity, Scale, Layer & Position", args = dispFromContainer }
     dispArgs.note = { type = "description", order = 0, width = "full", fontSize = "small",
-        name = "Display settings for every display inside this group and its nested groups: opacity, scale, layer (frame strata), position, alignment and shared text formatting. Tinting / colour for a whole group is not built yet." }
+        name = "Display settings for every display inside this group and its nested groups: opacity, scale, layer (frame strata), position, alignment, and shared text formatting. Tinting / color for a whole group is not built yet." }
     local loadArgs = { override = take({ "loadOverride" }).loadOverride, conds = ns.FolderLoadConditions(f) }
     local lock = function() return ns.IsEditLocked({ folder = f.id }) end
     ns.LockArgs(groupArgs, lock); ns.LockArgs(dispArgs, lock); ns.LockArgs(loadArgs, lock)
@@ -3249,7 +3249,7 @@ local function BuildOptions()
         type = "group", name = "SMART CATEGORIES", order = 1, childGroups = "tree",
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "Rules that watch a cooldown, a buff and your talents, then play a sound and/or show a texture. Pick a rule on the left, or add one. The eye and headphone icons in the sidebar preview a rule (or a whole group / everything) without changing it." },
+                name = "Rules that watch a cooldown, a buff, and your talents, then play a sound and/or show a texture. Pick a rule on the left, or add one. The eye and headphone icons in the sidebar preview a rule (or a whole group / everything) without changing it." },
             newRule = { type = "execute", name = "+ New rule", order = 1,
                 func = function()
                     StartNewRule(nil)
@@ -3268,7 +3268,7 @@ local function BuildOptions()
                 name = function() return ns.unlocked and "Lock visuals" or "Unlock visuals (drag on screen)" end,
                 func = function() ns.ToggleUnlock(); Notify() end },
             pausePv = { type = "toggle", name = "Pause preview animations", order = 5.2, width = "double",
-                desc = "Freezes the sample countdown, the fades and the flash in every preview and unlocked display while the images stay on screen. Untick to resume.",
+                desc = "Freezes the sample countdown, the fades, and the flash in every preview and unlocked display while the images stay on screen. Untick to resume.",
                 get = function() return ns.previewPaused end,
                 set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
             -- "Add Default Categories" button removed for now (2026-10-31): folders are the grouping tool; Smart Categories do the by-type sorting.
@@ -3346,14 +3346,14 @@ local function BuildOptions()
         all.args.pickerHdr = { type = "header", order = 0.1, name = "Choose what this rule shows", hidden = function() return not picker end }
         local TI = ns.TypeIcon or function(_, f) return f end
         all.args.pickIcon = Entry(0.2, TI("icon", "Spell_Holy_PowerWordShield"), "Icon", "Shows a spell icon with an optional cooldown overlay", "icon")
-        all.args.pickBar = Entry(0.4, TI("progressbar", "Ability_Rogue_Sprint"), "Progress Bar", "A bar with name, timer and icon (creates a Buff Bar)", "bar")
+        all.args.pickBar = Entry(0.4, TI("progressbar", "Ability_Rogue_Sprint"), "Progress Bar", "A bar with name, timer, and icon (creates a Buff Bar)", "bar")
         all.args.pickProg = Entry(0.5, TI("progresstex", "Spell_Nature_TimeStop"), "Progress Texture", "Shows a texture that changes based on duration", "progresstex")
         all.args.pickText = Entry(0.6, TI("text", "INV_Misc_Note_01"), "Text", "One or more lines of text, with dynamic information", "text")
         all.args.pickTex = Entry(0.3, TI("sttexture", "INV_Misc_Gem_Variety_01"), "Texture", "Shows a custom texture", "texture")
         all.args.pickDGroup = Entry(0.65, TI("dyngroup", "INV_Misc_Bag_10_Blue"), "Dynamic Group", "A container whose elements move to fit what is detected", "dgroup")
         all.args.pickSound = Entry(0.62, TI("sound", "INV_Misc_Note_01"), "Sound Cue", "Plays a sound when its conditions are met, with no display", "sound")
         all.args.pickSGroup = Entry(0.63, TI("stgroup", "INV_Misc_Bag_10"), "Static Group", "A container with fixed X / Y positions for its elements", "sgroup")
-        all.args.pickCustom = Entry(0.64, 1669494, "Custom", "A blank rule with no display, sound or cues", "custom")
+        all.args.pickCustom = Entry(0.64, 1669494, "Custom", "A blank rule with no display, sound, or cues", "custom")
         all.args.pickImport = Entry(0.66, TI("import", "INV_Scroll_03"), "Import", "Import from an encoded string (opens the Profiles tab)", "import")
         all.args.pickGap = { type = "description", order = 0.85, width = "full", fontSize = "large", name = " \n ", hidden = function() return not picker end }   -- empty rows: keeps Cancel clear of the last row
         all.args.pickCancel = { type = "execute", order = 0.9, name = "Cancel", width = "half", func = function() picker = nil; local o = ns.pickOrigin; ns.pickOrigin = nil; Notify(); ns.GoHome(o) end }
@@ -3381,7 +3381,7 @@ local function BuildOptions()
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "Timer bars for buffs on you. Layout options below apply to the whole group. The eye icon in the sidebar previews a bar (or all of them)." },
             pausePv = { type = "toggle", name = "Pause preview animations", order = 1.5, width = "double",
-                desc = "Freezes the sample countdown, the fades and the flash in every preview and unlocked display while the images stay on screen. Untick to resume.",
+                desc = "Freezes the sample countdown, the fades, and the flash in every preview and unlocked display while the images stay on screen. Untick to resume.",
                 get = function() return ns.previewPaused end,
                 set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
             newBar = { type = "execute", name = "+ New buff bar", order = 1, width = "double",
@@ -4012,7 +4012,7 @@ end
 -- returns kind, obj, list of sibling indices, position in that list
 local function Siblings(uv)
     local last = LastKey(uv) or ""
-    -- in the Loaded / Not Loaded views only the rows shown there count as neighbours (so an arrow always moves the row visibly)
+    -- in the Loaded / Not Loaded views only the rows shown there count as neighbors (so an arrow always moves the row visibly)
     local first = tostring(uv or ""):match("^([^\001]+)")
     local scope = (first == "loaded" or first == "notloaded") and first or nil
     local okc, ctx
@@ -4324,7 +4324,7 @@ local PASTE_MENU_LABELS = {
     extra = "Additional Triggers",
     load = "Load Conditions", display = "Display (Not Position or Text)", position = "Display: Position (X / Y)",
     textDur = "Text: Buff Duration", textCnt = "Text: Stacks / Charges Count", textAbs = "Text: Shield / Absorb Amount",
-    sound = "Audio: Sound, Channel and Repeat",
+    sound = "Audio: Sound, Channel, and Repeat",
 }
 local function AddPasteMenu(root, label, getTargets, describe)
     local sub = root:CreateButton(label)
@@ -4514,7 +4514,7 @@ end
 local BANNER_TINT = {
     root = { 1, 0.78, 0 }, loaded = { 0.1, 0.85, 0.75 }, notloaded = { 0.95, 0.2, 0.2 }, display = { 0.1, 0.5, 1 }, sound = { 0.1, 0.75, 0.3 }, hybrid = { 1, 0.5, 0.1 }, advanced = { 0.75, 0.25, 1 }, smart = { 0.3, 0.8, 1 }, cursor = { 0.95, 0.35, 0.75 }, other = { 0.7, 0.7, 0.75 },
 }
--- Sidebar highlight: every category / folder row is neutral grey; the selected row, its parent groups and the rows inside the
+-- Sidebar highlight: every category / folder row is neutral gray; the selected row, its parent groups and the rows inside the
 -- selected group take the purple of the Advanced Cue Tracking banner. (Row sizes and fonts still follow BannerTint.)
 ns.NEUTRAL_TINT = { 0.2, 0.2, 0.24 }
 function ns.SelectedUV(button)
@@ -5918,7 +5918,7 @@ local function RegisterBlizzardPanel()
     sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
     sub:SetWidth(560)
     sub:SetJustifyH("LEFT")
-    sub:SetText("Sound cues and on-screen alerts driven by rules: buff, cooldown, talent and conditions.\nSlash commands: /xui (or /xayaui)  |  /xui status  |  /xui probe <spellID>  |  /xui unlock")
+    sub:SetText("Sound cues and on-screen alerts driven by rules: buff, cooldown, talent, and conditions.\nSlash commands: /xui (or /xayaui)  |  /xui status  |  /xui probe <spellID>  |  /xui unlock")
 
     local btn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     btn:SetSize(200, 28)

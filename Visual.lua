@@ -973,7 +973,7 @@ function ns.RefreshVisual(rule)
     -- overlay layer (own tint / desaturate / blend / opacity)
     local ov = v.overlay
     -- Progress-texture rules (v.fill.enabled) default to a locked base+overlay layering, unless ov.advanced is on:
-    -- the overlay never greys (stays the "clean" top layer) and the base greys automatically iff it's tinted, to
+    -- the overlay never grays (stays the "clean" top layer) and the base grays automatically iff it's tinted, to
     -- sharpen the tint (see Core.lua's visual.overlay comment and the Options.lua "Advanced customization" toggle).
     local progLocked = (v.fill and v.fill.enabled) and not (ov and ov.advanced)
     fr.tex2On = ov and ov.enabled and true or false

@@ -179,7 +179,7 @@ Add("spellKnown", {
 -- 1b. Talent Known  (WA: "Talent Known"). A trigger of its own, separate from the Talents list on the Load side.
 Add("talentKnown", {
     label = "Talent Known", wa = "Talent Known", group = "Talent",
-    note = "True while the talent is picked in your CURRENT build (class, spec or hero tree). Pick from your build or type a spell ID. This is independent of the Talents list on the rule's Load side: use that for 'only load when', and this one as a trigger you can combine with others.",
+    note = "True while the talent is picked in your CURRENT build (class, spec, or hero tree). Pick from your build or type a spell ID. This is independent of the Talents list on the rule's Load side: use that for 'only load when', and this one as a trigger you can combine with others.",
     fields = {
         { key = "talentID", kind = "talent", label = "Talent spell ID", required = true },
         { key = "state", kind = "select", label = "State", required = true, vals = YN("Talent is picked", "Talent is NOT picked") },
@@ -369,7 +369,7 @@ function ns.TriggerFormChoices()
 end
 Add("stanceForm", {
     label = "Stance / Form", wa = "Stance/Form/Aura", group = "Player",
-    note = "Druid forms, warrior stances, paladin auras, rogue stealth form, shadowform and similar. The list shows what your current spec offers.",
+    note = "Druid forms, warrior stances, paladin auras, rogue stealth form, shadowform, and similar. The list shows what your current spec offers.",
     fields = {
         { key = "form", kind = "select", label = "Form / stance", required = true, dyn = ns.TriggerFormChoices },
         { key = "state", kind = "select", label = "State", required = true, vals = YN("Is active", "Is NOT active") },
@@ -401,7 +401,7 @@ Add("stanceForm", {
 -- 7. Totem  (WA: "Totem")
 Add("totem", {
     label = "Totem / Guardian Slot", wa = "Totem", group = "Player",
-    note = "Shaman totems, monk statues, DK ghouls and other things that occupy a totem slot. Spell ID is optional (0 = any totem in the chosen slot).",
+    note = "Shaman totems, monk statues, DK ghouls, and other things that occupy a totem slot. Spell ID is optional (0 = any totem in the chosen slot).",
     fields = {
         { key = "slot", kind = "select", label = "Totem slot", required = true, vals = {
             values = { any = "Any slot", ["1"] = "Slot 1", ["2"] = "Slot 2", ["3"] = "Slot 3", ["4"] = "Slot 4" },
@@ -527,7 +527,7 @@ Add("dkRunes", {
 -- 12. Secondary resource  (WA: "Power" / "Evoker Essence", restricted to the resources Midnight leaves readable)
 Add("resource", {
     label = "Class Resource (combo points, runes, holy power...)", wa = "Power / Evoker Essence / Death Knight Rune", group = "Class resource",
-    note = "Pick the resource in 'Class resource type'. Runes (Death Knight) counts runes that are ready; it is unknown on other classes, so the rule never fires there. Secondary resources only. Mana, rage, energy, focus, runic power and other PRIMARY resources are secret in Midnight and are not offered. 'Similar to combo points / holy power' is the wiki's wording; each resource needs one in-game check.",
+    note = "Pick the resource in 'Class resource type'. Runes (Death Knight) counts runes that are ready; it is unknown on other classes, so the rule never fires there. Secondary resources only. Mana, rage, energy, focus, runic power, and other PRIMARY resources are secret in Midnight and are not offered. 'Similar to combo points / holy power' is the wiki's wording; each resource needs one in-game check.",
     new = { count = 3 },
     fields = {
         { key = "power", kind = "select", label = "Class resource type", required = true, vals = { values = POWER_VALUES, order = POWER_ORDER } },
@@ -677,7 +677,7 @@ Add("targetDebuff", {
 
 Add("playerState", {
     label = "Player State (alive, moving, pet...)", wa = "Conditions", group = "Player",
-    note = "Simple yes/no facts about you. In combat, mounted, resting and group state already live under Load.",
+    note = "Simple yes/no facts about you. In combat, mounted, resting, and group state already live under Load.",
     fields = {
         { key = "what", kind = "select", label = "Check", required = true, vals = { values = STATE_VALUES, order = STATE_ORDER } },
         { key = "state", kind = "select", label = "State", required = true, vals = YN("Yes", "No") },
@@ -858,7 +858,7 @@ function ns.TriggerIcon(rule)
     end
 end
 
--- Swap the trigger at place a with its neighbour (dir = -1 up, +1 down). Moving one additional row past another swaps
+-- Swap the trigger at place a with its neighbor (dir = -1 up, +1 down). Moving one additional row past another swaps
 -- the two rows, and outcome conditions that point at them are re-pointed so they keep meaning the same trigger.
 -- Custom trigger names. tok = "cd" | "buff" | "x" (j = row index for "x"). A name replaces the number in the pane header;
 -- dropdowns show "Name (Trigger N):  Type" so the number is never lost.
@@ -869,7 +869,7 @@ function ns.TriggerName(rule, tok, j)
     if type(n) == "string" and n:match("%S") then return n end
 end
 function ns.TriggerHeader(rule, tok, j, pos, label)
-    return "Trigger " .. pos .. ":  " .. label   -- the number is always the title; a custom name sits beneath it in grey (xuiSub)
+    return "Trigger " .. pos .. ":  " .. label   -- the number is always the title; a custom name sits beneath it in gray (xuiSub)
 end
 function ns.TriggerChoiceLabel(rule, tok, j, pos, label)
     local n = ns.TriggerName(rule, tok, j)
@@ -877,7 +877,7 @@ function ns.TriggerChoiceLabel(rule, tok, j, pos, label)
     return "Trigger " .. pos .. ":  " .. label
 end
 function ns.TriggerNameArg(rule, tok, j, order, onChange)
-    return { type = "input", order = order, width = "full", name = "Name  (optional: shown in grey under the trigger number)",
+    return { type = "input", order = order, width = "full", name = "Name  (optional: shown in gray under the trigger number)",
         desc = "Up to 30 characters. The trigger number always stays in the title; the name appears beneath it and in brackets in dropdowns.",
         get = function() return ns.TriggerName(rule, tok, j) or "" end,
         set = function(_, v)

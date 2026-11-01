@@ -138,9 +138,9 @@ ns.RULE_DEFAULTS = {
             tex = "",
             tint = { 1, 1, 1, 1 }, desaturate = false, additive = false,
             alpha = 1,         -- opacity of the overlay on its own
-            -- Progress-texture rules (visual.fill.enabled) link the base's opacity/greying to this layer by
-            -- default: the overlay never greys and never dims below 1, the base opens at a reduced opacity that
-            -- tracks Overlay opacity to keep their original ratio, and the base greys automatically iff a tint is
+            -- Progress-texture rules (visual.fill.enabled) link the base's opacity/graying to this layer by
+            -- default: the overlay never grays and never dims below 1, the base opens at a reduced opacity that
+            -- tracks Overlay opacity to keep their original ratio, and the base grays automatically iff a tint is
             -- selected (desaturate mirrors recolor). advanced=true breaks that link so all of those are manual again.
             advanced = false,
         },
@@ -266,7 +266,7 @@ end
 -- The category a rule sits in decides its KIND: Display Cues = visual only, Sound Cues = sound only, everything else
 -- (Hybrid Cues, Advanced Cue Tracking, custom folders, unfiled rules) = both.
 ns.DEFAULT_FOLDERS = {
-    { key = "display",  name = "Display Cues",           note = "Default category. Visual-only rules: texture, icon or text. No sound options." },
+    { key = "display",  name = "Display Cues",           note = "Default category. Visual-only rules: texture, icon, or text. No sound options." },
     { key = "sound",    name = "Sound Cues",             note = "Default category. Sound-only rules. No display options." },
     { key = "hybrid",   name = "Hybrid Cues",            note = "Default category. Rules with both a display and a sound." },
     { key = "advanced", name = "Advanced Cue Tracking",  note = "Default category. Rules that combine several conditions (cooldown state, buff, talents, load conditions). Also the intended home for combination rules once they exist." },

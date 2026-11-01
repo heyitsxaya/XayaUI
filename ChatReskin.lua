@@ -1,15 +1,15 @@
 -------------------------------------------------------------------------------
--- ChatReskin.lua : ElvUI Chat Reskin (QoL feature). Phase 1: styling and behaviour of the
+-- ChatReskin.lua : ElvUI Chat Reskin (QoL feature). Phase 1: styling and behavior of the
 -- Blizzard chat frames. Own code only: it mirrors the OPTION SET of ElvUI's chat module,
--- written from scratch (ElvUI's licence reserves all rights; private modification only).
+-- written from scratch (ElvUI's license reserves all rights; private modification only).
 -- It never reads or edits message text in this phase, so Midnight "secret value" chat text is
 -- not touched.
 --
 -- Phase 1: chat + tab fonts, buffer size, scroll step and auto-return, text fade, chat window
--- background colour/opacity, selected-tab colour, sticky chat, edit-box alt-key / history,
+-- background color/opacity, selected-tab color, sticky chat, edit-box alt-key / history,
 -- combat repeat guard, voice-button hiding.
 -- NOT built yet (need message text + secret-value guards): timestamps, short/hidden channel
--- names, URL links, emotion/role icons, copy lines/button, class-coloured mentions, keyword and
+-- names, URL links, emotion/role icons, copy lines/button, class-colored mentions, keyword and
 -- channel alerts, spam throttle, chat history, BattleTag names, Quick Join messages, hyperlink
 -- hover tooltips. NOT built (needs its own panel system): separate left/right panels, panel
 -- textures, datatext panel anchors, tab selector arrow style.
@@ -19,7 +19,7 @@
 local addonName, ns = ...
 
 -- Defaults seeded from Xaya's old ElvUI profile where she changed them (font size 15, outline,
--- tab size 15, panel colour 0,0,0 at 0.3157 opacity); otherwise ElvUI's own default values.
+-- tab size 15, panel color 0,0,0 at 0.3157 opacity); otherwise ElvUI's own default values.
 ns.CHAT_DEFAULTS = {
     enabled = false,
     font = "lsm:PT Sans Narrow", fontSize = 15, fontOutline = "outline",
@@ -182,7 +182,7 @@ local function ApplyWindow(s)
     if not s.setWindowColor then return end
     for _, f in ipairs(ChatFrames()) do
         Try("windowColor", function()
-            -- Blizzard's own functions: they also save the colour in Blizzard's chat settings.
+            -- Blizzard's own functions: they also save the color in Blizzard's chat settings.
             if _G.FCF_SetWindowColor then _G.FCF_SetWindowColor(f, s.winR, s.winG, s.winB) end
             if _G.FCF_SetWindowAlpha then _G.FCF_SetWindowAlpha(f, (s.winAlpha or 32) / 100) end
         end)
@@ -353,11 +353,11 @@ function ns.BuildChatTab(Notify)
                     hidden = function() return ns.ChatReskin_BlockedReason() == nil end,
                     name = function() return "|cffff5555Blocked:|r " .. tostring(ns.ChatReskin_BlockedReason()) end },
                 intro = { type = "description", order = 2, width = "full",
-                    name = "Brings ElvUI's chat options to the normal Blizzard chat frames. Phase 1 changes looks and behaviour only; it does not read or change message text. Turning it off fully takes effect after /reload. /xui chat shows what ran." },
+                    name = "Brings ElvUI's chat options to the normal Blizzard chat frames. Phase 1 changes looks and behavior only; it does not read or change message text. Turning it off fully takes effect after /reload. /xui chat shows what ran." },
                 enabled = tog("Enable ElvUI Chat Reskin", "enabled", 3),
                 hideVoice = tog("Hide voice chat buttons", "hideVoiceButtons", 4),
                 notBuilt = { type = "description", order = 9, width = "full", fontSize = "small",
-                    name = "|cffaaaaaaNot built yet:|r timestamps, short/hidden channel names, URL links, emotion and role icons, copy lines/button, class-coloured mentions, keyword and channel alerts, spam throttle, chat history, BattleTag names, Quick Join messages, hyperlink hover tooltips (they need message text and secret-value guards); separate left/right panels, panel textures, datatext panel anchors, tab selector arrow (they need a panel system)." },
+                    name = "|cffaaaaaaNot built yet:|r timestamps, short/hidden channel names, URL links, emotion and role icons, copy lines/button, class-colored mentions, keyword and channel alerts, spam throttle, chat history, BattleTag names, Quick Join messages, hyperlink hover tooltips (they need message text and secret-value guards); separate left/right panels, panel textures, datatext panel anchors, tab selector arrow (they need a panel system)." },
             } },
             fonts = { type = "group", name = "Fonts & Tabs", order = 2, args = {
                 font = fontSel("Chat font", "font", 1), fontSize = rng("Chat font size", "fontSize", 2, 6, 40),
@@ -376,7 +376,7 @@ function ns.BuildChatTab(Notify)
             } },
             window = { type = "group", name = "Window & Edit Box", order = 4, args = {
                 bgNote = { type = "description", order = 1, width = "full",
-                    name = "The background uses Blizzard's own chat window colour, which Blizzard saves; turning this off does not reset it (change it back in Blizzard's chat settings)." },
+                    name = "The background uses Blizzard's own chat window color, which Blizzard saves; turning this off does not reset it (change it back in Blizzard's chat settings)." },
                 bg = tog("Set chat window background", "setWindowColor", 2),
                 bgCol = col("Backdrop color", "winR", "winG", "winB", 3),
                 bgAlpha = rng("Backdrop opacity (%)", "winAlpha", 4, 0, 100),
