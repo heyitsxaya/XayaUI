@@ -474,7 +474,9 @@ local function EmbedCue(pg, og, rule, k)
         end,
         hint = function() if rule.cueName then return ns.CueDefaultLabel(rule) end return ns.CUE_KIND_LABEL[rule.cueKind] or "" end,
     })
-    g.args.desc = { type = "input", order = 0.2, width = "full", name = "Description", arg = { xuiSide = true }, hidden = collapsed,
+    g.args.descH = { type = "header", order = 0.15, name = "Description", hidden = collapsed }
+    g.args.descGap = { type = "description", order = 0.25, width = "full", name = " ", fontSize = "large", hidden = collapsed }
+    g.args.desc = { type = "input", order = 0.2, width = "full", name = "", hidden = collapsed,
         get = function() return rule.cueDesc or "" end,
         set = function(_, v) v = tostring(v or ""):sub(1, 300); rule.cueDesc = (v:match("%S")) and v or nil; ns.MarkDirty() end, disabled = locked }
     local acts = (og.args.actions and og.args.actions.args) or {}

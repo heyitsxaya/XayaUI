@@ -1611,7 +1611,8 @@ local function BuildRule(i, rule)
                     ns.SelectKeep(RulePath(rule))
                 end,
             },
-            description = { type = "input", multiline = 4, order = 3.5, width = "full", name = "Description",
+            descH = { type = "header", order = 3.45, name = "Description" },
+            description = { type = "input", multiline = 4, order = 3.5, width = "full", name = "",
                 desc = "A short note for yourself on what this rule does. Shown only here; it does not affect the rule.",
                 get = function() return rule.description or "" end,
                 set = function(_, v) v = tostring(v or ""):sub(1, 500); rule.description = (v ~= "") and v or nil; ns.MarkDirty() end },
