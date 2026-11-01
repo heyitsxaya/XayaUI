@@ -1335,7 +1335,15 @@ function ns.FlexPrepass(content, children, bw)
             flush()
         else
             local w, flex
-            if ch.width == "relative" then w = width * (ch.relWidth or 1); flex = false
+            if ch.width == "relative" then
+                if ch.type == "Dropdown" then   -- arg.xuiFitText: never narrower than the longest option (AND / OR were cut to "A...")
+                    local o = ch.GetUserData and ch:GetUserData("option")
+                    if o and type(o.arg) == "table" and o.arg.xuiFitText then
+                        local m = DDMin(ch)
+                        if m > width * (ch.relWidth or 1) then ch.relWidth = math.min(1, m / width) end
+                    end
+                end
+                w = width * (ch.relWidth or 1); flex = false
             else
                 w = (bw or BaseW)(ch); flex = not NOFLEX[ch.type]
                 -- two-column grid: a control is either one column wide or spans both (when it cannot fit in a column)
@@ -1552,6 +1560,25 @@ local function Walk(w, depth)
                     w.xuiTextLeft = true
                     AddRest(w, "textleft", function(self) self.xuiTextLeft = nil; if self.text then self.text:SetJustifyH("RIGHT") end end)
                 end
+            end
+        end
+        -- open list as wide as its longest entry (AceGUI cuts entries off at the closed box's width, so "Trigger 2 (Sigil of Flame De..." was
+        -- unreadable). Rows cannot wrap (fixed height), so the list grows to the right instead; capped so it never fills the screen.
+        if t == "Dropdown" and w.pullout and not w.pullout.xuiWideOpen then
+            local po = w.pullout
+            po.xuiWideOpen = true
+            local origOpen = po.Open
+            po.Open = function(self, ...)
+                origOpen(self, ...)
+                pcall(function()
+                    local need = 0
+                    for _, item in pairs(self.items) do
+                        local txt = item.text and item.text:GetText()
+                        if txt then local tw = TextW(txt); if tw > need then need = tw end end
+                    end
+                    local want = math.min(need + 64, 640)   -- 64 = check mark, side margins, scroll bar
+                    if want > (self.frame:GetWidth() or 0) then self.frame:SetWidth(want) end
+                end)
             end
         end
         -- texture pickers (opt.arg.xuiTexPick): big preview rows. AceGUI's pullout lays rows out at a fixed 16 px, so re-space them after it opens;

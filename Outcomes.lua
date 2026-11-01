@@ -306,12 +306,12 @@ local function ConditionBody(rule, H)
     for j, t in ipairs(W.list) do
         local o = 10 + j
         if j > 1 then
-            args["j" .. j] = { type = "select", order = o, width = "relative", relWidth = 0.14, name = "", arg = { xuiTextLeft = true }, hidden = collapsed,
+            args["j" .. j] = { type = "select", order = o, width = "relative", relWidth = 0.14, name = "", arg = { xuiTextLeft = true, xuiFitText = true }, hidden = collapsed,
                 values = { ["and"] = "AND", ["or"] = "OR" }, sorting = { "and", "or" },
                 get = function() return t.op end,
                 set = function(_, v) t.op = v; onN() end, disabled = locked }
         end
-        args["r" .. j] = { type = "select", order = o + 0.01, width = "relative", relWidth = (j == 1) and 0.48 or 0.34, name = "", arg = { xuiTextLeft = true }, hidden = collapsed,
+        args["r" .. j] = { type = "select", order = o + 0.01, width = "relative", relWidth = (j == 1) and 0.48 or 0.31, name = "", arg = { xuiTextLeft = true }, hidden = collapsed,   -- 0.31: room for the AND / OR box to grow
             desc = "What to check.",
             values = function() local v = refChoices(); return v end,
             sorting = function() local _, od = refChoices(); return od end,
@@ -324,7 +324,7 @@ local function ConditionBody(rule, H)
             get = function() return IsNumRef(t.ref) and (t.cmp or "==") or "==" end,
             set = function(_, v) t.cmp = v; onN() end,
             disabled = function() return not IsNumRef(t.ref) or locked() end }
-        args["b" .. j] = { type = "select", order = o + 0.03, width = "relative", relWidth = 0.2, name = "", arg = { xuiTextLeft = true }, values = TF_VALUES, sorting = TF_ORDER,
+        args["b" .. j] = { type = "select", order = o + 0.03, width = "relative", relWidth = 0.2, name = "", arg = { xuiTextLeft = true, xuiFitText = true }, values = TF_VALUES, sorting = TF_ORDER,
             hidden = function() return collapsed() or IsNumRef(t.ref) end,
             get = function() return t.neg and "false" or "true" end,
             set = function(_, v) t.neg = (v == "false"); onN() end, disabled = locked }
