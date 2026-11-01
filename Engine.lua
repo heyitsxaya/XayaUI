@@ -11,7 +11,7 @@ local TICK = 0.2
 local acc = 0
 local snapAcc = 0
 local SNAP_EVERY = 5   -- seconds between auto status snapshots while in combat
-local wasInCombat = false
+local barsDirty = true   -- action bar spell set is rebuilt only when a bar event fires or rules change
 
 local function RT(rule)
     local rt = ns.runtime[rule]
@@ -21,7 +21,12 @@ end
 
 local function Step()
     if not ns.rules then return end
-    if ns.RefreshActionBarSpells then ns.RefreshActionBarSpells() end
+    if barsDirty then
+        barsDirty = false
+        local need = false
+        for _, r in ipairs(ns.rules) do if r.enabled and r.visual and r.visual.requireOnBar then need = true; break end end
+        if need and ns.RefreshActionBarSpells then ns.RefreshActionBarSpells() end
+    end
     local ctx = ns.ReadContext()
     ns.tickID = (ns.tickID or 0) + 1
     local now = GetTime()
@@ -102,7 +107,7 @@ local function Step()
 end
 ns.Step = Step
 
-function ns.MarkDirty() dirty = true end
+function ns.MarkDirty() dirty = true; barsDirty = true end
 
 function ns.OnDBReady()
     ns.RefreshAllVisuals()
@@ -128,6 +133,8 @@ f:SetScript("OnEvent", function(_, event)
     elseif event == "PLAYER_REGEN_ENABLED" then
         if ns.LogStatusSnapshot then ns.LogStatusSnapshot("combat end") end
     end
+    if event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" or event == "PLAYER_SPECIALIZATION_CHANGED" or event == "UPDATE_SHAPESHIFT_FORM"
+        or event == "ACTIONBAR_SLOT_CHANGED" or event == "UPDATE_BONUS_ACTIONBAR" or event == "ACTIONBAR_PAGE_CHANGED" then barsDirty = true end
     dirty = true
 end)
 f:SetScript("OnUpdate", function(_, elapsed)
@@ -147,5 +154,4 @@ f:SetScript("OnUpdate", function(_, elapsed)
     else
         snapAcc = 0
     end
-    wasInCombat = inCombat
 end)

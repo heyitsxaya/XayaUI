@@ -204,6 +204,7 @@ end
 -- rule + bannerKey are optional: when given, the choice list opens/closes exactly like the Talent list (the same
 -- bannerOpen table and ns.ArrowToggle +/- button), and unticking "use" clears the choices below instead of only
 -- disabling them - so a rule that shows "All" really has nothing recorded, not a hidden leftover pick.
+local bannerOpen = setmetatable({}, { __mode = "k" })   -- hoisted: ns.RadioGroup below uses it
 function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, useKey, rule, bannerKey)
     local function isOn()
         local u = ld()[useKey]
@@ -620,7 +621,6 @@ local function PasteSummary()
 end
 
 -- which banners (Display Options / Text / Sound) are expanded, per rule; everything starts collapsed
-local bannerOpen = setmetatable({}, { __mode = "k" })
 -- A group's options are open unless the user collapsed them (bannerOpen[rule][key] == false). The +/- button flips that.
 function ns.ArrowOpen(rule, key) local b = bannerOpen[rule]; return not (b and b[key] == false) end
 function ns.ArrowToggle(rule, key, order)
@@ -3152,6 +3152,7 @@ local function ReorderRow(button, dir)
     local selRule = sn and ns.rules and ns.rules[tonumber(sn)] or nil   -- keep the current selection on the same rule
     if kind == "folder" then
         NormalizeFolderOrder()
+        local _
         _, obj, list, pos = Siblings(button.uniquevalue)
         if not pos then return end
     end

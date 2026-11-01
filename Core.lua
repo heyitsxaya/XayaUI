@@ -42,7 +42,11 @@ function ns.Log(fmt, ...)
     local line = ("|cff888888%.1f|r %s"):format(GetTime() % 10000, msg)
     local b = ns.logBuf
     b[#b + 1] = line
-    if #b > 300 then table.remove(b, 1) end
+    local n = #b
+    if n > 350 then   -- trim in one pass (down to 300) instead of shifting the whole array on every line
+        for i = 1, 300 do b[i] = b[n - 300 + i] end
+        for i = 301, n do b[i] = nil end
+    end
     if ns.LogSink then ns.LogSink(line) end
 end
 
