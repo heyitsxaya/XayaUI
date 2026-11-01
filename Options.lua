@@ -3626,6 +3626,19 @@ function ns.IconReport()
 end
 
 -- Returns visualObjs, soundObjs for a tree row (either may be nil)
+-- What the eye / headphone on a RULE row previews: the rule's own display or sound (older rules) plus every cue it owns. A rule that
+-- has cues and no display of its own is left out itself (previewing it would force-show an empty texture); without this a rule whose
+-- cues are set but that has no condition yet previewed nothing. A function field, not a local: this file is near Lua's 200-locals limit.
+function ns.PreviewTargets(r)
+    local l, cues = {}, {}
+    if r.uid and not r.isCue and not r.parentUid and ns.CuesOf then cues = ns.CuesOf(r) end
+    local ownVisual = r.visual and r.visual.enabled
+    local ownSound = r.sound and r.sound.enabled
+    if #cues == 0 or ownVisual or ownSound then l[#l + 1] = r end
+    for _, c in ipairs(cues) do l[#l + 1] = c end
+    return l
+end
+
 local function Resolve(uv)
     if not uv then return nil end
     local last = uv:match("([^\001]+)$") or uv
@@ -3639,7 +3652,7 @@ local function Resolve(uv)
         return l, nil
     end
     local n = last:match("^rule(%d+)$")
-    if n then local r = ns.rules and ns.rules[tonumber(n)]; if r then return { r }, { r } end return nil end
+    if n then local r = ns.rules and ns.rules[tonumber(n)]; if r then local l = ns.PreviewTargets(r); return l, l end return nil end
     n = last:match("^bar(%d+)$")
     if n then local b = ns.bars and ns.bars[tonumber(n)]; if b then return { b }, nil end return nil end
     if last:match("^f%d") then
