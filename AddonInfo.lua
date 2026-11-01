@@ -62,7 +62,7 @@ local CREDITS = {
           links = { { "BigWigs on GitHub", "https://github.com/BigWigsMods" }, { "unfa", "https://freesound.org/people/unfa/" },
                     { "davidbain", "https://freesound.org/people/davidbain/" }, { "tekgnosis", "https://freesound.org/people/tekgnosis/" },
                     { "Timbre", "https://freesound.org/people/Timbre/" } } },
-        { name = "WeakAuras sounds  ([WA])",
+        { name = "WeakAuras sounds",
           who = "Copied from the WeakAuras addon. Per its 'Provided by.txt': Mike Koenig, CGEffex, bart (modified by Jieiku), StickInTheMud, Samantha Enrico, Mr Smith, Marianne Gagnon, suinho, BlastwaveFx.com, timtube, snottyboy. Most are from soundbible.com.",
           note = "Licenses vary per clip: CC Attribution 3.0, Attribution-NonCommercial 3.0, Sampling Plus 1.0 and CC0. Which author made which clip is in WeakAuras\\Media\\Provided by.txt. Several carry NonCommercial terms, which is why no audio is committed to the repository.",
           links = { { "soundbible.com", "https://www.soundbible.com" }, { "CGEffex (freesound)", "https://www.freesound.org/people/CGEffex/" },

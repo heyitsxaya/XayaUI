@@ -229,6 +229,7 @@ local function SkinFrame(of)
             f:SetBackdropColor(0, 0, 0, 1); f:SetBackdropBorderColor(1, 1, 1, 1)
             for _, rg in ipairs({ f:GetRegions() }) do if rg.xuiWasTitle then rg:SetAlpha(1); rg.xuiWasTitle = nil end end
             if f.xuiTitleBar then f.xuiTitleBar:Hide() end
+            if f.xuiDrag then f.xuiDrag:Hide() end
             if f.xuiToolbar then f.xuiToolbar:Hide() end
             local c2 = self.content
             c2:ClearAllPoints()
@@ -259,6 +260,23 @@ local function SkinFrame(of)
     fr.xuiTitleBar:ClearAllPoints()
     fr.xuiTitleBar:SetPoint("TOPLEFT", 1, -1); fr.xuiTitleBar:SetPoint("TOPRIGHT", -1, -1); fr.xuiTitleBar:SetHeight(28)
     fr.xuiTitleBar:SetShown(not collapsed)
+    -- the whole ribbon moves the window (AceGUI's own handle is only as wide as the "XayaUI" text)
+    if not fr.xuiDrag then
+        local d = CreateFrame("Frame", nil, fr)
+        fr.xuiDrag = d
+        d:EnableMouse(true)
+        d:SetScript("OnMouseDown", function(self) self:GetParent():StartMoving(); local g = LibStub and LibStub("AceGUI-3.0", true); if g then g:ClearFocus() end end)
+        d:SetScript("OnMouseUp", function(self)
+            local f = self:GetParent()
+            f:StopMovingOrSizing()
+            local st = f.obj and (f.obj.status or f.obj.localstatus)
+            if st then st.width, st.height, st.top, st.left = f:GetWidth(), f:GetHeight(), f:GetTop(), f:GetLeft() end
+        end)
+    end
+    fr.xuiDrag:ClearAllPoints()
+    fr.xuiDrag:SetPoint("TOPLEFT", fr, "TOPLEFT", 1, -1); fr.xuiDrag:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -1, -1); fr.xuiDrag:SetHeight(28)
+    fr.xuiDrag:SetFrameLevel(fr:GetFrameLevel() + 2)   -- under the close / collapse buttons (+10)
+    fr.xuiDrag:SetShown(not collapsed)
     of.titletext:ClearAllPoints(); of.titletext:SetPoint("TOP", fr, "TOP", 0, -9)
     do local tt = TC("xui-titlebar", "text", GOLD); of.titletext:SetTextColor(tt[1], tt[2], tt[3]); TF(of.titletext) end
     -- bottom banner: the status container becomes a flat full-width band (no box), the Close button sits inside it

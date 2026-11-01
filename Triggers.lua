@@ -1101,7 +1101,7 @@ function ns.BuildExtraTriggerArgs(rule, H)
         return values, order
     end
     args.xAdd = { type = "select", name = "Add a trigger", order = 0.2, width = "double",
-        desc = "Pick a trigger type. Its options appear below. Names in brackets inside each row show the matching WeakAuras trigger.",
+        desc = "Pick a trigger type. Its options appear below.",
         values = function() local v = AddChoices(); return v end,
         sorting = function() local _, o = AddChoices(); return o end,
         get = function() return nil end,
@@ -1128,8 +1128,7 @@ function ns.BuildExtraTriggerArgs(rule, H)
         local pos = P.xs[j] or j
         local row = {}
         if def then
-            row.note = { type = "description", order = 0, width = "full", fontSize = "small", name = def.note
-                .. "   |cff888888[WeakAuras: " .. def.wa .. "]|r" }
+            row.note = { type = "description", order = 0, width = "full", fontSize = "small", name = def.note }
             for i, f in ipairs(def.fields) do FieldArgs(rule, t, f, H, i, row) end
         else
             row.note = { type = "description", order = 0, width = "full",

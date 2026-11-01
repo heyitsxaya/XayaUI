@@ -106,7 +106,7 @@ end
 local function GlowStart(rule, a)
     local lib = LCG()
     if not lib then
-        if not ns.glowWarned then ns.glowWarned = true; ns.Print("glow actions need the LibCustomGlow library, which comes with other addons (WeakAuras, ElvUI, BigWigs). None is loaded right now.") end
+        if not ns.glowWarned then ns.glowWarned = true; ns.Print("glow actions need the LibCustomGlow library, which comes with other addons (ElvUI, BigWigs, and others). None is loaded right now.") end
         return
     end
     local col = { a.glowR or 0.95, a.glowG or 0.95, a.glowB or 0.32, 1 }
@@ -170,7 +170,7 @@ function ns.ActionsPane(rule, Notify, extra)
             -- glow -------------------------------------------------------
             glowOn = { type = "toggle", order = 20, width = "full",
                 name = (phase == "finish") and "Stop a glow on a frame" or "Glow a frame",
-                desc = "Uses the LibCustomGlow library that WeakAuras, ElvUI, and BigWigs install. If none of them is loaded there is nothing to glow with.",
+                desc = "Uses the LibCustomGlow library that other addons, such as ElvUI and BigWigs, install. If none of them is loaded there is nothing to glow with.",
                 get = On(phase, "glowOn"), set = function(_, v) put(phase, "glowOn", v and true or nil); Notify() end },
             glowTarget = { type = "select", order = 21, width = "double", name = "Glow",
                 values = { self = "This rule's own display (and its cues)", frame = "Another frame (type its name)" }, sorting = { "self", "frame" },
@@ -210,7 +210,7 @@ function ns.ActionsPane(rule, Notify, extra)
 
     local args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "What the rule does at three moments, like the WeakAuras Actions tab. What it shows or plays as a result of conditions is set on the Cues tab." },
+            name = "What the rule does at three moments. What it shows or plays as a result of conditions is set on the Cues tab." },
         allowCode = { type = "toggle", order = 0.5, width = "full", name = "Allow custom code to run (all rules)",
             desc = "Custom code runs with your full permissions. It is never kept when you import a profile, so you only ever run code you typed or pasted in yourself. Leave this off unless you use it.",
             get = function() return CodeAllowed() end,

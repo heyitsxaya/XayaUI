@@ -2961,7 +2961,7 @@ function ns.FolderArrangeGroup(f)
         hidden = function() return f.cType == "dynamic" or not ns.KindHas({ folder = f.id }, "visual") end,
         args = {
             note = { type = "description", order = 0, width = "full", fontSize = "small",
-                name = "Like WeakAuras' Group tools: these edit the X / Y of the displays inside this group (and nested groups) so they line up, spread out evenly, or sit a fixed gap apart. Use Unlock visuals to see the result." },
+                name = "Group tools: these edit the X / Y of the displays inside this group (and nested groups) so they line up, spread out evenly, or sit a fixed gap apart. Use Unlock visuals to see the result." },
             l = B(1, "Align left", function() alignX("left") end), c = B(2, "Align center", function() alignX("center") end), r = B(3, "Align right", function() alignX("right") end),
             t = B(4, "Align top", function() alignY("top") end), m = B(5, "Align middle", function() alignY("middle") end), b = B(6, "Align bottom", function() alignY("bottom") end),
             dh = B(7, "Distribute horizontally", function() distribute(true) end), dv = B(8, "Distribute vertically", function() distribute(false) end),
@@ -5712,11 +5712,11 @@ local function SetCollapsed(of, collapsed)
         fr:SetBackdropBorderColor(1, 1, 1, 1)
         fr:EnableMouse(true)
         c.close:ClearAllPoints()
-        c.close:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -6, -6)
+        c.close:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -6, -4)
         c.close:Show()
         c.arrow.tex:SetTexture(ARROW_OPEN)
         c.arrow:ClearAllPoints()
-        c.arrow:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -36, -6)
+        c.arrow:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -32, -4)
     end
 end
 
@@ -5730,18 +5730,18 @@ local function EnsureChrome(of)
         c.title = of.titletext:GetParent()
 
         c.close = CreateFrame("Button", nil, fr, "UIPanelCloseButton")
-        c.close:SetSize(26, 26)
-        c.close:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -6, -6)
+        c.close:SetSize(22, 22)   -- the title ribbon is 28 px tall (Skin.lua); 22 px buttons centered in it
+        c.close:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -6, -4)
         c.close:SetFrameLevel(fr:GetFrameLevel() + 10)
         c.close:SetScript("OnClick", function() AceConfigDialog:Close(APP) end)
 
         -- boxed button (same skin as the Close button), just left of the X
         c.arrow = CreateFrame("Button", nil, fr, "UIPanelButtonTemplate")
-        c.arrow:SetSize(26, 26)
-        c.arrow:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -36, -6)
+        c.arrow:SetSize(22, 22)
+        c.arrow:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -32, -4)
         c.arrow:SetFrameLevel(fr:GetFrameLevel() + 10)
         c.arrow.tex = c.arrow:CreateTexture(nil, "OVERLAY")
-        c.arrow.tex:SetSize(16, 16)
+        c.arrow.tex:SetSize(14, 14)
         c.arrow.tex:SetPoint("CENTER", 0, 0)
         c.arrow.tex:SetTexture(ARROW_OPEN)
         c.arrow:SetScript("OnClick", function() SetCollapsed(of, not c.collapsed) end)
