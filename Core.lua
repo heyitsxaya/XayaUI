@@ -227,6 +227,10 @@ function ns.NewFolder(name, parent)
     until not dup
     local f = { id = id, name = name or "Folder", parent = parent }   -- parent = id of the folder this one is nested in (nil = top level)
     ns.folders[#ns.folders + 1] = f
+    if ns.perf and ns.perf.show and debugstack then   -- /xui perf: say who created a group (finds groups that appear on their own)
+        local src = (debugstack(2, 1, 0) or ""):match("([^\n]+)") or "?"
+        print("|cffffd100XayaUI|r group created: '" .. tostring(f.name) .. "' by " .. src)
+    end
     return f
 end
 
