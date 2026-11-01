@@ -81,6 +81,10 @@ function ns.DeleteCue(cue)
                 for i = #c.thenCues, 1, -1 do if c.thenCues[i] == cue.cueKey then table.remove(c.thenCues, i) end end
                 if #c.thenCues == 0 then c.thenCues = nil end
             end
+            if type(c.thenMods) == "table" then
+                c.thenMods[cue.cueKey] = nil
+                if next(c.thenMods) == nil then c.thenMods = nil end
+            end
         end
     end
     ns.MarkDirty()
@@ -102,18 +106,31 @@ function ns.EvaluateCue(rule, ctx)
         info.result = pr and true or false
         return info.result, info
     end
+    -- Every true condition that lists this cue switches it on. Their modifiers (glow / desaturate / opacity) are merged in the
+    -- conditions' list order; when two true conditions set the same modifier, the LATER one in the list wins.
+    local hit, by, mods = false, nil, nil
     for _, c in ipairs(ns.ConditionsOf(p)) do
         if c.enabled ~= false and type(c.thenCues) == "table" then
             for _, k in ipairs(c.thenCues) do
                 if k == key then
-                    local res = ns.Evaluate(c, ctx)
-                    if res then info.result = true; info.by = c.name; return true, info end
+                    if ns.Evaluate(c, ctx) then
+                        if not hit then by = c.name end
+                        hit = true
+                        local m = type(c.thenMods) == "table" and c.thenMods[key] or nil
+                        if type(m) == "table" then
+                            mods = mods or {}
+                            if m.glow ~= nil then mods.glow = m.glow end
+                            if m.desat ~= nil then mods.desat = m.desat end
+                            if m.alpha ~= nil then mods.alpha = m.alpha end
+                        end
+                    end
+                    break
                 end
             end
         end
     end
-    info.result = false
-    return false, info
+    info.result, info.by, info.mods = hit, by, mods
+    return hit, info
 end
 
 function ns.NormalizeCues(r)
@@ -130,6 +147,21 @@ function ns.NormalizeCues(r)
         for _, k in ipairs(r.thenCues) do if type(k) == "string" and #k <= 12 and #out < MAX_CUES then out[#out + 1] = k end end
         r.thenCues = (#out > 0) and out or nil
     else r.thenCues = nil end
+    -- per-cue modifiers of a condition: only for cues it lists; glow / desat are true or false (absent = leave the cue as it is), alpha is 0 to 1
+    if type(r.thenMods) == "table" and not r.isCue and r.thenCues then
+        local out = {}
+        for _, k in ipairs(r.thenCues) do
+            local m = r.thenMods[k]
+            if type(m) == "table" then
+                local n = {}
+                if type(m.glow) == "boolean" then n.glow = m.glow end
+                if type(m.desat) == "boolean" then n.desat = m.desat end
+                if type(m.alpha) == "number" and m.alpha == m.alpha then n.alpha = math.max(0, math.min(1, m.alpha)) end
+                if next(n) then out[k] = n end
+            end
+        end
+        r.thenMods = next(out) and out or nil
+    else r.thenMods = nil end
 end
 
 -- Version 2 (one time): every enabled sound / display of a condition becomes a cue of its parent; the condition now points at them.

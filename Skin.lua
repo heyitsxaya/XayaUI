@@ -188,14 +188,12 @@ local function EnsureToolbar(of)
         cr:SetPoint("LEFT", im, "RIGHT", 14, 0)
         local ex = ToolButton(bar, 132763, "Export", function() if ns.UI and ns.UI.Export then ns.UI.Export() end end)
         ex:SetPoint("LEFT", cr, "RIGHT", 14, 0)
-        local cu = ToolButton(bar, "Interface\\Icons\\Spell_Nature_StarFall", "Cursor", function() if ns.UI and ns.UI.Cursor then ns.UI.Cursor() end end)
-        cu:SetPoint("LEFT", ex, "RIGHT", 14, 0)
-        bar.cursorBtn = cu
+        -- no Cursor button here: the Cursor options live only on the QoL UI Updates tab (Xaya, 2026-11-01)
         local lk = ToolButton(bar, "Interface\\PetBattles\\PetBattle-LockIcon", "Lock Positions", function()
             if ns.ToggleUnlock then ns.ToggleUnlock() end
             if ns.UI and ns.UI.Notify then ns.UI.Notify() end
         end)
-        lk:SetPoint("LEFT", cu, "RIGHT", 14, 0)
+        lk:SetPoint("LEFT", ex, "RIGHT", 14, 0)
         bar.lock = lk
         lk:Hide()   -- the Unlock Positions button is gone from the top bar (every level has its own in-line unlock); the object stays so nothing that sets its label breaks
         -- Settings sits at the far right of the same line, cog icon on its left
@@ -757,7 +755,7 @@ local function PaintNameEdit(w, arg)
     eb:ClearAllPoints()
     if ed.title then   -- number is the header title; this box (the optional name) goes beneath it, smaller and gray
         eb:SetHeight(16); eb:SetFontObject(GameFontNormalSmall); eb:SetTextColor(0.65, 0.65, 0.65)
-        eb:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -(3 + ns.H3_SIZE + 3)); eb:SetWidth(220)
+        eb:SetPoint("TOPLEFT", f, "TOPLEFT", 20 - (tonumber(arg and arg.xuiHeadOut) or 0), -(3 + ns.H3_SIZE + 3)); eb:SetWidth(220)
         if not f.xuiNamePH then
             f.xuiNamePH = eb:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
             f.xuiNamePH:SetPoint("LEFT", eb, "LEFT", 6, 0); f.xuiNamePH:SetTextColor(0.4, 0.4, 0.4); f.xuiNamePH:SetText("name (optional)")
@@ -767,7 +765,7 @@ local function PaintNameEdit(w, arg)
         end
     else
         eb:SetHeight(22); eb:SetFontObject(GameFontHighlight); eb:SetTextColor(1, 1, 1)
-        eb:SetPoint("LEFT", f, "LEFT", 30, 0); eb:SetWidth(220)
+        eb:SetPoint("LEFT", f, "LEFT", 30 - (tonumber(arg and arg.xuiHeadOut) or 0), 0); eb:SetWidth(220)
         if f.xuiNamePH then f.xuiNamePH:Hide() end
     end
     if not eb:HasFocus() then eb:SetText(tostring(ed.get() or "")); eb:SetCursorPosition(0) end
@@ -797,7 +795,8 @@ local function SkinButton(w)
         local arrowL = arg and arg.xuiArrowLeft and type(arg.xuiArrow) == "function"
         local subTxt = arg and type(arg.xuiSub) == "function" and select(2, pcall(arg.xuiSub)) or nil
         if type(subTxt) ~= "string" or subTxt == "" then subTxt = nil end
-        local lx = arrowL and 22 or 0
+        local out = tonumber(arg and arg.xuiHeadOut) or 0   -- header hangs out into the margin its group's body is indented by (arg.xuiIndent)
+        local lx = ((arrowL and out <= 0) and 22 or 0) - out
         if fs then
             fs:ClearAllPoints()
             if subTxt then fs:SetPoint("TOPLEFT", f, "TOPLEFT", lx, -3) else fs:SetPoint("LEFT", f, "LEFT", lx, 0) end
@@ -825,6 +824,16 @@ local function SkinButton(w)
             at:SetTexture((okOpen and open) and "Interface\\Buttons\\Arrow-Down-Up" or "Interface\\ChatFrame\\ChatFrameExpandArrow")
             at:SetVertexColor(0.8, 0.5, 1); at:Show()
         elseif f.xuiArrowTex then f.xuiArrowTex:Hide() end
+    elseif arg and arg.xuiDel then
+        -- remove-this-row "X": no box, the same red X as the header's remove icon
+        HideRegions(f, f:GetHighlightTexture())
+        FlatHide(f)
+        if fs then
+            if not w.xuiFont then local font, size, flags = fs:GetFont(); w.xuiFont = { font, size, flags } end
+            fs:SetFont("Fonts\\FRIZQT__.TTF", 18, "OUTLINE")
+            local dc = TC("xui-danger", "text", { 1, 0.12, 0.12, 1 })
+            if f:IsEnabled() then fs:SetTextColor(dc[1], dc[2], dc[3]) else fs:SetTextColor(dc[1] * 0.4, dc[2] * 0.4, dc[3] * 0.4) end
+        end
     else
         HideRegions(f, f:GetHighlightTexture())
         local bcl = (arg and arg.xuiRed) and "xui-button-primary" or "xui-button"   -- WeakAuras-style red "Add ..." button = primary
@@ -834,9 +843,11 @@ local function SkinButton(w)
             if f:IsEnabled() then local c = TC(bcl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]) else fs:SetTextColor(0.5, 0.5, 0.5) end
         end
     end
+    do local o = (isHeader and tonumber(arg and arg.xuiHeadOut)) or 0; f:SetHitRectInsets(-o, 0, 0, 0) end
     PaintActions(w, arg)
     PaintNameEdit(w, arg)
     OnRelease(w, function(self)
+        self.frame:SetHitRectInsets(0, 0, 0, 0)
         if self.frame.xuiNameEB then self.frame.xuiNameEB:Hide(); self.frame.xuiNameHint:Hide() end
         if self.frame.xuiArrowTex then self.frame.xuiArrowTex:Hide() end
         if self.frame.xuiSubFS then self.frame.xuiSubFS:Hide() end
@@ -874,6 +885,32 @@ local function SkinInline(w)
         AddRest(w, "info", function(self) if self.frame.xuiInfoIcon then self.frame.xuiInfoIcon:Hide() end end)
     elseif w.frame.xuiInfoIcon then
         w.frame.xuiInfoIcon:Hide()
+    end
+    -- arg.xuiIndent: everything inside this group moves right by that many pixels (its own header row hangs back out, see xuiHeadOut)
+    local ind = tonumber(oa and oa.xuiIndent) or 0
+    if ind > 0 and w.content and w.xuiIndent ~= ind then
+        if not w.xuiIndent then
+            w.xuiOrigWidthSet = w.OnWidthSet
+            AddRest(w, "indent", function(self)
+                self.OnWidthSet = self.xuiOrigWidthSet; self.xuiOrigWidthSet = nil; self.xuiIndent = nil
+                if self.content then
+                    self.content:ClearAllPoints()
+                    self.content:SetPoint("TOPLEFT", 10, -10); self.content:SetPoint("BOTTOMRIGHT", -10, 10)
+                end
+            end)
+        end
+        w.xuiIndent = ind
+        local orig = w.xuiOrigWidthSet
+        w.OnWidthSet = function(self, width)
+            if orig then orig(self, width) end
+            local cw = math.max(0, (self.content.width or 0) - (self.xuiIndent or 0))
+            self.content:SetWidth(cw); self.content.width = cw
+        end
+        w.content:ClearAllPoints()
+        w.content:SetPoint("TOPLEFT", 10 + ind, -10); w.content:SetPoint("BOTTOMRIGHT", -10, 10)
+        local fw = w.frame.width or w.frame:GetWidth() or 0
+        if fw > 0 then w:OnWidthSet(fw) end
+        if w.xuiFlexed and w.DoLayout then pcall(w.DoLayout, w) end   -- not flexed yet: FlexOn runs right after this and lays it out
     end
     OnRelease(w, function(self) if self.border then FlatHide(self.border) end; PaneColors(self.border, { 0.1, 0.1, 0.1, 0.5 }, { 0.4, 0.4, 0.4 }) end)
 end
@@ -1258,6 +1295,7 @@ end
 -- never narrower than its longest option. Runs before AceGUI's Flow layout, which then places everything; ApplyGaps adds the
 -- column gutter afterwards.
 ns.H3_SIZE = 16   -- the single header size (Heading widgets and collapsible section headers)
+ns.BODY_INDENT = 20   -- trigger / cue / condition panes: the header sits flush left and everything under it is indented by this much
 local NOFLEX = { Icon = true, Label = true, InteractiveLabel = true, Heading = true, ColorPicker = true, Image = true }
 local GAP = 10        -- gutter between free-flowing controls
 local GRID_GAP = 30   -- gutter between the two columns of the grid (WeakAuras uses a wide column gap)

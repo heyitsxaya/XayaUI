@@ -1119,6 +1119,20 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     -- fade: desaturate (gray) or blend vertex color toward a chosen color as the buff runs out; gray while on cooldown
     local d = fr.baseDesat or 0
     if v.desatOnCD and info and info.cd and info.cd.onCd then d = 1 end
+    local mods = info and info.mods   -- from the true conditions that list this cue (Cues.lua EvaluateCue): glow / desat / alpha
+    if mods and mods.desat ~= nil then d = mods.desat and 1 or 0 end
+    do   -- glow: the cue's own setting unless a condition overrides it (RefreshVisual only sets it up from the cue's own setting)
+        local wantGlow = v.glow and true or false
+        if mods and mods.glow ~= nil then wantGlow = mods.glow end
+        if wantGlow then
+            fr.glow:SetSize(math.max(8, v.w or 128) * 1.9, math.max(8, v.h or 128) * 1.9)
+            fr.glow:Show()
+            if not fr.glowAnim:IsPlaying() then fr.glowAnim:Play() end
+        elseif fr.glow:IsShown() then
+            fr.glowAnim:Stop()
+            fr.glow:Hide()
+        end
+    end
     local bt = fr.baseTint or { 1, 1, 1, 1 }
     local cr, cg, cb, ca = bt[1] or 1, bt[2] or 1, bt[3] or 1, bt[4] or 1
     local greyDone, colorDone = false, false
@@ -1163,11 +1177,13 @@ function ns.UpdateVisualText(rule, info, fxOnly)
             end
         end
     end
+    if mods and mods.desat ~= nil then greyDone = false end   -- an explicit condition choice beats the buff-timer fade
     if not greyDone then pcall(fr.tex.SetDesaturation, fr.tex, d) end
     if not colorDone then fr.tex:SetVertexColor(cr, cg, cb, ca) end
 
     -- opacity: out-of-combat multiplier, fade opacity as the buff runs out, then the "about to expire" flash
     local alpha = fr.baseAlpha or 1
+    if mods and mods.alpha ~= nil then alpha = mods.alpha end
     local oa = v.oocAlpha or 1
     if oa < 1 and not ((UnitAffectingCombat and UnitAffectingCombat("player")) or false) and not sample then
         alpha = alpha * oa

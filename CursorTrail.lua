@@ -15,23 +15,25 @@
 local addonName, ns = ...
 
 local MAXC = 6          -- most colors a gradient can have
-local NPT  = 48         -- texture pool size (most dots on screen at once)
+local NPT  = 48         -- most dots on screen at once (all shapes except the smooth line)
+local NRIB = 400        -- most dots for the smooth line (it lays them close together); dots are created as needed, oldest reused when full
 
 ns.CURSORTRAIL_MAXC = MAXC
 
 -- shape name -> label, texture, blend mode, kind   (Blizzard textures that ship with the game client)
 -- kind: "tex" = the texture as is | "circle" = a square cut with a circular mask | "diamond" = a Line as thick as it is long, at 45 degrees
---       "line" = one Line from each dot back to the one dropped before it (a smooth ribbon).
--- The cursor arrow and hand use Blizzard's cursor art (Interface\\Cursor\\Point and Interact); those two paths are from memory and were not
--- checked in game, so if either shows as a green square the path is wrong.
+--       "ribbon" = a dense chain of soft round dots laid along a curve through the cursor path, with a round head at the cursor (a smooth, rounded ribbon).
+-- Hand = Blizzard's gauntlet pointer (Interface\\Cursor\\Point; the old "Interact" path is the gear icon).
+-- Cursor arrow = our own Media\\Cursor\\Arrow.tga (Blizzard ships no plain arrow texture).
+local MEDIA = "Interface\\AddOns\\XayaUI\\Media\\Cursor\\"
 local SHAPES = {
     star    = { "Spark",         "Interface\\Cooldown\\star4",      "ADD",   "tex"     },
     square  = { "Square",        "Interface\\Buttons\\WHITE8X8",    "BLEND", "tex"     },
     circle  = { "Circle",        "Interface\\Buttons\\WHITE8X8",    "BLEND", "circle"  },
     diamond = { "Diamond",       "Interface\\Buttons\\WHITE8X8",    "BLEND", "diamond" },
-    line    = { "Smooth line",   "Interface\\Buttons\\WHITE8X8",    "BLEND", "line"    },
-    arrow   = { "Cursor arrow",  "Interface\\Cursor\\Point",        "BLEND", "tex"     },
-    hand    = { "Hand",          "Interface\\Cursor\\Interact",     "BLEND", "tex"     },
+    line    = { "Smooth line",   MEDIA .. "Fill_circle.tga",        "BLEND", "ribbon"  },
+    arrow   = { "Cursor arrow",  MEDIA .. "Arrow.tga",              "BLEND", "tex"     },
+    hand    = { "Hand",          "Interface\\Cursor\\Point",        "BLEND", "tex"     },
 }
 local SHAPE_ORDER = { "star", "circle", "square", "diamond", "line", "arrow", "hand" }
 
@@ -108,11 +110,40 @@ local function Grad(stops, t)
 end
 
 -- runtime -------------------------------------------------------------------
-local frame, dots
+local frame, dots, cap
 local stops
 local lastX, lastY
-local lastDropX, lastDropY   -- the dot dropped most recently (the "line" shape joins each dot to the one before it)
-local activeN = 0
+local midX, midY             -- smooth line: the midpoint the last curve piece ended on
+local lastDropX, lastDropY   -- the dot dropped most recently
+local ringN, nDots = 0, 0    -- dots are reused in ring order, so the next slot is always the oldest
+local capT = 0               -- smooth line: when the cursor last moved (the round head fades from then)
+local curSh = SHAPES.star
+
+-- put one dot's texture into the state the current shape needs
+local function ConfigDot(d)
+    d.tex:SetTexture(curSh[2])
+    local want = (curSh[4] == "circle") and d.mask ~= nil
+    if want and not d.masked then pcall(d.tex.AddMaskTexture, d.tex, d.mask); d.masked = true
+    elseif not want and d.masked then pcall(d.tex.RemoveMaskTexture, d.tex, d.mask); d.masked = false end
+end
+
+local function NewDot(i)
+    local t = frame:CreateTexture(nil, "ARTWORK")
+    t:Hide()
+    local m
+    if frame.CreateMaskTexture then
+        m = frame:CreateMaskTexture()
+        m:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        m:SetAllPoints(t)
+    end
+    local ln
+    if frame.CreateLine then ln = frame:CreateLine(nil, "ARTWORK"); ln:Hide() end
+    local d = { tex = t, mask = m, line = ln, masked = false, on = false, born = 0, x = 0, y = 0 }
+    dots[i] = d
+    nDots = i
+    ConfigDot(d)
+    return d
+end
 
 local function Build()
     if frame then return end
@@ -121,38 +152,24 @@ local function Build()
     frame:SetAllPoints(UIParent)
     frame:EnableMouse(false)
     dots = {}
-    for i = 1, NPT do
-        local t = frame:CreateTexture(nil, "ARTWORK")
-        t:Hide()
-        local m
-        if frame.CreateMaskTexture then
-            m = frame:CreateMaskTexture()
-            m:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-            m:SetAllPoints(t)
-        end
-        local ln
-        if frame.CreateLine then ln = frame:CreateLine(nil, "ARTWORK"); ln:Hide() end
-        dots[i] = { tex = t, mask = m, line = ln, masked = false, on = false, born = 0, x = 0, y = 0 }
-    end
+    cap = frame:CreateTexture(nil, "ARTWORK", nil, 1)   -- the round head of the smooth line
+    cap:Hide()
 end
 
 local function ClearAll()
     if not dots then return end
-    for i = 1, NPT do local d = dots[i]; d.on = false; d.tex:Hide(); if d.line then d.line:Hide() end end
-    activeN, lastX, lastY, lastDropX, lastDropY = 0, nil, nil, nil, nil
+    for i = 1, nDots do local d = dots[i]; d.on = false; d.tex:Hide(); if d.line then d.line:Hide() end end
+    if cap then cap:Hide() end
+    ringN, lastX, lastY, lastDropX, lastDropY, midX, midY = 0, nil, nil, nil, nil, nil, nil
+    capT = 0
 end
 
-local function Drop(c, x, y)
-    for i = 1, NPT do
-        local d = dots[i]
-        if not d.on then
-            d.on = true; d.born = GetTime(); d.x, d.y = x, y
-            d.px, d.py = lastDropX, lastDropY
-            lastDropX, lastDropY = x, y
-            activeN = activeN + 1
-            return
-        end
-    end
+local function Drop(x, y, limit)
+    ringN = ringN % limit + 1
+    local d = dots[ringN] or NewDot(ringN)
+    d.on = true; d.born = GetTime(); d.x, d.y = x, y
+    d.px, d.py = lastDropX, lastDropY
+    lastDropX, lastDropY = x, y
 end
 
 local function OnUpdate()
@@ -163,6 +180,10 @@ local function OnUpdate()
     local size, op = c.size or 18, c.opacity or 1
     local sh = SHAPES[c.shape] or SHAPES.star
     local blend, kind = sh[3], sh[4]
+    local ribbon = (kind == "ribbon")
+    local limit = ribbon and NRIB or NPT
+    -- how far apart the dots are laid. The ribbon lays them close (a fraction of their width) so they merge into one smooth band.
+    local step = ribbon and math.max(1.5, size * 0.15) or math.max(2, size * 0.35)
 
     -- add dots along the path the cursor traveled since the last frame
     local x, y = GetCursorPosition()
@@ -170,17 +191,33 @@ local function OnUpdate()
     x, y = x / s, y / s
     local hidden = c.hideMouselook and IsMouselooking and IsMouselooking()
     if hidden then
-        lastX, lastY, lastDropX, lastDropY = nil, nil, nil, nil
+        lastX, lastY, lastDropX, lastDropY, midX, midY = nil, nil, nil, nil, nil, nil
+        capT = 0
     else
         if lastX then
             local dx, dy = x - lastX, y - lastY
             local dist = math.sqrt(dx * dx + dy * dy)
-            local step = math.max(2, size * 0.35)
             if dist >= step then
-                local n = math.min(8, math.floor(dist / step))
-                for k = 1, n do
-                    local f = k / n
-                    Drop(c, lastX + dx * f, lastY + dy * f)
+                capT = now
+                if ribbon then
+                    -- A quadratic curve from the last midpoint, bent toward the previous sample, to the midpoint of the previous and new
+                    -- sample. Joining pieces this way keeps the direction continuous, so corners between frames are rounded off.
+                    local m0x, m0y = midX or lastX, midY or lastY
+                    local m1x, m1y = (lastX + x) * 0.5, (lastY + y) * 0.5
+                    local len = math.sqrt((lastX - m0x) ^ 2 + (lastY - m0y) ^ 2) + math.sqrt((m1x - lastX) ^ 2 + (m1y - lastY) ^ 2)
+                    local n = math.max(1, math.min(80, math.ceil(len / step)))
+                    for k = 1, n do
+                        local t = k / n
+                        local u = 1 - t
+                        Drop(u * u * m0x + 2 * u * t * lastX + t * t * m1x, u * u * m0y + 2 * u * t * lastY + t * t * m1y, limit)
+                    end
+                    midX, midY = m1x, m1y
+                else
+                    local n = math.min(8, math.floor(dist / step))
+                    for k = 1, n do
+                        local f = k / n
+                        Drop(lastX + dx * f, lastY + dy * f, limit)
+                    end
                 end
                 lastX, lastY = x, y
             end
@@ -191,12 +228,12 @@ local function OnUpdate()
 
     -- age, color, fade and place every live dot
     local rev = c.reverse
-    for i = 1, NPT do
+    for i = 1, nDots do
         local d = dots[i]
         if d.on then
             local f = (now - d.born) / life
             if f >= 1 then
-                d.on = false; activeN = activeN - 1; d.tex:Hide(); if d.line then d.line:Hide() end
+                d.on = false; d.tex:Hide(); if d.line then d.line:Hide() end
             else
                 local r, g, b = Grad(stops, rev and (1 - f) or f)
                 local a = op * (1 - f)
@@ -211,18 +248,12 @@ local function OnUpdate()
                     ln:SetColorTexture(r, g, b, a)
                     ln:SetBlendMode(blend)
                     ln:Show()
-                elseif kind == "line" and ln then
-                    d.tex:Hide()
-                    if d.px then
-                        ln:SetStartPoint("BOTTOMLEFT", UIParent, d.px, d.py)
-                        ln:SetEndPoint("BOTTOMLEFT", UIParent, d.x, d.y)
-                        ln:SetThickness(math.max(2, sz * 0.5))
-                        ln:SetColorTexture(r, g, b, a)
-                        ln:SetBlendMode(blend)
-                        ln:Show()
-                    else ln:Hide() end
                 else
                     if ln then ln:Hide() end
+                    if ribbon then
+                        -- about sz/step dots overlap at any point of the band; give each a share of the alpha so they add up to the intended opacity
+                        a = 1 - (1 - a) ^ (1 / math.max(1, sz / step))
+                    end
                     local t = d.tex
                     t:SetVertexColor(r, g, b, a)
                     t:SetBlendMode(blend)
@@ -232,6 +263,24 @@ local function OnUpdate()
                     t:Show()
                 end
             end
+        end
+    end
+
+    -- the smooth line's round head: a full dot at the cursor that fades from the moment the cursor stops
+    if cap then
+        local f = ribbon and not hidden and capT > 0 and (now - capT) / life or 1
+        if f >= 1 then
+            cap:Hide()
+        else
+            local r, g, b = Grad(stops, rev and (1 - f) or f)
+            local sz = size * (1 - 0.45 * f)
+            cap:SetTexture(sh[2])
+            cap:SetVertexColor(r, g, b, op * (1 - f))
+            cap:SetBlendMode(blend)
+            cap:SetSize(sz, sz)
+            cap:ClearAllPoints()
+            cap:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
+            cap:Show()
         end
     end
 end
@@ -246,16 +295,15 @@ function ns.CursorTrail_Apply()
     end
     Build()
     stops = Stops(c)
-    local sh = SHAPES[c.shape] or SHAPES.star
-    for i = 1, NPT do
+    curSh = SHAPES[c.shape] or SHAPES.star
+    for i = 1, nDots do
         local d = dots[i]
-        d.tex:SetTexture(sh[2])
-        local want = (sh[4] == "circle") and d.mask ~= nil
-        if want and not d.masked then pcall(d.tex.AddMaskTexture, d.tex, d.mask); d.masked = true
-        elseif not want and d.masked then pcall(d.tex.RemoveMaskTexture, d.tex, d.mask); d.masked = false end
+        ConfigDot(d)
         d.on = false; d.tex:Hide(); if d.line then d.line:Hide() end
     end
-    lastDropX, lastDropY = nil, nil
+    cap:Hide()
+    ringN, lastX, lastY, lastDropX, lastDropY, midX, midY = 0, nil, nil, nil, nil, nil, nil
+    capT = 0
     frame:Show()
     frame:SetScript("OnUpdate", OnUpdate)
 end

@@ -889,6 +889,28 @@ function ns.TriggerNameArg(rule, tok, j, order, onChange)
         end }
 end
 
+local GLYPH_OPEN = "|TInterface\\Buttons\\Arrow-Down-Up:16:16|t"
+local GLYPH_CLOSED = "|TInterface\\ChatFrame\\ChatFrameExpandArrow:16:16|t"
+-- Trigger pane header = the same header a cue or condition has: arrow + "Trigger 1:  Cooldown", and the optional name typed in the
+-- gray "name (optional)" box under it (arg.xuiEdit, drawn by Skin.lua). Header sits flush left; the pane body is indented.
+function ns.TriggerPaneHeader(pane, rule, tok, j, title, onChange)
+    local hdr = pane.args.hdr
+    local a = hdr.arg
+    local isOpen = a.xuiArrow
+    pane.arg = { xuiIndent = ns.BODY_INDENT or 20 }
+    a.xuiHeadOut = ns.BODY_INDENT or 20
+    a.xuiArrow, a.xuiArrowLeft = nil, nil   -- the arrow is part of the title text, as on cue and condition headers
+    hdr.name = function() return ((not isOpen or isOpen()) and GLYPH_OPEN or GLYPH_CLOSED) .. "  " .. title end
+    local nameArg = ns.TriggerNameArg(rule, tok, j, 0, onChange)
+    a.xuiEdit = {
+        title = function() return title end,
+        get = function() return nameArg.get() end,
+        set = function(v) nameArg.set(nil, v) end,
+        hint = function() return "" end,
+    }
+    a.xuiSub = function() return " " end   -- makes room for the name box under the title
+end
+
 function ns.MoveTrigger(rule, a, dir)
     local seq = ns.TriggerSequence(rule)
     local b = a + dir
@@ -935,13 +957,14 @@ function ns.DecorateBuiltinTriggers(rule, args)
         local title = ns.TriggerHeader(rule, tok, nil, pos, label)
         local nameKey = tok .. "Rename"
         args[nameKey] = ns.TriggerNameArg(rule, tok, nil, 0.5, changed)
-        keys = { unpack(keys) }; keys[#keys + 1] = nameKey
-        args[nameKey].order = pos * 100 + 0.5
         local skinned = ns.SkinRows and ns.SkinRows()
-        if not (ns.GatePane and skinned) then   -- skin off: keep the old numbered header with the text buttons
+        if not (ns.GatePane and skinned) then   -- skin off: keep the old numbered header with the text buttons and the Name box
+            keys = { unpack(keys) }; keys[#keys + 1] = nameKey
+            args[nameKey].order = pos * 100 + 0.5
             args[keys[1]].name = pos .. ".  " .. label
             return
         end
+        args[nameKey] = nil   -- skin on: the name is typed in the header itself (ns.TriggerPaneHeader)
         local rm = args[removeKey]
         local removeFn = rm and rm.func
         if rm then rm.hidden = true end              -- the red X in the row header replaces the Remove button
@@ -949,7 +972,7 @@ function ns.DecorateBuiltinTriggers(rule, args)
         ns.GatePane(rule, args, "trig_" .. tok, title, pos * 100, function() return used(rule) end, keys)
         ns.TriggerDivider(args, "div_" .. tok, pos, function() return not used(rule) end)
         local pane = args["pane_trig_" .. tok]
-        pane.args.hdr.arg.xuiSub = function() return ns.TriggerName(rule, tok, nil) end
+        ns.TriggerPaneHeader(pane, rule, tok, nil, title, changed)
         pane.args.hdr.arg.xuiActions = function()
             return {
                 up = (pos > 1) and function() ns.MoveTrigger(rule, pos, -1); changed() end or false,
@@ -1015,19 +1038,19 @@ local function FieldArgs(rule, t, f, H, order, row)
     local on = function() H.Changed(rule) end
     local onN = function() H.Changed(rule); H.Notify() end
     if f.kind == "spell" then
-        row[k .. "ID"] = { type = "input", name = f.label, order = order, width = "half",
+        row[k .. "Search"] = H.SearchBox(order, function(id) t[k] = id; onN() end)   -- search first, then the ID it fills in, then the spell's name
+        row[k .. "ID"] = { type = "input", name = f.label, order = order + 0.1, width = "half",
             get = function() return tostring(t[k] or 0) end,
             set = function(_, v) t[k] = tonumber(v) or 0; onN() end }
-        row[k .. "Name"] = { type = "description", order = order + 0.1, width = "double", fontSize = "medium",
+        row[k .. "Name"] = { type = "description", order = order + 0.2, width = "double", fontSize = "medium",
             name = function() return H.SpellName(t[k]) end }
-        row[k .. "Search"] = H.SearchBox(order + 0.2, function(id) t[k] = id; onN() end)
     elseif f.kind == "talent" then
-        row[k .. "ID"] = { type = "input", name = f.label, order = order, width = "half",
+        row[k .. "Search"] = H.SearchBox(order, function(id) t[k] = id; onN() end)
+        row[k .. "ID"] = { type = "input", name = f.label, order = order + 0.1, width = "half",
             get = function() return tostring(t[k] or 0) end,
             set = function(_, v) t[k] = tonumber(v) or 0; onN() end }
-        row[k .. "Name"] = { type = "description", order = order + 0.1, width = "double", fontSize = "medium",
+        row[k .. "Name"] = { type = "description", order = order + 0.2, width = "double", fontSize = "medium",
             name = function() return H.SpellName(t[k]) end }
-        row[k .. "Search"] = H.SearchBox(order + 0.2, function(id) t[k] = id; onN() end)
         local function Build()
             local values, sorting = {}, {}
             for _, tl in ipairs(ns.BuildTalentList and ns.BuildTalentList() or {}) do
@@ -1175,9 +1198,10 @@ function ns.BuildExtraTriggerArgs(rule, H)
             }
         end
         if ns.GatedPane and ns.SkinRows and ns.SkinRows() then
+            row.rename = nil   -- skin on: the name is typed in the header itself
             local pane = ns.GatedPane(rule, "trig_x" .. j, title, pos * 100, function() return true end, row)
+            ns.TriggerPaneHeader(pane, rule, "x", j, title, onN)
             pane.args.hdr.arg.xuiActions = actions
-            pane.args.hdr.arg.xuiSub = function() return ns.TriggerName(rule, "x", j) end
             args["x" .. j] = pane
             ns.TriggerDivider(args, "divx" .. j, pos)
         else

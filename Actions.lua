@@ -119,9 +119,9 @@ local function GlowStart(rule, a)
     end
 end
 
-local function CodeAllowed() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.allowCode == true end
+-- Custom code runs only when that moment's own "Run custom code" box is ticked (there is no all-rules switch any more). Profile.lua strips code and
+-- codeOn from every import, so a box can only ever be ticked, and code only ever written, by you.
 local function DoCode(rule, phase, a)
-    if not CodeAllowed() then return end
     local fn, err = loadstring(a.code, "XayaUI action: " .. tostring(rule.name))
     if not fn then ns.Print("custom code error in '" .. tostring(rule.name) .. "' (" .. phase .. "): " .. tostring(err)); return end
     local ok, e = pcall(fn, rule)
@@ -189,7 +189,7 @@ function ns.ActionsPane(rule, Notify, extra)
                 set = function(_, r, g, b) put(phase, "glowR", r); put(phase, "glowG", g); put(phase, "glowB", b) end },
             -- code -------------------------------------------------------
             codeOn = { type = "toggle", order = 40, width = "full", name = "Run custom code",
-                desc = "Lua that runs as you. It only runs if custom code is switched on at the top of this tab. In Midnight, combat numbers are secret values: code that reads or compares them errors.",
+                desc = "Lua that runs as you, at this moment only. It is never kept when you import a profile, so you only ever run code you typed or pasted in yourself. In Midnight, combat numbers are secret values: code that reads or compares them errors.",
                 get = On(phase, "codeOn"), set = function(_, v) put(phase, "codeOn", v and true or nil); Notify() end },
             code = { type = "input", multiline = 8, order = 41, width = "full", name = "Code  (the rule is passed in as ...)",
                 hidden = Off(phase, "codeOn"),
@@ -202,8 +202,11 @@ function ns.ActionsPane(rule, Notify, extra)
                 get = function() return get(phase, "glowKeep") and true or false end, set = function(_, v) put(phase, "glowKeep", v and true or nil) end }
             if extra.sound then args.sound = extra.sound; args.sound.order = 30 end
         elseif phase == "finish" and extra.finishSound then
-            args.sound = extra.finishSound(function() return ns.ActionsOf(rule, "finish") end)
-            args.sound.order = 30
+            local snd = extra.finishSound(function() return ns.ActionsOf(rule, "finish") end)
+            for key, node in pairs(snd.args) do
+                args["snd_" .. key] = node
+                node.order = 30 + (tonumber(node.order) or 0) / 100
+            end
         end
         return { type = "group", inline = true, order = order, name = title, args = args }
     end
@@ -211,10 +214,6 @@ function ns.ActionsPane(rule, Notify, extra)
     local args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "What the rule does at three moments. What it shows or plays as a result of conditions is set on the Cues tab." },
-        allowCode = { type = "toggle", order = 0.5, width = "full", name = "Allow custom code to run (all rules)",
-            desc = "Custom code runs with your full permissions. It is never kept when you import a profile, so you only ever run code you typed or pasted in yourself. Leave this off unless you use it.",
-            get = function() return CodeAllowed() end,
-            set = function(_, v) CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.allowCode = v and true or nil; ns.MarkDirty(); Notify() end },
         init = Phase("init", "On Initialization", 1, "Runs once when the rule loads: after a /reload or login, a spec change, or when its load conditions become true."),
         start = Phase("start", "During", 2, "Runs when the rule starts (its trigger becomes true)."),
         finish = Phase("finish", "After It Ends", 3, "Runs when the rule stops (its trigger becomes false)."),

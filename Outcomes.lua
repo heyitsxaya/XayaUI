@@ -332,7 +332,21 @@ local function ConditionBody(rule, H)
             hidden = function() return collapsed() or not IsNumRef(t.ref) end,
             get = function() return tostring(t.num or 0) end,
             set = function(_, v) t.num = tonumber(v) or 0; onN() end, disabled = locked }
-        args["x" .. j] = { type = "execute", order = o + 0.04, width = "relative", relWidth = 0.1, name = "X", hidden = collapsed,
+        args["s" .. j] = { type = "description", order = o + 0.035, width = "relative", relWidth = 0.04, fontSize = "medium", hidden = collapsed,
+            name = function()
+                local p = ns.FindParentRule(rule)
+                local v
+                if p and t.ref then
+                    local ok, r = pcall(function()
+                        local pr, pi = ns.Evaluate(p, ns.ReadContext())
+                        return ns.CheckValue(t, p, pr, pi)
+                    end)
+                    if ok then v = r end
+                end
+                local tex = (v == true and "Indicator-Green") or (v == false and "Indicator-Red") or "Indicator-Yellow"
+                return "|TInterface\\COMMON\\" .. tex .. ":16:16:0:-4|t"
+            end }
+        args["x" .. j] = { type = "execute", order = o + 0.04, width = "relative", relWidth = 0.06, name = "X", hidden = collapsed, arg = { xuiDel = true },
             desc = "Remove this check.",
             func = function() table.remove(W.list, j); onN() end, disabled = locked }
     end
@@ -365,13 +379,89 @@ local function ConditionBody(rule, H)
             for _, k in ipairs(list) do if k ~= key then out[#out + 1] = k end end
             if val then out[#out + 1] = key end
             rule.thenCues = (#out > 0) and out or nil
+            if not val and rule.thenMods then   -- a cue that is no longer listed loses its modifiers
+                rule.thenMods[key] = nil
+                if next(rule.thenMods) == nil then rule.thenMods = nil end
+            end
             ns.MarkDirty(); H.Changed(rule)
         end, disabled = locked }
+
+    -- Modifiers: while this condition is true, change how a listed display cue looks (glow, desaturate, opacity).
+    -- One picker chooses which listed cue the three controls edit. Sounds and speech have no look, so they are not offered.
+    local VIS_KIND = { text = true, texture = true, icon = true }
+    local function listed(key) for _, k in ipairs(rule.thenCues or {}) do if k == key then return true end end return false end
+    local function modChoices()
+        local vals, order = {}, {}
+        local p = ns.FindParentRule(rule)
+        if p then
+            for _, c in ipairs(ns.CuesOf(p)) do
+                if VIS_KIND[c.cueKind] and c.cueKey and listed(c.cueKey) then
+                    vals[c.cueKey] = ns.CueLabel(c); order[#order + 1] = c.cueKey
+                end
+            end
+        end
+        return vals, order
+    end
+    local function modKey()
+        local vals, order = modChoices()
+        ns.modPick = ns.modPick or setmetatable({}, { __mode = "k" })
+        local k = ns.modPick[rule]
+        if k and vals[k] then return k end
+        return order[1]
+    end
+    local function noMods() local _, order = modChoices(); return collapsed() or #order == 0 end
+    local function modGet(field)
+        local k = modKey()
+        local m = k and type(rule.thenMods) == "table" and rule.thenMods[k] or nil
+        return m and m[field]
+    end
+    local function modSet(field, v)
+        local k = modKey()
+        if not k then return end
+        rule.thenMods = rule.thenMods or {}
+        local m = rule.thenMods[k] or {}
+        m[field] = v
+        rule.thenMods[k] = next(m) and m or nil
+        if next(rule.thenMods) == nil then rule.thenMods = nil end
+        ns.MarkDirty(); onN()
+    end
+    local function tri(field, onWord, offWord, keepWord)
+        return {
+            values = { keep = keepWord, on = onWord, off = offWord }, sorting = { "keep", "on", "off" },
+            get = function() local v = modGet(field); if v == true then return "on" elseif v == false then return "off" end return "keep" end,
+            set = function(_, v) modSet(field, (v == "on") and true or (v == "off") and false or nil) end,
+        }
+    end
+    args.modLabel = { type = "description", order = 71, width = "full", fontSize = "medium", hidden = noMods,
+        name = "|cffffd100AND CHANGE|r  |cff888888while this condition is true (the later condition wins if two disagree):|r" }
+    args.modCue = { type = "select", order = 71.1, width = "relative", relWidth = 0.48, name = "", arg = { xuiTextLeft = true }, hidden = noMods,
+        desc = "Which of the cues listed under THEN the three settings next to it apply to.",
+        values = function() local v = modChoices(); return v end,
+        sorting = function() local _, o = modChoices(); return o end,
+        get = function() return modKey() end,
+        set = function(_, v) ns.modPick = ns.modPick or setmetatable({}, { __mode = "k" }); ns.modPick[rule] = v; onN() end, disabled = locked }
+    local g = tri("glow", "Glow: on", "Glow: off", "Glow: no change")
+    args.modGlow = { type = "select", order = 71.2, width = "relative", relWidth = 0.24, name = "", arg = { xuiTextLeft = true }, hidden = noMods,
+        desc = "Turn the cue's pulsing glow on or off while this condition is true. No change keeps the cue's own Display setting.",
+        values = g.values, sorting = g.sorting, get = g.get, set = g.set, disabled = locked }
+    local d = tri("desat", "Desaturate", "Full color", "Color: no change")
+    args.modDesat = { type = "select", order = 71.3, width = "relative", relWidth = 0.26, name = "", arg = { xuiTextLeft = true }, hidden = noMods,
+        desc = "Gray the cue out (or force full color) while this condition is true. No change keeps the cue's own Display setting.",
+        values = d.values, sorting = d.sorting, get = d.get, set = d.set, disabled = locked }
+    args.modAlpha = { type = "select", order = 71.4, width = "relative", relWidth = 0.34, name = "", arg = { xuiTextLeft = true }, hidden = noMods,
+        desc = "Replace the cue's opacity while this condition is true. No change keeps the cue's own Display setting.",
+        values = { keep = "Opacity: no change", set = "Opacity: set to..." }, sorting = { "keep", "set" },
+        get = function() return modGet("alpha") ~= nil and "set" or "keep" end,
+        set = function(_, v) modSet("alpha", (v == "set") and (modGet("alpha") or 0.5) or nil) end, disabled = locked }
+    args.modAlphaN = { type = "input", order = 71.5, width = "relative", relWidth = 0.2, name = "", hidden = function() return noMods() or modGet("alpha") == nil end,
+        desc = "Opacity in percent, 0 (invisible) to 100 (solid).",
+        get = function() return tostring(math.floor((modGet("alpha") or 0.5) * 100 + 0.5)) end,
+        set = function(_, v) local n = tonumber(v); if n then modSet("alpha", math.max(0, math.min(100, n)) / 100) end end, disabled = locked }
     args.status = { type = "description", order = 80, width = "full", fontSize = "medium", hidden = collapsed,
         name = function()
             local ok, res = pcall(ns.Evaluate, rule, ns.ReadContext())
             local word = (not ok and "|cffffd100error|r") or (res and "|cff55ff55TRUE|r") or "|cffff5555FALSE|r"
-            return "Right now: " .. word
+            return "Right now: " .. word .. "     |cff888888Each check's light:  |r|cff55ff55green|r|cff888888 = met,  |r|cffff5555red|r|cff888888 = not met,  |r|cffffd100yellow|r|cff888888 = unknown.|r"
         end }
     return args
 end
@@ -410,19 +500,22 @@ local function CopyOutcome(rule)
     ns.MarkDirty(); (ns.UI.NotifyTwice or ns.UI.Notify)()
 end
 local function RemoveOutcome(rule)
+    local parent = ns.FindParentRule(rule)   -- only this cue / condition goes; its rule stays and stays open
     if rule.isCue then ns.DeleteCue(rule)
     else
         for i, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, i); break end end
         pcall(ns.DropVisual, rule)
     end
-    ns.MarkDirty(); (ns.UI.NotifyTwice or ns.UI.Notify)()
+    ns.MarkDirty()
+    if parent and ns.ReselectRule then ns.ReselectRule(parent) end   -- before the rebuild, so the pane does not fall back to another page
+    (ns.UI.NotifyTwice or ns.UI.Notify)()
 end
 
 local OPEN = "|TInterface\\Buttons\\Arrow-Down-Up:16:16|t"
 local CLOSED = "|TInterface\\ChatFrame\\ChatFrameExpandArrow:16:16|t"
 local function Header(rule, titleFn, edit)
     return { type = "execute", order = 0.05, width = "full",
-        arg = { xuiLeft = true, xuiEdit = edit, xuiSub = (edit and edit.title) and function() return " " end or nil, xuiActions = function()
+        arg = { xuiLeft = true, xuiHeadOut = ns.BODY_INDENT or 20, xuiEdit = edit, xuiSub = (edit and edit.title) and function() return " " end or nil, xuiActions = function()
             local list, pos = SiblingList(rule), nil
             for i, r in ipairs(list) do if r == rule then pos = i end end
             return {
@@ -441,7 +534,7 @@ local function EmbedCondition(pg, rule, k)
     local host = pg.args and pg.args.conditions and pg.args.conditions.args
     if not host then return end
     local function locked() return ns.IsEditLocked and ns.IsEditLocked(rule) end
-    local g = { type = "group", inline = true, order = 100 + k, name = "", args = {} }
+    local g = { type = "group", inline = true, order = 100 + k, name = "", arg = { xuiIndent = ns.BODY_INDENT or 20 }, args = {} }
     local function dot()
         local ok, res = pcall(ns.Evaluate, rule, ns.ReadContext())
         return (not ok and "|cffffd100o|r") or (res and "|cff55ff55o|r") or "|cffff5555o|r"
@@ -467,7 +560,7 @@ local function EmbedCue(pg, og, rule, k)
     if not host then return end
     local function locked() return ns.IsEditLocked and ns.IsEditLocked(rule) end
     local function collapsed() return rule.ocCollapsed == true end
-    local g = { type = "group", inline = true, order = 100 + k, name = "", args = {} }
+    local g = { type = "group", inline = true, order = 100 + k, name = "", arg = { xuiIndent = ns.BODY_INDENT or 20 }, args = {} }
     g.args.hdr = Header(rule, function() return ns.CueLabel(rule) end, {
         title = function() return ns.CueDefaultLabel(rule) end,   -- e.g. "Sound 1": the number is the title; the name is typed beneath it
         get = function() return (type(rule.cueName) == "string" and rule.cueName:match("%S")) and rule.cueName or "" end,
@@ -496,19 +589,26 @@ local function EmbedCue(pg, og, rule, k)
         put(key, grp); grp.order = order
     end
     local function sub(key, order, node) if node then put(key, node); node.order = order end end
+    -- the cue's own header already names it ("Sound 1"), so its options sit directly under it: no second box titled "Sound"
+    local function flat(prefix, base, body)
+        for key, node in pairs(body or {}) do
+            put(prefix .. "_" .. key, node)
+            node.order = base + (tonumber(node.order) or 0) / 1000
+        end
+    end
     if parts and (rule.cueKind == "sound" or rule.cueKind == "speech" or rule.cueKind == "text" or rule.cueKind == "texture" or rule.cueKind == "icon") then
         -- a cue is always on: no "Show ..." tick box, no Options +/- and no "Show when" menu (that is what Conditions decides)
         if rule.cueKind == "sound" then
             rule.sound.enabled = true
-            box("snd", 3, "Sound", parts.soundBody)
+            flat("snd", 3, parts.soundBody)
         elseif rule.cueKind == "speech" then
             rule.sound.enabled = true; rule.sound.source = "tts"
-            box("spk", 3, "Speech", parts.speechBody)
+            flat("spk", 3, parts.speechBody)
         else
             rule.visual.enabled = true; rule.visual.trigger = "condition"
             if rule.cueKind == "text" then
                 parts.ensureText()
-                box("txt", 3, "Text", parts.textBody)
+                flat("txt", 3, parts.textBody)
             else
                 box("tex", 3, (rule.cueKind == "icon") and "Icon Options" or "Texture Options", parts.tex)
                 sub("color", 4, parts.colorSub)

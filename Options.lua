@@ -738,6 +738,31 @@ local function RulePath(rule)
     return "smartcat", "all"
 end
 
+-- Keep the editing pane open on a rule after its list row may have moved or vanished. A rule's row in Smart Categories comes from
+-- its cues, so deleting its last cue of a type removes the row it was selected through; without this the pane falls back to another page.
+function ns.ReselectRule(rule)
+    if not rule then return end
+    pcall(function()
+        local S = ns.RulesTreeStatus()
+        local oldSel = S and S.selected
+        local newPath = { RulePath(rule) }
+        if oldSel == table.concat(newPath, "\001") then return end   -- the row did not move: the pane stays exactly as it is
+        -- the row moved (deleting a rule's last cue of a type removes the row it was selected through): follow it, and keep the same tab open
+        local tab
+        if type(oldSel) == "string" then
+            local segs = {}
+            for seg in oldSel:gmatch("[^\001]+") do segs[#segs + 1] = seg end
+            local st = AceConfigDialog:GetStatusTable(APP, segs)
+            tab = st and st.groups and st.groups.selected
+        end
+        ns.SelectKeep(unpack(newPath))
+        if tab then
+            local st2 = AceConfigDialog:GetStatusTable(APP, newPath)
+            if st2 then st2.groups = st2.groups or {}; st2.groups.selected = tab end
+        end
+    end)
+end
+
 -------------------------------------------------------------------------------
 -- Copy / paste settings between rules (choose exactly which sections; nothing is pasted by default)
 -------------------------------------------------------------------------------
@@ -831,7 +856,7 @@ local function BuildRule(i, rule)
             },
             spellName = { type = "description", order = 3, width = "double", fontSize = "medium",
                 name = function() return SpellName(rule.spellID) end },
-            spellSearch = SearchBox(3.2, function(id) rule.spellID = id; Changed(rule); Notify() end),
+            spellSearch = SearchBox(1.5, function(id) rule.spellID = id; Changed(rule); Notify() end),   -- before Spell ID (2)
             spellPick = {
                 type = "select", name = "Or pick from your spellbook (current spec, active spells)", order = 3.5, width = "double",
                 values = function()
@@ -866,10 +891,6 @@ local function BuildRule(i, rule)
             },
             buffName = { type = "description", order = 13, width = "double", fontSize = "medium",
                 name = function() return SpellName(rule.buffID) end },
-            buffEstimate = { type = "toggle", name = "Estimate time left when the game hides it", order = 13.5, width = "full",
-                desc = "In combat the game often hides how long an aura has left, so \"seconds left\" conditions cannot be checked. When on, XayaUI estimates it as the moment the buff appeared plus the duration it last saw while readable. Wrong for buffs that get refreshed or extended while up. Off = a hidden time stays unknown and the condition does not fire.",
-                get = function() return rule.buffEstimate == true end,
-                set = function(_, v) rule.buffEstimate = v and true or nil; Changed(rule); Notify() end },
         },
     }
 
@@ -879,7 +900,7 @@ local function BuildRule(i, rule)
         local o = trigger.args[k]
         if o then o.hidden = function() return not ns.CooldownUsed(rule) end end
     end
-    for _, k in ipairs({ "buffHeader", "buffState", "buffSearch", "buffID", "buffName", "buffEstimate" }) do
+    for _, k in ipairs({ "buffHeader", "buffState", "buffSearch", "buffID", "buffName" }) do
         local o = trigger.args[k]
         if o then o.hidden = function() return not ns.BuffUsed(rule) end end
     end
@@ -890,7 +911,7 @@ local function BuildRule(i, rule)
     trigger.args.buffRemove = { type = "execute", name = "Remove", order = 14, width = "half",
         desc = "Remove the Buff / Aura trigger: clears this rule's aura ID and state.",
         hidden = function() return not ns.BuffUsed(rule) end,
-        func = function() rule.useBuff = false; rule.buffID = 0; rule.buffState = nil; rule.buffEstimate = nil; Changed(rule); Notify() end }
+        func = function() rule.useBuff = false; rule.buffID = 0; rule.buffState = nil; Changed(rule); Notify() end }
     -- Additional trigger rows (Triggers.lua). A failure there must never take the whole options tree down.
     if ns.BuildExtraTriggerArgs then
         local okx, xa = pcall(ns.BuildExtraTriggerArgs, rule, ns.UI)
@@ -1155,15 +1176,15 @@ local function BuildRule(i, rule)
                     if tx then return "|T" .. tostring(tx) .. ":24|t  Using the icon from " .. tostring(what) end
                     return "|cffffd100No trigger has a spell or item yet.|r Add one on the Trigger tab, or choose another icon source."
                 end },
-            iconSpell = { type = "input", name = "Spell ID", order = 1.2, width = "half",
+            iconSpell = { type = "input", name = "Spell ID", order = 1.21, width = "half",
                 hidden = function() return V.kind ~= "spellicon" or V.iconSrc ~= "spell" end,
                 get = function() return tostring(V.iconSpell or 0) end,
                 set = function(_, x) V.iconSpell = tonumber(x) or 0; Changed(rule); Notify() end },
-            iconSpellName = { type = "description", order = 1.21, width = "double", fontSize = "medium",
+            iconSpellName = { type = "description", order = 1.22, width = "double", fontSize = "medium",
                 hidden = function() return V.kind ~= "spellicon" or V.iconSrc ~= "spell" end,
                 name = function() return SpellName(tonumber(V.iconSpell) or 0) end },
             iconSpellSearch = (function()
-                local sb = SearchBox(1.22, function(id) V.iconSpell = id; Changed(rule); Notify() end)
+                local sb = SearchBox(1.2, function(id) V.iconSpell = id; Changed(rule); Notify() end)
                 sb.hidden = function() return V.kind ~= "spellicon" or V.iconSrc ~= "spell" end
                 return sb
             end)(),
