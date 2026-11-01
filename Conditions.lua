@@ -536,6 +536,23 @@ function ns.CheckContext(rule, ctx)
     local ov, ovFolder = ns.FolderLoadOverride(rule)   -- a folder's Never / Always beats the rule's own load mode
     if ov == "never" then return false, "load: never (folder " .. tostring(ovFolder and ovFolder.name) .. ")" end
     if ov == "always" then return true end
+    do   -- a group's own spec / role / instance-type conditions apply on top of the rule's (nearest group first, then its parents)
+        local fid, guard = rule.folder, 0
+        while fid and guard < 32 do
+            local f = ns.FolderById(fid)
+            if not f then break end
+            if ns.SetActive(f.loadSpecs) and not (ctx.specID ~= nil and ns.SetMatch(f.loadSpecs, tostring(ctx.specID))) then
+                return false, "group " .. tostring(f.name) .. ": specialization" .. (ctx.specID == nil and " (unknown)" or "")
+            end
+            if ns.SetActive(f.loadRoles) and not (ctx.role ~= nil and ns.SetMatch(f.loadRoles, ctx.role)) then
+                return false, "group " .. tostring(f.name) .. ": role" .. (ctx.role == nil and " (unknown)" or "")
+            end
+            if ns.SetActive(f.loadInst) and not (ctx.instanceType ~= nil and ns.SetMatch(f.loadInst, ctx.instanceType)) then
+                return false, "group " .. tostring(f.name) .. ": instance type" .. (ctx.instanceType == nil and " (unknown)" or "")
+            end
+            fid, guard = f.parent, guard + 1
+        end
+    end
     if load.mode == "never" then return false, "load: never" end
     if load.mode == "always" then return true end
     local checks = {}

@@ -1291,18 +1291,6 @@ local function BuildRule(i, rule)
                 func = function() ns.ToggleUnlock(); Notify() end },
         },
     }
-    do   -- Sidebar icon (per rule): which icon this rule shows in the left-hand list
-        local LI = { auto = "Automatic (spell / buff icon; texture rules show their own art)", type = "Rule type icon", custom = "Custom icon (file ID)" }
-        tex.args.sbHdr = { type = "header", name = "Sidebar icon", order = 40 }
-        tex.args.sbMode = { type = "select", name = "Icon in the rule list", order = 41, width = "double", values = LI, sorting = { "auto", "type", "custom" },
-            desc = "What the left-hand list shows for this rule. Automatic uses the icon of the spell or buff the rule tracks (rules that track neither show the rule type icon).",
-            get = function() return rule.listIcon or "auto" end,
-            set = function(_, v) rule.listIcon = v; Changed(rule); if ns.DecorateTrees then ns.DecorateTrees() end; Notify() end }
-        tex.args.sbId = { type = "input", name = "Icon file ID", order = 42, width = "double",
-            hidden = function() return (rule.listIcon or "auto") ~= "custom" end,
-            get = function() return rule.listIconID and tostring(rule.listIconID) or "" end,
-            set = function(_, v) rule.listIconID = tonumber(v); Changed(rule); if ns.DecorateTrees then ns.DecorateTrees() end; Notify() end }
-    end
     local display = {
         type = "group", inline = true, name = "Display Options", order = 1, args = {
             enabled = Tog(V, "enabled", "Show a texture / icon", 1, on),
@@ -1446,6 +1434,10 @@ local function BuildRule(i, rule)
         end
         for _, k in ipairs(toColor) do colorArgs[k] = tex.args[k]; tex.args[k] = nil end
         for _, k in ipairs(toAnim) do animArgs[k] = tex.args[k]; tex.args[k] = nil end
+        -- the run-out fade and the progress-bar wipe are animations: they belong under Animation Options
+        for _, k in ipairs({ "fadeH", "fadeAlpha", "pane_fadeAlpha", "fillH", "fillOn", "pane_fill" }) do
+            if opacity.args[k] then animArgs[k] = opacity.args[k]; opacity.args[k] = nil end
+        end
         colorArgs.opH = { type = "header", name = "Opacity & Fill", order = 99 }
         for k, v in pairs(opacity.args) do
             if type(v) == "table" then v.order = (tonumber(v.order) or 0) + 100 end
@@ -1532,6 +1524,17 @@ local function BuildRule(i, rule)
                 desc = "A short note for yourself on what this rule does. Shown only here; it does not affect the rule.",
                 get = function() return rule.description or "" end,
                 set = function(_, v) v = tostring(v or ""):sub(1, 500); rule.description = (v ~= "") and v or nil; ns.MarkDirty() end },
+            sbHdr = { type = "header", name = "Sidebar icon", order = 3.6 },
+            sbMode = { type = "select", name = "Icon in the rule list", order = 3.7, width = "double",
+                values = { auto = "Automatic (spell / buff icon; texture rules show their own art)", type = "Rule type icon", custom = "Custom icon (file ID)" },
+                sorting = { "auto", "type", "custom" },
+                desc = "What the left-hand list shows for this rule. Automatic uses the icon of the spell or buff the rule tracks (rules that track neither show the rule type icon).",
+                get = function() return rule.listIcon or "auto" end,
+                set = function(_, v) rule.listIcon = v; Changed(rule); if ns.DecorateTrees then ns.DecorateTrees() end; Notify() end },
+            sbId = { type = "input", name = "Icon file ID", order = 3.8, width = "double",
+                hidden = function() return (rule.listIcon or "auto") ~= "custom" end,
+                get = function() return rule.listIconID and tostring(rule.listIconID) or "" end,
+                set = function(_, v) rule.listIconID = tonumber(v); Changed(rule); if ns.DecorateTrees then ns.DecorateTrees() end; Notify() end },
             refresh = { type = "execute", name = "Refresh status", order = 5, func = Notify },
             status = { type = "description", order = 10, width = "full", fontSize = "medium", name = function() return StatusText(rule) end },   -- last on the page
             delete = {
@@ -2663,6 +2666,10 @@ local function BuildFolder(k, f)
                 desc = "Its rules and nested groups are kept and move up one level. Keyboard: press Delete while this group is open.",
                 confirm = true, confirmText = "Delete this group? The rules and nested groups inside are kept and move up one level.",
                 func = function() ns.DeleteFolderById(f.id) end },
+            deleteAllTop = { type = "execute", name = "|cffff6060Delete group and all contents|r", order = 1.6, width = 1,
+                desc = "Deletes this group, every nested group and every rule inside them. This cannot be undone.",
+                confirm = true, confirmText = "Delete this group AND all rules and nested groups inside it? This cannot be undone.",
+                func = function() ns.DeleteFolderAllById(f.id) end },
             newRule = { type = "execute", name = "+ New rule in this group", order = 2, width = "double",
                 func = function()
                     StartNewRule(f.id)
@@ -2709,8 +2716,78 @@ local function BuildFolder(k, f)
                 end },
         },
     }
-    ns.LockArgs(g.args, function() return ns.IsEditLocked({ folder = f.id }) end)
+    -- Tabs (like a rule): Group | Display | Load. The pieces above are sorted into them here.
+    local function take(keys)
+        local t = {}
+        for _, k in ipairs(keys) do if g.args[k] then t[k] = g.args[k]; g.args[k] = nil end end
+        return t
+    end
+    local container = g.args.container
+    local dispFromContainer = {}
+    if container and container.args then
+        for _, k in ipairs({ "alpha", "scale", "strata", "level", "relH", "rel", "relName", "point", "relPoint", "x", "y" }) do
+            if container.args[k] then dispFromContainer[k] = container.args[k]; container.args[k] = nil end
+        end
+    end
+    local isVisual = function() return ns.KindHas({ folder = f.id }, "visual") end
+    local groupArgs = g.args
+    local dispArgs = take({ "arrange", "applyText" })
+    dispArgs.placement = { type = "group", inline = true, order = 1, name = "Opacity, Scale, Layer & Position", args = dispFromContainer }
+    dispArgs.note = { type = "description", order = 0, width = "full", fontSize = "small",
+        name = "Display settings for every display inside this group and its nested groups: opacity, scale, layer (frame strata), position, alignment and shared text formatting. Tinting / colour for a whole group is not built yet." }
+    local loadArgs = { override = take({ "loadOverride" }).loadOverride, conds = ns.FolderLoadConditions(f) }
+    local lock = function() return ns.IsEditLocked({ folder = f.id }) end
+    ns.LockArgs(groupArgs, lock); ns.LockArgs(dispArgs, lock); ns.LockArgs(loadArgs, lock)
+    -- A group page can't use AceConfig's own tabs (its rules and nested groups are the tree children below it), so the tab strip
+    -- is a row of buttons and each tab's content is an unframed box shown only while its tab is picked.
+    ns.folderTab = ns.folderTab or setmetatable({}, { __mode = "k" })
+    local function cur()
+        local t = ns.folderTab[f] or "group"
+        if t == "display" and not isVisual() then t = "group" end
+        return t
+    end
+    local function Tab(key, label, order, hiddenFn)
+        return { type = "execute", order = order, width = 0.8, hidden = hiddenFn,
+            name = function() return cur() == key and ("|cffffd100" .. label .. "|r") or label end,
+            func = function() ns.folderTab[f] = key; Notify() end }
+    end
+    local function Page(key, args)
+        return { type = "group", inline = true, name = "", order = 0.2, hidden = function() return cur() ~= key end, args = args }
+    end
+    g.args = {
+        tabGroup = Tab("group", "Group", 0.01),
+        tabDisplay = Tab("display", "Display", 0.02, function() return not isVisual() end),
+        tabLoad = Tab("load", "Load", 0.03),
+        pageGroup = Page("group", groupArgs),
+        pageDisplay = Page("display", dispArgs),
+        pageLoad = Page("load", loadArgs),
+    }
     return g
+end
+
+-- Real load conditions for a group (spec / role / instance type). They are checked on top of every rule's own Load tab and cannot be
+-- loosened by it (Conditions.lua ns.FolderLoadGate). Empty = no restriction. Never / Always above still wins.
+function ns.FolderLoadConditions(f)
+    local function setOf(field) f[field] = f[field] or {}; return f[field] end
+    local function Multi(order, name, field, choices, sorting)
+        return { type = "multiselect", name = name, order = order, width = "full", values = choices, sorting = sorting,
+            get = function(_, k) return setOf(field)[k] and true or false end,
+            set = function(_, k, v) setOf(field)[k] = v and true or nil; if next(f[field]) == nil then f[field] = nil end; ns.MarkDirty(); Notify() end }
+    end
+    local specV, specO = {}, {}
+    for _, c in ipairs(SpecChoices()) do specV[c.id] = c.text; specO[#specO + 1] = c.id end
+    local roleV, roleO = {}, {}
+    for _, c in ipairs(RoleChoices()) do roleV[c.id] = c.text; roleO[#roleO + 1] = c.id end
+    local instV = {}
+    for k, v in pairs(ns.INSTANCE_TYPES) do instV[k] = v end
+    return { type = "group", inline = true, order = 5.5, name = "Only Load This Group When",
+        args = {
+            note = { type = "description", order = 0, width = "full", fontSize = "small",
+                name = "Checked before each rule's own Load tab, for every rule in this group and its nested groups: a rule only loads if it passes both. Leave a list with nothing ticked to allow anything. Nothing on the rules is changed." },
+            specs = Multi(1, "Specialization", "loadSpecs", specV, specO),
+            roles = Multi(2, "Role", "loadRoles", roleV, roleO),
+            inst = Multi(3, "Instance type", "loadInst", instV, ns.INSTANCE_TYPE_ORDER),
+        } }
 end
 
 -- Explanations (static description rows of 50+ characters) become an info icon: on the section heading above them, or on the title
@@ -3781,6 +3858,28 @@ local function DeleteFolder(f)
 end
 
 function ns.DeleteFolderById(id) local f = FolderById(id); if f then DeleteFolder(f) end end
+-- Deletes the group, every group nested in it and every rule inside them (and those rules' cues / conditions).
+function ns.DeleteFolderAll(f)
+    local ids, stack = { [f.id] = true }, { f.id }
+    while #stack > 0 do
+        local cur = table.remove(stack)
+        for _, ff in ipairs(ns.folders) do
+            if ff.parent == cur and not ids[ff.id] then ids[ff.id] = true; stack[#stack + 1] = ff.id end
+        end
+    end
+    local doomed = {}
+    for _, r in ipairs(ns.rules) do if r.folder and ids[r.folder] and not r.parentUid then doomed[#doomed + 1] = r end end
+    for _, r in ipairs(doomed) do
+        if ns.DeleteOutcomesOf then pcall(ns.DeleteOutcomesOf, r) end
+        for idx, x in ipairs(ns.rules) do if x == r then table.remove(ns.rules, idx); break end end
+        pcall(ns.DropVisual, r)
+    end
+    for _, r in ipairs(ns.rules) do if r.folder and ids[r.folder] then r.folder = nil end end   -- stray cue rows, if any
+    for idx = #ns.folders, 1, -1 do if ids[ns.folders[idx].id] then table.remove(ns.folders, idx) end end
+    ns.MarkDirty(); Notify(); SelectRoot()
+    return #doomed
+end
+function ns.DeleteFolderAllById(id) local f = FolderById(id); if f then return ns.DeleteFolderAll(f) end end
 
 local function AddMoveMenu(root, obj, kind)
     local multi = kind == "rule" and ns.MultiHas and ns.MultiHas(obj) and ns.MultiCount() > 1
@@ -3902,6 +4001,10 @@ local function RowMenu(button, root)
         root:CreateDivider()
         root:CreateButton("Delete Group (Contents Move Up)", function()
             AskConfirm("Delete the group '" .. fold.name .. "'? Its rules and nested groups are kept and move up one level.", function() DeleteFolder(fold) end)
+        end)
+        root:CreateButton("|cffff6060Delete Group and All Contents|r", function()
+            local n = #FolderRules(fold.id)
+            AskConfirm("Delete the group '" .. fold.name .. "' AND everything inside it: " .. n .. " rule(s) and all nested groups? This cannot be undone.", function() ns.DeleteFolderAll(fold) end)
         end)
         return true
     end

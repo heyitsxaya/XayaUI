@@ -505,6 +505,43 @@ local function SkinTree(w)
         end
     end
     pcall(PartitionAllRules, w)
+    -- Smooth pane switching: when a different row is picked, the right pane is hidden while AceGUI releases and rebuilds its
+    -- widgets (that is the "blink"), then faded back in a moment later. Rebuilds of the SAME row (an edit) are left alone.
+    if not w.xuiFadeHooked and w.Fire and w.content then
+        w.xuiFadeHooked = true
+        local origFire = w.Fire
+        w.Fire = function(self, name, ...)
+            if name == "OnGroupSelected" and SkinOn() and self.content and self.content.SetAlpha then
+                local sel = (...)
+                if sel ~= self.xuiLastSel then
+                    self.xuiLastSel = sel
+                    local c = self.content
+                    c:SetAlpha(0)
+                    self.xuiFadeT = nil
+                    local r = origFire(self, name, ...)
+                    if C_Timer and C_Timer.After then
+                        local tok = {}
+                        self.xuiFadeTok = tok
+                        C_Timer.After(0.04, function()
+                            if self.xuiFadeTok ~= tok or not self.content then return end
+                            local t0, ct = GetTime(), self.content
+                            local fr = self.xuiFadeFrame
+                            if not fr then fr = CreateFrame("Frame"); self.xuiFadeFrame = fr end
+                            fr:SetScript("OnUpdate", function(f)
+                                local k = (GetTime() - t0) / 0.14
+                                if k >= 1 or self.xuiFadeTok ~= tok then ct:SetAlpha(1); f:SetScript("OnUpdate", nil); return end
+                                ct:SetAlpha(k)
+                            end)
+                        end)
+                    else
+                        c:SetAlpha(1)
+                    end
+                    return r
+                end
+            end
+            return origFire(self, name, ...)
+        end
+    end
     -- wider gutter between the right pane's border and its text / controls (AceGUI's default is 10px)
     local pad = Pad()
     if w.xuiPadApplied ~= pad and w.content and w.border then
@@ -525,6 +562,9 @@ local function SkinTree(w)
         end
     end
     OnRelease(w, function(self)
+        self.xuiFadeTok = nil; self.xuiLastSel = nil
+        if self.xuiFadeFrame then self.xuiFadeFrame:SetScript("OnUpdate", nil) end
+        if self.content and self.content.SetAlpha then self.content:SetAlpha(1) end
         if self.xuiSearchBox then self.xuiSearchBox:Hide() end
         if self.xuiSelBar then self.xuiSelBar:Hide() end
         if self.xuiPart or self.xuiTopApplied then pcall(ResetChain, self); self.xuiPart = nil; self.xuiTopApplied = nil end
@@ -1138,7 +1178,28 @@ if FlowFn then
     XUIFlowFn = function(content, children)
         local ok, err = pcall(ns.FlexPrepass, content, children)
         if not ok and not ns.flexErr then ns.flexErr = err; if geterrorhandler then geterrorhandler()(err) end end
+        -- Breathing room between sections: every section heading and every nested box (except the first thing in a pane) is pushed down,
+        -- and everything under it with it, then the pane is told it is that much taller. Re-done from scratch on every layout.
+        local obj = content.obj
+        local own = obj and rawget(obj, "LayoutFinished")
+        local lw, lh
+        if obj and SkinOn() then obj.LayoutFinished = function(_, w, h) lw, lh = w, h end end
         FlowFn(content, children)
+        if obj and SkinOn() then
+            obj.LayoutFinished = own
+            local okS, extra = pcall(function()
+                local acc = 0
+                for i, ch in ipairs(children) do
+                    if i > 1 and (ch.type == "Heading" or ch.type == "InlineGroup") then acc = acc + (ch.type == "Heading" and 14 or 12) end
+                    if acc > 0 and ch.frame then
+                        local p, rel, rp, x, y = ch.frame:GetPoint(1)
+                        if rel == content then ch.frame:ClearAllPoints(); ch.frame:SetPoint(p, rel, rp, x, (y or 0) - acc) end
+                    end
+                end
+                return acc
+            end)
+            if obj.LayoutFinished then pcall(obj.LayoutFinished, obj, lw, (lh or 0) + (okS and extra or 0)) end
+        end
         pcall(ApplyGaps, children)
         -- Nested boxes (a group inside a group) measure their children before text has wrapped, so the box can end up shorter than
         -- its contents. One more layout pass on the next frame corrects it. The second pass is marked so it never schedules a third.
