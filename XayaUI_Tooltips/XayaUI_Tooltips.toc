@@ -1,0 +1,9 @@
+## Interface: 120100, 120105, 120107
+## Title: XayaUI Tooltips
+## Notes: Tooltip modifiers: ID lines, player item level, enemy forces. Documented API only.
+## Version: 0.1.0
+## Author: Xaya
+## OptionalDeps: XayaUI
+## SavedVariables: XayaUITooltipsDB
+Tooltips.lua
+TooltipsUI.lua

@@ -4050,7 +4050,8 @@ local function BuildOptions()
     -- QoL Elements entries (stat boxes, cursor tracker, buff bars) follow it, and only exist while their files are loaded.
     local qolArgs = { chatreskin = ns.BuildChatTab and ns.BuildChatTab(Notify) or nil, cursor = ns.BuildCursorGroup and ns.BuildCursorGroup(Notify) or nil,
         datapanels = ns.BuildDataPanelsTab and ns.BuildDataPanelsTab(Notify) or nil,
-        notepad = ns.BuildNotepadTab and ns.BuildNotepadTab(Notify) or nil }
+        notepad = ns.BuildNotepadTab and ns.BuildNotepadTab(Notify) or nil,
+        tooltips = ns.BuildTooltipsTab and ns.BuildTooltipsTab(Notify) or nil }   -- from the sibling addon XayaUI_Tooltips (0.5.46)
     if ns.QoLOn then
         qolArgs.allqol = allQol
         qolArgs.allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil
