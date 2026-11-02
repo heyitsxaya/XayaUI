@@ -3,9 +3,9 @@
 --   * Notes (memos): any number of notes; the toolbar adds, duplicates, deletes, and flips between them.
 --   * Nothing typed is lost: the text is saved as you type, and earlier versions of each note are kept automatically (a new
 --     version after a pause in typing, and always right before a big chunk of text disappears). Deleted notes go to a trash.
---     Toolbar "Hist" (or the options page) opens the Restore list: earlier versions of this note + deleted notes.
---   * List: the toolbar's List button shows every note in the box (click one to open it).
---   * Formatting (toolbar Fmt, off by default): a format bar (heading, bullet, checkbox, colors, spell icon) and a formatted view.
+--     Toolbar history (clock) button (or the options page) opens the Restore list: earlier versions of this note + deleted notes.
+--   * List: the toolbar's list button shows every note in the box (click one to open it).
+--   * Formatting (toolbar underlined-A button, off by default): a format bar (heading, bullet, checkbox, colors, spell icon) and a formatted view.
 --     Markup is plain text: '# heading', '- bullet', '[ ] / [x] checkbox', |cffRRGGBBtext|r colors, {spell:ID} icon + name.
 --   * Toolbar: at the top, bottom, left, or right of the box; always visible, or only while the mouse is over the box.
 --   * Open / close: /xui notepad, the x on the box, or QoL UI Updates > Notepad. Whether it is open is remembered.
@@ -15,7 +15,7 @@
 local ADDON, ns = ...
 
 local TITLE_H = 20
-local TB_H, TB_W, BTN_W = 20, 38, 32   -- toolbar thickness (horizontal), width (vertical), button width (horizontal)
+local TB_H, TB_W, BTN_W = 20, 38, 26   -- toolbar thickness (horizontal), width (vertical), button width (horizontal)
 local FB_H, FMT_MINW = 20, 262         -- format bar height, minimum box width while it is shown
 local MAX_CHARS = 8000                 -- per note
 local IDLE_SECS = 4                    -- pause in typing that saves a version
@@ -232,7 +232,7 @@ function ns.Notepad_Delete()
     table.remove(db.notes, i)
     if #db.notes == 0 then db.notes[1] = NewNoteTable("") end
     Select(db.notes[math.min(i, #db.notes)].id)
-    ns.Print("note deleted. Notepad > Hist > Deleted notes brings it back.")
+    ns.Print("note deleted. The toolbar history (clock) button > Deleted notes brings it back.")
 end
 
 local function Step(d)
@@ -246,7 +246,7 @@ function ns.Notepad_Prev() Step(-1) end
 function ns.Notepad_Clear()
     local db = DB(); if not db then return end
     local n = Cur(); if not n then return end
-    Flush(); Snapshot(n)   -- Clear is undoable: the old text is in Hist
+    Flush(); Snapshot(n)   -- Clear is undoable: the old text is in the history list
     n.text = ""; n.modified = time()
     if frame then SetEditText(""); UpdateTitle() end
     if Populate then Populate() end
@@ -361,13 +361,52 @@ end
 local BUTTONS = {
     { "New",  "Add a new note",                         function() ns.Notepad_New(nil, true) end },
     { "Dup",  "Duplicate this note",                    function() ns.Notepad_Duplicate() end },
-    { "Del",  "Delete this note (kept under Hist)",     function() ns.Notepad_Delete() end },
+    { "Del",  "Delete this note (kept under the history button)",     function() ns.Notepad_Delete() end },
     { "<",    "Previous note",                          function() ns.Notepad_Prev() end },
     { ">",    "Next note",                              function() ns.Notepad_Next() end },
     { "Hist", "Restore: earlier versions and deleted notes", function() ns.Notepad_ToggleRestore() end },
     { "List", "List of all notes (click one to open it)", function() ns.Notepad_ToggleList() end },
     { "Fmt",  "Formatting tools on / off: heading, bullet, checkbox, colors, spell icons, and a formatted view", function() ns.Notepad_ToggleFormat() end },
     { "More", "Share this note to chat, export notes as text, import notes", function(self) if ns.NotepadShare_Menu then ns.NotepadShare_Menu(self) end end },
+}
+
+-- Toolbar icons are drawn with lines and small squares (no font glyphs and no texture files, so they look the same on every client).
+-- Coordinates are pixels from the middle of the button; each icon fits in about 10 x 10.
+local function Pt(a, r) return r * math.cos(math.rad(a)), r * math.sin(math.rad(a)) end
+local ICONS = {
+    New = function(L) L(-4, 0, 4, 0, 1.6); L(0, -4, 0, 4, 1.6) end,                                       -- plus sign
+    Dup = function(L)                                                                                     -- two pages
+        L(-4, -2, -4, 5); L(-4, 5, 1, 5); L(1, 5, 1, 2)                                                   -- the page behind (its visible edges)
+        L(-1, 2, 5, 2); L(5, 2, 5, -5); L(5, -5, -1, -5); L(-1, -5, -1, 2)                                -- the page in front
+    end,
+    Del = function(L)                                                                                     -- trash bin
+        L(-5, 3, 5, 3, 1.4); L(-2, 3, -2, 5); L(-2, 5, 2, 5); L(2, 5, 2, 3)                               -- lid and handle
+        L(-4, 3, -3, -5); L(-3, -5, 3, -5); L(3, -5, 4, 3); L(-1, 1, -1, -3); L(1, 1, 1, -3)              -- body and slats
+    end,
+    ["<"] = function(L) L(1.5, 3.5, -1.5, 0, 1.4); L(-1.5, 0, 1.5, -3.5, 1.4) end,                        -- small arrows
+    [">"] = function(L) L(-1.5, 3.5, 1.5, 0, 1.4); L(1.5, 0, -1.5, -3.5, 1.4) end,
+    Hist = function(L)                                                                                    -- clock with a counter-clockwise arrow (as in Chrome's history icon)
+        local r, px, py = 5, nil, nil
+        for i = 0, 10 do
+            local x, y = Pt(150 - i * 30, r)
+            if px then L(px, py, x, y) end
+            px, py = x, y
+        end
+        local tx, ty = Pt(150, r)                                                                         -- arrowhead at the start of the arc
+        local back = math.rad(150 - 90)                                                                   -- the direction from the tip back along the arc (the arc runs clockwise from here)
+        for _, d in ipairs({ -40, 40 }) do
+            local a = back + math.rad(d)
+            L(tx, ty, tx + 3 * math.cos(a), ty + 3 * math.sin(a))
+        end
+        L(0, 3, 0, 0); L(0, 0, 2.5, 0)                                                                    -- clock hands
+    end,
+    List = function(L, Sq)                                                                                -- bullet list
+        for _, y in ipairs({ 3, 0, -3 }) do Sq(-5, y, 2); L(-2, y, 5, y, 1.4) end
+    end,
+    Fmt = function(L)                                                                                     -- underlined A
+        L(-4, -3, 0, 4.5, 1.4); L(0, 4.5, 4, -3, 1.4); L(-2.2, -1, 2.2, -1, 1.2); L(-5, -5.5, 5, -5.5, 1.2)
+    end,
+    More = function(L) L(-4.5, 3, 4.5, 3, 1.6); L(-4.5, 0, 4.5, 0, 1.6); L(-4.5, -3, 4.5, -3, 1.6) end,   -- hamburger menu
 }
 
 local function BuildToolbar(f)
@@ -378,7 +417,19 @@ local function BuildToolbar(f)
         local b = CreateFrame("Button", nil, tb)
         b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(); b.bg:SetColorTexture(0.18, 0.18, 0.18, 0.9)
         b.hl = b:CreateTexture(nil, "HIGHLIGHT"); b.hl:SetAllPoints(); b.hl:SetColorTexture(0.2, 0.7, 1, 0.35)
-        b.fs = b:CreateFontString(nil, "OVERLAY"); b.fs:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE"); b.fs:SetPoint("CENTER"); b.fs:SetText(def[1])
+        b.icon = {}
+        local function L(x1, y1, x2, y2, th)
+            local ln = b:CreateLine(nil, "OVERLAY")
+            ln:SetThickness(th or 1.2); ln:SetColorTexture(0.92, 0.92, 0.92, 1)
+            ln:SetStartPoint("CENTER", b, x1, y1); ln:SetEndPoint("CENTER", b, x2, y2)
+            b.icon[#b.icon + 1] = ln
+        end
+        local function Sq(x, y, size)
+            local t = b:CreateTexture(nil, "OVERLAY")
+            t:SetColorTexture(0.92, 0.92, 0.92, 1); t:SetSize(size, size); t:SetPoint("CENTER", b, "CENTER", x, y)
+            b.icon[#b.icon + 1] = t
+        end
+        if ICONS[def[1]] then ICONS[def[1]](L, Sq) end
         b:SetScript("OnClick", def[3])
         b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:SetText(def[2]); GameTooltip:Show() end)
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -774,15 +825,15 @@ function ns.BuildNotepadTab(Notify)
     local function s(k) return function(_, v) db[k] = v; ns.Notepad_Refresh() end end
     return { type = "group", name = "Notepad", order = 11, args = {
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "A small floating box for typed reminders. It holds any number of notes, and nothing you type is lost: your text is saved as you type, earlier versions of each note are kept automatically, and deleted notes go to a trash. The Hist button on the toolbar (or the button below) opens the Restore list, and the List button shows all your notes at once. Open or close the box here, with the x on it, or with /xui notepad." },
+            name = "A small floating box for typed reminders. It holds any number of notes, and nothing you type is lost: your text is saved as you type, earlier versions of each note are kept automatically, and deleted notes go to a trash. The history (clock) button on the toolbar (or the button below) opens the Restore list, and the list button shows all your notes at once. Open or close the box here, with the x on it, or with /xui notepad." },
         show = { type = "toggle", order = 1, name = "Show Notepad", get = g("shown"), set = function(_, v) ns.Notepad_SetShown(v) end },
         lock = { type = "toggle", order = 2, name = "Lock position and size", desc = "Also the Lock button on the box's title bar.", get = g("locked"), set = s("locked") },
-        fmt = { type = "toggle", order = 2.5, name = "Formatting tools", desc = "Adds a format bar (heading, bullet, checkbox, colors, spell icon) and a formatted view. Also the Fmt button on the toolbar. Notes stay plain text: the formatting is markup you can read and edit.",
+        fmt = { type = "toggle", order = 2.5, name = "Formatting tools", desc = "Adds a format bar (heading, bullet, checkbox, colors, spell icon) and a formatted view. Also the underlined-A button on the toolbar. Notes stay plain text: the formatting is markup you can read and edit.",
             get = g("format"), set = function(_, v) db.format = v and true or false; if not db.format then mode.view = false end; ns.Notepad_Refresh() end },
-        list = { type = "execute", order = 2.6, name = "Show / hide the list of all notes", desc = "Also the List button on the toolbar.", func = function() ns.Notepad_ToggleList() end },
+        list = { type = "execute", order = 2.6, name = "Show / hide the list of all notes", desc = "Also the list button on the toolbar.", func = function() ns.Notepad_ToggleList() end },
         restore = { type = "execute", order = 3, name = "Open Restore list", desc = "Earlier versions of the current note, and deleted notes.", func = function() ns.Notepad_ToggleRestore() end },
         share = { type = "group", name = "Share, export, and import", order = 3.5, inline = true, args = {
-            note = { type = "description", order = 0, width = "full", name = "The More button on the toolbar shares the current note to chat for other XayaUI users, or exports and imports notes as text you can copy and paste." },
+            note = { type = "description", order = 0, width = "full", name = "The menu (three lines) button on the toolbar shares the current note to chat for other XayaUI users, or exports and imports notes as text you can copy and paste." },
             accept = { type = "toggle", order = 1, name = "Accept notes shared by other XayaUI users", width = "double",
                 desc = "A shared note never saves by itself: a small window offers it and you choose Save or Dismiss. Off: shared notes are ignored.",
                 get = g("acceptShares"), set = s("acceptShares") },
@@ -821,7 +872,7 @@ function ns.BuildNotepadTab(Notify)
         reset = { type = "group", name = "Reset", order = 8, inline = true, args = {
             pos = { type = "execute", order = 1, name = "Reset position and size",
                 func = function() db.anchor, db.x, db.y, db.w, db.h = "CENTER", 300, 0, 280, 220; ns.Notepad_Refresh() end },
-            clear = { type = "execute", order = 2, name = "Clear the current note", confirm = true, confirmText = "Clear the text of the current note? The old text stays in its version list (Hist).",
+            clear = { type = "execute", order = 2, name = "Clear the current note", confirm = true, confirmText = "Clear the text of the current note? The old text stays in its version list (the history button).",
                 func = function() ns.Notepad_Clear() end },
         } },
     } }

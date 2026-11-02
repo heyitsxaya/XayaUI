@@ -23,12 +23,12 @@ f6cf3bd3d1105864b750220f759cff62  GameMenu.lua
 d32239bcb673463ab874e80d47fae504  LICENSE
 849eb9638bc7e6e491d6a5839018e8b6  LocalGraphics.lua
 9681e2f3f2975c7f054f151ba3eb82ed  LocalSounds.lua
-667410835b5077c8ef8b3165116f5f78  Notepad.lua
+fc3d291a7efa77da701bca0a9c87b7c0  Notepad.lua
 67c0418391562f06f9e86844ba428b77  Options.lua
 123ad2fa8523b790280ee1c03e8a0e1f  Outcomes.lua
 23bf6278d3ac2ac5f79e3e42b2b914a3  Profile.lua
 6927ad26f4e5218baef5961cca11e634  QoL.lua
-abd672b6d3e860a5e7d0420b2faafdc9  README.md
+6f08ac6ea09b7d83f425a5e5aef5f196  README.md
 500bd85bfe4f8ad3b735e5321c97bc23  Skin.lua
 454d9c7477395f84a1f31950034b8c75  Sound.lua
 5fb9b9cb7496a72e57b61a4bd787d627  THIRD_PARTY.md
@@ -38,7 +38,7 @@ d7e606b10ef3f5b67d3c55a94a5c3953  Theme.lua
 6bd164b672f60f09529d09c9b5b6d3d6  Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  UserMedia.lua
 c1939ad614c1dff592b11cd2019b678c  Visual.lua
-9d92e15f1f86f092e52506121bb8e4f0  XayaUI.toc
+7a22b3a48f1d4aaae93bedc19aeb8c7c  XayaUI.toc
 1eb8ec8eeaec35396f0f443339972b13  XayaUI_CombatEngine/AuraIDProbe.lua
 49635f2a302eea3ebac0e3f872c3da06  XayaUI_CombatEngine/AuraModel.lua
 a54c4d312f4f27a53098f413000fd2d2  XayaUI_CombatEngine/AuraSetup.lua
@@ -53,6 +53,6 @@ b31297b65212c66dfc00ce671ceb40fc  XayaUI_Tooltips/Tooltips.lua
 951c63dfbe636846a099dd0b5443423c  XayaUI_Tooltips/TooltipsUI.lua
 6d0cf1f30436485cdb1d68a1ffc023a0  XayaUI_Tooltips/README.md
 6c0d30fca20f1542be4df3c9c6438306  XayaUI_Tooltips/tests/run.py
-8e38d0cbd922189444cb49759636cd2b  NotepadShare.lua
+9189df63674aab2e306bc2b09b21f185  NotepadShare.lua
 e016e3f5b989cbdd20dbe31798432391  MinimapButton.lua
 4092250475ca8c0d9eed0f6984db28f1  ChatTrade.lua

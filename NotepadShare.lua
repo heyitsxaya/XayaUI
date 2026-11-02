@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 -- NotepadShare.lua : share a note to chat, and export / import notes as text. Own code. UNTESTED in game.
 --
--- Share: the toolbar's More button > "Share this note..." asks for a channel (party, raid, instance, guild, or a whisper), then
+-- Share: the toolbar's menu (three lines) button > "Share this note..." asks for a channel (party, raid, instance, guild, or a whisper), then
 --   * sends the note as hidden addon messages (prefix XUINOTE, split into chunks, paced to stay under the addon message limit), and
 --   * optionally posts the first lines of its text as ordinary chat lines, so players without XayaUI can read it too.
 --   Another XayaUI user gets a small window offering the note: Save (as a new note at the end of their list) or Dismiss.
@@ -318,7 +318,7 @@ local function BuildOffer()
         local o = pending[1]
         if o then
             local pos = ns.Notepad_AddNote and ns.Notepad_AddNote(o.text)
-            Say(pos and ("Saved " .. ShortName(o.sender) .. "'s note as note " .. pos .. ". Open it with /xui notes, then the List button.") or "The note could not be saved.")
+            Say(pos and ("Saved " .. ShortName(o.sender) .. "'s note as note " .. pos .. ". Open it with /xui notes, then the list button.") or "The note could not be saved.")
         end
         Next()
     end)
