@@ -8,7 +8,7 @@
 -- appeared after a readable player cast and later vanished (= early removal detection)?
 -- Every call is wrapped in pcall. A possibly-secret value is NEVER passed to tostring or
 -- compared: only issecretvalue() and type() are used on values of unknown secrecy.
-local ADDON, ns = ...
+local ADDON, ns = ...; ns = XayaUI_NS or ns -- sibling addon XayaUI_CombatEngine shares XayaUI's namespace (interim bridge, see README)
 if not ns then return end
 
 local isSecret = issecretvalue or function() return false end

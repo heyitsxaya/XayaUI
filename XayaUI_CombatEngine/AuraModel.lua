@@ -18,7 +18,7 @@
 --     listed as not modeled: nothing can observe those events in combat.
 --   * Precedence: your override > a measurement taken out of combat with this exact loadout > the live text.
 -------------------------------------------------------------------------------
-local _, ns = ...
+local _, ns = ...; ns = XayaUI_NS or ns -- sibling addon XayaUI_CombatEngine shares XayaUI's namespace (interim bridge, see README)
 local M = {}
 ns.AuraModel = M
 

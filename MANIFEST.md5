@@ -1,9 +1,5 @@
 a1620bdf32daf4d160b6252169fa9586  Actions.lua
 64964bb6b85ba8f6d5a1cedfe929ff52  AddonInfo.lua
-349c0f5304b6bad71e231240ebee5a0d  AuraIDProbe.lua
-426133e01c7f09dc41f99dd62245d072  AuraModel.lua
-aeb519501b01f400c47ced37d32a3df9  AuraSetup.lua
-eb541fdc38d00241166dfd6c24a739bc  AuraTracker.lua
 39160b6ad5cc597f56721a85a493988d  Bars.lua
 5f3946141332bb5129b6c5914a5ced47  ChatDock.lua
 41714adc7ba966a939b43119c57d2684  ChatReskin.lua
@@ -12,7 +8,6 @@ e13412c9b9f981664587033ebe80c7d0  ChatText.lua
 53dc1f5b7fa7028cee7ba868b366190e  ClassData.lua
 2db933a49f2c07d1816391bad4b4f231  Conditions.lua
 58d8c82b04724886f644e3447051fcbd  Console.lua
-6634d5946abf89675507065196000bef  Core.lua
 c8fad9671e0a5af677271689e639b1f1  Cues.lua
 648f6bcc81f3a7ee3f719d1e93f88e4b  CursorHighlight.lua
 ba241e46458e8e4296563689c7708a51  CursorReminders.lua
@@ -37,4 +32,11 @@ e6537c3293dffff3232a7fd55833c61f  Theme.lua
 6bd164b672f60f09529d09c9b5b6d3d6  Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  UserMedia.lua
 c1939ad614c1dff592b11cd2019b678c  Visual.lua
-600f25a41cca0b6d846034f6ab7c46d1  XayaUI.toc
+fea3860f4dd99564d7821bca6ed907ff  Core.lua
+9c41b13795618599fea1c3836351411b  XayaUI.toc
+1eb8ec8eeaec35396f0f443339972b13  XayaUI_CombatEngine/AuraIDProbe.lua
+49635f2a302eea3ebac0e3f872c3da06  XayaUI_CombatEngine/AuraModel.lua
+a54c4d312f4f27a53098f413000fd2d2  XayaUI_CombatEngine/AuraSetup.lua
+579bff27116309507dcc8a5e46e6b4ce  XayaUI_CombatEngine/AuraTracker.lua
+8709740439ec1e1469c06b790a258b9c  XayaUI_CombatEngine/README.md
+1d80f66a2f9292c09ce889d75c7edf4a  XayaUI_CombatEngine/XayaUI_CombatEngine.toc

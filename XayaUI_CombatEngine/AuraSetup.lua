@@ -11,7 +11,7 @@
 -- Opens from /xui model setup, from Settings > Advanced, or once automatically the first time a class/spec has
 -- no saved setup.  It never opens in combat.
 -------------------------------------------------------------------------------
-local _, ns = ...
+local _, ns = ...; ns = XayaUI_NS or ns -- sibling addon XayaUI_CombatEngine shares XayaUI's namespace (interim bridge, see README)
 local M = ns.AuraModel
 if not M then return end
 

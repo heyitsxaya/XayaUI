@@ -3,7 +3,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 
-ns.name = addonName
+ns.name = addonName; XayaUI_NS = ns -- deliberate global: the sibling addon XayaUI_CombatEngine shares this namespace (interim bridge; to be narrowed to XayaUI_API)
 ns.rules = nil -- set at ADDON_LOADED to CueRulesDB.rules
 
 -- "Not chosen / none" helpers. Dropdowns start blank (nil) so a choice is forced;
