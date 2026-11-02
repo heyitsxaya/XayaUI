@@ -14,7 +14,7 @@ if not (AceConfigRegistry and AceConfigDialog) then
     return
 end
 
-local function Notify() if ns.SmartOpen then pcall(ns.SmartOpen) end if ns.FixSelection then pcall(ns.FixSelection) end AceConfigRegistry:NotifyChange(APP) end
+local function Notify() if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end if ns.SmartOpen then pcall(ns.SmartOpen) end if ns.FixSelection then pcall(ns.FixSelection) end AceConfigRegistry:NotifyChange(APP) end
 
 local function Changed(rule)
     if rule then ns.RefreshVisual(rule) end
@@ -573,11 +573,35 @@ function ns.CueTransparent(f)
     end
     return false
 end
+-- Rules sub-tabs (2026-11-01): Rules > Enabled | Smart Categories | Drafts | Disabled | Recycle Bin.
+-- Disabled = the rule's enabled box is unticked, or its load mode is "never". Everything else is Enabled and is split into Loaded / Not Loaded.
+function ns.RuleDisabled(r) return (not r.enabled) or (r.load and r.load.mode == "never") or false end
+function ns.RuleScope(r, ctx)   -- "disabled" | "loaded" | "notloaded"
+    if ns.RuleDisabled(r) then return "disabled" end
+    return (ctx and ns.IsLoaded(r, ctx)) and "loaded" or "notloaded"
+end
+function ns.CurrentSub()   -- the open sub-tab under Rules
+    if not AceConfigDialog.GetStatusTable then return "enabledTab" end
+    local rt = AceConfigDialog:GetStatusTable(APP, { "cooldowns" })
+    return (rt and rt.groups and rt.groups.selected) or "enabledTab"
+end
+function ns.SaveRulesSub()   -- remembered for next time the window opens
+    local ui = CueRulesDB and CueRulesDB.ui
+    if ui and AceConfigDialog.GetStatusTable then ui.rulesSub = ns.CurrentSub() end
+end
+function ns.ScopePath(r, ctx)   -- where a rule's row is in the Enabled / Disabled lists
+    local sc = ns.RuleScope(r, ctx)
+    local p = { "cooldowns", sc == "disabled" and "disabledTab" or "enabledTab", sc }
+    local f = r.folder and FolderById(r.folder)
+    if f then for _, c in ipairs(FolderChain(f)) do if not ns.CueTransparent(c) then p[#p + 1] = c.id end end end
+    for idx, rr in ipairs(ns.rules or {}) do if rr == r then p[#p + 1] = "rule" .. idx; break end end
+    return unpack(p)
+end
 -- Smart Categories shows only the types: its root row and the "by type" row are drawn collapsed to nothing (Options.lua DecorateButton),
 -- so both must stay open or the type rows would vanish.
 function ns.SmartOpen()
     if not AceConfigDialog.GetStatusTable then return end
-    local st = AceConfigDialog:GetStatusTable(APP, { "smartcat" })
+    local st = AceConfigDialog:GetStatusTable(APP, { "cooldowns", "smartTab" })
     if not st then return end
     st.groups = st.groups or {}
     st.groups.groups = st.groups.groups or {}
@@ -587,9 +611,9 @@ end
 -- Where the tree status of the Rules tab lives (selection + which rows are open)
 function ns.RulesTreeStatus()
     if not AceConfigDialog.GetStatusTable then return nil end
-    local root = AceConfigDialog:GetStatusTable(APP)
-    local tab = root and root.groups and root.groups.selected
-    local t = AceConfigDialog:GetStatusTable(APP, { tab == "smartcat" and "smartcat" or "cooldowns" })
+    local sub = ns.CurrentSub()
+    if sub ~= "smartTab" and sub ~= "disabledTab" then sub = "enabledTab" end
+    local t = AceConfigDialog:GetStatusTable(APP, { "cooldowns", sub })
     return t and t.groups
 end
 -- When a rule's loaded state changes while it is selected in Loaded / Not Loaded, its row moves to the other list. Move the selection
@@ -600,14 +624,17 @@ function ns.FixSelection()
     if type(sel) ~= "string" then return end
     local segs = {}
     for seg in sel:gmatch("[^\001]+") do segs[#segs + 1] = seg end
-    if segs[1] ~= "loaded" and segs[1] ~= "notloaded" then return end
+    if segs[1] ~= "loaded" and segs[1] ~= "notloaded" and segs[1] ~= "disabled" then return end
     local rn = tostring(segs[#segs]):match("^rule(%d+)$")
     local r = rn and ns.rules and ns.rules[tonumber(rn)]
     if not r then return end
     local okc, ctx = pcall(ns.ReadContext)
     if not okc then return end
-    local now = ns.IsLoaded(r, ctx) and "loaded" or "notloaded"
-    if now ~= segs[1] then segs[1] = now; S.selected = table.concat(segs, "\001") end
+    local now = ns.RuleScope(r, ctx)
+    if now == segs[1] then return end
+    if now == "disabled" or segs[1] == "disabled" then
+        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, ns.ScopePath(r, ctx))   -- the rule moved to the other sub-tab: follow it
+    else segs[1] = now; S.selected = table.concat(segs, "\001") end
 end
 -- Select a row after an edit / move WITHOUT touching the sidebar's open / closed state and without leaving the list the user is in.
 -- (AceConfigDialog:SelectGroup normally opens every group on the way, which popped All Rules open.) Takes the same path
@@ -618,17 +645,17 @@ function ns.SelectKeep(...)
     local open = S and S.groups
     local snap = {}
     if open then for kk, vv in pairs(open) do snap[kk] = vv end end
-    local scope = ns.ScopeOfUV and ns.ScopeOfUV(S and S.selected) or "all"
-    if (scope == "loaded" or scope == "notloaded") and args[1] == "smartcat" and args[2] == "all" then
+    local scope = (ns.CurrentSub() == "smartTab") and "all" or (ns.ScopeOfUV and ns.ScopeOfUV(S and S.selected) or "all")
+    if (scope == "loaded" or scope == "notloaded" or scope == "disabled") and args[1] == "cooldowns" and args[2] == "smartTab" and args[3] == "all" then
         local newScope = scope
         local rn = tostring(args[#args]):match("^rule(%d+)$")
         local r = rn and ns.rules and ns.rules[tonumber(rn)]
         if r then
             local okc, ctx = pcall(ns.ReadContext)
-            if okc then newScope = ns.IsLoaded(r, ctx) and "loaded" or "notloaded" end
+            if okc then newScope = ns.RuleScope(r, ctx) end
         end
-        local p = { "cooldowns", newScope }
-        for i = 3, #args do
+        local p = { "cooldowns", newScope == "disabled" and "disabledTab" or "enabledTab", newScope }
+        for i = 4, #args do
             local a = args[i]
             local f = tostring(a):match("^f%d") and ns.FolderById(a)
             if a ~= "smart" and not (f and ns.CueTransparent(f)) then p[#p + 1] = a end
@@ -642,7 +669,7 @@ function ns.SelectKeep(...)
     end
 end
 local function FolderPath(f)
-    local p = { "smartcat", "all" }
+    local p = { "cooldowns", "smartTab", "all" }
     local chain = FolderChain(f)
     if ns.CueTop(chain[1]) then p[#p + 1] = "smart" end
     for _, c in ipairs(chain) do p[#p + 1] = c.id end
@@ -652,7 +679,7 @@ end
 -- Which list a sidebar row belongs to: "loaded", "notloaded" or "all" (first path segment under the Rules tab)
 function ns.ScopeOfUV(uv)
     local seg = uv and tostring(uv):match("^([^\001]+)")
-    return (seg == "notloaded" or seg == "all") and seg or "loaded"
+    return (seg == "notloaded" or seg == "all" or seg == "disabled") and seg or "loaded"
 end
 function ns.CurrentScope()
     if not AceConfigDialog.GetStatusTable then return "loaded" end
@@ -661,16 +688,17 @@ function ns.CurrentScope()
 end
 -- A new, still-empty group is listed in the list it was created from (empty groups default to Loaded)
 function ns.PlaceNewGroup(f, scope)
-    f.xuiScope = (scope == "notloaded") and "notloaded" or nil
-    local p = { (scope == "all") and "smartcat" or "cooldowns", (scope == "notloaded" or scope == "all") and scope or "loaded" }
+    f.xuiScope = (scope == "notloaded" or scope == "disabled") and scope or nil
+    local root = (scope == "notloaded" or scope == "all" or scope == "disabled") and scope or "loaded"
+    local p = { "cooldowns", (root == "all") and "smartTab" or (root == "disabled" and "disabledTab" or "enabledTab"), root }
     local chain = FolderChain(f)
-    if p[2] == "all" and ns.CueTop(chain[1]) then p[#p + 1] = "smart" end
-    for _, c in ipairs(chain) do if p[2] == "all" or not ns.CueTransparent(c) then p[#p + 1] = c.id end end
+    if root == "all" and ns.CueTop(chain[1]) then p[#p + 1] = "smart" end
+    for _, c in ipairs(chain) do if root == "all" or not ns.CueTransparent(c) then p[#p + 1] = c.id end end
     return unpack(p)
 end
 -- Same group, reached through the Loaded list (new groups open here so they show highlighted under Loaded)
 function ns.FolderLoadedPath(f)
-    local p = { "cooldowns", "loaded" }
+    local p = { "cooldowns", "enabledTab", "loaded" }
     for _, c in ipairs(FolderChain(f)) do if not ns.CueTransparent(c) then p[#p + 1] = c.id end end
     return unpack(p)
 end
@@ -707,14 +735,16 @@ local function FolderValues()
 end
 
 -- Which top tab is open now ("cooldowns" = Rules, "smartcat" = Smart Categories ...), and "go back to where I was".
-function ns.CurrentTab()
+function ns.CurrentTab()   -- "smartcat" stands for Rules > Smart Categories, "cooldowns" for the Enabled / Disabled lists
     local root = AceConfigDialog.GetStatusTable and AceConfigDialog:GetStatusTable(APP)
-    return root and root.groups and root.groups.selected
+    local top = root and root.groups and root.groups.selected
+    if top == "cooldowns" and ns.CurrentSub() == "smartTab" then return "smartcat" end
+    return top
 end
 function ns.GoHome(tab)
     tab = tab or ns.CurrentTab()
-    if tab == "cooldowns" then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "loaded")
-    else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "smartcat", "all") end
+    if tab == "cooldowns" then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "enabledTab", "loaded")
+    else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "smartTab", "all") end
 end
 
 local function RulePath(rule)
@@ -723,19 +753,15 @@ local function RulePath(rule)
             -- Smart Categories lists a rule under each type it matches (the tree has no folder rows there)
             if ns.pickOrigin ~= "cooldowns" then
                 for _, c in ipairs(ns.SMART_CATS) do
-                    if c.key ~= "smart_bar" and ns.SmartMatch(r, c.key) then return "smartcat", "all", "smart", c.key, "rule" .. idx end
+                    if c.key ~= "smart_bar" and ns.SmartMatch(r, c.key) then return "cooldowns", "smartTab", "all", "smart", c.key, "rule" .. idx end
                 end
             end
             -- no display type: it lives in Loaded / Not Loaded, nested under its (non-transparent) groups
             local okc, ctx = pcall(ns.ReadContext)
-            local p = { "cooldowns", (okc and ns.IsLoaded(r, ctx)) and "loaded" or "notloaded" }
-            local f = r.folder and FolderById(r.folder)
-            if f then for _, c in ipairs(FolderChain(f)) do if not ns.CueTransparent(c) then p[#p + 1] = c.id end end end
-            p[#p + 1] = "rule" .. idx
-            return unpack(p)
+            return ns.ScopePath(r, okc and ctx or nil)
         end
     end
-    return "smartcat", "all"
+    return "cooldowns", "smartTab", "all"
 end
 
 -- Keep the editing pane open on a rule after its list row may have moved or vanished. A rule's row in Smart Categories comes from
@@ -2497,7 +2523,7 @@ local function StartNewRule(fid)
     if not picker then ns.pickOrigin = ns.CurrentTab() end
     picker = { folder = fid }
     Notify()
-    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "smartcat", "all")
+    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "smartTab", "all")
 end
 -- Auto-populate: one rule per spell of the current class / spec whose base cooldown is >= the folder's threshold.
 -- Rules already in this folder (or its subfolders) for the same spell are skipped, so it is safe to run again after a
@@ -2797,6 +2823,12 @@ ns.UI.Import = function() PickType("import") end
 -- toolbar buttons (Skin.lua): Export shares the Profiles page with Import; Creator and Settings open their own page
 ns.UI.Export = function() PickType("import") end
 function ns.OpenPage(key)
+    if key == "drafts" then   -- Drafts is a sub-tab of Rules now, not a page of its own
+        ns.pageOpen = nil; ns.infoOpen = false
+        Notify()
+        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "draftsTab")
+        return
+    end
     ns.pageOpen = key; ns.infoOpen = false
     Notify()
     local skinned = ns.SkinRows and ns.SkinRows()
@@ -2804,6 +2836,7 @@ function ns.OpenPage(key)
 end
 ns.UI.Creator = function() ns.OpenPage("creator") end
 ns.UI.Drafts = function() ns.OpenPage("drafts") end
+ns.UI.RecycleBin = function() ns.OpenPage("recyclebin") end   -- toolbar button, next to Export
 ns.UI.Cursor = function()   -- the Cursor options live under QoL UI Updates > Cursor now (no tab of their own)
     ns.pageOpen = nil; ns.infoOpen = false
     Notify()
@@ -3321,12 +3354,13 @@ function ns.ApplyTreeFilter(out)
         end
         return total
     end
-    for _, tab in ipairs({ "cooldowns", "smartcat" }) do
-        local g = out.args and out.args[tab]
+    local cd = out.args and out.args.cooldowns
+    for _, tab in ipairs({ "enabledTab", "smartTab", "disabledTab" }) do
+        local g = cd and cd.args and cd.args[tab]
         if g then
             local st
             if openIt and AceConfigDialog.GetStatusTable then
-                local t = AceConfigDialog:GetStatusTable(APP, { tab })
+                local t = AceConfigDialog:GetStatusTable(APP, { "cooldowns", tab })
                 if t then t.groups = t.groups or {}; t.groups.groups = t.groups.groups or {}; st = t.groups.groups end
             end
             walk(g, {}, st, 0)
@@ -3377,6 +3411,7 @@ local function BuildOptions()
     end
     local okc, ctx = pcall(ns.ReadContext)
     local loadedArgs, notArgs, nLoaded, nNot = {}, {}, 0, 0
+    local disabledArgs, nDisabled = {}, 0
     local ruleGroups = {}
     local byRule, nested = {}, {}
     for i, rule in ipairs(ns.rules or {}) do
@@ -3389,7 +3424,8 @@ local function BuildOptions()
             ruleGroups[i] = g
             local fld = rule.folder and groups[rule.folder]
             if fld then fld.args["rule" .. i] = g else all.args["rule" .. i] = g end
-            if okc and ns.IsLoaded(rule, ctx) then loadedArgs["rule" .. i] = g; nLoaded = nLoaded + 1
+            if ns.RuleDisabled(rule) then disabledArgs["rule" .. i] = g; nDisabled = nDisabled + 1
+            elseif okc and ns.IsLoaded(rule, ctx) then loadedArgs["rule" .. i] = g; nLoaded = nLoaded + 1
             else notArgs["rule" .. i] = g; nNot = nNot + 1 end
         end
     end
@@ -3409,7 +3445,9 @@ local function BuildOptions()
     loadedArgs.info = { type = "description", order = 0, width = "full", fontSize = "medium",
         name = "Rules that are enabled and whose load conditions and talents match right now (cooldown / buff state is not part of this). Same rules as under Smart Categories; this list updates as your situation changes." }
     notArgs.info = { type = "description", order = 0, width = "full", fontSize = "medium",
-        name = "Rules that are disabled, or whose load conditions or talents do not match right now." }
+        name = "Enabled rules whose load conditions or talents do not match right now. Rules that are switched off (or set to never load) are under the Disabled tab." }
+    disabledArgs.info = { type = "description", order = 0, width = "full", fontSize = "medium",
+        name = "Rules whose Enabled box is unticked, or whose load mode is Never. They never load and show nothing." }
     -- All Rules is the first root row; a blank divider row follows its tree, then the Loaded / Not Loaded filters
     all.order = 3   -- third section: folders + Smart Categories (Loaded / Not Loaded come first)
     -- type picker (shown in place of the All Rules page while `picker` is set)
@@ -3452,18 +3490,31 @@ local function BuildOptions()
             all.args[k].hidden = function() return not picker end
         end
     end
-    local track = { type = "group", name = "Rules", order = 1, childGroups = "tree", args = {
+    -- Rules is a tab group with its own row of sub-tabs (2026-11-01). Each sub-tab keeps the same root rows as before (Loaded / Not Loaded,
+    -- All Rules, a Disabled root), so every row path below the sub-tab is unchanged.
+    local enabledTab = { type = "group", name = "Enabled", order = 1, childGroups = "tree", args = {
         loaded = { type = "group", order = 1, childGroups = "tree",
             name = function() return "LOADED (" .. nLoaded .. ")" end, args = loadedArgs },
         spacer = { type = "group", order = 2.5, name = " ", disabled = true, args = {} },
         spacer1 = { type = "group", order = 1.5, name = " ", disabled = true, args = {} },
-        spacer0 = { type = "group", order = 0.5, name = " ", disabled = true, args = {} },   -- divider above Loaded   -- divider between Loaded and Not Loaded
+        spacer0 = { type = "group", order = 0.5, name = " ", disabled = true, args = {} },
         notloaded = { type = "group", order = 2, childGroups = "tree",
             name = function() return "NOT LOADED (" .. nNot .. ")" end, args = notArgs },
         -- AUTO-POPULATE RULES moved to the Class/Spec Rule Creator tab (2026-10-31)
         } }
-    -- "All Rules" is its own top-level tab, called Smart Categories (the rule list there keeps its own root row, folders and by-type groups)
-    local smartcat = { type = "group", name = "Smart Categories", order = 1.5, childGroups = "tree", args = { all = all } }
+    local smartTab = { type = "group", name = "Smart Categories", order = 3, childGroups = "tree", args = { all = all } }
+    local draftsTab = ns.BuildDraftsPage and ns.BuildDraftsPage() or nil
+    if draftsTab then draftsTab.order = 2; draftsTab.hidden = nil; draftsTab.name = "Drafts" end
+    local disabledTab = { type = "group", name = "Disabled", order = 4, childGroups = "tree", args = {
+        disabled = { type = "group", order = 1, childGroups = "tree",
+            name = function() return "DISABLED (" .. nDisabled .. ")" end, args = disabledArgs },
+        } }
+    local binTab = { type = "group", name = "Recycle Bin", order = 6, hidden = ns.PageHidden("recyclebin"), args = {
+        info = { type = "description", order = 1, width = "full", fontSize = "medium",
+            name = "Recycle Bin: not built yet (GitHub issue #88). Deleted rules and groups are still removed for good when you confirm the delete." },
+        } }
+    local track = { type = "group", name = "Rules", order = 1, childGroups = "tab", args = {
+        enabledTab = enabledTab, draftsTab = draftsTab, smartTab = smartTab, disabledTab = disabledTab } }
 
     ---------------------------------------------------------- Buff Bars
     local allBars = {
@@ -3573,7 +3624,7 @@ local function BuildOptions()
                     if n then kids[sf.id] = n; count = count + c end
                 end
             end
-            if count == 0 and not next(kids) and not (#FolderRules(f.id) == 0 and ((allowEmpty == "loaded" and f.xuiScope ~= "notloaded") or (allowEmpty == "notloaded" and f.xuiScope == "notloaded"))) then return nil end   -- an empty group is listed in the list it was created from (Loaded by default)
+            if count == 0 and not next(kids) and not (#FolderRules(f.id) == 0 and ((allowEmpty == "loaded" and f.xuiScope ~= "notloaded" and f.xuiScope ~= "disabled") or ((allowEmpty == "notloaded" or allowEmpty == "disabled") and f.xuiScope == allowEmpty))) then return nil end   -- an empty group is listed in the list it was created from (Loaded by default)
             local args = {}
             for k, v in pairs(g.args or {}) do
                 if not (type(k) == "string" and (k:match("^rule%d+$") or k:match("^f%d+$"))) then args[k] = v end
@@ -3608,6 +3659,7 @@ local function BuildOptions()
         end
         Apply(loadedArgs, "loaded")
         Apply(notArgs, "notloaded")
+        Apply(disabledArgs, "disabled")
     end
 
     ---------------------------------------------------------- QoL
@@ -3665,9 +3717,8 @@ local function BuildOptions()
     local setDbg = { type = "group", name = "Debugging", order = 2, hidden = function() return not SettingsOn() end, args = sa.debug.args }
     settings.hidden = function() return ns.SkinRows and ns.SkinRows() and true or false end   -- skin off: the old single Settings tab
     track.hidden = function() return SettingsOn() and true or false end
-    smartcat.hidden = function() return SettingsOn() and true or false end
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, smartcat = smartcat, creator = BuildClassCreator(), qol = qol, profiles = BuildProfiles(), drafts = ns.BuildDraftsPage and ns.BuildDraftsPage() or nil, info = infoGroup, settings = settings, set_ui = setUi, set_debug = setDbg } }
+        args = { cooldowns = track, recyclebin = binTab, creator = BuildClassCreator(), qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = settings, set_ui = setUi, set_debug = setDbg } }
     pcall(ns.SmartOpen)
     pcall(ns.ApplyTreeFilter, out)
     if ns.SkinRows and ns.SkinRows() then pcall(ns.InfoPass, out) end   -- the info icons are part of the skin
@@ -3704,7 +3755,10 @@ function ns.ToggleUI()
         if not ok then ns.Print("could not open the window: " .. tostring(err)) return end
         if firstOpen then
             firstOpen = false
-            pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "smartcat", "all")
+            local ui = CueRulesDB and CueRulesDB.ui
+            local sub = ui and ui.rulesSub
+            if sub ~= "smartTab" and sub ~= "draftsTab" and sub ~= "disabledTab" then sub = "enabledTab" end   -- the last sub-tab used
+            pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", sub)
         end
     end
 end
@@ -3875,21 +3929,21 @@ local function Resolve(uv)
             return l, nil
         end
         local l = {}
-        local scope = uv:match("^(loaded)\001") or uv:match("^(notloaded)\001")
+        local scope = uv:match("^(loaded)\001") or uv:match("^(notloaded)\001") or uv:match("^(disabled)\001")
         local okx, ctx2 = false, nil
         if scope then okx, ctx2 = pcall(ns.ReadContext) end
         for _, r in ipairs(ns.rules or {}) do
             if (last == "smart" and ns.SmartAny(r)) or (last ~= "smart" and ns.SmartMatch(r, last)) then
-                if not scope or (okx and ((ns.IsLoaded(r, ctx2) and true or false) == (scope == "loaded"))) then l[#l + 1] = r end
+                if not scope or (okx and ns.RuleScope(r, ctx2) == scope) then l[#l + 1] = r end
             end
         end
         return l, l
     end
-    if last == "loaded" or last == "notloaded" then
+    if last == "loaded" or last == "notloaded" or last == "disabled" then
         local l = {}
         local okc, ctx = pcall(ns.ReadContext)
         for _, r in ipairs(ns.rules or {}) do
-            if (okc and ns.IsLoaded(r, ctx) or false) == (last == "loaded") then l[#l + 1] = r end
+            if ns.RuleScope(r, okc and ctx or nil) == last then l[#l + 1] = r end
         end
         return l, l
     end
@@ -4120,12 +4174,12 @@ local function Siblings(uv)
     local last = LastKey(uv) or ""
     -- in the Loaded / Not Loaded views only the rows shown there count as neighbors (so an arrow always moves the row visibly)
     local first = tostring(uv or ""):match("^([^\001]+)")
-    local scope = (first == "loaded" or first == "notloaded") and first or nil
+    local scope = (first == "loaded" or first == "notloaded" or first == "disabled") and first or nil
     local okc, ctx
     if scope then okc, ctx = pcall(ns.ReadContext) end
     local function RuleInScope(r)
         if not scope then return true end
-        return okc and ((ns.IsLoaded(r, ctx) and true or false) == (scope == "loaded")) or false
+        return okc and ns.RuleScope(r, ctx) == scope or false
     end
     local function FolderInScope(f)
         if not scope then return true end
@@ -4216,7 +4270,7 @@ end
 function ns.PaintReorder(button, level, x)
     local uv = tostring(button.uniquevalue or "")
     local root0 = uv:match("^([^\001]+)")
-    local slot = (root0 == "all" or root0 == "loaded" or root0 == "notloaded") and level >= 2 and not uv:find("\001smart", 1, true)
+    local slot = (root0 == "all" or root0 == "loaded" or root0 == "notloaded" or root0 == "disabled") and level >= 2 and not uv:find("\001smart", 1, true)
     button.xuiReorderOn = slot
     local kind, obj, list, pos
     if slot then kind, obj, list, pos = Siblings(uv) end
@@ -4618,7 +4672,7 @@ end
 
 -- Header rows (the root row and every top-level folder) get a tinted banner so each reads as its own group.
 local BANNER_TINT = {
-    root = { 1, 0.78, 0 }, loaded = { 0.1, 0.85, 0.75 }, notloaded = { 0.95, 0.2, 0.2 }, display = { 0.1, 0.5, 1 }, sound = { 0.1, 0.75, 0.3 }, hybrid = { 1, 0.5, 0.1 }, advanced = { 0.75, 0.25, 1 }, smart = { 0.3, 0.8, 1 }, cursor = { 0.95, 0.35, 0.75 }, other = { 0.7, 0.7, 0.75 },
+    root = { 1, 0.78, 0 }, loaded = { 0.1, 0.85, 0.75 }, notloaded = { 0.95, 0.2, 0.2 }, disabled = { 0.55, 0.55, 0.6 }, display = { 0.1, 0.5, 1 }, sound = { 0.1, 0.75, 0.3 }, hybrid = { 1, 0.5, 0.1 }, advanced = { 0.75, 0.25, 1 }, smart = { 0.3, 0.8, 1 }, cursor = { 0.95, 0.35, 0.75 }, other = { 0.7, 0.7, 0.75 },
 }
 -- Sidebar highlight: every category / folder row is neutral gray; the selected row, its parent groups and the rows inside the
 -- selected group take the purple of the Advanced Cue Tracking banner. (Row sizes and fonts still follow BannerTint.)
@@ -4632,7 +4686,7 @@ function ns.HotPath(sel, prefix)   -- prefix is the selected path, above it, or 
     if not sel or not prefix then return false end
     -- only the selected row itself (never its parents or the rows inside it); the root rows (All Rules, Loaded, ...) never light up
     local last = sel:match("([^\001]+)$")
-    if last == "all" or last == "loaded" or last == "notloaded" or last == "smart" or last == "autopop"
+    if last == "all" or last == "loaded" or last == "notloaded" or last == "disabled" or last == "smart" or last == "autopop"
         or last == "allbars" or last == "allqol" or last == "allcursor" then return false end
     return sel == prefix
 end
@@ -4641,6 +4695,7 @@ local function BannerTint(uv)
     if last == "all" or last == "allbars" or last == "allqol" or last == "allcursor" or last == "autopop" then return BANNER_TINT.root end
     if last == "loaded" then return BANNER_TINT.loaded end
     if last == "notloaded" then return BANNER_TINT.notloaded end
+    if last == "disabled" then return BANNER_TINT.disabled end
     if last == "smart" then return BANNER_TINT.smart end
     local f = last and ns.FolderById and ns.FolderById(last)
     if f and not f.parent then
@@ -4658,8 +4713,8 @@ ns.TREE_GRAD = { 0.30, 0.08, 0.45 }       -- parent-group gradient: dark purple 
 ns.TREE_BAR = { 0.34, 0.34, 0.40 }
 do local TH = ns.Theme   -- style sheet: these tables are filled in place whenever the theme changes
    if TH then TH.Bind("text", TREE_TXT); TH.Bind("accentText", TREE_SEL); TH.Bind("gradStart", ns.TREE_GRAD); TH.Bind("treeBar", ns.TREE_BAR) end end        -- every folder-tree bar (banner edge bar and guide bars) shares this muted color
-local ROOT_KEYS = { all = true, allbars = true, allqol = true, allcursor = true, loaded = true, notloaded = true, smart = true, autopop = true }
-local UPPER_ROOTS = { all = true, loaded = true, notloaded = true, smart = true }
+local ROOT_KEYS = { all = true, allbars = true, allqol = true, allcursor = true, loaded = true, notloaded = true, disabled = true, smart = true, autopop = true }
+local UPPER_ROOTS = { all = true, loaded = true, notloaded = true, disabled = true, smart = true }
 
 local function RowTier(button)
     local uv = button.uniquevalue and tostring(button.uniquevalue) or ""
@@ -4815,7 +4870,7 @@ local function PaintGuides(button)
                 local same = true
                 for i = 1, g do if segs[i] ~= ss[i] then same = false; break end end
                 if same then
-                    local isAll, smart = (segs[1] == "all" or segs[1] == "loaded" or segs[1] == "notloaded"), false
+                    local isAll, smart = (segs[1] == "all" or segs[1] == "loaded" or segs[1] == "notloaded" or segs[1] == "disabled"), false
                     for i = 1, g do if segs[i]:find("^smart") then smart = true end end
                     local shift = (isAll and g >= 2 and not smart) and ((ns.REORDER_W or 0) + 11) or 0
                     bars[#bars + 1] = { x = 8 * g - 6 + shift + 7, w = 2, r = tb[1], g = tb[2], b = tb[3], a = 1 }
@@ -5150,7 +5205,7 @@ local function DecorateButton(button)
     -- top-level roots (All Rules / Loaded / Not Loaded) carry no eye or headphone; their lock icons stay
     do
         local rootKey = tostring(button.uniquevalue or ""):match("([^\001]+)$")
-        if rootKey == "all" or rootKey == "loaded" or rootKey == "notloaded" or rootKey == "smart" then hasIcons = false end
+        if rootKey == "all" or rootKey == "loaded" or rootKey == "notloaded" or rootKey == "disabled" or rootKey == "smart" then hasIcons = false end
     end
     if button.text then
         button.text:SetWordWrap(false)
@@ -5172,7 +5227,7 @@ local function DecorateButton(button)
     local tw = ns.PaintTypeIcon and ns.PaintTypeIcon(button, x0) or 0   -- WeakAuras-style icon at the left of the row (0 = none)
     button.xuiTwoRow = (tw > 0 and not (ns.CondensedOn and ns.CondensedOn())) and true or false
     local rk0 = tostring(button.uniquevalue or ""):match("([^\001]+)$") or ""
-    local isRootRow = (rk0 == "all" or rk0 == "loaded" or rk0 == "notloaded" or rk0 == "smart" or (inSC and rk0:match("^smart_") ~= nil))
+    local isRootRow = (rk0 == "all" or rk0 == "loaded" or rk0 == "notloaded" or rk0 == "disabled" or rk0 == "smart" or (inSC and rk0:match("^smart_") ~= nil))
     local chevMode = "left"
     if canExpand then
         if not button.xuiChev then button.xuiChev = MakeChevron(button) end
@@ -5735,10 +5790,9 @@ end
 
 local function SelectedRule()
     if not AceConfigDialog.GetStatusTable then return nil end
-    local root = AceConfigDialog:GetStatusTable(APP)
-    local tab = root and root.groups and root.groups.selected
-    if tab ~= "cooldowns" and tab ~= "smartcat" and tab ~= "loadedTab" and tab ~= "notloadedTab" then return nil end
-    local st = AceConfigDialog:GetStatusTable(APP, { tab })
+    local tab = ns.CurrentTab()
+    if tab ~= "cooldowns" and tab ~= "smartcat" then return nil end
+    local st = { groups = ns.RulesTreeStatus() }
     local sel = st and st.groups and st.groups.selected
     local idx = sel and tonumber(tostring(sel):match("rule(%d+)"))
     return idx and ns.rules and ns.rules[idx]
@@ -5747,10 +5801,9 @@ end
 -- Selected group in the sidebar (last path segment is a group id), or nil.
 function ns.SelectedGroup()
     if not AceConfigDialog.GetStatusTable then return nil end
-    local root = AceConfigDialog:GetStatusTable(APP)
-    local tab = root and root.groups and root.groups.selected
+    local tab = ns.CurrentTab()
     if tab ~= "cooldowns" and tab ~= "smartcat" then return nil end
-    local st = AceConfigDialog:GetStatusTable(APP, { tab })
+    local st = { groups = ns.RulesTreeStatus() }
     local sel = st and st.groups and st.groups.selected
     local last = sel and tostring(sel):match("([^\001]+)$")
     return last and FolderById(last) or nil
@@ -5905,6 +5958,7 @@ local function EnsureChrome(of)
         -- AceGUI recycles Frame widgets: undo everything on release so other addons' windows stay untouched
         local orig = of.OnRelease
         of.OnRelease = function(self, ...)
+            pcall(ns.SaveRulesSub)
             SetCollapsed(self, false)
             ns.infoOpen = false; ns.pageOpen = nil
             ns.MultiReset()
@@ -5920,17 +5974,20 @@ local function EnsureChrome(of)
     if c.info and not c.collapsed then c.info:Show() end
     -- first time the window opens in a session: every top-level group / Smart Categories list under Rules, Loaded and Not Loaded starts collapsed
     if not ns.sessionCollapsed and AceConfigDialog.GetStatusTable then
-        local st = AceConfigDialog:GetStatusTable(APP, { "cooldowns" })
-        if st and st.groups then
-            ns.sessionCollapsed = true
-            for uv, on in pairs(st.groups) do
-                if on and type(uv) == "string" then
-                    local _, n = uv:gsub("\001", "\001")
-                    if n == 1 then st.groups[uv] = nil end
+        local anyTab = false
+        for _, tk in ipairs({ "enabledTab", "smartTab", "disabledTab" }) do
+            local st = AceConfigDialog:GetStatusTable(APP, { "cooldowns", tk })
+            if st and st.groups then
+                anyTab = true
+                for uv, on in pairs(st.groups) do
+                    if on and type(uv) == "string" then
+                        local _, n = uv:gsub("\001", "\001")
+                        if n == 1 then st.groups[uv] = nil end
+                    end
                 end
             end
-            Notify()
         end
+        if anyTab then ns.sessionCollapsed = true; Notify() end
     end
     if c.delSel then
         local n = ns.MultiCount and ns.MultiCount() or 0

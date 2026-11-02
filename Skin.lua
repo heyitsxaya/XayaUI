@@ -148,9 +148,30 @@ local function ToolButton(parent, icon, label, onClick)
 end
 
 -- Rule search box: nested at the top of the All Rules sidebar, above the Loaded row. Typing filters the rule lists (ns.treeFilter).
+-- Filtering ends in Notify(), which rebuilds the tree and can release / hide the box, dropping its keyboard focus (the next letter then
+-- fires an action bar keybind). So the debounce notes that the box had focus, and every live box gets it back right after the rebuild.
+local searchBoxes = setmetatable({}, { __mode = "k" })
+local function RestoreSearchFocus()
+    local rf = ns.treeSearchRefocus
+    if not rf then return end
+    if GetTime() - rf.t > 1 then ns.treeSearchRefocus = nil; return end
+    local cur = GetCurrentKeyBoardFocus and GetCurrentKeyBoardFocus()
+    for sb in pairs(searchBoxes) do
+        if sb:IsShown() and sb:IsVisible() then
+            if cur and cur ~= sb then ns.treeSearchRefocus = nil; return end   -- she clicked into some other text box: leave it alone
+            if not sb:HasFocus() then
+                sb:SetFocus()
+                sb:SetCursorPosition(math.min(rf.pos or 0, #(sb:GetText() or "")))
+                sb:HighlightText(0, 0)
+            end
+            return
+        end
+    end
+end
 local function MakeSearchBox(parent)
     local sb = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     sb:SetAutoFocus(false); sb:SetHeight(20)
+    searchBoxes[sb] = true
     sb:SetFontObject("ChatFontNormal")
     sb.hint = sb:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     sb.hint:SetPoint("LEFT", 6, 0); sb.hint:SetText("Search rules")
@@ -166,7 +187,14 @@ local function MakeSearchBox(parent)
         ns.treeFilterOpen = (q ~= "") or nil
         filterStamp = filterStamp + 1
         local stamp = filterStamp
-        C_Timer.After(0.25, function() if stamp == filterStamp and ns.UI and ns.UI.Notify then ns.UI.Notify() end end)
+        C_Timer.After(0.25, function()
+            if stamp ~= filterStamp then return end
+            if sb:HasFocus() then ns.treeSearchRefocus = { pos = sb:GetCursorPosition(), t = GetTime() } end
+            if ns.UI and ns.UI.Notify then ns.UI.Notify() end
+            RestoreSearchFocus()
+            C_Timer.After(0, RestoreSearchFocus)     -- the rebuild can finish on the next frame
+            C_Timer.After(0.1, RestoreSearchFocus)
+        end)
     end)
     sb:SetText(ns.treeFilter or "")
     refreshHint(sb)
@@ -188,14 +216,15 @@ local function EnsureToolbar(of)
         cr:SetPoint("LEFT", im, "RIGHT", 14, 0)
         local ex = ToolButton(bar, 132763, "Export", function() if ns.UI and ns.UI.Export then ns.UI.Export() end end)
         ex:SetPoint("LEFT", cr, "RIGHT", 14, 0)
-        local dfb = ToolButton(bar, "Interface\\Icons\\INV_Misc_Note_05", "Drafts", function() if ns.UI and ns.UI.Drafts then ns.UI.Drafts() end end)
-        dfb:SetPoint("LEFT", ex, "RIGHT", 14, 0)
+        -- no Drafts button: Drafts is a sub-tab under Rules now (2026-11-01). Recycle Bin sits next to Export.
+        local rb = ToolButton(bar, "Interface\\AddOns\\XayaUI\\Media\\UI\\xui_recyclebin.tga", "Recycle Bin", function() if ns.UI and ns.UI.RecycleBin then ns.UI.RecycleBin() end end)
+        rb:SetPoint("LEFT", ex, "RIGHT", 14, 0)
         -- no Cursor button here: the Cursor options live only on the QoL UI Updates tab (Xaya, 2026-11-01)
         local lk = ToolButton(bar, "Interface\\PetBattles\\PetBattle-LockIcon", "Lock Positions", function()
             if ns.ToggleUnlock then ns.ToggleUnlock() end
             if ns.UI and ns.UI.Notify then ns.UI.Notify() end
         end)
-        lk:SetPoint("LEFT", dfb, "RIGHT", 14, 0)
+        lk:SetPoint("LEFT", rb, "RIGHT", 14, 0)
         bar.lock = lk
         lk:Hide()   -- the Unlock Positions button is gone from the top bar (every level has its own in-line unlock); the object stays so nothing that sets its label breaks
         -- Settings sits at the far right of the same line, cog icon on its left
@@ -438,10 +467,13 @@ end
 -- the rule tree (the one that has the All Rules row) carries the search box at its top
 local function EnsureTreeSearch(w)
     local has = false
-    for _, b in ipairs(w.buttons or {}) do local uvb = tostring(b.uniquevalue or ""); if b:IsShown() and (uvb == "all" or uvb == "loaded") then has = true; break end end
+    for _, b in ipairs(w.buttons or {}) do local uvb = tostring(b.uniquevalue or ""); if b:IsShown() and (uvb == "all" or uvb == "loaded" or uvb == "notloaded" or uvb == "disabled") then has = true; break end end
     if not has then   -- the All Rules row may be scrolled out of view or not drawn yet: look at the tree data itself
-        for _, t in ipairs(w.tree or {}) do if type(t) == "table" and (t.value == "all" or t.value == "loaded") then has = true; break end end
+        for _, t in ipairs(w.tree or {}) do if type(t) == "table" and (t.value == "all" or t.value == "loaded" or t.value == "notloaded" or t.value == "disabled") then has = true; break end end
     end
+    -- An active search can hide the Loaded / All rows (or every row, when nothing matches). The box must stay then, or there is no way
+    -- to edit or clear the text and the whole list stays empty.
+    if not has and (ns.treeFilter or "") ~= "" and (w.xuiSearchBox or #(w.tree or {}) == 0) then has = true end
     has = has and SkinOn()
     local sb = w.xuiSearchBox
     if has and not sb and w.treeframe then
@@ -493,7 +525,7 @@ local function EnsureTreeSearch(w)
         bar:SetShown(nSel > 0)
         if nSel > 0 then bar.del:SetText(("Delete %d"):format(nSel)) end
     end
-    if sb then sb:SetShown(has and nSel == 0) end
+    if sb then sb:SetShown(has and nSel == 0); RestoreSearchFocus() end
 end
 
 local function PartitionAllRules(w)
@@ -1149,7 +1181,7 @@ function ns.PaintTypeIcon(button, x)
     local uv = tostring(button.uniquevalue or "")
     local root = uv:match("^([^\001]+)")
     local level = button.level or 1
-    local slot = SkinOn() and not (ns.CondensedOn and ns.CondensedOn()) and level >= 2 and (root == "all" or root == "loaded" or root == "notloaded")
+    local slot = SkinOn() and not (ns.CondensedOn and ns.CondensedOn()) and level >= 2 and (root == "all" or root == "loaded" or root == "notloaded" or root == "disabled")
     local key, ruleObj
     if slot then
         local last = uv:match("([^\001]+)$") or ""

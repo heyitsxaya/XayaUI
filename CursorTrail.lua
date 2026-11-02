@@ -34,8 +34,22 @@ local SHAPES = {
     line    = { "Smooth line",   MEDIA .. "Fill_circle.tga",        "BLEND", "ribbon"  },
     arrow   = { "Cursor arrow",  MEDIA .. "Arrow.tga",              "BLEND", "tex"     },
     hand    = { "Hand",          "Interface\\Cursor\\Point",        "BLEND", "tex"     },
+    game    = { "Game texture (path, file ID or atlas)", "Interface\\Cursor\\Point", "BLEND", "tex" },   -- Blizzard assets: the path is typed under the shape
 }
-local SHAPE_ORDER = { "star", "circle", "square", "diamond", "line", "arrow", "hand" }
+local SHAPE_ORDER = { "star", "circle", "square", "diamond", "line", "arrow", "hand", "game" }
+-- Any game texture: a path (Interface\\Icons\\Spell_Nature_Lightning), a numeric file ID (136048), or an atlas name. Blizzard ships these inside the
+-- game client, so nothing has to be added to XayaUI. A wrong path shows a green square (the game's "missing texture").
+local function SetGameTex(t, path)
+    if type(path) == "string" then
+        local n = tonumber(path); if n then path = n end
+    end
+    if type(path) == "string" and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(path) then
+        t:SetAtlas(path, false)
+    else
+        t:SetTexture(path)
+    end
+end
+
 
 -- Pre-configured gradients (head of the trail first). 3 to 6 colors each.
 local PRESETS = {
@@ -118,10 +132,11 @@ local lastDropX, lastDropY   -- the dot dropped most recently
 local ringN, nDots = 0, 0    -- dots are reused in ring order, so the next slot is always the oldest
 local capT = 0               -- smooth line: when the cursor last moved (the round head fades from then)
 local curSh = SHAPES.star
+local curPath = SHAPES.star[2]   -- the texture of the current shape (the typed path for "game")
 
 -- put one dot's texture into the state the current shape needs
 local function ConfigDot(d)
-    d.tex:SetTexture(curSh[2])
+    SetGameTex(d.tex, curPath)
     local want = (curSh[4] == "circle") and d.mask ~= nil
     if want and not d.masked then pcall(d.tex.AddMaskTexture, d.tex, d.mask); d.masked = true
     elseif not want and d.masked then pcall(d.tex.RemoveMaskTexture, d.tex, d.mask); d.masked = false end
@@ -274,7 +289,7 @@ local function OnUpdate()
         else
             local r, g, b = Grad(stops, rev and (1 - f) or f)
             local sz = size * (1 - 0.45 * f)
-            cap:SetTexture(sh[2])
+            SetGameTex(cap, curPath)
             cap:SetVertexColor(r, g, b, op * (1 - f))
             cap:SetBlendMode(blend)
             cap:SetSize(sz, sz)
@@ -296,6 +311,8 @@ function ns.CursorTrail_Apply()
     Build()
     stops = Stops(c)
     curSh = SHAPES[c.shape] or SHAPES.star
+    curPath = curSh[2]
+    if c.shape == "game" and type(c.gamePath) == "string" and c.gamePath:match("%S") then curPath = (c.gamePath:gsub("^%s+", ""):gsub("%s+$", "")) end
     for i = 1, nDots do
         local d = dots[i]
         ConfigDot(d)
@@ -389,6 +406,11 @@ function ns.BuildCursorTab(Notify)
                     shape = { type = "select", order = 3, name = "Dot shape", values = shapeValues, sorting = shapeSorting,
                         get = function() return C().shape end,
                         set = function(_, v) C().shape = v; Changed() end },
+                    gamePath = { type = "input", order = 3.1, name = "Game texture", width = "double",
+                        desc = "Any texture the game client already has: a path such as Interface\\Icons\\Spell_Nature_Lightning, a numeric file ID, or an atlas name. Nothing needs to be added to XayaUI. A green square means the path was not found.",
+                        hidden = function() return C().shape ~= "game" end,
+                        get = function() return C().gamePath or "" end,
+                        set = function(_, v) C().gamePath = tostring(v or ""):sub(1, 200); Changed() end },
                     reverse = { type = "toggle", order = 4, name = "Reverse colors",
                         desc = "Swaps the ends: the first color ends up at the tail of the trail instead of next to the cursor.",
                         get = function() return C().reverse and true or false end,

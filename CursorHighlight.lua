@@ -20,6 +20,19 @@ local SHAPES = {
     art     = { "Game cursor art", "Interface\\Cursor\\Point", "BLEND" },
 }
 local SHAPE_ORDER = { "circle", "square", "diamond", "star", "art" }
+-- Any game texture: a path (Interface\\Icons\\Spell_Nature_Lightning), a numeric file ID (136048), or an atlas name. Blizzard ships these inside the
+-- game client, so nothing has to be added to XayaUI. A wrong path shows a green square (the game's "missing texture").
+local function SetGameTex(t, path)
+    if type(path) == "string" then
+        local n = tonumber(path); if n then path = n end
+    end
+    if type(path) == "string" and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(path) then
+        t:SetAtlas(path, false)
+    else
+        t:SetTexture(path)
+    end
+end
+
 local OUTLINE_OK = { circle = true, square = true, diamond = true }
 -- Pictures from the game's own Interface\\Cursor folder. Taxi is the path warcraft.wiki.gg uses in its SetCursor example; Point is the
 -- one CursorTrail already uses. NEITHER HAS BEEN CHECKED IN GAME as a texture: a green square means the path is wrong. Anything else: type a path.
@@ -163,7 +176,7 @@ local function Layout(c)
     if c.shape == "art" then
         path = (c.art == "custom") and (c.artPath ~= "" and c.artPath or nil) or (ART[c.art] and ART[c.art][2])
     end
-    tex:SetTexture(path)
+    SetGameTex(tex, path)
     tex:SetBlendMode(sh[3])
     SetMasked(c.shape == "circle")
     if c.shape == "art" and c.keepColors then tex:SetVertexColor(1, 1, 1, op) else tex:SetVertexColor(col[1], col[2], col[3], op) end
@@ -246,7 +259,7 @@ function ns.BuildCursorHighlightTab(Notify)
                         get = function() return C().art end,
                         set = function(_, v) C().art = v; Changed() end },
                     artPath = { type = "input", order = 1.8, name = "Picture path", width = "double",
-                        desc = "Full in-game path, for example Interface\\Cursor\\Taxi. .blp, .tga or .png with power-of-two sides. Files inside Interface\\AddOns work too.",
+                        desc = "Any game texture: a full in-game path (Interface\\Cursor\\Taxi, Interface\\Icons\\Spell_Nature_Lightning), a numeric file ID, or an atlas name. Files inside Interface\\AddOns work too (.blp, .tga or .png with power-of-two sides).",
                         hidden = function() return C().shape ~= "art" or C().art ~= "custom" end,
                         get = function() return C().artPath end,
                         set = function(_, v) C().artPath = tostring(v or ""):sub(1, 200); Changed() end },
