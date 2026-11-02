@@ -1,11 +1,13 @@
 -------------------------------------------------------------------------------
 -- DataPanels.lua : "Custom Data Panels and Bars" (tab under QoL UI Updates).
--- Five on-screen info strips, each showing 1-20 data slots (plus a Chat Panels tab, built by ChatPanels.lua):
---   bl     Bottom Left Panel   (fixed width, bottom-left corner of the screen)
---   br     Bottom Right Panel  (fixed width, bottom-right corner)
---   top    Top Data Bar        (full screen width by default)
---   panel  Custom Panel        (free anchor, drag to move, horizontal or vertical)
---   bar    Custom Bar          (free anchor, full width or fixed width)
+-- On-screen info strips, each showing 1-20 data slots. All of it is on the General tab as sections that open when switched on
+-- (plus a Chat Panels tab for the chat window backdrops, built by ChatPanels.lua):
+--   bl      Left Panel     (bottom-left corner of the screen)
+--   br      Right Panel    (bottom-right corner)
+--   center  Center Panel   (bottom center; any anchor, drag to move, or full screen width)
+--   cpN     Custom Panels  (as many as you add: free anchor, drag to move, horizontal or vertical; stored in db.customs)
+--   the Chat Panel section is the info bar beside the chat window (ChatPanel.lua)
+-- Older settings: Top Data Bar became the Center Panel; an enabled Custom Panel / Custom Bar became custom panels (originals kept in db.legacy).
 -- Data types = what the Chat Panel offers (time, FPS, latency, gold, durability, bag slots, custom text) plus the stat set of the
 -- old stat boxes (crit, haste, mastery, versatility, ilvl, ...). Every slot of every strip can show any of them.
 -- Each slot is a block: its own gaps, alignment, text scale, background and text color, plus "auto sized" or "even split" rows and
@@ -16,8 +18,9 @@ local ADDON, ns = ...
 
 local B = ns.DataBlocks      -- DataBlocks.lua: the block engine shared with the chat info bars (ChatPanel.lua)
 local MAXSLOTS = B.MAXN
-local KEYS = { "bl", "br", "top", "panel", "bar" }
-local TITLES = { bl = "Bottom Left Panel", br = "Bottom Right Panel", top = "Top Data Bar", panel = "Custom Panel", bar = "Custom Bar" }
+local FIXED = { "bl", "br", "center" }
+local TITLES = { bl = "Left Panel", br = "Right Panel", center = "Center Panel" }
+local MAX_CUSTOM = 12
 local ANCHORS = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }
 
 local function num(v) if type(v) == "number" and not (ns.IsSecret and ns.IsSecret(v)) then return v end end
@@ -173,19 +176,62 @@ local function Def(over)
     return d
 end
 ns.DATAPANEL_DEFAULTS = {
-    general = { font = "none", outline = "OUTLINE", size = 13, blockCombatClick = false, blockCombatHover = false },
+    general = { enabled = false, font = "none", outline = "OUTLINE", size = 13, blockCombatClick = false, blockCombatHover = false },   -- enabled = master switch
     bl = Def({ anchor = "BOTTOMLEFT", width = 400, slot1 = "GOLD", slot2 = "DURABILITY", slot3 = "BAGS" }),
     br = Def({ anchor = "BOTTOMRIGHT", width = 400, slot1 = "TIME", slot2 = "FPS", slot3 = "LATENCY" }),
-    top = Def({ anchor = "TOP", widthMode = "SCREEN", slots = 6, slot1 = "TIME", slot2 = "FPS", slot3 = "LATENCY", slot4 = "GOLD", slot5 = "DURABILITY", slot6 = "BAGS" }),
-    panel = Def({ anchor = "CENTER", width = 260, movable = true, slot1 = "STAT_crit", slot2 = "STAT_haste", slot3 = "STAT_mastery" }),
-    bar = Def({ anchor = "BOTTOM", y = 2, width = 600, slots = 5, movable = true, slot1 = "STAT_crit", slot2 = "STAT_haste", slot3 = "STAT_mastery", slot4 = "STAT_vers", slot5 = "STAT_ilvl" }),
+    center = Def({ anchor = "BOTTOM", width = 400, movable = true, slot1 = "TIME", slot2 = "FPS", slot3 = "LATENCY" }),
+    customs = {}, customNext = 1,   -- customs["cp1"] = { ...a strip..., name = "..." }
 }
+local function CustomDef() return Def({ anchor = "CENTER", width = 260, movable = true, name = "Custom Panel", slot1 = "STAT_crit", slot2 = "STAT_haste", slot3 = "STAT_mastery" }) end
 
 local function DB() return ns.dataPanelDB end
+local function Cfg(key) local db = DB(); return db and (db[key] or (db.customs and db.customs[key])) end
+local function AllKeys()
+    local out = { unpack(FIXED) }
+    local db = DB()
+    if db and db.customs then
+        local c = {}
+        for k in pairs(db.customs) do c[#c + 1] = k end
+        table.sort(c, function(a, b) return (tonumber(a:match("%d+")) or 0) < (tonumber(b:match("%d+")) or 0) end)
+        for _, k in ipairs(c) do out[#out + 1] = k end
+    end
+    return out
+end
+function ns.DataPanels_MasterOn() local db = DB(); return db and db.general and db.general.enabled and true or false end
 
 function ns.DataPanels_OnDBReady()
     CueRulesDB.dataPanels = CueRulesDB.dataPanels or {}
-    ns.Merge(CueRulesDB.dataPanels, ns.DATAPANEL_DEFAULTS)
+    local dp = CueRulesDB.dataPanels
+    dp.customs = dp.customs or {}
+    -- 0.5.47: Top Data Bar, Custom Panel and Custom Bar were folded into Center Panel and the custom panels list. The old tables are kept in dp.legacy.
+    if dp.top or dp.panel or dp.bar then
+        dp.legacy = dp.legacy or {}
+        if dp.top then
+            dp.legacy.top = dp.top
+            if dp.center == nil then dp.center = ns.Copy(dp.top) end
+            dp.top = nil
+        end
+        for _, k in ipairs({ "panel", "bar" }) do
+            if dp[k] then
+                dp.legacy[k] = dp[k]
+                if dp[k].enabled then
+                    local n = dp.customNext or 1
+                    dp.customNext = n + 1
+                    dp.customs["cp" .. n] = ns.Copy(dp[k])
+                    dp.customs["cp" .. n].name = (k == "bar") and "Custom Bar" or "Custom Panel"
+                end
+                dp[k] = nil
+            end
+        end
+    end
+    -- the master switch is new: a profile that already has a strip turned on keeps it on
+    if dp.general and dp.general.enabled == nil then
+        for _, k in ipairs({ "bl", "br", "center" }) do if type(dp[k]) == "table" and dp[k].enabled then dp.general.enabled = true; break end end
+        for _, c in pairs(dp.customs) do if type(c) == "table" and c.enabled then dp.general.enabled = true; break end end
+        if ns.chatDB and (ns.chatDB.panelOn or ns.chatDB.rpanelOn) then dp.general.enabled = true end   -- a chat info bar counts too
+    end
+    ns.Merge(dp, ns.DATAPANEL_DEFAULTS)
+    for _, c in pairs(dp.customs) do if type(c) == "table" then ns.Merge(c, CustomDef()) end end   -- custom panels get any setting added since they were made
     ns.dataPanelDB = CueRulesDB.dataPanels
 end
 
@@ -195,7 +241,6 @@ end
 local frames = {}   -- key -> { f = frame, slots = {} }
 local OUTLINES = { NONE = "", OUTLINE = "OUTLINE", THICKOUTLINE = "THICKOUTLINE" }
 
-local function Cfg(key) local db = DB(); return db and db[key] end
 
 -- one block's setting; unset values fall back to the strip's own settings (Text Justify = the default alignment) and to B.DEF
 local BLOCK_FALLBACK = { gapL = 4, gapR = 4 }
@@ -354,10 +399,10 @@ local function SetVisibilityMacro(e, str)
 end
 
 function ns.DataPanels_Refresh(key)
-    if not key then for _, k in ipairs(KEYS) do ns.DataPanels_Refresh(k) end return end
+    if not key then for _, k in ipairs(AllKeys()) do ns.DataPanels_Refresh(k) end return end
     local cfg = Cfg(key)
     if not cfg then return end
-    if not cfg.enabled then
+    if not cfg.enabled or not ns.DataPanels_MasterOn() then
         local e = frames[key]
         if e then SetVisibilityMacro(e, nil); e.f:Hide() end
         return
@@ -384,10 +429,10 @@ end)
 local acc, accHover = 0, 0
 drv:SetScript("OnUpdate", function(_, dt)
     acc = acc + dt; accHover = accHover + dt
-    if acc >= 1 then acc = 0; for _, k in ipairs(KEYS) do UpdateText(k) end end
+    if acc >= 1 then acc = 0; for _, k in ipairs(AllKeys()) do UpdateText(k) end end
     if accHover >= 0.1 then
         accHover = 0
-        for _, k in ipairs(KEYS) do
+        for _, k in ipairs(AllKeys()) do
             local e, cfg = frames[k], Cfg(k)
             if e and cfg and e.f:IsShown() then
                 local a = (cfg.mouseover and not Over(e.f)) and 0 or 1
@@ -406,18 +451,20 @@ function ns.BuildDataPanelsTab(Notify)
     local function Re(key) ns.DataPanels_Refresh(key) end
     local function Both(key) ns.DataPanels_Refresh(key); if Notify then Notify() end end
     ns.DataPanels_Changed = function() if Notify then Notify() end end
+    local function MasterHidden() return not ns.DataPanels_MasterOn() end
 
     local general = { type = "group", name = "General", order = 1, args = {
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Five on-screen info strips: a bottom left panel, a bottom right panel, a top data bar, and one custom panel and one custom bar you can place anywhere. Every slot of every strip can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). These font settings apply to all five. Right-click any strip to jump here. The Chat Panels tab holds the panel options for the Blizzard chat windows (backdrops, tab panel, sizes, chat info bars)." },
-        chatBars = { type = "execute", order = 0.5, name = "Open the chat info bars",
-            desc = "The bars attached to the chat windows (snap to any side of a chat window) are set up in their own window (also /xui panel). They use the same blocks and data types.",
-            func = function() if ns.ChatPanel_ShowWindow then ns.ChatPanel_ShowWindow() end end },
-        blocks = { type = "group", name = "General", order = 1, inline = true, args = {
+            name = "Info panels for the screen and the chat. Tick the master switch below, then switch on the sections you want: a left, right, and center panel, the chat panel beside the chat window, and as many custom panels as you like. Every block of every panel can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). Right-click any panel to jump here. The Chat Panels tab holds the backdrops, tab panel, and sizes of the Blizzard chat windows." },
+        master = { type = "toggle", order = 0.1, width = "full", name = "Enable Custom Data Panels and Bars",
+            desc = "Master switch. Off: no panel is shown and the sections below are hidden (their settings are kept). On: each section then has its own Enable switch.",
+            get = function() return db.general.enabled and true or false end,
+            set = function(_, v) db.general.enabled = v and true or false; ns.DataPanels_Refresh(); if ns.ChatPanel_Refresh then ns.ChatPanel_Refresh() end; if Notify then Notify() end end },
+        blocks = { type = "group", name = "Clicks and hovering", order = 1, inline = true, hidden = MasterHidden, args = {
             click = { type = "toggle", order = 1, name = "Block combat click", get = function() return db.general.blockCombatClick end, set = function(_, v) db.general.blockCombatClick = v end },
             hover = { type = "toggle", order = 2, name = "Block combat hover", get = function() return db.general.blockCombatHover end, set = function(_, v) db.general.blockCombatHover = v end },
         } },
-        fonts = { type = "group", name = "Font Group", order = 2, inline = true, args = {
+        fonts = { type = "group", name = "Font Group", order = 2, inline = true, hidden = MasterHidden, args = {
             font = { type = "select", order = 1, name = "Font",
                 values = function() local v = ns.FontList(); return v end, sorting = function() local _, o = ns.FontList(); return o end,
                 get = function() return db.general.font end, set = function(_, v) db.general.font = v; Re() end },
@@ -430,10 +477,12 @@ function ns.BuildDataPanelsTab(Notify)
     } }
 
     local editIdx = {}
-    local function Container(key, order)
-        local cfg = db[key]
-        local custom = (key == "panel" or key == "bar")
-        local canScreen = (key == "top" or key == "bar")
+    -- one section of the General tab: an Enable switch, and the rest of the settings only while it is on
+    local function Section(key, order)
+        local cfg = Cfg(key)
+        local isCustom = (key ~= "bl" and key ~= "br")   -- the center panel and the custom panels can be placed anywhere
+        local custom = isCustom
+        local canScreen = isCustom
         local function g(f) return function() return cfg[f] end end
         local function s(f, both) return function(_, v) cfg[f] = v; if both then Both(key) else Re(key) end end end
         local function col(name, o, rf, gf, bf, extra)
@@ -444,11 +493,11 @@ function ns.BuildDataPanelsTab(Notify)
         local screen = function() return cfg.widthMode == "SCREEN" end
         local args = {
             n = { type = "description", order = 0, width = "full",
-                name = (key == "bl" and "A fixed-width panel in the bottom left corner of the screen." or key == "br" and "A fixed-width panel in the bottom right corner of the screen."
-                    or key == "top" and "A data bar along the top of the screen (full screen width by default)."
-                    or key == "panel" and "A panel you can put anywhere: pick any anchor point, offsets, horizontal or vertical growth, or unlock it and drag it."
-                    or "A bar you can put anywhere: full screen width or a fixed width, any anchor point, or unlock it and drag it.") },
-            enable = { type = "toggle", order = 1, name = "Enable", get = g("enabled"), set = s("enabled", true) },
+                name = (key == "bl" and "A fixed-width panel in the bottom left corner of the screen."
+                    or key == "br" and "A fixed-width panel in the bottom right corner of the screen."
+                    or key == "center" and "A panel at the bottom center of the screen. Pick any anchor point and offsets, make it full screen width, or unlock it and drag it."
+                    or "A panel you can put anywhere: any anchor point, offsets, horizontal or vertical growth, full screen width or fixed width, or unlock it and drag it.") },
+            enable = { type = "toggle", order = 1, name = "Enable", desc = "Turns this panel on and shows its settings.", get = g("enabled"), set = s("enabled", true) },
             mouseover = { type = "toggle", order = 2, name = "Mouseover", desc = "Only visible while the mouse is over it.", get = g("mouseover"), set = s("mouseover") },
             unlock = { type = "toggle", order = 3, name = "Unlock to drag", desc = "Drag it with the left mouse button (fixed-width only). The border turns blue while unlocked.",
                 hidden = function() return not custom or screen() end,
@@ -561,18 +610,74 @@ function ns.BuildDataPanelsTab(Notify)
                 cfg.slots = n - 1; if editIdx[key] > n - 1 then editIdx[key] = n - 1 end
                 Both(key) end },
         } }
-        args.reset = { type = "execute", order = 30, name = "Reset this strip",
-            func = function() local d = ns.Copy(ns.DATAPANEL_DEFAULTS[key]); for k in pairs(cfg) do cfg[k] = nil end; for k, v in pairs(d) do cfg[k] = v end; Both(key) end }
-        return { type = "group", name = TITLES[key], order = order, args = args }
+        args.reset = { type = "execute", order = 30, name = "Reset this panel", confirm = true,
+            func = function()
+                local d = ns.Copy(ns.DATAPANEL_DEFAULTS[key] or CustomDef())
+                if d.name ~= nil then d.name = cfg.name or d.name end
+                local wasOn = cfg.enabled
+                for k in pairs(cfg) do cfg[k] = nil end
+                for k, v in pairs(d) do cfg[k] = v end
+                cfg.enabled = wasOn
+                Both(key)
+            end }
+        if key:sub(1, 2) == "cp" then   -- a custom panel: its own name, and removal
+            args.name = { type = "input", order = 0.5, name = "Name", desc = "Only a label for this list.", get = g("name"), set = function(_, v) cfg.name = v; if Notify then Notify() end end }
+            args.remove = { type = "execute", order = 31, name = "Remove this panel", confirm = true, confirmText = "Remove this custom panel and its settings?",
+                func = function()
+                    local db2 = DB(); if db2 and db2.customs then db2.customs[key] = nil end
+                    if ns.DataPanels_RemoveSection then ns.DataPanels_RemoveSection(key) end
+                    local e = frames[key]; if e then SetVisibilityMacro(e, nil); e.f:Hide() end
+                    if Notify then Notify() end
+                end }
+        end
+        -- collapsed while the panel is off: everything but its Enable switch (and name) is hidden
+        for k, v in pairs(args) do
+            if k ~= "enable" and k ~= "n" and k ~= "name" then
+                local old = v.hidden
+                v.hidden = function(...) if not cfg.enabled then return true end; if type(old) == "function" then return old(...) end; return old end
+            end
+        end
+        local title = TITLES[key]
+        return { type = "group", name = title or function() return (cfg.name and cfg.name ~= "") and cfg.name or key end, order = order, inline = true, hidden = MasterHidden, args = args }
     end
 
     local out = { type = "group", name = "Custom Data Panels and Bars", order = 10, childGroups = "tab", args = { general = general } }
-    for idx, key in ipairs(KEYS) do out.args[key] = Container(key, idx + 1) end
-    -- the chat window panel options (backdrops, tab panel, sizes, chat info bar on / position) live here since 0.5.44 (was ElvUI Chat Reskin > Panels)
-    if ns.ChatPanels_Options then out.args.chatpanels = ns.ChatPanels_Options(Notify, #KEYS + 2) end
+    local gen = general.args
+    gen.left = Section("bl", 10)
+    gen.right = Section("br", 11)
+    gen.center = Section("center", 12)
+    if ns.ChatPanel_Options then gen.chat = ns.ChatPanel_Options(Notify, 13) end   -- the chat panel: the info bar beside a chat window
+
+    -- custom panels: added and removed while the window is open (AceConfig re-reads the args table on every redraw)
+    local customGroup
+    customGroup = { type = "group", name = "Custom Panels", order = 14, inline = true, hidden = MasterHidden, args = {
+        n = { type = "description", order = 0, width = "full", name = "Add as many panels as you need. Each one has its own place, size, look, and blocks." },
+        add = { type = "execute", order = 1, name = "Add a custom panel", func = function()
+            local count = 0
+            for _ in pairs(db.customs) do count = count + 1 end
+            if count >= MAX_CUSTOM then if ns.Print then ns.Print("That is the limit of " .. MAX_CUSTOM .. " custom panels.") end return end
+            local nxt = db.customNext or 1
+            db.customNext = nxt + 1
+            local key = "cp" .. nxt
+            db.customs[key] = CustomDef()
+            db.customs[key].enabled = true
+            db.customs[key].name = "Custom Panel " .. (count + 1)
+            customGroup.args[key] = Section(key, 10 + nxt)
+            ns.DataPanels_Refresh(key)
+            if Notify then Notify() end
+        end },
+    } }
+    ns.DataPanels_RemoveSection = function(key) customGroup.args[key] = nil end
+    local ids = {}
+    for k in pairs(db.customs) do ids[#ids + 1] = k end
+    table.sort(ids, function(a, b) return (tonumber(a:match("%d+")) or 0) < (tonumber(b:match("%d+")) or 0) end)
+    for _, k in ipairs(ids) do customGroup.args[k] = Section(k, 10 + (tonumber(k:match("%d+")) or 0)) end
+    gen.custom = customGroup
+
+    if ns.ChatPanels_Options then out.args.chatpanels = ns.ChatPanels_Options(Notify, 2) end
     return out
 end
 
-function ns.DataPanels_OpenSettings()
-    if ns.UI and ns.UI.DataPanels then ns.UI.DataPanels() end
+function ns.DataPanels_OpenSettings(tab)   -- tab (optional): a tab key such as "chatpanels"
+    if ns.UI and ns.UI.DataPanels then ns.UI.DataPanels(tab) end
 end

@@ -548,6 +548,7 @@ f:SetScript("OnEvent", function(_, _, name)
     if ns.ChatReskin_OnDBReady then ns.ChatReskin_OnDBReady() end
     if ns.DataPanels_OnDBReady then ns.DataPanels_OnDBReady() end
     if ns.Notepad_OnDBReady then ns.Notepad_OnDBReady() end
+    if ns.Minimap_OnDBReady then ns.Minimap_OnDBReady() end
 end)
 
 -------------------------------------------------------------------------------
@@ -635,7 +636,7 @@ SlashCmdList["XAYAUI"] = function(msg)
         if ns.ChatPrivacy_Set and ns.chatDB then ns.ChatPrivacy_Set(not ns.chatDB.privOn); ns.Print("chat privacy cover " .. (ns.chatDB.privOn and "ON" or "OFF")) end
     elseif cmd == "data" then
         if ns.DataPanels_OpenSettings then ns.DataPanels_OpenSettings() end
-    elseif cmd == "notepad" or cmd == "note" then
+    elseif cmd == "notepad" or cmd == "note" or cmd == "notes" then   -- show / hide the notepad
         if ns.Notepad_Toggle then ns.Notepad_Toggle() end
     elseif cmd == "panel" then
         if ns.ChatPanel_ShowWindow then ns.ChatPanel_ShowWindow() end
@@ -651,6 +652,6 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif cmd == "bug" then
         if ns.ShowBugReport then ns.ShowBugReport() end
     else
-        ns.Print("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui panel (chat info bar settings) | /xui data (custom data panels and bars) | /xui privacy (cover or show the chat) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media")
+        ns.Print("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui notes (show / hide the notepad) | /xui panel (chat panel settings) | /xui data (custom data panels and bars) | /xui privacy (cover or show the chat) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media")
     end
 end

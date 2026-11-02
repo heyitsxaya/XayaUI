@@ -47,6 +47,7 @@ D.panelSlot1, D.panelSlot2, D.panelSlot3 = "FPSMS", "NONE", "FRIENDS"    -- the 
 D.rpanelSlot1, D.rpanelSlot2, D.rpanelSlot3 = "TIME", "NONE", "GOLD"
 
 local function Store() return ns.chatDB end
+local function MasterOn() return not ns.DataPanels_MasterOn or ns.DataPanels_MasterOn() end   -- the master switch on Custom Data Panels and Bars > General
 local panels = { L = {}, R = {} }    -- per side: frame, slots, toggle
 local win, editSide = nil, "L"
 
@@ -485,7 +486,7 @@ local function RefreshSide(side)
     local cf = WindowOf(side)
     local collapsed = CollapsedOf(side)
     local snapped = Snap(s, side) ~= "CHAT"
-    local off = (not s[K(side, "panelOn")]) or ((not cf) and not snapped)
+    local off = (not s[K(side, "panelOn")]) or not MasterOn() or ((not cf) and not snapped)
         or (s[K(side, "panelHideWhenCollapsed")] and collapsed)
     if off then
         if P.frame then P.frame:Hide() end
@@ -498,7 +499,7 @@ end
 -- used by ChatDock: the least distance (UIParent units) the main chat's bottom edge may be from the screen's bottom
 function ns.ChatPanel_BottomReserve()
     local s = Store()
-    if not (s and s.panelOn and s.panelPushChat ~= false and Snap(s, "L") == "CHAT" and ChatSide(s, "L") == "BOTTOM") then return 0 end
+    if not (s and s.panelOn and MasterOn() and s.panelPushChat ~= false and Snap(s, "L") == "CHAT" and ChatSide(s, "L") == "BOTTOM") then return 0 end
     local thick = math.max(10, tonumber(s.panelHeight) or 22)
     local gap = tonumber(s.panelGap) or 2
     local oy = tonumber(s.panelOffY) or 0
@@ -519,6 +520,7 @@ end
 function ns.ChatPanel_WantOpaqueEdit()
     local s = Store()
     if not s then return false end
+    if not MasterOn() then return false end
     return (s.panelOn and s.panelOpaqueEdit) or (s.rpanelOn and s.rpanelOpaqueEdit) and true or false
 end
 
@@ -699,7 +701,170 @@ local function BuildWindow()
     return f
 end
 
+-- the same settings as a group of the standard settings window (QoL UI Updates > Custom Data Panels and Bars > General > Chat Panel) -----------
+function ns.ChatPanel_Options(Notify, order)
+    local function S() return Store() or {} end
+    local function Re(redraw) ns.ChatPanel_Refresh(); if redraw and Notify then Notify() end end
+    local function gk(k, default) return function() local v = S()[K(editSide, k)]; if v == nil then return default end; return v end end
+    local function sk(k, redraw) return function(_, v) local s = Store(); if s then s[K(editSide, k)] = v end; Re(redraw) end end
+    local function tog(name, k, o, default, desc, width)
+        return { type = "toggle", order = o, name = name, desc = desc, width = width, get = gk(k, default), set = function(_, v) sk(k)(nil, v and true or false) end }
+    end
+    local function rng(name, k, o, min, max, step)
+        return { type = "range", order = o, name = name, min = min, max = max, step = step or 1, get = function() return tonumber(S()[K(editSide, k)]) or min end, set = sk(k) }
+    end
+    local function sel(name, k, o, list, getter)
+        local values, sorting = {}, {}
+        for i, e in ipairs(list) do values[e[1]] = e[2]; sorting[i] = e[1] end
+        return { type = "select", order = o, name = name, values = values, sorting = sorting, get = getter or gk(k), set = sk(k) }
+    end
+    local function col(name, k, o)
+        return { type = "color", order = o, name = name, hasAlpha = false,
+            get = function() local s = S(); return s[K(editSide, k .. "R")] or 1, s[K(editSide, k .. "G")] or 1, s[K(editSide, k .. "B")] or 1, 1 end,
+            set = function(_, r, g, b) local s = Store(); if s then s[K(editSide, k .. "R")], s[K(editSide, k .. "G")], s[K(editSide, k .. "B")] = r, g, b end; Re() end }
+    end
+    -- blocks: "Editing block" picks the block the settings below it change
+    local function EB()
+        local n = Count(S(), editSide)
+        if editBlock > n then editBlock = n end
+        if editBlock < 1 then editBlock = 1 end
+        return editBlock
+    end
+    local function bg(f) return function() return BGet(S(), editSide, EB(), f) end end
+    local function bs(f) return function(_, v) local s = Store(); if s then BSet(s, editSide, EB(), f, v) end; Re() end end
+    local function bcol(name, a, b, c, o)
+        return { type = "color", order = o, name = name, hasAlpha = false,
+            get = function() local s, i = S(), EB(); return BGet(s, editSide, i, a), BGet(s, editSide, i, b), BGet(s, editSide, i, c), 1 end,
+            set = function(_, r, g, bl) local s = Store(); if s then local i = EB(); BSet(s, editSide, i, a, r); BSet(s, editSide, i, b, g); BSet(s, editSide, i, c, bl) end; Re() end }
+    end
+    local function structure(fn) local s = Store(); if not s then return end; fn(s); Re(true) end
+    local types, typeOrder = {}, {}
+    for i, e in ipairs(TypeList()) do types[e[1]] = e[2]; typeOrder[i] = e[1] end
+
+    local section = { type = "group", name = "Chat Panel", order = order or 8, inline = true, hidden = function() return not MasterOn() end, args = {
+        note = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = "The info bar beside a chat window (above, below, left, or right of it, or snapped to a screen edge). Right-click a bar to jump here. It uses the same blocks and data types as the screen panels. Changes apply immediately and are saved." },
+        editing = { type = "select", order = 1, name = "Editing", values = { L = "Left panel (main chat)", R = "Right panel" }, sorting = { "L", "R" },
+            get = function() return editSide end, set = function(_, v) editSide = v; if Notify then Notify() end end },
+        rightNote = { type = "description", order = 2, width = "full",
+            hidden = function() return editSide ~= "R" end,
+            name = "The right panel attaches to the chat window chosen as \"Right chat window\" on the Chat Panels tab. Without one it stays hidden unless it is snapped to a screen edge." },
+        on = tog("Show this panel", "panelOn", 3, nil, nil, "full"),
+
+        bar = { type = "group", name = "Bar", order = 10, inline = true, args = {
+            visibility = sel("Visibility", "panelVisibility", 1, { { "ALWAYS", "Always" }, { "COMBAT", "In combat" }, { "NOCOMBAT", "Out of combat" }, { "MOUSEOVER", "Mouse over only" } }),
+            sizing = sel("Block sizing", "panelSizing", 2, { { "EVEN", "Even split" }, { "AUTO", "Auto sized" } }),
+            snap = sel("Snaps to", "panelSnap", 3, { { "CHAT", "The chat window" }, { "TOP", "Top of the screen" }, { "BOTTOM", "Bottom of the screen" } },
+                function() return Snap(S(), editSide) end),
+            side = sel("Side of the chat window", "panelChatSide", 4, { { "BOTTOM", "Bottom" }, { "TOP", "Top" }, { "LEFT", "Left" }, { "RIGHT", "Right" } },
+                function() return ChatSide(S(), editSide) end),
+            match = { type = "toggle", order = 5, width = "full", name = "Resize the bar to fit (chat width for top / bottom, chat height for left / right; screen width at a screen edge)",
+                desc = "Left / right bars stack their blocks top to bottom. Off: the bar uses the length below.",
+                get = function() return Match(S(), editSide) end, set = function(_, v) sk("panelMatch")(nil, v and true or false) end },
+            length = rng("Length (when not resized to fit)", "panelWidth", 6, 40, 3000, 5),
+            thick = rng("Thickness (height; width for left / right bars)", "panelHeight", 7, 10, 400),
+            gap = rng("Gap to the chat", "panelGap", 8, -20, 60),
+            clear = tog("Keep the bar clear of the chat edit box", "panelClearEdit", 9, true, nil, "full"),
+            push = tog("Push the chat up if the bar would not fit above the screen bottom (left panel)", "panelPushChat", 10, true, nil, "full"),
+            opaque = tog("Make the chat edit box nearly opaque while this bar is on", "panelOpaqueEdit", 11, false, nil, "full"),
+            offx = rng("Nudge left / right", "panelOffX", 12, -2000, 2000),
+            offy = rng("Nudge down / up", "panelOffY", 13, -2000, 2000),
+        } },
+        look = { type = "group", name = "Look", order = 20, inline = true, args = {
+            bg = tog("Background", "panelBg", 1, true),
+            bgc = col("Background color", "panelBg", 2),
+            bga = rng("Background opacity (%)", "panelBgAlpha", 3, 0, 100, 5),
+            border = tog("Border", "panelBorder", 4, true),
+            borderc = col("Border color", "panelBorder", 5),
+            size = rng("Text size", "panelTextSize", 6, 6, 40),
+            text = col("Text color", "panelText", 7),
+            value = col("Value color (friends count)", "panelValue", 8),
+            hover = tog("Highlight the block under the mouse", "panelHoverHL", 9, false, nil, "full"),
+        } },
+        blocks = { type = "group", name = "Blocks", order = 30, inline = true, args = {
+            count = { type = "range", order = 1, name = "Number of blocks", min = 1, max = MAXN, step = 1,
+                get = function() return Count(S(), editSide) end, set = sk("panelSlots", true) },
+            idx = { type = "range", order = 2, name = "Editing block", min = 1, max = MAXN, step = 1,
+                get = function() return EB() end, set = function(_, v) editBlock = v; if Notify then Notify() end end },
+            what = { type = "description", order = 3, width = "full", fontSize = "medium", name = function()
+                local s = S(); local n, sel2 = Count(s, editSide), EB(); local parts = {}
+                for i = 1, n do
+                    local nm = NameOf(BGet(s, editSide, i, "src"))
+                    parts[#parts + 1] = (i == sel2) and ("|cffffd100[" .. i .. " " .. nm .. "]|r") or (i .. " " .. nm)
+                end
+                return table.concat(parts, "  |  ")
+            end },
+            src = { type = "select", order = 4, name = "Shows", values = types, sorting = typeOrder, get = bg("src"), set = bs("src") },
+            custom = { type = "input", order = 5, name = "Custom text (color codes work)", width = "double",
+                hidden = function() return BGet(S(), editSide, EB(), "src") ~= "CUSTOM" end, get = bg("custom"), set = bs("custom") },
+            gapL = { type = "range", order = 6, name = "Left gap", min = 0, max = 200, step = 1, get = bg("gapL"), set = bs("gapL") },
+            gapR = { type = "range", order = 7, name = "Right gap", min = 0, max = 200, step = 1, get = bg("gapR"), set = bs("gapR") },
+            fill = { type = "toggle", order = 8, name = "Fill remaining space (Auto sized bars)", width = "double", get = bg("fill"), set = bs("fill") },
+            align = { type = "select", order = 9, name = "Text align", values = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }, sorting = { "LEFT", "CENTER", "RIGHT" }, get = bg("align"), set = bs("align") },
+            scale = { type = "range", order = 10, name = "Content scale (%)", min = 40, max = 300, step = 5, get = bg("scale"), set = bs("scale") },
+            bgOn = { type = "toggle", order = 11, name = "Block background", get = bg("bgOn"), set = bs("bgOn") },
+            bgCol = bcol("Block background color", "bgR", "bgG", "bgB", 12),
+            bgA = { type = "range", order = 13, name = "Block background opacity (%)", min = 0, max = 100, step = 5, get = bg("bgA"), set = bs("bgA") },
+            textOn = { type = "toggle", order = 14, name = "Own text color for this block", width = "double", get = bg("textOn"), set = bs("textOn") },
+            textCol = bcol("This block's text color", "tR", "tG", "tB", 15),
+            left = { type = "execute", order = 20, name = "Move left", func = function() structure(function(s)
+                local i = EB(); if i <= 1 then return end
+                Materialize(s, editSide)
+                local t = s[K(editSide, "panelBlocks")]; t[i], t[i - 1] = t[i - 1], t[i]; editBlock = i - 1 end) end },
+            right = { type = "execute", order = 21, name = "Move right", func = function() structure(function(s)
+                local i, n = EB(), Count(s, editSide); if i >= n then return end
+                Materialize(s, editSide)
+                local t = s[K(editSide, "panelBlocks")]; t[i], t[i + 1] = t[i + 1], t[i]; editBlock = i + 1 end) end },
+            add = { type = "execute", order = 22, name = "Add block", func = function() structure(function(s)
+                local n = Count(s, editSide); if n >= MAXN then return end
+                s[K(editSide, "panelSlots")] = n + 1; editBlock = n + 1 end) end },
+            remove = { type = "execute", order = 23, name = "Remove block", func = function() structure(function(s)
+                local i, n = EB(), Count(s, editSide); if n <= 1 then return end
+                Materialize(s, editSide)
+                local t = s[K(editSide, "panelBlocks")]; table.remove(t, i)
+                s[K(editSide, "panelSlots")] = n - 1
+                if editBlock > n - 1 then editBlock = n - 1 end end) end },
+        } },
+        time = { type = "group", name = "Time and behaviour", order = 40, inline = true, args = {
+            c24 = tog("24-hour clock", "panelClock24", 1, true),
+            local_ = tog("Time: use this computer's clock (off: realm time)", "panelLocalTime", 2, true, nil, "double"),
+            collapsed = tog("Hide while its chat window is collapsed", "panelHideWhenCollapsed", 3, false, nil, "double"),
+            hideT = { type = "toggle", order = 4, name = "Hide the toggle buttons (both panels)", width = "double",
+                get = function() return S().cpHideToggles and true or false end,
+                set = function(_, v) local s = Store(); if s then s.cpHideToggles = v and true or false end; Re(true) end },
+            fadeT = { type = "toggle", order = 5, name = "Fade a toggle button while its chat window is hidden (both panels)", width = "double",
+                get = function() return S().cpFadeToggles and true or false end,
+                set = function(_, v) local s = Store(); if s then s.cpFadeToggles = v and true or false end; Re() end },
+            labels = tog("Stat blocks: show the stat name in front of the value", "panelLabels", 6, true, nil, "double"),
+        } },
+        reset = { type = "execute", order = 50, name = "Reset this panel's settings", confirm = true, func = function()
+            local s = Store(); if not s then return end
+            local pre = (editSide == "R") and "rpanel" or "panel"
+            for k, v in pairs(ns.CHAT_DEFAULTS) do if k:sub(1, #pre) == pre and (editSide == "R" or k:sub(1, 6) ~= "rpanel") then s[k] = v end end
+            s[K(editSide, "panelBlocks")] = nil
+            s[K(editSide, "panelChatSide")], s[K(editSide, "panelMatch")] = nil, nil
+            editBlock = 1
+            Re(true)
+        end },
+    } }
+    -- collapsed while the panel being edited is off: only the side picker and the Show switch stay
+    local keep = { note = true, editing = true, rightNote = true, on = true }
+    for k, v in pairs(section.args) do
+        if not keep[k] then
+            local old = v.hidden
+            v.hidden = function(...) if not S()[K(editSide, "panelOn")] then return true end; if type(old) == "function" then return old(...) end; return old end
+        end
+    end
+    return section
+end
+
+-- right-click on a bar, /xui panel, and the buttons all open the standard settings window (General tab, Chat Panel section)
 function ns.ChatPanel_ShowWindow()
+    if ns.DataPanels_OpenSettings and ns.UI and ns.UI.DataPanels then ns.DataPanels_OpenSettings() return end
+    ns.ChatPanel_ShowLegacyWindow()
+end
+
+function ns.ChatPanel_ShowLegacyWindow()   -- the older stand-alone window (kept as a fallback; the settings now live in the standard window)
     local f = BuildWindow()
     if not f then return end
     if f:IsShown() then f:Hide() return end

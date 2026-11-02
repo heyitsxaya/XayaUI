@@ -231,23 +231,12 @@ function ns.ChatPanels_Options(Notify, order)
     local noRight = function() return ns.ChatPanels_RightWindow() == nil end
     return { type = "group", name = "Chat Panels", order = order or 7, args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Panel options for the Blizzard chat windows: the left panel is the main chat window; pick a window below to act as the right panel. Panel backdrops, tab panel, and sizes are off until you turn on Panel Snapping / Apply panel sizes. The tab fade options need the switch on ElvUI Chat Reskin > General." },
+            name = "Panel options for the Blizzard chat windows: the left panel is the main chat window; pick a window below to act as the right panel. The info bars beside the chat windows are set up on the General tab, Chat Panel section. Panel backdrops, tab panel, and sizes are off until you turn on Panel Snapping / Apply panel sizes. The tab fade options need the switch on ElvUI Chat Reskin > General." },
         fadeUndocked = tog("Fade Undocked Tabs", "fadeUndockedTabs", 1, "Fades the text on chat tabs that are not docked in the main chat window (needs the ElvUI Chat Reskin switch on, under ElvUI Chat Reskin > General)."),
         fadeNoBackdrop = tog("Fade Tabs No Backdrop", "fadeTabsNoBackdrop", 2, "Fades the text on docked tabs when the left panel's backdrop is hidden (needs Panel Snapping on)."),
         hideToggles = tog("Hide Chat Toggles", "cpHideToggles", 3, "Hides the small arrow buttons at the end of the data text panels."),
         fadeToggles = tog("Fade Chat Toggles", "cpFadeToggles", 4, "Fades the toggle button of a window that has been toggled off.", function() return S().cpHideToggles end),
 
-        dt = { type = "group", name = "DataText Panels", order = 10, inline = true, args = {
-            left = tog("Left panel", "panelOn", 1, "The info bar under the main chat window.", nil),
-            leftPos = { type = "select", order = 2, name = "Left Position", values = { BELOW = "Below Chat", ABOVE = "Above Chat" }, sorting = { "BELOW", "ABOVE" },
-                get = function() return S().panelAnchor or "BELOW" end,
-                set = function(_, v) local s = Store(); if s then s.panelAnchor = v end; Re() end },
-            right = tog("Right panel", "rpanelOn", 3, "The info bar under the right chat window (choose it under Chat Panels)."),
-            rightPos = { type = "select", order = 4, name = "Right Position", values = { BELOW = "Below Chat", ABOVE = "Above Chat" }, sorting = { "BELOW", "ABOVE" },
-                get = function() return S().rpanelAnchor or "BELOW" end,
-                set = function(_, v) local s = Store(); if s then s.rpanelAnchor = v end; Re() end },
-            open = { type = "execute", order = 5, name = "Open the data panel settings window (slots, size, look)", func = function() ns.ChatPanel_ShowWindow() end },
-        } },
         tabs = { type = "group", name = "Tab Panels", order = 20, inline = true, args = {
             trans = tog("Tab Panel Transparency", "cpTabTransparent", 1, nil, function() return not S().cpTab end),
             tab = tog("Tab Panel", "cpTab", 2, "A backdrop strip behind the docked chat tabs (needs Panel Snapping on)."),

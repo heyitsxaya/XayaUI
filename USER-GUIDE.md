@@ -7,7 +7,7 @@
 ## Contents
 
 - **Part 1: Rules**: how Load options, Triggers, Cues, Conditions, and Actions work (sections 1-11)
-- **Part 2: Features**: Class/Spec Rule Creator, Rule Drafts, Custom Data Panels and Bars, Notepad, Addon Theming (section 12)
+- **Part 2: Features**: Class/Spec Rule Creator, Rule Drafts, Custom Data Panels and Bars, Notepad, Addon Theming, Minimap Button (section 12)
 - **Maintaining this document** (section 13)
 
 ---
@@ -391,17 +391,19 @@ On/off state, name, group, collapse state, sidebar icon, and edit lock are not c
 
 ### 12.3 Custom Data Panels and Bars
 
-Five on-screen info strips, each holding 1 to 20 data slots: a **Bottom Left Panel** and **Bottom Right Panel** pinned to the screen corners, a full-width **Top Data Bar**, and two free-form strips, **Custom Panel** and **Custom Bar**, that you can drag anywhere. Every slot can show any data type: time, frame rate, latency, gold, durability, free bag slots, or your own custom text, plus a set of character stats (crit, haste, mastery, versatility, leech, avoidance, dodge, parry, block, item level, armor, primary stats, stamina, max health, absorb). Stats keep their last readable value when the game marks them secret.
+Info panels for the screen and the chat, each holding 1 to 20 data slots: a **Left Panel** and **Right Panel** along the bottom of the screen, a **Center Panel** you can anchor anywhere, the **Chat Panel** beside a chat window (above, below, left, or right of it, or snapped to a screen edge), and any number of **Custom Panels** you add yourself (up to 12). Every slot can show any data type: time, frame rate, latency, gold, durability, free bag slots, or your own custom text, plus a set of character stats (crit, haste, mastery, versatility, leech, avoidance, dodge, parry, block, item level, armor, primary stats, stamina, max health, absorb). Stats keep their last readable value when the game marks them secret.
 
-Each slot is a **block** with its own gaps, alignment, text scale, background, and text color. Rows can size blocks automatically or split them evenly, and a block can fill the remaining space. Each strip also has its own width, height, growth direction (horizontal or vertical), backdrop and border, colors, frame layer, tooltip placement, a hide-in-combat option, and a visibility macro. A shared General page sets the font, outline, and size, and can block clicks and mouseover during combat. The chat info bars use the same block engine and data-type list.
+Each slot is a **block** with its own gaps, alignment, text scale, background, and text color. Rows can size blocks automatically or split them evenly, and a block can fill the remaining space. Each panel also has its own width, height, growth direction (horizontal or vertical), backdrop and border, colors, frame layer, tooltip placement, a hide-in-combat option, and a visibility macro. The General page sets the font, outline, and size, and can block clicks and mouseover during combat. The chat panel uses the same block engine and data-type list.
 
-**Where:** QoL UI Updates > Custom Data Panels and Bars, or `/xui data`; right-click any strip to open its page. Tabs: General, Bottom Left Panel, Bottom Right Panel, Top Data Bar, Custom Panel, Custom Bar. On the two custom strips, **Unlock to drag** (fixed width only) lets you place them; a blue border shows while unlocked.
+**Where:** QoL UI Updates > Custom Data Panels and Bars, or `/xui data`; right-click any panel to jump there. Everything is on the **General** tab as sections: a master switch (**Enable Custom Data Panels and Bars**) shows or hides all panels and the sections below it, and each section (Left Panel, Right Panel, Center Panel, Chat Panel, Custom Panels) opens its settings once its own Enable switch is on. **Add a custom panel** creates another panel; **Remove this panel** deletes it. The **Chat Panels** tab holds the chat window backdrops, tab panel, and sizes. On the center and custom panels, **Unlock to drag** (fixed width only) lets you place them; a blue border shows while unlocked.
 
 ### 12.4 Notepad
 
 Notepad is a movable, resizable box for typed reminders. It holds any number of notes, with a toolbar to create, duplicate, delete, and flip between them. Text saves as you type, and earlier versions of every note are kept automatically: a new version after a pause in typing, and always just before a big chunk of text is removed. Deleted notes go to a trash, and the **Hist** button opens a Restore list of earlier versions and deleted notes (up to 20 versions per note, 30 in the trash, 8,000 characters per note). The toolbar can sit at the top, bottom, left, or right, and can appear only when your mouse is over the box. Choose the font, size, backdrop opacity, and frame layer; lock it in place; hide it in combat; and have it release the keyboard when combat starts so it never steals your keybinds. Open it with `/xui notepad`, the close button on the box, or the QoL UI Updates > Notepad page.
 
-**Where:** QoL UI Updates > Notepad, or `/xui notepad`. Drag the title bar to move and the bottom-right corner to resize; **Lock** stops both.
+The **List** button shows every note in the box at once; click one to open it. The **Fmt** button turns on formatting tools: a format bar (heading, bullet, checkbox, red, yellow, green, and blue text, spell link) and a formatted view that you switch to with **View** and click to edit again. Notes stay plain text: `# Heading`, `- bullet`, `[ ] task` and `[x] done`, `|cffRRGGBBtext|r` colors, and `{spell:ID}` (shows the spell's icon and name). The **More** button shares the current note to chat, or exports and imports notes. **Share** sends the note to your party, raid, instance group, guild, or one player: a header line (and optionally the first lines of the text) goes to chat, and other XayaUI users get a small window offering the note, with Save as new note, Dismiss, and Block sender. Nothing is saved without a click, and shared text is cleaned of links, textures, and escape codes. Addon messages are paused during boss encounters and some restricted content, and a long note takes up to about half a minute to send. **Export** gives a block of text (this note or all notes) to copy; **Import** reads such a block, or any plain text as one note, and adds the notes at the end of your list.
+
+**Where:** QoL UI Updates > Notepad, or `/xui notes` (also `/xui notepad`), which shows or hides the box. Drag the title bar to move and the bottom-right corner to resize; **Lock** stops both.
 
 ### 12.5 Addon Theming and Color Customization
 
@@ -410,6 +412,12 @@ XayaUI's look is driven by a style sheet in two layers. **Tokens** are the palet
 **Where:** Settings > Theme in the options window. `/xuiskin` turns the window skin off (then `/reload`); `/xuiskin alpha <0.1-1>` sets window opacity.
 
 ---
+
+### 12.6 Minimap Button
+
+A button on the minimap for quick access. **Left-click** opens a list of buttons: Notes (shows or hides the notepad), Settings, Custom data panels, Chat panel, and Chat privacy cover. **Right-click** opens the XayaUI settings window, and you can **drag** the button around the minimap edge. You choose which buttons the list shows, whether it closes after a choice, and whether the button is shown or locked in place.
+
+**Where:** QoL UI Updates > Minimap Button.
 
 ## 13. Maintaining this document
 

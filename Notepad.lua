@@ -4,6 +4,9 @@
 --   * Nothing typed is lost: the text is saved as you type, and earlier versions of each note are kept automatically (a new
 --     version after a pause in typing, and always right before a big chunk of text disappears). Deleted notes go to a trash.
 --     Toolbar "Hist" (or the options page) opens the Restore list: earlier versions of this note + deleted notes.
+--   * List: the toolbar's List button shows every note in the box (click one to open it).
+--   * Formatting (toolbar Fmt, off by default): a format bar (heading, bullet, checkbox, colors, spell icon) and a formatted view.
+--     Markup is plain text: '# heading', '- bullet', '[ ] / [x] checkbox', |cffRRGGBBtext|r colors, {spell:ID} icon + name.
 --   * Toolbar: at the top, bottom, left, or right of the box; always visible, or only while the mouse is over the box.
 --   * Open / close: /xui notepad, the x on the box, or QoL UI Updates > Notepad. Whether it is open is remembered.
 --   * Drag the title bar to move, drag the bottom-right corner to resize. "Lock" stops both.
@@ -13,6 +16,7 @@ local ADDON, ns = ...
 
 local TITLE_H = 20
 local TB_H, TB_W, BTN_W = 20, 38, 32   -- toolbar thickness (horizontal), width (vertical), button width (horizontal)
+local FB_H, FMT_MINW = 20, 262         -- format bar height, minimum box width while it is shown
 local MAX_CHARS = 8000                 -- per note
 local IDLE_SECS = 4                    -- pause in typing that saves a version
 local BIG_DROP = 20                    -- characters removed in one edit that save the old text first
@@ -29,6 +33,8 @@ ns.NOTEPAD_DEFAULTS = {
     strata = "MEDIUM",
     hideInCombat = false,
     dropFocusInCombat = true,
+    format = false,          -- formatting tools: format bar + formatted view
+    acceptShares = true,     -- offer notes shared by other XayaUI users (NotepadShare.lua)
     toolbar = true,
     toolbarPos = "TOP",      -- TOP | BOTTOM | LEFT | RIGHT
     toolbarHover = false,    -- true: toolbar only shows while the mouse is over the box
@@ -110,11 +116,55 @@ local function SavePosition(self)
     db.w, db.h = math.floor(self:GetWidth() + 0.5), math.floor(self:GetHeight() + 0.5)
 end
 
+-- formatted view: plain-text markup -> WoW escape codes (a FontString has one font, so no bold or mixed sizes: color, bullets, icons only)
+local function CharBefore(text, pos)   -- the UTF-8 character just before cursor position pos (the cursor counts characters, not bytes)
+    local last, i = nil, 0
+    for ch in (text or ""):gmatch("[%z\1-\127\194-\244][\128-\191]*") do
+        if i >= pos then break end
+        i = i + 1; last = ch
+    end
+    return last
+end
+local function SpellToken(id)
+    id = tonumber(id); if not id then return nil end
+    local name, icon
+    if C_Spell and C_Spell.GetSpellInfo then
+        local ok, info = pcall(C_Spell.GetSpellInfo, id)
+        if ok and type(info) == "table" then name, icon = info.name, info.iconID end
+    end
+    if not icon and C_Spell and C_Spell.GetSpellTexture then local ok, t = pcall(C_Spell.GetSpellTexture, id); if ok then icon = t end end
+    if not name then return nil end
+    return ("|T%s:14|t %s"):format(tostring(icon or 134400), name)
+end
+local function RenderLine(line)
+    line = line:gsub("{spell:(%d+)}", function(id) return SpellToken(id) or ("|cff888888{spell:" .. id .. "}|r") end)
+    local h = line:match("^#+%s*(.*)$")
+    if h then return "|cffffd100" .. h .. "|r" end
+    local d = line:match("^%s*%[[xX]%]%s?(.*)$")
+    if d then return "|cff55dd55[x]|r |cff8a8a8a" .. d .. "|r" end
+    local t = line:match("^%s*%[ %]%s?(.*)$")
+    if t then return "|cffffd100[ ]|r " .. t end
+    local b = line:match("^%s*[-*]%s+(.*)$")
+    if b then return "  |cff99ccff\226\128\162|r " .. b end
+    return line
+end
+function ns.Notepad_Render(text)
+    local out = {}
+    for line in ((text or "") .. "\n"):gmatch("(.-)\r?\n") do out[#out + 1] = RenderLine(line) end
+    if out[#out] == "" then out[#out] = nil end
+    return table.concat(out, "\n")
+end
+ns.Notepad_CharBefore = CharBefore
+
+local mode = { list = false, view = false }   -- this session only: list of all notes / formatted view
+local RefreshView, ApplyMode, PopulateList     -- assigned below
+
 local function SetEditText(text)
     frame.settingText = true
     frame.eb:SetText(text or "")
     frame.settingText = false
     frame.sf:SetVerticalScroll(0)
+    if RefreshView then RefreshView() end
 end
 
 local function UpdateTitle()
@@ -136,6 +186,7 @@ local function Select(id)
     db.current = id
     if frame then SetEditText(n.text); UpdateTitle() end
     if Populate then Populate() end
+    if PopulateList then PopulateList() end
 end
 
 function ns.Notepad_New(text, after)
@@ -145,7 +196,22 @@ function ns.Notepad_New(text, after)
     local at = after and ((IndexOf(db.current) or #db.notes) + 1) or (#db.notes + 1)
     table.insert(db.notes, at, n)
     Select(n.id)
+    if (mode.list or mode.view) and ApplyMode then mode.list, mode.view = false, false; ApplyMode() end
     if frame and frame:IsShown() and not text then frame.eb:SetFocus() end
+end
+
+-- small API for NotepadShare.lua (share, export, import) ---------------------------------------------------------------------
+ns.Notepad_MAX_CHARS = MAX_CHARS
+function ns.Notepad_CurrentText() local n = Cur(); return n and n.text or "" end
+function ns.Notepad_AllTexts() local db = DB(); local out = {}; if db then for i, n in ipairs(db.notes) do out[i] = n.text or "" end end; return out end
+function ns.Notepad_AddNote(text)   -- adds a note at the end without switching to it; returns its position, or nil
+    local db = DB(); if not db then return nil end
+    Flush()
+    local n = NewNoteTable((tostring(text or "")):sub(1, MAX_CHARS))
+    db.notes[#db.notes + 1] = n
+    if PopulateList then PopulateList() end
+    if Populate then Populate() end
+    return #db.notes
 end
 
 function ns.Notepad_Duplicate()
@@ -299,12 +365,15 @@ local BUTTONS = {
     { "<",    "Previous note",                          function() ns.Notepad_Prev() end },
     { ">",    "Next note",                              function() ns.Notepad_Next() end },
     { "Hist", "Restore: earlier versions and deleted notes", function() ns.Notepad_ToggleRestore() end },
+    { "List", "List of all notes (click one to open it)", function() ns.Notepad_ToggleList() end },
+    { "Fmt",  "Formatting tools on / off: heading, bullet, checkbox, colors, spell icons, and a formatted view", function() ns.Notepad_ToggleFormat() end },
+    { "More", "Share this note to chat, export notes as text, import notes", function(self) if ns.NotepadShare_Menu then ns.NotepadShare_Menu(self) end end },
 }
 
 local function BuildToolbar(f)
     local tb = CreateFrame("Frame", nil, f)
     tb.bg = tb:CreateTexture(nil, "BACKGROUND"); tb.bg:SetAllPoints(); tb.bg:SetColorTexture(0.1, 0.1, 0.1, 0.9)
-    tb.btns = {}
+    tb.btns = {}; tb.byName = {}
     for i, def in ipairs(BUTTONS) do
         local b = CreateFrame("Button", nil, tb)
         b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(); b.bg:SetColorTexture(0.18, 0.18, 0.18, 0.9)
@@ -313,7 +382,7 @@ local function BuildToolbar(f)
         b:SetScript("OnClick", def[3])
         b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:SetText(def[2]); GameTooltip:Show() end)
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        tb.btns[i] = b
+        tb.btns[i] = b; tb.byName[def[1]] = b
     end
     return tb
 end
@@ -323,7 +392,7 @@ local function Layout()
     local f, tb, sf = frame, frame.tb, frame.sf
     local pos = db.toolbarPos or "TOP"
     local vert = (pos == "LEFT" or pos == "RIGHT")
-    tb:ClearAllPoints(); sf:ClearAllPoints()
+    tb:ClearAllPoints()
     local L, T, R, B = 6, TITLE_H + 4, 6, 14
     if db.toolbar then
         if pos == "TOP" then
@@ -342,8 +411,174 @@ local function Layout()
         end
     end
     tb:SetShown(db.toolbar and true or false)
-    sf:SetPoint("TOPLEFT", L, -T); sf:SetPoint("BOTTOMRIGHT", -R, B)
-    if f.SetResizeBounds then f:SetResizeBounds(vert and 150 or (db.toolbar and 6 * (BTN_W + 2) + 6 or 140), 90, 900, 900) end
+    local fb = f.fb
+    if fb then
+        fb:ClearAllPoints()
+        if db.format and not mode.list then
+            fb:SetPoint("TOPLEFT", f, "TOPLEFT", L, -T); fb:SetPoint("TOPRIGHT", f, "TOPRIGHT", -R, -T); fb:SetHeight(FB_H)
+            T = T + FB_H + 2
+        end
+    end
+    for _, area in ipairs({ sf, f.vf, f.lf }) do   -- typing area, formatted view, and note list share one spot
+        area:ClearAllPoints(); area:SetPoint("TOPLEFT", f, "TOPLEFT", L, -T); area:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -R, B)
+    end
+    local minW = vert and 150 or math.max(db.toolbar and #BUTTONS * (BTN_W + 2) + 6 or 140, db.format and FMT_MINW or 0)
+    f.minW = minW
+    local minH = (vert and db.toolbar) and (#BUTTONS * 20 + TITLE_H + 8) or 90   -- a side toolbar stacks its buttons
+    f.minH = minH
+    if f.SetResizeBounds then f:SetResizeBounds(minW, minH, 900, 900) end
+end
+
+-------------------------------------------------------------------------------
+-- list of all notes, formatted view, format bar
+-------------------------------------------------------------------------------
+local LROW = 20
+local lrows = {}
+
+function ns.Notepad_ListEntries()   -- pure data: one entry per note, in order
+    local db = DB(); local out = {}
+    if not db then return out end
+    for i, n in ipairs(db.notes) do
+        out[i] = { id = n.id, index = i, text = Preview(n.text, 60), modified = n.modified, chars = #(n.text or ""), current = (n.id == db.current) }
+    end
+    return out
+end
+
+local function ListRow(i)
+    if lrows[i] then return lrows[i] end
+    local b = CreateFrame("Button", nil, frame.lc)
+    b:SetHeight(LROW)
+    b:SetPoint("TOPLEFT", 0, -(i - 1) * LROW); b:SetPoint("TOPRIGHT", 0, -(i - 1) * LROW)
+    b.cur = b:CreateTexture(nil, "BACKGROUND"); b.cur:SetAllPoints(); b.cur:SetColorTexture(0.2, 0.7, 1, 0.18)
+    b.hl = b:CreateTexture(nil, "HIGHLIGHT"); b.hl:SetAllPoints(); b.hl:SetColorTexture(0.2, 0.7, 1, 0.3)
+    b.date = b:CreateFontString(nil, "OVERLAY"); b.date:SetFont(STANDARD_TEXT_FONT, 10, ""); b.date:SetPoint("RIGHT", -4, 0); b.date:SetTextColor(0.55, 0.55, 0.55)
+    b.fs = b:CreateFontString(nil, "OVERLAY"); b.fs:SetFont(STANDARD_TEXT_FONT, 11, "")
+    b.fs:SetPoint("LEFT", 4, 0); b.fs:SetPoint("RIGHT", b.date, "LEFT", -6, 0); b.fs:SetJustifyH("LEFT"); b.fs:SetWordWrap(false)
+    b:SetScript("OnClick", function(self) if self.id then Select(self.id); mode.list = false; ApplyMode() end end)
+    b:SetScript("OnEnter", function(self)
+        local _, n = IndexOf(self.id); if not n then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Note " .. (self.idx or "?"), 1, 0.82, 0)
+        GameTooltip:AddLine(Preview(n.text, 300), 1, 1, 1, true)
+        GameTooltip:AddLine(("%d characters. Click to open."):format(#(n.text or "")), 0.6, 0.6, 0.6)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    lrows[i] = b
+    return b
+end
+
+PopulateList = function()
+    if not (frame and frame.lf and frame.lf:IsShown()) then return end
+    local entries = ns.Notepad_ListEntries()
+    for i, e in ipairs(entries) do
+        local b = ListRow(i)
+        b:Show(); b.id, b.idx = e.id, e.index
+        b.fs:SetText(("|cff888888%d|r  %s"):format(e.index, e.text))
+        b.date:SetText(e.modified and date("%b %d", e.modified) or "")
+        b.cur:SetShown(e.current and true or false)
+    end
+    for i = #entries + 1, #lrows do lrows[i]:Hide() end
+    frame.lc:SetHeight(math.max(1, #entries * LROW))
+    frame.lc:SetWidth(frame.lf:GetWidth() > 0 and frame.lf:GetWidth() or 200)
+end
+
+RefreshView = function()
+    if not (frame and frame.vfs) then return end
+    local n = Cur()
+    frame.vfs:SetText(ns.Notepad_Render(n and n.text or ""))
+    frame.vc:SetHeight(math.max(frame.vfs:GetStringHeight() + 6, 10))
+end
+
+ApplyMode = function()
+    local db = DB(); if not (db and frame) then return end
+    local f = frame
+    if not db.format then mode.view = false end
+    local list = mode.list and true or false
+    local view = (db.format and mode.view and not list) and true or false
+    Layout()
+    f.sf:SetShown(not list and not view)
+    f.vf:SetShown(view)
+    f.lf:SetShown(list)
+    f.fb:SetShown(db.format and not list and true or false)
+    if list or view then f.eb:ClearFocus() end
+    if list then PopulateList() end
+    if view then RefreshView() end
+    f.fb.btns[1].fs:SetText(view and "Edit" or "View")
+    local function Tint(b, on) if b then b.bg:SetColorTexture(on and 0.1 or 0.18, on and 0.45 or 0.18, on and 0.7 or 0.18, 0.9) end end
+    Tint(f.tb.byName.List, list); Tint(f.tb.byName.Fmt, db.format); Tint(f.fb.btns[1], view)
+end
+
+function ns.Notepad_ToggleList()
+    if not frame then return end
+    mode.list = not mode.list
+    if mode.list then Flush() end
+    ApplyMode()
+end
+
+function ns.Notepad_SetView(v)
+    local db = DB(); if not (db and frame and db.format) then return end
+    mode.view, mode.list = v and true or false, false
+    ApplyMode()
+    if not mode.view then frame.eb:SetFocus() end
+end
+
+function ns.Notepad_ToggleFormat()
+    local db = DB(); if not (db and frame) then return end
+    db.format = not db.format
+    if not db.format then mode.view = false end
+    ApplyMode()
+    if ns.Notepad_Changed then ns.Notepad_Changed() end
+end
+
+local function ToEdit() if mode.list or mode.view then mode.list, mode.view = false, false; ApplyMode() end end
+local function Ins(text, back)   -- insert at the cursor, then step back so the cursor sits inside the pair
+    local db = DB(); if not (db and frame and db.format) then return end
+    ToEdit()
+    local eb = frame.eb
+    eb:SetFocus(); eb:Insert(text)
+    if back and back > 0 then eb:SetCursorPosition(math.max(0, eb:GetCursorPosition() - back)) end
+end
+local function LineStart(prefix)
+    local db = DB(); if not (db and frame and db.format) then return end
+    ToEdit()
+    local eb = frame.eb
+    local pos = eb:GetCursorPosition()
+    local before = CharBefore(eb:GetText(), pos)
+    Ins(((pos == 0 or before == "\n") and "" or "\n") .. prefix)
+end
+ns.Notepad_LineStart, ns.Notepad_Insert = LineStart, Ins
+
+local FMT = {
+    { w = 34, label = "View", tip = "Switch between typing (plain text) and the formatted view. Click the formatted text to edit it again.", act = function() ns.Notepad_SetView(not mode.view) end },
+    { w = 24, label = "H", tip = "Heading: starts the line with # (gold in the formatted view).", act = function() LineStart("# ") end },
+    { w = 24, label = "|cff99ccff-|r", tip = "Bullet: starts the line with - (a bullet in the formatted view).", act = function() LineStart("- ") end },
+    { w = 24, label = "[ ]", tip = "Checkbox: starts the line with [ ]. Change it to [x] when done (grey with a green mark in the formatted view).", act = function() LineStart("[ ] ") end },
+    { w = 24, label = "|cffff5555R|r", tip = "Red text: type between the color code and the closing ||r.", act = function() Ins("|cffff5555|r", 2) end },
+    { w = 24, label = "|cffffd100Y|r", tip = "Yellow text: type between the color code and the closing ||r.", act = function() Ins("|cffffd100|r", 2) end },
+    { w = 24, label = "|cff55dd55G|r", tip = "Green text: type between the color code and the closing ||r.", act = function() Ins("|cff55dd55|r", 2) end },
+    { w = 24, label = "|cff66b3ffB|r", tip = "Blue text: type between the color code and the closing ||r.", act = function() Ins("|cff66b3ff|r", 2) end },
+    { w = 34, label = "Spell", tip = "Inserts {spell:} - type a spell ID between the braces and the formatted view shows its icon and name.", act = function() Ins("{spell:}", 1) end },
+}
+
+local function BuildFormatBar(f)
+    local fb = CreateFrame("Frame", nil, f)
+    fb.bg = fb:CreateTexture(nil, "BACKGROUND"); fb.bg:SetAllPoints(); fb.bg:SetColorTexture(0.1, 0.1, 0.1, 0.9)
+    fb.btns = {}
+    local x = 2
+    for i, def in ipairs(FMT) do
+        local b = CreateFrame("Button", nil, fb)
+        b:SetSize(def.w, FB_H - 4); b:SetPoint("LEFT", fb, "LEFT", x, 0); x = x + def.w + 2
+        b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(); b.bg:SetColorTexture(0.18, 0.18, 0.18, 0.9)
+        b.hl = b:CreateTexture(nil, "HIGHLIGHT"); b.hl:SetAllPoints(); b.hl:SetColorTexture(0.2, 0.7, 1, 0.35)
+        b.fs = b:CreateFontString(nil, "OVERLAY"); b.fs:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE"); b.fs:SetPoint("CENTER"); b.fs:SetText(def.label)
+        b:SetScript("OnClick", def.act)
+        b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:SetText(def.tip, 1, 1, 1, 1, true); GameTooltip:Show() end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        fb.btns[i] = b
+    end
+    fb:Hide()
+    return fb
 end
 
 local function Build()
@@ -420,6 +655,32 @@ local function Build()
         elseif y + h > top + viewH then sf:SetVerticalScroll(math.max(0, y + h - viewH)) end
     end)
 
+    -- formatted view (read-only, click to edit), note list, format bar: all share the typing area's spot (see Layout)
+    local vf = CreateFrame("ScrollFrame", nil, f)
+    vf:EnableMouseWheel(true); vf:EnableMouse(true); vf:Hide()
+    local vc = CreateFrame("Frame", nil, vf); vc:SetSize(100, 10); vf:SetScrollChild(vc)
+    local vfs = vc:CreateFontString(nil, "OVERLAY")
+    vfs:SetFontObject(ChatFontNormal or GameFontHighlight)
+    vfs:SetPoint("TOPLEFT", 2, -2); vfs:SetPoint("TOPRIGHT", -2, -2); vfs:SetJustifyH("LEFT"); vfs:SetJustifyV("TOP")
+    vf:SetScript("OnSizeChanged", function(_, w) if w and w > 0 then vc:SetWidth(w); if RefreshView then RefreshView() end end end)
+    vf:SetScript("OnMouseWheel", function(self, d)
+        local step = (DB() and DB().fontSize or 13) * 2
+        self:SetVerticalScroll(math.max(0, math.min(self:GetVerticalScrollRange(), self:GetVerticalScroll() - d * step)))
+    end)
+    vf:SetScript("OnMouseDown", function() ns.Notepad_SetView(false) end)
+    f.vf, f.vc, f.vfs = vf, vc, vfs
+
+    local lf = CreateFrame("ScrollFrame", nil, f)
+    lf:EnableMouseWheel(true); lf:Hide()
+    local lc = CreateFrame("Frame", nil, lf); lc:SetSize(100, 1); lf:SetScrollChild(lc)
+    lf:SetScript("OnSizeChanged", function(_, w) if w and w > 0 then lc:SetWidth(w) end end)
+    lf:SetScript("OnMouseWheel", function(self, d)
+        self:SetVerticalScroll(math.max(0, math.min(self:GetVerticalScrollRange(), self:GetVerticalScroll() - d * LROW * 3)))
+    end)
+    f.lf, f.lc = lf, lc
+
+    f.fb = BuildFormatBar(f)
+
     local grip = CreateFrame("Button", nil, f)
     grip:SetSize(14, 14); grip:SetPoint("BOTTOMRIGHT", -1, 1)
     grip.t = grip:CreateTexture(nil, "OVERLAY"); grip.t:SetAllPoints(); grip.t:SetColorTexture(0.2, 0.7, 1, 0.7)
@@ -460,15 +721,17 @@ function ns.Notepad_Refresh()
     if not f.moving and not f.sizing then
         f:ClearAllPoints()
         f:SetPoint(db.anchor or "CENTER", UIParent, db.anchor or "CENTER", db.x or 0, db.y or 0)
-        f:SetSize(math.max(150, db.w or 280), math.max(90, db.h or 220))
+        f:SetSize(math.max(f.minW or 150, db.w or 280), math.max(f.minH or 90, db.h or 220))
     end
 
     local path = ns.FontPath and ns.FontPath(db.font) or STANDARD_TEXT_FONT
     local size = math.max(8, math.min(40, tonumber(db.fontSize) or 13))
     if not f.eb:SetFont(path, size, "") then f.eb:SetFont(STANDARD_TEXT_FONT, size, "") end
+    if not f.vfs:SetFont(path, size, "") then f.vfs:SetFont(STANDARD_TEXT_FONT, size, "") end
     local n = Cur()
     if n and f.eb:GetText() ~= (n.text or "") then SetEditText(n.text) end
     UpdateTitle()
+    ApplyMode()
     if not db.toolbarHover then f.tb:SetAlpha(1) end
 
     local hide = db.hideInCombat and InCombat()
@@ -486,7 +749,7 @@ end
 function ns.Notepad_Toggle()
     local db = DB(); if not db then ns.Print("Notepad is not ready yet."); return end
     ns.Notepad_SetShown(not db.shown)
-    if db.shown and frame then frame.eb:SetFocus() end
+    if db.shown and frame and not mode.list and not mode.view then frame.eb:SetFocus() end
 end
 
 local ev = CreateFrame("Frame")
@@ -511,12 +774,24 @@ function ns.BuildNotepadTab(Notify)
     local function s(k) return function(_, v) db[k] = v; ns.Notepad_Refresh() end end
     return { type = "group", name = "Notepad", order = 11, args = {
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "A small floating box for typed reminders. It holds any number of notes, and nothing you type is lost: your text is saved as you type, earlier versions of each note are kept automatically, and deleted notes go to a trash. The Hist button on the toolbar (or the button below) opens the Restore list. Open or close the box here, with the x on it, or with /xui notepad." },
+            name = "A small floating box for typed reminders. It holds any number of notes, and nothing you type is lost: your text is saved as you type, earlier versions of each note are kept automatically, and deleted notes go to a trash. The Hist button on the toolbar (or the button below) opens the Restore list, and the List button shows all your notes at once. Open or close the box here, with the x on it, or with /xui notepad." },
         show = { type = "toggle", order = 1, name = "Show Notepad", get = g("shown"), set = function(_, v) ns.Notepad_SetShown(v) end },
         lock = { type = "toggle", order = 2, name = "Lock position and size", desc = "Also the Lock button on the box's title bar.", get = g("locked"), set = s("locked") },
+        fmt = { type = "toggle", order = 2.5, name = "Formatting tools", desc = "Adds a format bar (heading, bullet, checkbox, colors, spell icon) and a formatted view. Also the Fmt button on the toolbar. Notes stay plain text: the formatting is markup you can read and edit.",
+            get = g("format"), set = function(_, v) db.format = v and true or false; if not db.format then mode.view = false end; ns.Notepad_Refresh() end },
+        list = { type = "execute", order = 2.6, name = "Show / hide the list of all notes", desc = "Also the List button on the toolbar.", func = function() ns.Notepad_ToggleList() end },
         restore = { type = "execute", order = 3, name = "Open Restore list", desc = "Earlier versions of the current note, and deleted notes.", func = function() ns.Notepad_ToggleRestore() end },
+        share = { type = "group", name = "Share, export, and import", order = 3.5, inline = true, args = {
+            note = { type = "description", order = 0, width = "full", name = "The More button on the toolbar shares the current note to chat for other XayaUI users, or exports and imports notes as text you can copy and paste." },
+            accept = { type = "toggle", order = 1, name = "Accept notes shared by other XayaUI users", width = "double",
+                desc = "A shared note never saves by itself: a small window offers it and you choose Save or Dismiss. Off: shared notes are ignored.",
+                get = g("acceptShares"), set = s("acceptShares") },
+            share = { type = "execute", order = 2, name = "Share this note...", func = function() if ns.NotepadShare_OpenShare then ns.NotepadShare_OpenShare() end end },
+            exp = { type = "execute", order = 3, name = "Export notes...", func = function() if ns.NotepadShare_OpenIO then ns.NotepadShare_OpenIO("all") end end },
+            imp = { type = "execute", order = 4, name = "Import notes...", func = function() if ns.NotepadShare_OpenIO then ns.NotepadShare_OpenIO("import") end end },
+        } },
         tbar = { type = "group", name = "Toolbar", order = 4, inline = true, args = {
-            on = { type = "toggle", order = 1, name = "Show toolbar", desc = "New, duplicate, delete, previous, next, and history/restore buttons.", get = g("toolbar"), set = s("toolbar") },
+            on = { type = "toggle", order = 1, name = "Show toolbar", desc = "New, duplicate, delete, previous, next, history/restore, list, formatting, and share / import / export (More) buttons.", get = g("toolbar"), set = s("toolbar") },
             hover = { type = "toggle", order = 2, name = "Only show on mouseover", desc = "The toolbar stays hidden until the mouse is over the box (or you are typing in it). Its space stays reserved so the text does not jump.",
                 disabled = function() return not db.toolbar end, get = g("toolbarHover"), set = s("toolbarHover") },
             pos = { type = "select", order = 3, name = "Toolbar position", disabled = function() return not db.toolbar end,

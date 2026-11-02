@@ -3169,11 +3169,12 @@ ns.UI.Cursor = function()   -- the Cursor options live under QoL UI Updates > Cu
     Notify()
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "cursor")
 end
-ns.UI.DataPanels = function()   -- QoL UI Updates > Custom Data Panels and Bars (also /xui data, right-click on any strip)
+ns.UI.DataPanels = function(tab)   -- QoL UI Updates > Custom Data Panels and Bars (also /xui data, right-click on any strip); tab = a tab key such as "chatpanels"
     if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then pcall(ns.ToggleUI) end
     ns.pageOpen = nil; ns.infoOpen = false
     Notify()
-    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "datapanels")
+    if tab then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "datapanels", tab)
+    else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "datapanels") end
 end
 ns.UI.Notepad = function()   -- QoL UI Updates > Notepad (also /xui notepad opens the box itself)
     if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then pcall(ns.ToggleUI) end
@@ -4051,6 +4052,7 @@ local function BuildOptions()
     local qolArgs = { chatreskin = ns.BuildChatTab and ns.BuildChatTab(Notify) or nil, cursor = ns.BuildCursorGroup and ns.BuildCursorGroup(Notify) or nil,
         datapanels = ns.BuildDataPanelsTab and ns.BuildDataPanelsTab(Notify) or nil,
         notepad = ns.BuildNotepadTab and ns.BuildNotepadTab(Notify) or nil,
+        minimap = ns.BuildMinimapTab and ns.BuildMinimapTab(Notify) or nil,
         tooltips = ns.BuildTooltipsTab and ns.BuildTooltipsTab(Notify) or nil }   -- from the sibling addon XayaUI_Tooltips (0.5.46)
     if ns.QoLOn then
         qolArgs.allqol = allQol
