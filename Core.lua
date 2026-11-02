@@ -621,6 +621,8 @@ SlashCmdList["XAYAUI"] = function(msg)
         if ns.ModelCommand then ns.ModelCommand(arg) end
     elseif cmd == "tracker" then
         if ns.TrackerCommand then ns.TrackerCommand(arg) end
+    elseif cmd == "mods" then
+        if ns.ProbeMods then ns.ProbeMods() end
     elseif cmd == "loc" then
         if ns.ProbeLossOfControl then ns.ProbeLossOfControl() end
     elseif cmd == "seed" then
