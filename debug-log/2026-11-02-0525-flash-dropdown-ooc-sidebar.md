@@ -10,3 +10,6 @@ Reported by Xaya:
 5. Paste Settings is now a nested tree; cue-display paste creates missing cues for extra layers (see 0510 log).
 
 Not fixed: Conditions-tab Trigger 1 FALSE with the aura visible (status text only recalculates on redraw); group-switch flash may have other causes, use `/xui perf`.
+
+## Update 05:30 ET: Conditions Trigger 1 FALSE explained (Xaya)
+Cause was a wrong aura ID picked by hand. A spell can apply several aura IDs and the earlier request (all matching aura IDs from a spell lookup, any of them counts) is NOT implemented: a Buff / Aura trigger holds ONE ID (rule.buffID, Conditions.lua ns.BuffPresent(id)), and the aura search lists matches by name only. Open feature: (1) lookup that lists every aura ID tied to a spell name, (2) a Buff trigger that accepts several IDs (any present = TRUE).
