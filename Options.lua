@@ -854,6 +854,7 @@ local function PasteApply(key, dst, src)
         dst.spellID, dst.maxCharges, dst.useCooldown, dst.cdName = src.spellID, src.maxCharges, src.useCooldown, src.cdName
     elseif key == "idsBuff" then
         dst.buffID, dst.useBuff, dst.buffName = src.buffID, src.useBuff, src.buffName
+        dst.buffAlt = src.buffAlt and ns.Copy(src.buffAlt) or nil
     elseif key == "activation" then dst.trigMode, dst.trigOrder = src.trigMode, src.trigOrder and C(src.trigOrder) or nil
     elseif key == "actions" then dst.actions = src.actions and C(src.actions) or nil
     elseif key == "stCd" then dst.cdState = src.cdState
@@ -1125,6 +1126,36 @@ local function BuildRule(i, rule)
             },
             buffName = { type = "description", order = 13, width = "double", fontSize = "medium",
                 name = function() return SpellName(rule.buffID) end },
+            -- more aura IDs that count as the same buff (Well Fed variants, Demon Spikes IDs): present = ANY of them, missing = ALL absent
+            buffAltSearch = SearchBox(13.1, function(id)
+                id = tonumber(id) or 0
+                if id == 0 or id == (tonumber(rule.buffID) or 0) then return end
+                rule.buffAlt = type(rule.buffAlt) == "table" and rule.buffAlt or {}
+                for _, x in ipairs(rule.buffAlt) do if x == id then return end end
+                if #rule.buffAlt >= 30 then ns.Print("a trigger can watch at most 30 extra aura IDs"); return end
+                rule.buffAlt[#rule.buffAlt + 1] = id; Changed(rule); Notify()
+            end, "Also count these auras: search to add another", "aura"),
+            buffAlt = {
+                type = "input", name = "Extra aura IDs (comma separated; any one counts)", order = 13.2, width = "full",
+                desc = "Other aura spell IDs that mean the same buff to this rule. The trigger is PRESENT when any listed aura is on you and MISSING only when all are absent. If none is present and the game hides one of them (combat), the answer is UNKNOWN and the rule does not fire. Delete an ID from the box to remove it.",
+                get = function() local t = type(rule.buffAlt) == "table" and rule.buffAlt or {}; local o = {}; for i, v in ipairs(t) do o[i] = tostring(v) end; return table.concat(o, ", ") end,
+                set = function(_, v)
+                    local out, seen = {}, { [tonumber(rule.buffID) or 0] = true }
+                    for n in tostring(v or ""):gmatch("%d+") do
+                        local id = tonumber(n)
+                        if id and id > 0 and not seen[id] and #out < 30 then seen[id] = true; out[#out + 1] = id end
+                    end
+                    rule.buffAlt = (#out > 0) and out or nil
+                    Changed(rule); Notify()
+                end,
+            },
+            buffAltNames = { type = "description", order = 13.3, width = "full", fontSize = "medium",
+                hidden = function() return type(rule.buffAlt) ~= "table" or #rule.buffAlt == 0 end,
+                name = function()
+                    local o = {}
+                    for _, id in ipairs(rule.buffAlt or {}) do o[#o + 1] = SpellName(id) .. "  [" .. id .. "]" end
+                    return table.concat(o, "\n")
+                end },
         },
     }
 
@@ -1134,7 +1165,7 @@ local function BuildRule(i, rule)
         local o = trigger.args[k]
         if o then o.hidden = function() return not ns.CooldownUsed(rule) end end
     end
-    for _, k in ipairs({ "buffHeader", "buffState", "buffSearch", "buffID", "buffName" }) do
+    for _, k in ipairs({ "buffHeader", "buffState", "buffSearch", "buffID", "buffName", "buffAltSearch", "buffAlt", "buffAltNames" }) do
         local o = trigger.args[k]
         if o then o.hidden = function() return not ns.BuffUsed(rule) end end
     end
@@ -1145,7 +1176,7 @@ local function BuildRule(i, rule)
     trigger.args.buffRemove = { type = "execute", name = "Remove", order = 14, width = "half",
         desc = "Remove the Buff / Aura trigger: clears this rule's aura ID and state.",
         hidden = function() return not ns.BuffUsed(rule) end,
-        func = function() rule.useBuff = false; rule.buffID = 0; rule.buffState = nil; Changed(rule); Notify() end }
+        func = function() rule.useBuff = false; rule.buffID = 0; rule.buffAlt = nil; rule.buffState = nil; Changed(rule); Notify() end }
     -- Additional trigger rows (Triggers.lua). A failure there must never take the whole options tree down.
     if ns.BuildExtraTriggerArgs then
         local okx, xa = pcall(ns.BuildExtraTriggerArgs, rule, ns.UI)
@@ -4780,6 +4811,7 @@ local function ConvertFolder(src, mode)
         local n = ns.NewRule()
         n.name = r.name
         for _, k in ipairs({ "spellID", "maxCharges", "cdState", "buffID", "buffState", "talentMode" }) do n[k] = r[k] end
+        n.buffAlt = r.buffAlt and ns.Copy(r.buffAlt) or nil
         n.talents = ns.Copy(r.talents or {})
         n.extra = ns.Copy(r.extra or { list = {} })
         n.folder = sub.id

@@ -40,6 +40,8 @@ TRIGGERS (Trigger tab)     "Is the thing I watch true?"   cooldown / buff / extr
 
 The engine re-checks every enabled rule about every 0.2 seconds, and immediately when the game reports a relevant event (combat start/end, cooldown or aura update, spec change, group change, zone change, action bar change).
 
+**Several auras in one Buff / Aura trigger:** The Buff / Aura trigger has an "Extra aura IDs" box (and a search that adds to it) for auras that mean the same thing, such as Well Fed variants or the different Demon Spikes IDs. The trigger is present when any listed aura is on you, and missing only when all are absent. If none is present and the game hides one of them in combat, the trigger is unknown and the rule does not fire. Stacks and seconds left come from whichever aura is present. The icon, name, and sound text still use the first aura ID. The older "Buff / Aura (yours)" trigger is no longer offered in the Add menu; rules that already have it keep working.
+
 **Renaming:** Double-click a rule or group in the sidebar, or right-click it and choose Rename, to type the new name right in the row. Enter saves; Escape cancels. New groups are named Group, Dynamic Group, or Static Group, with no number. An empty name on a group is ignored.
 
 **Rule tabs, in order:** Rule | Trigger | Cues | Conditions | Actions | Load. The Rule tab holds the name, Enabled box, group, description, and sidebar icon.

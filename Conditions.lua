@@ -256,6 +256,24 @@ local function DurationObjectTimes(iid)
     return GetTime() + rem, tot, "duration object"
 end
 
+-- One Buff / Aura trigger can watch several auras that mean the same thing (rule.buffAlt = extra spell IDs beside rule.buffID).
+-- Present = ANY of them is present (the first present one supplies stacks / time left). Missing = ALL are absent.
+-- If none is present and any answer is unknown (hidden in combat), the answer stays unknown, so a rule never fires on a guess.
+function ns.BuffPresentAny(rule)
+    local alts = rule and rule.buffAlt
+    local p1, s1, r1 = ns.BuffPresent(rule.buffID)
+    if type(alts) ~= "table" or #alts == 0 then return p1, s1, r1 end
+    if p1 == true then return true, s1, r1 end
+    local unknown, unkSrc = (p1 == nil), (p1 == nil) and s1 or nil
+    for _, id in ipairs(alts) do
+        local p, s, r = ns.BuffPresent(id)
+        if p == true then return true, "aura " .. tostring(id) .. ": " .. tostring(s), r end
+        if p == nil then unknown = true; unkSrc = unkSrc or s end
+    end
+    if unknown then return nil, unkSrc or "unreadable" end
+    return false, s1
+end
+
 function ns.BuffPresent(id)
     local present, src, ref = BuffPresentRaw(id)
     if not id or id == 0 then return present, src, ref end
@@ -716,7 +734,7 @@ function ns.Evaluate(rule, ctx)
     end
     local info = { ctx = ctx }
     info.cd = ns.ReadCooldown(rule)
-    info.present, info.buffSource, info.buffRef = ns.BuffPresent(rule.buffID)
+    info.present, info.buffSource, info.buffRef = ns.BuffPresentAny(rule)
     if rule.buffEstimate then ns.ApplyBuffEstimate(rule, info) end
     info.cdOK = ns.CheckCooldownState(rule, info.cd)
     info.buffOK = ns.CheckBuffState(rule, info.present)

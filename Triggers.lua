@@ -552,7 +552,7 @@ Add("resource", {
 -- be added once; this row is the same check (ns.BuffPresent: aura API, then the Cooldown Manager icon) so a rule can watch several
 -- personal buffs at once. Each row is its own trigger number; combine them with the ALL / ANY switch under the trigger list.
 Add("buffAura", {
-    label = "Buff / Aura (yours) - add as many as you need", wa = "Aura (buff on player)", group = "Aura",
+    label = "Buff / Aura (yours) - add as many as you need", wa = "Aura (buff on player)", group = "Aura", hideFromMenu = true,   -- superseded: the built-in Buff / Aura trigger now takes extra aura IDs; kept so saved rules keep working
     note = "True while the buff is on you. Same reading as the rule's built-in Buff / Aura section (aura API; in combat the Cooldown Manager icon when the buff is tracked there). Use the ID of the BUFF. If the game hides the buff in combat and it is not in your Cooldown Manager, the answer is 'unknown' and the rule will not fire.",
     new = { state = "yes" },
     fields = {
@@ -1047,7 +1047,7 @@ function ns.DecorateBuiltinTriggers(rule, args)
         end
     end
     setup("cd", "Cooldown", { "cdHeader", "spellID", "spellName", "spellSearch", "spellPick", "cdState", "maxCharges", "detected", "cdRemove" }, "cdRemove", ns.CooldownUsed)
-    setup("buff", "Buff / Aura", { "buffHeader", "buffState", "buffSearch", "buffID", "buffName", "buffRemove" }, "buffRemove", ns.BuffUsed)
+    setup("buff", "Buff / Aura", { "buffHeader", "buffState", "buffSearch", "buffID", "buffName", "buffAltSearch", "buffAlt", "buffAltNames", "buffRemove" }, "buffRemove", ns.BuffUsed)
 end
 
 -------------------------------------------------------------------------------
