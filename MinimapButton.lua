@@ -3,7 +3,8 @@
 --   Left-click   opens a small list of buttons: Notes, Settings, Custom data panels, Chat panel, Chat privacy cover.
 --   Right-click  opens the XayaUI settings window.
 --   Drag         moves the button around the minimap edge (unless locked).
--- Which entries the list shows, the position, and whether the button is shown at all are settings (QoL UI Updates > Minimap Button).
+-- Which entries the list shows, the position, the size (16 to 48 pixels), and whether the button is shown at all are settings
+-- (QoL UI Updates > Minimap Button). The icon and its dark backing are clipped to a circle with a mask texture so no corner shows outside the ring.
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 
@@ -12,11 +13,15 @@ local DEFAULTS = {
     locked = false,          -- no dragging
     angle = 215,             -- degrees around the minimap, 0 = right, 90 = top
     radiusOffset = 5,        -- how far outside the minimap's edge the button sits
+    size = 31,               -- button width and height in pixels, MIN_SIZE to MAX_SIZE; the ring, icon, and backing scale together
     closeOnClick = true,     -- the list closes after a choice
     entries = { notes = true, settings = true, data = true, chat = true, privacy = true },
     iconOverride = "",       -- "" = the built-in icon. Otherwise a file ID (1390944), an icon name (INV_Misc_Note_01), a texture path, or spell:ID
 }
 ns.MINIMAP_DEFAULTS = DEFAULTS
+local BASE_SIZE, MIN_SIZE, MAX_SIZE = 31, 16, 48   -- BASE_SIZE is the size the ring art was laid out for
+ns.MINIMAP_MIN_SIZE, ns.MINIMAP_MAX_SIZE = MIN_SIZE, MAX_SIZE
+local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- Blizzard's own round alpha mask (the one portraits use)
 local DEFAULT_ICON = 1390944   -- the icon of Xaya's 'xayaui' macro (macros-cache.txt, 2026-11-02)
 
 local function DB() return ns.minimapDB end
@@ -62,6 +67,19 @@ local function ApplyIcon()
     local tex = ns.Minimap_ResolveIcon(db.iconOverride)
     button.icon:SetTexture(tex); button.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 end
+
+-- Size the whole button from db.size: every piece is laid out for BASE_SIZE and multiplied by k.
+local function ApplySize()
+    local db = DB(); if not (db and button) then return end
+    local sz = math.floor(math.max(MIN_SIZE, math.min(MAX_SIZE, tonumber(db.size) or BASE_SIZE)) + 0.5)
+    local k = sz / BASE_SIZE
+    button:SetSize(sz, sz)
+    button.bg:SetSize(20 * k, 20 * k);     button.bg:ClearAllPoints();   button.bg:SetPoint("CENTER", 0, k)
+    button.icon:SetSize(18 * k, 18 * k);   button.icon:ClearAllPoints(); button.icon:SetPoint("CENTER", 0, k)
+    button.mask:SetSize(20 * k, 20 * k);   button.mask:ClearAllPoints(); button.mask:SetPoint("CENTER", 0, k)
+    button.border:SetSize(53 * k, 53 * k)
+end
+ns.Minimap_ApplySize = ApplySize
 
 local function Place()
     local db = DB(); if not (db and button) then return end
@@ -156,12 +174,17 @@ end
 local function BuildButton()
     if button then return button end
     local b = CreateFrame("Button", "XayaUIMinimapButton", Minimap or UIParent)
-    b:SetSize(31, 31); b:SetFrameStrata("MEDIUM"); b:SetFrameLevel(8)
+    b:SetSize(BASE_SIZE, BASE_SIZE); b:SetFrameStrata("MEDIUM"); b:SetFrameLevel(8)
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp"); b:RegisterForDrag("LeftButton")
     b:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetSize(20, 20); b.bg:SetPoint("CENTER", 0, 1); b.bg:SetColorTexture(0.06, 0.06, 0.06, 0.9)
     b.icon = b:CreateTexture(nil, "ARTWORK"); b.icon:SetSize(18, 18); b.icon:SetPoint("CENTER", 0, 1)
     b.icon:SetTexture(DEFAULT_ICON); b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)   -- ApplyIcon() below swaps in the user's override
+    -- one round mask clips both the icon and its dark backing, so no square corner can poke out past the ring (and nothing spills at 48 pixels)
+    b.mask = b:CreateMaskTexture()
+    b.mask:SetTexture(ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    b.mask:SetSize(20, 20); b.mask:SetPoint("CENTER", 0, 1)
+    b.bg:AddMaskTexture(b.mask); b.icon:AddMaskTexture(b.mask)
     b.border = b:CreateTexture(nil, "OVERLAY"); b.border:SetSize(53, 53); b.border:SetPoint("TOPLEFT")
     b.border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
     b:SetScript("OnClick", function(_, btn)
@@ -197,14 +220,14 @@ local function BuildButton()
     end)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
     button = b
-    ApplyIcon()
+    ApplySize(); ApplyIcon()
     return b
 end
 
 function ns.Minimap_Refresh()
     local db = DB(); if not db then return end
     if db.hide then if button then button:Hide() end; ClosePopup() return end
-    BuildButton(); Place(); ApplyIcon(); button:Show()
+    BuildButton(); ApplySize(); Place(); ApplyIcon(); button:Show()
     if popup and popup:IsShown() then Rebuild() end
 end
 
@@ -227,6 +250,10 @@ function ns.BuildMinimapTab(Notify)
         lock = { type = "toggle", order = 2, name = "Lock the button's position", disabled = function() return DB().hide end, get = g("locked"), set = function(_, v) DB().locked = v end },
         close = { type = "toggle", order = 3, name = "Close the list after a choice", disabled = function() return DB().hide end, get = g("closeOnClick"), set = function(_, v) DB().closeOnClick = v end },
         angle = { type = "range", order = 4, name = "Position (degrees around the minimap)", min = 0, max = 359, step = 1, disabled = function() return DB().hide end, get = g("angle"), set = s("angle") },
+        size = { type = "range", order = 4.5, name = "Button size (pixels)", min = MIN_SIZE, max = MAX_SIZE, step = 1,
+            desc = "From " .. MIN_SIZE .. " to " .. MAX_SIZE .. " pixels (the default is " .. BASE_SIZE .. "). The ring, the icon, and its backing scale together, and the icon is clipped to a circle.",
+            disabled = function() return DB().hide end, get = function() return DB().size or BASE_SIZE end,
+            set = function(_, v) DB().size = math.max(MIN_SIZE, math.min(MAX_SIZE, tonumber(v) or BASE_SIZE)); ns.Minimap_Refresh() end },
         iconH = { type = "header", order = 5, name = "Button icon" },
         iconPreview = { type = "description", order = 5.1, width = "half", name = "",
             image = function() return (ns.Minimap_ResolveIcon(DB().iconOverride)) end, imageWidth = 32, imageHeight = 32 },

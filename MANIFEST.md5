@@ -40,7 +40,7 @@ d7e606b10ef3f5b67d3c55a94a5c3953  Theme.lua
 89c01ad8a8808c6f3dcf02083dc422bd  Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  UserMedia.lua
 74a9935c14d2e6df8727ad921219638f  Visual.lua
-22b4af88474e9fca1ae9e3413932d805  XayaUI.toc
+97d72e97df82a26774dc7ed1528cd343  XayaUI.toc
 ca89d096a4e6a5e7f55beb7e240f9605  XayaUI_CombatEngine/AuraDisplay.lua
 1eb8ec8eeaec35396f0f443339972b13  XayaUI_CombatEngine/AuraIDProbe.lua
 49635f2a302eea3ebac0e3f872c3da06  XayaUI_CombatEngine/AuraModel.lua
@@ -52,7 +52,7 @@ ba7f38e22a8bc12b058502d0201f99dc  XayaUI_CombatEngine/README.md
 a23c5f0eab3b127a21817935beb5d137  DataPanels.lua
 25a048fa955457a6f084adf38d9b5ed6  GameMenuSkin.lua
 9189df63674aab2e306bc2b09b21f185  NotepadShare.lua
-91d337787416a16a383d8023d147bfc7  MinimapButton.lua
+d5418d7684a67c607620db5ef4921ddd  MinimapButton.lua
 4092250475ca8c0d9eed0f6984db28f1  ChatTrade.lua
 a84b7dd123267fd09809eab5538f39f7  Tooltips.lua
 032e0be51b32833e718502293c82c464  TooltipsUI.lua
