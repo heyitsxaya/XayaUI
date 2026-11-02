@@ -47,6 +47,8 @@ ns.CHAT_DEFAULTS = {
     chatHistory = true, historySize = 100, throttleInterval = 45,
     histWHISPER = true, histGUILD = true, histPARTY = true, histRAID = true, histINSTANCE = true, histCHANNEL = true, histSAY = true, histYELL = true,
     -- edit box
+    editBoxSkin = true, editBgR = 0, editBgG = 0, editBgB = 0, editBgAlpha = 55, editBorderR = 0, editBorderG = 0, editBorderB = 0,
+    editFocusBorder = true,
     editBoxPosition = "DEFAULT", characterCount = true, customEditHistory = true,
 }
 
@@ -276,6 +278,51 @@ local function ApplyEditBox(s)
     end
 end
 
+-- Flat edit box: Blizzard's stone frame textures are hidden (the same pieces ElvUI clears: EditBoxLeft/Mid/Right and the focus
+-- highlight textures) and a flat backdrop is drawn behind the box. The border takes the selected-tab marker color while typing.
+local EDIT_PIECES = { "Left", "Mid", "Right" }
+local EDIT_FOCUS = { "focusLeft", "focusMid", "focusRight" }
+local function SkinEditBox(eb, f, s)
+    local name = f:GetName() or ""
+    for _, suf in ipairs(EDIT_PIECES) do local t = _G[name .. "EditBox" .. suf]; if t then t:SetAlpha(0) end end
+    for _, k in ipairs(EDIT_FOCUS) do if eb[k] then eb[k]:SetAlpha(0) end end
+    if not eb.xayaBg then
+        local bg = CreateFrame("Frame", nil, eb, "BackdropTemplate")
+        bg:SetAllPoints(eb)
+        bg:SetFrameLevel(math.max(0, eb:GetFrameLevel() - 1))
+        bg:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+        eb.xayaBg = bg
+        eb:HookScript("OnEditFocusGained", function(self) self.xayaFocus = true; ns.ChatReskin_StyleEditBox(self) end)
+        eb:HookScript("OnEditFocusLost", function(self) self.xayaFocus = false; ns.ChatReskin_StyleEditBox(self) end)
+    end
+    eb.xayaBg:Show()
+    ns.ChatReskin_StyleEditBox(eb)
+end
+
+function ns.ChatReskin_StyleEditBox(eb)
+    local s = Store()
+    if not (s and eb and eb.xayaBg) then return end
+    eb.xayaBg:SetBackdropColor(s.editBgR or 0, s.editBgG or 0, s.editBgB or 0, (s.editBgAlpha or 55) / 100)
+    if eb.xayaFocus and s.editFocusBorder ~= false then
+        eb.xayaBg:SetBackdropBorderColor(s.tabSelR or 0.3, s.tabSelG or 1, s.tabSelB or 0.3, 1)
+    else
+        eb.xayaBg:SetBackdropBorderColor(s.editBorderR or 0, s.editBorderG or 0, s.editBorderB or 0, 1)
+    end
+end
+
+local function ApplyEditBoxSkin(s)
+    for _, f in ipairs(ChatFrames()) do
+        local eb = EditBoxOf(f)
+        if eb then
+            if s.editBoxSkin ~= false then
+                Try("editBoxSkin", SkinEditBox, eb, f, s)
+            elseif eb.xayaBg then
+                eb.xayaBg:Hide()   -- Blizzard's art comes back fully after /reload
+            end
+        end
+    end
+end
+
 local function PlaceEditBox(eb, f, pos)
     eb:ClearAllPoints()
     if pos == "BELOW_CHAT" then
@@ -330,6 +377,7 @@ function ns.ChatReskin_Refresh()
     ApplyBuffer(s)
     ApplyWindow(s)
     ApplyEditBox(s)
+    ApplyEditBoxSkin(s)
     ApplyEditBoxPosition(s)
     ApplyVoice(s)
     UpdateTabColors()
@@ -541,6 +589,11 @@ function ns.BuildChatTab(Notify)
                 bgCol = col("Backdrop color", "winR", "winG", "winB", 3),
                 bgAlpha = rng("Backdrop opacity (%)", "winAlpha", 4, 0, 100),
                 editHeader = { type = "header", name = "Edit box", order = 10 },
+                skin = tog("Flat edit box (hides Blizzard's stone frame)", "editBoxSkin", 10.1, "Turning this off fully restores Blizzard's art after /reload."),
+                skinBg = col("Edit box background color", "editBgR", "editBgG", "editBgB", 10.2),
+                skinBgA = rng("Edit box background opacity (%)", "editBgAlpha", 10.3, 0, 100),
+                skinBd = col("Edit box border color", "editBorderR", "editBorderG", "editBorderB", 10.4),
+                skinFocus = tog("Border takes the selected-tab marker color while typing", "editFocusBorder", 10.5),
                 pos = sel("Edit box position", "editBoxPosition", 11, EDIT_POS, EDIT_POS_ORDER),
                 sticky = tog("Sticky chat", "sticky", 12, "Keep the last chat channel when the edit box opens again."),
                 alt = tog("Use Alt key for cursor movement", "useAltKey", 13),

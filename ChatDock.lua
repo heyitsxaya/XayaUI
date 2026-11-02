@@ -7,6 +7,7 @@ local ADDON, ns = ...
 ns.CHAT_DEFAULTS.dockButton = true      -- show the collapse button
 ns.CHAT_DEFAULTS.dockCollapsed = false  -- remembered between sessions
 ns.CHAT_DEFAULTS.dockBtnSide = "RIGHT"  -- which outer corner of the chat the button sits on
+ns.CHAT_DEFAULTS.dockBtnX, ns.CHAT_DEFAULTS.dockBtnY = 0, 0   -- fine-tune offsets of the collapse button
 ns.CHAT_DEFAULTS.chatFreeMove = true    -- remove Blizzard's keep-away-from-the-screen-edge margin on the main chat window
 ns.CHAT_DEFAULTS.sideStrip = "SHOW"     -- Blizzard's button strip / scroll bar beside the chat: SHOW | MOUSEOVER | HIDE
 ns.CHAT_DEFAULTS.nudgeStep = 1          -- pixels per arrow click in the position window (Shift = x10)
@@ -103,6 +104,26 @@ local function ApplyStrip()
 end
 ns.ChatDock_ApplyStrip = ApplyStrip
 
+-- How far (in the chat's own units) anything visible sticks out past the chat frame's right edge.
+local function SideExtra(cf)
+    local cr = cf and cf:GetRight()
+    if not cr then return 0 end
+    local mx = cr
+    local function see(f)
+        if f and f.IsShown and f:IsShown() and f.GetRight and (not f.GetAlpha or f:GetAlpha() > 0) then
+            local r = f:GetRight()
+            if r and r > mx then mx = r end
+        end
+    end
+    see(_G.ChatFrame1ButtonFrame); see(cf.ScrollBar); see(cf.ScrollToBottomButton); see(_G.ChatFrame1Background)
+    if cf.GetRegions then
+        for _, r in ipairs({ cf:GetRegions() }) do
+            if r.IsObjectType and r:IsObjectType("Texture") then see(r) end
+        end
+    end
+    return math.min(math.max(mx - cr, 0), 80)
+end
+
 -- collapse button --------------------------------------------------------------------------------------------------------
 local function PlaceButton()
     if not btn then return end
@@ -117,13 +138,10 @@ local function PlaceButton()
         if p then btn:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", p.x, p.y)
         else btn:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 10, 150) end
     elseif cf then
-        -- sit outside Blizzard's own button strip when it is on that side, so the two never overlap
-        local bf = _G.ChatFrame1ButtonFrame
-        local anchor = cf
-        if right and bf and bf:IsShown() and (s.sideStrip or "SHOW") ~= "HIDE" and bf:GetRight() and cf:GetRight()
-            and bf:GetRight() > cf:GetRight() then anchor = bf end
-        if right then btn:SetPoint("BOTTOMLEFT", anchor, "BOTTOMRIGHT", 4, 0)
-        else btn:SetPoint("BOTTOMRIGHT", cf, "BOTTOMLEFT", -4, 0) end
+        -- sit outside everything Blizzard hangs beside the window (button strip, scroll bar, scroll-to-bottom arrows, background art)
+        local dx, dy = tonumber(s.dockBtnX) or 0, tonumber(s.dockBtnY) or 0
+        if right then btn:SetPoint("BOTTOMLEFT", cf, "BOTTOMRIGHT", SideExtra(cf) + 4 + dx, dy)
+        else btn:SetPoint("BOTTOMRIGHT", cf, "BOTTOMLEFT", -4 + dx, dy) end
     end
     if btn.chevron then
         -- the arrow points the way the chat will go (hide) or come back from (show)
@@ -366,6 +384,7 @@ end
 
 function ns.ChatDock_Refresh()
     Build(); FreeMove(); ApplyPosition(); Apply(); UpdateMover(); ApplyStrip()
+    C_Timer.After(0.6, PlaceButton)
 end
 
 local drv = CreateFrame("Frame")
@@ -388,6 +407,7 @@ function ns.ChatDock_Debug(say)
         say("dock: ChatFrame1 clamp insets L/R/T/B = " .. tostring(l) .. "/" .. tostring(r) .. "/" .. tostring(t) .. "/" .. tostring(b)
             .. "  freeMove=" .. tostring((Store() or {}).chatFreeMove ~= false))
     end
+    say("dock: pieces sticking out past the chat's right edge = " .. string.format("%.1f", SideExtra(cf)) .. " px (collapse button sits beyond this)")
     say("dock: side strip mode=" .. tostring((Store() or {}).sideStrip) .. "  found: " .. (#stripFound > 0 and table.concat(stripFound, ", ") or "(none yet)"))
     local bf = _G.ChatFrame1ButtonFrame
     if bf and bf:GetWidth() then
@@ -410,6 +430,12 @@ function ns.ChatDock_Options(Notify)
         col = { type = "toggle", order = 3, width = "full", name = "Chat collapsed",
             get = function() return (Store() or {}).dockCollapsed and true or false end,
             set = function(_, v) ns.ChatDock_SetCollapsed(v); Notify() end },
+        bx = { type = "range", order = 4, name = "Collapse button: move right (pixels)", min = -100, max = 100, step = 1,
+            get = function() return (Store() or {}).dockBtnX or 0 end,
+            set = function(_, v) local s = Store(); if s then s.dockBtnX = v end; PlaceButton(); Notify() end },
+        by = { type = "range", order = 5, name = "Collapse button: move up (pixels)", min = -100, max = 400, step = 1,
+            get = function() return (Store() or {}).dockBtnY or 0 end,
+            set = function(_, v) local s = Store(); if s then s.dockBtnY = v end; PlaceButton(); Notify() end },
         mvHdr = { type = "header", order = 10, name = "Mover" },
         mv = { type = "toggle", order = 11, width = "full", name = "Unlock the chat mover (drag the blue box; click it for exact X / Y and arrows)",
             desc = "The addon's main Unlock button also shows it.",
