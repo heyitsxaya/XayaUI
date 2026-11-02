@@ -31,6 +31,9 @@ local BASE = {
     -- for LEFT / RIGHT) are read through ChatSide() / Match() below, which fall back to the older panelAnchor / panelWidthMode keys.
     panelVisibility = "ALWAYS",    -- ALWAYS | COMBAT | NOCOMBAT | MOUSEOVER
     panelHoverHL = false,          -- highlight the block under the mouse
+    panelClearEdit = true,         -- keep the bar clear of the chat edit box (the bar moves out past it)
+    panelPushChat = true,          -- push the main chat up when a bar under it would not fit above the screen's bottom edge
+    panelOpaqueEdit = false,       -- draw the chat edit box nearly opaque while this bar is on, so the two never visually clash
     panelCustom1 = "", panelCustom2 = "", panelCustom3 = "",
     panelHideWhenCollapsed = false,
     panelFadeUntilHover = false,
@@ -87,6 +90,21 @@ local function Vert(s, side)    -- a bar standing beside the chat window: blocks
     local c = ChatSide(s, side)
     return c == "LEFT" or c == "RIGHT"
 end
+-- the chat edit box normally sits just outside the chat window (Blizzard: below it; ABOVE_CHAT: above it). A bar on the same side
+-- would be covered by it, so the bar can move out past it. Returns the edit box's height in UIParent units, or 0.
+local function EditExtra(s, side, cf, cs)
+    if s[K(side, "panelClearEdit")] == false or not cf then return 0 end
+    local below = s.editBoxPosition ~= "ABOVE_CHAT"
+    if not ((cs == "BOTTOM" and below) or (cs == "TOP" and not below)) then return 0 end
+    local eb = cf.editBox or _G[(cf:GetName() or "") .. "EditBox"]
+    local h = (eb and eb.GetHeight and eb:GetHeight()) or 0
+    if h < 20 then h = 24 end
+    local k = 1
+    if eb and eb.GetEffectiveScale and UIParent:GetEffectiveScale() > 0 then k = eb:GetEffectiveScale() / UIParent:GetEffectiveScale() end
+    return h * k + 3
+end
+
+-- how far the main chat's bottom edge has to stay above the screen's bottom so the bar (and the edit box) fit under it
 local function Materialize(s, side)    -- copy the older per-slot keys into the block table so moving / removing blocks keeps them
     for i = 1, MAXN do BSet(s, side, i, "src", BGet(s, side, i, "src")); BSet(s, side, i, "custom", BGet(s, side, i, "custom")) end
 end
@@ -475,13 +493,14 @@ local function Place(s, side, cf)
     end
     local cs = ChatSide(s, side)
     if cs == "BOTTOM" then
-        f:SetPoint("TOPLEFT", cf, "BOTTOMLEFT", ox, -gap + oy)
-        if match then f:SetPoint("TOPRIGHT", cf, "BOTTOMRIGHT", ox, -gap + oy); f:SetHeight(thick) else f:SetSize(len, thick) end
+        local y = -gap + oy - EditExtra(s, side, cf, cs)
+        f:SetPoint("TOPLEFT", cf, "BOTTOMLEFT", ox, y)
+        if match then f:SetPoint("TOPRIGHT", cf, "BOTTOMRIGHT", ox, y); f:SetHeight(thick) else f:SetSize(len, thick) end
     elseif cs == "TOP" then
         -- above the window: clear the tab row too
         local tab = _G[(cf:GetName() or "ChatFrame1") .. "Tab"]
         local tabH = (tab and tab:GetHeight() or 24)
-        local y = tabH + gap + oy
+        local y = tabH + gap + oy + EditExtra(s, side, cf, cs)
         f:SetPoint("BOTTOMLEFT", cf, "TOPLEFT", ox, y)
         if match then f:SetPoint("BOTTOMRIGHT", cf, "TOPRIGHT", ox, y); f:SetHeight(thick) else f:SetSize(len, thick) end
     elseif cs == "LEFT" then
@@ -511,9 +530,31 @@ local function RefreshSide(side)
     Layout(side); UpdateToggle(side); UpdateText(side)
 end
 
+-- used by ChatDock: the least distance (UIParent units) the main chat's bottom edge may be from the screen's bottom
+function ns.ChatPanel_BottomReserve()
+    local s = Store()
+    if not (s and s.panelOn and s.panelPushChat ~= false and Snap(s, "L") == "CHAT" and ChatSide(s, "L") == "BOTTOM") then return 0 end
+    local thick = math.max(10, tonumber(s.panelHeight) or 22)
+    local gap = tonumber(s.panelGap) or 2
+    local oy = tonumber(s.panelOffY) or 0
+    return math.max(0, thick + gap - oy + EditExtra(s, "L", _G.ChatFrame1, "BOTTOM") + 2)
+end
+
 function ns.ChatPanel_Refresh()
     RefreshSide("L"); RefreshSide("R")
+    if ns.ChatDock_EnsureRoom then pcall(ns.ChatDock_EnsureRoom) end
+    for i = 1, 10 do   -- edit box opacity follows the "nearly opaque" tick boxes
+        local eb = _G["ChatFrame" .. i .. "EditBox"]
+        if eb and eb.xayaBg and ns.ChatReskin_StyleEditBox then pcall(ns.ChatReskin_StyleEditBox, eb) end
+    end
     C_Timer.After(0, function() for _, side in ipairs({ "L", "R" }) do if panels[side].frame and panels[side].frame:IsShown() then Layout(side); UpdateText(side) end end end)
+end
+
+-- true when a shown bar asks for a nearly opaque chat edit box (ChatReskin reads this)
+function ns.ChatPanel_WantOpaqueEdit()
+    local s = Store()
+    if not s then return false end
+    return (s.panelOn and s.panelOpaqueEdit) or (s.rpanelOn and s.rpanelOpaqueEdit) and true or false
 end
 
 -- standalone settings window ----------------------------------------------------------------------------------------------
@@ -577,6 +618,9 @@ local function BuildWindow()
     f:Add(num("Length (when not resized to fit)", "panelWidth", 40, 3000, 5), 20)
     f:Add(num("Thickness (height; width for left / right bars)", "panelHeight", 10, 400, 1), 20)
     f:Add(num("Gap to the chat", "panelGap", -20, 60, 1), 20)
+    f:Add(check("Keep the bar clear of the chat edit box", "panelClearEdit", true), 20)
+    f:Add(check("Push the chat up if the bar would not fit above the screen bottom (left panel)", "panelPushChat", true), 34)
+    f:Add(check("Make the chat edit box nearly opaque while this bar is on", "panelOpaqueEdit", false), 20)
     f:Add(num("Nudge left / right", "panelOffX", -2000, 2000, 1), 20)
     f:Add(num("Nudge down / up", "panelOffY", -2000, 2000, 1), 20, 8)
 

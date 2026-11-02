@@ -232,6 +232,7 @@ local function SavePosition()
     s.dockPos = { x = x, y = y }
     if FCF_SavePositionAndDimensions then pcall(FCF_SavePositionAndDimensions, cf) end
     if nudge and nudge:IsShown() then nudge:RefreshAll() end
+    if ns.ChatDock_EnsureRoom then pcall(ns.ChatDock_EnsureRoom) end
 end
 
 -- Exact placement: x, y = where the chat's bottom-left corner goes, in pixels from the screen's bottom-left.
@@ -250,6 +251,16 @@ function ns.ChatDock_SetPosition(x, y)
     ApplyPosition()
     PlaceButton()
     if nudge then nudge:RefreshAll() end
+end
+
+-- A bar under the main chat (ChatPanel.lua) needs room below the chat for itself and the edit box: lift the chat if it sits lower.
+function ns.ChatDock_EnsureRoom()
+    local s, cf = Store(), ChatFrame1
+    if not (s and cf and cf:GetLeft()) then return end
+    local need = ns.ChatPanel_BottomReserve and ns.ChatPanel_BottomReserve() or 0
+    if need <= 0 then return end
+    local x, y = CurrentXY()
+    if y < need then ns.ChatDock_SetPosition(x, need) end
 end
 
 local function UpdateMover()

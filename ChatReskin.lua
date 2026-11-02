@@ -301,7 +301,9 @@ end
 function ns.ChatReskin_StyleEditBox(eb)
     local s = Store()
     if not (s and eb and eb.xayaBg) then return end
-    eb.xayaBg:SetBackdropColor(s.editBgR or 0, s.editBgG or 0, s.editBgB or 0, (s.editBgAlpha or 55) / 100)
+    local a = s.editBgAlpha or 55
+    if ns.ChatPanel_WantOpaqueEdit and ns.ChatPanel_WantOpaqueEdit() and a < 95 then a = 95 end
+    eb.xayaBg:SetBackdropColor(s.editBgR or 0, s.editBgG or 0, s.editBgB or 0, a / 100)
     if eb.xayaFocus and s.editFocusBorder ~= false then
         eb.xayaBg:SetBackdropBorderColor(s.tabSelR or 0.3, s.tabSelG or 1, s.tabSelB or 0.3, 1)
     else
