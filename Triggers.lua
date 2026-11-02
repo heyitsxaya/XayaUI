@@ -162,9 +162,9 @@ local function KnownState(id)
     return false
 end
 
--- 1. Spell Known  (WA: "Spell Known")
+-- 1. Spell Known
 Add("spellKnown", {
-    label = "Spell Known", wa = "Spell Known", group = "Spell",
+    label = "Spell Known", group = "Spell",
     note = "True while the spell is in your spellbook or talents. To test a talent, use the Talent Known trigger.",
     fields = {
         { key = "spellID", kind = "spell", label = "Spell ID", required = true },
@@ -176,9 +176,9 @@ Add("spellKnown", {
     end,
 })
 
--- 1b. Talent Known  (WA: "Talent Known"). A trigger of its own, separate from the Talents list on the Load side.
+-- 1b. Talent Known. A trigger of its own, separate from the Talents list on the Load side.
 Add("talentKnown", {
-    label = "Talent Known", wa = "Talent Known", group = "Talent",
+    label = "Talent Known", group = "Talent",
     note = "True while the talent is picked in your CURRENT build (class, spec, or hero tree). Pick from your build or type a spell ID. This is independent of the Talents list on the rule's Load side: use that for 'only load when', and this one as a trigger you can combine with others.",
     fields = {
         { key = "talentID", kind = "talent", label = "Talent spell ID", required = true },
@@ -190,9 +190,9 @@ Add("talentKnown", {
     end,
 })
 
--- 2. Action Usable  (WA: "Action Usable")
+-- 2. Spell Usable
 Add("actionUsable", {
-    label = "Spell Usable (Action Usable)", wa = "Action Usable", group = "Spell",
+    label = "Spell Usable", group = "Spell",
     note = "Usable = the game would let you cast it now (known, enough resource, proc requirements met). Not enough resource = usable except for the resource cost. 'Is usable' does NOT look at the cooldown (a spell on cooldown still counts as usable); pick 'Usable AND off cooldown' to include it (the global cooldown is ignored).",
     fields = {
         { key = "spellID", kind = "spell", label = "Spell ID", required = true },
@@ -222,12 +222,12 @@ Add("actionUsable", {
     end,
 })
 
--- 2b. Cooldown (any spell)  (WA: "Cooldown Progress (Spell)")
+-- 2b. Cooldown (any spell)
 -- The rule's built-in "1. Cooldown" section holds ONE spell. This is the same check as a repeatable row, so a rule can watch
 -- several cooldowns at once (each row is x1, x2 ... in Outcome combinations). Reuses ns.ReadCooldown / ns.CheckCooldownState
 -- (Conditions.lua), so charges and the global-cooldown handling behave exactly like the built-in section.
 Add("cooldown", {
-    label = "Cooldown (any spell)", wa = "Cooldown Progress (Spell)", group = "Spell",
+    label = "Cooldown (any spell)", group = "Spell",
     note = "Watches ONE spell's cooldown. Add this trigger once per spell to track several cooldowns in the same rule. 'Fully ready' = off cooldown (all charges back); 'Has a charge' = at least one use available. The global cooldown is ignored. Unreadable in combat = unknown, and a rule that depends on an unknown input does not fire.",
     new = { state = "ready", maxCharges = 0 },
     fields = {
@@ -249,9 +249,9 @@ Add("cooldown", {
     end,
 })
 
--- 3. Spell Cast Succeeded  (WA: "Spell Cast Succeeded", player only)
+-- 3. Spell Cast Succeeded
 Add("castSucceeded", {
-    label = "Spell Cast Succeeded (you)", wa = "Spell Cast Succeeded", group = "Spell",
+    label = "Spell Cast Succeeded (you)", group = "Spell",
     note = "True for N seconds after YOU successfully cast the spell (0 = any spell). Only your own casts: other units' casts are hidden by Midnight. If the game reports a cast without a readable spell ID, a spell-specific trigger becomes unknown for that window.",
     new = { window = 3, state = "yes" },
     fields = {
@@ -277,9 +277,9 @@ Add("castSucceeded", {
     end,
 })
 
--- 4. Item Count  (WA: "Item Count")
+-- 4. Item Count
 Add("itemCount", {
-    label = "Item Count", wa = "Item Count", group = "Item",
+    label = "Item Count", group = "Item",
     note = "Compares how many of an item you carry (potions, healthstones, reagents...). Needs the item ID (Wowhead shows it in the URL).",
     new = { count = 1 },
     fields = {
@@ -299,9 +299,9 @@ Add("itemCount", {
     end,
 })
 
--- 5. Item Equipped  (WA: "Item Equipped")
+-- 5. Item Equipped
 Add("itemEquipped", {
-    label = "Item Equipped", wa = "Item Equipped", group = "Item",
+    label = "Item Equipped", group = "Item",
     note = "True while the item (trinket, weapon, set piece...) is worn.",
     fields = {
         { key = "itemID", kind = "item", label = "Item ID", required = true },
@@ -315,9 +315,9 @@ Add("itemEquipped", {
     end,
 })
 
--- 5b. Item Usable  (the item twin of "Spell Usable (Action Usable)"; WA: Action Usable on an item / Cooldown Progress (Item))
+-- 5b. Item Usable  (the item twin of "Spell Usable")
 Add("itemUsable", {
-    label = "Item Usable", wa = "Action Usable / Cooldown Progress (Item)", group = "Item",
+    label = "Item Usable", group = "Item",
     note = "Usable = you carry the item and the game would let you use it now. 'Is usable' does NOT look at the item's cooldown; pick 'Usable AND off cooldown' to include it (a global-cooldown-length wait is ignored). Needs the item ID, or use the name search.",
     fields = {
         { key = "itemID", kind = "item", label = "Item ID", required = true },
@@ -353,7 +353,7 @@ Add("itemUsable", {
     end,
 })
 
--- 6. Stance / Form  (WA: "Stance/Form/Aura")
+-- 6. Stance / Form
 function ns.TriggerFormChoices()
     local values, order = { ["0"] = "No form / stance" }, { "0" }
     local n = Call(GetNumShapeshiftForms) or 0
@@ -368,7 +368,7 @@ function ns.TriggerFormChoices()
     return values, order
 end
 Add("stanceForm", {
-    label = "Stance / Form", wa = "Stance/Form/Aura", group = "Player",
+    label = "Stance / Form", group = "Player",
     note = "Druid forms, warrior stances, paladin auras, rogue stealth form, shadowform, and similar. The list shows what your current spec offers.",
     fields = {
         { key = "form", kind = "select", label = "Form / stance", required = true, dyn = ns.TriggerFormChoices },
@@ -398,9 +398,9 @@ Add("stanceForm", {
     end,
 })
 
--- 7. Totem  (WA: "Totem")
+-- 7. Totem
 Add("totem", {
-    label = "Totem / Guardian Slot", wa = "Totem", group = "Player",
+    label = "Totem / Guardian Slot", group = "Player",
     note = "Shaman totems, monk statues, DK ghouls, and other things that occupy a totem slot. Spell ID is optional (0 = any totem in the chosen slot).",
     fields = {
         { key = "slot", kind = "select", label = "Totem slot", required = true, vals = {
@@ -429,9 +429,9 @@ Add("totem", {
     end,
 })
 
--- 8. Range Check  (WA: "Range Check")
+-- 8. Range Check
 Add("rangeCheck", {
-    label = "Range Check (spell range to a unit)", wa = "Range Check", group = "Spell",
+    label = "Range Check (spell range to a unit)", group = "Spell",
     note = "Tests whether a unit is inside the range of one of YOUR spells (for example a 40-yard heal or a 5-yard melee ability). With no such unit the answer is unknown, not 'out of range'. Midnight may hide the answer in combat; then the rule simply does not fire.",
     fields = {
         { key = "spellID", kind = "spell", label = "Spell ID to test range with", required = true },
@@ -450,9 +450,9 @@ Add("rangeCheck", {
     end,
 })
 
--- 9. Global Cooldown  (WA: "Global Cooldown")
+-- 9. Global Cooldown
 Add("globalCooldown", {
-    label = "Global Cooldown", wa = "Global Cooldown", group = "Player",
+    label = "Global Cooldown", group = "Player",
     note = "True while the global cooldown is running. Midnight may hide it in combat; then it is unknown.",
     fields = {
         { key = "state", kind = "select", label = "State", required = true, vals = YN("GCD is running", "GCD is NOT running") },
@@ -469,9 +469,9 @@ Add("globalCooldown", {
     end,
 })
 
--- 10. Weapon Enchant  (WA: "Weapon Enchant")
+-- 10. Weapon Enchant
 Add("weaponEnchant", {
-    label = "Weapon Enchant (temporary)", wa = "Weapon Enchant", group = "Item",
+    label = "Weapon Enchant (temporary)", group = "Item",
     note = "Temporary weapon buffs: poisons, oils, stones, shaman imbues. Optionally require at least N seconds left (0 = ignore the time).",
     new = { minSec = 0 },
     fields = {
@@ -507,10 +507,10 @@ local function ReadyRunes()
 end
 ns.ReadyRunes = ReadyRunes
 
--- 11. Death Knight Runes  (WA: "Death Knight Rune")
+-- 11. Death Knight Runes
 -- Kept so existing rules keep working; new triggers pick "Runes (Death Knight)" under Class Resource instead (hideFromMenu).
 Add("dkRunes", {
-    label = "Death Knight Runes Ready", wa = "Death Knight Rune", group = "Class resource", hideFromMenu = true,
+    label = "Death Knight Runes Ready", group = "Class resource", hideFromMenu = true,
     note = "Counts runes that are ready to use. Only meaningful on a Death Knight (elsewhere it is unknown, so the rule never fires). Runes are documented as not secret; verify in game.",
     new = { count = 2 },
     fields = {
@@ -524,9 +524,9 @@ Add("dkRunes", {
     end,
 })
 
--- 12. Secondary resource  (WA: "Power" / "Evoker Essence", restricted to the resources Midnight leaves readable)
+-- 12. Secondary resource
 Add("resource", {
-    label = "Class Resource (combo points, runes, holy power...)", wa = "Power / Evoker Essence / Death Knight Rune", group = "Class resource",
+    label = "Class Resource (combo points, runes, holy power...)", group = "Class resource",
     note = "Pick the resource in 'Class resource type'. Runes (Death Knight) counts runes that are ready; it is unknown on other classes, so the rule never fires there. Secondary resources only. Mana, rage, energy, focus, runic power, and other PRIMARY resources are secret in Midnight and are not offered. 'Similar to combo points / holy power' is the wiki's wording; each resource needs one in-game check.",
     new = { count = 3 },
     fields = {
@@ -548,11 +548,11 @@ Add("resource", {
     end,
 })
 
--- 12b. Buff / Aura on you, repeatable  (WA: Aura trigger, unit = player, buff). The rule's built-in "Buff / Aura" section holds ONE buff and can
+-- 12b. Buff / Aura on you, repeatable. The rule's built-in "Buff / Aura" section holds ONE buff and can
 -- be added once; this row is the same check (ns.BuffPresent: aura API, then the Cooldown Manager icon) so a rule can watch several
 -- personal buffs at once. Each row is its own trigger number; combine them with the ALL / ANY switch under the trigger list.
 Add("buffAura", {
-    label = "Buff / Aura (another)", wa = "Aura (buff on player)", group = "Aura",   -- offered once the built-in Buff / Aura is in use (BuildExtraTriggerArgs AddChoices); the extra aura IDs on the built-in one are ANY-of, a separate row lets you require several buffs at once (ALL) or mix ALL / ANY
+    label = "Buff / Aura (another)", group = "Aura",   -- offered once the built-in Buff / Aura is in use (BuildExtraTriggerArgs AddChoices); the extra aura IDs on the built-in one are ANY-of, a separate row lets you require several buffs at once (ALL) or mix ALL / ANY
     note = "True while the buff is on you. Same reading as the rule's built-in Buff / Aura section (aura API; in combat the Cooldown Manager icon when the buff is tracked there). Use the ID of the BUFF. If the game hides the buff in combat and it is not in your Cooldown Manager, the answer is 'unknown' and the rule will not fire.",
     new = { state = "yes" },
     fields = {
@@ -570,7 +570,7 @@ Add("buffAura", {
     end,
 })
 
--- 13. Player State  (WA: "Conditions")
+-- 13. Player State
 -- /xui debuffs [target|focus]: shows exactly what the game lets us read about your debuffs on that unit right now.
 -- EUI's own net for "a debuff I put on the target": look the aura up BY NAME with the engine-enforced ownership filter.
 -- Returns "found" | "none" | "secret" | "error: <text>". Whether it works in combat is what /xui debuffs reports.
@@ -608,11 +608,11 @@ function ns.ProbeDebuffs(arg)
     ns.Print("  by-name lookup (the method EllesmereUI uses): use /xui debuffs <unit> <spellID>  ->  " .. (ns.probeDebuffID and tostring(ns.TargetAuraByName(unit, ns.probeDebuffID)) or "give a spell ID, e.g. /xui debuffs target 204598"))
 end
 
--- 3b. Target Debuff (yours)  (WA: Aura trigger, unit = target, debuff type, "my auras only")
+-- 3b. Target Debuff (yours)
 -- Reads C_UnitAuras.GetUnitAuras(unit, "HARMFUL|PLAYER") and looks for the spell ID. FOUND is trusted. NOT found only counts
 -- as "absent" when nothing was hidden AND you are out of combat; otherwise the answer is unknown and the rule does not fire.
 Add("targetDebuff", {
-    label = "Target Debuff (yours)", wa = "Aura (debuff on target, my auras only)", group = "Aura",
+    label = "Target Debuff (yours)", group = "Aura",
     note = "True while a debuff cast BY YOU is on your target (or focus). Use the ID of the DEBUFF, not the ability you press: they usually differ (Sigil of Flame: ability 204596, debuff 204598). Midnight hides enemy aura details in combat, so inside combat this may read 'unknown' and then the rule will not fire; out of combat it is exact. In combat, 'absent' is reported only when the Cooldown Manager icon for this spell is inactive (target only; option below).",
     new = { unit = "target", state = "yes", cdmAbsent = "yes" },
     fields = {
@@ -676,7 +676,7 @@ Add("targetDebuff", {
 })
 
 Add("playerState", {
-    label = "Player State (alive, moving, pet...)", wa = "Conditions", group = "Player",
+    label = "Player State (alive, moving, pet...)", group = "Player",
     note = "Simple yes/no facts about you. In combat, mounted, resting, and group state already live under Load.",
     fields = {
         { key = "what", kind = "select", label = "Check", required = true, vals = { values = STATE_VALUES, order = STATE_ORDER } },

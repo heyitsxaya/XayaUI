@@ -7,5 +7,4 @@
 ## SavedVariables: XayaUIGameDumpDB
 ## OptionalDeps: XayaUI
 
-SpellList.lua
 GameDump.lua

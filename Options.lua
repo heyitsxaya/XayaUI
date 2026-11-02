@@ -1202,9 +1202,9 @@ local function BuildRule(i, rule)
     if rule.parentUid then
         for _, o in pairs(trigger.args) do o.hidden = function() return true end end
         if ns.BuildWhenArgs then
-            local okw, wa = pcall(ns.BuildWhenArgs, rule, ns.UI)
-            if okw then for k, v in pairs(wa) do trigger.args[k] = v end
-            elseif not ns.whenUiErr then ns.whenUiErr = true; ns.Print("outcome UI error: " .. tostring(wa)) end
+            local okw, whenArgs = pcall(ns.BuildWhenArgs, rule, ns.UI)
+            if okw then for k, v in pairs(whenArgs) do trigger.args[k] = v end
+            elseif not ns.whenUiErr then ns.whenUiErr = true; ns.Print("outcome UI error: " .. tostring(whenArgs)) end
         end
     elseif ns.BuildOutcomeArgs then
         local oko, oa = pcall(ns.BuildOutcomeArgs, rule, ns.UI)
@@ -2624,7 +2624,7 @@ function BuildClassCreator()
             name = function()
                 local specID = ns.CurrentSpecID and ns.CurrentSpecID()
                 local okS, _, specName = pcall(GetSpecializationInfoByID, specID or 0)
-                return "Detected: |cffffd100" .. (UnitClass("player") or "?") .. " - " .. ((okS and specName) or "unknown spec") .. "|r. For Death Knight, Hunter, Paladin, and Warlock (all specs) it makes skeleton rules for cooldowns, auras, and procs, sorted into Cooldowns / Auras / Procs and then Defensive / Offensive / Utility / Unsorted inside the static group '<Class> <Spec> - autorule population', and flags each rule (kind, role, talent / hero / glow ...). Other specs get one skeleton rule (cooldown ready) per spellbook cooldown, sorted by the curated list. The window jumps to the new group." end },
+                return "Detected: |cffffd100" .. (UnitClass("player") or "?") .. " - " .. ((okS and specName) or "unknown spec") .. "|r. It makes one skeleton rule (cooldown ready) per spellbook or talent cooldown of that spec, read from this game client (the addon remembers each spec once you have played it), sorted into Defensive / Offensive / Utility / Unsorted inside the static group '<Class> <Spec> - autorule population' by the name list for that spec, and flags each rule (kind, role, talent, charges). The window jumps to the new group." end },
         apTalents = { type = "toggle", order = 0.3, width = "full", name = "Include talents I have not picked (rule only loads when the talent is known)",
             get = function() return ns.AutoCfg().talents ~= false end,
             set = function(_, v) ns.AutoCfg().talents = v and true or false; ns.MarkDirty(); Notify() end },
@@ -3000,7 +3000,7 @@ local SPEC_SORT = {
         Utility   = { "Sigil of Misery", "Sigil of Chains", "Sigil of Silence", "Chaos Nova", "Disrupt", "Imprison", "Consume Magic", "Torment", "Infernal Strike", "Vengeful Retreat", "Spectral Sight", "Glide" },
     },
 }
-function ns.AutoPopulateSpellbook(includeUnpicked)   -- old path: spellbook cooldowns only (specs with no entry in ClassData.lua)
+function ns.AutoPopulateSpellbook(includeUnpicked)   -- fallback: spellbook cooldowns only (a spec ClassLearn.lua has not learned yet)
     local specID = ns.CurrentSpecID and ns.CurrentSpecID()
     if not specID then return false, "Could not read your specialization right now." end
     local className = UnitClass("player") or "Class"
@@ -3047,7 +3047,7 @@ function ns.AutoPopulateSpellbook(includeUnpicked)   -- old path: spellbook cool
     return true, msg
 end
 
--- Data-driven auto-populate (ClassData.lua: Death Knight, Hunter, Paladin, Warlock - all 12 specs). One skeleton rule per entry of the
+-- Data-driven auto-populate (ClassLearn.lua: the cooldown list learned from this game client for each spec you have played). One skeleton rule per entry of the
 -- CURRENT spec, in  "<Class> <Spec> - autorule population" > Cooldowns | Auras | Procs > Defensive | Offensive | Utility | Unsorted.
 -- Every rule is also FLAGGED on the rule itself so it can be sorted later: r.autoKind ("cd" | "aura" | "proc"), r.autoRole, r.autoFlags
 -- (talent, hero, glow, charges, rt, inferred, midnight) and r.autoSrc. Target debuffs are in the data and flagged "debuff" but get NO rule:
@@ -3094,7 +3094,7 @@ local function AutoPopulateData(specID, data, includeUnpicked)
                 for _, k in ipairs({ "talent", "hero", "glow", "charges", "rt", "totem", "selfBuff", "inferred" }) do if e[k] then fl[#fl + 1] = k end end
                 if e.mn then fl[#fl + 1] = "midnight" end
                 local function Tag(r)
-                    r.autoKind, r.autoRole, r.autoFlags, r.autoSrc = e.kind, e.role, table.concat(fl, ","), "ClassData 2026-11-01"
+                    r.autoKind, r.autoRole, r.autoFlags, r.autoSrc = e.kind, e.role, table.concat(fl, ","), "learned from this client"
                 end
                 if e.kind == "cd" then
                     if have.cd[e.id] then skipped = skipped + 1
@@ -3160,12 +3160,12 @@ function ns.ClassAutoPopulate(includeUnpicked)
     if data then return AutoPopulateData(specID, data, includeUnpicked) end
     return ns.AutoPopulateSpellbook(includeUnpicked)
 end
--- One chosen spec of the player's class (any spec, not only the active one). Needs curated data; the spellbook fallback only knows the active spec.
+-- One chosen spec of the player's class (any spec, not only the active one). Needs the spec to have been learned (played once); the spellbook fallback only knows the active spec.
 function ns.ClassAutoPopulateSpec(specID, includeUnpicked)
     local data = specID and ns.CLASS_AURA_DATA and ns.CLASS_AURA_DATA[specID]
     if data then return AutoPopulateData(specID, data, includeUnpicked) end
     if specID == (ns.CurrentSpecID and ns.CurrentSpecID()) then return ns.AutoPopulateSpellbook(includeUnpicked) end
-    return false, "No curated data for that spec yet - switch to it and use the active-spec button (spellbook cooldowns only)."
+    return false, "That spec has not been learned yet: switch to it once (the addon reads its spellbook and talents a few seconds after you log in or change spec), then try again."
 end
 -- Every spec of the player's class, one after another (specs without data are named in the summary, not silently skipped).
 function ns.ClassAutoPopulateAllSpecs(includeUnpicked)
@@ -3178,7 +3178,7 @@ function ns.ClassAutoPopulateAllSpecs(includeUnpicked)
         end
     end
     local msg = ("Auto-populated %d spec(s) of %s."):format(made, UnitClass("player") or "your class")
-    if #skipped > 0 then msg = msg .. " No data yet for: " .. table.concat(skipped, ", ") .. "." end
+    if #skipped > 0 then msg = msg .. " Not learned yet (play each once): " .. table.concat(skipped, ", ") .. "." end
     return made > 0, msg
 end
 end   -- do
