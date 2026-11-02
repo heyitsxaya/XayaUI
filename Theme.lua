@@ -45,7 +45,7 @@ T.TOKENS = {
 -- Tokens parked for review (not offered in the Theme page for now; they keep their default / base-theme values and still work in code).
 -- See the project doc "XAYAUI-THEME-REVIEW-LATER".
 T.SHOW_OVERRIDES = false
-T.PARKED = { windowBg = true, paneBg = true, tabBg = true, tabBorder = true, tabSelBg = true, tabSelBorder = true, treeBar = true, text = true }
+T.PARKED = { tabBg = true, tabBorder = true, tabSelBg = true, tabSelBorder = true, treeBar = true }   -- windowBg, paneBg, text un-parked 2026-11-01 (light mode / custom themes)
 T.TOKEN = {}
 for _, t in ipairs(T.TOKENS) do T.TOKEN[t[1]] = t end
 
@@ -124,8 +124,32 @@ function T.ClassPalette(file)
     return pal
 end
 
+-- Built-in bases besides "default" and "class" (Xaya, 2026-11-01). Tokens not listed keep the XUI default.
+--  light:      dark text on light surfaces. Untested in game; some hard-coded white text in the skin may still show.
+--  colorblind: Okabe-Ito colors (sky blue / yellow / orange); nothing relies on a red-vs-green difference.
+T.BUILTIN = {
+    light = { name = "Light mode", pal = {
+        windowBg = { 0.93, 0.93, 0.95, 1 }, paneBg = { 0.98, 0.98, 1.00, 1 }, border = { 0.55, 0.55, 0.60, 1 }, titleBar = { 0.80, 0.82, 0.90, 1 },
+        text = { 0.08, 0.08, 0.10, 1 }, textMuted = { 0.38, 0.38, 0.43, 1 }, label = { 0.10, 0.20, 0.55, 1 },
+        accent = { 0.15, 0.35, 0.85, 1 }, accentText = { 0.04, 0.12, 0.50, 1 }, gradStart = { 0.72, 0.80, 0.98, 1 },
+        buttonBg = { 1, 1, 1, 0.90 }, buttonBorder = { 0.50, 0.50, 0.55, 1 }, buttonText = { 0.10, 0.20, 0.55, 1 },
+        primaryBg = { 0.15, 0.35, 0.85, 0.95 }, primaryBorder = { 0.10, 0.25, 0.65, 1 },
+        tabBg = { 0.88, 0.88, 0.92, 0.9 }, tabBorder = { 0.55, 0.55, 0.60, 1 }, tabSelBg = { 0.72, 0.80, 0.98, 0.95 }, tabSelBorder = { 0.15, 0.35, 0.85, 1 },
+        danger = { 0.80, 0.10, 0.10, 1 } } },
+    colorblind = { name = "Color blind safe (blue / yellow / orange)", pal = {
+        accent = { 0.337, 0.706, 0.914, 1 }, accentText = { 0.70, 0.88, 0.98, 1 }, gradStart = { 0.06, 0.18, 0.28, 1 },
+        label = { 0.941, 0.894, 0.259, 1 }, buttonText = { 0.941, 0.894, 0.259, 1 },
+        buttonBorder = { 0.40, 0.40, 0.45, 1 }, border = { 0.35, 0.38, 0.42, 1 },
+        primaryBg = { 0.00, 0.30, 0.47, 0.95 }, primaryBorder = { 0.00, 0.447, 0.698, 1 },
+        tabSelBg = { 0.00, 0.20, 0.32, 0.9 }, tabSelBorder = { 0.337, 0.706, 0.914, 1 },
+        danger = { 1.00, 0.55, 0.10, 1 } } },
+}
+T.BUILTIN_ORDER = { "light", "colorblind" }
+function T.IsBase(b) return b == "default" or b == "class" or T.BUILTIN[b] ~= nil end
+
 function T.BasePalette(base, classPick)
     if base == "class" then return T.ClassPalette(classPick or T.PlayerClass()) end
+    if T.BUILTIN[base] then local pal = {} for k, v in pairs(T.BUILTIN[base].pal) do pal[k] = Copy4(v) end return pal end
     local saved = CueRulesDB and CueRulesDB.themes and CueRulesDB.themes[base]
     if saved then return T.SavedPalette(saved) end
     return {}
@@ -133,7 +157,7 @@ end
 
 function T.SavedPalette(saved)
     local pal = {}
-    local under = (saved.base == "class") and T.ClassPalette(saved.classPick or T.PlayerClass()) or {}
+    local under = (saved.base == "class") and T.ClassPalette(saved.classPick or T.PlayerClass()) or (T.BUILTIN[saved.base] and T.BasePalette(saved.base)) or {}
     for k, v in pairs(under) do pal[k] = v end
     for k, v in pairs(saved.tokens or {}) do if T.TOKEN[k] and type(v) == "table" then pal[k] = Copy4(v) end end
     return pal
@@ -312,7 +336,7 @@ local function Snapshot()
     end
     local toks = {}
     for k, c in pairs(th.tokens) do if T.TOKEN[k] then toks[k] = Copy4(c) end end
-    return { base = (th.base == "default" or th.base == "class") and th.base or "default", classPick = th.classPick,
+    return { base = T.IsBase(th.base) and th.base or "default", classPick = th.classPick,
         tokens = toks, classes = classes, font = th.font, size = th.size }
 end
 
@@ -324,7 +348,7 @@ function T.SavedNames()
 end
 function T.Save(name)
     name = tostring(name or ""):gsub("^%s+", ""):gsub("%s+$", "")
-    if name == "" or name == "default" or name == "class" or #name > 40 then return false, "Pick a name (1-40 characters, not 'default' or 'class')." end
+    if name == "" or T.IsBase(name) or #name > 40 then return false, "Pick a name (1-40 characters, not 'default', 'class', 'light' or 'colorblind')." end
     local th = DB(); if not th then return false end
     CueRulesDB.themes[name] = Snapshot()
     th.base = th.base
@@ -371,7 +395,7 @@ function T.Decode(str)
     if ns.Checksum(json) ~= sum then return nil, "The theme string is damaged or was edited (checksum does not match)." end
     local data = ns.Json_Decode and ns.Json_Decode(json)
     if type(data) ~= "table" then return nil, "The theme string is damaged (not readable)." end
-    local clean = { base = (data.base == "class") and "class" or "default", tokens = CleanColors(data.tokens, function(k) return T.TOKEN[k] ~= nil end), classes = {} }
+    local clean = { base = T.IsBase(data.base) and data.base or "default", tokens = CleanColors(data.tokens, function(k) return T.TOKEN[k] ~= nil end), classes = {} }
     if type(data.classPick) == "string" and RAID_CLASS_COLORS and RAID_CLASS_COLORS[data.classPick] then clean.classPick = data.classPick end
     if type(data.classes) == "table" then
         for cls, props in pairs(data.classes) do
@@ -424,14 +448,16 @@ function T.BuildArgs(refresh)
 
     args.baseHdr = { type = "header", order = nx(), name = "Base theme" }
     args.base = { type = "select", order = nx(), width = "double", name = "Theme",
-        desc = "XUI default (purple), Class colors (follows your character's class), or a theme you saved or imported.",
+        desc = "XUI default (purple), Class colors (follows your character's class), Light mode, a color blind safe palette, or a theme you saved or imported. To make your own: pick the closest one, change colors in the Palette below, then name and Save it at the bottom.",
         values = function()
             local v = { default = "XUI default (purple)", class = "Class colors" }
+            for _, k in ipairs(T.BUILTIN_ORDER) do v[k] = T.BUILTIN[k].name end
             for _, n in ipairs(T.SavedNames()) do v["saved:" .. n] = "Saved: " .. n end
             return v
         end,
         sorting = function()
             local s = { "default", "class" }
+            for _, k in ipairs(T.BUILTIN_ORDER) do s[#s + 1] = k end
             for _, n in ipairs(T.SavedNames()) do s[#s + 1] = "saved:" .. n end
             return s
         end,
