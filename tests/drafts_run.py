@@ -76,5 +76,27 @@ check("draft 2 (new, empty rule) says so and shows 'none'", strip(a.d2.args.head
 check("draft 3 (old rule, own sound and icon) shows both", strip(a.d3.args.cue.name):find("Sound", 1, true) and strip(a.d3.args.cue.name):find("Icon: Metamorphosis (187827)", 1, true), strip(a.d3.args.cue.name))
 check("draft 4 (damaged) does not break the page and keeps its buttons", a.d4 and a.d4.args.restore and a.d4.args.delete)
 check("every draft box is still an inline group", a.d1.type == "group" and a.d1.inline == true)
+-- ---- 0.5.81: "Prompt for saving and enable drafts" (default off = autosave) ----
+local function Cp(o) if type(o) ~= "table" then return o end local t = {} for k, v in pairs(o) do t[k] = Cp(v) end return t end
+local tt = 0; GetTime = function() tt = tt + 1; return tt end; unpack = unpack or table.unpack; ns.Copy = Cp; ns.NewUID = function() return "u" .. math.random(1e9) end; ns.MarkDirty = function() end; ns.RefreshVisual = function() end; ns.DropVisual = function() end
+CueRulesDB.ui = {}
+ns.rules = { { name = "R", uid = "u1", spellID = 1234, cdState = "ready" } }
+ns.DraftsOnOpen()
+check("setting off by default", ns.DraftsEnabled() == false)
+ns.rules[1].spellID = 4321
+check("autosave: an edit is never 'unsaved'", ns.DraftDirty(ns.rules[1]) == false)
+ns.DraftNew({ name = "fresh", uid = "u2" })
+check("autosave: a new rule is not held as a draft", ns.DraftIsNew({ uid = "u2" }) == false)
+ns.DraftsOnClose()
+check("autosave: closing keeps the edit and stores no draft", ns.rules[1].spellID == 4321 and #CueRulesDB.drafts == 4)
+CueRulesDB.ui.promptSave = true
+ns.DraftsOnOpen()
+ns.DraftsApplySetting()
+check("setting on", ns.DraftsEnabled() == true)
+check("on: starts from a clean slate", ns.DraftDirty(ns.rules[1]) == false)
+ns.rules[1].spellID = 9999
+check("on: an edit is unsaved", ns.DraftDirty(ns.rules[1]) == true)
+ns.DraftsOnClose()
+check("on: closing reverts and stores a draft", ns.rules[1].spellID == 4321 and #CueRulesDB.drafts == 5)
 print(n .. " checks, " .. fails .. " failed")
 ''')

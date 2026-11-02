@@ -103,7 +103,14 @@ end
 -- State
 -------------------------------------------------------------------------------
 local cache = { t = -1 }
+-- "Prompt for saving and enable drafts" (Settings > UI Options). Off by default: edits are kept as you make them, there is no save bar,
+-- and closing the window never moves anything to Drafts. On: the behaviour described in the guide (section 12.2).
+function ns.DraftsEnabled()
+    local ui = CueRulesDB and CueRulesDB.ui
+    return ui ~= nil and ui.promptSave == true
+end
 function ns.DraftDirty(rule)
+    if not ns.DraftsEnabled() then return false end
     local root = RootOf(rule)
     if not (root and root.uid) then return false end
     local b = baseline[root.uid]
@@ -150,6 +157,22 @@ function ns.DraftsOnOpen()
     end
 end
 
+-- The setting was switched while the window is open: the rules as they are right now become the saved versions (turning it on starts with
+-- a clean slate; turning it off keeps every edit), then the window is redrawn without or with the save bar.
+function ns.DraftsApplySetting()
+    cache = { t = -1 }
+    wipe(baseline)
+    if windowOpen and ns.rules then
+        for _, r in ipairs(ns.rules) do
+            if not r.parentUid and r.isCue ~= true and type(r.uid) == "string" then
+                local group = GroupOf(r.uid)
+                baseline[r.uid] = { sig = Sig(group), rules = Copies(group) }
+            end
+        end
+    end
+    if ns.UI and ns.UI.Notify then pcall(ns.UI.Notify) end
+end
+
 -- a rule made in the open window: nothing saved yet, so closing without "Save changes" keeps it only in Drafts
 -- Rebuild the on-screen displays of a group and redraw the options tree now and once more next frame (the second pass catches
 -- rows that only exist after the first rebuild). Called after a save, after the window closes, and after the window opens.
@@ -161,6 +184,7 @@ function ns.RefreshSidebar(group)
 end
 
 function ns.DraftNew(rule)
+    if not ns.DraftsEnabled() then return end   -- autosave mode: a new rule is simply kept
     if not windowOpen or not rule or rule.parentUid then return end
     if type(rule.uid) ~= "string" then rule.uid = ns.NewUID() end
     baseline[rule.uid] = { isNew = true }
@@ -228,6 +252,7 @@ function ns.DraftsOnClose()
     windowOpen = false
     if ns.UndoReset then ns.UndoReset() end
     cache = { t = -1 }
+    if not ns.DraftsEnabled() then wipe(baseline); return end   -- autosave mode: everything stays as edited
     local moved, names = 0, {}
     for uid, b in pairs(baseline) do
         local group = GroupOf(uid)

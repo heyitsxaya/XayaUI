@@ -2393,6 +2393,11 @@ local function BuildAddonSettings()
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = function() return "XayaUI v" .. AddonVersion() .. ". Settings here affect the whole addon, not any one rule." end },
         ui = { type = "group", name = "UI Options", order = 1, args = {
+            savingHeader = { type = "header", name = "Saving", order = 10 },
+            promptSave = { type = "toggle", name = "Prompt for saving and enable drafts", order = 11, width = "full",
+                desc = "Off (default): every change is kept the moment you make it. On: a yellow bar appears under the window when a rule has unsaved changes (Save changes, Save as a copy, Add to drafts, Discard changes), and closing the window first puts unsaved changes in Drafts.",
+                get = function() return ns.DraftsEnabled and ns.DraftsEnabled() or false end,
+                set = function(_, v) Ui().promptSave = v and true or false; if ns.DraftsApplySetting then ns.DraftsApplySetting() end end },
             displayHeader = { type = "header", name = "Display Options", order = 20 },
             selStyle = { type = "select", name = "Selected item in the rule list", order = 21, width = "double",
                 desc = "How the row you have selected stands out in the left-hand list.",
@@ -3929,7 +3934,11 @@ local function BuildOptions()
         } }
     local smartTab = { type = "group", name = "Smart Categories", order = 3, childGroups = "tree", args = { all = all } }
     local draftsTab = ns.BuildDraftsPage and ns.BuildDraftsPage() or nil
-    if draftsTab then draftsTab.order = 2; draftsTab.hidden = nil; draftsTab.name = "Drafts"; ns.PickerInto(draftsTab.args) end
+    if draftsTab then
+        draftsTab.order = 2; draftsTab.name = "Drafts"; ns.PickerInto(draftsTab.args)
+        -- with the setting off the Drafts tab is out of the way, unless drafts from earlier are still waiting in it
+        draftsTab.hidden = function() return not (ns.DraftsEnabled and ns.DraftsEnabled()) and #(CueRulesDB.drafts or {}) == 0 end
+    end
     local disabledTab = { type = "group", name = "Disabled", order = 4, childGroups = "tree", args = {
         disabled = { type = "group", order = 1, childGroups = "tree",
             name = function() return "DISABLED (" .. nDisabled .. ")" end, args = disabledArgs },
