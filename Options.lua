@@ -3133,7 +3133,7 @@ local function PickType(typ)
         pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allbars", "bar" .. #ns.bars)
     elseif typ == "dgroup" or typ == "sgroup" then
         -- a rule group is a folder (the container): nested inside the folder the picker was opened from, top level otherwise
-        local nf = ns.NewFolder((typ == "dgroup" and "Dynamic Group " or "Static Group ") .. (#ns.folders + 1), p and p.folder)
+        local nf = ns.NewFolder((typ == "dgroup" and "Dynamic Group" or "Static Group"), p and p.folder)
         if typ == "dgroup" then nf.cType = "dynamic" end
         local path = { ns.PlaceNewGroup(nf, nf.parent and ns.CurrentScope() or "loaded") }
         ns.MarkDirty(); Notify()
@@ -3496,7 +3496,7 @@ local function BuildFolder(k, f)
                 end },
             newSub = { type = "execute", name = "+ New nested group", order = 2.5, width = "double",
                 func = function()
-                    local nf = ns.NewFolder("Group " .. (#ns.folders + 1), f.id)
+                    local nf = ns.NewFolder("Group", f.id)
                     local scope = ns.CurrentScope()
                     local path = { ns.PlaceNewGroup(nf, scope) }
                     Notify()
@@ -4972,7 +4972,9 @@ local function RowMenu(button, root)
             root:CreateButton("Copy Settings", function() ruleClip = ns.MakeClip(rule); Notify() end)
             return true
         end
-        root:CreateButton("Rename", function() AskRename(rule.name, function(t) rule.name = t; pcall(ns.RefreshVisual, rule); ns.MarkDirty(); Notify() end) end)
+        root:CreateButton("Rename", function()   -- edits in the sidebar row; the popup is only the fallback when the row is gone
+            if not (ns.SidebarRenameLater and ns.SidebarRenameLater(button)) then AskRename(rule.name, function(t) rule.name = t; pcall(ns.RefreshVisual, rule); ns.MarkDirty(); Notify() end) end
+        end)
         root:CreateButton("Duplicate", function() DuplicateRule(rule) end)
         root:CreateButton("Export", function() ns.UI.ExportRule(rule) end)
         root:CreateButton("Copy Settings", function() ruleClip = ns.MakeClip(rule); Notify(); ns.Print("copied settings of '" .. tostring(rule.name) .. "'") end)
@@ -4988,12 +4990,14 @@ local function RowMenu(button, root)
     local fold = last:match("^f%d") and FolderById(last)
     if fold then
         root:CreateTitle(fold.name)
-        root:CreateButton("Rename", function() AskRename(fold.name, function(t) fold.name = t; ns.MarkDirty(); Notify() end) end)
+        root:CreateButton("Rename", function()
+            if not (ns.SidebarRenameLater and ns.SidebarRenameLater(button)) then AskRename(fold.name, function(t) fold.name = t; ns.MarkDirty(); Notify() end) end
+        end)
         root:CreateButton("New Rule Here", function()
             StartNewRule(fold.id)
         end)
         root:CreateButton("New Nested Group", function()
-            local nf = ns.NewFolder("Group " .. (#ns.folders + 1), fold.id)
+            local nf = ns.NewFolder("Group", fold.id)
             local path = { ns.PlaceNewGroup(nf, ns.ScopeOfUV(button.uniquevalue)) }   -- same list as the parent row
             Notify()
             pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(path))
@@ -5071,7 +5075,7 @@ local function RowMenu(button, root)
             StartNewRule(nil)
         end)
         root:CreateButton("New Group", function()
-            local nf = ns.NewFolder("Group " .. (#ns.folders + 1))
+            local nf = ns.NewFolder("Group")
             Notify()
             pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, ns.FolderLoadedPath(nf))
         end)
@@ -5123,7 +5127,7 @@ function ns.ShowBlankMenu(frame)
     if tab ~= "cooldowns" and tab ~= "smartcat" then return end   -- only the Rules sidebar; QoL and Settings trees have no rule list
     if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the context menu needs the game's MenuUtil, which is not available") return end
     local function NewGroup(dynamic)
-        local nf = ns.NewFolder((dynamic and "Dynamic Group " or "Group ") .. (#ns.folders + 1))
+        local nf = ns.NewFolder(dynamic and "Dynamic Group" or "Group")
         if dynamic then nf.cType = "dynamic" end
         ns.MarkDirty(); Notify()
         pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, ns.FolderLoadedPath(nf))
@@ -5604,7 +5608,13 @@ end
 function ns.SidebarRename(button)
     local rn = tostring(button.uniquevalue or ""):match("rule(%d+)$")
     local rule = rn and ns.rules and ns.rules[tonumber(rn)]
-    if not rule or (ns.IsEditLocked and ns.IsEditLocked(rule)) then return end
+    local isFolder
+    if not rule then   -- a group row: same box, renames the folder (an empty name keeps the old one)
+        local fk = (LastKey(button.uniquevalue) or ""):match("^f%d") and LastKey(button.uniquevalue)
+        rule = fk and FolderById(fk)
+        isFolder = rule and true or nil
+    end
+    if not rule or (not isFolder and ns.IsEditLocked and ns.IsEditLocked(rule)) then return end
     local eb = button.xuiRenameEB
     if not eb then
         eb = CreateFrame("EditBox", nil, button)
@@ -5619,13 +5629,20 @@ function ns.SidebarRename(button)
             self:Hide()
             if self.xuiCancel then self.xuiCancel = nil; return end
             if r then
-                r.name = tostring(self:GetText() or ""):sub(1, 60)
-                pcall(ns.RefreshVisual, r); ns.MarkDirty(); Notify()
+                local t = tostring(self:GetText() or ""):sub(1, 60)
+                if self.xuiIsFolder then
+                    if t == "" then return end
+                    r.name = t
+                    ns.MarkDirty(); Notify()
+                else
+                    r.name = t
+                    pcall(ns.RefreshVisual, r); ns.MarkDirty(); Notify()
+                end
             end
         end)
         button.xuiRenameEB = eb
     end
-    eb.xuiRule = rule
+    eb.xuiRule = rule; eb.xuiIsFolder = isFolder
     eb:SetFrameLevel(button:GetFrameLevel() + 8)
     eb:ClearAllPoints()
     local left = button.text and button.text:GetLeft() and button:GetLeft() and (button.text:GetLeft() - button:GetLeft() - 6) or 40
@@ -5633,6 +5650,13 @@ function ns.SidebarRename(button)
     eb:SetPoint("RIGHT", button, "RIGHT", -52, 0)
     eb:SetText(tostring(rule.name or ""))
     eb:Show(); eb:SetFocus(); eb:HighlightText()
+end
+
+-- Called from the right-click menu: the menu closes after the click and takes keyboard focus with it, so the box opens a moment later.
+function ns.SidebarRenameLater(button)
+    if not (button and button.IsShown and button:IsShown() and C_Timer) then return false end
+    C_Timer.After(0.1, function() if button:IsShown() then ns.SidebarRename(button) end end)
+    return true
 end
 
 local function DecorateButton(button)

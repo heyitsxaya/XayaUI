@@ -40,6 +40,8 @@ TRIGGERS (Trigger tab)     "Is the thing I watch true?"   cooldown / buff / extr
 
 The engine re-checks every enabled rule about every 0.2 seconds, and immediately when the game reports a relevant event (combat start/end, cooldown or aura update, spec change, group change, zone change, action bar change).
 
+**Renaming:** Double-click a rule or group in the sidebar, or right-click it and choose Rename, to type the new name right in the row. Enter saves; Escape cancels. New groups are named Group, Dynamic Group, or Static Group, with no number. An empty name on a group is ignored.
+
 **Rule tabs, in order:** Rule | Trigger | Cues | Conditions | Actions | Load. The Rule tab holds the name, Enabled box, group, description, and sidebar icon.
 
 ---
