@@ -17,7 +17,16 @@ end
 local function Notify() if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end if ns.SmartOpen then pcall(ns.SmartOpen) end if ns.FixSelection then pcall(ns.FixSelection) end AceConfigRegistry:NotifyChange(APP) end
 
 local function Changed(rule)
-    if rule then ns.RefreshVisual(rule) end
+    if rule then
+        ns.RefreshVisual(rule)
+        -- an edit on a parent rule (aura / spell ID, triggers) changes what its cues resolve (the "automatic" icon comes from the parent's
+        -- first trigger), but each cue is its own frame: repaint them too, or the icon stays a "?" until something else refreshes it
+        if not rule.isCue and rule.uid and ns.CuesOf then
+            for _, c in ipairs(ns.CuesOf(rule)) do
+                if type(c.visual) == "table" and (not ns.KindHas or ns.KindHas(c, "visual")) then pcall(ns.RefreshVisual, c) end
+            end
+        end
+    end
     ns.MarkDirty()
 end
 
@@ -1559,6 +1568,8 @@ local function BuildRule(i, rule)
             flashSpeed = Rng(V.flash, "speed", "Flash speed (pulses per second)", 36, 1, 8, 0.5, on,
                 { disabled = function() return not V.flash.enabled end }),
             desatOnCD = Tog(V, "desatOnCD", "Gray out while the spell is on cooldown", 37, on, { width = "double" }),
+            hoverTip = Tog(V, "hoverTip", "Show tooltip on hover", 9.6, on, { width = "double",
+                desc = "Hover this cue to see the tooltip of the spell or item it is about (the icon source chosen above, else the rule's first trigger). While on, the cue also sees the mouse pointer, but clicks still pass through to what is behind it." }),
             requireOnBar = Tog(V, "requireOnBar", "Only show while this ability is on an action bar", 9.5, on, { width = "double",
                 desc = "Uses the Cooldown Spell ID (or the Aura spell ID if no Cooldown Spell ID is set). Hides the display whenever that spell is not currently placed on any of your 12 action bars, even if the rule would otherwise fire. Off by default so existing rules are unaffected." }),
             fxH = { type = "header", name = "Glow & Outline", order = 40 },
@@ -6057,6 +6068,13 @@ function SX.Start(kind)
     end
     if kind == "item" then StartScan(SX.II, SX.II_MAX, C_Item and C_Item.GetItemNameByID)
     else StartScan(SI, SI_MAX, C_Spell.GetSpellName) end
+    if kind == "aura" and ns.AuraSources then   -- the "source" column needs the item index and a tooltip pass over it (AuraSources.lua)
+        StartScan(SX.II, SX.II_MAX, C_Item and C_Item.GetItemNameByID)
+        SX.II.max = SX.II_MAX
+        local ids = {}
+        for _, sp in ipairs(ns.BuildSpellList() or {}) do if sp.id then ids[#ids + 1] = sp.id end end
+        pcall(ns.AuraSources.Start, SX.II, ids)
+    end
 end
 function SX.OwnedItems()
     local out, seen = {}, {}
@@ -6305,7 +6323,9 @@ local function SP_Render()
             else row.icon:SetTexture(SpellTex(id)) end
             local okn, nm = pcall(SP.kind == "item" and C_Item.GetItemNameByID or C_Spell.GetSpellName, id)
             local tg = SX.tags and SX.tags[id]
-            row.text:SetText(((okn and nm) or "?") .. "  |cff888888[" .. id .. "]|r" .. (tg and ("  |cff7fb6e6" .. tg .. "|r") or ""))
+            local src = (SP.kind == "aura" and ns.AuraSources) and ns.AuraSources.Label(id) or nil
+            row.text:SetText(((okn and nm) or "?") .. "  |cff888888[" .. id .. "]|r" .. (tg and ("  |cff7fb6e6" .. tg .. "|r") or "")
+                .. (src and ("  |cffb4a06eFrom|r |cffc9c9c9" .. src .. "|r") or ""))
             row:Show()
         else row:Hide() end
     end
@@ -6313,6 +6333,10 @@ local function SP_Render()
     local S, smax = (SP.kind == "item") and SX.II or SI, (SP.kind == "item") and SX.II_MAX or SI_MAX
     if S.running then msg = ("Indexing %s names... %d%%  "):format(SP.kind == "item" and "item" or "spell", math.floor(S.nextId / smax * 100)) end
     if SP.kind == "talent" and not (XayaUITalentDB and XayaUITalentDB.classes) then msg = msg .. "Your current build only; /xui talents adds every spec.  " end
+    if SP.kind == "aura" and ns.AuraSources then
+        local pr = ns.AuraSources.Progress()
+        if pr then msg = msg .. ("Finding what applies each aura... %d%%  "):format(math.floor(pr * 100)) end
+    end
     if total == 0 then msg = msg .. "No match yet"
     elseif total > SP_ROWS then msg = msg .. total .. " results - scroll for more" end
     SP.footer:SetText(msg)
@@ -6385,7 +6409,8 @@ local function SP_Build()
     local acc = 0
     SP:SetScript("OnUpdate", function(self, e)
         if self.owner and not self.owner:IsVisible() then SP_Hide(); return end
-        if ((self.kind == "item") and SX.II.running) or (self.kind ~= "item" and SI.running) then
+        if ((self.kind == "item") and SX.II.running) or (self.kind ~= "item" and SI.running)
+            or (self.kind == "aura" and ns.AuraSources and ns.AuraSources.Progress()) then
             acc = acc + e
             if acc > 0.6 and self.owner then acc = 0; self.results = SearchSpells(self.owner:GetText(), self.kind); SP_Render() end
         end
@@ -6402,7 +6427,7 @@ local function SP_Update(eb)
     SP.results, SP.offset = SearchSpells(q, SP.kind), 0
     SP:ClearAllPoints()
     SP:SetPoint("TOPLEFT", eb, "BOTTOMLEFT", -4, -2)
-    SP:SetWidth(math.max(340, eb:GetWidth() + 8))
+    SP:SetWidth(math.max(SP.kind == "aura" and 560 or 340, eb:GetWidth() + 8))
     SP:Show()
     SP_Render()
 end

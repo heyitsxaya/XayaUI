@@ -1,5 +1,6 @@
 a1620bdf32daf4d160b6252169fa9586  Actions.lua
 64964bb6b85ba8f6d5a1cedfe929ff52  AddonInfo.lua
+465ff33451cc5e64acd8b619dbe98797  AuraSources.lua
 39160b6ad5cc597f56721a85a493988d  Bars.lua
 1e6c215d2fc4a895bd0ceeff42654f09  ChatDock.lua
 c21cb19f5c7c80a66715ae82f1e0dd39  ChatPanel.lua
@@ -24,7 +25,7 @@ d32239bcb673463ab874e80d47fae504  LICENSE
 849eb9638bc7e6e491d6a5839018e8b6  LocalGraphics.lua
 9681e2f3f2975c7f054f151ba3eb82ed  LocalSounds.lua
 f1210976c5189c1c36b13549d1711492  Notepad.lua
-dfcf1d15e61c3cd89e06499dc6cd0ee9  Options.lua
+c6a0f9a67002483b4a4d97c795e92dc5  Options.lua
 a71c6833d94989427365cb7ee2b7c54b  Outcomes.lua
 23bf6278d3ac2ac5f79e3e42b2b914a3  Profile.lua
 6927ad26f4e5218baef5961cca11e634  QoL.lua
@@ -35,10 +36,10 @@ a71c6833d94989427365cb7ee2b7c54b  Outcomes.lua
 46f77b8a678f39da1db320a4883ae59f  TalentDump.lua
 7d0e35ac661d1db2569cdea98562ba17  TextureList.lua
 d7e606b10ef3f5b67d3c55a94a5c3953  Theme.lua
-84f56be62349261f37ff9054f65d9539  Triggers.lua
+e918a7a2995c2c66ca663dd2a7330871  Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  UserMedia.lua
-39344084fed408cc67c601fb529ac62f  Visual.lua
-3dd4ef52ef842aee4a0e6335f22ccf5f  XayaUI.toc
+74a9935c14d2e6df8727ad921219638f  Visual.lua
+df7e0737f89ca1909c36dd5aaac135aa  XayaUI.toc
 ca89d096a4e6a5e7f55beb7e240f9605  XayaUI_CombatEngine/AuraDisplay.lua
 1eb8ec8eeaec35396f0f443339972b13  XayaUI_CombatEngine/AuraIDProbe.lua
 49635f2a302eea3ebac0e3f872c3da06  XayaUI_CombatEngine/AuraModel.lua
@@ -52,5 +53,5 @@ a23c5f0eab3b127a21817935beb5d137  DataPanels.lua
 9189df63674aab2e306bc2b09b21f185  NotepadShare.lua
 91d337787416a16a383d8023d147bfc7  MinimapButton.lua
 4092250475ca8c0d9eed0f6984db28f1  ChatTrade.lua
-fe41b0fcf51d5b37dc63f60a24978a19  Tooltips.lua
-951c63dfbe636846a099dd0b5443423c  TooltipsUI.lua
+a84b7dd123267fd09809eab5538f39f7  Tooltips.lua
+032e0be51b32833e718502293c82c464  TooltipsUI.lua

@@ -895,6 +895,32 @@ function ns.TriggerIcon(rule)
     end
 end
 
+-- What a cue's tooltip should describe: the first trigger that names a spell or an item. Returns kind ("spell" | "item"), id.
+-- (Same walk as TriggerIcon, which returns the picture instead.)
+function ns.TriggerTarget(rule)
+    if type(rule) ~= "table" then return nil end
+    local j = 0
+    for _, tk in ipairs(ns.TriggerSequence(rule)) do
+        if tk == "cd" then
+            local id = tonumber(rule.spellID) or 0
+            if id > 0 then return "spell", id end
+        elseif tk == "buff" then
+            local id = tonumber(rule.buffID) or 0
+            if id > 0 then return "spell", id end
+        else
+            j = j + 1
+            local row = type(rule.extra) == "table" and rule.extra.list and rule.extra.list[j]
+            local def = row and TYPES[row.type]
+            if def then
+                for _, f in ipairs(def.fields) do
+                    local id = tonumber(row[f.key]) or 0
+                    if id > 0 and (f.kind == "spell" or f.kind == "item") then return f.kind, id end
+                end
+            end
+        end
+    end
+end
+
 -- Swap the trigger at place a with its neighbor (dir = -1 up, +1 down). Moving one additional row past another swaps
 -- the two rows, and outcome conditions that point at them are re-pointed so they keep meaning the same trigger.
 -- Custom trigger names. tok = "cd" | "buff" | "x" (j = row index for "x"). A name replaces the number in the pane header;

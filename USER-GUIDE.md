@@ -238,6 +238,7 @@ A cue is a named thing that happens. Create it with **Add a cue**, then choose *
 - Cues are numbered: "Cue 1: Sound 1." Give them your own names and descriptions (name up to 60 characters, description up to 300).
 - Up to **40 cues per rule**.
 - Under the hood a cue is a hidden child rule; it uses the parent's spell, buff, and load settings.
+- **Show tooltip on hover** (Text, Texture, and Icon cues; in the cue's Texture options, next to "Only show while this ability is on an action bar"): hovering the cue shows the tooltip of the spell or item it is about, which is the icon source chosen on the cue, else the rule's first trigger. Off by default. While it is on, the cue sees the mouse pointer but clicks still pass through to what is behind it. Icons drawn by XayaUI Combat Auras do not support it yet.
 
 ### When does a cue fire?
 
@@ -437,9 +438,13 @@ A button on the minimap for quick access. **Left-click** opens a list of buttons
 
 ### 12.7 Tooltips
 
-Adds information to game tooltips. **ID lines** show the ID of spells, items, auras, and NPCs (on by default) and, if you turn them on, quests, currencies, achievements, mounts, toys, and battle pets, plus an optional icon ID line. **Item level** shows the item level of the player under your mouse: yours from what you have equipped, other players' from an Inspect that runs by itself (one request at a time, never in combat, cached for a couple of minutes). **Enemy forces** shows the Mythic+ count and percent on hostile units, either only inside dungeons and raids or only during an active Mythic+ run. Anything the game does not let addons read is left out, never guessed. Crowd control, true sight, and cast information for enemies are not included. `/xuitt probe` (point at a unit first) prints what the game lets addons read for that unit.
+Adds information to game tooltips. **ID lines** show the ID of spells, items, auras, and NPCs (on by default) and, if you turn them on, quests, currencies, achievements, mounts, toys, and battle pets, plus an optional icon ID line. On an item or spell tooltip that describes an effect (food's "Well Fed" block, for example), an **Aura ID** line gives the ID and name of that effect, so it can be pasted into a rule's aura field (it follows the Aura IDs option). `/xuitt lines` (hover an item or spell first, e.g. from a macro with a short delay) lists the raw lines the game reports, which shows where the Aura ID comes from. **Item level** shows the item level of the player under your mouse: yours from what you have equipped, other players' from an Inspect that runs by itself (one request at a time, never in combat, cached for a couple of minutes). **Enemy forces** shows the Mythic+ count and percent on hostile units, either only inside dungeons and raids or only during an active Mythic+ run. Anything the game does not let addons read is left out, never guessed. Crowd control, true sight, and cast information for enemies are not included. `/xuitt probe` (point at a unit first) prints what the game lets addons read for that unit.
 
 **Where:** QoL UI Updates > Tooltips.
+
+### 12.7b Spell search: where an aura comes from
+
+When you search for an **aura** by name (the aura search boxes in a rule's trigger), many auras share one name, such as the dozens of "Well Fed" IDs. Each result now ends with **From item Name [id]** or **From spell Name [id]**, the item or spell whose tooltip applies that aura, with "+N more" when several do. The game has no direct lookup for this, so XayaUI learns it from tooltips: every item or spell tooltip you hover, the spells you know, and a background pass over the item index the search already builds (a percentage shows in the list's footer while it runs, never in combat). It is saved with your settings and rebuilt after a game patch. A result with no "From" part has no known source yet. Not yet tested in game.
 
 ### 12.8 Game Menu look
 

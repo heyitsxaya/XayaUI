@@ -1018,13 +1018,17 @@ local function GetFrame(rule)
     fr.absorb:Hide()
 
     fr:SetScript("OnEnter", function(self)
-        if not Unl(rule) then return end
+        if not Unl(rule) then
+            if rule.visual and rule.visual.hoverTip then ns.ShowCueTooltip(rule, self) end
+            return
+        end
         self.hovered = true
         PaintBorder(rule, self)
     end)
     fr:SetScript("OnLeave", function(self)
         self.hovered = false
         PaintBorder(rule, self)
+        if GameTooltip and GameTooltip.GetOwner and GameTooltip:GetOwner() == self then GameTooltip:Hide() end
     end)
     fr:SetScript("OnDragStart", function(self)
         if not Unl(rule) then return end
@@ -1266,6 +1270,27 @@ local function LayoutOutline(fr, rule, v)
     end
 end
 
+-- Tooltip for a cue with "Show tooltip on hover": the spell or item the cue is about (the icon-source choice on the cue, else the rule's
+-- first trigger). Nothing is shown when the cue names neither.
+function ns.ShowCueTooltip(rule, fr)
+    if not (GameTooltip and fr) then return end
+    local v = rule.visual or {}
+    local kind, id
+    local src = v.iconSrc or "auto"
+    if src == "spell" and (tonumber(v.iconSpell) or 0) > 0 then kind, id = "spell", tonumber(v.iconSpell)
+    elseif src == "item" and (tonumber(v.iconItem) or 0) > 0 then kind, id = "item", tonumber(v.iconItem)
+    elseif ns.TriggerTarget then
+        local parent = rule.parentUid and ns.FindParentRule and ns.FindParentRule(rule) or nil
+        kind, id = ns.TriggerTarget(parent or rule)
+    end
+    if not id then return end
+    GameTooltip:SetOwner(fr, "ANCHOR_RIGHT")
+    local ok
+    if kind == "item" then ok = pcall(GameTooltip.SetItemByID, GameTooltip, id)
+    else ok = pcall(GameTooltip.SetSpellByID, GameTooltip, id) end
+    if ok then GameTooltip:Show() else GameTooltip:Hide() end
+end
+
 function ns.RefreshVisual(rule)
     local v = rule.visual
     local fr = GetFrame(rule)
@@ -1342,7 +1367,15 @@ function ns.RefreshVisual(rule)
     if v.count then StyleText(fr.count, fr, v.count, "BOTTOMRIGHT") end
     if v.absorb then StyleText(fr.absorb, fr, v.absorb, "TOP") end
     fr.label:SetText(rule.name)
-    fr:EnableMouse(Unl(rule))
+    -- "Show tooltip on hover" needs the frame to see the mouse; clicks still pass through to whatever is behind it unless unlocked for moving
+    local tip = v.hoverTip and true or false
+    fr:EnableMouse(Unl(rule) or tip)
+    if tip then
+        pcall(fr.SetMouseClickEnabled, fr, Unl(rule) and true or false)
+        pcall(fr.SetMouseMotionEnabled, fr, true)
+    elseif fr.SetMouseClickEnabled then
+        pcall(fr.SetMouseClickEnabled, fr, true)
+    end
     if Unl(rule) then
         fr:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
         PaintBorder(rule, fr)

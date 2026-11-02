@@ -57,4 +57,9 @@ boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", function() TT.DB(); TT.Init() end)
 
 SLASH_XUITT1 = "/xuitt"
-SlashCmdList.XUITT = function(msg) if (msg or ""):lower():find("probe") then TT.Probe() else print("XayaUI Tooltips: /xuitt probe (point at a unit first)") end end
+SlashCmdList.XUITT = function(msg)
+    msg = (msg or ""):lower()
+    if msg:find("probe") then TT.Probe()
+    elseif msg:find("lines") then TT.DumpLines()
+    else print("XayaUI Tooltips: /xuitt probe (point at a unit first), /xuitt lines (raw lines of the tooltip under the mouse)") end
+end
