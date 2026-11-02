@@ -6,6 +6,10 @@
 local addonName, ns = ...
 ns.LocalSounds = {
     { "[Local] letfly", "Interface\\AddOns\\XayaUI\\Media\\Audio\\letfly.ogg" },
+    { "[Local] belltreechime", "Interface\\AddOns\\XayaUI\\Media\\Audio\\belltreechime.ogg" },
+    { "[Local] flame_sigil", "Interface\\AddOns\\XayaUI\\Media\\Audio\\flame_sigil.ogg" },
+    { "[Local] resource_overcap", "Interface\\AddOns\\XayaUI\\Media\\Audio\\resource_overcap.ogg" },
+    { "[Local] soul_barrier", "Interface\\AddOns\\XayaUI\\Media\\Audio\\soul_barrier.ogg" },
     { "AcousticGuitar", "Interface\\AddOns\\XayaUI\\Media\\Audio\\WA\\AcousticGuitar.ogg" },
     { "Adds", "Interface\\AddOns\\XayaUI\\Media\\Audio\\WA\\Adds.ogg" },
     { "AirHorn", "Interface\\AddOns\\XayaUI\\Media\\Audio\\WA\\AirHorn.ogg" },
