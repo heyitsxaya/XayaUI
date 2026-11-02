@@ -4078,8 +4078,12 @@ local function BuildOptions()
     settings.hidden = function() return ns.SkinRows and ns.SkinRows() and true or false end   -- skin off: the old single Settings tab
     track.hidden = function() return SettingsOn() and true or false end
     if qol then qol.hidden = function() return SettingsOn() and true or false end end   -- Settings open: QoL UI Updates tab goes away (Xaya, 2026-11-01)
+    local setGm = ns.GameMenuSkin_Options and ns.GameMenuSkin_Options(Notify) or nil   -- Settings > Game Menu (own ESC-menu skin, 0.5.45)
+    if setGm then setGm.order = 1.7; setGm.hidden = function() return not SettingsOn() end end
+    local oldGm = ns.GameMenuSkin_Options and ns.GameMenuSkin_Options(Notify) or nil   -- same group inside the old single Settings tab (skin rows off)
+    if oldGm then oldGm.order = 1.7; settings.args.gamemenu = oldGm end
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, recyclebin = binTab, qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = settings, set_ui = setUi, set_debug = setDbg } }
+        args = { cooldowns = track, recyclebin = binTab, qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = settings, set_ui = setUi, set_gm = setGm, set_debug = setDbg } }
     pcall(ns.SmartOpen)
     pcall(ns.ApplyTreeFilter, out)
     if ns.SkinRows and ns.SkinRows() then pcall(ns.InfoPass, out) end   -- the info icons are part of the skin

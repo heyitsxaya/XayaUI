@@ -194,7 +194,7 @@ local function Install(menu)
         end
     end
     CreateButton(menu)
-    if not Enabled() then btn:Hide(); if fallbackSlot then fallbackSlot:Hide() end; return end
+    if (ns.GameMenuSkin_Active and ns.GameMenuSkin_Active()) or not Enabled() then btn:Hide(); if fallbackSlot then fallbackSlot:Hide() end; return end   -- the skin (GameMenuSkin.lua) draws its own XayaUI row
 
     local anchor, anchorText = FindAnchor(menu)
     diag.anchor = anchorText or "none (appended)"
