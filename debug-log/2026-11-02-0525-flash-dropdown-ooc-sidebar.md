@@ -19,3 +19,6 @@ Xaya: after that change the addon pane could not be moved and the frame rate dro
 
 ## Update 05:40 ET: frame-rate drop from the moment the window opens: FIXED (loop I introduced)
 The window-Open hook called ns.RefreshSidebar, which Notifies; AceConfigDialog then re-runs Open on the next frame, which hit the hook again: a full window rebuild every frame. Removed the call from the Open hook (Options.lua). The refresh stays after Save and after the window closes (Drafts.lua), where it runs once. The earlier revert of the synchronous skin change was not the cause.
+
+## Update 05:45 ET: synchronous skin on group switch RE-APPLIED, with a re-entrancy guard
+The lag blamed on it earlier was the Open-hook loop (fixed in c9ead1b), so the revert was not justified. Re-applied in Skin.lua with ns.xuiDecorating so the skin pass can never trigger itself. Untested in game. If the lag returns: restore Skin.pre-syncskin2.20261102.lua.bak and run /xui perf (prints build ms + skin ms per switch).
