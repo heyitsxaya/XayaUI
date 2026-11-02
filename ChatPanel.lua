@@ -18,15 +18,17 @@ local function K(side, k) return side == "R" and ("r" .. k) or k end
 local BASE = {
     panelOn = false,
     panelAnchor = "BELOW",         -- BELOW | ABOVE the chat window
-    panelWidthMode = "CHAT",       -- CHAT (same width as the window) | CUSTOM | SCREEN (full screen width, needs a screen-edge snap)
-    panelWidth = 400, panelHeight = 22, panelGap = 2, panelOffX = 0, panelOffY = 0,
+    panelWidthMode = "CHAT",       -- older key: CHAT / SCREEN = resize to fit, CUSTOM = own length (now the panelMatch tick box)
+    panelWidth = 400, panelHeight = 22,    -- panelWidth = length when not resized to fit; panelHeight = thickness panelGap = 2, panelOffX = 0, panelOffY = 0,
     panelBg = true, panelBgR = 0, panelBgG = 0, panelBgB = 0, panelBgAlpha = 45,
     panelBorder = true, panelBorderR = 0, panelBorderG = 0, panelBorderB = 0,
     panelTextSize = 13, panelTextR = 1, panelTextG = 1, panelTextB = 1,
     panelValueR = 0.64, panelValueG = 0.21, panelValueB = 0.93,   -- numbers in friends etc. (purple, as in Xaya's screenshot)
     panelSlots = 3,                -- number of blocks, 1 to 20
     panelSizing = "EVEN",          -- EVEN (equal widths) | AUTO (width follows the text, blocks marked "fill" take what is left)
-    panelSnap = "NONE",            -- NONE (sits at the chat window) | TOP | BOTTOM edge of the screen
+    panelSnap = "CHAT",            -- CHAT (snapped to the chat window) | TOP | BOTTOM edge of the screen
+    -- panelChatSide (BOTTOM | TOP | LEFT | RIGHT of the chat window) and panelMatch (resize the bar to the chat window's width, or height
+    -- for LEFT / RIGHT) are read through ChatSide() / Match() below, which fall back to the older panelAnchor / panelWidthMode keys.
     panelVisibility = "ALWAYS",    -- ALWAYS | COMBAT | NOCOMBAT | MOUSEOVER
     panelHoverHL = false,          -- highlight the block under the mouse
     panelCustom1 = "", panelCustom2 = "", panelCustom3 = "",
@@ -69,6 +71,22 @@ local function BSet(s, side, i, f, v)
     s[key][i][f] = v
 end
 local function Count(s, side) return math.max(1, math.min(MAXN, tonumber(s[K(side, "panelSlots")]) or 3)) end
+local function Snap(s, side) local v = s[K(side, "panelSnap")]; return (v == "TOP" or v == "BOTTOM") and v or "CHAT" end
+local function ChatSide(s, side)
+    local v = s[K(side, "panelChatSide")]
+    if v == "TOP" or v == "BOTTOM" or v == "LEFT" or v == "RIGHT" then return v end
+    return s[K(side, "panelAnchor")] == "ABOVE" and "TOP" or "BOTTOM"
+end
+local function Match(s, side)
+    local v = s[K(side, "panelMatch")]
+    if v ~= nil then return v and true or false end
+    return s[K(side, "panelWidthMode")] ~= "CUSTOM"
+end
+local function Vert(s, side)    -- a bar standing beside the chat window: blocks are stacked top to bottom
+    if Snap(s, side) ~= "CHAT" then return false end
+    local c = ChatSide(s, side)
+    return c == "LEFT" or c == "RIGHT"
+end
 local function Materialize(s, side)    -- copy the older per-slot keys into the block table so moving / removing blocks keeps them
     for i = 1, MAXN do BSet(s, side, i, "src", BGet(s, side, i, "src")); BSet(s, side, i, "custom", BGet(s, side, i, "custom")) end
 end
@@ -252,31 +270,34 @@ local function Layout(side)
     if not (s and P.frame) then return end
     local n = Count(s, side)
     EnsureSlots(side, n)
-    local w = (P.frame:GetWidth() or 0)
+    local vert = Vert(s, side)
+    local len = (vert and P.frame:GetHeight() or P.frame:GetWidth()) or 0
+    local thick = (vert and P.frame:GetWidth() or P.frame:GetHeight()) or 0
     local inset = ToggleInset(s, side)
-    local usable = w - inset
-    local x = (side == "L") and inset or 0
-    local widths = {}
+    local usable = len - inset
+    local pos = (vert or side == "L") and inset or 0
+    local sizes = {}
     if usable > 0 then
         if Sizing(s, side) == "EVEN" then
-            for i = 1, n do widths[i] = usable / n end
+            for i = 1, n do sizes[i] = usable / n end
         else
             local nat, sum, fills = {}, 0, 0
             for i = 1, n do
-                local tw = P.slots[i].fs:GetStringWidth() or 0
+                local fs = P.slots[i].fs
+                local tw = (vert and fs:GetStringHeight() or fs:GetStringWidth()) or 0
                 nat[i] = math.max(16, tw + (BGet(s, side, i, "gapL") or 0) + (BGet(s, side, i, "gapR") or 0))
                 sum = sum + nat[i]
                 if BGet(s, side, i, "fill") then fills = fills + 1 end
             end
-            if sum >= usable then                    -- too wide: shrink every block by the same factor
-                for i = 1, n do widths[i] = nat[i] * usable / sum end
+            if sum >= usable then                    -- too long: shrink every block by the same factor
+                for i = 1, n do sizes[i] = nat[i] * usable / sum end
             else
                 local left = usable - sum
                 for i = 1, n do
                     local extra
                     if fills > 0 then extra = BGet(s, side, i, "fill") and left / fills or 0
                     else extra = left / n end        -- nothing marked "fill": spread what is left evenly
-                    widths[i] = nat[i] + extra
+                    sizes[i] = nat[i] + extra
                 end
             end
         end
@@ -285,20 +306,30 @@ local function Layout(side)
         local slot = P.slots[i]
         if slot then
             slot:ClearAllPoints()
-            if i <= n and widths[i] then
-                local sw = widths[i]
-                slot:SetPoint("TOPLEFT", P.frame, "TOPLEFT", x, 0)
-                slot:SetPoint("BOTTOMLEFT", P.frame, "BOTTOMLEFT", x, 0)
-                slot:SetWidth(sw)
-                x = x + sw
-                local gl, gr = BGet(s, side, i, "gapL") or 0, BGet(s, side, i, "gapR") or 0
+            if i <= n and sizes[i] then
+                local sz = sizes[i]
                 local fs = slot.fs
                 fs:ClearAllPoints()
-                fs:SetWidth(math.max(1, sw - gl - gr))
                 local al = BGet(s, side, i, "align")
-                if al == "LEFT" then fs:SetPoint("LEFT", slot, "LEFT", gl, 0); fs:SetJustifyH("LEFT")
-                elseif al == "RIGHT" then fs:SetPoint("RIGHT", slot, "RIGHT", -gr, 0); fs:SetJustifyH("RIGHT")
-                else fs:SetPoint("CENTER", slot, "CENTER", (gl - gr) / 2, 0); fs:SetJustifyH("CENTER") end
+                if vert then
+                    slot:SetPoint("TOPLEFT", P.frame, "TOPLEFT", 0, -pos)
+                    slot:SetPoint("TOPRIGHT", P.frame, "TOPRIGHT", 0, -pos)
+                    slot:SetHeight(sz)
+                    fs:SetWidth(math.max(1, thick - 6))
+                    if al == "LEFT" then fs:SetPoint("LEFT", slot, "LEFT", 3, 0); fs:SetJustifyH("LEFT")
+                    elseif al == "RIGHT" then fs:SetPoint("RIGHT", slot, "RIGHT", -3, 0); fs:SetJustifyH("RIGHT")
+                    else fs:SetPoint("CENTER", slot, "CENTER", 0, 0); fs:SetJustifyH("CENTER") end
+                else
+                    slot:SetPoint("TOPLEFT", P.frame, "TOPLEFT", pos, 0)
+                    slot:SetPoint("BOTTOMLEFT", P.frame, "BOTTOMLEFT", pos, 0)
+                    slot:SetWidth(sz)
+                    local gl, gr = BGet(s, side, i, "gapL") or 0, BGet(s, side, i, "gapR") or 0
+                    fs:SetWidth(math.max(1, sz - gl - gr))
+                    if al == "LEFT" then fs:SetPoint("LEFT", slot, "LEFT", gl, 0); fs:SetJustifyH("LEFT")
+                    elseif al == "RIGHT" then fs:SetPoint("RIGHT", slot, "RIGHT", -gr, 0); fs:SetJustifyH("RIGHT")
+                    else fs:SetPoint("CENTER", slot, "CENTER", (gl - gr) / 2, 0); fs:SetJustifyH("CENTER") end
+                end
+                pos = pos + sz
                 slot:Show()
             else
                 slot:Hide()
@@ -326,12 +357,16 @@ local function UpdateToggle(side)
     if not (s and P.toggle) then return end
     local t = P.toggle
     t:ClearAllPoints()
-    if side == "L" then
+    if Vert(s, side) then        -- a bar beside the chat: the toggle sits at its top end
+        t:SetPoint("TOPLEFT", P.frame, "TOPLEFT", 0, 0); t:SetPoint("TOPRIGHT", P.frame, "TOPRIGHT", 0, 0)
+        t:SetHeight(TOGGLE_W)
+    elseif side == "L" then
         t:SetPoint("TOPLEFT", P.frame, "TOPLEFT", 0, 0); t:SetPoint("BOTTOMLEFT", P.frame, "BOTTOMLEFT", 0, 0)
+        t:SetWidth(TOGGLE_W)
     else
         t:SetPoint("TOPRIGHT", P.frame, "TOPRIGHT", 0, 0); t:SetPoint("BOTTOMRIGHT", P.frame, "BOTTOMRIGHT", 0, 0)
+        t:SetWidth(TOGGLE_W)
     end
-    t:SetWidth(TOGGLE_W)
     t:SetShown(not s.cpHideToggles)
     local collapsed = CollapsedOf(side)
     local out = (side == "L") and "LEFT" or "RIGHT"          -- arrow when the window is showing: it will slide away this way
@@ -426,34 +461,36 @@ end
 local function Place(s, side, cf)
     local f = panels[side].frame
     f:ClearAllPoints()
-    local h = math.max(10, tonumber(s[K(side, "panelHeight")]) or 22)
+    local thick = math.max(10, tonumber(s[K(side, "panelHeight")]) or 22)
     local gap = tonumber(s[K(side, "panelGap")]) or 2
     local ox, oy = tonumber(s[K(side, "panelOffX")]) or 0, tonumber(s[K(side, "panelOffY")]) or 0
-    local snap = s[K(side, "panelSnap")]
-    local mode = s[K(side, "panelWidthMode")]
-    if snap == "TOP" or snap == "BOTTOM" then
+    local len = math.max(40, tonumber(s[K(side, "panelWidth")]) or 400)
+    local match = Match(s, side)
+    local snap = Snap(s, side)
+    if snap ~= "CHAT" then
         -- stuck to the screen edge: no longer follows the chat window
         f:SetPoint(snap, UIParent, snap, ox, oy)
-        local w = (mode == "CUSTOM") and math.max(40, tonumber(s[K(side, "panelWidth")]) or 400) or (UIParent:GetWidth() or 800)
-        f:SetSize(w, h)
+        f:SetSize(match and (UIParent:GetWidth() or 800) or len, thick)
         return
     end
-    local below = s[K(side, "panelAnchor")] ~= "ABOVE"
-    local fromPoint, toPoint, fromR, toR, y
-    if below then
-        fromPoint, fromR, toPoint, toR, y = "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT", -gap + oy
-    else
+    local cs = ChatSide(s, side)
+    if cs == "BOTTOM" then
+        f:SetPoint("TOPLEFT", cf, "BOTTOMLEFT", ox, -gap + oy)
+        if match then f:SetPoint("TOPRIGHT", cf, "BOTTOMRIGHT", ox, -gap + oy); f:SetHeight(thick) else f:SetSize(len, thick) end
+    elseif cs == "TOP" then
         -- above the window: clear the tab row too
         local tab = _G[(cf:GetName() or "ChatFrame1") .. "Tab"]
         local tabH = (tab and tab:GetHeight() or 24)
-        fromPoint, fromR, toPoint, toR, y = "BOTTOMLEFT", "BOTTOMRIGHT", "TOPLEFT", "TOPRIGHT", tabH + gap + oy
-    end
-    f:SetPoint(fromPoint, cf, toPoint, ox, y)
-    if mode == "CUSTOM" then
-        f:SetSize(math.max(40, tonumber(s[K(side, "panelWidth")]) or 400), h)
-    else
-        f:SetPoint(fromR, cf, toR, ox, y)
-        f:SetHeight(h)
+        local y = tabH + gap + oy
+        f:SetPoint("BOTTOMLEFT", cf, "TOPLEFT", ox, y)
+        if match then f:SetPoint("BOTTOMRIGHT", cf, "TOPRIGHT", ox, y); f:SetHeight(thick) else f:SetSize(len, thick) end
+    elseif cs == "LEFT" then
+        f:SetPoint("TOPRIGHT", cf, "TOPLEFT", -gap + ox, oy)
+        if match then f:SetPoint("BOTTOMRIGHT", cf, "BOTTOMLEFT", -gap + ox, oy); f:SetWidth(thick) else f:SetSize(thick, len) end
+    else   -- RIGHT: clear the chat's own side pieces and its collapse button
+        local x = gap + (ns.ChatDock_SideExtra and ns.ChatDock_SideExtra(cf) or 0) + (s.dockButton ~= false and 26 or 0) + ox
+        f:SetPoint("TOPLEFT", cf, "TOPRIGHT", x, oy)
+        if match then f:SetPoint("BOTTOMLEFT", cf, "BOTTOMRIGHT", x, oy); f:SetWidth(thick) else f:SetSize(thick, len) end
     end
 end
 
@@ -463,7 +500,7 @@ local function RefreshSide(side)
     local P = panels[side]
     local cf = WindowOf(side)
     local collapsed = CollapsedOf(side)
-    local snapped = s[K(side, "panelSnap")] == "TOP" or s[K(side, "panelSnap")] == "BOTTOM"
+    local snapped = Snap(s, side) ~= "CHAT"
     local off = (not s[K(side, "panelOn")]) or ((not cf) and not snapped)
         or (s[K(side, "panelHideWhenCollapsed")] and collapsed)
     if off then
@@ -523,19 +560,22 @@ local function BuildWindow()
     f:Add(CW.Note("Info bars made of blocks, under or above the chat windows (right-click a bar to open this). Changes apply immediately and are saved. Scroll with the mouse wheel.", 0.7, 0.7, 0.7), 42)
     f:Add(CW.Cycle("Editing", { { "L", "Left panel (main chat)" }, { "R", "Right panel" } }, function() return editSide end,
         function(v) editSide = v; f:RefreshAll() end), 20)
-    f:Add(CW.Note("The right panel sits under the chat window chosen as \"right chat window\" (chat tab > Panels). Without one it stays hidden unless it is snapped to a screen edge.", 0.6, 0.6, 0.6), 42)
+    f:Add(CW.Note("The right panel attaches to the chat window chosen as \"right chat window\" (chat tab > Panels). Without one it stays hidden unless it is snapped to a screen edge.", 0.6, 0.6, 0.6), 42)
     f:Add(check("Show this panel", "panelOn"), 20)
 
     f:Add(CW.Header("Bar"), 18)
     f:Add(CW.Cycle("Visibility", { { "ALWAYS", "Always" }, { "COMBAT", "In combat" }, { "NOCOMBAT", "Out of combat" }, { "MOUSEOVER", "Mouse over only" } },
         getv("panelVisibility"), setv("panelVisibility")), 20)
     f:Add(CW.Cycle("Block sizing", { { "EVEN", "Even split" }, { "AUTO", "Auto sized" } }, getv("panelSizing"), setv("panelSizing")), 20)
-    f:Add(CW.Cycle("Snap to screen edge", { { "NONE", "None (at the chat)" }, { "TOP", "Top of the screen" }, { "BOTTOM", "Bottom of the screen" } }, getv("panelSnap"), setv("panelSnap")), 20)
-    f:Add(CW.Cycle("Position at the chat", { { "BELOW", "Below the chat" }, { "ABOVE", "Above the chat" } }, getv("panelAnchor"), setv("panelAnchor")), 20)
-    f:Add(CW.Cycle("Width", { { "CHAT", "Same as the chat" }, { "CUSTOM", "Custom" }, { "SCREEN", "Full screen width" } }, getv("panelWidthMode"), setv("panelWidthMode")), 20)
-    f:Add(CW.Note("Full screen width and the screen-edge snap work together: snapped bars use the full screen width unless Width is Custom.", 0.6, 0.6, 0.6), 30)
-    f:Add(num("Custom width", "panelWidth", 40, 3000, 5), 20)
-    f:Add(num("Height", "panelHeight", 10, 80, 1), 20)
+    f:Add(CW.Cycle("Snaps to", { { "CHAT", "The chat window" }, { "TOP", "Top of the screen" }, { "BOTTOM", "Bottom of the screen" } },
+        function() return Snap(S(), editSide) end, setv("panelSnap")), 20)
+    f:Add(CW.Cycle("Side of the chat window", { { "BOTTOM", "Bottom" }, { "TOP", "Top" }, { "LEFT", "Left" }, { "RIGHT", "Right" } },
+        function() return ChatSide(S(), editSide) end, setv("panelChatSide")), 20)
+    f:Add(CW.Check("Resize the bar to fit (chat width for top / bottom, chat height for left / right; screen width at a screen edge)",
+        function() return Match(S(), editSide) end, function(v) setv("panelMatch")(v and true or false) end), 34)
+    f:Add(CW.Note("Left / right bars stack their blocks top to bottom. Off: the bar uses the length below.", 0.6, 0.6, 0.6), 30)
+    f:Add(num("Length (when not resized to fit)", "panelWidth", 40, 3000, 5), 20)
+    f:Add(num("Thickness (height; width for left / right bars)", "panelHeight", 10, 400, 1), 20)
     f:Add(num("Gap to the chat", "panelGap", -20, 60, 1), 20)
     f:Add(num("Nudge left / right", "panelOffX", -2000, 2000, 1), 20)
     f:Add(num("Nudge down / up", "panelOffY", -2000, 2000, 1), 20, 8)
@@ -634,6 +674,7 @@ local function BuildWindow()
         local pre = (editSide == "R") and "rpanel" or "panel"
         for k, v in pairs(ns.CHAT_DEFAULTS) do if k:sub(1, #pre) == pre and (editSide == "R" or k:sub(1, 6) ~= "rpanel") then s[k] = v end end
         s[K(editSide, "panelBlocks")] = nil
+        s[K(editSide, "panelChatSide")], s[K(editSide, "panelMatch")] = nil, nil
         editBlock = 1
         ns.ChatPanel_Refresh(); f:RefreshAll()
     end)
