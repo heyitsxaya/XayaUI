@@ -6,3 +6,5 @@ WoW cannot load SVG. The editable sources are the SVG files in `src/` (original 
     rsvg-convert -w 64 -h 64 src/plus.svg -o plus.png
 
 The icons are white on transparent; Notepad.lua tints them.
+
+The manifest does not list the PNGs: the device sync re-encodes images (same pixels, different bytes), so a byte checksum cannot verify them.
