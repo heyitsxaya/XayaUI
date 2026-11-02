@@ -4,3 +4,4 @@
 - Findings: per-trigger collapse already exists with the skin on (session-only); custom Lua precedent is Actions.lua (loadstring, pcall, stripped on import); no shared 'checkbox + inline dropdown' option builder exists yet.
 - Also found: device sync re-encodes PNGs (identical pixels, different bytes), so Media/UI/Notepad/*.png were removed from MANIFEST.md5.
 - Asked Xaya for scope before building. Nothing from these three requests is implemented.
+- 23:40 UTC bug report (Xaya): "condition modifications do not apply". Issue #260. Not reproduced; code path read, no defect found yet; waiting for which modifier and rule.
