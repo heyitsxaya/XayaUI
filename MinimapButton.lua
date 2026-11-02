@@ -138,7 +138,7 @@ local function BuildButton()
     b:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetSize(20, 20); b.bg:SetPoint("CENTER", 0, 1); b.bg:SetColorTexture(0.06, 0.06, 0.06, 0.9)
     b.icon = b:CreateTexture(nil, "ARTWORK"); b.icon:SetSize(18, 18); b.icon:SetPoint("CENTER", 0, 1)
-    b.icon:SetTexture(136243); b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)   -- file ID 136243 (Xaya, 2026-11-02); was Interface\Icons\INV_Misc_Note_01
+    b.icon:SetTexture(1390944); b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)   -- file ID 1390944 = the icon of Xaya's 'xayaui' macro (macros-cache.txt, 2026-11-02); 136243 was a cog, not it
     b.border = b:CreateTexture(nil, "OVERLAY"); b.border:SetSize(53, 53); b.border:SetPoint("TOPLEFT")
     b.border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
     b:SetScript("OnClick", function(_, btn)
