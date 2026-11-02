@@ -465,7 +465,7 @@ end
 -- the rows above keep AceGUI's chain. The band is laid out inside RefreshTree, right after the rows are rebuilt and resized,
 -- so no frame is ever drawn in the old position, and every refresh first puts the rows back on AceGUI's own chain so a
 -- recycled row can never keep a stale offset.
-local SEARCH_PAD = 36   -- room kept above the first row for the search box
+local SEARCH_PAD = 42   -- room kept above the first row for the search box (6 px of it is the gap between the box and the frame border)
 local function TopPad(w)
     local shown = (w.xuiSearchBox and w.xuiSearchBox:IsShown()) or (w.xuiSelBar and w.xuiSelBar:IsShown())
     return shown and SEARCH_PAD or 10
@@ -546,8 +546,8 @@ local function EnsureTreeSearch(w)
     if has and not sb and w.treeframe then
         sb = MakeSearchBox(w.treeframe)
         sb:SetFrameLevel(w.treeframe:GetFrameLevel() + 3)
-        sb:SetPoint("TOPLEFT", w.treeframe, "TOPLEFT", 12, -8)
-        sb:SetPoint("TOPRIGHT", w.treeframe, "TOPRIGHT", -12, -8)
+        sb:SetPoint("TOPLEFT", w.treeframe, "TOPLEFT", 12, -14)
+        sb:SetPoint("TOPRIGHT", w.treeframe, "TOPRIGHT", -12, -14)
         w.xuiSearchBox = sb
     end
     -- multi-select bar: while rules are selected it replaces the search box with "Delete N" / "Clear" right where the list is
@@ -557,8 +557,8 @@ local function EnsureTreeSearch(w)
         bar = CreateFrame("Frame", nil, w.treeframe)
         bar:SetHeight(22)
         bar:SetFrameLevel(w.treeframe:GetFrameLevel() + 4)
-        bar:SetPoint("TOPLEFT", w.treeframe, "TOPLEFT", 12, -7)
-        bar:SetPoint("TOPRIGHT", w.treeframe, "TOPRIGHT", -12, -7)
+        bar:SetPoint("TOPLEFT", w.treeframe, "TOPLEFT", 12, -13)
+        bar:SetPoint("TOPRIGHT", w.treeframe, "TOPRIGHT", -12, -13)
         bar.clr = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
         bar.clr:SetSize(58, 22); bar.clr:SetPoint("RIGHT", 0, 0); bar.clr:SetText("Clear")
         bar.clr:SetScript("OnClick", function() if ns.MultiClear then ns.MultiClear() end end)

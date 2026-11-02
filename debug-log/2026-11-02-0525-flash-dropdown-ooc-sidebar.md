@@ -29,3 +29,6 @@ Reported: clicking a top-row button other than Settings should leave the Setting
 ## Update 05:55 ET: New Rule keeps the open Rules sub-tab; right-click menu not opening
 1. New Rule always jumped to Smart Categories because the type picker only existed on that page. The picker rows are now also on the Loaded, Disabled and Drafts pages (Options.lua ns.PickerInto / ns.GoPicker); Cancel returns to the same sub-tab. Untested in game. Other top tabs still use Smart Categories.
 2. Sidebar right-click showed no menu (Xaya, 05:34). Cause NOT found. Suspect: my nested Paste Settings builder (a fault in it could abort the menu); I could not reproduce it with a mock menu. Mitigation: the paste menu is now built under pcall and prints "paste menu error: ..." instead of killing the menu. If the menu still does not open, need `/console scriptErrors 1`, right-click a row, and the error text.
+
+## Update: sidebar spacing (Xaya)
+Search box gets 6 px more room above it (Skin.lua SEARCH_PAD 36 -> 42, box 8 -> 14 px from the frame top; list moves down by the same amount). The divider lines on the spacer rows around NOT LOADED are no longer drawn (Options.lua; rows and height unchanged). Untested in game.

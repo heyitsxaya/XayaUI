@@ -5181,6 +5181,9 @@ local function PaintBanner(button)
     end
     -- blank divider row between All Rules and the Loaded / Not Loaded filters: a thin line, no text
     local isSpacer = button.uniquevalue and (tostring(button.uniquevalue):match("([^\001]+)$") or ""):match("^spacer") ~= nil
+    -- the two spacer rows around NOT LOADED keep their height but draw no line (Xaya, 2026-11-02)
+    local spKey = button.uniquevalue and (tostring(button.uniquevalue):match("([^\001]+)$") or "") or ""
+    if spKey == "spacer" or spKey == "spacer1" then isSpacer = false end
     if isSpacer then
         if not button.xuiDivider then
             button.xuiDivider = button:CreateTexture(nil, "ARTWORK")
