@@ -3364,9 +3364,9 @@ function ns.FolderContainerGroup(f)
         get = function() return f.cAlpha or 1 end, set = function(_, v) f.cAlpha = (v < 1) and v or nil; apply() end }
     g.args.scale = { type = "range", name = "Group scale", order = 3.01, min = 0.25, max = 3, step = 0.05,
         get = function() return f.cScale or 1 end, set = function(_, v) f.cScale = (v ~= 1) and v or nil; apply() end }
-    g.args.width = { type = "range", name = "Container width (0 = automatic)", order = 3.05, min = 0, max = 1500, step = 1,
+    g.args.width = { type = "range", name = "Container width (0 = no fixed size)", order = 3.05, min = 0, max = 1500, step = 1,
         get = function() return f.cW or 0 end, set = function(_, v) f.cW = (v > 0) and v or nil; apply() end }
-    g.args.height = { type = "range", name = "Container height (0 = automatic)", order = 3.06, min = 0, max = 1500, step = 1,
+    g.args.height = { type = "range", name = "Container height (0 = no fixed size)", order = 3.06, min = 0, max = 1500, step = 1,
         get = function() return f.cH or 0 end, set = function(_, v) f.cH = (v > 0) and v or nil; apply() end }
     g.args.clip = { type = "toggle", name = "Clip contents to the container size (hide anything outside it)", order = 3.07, width = "full",
         get = function() return f.cClip and true or false end, set = function(_, v) f.cClip = v and true or nil; apply() end }
@@ -3374,7 +3374,11 @@ function ns.FolderContainerGroup(f)
         get = function() return f.cStrata or "inherit" end, set = function(_, v) f.cStrata = (v ~= "inherit") and v or nil; apply() end }
     g.args.level = { type = "range", name = "Z-index within the layer (0 = automatic)", order = 3.3, min = 0, max = 200, step = 1,
         get = function() return f.cLevel or 0 end, set = function(_, v) f.cLevel = (v > 0) and v or nil; apply() end }
-    g.args.relH = { type = "header", name = "Position", order = 4 }
+    g.args.relH = { type = "header", name = "Group position", order = 4 }
+    g.args.moveOn = { type = "execute", order = 4.05, width = "double",
+        name = function() return ns.IsGroupUnlocked and ns.IsGroupUnlocked(f) and "Lock group (stop dragging)" or "Move group on screen (drag its outline)" end,
+        desc = "Shows one outline around this group's displays; drag it to set the X / Y offset below. The lock icon on the group's row in the sidebar does the same.",
+        func = function() if ns.SetGroupUnlocked then ns.SetGroupUnlocked(f, not ns.IsGroupUnlocked(f)) end; Notify() end }
     g.args.rel = { type = "select", name = "Relative to", order = 4.1, width = "double", values = RV, sorting = RELS,
         get = function() return f.cRel or "screen" end, set = function(_, v) f.cRel = (v ~= "screen") and v or nil; apply() end }
     g.args.relName = { type = "input", name = "Frame name", order = 4.2, width = "double", hidden = function() return f.cRel ~= "custom" end,
@@ -3576,16 +3580,16 @@ local function BuildFolder(k, f)
     local container = g.args.container
     local dispFromContainer = {}
     if container and container.args then
-        for _, k in ipairs({ "alpha", "scale", "strata", "level", "relH", "rel", "relName", "point", "relPoint", "x", "y" }) do
+        for _, k in ipairs({ "alpha", "scale", "strata", "level" }) do   -- position (relative to, anchor, X / Y) stays on the Group tab with the container
             if container.args[k] then dispFromContainer[k] = container.args[k]; container.args[k] = nil end
         end
     end
     local isVisual = function() return ns.KindHas({ folder = f.id }, "visual") end
     local groupArgs = g.args
     local dispArgs = take({ "arrange", "applyText" })
-    dispArgs.placement = { type = "group", inline = true, order = 1, name = "Opacity, Scale, Layer & Position", args = dispFromContainer }
+    dispArgs.placement = { type = "group", inline = true, order = 1, name = "Opacity, Scale & Layer", args = dispFromContainer }
     dispArgs.note = { type = "description", order = 0, width = "full", fontSize = "small",
-        name = "Display settings for every display inside this group and its nested groups: opacity, scale, layer (frame strata), position, alignment, and shared text formatting. Tinting / color for a whole group is not built yet." }
+        name = "Display settings for every display inside this group and its nested groups: opacity, scale, layer (frame strata), alignment, and shared text formatting. The group's own position is on the Group tab. Tinting / color for a whole group is not built yet." }
     local loadArgs = { override = take({ "loadOverride" }).loadOverride, conds = ns.FolderLoadConditions(f) }
     local lock = function() return ns.IsEditLocked({ folder = f.id }) end
     ns.LockArgs(groupArgs, lock); ns.LockArgs(dispArgs, lock); ns.LockArgs(loadArgs, lock)
