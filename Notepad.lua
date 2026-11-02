@@ -15,7 +15,7 @@
 local ADDON, ns = ...
 
 local TITLE_H = 20
-local TB_H, TB_W, BTN_W = 20, 38, 32   -- toolbar thickness (horizontal), width (vertical), button width (horizontal)
+local TB_H, TB_W, BTN_W = 20, 38, 26   -- toolbar thickness (horizontal), width (vertical), button width (horizontal)
 local FB_H, FMT_MINW = 20, 262         -- format bar height, minimum box width while it is shown
 local MAX_CHARS = 8000                 -- per note
 local IDLE_SECS = 4                    -- pause in typing that saves a version
@@ -370,6 +370,45 @@ local BUTTONS = {
     { "More", "Share this note to chat, export notes as text, import notes", function(self) if ns.NotepadShare_Menu then ns.NotepadShare_Menu(self) end end },
 }
 
+-- Toolbar icons are drawn with lines and small squares (no font glyphs and no texture files, so they look the same on every client).
+-- Coordinates are pixels from the middle of the button; each icon fits in about 10 x 10.
+local function Pt(a, r) return r * math.cos(math.rad(a)), r * math.sin(math.rad(a)) end
+local ICONS = {
+    New = function(L) L(-4, 0, 4, 0, 1.6); L(0, -4, 0, 4, 1.6) end,                                       -- plus sign
+    Dup = function(L)                                                                                     -- two pages
+        L(-4, -2, -4, 5); L(-4, 5, 1, 5); L(1, 5, 1, 2)                                                   -- the page behind (its visible edges)
+        L(-1, 2, 5, 2); L(5, 2, 5, -5); L(5, -5, -1, -5); L(-1, -5, -1, 2)                                -- the page in front
+    end,
+    Del = function(L)                                                                                     -- trash bin
+        L(-5, 3, 5, 3, 1.4); L(-2, 3, -2, 5); L(-2, 5, 2, 5); L(2, 5, 2, 3)                               -- lid and handle
+        L(-4, 3, -3, -5); L(-3, -5, 3, -5); L(3, -5, 4, 3); L(-1, 1, -1, -3); L(1, 1, 1, -3)              -- body and slats
+    end,
+    ["<"] = function(L) L(1.5, 3.5, -1.5, 0, 1.4); L(-1.5, 0, 1.5, -3.5, 1.4) end,                        -- small arrows
+    [">"] = function(L) L(-1.5, 3.5, 1.5, 0, 1.4); L(1.5, 0, -1.5, -3.5, 1.4) end,
+    Hist = function(L)                                                                                    -- clock with a counter-clockwise arrow (as in Chrome's history icon)
+        local r, px, py = 5, nil, nil
+        for i = 0, 10 do
+            local x, y = Pt(150 - i * 30, r)
+            if px then L(px, py, x, y) end
+            px, py = x, y
+        end
+        local tx, ty = Pt(150, r)                                                                         -- arrowhead at the start of the arc
+        local back = math.rad(150 - 90 + 180)                                                             -- the direction back along the arc
+        for _, d in ipairs({ -40, 40 }) do
+            local a = back + math.rad(d)
+            L(tx, ty, tx + 3 * math.cos(a), ty + 3 * math.sin(a))
+        end
+        L(0, 3, 0, 0); L(0, 0, 2.5, 0)                                                                    -- clock hands
+    end,
+    List = function(L, Sq)                                                                                -- bullet list
+        for _, y in ipairs({ 3, 0, -3 }) do Sq(-5, y, 2); L(-2, y, 5, y, 1.4) end
+    end,
+    Fmt = function(L)                                                                                     -- underlined A
+        L(-4, -3, 0, 4.5, 1.4); L(0, 4.5, 4, -3, 1.4); L(-2.2, -1, 2.2, -1, 1.2); L(-5, -5.5, 5, -5.5, 1.2)
+    end,
+    More = function(L) L(-4.5, 3, 4.5, 3, 1.6); L(-4.5, 0, 4.5, 0, 1.6); L(-4.5, -3, 4.5, -3, 1.6) end,   -- hamburger menu
+}
+
 local function BuildToolbar(f)
     local tb = CreateFrame("Frame", nil, f)
     tb.bg = tb:CreateTexture(nil, "BACKGROUND"); tb.bg:SetAllPoints(); tb.bg:SetColorTexture(0.1, 0.1, 0.1, 0.9)
@@ -378,7 +417,19 @@ local function BuildToolbar(f)
         local b = CreateFrame("Button", nil, tb)
         b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(); b.bg:SetColorTexture(0.18, 0.18, 0.18, 0.9)
         b.hl = b:CreateTexture(nil, "HIGHLIGHT"); b.hl:SetAllPoints(); b.hl:SetColorTexture(0.2, 0.7, 1, 0.35)
-        b.fs = b:CreateFontString(nil, "OVERLAY"); b.fs:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE"); b.fs:SetPoint("CENTER"); b.fs:SetText(def[1])
+        b.icon = {}
+        local function L(x1, y1, x2, y2, th)
+            local ln = b:CreateLine(nil, "OVERLAY")
+            ln:SetThickness(th or 1.2); ln:SetColorTexture(0.92, 0.92, 0.92, 1)
+            ln:SetStartPoint("CENTER", b, x1, y1); ln:SetEndPoint("CENTER", b, x2, y2)
+            b.icon[#b.icon + 1] = ln
+        end
+        local function Sq(x, y, size)
+            local t = b:CreateTexture(nil, "OVERLAY")
+            t:SetColorTexture(0.92, 0.92, 0.92, 1); t:SetSize(size, size); t:SetPoint("CENTER", b, "CENTER", x, y)
+            b.icon[#b.icon + 1] = t
+        end
+        if ICONS[def[1]] then ICONS[def[1]](L, Sq) end
         b:SetScript("OnClick", def[3])
         b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:SetText(def[2]); GameTooltip:Show() end)
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
