@@ -641,5 +641,6 @@ function ns.BuildChatTab(Notify)
     for i, name in ipairs(ChannelNames()) do chatReskin.args.alerts.args["chan_" .. name] = chanSound(name, 31 + i) end
     if ns.ChatDock_Options then chatReskin.args.dock = ns.ChatDock_Options(Notify) end
     if ns.ChatPanels_Options then chatReskin.args.panels = ns.ChatPanels_Options(Notify) end
+    if ns.ChatPrivacy_Options then chatReskin.args.privacy = ns.ChatPrivacy_Options(Notify) end
     return chatReskin
 end

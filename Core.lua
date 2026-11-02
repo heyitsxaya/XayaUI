@@ -630,6 +630,8 @@ SlashCmdList["XAYAUI"] = function(msg)
         end
     elseif cmd == "chat" then
         if ns.ChatReskin_Debug then ns.ChatReskin_Debug() end
+    elseif cmd == "privacy" then
+        if ns.ChatPrivacy_Set and ns.chatDB then ns.ChatPrivacy_Set(not ns.chatDB.privOn); ns.Print("chat privacy cover " .. (ns.chatDB.privOn and "ON" or "OFF")) end
     elseif cmd == "data" then
         if ns.DataPanels_OpenSettings then ns.DataPanels_OpenSettings() end
     elseif cmd == "panel" then
@@ -645,6 +647,6 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif cmd == "bug" then
         if ns.ShowBugReport then ns.ShowBugReport() end
     else
-        ns.Print("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui panel (chat info bar settings) | /xui data (custom data panels and bars) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media")
+        ns.Print("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui panel (chat info bar settings) | /xui data (custom data panels and bars) | /xui privacy (cover or show the chat) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media")
     end
 end
