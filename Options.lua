@@ -2767,13 +2767,25 @@ local function CreateRuleOfType(typ, fid)
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(r))
     ns.pickOrigin = nil
 end
+function ns.GoPicker()   -- show the picker page of the sub-tab the New Rule button was pressed in
+    local sub = ns.pickSub
+    if sub == "enabledTab" then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "enabledTab", "loaded")
+    elseif sub == "disabledTab" then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "disabledTab", "disabled")
+    elseif sub == "draftsTab" then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "draftsTab")
+    else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "smartTab", "all") end
+end
 local function StartNewRule(fid)
     if ns.RuleKind({ folder = fid }) == "sound" then CreateRuleOfType(nil, fid); return end
-    if not picker then ns.pickOrigin = ns.CurrentTab() end
+    if not picker then
+        ns.pickOrigin = ns.CurrentTab()
+        -- the picker opens in the Rules sub-tab that is open now (Enabled / Drafts / Disabled keep their tab; anything else uses Smart Categories)
+        local sub = (ns.pickOrigin == "cooldowns" or ns.pickOrigin == "smartcat") and ns.CurrentSub() or nil
+        ns.pickSub = (sub == "enabledTab" or sub == "draftsTab" or sub == "disabledTab" or sub == "smartTab") and sub or nil
+    end
     picker = { folder = fid }
     if ns.pageOpen == "settings" then ns.pageOpen = nil; ns.infoOpen = false end   -- a toolbar button other than Settings leaves the Settings pages
     Notify()
-    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "smartTab", "all")
+    ns.GoPicker()
 end
 -- Auto-populate: one rule per spell of the current class / spec whose base cooldown is >= the folder's threshold.
 -- Rules already in this folder (or its subfolders) for the same spell are skipped, so it is safe to run again after a
@@ -3756,11 +3768,27 @@ local function BuildOptions()
         all.args.pickCustom = Entry(0.64, 1669494, "Custom", "A blank rule with no display, sound, or cues", "custom")
         all.args.pickImport = Entry(0.66, TI("import", "INV_Scroll_03"), "Import", "Import from an encoded string (opens the Profiles tab)", "import")
         all.args.pickGap = { type = "description", order = 0.85, width = "full", fontSize = "large", name = " \n ", hidden = function() return not picker end }   -- empty rows: keeps Cancel clear of the last row
-        all.args.pickCancel = { type = "execute", order = 0.9, name = "Cancel", width = "half", func = function() picker = nil; local o = ns.pickOrigin; ns.pickOrigin = nil; Notify(); ns.GoHome(o) end }
+        all.args.pickCancel = { type = "execute", order = 0.9, name = "Cancel", width = "half", func = function() picker = nil; local o = ns.pickOrigin; ns.pickOrigin = nil; Notify(); if ns.pickSub then ns.GoPicker() else ns.GoHome(o) end; ns.pickSub = nil end }
         for _, k in ipairs({ "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickSound", "pickDGroup", "pickSGroup", "pickCustom", "pickImport", "pickCancel" }) do
             all.args[k].hidden = function() return not picker end
         end
     end
+    -- The picker also lives on the Loaded, Disabled and Drafts pages, so New Rule keeps the tab it was pressed in. The same row tables are
+    -- shared (their hidden functions only look at `picker`); the page's other non-group entries hide while the picker is open.
+    ns.PickerInto = function(args)
+        if not (args and all.args.pickIcon) then return end
+        for _, k in ipairs({ "pickerHdr", "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickDGroup", "pickSound", "pickSGroup", "pickCustom", "pickImport", "pickGap", "pickCancel" }) do
+            args[k] = all.args[k]
+        end
+        for k, a in pairs(args) do
+            if type(a) == "table" and a.type ~= "group" and not tostring(k):match("^pick") and not a.xuiPickWrap then
+                a.xuiPickWrap = true
+                local orig = a.hidden
+                a.hidden = function(...) if picker then return true end; if type(orig) == "function" then return orig(...) end; return orig end
+            end
+        end
+    end
+    ns.PickerInto(loadedArgs); ns.PickerInto(disabledArgs)
     -- Rules is a tab group with its own row of sub-tabs (2026-11-01). Each sub-tab keeps the same root rows as before (Loaded / Not Loaded,
     -- All Rules, a Disabled root), so every row path below the sub-tab is unchanged.
     local enabledTab = { type = "group", name = "Enabled", order = 1, childGroups = "tree", args = {
@@ -3775,7 +3803,7 @@ local function BuildOptions()
         } }
     local smartTab = { type = "group", name = "Smart Categories", order = 3, childGroups = "tree", args = { all = all } }
     local draftsTab = ns.BuildDraftsPage and ns.BuildDraftsPage() or nil
-    if draftsTab then draftsTab.order = 2; draftsTab.hidden = nil; draftsTab.name = "Drafts" end
+    if draftsTab then draftsTab.order = 2; draftsTab.hidden = nil; draftsTab.name = "Drafts"; ns.PickerInto(draftsTab.args) end
     local disabledTab = { type = "group", name = "Disabled", order = 4, childGroups = "tree", args = {
         disabled = { type = "group", order = 1, childGroups = "tree",
             name = function() return "DISABLED (" .. nDisabled .. ")" end, args = disabledArgs },
@@ -4844,7 +4872,8 @@ local function AddPasteMenu(root, label, getTargets, describe)
     local sub = root:CreateButton(label)
     local refresh = MenuResponse and MenuResponse.Refresh
     sub:CreateTitle(ruleClip and ("Copied: " .. tostring(ruleClip.name)) or "Nothing copied yet (use Copy Settings)")
-    ns.PasteMenuBuild(sub, ns.PASTE_TREE, refresh)
+    local okP, errP = pcall(ns.PasteMenuBuild, sub, ns.PASTE_TREE, refresh)   -- a fault in the paste tree must never take the whole right-click menu down
+    if not okP then ns.Print("paste menu error: " .. tostring(errP)) end
     sub:CreateDivider()
     sub:CreateButton("Paste Selected Sections", function()
         if not ruleClip then ns.Print("nothing copied yet: right-click a rule and choose Copy Settings first") return end

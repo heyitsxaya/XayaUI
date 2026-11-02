@@ -25,3 +25,7 @@ The lag blamed on it earlier was the Open-hook loop (fixed in c9ead1b), so the r
 
 ## Update 05:50 ET: toolbar buttons leave Settings (Xaya)
 Reported: clicking a top-row button other than Settings should leave the Settings pages. New Rule did not (Options.lua StartNewRule never cleared ns.pageOpen = "settings", and the Rules tree stays hidden while it is set). Fixed: it clears it. Import / Export / Recycle Bin already set ns.pageOpen to their own page; untested in game. Also confirmed by Xaya: tab / tree skin flash fixed, UI snappier.
+
+## Update 05:55 ET: New Rule keeps the open Rules sub-tab; right-click menu not opening
+1. New Rule always jumped to Smart Categories because the type picker only existed on that page. The picker rows are now also on the Loaded, Disabled and Drafts pages (Options.lua ns.PickerInto / ns.GoPicker); Cancel returns to the same sub-tab. Untested in game. Other top tabs still use Smart Categories.
+2. Sidebar right-click showed no menu (Xaya, 05:34). Cause NOT found. Suspect: my nested Paste Settings builder (a fault in it could abort the menu); I could not reproduce it with a mock menu. Mitigation: the paste menu is now built under pcall and prints "paste menu error: ..." instead of killing the menu. If the menu still does not open, need `/console scriptErrors 1`, right-click a row, and the error text.
