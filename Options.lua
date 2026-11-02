@@ -2823,10 +2823,10 @@ ns.UI.Import = function() PickType("import") end
 -- toolbar buttons (Skin.lua): Export shares the Profiles page with Import; Creator and Settings open their own page
 ns.UI.Export = function() PickType("import") end
 function ns.OpenPage(key)
-    if key == "drafts" then   -- Drafts is a sub-tab of Rules now, not a page of its own
+    if key == "drafts" or key == "creator" then   -- Drafts and the Class/Spec Rule Creator are sub-tabs of Rules now, not pages of their own
         ns.pageOpen = nil; ns.infoOpen = false
         Notify()
-        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "draftsTab")
+        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", key == "drafts" and "draftsTab" or "creatorTab")
         return
     end
     ns.pageOpen = key; ns.infoOpen = false
@@ -3513,8 +3513,11 @@ local function BuildOptions()
         info = { type = "description", order = 1, width = "full", fontSize = "medium",
             name = "Recycle Bin: not built yet (GitHub issue #88). Deleted rules and groups are still removed for good when you confirm the delete." },
         } }
+    -- Class/Spec Rule Creator is the last sub-tab; Skin.lua pins it to the far right of the tab row (2026-11-01)
+    local creatorTab = BuildClassCreator()
+    creatorTab.order = 9; creatorTab.hidden = nil; creatorTab.name = "Class/Spec Rule Creator"
     local track = { type = "group", name = "Rules", order = 1, childGroups = "tab", args = {
-        enabledTab = enabledTab, draftsTab = draftsTab, smartTab = smartTab, disabledTab = disabledTab } }
+        enabledTab = enabledTab, draftsTab = draftsTab, smartTab = smartTab, disabledTab = disabledTab, creatorTab = creatorTab } }
 
     ---------------------------------------------------------- Buff Bars
     local allBars = {
@@ -3718,7 +3721,7 @@ local function BuildOptions()
     settings.hidden = function() return ns.SkinRows and ns.SkinRows() and true or false end   -- skin off: the old single Settings tab
     track.hidden = function() return SettingsOn() and true or false end
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, recyclebin = binTab, creator = BuildClassCreator(), qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = settings, set_ui = setUi, set_debug = setDbg } }
+        args = { cooldowns = track, recyclebin = binTab, qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = settings, set_ui = setUi, set_debug = setDbg } }
     pcall(ns.SmartOpen)
     pcall(ns.ApplyTreeFilter, out)
     if ns.SkinRows and ns.SkinRows() then pcall(ns.InfoPass, out) end   -- the info icons are part of the skin
@@ -3757,7 +3760,7 @@ function ns.ToggleUI()
             firstOpen = false
             local ui = CueRulesDB and CueRulesDB.ui
             local sub = ui and ui.rulesSub
-            if sub ~= "smartTab" and sub ~= "draftsTab" and sub ~= "disabledTab" then sub = "enabledTab" end   -- the last sub-tab used
+            if sub ~= "smartTab" and sub ~= "draftsTab" and sub ~= "disabledTab" and sub ~= "creatorTab" then sub = "enabledTab" end   -- the last sub-tab used
             pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", sub)
         end
     end

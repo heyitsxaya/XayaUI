@@ -212,10 +212,9 @@ local function EnsureToolbar(of)
         nr:SetPoint("LEFT", bar, "LEFT", 0, 0)
         local im = ToolButton(bar, "Interface\\Icons\\INV_Scroll_03", "Import", function() if ns.UI and ns.UI.Import then ns.UI.Import() end end)
         im:SetPoint("LEFT", nr, "RIGHT", 14, 0)
-        local cr = ToolButton(bar, "Interface\\Icons\\INV_Misc_Book_09", "Class/Spec Rule Creator", function() if ns.UI and ns.UI.Creator then ns.UI.Creator() end end)
-        cr:SetPoint("LEFT", im, "RIGHT", 14, 0)
+        -- no Class/Spec Rule Creator button: it is the last sub-tab under Rules now, at the far right of the tab row (2026-11-01)
         local ex = ToolButton(bar, 132763, "Export", function() if ns.UI and ns.UI.Export then ns.UI.Export() end end)
-        ex:SetPoint("LEFT", cr, "RIGHT", 14, 0)
+        ex:SetPoint("LEFT", im, "RIGHT", 14, 0)
         -- no Drafts button: Drafts is a sub-tab under Rules now (2026-11-01). Recycle Bin sits next to Export.
         local rb = ToolButton(bar, "Interface\\AddOns\\XayaUI\\Media\\UI\\xui_recyclebin.tga", "Recycle Bin", function() if ns.UI and ns.UI.RecycleBin then ns.UI.RecycleBin() end end)
         rb:SetPoint("LEFT", ex, "RIGHT", 14, 0)
@@ -378,6 +377,16 @@ local function SkinTabGroup(w)
             Flat(tab, TC(tcl, "bg", { 0.03, 0.03, 0.03, 0.7 }), TC(tcl, "border", { 0.22, 0.22, 0.22, 1 }), { 9, 9, 6, 3 })
             local fs = tab:GetFontString()
             if fs then local c = TC(tcl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]); TF(fs) end
+        end
+    end
+    -- Rules > Class/Spec Rule Creator: pinned to the far right corner of the tab row, away from Enabled | Drafts | Smart Categories | Disabled
+    for _, tab in ipairs(w.tabs or {}) do
+        if tab:IsShown() and tab.value == "creatorTab" and w.frame then
+            local top, ftop = tab:GetTop(), w.frame:GetTop()
+            if top and ftop then
+                tab:ClearAllPoints()
+                tab:SetPoint("TOPRIGHT", w.frame, "TOPRIGHT", 0, top - ftop)
+            end
         end
     end
     OnRelease(w, function(self)
