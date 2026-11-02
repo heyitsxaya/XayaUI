@@ -2284,13 +2284,12 @@ function BuildClassCreator()
         apTalents = { type = "toggle", order = 0.3, width = "full", name = "Include talents I have not picked (rule only loads when the talent is known)",
             get = function() return ns.AutoCfg().talents ~= false end,
             set = function(_, v) ns.AutoCfg().talents = v and true or false; ns.MarkDirty(); Notify() end },
-        apClass = { type = "execute", order = 0.45, width = 1.6, xuiCenter = true, name = "Auto-populate for my class (all specs)",
+        apClass = { type = "execute", order = 0.58, width = 1.6, xuiCenter = true, name = "Auto-populate for my class (all specs)",
             desc = "Runs the auto-populate for every spec of your class in one go.",
             func = function()
                 local _, m = ns.ClassAutoPopulateAllSpecs(ns.AutoCfg().talents ~= false)
                 creatorMsg = m; ns.Print("auto-populate: " .. tostring(m)); Notify()
             end },
-        apBreak = { type = "description", order = 0.46, width = "full", fontSize = "small", name = " " },   -- one button per row: each break line ends a row
         talHdr = { type = "header", order = 0.6, name = "All talents (every class and spec)" },
         talInfo = { type = "description", order = 0.61, width = "full", fontSize = "medium",
             name = function() return (ns.TalentStatus and ns.TalentStatus() or "") .. " Reads every class, spec, and hero talent tree from the game (not from a fixed list), so it follows the current patch. In chat: /xui talents, /xui talents status, /xui talents <name>." end },
