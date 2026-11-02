@@ -809,7 +809,7 @@ ns.PASTE_VIS = {
     vBorder  = { "border", "bg" },
     vOnBar   = { "requireOnBar" },
 }
-ns.PASTE_VIS_SKIP = { text = true, count = true, absorb = true, x = true, y = true }
+ns.PASTE_VIS_SKIP = { text = true, count = true, absorb = true, x = true, y = true, anchor = true, anchorPlace = true }
 ns.PASTE_TREE = {
     { "Triggers", {
         { "Cooldown trigger", {
@@ -1673,8 +1673,21 @@ local function BuildRule(i, rule)
     ns.GatePane(rule, opacity.args, "fill", "Wipe options", 21.5, function() return FL.enabled end, { "fillDir", "fillRev", "fillMax", "fillMin" })
     opacity.args.ovAlpha.disabled = nil
     opacity.args.ovAlpha.hidden = function() return not OV.enabled end   -- belongs to the overlay switch, which lives in the Texture section
+    local ANCHOR_VALUES = { TOPLEFT = "Top left", TOP = "Top", TOPRIGHT = "Top right", LEFT = "Left", CENTER = "Center", RIGHT = "Right",
+        BOTTOMLEFT = "Bottom left", BOTTOM = "Bottom", BOTTOMRIGHT = "Bottom right" }
+    local ANCHOR_ORDER = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }
     local pos = {
-        type = "group", inline = true, name = "Position (Offset From Screen Center)", order = 20, args = {
+        type = "group", inline = true, name = "Position (Offset From the Anchor)", order = 20, args = {
+            anchor = { type = "select", name = "Anchor (X / Y are measured from this point)", order = 0.5, width = "double",
+                desc = "The point of the screen, or of this rule's group container, that X and Y are measured from. Changing it keeps the display exactly where it is and recalculates X / Y. Ignored while the display is snapped to a game frame, and in dynamic groups.",
+                values = ANCHOR_VALUES, sorting = ANCHOR_ORDER,
+                get = function() return V.anchor or "CENTER" end,
+                set = function(_, val) ns.SetVisualAnchor(rule, val, nil); ns.MarkDirty(); Notify() end },
+            anchorPlace = { type = "select", name = "Place the display", order = 0.6, width = "double",
+                desc = "Inside: the display's matching point sits on the anchor, flush inside the box (bottom left anchor: the display's bottom left corner). Outside: the display's opposite point sits on the anchor, so the display lies outside the box next to that edge or corner. Center is the same either way.",
+                values = { inner = "Inside the anchor point", outer = "Outside the anchor point" }, sorting = { "inner", "outer" },
+                get = function() return V.anchorPlace == "outer" and "outer" or "inner" end,
+                set = function(_, val) ns.SetVisualAnchor(rule, nil, val); ns.MarkDirty(); Notify() end },
             x = Rng(V, "x", "X", 1, -1200, 1200, 1, on),
             y = Rng(V, "y", "Y", 2, -800, 800, 1, on),
             unlock = { type = "execute", order = 3, width = "double",
@@ -1853,8 +1866,8 @@ local function BuildRule(i, rule)
         desc = "Adds a second texture layer on top of this one that you can tint separately." })
     overlay.args.enabled = nil
     -- Position is its own collapsible section (between Texture and Overlay Layer), no longer inside the Texture box
-    pos.args.x.order, pos.args.y.order, pos.args.unlock.order = 1, 2, 3
-    local posArgs = { x = pos.args.x, y = pos.args.y, unlock = pos.args.unlock }
+    pos.args.x.order, pos.args.y.order, pos.args.unlock.order = 3, 4, 5
+    local posArgs = { anchor = pos.args.anchor, anchorPlace = pos.args.anchorPlace, x = pos.args.x, y = pos.args.y, unlock = pos.args.unlock }
     display.args.trigger.order = 0
     -- Color & Blend (20-29) goes to Color & Transparency; Fade / Opacity / Flash (30-39) and Glow & Outline (40-49) live under Animation Options
     -- Overlay Layer: no collapse arrow of its own any more (it sits inside Animation Options, which collapses), and it comes last,
@@ -1906,7 +1919,7 @@ local function BuildRule(i, rule)
             get = function() return ns.previewPaused end,
             set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
         texture = Sub("texture", "Texture", 1, tex.args),
-        position = Sub("position", "Position (Offset From Screen Center)", 1.5, posArgs),
+        position = Sub("position", "Position (Offset From the Anchor)", 1.5, posArgs),
         anim = Sub("anim", "Animation Options", 2, animArgs),
         opacity = Sub("opacity", "Color & Transparency", 3, colorArgs) }
     local soundEnable = sound.args.soundEnabled
@@ -1940,7 +1953,7 @@ local function BuildRule(i, rule)
     actions.xuiParts = {
         tex = tex.args,
         colorSub = Sub("cq_color", "Color & Transparency", 1, colorArgs),
-        posSub = Sub("cq_pos", "Position (Offset From Screen Center)", 1, posArgs),
+        posSub = Sub("cq_pos", "Position (Offset From the Anchor)", 1, posArgs),
         animSub = Sub("cq_anim", "Animation Options", 1, animArgs),
         textBody = { dur = Sub("cq_dur", "Buff Duration Text", 1, durArgs), cnt = Sub("cq_cnt", "Stacks / Charges Count", 2, cntArgs), abs = Sub("cq_abs", "Shield / Absorb Amount", 3, absArgs) },
         soundBody = soundBody,
@@ -3416,7 +3429,11 @@ function ns.FolderArrangeGroup(f)
     local function Act(what, fn)
         local l = items()
         if #l < 2 then ns.Print("a group needs at least two displays to " .. what:lower()); return end
-        fn(l); done(#l, what)
+        -- the tools work on center offsets; each display's own anchor is converted in and out so mixed anchors line up correctly
+        for _, r in ipairs(l) do local cx, cy = ns.VisualCenterOffset(r); r.visual.x, r.visual.y = cx, cy end
+        fn(l)
+        for _, r in ipairs(l) do ns.SetVisualCenterOffset(r, r.visual.x, r.visual.y) end
+        done(#l, what)
     end
     local function dims(r) local v = r.visual; return tonumber(v.x) or 0, tonumber(v.y) or 0, tonumber(v.w) or 0, tonumber(v.h) or 0 end
     local function alignX(mode) Act("Align", function(l)

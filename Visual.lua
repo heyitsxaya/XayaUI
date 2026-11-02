@@ -693,6 +693,48 @@ local function SnapFrame(v)
     end
 end
 -- one place decides where a display is anchored: to its snap target when it has one, else to its container
+-- Anchors: a display's X / Y are measured from one point of its parent (the screen, or its group's container box). v.anchor is that point
+-- (nil = CENTER). Inner (default) puts the display's own matching point on it, flush inside the box; outer (v.anchorPlace = "outer") puts the
+-- display's OPPOSITE point there, so the display sits outside the box. Ignored while snapped to a Blizzard frame and in dynamic groups.
+local ANCH = { TOPLEFT = { 0, 1 }, TOP = { 0.5, 1 }, TOPRIGHT = { 1, 1 }, LEFT = { 0, 0.5 }, CENTER = { 0.5, 0.5 }, RIGHT = { 1, 0.5 },
+    BOTTOMLEFT = { 0, 0 }, BOTTOM = { 0.5, 0 }, BOTTOMRIGHT = { 1, 0 } }
+local function AnchorPts(v)   -- the point on the parent, the point on the display
+    local a = ANCH[v.anchor] and v.anchor or "CENTER"
+    return a, (v.anchorPlace == "outer") and OPP[a] or a
+end
+local function VisDims(rule)   -- display size and parent size, in the parent's units
+    local v = rule.visual
+    local parent = ParentFor(rule)
+    return math.max(8, v.w or 128), math.max(8, v.h or 128), (parent.GetWidth and parent:GetWidth()) or 0, (parent.GetHeight and parent:GetHeight()) or 0
+end
+-- where the display's CENTER is, as an offset from the parent's CENTER, whatever the anchor is
+function ns.VisualCenterOffset(rule)
+    local v = rule.visual
+    local a, f = AnchorPts(v)
+    local w, h, pw, ph = VisDims(rule)
+    local A, F = ANCH[a], ANCH[f]
+    return (v.x or 0) - (F[1] - 0.5) * w + (A[1] - 0.5) * pw, (v.y or 0) - (F[2] - 0.5) * h + (A[2] - 0.5) * ph
+end
+-- the inverse: store X / Y (rounded) so the display's center lands at that offset from the parent's center
+function ns.SetVisualCenterOffset(rule, cx, cy)
+    local v = rule.visual
+    local a, f = AnchorPts(v)
+    local w, h, pw, ph = VisDims(rule)
+    local A, F = ANCH[a], ANCH[f]
+    v.x = math.floor(cx + (F[1] - 0.5) * w - (A[1] - 0.5) * pw + 0.5)
+    v.y = math.floor(cy + (F[2] - 0.5) * h - (A[2] - 0.5) * ph + 0.5)
+end
+-- change the anchor and / or inner-outer; X / Y are recalculated so the display stays exactly where it is
+function ns.SetVisualAnchor(rule, anchor, place)
+    local v = rule.visual
+    if not v then return end
+    local cx, cy = ns.VisualCenterOffset(rule)
+    if anchor ~= nil then v.anchor = (ANCH[anchor] and anchor ~= "CENTER") and anchor or nil end
+    if place ~= nil then v.anchorPlace = (place == "outer") and "outer" or nil end
+    ns.SetVisualCenterOffset(rule, cx, cy)
+    ns.RefreshVisual(rule)
+    if ns.OnPositionChanged then ns.OnPositionChanged(rule) end
+end
 local function Place(fr, rule, parent)
     local v = rule.visual
     local g = SnapFrame(v)
@@ -701,7 +743,8 @@ local function Place(fr, rule, parent)
         local a = SNAP_ANCHOR[v.snap.pos or "TOP_CENTER"] or SNAP_ANCHOR.TOP_CENTER
         fr:SetPoint(a[1], g, a[2], v.x or 0, v.y or 0)   -- x / y are fine offsets from the snap point
     else
-        fr:SetPoint("CENTER", parent, "CENTER", v.x or 0, v.y or 0)
+        local a, f = AnchorPts(v)
+        fr:SetPoint(f, parent, a, v.x or 0, v.y or 0)
     end
 end
 -- read where the frame is now and store it as the display's own X / Y (dragging always leaves any snap target)
@@ -713,9 +756,9 @@ local function CommitDrag(rule, fr, useSnap)
     if not cx then return end
     local ux, uy = parent:GetCenter()
     local s = fr:GetEffectiveScale() / parent:GetEffectiveScale()
-    v.x = math.floor((cx * s - ux) + 0.5)
-    v.y = math.floor((cy * s - uy) + 0.5)
-    if useSnap then v.x, v.y = ns.SnapPosition(rule, fr, v.x, v.y) end
+    local cox, coy = cx * s - ux, cy * s - uy   -- center offsets; snapping works on these, then they are stored relative to the anchor
+    if useSnap then cox, coy = ns.SnapPosition(rule, fr, math.floor(cox + 0.5), math.floor(coy + 0.5)) end
+    ns.SetVisualCenterOffset(rule, cox, coy)
     Place(fr, rule, parent)
     if dyn then LayoutDynamic(dyn) end
     if ns.OnPositionChanged then ns.OnPositionChanged(rule) end
@@ -740,8 +783,11 @@ function ns.CenterVisual(rule, axis)
         if axis == "h" and (side == "TOP" or side == "BOTTOM") then v.snap.pos = side .. "_CENTER"; v.x = 0
         elseif axis == "v" and (side == "LEFT" or side == "RIGHT") then v.snap.pos = side .. "_CENTER"; v.y = 0
         else ns.Print("this aura is snapped to that side of the frame; choose a top / bottom (horizontal) or left / right (vertical) snap to center along it.") return end
-    elseif axis == "h" then v.x = 0
-    else v.y = 0 end
+    else
+        local cx, cy = ns.VisualCenterOffset(rule)   -- "center" = the middle of the reference, whatever the anchor is
+        if axis == "h" then cx = 0 else cy = 0 end
+        ns.SetVisualCenterOffset(rule, cx, cy)
+    end
     ns.RefreshVisual(rule)
     if ns.OnPositionChanged then ns.OnPositionChanged(rule) end
 end
