@@ -1866,6 +1866,28 @@ local function Walk(w, depth)
     for _, c in ipairs(w.children or {}) do Walk(c, depth + 1) end
 end
 
+-- Light themes: no text shadow and no outline anywhere in the window (dark text with a black shadow is smudgy). Everything touched is recorded
+-- on the fontstring (xuiLS) so a later dark theme gets its shadow / outline back.
+local function ShadowPass(f, light, depth)
+    if not f or depth > 9 then return end
+    for _, rg in ipairs({ f:GetRegions() }) do
+        if rg.GetObjectType and rg:GetObjectType() == "FontString" then
+            if light then
+                local fn, sz, fl = rg:GetFont()
+                if not rg.xuiLS then local x, y = rg:GetShadowOffset(); rg.xuiLS = { x or 0, y or 0, fl or "" } end
+                rg:SetShadowOffset(0, 0)
+                if fn and fl and fl:find("OUTLINE") then rg:SetFont(fn, sz, (fl:gsub("THICKOUTLINE", ""):gsub("OUTLINE", ""):gsub("^[, ]+", ""):gsub("[, ]+$", ""))) end
+            elseif rg.xuiLS then
+                local o = rg.xuiLS; rg.xuiLS = nil
+                rg:SetShadowOffset(o[1], o[2])
+                local fn, sz = rg:GetFont()
+                if fn and o[3] ~= "" then rg:SetFont(fn, sz, o[3]) end
+            end
+        end
+    end
+    for _, c in ipairs({ f:GetChildren() }) do ShadowPass(c, light, depth + 1) end
+end
+
 function ns.SkinRows() return SkinOn() end   -- Options.lua builds the list-row version of the New Rule picker only while the skin is on
 local origDecorate = ns.DecorateTrees
 function ns.DecorateTrees(root, ...)
@@ -1876,5 +1898,6 @@ function ns.DecorateTrees(root, ...)
         pcall(SkinFrame, root)
         pcall(ns.UpdateMinWidth, root)
         pcall(Walk, root, 0)
+        if root.frame then pcall(ShadowPass, root.frame, TH and TH.IsLight and TH.IsLight() or false, 0) end
     end
 end
