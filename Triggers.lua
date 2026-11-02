@@ -552,7 +552,7 @@ Add("resource", {
 -- be added once; this row is the same check (ns.BuffPresent: aura API, then the Cooldown Manager icon) so a rule can watch several
 -- personal buffs at once. Each row is its own trigger number; combine them with the ALL / ANY switch under the trigger list.
 Add("buffAura", {
-    label = "Buff / Aura (additional)", wa = "Aura (buff on player)", group = "Aura", hideFromMenu = true,   -- superseded: the built-in Buff / Aura trigger now takes extra aura IDs; kept so saved rules keep working
+    label = "Buff / Aura (another)", wa = "Aura (buff on player)", group = "Aura",   -- offered once the built-in Buff / Aura is in use (BuildExtraTriggerArgs AddChoices); the extra aura IDs on the built-in one are ANY-of, a separate row lets you require several buffs at once (ALL) or mix ALL / ANY
     note = "True while the buff is on you. Same reading as the rule's built-in Buff / Aura section (aura API; in combat the Cooldown Manager icon when the buff is tracked there). Use the ID of the BUFF. If the game hides the buff in combat and it is not in your Cooldown Manager, the answer is 'unknown' and the rule will not fire.",
     new = { state = "yes" },
     fields = {
@@ -1200,7 +1200,7 @@ function ns.BuildExtraTriggerArgs(rule, H)
         if not ns.BuffUsed(rule) then values._buff = BUILTIN._buff end
         for _, key in ipairs(ORDER) do
             local d = TYPES[key]
-            if not d.hideFromMenu then values[key] = d.group .. ":  " .. d.label end
+            if not d.hideFromMenu and (key ~= "buffAura" or ns.BuffUsed(rule)) then values[key] = d.group .. ":  " .. d.label end   -- a further aura trigger is offered once the built-in one is taken
         end
         for k in pairs(values) do order[#order + 1] = k end
         table.sort(order, function(a, b) return values[a] < values[b] end)
