@@ -17,6 +17,33 @@ local function TC(class, prop, fb) if TH then return TH.Col(class, prop, fb) end
 -- theme font + size on a fontstring (color is set by the caller)
 local function TF(fs) if TH and fs then pcall(TH.Style, fs, nil) end end
 local function TR(fs) if TH and fs then pcall(TH.Restore, fs) end end
+-- Light themes: a button / tab keeps its text in Blizzard font OBJECTS, which carry a shadow (and sometimes an outline) and put it back on every
+-- hover. So the button gets plain font objects (no shadow, no outline) in the theme font and color; RestoreLF puts the originals back.
+local lightFonts, lfCount = {}, 0
+local function LightFont(b, fs, c)
+    if not (b and fs and b.SetNormalFontObject and TH and TH.IsLight and TH.IsLight()) then return end
+    local fn, sz = fs:GetFont()
+    if not fn then return end
+    local key = fn .. "|" .. math.floor((sz or 12) * 10) .. ("|%.2f%.2f%.2f"):format(c[1], c[2], c[3])
+    local fo = lightFonts[key]
+    if not fo then
+        lfCount = lfCount + 1
+        fo = CreateFont("XayaUILightFont" .. lfCount)
+        fo:SetFont(fn, sz, ""); fo:SetShadowOffset(0, 0); fo:SetTextColor(c[1], c[2], c[3], 1)
+        lightFonts[key] = fo
+    end
+    if not b.xuiLFRest then
+        local n, h, d = b:GetNormalFontObject(), b:GetHighlightFontObject(), b:GetDisabledFontObject()
+        b.xuiLFRest = function(self)
+            if n then self:SetNormalFontObject(n) end
+            if h then self:SetHighlightFontObject(h) end
+            if d then self:SetDisabledFontObject(d) end
+        end
+    end
+    b:SetNormalFontObject(fo); b:SetHighlightFontObject(fo); b:SetDisabledFontObject(fo)
+    fs:SetShadowOffset(0, 0)
+end
+local function RestoreLF(b) if b and b.xuiLFRest then pcall(b.xuiLFRest, b); b.xuiLFRest = nil end end
 local function SkinOn() return not (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.skinOff) end
 -- window opacity (0.1 - 1). /xuiskin alpha 0.4 changes it; takes effect on the next redraw / reopen.
 local function Pad() local u = CueRulesDB and CueRulesDB.ui; return math.max(0, math.min(30, tonumber(u and u.skinPad) or 8)) end
@@ -389,7 +416,7 @@ local function SkinTabGroup(w)
             local tcl = sel and "xui-tab-selected" or "xui-tab"
             Flat(tab, TC(tcl, "bg", { 0.03, 0.03, 0.03, 0.7 }), TC(tcl, "border", { 0.22, 0.22, 0.22, 1 }), { 9, 9, 6, 3 })
             local fs = tab:GetFontString()
-            if fs then local c = TC(tcl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]); TF(fs) end
+            if fs then local c = TC(tcl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]); TF(fs); LightFont(tab, fs, c) end
         end
     end
     -- Rules > Class/Spec Rule Creator: pinned to the far right corner of the tab row, away from Enabled | Drafts | Smart Categories | Disabled
@@ -409,6 +436,7 @@ local function SkinTabGroup(w)
                 if tab[k] then tab[k]:SetAlpha(1) end
             end
             if tab.HighlightTexture then tab.HighlightTexture:SetAlpha(1) end
+            RestoreLF(tab)
             FlatHide(tab)
         end
     end)
@@ -983,6 +1011,7 @@ local function SkinButton(w)
         if fs then
             TF(fs)
             if f:IsEnabled() then local c = TC(bcl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]) else fs:SetTextColor(0.5, 0.5, 0.5) end
+            LightFont(f, fs, TC(bcl, "text", GOLD))
         end
     end
     do local o = (isHeader and tonumber(arg and arg.xuiHeadOut)) or 0; f:SetHitRectInsets(-o, 0, 0, 0) end
@@ -997,6 +1026,7 @@ local function SkinButton(w)
         HideActions(self.frame)
         ShowRegions(self.frame)
         FlatHide(self.frame)
+        RestoreLF(self.frame)
         do   -- put Blizzard's highlight art back (AceGUI reuses the frame)
             local ht, o = self.frame.GetHighlightTexture and self.frame:GetHighlightTexture(), self.frame.xuiHLOrig
             if ht and o then
