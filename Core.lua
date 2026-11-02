@@ -546,6 +546,7 @@ f:SetScript("OnEvent", function(_, _, name)
     if ns.QoL_OnDBReady then ns.QoL_OnDBReady() end
     if ns.Cursor_OnDBReady then ns.Cursor_OnDBReady() end
     if ns.ChatReskin_OnDBReady then ns.ChatReskin_OnDBReady() end
+    if ns.DataPanels_OnDBReady then ns.DataPanels_OnDBReady() end
 end)
 
 -------------------------------------------------------------------------------
@@ -629,6 +630,8 @@ SlashCmdList["XAYAUI"] = function(msg)
         end
     elseif cmd == "chat" then
         if ns.ChatReskin_Debug then ns.ChatReskin_Debug() end
+    elseif cmd == "data" then
+        if ns.DataPanels_OpenSettings then ns.DataPanels_OpenSettings() end
     elseif cmd == "panel" then
         if ns.ChatPanel_ShowWindow then ns.ChatPanel_ShowWindow() end
     elseif cmd == "gamemenu" then
@@ -642,6 +645,6 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif cmd == "bug" then
         if ns.ShowBugReport then ns.ShowBugReport() end
     else
-        ns.Print("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui panel (chat info bar settings) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media")
+        ns.Print("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui panel (chat info bar settings) | /xui data (custom data panels and bars) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media")
     end
 end
