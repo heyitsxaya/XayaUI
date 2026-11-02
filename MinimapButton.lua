@@ -14,8 +14,10 @@ local DEFAULTS = {
     radiusOffset = 5,        -- how far outside the minimap's edge the button sits
     closeOnClick = true,     -- the list closes after a choice
     entries = { notes = true, settings = true, data = true, chat = true, privacy = true },
+    iconOverride = "",       -- "" = the built-in icon. Otherwise a file ID (1390944), an icon name (INV_Misc_Note_01), a texture path, or spell:ID
 }
 ns.MINIMAP_DEFAULTS = DEFAULTS
+local DEFAULT_ICON = 1390944   -- the icon of Xaya's 'xayaui' macro (macros-cache.txt, 2026-11-02)
 
 local function DB() return ns.minimapDB end
 function ns.Minimap_OnDBReady()
@@ -37,8 +39,29 @@ local ENTRIES = {
 }
 ns.MINIMAP_ENTRIES = ENTRIES
 
+-- What the override text means: "" -> built-in icon; digits -> a file ID; "spell:ID" -> that spell's icon; a bare name (no slash) ->
+-- Interface\Icons\<name>; anything else -> used as a texture path as typed. Returns the texture and a short note for the options page.
+function ns.Minimap_ResolveIcon(text)
+    local t = tostring(text or ""):gsub("[%c|]", ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if #t > 200 then t = t:sub(1, 200) end
+    if t == "" then return DEFAULT_ICON, "built-in icon" end
+    if t:match("^%d+$") then return tonumber(t), "file ID " .. t end
+    local sid = t:lower():match("^spell:%s*(%d+)$")
+    if sid then
+        local tex = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(tonumber(sid))
+        if tex then return tex, "icon of spell " .. sid end
+        return DEFAULT_ICON, "spell " .. sid .. " has no readable icon: using the built-in icon"
+    end
+    if not t:find("[\\/]") then return "Interface\\Icons\\" .. t, "icon name " .. t end
+    return t, "texture path"
+end
 local atan2 = math.atan2 or function(y, x) return math.atan(y, x) end
 local button, popup, catcher
+local function ApplyIcon()
+    local db = DB(); if not (db and button and button.icon) then return end
+    local tex = ns.Minimap_ResolveIcon(db.iconOverride)
+    button.icon:SetTexture(tex); button.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+end
 
 local function Place()
     local db = DB(); if not (db and button) then return end
@@ -138,7 +161,7 @@ local function BuildButton()
     b:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetSize(20, 20); b.bg:SetPoint("CENTER", 0, 1); b.bg:SetColorTexture(0.06, 0.06, 0.06, 0.9)
     b.icon = b:CreateTexture(nil, "ARTWORK"); b.icon:SetSize(18, 18); b.icon:SetPoint("CENTER", 0, 1)
-    b.icon:SetTexture(1390944); b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)   -- file ID 1390944 = the icon of Xaya's 'xayaui' macro (macros-cache.txt, 2026-11-02); 136243 was a cog, not it
+    b.icon:SetTexture(DEFAULT_ICON); b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)   -- ApplyIcon() below swaps in the user's override
     b.border = b:CreateTexture(nil, "OVERLAY"); b.border:SetSize(53, 53); b.border:SetPoint("TOPLEFT")
     b.border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
     b:SetScript("OnClick", function(_, btn)
@@ -174,13 +197,14 @@ local function BuildButton()
     end)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
     button = b
+    ApplyIcon()
     return b
 end
 
 function ns.Minimap_Refresh()
     local db = DB(); if not db then return end
     if db.hide then if button then button:Hide() end; ClosePopup() return end
-    BuildButton(); Place(); button:Show()
+    BuildButton(); Place(); ApplyIcon(); button:Show()
     if popup and popup:IsShown() then Rebuild() end
 end
 
@@ -203,6 +227,19 @@ function ns.BuildMinimapTab(Notify)
         lock = { type = "toggle", order = 2, name = "Lock the button's position", disabled = function() return DB().hide end, get = g("locked"), set = function(_, v) DB().locked = v end },
         close = { type = "toggle", order = 3, name = "Close the list after a choice", disabled = function() return DB().hide end, get = g("closeOnClick"), set = function(_, v) DB().closeOnClick = v end },
         angle = { type = "range", order = 4, name = "Position (degrees around the minimap)", min = 0, max = 359, step = 1, disabled = function() return DB().hide end, get = g("angle"), set = s("angle") },
+        iconH = { type = "header", order = 5, name = "Button icon" },
+        iconPreview = { type = "description", order = 5.1, width = "half", name = "",
+            image = function() return (ns.Minimap_ResolveIcon(DB().iconOverride)) end, imageWidth = 32, imageHeight = 32 },
+        icon = { type = "input", order = 5.2, width = "double", name = "Icon override (file ID, icon name, or spell:ID)",
+            desc = "Leave empty for the built-in icon. Accepts: a file ID such as 1390944; an icon name such as INV_Misc_Note_01; spell:ID (for example spell:187827) to borrow a spell's icon; or a full texture path.",
+            disabled = function() return DB().hide end,
+            get = function() return DB().iconOverride or "" end,
+            set = function(_, v) DB().iconOverride = tostring(v or ""):gsub("[%c|]", ""):gsub("^%s+", ""):gsub("%s+$", ""); ns.Minimap_Refresh(); if Notify then Notify() end end },
+        iconReset = { type = "execute", order = 5.3, width = "half", name = "Reset",
+            desc = "Back to the built-in icon.", disabled = function() return DB().hide or (DB().iconOverride or "") == "" end,
+            func = function() DB().iconOverride = ""; ns.Minimap_Refresh(); if Notify then Notify() end end },
+        iconNote = { type = "description", order = 5.4, width = "full", fontSize = "small",
+            name = function() local _, note = ns.Minimap_ResolveIcon(DB().iconOverride); return "Using: " .. note .. ". A wrong ID or path can show a green square or an empty button; clear the box or press Reset." end },
         entries = { type = "group", name = "Buttons in the list", order = 10, inline = true, disabled = function() return DB().hide end, args = {} },
     }
     for i, e in ipairs(ENTRIES) do

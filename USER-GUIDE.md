@@ -431,6 +431,8 @@ XayaUI's look is driven by a style sheet in two layers. **Tokens** are the palet
 
 A button on the minimap for quick access. **Left-click** opens a list of buttons: Notes (shows or hides the notepad), Settings, Custom data panels, Chat panel, and Chat privacy cover. **Right-click** opens the XayaUI settings window, and you can **drag** the button around the minimap edge. You choose which buttons the list shows, whether it closes after a choice, and whether the button is shown or locked in place.
 
+**Icon override:** leave the box empty for the built-in icon, or type a file ID (for example `1390944`), an icon name (for example `INV_Misc_Note_01`), `spell:` followed by a spell ID, or a full texture path. A preview and a "Using:" line show what was understood, and **Reset** returns to the built-in icon. A wrong value can show a green square or an empty button; clear the box or press Reset.
+
 **Where:** QoL UI Updates > Minimap Button.
 
 ### 12.7 Tooltips
