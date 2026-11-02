@@ -12,7 +12,7 @@ a18e98b371745c6f10fc6a82e0f570a1  ChatWidgets.lua
 40b7591dd5f7fe4f0c4b0f5a965155bb  ClassLearn.lua
 a354cbbb54ff4fb130af0063a401df9b  Conditions.lua
 58d8c82b04724886f644e3447051fcbd  Console.lua
-5cbee647eb2003dab25e707b426d462c  Core.lua
+e2200957ba33baa7bc99d1003bbf340c  Core.lua
 71e03fe7af3e478b6b0b51efa819912a  Cues.lua
 884fad3bd148665b9f700fbec39f5576  CursorHighlight.lua
 ba241e46458e8e4296563689c7708a51  CursorReminders.lua
@@ -40,7 +40,7 @@ d7e606b10ef3f5b67d3c55a94a5c3953  Theme.lua
 89c01ad8a8808c6f3dcf02083dc422bd  Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  UserMedia.lua
 74a9935c14d2e6df8727ad921219638f  Visual.lua
-cb0fe4fdb9468d70d0038009d0a0311e  XayaUI.toc
+ff8a3b53c26d40249acc72aa99a836ed  XayaUI.toc
 ca89d096a4e6a5e7f55beb7e240f9605  XayaUI_CombatEngine/AuraDisplay.lua
 1eb8ec8eeaec35396f0f443339972b13  XayaUI_CombatEngine/AuraIDProbe.lua
 49635f2a302eea3ebac0e3f872c3da06  XayaUI_CombatEngine/AuraModel.lua
@@ -56,3 +56,4 @@ d5418d7684a67c607620db5ef4921ddd  MinimapButton.lua
 4092250475ca8c0d9eed0f6984db28f1  ChatTrade.lua
 a84b7dd123267fd09809eab5538f39f7  Tooltips.lua
 032e0be51b32833e718502293c82c464  TooltipsUI.lua
+49224bc7f704faf3193d7d60fd1c70cc  Chat/Probe.lua

@@ -362,7 +362,7 @@ Chat note: in Midnight, addons may not send chat during Mythic+ runs, PvP matche
 | Glow does nothing | LibCustomGlow is not loaded | Enable ElvUI, BigWigs, or another addon that ships it |
 | Rule does not load | Group Never, group spec/role/instance gate, or talents | Load tab banner says "Overridden by group..." |
 
-Slash commands: `/xui` opens the options, `/xui status` prints each rule's reasons (including per-trigger lines), `/xui mods` traces condition modifiers step by step (which conditions list each cue and whether they are true, the modifiers stored, the merged result, and what the cue's frame actually shows), `/xui debuffs [target|focus] [spellID]`, `/xui probe <spellID>`, `/xui loc`.
+Slash commands: `/xui` opens the options, `/xui status` prints each rule's reasons (including per-trigger lines), `/xui mods` traces condition modifiers step by step (which conditions list each cue and whether they are true, the modifiers stored, the merged result, and what the cue's frame actually shows), `/xui debuffs [target|focus] [spellID]`, `/xui probe <spellID>`, `/xui loc`, `/xui chatprobe` (read-only: records how Blizzard's chat is laid out, and which frames sit in the top-left corner, into the saved file; used while the chat is being rebuilt; message text is never recorded).
 
 ---
 
