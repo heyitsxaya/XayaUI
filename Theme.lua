@@ -44,6 +44,7 @@ T.TOKENS = {
 }
 -- Tokens parked for review (not offered in the Theme page for now; they keep their default / base-theme values and still work in code).
 -- See the project doc "XAYAUI-THEME-REVIEW-LATER".
+T.SHOW_OVERRIDES = false
 T.PARKED = { windowBg = true, paneBg = true, tabBg = true, tabBorder = true, tabSelBg = true, tabSelBorder = true, treeBar = true, text = true }
 T.TOKEN = {}
 for _, t in ipairs(T.TOKENS) do T.TOKEN[t[1]] = t end
@@ -419,7 +420,7 @@ function T.BuildArgs(refresh)
     local function say(m) msg = m or ""; refresh() end
 
     args.intro = { type = "description", order = nx(), width = "full", fontSize = "medium",
-        name = "The style sheet: one palette, plus general classes (window, pane, tab, button, heading, text, rule list ...) that each take their colors from it. Change a color once and everything of that class follows. Class overrides below change just one kind of element." }
+        name = "The style sheet: one palette, plus general classes (window, pane, tab, button, heading, text, rule list ...) that each take their colors from it. Change a color once and everything of that class follows." }
 
     args.baseHdr = { type = "header", order = nx(), name = "Base theme" }
     args.base = { type = "select", order = nx(), width = "double", name = "Theme",
@@ -517,7 +518,9 @@ function T.BuildArgs(refresh)
             ov.args[cls] = a
         end
     end
-    args.overrides = ov
+    -- Class overrides are parked (Xaya, 2026-11-01): every box duplicated a palette swatch. The code and any saved overrides stay
+    -- (they still apply); only the editor is hidden. Flip T.SHOW_OVERRIDES to bring the editor back for the redesign.
+    if T.SHOW_OVERRIDES then args.overrides = ov end
 
     -- save / import / export
     args.shareHdr = { type = "header", order = nx(), name = "Save, import, and export" }
