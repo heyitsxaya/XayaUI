@@ -357,17 +357,20 @@ end
 -- Options pieces
 -------------------------------------------------------------------------------
 -- Save bar shown at the top of every tab of a rule while it has unsaved changes. Returns a fresh args table each call.
+-- The wording of the unsaved-changes bar (the strip under the window and the note at the top of a rule tab).
+function ns.DraftBarText(isNew)
+    if isNew then
+        return "|cffffd100This rule has not been saved yet.|r It works while this window is open. Select Save changes to keep it. If you close this window first, the rule is stored in Drafts."
+    end
+    return "|cffffd100You have unsaved changes.|r They are already active, so you can test them now. Select Save changes to keep them. If you close this window first, the changes are stored in Drafts and the rule returns to its last saved version."
+end
+
 function ns.DraftArgs(rule)
     local function clean() return not ns.DraftDirty(rule) end
     local function Notify() if ns.UI and ns.UI.Notify then ns.UI.Notify() end end
     return {
         note = { type = "description", order = -100, width = "full", fontSize = "medium", hidden = clean,
-            name = function()
-                if ns.DraftIsNew(rule) then
-                    return "|cffffd100This rule has not been saved yet.|r It works while this window is open. Press Save changes to keep it. If you close the window first, it is moved to Drafts."
-                end
-                return "|cffffd100Unsaved changes.|r They already apply, so you can test them. Press Save changes to keep them. If you close the window first, the changes are moved to Drafts and the rule goes back to its last saved version."
-            end },
+            name = function() return ns.DraftBarText(ns.DraftIsNew(rule)) end },
         save = { type = "execute", order = -99, width = "normal", name = "Save changes", hidden = clean, arg = { xuiRed = true },
             desc = "Keep the changes made to this rule (its triggers, cues, conditions, actions and load settings).",
             func = function() ns.DraftSave(rule); Notify() end },
@@ -390,27 +393,174 @@ function ns.DraftArgs(rule)
     }
 end
 
+-- What a draft holds, in words, so a draft can be recognized without restoring it. Everything is read from the stored copy (plain tables);
+-- nothing here touches the live rules. A damaged draft falls back to its date line only (see BuildDraftsPage).
+local CD_SHORT = { hasCharge = "has a charge", ready = "ready", notReady = "not ready", empty = "empty" }
+local BUFF_SHORT = { missing = "missing", present = "present" }
+local MAX_SHOWN = 4   -- items named per line; the rest is counted ("and 2 more")
+
+local function Plural(n, one, many) return n .. " " .. (n == 1 and one or (many or (one .. "s"))) end
+local function Short(s, n)
+    s = tostring(s or ""):gsub("[\r\n|]", " ")
+    if #s > n then s = s:sub(1, n - 3) .. "..." end
+    return s
+end
+local function SpellText(id)
+    id = tonumber(id) or 0
+    if id <= 0 then return nil end
+    local ok, n = pcall(C_Spell.GetSpellName, id)
+    if ok and n then return n .. " (" .. id .. ")" end
+    return "spell " .. id
+end
+local function ItemText(id)
+    id = tonumber(id) or 0
+    if id <= 0 then return nil end
+    local ok, n = pcall(C_Item.GetItemNameByID, id)
+    if ok and n then return n .. " (" .. id .. ")" end
+    return "item " .. id
+end
+local function IconTag(tx) return tx and ("|T" .. tostring(tx) .. ":14|t ") or "" end
+
+-- "Cooldown: Metamorphosis (187827), ready", "Aura: ..., present", or the extra trigger's type and its first spell / item.
+local function TriggerItems(root)
+    local out, j = {}, 0
+    for _, tok in ipairs(ns.TriggerSequence(root)) do
+        if tok == "cd" then
+            local sp = SpellText(root.spellID)
+            local st = CD_SHORT[root.cdState]
+            out[#out + 1] = "Cooldown" .. (sp and (": " .. sp) or "") .. (st and (", " .. st) or "")
+        elseif tok == "buff" then
+            local sp = SpellText(root.buffID)
+            local st = BUFF_SHORT[root.buffState]
+            out[#out + 1] = "Aura" .. (sp and (": " .. sp) or "") .. (st and (", " .. st) or "")
+        else
+            j = j + 1
+            local row = type(root.extra) == "table" and type(root.extra.list) == "table" and root.extra.list[j]
+            if type(row) == "table" then
+                local def = ns.TRIGGER_TYPES and ns.TRIGGER_TYPES[row.type]
+                local text = (def and def.label) or tostring(row.type or "Trigger")
+                if def and def.fields then
+                    for _, f in ipairs(def.fields) do
+                        local what
+                        if f.kind == "spell" or f.kind == "talent" then what = SpellText(row[f.key])
+                        elseif f.kind == "item" then what = ItemText(row[f.key]) end
+                        if what then text = text .. ": " .. what; break end
+                    end
+                end
+                out[#out + 1] = text
+            end
+        end
+    end
+    return out
+end
+
+local function SoundText(s)
+    if type(s) ~= "table" then return "Sound" end
+    if s.source == "tts" then
+        local v = tostring(s.value or "")
+        return (v ~= "") and ("Speech \"" .. Short(v, 30) .. "\"") or "Speech"
+    end
+    local label = ns.SoundLabel and ns.SoundLabel(s) or tostring(s.value or "")
+    if label == "(none)" or label == "" then return "Sound (none chosen)" end
+    return "Sound \"" .. Short(label, 30) .. "\""
+end
+
+-- the icon / texture / text a display shows
+local function VisualText(v, kind, root)
+    if type(v) ~= "table" then return nil end
+    if kind == "text" then return "Text" end
+    if v.kind == "spellicon" then
+        local src = v.iconSrc or "auto"
+        if src == "spell" then
+            local id = tonumber(v.iconSpell) or 0
+            local ok, tx = pcall(C_Spell.GetSpellTexture, id)
+            return "Icon: " .. IconTag(ok and id > 0 and tx or nil) .. (SpellText(id) or "no spell chosen")
+        elseif src == "item" then
+            return "Icon: " .. (ItemText(v.iconItem) or "no item chosen")
+        elseif src == "file" then
+            local p = tostring(v.iconPath or "")
+            return "Icon: " .. ((p ~= "") and Short(p:match("([^\\/]+)$") or p, 28) or "own file")
+        end
+        local ok, tx = pcall(ns.TriggerIcon, root)
+        return "Icon: " .. IconTag(ok and tx or nil) .. "from the first trigger"
+    end
+    local tex = tostring(v.tex or "")
+    if tex == "" then return (kind == "icon") and "Icon" or "Texture (none chosen)" end
+    return "Texture: " .. Short(tex:match("([^\\/]+)$") or tex, 30)
+end
+
+local function CueItems(rules)
+    local out, root = {}, rules[1]
+    for i = 2, #rules do
+        local c = rules[i]
+        if type(c) == "table" and c.isCue then
+            local k = c.cueKind
+            local name = (type(c.cueName) == "string" and c.cueName:match("%S")) and (c.cueName .. " = ") or ""
+            local what
+            if k == "sound" or k == "speech" then what = SoundText(c.sound)
+            elseif k == "custom" then what = "Custom"
+            else what = VisualText(c.visual, k, root) end
+            out[#out + 1] = name .. (what or tostring(ns.CUE_KIND_LABEL and ns.CUE_KIND_LABEL[k] or k or "Cue"))
+        end
+    end
+    -- an older rule with no cues of its own can still carry a sound or a display
+    if #out == 0 and type(root) == "table" then
+        if type(root.sound) == "table" and root.sound.enabled then out[#out + 1] = SoundText(root.sound) end
+        if type(root.visual) == "table" and root.visual.enabled then out[#out + 1] = VisualText(root.visual, nil, root) end
+    end
+    return out
+end
+
+local function Listed(label_one, label_many, items)
+    local n = #items
+    if n == 0 then return "|cffffd100" .. label_many .. ":|r  |cff888888none|r" end
+    local shown = {}
+    for i = 1, math.min(n, MAX_SHOWN) do shown[i] = items[i] end
+    local s = table.concat(shown, ";  ")
+    if n > MAX_SHOWN then s = s .. ";  and " .. (n - MAX_SHOWN) .. " more" end
+    return "|cffffd100" .. (n == 1 and label_one or label_many) .. ":|r  " .. s
+end
+
+local function DraftLines(d)
+    local rules = (type(d.rules) == "table") and d.rules or {}
+    local root = rules[1]
+    local nCond, nCue = 0, 0
+    for i = 2, #rules do
+        if type(rules[i]) == "table" then if rules[i].isCue then nCue = nCue + 1 else nCond = nCond + 1 end end
+    end
+    local trig = (type(root) == "table") and TriggerItems(root) or {}
+    local head = "|cff999999" .. date("%Y-%m-%d %H:%M", d.ts or 0) .. "   -   " .. (d.isNew and "new rule, never saved" or "unsaved changes to a saved rule")
+        .. "   -   " .. Plural(#trig, "trigger") .. ", " .. Plural(nCue, "cue") .. ", and " .. Plural(nCond, "condition") .. "|r"
+    return head, Listed("Trigger", "Triggers", trig), Listed("Cue", "Cues", CueItems(rules))
+end
+
 -- The Drafts page (opened from the toolbar). Built fresh on every options refresh.
+-- One small box per draft: the date line with the two buttons beside it (Restore, Delete), then what its triggers and cues are.
 function ns.BuildDraftsPage()
     local args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Changes you did not save before closing the window are kept here. 'Put back in editor' loads the draft into its rule (or recreates a rule that was never saved); press Save changes on the rule to keep it. Up to " .. MAX_DRAFTS .. " drafts are kept, newest first." },
+            name = "Changes you did not save before closing the window are kept here. Restore loads a draft into its rule (or recreates a rule that was never saved); then select Save changes on the rule to keep it. Up to " .. MAX_DRAFTS .. " drafts are kept, newest first." },
     }
     local list = Drafts()
     if #list == 0 then
         args.none = { type = "description", order = 1, width = "full", fontSize = "medium", name = "|cff888888No drafts.|r" }
     end
     for i, d in ipairs(list) do
-        local n = (type(d.rules) == "table") and #d.rules or 0
-        args["d" .. i] = { type = "group", inline = true, order = i, name = tostring(d.name or "Unnamed rule"), args = {
-            info = { type = "description", order = 1, width = "full", fontSize = "medium",
-                name = date("%Y-%m-%d %H:%M", d.ts or 0) .. "   -   " .. (d.isNew and "a new rule that was never saved" or "unsaved changes to a saved rule") .. "   -   " .. n .. " part(s) (rule, cues, conditions)" },
-            restore = { type = "execute", order = 2, width = "double", name = "Put back in editor",
-                desc = "Loads this draft into its rule (replacing the rule's current version). It is not saved until you press Save changes.",
+        local ok, head, trig, cue = pcall(DraftLines, d)
+        if not ok then
+            head, trig, cue = "|cff999999" .. date("%Y-%m-%d %H:%M", d.ts or 0) .. "   -   details could not be read|r", nil, nil
+        end
+        local box = {
+            head = { type = "description", order = 1, width = "relative", relWidth = 0.72, fontSize = "medium", name = head },
+            restore = { type = "execute", order = 2, width = "relative", relWidth = 0.13, name = "Restore",
+                desc = "Put this draft back in the editor: it is loaded into its rule (replacing the rule's current version). It is not saved until you select Save changes.",
                 func = function() ns.DraftRestore(d.id) end },
-            delete = { type = "execute", order = 3, width = "normal", name = "Delete draft", confirm = true, confirmText = "Delete this draft for good?",
+            delete = { type = "execute", order = 3, width = "relative", relWidth = 0.11, name = "Delete", confirm = true, confirmText = "Delete this draft for good?",
                 func = function() ns.DraftDelete(d.id) end },
-        } }
+        }
+        if trig then box.trig = { type = "description", order = 4, width = "full", fontSize = "medium", name = trig } end
+        if cue then box.cue = { type = "description", order = 5, width = "full", fontSize = "medium", name = cue } end
+        args["d" .. i] = { type = "group", inline = true, order = i, name = tostring(d.name or "Unnamed rule"), args = box }
     end
     return { type = "group", name = "Drafts", order = 7, hidden = ns.PageHidden("drafts"), args = args }
 end

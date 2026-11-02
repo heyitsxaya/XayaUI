@@ -6840,9 +6840,7 @@ do
             b:ClearAllPoints(); b:SetSize(math.max(w, 40), 22)
             b:SetPoint("TOPLEFT", bar, "TOPLEFT", 8 + (i - 1) * (w + gap), -40)
         end
-        bar.text:SetText(isNew
-            and "|cffffd100This rule has not been saved yet.|r It works while this window is open. Press Save changes to keep it. If you close the window first, it is moved to Drafts."
-            or "|cffffd100Unsaved changes.|r They already apply, so you can test them. Press Save changes to keep them. If you close the window first, the changes are moved to Drafts and the rule goes back to its last saved version.")
+        bar.text:SetText(ns.DraftBarText(isNew))
     end
     local function Build()
         local f = CreateFrame("Frame", "XayaUISaveBar", UIParent, "BackdropTemplate")
