@@ -20,3 +20,8 @@ Replaced Blizzard's red button art with the flat theme button look (xui-button t
 - Size: the button now copies the width and height of the "Macros" button it sits under (and re-syncs one frame later, in case another skin resizes the siblings).
 - Settings > UI Options > Display > "Menu button (ESC menu)": show toggle plus "Menu button style": (a) Gradient button, solid text (default), (b) Standard button (theme button fill, inherited) with class-colored gradient text (per-letter color from the class accent to a lighter tint).
 - Changing the style repaints at once. UNTESTED IN GAME.
+
+## 0.5.41 (Xaya: button still not the right size; "Return to Game" now looks broken - red art on its left half)
+Cause of the Return to Game bug (mine): Blizzard recycles menu buttons from a pool, and EllesmereUI hides each pooled button's red art once. My 0.5.37-0.5.40 code hid art on the pooled button it added, then "restored" the saved alpha when that button was recycled for another entry, which put the red art back on top of Ellesmere's skin.
+Fix: GameMenu.lua rewritten so it never edits a pooled button. The frame's AddButton only supplies a layout slot (made invisible by frame alpha, put back to 1 on the next build). Our own permanent button is drawn over the slot, sized from the Macros button, with its own font copied from Macros. Look and Settings > Display options unchanged.
+/xui gamemenu now also prints sizes (macros / slot / ours) to calibrate the size if it is still off. UNTESTED IN GAME.
