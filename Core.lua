@@ -631,6 +631,8 @@ SlashCmdList["XAYAUI"] = function(msg)
         if ns.ChatReskin_Debug then ns.ChatReskin_Debug() end
     elseif cmd == "panel" then
         if ns.ChatPanel_ShowWindow then ns.ChatPanel_ShowWindow() end
+    elseif cmd == "gamemenu" then
+        if ns.GameMenu_Diagnostics then ns.GameMenu_Diagnostics() end
     elseif cmd == "unlock" then
         if ns.ToggleUnlock then ns.ToggleUnlock() end
     elseif cmd == "media" then
