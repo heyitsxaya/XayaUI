@@ -954,6 +954,19 @@ local function SkinButton(w)
         HideRegions(f, f:GetHighlightTexture())
         local bcl = (arg and arg.xuiRed) and "xui-button-primary" or "xui-button"   -- WeakAuras-style red "Add ..." button = primary
         Flat(f, TC(bcl, "bg", { 0.04, 0.04, 0.04, 0.7 }), TC(bcl, "border", { 0.25, 0.25, 0.25, 1 }))
+        -- mouse-over glow: Blizzard's own highlight art is red; repaint it flat in the button's theme (class) color
+        do
+            local ht = f:GetHighlightTexture()
+            if ht then
+                if not f.xuiHLOrig then
+                    f.xuiHLOrig = { ht:GetTexture(), ht:GetBlendMode() }
+                end
+                local hc = TC(bcl, "border", { 0.75, 0.4, 1, 1 })
+                ht:SetTexture("Interface\\Buttons\\WHITE8X8"); ht:SetTexCoord(0, 1, 0, 1)
+                ht:SetBlendMode("ADD"); ht:SetVertexColor(hc[1], hc[2], hc[3]); ht:SetAlpha(0.28)
+                ht:ClearAllPoints(); ht:SetAllPoints(f)
+            end
+        end
         if fs then
             TF(fs)
             if f:IsEnabled() then local c = TC(bcl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]) else fs:SetTextColor(0.5, 0.5, 0.5) end
@@ -971,6 +984,15 @@ local function SkinButton(w)
         HideActions(self.frame)
         ShowRegions(self.frame)
         FlatHide(self.frame)
+        do   -- put Blizzard's highlight art back (AceGUI reuses the frame)
+            local ht, o = self.frame.GetHighlightTexture and self.frame:GetHighlightTexture(), self.frame.xuiHLOrig
+            if ht and o then
+                ht:SetTexture(o[1] or "Interface\\Buttons\\UI-Panel-Button-Highlight"); ht:SetTexCoord(0, 0.625, 0, 0.6875)
+                ht:SetBlendMode(o[2] or "ADD"); ht:SetVertexColor(1, 1, 1); ht:SetAlpha(1)
+                ht:ClearAllPoints(); ht:SetPoint("TOPLEFT", 2, -2); ht:SetPoint("BOTTOMRIGHT", -2, 2)
+            end
+            self.frame.xuiHLOrig = nil
+        end
         TR(self.text)
         if self.text and self.xuiTextMoved then
             self.text:ClearAllPoints(); self.text:SetPoint("TOPLEFT", 15, -1); self.text:SetPoint("BOTTOMRIGHT", -15, 1); self.text:SetJustifyH("CENTER")

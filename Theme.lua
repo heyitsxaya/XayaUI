@@ -81,7 +81,7 @@ local function DB()
     if not CueRulesDB then return nil end
     CueRulesDB.theme = CueRulesDB.theme or {}
     local th = CueRulesDB.theme
-    th.base = th.base or "default"
+    th.base = th.base or "class"   -- never adjusted: class colors, class read from the logged-in character (Xaya, 2026-11-01)
     th.tokens = th.tokens or {}
     th.classes = th.classes or {}
     th.font = th.font or "none"
@@ -282,7 +282,7 @@ function T.SetFont(key) local th = DB(); if th then th.font = key or "none"; T.C
 function T.SetSize(sz) local th = DB(); if th and T.SIZES[sz] then th.size = sz; T.Changed() end end
 function T.ResetAll()
     local th = DB(); if not th then return end
-    th.base, th.classPick, th.tokens, th.classes, th.font, th.size = "default", nil, {}, {}, "none", "M"
+    th.base, th.classPick, th.tokens, th.classes, th.font, th.size = "class", nil, {}, {}, "none", "M"
     T.Changed()
 end
 

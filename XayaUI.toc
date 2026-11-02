@@ -35,6 +35,7 @@ CursorTrail.lua
 ChatReskin.lua
 ChatText.lua
 ChatTabs.lua
+ChatDock.lua
 AddonInfo.lua
 Drafts.lua
 Console.lua

@@ -2289,6 +2289,12 @@ function BuildClassCreator()
                 local _, m = ns.ClassAutoPopulate(ns.AutoCfg().talents ~= false)
                 creatorMsg = m; ns.Print("auto-populate: " .. tostring(m)); Notify()
             end },
+        apClass = { type = "execute", order = 0.45, width = "double", name = "Auto-populate for my class (all specs)",
+            desc = "Runs the auto-populate for every spec of your class in one go.",
+            func = function()
+                local _, m = ns.ClassAutoPopulateAllSpecs(ns.AutoCfg().talents ~= false)
+                creatorMsg = m; ns.Print("auto-populate: " .. tostring(m)); Notify()
+            end },
         talHdr = { type = "header", order = 0.6, name = "All talents (every class and spec)" },
         talInfo = { type = "description", order = 0.61, width = "full", fontSize = "medium",
             name = function() return (ns.TalentStatus and ns.TalentStatus() or "") .. " Reads every class, spec, and hero talent tree from the game (not from a fixed list), so it follows the current patch. In chat: /xui talents, /xui talents status, /xui talents <name>." end },
@@ -2297,10 +2303,7 @@ function BuildClassCreator()
                 local ok, m = ns.ScanAllTalents(function(_, msg) creatorMsg = msg; Notify() end)
                 creatorMsg = m; ns.Print(m); Notify()
             end },
-        vdhHdr = { type = "header", order = 1, name = "Vengeance Demon Hunter" },
-        open = { type = "execute", order = 2, width = "double", name = "Add Vengeance DH test rules",
-            desc = "Creates the static group 'VDH Test Rules' (or finds it) and shows the list of auras to tick.",
-            func = OpenVDHList },
+        -- the "Add Vengeance DH test rules" button is gone: every class and spec is supported by the auto-populate above (Xaya, 2026-11-01)
         msg = { type = "description", order = 0.5, width = "full", fontSize = "medium", name = function() return creatorMsg or "" end,
             hidden = function() return not creatorMsg end },
         idNote = { type = "description", order = 4, width = "full", fontSize = "small", hidden = shown,
@@ -2311,6 +2314,19 @@ function BuildClassCreator()
         close = { type = "execute", order = 7, width = "half", name = "Hide list", hidden = shown,
             func = function() creatorOpen = false; Notify() end },
     }
+    -- one button per spec of the player's class, each with the spec's own icon (specs come from the game, so any class works)
+    for i = 1, (GetNumSpecializations and GetNumSpecializations() or 0) do
+        local sid, sname, _, sicon = GetSpecializationInfo(i)
+        if sid then
+            args["apSpec" .. i] = { type = "execute", order = 0.46 + i * 0.001, width = "normal",
+                name = (sicon and ("|T" .. sicon .. ":16|t ") or "") .. "Auto-populate " .. tostring(sname),
+                desc = "Makes the skeleton rules for " .. tostring(sname) .. " (" .. (UnitClass("player") or "your class") .. "), whichever spec you are in now.",
+                func = function()
+                    local _, m = ns.ClassAutoPopulateSpec(sid, ns.AutoCfg().talents ~= false)
+                    creatorMsg = m; ns.Print("auto-populate: " .. tostring(m)); Notify()
+                end }
+        end
+    end
     for i, a in ipairs(VDH_AURAS) do
         local o = 100 + i * 3
         args["pick_" .. a.key] = { type = "toggle", order = o, width = 1.3, name = a.name, hidden = shown,
@@ -2790,6 +2806,27 @@ function ns.ClassAutoPopulate(includeUnpicked)
     local data = specID and ns.CLASS_AURA_DATA and ns.CLASS_AURA_DATA[specID]
     if data then return AutoPopulateData(specID, data, includeUnpicked) end
     return ns.AutoPopulateSpellbook(includeUnpicked)
+end
+-- One chosen spec of the player's class (any spec, not only the active one). Needs curated data; the spellbook fallback only knows the active spec.
+function ns.ClassAutoPopulateSpec(specID, includeUnpicked)
+    local data = specID and ns.CLASS_AURA_DATA and ns.CLASS_AURA_DATA[specID]
+    if data then return AutoPopulateData(specID, data, includeUnpicked) end
+    if specID == (ns.CurrentSpecID and ns.CurrentSpecID()) then return ns.AutoPopulateSpellbook(includeUnpicked) end
+    return false, "No curated data for that spec yet - switch to it and use the active-spec button (spellbook cooldowns only)."
+end
+-- Every spec of the player's class, one after another (specs without data are named in the summary, not silently skipped).
+function ns.ClassAutoPopulateAllSpecs(includeUnpicked)
+    local made, skipped = 0, {}
+    for i = 1, (GetNumSpecializations and GetNumSpecializations() or 0) do
+        local id, name = GetSpecializationInfo(i)
+        if id then
+            local ok = ns.ClassAutoPopulateSpec(id, includeUnpicked)
+            if ok then made = made + 1 else skipped[#skipped + 1] = tostring(name) end
+        end
+    end
+    local msg = ("Auto-populated %d spec(s) of %s."):format(made, UnitClass("player") or "your class")
+    if #skipped > 0 then msg = msg .. " No data yet for: " .. table.concat(skipped, ", ") .. "." end
+    return made > 0, msg
 end
 end   -- do
 

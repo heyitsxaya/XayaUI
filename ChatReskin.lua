@@ -555,5 +555,6 @@ function ns.BuildChatTab(Notify)
             } },
         },
     }
+    if ns.ChatDock_Options then chatReskin.args.dock = ns.ChatDock_Options(Notify) end
     return chatReskin
 end
