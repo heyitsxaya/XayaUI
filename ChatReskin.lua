@@ -418,6 +418,7 @@ function ns.ChatReskin_Debug()
     if ns.ChatText and ns.ChatText.Debug then ns.ChatText.Debug(say) end
     if ns.ChatTabs and ns.ChatTabs.Debug then ns.ChatTabs.Debug(say) end
     if ns.ChatDock_Debug then ns.ChatDock_Debug(say) end
+    if ns.ChatTrade_Debug then ns.ChatTrade_Debug(say) end
     if ns.ChatPanels_Debug then ns.ChatPanels_Debug(say) end
 end
 
@@ -573,9 +574,6 @@ function ns.BuildChatTab(Notify)
                     stampLocal = tog("Use your computer's time (off: server time)", "timeStampLocalTime", 3),
                     stampColorOn = tog("Color the timestamp", "useCustomTimeColor", 4),
                     stampColor = col("Timestamp color", "timeR", "timeG", "timeB", 5),
-                    chanHeader = { type = "header", name = "Channel names", order = 10 },
-                    short = tog("Short channel names ([2. Trade - City] becomes [2], [Guild] becomes [G])", "shortChannels", 11),
-                    hide = tog("Hide channel names", "hideChannels", 12),
                     linkHeader = { type = "header", name = "Links and mentions", order = 20 },
                     url = tog("Make web addresses clickable (click puts the address in the edit box, selected for Ctrl+C)", "url", 21),
                     hover = tog("Show a tooltip when the mouse is over an item, spell, quest, or achievement link", "hyperlinkHover", 22),
@@ -607,6 +605,9 @@ function ns.BuildChatTab(Notify)
                 tabHeight = rng("Tab height (0 = Blizzard's own height; other values re-anchor the tab dock)", "tabHeightCustom", 33, 0, 40),
                 fadeHeader = { type = "header", name = "Fade", order = 40 },
                 tabFade = tog("Show tab names and the copy button only while the mouse is over the chat or its tab", "tabFadeUntilHover", 41),
+                chanHeader = { type = "header", name = "Channel names", order = 60 },
+                short = tog("Short channel names ([2. Trade - City] becomes [2], [Guild] becomes [G])", "shortChannels", 61),
+                hide = tog("Hide channel names", "hideChannels", 62),
             } },
             alerts = { type = "group", name = "Alerts", order = 4, args = {
                 kwOn = tog("Highlight keywords", "keywordsOn", 1),
@@ -647,6 +648,7 @@ function ns.BuildChatTab(Notify)
         },
     }
     for i, name in ipairs(ChannelNames()) do chatReskin.args.alerts.args["chan_" .. name] = chanSound(name, 31 + i) end
+    if ns.ChatTrade_Options then chatReskin.args.tabs.args.trade = ns.ChatTrade_Options(Notify) end   -- Trade chat in a tab of its own (ChatTrade.lua)
     if ns.ChatDock_Options then chatReskin.args.dock = ns.ChatDock_Options(Notify) end
     if ns.ChatPrivacy_Options then chatReskin.args.privacy = ns.ChatPrivacy_Options(Notify) end
     return chatReskin

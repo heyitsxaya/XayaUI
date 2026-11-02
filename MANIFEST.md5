@@ -4,7 +4,7 @@ a1620bdf32daf4d160b6252169fa9586  Actions.lua
 1abeb3ad1df1e4bb43eed2b39efdca76  ChatDock.lua
 7df682e6c248171df51f22eeb3c1cadf  ChatPanel.lua
 e81b2a7e98961d89c1e37450af71b4c5  ChatPanels.lua
-78662efd964e99b0f493f961444a5c54  ChatReskin.lua
+e433a4899a30b5cbc4d5e8acdece916b  ChatReskin.lua
 b9faeb6335d4410f328225d4e1e2ce4e  ChatTabs.lua
 ec7867cfcc75e25e078f1308153cfada  ChatText.lua
 a18e98b371745c6f10fc6a82e0f570a1  ChatWidgets.lua
@@ -38,7 +38,7 @@ d7e606b10ef3f5b67d3c55a94a5c3953  Theme.lua
 6bd164b672f60f09529d09c9b5b6d3d6  Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  UserMedia.lua
 c1939ad614c1dff592b11cd2019b678c  Visual.lua
-72fe0c840f68eb6e7f0b31a9b264044b  XayaUI.toc
+8d8e1b81cabea9a164e2be849b1af412  XayaUI.toc
 1eb8ec8eeaec35396f0f443339972b13  XayaUI_CombatEngine/AuraIDProbe.lua
 49635f2a302eea3ebac0e3f872c3da06  XayaUI_CombatEngine/AuraModel.lua
 a54c4d312f4f27a53098f413000fd2d2  XayaUI_CombatEngine/AuraSetup.lua
@@ -55,3 +55,4 @@ b31297b65212c66dfc00ce671ceb40fc  XayaUI_Tooltips/Tooltips.lua
 6c0d30fca20f1542be4df3c9c6438306  XayaUI_Tooltips/tests/run.py
 8e38d0cbd922189444cb49759636cd2b  NotepadShare.lua
 e016e3f5b989cbdd20dbe31798432391  MinimapButton.lua
+4092250475ca8c0d9eed0f6984db28f1  ChatTrade.lua
