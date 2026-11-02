@@ -150,6 +150,15 @@ function ns.DraftsOnOpen()
 end
 
 -- a rule made in the open window: nothing saved yet, so closing without "Save changes" keeps it only in Drafts
+-- Rebuild the on-screen displays of a group and redraw the options tree now and once more next frame (the second pass catches
+-- rows that only exist after the first rebuild). Called after a save, after the window closes, and after the window opens.
+function ns.RefreshSidebar(group)
+    for _, r in ipairs(group or {}) do pcall(ns.RefreshVisual, r) end
+    local function go() if ns.UI and ns.UI.Notify then pcall(ns.UI.Notify) end end
+    go()
+    if C_Timer then C_Timer.After(0, go) end
+end
+
 function ns.DraftNew(rule)
     if not windowOpen or not rule or rule.parentUid then return end
     if type(rule.uid) ~= "string" then rule.uid = ns.NewUID() end
@@ -166,6 +175,7 @@ function ns.DraftSave(rule)
     for i = #list, 1, -1 do if list[i].uid == root.uid then table.remove(list, i) end end
     cache = { t = -1 }
     ns.MarkDirty()
+    ns.RefreshSidebar(group)   -- a saved edit redraws the displays and the side panel (icons, names, eyes) right away
 end
 
 -- put the root's saved version back, keeping what the sidebar controls (on / off, name, group) as they are now
@@ -226,6 +236,7 @@ function ns.DraftsOnClose()
         end
     end
     wipe(baseline)
+    ns.RefreshSidebar()   -- reverted rules: redraw the side panel so it matches what is saved
     if moved > 0 and ns.Print then
         ns.Print(("%d rule(s) had unsaved changes. The changes were kept in Drafts (toolbar > Drafts) and the rule(s) went back to the last saved version."):format(moved))
     end

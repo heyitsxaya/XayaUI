@@ -393,12 +393,24 @@ local function TraceGroupFire(w, what)
     w.xuiFireTraced = true
     local orig = w.Fire
     w.Fire = function(self, ev, ...)
-        if ev ~= "OnGroupSelected" or not (ns.perf and ns.perf.show) then return orig(self, ev, ...) end
-        ns.Trace("click"); ns.Trace(what .. " switch -> " .. tostring((...)))
-        local t0 = debugprofilestop()
-        local r1, r2 = orig(self, ev, ...)
-        ns.Trace(string.format("%s switch built in %.0f ms", what, debugprofilestop() - t0))
-        if C_Timer then C_Timer.After(0, function() ns.Trace("next frame after " .. what .. " switch (anything below this ran late)") end) end
+        if ev ~= "OnGroupSelected" then return orig(self, ev, ...) end
+        -- A tab / tree switch builds the new pane's widgets inside this call. They are plain AceGUI widgets until the skin pass runs, and
+        -- that pass used to wait for a 0.25 s timer, so the old skin showed for a few frames (the "flash"). Run it here instead: right
+        -- after the pane is built, in the same frame, before anything is drawn. Only the outermost switch does it (a tree click fires
+        -- the tab switch inside it).
+        local tracing = ns.perf and ns.perf.show
+        local t0
+        if tracing then ns.Trace("click"); ns.Trace(what .. " switch -> " .. tostring((...))); t0 = debugprofilestop() end
+        ns.xuiFireDepth = (ns.xuiFireDepth or 0) + 1
+        local okF, r1, r2 = pcall(orig, self, ev, ...)
+        ns.xuiFireDepth = ns.xuiFireDepth - 1   -- (pcall: an error in the pane must not leave the depth counter stuck)
+        if ns.xuiFireDepth == 0 and ns.DecorateTrees then
+            local t1 = tracing and debugprofilestop()
+            pcall(ns.DecorateTrees)
+            if tracing then ns.Trace(string.format("%s switch built in %.0f ms + skin %.0f ms", what, t1 - t0, debugprofilestop() - t1)) end
+        end
+        if tracing and C_Timer then C_Timer.After(0, function() ns.Trace("next frame after " .. what .. " switch (anything below this ran late)") end) end
+        if not okF then error(r1, 0) end
         return r1, r2
     end
     AddRest(w, "firetrace", function(self) rawset(self, "Fire", nil); self.xuiFireTraced = nil end)
@@ -1215,7 +1227,21 @@ function ns.TypeIcon(key, fallback)
     return fallback
 end
 -- which icon a rule or folder gets (nil = none, e.g. a sound-only rule)
+-- A rule that has CUES carries no display or sound of its own (they live in its hidden child cues): its row takes its look from its first
+-- display cue, else its first sound cue. Returns the cue to read, or nil when the rule shows / plays something itself or has no cues.
+function ns.RuleLookSource(rule)
+    if not (rule and rule.uid) or rule.parentUid or rule.isCue or not ns.CuesOf then return nil end
+    if (type(rule.visual) == "table" and rule.visual.enabled) or (type(rule.sound) == "table" and rule.sound.enabled) then return nil end
+    local cues, snd = ns.CuesOf(rule), nil
+    for _, c in ipairs(cues) do
+        if c.cueKind ~= "sound" and c.cueKind ~= "speech" and c.cueKind ~= "custom" and type(c.visual) == "table" and c.visual.enabled then return c end
+        if not snd and (c.cueKind == "sound" or c.cueKind == "speech") then snd = c end
+    end
+    return snd
+end
 function ns.TypeKey(rule)
+    local src = ns.RuleLookSource(rule)
+    if src then rule = src end
     local v = type(rule.visual) == "table" and rule.visual or nil
     if not v or not v.enabled then
         if type(rule.sound) == "table" and rule.sound.enabled then return "sound" end
@@ -1243,6 +1269,8 @@ end
 function ns.RuleListArt(r)
     local mode = r.listIcon or "auto"
     if mode ~= "auto" then return nil end
+    local src = ns.RuleLookSource(r)
+    if src then r = src end
     local v = type(r.visual) == "table" and r.visual or nil
     if not v or not v.enabled then return nil end
     local kind = ns.Val and ns.Val(v.kind)
@@ -1264,7 +1292,7 @@ function ns.PaintTypeIcon(button, x)
         local n = last:match("^rule(%d+)$")
         if n then
             local r = ns.rules and ns.rules[tonumber(n)]
-            key = r and ns.TypeKey(r)
+            key = r and (ns.TypeKey(r) or "sttexture")   -- a rule with nothing to show yet still gets an icon (its spell's), so every row has the same layout
             ruleObj = r
         elseif uv:match("^all\001smart\001smart_[^\001]+$") then
             -- Smart Categories type rows carry the matching type icon (same size and row height as the rule rows)
@@ -1791,6 +1819,15 @@ local function Walk(w, depth)
             local origOpen = po.Open
             po.Open = function(self, ...)
                 origOpen(self, ...)
+                -- AceGUI reuses its list rows and only sets their height once (17, highlight 14). A texture picker makes them 60 tall; if one of
+                -- those rows is reused here it stays tall, so rows overlap and the hover bar covers 3 rows. Put every row back to normal; the
+                -- texture picker's own Open (wrapped around this one) makes its rows tall again after this runs.
+                pcall(function()
+                    for _, item in pairs(self.items) do
+                        if item.frame then item.frame:SetHeight(17) end
+                        if item.highlight then item.highlight:SetHeight(14) end
+                    end
+                end)
                 pcall(function()
                     local need = 0
                     for _, item in pairs(self.items) do
@@ -1843,6 +1880,51 @@ local function Walk(w, depth)
             edge:SetBackdropBorderColor(0.4, 0.4, 0.45, 1)
         end
     elseif t == "Heading" then
+        -- a header with arg.xuiCollapse gets a + / - at its far right end that hides the options under it (Options.lua: ns.CollapsibleHeaders)
+        do
+            local ho = w.GetUserData and w:GetUserData("option")
+            local ha = ho and type(ho.arg) == "table" and ho.arg.xuiCollapse and ho.arg or nil
+            if ha and w.frame then
+                local b = w.xuiCollBtn
+                if not b then
+                    b = CreateFrame("Button", nil, w.frame)
+                    b:SetSize(16, 16)
+                    b:SetPoint("RIGHT", w.frame, "RIGHT", -2, 0)
+                    b:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+                    b:SetScript("OnClick", function(self) if self.fn then self.fn() end end)
+                    b:SetScript("OnEnter", function(self)
+                        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+                        GameTooltip:SetText("Collapse or expand this section")
+                        GameTooltip:AddLine("Only hides the options below; nothing is changed.", 1, 1, 1, true)
+                        GameTooltip:Show()
+                    end)
+                    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+                    w.xuiCollBtn = b
+                end
+                b.fn = ha.xuiToggle
+                local closed = ha.xuiCollapsed and ha.xuiCollapsed()
+                b:SetNormalTexture(closed and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
+                b:SetPushedTexture(closed and "Interface\\Buttons\\UI-PlusButton-Down" or "Interface\\Buttons\\UI-MinusButton-Down")
+                b:Show()
+                if w.right and not w.xuiCollPts then   -- the line after the title stops short of the button
+                    w.xuiCollPts = {}
+                    for i = 1, w.right:GetNumPoints() do w.xuiCollPts[i] = { w.right:GetPoint(i) } end
+                    w.right:ClearAllPoints()
+                    for _, p in ipairs(w.xuiCollPts) do
+                        if p[1] == "RIGHT" and p[2] == w.frame then w.right:SetPoint("RIGHT", b, "LEFT", -4, 0)
+                        else w.right:SetPoint(p[1], p[2], p[3], p[4], p[5]) end
+                    end
+                    AddRest(w, "collbtn", function(self)
+                        if self.xuiCollBtn then self.xuiCollBtn:Hide(); self.xuiCollBtn.fn = nil end
+                        if self.right and self.xuiCollPts then
+                            self.right:ClearAllPoints()
+                            for _, p in ipairs(self.xuiCollPts) do self.right:SetPoint(p[1], p[2], p[3], p[4], p[5]) end
+                        end
+                        self.xuiCollPts = nil
+                    end)
+                end
+            end
+        end
         -- ONE header size across the whole UI (section titles between the lines, collapsible headers, "Description" etc.)
         if w.label and not w.xuiH3 then
             local f1, f2, f3 = w.label:GetFont()

@@ -100,7 +100,7 @@ local function SearchBox(order, pick, name, kind)
     local item = kind == "item"
     return { type = "input", name = name or (item and "Search by item name" or "Search by spell name"), order = order, width = "double",
         desc = item and "Type part of an item name (every word, any order; * matches anything). A list with icons pops up; click one (or press Enter for the first) to fill in its item ID. Also accepts an ID. Finds items in your bags, bank, and worn gear, plus every item your game client has already seen; an item it has never loaded will not appear, so type its ID instead (Wowhead shows it in the URL)."
-            or "Type part of a spell name. A list with icons pops up; click one (or press Enter for the first) to fill in its spell ID. Also accepts an ID.",
+            or "Type part of a name. A list with icons pops up; click one (or press Enter for the first) to fill in its ID. Also accepts an ID. Matches that belong to your class (every spec and hero tree) are listed first, each with what it is; small typos, missing spaces and words in any order still find them. Every spell ID that shares the name is listed, so pick the one that is the right kind.",
         arg = { xuiSearch = pick, xuiSearchKind = kind },
         get = function() return "" end, set = function() end }
 end
@@ -406,8 +406,8 @@ local function Col(t, k, name, order, on, extra)
     return o
 end
 local function Rng(t, k, name, order, min, max, step, on, extra)
-    local o = { type = "range", name = name, order = order, min = min, max = max, step = step,
-        get = function() return t[k] or min end, set = function(_, v) t[k] = v; on() end }
+    local o; o = { type = "range", name = name, order = order, min = min, max = max, step = step,
+        get = function() if t[k] ~= nil then return t[k] end if o.def ~= nil then return o.def end return min end, set = function(_, v) t[k] = v; on() end }   -- def: what the engine uses when the value was never set
     if extra then for kk, vv in pairs(extra) do o[kk] = vv end end
     return o
 end
@@ -794,55 +794,227 @@ end
 -------------------------------------------------------------------------------
 local ruleClip = nil          -- { name = "...", data = <deep copy of the source rule> }
 local pasteSel = {}           -- section key -> true (shared by the Rule tab, folder pages and the right-click menu)
-local PASTE_ORDER = { "ids", "states", "talents", "extra", "load", "display", "position", "textDur", "textCnt", "textAbs", "sound" }
-local PASTE_LABELS = {
-    ids = "Trigger: Spell ID, Max Charges, and Aura ID",
-    states = "Conditions: Cooldown State and Buff State",
-    talents = "Talents (Requirement Mode and List)",
-    extra = "Additional Triggers (list and combine mode)",
-    load = "Load Conditions (Never / Always / Match, Combat, Group, Raid...)",
-    display = "Display: Texture, Overlay, Opacity, Fade, Glow, Outline, Border (not Position or Text)",
-    position = "Display: Position (X / Y)",
-    textDur = "Text: Buff Duration",
-    textCnt = "Text: Stacks / Charges Count",
-    textAbs = "Text: Shield / Absorb Amount",
-    sound = "Audio: Sound, Channel, and Repeat",
+-- Paste Settings is a tree: every leaf is one section (a tick box); a branch has "All of ..." plus its leaves. Leaves keep short keys.
+-- Visual leaves list the cue-display keys they copy; "vTex" is the catch-all for every other display key (texture art etc.).
+ns.PASTE_VIS = {
+    vSize    = { "w", "h", "keepAspect", "zoom" },
+    vColor   = { "alpha", "texAlpha", "oocAlpha", "recolor", "desaturate", "tint", "additive", "desatOnCD" },
+    vRotate  = { "rotation", "flipH", "flipV" },
+    vFade    = { "fadeGrey", "fadeMode", "fadeColor", "fadeAlpha", "fadeAlphaMin", "fadeAlphaMax" },
+    vFlash   = { "flash" },
+    vFill    = { "fill" },
+    vOverlay = { "overlay" },
+    vGlow    = { "glow" },
+    vOutline = { "outline" },
+    vBorder  = { "border", "bg" },
+    vOnBar   = { "requireOnBar" },
 }
+ns.PASTE_VIS_SKIP = { text = true, count = true, absorb = true, x = true, y = true }
+ns.PASTE_TREE = {
+    { "Triggers", {
+        { "Cooldown trigger", {
+            { "idsCd", "Spell ID and Max Charges" }, { "stCd", "Cooldown State" } } },
+        { "Buff / Aura trigger", {
+            { "idsBuff", "Aura ID" }, { "stBuff", "Buff State" } } },
+        { "extra", "Additional Triggers (whole list + combine mode)" },
+        { "XROWS" },
+        { "activation", "Activation mode + trigger order" },
+        { "talents", "Talents (requirement mode + list)" },
+    } },
+    { "load", "Load Conditions" },
+    { "actions", "Actions (chat message, glow, custom code)" },
+    { "conditions", "Conditions (list + the cues each fires)" },
+    { "Cues", {
+        { "cues", "Cue list (replaces the rule's cues)" },
+        { "Display", {
+            { "vTex", "Texture / art" }, { "vSize", "Size, aspect, zoom" }, { "vColor", "Color, tint, opacity" },
+            { "vRotate", "Rotation and flip" }, { "vFade", "Fade (as the buff runs out)" }, { "vFlash", "Flash" },
+            { "vFill", "Progress-bar wipe" }, { "vOverlay", "Overlay layer" }, { "vGlow", "Glow" },
+            { "vOutline", "Outline" }, { "vBorder", "Border and background" }, { "vOnBar", "Only show while on an action bar" } } },
+        { "position", "Position (X / Y)" },
+        { "Text", {
+            { "textDur", "Buff Duration" }, { "textCnt", "Stacks / Charges Count" }, { "textAbs", "Shield / Absorb Amount" } } },
+        { "Audio", {
+            { "sound", "Sound and Channel" }, { "sndRep", "Repeat" } } },
+    } },
+}
+local PASTE_ORDER, PASTE_LABELS = {}, {}
+do
+    local function walk(list)
+        for _, n in ipairs(list) do
+            if type(n[2]) == "table" then walk(n[2])
+            elseif n[2] then PASTE_ORDER[#PASTE_ORDER + 1] = n[1]; PASTE_LABELS[n[1]] = n[2] end
+        end
+    end
+    walk(ns.PASTE_TREE)
+end
 local function PasteApply(key, dst, src)
     local C = ns.Copy
-    if key == "ids" then dst.spellID, dst.maxCharges, dst.buffID = src.spellID, src.maxCharges, src.buffID
-    elseif key == "states" then dst.cdState, dst.buffState = src.cdState, src.buffState
+    if key == "idsCd" then
+        dst.spellID, dst.maxCharges, dst.useCooldown, dst.cdName = src.spellID, src.maxCharges, src.useCooldown, src.cdName
+    elseif key == "idsBuff" then
+        dst.buffID, dst.useBuff, dst.buffName = src.buffID, src.useBuff, src.buffName
+    elseif key == "activation" then dst.trigMode, dst.trigOrder = src.trigMode, src.trigOrder and C(src.trigOrder) or nil
+    elseif key == "actions" then dst.actions = src.actions and C(src.actions) or nil
+    elseif key == "stCd" then dst.cdState = src.cdState
+    elseif key == "stBuff" then dst.buffState = src.buffState
     elseif key == "talents" then dst.talents, dst.talentMode = C(src.talents or {}), src.talentMode
     elseif key == "extra" then dst.extra = C(src.extra or { list = {} })
     elseif key == "load" then dst.load = C(src.load or {})
-    elseif key == "display" then
+    elseif key == "vTex" then
+        local claimed = {}
+        for _, ks in pairs(ns.PASTE_VIS) do for _, k in ipairs(ks) do claimed[k] = true end end
         for k, val in pairs(src.visual or {}) do
-            if k ~= "text" and k ~= "count" and k ~= "absorb" and k ~= "x" and k ~= "y" then dst.visual[k] = C(val) end
+            if not claimed[k] and not ns.PASTE_VIS_SKIP[k] and not (dst.isCue and (k == "enabled" or k == "trigger")) then dst.visual[k] = C(val) end
+        end
+    elseif ns.PASTE_VIS[key] then
+        for _, k in ipairs(ns.PASTE_VIS[key]) do
+            if src.visual then dst.visual[k] = (src.visual[k] ~= nil) and C(src.visual[k]) or nil end
         end
     elseif key == "position" then dst.visual.x, dst.visual.y = src.visual.x, src.visual.y
     elseif key == "textDur" then dst.visual.text = C(src.visual.text)
     elseif key == "textCnt" then dst.visual.count = C(src.visual.count)
     elseif key == "textAbs" then dst.visual.absorb = C(src.visual.absorb)
-    elseif key == "sound" then dst.sound, dst.repeatSec = C(src.sound), src.repeatSec end
+    elseif key == "sound" then dst.sound = C(src.sound)
+    elseif key == "sndRep" then dst.repeatSec = src.repeatSec end
 end
 local function PasteSelectedLabels()
     local l = {}
-    for _, k in ipairs(PASTE_ORDER) do if pasteSel[k] then l[#l + 1] = PASTE_LABELS[k]:match("^[^:(]+:?%s*[^(]*") or PASTE_LABELS[k] end end
+    for _, k in ipairs(PASTE_ORDER) do if pasteSel[k] then l[#l + 1] = PASTE_LABELS[k] end end
+    for k in pairs(pasteSel) do if type(k) == "string" and k:match("^xr%d+$") then l[#l + 1] = "Additional trigger " .. k:sub(3) end end
     return l
 end
-local function PasteCount() local n = 0; for _, k in ipairs(PASTE_ORDER) do if pasteSel[k] then n = n + 1 end end return n end
+local function PasteCount() local n = 0; for _, v in pairs(pasteSel) do if v then n = n + 1 end end return n end
+-- Rules are split into a trigger side (the rule), CONDITIONS and CUES (hidden child rules, see Cues.lua / Outcomes.lua). A clip keeps all
+-- three. ns functions, not locals: this file is near Lua's 200-locals limit.
+function ns.MakeClip(rule)
+    local clip = { name = rule.name, data = ns.Copy(rule), cues = {}, conds = {} }
+    if rule.uid and not rule.parentUid and not rule.isCue then
+        for _, c in ipairs(ns.CuesOf(rule)) do clip.cues[#clip.cues + 1] = ns.Copy(c) end
+        for _, c in ipairs(ns.ConditionsOf(rule)) do clip.conds[#clip.conds + 1] = ns.Copy(c) end
+    end
+    return clip
+end
+function ns.PasteDropChildren(list)
+    for _, c in ipairs(list) do
+        for i, r in ipairs(ns.rules) do if r == c then table.remove(ns.rules, i); break end end
+        pcall(ns.DropVisual, c)
+    end
+end
+function ns.PasteCues(dst, clip)
+    dst.uid = dst.uid or ns.NewUID()
+    ns.PasteDropChildren(ns.CuesOf(dst))
+    for _, c in ipairs(clip.cues) do
+        local n = ns.Copy(c)
+        n.uid, n.parentUid, n.folder = nil, dst.uid, dst.folder
+        n.name = tostring(dst.name or "") .. " (cue)"
+        ns.rules[#ns.rules + 1] = n
+        pcall(ns.RefreshVisual, n)
+    end
+end
+function ns.PasteConditions(dst, clip)
+    dst.uid = dst.uid or ns.NewUID()
+    ns.PasteDropChildren(ns.ConditionsOf(dst))
+    for _, c in ipairs(clip.conds) do
+        local n = ns.Copy(c)
+        n.uid, n.parentUid, n.folder = nil, dst.uid, dst.folder
+        ns.rules[#ns.rules + 1] = n
+    end
+end
+-- a condition may only fire cues the rule really has; returns how many references had to be dropped
+function ns.PasteCleanRefs(dst)
+    local keys, dropped = {}, 0
+    for _, c in ipairs(ns.CuesOf(dst)) do if c.cueKey then keys[c.cueKey] = true end end
+    for _, cond in ipairs(ns.ConditionsOf(dst)) do
+        if type(cond.thenCues) == "table" then
+            local keep = {}
+            for _, k in ipairs(cond.thenCues) do if keys[k] then keep[#keep + 1] = k else dropped = dropped + 1 end end
+            cond.thenCues = (#keep > 0) and keep or nil
+            ns.NormalizeCues(cond)
+        end
+    end
+    return dropped
+end
+-- Appearance / audio sections go onto the cues of the target: each copied cue is matched with a cue of the SAME KIND in list order.
+-- A rule with no cues (older rule) counts as one display / one sound. Returns pairs applied, copied parts left without a partner.
+function ns.PasteLook(dst, clip, sel, apply)
+    local VIS = { "vTex", "vSize", "vColor", "vRotate", "vFade", "vFlash", "vFill", "vOverlay", "vGlow", "vOutline", "vBorder", "vOnBar", "position", "textDur", "textCnt", "textAbs" }
+    local wantVis = false
+    for _, k in ipairs(VIS) do if sel[k] then wantVis = true end end
+    if not wantVis and not sel.sound and not sel.sndRep then return 0, 0 end
+    local function isSnd(c) return c.cueKind == "sound" or c.cueKind == "speech" end
+    local function isVis(c) return c.cueKind ~= "sound" and c.cueKind ~= "speech" and c.cueKind ~= "custom" end
+    local dCues = dst.uid and ns.CuesOf(dst) or {}
+    local done, skipped = 0, 0
+    local function run(pred, keys)
+        local srcs, byKind = {}, {}
+        for _, c in ipairs(clip.cues) do if pred(c) then srcs[#srcs + 1] = c end end
+        if #clip.cues == 0 then srcs[1] = clip.data end
+        for _, c in ipairs(dCues) do if pred(c) then local k = c.cueKind or "?"; byKind[k] = byKind[k] or {}; table.insert(byKind[k], c) end end
+        local used = {}
+        for _, s in ipairs(srcs) do
+            local d
+            if #clip.cues == 0 then   -- an older rule: its own display / sound goes to the target's first matching cue, or to the target itself
+                if #dCues == 0 then d = dst else for _, c in ipairs(dCues) do if pred(c) then d = c; break end end end
+            else
+                local list = byKind[s.cueKind or "?"]
+                local n = used[s.cueKind or "?"] or 0
+                d = list and list[n + 1]
+                used[s.cueKind or "?"] = n + 1
+            end
+            if not d and #clip.cues > 0 and dst.uid and not dst.isCue and s.cueKind and ns.NewCueRule then
+                -- the copied rule has more cues of this kind than the target (a second / third texture layer): make the missing cue, carrying the
+                -- source cue's name and key so conditions copied later can still point at it
+                d = ns.NewCueRule(dst, s.cueKind)
+                if d then
+                    d.cueName = s.cueName
+                    ns.pasteCreated = (ns.pasteCreated or 0) + 1
+                end
+            end
+            if d then
+                for _, k in ipairs(keys) do if sel[k] then apply(k, d, s) end end
+                pcall(ns.RefreshVisual, d)
+                done = done + 1
+            else skipped = skipped + 1 end
+        end
+    end
+    if wantVis then run(isVis, VIS) end
+    if sel.sound or sel.sndRep then run(isSnd, { "sound", "sndRep" }) end
+    return done, skipped
+end
 -- returns true if something was pasted
 local function PasteInto(dst)
-    if not ruleClip or PasteCount() == 0 then return false end
-    for _, k in ipairs(PASTE_ORDER) do if pasteSel[k] then PasteApply(k, dst, ruleClip.data) end end
+    if not ruleClip or PasteCount() == 0 or dst.parentUid or dst.isCue then return false end
+    if ns.IsEditLocked and ns.IsEditLocked(dst) then ns.pasteNotes[#ns.pasteNotes + 1] = "'" .. tostring(dst.name) .. "' is edit-locked, skipped"; return false end
+    local sel, clip = pasteSel, ruleClip
+    for _, k in ipairs({ "idsCd", "idsBuff", "stCd", "stBuff", "talents", "extra", "activation", "load", "actions" }) do if sel[k] then PasteApply(k, dst, clip.data) end end
+    if not sel.extra then   -- single additional triggers are ADDED to the target's list (its own triggers stay)
+        local src = clip.data.extra and clip.data.extra.list
+        for i = 1, (src and #src or 0) do
+            if sel["xr" .. i] then
+                dst.extra = type(dst.extra) == "table" and dst.extra or { list = {} }
+                dst.extra.list = dst.extra.list or {}
+                dst.extra.list[#dst.extra.list + 1] = ns.Copy(src[i])
+            end
+        end
+    end
+    if sel.cues then ns.PasteCues(dst, clip) end
+    if sel.conditions then ns.PasteConditions(dst, clip) end
+    if sel.cues or sel.conditions then
+        local dropped = ns.PasteCleanRefs(dst)
+        if dropped > 0 then ns.pasteNotes[#ns.pasteNotes + 1] = dropped .. " condition link(s) to cues this rule does not have were removed (tick Cues too to bring the cues along)" end
+    end
+    ns.pasteCreated = 0
+    local _, skipped = ns.PasteLook(dst, clip, sel, PasteApply)
+    if ns.pasteCreated > 0 then ns.pasteNotes[#ns.pasteNotes + 1] = ns.pasteCreated .. " extra cue(s) were created on '" .. tostring(dst.name) .. "' to hold the copied layers (no condition fires them yet: tick Conditions + Cues to copy those too)" end
+    if skipped > 0 then ns.pasteNotes[#ns.pasteNotes + 1] = skipped .. " copied display / sound part(s) had no cue of the same kind on '" .. tostring(dst.name) .. "' (tick Cues to copy the cues themselves)" end
     pcall(ns.RefreshVisual, dst)
     ns.MarkDirty()
     return true
 end
+ns.pasteNotes = {}
 local function PasteSummary()
-    local names = {}
-    for _, k in ipairs(PASTE_ORDER) do if pasteSel[k] then names[#names + 1] = PASTE_LABELS[k] end end
-    return table.concat(names, "; ")
+    return table.concat(PasteSelectedLabels(), "; ")
 end
 
 -- which banners (Display Options / Text / Sound) are expanded, per rule; everything starts collapsed
@@ -861,6 +1033,42 @@ function ns.ArrowToggle(rule, key, order)
             if b[key] == false then b[key] = nil else b[key] = false end
             Notify()
         end }
+end
+
+-- Every sub header (a "header" line) in an options table gets a + / - at its far right end (drawn by Skin.lua). Collapsing hides the
+-- options under it, up to the next header. Session only; nothing is saved and no setting changes. `tag` keeps the keys of different
+-- tables apart. Options above the first header are never hidden.
+function ns.CollapsibleHeaders(rule, args, tag)
+    local keys = {}
+    for k, o in pairs(args) do if type(o) == "table" then keys[#keys + 1] = k end end
+    table.sort(keys, function(a, b)
+        local oa, ob = tonumber(args[a].order) or 0, tonumber(args[b].order) or 0
+        if oa ~= ob then return oa < ob end
+        return tostring(a) < tostring(b)
+    end)
+    local cur
+    for _, k in ipairs(keys) do
+        local o = args[k]
+        if o.type == "header" and type(o.name) == "string" and o.name ~= "" and not o.arg then
+            local key = "h:" .. tag .. ":" .. k
+            cur = key
+            o.arg = { xuiCollapse = true,
+                xuiCollapsed = function() return not ns.ArrowOpen(rule, key) end,
+                xuiToggle = function()
+                    bannerOpen[rule] = bannerOpen[rule] or {}
+                    local b = bannerOpen[rule]
+                    if b[key] == false then b[key] = nil else b[key] = false end
+                    Notify()
+                end }
+        elseif cur and o.type ~= "header" then
+            local orig, ck = o.hidden, cur
+            o.hidden = function(...)
+                if not ns.ArrowOpen(rule, ck) then return true end
+                if type(orig) == "function" then return orig(...) end
+                return orig
+            end
+        end
+    end
 end
 
 local function BuildRule(i, rule)
@@ -882,7 +1090,7 @@ local function BuildRule(i, rule)
             },
             spellName = { type = "description", order = 3, width = "double", fontSize = "medium",
                 name = function() return SpellName(rule.spellID) end },
-            spellSearch = SearchBox(1.5, function(id) rule.spellID = id; Changed(rule); Notify() end),   -- before Spell ID (2)
+            spellSearch = SearchBox(1.5, function(id) rule.spellID = id; Changed(rule); Notify() end, nil, "cd"),   -- before Spell ID (2)
             spellPick = {
                 type = "select", name = "Or pick from your spellbook (current spec, active spells)", order = 3.5, width = "double",
                 values = function()
@@ -909,7 +1117,7 @@ local function BuildRule(i, rule)
             detected = { type = "description", order = 6, width = "full", name = function() return DetectedMax(rule.spellID) end },
             buffHeader = { type = "header", name = "Buff / Aura", order = 10 },
             buffState = Sel(rule, "buffState", "State", 11, BUFF_VALUES, BUFF_ORDER, on, { width = "double" }),
-            buffSearch = SearchBox(11.5, function(id) rule.buffID = id; Changed(rule); Notify() end),
+            buffSearch = SearchBox(11.5, function(id) rule.buffID = id; Changed(rule); Notify() end, nil, "aura"),
             buffID = {
                 type = "input", name = "Aura spell ID", order = 12, width = "half",
                 get = function() return tostring(rule.buffID) end,
@@ -1314,7 +1522,7 @@ local function BuildRule(i, rule)
             flashSpeed = Rng(V.flash, "speed", "Flash speed (pulses per second)", 36, 1, 8, 0.5, on,
                 { disabled = function() return not V.flash.enabled end }),
             desatOnCD = Tog(V, "desatOnCD", "Gray out while the spell is on cooldown", 37, on, { width = "double" }),
-            requireOnBar = Tog(V, "requireOnBar", "Only show while this ability is on an action bar", 37.5, on, { width = "double",
+            requireOnBar = Tog(V, "requireOnBar", "Only show while this ability is on an action bar", 9.5, on, { width = "double",
                 desc = "Uses the Cooldown Spell ID (or the Aura spell ID if no Cooldown Spell ID is set). Hides the display whenever that spell is not currently placed on any of your 12 action bars, even if the rule would otherwise fire. Off by default so existing rules are unaffected." }),
             fxH = { type = "header", name = "Glow & Outline", order = 40 },
             glow = Tog(V, "glow", "Pulsing glow", 41, on),
@@ -1374,7 +1582,7 @@ local function BuildRule(i, rule)
             tint = Col(OV, "tint", "Overlay tint color", 6, on, { disabled = function() return not OV.enabled end }),
             desaturate = Tog(OV, "desaturate", "Desaturate the overlay first", 7, on,
                 { width = "double", disabled = function() return not OV.enabled or ProgLocked() end,
-                  desc = "Progress textures keep the top layer ungrayed by default (Advanced customization under Opacity & Fill overrides this).",
+                  desc = "Progress textures keep the top layer ungrayed by default (Advanced customization under Overlay Layer overrides this).",
                   get = function() if ProgLocked() then return false end return OV.desaturate and true or false end }),
             additive = Tog(OV, "additive", "Additive blend for the overlay", 8, on,
                 { width = "double", disabled = function() return not OV.enabled end }),
@@ -1390,7 +1598,7 @@ local function BuildRule(i, rule)
             alpha = Rng(V, "alpha", "Overall opacity (everything)", 1, 0, 1, 0.05, on),
             texAlpha = Rng(V, "texAlpha", "Base texture opacity", 2, 0, 1, 0.05, on,
                 { disabled = function() return ProgLocked() end,
-                  desc = "Progress textures link this to Overlay opacity below, preserving their ratio, unless Advanced customization (bottom of this section) is on." }),
+                  desc = "Progress textures link this to Overlay opacity below, preserving their ratio, unless Advanced customization (bottom of Overlay Layer) is on." }),
             ovAlpha = Rng(OV, "alpha", "Overlay opacity", 3, 0, 1, 0.05, on, { disabled = function() return not OV.enabled end,
                 set = function(_, val)
                     if ProgLocked() then
@@ -1404,7 +1612,7 @@ local function BuildRule(i, rule)
                     end
                     on()
                 end }),
-            oocAlpha = Rng(V, "oocAlpha", "Opacity multiplier out of combat", 4, 0, 1, 0.05, on, { width = "double" }),
+            oocAlpha = Rng(V, "oocAlpha", "Opacity multiplier out of combat", 4, 0, 1, 0.05, on, { width = "double", def = 1 }),
             fadeH = { type = "header", name = "Fade Opacity as the Buff Runs Out", order = 10 },
             fadeAlpha = Tog(V, "fadeAlpha", "Fade opacity", 11, on, { width = "double",
                 desc = "Opacity multiplier goes from the value at full duration to the value at expiry. Independent of the gray / color fade. Needs the aura present: set 'Show' to 'While the buff is present'." }),
@@ -1617,10 +1825,18 @@ local function BuildRule(i, rule)
     pos.args.x.order, pos.args.y.order, pos.args.unlock.order = 1, 2, 3
     local posArgs = { x = pos.args.x, y = pos.args.y, unlock = pos.args.unlock }
     display.args.trigger.order = 0
-    -- Color & Blend and Fade / Opacity / Flash (orders 20-39 of the texture box) live under Animation Options
+    -- Color & Blend (20-29) goes to Color & Transparency; Fade / Opacity / Flash (30-39) and Glow & Outline (40-49) live under Animation Options
+    -- Overlay Layer: no collapse arrow of its own any more (it sits inside Animation Options, which collapses), and it comes last,
+    -- below Fade Opacity as the Buff Runs Out and the progress-bar fill. The tick box stays with its settings.
+    addOverlay.order = 200
+    -- "Advanced customization" (override the linked base / overlay opacity and tint) belongs with the overlay settings, at their bottom
+    for _, k in ipairs({ "advH", "advanced" }) do if opacity.args[k] then overlay.args[k] = opacity.args[k]; opacity.args[k] = nil end end
+    if overlay.args.advH then overlay.args.advH.order = 90 end
+    if overlay.args.advanced then overlay.args.advanced.order = 91 end
     local animArgs = {
+        ovHdr = { type = "header", name = "Overlay Layer", order = 199 },
         addOverlay = addOverlay,
-        overlay = Sub("overlay", "Overlay Layer", 2, overlay.args, function() return not OV.enabled end),
+        overlay = { type = "group", inline = true, name = "", order = 201, hidden = function() return not OV.enabled end, args = overlay.args },
     }
     local colorArgs = {}   -- Color & Blend (orders 20-29 of the texture box) + Opacity & Fill = "Color & Transparency"
     do
@@ -1628,13 +1844,20 @@ local function BuildRule(i, rule)
         for k, v in pairs(tex.args) do
             local o = type(v) == "table" and tonumber(v.order)
             if o and o >= 20 and o < 30 then toColor[#toColor + 1] = k
-            elseif o and o >= 30 and o < 40 then toAnim[#toAnim + 1] = k end
+            elseif o and o >= 30 and o < 50 then toAnim[#toAnim + 1] = k end   -- 40-49 = Glow & Outline, also an animation
         end
         for _, k in ipairs(toColor) do colorArgs[k] = tex.args[k]; tex.args[k] = nil end
         for _, k in ipairs(toAnim) do animArgs[k] = tex.args[k]; tex.args[k] = nil end
         -- the run-out fade and the progress-bar wipe are animations: they belong under Animation Options
-        for _, k in ipairs({ "fadeH", "fadeAlpha", "pane_fadeAlpha", "fillH", "fillOn", "pane_fill" }) do
-            if opacity.args[k] then animArgs[k] = opacity.args[k]; opacity.args[k] = nil end
+        -- own keys and orders: "fadeH" already exists in the texture box (Fade, Opacity & Flash), and each header must own only its items
+        -- (collapsing a header hides what sits under it). Fade opacity follows the fade options, the wipe follows the glow and outline.
+        for k, ord in pairs({ fadeH = 38, fadeAlpha = 38.1, pane_fadeAlpha = 38.5, fillH = 46, fillOn = 46.1, pane_fill = 46.5 }) do
+            local o = opacity.args[k]
+            if o then
+                o.order = ord
+                animArgs[(animArgs[k] and ("o_" .. k)) or k] = o
+                opacity.args[k] = nil
+            end
         end
         colorArgs.opH = { type = "header", name = "Opacity & Fill", order = 99 }
         for k, v in pairs(opacity.args) do
@@ -1642,6 +1865,10 @@ local function BuildRule(i, rule)
             colorArgs[colorArgs[k] and ("op_" .. k) or k] = v
         end
     end
+    ns.CollapsibleHeaders(rule, tex.args, "tex")
+    ns.CollapsibleHeaders(rule, animArgs, "anim")
+    ns.CollapsibleHeaders(rule, colorArgs, "col")
+    ns.CollapsibleHeaders(rule, overlay.args, "ov")
     local dispBody = { trigger = display.args.trigger,
         pausePv = { type = "toggle", name = "Pause preview animations", order = 0.5, width = "double",
             desc = "Freezes the sample countdown, the fades, and the flash in every preview while the images stay on screen. Untick to resume.",
@@ -1957,7 +2184,7 @@ local function BuildBar(i, bar)
             name = { type = "input", name = "Name", order = 1, width = "double",
                 get = function() return bar.name end, set = function(_, v) if v ~= "" then bar.name = v end; Notify() end },
             enabled = Tog(bar, "enabled", "Enabled", 2, onN),
-            buffSearch = SearchBox(2.9, function(id) bar.buffID = id; on(); Notify() end),
+            buffSearch = SearchBox(2.9, function(id) bar.buffID = id; on(); Notify() end, nil, "aura"),
             buffID = { type = "input", name = "Aura spell ID", order = 3, width = "half",
                 get = function() return tostring(bar.buffID) end,
                 set = function(_, v) bar.buffID = tonumber(v) or 0; on(); Notify() end },
@@ -2142,7 +2369,17 @@ local function BuildAddonSettings()
                     confirmText = "Clear XayaUI's saved Lua errors?",
                     func = function() if ns.ClearErrorLog then ns.ClearErrorLog() end; Notify() end },
             } },
-            gameDump = { type = "group", inline = true, name = "Game Data Capture (separate tool)", order = 30, args = {
+            auraSetup = { type = "group", inline = true, name = "Combat Tracking Setup", order = 29, args = {
+                asText = { type = "description", order = 1, fontSize = "medium",
+                    name = "Scans YOUR class, spec and talents, reads the game's own spell text, and learns real buff durations from your own casts out of combat. Works for every class. Runs once per spec, and any time you change talents or gear." },
+                asOpen = { type = "execute", name = "Open Combat Tracking Setup", order = 2, width = "double",
+                    func = function() if ns.AuraSetup_Open then ns.AuraSetup_Open() else ns.Print("combat tracking setup is not loaded") end end },
+                asPresence = { type = "toggle", name = "Estimate buffs the game hides in combat (from your own casts)", order = 3, width = "full",
+                    get = function() return ns.AuraModel and ns.AuraModel.PresenceEnabled() end,
+                    set = function(_, v) if ns.AuraModel then ns.AuraModel.SetSetting("presence", v and true or false) end end },
+            } },
+            gameDump = { type = "group", inline = true, name = "Game Data Capture (separate tool)", order = 30,
+                hidden = function() return not _G.XayaUIGameDump end, args = {
                 gdText = { type = "description", order = 1, fontSize = "medium",
                     name = "Pulls every class, spec, talent, spell description, spellbook entry, piece of gear, and set-bonus line the game will give an addon, and records which auras each ability you press causes and for how long. It is a separate addon (XayaUI_GameDump) with its own saved-data file, so nothing here touches your rules or profile." },
                 gdOpen = { type = "execute", name = "Open Game Data Capture", order = 2, width = "double",
@@ -3813,6 +4050,7 @@ do
             if app ~= APP then return end
             LowerWindow()
             if ns.DraftsOnOpen then pcall(ns.DraftsOnOpen) end   -- remember every rule's saved version
+            if ns.RefreshSidebar then pcall(ns.RefreshSidebar) end   -- redraw the side panel from the current rules
             local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
             if of and of.frame and not of.frame.xuiDraftHook then   -- window closed (button, Esc, toggle): unsaved rules go to Drafts
                 of.frame.xuiDraftHook = true
@@ -4560,36 +4798,68 @@ end
 -- Copy / paste lives only in the right-click menu. Ticks are session-only; nothing is ticked by default, so nothing is overwritten
 -- until sections are chosen. Returning MenuResponse.Refresh keeps the submenu open while ticking (unverified in game: if the
 -- game ignores it, the menu simply closes after each tick).
-local PASTE_MENU_LABELS = {
-    ids = "Trigger: Spell ID, Max Charges, Aura ID", states = "Conditions: Cooldown + Buff State", talents = "Talents",
-    extra = "Additional Triggers",
-    load = "Load Conditions", display = "Display (Not Position or Text)", position = "Display: Position (X / Y)",
-    textDur = "Text: Buff Duration", textCnt = "Text: Stacks / Charges Count", textAbs = "Text: Shield / Absorb Amount",
-    sound = "Audio: Sound, Channel, and Repeat",
-}
+function ns.PasteMenuBuild(menu, nodes, refresh)
+    local function leaves(list, out)
+        for _, n in ipairs(list) do
+            if type(n[2]) == "table" then leaves(n[2], out) elseif n[2] then out[#out + 1] = n[1] end
+        end
+        return out
+    end
+    for _, n in ipairs(nodes) do
+        if n[1] == "XROWS" then
+            local rows = ruleClip and ruleClip.data.extra and ruleClip.data.extra.list or {}
+            if #rows > 0 then
+                local sm = menu:CreateButton("Single additional triggers (added to the target's)")
+                for i, row in ipairs(rows) do
+                    local def = ns.TRIGGER_TYPES and ns.TRIGGER_TYPES[row.type]
+                    local nm = (type(row.name) == "string" and row.name:match("%S")) and (row.name .. ":  ") or ""
+                    local key = "xr" .. i
+                    sm:CreateCheckbox(("Trigger %d:  %s%s"):format(i + 2, nm, tostring((def and (def.label or def.name)) or row.type or "?")),
+                        function() return pasteSel[key] and true or false end,
+                        function() pasteSel[key] = (not pasteSel[key]) or nil; return refresh end)
+                end
+            end
+        elseif type(n[2]) == "table" then
+            local sm = menu:CreateButton(n[1])
+            local ks = leaves(n[2], {})
+            sm:CreateCheckbox("All of " .. n[1],
+                function() for _, k in ipairs(ks) do if not pasteSel[k] then return false end end return true end,
+                function()
+                    local all = true
+                    for _, k in ipairs(ks) do if not pasteSel[k] then all = false end end
+                    for _, k in ipairs(ks) do pasteSel[k] = (not all) or nil end
+                    return refresh
+                end)
+            sm:CreateDivider()
+            ns.PasteMenuBuild(sm, n[2], refresh)
+        else
+            local k = n[1]
+            menu:CreateCheckbox(n[2],
+                function() return pasteSel[k] and true or false end,
+                function() pasteSel[k] = (not pasteSel[k]) or nil; return refresh end)
+        end
+    end
+end
 local function AddPasteMenu(root, label, getTargets, describe)
     local sub = root:CreateButton(label)
     local refresh = MenuResponse and MenuResponse.Refresh
     sub:CreateTitle(ruleClip and ("Copied: " .. tostring(ruleClip.name)) or "Nothing copied yet (use Copy Settings)")
-    for _, k in ipairs(PASTE_ORDER) do
-        sub:CreateCheckbox(PASTE_MENU_LABELS[k] or k,
-            function() return pasteSel[k] and true or false end,
-            function() pasteSel[k] = (not pasteSel[k]) or nil; return refresh end)
-    end
-    sub:CreateDivider()
-    sub:CreateButton("Select All Sections", function() for _, k in ipairs(PASTE_ORDER) do pasteSel[k] = true end; return refresh end)
-    sub:CreateButton("Clear Selection", function() for _, k in ipairs(PASTE_ORDER) do pasteSel[k] = nil end; return refresh end)
+    ns.PasteMenuBuild(sub, ns.PASTE_TREE, refresh)
     sub:CreateDivider()
     sub:CreateButton("Paste Selected Sections", function()
         if not ruleClip then ns.Print("nothing copied yet: right-click a rule and choose Copy Settings first") return end
         if PasteCount() == 0 then ns.Print("no sections selected: tick the sections to paste in the Paste Settings menu first") return end
         local targets = getTargets()
-        local warn = (pasteSel.ids and #targets > 1) and "\n|cffff8040Trigger IDs are selected: every one of these rules will track the same spell and aura.|r" or ""
+        local warn = ((pasteSel.idsCd or pasteSel.idsBuff) and #targets > 1) and "\n|cffff8040Trigger IDs are selected: every one of these rules will track the same spell and aura.|r" or ""
+        if pasteSel.conditions then warn = warn .. "\n|cffff8040Conditions replace the target's conditions. They refer to the rule's triggers and cues, so tick those sections too if the target's differ.|r" end
+        if pasteSel.cues then warn = warn .. "\n|cffff8040Cues replace every cue of the target.|r" end
         AskConfirm("Overwrite these sections on " .. describe() .. " with settings from '" .. tostring(ruleClip.name) .. "'?\n" .. PasteSummary() .. warn,
             function()
                 local n = 0
+                wipe(ns.pasteNotes)
                 for _, r in ipairs(targets) do if PasteInto(r) then n = n + 1 end end
                 Notify(); ns.Print(("pasted into %d rule(s)"):format(n))
+                for _, note in ipairs(ns.pasteNotes) do ns.Print("paste note: " .. note) end
             end)
     end)
 end
@@ -4604,13 +4874,13 @@ local function RowMenu(button, root)
             root:CreateTitle("|cffff6060Edits blocked|r")
             root:CreateButton("Duplicate", function() DuplicateRule(rule) end)
             root:CreateButton("Export", function() ns.UI.ExportRule(rule) end)
-            root:CreateButton("Copy Settings", function() ruleClip = { name = rule.name, data = ns.Copy(rule) }; Notify() end)
+            root:CreateButton("Copy Settings", function() ruleClip = ns.MakeClip(rule); Notify() end)
             return true
         end
         root:CreateButton("Rename", function() AskRename(rule.name, function(t) rule.name = t; pcall(ns.RefreshVisual, rule); ns.MarkDirty(); Notify() end) end)
         root:CreateButton("Duplicate", function() DuplicateRule(rule) end)
         root:CreateButton("Export", function() ns.UI.ExportRule(rule) end)
-        root:CreateButton("Copy Settings", function() ruleClip = { name = rule.name, data = ns.Copy(rule) }; Notify(); ns.Print("copied settings of '" .. tostring(rule.name) .. "'") end)
+        root:CreateButton("Copy Settings", function() ruleClip = ns.MakeClip(rule); Notify(); ns.Print("copied settings of '" .. tostring(rule.name) .. "'") end)
         AddPasteMenu(root, "Paste Settings", function() return { rule } end, function() return "'" .. tostring(rule.name) .. "'" end)
         root:CreateButton(rule.enabled and "Disable" or "Enable", function()
             rule.enabled = not rule.enabled; pcall(ns.RefreshVisual, rule); ns.MarkDirty(); Notify()
@@ -5527,6 +5797,10 @@ end
 SX.II = { names = {}, ids = {}, n = 0, nextId = 1, running = false }
 SX.II_MAX = 300000
 function SX.Start(kind)
+    if kind == "talent" and not XayaUITalentDB and not SX.scanTried and ns.ScanAllTalents then
+        SX.scanTried = true   -- once per session: lists every spec and hero tree of the class, not only the current build
+        pcall(ns.ScanAllTalents)
+    end
     if kind == "item" then StartScan(SX.II, SX.II_MAX, C_Item and C_Item.GetItemNameByID)
     else StartScan(SI, SI_MAX, C_Spell.GetSpellName) end
 end
@@ -5555,15 +5829,172 @@ function SX.OwnedItems()
     return out
 end
 
+-- Class-scoped, typo-tolerant candidates. Sets ("talent", "cd", "aura", "any") hold every spell of the player's class that fits the kind:
+-- the current build's talents + the last /xui talents scan (all specs and hero trees) + the class data (cooldowns, buffs, procs, debuffs of
+-- every spec) + the spellbook. Every ID is kept, so a name shared by a talent, its buff and its debuff lists all of them, each labelled.
+function SX.Norm(t)
+    t = tostring(t or ""):lower():gsub("['\226\128\153]", ""):gsub("%p", " "):gsub("%s+", " ")
+    return t:match("^%s*(.-)%s*$")
+end
+-- edit distance with swapped neighbours counted as one edit; gives up (returns maxd + 1) once it must exceed maxd
+function SX.Dist(a, b, maxd)
+    local la, lb = #a, #b
+    if math.abs(la - lb) > maxd then return maxd + 1 end
+    if la == 0 then return lb end
+    if lb == 0 then return la end
+    local p2, p1, cur = {}, {}, {}
+    for j = 0, lb do p1[j] = j end
+    for i = 1, la do
+        cur[0] = i
+        local ai, rowmin = a:byte(i), i
+        for j = 1, lb do
+            local bj = b:byte(j)
+            local v = math.min(p1[j] + 1, cur[j - 1] + 1, p1[j - 1] + ((ai == bj) and 0 or 1))
+            if i > 1 and j > 1 and ai == b:byte(j - 1) and a:byte(i - 1) == bj then v = math.min(v, p2[j - 2] + 1) end
+            cur[j] = v
+            if v < rowmin then rowmin = v end
+        end
+        if rowmin > maxd then return maxd + 1 end
+        p2, p1, cur = p1, cur, p2
+    end
+    return p1[lb]
+end
+function SX.ClassSet(kind)
+    local _, token, classID = UnitClass("player")
+    if not token then return nil end
+    local db = XayaUITalentDB
+    local sig = table.concat({ token, tostring(GetSpecialization and GetSpecialization() or 0), tostring(db and db.built or ""),
+        tostring(ns.talentList and #ns.talentList or 0), tostring(ns.spellList and #ns.spellList or 0) }, "|")
+    if not (SX.cs and SX.cs.sig == sig) then
+        local cs = { sig = sig, talent = {}, cd = {}, aura = {}, any = {} }
+        local seen = { talent = {}, cd = {}, aura = {}, any = {} }
+        local function add(which, id, name, tag)
+            if not id or seen[which][id] then return end
+            seen[which][id] = true
+            local nn = SX.Norm(name)
+            local words = {}
+            for w in nn:gmatch("%S+") do words[#words + 1] = w end
+            local l = cs[which]; l[#l + 1] = { id = id, name = name, tag = tag, norm = nn, words = words, cond = nn:gsub(" ", "") }
+        end
+        local function nameOf(id)
+            local ok, n = pcall(C_Spell.GetSpellName, id)
+            if ok and type(n) == "string" and n ~= "" then return n end
+        end
+        for _, tl in ipairs(ns.BuildTalentList and ns.BuildTalentList() or {}) do
+            add("talent", tl.id, tl.name, "talent, your build"); add("any", tl.id, tl.name, "talent, your build")
+        end
+        local c = db and db.classes and classID and db.classes[classID]
+        if c then
+            for _, n in pairs(c.nodes or {}) do
+                for _, e in ipairs(n.e or {}) do
+                    local nm = e.spell and nameOf(e.spell)
+                    if nm then
+                        local where
+                        if n.scope == "hero" then where = "hero talent"
+                        elseif n.scope == "class" then where = "class talent"
+                        else
+                            local sp = {}
+                            for sid in pairs(n.specs or {}) do sp[#sp + 1] = c.specs[sid] or tostring(sid) end
+                            table.sort(sp)
+                            where = "talent, " .. (#sp > 0 and table.concat(sp, "/") or "spec")
+                        end
+                        add("talent", e.spell, nm, where); add("any", e.spell, nm, where)
+                        if not e.passive then add("cd", e.spell, nm, where) end
+                    end
+                end
+            end
+        end
+        for _, d in pairs(ns.CLASS_AURA_DATA or {}) do
+            if d.classToken == token then
+                for _, e in ipairs(d.entries or {}) do
+                    local nm = nameOf(e.id)
+                    if nm then
+                        local what = (e.kind == "cd") and "cooldown" or ((e.kind == "debuff") and "debuff" or ((e.kind == "proc") and "proc" or "buff"))
+                        local tag = what .. ", " .. tostring(d.spec)
+                        if e.kind == "cd" then add("cd", e.id, nm, tag) else add("aura", e.id, nm, tag) end
+                        add("any", e.id, nm, tag)
+                    end
+                end
+            end
+        end
+        for _, sp in ipairs(ns.BuildSpellList and ns.BuildSpellList() or {}) do
+            if sp.name then add("cd", sp.id, sp.name, "spellbook"); add("any", sp.id, sp.name, "spellbook") end
+        end
+        SX.cs = cs
+    end
+    return SX.cs[(kind == "talent" or kind == "cd" or kind == "aura") and kind or "any"]
+end
+-- rank 1 exact, 2 starts with, 3 every word found, 4 found with typos / a missing space (closest first)
+function SX.ClassMatches(set, q)
+    local qn = SX.Norm(q)
+    if qn == "" then return {} end
+    local qw = {}
+    for w in qn:gmatch("%S+") do qw[#qw + 1] = w end
+    local qc = qn:gsub(" ", "")
+    local out = {}
+    for _, e in ipairs(set) do
+        local rank, dist
+        if e.norm == qn then rank, dist = 1, 0
+        elseif e.norm:sub(1, #qn) == qn then rank, dist = 2, 0
+        else
+            local all, total = true, 0
+            for _, w in ipairs(qw) do
+                local best
+                for _, x in ipairs(e.words) do
+                    local d
+                    if x:find(w, 1, true) then d = 0
+                    else
+                        local tol = (#w >= 8) and 2 or ((#w >= 4) and 1 or 0)
+                        if tol > 0 then
+                            d = math.min(SX.Dist(w, x, tol), SX.Dist(w, x:sub(1, #w), tol))
+                            if d > tol then d = nil end
+                        end
+                    end
+                    if d and (not best or d < best) then best = d end
+                end
+                if not best then all = false; break end
+                total = total + best
+            end
+            if all then rank, dist = (total == 0) and 3 or 4, total
+            elseif #qc >= 4 then   -- a missing or extra space, or a typo across the whole name
+                local tol = (#qc >= 8) and 2 or 1
+                local d = math.min(SX.Dist(qc, e.cond, tol), SX.Dist(qc, e.cond:sub(1, #qc), tol))
+                if e.cond:find(qc, 1, true) then d = 0 end
+                if d <= tol then rank, dist = 4, d end
+            end
+        end
+        if rank then out[#out + 1] = { id = e.id, tag = e.tag, rank = rank, dist = dist, name = e.name } end
+    end
+    table.sort(out, function(a, b)
+        if a.rank ~= b.rank then return a.rank < b.rank end
+        if a.dist ~= b.dist then return a.dist < b.dist end
+        if a.name ~= b.name then return a.name < b.name end
+        return a.id < b.id
+    end)
+    return out
+end
+
 local function SearchSpells(q, kind)
     local item = kind == "item"
     local res, seen = {}, {}
+    SX.tags = {}
     q = (q or ""):lower():match("^%s*(.-)%s*$")
     if q == "" then return res end
     local num = tonumber(q)
     if num then
         local ok, nm = pcall(item and C_Item.GetItemNameByID or C_Spell.GetSpellName, num)
         if ok and nm then res[1] = num; seen[num] = true end
+    end
+    if not item and not num then   -- this class first (typos tolerated), then the rest of the game
+        local okS, set = pcall(SX.ClassSet, kind)
+        if okS and set and #set > 0 then
+            local okM, hits = pcall(SX.ClassMatches, set, q)
+            for _, h in ipairs(okM and hits or {}) do
+                if #res >= 80 then break end
+                if not seen[h.id] then seen[h.id] = true; res[#res + 1] = h.id; SX.tags[h.id] = h.tag end
+            end
+            if kind == "talent" then return res end   -- a talent search lists this class's talents only
+        end
     end
     -- No syntax to remember: every word must appear in the name, in any order; "*" matches anything. Exact names rank first,
     -- then names that start with the search, then the rest.
@@ -5619,13 +6050,15 @@ local function SP_Render()
                 row.icon:SetTexture((oki and ic) or 134400)
             else row.icon:SetTexture(SpellTex(id)) end
             local okn, nm = pcall(SP.kind == "item" and C_Item.GetItemNameByID or C_Spell.GetSpellName, id)
-            row.text:SetText(((okn and nm) or "?") .. "  |cff888888[" .. id .. "]|r")
+            local tg = SX.tags and SX.tags[id]
+            row.text:SetText(((okn and nm) or "?") .. "  |cff888888[" .. id .. "]|r" .. (tg and ("  |cff7fb6e6" .. tg .. "|r") or ""))
             row:Show()
         else row:Hide() end
     end
     local msg = ""
     local S, smax = (SP.kind == "item") and SX.II or SI, (SP.kind == "item") and SX.II_MAX or SI_MAX
     if S.running then msg = ("Indexing %s names... %d%%  "):format(SP.kind == "item" and "item" or "spell", math.floor(S.nextId / smax * 100)) end
+    if SP.kind == "talent" and not (XayaUITalentDB and XayaUITalentDB.classes) then msg = msg .. "Your current build only; /xui talents adds every spec.  " end
     if total == 0 then msg = msg .. "No match yet"
     elseif total > SP_ROWS then msg = msg .. total .. " results - scroll for more" end
     SP.footer:SetText(msg)
@@ -6011,7 +6444,7 @@ local function EnsureChrome(of)
             fr:HookScript("OnKeyDown", function(self, key)
                 local handled = false
                 if key == "DELETE" then handled = ns.DeleteKey() end
-                if self.SetPropagateKeyboardInput then self:SetPropagateKeyboardInput(not handled) end
+                if self.SetPropagateKeyboardInput and not InCombatLockdown() then self:SetPropagateKeyboardInput(not handled) end
             end)
         end
         -- multi-select delete links (shown only while rules are selected)

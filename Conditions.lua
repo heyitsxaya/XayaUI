@@ -266,9 +266,28 @@ function ns.BuffPresent(id)
     elseif present == true then
         if not presentSince[id] and seenAbsent[id] then presentSince[id] = now end
     end
+    local rawPresent = present
+    local T = ns.AuraTracker
+    if present == false then
+        if ns.AuraModel and ns.AuraModel.NoteAbsent then ns.AuraModel.NoteAbsent(id) end
+        if T and T.Observe then pcall(T.Observe, id, false, src, nil) end
+    elseif present == nil then
+        -- The game hides this aura right now (combat).  The tracker ranks the remaining evidence (consumed, aura-ID link,
+        -- latest of cast-anchored model / last exact read) and may answer true (estimate or linked), false (a linked ID left
+        -- the list, or a registered consumer fired) or nothing.  An estimate can only say "up".  Its numbers are marked
+        -- ref.estimated and never stored as learned durations.
+        if T and T.Resolve then
+            local okT, handled, tp, ts, tr = pcall(T.Resolve, id)
+            if okT and handled then present, src, ref = tp, ts, tr end
+        elseif ns.AuraModel and ns.AuraModel.EstimatePresent then
+            local okM, eP, eRef, eNote = pcall(ns.AuraModel.EstimatePresent, id)
+            if okM and eP then return true, "model estimate (" .. tostring(eNote) .. ")", eRef end
+        end
+    end
     if present ~= true or type(ref) ~= "table" then return present, src, ref end
     local note
-    if not ref.expiration then
+    -- An estimated time is replaced by the game's own duration object whenever that answers with a plain number.
+    if not ref.expiration or ref.estimated then
         local okI, has = pcall(function() return ref.instanceID ~= nil end)
         if okI and has then
             local exp, tot
@@ -277,18 +296,20 @@ function ns.BuffPresent(id)
                 ref.expiration = exp
                 if tot then ref.duration = tot end
                 ref.timeSource = "duration object"
+                ref.estimated = nil
             end
         end
     end
     if ref.expiration then
         ref.timeSource = ref.timeSource or "aura API"
-        if ref.duration and ref.duration > 0 then
+        if ref.duration and ref.duration > 0 and not ref.estimated then
             local L = LearnedTable()
             if L then L[id] = ref.duration end
         end
     else
         ref.timeNote = note or "no readable time"
     end
+    if rawPresent == true and T and T.Observe then pcall(T.Observe, id, true, src, ref) end
     return present, (src or "") .. " | time: " .. (ref.timeSource or ref.timeNote), ref
 end
 

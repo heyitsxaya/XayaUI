@@ -711,8 +711,8 @@ local function EmbedCue(pg, og, rule, k)
                 flat("txt", 3, parts.textBody)
             else
                 box("tex", 3, (rule.cueKind == "icon") and "Icon Options" or "Texture Options", parts.tex)
-                sub("color", 4, parts.colorSub)
-                sub("pos", 5, parts.posSub)
+                sub("pos", 4, parts.posSub)       -- Position sits above Color & Transparency
+                sub("color", 5, parts.colorSub)
                 sub("anim", 6, parts.animSub)
                 local tx = acts.text
                 if tx then put("text", tx); tx.order = 7 end

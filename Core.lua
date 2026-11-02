@@ -609,9 +609,15 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif cmd == "debuffs" then
         if ns.ProbeDebuffs then ns.ProbeDebuffs(arg) end
     elseif cmd == "probe" then
-        if ns.Probe then ns.Probe(tonumber(arg)) end
+        if arg:match("^ids") then
+            if ns.IDProbe then ns.IDProbe((arg:gsub("^ids%s*", ""))) end
+        elseif ns.Probe then ns.Probe(tonumber(arg)) end
     elseif cmd == "talents" then
         if ns.TalentCommand then ns.TalentCommand(arg) end
+    elseif cmd == "model" then
+        if ns.ModelCommand then ns.ModelCommand(arg) end
+    elseif cmd == "tracker" then
+        if ns.TrackerCommand then ns.TrackerCommand(arg) end
     elseif cmd == "loc" then
         if ns.ProbeLossOfControl then ns.ProbeLossOfControl() end
     elseif cmd == "seed" then
@@ -632,6 +638,6 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif cmd == "bug" then
         if ns.ShowBugReport then ns.ShowBugReport() end
     else
-        ns.Print("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui seed | /xui talents [status|<name>] | /xui loc | /xui media")
+        ns.Print("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media")
     end
 end

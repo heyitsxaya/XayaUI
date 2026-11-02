@@ -556,7 +556,7 @@ Add("buffAura", {
     note = "True while the buff is on you. Same reading as the rule's built-in Buff / Aura section (aura API; in combat the Cooldown Manager icon when the buff is tracked there). Use the ID of the BUFF. If the game hides the buff in combat and it is not in your Cooldown Manager, the answer is 'unknown' and the rule will not fire.",
     new = { state = "yes" },
     fields = {
-        { key = "spellID", kind = "spell", label = "Buff spell ID", required = true },
+        { key = "spellID", kind = "spell", search = "aura", label = "Buff spell ID", required = true },
         { key = "state", kind = "select", label = "State", required = true, vals = YN("Buff is present", "Buff is MISSING") },
     },
     check = function(t)
@@ -616,7 +616,7 @@ Add("targetDebuff", {
     note = "True while a debuff cast BY YOU is on your target (or focus). Use the ID of the DEBUFF, not the ability you press: they usually differ (Sigil of Flame: ability 204596, debuff 204598). Midnight hides enemy aura details in combat, so inside combat this may read 'unknown' and then the rule will not fire; out of combat it is exact. In combat, 'absent' is reported only when the Cooldown Manager icon for this spell is inactive (target only; option below).",
     new = { unit = "target", state = "yes", cdmAbsent = "yes" },
     fields = {
-        { key = "spellID", kind = "spell", label = "Debuff spell ID", required = true },
+        { key = "spellID", kind = "spell", search = "aura", label = "Debuff spell ID", required = true },
         { key = "cdmID", kind = "spell", label = "Cooldown Manager spell ID  (optional: usually the ability, e.g. 204596)", required = false },
         { key = "cdmAbsent", kind = "select", label = "In combat: an INACTIVE Cooldown Manager icon means 'debuff absent'  (blank = yes)", required = false, vals = YN("Yes", "No - stay unknown in combat") },
         { key = "unit", kind = "select", label = "On which unit", required = true, vals = { values = { target = "Target", focus = "Focus" }, order = { "target", "focus" } } },
@@ -1089,14 +1089,14 @@ local function FieldArgs(rule, t, f, H, order, row)
     local on = function() H.Changed(rule) end
     local onN = function() H.Changed(rule); H.Notify() end
     if f.kind == "spell" then
-        row[k .. "Search"] = H.SearchBox(order, function(id) t[k] = id; onN() end)   -- search first, then the ID it fills in, then the spell's name
+        row[k .. "Search"] = H.SearchBox(order, function(id) t[k] = id; onN() end, nil, f.search or "cd")   -- search first, then the ID it fills in, then the spell's name
         row[k .. "ID"] = { type = "input", name = f.label, order = order + 0.1, width = "half",
             get = function() return tostring(t[k] or 0) end,
             set = function(_, v) t[k] = tonumber(v) or 0; onN() end }
         row[k .. "Name"] = { type = "description", order = order + 0.2, width = "double", fontSize = "medium",
             name = function() return H.SpellName(t[k]) end }
     elseif f.kind == "talent" then
-        row[k .. "Search"] = H.SearchBox(order, function(id) t[k] = id; onN() end)
+        row[k .. "Search"] = H.SearchBox(order, function(id) t[k] = id; onN() end, nil, "talent")
         row[k .. "ID"] = { type = "input", name = f.label, order = order + 0.1, width = "half",
             get = function() return tostring(t[k] or 0) end,
             set = function(_, v) t[k] = tonumber(v) or 0; onN() end }
