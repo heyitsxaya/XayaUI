@@ -8,7 +8,10 @@ ns.runtime = setmetatable({}, { __mode = "k" }) -- rule -> { active, lastPlay, v
 
 local dirty = true
 local TICK = 0.2
+local MIN_GAP = 0.05   -- events (UNIT_AURA, cooldown updates) fire many times a second in combat; re-evaluating on each one is what costs frames
 local acc = 0
+local sinceStep = 0
+local forceNow = false   -- an edit in the options window re-evaluates at once, without waiting for MIN_GAP
 local snapAcc = 0
 local SNAP_EVERY = 5   -- seconds between auto status snapshots while in combat
 local barsDirty = true   -- action bar spell set is rebuilt only when a bar event fires or rules change
@@ -115,9 +118,50 @@ local function Step()
         if not okb and not ns.barErr then ns.barErr = true; ns.Print("bars error: " .. tostring(errb)) end
     end
 end
-ns.Step = Step
 
-function ns.MarkDirty() dirty = true; barsDirty = true; if ns.UndoNote then ns.UndoNote() end end
+-- /xui perf: measures the engine on this machine. Off by default; while on, each Step is timed with debugprofilestop.
+local perf = { on = false }
+local function PerfReset()
+    perf.steps, perf.total, perf.max, perf.events, perf.t0 = 0, 0, 0, {}, GetTime()
+    perf.mem0 = collectgarbage("count")
+end
+local rawStep = Step
+Step = function()
+    if not perf.on then return rawStep() end
+    local t = debugprofilestop()
+    rawStep()
+    local d = debugprofilestop() - t
+    perf.steps, perf.total = perf.steps + 1, perf.total + d
+    if d > perf.max then perf.max = d end
+end
+function ns.PerfCommand(arg)
+    arg = tostring(arg or ""):lower():match("^%s*(%a*)") or ""
+    if arg == "on" or arg == "reset" then
+        perf.on = true; PerfReset()
+        ns.Print("perf: measuring. Play (ideally a fight), then /xui perf to read it, /xui perf off to stop.")
+        return
+    elseif arg == "off" then
+        perf.on = false
+        ns.Print("perf: stopped")
+        return
+    end
+    if not perf.t0 then ns.Print("perf: not measuring. /xui perf on, play a while, then /xui perf."); return end
+    local secs = math.max(0.001, GetTime() - perf.t0)
+    local steps = math.max(1, perf.steps)
+    local ev, parts = perf.events, {}
+    for k, n in pairs(ev) do parts[#parts + 1] = ("%s %.1f/s"):format(k, n / secs) end
+    table.sort(parts)
+    local rules, on = #(ns.rules or {}), 0
+    for _, r in ipairs(ns.rules or {}) do if r.enabled then on = on + 1 end end
+    ns.Print(("perf over %.0fs: %d steps (%.1f/s), %.2f ms avg, %.2f ms worst, %.1f%% of one frame budget at 60 fps (%d rules, %d on)"):format(
+        secs, perf.steps, perf.steps / secs, perf.total / steps, perf.max, (perf.total / secs) / 10, rules, on))
+    ns.Print(("perf: Lua memory %.0f KB now, %+.0f KB/s since start (a high number means garbage)"):format(collectgarbage("count"), (collectgarbage("count") - perf.mem0) / secs))
+    ns.Print("perf: events " .. (#parts > 0 and table.concat(parts, ", ") or "none counted yet"))
+end
+
+ns.Step = function() return Step() end
+
+function ns.MarkDirty() dirty = true; forceNow = true; barsDirty = true; if ns.UndoNote then ns.UndoNote() end end
 
 function ns.OnDBReady()
     ns.RefreshAllVisuals()
@@ -134,6 +178,7 @@ for _, e in ipairs({
 }) do f:RegisterEvent(e) end
 f:RegisterUnitEvent("UNIT_AURA", "player")
 f:SetScript("OnEvent", function(_, event)
+    if perf.on then perf.events[event] = (perf.events[event] or 0) + 1 end
     if event == "PLAYER_ENTERING_WORLD" and ns.ClearSecrecyCache then ns.ClearSecrecyCache() end
     if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "TRAIT_CONFIG_UPDATED" or event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" then ns.talentList = nil; ns.spellList = nil end
     -- auto-capture status into the ring-buffer log at combat start/end, since /xui status can't be typed mid-fight
@@ -149,9 +194,10 @@ f:SetScript("OnEvent", function(_, event)
 end)
 f:SetScript("OnUpdate", function(_, elapsed)
     acc = acc + elapsed
-    if dirty or acc >= TICK then
-        dirty = false
-        acc = 0
+    sinceStep = sinceStep + elapsed
+    if acc >= TICK or (dirty and (forceNow or sinceStep >= MIN_GAP)) then
+        dirty, forceNow = false, false
+        acc, sinceStep = 0, 0
         Step()
     end
     local inCombat = (UnitAffectingCombat and UnitAffectingCombat("player")) or false

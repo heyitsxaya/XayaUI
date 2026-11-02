@@ -660,6 +660,8 @@ SlashCmdList["XAYAUI"] = function(msg)
         end
     elseif cmd == "chat" then
         if ns.ChatReskin_Debug then ns.ChatReskin_Debug() end
+    elseif cmd == "perf" then   -- engine timing on this machine (Engine.lua)
+        if ns.PerfCommand then ns.PerfCommand(arg) end
     elseif cmd == "chatprobe" then   -- read-only look at Blizzard's chat frames (Chat Panel rebuild, stage S0)
         if ns.ChatProbe then ns.ChatProbe() end
     elseif cmd == "privacy" then
@@ -682,6 +684,6 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif cmd == "bug" then
         if ns.ShowBugReport then ns.ShowBugReport() end
     else
-        ns.Print("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui chatprobe (read-only chat frame report) | /xui notes (show / hide the notepad) | /xui panel (chat panel settings) | /xui data (custom data panels and bars) | /xui privacy (cover or show the chat) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media")
+        ns.Print("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui chatprobe (read-only chat frame report) | /xui perf [on|off] (engine timing) | /xui notes (show / hide the notepad) | /xui panel (chat panel settings) | /xui data (custom data panels and bars) | /xui privacy (cover or show the chat) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media")
     end
 end

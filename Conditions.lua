@@ -94,39 +94,61 @@ local VIEWERS = {
     "EssentialCooldownViewer", "UtilityCooldownViewer",
 }
 
-local function FrameMatches(frame, id)
-    local function eq(v) return v ~= nil and not issecret(v) and v == id end
-    local ok, sid = pcall(function() return frame.GetSpellID and frame:GetSpellID() end)
-    if ok and eq(sid) then return true end
-    local info = frame.cooldownInfo
-    if type(info) == "table" then
-        if eq(info.spellID) or eq(info.overrideSpellID) or eq(info.overrideTooltipSpellID) then
-            return true
-        end
-        if type(info.linkedSpellIDs) == "table" then
-            for _, l in ipairs(info.linkedSpellIDs) do if eq(l) then return true end end
-        end
+-- Cooldown Manager frame index. Reading every viewer's children and every frame's IDs once per tick (instead of once per rule per
+-- tick) keeps the cost the same however many rules track auras. Before this, each Buff / Aura rule whose aura was absent walked all
+-- four viewers and built two throw-away closures per frame, several times a second: the garbage alone dragged the frame rate down.
+local cdmIndex, cdmTick, cdmAt = {}, -1, -1
+local function GetSpellIDOf(frame) return frame.GetSpellID and frame:GetSpellID() end
+local function FrameActive(fr) return (fr.wasSetFromAura == true) or (fr.auraInstanceID ~= nil) end
+local function IndexID(idx, v, fr, vname)
+    if v ~= nil and not issecret(v) and type(v) == "number" then
+        local l = idx[v]
+        if not l then l = {}; idx[v] = l end
+        local n = #l
+        if n == 0 or l[n][1] ~= fr then l[n + 1] = { fr, vname } end   -- one entry per frame per ID
     end
-    return false
 end
-
-local function FindCDMFrame(id)
-    -- several viewers can hold a frame for the same spell (buff icon, buff bar, cooldown): an ACTIVE match wins,
-    -- otherwise the first match is returned (so an inactive placeholder cannot hide a live aura)
-    local firstFr, firstName
+local function BuildCDMIndex()
+    local idx = {}
     for _, vname in ipairs(VIEWERS) do
         local v = _G[vname]
         if v and v.GetChildren then
             local kids = { v:GetChildren() }
             for i = 1, #kids do
                 local fr = kids[i]
-                if fr and FrameMatches(fr, id) then
-                    local okA, act = pcall(function() return (fr.wasSetFromAura == true) or (fr.auraInstanceID ~= nil) end)
-                    if okA and act then return fr, vname end
-                    if not firstFr then firstFr, firstName = fr, vname end
+                if fr then
+                    local ok, sid = pcall(GetSpellIDOf, fr)
+                    if ok then IndexID(idx, sid, fr, vname) end
+                    local info = fr.cooldownInfo
+                    if type(info) == "table" then
+                        IndexID(idx, info.spellID, fr, vname)
+                        IndexID(idx, info.overrideSpellID, fr, vname)
+                        IndexID(idx, info.overrideTooltipSpellID, fr, vname)
+                        if type(info.linkedSpellIDs) == "table" then
+                            for _, l in ipairs(info.linkedSpellIDs) do IndexID(idx, l, fr, vname) end
+                        end
+                    end
                 end
             end
         end
+    end
+    return idx
+end
+local function FindCDMFrame(id)
+    -- several viewers can hold a frame for the same spell (buff icon, buff bar, cooldown): an ACTIVE match wins,
+    -- otherwise the first match is returned (so an inactive placeholder cannot hide a live aura)
+    local now = GetTime()
+    if cdmTick ~= ns.tickID or now - cdmAt > 0.2 then
+        cdmIndex, cdmTick, cdmAt = BuildCDMIndex(), ns.tickID, now
+    end
+    local list = cdmIndex[id]
+    if not list then return nil end
+    local firstFr, firstName
+    for i = 1, #list do
+        local fr, vname = list[i][1], list[i][2]
+        local okA, act = pcall(FrameActive, fr)
+        if okA and act then return fr, vname end
+        if not firstFr then firstFr, firstName = fr, vname end
     end
     return firstFr, firstName
 end
