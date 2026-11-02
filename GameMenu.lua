@@ -44,6 +44,20 @@ local function Col(prop, fb)
     if T and T.Col then return T.Col("xui-button", prop, fb) end
     return { fb[1], fb[2], fb[3], fb[4] or 1 }
 end
+local function Style()
+    local ui = CueRulesDB and CueRulesDB.ui
+    return (ui and ui.gameMenuStyle == "standard") and "standard" or "gradient"
+end
+local function Hex(c) return ("|cff%02x%02x%02x"):format(math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5)) end
+-- per-letter color escapes: a gradient inside a plain FontString
+local function GradText(str, c1, c2)
+    local n, out = #str, {}
+    for i = 1, n do
+        local t = n > 1 and (i - 1) / (n - 1) or 0
+        out[#out + 1] = Hex({ c1[1] + (c2[1] - c1[1]) * t, c1[2] + (c2[2] - c1[2]) * t, c1[3] + (c2[3] - c1[3]) * t }) .. str:sub(i, i)
+    end
+    return table.concat(out) .. "|r"
+end
 local function Accent()
     local T = ns.Theme
     local c = T and T.cur and T.cur.accent
@@ -66,19 +80,26 @@ local function Paint(b)
     local pressed = s.pressed
     local fill = bg
     if pressed then fill = { math.min(1, bg[1] + 0.10), math.min(1, bg[2] + 0.10), math.min(1, bg[3] + 0.10), math.max(bg[4], 0.9) } end
-    -- class-themed gradient: dark class color on the left fading into the theme's button fill on the right (brighter on hover / press)
-    local k = pressed and 0.70 or (hover and 0.62 or 0.48)
-    local left = { ac[1] * k, ac[2] * k, ac[3] * k, math.max(fill[4], 0.95) }
-    s.bg:SetColorTexture(1, 1, 1, 1)
-    local ok = pcall(function()
-        s.bg:SetGradient("HORIZONTAL", CreateColor(left[1], left[2], left[3], left[4]), CreateColor(fill[1], fill[2], fill[3], fill[4]))
-    end)
-    if not ok then s.bg:SetColorTexture(left[1], left[2], left[3], left[4]) end
+    local style = Style()
+    if style == "gradient" then
+        -- class-themed gradient: dark class color on the left fading into the theme's button fill on the right (brighter on hover / press)
+        local k = pressed and 0.70 or (hover and 0.62 or 0.48)
+        local left = { ac[1] * k, ac[2] * k, ac[3] * k, math.max(fill[4], 0.95) }
+        s.bg:SetColorTexture(1, 1, 1, 1)
+        local ok = pcall(function()
+            s.bg:SetGradient("HORIZONTAL", CreateColor(left[1], left[2], left[3], left[4]), CreateColor(fill[1], fill[2], fill[3], fill[4]))
+        end)
+        if not ok then s.bg:SetColorTexture(left[1], left[2], left[3], left[4]) end
+    else
+        s.bg:SetColorTexture(fill[1], fill[2], fill[3], fill[4])   -- the standard themed button fill
+    end
     local e = hover and ac or bd
     for i = 1, 4 do s.e[i]:SetColorTexture(e[1], e[2], e[3], e[4] or 1) end
     s.glow:SetColorTexture(ac[1], ac[2], ac[3], 1); s.glow:SetAlpha(hover and 0.28 or 0)
     local fs = b.GetFontString and b:GetFontString()
     if fs then fs:SetTextColor(tx[1], tx[2], tx[3], tx[4] or 1) end
+    local want = (style == "standard") and GradText(LABEL, ac, { ac[1] + (1 - ac[1]) * 0.7, ac[2] + (1 - ac[2]) * 0.7, ac[3] + (1 - ac[3]) * 0.7 }) or LABEL
+    if s.txt ~= want then s.txt = want; b:SetText(want) end
 end
 
 local function Skin(b)
@@ -156,6 +177,12 @@ local function FindAnchor(menu)
     end
 end
 
+local function MatchSize(b, anchor)
+    if not (b and anchor) then return end
+    local w, h = anchor:GetWidth(), anchor:GetHeight()
+    if w and h and w > 0 and h > 0 then b:SetSize(w, h) end
+end
+
 local function ActiveSet(menu)
     local set = {}
     if menu.buttonPool and menu.buttonPool.EnumerateActive then
@@ -185,7 +212,9 @@ local function Install(menu)
             for b in menu.buttonPool:EnumerateActive() do
                 if not before[b] then
                     if anchor and anchor.layoutIndex then b.layoutIndex = anchor.layoutIndex + 0.5 end
+                    MatchSize(b, anchor)
                     Skin(b)
+                    if anchor and C_Timer then C_Timer.After(0, function() if b.xuiGMon then MatchSize(b, anchor); if menu.Layout then menu:Layout() end end end) end   -- siblings may be resized by other skins after us
                 end
             end
         end
@@ -197,7 +226,7 @@ local function Install(menu)
         end
         fallbackBtn:SetText(LABEL)
         if anchor then
-            fallbackBtn:SetSize(anchor:GetWidth(), anchor:GetHeight())
+            MatchSize(fallbackBtn, anchor)
             fallbackBtn.layoutIndex = (anchor.layoutIndex or 0) + 0.5
         end
         fallbackBtn:Show()
@@ -229,6 +258,10 @@ function ns.GameMenu_Diagnostics()
         tostring(Enabled()), tostring(diag.hooked), diag.path, diag.anchor, diag.opens, diag.skinned, tostring(diag.lastError),
         tostring(GameMenuFrame and type(GameMenuFrame.AddButton) == "function"),
         tostring(GameMenuFrame and type(GameMenuFrame.InitButtons) == "function")))
+end
+
+function ns.GameMenu_Repaint()
+    if current and current.xuiGMon then current.xuiGM.txt = nil; Paint(current) end
 end
 
 -- Toggling the option while the menu is open takes effect the next time the menu opens.

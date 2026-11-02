@@ -15,3 +15,8 @@ Check in game: (1) whether AddButton exists in 12.1 (diagnostics line); (2) the 
 
 ## 0.5.37 restyle (Xaya: "this is ugly", then "class-themed gradient")
 Replaced Blizzard's red button art with the flat theme button look (xui-button tokens, 1px outline, theme text color). Fill is a horizontal gradient: dark class/accent color on the left fading into the theme button fill on the right. Hover: brighter gradient, accent outline, accent glow. Press: brightest. Follows the active theme and repaints on theme change. Blizzard art is hidden by alpha and restored when the pooled button is reused. /xui gamemenu also reports a skinned count. UNTESTED IN GAME.
+
+## 0.5.39 (Xaya: button bigger than the others; wants a style option in Settings > Display)
+- Size: the button now copies the width and height of the "Macros" button it sits under (and re-syncs one frame later, in case another skin resizes the siblings).
+- Settings > UI Options > Display > "Menu button (ESC menu)": show toggle plus "Menu button style": (a) Gradient button, solid text (default), (b) Standard button (theme button fill, inherited) with class-colored gradient text (per-letter color from the class accent to a lighter tint).
+- Changing the style repaints at once. UNTESTED IN GAME.
