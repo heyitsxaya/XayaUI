@@ -163,6 +163,13 @@ T.BUILTIN.tritan = { name = "Tritan (blue-yellow): red and teal", pal = {
     danger = { 1.00, 0.25, 0.25, 1 } } }
 T.BUILTIN.colorblind.name = "Deuteranopia / deuteranomaly (green-weak, most common)"
 T.BUILTIN_ORDER = { "light", "colorblind", "protan", "tritan" }
+function T.IsLight()
+    local th = CueRulesDB and CueRulesDB.theme
+    if not th then return false end
+    if th.base == "light" then return true end
+    local sv = CueRulesDB.themes and CueRulesDB.themes[th.base]
+    return sv and sv.base == "light" or false
+end
 function T.IsBase(b) return b == "default" or b == "class" or T.BUILTIN[b] ~= nil end
 
 function T.BasePalette(base, classPick)

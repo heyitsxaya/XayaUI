@@ -20,7 +20,12 @@ local function TR(fs) if TH and fs then pcall(TH.Restore, fs) end end
 local function SkinOn() return not (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.skinOff) end
 -- window opacity (0.1 - 1). /xuiskin alpha 0.4 changes it; takes effect on the next redraw / reopen.
 local function Pad() local u = CueRulesDB and CueRulesDB.ui; return math.max(0, math.min(30, tonumber(u and u.skinPad) or 8)) end
-local function A() local u = CueRulesDB and CueRulesDB.ui; return (u and tonumber(u.skinAlpha)) or 0.62 end
+local function A()
+    local u = CueRulesDB and CueRulesDB.ui
+    local a = (u and tonumber(u.skinAlpha)) or 0.62
+    if TH and TH.IsLight and TH.IsLight() then a = math.max(a, 0.96) end   -- light themes need a solid window: the game world shows through otherwise
+    return a
+end
 
 SLASH_XUISKIN1 = "/xuiskin"
 SlashCmdList["XUISKIN"] = function(msg)
@@ -1806,6 +1811,32 @@ local function Walk(w, depth)
                 w.xuiH2L = { f1, f2, f3 }
                 w.label:SetFont(f1, ns.H2_SIZE, f3)
                 AddRest(w, "h2label", function(self) if self.xuiH2L and self.label then self.label:SetFont(unpack(self.xuiH2L)) end; self.xuiH2L = nil end)
+            end
+        end
+    end
+    -- theme text colors on the stock AceGUI labels (they were always game gold / white, so a light theme could not be read)
+    do
+        local fsList
+        if t == "Heading" or t == "Dropdown" or t == "EditBox" or t == "Slider" then fsList = { { w.label, "xui-label", { 1, 0.82, 0, 1 } } }
+        elseif t == "CheckBox" then fsList = { { w.text, "xui-text", { 1, 1, 1, 1 } } }
+        elseif t == "Label" then
+            local o4 = w.GetUserData and w:GetUserData("option")
+            local oa4 = o4 and type(o4.arg) == "table" and o4.arg or nil
+            if not (oa4 and (oa4.xuiRow or oa4.xuiH1)) then fsList = { { w.label, "xui-text", { 1, 1, 1, 1 } } } end   -- clickable rows paint themselves
+        end
+        if fsList and TH then
+            for _, e in ipairs(fsList) do
+                local fs, cl, fb = e[1], e[2], e[3]
+                local isOpt = w.GetUserData and w:GetUserData("option")
+                if fs and fs.SetTextColor and not (t == "CheckBox" and w.disabled) then
+                    local c = TC(cl, "text", fb)
+                    fs:SetTextColor(c[1], c[2], c[3])
+                    if TH.IsLight and TH.IsLight() then fs:SetShadowOffset(0, 0) end
+                    AddRest(w, "xuiLblCol" .. cl, function(self)
+                        local f2 = (t == "CheckBox") and self.text or self.label
+                        if f2 and f2.SetTextColor then f2:SetTextColor(fb[1], fb[2], fb[3]); f2:SetShadowOffset(1, -1) end
+                    end)
+                end
             end
         end
     end
