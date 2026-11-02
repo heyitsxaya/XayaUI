@@ -186,10 +186,19 @@ function ns.DraftDiscard(rule)
     if not (root and root.uid) then return end
     local uid, wasNew = root.uid, baseline[root.uid] and baseline[root.uid].isNew
     Revert(uid)
-    if wasNew then baseline[uid] = nil end
+    if wasNew then baseline[uid] = nil
+    else
+        -- the reverted rule IS the saved version now: take the baseline again from the live copy, so nothing the rebuild added to it
+        -- can make it compare as "changed" and keep the Unsaved changes bar showing on the other tabs
+        local g = GroupOf(uid)
+        if #g > 0 then baseline[uid] = { sig = Sig(g), rules = Copies(g) } end
+    end
     cache = { t = -1 }
     if not wasNew and ns.ReselectRule then local r = GroupOf(uid)[1]; if r then pcall(ns.ReselectRule, r) end end
-    if ns.UI and ns.UI.Notify then ns.UI.Notify() end
+    if ns.UI and ns.UI.Notify then
+        ns.UI.Notify()
+        if C_Timer then C_Timer.After(0, function() cache = { t = -1 }; ns.UI.Notify() end) end   -- a second pass next frame redraws the other tabs
+    end
 end
 
 local function StoreDraft(uid, group, isNew)
