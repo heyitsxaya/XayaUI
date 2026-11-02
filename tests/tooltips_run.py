@@ -1,4 +1,5 @@
-import lupa, sys
+import lupa, sys, os
+ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 from lupa import LuaRuntime
 L = LuaRuntime(unpack_returned_tuples=True)
 L.execute(r'''
@@ -37,7 +38,7 @@ function reset() lines = {} end
 
 L.execute("XayaUI_NS = {}; CueRulesDB = {}")
 for f in ("Tooltips.lua","TooltipsUI.lua"):
-    L.eval('function(src,n) return load(src,n) end')(open(f).read(), f)("XayaUI_Tooltips", L.eval("XayaUI_NS"))
+    L.eval('function(src,n) return load(src,n) end')(open(os.path.join(ROOT, f)).read(), f)("XayaUI", L.eval("XayaUI_NS"))
 fails=0
 def check(n,c):
     global fails

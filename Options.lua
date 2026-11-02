@@ -4053,7 +4053,7 @@ local function BuildOptions()
         datapanels = ns.BuildDataPanelsTab and ns.BuildDataPanelsTab(Notify) or nil,
         notepad = ns.BuildNotepadTab and ns.BuildNotepadTab(Notify) or nil,
         minimap = ns.BuildMinimapTab and ns.BuildMinimapTab(Notify) or nil,
-        tooltips = ns.BuildTooltipsTab and ns.BuildTooltipsTab(Notify) or nil }   -- from the sibling addon XayaUI_Tooltips (0.5.46)
+        tooltips = ns.BuildTooltipsTab and ns.BuildTooltipsTab(Notify) or nil }   -- Tooltips.lua / TooltipsUI.lua, part of core since 0.5.51
     if ns.QoLOn then
         qolArgs.allqol = allQol
         qolArgs.allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil

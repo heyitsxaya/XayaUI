@@ -1,9 +1,10 @@
 -------------------------------------------------------------------------------
--- Tooltips.lua : tooltip modifiers for XayaUI (sibling addon). Written from the documented game API only.
+-- Tooltips.lua : tooltip modifiers, part of XayaUI core (0.5.51; before that a sibling addon). Written from the documented game API only.
 --   1. ID lines: spell, item, aura, NPC, quest, currency, achievement, mount, toy, battle pet (+ optional icon ID)
 --   2. Item level of the player under the mouse (yourself: equipped; others: Inspect, cached)
 --   3. Enemy forces (Mythic+ count and percent) on hostile units, read live from the game
--- Not here yet: crowd control, true sight, and casts need an enemy database that does not exist.
+-- Not here yet: crowd control, true sight, and casts need an enemy database that does not exist. That M+/instance data is meant to live in
+-- a separate optional sibling addon (data pack), not built; the base in this file never depends on it.
 --
 -- Midnight (12.x): guarded APIs return SECRET values for units whose identity is restricted. Every read is pcall'd and checked with
 -- issecretvalue; a value that can not be read is skipped, never guessed.
@@ -12,7 +13,7 @@
 -- API_GetAverageItemLevel, API_NotifyInspect, API_C_PaperDollInfo.GetInspectItemLevel, API_C_ScenarioInfo.GetUnitCriteriaProgressValues.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
--- With XayaUI loaded, share its namespace (the XayaUI_NS bridge from Core.lua, same as XayaUI_CombatEngine); otherwise run alone.
+-- Inside XayaUI core this file receives the shared namespace itself; the XayaUI_NS lookup keeps the stub tests (and any standalone use) working.
 local integrated = _G.XayaUI_NS ~= nil
 ns = _G.XayaUI_NS or ns
 ns.TT = ns.TT or {}
