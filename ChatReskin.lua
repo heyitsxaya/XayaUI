@@ -528,7 +528,7 @@ function ns.BuildChatTab(Notify)
                 enabled = tog("Enable ElvUI Chat Reskin", "enabled", 3),
                 hideVoice = tog("Hide voice chat buttons", "hideVoiceButtons", 4),
                 secretNote = note("|cffaaaaaaProtected messages:|r the game marks some chat text (for example during boss encounters and inside some instances) as secret. Addons cannot read or change it, so such lines get no timestamp, link, color, history, or copy. This is a game limit, and /xui chat counts how many were skipped.", 8, true),
-                notBuilt = note("|cffaaaaaaNot built:|r emotion icons (the TwitchEmotes addon does this), role / mentorship / timerunning icons, Battle.net tag names, Quick Join messages, and a full datatext system (the Panels tab has simpler info bars instead). Left / right chat panels are approximated on the Blizzard chat windows (Panels tab). Voice button pin / fade options are not built; hiding them is.", 9, true),
+                notBuilt = note("|cffaaaaaaNot built:|r emotion icons (the TwitchEmotes addon does this), role / mentorship / timerunning icons, Battle.net tag names, Quick Join messages, and a full datatext system (Custom Data Panels and Bars has simpler info bars instead). Left / right chat panels are approximated on the Blizzard chat windows (Custom Data Panels and Bars > Chat Panels). Voice button pin / fade options are not built; hiding them is.", 9, true),
             } },
             fonts = { type = "group", name = "Fonts & Tabs", order = 2, args = {
                 font = fontSel("Chat font", "font", 1), fontSize = rng("Chat font size", "fontSize", 2, 6, 40),
@@ -640,7 +640,6 @@ function ns.BuildChatTab(Notify)
     }
     for i, name in ipairs(ChannelNames()) do chatReskin.args.alerts.args["chan_" .. name] = chanSound(name, 31 + i) end
     if ns.ChatDock_Options then chatReskin.args.dock = ns.ChatDock_Options(Notify) end
-    if ns.ChatPanels_Options then chatReskin.args.panels = ns.ChatPanels_Options(Notify) end
     if ns.ChatPrivacy_Options then chatReskin.args.privacy = ns.ChatPrivacy_Options(Notify) end
     return chatReskin
 end

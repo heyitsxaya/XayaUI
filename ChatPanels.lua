@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- ChatPanels.lua : the "Panels" tab: panel options for the Blizzard chat windows (own code).
+-- ChatPanels.lua : "Chat Panels" tab (QoL UI Updates > Custom Data Panels and Bars > Chat Panels): panel options for the Blizzard chat windows (own code).
 --   * Chat panels: a backdrop behind the left window (ChatFrame1) and an optional right window, backdrop color / mode / textures,
 --     panel width and height (applied to the chat windows when "Apply panel sizes" is on), Panel Snapping (backdrop replaces Blizzard's
 --     window background).
@@ -198,8 +198,8 @@ function ns.ChatPanels_Debug(say)
         .. " tab panel=" .. tostring(tabPanel and tabPanel:IsShown()))
 end
 
--- options (the "Panels" tab) ----------------------------------------------------------------------
-function ns.ChatPanels_Options(Notify)
+-- options: built by DataPanels.lua as a tab of Custom Data Panels and Bars (moved there from ElvUI Chat Reskin in 0.5.44) -------
+function ns.ChatPanels_Options(Notify, order)
     local function S() return Store() or {} end
     local function Re() ns.ChatPanels_Refresh(); if Notify then Notify() end end
     local function tog(name, key, order, desc, disabled)
@@ -229,10 +229,10 @@ function ns.ChatPanels_Options(Notify)
         return o
     end
     local noRight = function() return ns.ChatPanels_RightWindow() == nil end
-    return { type = "group", name = "Panels", order = 4.5, args = {
+    return { type = "group", name = "Chat Panels", order = order or 7, args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Panel options for the Blizzard chat windows: the left panel is the main chat window; pick a window below to act as the right panel. Panel backdrops, tab panel, and sizes are off until you turn on Panel Snapping / Apply panel sizes." },
-        fadeUndocked = tog("Fade Undocked Tabs", "fadeUndockedTabs", 1, "Fades the text on chat tabs that are not docked in the main chat window (needs the ElvUI Chat Reskin switch on)."),
+            name = "Panel options for the Blizzard chat windows: the left panel is the main chat window; pick a window below to act as the right panel. Panel backdrops, tab panel, and sizes are off until you turn on Panel Snapping / Apply panel sizes. The tab fade options need the switch on ElvUI Chat Reskin > General." },
+        fadeUndocked = tog("Fade Undocked Tabs", "fadeUndockedTabs", 1, "Fades the text on chat tabs that are not docked in the main chat window (needs the ElvUI Chat Reskin switch on, under ElvUI Chat Reskin > General)."),
         fadeNoBackdrop = tog("Fade Tabs No Backdrop", "fadeTabsNoBackdrop", 2, "Fades the text on docked tabs when the left panel's backdrop is hidden (needs Panel Snapping on)."),
         hideToggles = tog("Hide Chat Toggles", "cpHideToggles", 3, "Hides the small arrow buttons at the end of the data text panels."),
         fadeToggles = tog("Fade Chat Toggles", "cpFadeToggles", 4, "Fades the toggle button of a window that has been toggled off.", function() return S().cpHideToggles end),
@@ -257,7 +257,7 @@ function ns.ChatPanels_Options(Notify)
                 get = function() local s = S(); return s.cpColorR or 0, s.cpColorG or 0, s.cpColorB or 0, (s.cpColorA or 32) / 100 end,
                 set = function(_, r, g, b, a) local s = Store(); if s then s.cpColorR, s.cpColorG, s.cpColorB, s.cpColorA = r, g, b, math.floor(a * 100 + 0.5) end; Re() end },
             separate = tog("Separate Panel Sizes", "cpSeparate", 2),
-            snapping = tog("Panel Snapping", "cpSnapping", 3, "On: the panel backdrops below replace Blizzard's window background. Off: Blizzard's own chat background color is used (Window & Edit Box tab)."),
+            snapping = tog("Panel Snapping", "cpSnapping", 3, "On: the panel backdrops below replace Blizzard's window background. Off: Blizzard's own chat background color is used (ElvUI Chat Reskin > Window & Edit Box)."),
             backdrop = { type = "select", order = 4, name = "Panel Backdrop",
                 values = { SHOWBOTH = "Show Both", LEFT = "Left Only", RIGHT = "Right Only", HIDEBOTH = "Hide Both" }, sorting = { "SHOWBOTH", "LEFT", "RIGHT", "HIDEBOTH" },
                 get = function() return S().cpBackdrop or "SHOWBOTH" end,

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 -- DataPanels.lua : "Custom Data Panels and Bars" (tab under QoL UI Updates).
--- Five on-screen info strips, each showing 1-20 data slots:
+-- Five on-screen info strips, each showing 1-20 data slots (plus a Chat Panels tab, built by ChatPanels.lua):
 --   bl     Bottom Left Panel   (fixed width, bottom-left corner of the screen)
 --   br     Bottom Right Panel  (fixed width, bottom-right corner)
 --   top    Top Data Bar        (full screen width by default)
@@ -409,7 +409,7 @@ function ns.BuildDataPanelsTab(Notify)
 
     local general = { type = "group", name = "General", order = 1, args = {
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Five on-screen info strips: a bottom left panel, a bottom right panel, a top data bar, and one custom panel and one custom bar you can place anywhere. Every slot of every strip can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). These font settings apply to all five. Right-click any strip to jump here." },
+            name = "Five on-screen info strips: a bottom left panel, a bottom right panel, a top data bar, and one custom panel and one custom bar you can place anywhere. Every slot of every strip can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). These font settings apply to all five. Right-click any strip to jump here. The Chat Panels tab holds the panel options for the Blizzard chat windows (backdrops, tab panel, sizes, chat info bars)." },
         chatBars = { type = "execute", order = 0.5, name = "Open the chat info bars",
             desc = "The bars attached to the chat windows (snap to any side of a chat window) are set up in their own window (also /xui panel). They use the same blocks and data types.",
             func = function() if ns.ChatPanel_ShowWindow then ns.ChatPanel_ShowWindow() end end },
@@ -568,6 +568,8 @@ function ns.BuildDataPanelsTab(Notify)
 
     local out = { type = "group", name = "Custom Data Panels and Bars", order = 10, childGroups = "tab", args = { general = general } }
     for idx, key in ipairs(KEYS) do out.args[key] = Container(key, idx + 1) end
+    -- the chat window panel options (backdrops, tab panel, sizes, chat info bar on / position) live here since 0.5.44 (was ElvUI Chat Reskin > Panels)
+    if ns.ChatPanels_Options then out.args.chatpanels = ns.ChatPanels_Options(Notify, #KEYS + 2) end
     return out
 end
 

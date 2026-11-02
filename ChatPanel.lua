@@ -566,7 +566,7 @@ local function BuildWindow()
     f:Add(CW.Note("Info bars made of blocks, under or above the chat windows (right-click a bar to open this). Changes apply immediately and are saved. Scroll with the mouse wheel.", 0.7, 0.7, 0.7), 42)
     f:Add(CW.Cycle("Editing", { { "L", "Left panel (main chat)" }, { "R", "Right panel" } }, function() return editSide end,
         function(v) editSide = v; f:RefreshAll() end), 20)
-    f:Add(CW.Note("The right panel attaches to the chat window chosen as \"right chat window\" (chat tab > Panels). Without one it stays hidden unless it is snapped to a screen edge.", 0.6, 0.6, 0.6), 42)
+    f:Add(CW.Note("The right panel attaches to the chat window chosen as \"right chat window\" (QoL UI Updates > Custom Data Panels and Bars > Chat Panels). Without one it stays hidden unless it is snapped to a screen edge.", 0.6, 0.6, 0.6), 42)
     f:Add(check("Show this panel", "panelOn"), 20)
 
     f:Add(CW.Header("Bar"), 18)

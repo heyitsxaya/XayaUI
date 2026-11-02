@@ -2,9 +2,9 @@ a1620bdf32daf4d160b6252169fa9586  Actions.lua
 64964bb6b85ba8f6d5a1cedfe929ff52  AddonInfo.lua
 39160b6ad5cc597f56721a85a493988d  Bars.lua
 1abeb3ad1df1e4bb43eed2b39efdca76  ChatDock.lua
-5010f608cabb86ac98e0a45b629b8ce4  ChatPanel.lua
-1791bb7e9d9d95495c5638fb28fe9081  ChatPanels.lua
-97315cf789571159b54f4ce0e075426a  ChatReskin.lua
+0bf80bfe49be5eab79b2b2ac2c02d863  ChatPanel.lua
+a0b85d2114d6dad748a1b5449235b60f  ChatPanels.lua
+fe5e86c9ab7915f9d69fac1d8fb5ef5d  ChatReskin.lua
 b9faeb6335d4410f328225d4e1e2ce4e  ChatTabs.lua
 ec7867cfcc75e25e078f1308153cfada  ChatText.lua
 a18e98b371745c6f10fc6a82e0f570a1  ChatWidgets.lua
@@ -38,7 +38,7 @@ d7e606b10ef3f5b67d3c55a94a5c3953  Theme.lua
 6bd164b672f60f09529d09c9b5b6d3d6  Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  UserMedia.lua
 c1939ad614c1dff592b11cd2019b678c  Visual.lua
-c5aaef4fcf483475a0b9aba3f6f17529  XayaUI.toc
+782f90ea7e64c08290e5b5f7cf84d1d5  XayaUI.toc
 1eb8ec8eeaec35396f0f443339972b13  XayaUI_CombatEngine/AuraIDProbe.lua
 49635f2a302eea3ebac0e3f872c3da06  XayaUI_CombatEngine/AuraModel.lua
 a54c4d312f4f27a53098f413000fd2d2  XayaUI_CombatEngine/AuraSetup.lua
@@ -46,4 +46,4 @@ a54c4d312f4f27a53098f413000fd2d2  XayaUI_CombatEngine/AuraSetup.lua
 8709740439ec1e1469c06b790a258b9c  XayaUI_CombatEngine/README.md
 1d80f66a2f9292c09ce889d75c7edf4a  XayaUI_CombatEngine/XayaUI_CombatEngine.toc
 fbd146ef186e4504fd9991a83c3ad0e4  DataBlocks.lua
-8e9fbcecf719e193de420558afb1ba10  DataPanels.lua
+d2d6dc20ce49b88e59e39921b1d534c6  DataPanels.lua
