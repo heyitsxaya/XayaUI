@@ -75,7 +75,19 @@ local function clamp(x, a, b) if x < a then return a elseif x > b then return b 
 -- Texture coordinates: crop/base rect + mirror/flip + rotation about center.
 -- The image is scaled by (|cos|+|sin|) so a square texture stays fully visible.
 -------------------------------------------------------------------------------
+-- Display box vs art box: the display (v.w x v.h) is the frame; the art (v.iconW x v.iconH, 0 = same as the display) is centered in it.
+-- Where the art is larger than the display on an axis only the middle part is shown (fx / fy = the shown fraction of the art, 1 = all of it);
+-- where it is smaller, the art is drawn smaller than the frame (bw x bh).
+local function ArtBox(v)
+    local W, H = math.max(8, v.w or 128), math.max(8, v.h or 128)
+    local iw, ih = tonumber(v.iconW) or 0, tonumber(v.iconH) or 0
+    if iw <= 0 then iw = W end
+    if ih <= 0 then ih = H end
+    local bw, bh = math.min(W, iw), math.min(H, ih)
+    return W, H, bw, bh, bw / iw, bh / ih
+end
 local function ApplyCoords(tex, v, base)
+    local _, _, _, _, fx, fy = ArtBox(v)
     local l, r, t, b = base[1], base[2], base[3], base[4]
     local cx, cy, hw, hh = (l + r) / 2, (t + b) / 2, (r - l) / 2, (b - t) / 2
     local rad = math.rad(v.rotation or 0)
@@ -84,6 +96,7 @@ local function ApplyCoords(tex, v, base)
     local sx = v.flipH and -1 or 1
     local sy = v.flipV and -1 or 1
     local function pt(qx, qy)
+        qx, qy = qx * fx, qy * fy
         local ix = (qx * c + qy * s) * fit * sx
         local iy = (-qx * s + qy * c) * fit * sy
         return cx + ix * hw, cy - iy * hh
@@ -105,10 +118,12 @@ end
 local function CropTex(tex, fr, x0, x1, y0, y1)
     local uv = tex.xuiUV
     if not uv then return end
-    local W, H = fr:GetWidth(), fr:GetHeight()
+    local W, H, ix, iy = fr:GetWidth(), fr:GetHeight(), 0, 0
+    local bx = tex.xuiBox   -- the art may be smaller than the frame (Icon width / height): the wipe runs over the art
+    if bx then ix, iy, W, H = bx[1], bx[2], bx[3], bx[4] end
     tex:ClearAllPoints()
-    tex:SetPoint("TOPLEFT", fr, "TOPLEFT", x0 * W, -(1 - y1) * H)
-    tex:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", -(1 - x1) * W, y0 * H)
+    tex:SetPoint("TOPLEFT", fr, "TOPLEFT", ix + x0 * W, -(iy + (1 - y1) * H))
+    tex:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", -(ix + (1 - x1) * W), iy + y0 * H)
     local ulx, uly = UVAt(uv, x0, y1)
     local llx, lly = UVAt(uv, x0, y0)
     local urx, ury = UVAt(uv, x1, y1)
@@ -120,9 +135,27 @@ local function UncropTex(tex, fr)
     if not tex.xuiCropped then return end
     tex.xuiCropped = false
     tex:ClearAllPoints()
-    tex:SetAllPoints(fr)
+    local bx = tex.xuiBox
+    if bx then
+        tex:SetPoint("TOPLEFT", fr, "TOPLEFT", bx[1], -bx[2])
+        tex:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", -bx[1], bx[2])
+    else
+        tex:SetAllPoints(fr)
+    end
     local uv = tex.xuiUV
     if uv then tex:SetTexCoord(uv[1], uv[2], uv[3], uv[4], uv[5], uv[6], uv[7], uv[8]) end
+end
+
+-- Put a texture where the art goes inside the display frame (centered art box; dx / dy shift it, used by the outline copies).
+local function AnchorArt(tex, fr, v, dx, dy)
+    local W, H, bw, bh = ArtBox(v)
+    local ix, iy = (W - bw) / 2, (H - bh) / 2
+    dx, dy = dx or 0, dy or 0
+    tex.xuiCropped = false
+    tex.xuiBox = (ix > 0 or iy > 0) and { ix, iy, bw, bh } or nil
+    tex:ClearAllPoints()
+    tex:SetPoint("TOPLEFT", fr, "TOPLEFT", ix + dx, -iy + dy)
+    tex:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", -ix + dx, iy + dy)
 end
 
 local function AtlasBase(name)
@@ -188,7 +221,7 @@ function ns.ApplyTexture(tex, v) SetArt(tex, { spellID = 0 }, v) end
 local function SetOverlayArt(tex, rule, v)
     local o = v.overlay or {}
     if ns.Val(o.source) == "other" then
-        SetArt(tex, rule, { kind = o.kind, tex = o.tex, zoom = v.zoom, rotation = v.rotation, flipH = v.flipH, flipV = v.flipV })
+        SetArt(tex, rule, { kind = o.kind, tex = o.tex, zoom = v.zoom, rotation = v.rotation, flipH = v.flipH, flipV = v.flipV, w = v.w, h = v.h, iconW = v.iconW, iconH = v.iconH })
     else
         SetArt(tex, rule, v)
     end
@@ -1214,9 +1247,7 @@ local function LayoutOutline(fr, rule, v)
             local t = fr.ol[i]
             local off = offsets[i]
             if off then
-                t:ClearAllPoints()
-                t:SetPoint("TOPLEFT", fr, "TOPLEFT", off[1], off[2])
-                t:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", off[1], off[2])
+                AnchorArt(t, fr, v, off[1], off[2])
                 SetArt(t, rule, v)
                 t:SetDesaturated(true)   -- so the color below is the color you see, not the art's own hues
                 t:SetVertexColor(c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1)
@@ -1247,8 +1278,7 @@ function ns.RefreshVisual(rule)
     fr.baseAlpha = v.alpha or 1
     fr:SetAlpha(fr.baseAlpha)
     fr.tex:SetBlendMode(v.additive and "ADD" or "BLEND")
-    fr.tex.xuiCropped = false; fr.tex:ClearAllPoints(); fr.tex:SetAllPoints(fr)
-    fr.tex2.xuiCropped = false; fr.tex2:ClearAllPoints(); fr.tex2:SetAllPoints(fr)
+    AnchorArt(fr.tex, fr, v); AnchorArt(fr.tex2, fr, v)
     SetArt(fr.tex, rule, v)
     fr.tex:SetAlpha(clamp(v.texAlpha or 1, 0, 1))
     -- overlay layer (own tint / desaturate / blend / opacity)

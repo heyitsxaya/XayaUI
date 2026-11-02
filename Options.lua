@@ -797,7 +797,7 @@ local pasteSel = {}           -- section key -> true (shared by the Rule tab, fo
 -- Paste Settings is a tree: every leaf is one section (a tick box); a branch has "All of ..." plus its leaves. Leaves keep short keys.
 -- Visual leaves list the cue-display keys they copy; "vTex" is the catch-all for every other display key (texture art etc.).
 ns.PASTE_VIS = {
-    vSize    = { "w", "h", "keepAspect", "zoom" },
+    vSize    = { "w", "h", "iconW", "iconH", "keepAspect", "zoom" },
     vColor   = { "alpha", "texAlpha", "oocAlpha", "recolor", "desaturate", "tint", "additive", "desatOnCD" },
     vRotate  = { "rotation", "flipH", "flipV" },
     vFade    = { "fadeGrey", "fadeMode", "fadeColor", "fadeAlpha", "fadeAlphaMin", "fadeAlphaMax" },
@@ -1520,12 +1520,18 @@ local function BuildRule(i, rule)
                     Changed(rule); Notify()
                 end },
             sizeH = { type = "header", name = "Size & Orientation", order = 10 },
-            w = Rng(V, "w", "Width", 11, 8, 512, 1, on, { set = ns.AspectSet(V, "w", "h", on) }),
-            h = Rng(V, "h", "Height", 12, 8, 512, 1, on, { set = ns.AspectSet(V, "h", "w", on) }),
+            w = Rng(V, "w", "Display width", 11, 8, 512, 1, on, { set = ns.AspectSet(V, "w", "h", on),
+                desc = "The size of the display itself: its box on screen, its border, cooldown swipe, glow, and the area you click to move it. The icon art has its own size below." }),
+            h = Rng(V, "h", "Display height", 12, 8, 512, 1, on, { set = ns.AspectSet(V, "h", "w", on),
+                desc = "The size of the display itself: its box on screen, its border, cooldown swipe, glow, and the area you click to move it. The icon art has its own size below." }),
             keepAspect = { type = "toggle", name = "Maintain aspect ratio", order = 12.5, width = "double",
                 desc = "On (default): changing Width or Height changes the other one too, keeping the proportions they have when you move the slider. Off: they move independently.",
                 get = function() return V.keepAspect ~= false end,
                 set = function(_, v) V.keepAspect = v and true or false; on() end },
+            iconW = Rng(V, "iconW", "Icon width (0 = same as display)", 13, 0, 512, 1, on,
+                { desc = "The size of the icon art inside the display, centered. Larger than the display width: the sides are cropped. Smaller: the icon is drawn smaller than the display. 0 follows the display width." }),
+            iconH = Rng(V, "iconH", "Icon height (0 = same as display)", 13.2, 0, 512, 1, on,
+                { desc = "The size of the icon art inside the display, centered. Larger than the display height: the top and bottom are cropped. Smaller: the icon is drawn smaller than the display. 0 follows the display height." }),
             rotation = Rng(V, "rotation", "Rotation (degrees)", 14, 0, 360, 1, on,
                 { desc = "Rotates the art about its center. Works best on square sizes; a square image shrinks slightly at diagonal angles so it is never cropped." }),
             flipH = Tog(V, "flipH", "Mirror (flip horizontally)", 15, on),

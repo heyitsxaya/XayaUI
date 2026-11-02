@@ -130,6 +130,7 @@ ns.RULE_DEFAULTS = {
         outline = { enabled = false, style = "auto", width = 2, gap = 0, color = { 1, 0.82, 0, 1 }, pulse = false,
             borderOn = true, glowOn = true, glowSize = 8, glowAlpha = 0.6, glowSame = true, glowColor = { 1, 0.82, 0, 1 } },
         keepAspect = true,     -- Width and Height change together (the ratio at the moment you move a slider)
+        iconW = 0, iconH = 0,  -- size of the art inside the display (0 = same as the display; larger crops it)
         fadeGrey = false,      -- fade gradually as the buff runs out (gray by default, or to fadeColor)
         -- fadeMode: blank/none = gray (desaturate) | color | transparent
         fadeColor = { 1, 0.1, 0.1, 1 },
