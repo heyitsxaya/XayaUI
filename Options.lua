@@ -2771,6 +2771,7 @@ local function StartNewRule(fid)
     if ns.RuleKind({ folder = fid }) == "sound" then CreateRuleOfType(nil, fid); return end
     if not picker then ns.pickOrigin = ns.CurrentTab() end
     picker = { folder = fid }
+    if ns.pageOpen == "settings" then ns.pageOpen = nil; ns.infoOpen = false end   -- a toolbar button other than Settings leaves the Settings pages
     Notify()
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "smartTab", "all")
 end

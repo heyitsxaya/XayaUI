@@ -22,3 +22,6 @@ The window-Open hook called ns.RefreshSidebar, which Notifies; AceConfigDialog t
 
 ## Update 05:45 ET: synchronous skin on group switch RE-APPLIED, with a re-entrancy guard
 The lag blamed on it earlier was the Open-hook loop (fixed in c9ead1b), so the revert was not justified. Re-applied in Skin.lua with ns.xuiDecorating so the skin pass can never trigger itself. Untested in game. If the lag returns: restore Skin.pre-syncskin2.20261102.lua.bak and run /xui perf (prints build ms + skin ms per switch).
+
+## Update 05:50 ET: toolbar buttons leave Settings (Xaya)
+Reported: clicking a top-row button other than Settings should leave the Settings pages. New Rule did not (Options.lua StartNewRule never cleared ns.pageOpen = "settings", and the Rules tree stays hidden while it is set). Fixed: it clears it. Import / Export / Recycle Bin already set ns.pageOpen to their own page; untested in game. Also confirmed by Xaya: tab / tree skin flash fixed, UI snappier.
