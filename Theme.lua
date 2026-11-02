@@ -125,16 +125,16 @@ function T.ClassPalette(file)
 end
 
 -- Built-in bases besides "default" and "class" (Xaya, 2026-11-01). Tokens not listed keep the XUI default.
---  light:      dark text on soft grey-blue surfaces (pure white was too glaring: whites cut ~50% toward grey, Xaya 2026-11-01). Untested in game; some hard-coded white text in the skin may still show.
+--  light:      dark text on white surfaces; same translucency as the dark theme (Xaya 2026-11-01). Untested in game; some hard-coded white text in the skin may still show.
 --  colorblind: Okabe-Ito colors (sky blue / yellow / orange); nothing relies on a red-vs-green difference.
 T.BUILTIN = {
     light = { name = "Light mode", pal = {
-        windowBg = { 0.62, 0.63, 0.68, 1 }, paneBg = { 0.70, 0.71, 0.76, 1 }, border = { 0.36, 0.37, 0.43, 1 }, titleBar = { 0.52, 0.55, 0.66, 1 },
+        windowBg = { 1.00, 1.00, 1.00, 1 }, paneBg = { 1.00, 1.00, 1.00, 1 }, border = { 0.45, 0.46, 0.52, 1 }, titleBar = { 0.82, 0.84, 0.92, 1 },
         text = { 0.08, 0.08, 0.10, 1 }, textMuted = { 0.20, 0.20, 0.26, 1 }, label = { 0.10, 0.20, 0.55, 1 },
-        accent = { 0.15, 0.35, 0.85, 1 }, accentText = { 0.04, 0.12, 0.50, 1 }, gradStart = { 0.52, 0.62, 0.88, 1 },
-        buttonBg = { 0.80, 0.81, 0.86, 0.95 }, buttonBorder = { 0.32, 0.33, 0.40, 1 }, buttonText = { 0.10, 0.20, 0.55, 1 },
+        accent = { 0.15, 0.35, 0.85, 1 }, accentText = { 0.04, 0.12, 0.50, 1 }, gradStart = { 0.72, 0.80, 0.98, 1 },
+        buttonBg = { 1, 1, 1, 0.90 }, buttonBorder = { 0.45, 0.46, 0.52, 1 }, buttonText = { 0.10, 0.20, 0.55, 1 },
         primaryBg = { 0.15, 0.35, 0.85, 0.95 }, primaryBorder = { 0.10, 0.25, 0.65, 1 },
-        tabBg = { 0.66, 0.67, 0.72, 0.9 }, tabBorder = { 0.36, 0.37, 0.43, 1 }, tabSelBg = { 0.52, 0.62, 0.88, 0.95 }, tabSelBorder = { 0.15, 0.35, 0.85, 1 },
+        tabBg = { 0.90, 0.90, 0.94, 0.9 }, tabBorder = { 0.45, 0.46, 0.52, 1 }, tabSelBg = { 0.72, 0.80, 0.98, 0.95 }, tabSelBorder = { 0.15, 0.35, 0.85, 1 },
         danger = { 0.80, 0.10, 0.10, 1 } } },
     colorblind = { name = "Color blind safe (blue / yellow / orange)", pal = {
         accent = { 0.337, 0.706, 0.914, 1 }, accentText = { 0.70, 0.88, 0.98, 1 }, gradStart = { 0.06, 0.18, 0.28, 1 },

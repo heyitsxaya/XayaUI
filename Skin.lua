@@ -23,7 +23,6 @@ local function Pad() local u = CueRulesDB and CueRulesDB.ui; return math.max(0, 
 local function A()
     local u = CueRulesDB and CueRulesDB.ui
     local a = (u and tonumber(u.skinAlpha)) or 0.62
-    if TH and TH.IsLight and TH.IsLight() then a = math.max(a, 0.96) end   -- light themes need a solid window: the game world shows through otherwise
     return a
 end
 
