@@ -242,6 +242,79 @@ function ns.DraftsOnClose()
     end
 end
 
+
+-------------------------------------------------------------------------------
+-- Save variants (0.5.31): save as a copy / add to drafts / add a copy to drafts
+-------------------------------------------------------------------------------
+-- A copy of a rule group under a new identity: the root gets a new uid and `suffix` after its name; its cues / conditions follow the new root.
+local function CopyGroup(group, suffix)
+    local copies = Copies(group)
+    local root = copies[1]
+    if not root then return nil end
+    local used = {}
+    for _, r in ipairs(ns.rules or {}) do if type(r.uid) == "string" then used[r.uid] = true end end
+    local u = ns.NewUID()
+    while used[u] do u = ns.NewUID() end
+    root.uid = u
+    local nm = tostring(root.name or "")
+    root.name = ((nm ~= "") and nm or "Rule") .. suffix
+    for i = 2, #copies do copies[i].uid = nil; copies[i].parentUid = u end
+    return copies, u
+end
+
+-- Save as a copy: the edited version becomes a NEW saved rule next to the original; the original goes back to its last saved version.
+-- Not offered for a rule that was never saved (it has no saved version to go back to; use Save changes).
+function ns.DraftSaveAsCopy(rule)
+    local root = RootOf(rule)
+    if not (root and root.uid) or ns.DraftIsNew(root) then return end
+    local uid = root.uid
+    local copies, newUid = CopyGroup(GroupOf(uid), " Copy")
+    if not copies then return end
+    local origName = tostring(root.name or "")
+    Revert(uid)
+    local g = GroupOf(uid)
+    if #g > 0 then baseline[uid] = { sig = Sig(g), rules = Copies(g) } end   -- the original is its saved version again
+    for _, c in ipairs(copies) do ns.rules[#ns.rules + 1] = c end
+    for _, c in ipairs(copies) do pcall(ns.RefreshVisual, c) end
+    if windowOpen then
+        local cg = GroupOf(newUid)
+        baseline[newUid] = { sig = Sig(cg), rules = Copies(cg) }   -- the copy counts as saved
+    end
+    cache = { t = -1 }
+    ns.MarkDirty()
+    if ns.Print then ns.Print(("Saved your edits as a new rule '%s'. '%s' went back to its last saved version."):format(tostring(copies[1].name), origName)) end
+    if ns.ReselectRule then local r = GroupOf(newUid)[1]; if r then pcall(ns.ReselectRule, r) end end
+    if ns.UI and ns.UI.Notify then
+        ns.UI.Notify()
+        if C_Timer then C_Timer.After(0, function() cache = { t = -1 }; ns.UI.Notify() end) end
+    end
+end
+
+-- Add to drafts: the edited version moves to the Drafts page and the rule goes back to its last saved version (a never-saved rule leaves the list).
+function ns.DraftAddToDrafts(rule)
+    local root = RootOf(rule)
+    if not (root and root.uid) then return end
+    local uid = root.uid
+    local group = GroupOf(uid)
+    if #group == 0 then return end
+    local b = baseline[uid]
+    StoreDraft(uid, group, b and b.isNew)
+    local nm = tostring(root.name or "")
+    ns.DraftDiscard(root)
+    if ns.Print then ns.Print(("Your edits to '%s' were added to Drafts. The rule is back at its last saved version."):format(nm ~= "" and nm or "Unnamed rule")) end
+end
+
+-- Add a copy to drafts: the edited version is stored in Drafts as a separate, never-saved rule; the rule itself stays open and unsaved as it is.
+function ns.DraftAddCopyToDrafts(rule)
+    local root = RootOf(rule)
+    if not (root and root.uid) then return end
+    local copies, newUid = CopyGroup(GroupOf(root.uid), " Copy")
+    if not copies then return end
+    StoreDraft(newUid, copies, true)
+    if ns.Print then ns.Print(("A copy of '%s' was added to Drafts. This rule is unchanged and still has unsaved edits."):format(tostring(root.name or ""))) end
+    if ns.UI and ns.UI.Notify then ns.UI.Notify() end
+end
+
 local lf = CreateFrame("Frame")
 lf:RegisterEvent("PLAYER_LOGOUT")
 lf:SetScript("OnEvent", function() pcall(ns.DraftsOnClose) end)
@@ -295,6 +368,16 @@ function ns.DraftArgs(rule)
         save = { type = "execute", order = -99, width = "normal", name = "Save changes", hidden = clean, arg = { xuiRed = true },
             desc = "Keep the changes made to this rule (its triggers, cues, conditions, actions and load settings).",
             func = function() ns.DraftSave(rule); Notify() end },
+        saveCopy = { type = "execute", order = -98.9, width = "normal", name = "Save as a copy",
+            hidden = function() return clean() or ns.DraftIsNew(rule) end,
+            desc = "Keep your edits as a NEW rule next to this one. This rule goes back to its last saved version.",
+            func = function() ns.DraftSaveAsCopy(rule) end },
+        toDrafts = { type = "execute", order = -98.8, width = "normal", name = "Add to drafts", hidden = clean,
+            desc = "Move your edits to the Drafts page and put this rule back to its last saved version (a never-saved rule leaves the list).",
+            func = function() ns.DraftAddToDrafts(rule) end },
+        copyToDrafts = { type = "execute", order = -98.7, width = "normal", name = "Add as a copy to drafts", hidden = clean,
+            desc = "Store a copy of your edits in the Drafts page as a separate rule. This rule stays as it is, still unsaved.",
+            func = function() ns.DraftAddCopyToDrafts(rule) end },
         discard = { type = "execute", order = -98, width = "normal", hidden = clean,
             name = function() return ns.DraftIsNew(rule) and "Discard new rule" or "Discard changes" end,
             confirm = true,

@@ -5084,6 +5084,45 @@ local function ShowRowMenu(button)
     if not ok then ns.Print("context menu error: " .. tostring(err)) end
 end
 
+-- Right-click on EMPTY space in the Rules sidebar (below the last row, or between rows): New Rule / New Group / New Dynamic Group at the cursor.
+-- Rows keep their own menu (RowMenu); this only fires when the click lands on the sidebar frame itself.
+function ns.ShowBlankMenu(frame)
+    local tab = ns.CurrentTab and ns.CurrentTab()
+    if tab ~= "cooldowns" and tab ~= "smartcat" then return end   -- only the Rules sidebar; QoL and Settings trees have no rule list
+    if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the context menu needs the game's MenuUtil, which is not available") return end
+    local function NewGroup(dynamic)
+        local nf = ns.NewFolder((dynamic and "Dynamic Group " or "Group ") .. (#ns.folders + 1))
+        if dynamic then nf.cType = "dynamic" end
+        ns.MarkDirty(); Notify()
+        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, ns.FolderLoadedPath(nf))
+    end
+    local ok, err = pcall(MenuUtil.CreateContextMenu, MenuOwner(frame), function(_, root)
+        if root.AddMenuAcquiredCallback then
+            root:AddMenuAcquiredCallback(function(menu)
+                if menu and menu.SetFrameStrata then
+                    pcall(menu.SetFrameStrata, menu, "TOOLTIP")
+                    if menu.Raise then pcall(menu.Raise, menu) end
+                end
+            end)
+        end
+        root:CreateTitle("Create")
+        root:CreateButton("New Rule", function() StartNewRule(nil) end)
+        root:CreateButton("New Group", function() NewGroup(false) end)
+        root:CreateButton("New Dynamic Group", function() NewGroup(true) end)
+    end)
+    if not ok then ns.Print("context menu error: " .. tostring(err)) end
+end
+-- hook the sidebar frame of a tree once; called from the row decorator, which knows its tree (button.obj)
+function ns.HookSidebarBlank(tree)
+    local tf = tree and tree.treeframe
+    if not tf or tf.xuiBlankHook then return end
+    tf.xuiBlankHook = true
+    tf:EnableMouse(true)   -- rows and the search box sit on top and take their own clicks; only free space reaches the frame
+    tf:HookScript("OnMouseUp", function(self, mouse)
+        if mouse == "RightButton" then pcall(ns.ShowBlankMenu, self) end
+    end)
+end
+
 -- Header rows (the root row and every top-level folder) get a tinted banner so each reads as its own group.
 local BANNER_TINT = {
     root = { 1, 0.78, 0 }, loaded = { 0.1, 0.85, 0.75 }, notloaded = { 0.95, 0.2, 0.2 }, disabled = { 0.55, 0.55, 0.6 }, display = { 0.1, 0.5, 1 }, sound = { 0.1, 0.75, 0.3 }, hybrid = { 1, 0.5, 0.1 }, advanced = { 0.75, 0.25, 1 }, smart = { 0.3, 0.8, 1 }, cursor = { 0.95, 0.35, 0.75 }, other = { 0.7, 0.7, 0.75 },
@@ -5594,6 +5633,7 @@ local function DecorateButton(button)
         button.xuiGone = nil
         button:SetHeight(18); button:SetAlpha(1); button:EnableMouse(true)
     end
+    if button.obj and not (button.obj.treeframe and button.obj.treeframe.xuiBlankHook) then pcall(ns.HookSidebarBlank, button.obj) end
     if not button.xuiDrag then
         button.xuiDrag = true
         button:RegisterForDrag("LeftButton")
