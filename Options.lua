@@ -2300,6 +2300,28 @@ function ns.ParentGradientOn() local u = CueRulesDB and CueRulesDB.ui; return no
 function ns.SidebarSpellIcons() local u = CueRulesDB and CueRulesDB.ui; return not (u and u.sidebarSpellIcons == false) end
 function ns.GridOn() return true end   -- two-column grid is always on (no longer an option)
 function ns.CondensedOn() local u = CueRulesDB and CueRulesDB.ui; return u and u.condensedList == true or false end
+
+-- Window size override (Settings > UI Options > Window Size, issue #223). 0 = automatic (the built-in 780 x 860). A saved value is clamped to
+-- the screen and to a usable minimum. It is applied on the first open each session (see the Open hook) and immediately when changed.
+ns.PANE_DEFAULT_W, ns.PANE_DEFAULT_H = 780, 860
+ns.PANE_MIN_W, ns.PANE_MIN_H = 600, 400
+function ns.PaneSize()
+    local u = CueRulesDB and CueRulesDB.ui
+    local w, h = tonumber(u and u.paneW) or 0, tonumber(u and u.paneH) or 0
+    local sw = UIParent and UIParent:GetWidth() or 1920
+    local sh = UIParent and UIParent:GetHeight() or 1080
+    if w <= 0 then w = ns.PANE_DEFAULT_W else w = math.max(ns.PANE_MIN_W, w) end
+    if h <= 0 then h = ns.PANE_DEFAULT_H else h = math.max(ns.PANE_MIN_H, h) end
+    return math.min(w, sw), math.min(h, sh)
+end
+function ns.ApplyPaneSize()
+    local w, h = ns.PaneSize()
+    local ACD = LibStub and LibStub("AceConfigDialog-3.0", true)
+    if not ACD then return end
+    pcall(ACD.SetDefaultSize, ACD, APP, w, h)   -- the size the next open uses
+    local of = ACD.OpenFrames and ACD.OpenFrames[APP]
+    if of and of.frame then pcall(of.frame.SetSize, of.frame, w, h) end   -- and the open window, right now
+end
 function ns.DebugConsoleOn() local u = CueRulesDB and CueRulesDB.ui; return not (u and u.hideTray) end
 
 -- Settings: the addon's own behavior, as opposed to any one rule's. Opened from the toolbar (cog, far right); has its own tabs.
@@ -2325,6 +2347,17 @@ local function BuildAddonSettings()
                 desc = "Drops the icons and the taller rows from the left-hand rule list and shows plain, compact rows with the +/- toggle on the left.",
                 get = function() return ns.CondensedOn() end,
                 set = function(_, v) Ui().condensedList = v and true or false; Repaint() end },
+            paneHeader = { type = "header", name = "Window Size", order = 30 },
+            paneNote = { type = "description", order = 30.5, width = "full",
+                name = "Sets the size of this window when it opens. 0 = automatic (780 wide by 860 tall). Values are kept on screen and no smaller than 600 by 400. Dragging the window's corner still resizes it for the current session." },
+            paneW = { type = "range", name = "Window width (0 = automatic)", order = 31, min = 0, max = 2560, step = 10, width = "double",
+                get = function() return tonumber(Ui().paneW) or 0 end,
+                set = function(_, v) Ui().paneW = v; if ns.ApplyPaneSize then ns.ApplyPaneSize() end end },
+            paneH = { type = "range", name = "Window height (0 = automatic)", order = 32, min = 0, max = 1600, step = 10, width = "double",
+                get = function() return tonumber(Ui().paneH) or 0 end,
+                set = function(_, v) Ui().paneH = v; if ns.ApplyPaneSize then ns.ApplyPaneSize() end end },
+            paneReset = { type = "execute", name = "Reset window size to automatic", order = 33, width = "double",
+                func = function() Ui().paneW = 0; Ui().paneH = 0; if ns.ApplyPaneSize then ns.ApplyPaneSize() end; Notify() end },
             sidebarSpellIcons = { type = "toggle", name = "Show a rule's spell / buff icon in the rule list", order = 23, width = "full",
                 desc = "Rules that track a spell or buff show that spell's icon in the left-hand list instead of the generic type icon. Each rule can override this in its Display Options (Sidebar icon).",
                 get = function() return ns.SidebarSpellIcons() end,
@@ -4078,6 +4111,7 @@ do
         hooksecurefunc(AceConfigDialog, "Open", function(_, app)
             if app ~= APP then return end
             LowerWindow()
+            if not ns.paneSizeApplied then ns.paneSizeApplied = true; if ns.ApplyPaneSize then pcall(ns.ApplyPaneSize) end end   -- saved size override, once per session
             if ns.DraftsOnOpen then pcall(ns.DraftsOnOpen) end   -- remember every rule's saved version
             local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
             if of and of.frame and not of.frame.xuiDraftHook then   -- window closed (button, Esc, toggle): unsaved rules go to Drafts
