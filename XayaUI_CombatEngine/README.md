@@ -1,5 +1,7 @@
 # XayaUI_CombatEngine
 
+Shown in the in-game addon list as **XayaUI Combat Auras**; the folder, files, and slash commands keep the name `XayaUI_CombatEngine`.
+
 In-combat aura tracking for XayaUI, split out as its own addon so work on it does not collide with work on the core.
 It follows the WeakAuras layout: in the repo it is a folder; in the game it loads as its own addon that depends on XayaUI.
 
