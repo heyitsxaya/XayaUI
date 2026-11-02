@@ -1218,7 +1218,7 @@ local function BuildRule(i, rule)
     end
 
     ------------------------------------------------------------ Conditions
-    local function noMatch() local m = rule.load.mode; return m == "never" or m == "always" end
+    local function noMatch() return false end   -- every load option stays visible in every mode (0.5.77); Always / Never only decide whether they are used (note below)
     local loadArgs = {
         talentUse = { type = "toggle", name = "Talents", order = 1, width = "double",
             desc = "Tick to require certain talents. Unticked = talents are ignored. The talent list appears below once ticked.",
@@ -1275,10 +1275,17 @@ local function BuildRule(i, rule)
     -- Hero talents: same pattern as Specialization / Role, sits right under the Talent List
     do
         local function heroSet() rule.load.heroes = rule.load.heroes or {}; return rule.load.heroes end
-        loadArgs.heroes = ns.RadioGroup("Hero Talents", 1.6, function() return rule.load.mode == "never" or rule.load.mode == "always" end,
+        loadArgs.heroes = ns.RadioGroup("Hero Talents", 1.6, noMatch,
             heroSet, ns.HeroChoices(), function() Changed(rule); Notify() end, function() return rule.load end, "heroUse", rule, "heroes")
     end
     loadArgs.loadHeader = { type = "header", name = "When Should This Rule Load?", order = 0 }
+    loadArgs.modeNote = { type = "description", order = 0.52, width = "full", fontSize = "medium",
+        hidden = function() local m = rule.load.mode; return m ~= "never" and m ~= "always" end,
+        name = function()
+            return rule.load.mode == "always"
+                and "|cffffd100Always load is ticked:|r the options below are kept but not used. Tick Match ALL or Match ANY to make them count."
+                or "|cffffd100Never load is ticked:|r this rule does not load, so the options below are kept but not used. Tick Match ALL or Match ANY to make them count."
+        end }
     local loadModeKeys = AddSquareRadio(loadArgs, "loadMode", 0.5, LOAD_MODE, LOAD_MODE_ORDER,
         function() return rule.load.mode or "all" end,
         function(v) rule.load.mode = v; Changed(rule); Notify() end,

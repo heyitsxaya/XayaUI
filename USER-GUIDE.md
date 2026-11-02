@@ -82,8 +82,8 @@ Load answers: *in what situations is this rule active?* A rule that is not loade
 
 | Mode | Meaning |
 |---|---|
-| **Never load** | The rule never runs. The rule list shows it as disabled. |
-| **Always load** | Ignore every load condition below. |
+| **Never load** | The rule never runs. The rule list shows it as disabled. The load conditions below stay visible but are not used. |
+| **Always load** | Ignore every load condition below. The conditions stay visible and keep their settings; they just are not used until you tick Match ALL or Match ANY. |
 | **Match ALL of the conditions below** | Every condition you set must be true. (A blank mode behaves like ALL.) |
 | **Match ANY of the conditions below** | At least one condition you set must be true. |
 
