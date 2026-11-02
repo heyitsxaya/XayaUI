@@ -1,8 +1,7 @@
 -------------------------------------------------------------------------------
--- ChatText.lua : ElvUI Chat Reskin, phase 2 (message text features). Own code only; it mirrors the OPTION SET and the
--- visible behavior of ElvUI's chat module (ElvUI's license reserves all rights, so nothing here is copied).
+-- ChatText.lua : Chat Reskin, phase 2 (message text features). Own code only.
 --
--- Message text is edited in two places, like ElvUI does it:
+-- Message text is edited in two places:
 --   * chat message FILTERS (URL links, keyword and class-color highlighting, spam throttle, alert sounds, class cache),
 --     run once per message even when several chat windows show it (the result is cached by line ID);
 --   * a wrapper around each chat window's AddMessage (short / hidden channel names, timestamps, copy-line arrow, history).

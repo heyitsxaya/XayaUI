@@ -1,7 +1,7 @@
--- ChatDock.lua - a mover for the main chat window, an ElvUI-style collapse button, a precise-position window, the chat's side strip
+-- ChatDock.lua - a mover for the main chat window, a collapse button, a precise-position window, the chat's side strip
 -- option, and the free-move fix (Xaya, 2026-11-01; reworked 2026-11-02).
 -- Independent of the "ElvUI Chat Reskin" master switch: it only touches where the chat sits and whether it is shown.
--- Collapse = every chat window, its tab and the dock are re-parented to a hidden frame (what ElvUI does), then put back.
+-- Collapse = every chat window, its tab and the dock are re-parented to a hidden frame, then put back.
 local ADDON, ns = ...
 
 ns.CHAT_DEFAULTS.dockButton = true      -- show the collapse button

@@ -1,7 +1,6 @@
 -------------------------------------------------------------------------------
--- ChatReskin.lua : ElvUI Chat Reskin (QoL feature): styling and behavior of the Blizzard chat frames.
--- Own code only: it mirrors the OPTION SET of ElvUI's chat module, written from scratch (ElvUI's
--- license reserves all rights; private modification only).
+-- ChatReskin.lua : Chat Reskin (QoL feature): styling and behavior of the Blizzard chat frames.
+-- Own code only, written from scratch.
 --
 -- This file: fonts, buffer size, scroll step and auto-return, text fade, window background, sticky chat, edit box (alt key, history,
 -- position), combat repeat guard, voice-button hiding, the options page, and the shared refresh / events.
@@ -9,14 +8,14 @@
 -- throttle, history, copy button / window / lines, hyperlink hover, edit-box extras (character count, /tt, /gr).
 -- Message text the game marks secret (Midnight) is never touched; /xui chat counts those lines.
 -- NOT built: emotion icons (TwitchEmotes does that), role / mentorship / timerunning icons, Battle.net tag names, Quick Join messages,
--- ElvUI's own left / right chat panels (separate sizes, snapping, textures, datatext anchors, voice panel pin / fade).
+-- a full datatext system and separate left / right chat panels (a simpler version is in ChatPanels.lua / ChatPanel.lua), voice panel pin / fade.
 -- UNTESTED in game. Same feature also exists in the Xaya-EUI plugin; only one may run (guard below).
 -- /xui chat prints what this module found and applied.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 
--- Defaults seeded from Xaya's old ElvUI profile where she changed them (font size 15, outline,
--- tab size 15, panel color 0,0,0 at 0.3157 opacity); otherwise ElvUI's own default values.
+-- Defaults seeded from Xaya's previous chat setup where she changed them (font size 15, outline,
+-- tab size 15, panel color 0,0,0 at 0.3157 opacity); otherwise common defaults.
 ns.CHAT_DEFAULTS = {
     enabled = false,
     font = "lsm:PT Sans Narrow", fontSize = 15, fontOutline = "outline",
@@ -35,7 +34,7 @@ ns.CHAT_DEFAULTS = {
     tabBackdrop = true, tabBgR = 0, tabBgG = 0, tabBgB = 0, tabBgAlpha = 45,
     tabBgSelR = 0.18, tabBgSelG = 0.18, tabBgSelB = 0.18, tabBgSelAlpha = 80,
     tabFadeUntilHover = false, tabHeightCustom = 0,
-    -- message text (timestamp format seeded from Xaya's old ElvUI profile)
+    -- message text (timestamp format seeded from Xaya's previous chat setup)
     timeStampFormat = "%H:%M:%S ", timeStampLocalTime = false, useCustomTimeColor = true, timeR = 0.7, timeG = 0.7, timeB = 0.7,
     shortChannels = true, hideChannels = false, url = true, hyperlinkHover = true,
     copyChatLines = false, hideCopyButton = false, classColorMentions = true,
@@ -278,7 +277,7 @@ local function ApplyEditBox(s)
     end
 end
 
--- Flat edit box: Blizzard's stone frame textures are hidden (the same pieces ElvUI clears: EditBoxLeft/Mid/Right and the focus
+-- Flat edit box: Blizzard's stone frame textures are hidden (EditBoxLeft/Mid/Right and the focus
 -- highlight textures) and a flat backdrop is drawn behind the box. The border takes the selected-tab marker color while typing.
 local EDIT_PIECES = { "Left", "Mid", "Right" }
 local EDIT_FOCUS = { "focusLeft", "focusMid", "focusRight" }
@@ -523,11 +522,11 @@ function ns.BuildChatTab(Notify)
                 blocked = { type = "description", order = 1, width = "full", fontSize = "medium",
                     hidden = function() return ns.ChatReskin_BlockedReason() == nil end,
                     name = function() return "|cffff5555Blocked:|r " .. tostring(ns.ChatReskin_BlockedReason()) end },
-                intro = note("Brings ElvUI's chat options to the normal Blizzard chat frames. Turning it off fully takes effect after /reload. /xui chat shows what ran and any error.", 2),
+                intro = note("Styling and options for the normal Blizzard chat frames. It is independent of ElvUI. Turning it off fully takes effect after /reload. /xui chat shows what ran and any error.", 2),
                 enabled = tog("Enable ElvUI Chat Reskin", "enabled", 3),
                 hideVoice = tog("Hide voice chat buttons", "hideVoiceButtons", 4),
                 secretNote = note("|cffaaaaaaProtected messages:|r the game marks some chat text (for example during boss encounters and inside some instances) as secret. Addons cannot read or change it, so such lines get no timestamp, link, color, history, or copy. This is a game limit, and /xui chat counts how many were skipped.", 8, true),
-                notBuilt = note("|cffaaaaaaNot built:|r emotion icons (the TwitchEmotes addon does this), role / mentorship / timerunning icons, Battle.net tag names, Quick Join messages, and ElvUI's datatext engine (the Panels tab has simpler info bars instead). ElvUI's own left / right chat panels are approximated on the Blizzard chat windows (Panels tab). Voice button pin / fade options are not built; hiding them is.", 9, true),
+                notBuilt = note("|cffaaaaaaNot built:|r emotion icons (the TwitchEmotes addon does this), role / mentorship / timerunning icons, Battle.net tag names, Quick Join messages, and a full datatext system (the Panels tab has simpler info bars instead). Left / right chat panels are approximated on the Blizzard chat windows (Panels tab). Voice button pin / fade options are not built; hiding them is.", 9, true),
             } },
             fonts = { type = "group", name = "Fonts & Tabs", order = 2, args = {
                 font = fontSel("Chat font", "font", 1), fontSize = rng("Chat font size", "fontSize", 2, 6, 40),

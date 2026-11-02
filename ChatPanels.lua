@@ -1,21 +1,21 @@
 -------------------------------------------------------------------------------
--- ChatPanels.lua : the "Panels" tab of the ElvUI chat options, rebuilt for the Blizzard chat windows (own code; option set only).
+-- ChatPanels.lua : the "Panels" tab: panel options for the Blizzard chat windows (own code).
 --   * Chat panels: a backdrop behind the left window (ChatFrame1) and an optional right window, backdrop color / mode / textures,
 --     panel width and height (applied to the chat windows when "Apply panel sizes" is on), Panel Snapping (backdrop replaces Blizzard's
---     window background, as in ElvUI).
+--     window background).
 --   * Tab panel: a strip behind the docked tabs, with transparency.
 --   * Fade undocked tabs / Fade tabs without backdrop (used by ChatTabs.lua).
 --   * Chat toggles (hide / fade) and the right window's collapse state (the left window's lives in ChatDock.lua).
 --   * Data text panel positions and on/off (the panels themselves are in ChatPanel.lua).
--- "Right chat window" is this addon's addition: ElvUI has its own right panel; here you pick which Blizzard window plays that role.
+-- "Right chat window": there is no separate right panel; you pick which Blizzard window plays that role.
 -- UNTESTED in game.
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 
 local D = ns.CHAT_DEFAULTS
-D.cpSnapping = false                -- backdrop panels replace Blizzard's window background (ElvUI default is on; off here so nothing changes until chosen)
+D.cpSnapping = false                -- backdrop panels replace Blizzard's window background (off so nothing changes until chosen)
 D.cpBackdrop = "SHOWBOTH"           -- SHOWBOTH | LEFT | RIGHT | HIDEBOTH
-D.cpColorR, D.cpColorG, D.cpColorB, D.cpColorA = 0, 0, 0, 32      -- seeded from Xaya's old ElvUI profile (0, 0, 0 at 0.3157)
+D.cpColorR, D.cpColorG, D.cpColorB, D.cpColorA = 0, 0, 0, 32      -- seeded from Xaya's previous chat setup (0, 0, 0 at 0.3157)
 D.cpTab = true; D.cpTabTransparent = true                         -- seeded from the same profile (both on)
 D.cpSeparate = true                                               -- seeded: separate sizes on
 D.cpWidth, D.cpHeight, D.cpWidthR, D.cpHeightR = 443, 180, 400, 180   -- seeded: 443 / 400 wide, 180 high
@@ -198,7 +198,7 @@ function ns.ChatPanels_Debug(say)
         .. " tab panel=" .. tostring(tabPanel and tabPanel:IsShown()))
 end
 
--- options (the "Panels" tab, same sections as ElvUI's) ----------------------------------------------------------------------
+-- options (the "Panels" tab) ----------------------------------------------------------------------
 function ns.ChatPanels_Options(Notify)
     local function S() return Store() or {} end
     local function Re() ns.ChatPanels_Refresh(); if Notify then Notify() end end
@@ -231,7 +231,7 @@ function ns.ChatPanels_Options(Notify)
     local noRight = function() return ns.ChatPanels_RightWindow() == nil end
     return { type = "group", name = "Panels", order = 4.5, args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Mirrors ElvUI's Panels tab. These work on the Blizzard chat windows: the left panel is the main chat window; pick a window below to act as the right panel. Panel backdrops, tab panel, and sizes are off until you turn on Panel Snapping / Apply panel sizes." },
+            name = "Panel options for the Blizzard chat windows: the left panel is the main chat window; pick a window below to act as the right panel. Panel backdrops, tab panel, and sizes are off until you turn on Panel Snapping / Apply panel sizes." },
         fadeUndocked = tog("Fade Undocked Tabs", "fadeUndockedTabs", 1, "Fades the text on chat tabs that are not docked in the main chat window (needs the ElvUI Chat Reskin switch on)."),
         fadeNoBackdrop = tog("Fade Tabs No Backdrop", "fadeTabsNoBackdrop", 2, "Fades the text on docked tabs when the left panel's backdrop is hidden (needs Panel Snapping on)."),
         hideToggles = tog("Hide Chat Toggles", "cpHideToggles", 3, "Hides the small arrow buttons at the end of the data text panels."),

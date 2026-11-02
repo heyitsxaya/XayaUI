@@ -1,11 +1,10 @@
 -------------------------------------------------------------------------------
--- ChatPanel.lua : the info bars ("data text panels") under or above the chat windows - counterpart of ElvUI's left / right chat data panels.
--- Own code, written from the option set only (ElvUI's license reserves all rights).
+-- ChatPanel.lua : the info bars ("data text panels") under or above the chat windows. Own code.
 -- Works without the "ElvUI Chat Reskin" master switch and without the main XayaUI settings window:
 --   /xui panel   (or right-click a bar)   opens a small settings window of its own.
 -- Left panel = under the main chat window (ChatFrame1). Right panel = under the window chosen as "right chat window" (ChatPanels.lua).
 -- Each has up to three slots (time, FPS + latency, FPS, latency, friends, gold, durability, free bag slots, your own text) and a toggle
--- button at its outer end that hides / shows that chat window (like ElvUI's chat toggle).
+-- button at its outer end that hides / shows that chat window.
 -- Right panel settings use the same names as the left ones with an "r" in front (rpanelOn, rpanelAnchor, ...).
 -- UNTESTED in game.
 -------------------------------------------------------------------------------

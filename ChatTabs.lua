@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- ChatTabs.lua : ElvUI Chat Reskin, tabs. Own code only (mirrors what ElvUI's chat tabs do and offer, written from scratch).
+-- ChatTabs.lua : Chat Reskin, tabs. Own code only.
 --   * Blizzard's tab art is removed and each tab gets a flat background (selected / not selected colors).
 --   * The selected tab is marked with a selector around its name (> Name <, [ Name ], { Name }, ( Name ) or none) in its own color.
 --   * Selected / not selected text colors, whisper tabs in the class color of the person, dimmed inactive docked tabs.
@@ -51,7 +51,7 @@ local function ChatOfTab(tab)
     return tab.xuiOwner
 end
 
--- Fade the tab's text: everywhere (old option), for undocked tabs, or for tabs docked in a panel whose backdrop is hidden (ElvUI's two options).
+-- Fade the tab's text: everywhere (old option), for undocked tabs, or for tabs docked in a panel whose backdrop is hidden.
 local function FadeOn(s, chat)
     if s.tabFadeUntilHover then return true end
     if not chat then return false end
