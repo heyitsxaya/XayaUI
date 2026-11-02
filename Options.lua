@@ -3757,6 +3757,7 @@ local function BuildOptions()
     local setDbg = { type = "group", name = "Debugging", order = 2, hidden = function() return not SettingsOn() end, args = sa.debug.args }
     settings.hidden = function() return ns.SkinRows and ns.SkinRows() and true or false end   -- skin off: the old single Settings tab
     track.hidden = function() return SettingsOn() and true or false end
+    if qol then qol.hidden = function() return SettingsOn() and true or false end end   -- Settings open: QoL UI Updates tab goes away (Xaya, 2026-11-01)
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
         args = { cooldowns = track, recyclebin = binTab, qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = settings, set_ui = setUi, set_debug = setDbg } }
     pcall(ns.SmartOpen)
