@@ -186,6 +186,8 @@ local function ToolButton(parent, icon, label, onClick)
 end
 
 if TH and TH.OnResolve then TH.OnResolve(function() for b in pairs(toolBtns) do pcall(b.Recolor, b) end end) end
+-- a theme change also repaints every rule-list row (their text color was set when the row was drawn: dark text from Light mode stayed on a dark theme)
+if TH and TH.OnResolve then TH.OnResolve(function() if C_Timer then C_Timer.After(0.05, function() if ns.DecorateTrees then pcall(ns.DecorateTrees) end end) end end) end
 
 -- Rule search box: nested at the top of the All Rules sidebar, above the Loaded row. Typing filters the rule lists (ns.treeFilter).
 -- Filtering ends in Notify(), which rebuilds the tree and can release / hide the box, dropping its keyboard focus (the next letter then
