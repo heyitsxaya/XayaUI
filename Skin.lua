@@ -23,6 +23,7 @@ local function Pad() local u = CueRulesDB and CueRulesDB.ui; return math.max(0, 
 local function A()
     local u = CueRulesDB and CueRulesDB.ui
     local a = (u and tonumber(u.skinAlpha)) or 0.62
+    if TH and TH.IsLight and TH.IsLight() then a = a * 0.85 end   -- light themes: a further 15% more see-through (Xaya, 2026-11-01)
     return a
 end
 
@@ -1533,6 +1534,34 @@ if FlowFn then
         local lw, lh
         if obj and SkinOn() then obj.LayoutFinished = function(_, w, h) lw, lh = w, h end end
         FlowFn(content, children)
+        -- rows of option args flagged xuiCenter (several small buttons in one line) are centered in the pane
+        pcall(function()
+            local cw = content.width or content:GetWidth() or 0
+            local rows, order = {}, {}
+            for _, ch in ipairs(children) do
+                local o = ch.GetUserData and ch:GetUserData("option")
+                if o and type(o.arg) == "table" and o.arg.xuiCenter and ch.frame and ch.frame:IsShown() then
+                    local _, rel, _, x, y = ch.frame:GetPoint(1)
+                    if rel == content then
+                        local key = math.floor((y or 0) + 0.5)
+                        if not rows[key] then rows[key] = {}; order[#order + 1] = key end
+                        rows[key][#rows[key] + 1] = { ch.frame, x or 0 }
+                    end
+                end
+            end
+            for _, key in ipairs(order) do
+                local r = rows[key]
+                local left, right = math.huge, -math.huge
+                for _, e in ipairs(r) do left = math.min(left, e[2]); right = math.max(right, e[2] + (e[1]:GetWidth() or 0)) end
+                local shift = math.floor((cw - (right - left)) / 2 - left)
+                if shift > 0 then
+                    for _, e in ipairs(r) do
+                        local p, rel, rp, x, y = e[1]:GetPoint(1)
+                        e[1]:ClearAllPoints(); e[1]:SetPoint(p, rel, rp, (x or 0) + shift, y or 0)
+                    end
+                end
+            end
+        end)
         if obj and SkinOn() then
             obj.LayoutFinished = own
             local okS, extra = pcall(function()
