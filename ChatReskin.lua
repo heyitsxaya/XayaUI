@@ -368,6 +368,7 @@ function ns.ChatReskin_Debug()
     if next(applied) == nil then say("  (nothing applied yet: module off, blocked, or no refresh yet)") end
     if ns.ChatText and ns.ChatText.Debug then ns.ChatText.Debug(say) end
     if ns.ChatTabs and ns.ChatTabs.Debug then ns.ChatTabs.Debug(say) end
+    if ns.ChatDock_Debug then ns.ChatDock_Debug(say) end
 end
 
 -------------------------------------------------------------------------------
@@ -453,7 +454,7 @@ function ns.BuildChatTab(Notify)
                 enabled = tog("Enable ElvUI Chat Reskin", "enabled", 3),
                 hideVoice = tog("Hide voice chat buttons", "hideVoiceButtons", 4),
                 secretNote = note("|cffaaaaaaProtected messages:|r the game marks some chat text (for example during boss encounters and inside some instances) as secret. Addons cannot read or change it, so such lines get no timestamp, link, color, history, or copy. This is a game limit, and /xui chat counts how many were skipped.", 8, true),
-                notBuilt = note("|cffaaaaaaNot built:|r emotion icons (the TwitchEmotes addon does this), role / mentorship / timerunning icons, Battle.net tag names, Quick Join messages, and ElvUI's own left / right chat panels with their datatexts, panel textures, and panel sizes (they need a panel system of their own). Voice button pin / fade options are not built; hiding them is.", 9, true),
+                notBuilt = note("|cffaaaaaaNot built:|r emotion icons (the TwitchEmotes addon does this), role / mentorship / timerunning icons, Battle.net tag names, Quick Join messages, and ElvUI's datatext system (the Chat Panel tab has a simpler info bar below the chat instead), panel textures, and separate left / right chat panels. Voice button pin / fade options are not built; hiding them is.", 9, true),
             } },
             fonts = { type = "group", name = "Fonts & Tabs", order = 2, args = {
                 font = fontSel("Chat font", "font", 1), fontSize = rng("Chat font size", "fontSize", 2, 6, 40),
@@ -556,5 +557,6 @@ function ns.BuildChatTab(Notify)
         },
     }
     if ns.ChatDock_Options then chatReskin.args.dock = ns.ChatDock_Options(Notify) end
+    if ns.ChatPanel_Options then chatReskin.args.panel = ns.ChatPanel_Options(Notify) end
     return chatReskin
 end
