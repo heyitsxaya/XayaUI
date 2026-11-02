@@ -125,16 +125,16 @@ function T.ClassPalette(file)
 end
 
 -- Built-in bases besides "default" and "class" (Xaya, 2026-11-01). Tokens not listed keep the XUI default.
---  light:      dark text on light surfaces. Untested in game; some hard-coded white text in the skin may still show.
+--  light:      dark text on soft grey-blue surfaces (pure white was too glaring: whites cut ~50% toward grey, Xaya 2026-11-01). Untested in game; some hard-coded white text in the skin may still show.
 --  colorblind: Okabe-Ito colors (sky blue / yellow / orange); nothing relies on a red-vs-green difference.
 T.BUILTIN = {
     light = { name = "Light mode", pal = {
-        windowBg = { 0.93, 0.93, 0.95, 1 }, paneBg = { 0.98, 0.98, 1.00, 1 }, border = { 0.55, 0.55, 0.60, 1 }, titleBar = { 0.80, 0.82, 0.90, 1 },
-        text = { 0.08, 0.08, 0.10, 1 }, textMuted = { 0.38, 0.38, 0.43, 1 }, label = { 0.10, 0.20, 0.55, 1 },
-        accent = { 0.15, 0.35, 0.85, 1 }, accentText = { 0.04, 0.12, 0.50, 1 }, gradStart = { 0.72, 0.80, 0.98, 1 },
-        buttonBg = { 1, 1, 1, 0.90 }, buttonBorder = { 0.50, 0.50, 0.55, 1 }, buttonText = { 0.10, 0.20, 0.55, 1 },
+        windowBg = { 0.62, 0.63, 0.68, 1 }, paneBg = { 0.70, 0.71, 0.76, 1 }, border = { 0.36, 0.37, 0.43, 1 }, titleBar = { 0.52, 0.55, 0.66, 1 },
+        text = { 0.08, 0.08, 0.10, 1 }, textMuted = { 0.20, 0.20, 0.26, 1 }, label = { 0.10, 0.20, 0.55, 1 },
+        accent = { 0.15, 0.35, 0.85, 1 }, accentText = { 0.04, 0.12, 0.50, 1 }, gradStart = { 0.52, 0.62, 0.88, 1 },
+        buttonBg = { 0.80, 0.81, 0.86, 0.95 }, buttonBorder = { 0.32, 0.33, 0.40, 1 }, buttonText = { 0.10, 0.20, 0.55, 1 },
         primaryBg = { 0.15, 0.35, 0.85, 0.95 }, primaryBorder = { 0.10, 0.25, 0.65, 1 },
-        tabBg = { 0.88, 0.88, 0.92, 0.9 }, tabBorder = { 0.55, 0.55, 0.60, 1 }, tabSelBg = { 0.72, 0.80, 0.98, 0.95 }, tabSelBorder = { 0.15, 0.35, 0.85, 1 },
+        tabBg = { 0.66, 0.67, 0.72, 0.9 }, tabBorder = { 0.36, 0.37, 0.43, 1 }, tabSelBg = { 0.52, 0.62, 0.88, 0.95 }, tabSelBorder = { 0.15, 0.35, 0.85, 1 },
         danger = { 0.80, 0.10, 0.10, 1 } } },
     colorblind = { name = "Color blind safe (blue / yellow / orange)", pal = {
         accent = { 0.337, 0.706, 0.914, 1 }, accentText = { 0.70, 0.88, 0.98, 1 }, gradStart = { 0.06, 0.18, 0.28, 1 },
@@ -534,7 +534,7 @@ function T.BuildArgs(refresh)
         if not T.PARKED[key] then
         if grp ~= lastGroup then
             lastGroup = grp
-            args["grp_" .. grp] = { type = "description", order = nx(), width = "full", fontSize = "medium", name = "|cffffd100" .. grp .. "|r" }
+            args["grp_" .. grp] = { type = "description", order = nx(), width = "full", fontSize = "medium", name = function() local c = T.Col("xui-label", "text", { 1, 0.82, 0, 1 }); return ("|cff%02x%02x%02x"):format(floor(c[1] * 255 + 0.5), floor(c[2] * 255 + 0.5), floor(c[3] * 255 + 0.5)) .. grp .. "|r" end }
         end
         args["tok_" .. key] = { type = "color", order = nx(), width = "normal", name = label, desc = hint, hasAlpha = true,
             get = function() local c = T.cur[key]; return c[1], c[2], c[3], c[4] end,

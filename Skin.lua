@@ -1817,7 +1817,8 @@ local function Walk(w, depth)
     -- theme text colors on the stock AceGUI labels (they were always game gold / white, so a light theme could not be read)
     do
         local fsList
-        if t == "Heading" or t == "Dropdown" or t == "EditBox" or t == "Slider" then fsList = { { w.label, "xui-label", { 1, 0.82, 0, 1 } } }
+        if t == "Heading" or t == "Dropdown" or t == "EditBox" or t == "Slider" or t == "MultiLineEditBox" then fsList = { { w.label, "xui-label", { 1, 0.82, 0, 1 } } }
+        elseif t == "ColorPicker" then fsList = { { w.text, "xui-text", { 1, 1, 1, 1 } } }
         elseif t == "CheckBox" then fsList = { { w.text, "xui-text", { 1, 1, 1, 1 } } }
         elseif t == "Label" then
             local o4 = w.GetUserData and w:GetUserData("option")
@@ -1833,12 +1834,25 @@ local function Walk(w, depth)
                     fs:SetTextColor(c[1], c[2], c[3])
                     if TH.IsLight and TH.IsLight() then fs:SetShadowOffset(0, 0) end
                     AddRest(w, "xuiLblCol" .. cl, function(self)
-                        local f2 = (t == "CheckBox") and self.text or self.label
+                        local f2 = (t == "CheckBox" or t == "ColorPicker") and self.text or self.label
                         if f2 and f2.SetTextColor then f2:SetTextColor(fb[1], fb[2], fb[3]); f2:SetShadowOffset(1, -1) end
                     end)
                 end
             end
         end
+    end
+    -- light themes: the dropdown box is Blizzard's dark art; swap it for a flat box in the button colors
+    if t == "Dropdown" and w.dropdown and TH and TH.IsLight and TH.IsLight() and not w.xuiLightDD then
+        w.xuiLightDD = true
+        HideRegions(w.dropdown, nil)
+        local bg, bd = TC("xui-button", "bg", { 1, 1, 1, 0.9 }), TC("xui-button", "border", { 0.5, 0.5, 0.55, 1 })
+        Flat(w.dropdown, bg, bd, { 15, 17, 2, 2 })
+        if w.text then local c = TC("xui-button", "text", { 0.1, 0.2, 0.55, 1 }); w.text:SetTextColor(c[1], c[2], c[3]); w.text:SetShadowOffset(0, 0) end
+        AddRest(w, "lightDD", function(self)
+            self.xuiLightDD = nil
+            if self.dropdown then ShowRegions(self.dropdown); FlatHide(self.dropdown) end
+            if self.text then self.text:SetTextColor(1, 1, 1); self.text:SetShadowOffset(1, -1) end
+        end)
     end
     if t == "Slider" then pcall(SkinSlider, w)
     elseif t == "ScrollFrame" or t == "InlineGroup" or t == "SimpleGroup" then pcall(FlexOn, w) end
