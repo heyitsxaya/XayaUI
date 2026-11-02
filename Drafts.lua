@@ -130,6 +130,7 @@ function ns.DraftsOnOpen()
     if windowOpen or not ns.rules then return end
     windowOpen = true
     wipe(baseline)
+    if ns.UndoReset then ns.UndoReset() end
     cache = { t = -1 }
     local used = {}
     for _, r in ipairs(ns.rules) do if type(r.uid) == "string" then used[r.uid] = true end end
@@ -163,6 +164,7 @@ function ns.DraftNew(rule)
     if not windowOpen or not rule or rule.parentUid then return end
     if type(rule.uid) ~= "string" then rule.uid = ns.NewUID() end
     baseline[rule.uid] = { isNew = true }
+    if ns.UndoSeed then ns.UndoSeed(rule.uid) end
     cache = { t = -1 }
 end
 
@@ -224,6 +226,7 @@ end
 function ns.DraftsOnClose()
     if not windowOpen then return end
     windowOpen = false
+    if ns.UndoReset then ns.UndoReset() end
     cache = { t = -1 }
     local moved, names = 0, {}
     for uid, b in pairs(baseline) do
@@ -411,3 +414,101 @@ function ns.BuildDraftsPage()
     end
     return { type = "group", name = "Drafts", order = 7, hidden = ns.PageHidden("drafts"), args = args }
 end
+
+-------------------------------------------------------------------------------
+-- Undo / redo for the rule being edited (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z while the options window has focus and no text box is being typed in).
+-- One step = one burst of edits (a slider drag is one step): every edit calls ns.MarkDirty, which calls ns.UndoNote; half a second after the last
+-- one the rule (with its cues and conditions) is compared with its last recorded state and, if different, the old state is kept. The first state
+-- is the one the rule had when the window opened (the Drafts baseline), so the very first edit can be undone too. History is per rule, lives only
+-- while the window is open (50 steps), and is not saved. On / off, group, collapse state, sidebar icon and edit lock follow the sidebar and are
+-- not part of undo.
+-------------------------------------------------------------------------------
+local UNDO_MAX = 50
+local UNDO_ROOT_IGNORE = { enabled = true, folder = true, ocCollapsed = true, listIcon = true, listIconID = true, editLocked = true }
+local undo = {}            -- [uid] = { cur = { sig, rules }, back = { states }, fwd = { states } }
+local restoring, pendingUid, armed, lastNote = false, nil, false, 0
+
+local function USig(group)
+    local out = {}
+    for i, r in ipairs(group) do out[#out + 1] = "#"; Ser(r, out, (i == 1) and UNDO_ROOT_IGNORE or CHILD_IGNORE) end
+    return table.concat(out)
+end
+local function UState(uid)
+    local u = undo[uid]
+    if u then return u end
+    local b = baseline[uid]
+    if b and b.rules then
+        u = { cur = { sig = USig(b.rules), rules = b.rules }, back = {}, fwd = {} }
+        undo[uid] = u
+        return u
+    end
+end
+function ns.UndoSeed(uid)   -- the rule as it is right now becomes the first state (a rule made in this window)
+    local g = GroupOf(uid)
+    if #g == 0 then undo[uid] = nil return end
+    undo[uid] = { cur = { sig = USig(g), rules = Copies(g) }, back = {}, fwd = {} }
+end
+local function Commit()
+    local uid = pendingUid
+    pendingUid = nil
+    if not uid or restoring or not windowOpen then return end
+    local u = UState(uid)
+    local g = GroupOf(uid)
+    if not u or #g == 0 then return end
+    local sig = USig(g)
+    if sig == u.cur.sig then return end
+    u.back[#u.back + 1] = u.cur
+    if #u.back > UNDO_MAX then table.remove(u.back, 1) end
+    u.fwd = {}
+    u.cur = { sig = sig, rules = Copies(g) }
+end
+local function Arm()
+    armed = true
+    C_Timer.After(0.5, function()
+        if GetTime() - lastNote < 0.45 then Arm() else armed = false; Commit() end
+    end)
+end
+function ns.UndoNote()   -- called from ns.MarkDirty after every edit
+    if restoring or not windowOpen or not C_Timer or not ns.SelectedRuleForUndo then return end
+    local root = RootOf(ns.SelectedRuleForUndo())
+    if not (root and root.uid) then return end
+    if pendingUid and pendingUid ~= root.uid then Commit() end   -- moved to another rule: close the first one's step now
+    pendingUid = root.uid
+    lastNote = GetTime()
+    if not armed then Arm() end
+end
+local function Restore(uid, st)
+    restoring = true
+    local live = GroupOf(uid)[1]
+    local copies = Copies(st.rules)
+    local root = copies[1]
+    if live and root then for k in pairs(UNDO_ROOT_IGNORE) do root[k] = live[k] end end
+    for i = 2, #copies do if live then copies[i].folder = live.folder end end
+    ReplaceGroup(uid, copies)
+    restoring = false
+    cache = { t = -1 }
+    if ns.ReselectRule then local r = GroupOf(uid)[1]; if r then pcall(ns.ReselectRule, r) end end
+    if ns.UI and ns.UI.Notify then
+        ns.UI.Notify()
+        if C_Timer then C_Timer.After(0, function() cache = { t = -1 }; ns.UI.Notify() end) end
+    end
+end
+-- Ctrl+Z (redo = false) / Ctrl+Y (redo = true). Returns true when the key was used.
+function ns.UndoKey(redo)
+    if not windowOpen or not ns.SelectedRuleForUndo then return false end
+    local root = RootOf(ns.SelectedRuleForUndo())
+    if not (root and root.uid) then return false end
+    local uid = root.uid
+    if pendingUid then Commit() end   -- an edit made less than half a second ago counts first
+    local u = UState(uid)
+    if not u then ns.Print("nothing recorded to undo for this rule yet") return true end
+    local src, dst = redo and u.fwd or u.back, redo and u.back or u.fwd
+    if #src == 0 then ns.Print(redo and "nothing to redo for this rule" or "nothing to undo for this rule") return true end
+    local st = table.remove(src)
+    dst[#dst + 1] = u.cur
+    u.cur = st
+    Restore(uid, st)
+    ns.Print(((redo and "redid" or "undid") .. " the last change to '%s'  (%d step(s) left to undo)"):format(tostring(root.name or "rule"), #u.back))
+    return true
+end
+function ns.UndoReset() wipe(undo); pendingUid = nil end

@@ -412,6 +412,84 @@ local function GroupBounds(f)
     end
     return l, b, r, t
 end
+-- Right-click on the outline: type the group's X / Y, or center it on the screen on one axis or both ("center" = the outline's middle on the
+-- screen's middle). X / Y are the same numbers as the group's X / Y offset options.
+local posPopup
+local function GroupTargetScale(fo)
+    local c = containers[fo.id]
+    local ts = c and c.xuiTarget and c.xuiTarget.GetEffectiveScale and c.xuiTarget:GetEffectiveScale()
+    if not ts or ts <= 0 then ts = UIParent:GetEffectiveScale() end
+    return ts
+end
+local function GroupPosChanged(fo)
+    Container(fo)
+    ns.MarkDirty()
+    if ns.UI and ns.UI.NotifyTwice then ns.UI.NotifyTwice() end
+end
+local function CenterGroup(fo, onX, onY)
+    local l, b, r, t = GroupBounds(fo)
+    if not l then ns.Print("this group has nothing shown to center") return end
+    local us, ts = UIParent:GetEffectiveScale(), GroupTargetScale(fo)
+    local sx, sy = UIParent:GetCenter()
+    if onX then fo.cX = math.floor((fo.cX or 0) + (sx - (l + r) / 2) * us / ts + 0.5) end
+    if onY then fo.cY = math.floor((fo.cY or 0) + (sy - (b + t) / 2) * us / ts + 0.5) end
+    GroupPosChanged(fo)
+end
+local function FillPosPopup(p)
+    local fo = ns.FolderById(p.fid)
+    if not fo then p:Hide() return end
+    p.title:SetText(tostring(fo.name))
+    p.x:SetText(tostring(fo.cX or 0)); p.y:SetText(tostring(fo.cY or 0))
+    p.x:SetCursorPosition(0); p.y:SetCursorPosition(0)
+end
+local function ShowGroupPosPopup(fo)
+    local p = posPopup
+    if not p then
+        p = CreateFrame("Frame", "XayaUIGroupPosPopup", UIParent, "BackdropTemplate")
+        p:SetSize(260, 232); p:SetFrameStrata("FULLSCREEN_DIALOG"); p:SetClampedToScreen(true); p:EnableMouse(true)
+        p:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+        p:SetBackdropColor(0.05, 0.05, 0.05, 0.96); p:SetBackdropBorderColor(1, 0.6, 0.1, 1)
+        p.title = p:CreateFontString(nil, "OVERLAY", "GameFontNormal"); p.title:SetPoint("TOP", 0, -10)
+        local function Box(label, y)
+            local fsl = p:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); fsl:SetPoint("TOPLEFT", 16, y); fsl:SetText(label)
+            local eb = CreateFrame("EditBox", nil, p, "InputBoxTemplate")
+            eb:SetSize(100, 20); eb:SetPoint("TOPLEFT", 110, y + 4); eb:SetAutoFocus(false); eb:SetMaxLetters(8)
+            eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+            return eb
+        end
+        local function Apply()
+            local fo2 = ns.FolderById(p.fid)
+            if not fo2 then return end
+            local x, y = tonumber(p.x:GetText()), tonumber(p.y:GetText())
+            if x then fo2.cX = math.floor(x + 0.5) end
+            if y then fo2.cY = math.floor(y + 0.5) end
+            GroupPosChanged(fo2); FillPosPopup(p)
+        end
+        p.x, p.y = Box("X offset", -38), Box("Y offset", -64)
+        p.x:SetScript("OnEnterPressed", function(self) self:ClearFocus(); Apply() end)
+        p.y:SetScript("OnEnterPressed", function(self) self:ClearFocus(); Apply() end)
+        local function Btn(text, y, fn)
+            local b = CreateFrame("Button", nil, p, "UIPanelButtonTemplate")
+            b:SetSize(228, 22); b:SetPoint("TOP", 0, y); b:SetText(text)
+            b:SetScript("OnClick", function() fn() end)
+            return b
+        end
+        Btn("Apply X / Y", -94, Apply)
+        Btn("Center on screen (X)", -122, function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, true, false); FillPosPopup(p) end end)
+        Btn("Center on screen (Y)", -148, function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, false, true); FillPosPopup(p) end end)
+        Btn("Center on screen (X, Y)", -174, function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, true, true); FillPosPopup(p) end end)
+        Btn("Close", -202, function() p:Hide() end)
+        if UISpecialFrames then table.insert(UISpecialFrames, "XayaUIGroupPosPopup") end
+        posPopup = p
+    end
+    p.fid = fo.id
+    FillPosPopup(p)
+    local cx, cy = GetCursorPosition()
+    local us = UIParent:GetEffectiveScale()
+    p:ClearAllPoints(); p:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", cx / us + 10, cy / us - 10)
+    p:Show()
+end
+
 local function GroupHandle(f)
     local h = groupHandles[f.id]
     if h then return h end
@@ -436,7 +514,14 @@ local function GroupHandle(f)
         local cx, cy = GetCursorPosition()
         self.drag = { cx = cx, cy = cy, x = fo.cX or 0, y = fo.cY or 0 }
     end)
-    h:SetScript("OnMouseUp", Done)
+    h:SetScript("OnMouseUp", function(self, btn)
+        if btn == "RightButton" then
+            local fo = ns.FolderById(self.fid)
+            if fo then ShowGroupPosPopup(fo) end
+        else
+            Done(self)
+        end
+    end)
     h:SetScript("OnUpdate", function(self)
         local fo = ns.FolderById(self.fid)
         if not fo or not ns.groupUnlocked[self.fid] then self:Hide() return end
@@ -473,7 +558,8 @@ function ns.SetGroupUnlocked(f, on)
     if not f then return end
     ns.groupUnlocked[f.id] = on and true or nil
     local h = GroupHandle(f)
-    if on then h.label:SetText(tostring(f.name) .. "  (drag to move the group)"); h:Show() else h.drag = nil; h:Hide() end
+    if on then h.label:SetText(tostring(f.name) .. "  (drag to move the group; right-click for X / Y and centering)"); h:Show()
+    else h.drag = nil; h:Hide(); if posPopup and posPopup.fid == f.id then posPopup:Hide() end end
     for _, r in ipairs(ns.rules or {}) do
         if r.visual and InFolder(r.folder, f.id) then
             ns.RefreshVisual(r)

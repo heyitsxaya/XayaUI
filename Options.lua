@@ -6518,6 +6518,8 @@ local function SelectedRule()
     return idx and ns.rules and ns.rules[idx]
 end
 
+function ns.SelectedRuleForUndo() return SelectedRule() end   -- Drafts.lua undo (Ctrl+Z) edits the rule selected in the sidebar
+
 -- Selected group in the sidebar (last path segment is a group id), or nil.
 function ns.SelectedGroup()
     if not AceConfigDialog.GetStatusTable then return nil end
@@ -6649,7 +6651,8 @@ local function EnsureChrome(of)
             fr:EnableKeyboard(true)
             fr:HookScript("OnKeyDown", function(self, key)
                 local handled = false
-                if key == "DELETE" then handled = ns.DeleteKey() end
+                if key == "DELETE" then handled = ns.DeleteKey()
+                elseif (key == "Z" or key == "Y") and IsControlKeyDown() and ns.UndoKey then handled = ns.UndoKey(key == "Y" or IsShiftKeyDown()) end
                 if self.SetPropagateKeyboardInput and not InCombatLockdown() then self:SetPropagateKeyboardInput(not handled) end
             end)
         end

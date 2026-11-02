@@ -117,7 +117,7 @@ local function Step()
 end
 ns.Step = Step
 
-function ns.MarkDirty() dirty = true; barsDirty = true end
+function ns.MarkDirty() dirty = true; barsDirty = true; if ns.UndoNote then ns.UndoNote() end end
 
 function ns.OnDBReady()
     ns.RefreshAllVisuals()
