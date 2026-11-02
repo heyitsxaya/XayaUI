@@ -551,7 +551,8 @@ local function ConditionBody(rule, H)
                         local part = {}
                         for k = 1, i do part[k] = W.list[k] end
                         local okr, run = pcall(EvalWhen, part, p, pr, pi)
-                        lines[#lines + 1] = ("%s%d.  %s   |cff888888check|r %s   |cff888888so far|r %s"):format(prefix, i, detail, TF(v), TF(okr and run or nil))
+                        local runV; if okr then runV = run end   -- (not `okr and run or nil`: that turns a FALSE result into UNKNOWN)
+                        lines[#lines + 1] = ("%s%d.  %s   |cff888888check|r %s   |cff888888so far|r %s"):format(prefix, i, detail, TF(v), TF(runV))
                     end
                 end
             end
