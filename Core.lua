@@ -224,6 +224,25 @@ ns.BAR_GROUP_DEFAULTS = { spacing = 3, x = 0, y = -120 }   -- layout blank = man
 
 function ns.NewBar() return Copy(ns.BAR_DEFAULTS) end
 
+-- Rename every group whose id is not "f" + digits to one that is, and re-point rules and child groups. Returns how many were renamed.
+function ns.FixFolderIds()
+    local used, map, n = {}, {}, 0
+    for _, f in ipairs(ns.folders) do used[f.id] = true end
+    for _, f in ipairs(ns.folders) do
+        if type(f.id) == "string" and not f.id:match("^f%d+$") then
+            local id
+            repeat id = "f" .. tostring(time()) .. tostring(math.random(1000, 9999)) until not used[id]
+            used[id] = true; map[f.id] = id; n = n + 1
+        end
+    end
+    if n == 0 then return 0 end
+    for _, f in ipairs(ns.folders) do
+        if f.parent and map[f.parent] then f.parent = map[f.parent] end
+        if map[f.id] then f.id = map[f.id] end
+    end
+    for _, r in ipairs(ns.rules or {}) do if r.folder and map[r.folder] then r.folder = map[r.folder] end end
+    return n
+end
 function ns.NewFolder(name, parent)
     local id
     repeat
@@ -525,6 +544,10 @@ local function InitDB()
     CueRulesDB.folders = CueRulesDB.folders or {}
     ns.folders = CueRulesDB.folders
     ns.EnsureDefaultFolders()
+    do   -- group ids must be "f" + digits (the tree, previews and menus find groups by that form); an import once kept ids like "feui1"
+        local n = ns.FixFolderIds and ns.FixFolderIds()
+        if n and n > 0 then ns.Print(n .. " imported group(s) were given standard ids so they can be previewed, renamed, and moved.") end
+    end
     local nHyb = ns.MigrateToHybrid()
     if nHyb and nHyb > 0 then ns.Print(nHyb .. " existing rules are now under Hybrid Cues (they keep both their display and sound options).") end
     local nProg = ns.MigrateToProgress()

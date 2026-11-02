@@ -66,8 +66,6 @@ local BAR_LAYOUT = { none = "(none - manual positions)", down = "Stack downward"
 local BAR_LAYOUT_ORDER = { "none", "down", "up", "right", "left" }
 local BAR_ANCHOR = { none = "(none - default)", LEFT = "Left", CENTER = "Center", RIGHT = "Right" }
 local BAR_ANCHOR_ORDER = { "none", "LEFT", "CENTER", "RIGHT" }
-local IMPORT_MODE = { add = "Add to what I have", replace = "Replace what I have (the parts included)" }
-local IMPORT_MODE_ORDER = { "add", "replace" }
 local ROLE_VALUES = { none = "(none - any role)", TANK = "Tank", HEALER = "Healer", DAMAGER = "Damage" }
 local ROLE_ORDER = { "none", "TANK", "HEALER", "DAMAGER" }
 local CHANNEL_VALUES = { none = "(none - Master)", Master = "Master", SFX = "SFX", Music = "Music", Ambience = "Ambience", Dialog = "Dialog" }
@@ -2334,7 +2332,7 @@ end
 -------------------------------------------------------------------------------
 local exportInc = { rules = true, bars = true, qol = true }
 local exportText = ""
-local importText, importMode, importSnap, importErr = "", nil, nil, nil
+local importText, importSnap, importErr = "", nil, nil
 local profileName, profileMsg = "", ""
 
 local function ParseImport()
@@ -2724,15 +2722,11 @@ local function BuildProfiles()
                 end
                 return "Nothing pasted yet."
             end },
-        importMode = { type = "select", name = "How to import", order = 13, width = "double",
-            values = IMPORT_MODE, sorting = IMPORT_MODE_ORDER,
-            get = function() return importMode end, set = function(_, v) importMode = v end },
         importGo = { type = "execute", name = "Import", order = 14, width = "half",
-            disabled = function() return not (importSnap and importMode) end,
-            confirm = function() return importMode == "replace" end,
-            confirmText = "Replace the included parts of your current setup? This cannot be undone.",
+            desc = "Adds everything in the string as one new folder of its own; your existing rules are not touched.",
+            disabled = function() return not importSnap end,
             func = function()
-                local c = ns.Profile_Apply(importSnap, importMode)
+                local c = ns.Profile_Apply(importSnap, "add")
                 profileMsg = ("Imported %d rule(s), %d group(s), %d bar(s), %d QoL box(es)."):format(c.rules, c.folders, c.bars, c.qol)
                 ns.Print(profileMsg)
                 Notify()
@@ -3202,6 +3196,9 @@ local function PickType(typ)
         ns.MarkDirty(); Notify()
         pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(path))
     elseif typ == "import" then
+        Notify()   -- closes the type picker where it is; Import is a window of its own and does not change tabs
+        if ns.OpenImportWindow then ns.OpenImportWindow() end
+    elseif typ == "profiles" then   -- the Profiles tab itself (Export button)
         ns.pageOpen = "profiles"; ns.infoOpen = false
         Notify()
         pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "profiles")
@@ -3210,8 +3207,9 @@ local function PickType(typ)
     end
 end
 ns.UI.Import = function() PickType("import") end
--- toolbar buttons (Skin.lua): Export shares the Profiles page with Import; Creator and Settings open their own page
-ns.UI.Export = function() PickType("import") end
+-- toolbar buttons (Skin.lua): Import opens its own window; Export opens the Profiles page; Creator and Settings open their own page
+ns.UI.Export = function() PickType("profiles") end
+ns.UI.Refresh = Notify   -- redraw the options window in place (used by the Import window)
 function ns.OpenPage(key)
     if key == "drafts" or key == "creator" then   -- Drafts and the Class/Spec Rule Creator are sub-tabs of Rules now, not pages of their own
         ns.pageOpen = nil; ns.infoOpen = false
@@ -3894,7 +3892,7 @@ local function BuildOptions()
         all.args.pickSound = Entry(0.62, TI("sound", "INV_Misc_Note_01"), "Sound Cue", "Plays a sound when its conditions are met, with no display", "sound")
         all.args.pickSGroup = Entry(0.63, TI("stgroup", "INV_Misc_Bag_10"), "Static Group", "A container with fixed X / Y positions for its elements", "sgroup")
         all.args.pickCustom = Entry(0.64, 1669494, "Custom", "A blank rule with no display, sound, or cues", "custom")
-        all.args.pickImport = Entry(0.66, TI("import", "INV_Scroll_03"), "Import", "Import from an encoded string (opens the Profiles tab)", "import")
+        all.args.pickImport = Entry(0.66, TI("import", "INV_Scroll_03"), "Import", "Import from an encoded string (opens the Import window)", "import")
         all.args.pickGap = { type = "description", order = 0.85, width = "full", fontSize = "large", name = " \n ", hidden = function() return not picker end }   -- empty rows: keeps Cancel clear of the last row
         all.args.pickCancel = { type = "execute", order = 0.9, name = "Cancel", width = "half", func = function() picker = nil; local o = ns.pickOrigin; ns.pickOrigin = nil; Notify(); if ns.pickSub then ns.GoPicker() else ns.GoHome(o) end; ns.pickSub = nil end }
         for _, k in ipairs({ "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickSound", "pickDGroup", "pickSGroup", "pickCustom", "pickImport", "pickCancel" }) do

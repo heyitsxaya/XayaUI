@@ -12,7 +12,7 @@ a18e98b371745c6f10fc6a82e0f570a1  ChatWidgets.lua
 40b7591dd5f7fe4f0c4b0f5a965155bb  ClassLearn.lua
 a354cbbb54ff4fb130af0063a401df9b  Conditions.lua
 58d8c82b04724886f644e3447051fcbd  Console.lua
-c88e25d53cbfaa35cab286c2996287a7  Core.lua
+5cbee647eb2003dab25e707b426d462c  Core.lua
 71e03fe7af3e478b6b0b51efa819912a  Cues.lua
 884fad3bd148665b9f700fbec39f5576  CursorHighlight.lua
 ba241e46458e8e4296563689c7708a51  CursorReminders.lua
@@ -25,9 +25,10 @@ d32239bcb673463ab874e80d47fae504  LICENSE
 849eb9638bc7e6e491d6a5839018e8b6  LocalGraphics.lua
 0cbcc5641dc51fcd9925744f5cbd1c59  LocalSounds.lua
 f1210976c5189c1c36b13549d1711492  Notepad.lua
-848473de2b13ad4a693f8cc30ab89a67  Options.lua
+c1cf3fea919f0a8e23d3d79583a6ecf4  ImportWindow.lua
+bb3cf664c51714bd80b1b6f8a6db11bf  Options.lua
 a71c6833d94989427365cb7ee2b7c54b  Outcomes.lua
-23bf6278d3ac2ac5f79e3e42b2b914a3  Profile.lua
+7c865a2c51cb100e335aea1632145557  Profile.lua
 6927ad26f4e5218baef5961cca11e634  QoL.lua
 3156c5cf5deccf1b58409f8a328475a2  README.md
 8fa7d7d92c0db2aeb979a2ae74744a2b  Skin.lua
@@ -39,7 +40,7 @@ d7e606b10ef3f5b67d3c55a94a5c3953  Theme.lua
 89c01ad8a8808c6f3dcf02083dc422bd  Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  UserMedia.lua
 74a9935c14d2e6df8727ad921219638f  Visual.lua
-7bd42825da7b7f18892fb7c7f3794307  XayaUI.toc
+22b4af88474e9fca1ae9e3413932d805  XayaUI.toc
 ca89d096a4e6a5e7f55beb7e240f9605  XayaUI_CombatEngine/AuraDisplay.lua
 1eb8ec8eeaec35396f0f443339972b13  XayaUI_CombatEngine/AuraIDProbe.lua
 49635f2a302eea3ebac0e3f872c3da06  XayaUI_CombatEngine/AuraModel.lua

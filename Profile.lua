@@ -310,18 +310,29 @@ function ns.Profile_Apply(snap, mode)
         end
         local used, map = {}, {}
         for _, f in ipairs(ns.folders) do used[f.id] = true end
+        -- Everything imported (not a replace) goes into ONE new top-level folder of its own, so it never mixes with your rules and can be
+        -- moved or deleted as a unit. Imported groups keep all their settings and sit inside it; ungrouped rules go straight into it.
+        local wrap
+        if not replace and #snap.rules > 0 then
+            local nm = (type(snap.name) == "string" and snap.name ~= "") and snap.name or "Import"
+            wrap = { id = NewId(used), name = ("Imported: %s (%s)"):format(nm, date and date("%Y-%m-%d %H:%M") or "") }
+            ns.folders[#ns.folders + 1] = wrap
+            counts.folders = counts.folders + 1
+        end
         local added = {}
         for _, f in ipairs(IsTbl(snap.folders) and snap.folders or {}) do
             if IsTbl(f) and type(f.id) == "string" then
-                local nf = { id = f.id, name = type(f.name) == "string" and f.name or "Folder" }
-                if used[nf.id] then nf.id = NewId(used) else used[nf.id] = true end
+                local nf = ns.Copy(f)                      -- keep the group's own settings (container type, overrides, ...)
+                nf.default = nil                           -- a built-in category flag must not be duplicated here
+                nf.name = type(f.name) == "string" and f.name or "Folder"
+                nf.id = NewId(used)   -- always a fresh id of the usual form (the tree and its menus recognise groups by that form)
                 map[f.id] = nf.id
                 ns.folders[#ns.folders + 1] = nf
                 added[#added + 1] = { nf = nf, oldParent = type(f.parent) == "string" and f.parent or nil }
                 counts.folders = counts.folders + 1
             end
         end
-        for _, a in ipairs(added) do a.nf.parent = a.oldParent and map[a.oldParent] or nil end
+        for _, a in ipairs(added) do a.nf.parent = (a.oldParent and map[a.oldParent]) or (wrap and wrap.id) or nil end
         -- outcomes link to their parent by uid: give imported uids that already exist here a fresh value, and re-point the links
         local haveUid, uidMap = {}, {}
         for _, r in ipairs(ns.rules) do if type(r.uid) == "string" then haveUid[r.uid] = true end end
@@ -340,6 +351,7 @@ function ns.Profile_Apply(snap, mode)
             if IsTbl(r) then
                 ns.NormalizeRule(r)
                 if r.folder ~= nil then r.folder = map[r.folder] end
+                if r.folder == nil and wrap and not r.isCue then r.folder = wrap.id end
                 r.spellID = tonumber(r.spellID) or 0
                 r.buffID = tonumber(r.buffID) or 0
                 ns.rules[#ns.rules + 1] = r

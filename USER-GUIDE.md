@@ -446,6 +446,12 @@ Adds information to game tooltips. **ID lines** show the ID of spells, items, au
 
 When you search for an **aura** by name (the aura search boxes in a rule's trigger), many auras share one name, such as the dozens of "Well Fed" IDs. Each result now ends with **From item Name [id]** or **From spell Name [id]**, the item or spell whose tooltip applies that aura, with "+N more" when several do. The game has no direct lookup for this, so XayaUI learns it from tooltips: every item or spell tooltip you hover, the spells you know, and a background pass over the item index the search already builds (a percentage shows in the list's footer while it runs, never in combat). It is saved with your settings and rebuilt after a game patch. A result with no "From" part has no known source yet. Not yet tested in game.
 
+### 12.8b Import
+
+Press **Import** in the top bar (or pick Import in the New Rule list). A small window opens; it does not switch tabs, so you can leave it open while you look at your rules. Paste a profile string: the window reads it as you paste and says what it holds (or what is wrong with it). Press **Import** and everything in the string is added as **one new top-level folder of its own**, named "Imported: [profile name] ([date and time])". Imported groups keep all their settings and sit inside that folder; rules that were not in a group go straight into it. Your existing rules and groups are never touched, and you can move or delete the imported folder as a unit. There is no "replace" choice any more. The Import button on the Profiles tab works the same way. (Loading a saved profile with "Load (replace)" on the Profiles tab still replaces, after a confirmation.)
+
+If an imported group (older imports used ids like "feui1") could not be previewed, renamed, or moved, XayaUI gives it a standard id the next time it loads and says so in chat.
+
 ### 12.8 Game Menu look
 
 XayaUI can draw its own panel over the Game Menu (the ESC menu) and click Blizzard's entries for you; Blizzard's own buttons are not edited, so other UI addons that restyle them are not touched. If something goes wrong the look turns itself off and Blizzard's menu comes back. The settings cover button size and spacing, panel padding, scale, panel and button opacity, border, hover color, the title, the font, size, outline and color of the text, the XayaUI button (its position in the menu and its style), and hiding Shop, What's New, or Support from this look only. **Reset Game Menu settings** restores the defaults. `/xui gamemenu` prints what the menu exposes.
