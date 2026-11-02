@@ -130,10 +130,19 @@ end
 ns.ChatDock_SideExtra = SideExtra
 
 -- collapse button --------------------------------------------------------------------------------------------------------
+-- The floating arrow is hidden while the left data bar is attached to the chat and shows its own arrow: that one collapses / restores the
+-- chat (ChatPanel.lua), so two arrows for one job are never on screen. With no bar (or a bar on a screen edge, or toggles hidden) it stays.
+local function ButtonWanted()
+    local s = Store() or {}
+    if s.dockButton == false then return false end
+    return not (ns.ChatPanel_OwnsToggle and ns.ChatPanel_OwnsToggle("L"))
+end
+ns.ChatDock_ButtonShown = ButtonWanted
+
 local function PlaceButton()
     if not btn then return end
     local s = Store() or {}
-    btn:SetShown(s.dockButton ~= false)
+    btn:SetShown(ButtonWanted())
     btn:ClearAllPoints()
     local cf = ChatFrame1
     local right = (s.dockBtnSide or "RIGHT") == "RIGHT"
@@ -153,6 +162,8 @@ local function PlaceButton()
         btn.chevron:SetDir(collapsed and (right and "RIGHT" or "LEFT") or (right and "LEFT" or "RIGHT"))
     end
 end
+
+ns.ChatDock_PlaceButton = PlaceButton
 
 local function Apply()
     local s = Store()
@@ -438,8 +449,9 @@ end
 function ns.ChatDock_Options(Notify)
     local function note(text, order) return { type = "description", order = order, width = "full", fontSize = "medium", name = text } end
     return { type = "group", name = "Move & Collapse", order = 8, args = {
-        n = note("Works with or without the ElvUI Chat Reskin switch. Collapse hides every chat window, its tabs and the dock; the small arrow button brings them back.", 0),
+        n = note("Works with or without the ElvUI Chat Reskin switch. Collapse hides every chat window, its tabs and the dock. When the data bar under the chat is on and attached to it, the arrow at the bar's end collapses and restores the chat, and the bar folds down to that arrow while the chat is hidden; otherwise a small arrow button beside the chat does it.", 0),
         btn = { type = "toggle", order = 1, width = "full", name = "Show the collapse button",
+            desc = "Hidden automatically while the data bar under the chat is switched on and attached to the chat: the bar's own arrow does the same job.",
             get = function() return (Store() or {}).dockButton ~= false end,
             set = function(_, v) local s = Store(); if s then s.dockButton = v and true or false end; PlaceButton(); Notify() end },
         side = { type = "select", order = 2, name = "Button side", values = { RIGHT = "Right of the chat", LEFT = "Left of the chat" },

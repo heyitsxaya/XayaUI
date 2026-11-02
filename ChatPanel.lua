@@ -274,6 +274,15 @@ local function CollapsedOf(side)
     if side == "L" then return ns.ChatDock_IsCollapsed and ns.ChatDock_IsCollapsed() or false end
     return ns.ChatPanels_IsRightCollapsed and ns.ChatPanels_IsRightCollapsed() or false
 end
+-- A bar that is switched on, attached to its chat window (not snapped to a screen edge) and showing its toggle arrow IS that window's
+-- collapse control: ChatDock hides its own floating arrow for the left window, and the bar follows the window (it folds down to just
+-- the arrow while the window is collapsed, like the chat itself). Otherwise the bar behaves as before.
+local function OwnsToggle(s, side)
+    if not (s and ns.CW and s[K(side, "panelOn")] and MasterOn() and not s.cpHideToggles and Snap(s, side) == "CHAT") then return false end
+    return WindowOf(side) ~= nil
+end
+function ns.ChatPanel_OwnsToggle(side) return OwnsToggle(Store(), side == "R" and "R" or "L") end
+local function Folded(s, side) return CollapsedOf(side) and OwnsToggle(s, side) end
 local function ToggleInset(s, side)
     return (s.cpHideToggles and 0 or TOGGLE_W + 2)
 end
@@ -334,6 +343,7 @@ local function Layout(side)
         trail = (not vert and side ~= "L") and inset or 0,
         get = function(i, f) return BGet(s, side, i, f) end,
     })
+    if Folded(s, side) then for i = 1, MAXN do if P.slots[i] then P.slots[i]:Hide() end end end   -- only the arrow stays
 end
 
 local function UpdateText(side)
@@ -374,6 +384,7 @@ local function UpdateToggle(side)
 end
 
 local function Visible(s, side, self)
+    if Folded(s, side) then return true end   -- the arrow is the only way to bring the chat back, so it never fades out
     local v = s[K(side, "panelVisibility")]
     if not v or v == "ALWAYS" then
         if s[K(side, "panelFadeUntilHover")] then v = "MOUSEOVER" else return true end   -- the older tick box
@@ -459,22 +470,25 @@ local function Place(s, side, cf)
         return
     end
     local cs = ChatSide(s, side)
+    local fold = Folded(s, side)
+    if fold then match = false; len = TOGGLE_W end                       -- folded: just the arrow
+    local rightEnd = fold and side == "R"                                -- the right bar's arrow sits at its right end
     if cs == "BOTTOM" then
         local y = -gap + oy - EditExtra(s, side, cf, cs)
-        f:SetPoint("TOPLEFT", cf, "BOTTOMLEFT", ox, y)
+        f:SetPoint(rightEnd and "TOPRIGHT" or "TOPLEFT", cf, rightEnd and "BOTTOMRIGHT" or "BOTTOMLEFT", ox, y)
         if match then f:SetPoint("TOPRIGHT", cf, "BOTTOMRIGHT", ox, y); f:SetHeight(thick) else f:SetSize(len, thick) end
     elseif cs == "TOP" then
         -- above the window: clear the tab row too
         local tab = _G[(cf:GetName() or "ChatFrame1") .. "Tab"]
         local tabH = (tab and tab:GetHeight() or 24)
         local y = tabH + gap + oy + EditExtra(s, side, cf, cs)
-        f:SetPoint("BOTTOMLEFT", cf, "TOPLEFT", ox, y)
+        f:SetPoint(rightEnd and "BOTTOMRIGHT" or "BOTTOMLEFT", cf, rightEnd and "TOPRIGHT" or "TOPLEFT", ox, y)
         if match then f:SetPoint("BOTTOMRIGHT", cf, "TOPRIGHT", ox, y); f:SetHeight(thick) else f:SetSize(len, thick) end
     elseif cs == "LEFT" then
         f:SetPoint("TOPRIGHT", cf, "TOPLEFT", -gap + ox, oy)
         if match then f:SetPoint("BOTTOMRIGHT", cf, "BOTTOMLEFT", -gap + ox, oy); f:SetWidth(thick) else f:SetSize(thick, len) end
     else   -- RIGHT: clear the chat's own side pieces and its collapse button
-        local x = gap + (ns.ChatDock_SideExtra and ns.ChatDock_SideExtra(cf) or 0) + (s.dockButton ~= false and 26 or 0) + ox
+        local x = gap + (ns.ChatDock_SideExtra and ns.ChatDock_SideExtra(cf) or 0) + (ns.ChatDock_ButtonShown and ns.ChatDock_ButtonShown() and 26 or 0) + ox
         f:SetPoint("TOPLEFT", cf, "TOPRIGHT", x, oy)
         if match then f:SetPoint("BOTTOMLEFT", cf, "BOTTOMRIGHT", x, oy); f:SetWidth(thick) else f:SetSize(thick, len) end
     end
@@ -488,7 +502,7 @@ local function RefreshSide(side)
     local collapsed = CollapsedOf(side)
     local snapped = Snap(s, side) ~= "CHAT"
     local off = (not s[K(side, "panelOn")]) or not MasterOn() or ((not cf) and not snapped)
-        or (s[K(side, "panelHideWhenCollapsed")] and collapsed)
+        or (s[K(side, "panelHideWhenCollapsed")] and collapsed and not OwnsToggle(s, side))   -- an attached bar folds to its arrow instead
     if off then
         if P.frame then P.frame:Hide() end
         return
@@ -509,6 +523,8 @@ end
 
 function ns.ChatPanel_Refresh()
     RefreshSide("L"); RefreshSide("R")
+    if ns.ChatDock_PlaceButton then pcall(ns.ChatDock_PlaceButton) end      -- the floating arrow hides while the left bar's arrow does its job
+    if ns.ChatPrivacy_Refresh then pcall(ns.ChatPrivacy_Refresh) end        -- the privacy button sits on top of that arrow
     if ns.ChatDock_EnsureRoom then pcall(ns.ChatDock_EnsureRoom) end
     for i = 1, 10 do   -- edit box opacity follows the "nearly opaque" tick boxes
         local eb = _G["ChatFrame" .. i .. "EditBox"]
@@ -673,7 +689,7 @@ local function BuildWindow()
     f:Add(CW.Header("Time and behaviour"), 18)
     f:Add(check("24-hour clock", "panelClock24", true), 20)
     f:Add(check("Time: use this computer's clock (off: realm time)", "panelLocalTime", true), 20)
-    f:Add(check("Hide while its chat window is collapsed", "panelHideWhenCollapsed", false), 20)
+    f:Add(check("Hide the bar while its chat window is collapsed (a bar attached to its chat folds to its arrow instead)", "panelHideWhenCollapsed", false), 20)
     f:Add(CW.Check("Hide the toggle buttons (both panels)", function() return S().cpHideToggles end,
         function(v) local s = Store(); if s then s.cpHideToggles = v and true or false end; ns.ChatPanel_Refresh() end), 20)
     f:Add(CW.Check("Fade a toggle button while its chat window is hidden (both panels)", function() return S().cpFadeToggles end,
@@ -829,7 +845,7 @@ function ns.ChatPanel_Options(Notify, order)
         time = { type = "group", name = "Time and behaviour", order = 40, inline = true, args = {
             c24 = tog("24-hour clock", "panelClock24", 1, true),
             local_ = tog("Time: use this computer's clock (off: realm time)", "panelLocalTime", 2, true, nil, "double"),
-            collapsed = tog("Hide while its chat window is collapsed", "panelHideWhenCollapsed", 3, false, nil, "double"),
+            collapsed = tog("Hide the bar while its chat window is collapsed (a bar attached to its chat folds to its arrow instead)", "panelHideWhenCollapsed", 3, false, nil, "double"),
             hideT = { type = "toggle", order = 4, name = "Hide the toggle buttons (both panels)", width = "double",
                 get = function() return S().cpHideToggles and true or false end,
                 set = function(_, v) local s = Store(); if s then s.cpHideToggles = v and true or false end; Re(true) end },

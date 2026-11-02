@@ -15,3 +15,6 @@ New per-cue option (visual.hoverTip, default off) on Text, Texture, and Icon cue
 
 ## Comment #284: "icons do not have animation options"
 Open question to Xaya: is the "Animation Options" heading mislabeled for icons (they have glows, borders, shape cropping, opacity, strata, desaturation, tint, text), or is the list the styling the engine-drawn icons must reproduce? No label change made yet. Engine impact: the engine currently reproduces crop, size, and stack and duration text only; border, tint, desaturation, opacity, strata, glow, and shape are not applied to engine-drawn icons yet.
+
+## Release note (build 0.5.71)
+GitHub main already carried this work as 0.5.70 (78bd471) when another session's local-only 0.5.70 ("databar owns chat toggle": ChatDock.lua, ChatPanel.lua, ChatPrivacy.lua, tests/bar_run.py, USER-GUIDE paragraph, debug-log/2026-11-02-2243-...) was found in the local addon folder and Drive. Both were merged without conflicts (USER-GUIDE.md three-way merge, no other overlapping file) and released together as **0.5.71**. Another session's work was not altered. Its GitHub issue was still not created when this was merged.

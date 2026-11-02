@@ -190,7 +190,7 @@ local function PlaceButton()
         btn:SetPoint("BOTTOM", c, "TOP", dx, 2 + dy)
     elseif cf then
         local right = (s.dockBtnSide or "RIGHT") == "RIGHT"
-        if right then btn:SetPoint("BOTTOMLEFT", cf, "BOTTOMRIGHT", 4 + dx, dy) else btn:SetPoint("BOTTOMRIGHT", cf, "BOTTOMLEFT", -4 + dx, dy) end
+        if right then btn:SetPoint("BOTTOMLEFT", cf, "BOTTOMRIGHT", (ns.ChatDock_SideExtra and ns.ChatDock_SideExtra(cf) or 0) + 4 + dx, dy) else btn:SetPoint("BOTTOMRIGHT", cf, "BOTTOMLEFT", -4 + dx, dy) end
     end
 end
 
