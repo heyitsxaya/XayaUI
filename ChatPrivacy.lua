@@ -15,7 +15,11 @@ D.privBtn = true                 -- show the toggle button
 D.privBtnX, D.privBtnY = 0, 0    -- fine-tune offsets of the button
 D.privMode = "COLOR"             -- COLOR | TEXTURE | IMAGE
 D.privR, D.privG, D.privB = 0.04, 0.04, 0.06
-D.privAlpha = 100                -- percent
+D.privAlpha = 100                -- whole cover opacity, percent
+D.privFillA = 100                -- the color fill's own opacity, percent
+D.privTexA = 100                 -- the texture / picture's own opacity, percent
+D.privBtnSize = 28               -- toggle button size in pixels
+D.privBtnAlpha = 90              -- toggle button opacity when the mouse is not over it, percent
 D.privTexture = "Interface\\DialogFrame\\UI-DialogBox-Background"
 D.privTile = false
 D.privImageChoice = ""           -- a picture picked from the list
@@ -84,7 +88,7 @@ local function Style(s)
     cover:SetAlpha((s.privAlpha or 100) / 100)
     cover:SetFrameStrata(s.privCoverEdit and "DIALOG" or "MEDIUM")
     cover:SetFrameLevel(s.privCoverEdit and 100 or 40)
-    cover.fill:SetColorTexture(s.privR or 0, s.privG or 0, s.privB or 0, 1)
+    cover.fill:SetColorTexture(s.privR or 0, s.privG or 0, s.privB or 0, (tonumber(s.privFillA) or 100) / 100)
     local mode = s.privMode or "COLOR"
     local tex = cover.tex
     tex:Hide()
@@ -97,7 +101,7 @@ local function Style(s)
         if path then
             tex:SetTexture(path, s.privTile and "REPEAT" or nil, s.privTile and "REPEAT" or nil)
             tex:SetHorizTile(s.privTile and true or false); tex:SetVertTile(s.privTile and true or false)
-            tex:SetVertexColor(s.privR or 1, s.privG or 1, s.privB or 1, 1)
+            tex:SetVertexColor(s.privR or 1, s.privG or 1, s.privB or 1, (tonumber(s.privTexA) or 100) / 100)
             tex:SetTexCoord(0, 1, 0, 1)
             tex:Show()
         end
@@ -106,7 +110,7 @@ local function Style(s)
         if path then
             tex:SetTexture(path)
             tex:SetHorizTile(false); tex:SetVertTile(false)
-            tex:SetVertexColor(1, 1, 1, 1)
+            tex:SetVertexColor(1, 1, 1, (tonumber(s.privTexA) or 100) / 100)
             tex:SetTexCoord(0, 1, 0, 1)
             tex:Show()
             cover.status = "Using: " .. path
@@ -158,16 +162,21 @@ end
 -- button (an eye drawn with lines: open = chat visible, slashed = chat covered) ------------------------------------------------
 local function DrawEye(b, covered)
     local lines = b.lines
-    local cx, cy, w, h = 0, 0, 6, 3.5
+    local k = (b:GetWidth() or 18) / 18   -- the eye is drawn for an 18 pixel button and scaled with the button's size
+    local w, h = 6 * k, 3.5 * k
     local function seg(l, x1, y1, x2, y2) l:SetStartPoint("CENTER", b, x1, y1); l:SetEndPoint("CENTER", b, x2, y2) end
     seg(lines[1], -w, 0, 0, h); seg(lines[2], 0, h, w, 0); seg(lines[3], w, 0, 0, -h); seg(lines[4], 0, -h, -w, 0)
-    seg(lines[5], -w, -h - 1.5, w, h + 1.5)
+    seg(lines[5], -w, -h - 1.5 * k, w, h + 1.5 * k)
     lines[5]:SetShown(covered and true or false)
     b.dot:SetShown(not covered)
+    b.dot:SetSize(3 * k, 3 * k)
     local r, g, bl = 1, 0.82, 0
-    if covered then r, g, bl = 0.2, 0.7, 1 end
-    for i = 1, 5 do lines[i]:SetColorTexture(r, g, bl, 1) end
+    if covered then r, g, bl = 0.55, 0.85, 1 end
+    for i = 1, 5 do lines[i]:SetColorTexture(r, g, bl, 1); lines[i]:SetThickness(math.max(1.5, 1.5 * k)) end
     b.dot:SetColorTexture(r, g, bl, 1)
+    -- the button itself shows the state: dark with a gold edge while the chat is visible, blue with a bright edge while it is covered
+    if covered then b:SetBackdropColor(0.05, 0.25, 0.5, 0.95); b:SetBackdropBorderColor(0.4, 0.8, 1, 1)
+    else b:SetBackdropColor(0, 0, 0, 0.75); b:SetBackdropBorderColor(1, 0.82, 0, 0.9) end
 end
 
 local function PlaceButton()
@@ -188,11 +197,11 @@ end
 local function BuildButton()
     if btn then return btn end
     btn = CreateFrame("Button", "XayaUIChatPrivacyButton", UIParent, "BackdropTemplate")
-    btn:SetSize(18, 18)
+    btn:SetSize(28, 28)
     btn:SetFrameStrata("MEDIUM"); btn:SetFrameLevel(60)
     btn:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-    btn:SetBackdropColor(0, 0, 0, 0.45); btn:SetBackdropBorderColor(0, 0, 0, 0.8)
-    btn:SetAlpha(0.5)
+    btn:SetBackdropColor(0, 0, 0, 0.75); btn:SetBackdropBorderColor(1, 0.82, 0, 0.9)
+    btn:SetAlpha(0.9)
     btn.lines = {}
     for i = 1, 5 do local l = btn:CreateLine(nil, "OVERLAY"); l:SetThickness(1.5); btn.lines[i] = l end
     btn.dot = btn:CreateTexture(nil, "OVERLAY"); btn.dot:SetSize(3, 3); btn.dot:SetPoint("CENTER")
@@ -204,7 +213,7 @@ local function BuildButton()
         GameTooltip:AddLine((s and s.privOn) and "Click: show the chat" or "Click: cover the chat", 1, 1, 1)
         GameTooltip:Show()
     end)
-    btn:SetScript("OnLeave", function(self) self:SetAlpha(0.5); GameTooltip:Hide() end)
+    btn:SetScript("OnLeave", function(self) local st = Store(); self:SetAlpha((tonumber(st and st.privBtnAlpha) or 90) / 100); GameTooltip:Hide() end)
     btn:SetScript("OnClick", function() ns.ChatPrivacy_Set(not (Store() or {}).privOn) end)
     return btn
 end
@@ -213,6 +222,9 @@ function ns.ChatPrivacy_Refresh()
     local s = Store()
     if not s then return end
     BuildButton()
+    local size = math.max(16, math.min(64, tonumber(s.privBtnSize) or 28))
+    btn:SetSize(size, size)
+    if not (btn.IsMouseOver and btn:IsMouseOver()) then btn:SetAlpha((tonumber(s.privBtnAlpha) or 90) / 100) end
     local collapsed = ns.ChatDock_IsCollapsed and ns.ChatDock_IsCollapsed()
     local canShow = _G.ChatFrame1 and not collapsed
     btn:SetShown(canShow and s.privBtn ~= false)
@@ -271,15 +283,22 @@ function ns.ChatPrivacy_Options(Notify)
         on = { type = "toggle", order = 1, width = "full", name = "Cover the chat now", get = get("privOn"), set = set("privOn") },
         start = { type = "toggle", order = 2, width = "full", name = "Cover the chat at every login", get = get("privStartHidden"), set = set("privStartHidden") },
         btn = { type = "toggle", order = 3, width = "full", name = "Show the toggle button beside the chat", get = function() return S().privBtn ~= false end, set = set("privBtn") },
+        bsize = { type = "range", order = 3.5, name = "Button size (pixels)", min = 16, max = 64, step = 1, get = get("privBtnSize"), set = set("privBtnSize") },
+        balpha = { type = "range", order = 3.6, name = "Button opacity when the mouse is away (%)", min = 20, max = 100, step = 5, get = get("privBtnAlpha"), set = set("privBtnAlpha") },
         bx = { type = "range", order = 4, name = "Button: move right (pixels)", min = -100, max = 100, step = 1, get = get("privBtnX"), set = set("privBtnX") },
         by = { type = "range", order = 5, name = "Button: move up (pixels)", min = -100, max = 400, step = 1, get = get("privBtnY"), set = set("privBtnY") },
         lookHdr = { type = "header", order = 10, name = "Look" },
         mode = { type = "select", order = 11, name = "Fill with", values = { COLOR = "A color", TEXTURE = "A background texture", IMAGE = "A picture" }, sorting = { "COLOR", "TEXTURE", "IMAGE" },
             get = function() return S().privMode or "COLOR" end, set = set("privMode", true) },
-        color = { type = "color", order = 12, name = "Color (fill, texture tint, or behind the picture)", hasAlpha = false,
-            get = function() local s = S(); return s.privR or 0, s.privG or 0, s.privB or 0, 1 end,
-            set = function(_, r, g, b) local s = Store(); if s then s.privR, s.privG, s.privB = r, g, b end; ns.ChatPrivacy_Refresh() end },
-        alpha = { type = "range", order = 13, name = "Opacity (%)", min = 5, max = 100, step = 5, get = get("privAlpha"), set = set("privAlpha") },
+        color = { type = "color", order = 12, name = "Color (the fill, a texture's tint, or behind a picture)", hasAlpha = true,
+            get = function() local s = S(); return s.privR or 0, s.privG or 0, s.privB or 0, (tonumber(s.privFillA) or 100) / 100 end,
+            set = function(_, r, g, b, a) local s = Store(); if s then s.privR, s.privG, s.privB = r, g, b; if a then s.privFillA = math.floor(a * 100 + 0.5) end end; ns.ChatPrivacy_Refresh() end },
+        fillA = { type = "range", order = 12.5, name = "Color fill opacity (%)", desc = "How solid the color is. Set it to 0 to see only the texture or picture.", min = 0, max = 100, step = 5,
+            get = function() return tonumber(S().privFillA) or 100 end, set = set("privFillA") },
+        texA = { type = "range", order = 13, name = "Texture / picture opacity (%)", hidden = function() return (S().privMode or "COLOR") == "COLOR" end,
+            desc = "How solid the background texture or picture is, on its own.", min = 0, max = 100, step = 5,
+            get = function() return tonumber(S().privTexA) or 100 end, set = set("privTexA") },
+        alpha = { type = "range", order = 13.5, name = "Whole cover opacity (%)", desc = "Fades everything on the cover together: fill, texture or picture, border, and label.", min = 5, max = 100, step = 5, get = get("privAlpha"), set = set("privAlpha") },
         tex = { type = "select", order = 14, name = "Background texture", hidden = mode("TEXTURE"),
             values = function()
                 local v = {}

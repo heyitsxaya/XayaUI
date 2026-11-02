@@ -108,7 +108,7 @@ function T.UpdateTab(tab, selected)
         local label = (sel == "NONE") and shown or T.SelectedText(sel, shown, s.tabSelR, s.tabSelG, s.tabSelB)
         if tab.SetText then tab:SetText(label) end
         if s.tabSelectedTextEnabled then
-            text:SetTextColor(s.tabR or 1, s.tabG or 1, s.tabB or 1)
+            text:SetTextColor(s.tabR or 1, s.tabG or 1, s.tabB or 1, (tonumber(s.tabA) or 100) / 100)
         end
     else
         if tab.SetText then tab:SetText(shown) end
@@ -119,7 +119,7 @@ function T.UpdateTab(tab, selected)
             local c = token and tbl and tbl[token]
             if c then r, g, b = c.r, c.g, c.b end
         end
-        text:SetTextColor(r, g, b)
+        text:SetTextColor(r, g, b, (whisper and s.tabClassWhispers) and 1 or (tonumber(s.tabTextA) or 100) / 100)
     end
     local bg = EnsureBackground(tab)
     if s.tabBackdrop then

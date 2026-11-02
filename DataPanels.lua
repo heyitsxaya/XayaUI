@@ -164,7 +164,7 @@ local function Def(over)
         bg = true, bgR = 0, bgG = 0, bgB = 0, bgAlpha = 45,   -- "Backdrop Transparency" = lower alpha
         border = true, borderR = 0, borderG = 0, borderB = 0,
         textR = 1, textG = 1, textB = 1, labelR = 0.7, labelG = 0.7, labelB = 0.7,
-        showLabels = true, decimals = 1, clock24 = true, localTime = true,
+        showLabels = true, decimals = 1, clock24 = true, localTime = true, textA = 100, borderA = 100,   -- alpha in percent
         strata = "LOW", level = 1,
         tipAnchor = "TOP", tipX = 0, tipY = 4,
         mouseover = false, hideInCombat = false, visibility = "",
@@ -365,12 +365,12 @@ local function Style(key, cfg)
     f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     f:SetBackdropColor(cfg.bgR or 0, cfg.bgG or 0, cfg.bgB or 0, cfg.bg and (cfg.bgAlpha or 45) / 100 or 0)
     if cfg.movable and not cfg.locked then f:SetBackdropBorderColor(0.2, 0.7, 1, 1)   -- unlocked: cyan edge = drag me
-    else f:SetBackdropBorderColor(cfg.borderR or 0, cfg.borderG or 0, cfg.borderB or 0, cfg.border and 1 or 0) end
+    else f:SetBackdropBorderColor(cfg.borderR or 0, cfg.borderG or 0, cfg.borderB or 0, cfg.border and (tonumber(cfg.borderA) or 100) / 100 or 0) end
     f:SetFrameStrata(cfg.strata or "LOW"); f:SetFrameLevel(math.max(1, math.min(128, tonumber(cfg.level) or 1)))
     local path = ns.FontPath and ns.FontPath(g.font) or STANDARD_TEXT_FONT
     local size = math.max(6, math.min(64, tonumber(g.size) or 13))
     local outline = OUTLINES[g.outline or "OUTLINE"] or "OUTLINE"
-    local pp = { size = size, path = path, outline = outline, hover = cfg.hoverHL, r = cfg.textR or 1, g = cfg.textG or 1, b = cfg.textB or 1 }
+    local pp = { size = size, path = path, outline = outline, hover = cfg.hoverHL, r = cfg.textR or 1, g = cfg.textG or 1, b = cfg.textB or 1, a = (tonumber(cfg.textA) or 100) / 100 }
     local function get(i, f) return BGet(cfg, i, f) end
     for i = 1, MAXSLOTS do B.StyleSlot(e.slots[i], i, get, pp) end
 end
@@ -485,10 +485,10 @@ function ns.BuildDataPanelsTab(Notify)
         local canScreen = isCustom
         local function g(f) return function() return cfg[f] end end
         local function s(f, both) return function(_, v) cfg[f] = v; if both then Both(key) else Re(key) end end end
-        local function col(name, o, rf, gf, bf, extra)
-            return { type = "color", order = o, name = name, hasAlpha = false, hidden = extra and extra.hidden or nil,
-                get = function() return cfg[rf], cfg[gf], cfg[bf], 1 end,
-                set = function(_, r, gg, b) cfg[rf], cfg[gf], cfg[bf] = r, gg, b; Re(key) end }
+        local function col(name, o, rf, gf, bf, extra, af)   -- af: the field holding its opacity in percent (the picker then offers transparency)
+            return { type = "color", order = o, name = name, hasAlpha = af and true or false, hidden = extra and extra.hidden or nil,
+                get = function() return cfg[rf], cfg[gf], cfg[bf], af and ((tonumber(cfg[af]) or 100) / 100) or 1 end,
+                set = function(_, r, gg, b, a) cfg[rf], cfg[gf], cfg[bf] = r, gg, b; if af and a then cfg[af] = math.floor(a * 100 + 0.5) end; Re(key) end }
         end
         local screen = function() return cfg.widthMode == "SCREEN" end
         local args = {
@@ -519,11 +519,11 @@ function ns.BuildDataPanelsTab(Notify)
             } },
             template = { type = "group", name = "Template", order = 12, inline = true, args = {
                 bg = { type = "toggle", order = 1, name = "Backdrop", get = g("bg"), set = s("bg") },
-                bgColor = col("Backdrop color", 2, "bgR", "bgG", "bgB"),
+                bgColor = col("Backdrop color", 2, "bgR", "bgG", "bgB", nil, "bgAlpha"),
                 bgAlpha = { type = "range", order = 3, name = "Backdrop opacity (%)", min = 0, max = 100, step = 5, get = g("bgAlpha"), set = s("bgAlpha") },
                 border = { type = "toggle", order = 4, name = "Show Border", get = g("border"), set = s("border") },
-                borderColor = col("Border color", 5, "borderR", "borderG", "borderB"),
-                textColor = col("Text color", 6, "textR", "textG", "textB"),
+                borderColor = col("Border color", 5, "borderR", "borderG", "borderB", nil, "borderA"),
+                textColor = col("Text color", 6, "textR", "textG", "textB", nil, "textA"),
                 labelColor = col("Label color", 7, "labelR", "labelG", "labelB"),
                 labels = { type = "toggle", order = 8, name = "Show labels", desc = "Prefix such as \"Crit\" or \"Bags\" in front of the value.", get = g("showLabels"), set = s("showLabels") },
                 decimals = { type = "range", order = 9, name = "Stat decimals", min = 0, max = 2, step = 1, get = g("decimals"), set = s("decimals") },
@@ -565,10 +565,10 @@ function ns.BuildDataPanelsTab(Notify)
         local function cur() local n = nBlocks(); if (editIdx[key] or 1) > n then editIdx[key] = n end; return editIdx[key] or 1 end
         local function bg(f) return function() return BGet(cfg, cur(), f) end end
         local function bs(f) return function(_, v) BSet(cfg, cur(), f, v); Re(key) end end
-        local function bcol(name, o, rf, gf, bf)
-            return { type = "color", order = o, name = name, hasAlpha = false,
-                get = function() local i = cur(); return BGet(cfg, i, rf), BGet(cfg, i, gf), BGet(cfg, i, bf), 1 end,
-                set = function(_, r, gg, b) local i = cur(); BSet(cfg, i, rf, r); BSet(cfg, i, gf, gg); BSet(cfg, i, bf, b); Re(key) end }
+        local function bcol(name, o, rf, gf, bf, af)
+            return { type = "color", order = o, name = name, hasAlpha = af and true or false,
+                get = function() local i = cur(); return BGet(cfg, i, rf), BGet(cfg, i, gf), BGet(cfg, i, bf), af and ((tonumber(BGet(cfg, i, af)) or 100) / 100) or 1 end,
+                set = function(_, r, gg, b, a) local i = cur(); BSet(cfg, i, rf, r); BSet(cfg, i, gf, gg); BSet(cfg, i, bf, b); if af and a then BSet(cfg, i, af, math.floor(a * 100 + 0.5)) end; Re(key) end }
         end
         local function swap(i, j)   -- exchange two blocks: what they show, their custom text and their own settings
             cfg.blocks = cfg.blocks or {}
@@ -593,10 +593,10 @@ function ns.BuildDataPanelsTab(Notify)
                 get = bg("align"), set = bs("align") },
             scale = { type = "range", order = 9, name = "Content scale (%)", min = 40, max = 300, step = 5, get = bg("scale"), set = bs("scale") },
             bgOn = { type = "toggle", order = 10, name = "Block background", get = bg("bgOn"), set = bs("bgOn") },
-            bgCol = bcol("Block background color", 11, "bgR", "bgG", "bgB"),
+            bgCol = bcol("Block background color", 11, "bgR", "bgG", "bgB", "bgA"),
             bgA = { type = "range", order = 12, name = "Block background opacity (%)", min = 0, max = 100, step = 5, get = bg("bgA"), set = bs("bgA") },
             textOn = { type = "toggle", order = 13, name = "Own text color", get = bg("textOn"), set = bs("textOn") },
-            textCol = bcol("This block's text color", 14, "tR", "tG", "tB"),
+            textCol = bcol("This block's text color", 14, "tR", "tG", "tB", "tA"),
             left = { type = "execute", order = 20, name = "Move left / up", func = function()
                 local i = cur(); if i > 1 then swap(i, i - 1); editIdx[key] = i - 1; Both(key) end end },
             right = { type = "execute", order = 21, name = "Move right / down", func = function()

@@ -281,9 +281,9 @@ function ns.BuildCursorHighlightTab(Notify)
                         hidden = function() return C().shape ~= "art" end,
                         get = function() return C().keepColors and true or false end,
                         set = function(_, v) C().keepColors = v and true or false; Changed() end },
-                    color = { type = "color", order = 2, name = "Color", hasAlpha = false,
-                        get = function() local col = C().color; return col[1], col[2], col[3] end,
-                        set = function(_, r, g, b) C().color = { r, g, b }; Changed() end },
+                    color = { type = "color", order = 2, name = "Color", hasAlpha = true,   -- the picker's transparency is the Opacity setting below
+                        get = function() local col = C().color; return col[1], col[2], col[3], C().opacity or 0.35 end,
+                        set = function(_, r, g, b, a) C().color = { r, g, b }; if a then C().opacity = math.max(0.05, math.floor(a * 20 + 0.5) / 20) end; Changed() end },
                     size = { type = "range", order = 3, name = "Size", min = 16, max = 160, step = 1,
                         get = function() return C().size end,
                         set = function(_, v) C().size = v; Changed() end },

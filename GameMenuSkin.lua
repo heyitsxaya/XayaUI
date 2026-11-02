@@ -22,7 +22,7 @@ local DEFAULTS = {
     skin = false,                 -- master switch (off until chosen)
     w = 240, h = 34, gap = 6, groupGap = 18, pad = 18, scale = 100,
     font = "none", fontSize = 15, outline = "",
-    textR = 1, textG = 1, textB = 1,
+    textR = 1, textG = 1, textB = 1, textA = 100,   -- alpha in percent
     hoverAccent = true,           -- hover / pressed colors follow the theme accent (class color)
     bgR = 0.04, bgG = 0.04, bgB = 0.04, bgA = 90,       -- panel fill, percent
     btnA = 70,                    -- row fill opacity, percent
@@ -116,7 +116,7 @@ local function PaintRow(r)
     r.fs:SetFont(FontFile(c), c.fontSize or 15, c.outline or "")
     if r.disabled then r.fs:SetTextColor(0.5, 0.5, 0.5, 1)
     elseif isXui and c.xuiStyle == "standard" then r.fs:SetTextColor(ac[1], ac[2], ac[3], 1)
-    else r.fs:SetTextColor(c.textR or 1, c.textG or 1, c.textB or 1, 1) end
+    else r.fs:SetTextColor(c.textR or 1, c.textG or 1, c.textB or 1, (tonumber(c.textA) or 100) / 100) end
     r.fs:SetText(r.label or "")
 end
 
@@ -323,9 +323,9 @@ function ns.GameMenuSkin_Options(Notify)
             fontSize = rng("Font size", "fontSize", 2, 8, 30),
             outline = { type = "select", order = 3, name = "Outline", disabled = off, values = { [""] = "None", OUTLINE = "Outline", THICKOUTLINE = "Thick" },
                 sorting = { "", "OUTLINE", "THICKOUTLINE" }, get = g("outline"), set = s("outline") },
-            color = { type = "color", order = 4, name = "Text color", disabled = off,
-                get = function() local c = Cfg(); return c.textR, c.textG, c.textB end,
-                set = function(_, r, gg, b) local c = Cfg(); c.textR, c.textG, c.textB = r, gg, b; re() end },
+            color = { type = "color", order = 4, name = "Text color", disabled = off, hasAlpha = true,
+                get = function() local c = Cfg(); return c.textR, c.textG, c.textB, (tonumber(c.textA) or 100) / 100 end,
+                set = function(_, r, gg, b, a) local c = Cfg(); c.textR, c.textG, c.textB = r, gg, b; if a then c.textA = math.floor(a * 100 + 0.5) end; re() end },
         } },
         xui = { type = "group", order = 30, inline = true, name = "XayaUI button", args = {
             row = { type = "select", order = 1, name = "Position", disabled = off,

@@ -12,7 +12,7 @@ ns.DataBlocks = B
 B.MAXN = 20
 -- per-block settings and their defaults (a bar may override a default through its get function)
 B.DEF = { gapL = 10, gapR = 10, fill = false, align = "CENTER", scale = 100,
-    bgOn = false, bgR = 0, bgG = 0, bgB = 0, bgA = 40, textOn = false, tR = 1, tG = 1, tB = 1 }
+    bgOn = false, bgR = 0, bgG = 0, bgB = 0, bgA = 40, textOn = false, tR = 1, tG = 1, tB = 1, tA = 100 }
 
 -- a slot: button with a background texture, a mouse-over highlight and a text. The caller adds its own scripts.
 function B.MakeSlot(parent)
@@ -32,8 +32,8 @@ function B.StyleSlot(slot, i, get, p)
     local size = math.max(6, math.min(80, math.floor(p.size * (tonumber(get(i, "scale")) or 100) / 100 + 0.5)))
     local fs, outline = slot.fs, p.outline or "OUTLINE"
     if not fs:SetFont(p.path or STANDARD_TEXT_FONT, size, outline) then fs:SetFont(STANDARD_TEXT_FONT, size, outline) end
-    if get(i, "textOn") then fs:SetTextColor(get(i, "tR"), get(i, "tG"), get(i, "tB"))
-    else fs:SetTextColor(p.r or 1, p.g or 1, p.b or 1) end
+    if get(i, "textOn") then fs:SetTextColor(get(i, "tR"), get(i, "tG"), get(i, "tB"), (tonumber(get(i, "tA")) or 100) / 100)
+    else fs:SetTextColor(p.r or 1, p.g or 1, p.b or 1, p.a or 1) end
     if get(i, "bgOn") then
         slot.bg:SetColorTexture(get(i, "bgR"), get(i, "bgG"), get(i, "bgB"), (get(i, "bgA") or 40) / 100)
         slot.bg:Show()

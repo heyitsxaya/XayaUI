@@ -24,7 +24,7 @@ ns.CHAT_DEFAULTS = {
     numScrollMessages = 3, scrollDownInterval = 15,
     fade = true, inactivityTimer = 100,
     setWindowColor = false, winR = 0, winG = 0, winB = 0, winAlpha = 32,   -- alpha in percent
-    tabSelectedTextEnabled = true, tabR = 1, tabG = 1, tabB = 1,
+    tabSelectedTextEnabled = true, tabR = 1, tabG = 1, tabB = 1, tabA = 100, tabTextA = 100, editBorderA = 100,   -- alpha in percent
     sticky = true, useAltKey = false, editboxHistorySize = 20,
     enableCombatRepeat = true, numAllowedCombatRepeat = 5,
     hideVoiceButtons = false,
@@ -221,7 +221,7 @@ local function UpdateTabColors()
             if not text then return end
             local selected = _G.FCFDock_GetSelectedWindow and _G.GENERAL_CHAT_DOCK
                 and _G.FCFDock_GetSelectedWindow(_G.GENERAL_CHAT_DOCK) == f
-            if selected then text:SetTextColor(s.tabR, s.tabG, s.tabB) end
+            if selected then text:SetTextColor(s.tabR, s.tabG, s.tabB, (tonumber(s.tabA) or 100) / 100) end
         end)
     end
 end
@@ -307,7 +307,7 @@ function ns.ChatReskin_StyleEditBox(eb)
     if eb.xayaFocus and s.editFocusBorder ~= false then
         eb.xayaBg:SetBackdropBorderColor(s.tabSelR or 0.3, s.tabSelG or 1, s.tabSelB or 0.3, 1)
     else
-        eb.xayaBg:SetBackdropBorderColor(s.editBorderR or 0, s.editBorderG or 0, s.editBorderB or 0, 1)
+        eb.xayaBg:SetBackdropBorderColor(s.editBorderR or 0, s.editBorderG or 0, s.editBorderB or 0, (tonumber(s.editBorderA) or 100) / 100)
     end
 end
 
@@ -448,10 +448,10 @@ function ns.BuildChatTab(Notify)
         return { type = "select", name = name, order = order, values = CHAT_OUTLINE, sorting = CHAT_OUTLINE_ORDER,
             get = function() return s[field] end, set = function(_, v) s[field] = v; Re() end }
     end
-    local function col(name, rf, gf, bf, order)
-        return { type = "color", name = name, order = order, hasAlpha = false,
-            get = function() return s[rf], s[gf], s[bf], 1 end,
-            set = function(_, r, g, b) s[rf], s[gf], s[bf] = r, g, b; Re() end }
+    local function col(name, rf, gf, bf, order, af)   -- af: the setting holding its opacity in percent (the picker then offers transparency)
+        return { type = "color", name = name, order = order, hasAlpha = af and true or false,
+            get = function() return s[rf], s[gf], s[bf], af and ((tonumber(s[af]) or 100) / 100) or 1 end,
+            set = function(_, r, g, b, a) s[rf], s[gf], s[bf] = r, g, b; if af and a then s[af] = math.floor(a * 100 + 0.5) end; Re() end }
     end
     local function sel(name, field, order, values, sorting, desc, width)
         return { type = "select", name = name, desc = desc, order = order, values = values, sorting = sorting, width = width,
@@ -538,13 +538,13 @@ function ns.BuildChatTab(Notify)
                     winHeader = { type = "header", name = "Window", order = 1 },
                     bgNote = note("The background uses Blizzard's own chat window color, which Blizzard saves; turning this off does not reset it (change it back in Blizzard's chat settings).", 2),
                     bg = tog("Set chat window background", "setWindowColor", 3),
-                    bgCol = col("Backdrop color", "winR", "winG", "winB", 4),
+                    bgCol = col("Backdrop color", "winR", "winG", "winB", 4, "winAlpha"),
                     bgAlpha = rng("Backdrop opacity (%)", "winAlpha", 5, 0, 100),
                     editHeader = { type = "header", name = "Edit box", order = 10 },
                     skin = tog("Flat edit box (hides Blizzard's stone frame)", "editBoxSkin", 11, "Turning this off fully restores Blizzard's art after /reload."),
-                    skinBg = col("Edit box background color", "editBgR", "editBgG", "editBgB", 12),
+                    skinBg = col("Edit box background color", "editBgR", "editBgG", "editBgB", 12, "editBgAlpha"),
                     skinBgA = rng("Edit box background opacity (%)", "editBgAlpha", 13, 0, 100),
-                    skinBd = col("Edit box border color", "editBorderR", "editBorderG", "editBorderB", 14),
+                    skinBd = col("Edit box border color", "editBorderR", "editBorderG", "editBorderB", 14, "editBorderA"),
                     skinFocus = tog("Border takes the selected-tab marker color while typing", "editFocusBorder", 15),
                 } },
                 scrollOpts = { type = "group", name = "Scroll and fade options", order = 12, inline = true, args = {
@@ -591,16 +591,16 @@ function ns.BuildChatTab(Notify)
                 tabFontOutline = outSel("Tab font outline", "tabFontOutline", 6),
                 colorHeader = { type = "header", name = "Colors and display", order = 10 },
                 tabSel = tog("Colorize selected tab text", "tabSelectedTextEnabled", 21),
-                tabCol = col("Selected tab text color", "tabR", "tabG", "tabB", 22),
-                tabTextCol = col("Other tabs: text color", "tabTextR", "tabTextG", "tabTextB", 23),
+                tabCol = col("Selected tab text color", "tabR", "tabG", "tabB", 22, "tabA"),
+                tabTextCol = col("Other tabs: text color", "tabTextR", "tabTextG", "tabTextB", 23, "tabTextA"),
                 tabWhisper = tog("Whisper tabs in the player's class color", "tabClassWhispers", 24),
                 tabDim = tog("Dim tabs that are not selected", "tabDimInactive", 25),
                 tabSelector = sel("Selected tab marker", "tabSelector", 26, TSEL.STYLE_NAMES or {}, TSEL.STYLE_ORDER),
                 tabSelCol = col("Selected tab marker color", "tabSelR", "tabSelG", "tabSelB", 27),
                 tabBg = tog("Flat tab backgrounds (replaces Blizzard's tab art)", "tabBackdrop", 28),
-                tabBgCol = col("Tab background color", "tabBgR", "tabBgG", "tabBgB", 29),
+                tabBgCol = col("Tab background color", "tabBgR", "tabBgG", "tabBgB", 29, "tabBgAlpha"),
                 tabBgAlpha = rng("Tab background opacity (%)", "tabBgAlpha", 30, 0, 100),
-                tabBgSelCol = col("Selected tab background color", "tabBgSelR", "tabBgSelG", "tabBgSelB", 31),
+                tabBgSelCol = col("Selected tab background color", "tabBgSelR", "tabBgSelG", "tabBgSelB", 31, "tabBgSelAlpha"),
                 tabBgSelAlpha = rng("Selected tab background opacity (%)", "tabBgSelAlpha", 32, 0, 100),
                 tabHeight = rng("Tab height (0 = Blizzard's own height; other values re-anchor the tab dock)", "tabHeightCustom", 33, 0, 40),
                 fadeHeader = { type = "header", name = "Fade", order = 40 },

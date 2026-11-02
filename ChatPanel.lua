@@ -23,7 +23,7 @@ local BASE = {
     panelWidthMode = "CHAT",       -- older key: CHAT / SCREEN = resize to fit, CUSTOM = own length (now the panelMatch tick box)
     panelWidth = 400, panelHeight = 22,    -- panelWidth = length when not resized to fit; panelHeight = thickness panelGap = 2, panelOffX = 0, panelOffY = 0,
     panelBg = true, panelBgR = 0, panelBgG = 0, panelBgB = 0, panelBgAlpha = 45,
-    panelBorder = true, panelBorderR = 0, panelBorderG = 0, panelBorderB = 0,
+    panelBorder = true, panelBorderR = 0, panelBorderG = 0, panelBorderB = 0, panelBorderA = 100, panelTextA = 100,   -- alpha in percent
     panelTextSize = 13, panelTextR = 1, panelTextG = 1, panelTextB = 1,
     panelValueR = 0.64, panelValueG = 0.21, panelValueB = 0.93,   -- numbers in friends etc. (purple, as in Xaya's screenshot)
     panelSlots = 3,                -- number of blocks, 1 to 20
@@ -430,12 +430,13 @@ local function Style(s, side)
     f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     f:SetBackdropColor(s[K(side, "panelBgR")] or 0, s[K(side, "panelBgG")] or 0, s[K(side, "panelBgB")] or 0,
         s[K(side, "panelBg")] and (s[K(side, "panelBgAlpha")] or 45) / 100 or 0)
-    f:SetBackdropBorderColor(s[K(side, "panelBorderR")] or 0, s[K(side, "panelBorderG")] or 0, s[K(side, "panelBorderB")] or 0, s[K(side, "panelBorder")] and 1 or 0)
+    f:SetBackdropBorderColor(s[K(side, "panelBorderR")] or 0, s[K(side, "panelBorderG")] or 0, s[K(side, "panelBorderB")] or 0, s[K(side, "panelBorder")] and (tonumber(s[K(side, "panelBorderA")]) or 100) / 100 or 0)
     local path = (ns.FontPath and ns.FontPath(s.font)) or STANDARD_TEXT_FONT
     local base = math.max(6, math.min(40, tonumber(s[K(side, "panelTextSize")]) or 13))
     EnsureSlots(side, Count(s, side))
     local pp = { size = base, path = path, outline = "OUTLINE", hover = s[K(side, "panelHoverHL")],
-        r = s[K(side, "panelTextR")] or 1, g = s[K(side, "panelTextG")] or 1, b = s[K(side, "panelTextB")] or 1 }
+        r = s[K(side, "panelTextR")] or 1, g = s[K(side, "panelTextG")] or 1, b = s[K(side, "panelTextB")] or 1,
+        a = (tonumber(s[K(side, "panelTextA")]) or 100) / 100 }
     local function get(i, f) return BGet(s, side, i, f) end
     for i = 1, MAXN do
         if P.slots[i] then B.StyleSlot(P.slots[i], i, get, pp) end
@@ -718,10 +719,10 @@ function ns.ChatPanel_Options(Notify, order)
         for i, e in ipairs(list) do values[e[1]] = e[2]; sorting[i] = e[1] end
         return { type = "select", order = o, name = name, values = values, sorting = sorting, get = getter or gk(k), set = sk(k) }
     end
-    local function col(name, k, o)
-        return { type = "color", order = o, name = name, hasAlpha = false,
-            get = function() local s = S(); return s[K(editSide, k .. "R")] or 1, s[K(editSide, k .. "G")] or 1, s[K(editSide, k .. "B")] or 1, 1 end,
-            set = function(_, r, g, b) local s = Store(); if s then s[K(editSide, k .. "R")], s[K(editSide, k .. "G")], s[K(editSide, k .. "B")] = r, g, b end; Re() end }
+    local function col(name, k, o, af)   -- af: the setting holding its opacity in percent (the picker then offers transparency)
+        return { type = "color", order = o, name = name, hasAlpha = af and true or false,
+            get = function() local s = S(); return s[K(editSide, k .. "R")] or 1, s[K(editSide, k .. "G")] or 1, s[K(editSide, k .. "B")] or 1, af and ((tonumber(s[K(editSide, af)]) or 100) / 100) or 1 end,
+            set = function(_, r, g, b, a) local s = Store(); if s then s[K(editSide, k .. "R")], s[K(editSide, k .. "G")], s[K(editSide, k .. "B")] = r, g, b; if af and a then s[K(editSide, af)] = math.floor(a * 100 + 0.5) end end; Re() end }
     end
     -- blocks: "Editing block" picks the block the settings below it change
     local function EB()
@@ -732,10 +733,10 @@ function ns.ChatPanel_Options(Notify, order)
     end
     local function bg(f) return function() return BGet(S(), editSide, EB(), f) end end
     local function bs(f) return function(_, v) local s = Store(); if s then BSet(s, editSide, EB(), f, v) end; Re() end end
-    local function bcol(name, a, b, c, o)
-        return { type = "color", order = o, name = name, hasAlpha = false,
-            get = function() local s, i = S(), EB(); return BGet(s, editSide, i, a), BGet(s, editSide, i, b), BGet(s, editSide, i, c), 1 end,
-            set = function(_, r, g, bl) local s = Store(); if s then local i = EB(); BSet(s, editSide, i, a, r); BSet(s, editSide, i, b, g); BSet(s, editSide, i, c, bl) end; Re() end }
+    local function bcol(name, a, b, c, o, af)
+        return { type = "color", order = o, name = name, hasAlpha = af and true or false,
+            get = function() local s, i = S(), EB(); return BGet(s, editSide, i, a), BGet(s, editSide, i, b), BGet(s, editSide, i, c), af and ((tonumber(BGet(s, editSide, i, af)) or 100) / 100) or 1 end,
+            set = function(_, r, g, bl, al) local s = Store(); if s then local i = EB(); BSet(s, editSide, i, a, r); BSet(s, editSide, i, b, g); BSet(s, editSide, i, c, bl); if af and al then BSet(s, editSide, i, af, math.floor(al * 100 + 0.5)) end end; Re() end }
     end
     local function structure(fn) local s = Store(); if not s then return end; fn(s); Re(true) end
     local types, typeOrder = {}, {}
@@ -772,12 +773,12 @@ function ns.ChatPanel_Options(Notify, order)
         } },
         look = { type = "group", name = "Look", order = 20, inline = true, args = {
             bg = tog("Background", "panelBg", 1, true),
-            bgc = col("Background color", "panelBg", 2),
+            bgc = col("Background color", "panelBg", 2, "panelBgAlpha"),
             bga = rng("Background opacity (%)", "panelBgAlpha", 3, 0, 100, 5),
             border = tog("Border", "panelBorder", 4, true),
-            borderc = col("Border color", "panelBorder", 5),
+            borderc = col("Border color", "panelBorder", 5, "panelBorderA"),
             size = rng("Text size", "panelTextSize", 6, 6, 40),
-            text = col("Text color", "panelText", 7),
+            text = col("Text color", "panelText", 7, "panelTextA"),
             value = col("Value color (friends count)", "panelValue", 8),
             hover = tog("Highlight the block under the mouse", "panelHoverHL", 9, false, nil, "full"),
         } },
@@ -803,10 +804,10 @@ function ns.ChatPanel_Options(Notify, order)
             align = { type = "select", order = 9, name = "Text align", values = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }, sorting = { "LEFT", "CENTER", "RIGHT" }, get = bg("align"), set = bs("align") },
             scale = { type = "range", order = 10, name = "Content scale (%)", min = 40, max = 300, step = 5, get = bg("scale"), set = bs("scale") },
             bgOn = { type = "toggle", order = 11, name = "Block background", get = bg("bgOn"), set = bs("bgOn") },
-            bgCol = bcol("Block background color", "bgR", "bgG", "bgB", 12),
+            bgCol = bcol("Block background color", "bgR", "bgG", "bgB", 12, "bgA"),
             bgA = { type = "range", order = 13, name = "Block background opacity (%)", min = 0, max = 100, step = 5, get = bg("bgA"), set = bs("bgA") },
             textOn = { type = "toggle", order = 14, name = "Own text color for this block", width = "double", get = bg("textOn"), set = bs("textOn") },
-            textCol = bcol("This block's text color", "tR", "tG", "tB", 15),
+            textCol = bcol("This block's text color", "tR", "tG", "tB", 15, "tA"),
             left = { type = "execute", order = 20, name = "Move left", func = function() structure(function(s)
                 local i = EB(); if i <= 1 then return end
                 Materialize(s, editSide)

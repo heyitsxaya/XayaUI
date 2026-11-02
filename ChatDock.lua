@@ -15,7 +15,9 @@ ns.CHAT_DEFAULTS.nudgeStep = 1          -- pixels per arrow click in the positio
 
 local function Store() return ns.chatDB end
 
-local hidden = CreateFrame("Frame"); hidden:Hide()
+-- The holding frame is a child of UIParent so it has the same scale. Parented to nothing it would be scale 1, and with a UI scale below 1
+-- everything anchored to a chat window (the bar under it, the privacy cover, the buttons) would grow by 1 / UI scale while the chat is collapsed.
+local hidden = CreateFrame("Frame", nil, UIParent); hidden:Hide()
 local origParent = setmetatable({}, { __mode = "k" })
 local collapsed = false
 local btn, mover, nudge
@@ -421,6 +423,8 @@ function ns.ChatDock_Debug(say)
         say("dock: ChatFrame1 clamp insets L/R/T/B = " .. tostring(l) .. "/" .. tostring(r) .. "/" .. tostring(t) .. "/" .. tostring(b)
             .. "  freeMove=" .. tostring((Store() or {}).chatFreeMove ~= false))
     end
+    say(("dock: effective scale ChatFrame1=%.3f  UIParent=%.3f  parent of ChatFrame1=%s  (the two scales must match, collapsed or not)"):format(
+        cf and cf:GetEffectiveScale() or 0, UIParent:GetEffectiveScale(), tostring(cf and cf:GetParent() and (cf:GetParent():GetName() or (cf:GetParent() == hidden and "hidden holder" or "unnamed")))))
     say("dock: pieces sticking out past the chat's right edge = " .. string.format("%.1f", SideExtra(cf)) .. " px (collapse button sits beyond this)")
     say("dock: side strip mode=" .. tostring((Store() or {}).sideStrip) .. "  found: " .. (#stripFound > 0 and table.concat(stripFound, ", ") or "(none yet)"))
     local bf = _G.ChatFrame1ButtonFrame
