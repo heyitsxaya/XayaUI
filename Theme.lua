@@ -8,7 +8,8 @@
 --             "all buttons" or "all headings" without touching anything else.
 -- Plus a font and a size (S / M / L). A theme is plain data (numbers and strings), so import / export never runs code.
 --
--- Base themes:  "default" (XUI purple)  |  "class" (follows the character's class color, or a class picked by hand)  |  a saved theme.
+-- Base themes:  "default" (XUI purple)  |  "class" (follows the character's class color, or a class picked by hand)  |  a built-in preset  |  "custom" (your own: starts from
+-- th.under, with your color changes on top)  |  a saved theme.
 -- Saved in CueRulesDB.theme (the active one) and CueRulesDB.themes[name] (saved ones).
 -------------------------------------------------------------------------------
 local addonName, ns = ...
@@ -88,6 +89,11 @@ local function DB()
     th.font = th.font or "none"
     th.size = th.size or "M"
     CueRulesDB.themes = CueRulesDB.themes or {}
+    -- A preset with color changes on top IS a custom theme: say so in the selector (nothing visibly changes).
+    if th.base ~= "custom" and (next(th.tokens) or next(th.classes)) then
+        th.under = (th.base ~= "custom" and th.base) or "default"
+        th.base = "custom"
+    end
     return th
 end
 T.DB = DB
@@ -166,13 +172,19 @@ T.BUILTIN_ORDER = { "light", "colorblind", "protan", "tritan" }
 function T.IsLight()
     local th = CueRulesDB and CueRulesDB.theme
     if not th then return false end
-    if th.base == "light" then return true end
+    if th.base == "light" or (th.base == "custom" and th.under == "light") then return true end
     local sv = CueRulesDB.themes and CueRulesDB.themes[th.base]
-    return sv and sv.base == "light" or false
+    return sv and (sv.base == "light" or (sv.base == "custom" and sv.under == "light")) or false
 end
-function T.IsBase(b) return b == "default" or b == "class" or T.BUILTIN[b] ~= nil end
+function T.IsBase(b) return b == "default" or b == "class" or b == "custom" or T.BUILTIN[b] ~= nil end
+-- the preset a Custom theme starts from (never "custom" itself)
+local function CleanUnder(u) if u and u ~= "custom" and T.IsBase(u) then return u end return "default" end
+function T.Under() local th = CueRulesDB and CueRulesDB.theme; return CleanUnder(th and th.under) end
+-- the base that decides the palette and the class color source ("custom" looks through to what it starts from)
+function T.EffBase() local th = CueRulesDB and CueRulesDB.theme; if not th then return "default" end; if th.base == "custom" then return T.Under() end; return th.base end
 
 function T.BasePalette(base, classPick)
+    if base == "custom" then base = T.Under() end
     if base == "class" then return T.ClassPalette(classPick or T.PlayerClass()) end
     if T.BUILTIN[base] then local pal = {} for k, v in pairs(T.BUILTIN[base].pal) do pal[k] = Copy4(v) end return pal end
     local saved = CueRulesDB and CueRulesDB.themes and CueRulesDB.themes[base]
@@ -182,7 +194,8 @@ end
 
 function T.SavedPalette(saved)
     local pal = {}
-    local under = (saved.base == "class") and T.ClassPalette(saved.classPick or T.PlayerClass()) or (T.BUILTIN[saved.base] and T.BasePalette(saved.base)) or {}
+    local sb = (saved.base == "custom") and CleanUnder(saved.under) or saved.base
+    local under = (sb == "class") and T.ClassPalette(saved.classPick or T.PlayerClass()) or (T.BUILTIN[sb] and T.BasePalette(sb)) or {}
     for k, v in pairs(under) do pal[k] = v end
     for k, v in pairs(saved.tokens or {}) do if T.TOKEN[k] and type(v) == "table" then pal[k] = Copy4(v) end end
     return pal
@@ -310,9 +323,26 @@ function T.Changed()
     if ns.MarkDirty then ns.MarkDirty() end
 end
 
+-- Switch to Custom: the current look stays exactly as it is (the old base becomes "Start from", color changes are kept).
+local function ToCustom(th)
+    if th.base == "custom" then return end
+    th.under = T.IsBase(th.base) and th.base or "default"
+    th.base = "custom"
+end
+function T.MakeCustom() local th = DB(); if not th then return end; ToCustom(th); T.Changed() end
+function T.SetUnder(u)
+    local th = DB(); if not th then return end
+    th.under = CleanUnder(u)
+    th.base = "custom"
+    if th.under ~= "class" then th.classPick = nil end
+    T.Changed()
+end
+function T.ClearCustom() local th = DB(); if th then th.tokens, th.classes = {}, {}; T.Changed() end end
 function T.SetBase(base, classPick)
+    if base == "custom" then return T.MakeCustom() end
     local th = DB(); if not th then return end
     th.base = base
+    th.under = nil
     th.classPick = classPick
     th.tokens = {}   -- a new base starts clean; individual colors are re-picked on top of it
     th.classes = {}
@@ -320,12 +350,14 @@ function T.SetBase(base, classPick)
 end
 function T.SetToken(key, c)
     local th = DB(); if not (th and T.TOKEN[key]) then return end
+    ToCustom(th)
     th.tokens[key] = { Clamp01(c[1]), Clamp01(c[2]), Clamp01(c[3]), Clamp01(c[4] == nil and 1 or c[4]) }
     T.Changed()
 end
 function T.ResetToken(key) local th = DB(); if th then th.tokens[key] = nil; T.Changed() end end
 function T.SetClassColor(class, prop, c)
     local th = DB(); if not (th and T.CLASS[class] and T.CLASS[class][3][prop]) then return end
+    ToCustom(th)
     th.classes[class] = th.classes[class] or {}
     th.classes[class][prop] = { Clamp01(c[1]), Clamp01(c[2]), Clamp01(c[3]), Clamp01(c[4] == nil and 1 or c[4]) }
     T.Changed()
@@ -335,7 +367,7 @@ function T.SetFont(key) local th = DB(); if th then th.font = key or "none"; T.C
 function T.SetSize(sz) local th = DB(); if th and T.SIZES[sz] then th.size = sz; T.Changed() end end
 function T.ResetAll()
     local th = DB(); if not th then return end
-    th.base, th.classPick, th.tokens, th.classes, th.font, th.size = "class", nil, {}, {}, "none", "M"
+    th.base, th.under, th.classPick, th.tokens, th.classes, th.font, th.size = "class", nil, nil, {}, {}, "none", "M"
     T.Changed()
 end
 
@@ -364,7 +396,7 @@ local function Snapshot()
     end
     local toks = {}
     for k, c in pairs(th.tokens) do if T.TOKEN[k] then toks[k] = Copy4(c) end end
-    return { base = T.IsBase(th.base) and th.base or "default", classPick = th.classPick,
+    return { base = T.IsBase(th.base) and th.base or "default", under = (th.base == "custom") and CleanUnder(th.under) or nil, classPick = th.classPick,
         tokens = toks, classes = classes, font = th.font, size = th.size }
 end
 
@@ -387,6 +419,7 @@ function T.Load(name)
     local th = DB()
     if not (s and th) then return false end
     th.base, th.classPick = s.base or "default", s.classPick
+    th.under = (th.base == "custom") and CleanUnder(s.under) or nil
     th.tokens, th.classes = CleanColors(s.tokens, function(k) return T.TOKEN[k] ~= nil end), {}
     for cls, props in pairs(s.classes or {}) do
         if T.CLASS[cls] then th.classes[cls] = CleanColors(props, function(p) return T.CLASS[cls][3][p] ~= nil end) end
@@ -424,6 +457,7 @@ function T.Decode(str)
     local data = ns.Json_Decode and ns.Json_Decode(json)
     if type(data) ~= "table" then return nil, "The theme string is damaged (not readable)." end
     local clean = { base = T.IsBase(data.base) and data.base or "default", tokens = CleanColors(data.tokens, function(k) return T.TOKEN[k] ~= nil end), classes = {} }
+    if clean.base == "custom" then clean.under = CleanUnder(data.under) end
     if type(data.classPick) == "string" and RAID_CLASS_COLORS and RAID_CLASS_COLORS[data.classPick] then clean.classPick = data.classPick end
     if type(data.classes) == "table" then
         for cls, props in pairs(data.classes) do
@@ -442,7 +476,7 @@ function T.Import(str, saveAs)
     local data, err = T.Decode(str)
     if not data then return false, err end
     local th = DB(); if not th then return false, "Not ready yet." end
-    th.base, th.classPick, th.tokens, th.classes, th.font, th.size = data.base, data.classPick, data.tokens, data.classes, data.font, data.size
+    th.base, th.under, th.classPick, th.tokens, th.classes, th.font, th.size = data.base, data.under, data.classPick, data.tokens, data.classes, data.font, data.size
     if saveAs and saveAs ~= "" then
         local ok, e2 = T.Save(saveAs)
         if not ok then T.Changed(); return false, e2 end
@@ -476,9 +510,9 @@ function T.BuildArgs(refresh)
 
     args.baseHdr = { type = "header", order = nx(), name = "Base theme" }
     args.base = { type = "select", order = nx(), width = "double", name = "Theme",
-        desc = "XUI default (purple), Class colors (follows your character's class), Light mode, a color blind safe palette, or a theme you saved or imported. To make your own: pick the closest one, change colors in the Palette below, then name and Save it at the bottom.",
+        desc = "XUI default (purple), Class colors (follows your character's class), Light mode, a color blind safe palette, a theme you saved or imported, or Custom: your own theme, with the addon background and every color yours to set. Changing any color below switches you to Custom automatically.",
         values = function()
-            local v = { default = "XUI default (purple)", class = "Class colors" }
+            local v = { default = "XUI default (purple)", class = "Class colors", custom = "Custom (make your own)" }
             for _, k in ipairs(T.BUILTIN_ORDER) do v[k] = T.BUILTIN[k].name end
             for _, n in ipairs(T.SavedNames()) do v["saved:" .. n] = "Saved: " .. n end
             return v
@@ -486,6 +520,7 @@ function T.BuildArgs(refresh)
         sorting = function()
             local s = { "default", "class" }
             for _, k in ipairs(T.BUILTIN_ORDER) do s[#s + 1] = k end
+            s[#s + 1] = "custom"
             for _, n in ipairs(T.SavedNames()) do s[#s + 1] = "saved:" .. n end
             return s
         end,
@@ -500,7 +535,7 @@ function T.BuildArgs(refresh)
         end }
     args.classPick = { type = "select", order = nx(), width = "double", name = "Class color source",
         desc = "Which class color drives the theme. Automatic uses the character you are playing.",
-        hidden = function() local th = DB(); return not (th and th.base == "class") end,
+        hidden = function() return T.EffBase() ~= "class" end,
         values = function()
             local v = { auto = "Automatic (current character)" }
             for _, f in ipairs({ "DEATHKNIGHT", "DEMONHUNTER", "DRUID", "EVOKER", "HUNTER", "MAGE", "MONK", "PALADIN", "PRIEST", "ROGUE", "SHAMAN", "WARLOCK", "WARRIOR" }) do
@@ -516,6 +551,48 @@ function T.BuildArgs(refresh)
             th.classPick = (v ~= "auto") and v or nil
             T.Resolve(); T.Changed(); refresh()
         end }
+
+    -- Custom: shown only while Custom is the selected theme. The addon background (window, panes, title bar, borders) and the window
+    -- opacity live here; the Palette below keeps the rest of the colors.
+    local function notCustom() local th = DB(); return not (th and th.base == "custom") end
+    local cust = { type = "group", order = nx(), name = "Custom theme", inline = true, hidden = notCustom, args = {} }
+    local co = 0
+    local function cx() co = co + 1; return co end
+    cust.args.info = { type = "description", order = cx(), width = "full", fontSize = "medium",
+        name = "This is your own theme. Set the addon background and window below, then pick any other color in the Palette. Name and Save it at the bottom to keep it, or Export it to share." }
+    cust.args.under = { type = "select", order = cx(), width = "double", name = "Start from",
+        desc = "The theme your colors sit on top of. Colors you have changed are kept when you pick a different one; 'Clear my colors' removes them.",
+        values = function()
+            local v = { default = "XUI default (purple)", class = "Class colors" }
+            for _, k in ipairs(T.BUILTIN_ORDER) do v[k] = T.BUILTIN[k].name end
+            return v
+        end,
+        sorting = function() local s = { "default", "class" }; for _, k in ipairs(T.BUILTIN_ORDER) do s[#s + 1] = k end; return s end,
+        get = function() return T.Under() end,
+        set = function(_, v) T.SetUnder(v); refresh() end }
+    cust.args.bgHdr = { type = "header", order = cx(), name = "Addon background" }
+    local function surf(key, label, hint, alpha)
+        cust.args["bg_" .. key] = { type = "color", order = cx(), width = "normal", name = label, desc = hint, hasAlpha = alpha and true or false,
+            get = function() local c = T.cur[key]; return c[1], c[2], c[3], c[4] end,
+            set = function(_, r, g, b, a) T.SetToken(key, { r, g, b, alpha and a or 1 }); refresh() end }
+    end
+    surf("windowBg", "Addon background", "Background color of the XayaUI window. How see-through it is comes from Window opacity below.", false)
+    surf("paneBg", "Panel background", "Sidebar, option panes, and group boxes.", true)
+    surf("titleBar", "Title bar", "The strip behind the window title.", false)
+    surf("border", "Borders", "Window and pane outlines.", true)
+    cust.args.opacity = { type = "range", order = cx(), width = "double", name = "Window opacity", min = 0.1, max = 1, step = 0.01, isPercent = true,
+        desc = "How solid the window background is. Same setting as /xuiskin alpha. Takes effect when the window is next redrawn or reopened.",
+        get = function() local u = CueRulesDB and CueRulesDB.ui; return tonumber(u and u.skinAlpha) or 0.62 end,
+        set = function(_, v)
+            if not CueRulesDB then return end
+            CueRulesDB.ui = CueRulesDB.ui or {}
+            CueRulesDB.ui.skinAlpha = math.max(0.1, math.min(1, v))
+            T.Changed(); refresh()
+        end }
+    cust.args.clear = { type = "execute", order = cx(), width = "normal", name = "Clear my colors",
+        desc = "Removes every color you changed and stays in Custom, starting again from the 'Start from' theme.",
+        func = function() T.ClearCustom(); say("Cleared your colors.") end }
+    args.custom = cust
 
     args.fontHdr = { type = "header", order = nx(), name = "Font and size" }
     args.font = { type = "select", order = nx(), width = "double", name = "Font",
@@ -537,11 +614,17 @@ function T.BuildArgs(refresh)
         if not T.PARKED[key] then
         if grp ~= lastGroup then
             lastGroup = grp
-            args["grp_" .. grp] = { type = "description", order = nx(), width = "full", fontSize = "medium", name = function() local c = T.Col("xui-label", "text", { 1, 0.82, 0, 1 }); return ("|cff%02x%02x%02x"):format(floor(c[1] * 255 + 0.5), floor(c[2] * 255 + 0.5), floor(c[3] * 255 + 0.5)) .. grp .. "|r" end }
+            args["grp_" .. grp] = { type = "description", order = nx(), width = "full", fontSize = "medium", hidden = function() local th = DB(); return grp == "Surfaces" and th and th.base == "custom" or false end, name = function() local c = T.Col("xui-label", "text", { 1, 0.82, 0, 1 }); return ("|cff%02x%02x%02x"):format(floor(c[1] * 255 + 0.5), floor(c[2] * 255 + 0.5), floor(c[3] * 255 + 0.5)) .. grp .. "|r" end }
         end
         args["tok_" .. key] = { type = "color", order = nx(), width = "normal", name = label, desc = hint, hasAlpha = true,
+            hidden = function() local th = DB(); return grp == "Surfaces" and th and th.base == "custom" or false end,
             get = function() local c = T.cur[key]; return c[1], c[2], c[3], c[4] end,
-            set = function(_, r, g, b, a) T.SetToken(key, { r, g, b, a }); refresh() end }
+            set = function(_, r, g, b, a)
+                local th = DB(); local was = th and th.base ~= "custom"
+                T.SetToken(key, { r, g, b, a })
+                if was then msg = "Switched to Custom: your colors are kept on top of the previous theme." end
+                refresh()
+            end }
         end
     end
     args.resetPal = { type = "execute", order = nx(), width = "full", name = "Reset everything",
