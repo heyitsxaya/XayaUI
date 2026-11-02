@@ -6,7 +6,7 @@
 --   * GameMenuFrame stays the real menu: it builds its entries, owns ESC, and runs every entry's action. We only fade it out (frame alpha).
 --   * Our own frame (child of UIParent, never pooled) is drawn over it: one row per ACTIVE Blizzard entry, in Blizzard's order, with the
 --     entry's own text and enabled state. Clicking a row calls that entry's :Click(), so the Blizzard action runs exactly as before.
---   * A row is added for XayaUI (after Macros by default). All sizes come from the settings (Settings > Game Menu), not from the siblings.
+--   * A row is added for XayaUI (after Macros by default). All sizes come from the settings (Settings > UI Options > Display), not from the siblings.
 -- Safety: default OFF. Any error while building turns the skin off for the session and gives Blizzard's menu back (alpha 1).
 -- Group gaps (Options / Shop | addons | ... | Log Out / Exit | Return) are read from where Blizzard laid its entries out.
 -- UNTESTED in game: the first check is /xui gamemenu (it lists what the menu exposes).
@@ -295,7 +295,7 @@ function ns.GameMenuSkin_Diagnostics()
     end
 end
 
--- Settings > Game Menu ----------------------------------------------------------------------------------------------------------
+-- Settings > UI Options > Display (Game Menu look) ----------------------------------------------------------------------------------------------------------
 function ns.GameMenuSkin_Options(Notify)
     local function re() diag.failed = false; ns.GameMenuSkin_Refresh(); if Notify then Notify() end end
     local function g(k) return function() return Cfg()[k] end end

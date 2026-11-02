@@ -3204,7 +3204,7 @@ function ns.OpenPage(key)
     ns.pageOpen = key; ns.infoOpen = false
     Notify()
     local skinned = ns.SkinRows and ns.SkinRows()
-    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, (key == "settings" and skinned) and "set_ui" or key)
+    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, (key == "settings" and skinned) and "set" or key)
 end
 ns.UI.Creator = function() ns.OpenPage("creator") end
 ns.UI.Drafts = function() ns.OpenPage("drafts") end
@@ -4137,27 +4137,39 @@ local function BuildOptions()
     local infoGroup = ns.BuildAddonInfo and ns.BuildAddonInfo() or nil
     if infoGroup then infoGroup.order = 8; infoGroup.hidden = function() return not ns.infoOpen end end
     -- Settings (skin on): its pages REPLACE the Rules / Smart Categories tabs while the toolbar's Settings button is on:
-    --   [UI Options (Display | Theme)]  [Debugging]
+    --   Settings page = left sidebar: UI Options (Display | Theme tabs), Debugging
     local function SettingsOn() return (ns.SkinRows and ns.SkinRows()) and ns.pageOpen == "settings" end
     local settings = BuildAddonSettings()
     local sa = settings.args
     local dispArgs = {}
     for k, v in pairs(sa.ui.args) do dispArgs[k] = v end
     dispArgs.intro = sa.intro
-    local setUi = { type = "group", name = "UI Options", order = 1, childGroups = "tab", hidden = function() return not SettingsOn() end, args = {
+    local setUi = { type = "group", name = "UI Options", order = 1, childGroups = "tab", args = {
         display = { type = "group", name = "Display", order = 1, args = dispArgs },
         theme = { type = "group", name = "Theme", order = 2, args = sa.theme.args },
     } }
-    local setDbg = { type = "group", name = "Debugging", order = 2, hidden = function() return not SettingsOn() end, args = sa.debug.args }
+    local setDbg = { type = "group", name = "Debugging", order = 2, args = sa.debug.args }
+    -- one top-level page with a left sidebar like the rest of the addon (UI Options, Debugging), instead of two top tabs (Xaya, 2026-11-02)
+    local setPage = { type = "group", name = "Settings", order = 7, childGroups = "tree", hidden = function() return not SettingsOn() end,
+        args = { ui = setUi, debug = setDbg } }
     settings.hidden = function() return ns.SkinRows and ns.SkinRows() and true or false end   -- skin off: the old single Settings tab
     track.hidden = function() return SettingsOn() and true or false end
     if qol then qol.hidden = function() return SettingsOn() and true or false end end   -- Settings open: QoL UI Updates tab goes away (Xaya, 2026-11-01)
-    local setGm = ns.GameMenuSkin_Options and ns.GameMenuSkin_Options(Notify) or nil   -- Settings > Game Menu (own ESC-menu skin, 0.5.45)
-    if setGm then setGm.order = 1.7; setGm.hidden = function() return not SettingsOn() end end
+    -- Game Menu look settings live on the Display page (UI Options > Display), under the ESC-menu button toggles. A separate "Game Menu"
+    -- top tab closed the Settings pages when clicked (0.5.67 fix, Xaya). The group's children are copied in flat, not nested, so each
+    -- keeps its own inline box.
+    local setGm = ns.GameMenuSkin_Options and ns.GameMenuSkin_Options(Notify) or nil
+    if setGm then
+        dispArgs.gm_header = { type = "header", name = "Game Menu look (ESC menu)", order = 26, hidden = function() return not SettingsOn() end }
+        for k, v in pairs(setGm.args) do
+            v.order = 26.001 + (tonumber(v.order) or 0) / 1000
+            dispArgs["gm_" .. k] = v
+        end
+    end
     local oldGm = ns.GameMenuSkin_Options and ns.GameMenuSkin_Options(Notify) or nil   -- same group inside the old single Settings tab (skin rows off)
     if oldGm then oldGm.order = 1.7; settings.args.gamemenu = oldGm end
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, recyclebin = binTab, qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = settings, set_ui = setUi, set_gm = setGm, set_debug = setDbg } }
+        args = { cooldowns = track, recyclebin = binTab, qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = settings, set = setPage } }
     pcall(ns.SmartOpen)
     pcall(ns.ApplyTreeFilter, out)
     if ns.SkinRows and ns.SkinRows() then pcall(ns.InfoPass, out) end   -- the info icons are part of the skin
@@ -6767,7 +6779,7 @@ local function EnsureChrome(of)
     if ns.pageOpen then
         local st = AceConfigDialog.GetStatusTable and AceConfigDialog:GetStatusTable(APP)
         local tab = st and st.groups and st.groups.selected
-        local isSettingsTab = ns.pageOpen == "settings" and (tab == "set_ui" or tab == "set_debug")
+        local isSettingsTab = ns.pageOpen == "settings" and tab == "set"
         if tab and tab ~= ns.pageOpen and not isSettingsTab then ns.pageOpen = nil; Notify() end
     end
 end

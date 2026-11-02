@@ -7,7 +7,7 @@
 ## Contents
 
 - **Part 1: Rules**: how Load options, Triggers, Cues, Conditions, and Actions work (sections 1-11)
-- **Part 2: Features**: Class/Spec Rule Creator, Rule Drafts, Custom Data Panels and Bars, Notepad, Addon Theming, Minimap Button (section 12)
+- **Part 2: Features**: Class/Spec Rule Creator, Rule Drafts, Custom Data Panels and Bars, Notepad, Addon Theming, Minimap Button, Tooltips, Game Menu look (section 12)
 - **Maintaining this document** (section 13)
 
 ---
@@ -440,6 +440,12 @@ A button on the minimap for quick access. **Left-click** opens a list of buttons
 Adds information to game tooltips. **ID lines** show the ID of spells, items, auras, and NPCs (on by default) and, if you turn them on, quests, currencies, achievements, mounts, toys, and battle pets, plus an optional icon ID line. **Item level** shows the item level of the player under your mouse: yours from what you have equipped, other players' from an Inspect that runs by itself (one request at a time, never in combat, cached for a couple of minutes). **Enemy forces** shows the Mythic+ count and percent on hostile units, either only inside dungeons and raids or only during an active Mythic+ run. Anything the game does not let addons read is left out, never guessed. Crowd control, true sight, and cast information for enemies are not included. `/xuitt probe` (point at a unit first) prints what the game lets addons read for that unit.
 
 **Where:** QoL UI Updates > Tooltips.
+
+### 12.8 Game Menu look
+
+XayaUI can draw its own panel over the Game Menu (the ESC menu) and click Blizzard's entries for you; Blizzard's own buttons are not edited, so other UI addons that restyle them are not touched. If something goes wrong the look turns itself off and Blizzard's menu comes back. The settings cover button size and spacing, panel padding, scale, panel and button opacity, border, hover color, the title, the font, size, outline and color of the text, the XayaUI button (its position in the menu and its style), and hiding Shop, What's New, or Support from this look only. **Reset Game Menu settings** restores the defaults. `/xui gamemenu` prints what the menu exposes.
+
+**Where:** Settings > UI Options > Display, below the "Condensed rule list" option. The Settings page has a left sidebar with UI Options (Display and Theme tabs) and Debugging.
 
 ## 13. Maintaining this document
 
