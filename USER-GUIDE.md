@@ -1,10 +1,18 @@
-# XayaUI Rules: User's Guide
+# XayaUI User Guide
 
-How a rule decides what to do, and what it does. Covers Load options, Triggers, Cues, Conditions, and Actions.
+> **Living document.** This guide describes how XayaUI works *now*. It is not a changelog: when a feature changes, rewrite the affected section so it is correct, and do not add "new" or "changed" notes, dates, or version history (the release notes and git history hold that). Maintenance rules are at the end.
 
-*Written 2026-11-02 against XayaUI 0.5.40 (Interface 120100), from the addon's source files. Nothing here was run in game; the "Confidence" notes at the end say what is code-verified, what is inferred, and what I could not confirm.*
+**Applies to XayaUI:** 0.5.43 *(update this line when a section is re-checked against a newer version)*
+
+## Contents
+
+- **Part 1: Rules**: how Load options, Triggers, Cues, Conditions, and Actions work (sections 1-11)
+- **Part 2: Features**: Class/Spec Rule Creator, Rule Drafts, Custom Data Panels and Bars, Notepad, Addon Theming (section 12)
+- **Maintaining this document** (section 13)
 
 ---
+
+# Part 1: Rules
 
 ## 1. The big picture
 
@@ -196,7 +204,7 @@ A rule needs at least one trigger, or both cooldown and buff states set to "none
 
 ### 4.4 Target Debuff in combat (special case)
 
-Enemy aura data is hidden in combat. The trigger first tries the aura list. If that is blocked and the unit is your **target**, it falls back to the Cooldown Manager buff icon for the spell: an active icon means the debuff is up; an inactive icon means it is absent (switchable off with the "In combat: an INACTIVE icon means absent" option). With no icon, the answer is unknown. Use the **debuff's** ID, not the ability's. Focus never uses the icon fallback. Per the project's own notes this rests on one sample per state and may lag briefly after a target change.
+Enemy aura data is hidden in combat. The trigger first tries the aura list. If that is blocked and the unit is your **target**, it falls back to the Cooldown Manager buff icon for the spell: an active icon means the debuff is up; an inactive icon means it is absent (switchable off with the "In combat: an INACTIVE icon means absent" option). With no icon, the answer is unknown. Use the **debuff's** ID, not the ability's. Focus never uses the icon fallback. It may lag briefly after a target change.
 
 ---
 
@@ -211,7 +219,7 @@ A cue is a named thing that happens. Create it with **Add a cue**, then choose *
 | **Text** | On-screen text |
 | **Texture** | An image with color, animation, glow options |
 | **Icon** | A spell icon |
-| **Custom** | Present in the menu. **I found no code that makes a Custom cue do anything yet** (see Confidence notes). |
+| **Custom** | Listed in the menu, but it does not yet play, show, or run anything (see Known limitations). |
 
 - Cues are numbered: "Cue 1: Sound 1." Give them your own names and descriptions (name up to 60 characters, description up to 300).
 - Up to **40 cues per rule**.
@@ -281,7 +289,7 @@ Under each listed text, texture, or icon cue you can tick **Modify this cue for 
 
 ### 6.6 Once a rule has conditions
 
-The rule's own Display and Sound tabs stop firing by themselves: its conditions' cues carry the sound and display. (Code: a rule that has conditions reports no sound or display of its own.) Older rules were converted once into cues and conditions by a one-time migration (`CueRulesDB.cuesVer = 2`), with an in-game backup of every rule saved first in `CueRulesDB.backupPreCues`.
+The rule's own Display and Sound tabs stop firing by themselves: its conditions' cues carry the sound and display. (Code: a rule that has conditions reports no sound or display of its own.)
 
 ---
 
@@ -308,7 +316,7 @@ Each moment can:
 
 **Actions follow the rule's own trigger side and load, not its conditions.** A condition being true or false does not start or stop an action. If you want something to depend on a condition, make it a cue.
 
-Chat note: in Midnight, addons may not send chat during Mythic+ runs, PvP matches, or boss encounters (this comes from alpha-era notes and was not re-checked on the live client). Print, red text, and text-to-speech only ever reach you.
+Chat note: in Midnight, addons may not send chat during Mythic+ runs, PvP matches, or boss encounters (based on alpha-era documentation; the live client may differ). Print, red text, and text-to-speech only ever reach you.
 
 ---
 
@@ -320,7 +328,7 @@ Chat note: in Midnight, addons may not send chat during Mythic+ runs, PvP matche
 
 **C. Only alert at low stacks.** Trigger: Buff Y present. Condition: IF Buff / Aura: stacks `<=` 2 THEN Text cue "Refresh".
 
-**D. Debuff-gated cooldown (the Sigil of Spite pattern from the project notes).** Triggers: Cooldown (Sigil of Spite), Target Debuff (debuff ID 204598, "Debuff is NOT on the unit"), and **Spell Usable 204596 set to "Usable AND off cooldown"**. Using plain "Is usable" fires early because usable ignores cooldown. *This example reflects the project's earlier handoff notes; confirm against your current profile.*
+**D. Gate a cooldown on a target debuff.** Triggers: Cooldown (the ability to alert on), Target Debuff (the *debuff's* ID, state "Debuff is NOT on the unit"), and Spell Usable for any ability whose readiness matters, set to "Usable AND off cooldown (ready to press)." Plain "Is usable" ignores cooldown and can fire early. Cue: Sound 1, listed by one condition: IF Cooldown = TRUE AND Debuff = TRUE.
 
 **E. Announce but only once.** Actions > During: Send a chat message, type Print, text `%n is up`. Because actions do not repeat, this prints once per start.
 
@@ -339,7 +347,7 @@ Chat note: in Midnight, addons may not send chat during Mythic+ runs, PvP matche
 | Glow does nothing | LibCustomGlow is not loaded | Enable ElvUI, BigWigs, or another addon that ships it |
 | Rule does not load | Group Never, group spec/role/instance gate, or talents | Load tab banner says "Overridden by group..." |
 
-Slash commands (from the project notes and code): `/xui` opens the options, `/xui status` prints each rule's reasons (including per-trigger lines), `/xui debuffs [target|focus] [spellID]`, `/xui probe <spellID>`, `/xui loc`.
+Slash commands: `/xui` opens the options, `/xui status` prints each rule's reasons (including per-trigger lines), `/xui debuffs [target|focus] [spellID]`, `/xui probe <spellID>`, `/xui loc`.
 
 ---
 
@@ -351,15 +359,64 @@ Slash commands (from the project notes and code): `/xui` opens the options, `/xu
 
 ---
 
-## 11. Confidence notes
+## 11. Known limitations
 
-| Area | Status |
-|---|---|
-| Load logic, trigger combination, condition evaluation, cue firing, action timing | **Verified by reading the source** (Conditions.lua, Triggers.lua, Outcomes.lua, Cues.lua, Actions.lua, Engine.lua). |
-| Anything in game | **Not verified.** Project notes mark the cue/condition redesign and Actions tab "untested in game." |
-| **Custom cue kind** | **I cannot find code that makes it do anything.** It is in the menu, but it neither plays a sound nor shows a display in the engine. The design doc lists custom cues as a later phase. |
-| Rule with cues but *no* conditions | Cues follow the trigger. Whether the rule's own Display/Sound tab also fires at the same time (double output) is **inferred, not confirmed**; the engine only silences a rule's own output when conditions exist. |
-| Hidden "dkRunes" trigger removal from menu | Inferred from the `hideFromMenu` flag. |
-| Chat restrictions in M+/PvP/encounters | From alpha-era notes; **not re-checked on live client.** |
-| Spell Usable "early fire" explanation | **Inferred** from a rule export, not proven in game. |
-| Tab label comment in Options.lua | A code comment still says "Rule \| Trigger \| Conditions \| Actions \| Load" and omits Cues; the live tab list includes Cues. Cosmetic comment only. |
+- **Custom cues** can be created but do not yet play, show, or run anything.
+- Enemy aura reads, combat log events, health, primary resources, and other units' casts are unavailable to addons in Midnight, so no trigger exists for them.
+- Target Debuff in combat relies on the spell being tracked in the Cooldown Manager buff viewer.
+- Chat actions to other players are restricted by the game in several content types (see section 7).
+- A glow action needs the LibCustomGlow library from another addon.
+
+---
+
+# Part 2: Features
+
+## 12. Features
+
+### 12.1 Class/Spec Rule Creator
+
+The Class/Spec Rule Creator builds a first batch of rules for you. Pick your spec (the buttons come from the game, so every class and spec works), or run it for all specs of your class at once, and XayaUI makes one skeleton rule per tracked cooldown or aura. The rules are sorted into Defensive, Offensive, and Utility folders inside one parent folder named "[Class] [Spec] - autorule population," with anything unclassified landing in Unsorted. You can include talents you have not picked; those rules simply stay unloaded until the talent is known. A separate scan reads every class, spec, and hero talent tree straight from the game, so the data follows each patch rather than a fixed list.
+
+The rules it creates are skeletons: they watch for the cooldown or aura but show and play nothing until you decide what each one should do.
+
+**Where:** Rules > Class/Spec Rule Creator (the far-right sub-tab). Press a spec button, or **Auto-populate for my class (all specs)**, then find the new folder under Smart Categories. **Scan all talents now** (or `/xui talents`) refreshes the talent data.
+
+### 12.2 Rule Drafts
+
+Rules apply the moment you change them, so you can test an edit in game right away. XayaUI keeps a saved version of each rule (with its cues and conditions) from when you opened the options window or last pressed **Save changes**. When a rule differs from its saved version, you get **Save changes** and **Discard changes**, plus **Save as a copy** (keep the edit as a new rule and send this one back) and **Add to drafts** (park the edit and restore the saved version). If you close the window or log out with unsaved edits, those edits are kept on the **Drafts** page instead of vanishing, and the rule returns to its saved state. From Drafts you can **Put back in editor** and keep working, or delete a draft for good. The Drafts page holds up to 30 drafts.
+
+On/off state, name, group, collapse state, sidebar icon, and edit lock are not counted as changes, so flipping a rule on or off never creates a draft.
+
+**Where:** Rules > Drafts. The Save changes, Discard changes, Save as a copy, and Add to drafts buttons appear at the bottom of a rule's editor whenever it differs from its saved version.
+
+### 12.3 Custom Data Panels and Bars
+
+Five on-screen info strips, each holding 1 to 20 data slots: a **Bottom Left Panel** and **Bottom Right Panel** pinned to the screen corners, a full-width **Top Data Bar**, and two free-form strips, **Custom Panel** and **Custom Bar**, that you can drag anywhere. Every slot can show any data type: time, frame rate, latency, gold, durability, free bag slots, or your own custom text, plus a set of character stats (crit, haste, mastery, versatility, leech, avoidance, dodge, parry, block, item level, armor, primary stats, stamina, max health, absorb). Stats keep their last readable value when the game marks them secret.
+
+Each slot is a **block** with its own gaps, alignment, text scale, background, and text color. Rows can size blocks automatically or split them evenly, and a block can fill the remaining space. Each strip also has its own width, height, growth direction (horizontal or vertical), backdrop and border, colors, frame layer, tooltip placement, a hide-in-combat option, and a visibility macro. A shared General page sets the font, outline, and size, and can block clicks and mouseover during combat. The chat info bars use the same block engine and data-type list.
+
+**Where:** QoL UI Updates > Custom Data Panels and Bars, or `/xui data`; right-click any strip to open its page. Tabs: General, Bottom Left Panel, Bottom Right Panel, Top Data Bar, Custom Panel, Custom Bar. On the two custom strips, **Unlock to drag** (fixed width only) lets you place them; a blue border shows while unlocked.
+
+### 12.4 Notepad
+
+Notepad is a movable, resizable box for typed reminders. It holds any number of notes, with a toolbar to create, duplicate, delete, and flip between them. Text saves as you type, and earlier versions of every note are kept automatically: a new version after a pause in typing, and always just before a big chunk of text is removed. Deleted notes go to a trash, and the **Hist** button opens a Restore list of earlier versions and deleted notes (up to 20 versions per note, 30 in the trash, 8,000 characters per note). The toolbar can sit at the top, bottom, left, or right, and can appear only when your mouse is over the box. Choose the font, size, backdrop opacity, and frame layer; lock it in place; hide it in combat; and have it release the keyboard when combat starts so it never steals your keybinds. Open it with `/xui notepad`, the close button on the box, or the QoL UI Updates > Notepad page.
+
+**Where:** QoL UI Updates > Notepad, or `/xui notepad`. Drag the title bar to move and the bottom-right corner to resize; **Lock** stops both.
+
+### 12.5 Addon Theming and Color Customization
+
+XayaUI's look is driven by a style sheet in two layers. **Tokens** are the palette: accent, labels, body and muted text, window, panes, borders, title bar, buttons, primary buttons, tabs, selected tabs, tree bars, and danger marks. **Element classes** (window, pane, tab, button, heading, and more) each point at a token, and each class can be overridden on its own, so you can recolor "all buttons" or "all headings" without touching anything else. Start from the default purple, a **class** theme that follows your character's class color (or one you pick by hand), or a built-in preset, including colorblind-friendly palettes for red-weak, green-weak, and blue-yellow color vision, plus a light theme. Switch to **Custom** to layer your own changes on any base, and save themes by name to reuse them. Choose a font and a size (small, medium, or large). A theme is plain data, so importing and exporting a theme never runs code.
+
+**Where:** Settings > Theme in the options window. `/xuiskin` turns the window skin off (then `/reload`); `/xuiskin alpha <0.1-1>` sets window opacity.
+
+---
+
+## 13. Maintaining this document
+
+1. **Describe behavior, not history.** Write what a feature does today. No "added in", "now supports", "previously", dates, or version notes in the body.
+2. **Change a feature, edit its section in the same commit.** If a button, option, state, limit, or default changes, rewrite the sentence that mentions it. If a feature is removed, delete its section.
+3. **New feature:** add a section under Part 2 (or a subsection of Part 1 if it extends triggers, cues, conditions, actions, or load) with: what it does, where to find it, and its limits.
+4. **State only what the code does.** If you cannot confirm a behavior in the source or in game, leave it out or list it under Known limitations.
+5. **Keep the tables complete.** The trigger table (4.2), load toggles (3.2), comparison and check lists (6.1), and action list (7) must match the options in the game.
+6. **Update the "Applies to" line** when you re-check the guide against a new version.
+7. Use American English spelling and Oxford commas.
