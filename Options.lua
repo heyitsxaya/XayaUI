@@ -4100,8 +4100,8 @@ local function BuildOptions()
         end
     end
     -- QoL Elements (stat boxes, cursor tracker, buff bars) are switched off for now: their files are not in XayaUI.toc, so ns.QoLOn is nil and the tab is skipped.
-    -- Tab "QoL UI Updates": left tree, options in the right pane. ElvUI Chat Reskin is always first (order 1); the older
-    -- QoL Elements entries (stat boxes, cursor tracker, buff bars) follow it, and only exist while their files are loaded.
+    -- Tab "QoL UI Updates": left tree, options in the right pane. The entries are sorted alphabetically (see below); the older
+    -- QoL Elements entries (stat boxes, cursor tracker, buff bars) come last, and only exist while their files are loaded.
     local qolArgs = { chatreskin = ns.BuildChatTab and ns.BuildChatTab(Notify) or nil, cursor = ns.BuildCursorGroup and ns.BuildCursorGroup(Notify) or nil,
         datapanels = ns.BuildDataPanelsTab and ns.BuildDataPanelsTab(Notify) or nil,
         notepad = ns.BuildNotepadTab and ns.BuildNotepadTab(Notify) or nil,
@@ -4111,6 +4111,24 @@ local function BuildOptions()
         qolArgs.allqol = allQol
         qolArgs.allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil
         qolArgs.allbars = allBars
+    end
+    -- The left list is sorted alphabetically by the entry's displayed name (Xaya, 2026-11-02, #274). Names are read once here; an
+    -- entry whose name is a function is called, and one that fails sorts by its key. The older QoL Elements entries stay last.
+    do
+        local list = {}
+        for key, ent in pairs(qolArgs) do
+            local nm = ent.name
+            if type(nm) == "function" then local ok, v = pcall(nm); nm = ok and v or nil end
+            nm = (type(nm) == "string" and nm ~= "") and nm:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") or key
+            local old = (key == "allqol" or key == "allcursor" or key == "allbars") and 1 or 0
+            list[#list + 1] = { key = key, name = nm:lower(), old = old }
+        end
+        table.sort(list, function(a, b)
+            if a.old ~= b.old then return a.old < b.old end
+            if a.name ~= b.name then return a.name < b.name end
+            return a.key < b.key
+        end)
+        for i, e in ipairs(list) do qolArgs[e.key].order = i end
     end
     local qol = next(qolArgs) and { type = "group", name = "QoL UI Updates", order = 5, childGroups = "tree", args = qolArgs } or nil
 
