@@ -552,7 +552,7 @@ Add("resource", {
 -- be added once; this row is the same check (ns.BuffPresent: aura API, then the Cooldown Manager icon) so a rule can watch several
 -- personal buffs at once. Each row is its own trigger number; combine them with the ALL / ANY switch under the trigger list.
 Add("buffAura", {
-    label = "Buff / Aura (yours) - add as many as you need", wa = "Aura (buff on player)", group = "Aura", hideFromMenu = true,   -- superseded: the built-in Buff / Aura trigger now takes extra aura IDs; kept so saved rules keep working
+    label = "Buff / Aura (additional)", wa = "Aura (buff on player)", group = "Aura", hideFromMenu = true,   -- superseded: the built-in Buff / Aura trigger now takes extra aura IDs; kept so saved rules keep working
     note = "True while the buff is on you. Same reading as the rule's built-in Buff / Aura section (aura API; in combat the Cooldown Manager icon when the buff is tracked there). Use the ID of the BUFF. If the game hides the buff in combat and it is not in your Cooldown Manager, the answer is 'unknown' and the rule will not fire.",
     new = { state = "yes" },
     fields = {
@@ -1028,13 +1028,19 @@ function ns.DecorateBuiltinTriggers(rule, args)
             return {
                 up = (pos > 1) and function() ns.MoveTrigger(rule, pos, -1); changed() end or false,
                 down = (pos < #P.seq) and function() ns.MoveTrigger(rule, pos, 1); changed() end or false,
-                copy = (tok == "cd") and function()
+                copy = (tok == "cd" or tok == "buff") and function()
                     local X = rule.extra
                     if #X.list >= 12 then ns.Print("a rule can hold at most 12 additional triggers"); return end
-                    local t = { type = "cooldown", spellID = tonumber(rule.spellID) or 0, state = (rule.cdState and not ns.Ignored(rule.cdState)) and rule.cdState or "ready", maxCharges = tonumber(rule.maxCharges) or 0 }
+                    local t
+                    if tok == "cd" then
+                        t = { type = "cooldown", spellID = tonumber(rule.spellID) or 0, state = (rule.cdState and not ns.Ignored(rule.cdState)) and rule.cdState or "ready", maxCharges = tonumber(rule.maxCharges) or 0 }
+                    else   -- Buff / Aura: the copy is an additional Buff / Aura row holding the first aura ID (extra IDs are not copied)
+                        t = { type = "buffAura", spellID = tonumber(rule.buffID) or 0, state = (rule.buffState == "missing") and "no" or "yes" }
+                        if type(rule.buffAlt) == "table" and #rule.buffAlt > 0 then ns.Print("duplicated the Buff / Aura trigger with its first aura ID; the extra aura IDs were not copied") end
+                    end
                     local sq = ns.TriggerSequence(rule)
                     local at, jx = #sq + 1, 0
-                    for i, tk in ipairs(sq) do if tk == "cd" then at = i + 1 end end
+                    for i, tk in ipairs(sq) do if tk == tok then at = i + 1 end end
                     for i = 1, at - 1 do if sq[i] == "x" then jx = jx + 1 end end
                     table.insert(X.list, jx + 1, t)
                     table.insert(sq, at, "x")

@@ -12,6 +12,31 @@ ns.unlocked = false
 ns.moveUnlocked = {}   -- per-rule "movement unlocked" (session only); set from the lock icon on the sidebar rows
 local function Unl(rule) return (ns.unlocked or ns.moveUnlocked[rule]) and true or false end
 function ns.IsMoveUnlocked(rule) return Unl(rule) end
+-- Group movement (session only): unlocking a GROUP row shows one draggable outline around the whole group instead of unlocking
+-- (and making selectable) every display inside it. ns.groupUnlocked[folderId] = true while that group is unlocked.
+ns.groupUnlocked = {}
+local function InFolder(fid, rootId)   -- is folder fid the folder rootId, or nested somewhere inside it?
+    local id, guard = fid, 0
+    while id and guard < 32 do
+        if id == rootId then return true end
+        local f = ns.FolderById(id)
+        if not f then return false end
+        id, guard = f.parent, guard + 1
+    end
+    return false
+end
+local function GroupUnl(rule)   -- the rule's display is shown (as a sample) because a group around it is unlocked; it is NOT draggable on its own
+    if not rule.folder or not next(ns.groupUnlocked) then return false end
+    local id, guard = rule.folder, 0
+    while id and guard < 32 do
+        if ns.groupUnlocked[id] then return true end
+        local f = ns.FolderById(id)
+        if not f then return false end
+        id, guard = f.parent, guard + 1
+    end
+    return false
+end
+function ns.IsGroupUnlocked(f) return f and ns.groupUnlocked[f.id] and true or false end
 local pairOf, tempUnl = {}, {}   -- session-only paired-aura links (both directions) and the auras a pair unlocked for its partner
 
 -------------------------------------------------------------------------------
@@ -275,6 +300,7 @@ local function Container(f)
     if (f.cLevel or 0) > 0 then c:SetFrameLevel(f.cLevel) end
     c:ClearAllPoints()
     c:SetPoint(f.cPoint or "CENTER", target, f.cRelPoint or f.cPoint or "CENTER", (f.cX or 0) / sc, (f.cY or 0) / sc)
+    c.xuiTarget = target   -- what the group's X / Y is measured from (the group outline drag needs its scale)
     return c
 end
 -- the frame a rule's display hangs from, and its dynamic-group ancestor (if any)
@@ -365,6 +391,129 @@ local function LayoutDynamic(df)
             it.fr:SetPoint("CENTER", container, "CENTER", x, y)
         end
         crossOff = crossOff + cross + sp
+    end
+end
+
+-- The draggable outline for an unlocked group: fitted around the group's shown displays, drags the GROUP (its X / Y), not the displays.
+local groupHandles = {}
+local function GroupBounds(f)
+    local l, b, r, t
+    local us = UIParent:GetEffectiveScale()
+    for rule, fr in pairs(frames) do
+        if fr:IsShown() and InFolder(rule.folder, f.id) then
+            local fl, fb, fw, fh = fr:GetRect()
+            if fl then
+                local s = fr:GetEffectiveScale() / us
+                fl, fb, fw, fh = fl * s, fb * s, fw * s, fh * s
+                l = l and math.min(l, fl) or fl; b = b and math.min(b, fb) or fb
+                r = r and math.max(r, fl + fw) or (fl + fw); t = t and math.max(t, fb + fh) or (fb + fh)
+            end
+        end
+    end
+    return l, b, r, t
+end
+local function GroupHandle(f)
+    local h = groupHandles[f.id]
+    if h then return h end
+    h = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+    h:SetFrameStrata("HIGH"); h:SetFrameLevel(900)
+    h:EnableMouse(true)
+    h:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 2 })
+    h:SetBackdropColor(1, 0.6, 0.1, 0.08); h:SetBackdropBorderColor(1, 0.6, 0.1, 1)
+    h.label = h:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    h.label:SetPoint("BOTTOMLEFT", h, "TOPLEFT", 0, 2)
+    h.fid = f.id
+    local function Done(self)
+        if not self.drag then return end
+        self.drag = nil
+        ns.MarkDirty()
+        if ns.UI and ns.UI.NotifyTwice then ns.UI.NotifyTwice() end
+    end
+    h:SetScript("OnMouseDown", function(self, btn)
+        if btn ~= "LeftButton" then return end
+        local fo = ns.FolderById(self.fid)
+        if not fo then return end
+        local cx, cy = GetCursorPosition()
+        self.drag = { cx = cx, cy = cy, x = fo.cX or 0, y = fo.cY or 0 }
+    end)
+    h:SetScript("OnMouseUp", Done)
+    h:SetScript("OnUpdate", function(self)
+        local fo = ns.FolderById(self.fid)
+        if not fo or not ns.groupUnlocked[self.fid] then self:Hide() return end
+        if self.drag then
+            if not IsMouseButtonDown("LeftButton") then Done(self)
+            else
+                local c = containers[fo.id]
+                local ts = (c and c.xuiTarget and c.xuiTarget.GetEffectiveScale and c.xuiTarget:GetEffectiveScale()) or UIParent:GetEffectiveScale()
+                if not ts or ts <= 0 then ts = 1 end
+                local cx, cy = GetCursorPosition()
+                fo.cX = math.floor(self.drag.x + (cx - self.drag.cx) / ts + 0.5)
+                fo.cY = math.floor(self.drag.y + (cy - self.drag.cy) / ts + 0.5)
+                Container(fo)
+            end
+        end
+        local l, b, r, t = GroupBounds(fo)
+        self:ClearAllPoints()
+        if l then
+            local pad = 4
+            self:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - pad, b - pad)
+            self:SetSize(math.max(24, r - l + 2 * pad), math.max(24, t - b + 2 * pad))
+        else   -- nothing visible inside: a small box at the group's own position
+            local c = Container(fo)
+            local cx, cy = c:GetCenter()
+            local s = c:GetEffectiveScale() / UIParent:GetEffectiveScale()
+            if cx then self:SetPoint("CENTER", UIParent, "BOTTOMLEFT", cx * s, cy * s) else self:SetPoint("CENTER") end
+            self:SetSize(80, 40)
+        end
+    end)
+    groupHandles[f.id] = h
+    return h
+end
+function ns.SetGroupUnlocked(f, on)
+    if not f then return end
+    ns.groupUnlocked[f.id] = on and true or nil
+    local h = GroupHandle(f)
+    if on then h.label:SetText(tostring(f.name) .. "  (drag to move the group)"); h:Show() else h.drag = nil; h:Hide() end
+    for _, r in ipairs(ns.rules or {}) do
+        if r.visual and InFolder(r.folder, f.id) then
+            ns.RefreshVisual(r)
+            ns.SetVisualShown(r, ns.runtime and ns.runtime[r] and ns.runtime[r].visualWanted)
+        end
+    end
+end
+
+-- /xui groups: what each group holds and where its displays really hang, so "the group setting does nothing" can be told apart from
+-- "the display is not attached to the group". Read-only.
+function ns.ProbeGroups()
+    ns.Print("group probe: every group with displays, its settings, and each display's attachment")
+    local lines = 0
+    for _, f in ipairs(ns.folders or {}) do
+        local mine = {}
+        for _, r in ipairs(ns.rules or {}) do
+            if r.folder == f.id and r.visual and r.visual.enabled then mine[#mine + 1] = r end
+        end
+        if #mine > 0 then
+            local c = containers[f.id]
+            ns.Print(("|cffffd100%s|r  type=%s  W/H=%s/%s  scale=%s  alpha=%s  strata=%s  level=%s  rel=%s  X/Y=%s/%s  clip=%s  container=%s"):format(
+                tostring(f.name), f.cType or "static", tostring(f.cW), tostring(f.cH), tostring(f.cScale), tostring(f.cAlpha),
+                tostring(f.cStrata), tostring(f.cLevel), tostring(f.cRel), tostring(f.cX), tostring(f.cY), tostring(f.cClip),
+                c and ("%dx%d scale %.2f"):format(c:GetWidth(), c:GetHeight(), c:GetScale()) or "not created yet"))
+            for _, r in ipairs(mine) do
+                if lines >= 60 then ns.Print("  ... (stopped at 60 lines)") return end
+                lines = lines + 1
+                local fr = frames[r]
+                if fr then
+                    local par = fr:GetParent()
+                    local dyn = DynAncestor(r.folder)
+                    ns.Print(("  %s: attached to group container=%s  effAlpha=%.2f  effScale=%.2f  strata=%s  shown=%s  dynamicLayout=%s%s"):format(
+                        tostring(r.name or "?"), tostring(par == c), fr:GetEffectiveAlpha(), fr:GetEffectiveScale(), fr:GetFrameStrata(),
+                        tostring(fr:IsShown()), dyn and tostring(dyn.name) or "no",
+                        r.parentUid and "  (cue/outcome: follows its parent's group)" or ""))
+                else
+                    ns.Print(("  %s: no frame built yet"):format(tostring(r.name or "?")))
+                end
+            end
+        end
     end
 end
 
@@ -1393,7 +1542,7 @@ function ns.SetVisualShown(rule, shown)
     local fr = GetFrame(rule)
     local pv = ns.IsPreview(rule, "visual")
     if not rule.visual.enabled and not pv then fr:Hide() return end
-    if Unl(rule) or pv or shown then fr:Show() else fr:Hide() end
+    if Unl(rule) or GroupUnl(rule) or pv or shown then fr:Show() else fr:Hide() end
     local dyn = rule.folder and DynAncestor(rule.folder)
     if dyn then LayoutDynamic(dyn) end
 end

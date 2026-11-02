@@ -5438,7 +5438,9 @@ function ns.MakeSideToggle(button, kind)
         b.slash:SetRotation(math.rad(45))
     end
     b:SetScript("OnClick", function(self)
-        if self.kind == "move" then
+        if self.kind == "move" and self.xuiMoveFolder then
+            ns.SetGroupUnlocked(self.xuiMoveFolder, not self.xuiOn)   -- a group row moves the GROUP (one outline), not each display
+        elseif self.kind == "move" then
             ns.SetMoveUnlocked(self.xuiObjs, not self.xuiOn)
         elseif self.xuiFolder then
             local f = self.xuiFolder
@@ -5454,7 +5456,11 @@ function ns.MakeSideToggle(button, kind)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         if self.kind == "move" then
             GameTooltip:SetText(self.xuiOn and "Movement unlocked" or "Movement locked")
-            GameTooltip:AddLine(self.xuiOn and "Drag the displays on screen. Click to lock them again." or "Click to unlock this row's on-screen displays so you can drag them.", 1, 1, 1, true)
+            if self.xuiMoveFolder then
+                GameTooltip:AddLine(self.xuiOn and "Drag the orange outline on screen to move the whole group. Click to lock it again." or "Click to show one outline around this group so you can drag the whole group.", 1, 1, 1, true)
+            else
+                GameTooltip:AddLine(self.xuiOn and "Drag the displays on screen. Click to lock them again." or "Click to unlock this row's on-screen displays so you can drag them.", 1, 1, 1, true)
+            end
         else
             GameTooltip:SetText(self.xuiOn and "Edits blocked" or "Editable")
             GameTooltip:AddLine(self.xuiOn and "Settings here are read-only. Click to allow edits again." or "Click to block edits: settings here become read-only.", 1, 1, 1, true)
@@ -5492,6 +5498,8 @@ function ns.PaintSide(button, rules, vis, folder)
         local n = 0
         for _, r in ipairs(vis) do if ns.IsMoveUnlocked(r) then n = n + 1 end end
         b.xuiOn, b.xuiObjs = (n == #vis), vis
+        b.xuiMoveFolder = folder
+        if folder and ns.IsGroupUnlocked then n = ns.IsGroupUnlocked(folder) and #vis or 0; b.xuiOn = (n == #vis) end
         b.tex:SetTexture(n == 0 and "Interface\\PetBattles\\PetBattle-LockIcon" or "Interface\\CURSOR\\UI-Cursor-Move")
         b.tex:SetAlpha(n == 0 and 0.85 or (n == #vis and 1 or 0.6))
         b:ClearAllPoints(); b:SetPoint("RIGHT", button, "RIGHT", -off, button.xuiTwoRow and -9 or 0)
