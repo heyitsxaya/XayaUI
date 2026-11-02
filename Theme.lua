@@ -144,7 +144,25 @@ T.BUILTIN = {
         tabSelBg = { 0.00, 0.20, 0.32, 0.9 }, tabSelBorder = { 0.337, 0.706, 0.914, 1 },
         danger = { 1.00, 0.55, 0.10, 1 } } },
 }
-T.BUILTIN_ORDER = { "light", "colorblind" }
+-- More color vision types. Prevalence (StatPearls, "Color Vision", NBK470227): protan/deutan anomalies ~7% of males, protanopia + deuteranopia
+-- ~1% of males, tritan defects ~0.01% of males and females. All three palettes are built from Okabe-Ito / Wong hues (not simulated or
+-- tested by a user with these conditions).
+T.BUILTIN.protan = { name = "Protan (red-weak / red-blind): no dark reds", pal = {
+    accent = { 0.337, 0.706, 0.914, 1 }, accentText = { 0.80, 0.92, 1.00, 1 }, gradStart = { 0.06, 0.18, 0.28, 1 },
+    label = { 0.95, 0.90, 0.40, 1 }, buttonText = { 0.95, 0.90, 0.40, 1 },
+    buttonBorder = { 0.45, 0.45, 0.50, 1 }, border = { 0.38, 0.40, 0.45, 1 },
+    primaryBg = { 0.00, 0.32, 0.50, 0.95 }, primaryBorder = { 0.30, 0.65, 0.90, 1 },
+    tabSelBg = { 0.00, 0.20, 0.32, 0.9 }, tabSelBorder = { 0.337, 0.706, 0.914, 1 },
+    danger = { 1.00, 0.80, 0.20, 1 } } }   -- bright, not red: reds read as dark to protan viewers
+T.BUILTIN.tritan = { name = "Tritan (blue-yellow): red and teal", pal = {
+    accent = { 0.90, 0.35, 0.50, 1 }, accentText = { 1.00, 0.80, 0.85, 1 }, gradStart = { 0.30, 0.08, 0.14, 1 },
+    label = { 0.70, 0.95, 0.95, 1 }, buttonText = { 0.70, 0.95, 0.95, 1 },
+    buttonBorder = { 0.40, 0.45, 0.45, 1 }, border = { 0.35, 0.40, 0.40, 1 },
+    primaryBg = { 0.45, 0.10, 0.20, 0.95 }, primaryBorder = { 0.90, 0.35, 0.50, 1 },
+    tabSelBg = { 0.30, 0.08, 0.14, 0.9 }, tabSelBorder = { 0.90, 0.35, 0.50, 1 },
+    danger = { 1.00, 0.25, 0.25, 1 } } }
+T.BUILTIN.colorblind.name = "Deuteranopia / deuteranomaly (green-weak, most common)"
+T.BUILTIN_ORDER = { "light", "colorblind", "protan", "tritan" }
 function T.IsBase(b) return b == "default" or b == "class" or T.BUILTIN[b] ~= nil end
 
 function T.BasePalette(base, classPick)
@@ -348,7 +366,7 @@ function T.SavedNames()
 end
 function T.Save(name)
     name = tostring(name or ""):gsub("^%s+", ""):gsub("%s+$", "")
-    if name == "" or T.IsBase(name) or #name > 40 then return false, "Pick a name (1-40 characters, not 'default', 'class', 'light' or 'colorblind')." end
+    if name == "" or T.IsBase(name) or #name > 40 then return false, "Pick a name (1-40 characters, not a built-in theme name)." end
     local th = DB(); if not th then return false end
     CueRulesDB.themes[name] = Snapshot()
     th.base = th.base
