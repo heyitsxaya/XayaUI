@@ -399,7 +399,7 @@ Rules apply the moment you change them, so you can test an edit in game right aw
 
 On/off state, name, group, collapse state, sidebar icon, and edit lock are not counted as changes, so flipping a rule on or off never creates a draft.
 
-**Where:** Rules > Drafts. The Save changes, Discard changes, Save as a copy, and Add to drafts buttons appear at the bottom of a rule's editor whenever it differs from its saved version.
+**Where:** Rules > Drafts. The Save changes, Save as a copy, Add to drafts, Add as a copy to drafts, and Discard buttons appear in a strip attached under the options window (above the debug console) whenever the selected rule differs from its saved version. The strip takes no room from the editor tabs. Discard needs a second click within four seconds to confirm.
 
 ### 12.3 Custom Data Panels and Bars
 
