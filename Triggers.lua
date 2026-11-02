@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Triggers.lua : additional trigger types, ported from WeakAuras' trigger concepts.
+-- Triggers.lua : additional trigger types.
 --
 -- A rule keeps its original Cooldown + Buff/Aura trigger. On top of that it can now hold a list of
 -- ADDITIONAL triggers (rule.extra.list), each one a typed row ("Item Count", "Totem", "Range Check", ...).
@@ -66,7 +66,7 @@ local function Cmp(op, a, b)
     return nil
 end
 
--- state "yes" keeps the answer, "no" inverts it (WeakAuras' "Inverse"); unknown stays unknown.
+-- state "yes" keeps the answer, "no" inverts it ("Inverse"); unknown stays unknown.
 local function YesNo(t, v)
     if v == nil then return nil end
     if t.state == "no" then return not v end

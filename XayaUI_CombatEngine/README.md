@@ -3,7 +3,7 @@
 Shown in the in-game addon list as **XayaUI Combat Auras**; the folder, files, and slash commands keep the name `XayaUI_CombatEngine`.
 
 In-combat aura tracking for XayaUI, split out as its own addon so work on it does not collide with work on the core.
-It follows the WeakAuras layout: in the repo it is a folder; in the game it loads as its own addon that depends on XayaUI.
+In the repo it is a folder; in the game it loads as its own addon that depends on XayaUI.
 
 ## What is in here
 - `AuraModel.lua`: timing model (cast-anchored duration estimates, learned durations).
@@ -19,7 +19,7 @@ It follows the WeakAuras layout: in the repo it is a folder; in the game it load
 - Saved data stays in XayaUI's `CueRulesDB` keys: auraTracker, auraModel, learnedAuraDur, idProbe, idProbeStream, setupShowError, setupBuildError. No separate SavedVariables yet.
 - Planned: narrow the whole-namespace bridge to a small `XayaUI_API` (Print, BuffPresent, AurasRestricted, settings-page and slash registration) and move the saved keys to their own SavedVariables. Contract draft: project doc `claude/XAYAUI-COMBAT-ENGINE-SPLIT-CONTRACT-DRAFT-2026-11-02.md`.
 
-## Installing locally (until the repo is restructured WeakAuras-style)
+## Installing locally (until the repo is restructured)
 The repo root is still the XayaUI addon folder, so this folder sits inside it. WoW only loads top-level AddOns folders, so create a junction once (Command Prompt, run as administrator if refused):
 
     mklink /J "C:\Program Files (x86)\World of Warcraft\_retail_\Interface\AddOns\XayaUI_CombatEngine" "C:\Program Files (x86)\World of Warcraft\_retail_\Interface\AddOns\XayaUI\XayaUI_CombatEngine"

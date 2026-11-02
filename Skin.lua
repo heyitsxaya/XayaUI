@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Skin.lua : WeakAuras-style look for the XayaUI options window (flat dark panes, gold tabs, toolbar + search).
+-- Skin.lua : flat dark look for the XayaUI options window (flat dark panes, gold tabs, toolbar + search).
 -- Pure cosmetics layered on top of Options.lua through ns.DecorateTrees. Every change is undone when the AceGUI widget is
 -- released (AceGUI recycles widgets across addons). Turn it off with /xuiskin (then /reload).
 -------------------------------------------------------------------------------
@@ -957,7 +957,7 @@ local function SkinButton(w)
     local arg = opt and type(opt.arg) == "table" and opt.arg or nil
     local fs = w.text
     if isHeader then
-        -- collapsible section header (arrow + title): no box, bigger text, like WeakAuras' "Icon Settings"
+        -- collapsible section header (arrow + title): no box, bigger text
         HideRegions(f, f:GetHighlightTexture())
         FlatHide(f)
         if fs and not w.xuiFont then
@@ -1010,7 +1010,7 @@ local function SkinButton(w)
         end
     else
         HideRegions(f, f:GetHighlightTexture())
-        local bcl = (arg and arg.xuiRed) and "xui-button-primary" or "xui-button"   -- WeakAuras-style red "Add ..." button = primary
+        local bcl = (arg and arg.xuiRed) and "xui-button-primary" or "xui-button"   -- red "Add ..." button = primary
         Flat(f, TC(bcl, "bg", { 0.04, 0.04, 0.04, 0.7 }), TC(bcl, "border", { 0.25, 0.25, 0.25, 1 }))
         -- mouse-over glow: Blizzard's own highlight art is red; repaint it flat in the button's theme (class) color
         do
@@ -1513,7 +1513,7 @@ ns.H2_SIZE = 14   -- inside trigger / cue / condition panes: "Description" and e
 ns.BODY_INDENT = 20   -- trigger / cue / condition panes: the header sits flush left and everything under it is indented by this much
 local NOFLEX = { Icon = true, Label = true, InteractiveLabel = true, Heading = true, ColorPicker = true, Image = true }
 local GAP = 10        -- gutter between free-flowing controls
-local GRID_GAP = 30   -- gutter between the two columns of the grid (WeakAuras uses a wide column gap)
+local GRID_GAP = 30   -- gutter between the two columns of the grid (wide, so the two columns read as separate)
 local function BaseW(ch)
     local fr = ch.frame
     local fw = fr.width or fr:GetWidth() or 0

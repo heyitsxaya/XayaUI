@@ -376,7 +376,7 @@ do
 end
 
 -------------------------------------------------------------------------------
--- Status text (used by the Rule tab and the debug tray)
+-- Status text (used by the Info tab and the debug tray)
 -------------------------------------------------------------------------------
 local function tf(v) if v == nil then return "|cffffaa00unknown|r" end return v and "|cff55ff55OK|r" or "|cffff5555no|r" end
 
@@ -802,7 +802,7 @@ end
 -- Copy / paste settings between rules (choose exactly which sections; nothing is pasted by default)
 -------------------------------------------------------------------------------
 local ruleClip = nil          -- { name = "...", data = <deep copy of the source rule> }
-local pasteSel = {}           -- section key -> true (shared by the Rule tab, folder pages and the right-click menu)
+local pasteSel = {}           -- section key -> true (shared by the Info tab, folder pages and the right-click menu)
 -- Paste Settings is a tree: every leaf is one section (a tick box); a branch has "All of ..." plus its leaves. Leaves keep short keys.
 -- Visual leaves list the cue-display keys they copy; "vTex" is the catch-all for every other display key (texture art etc.).
 ns.PASTE_VIS = {
@@ -1950,7 +1950,7 @@ local function BuildRule(i, rule)
             if v then T.enabled = true end
             Changed(rule); Notify()
         end }
-    -- Tabs: Rule | Trigger | Conditions | Actions | Load. "Conditions" holds the rule's conditions (its outcomes, each a named
+    -- Tabs: Info | Trigger | Conditions | Actions | Load. "Conditions" holds the rule's conditions (its outcomes, each a named
     -- combination of triggers); "Actions" holds what happens: display, text and sound.
     local conditionsTab = { type = "group", name = "Conditions", order = 3, args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
@@ -1981,7 +1981,7 @@ local function BuildRule(i, rule)
     actions.args.display.hidden = function() return not ns.KindHas(rule, "visual") end
     actions.args.text.hidden = function() return not ns.KindHas(rule, "visual") end
     actions.args.sound.hidden = function() return not ns.KindHas(rule, "sound") end
-    -- The Actions tab is the WeakAuras-style one (Actions.lua): On Initialization / During / After It Ends. The rule's own sound (with
+    -- The Actions tab (Actions.lua): On Initialization / During / After It Ends. The rule's own sound (with
     -- repeat) is the "During" sound; its own display / text from before cues existed stay available in a collapsed pane while they are on.
     local finishSound = function(getTbl)
         return { type = "group", inline = true, name = "Play a sound", order = 30, args = {
@@ -2062,9 +2062,9 @@ local function BuildRule(i, rule)
     if outcomeArgs then for k, v in pairs(outcomeArgs) do conditionsTab.args[k] = v end end
     if cueArgs then for k, v in pairs(cueArgs) do cuesTab.args[k] = v end end
 
-    ---------------------------------------------------------------- Rule tab
+    ---------------------------------------------------------------- Info tab (was "Rule")
     local ruleTab = {
-        type = "group", name = "Rule", order = 1, args = {
+        type = "group", name = "Info", order = 1, args = {
             name = { type = "input", name = "Name", order = 1, width = "double",
                 get = function() return rule.name end,
                 set = function(_, v) rule.name = tostring(v or ""):sub(1, 60); pcall(ns.RefreshVisual, rule); ns.MarkDirty(); Notify() end },
@@ -2793,7 +2793,7 @@ local function ApplyNewOpts(r)
     end
 end
 
--- "+ New rule" opens an intermediate page (like WeakAuras' display-type list) instead of creating a blank rule.
+-- "+ New rule" opens an intermediate page (a list of rule types) instead of creating a blank rule.
 -- Sound Cues folders skip it: they only hold sound rules, so there is nothing to choose.
 -- Smart Categories: a virtual root whose sub-lists are filled from what each rule actually does (nothing is moved or
 -- forced into a folder; a rule that shows an icon AND text appears under both). Buff bars come from their own list.
@@ -3420,7 +3420,7 @@ function ns.FolderContainerGroup(f)
     return g
 end
 
--- Static group tools (WeakAuras Group): Align, Distribute and Space the displays inside the group by editing their own X / Y.
+-- Static group tools: Align, Distribute and Space the displays inside the group by editing their own X / Y.
 -- ns function (not a local) to stay under Lua's 200-locals-per-chunk limit.
 function ns.FolderArrangeGroup(f)
     local gap = 8
@@ -3857,7 +3857,7 @@ local function BuildOptions()
     -- type picker (shown in place of the All Rules page while `picker` is set)
     do
         local function Entry(order, icon, title, desc, typ)
-            if ns.SkinRows and ns.SkinRows() then   -- WeakAuras-style row: big icon, gold title, description under it (clickable via Skin.lua)
+            if ns.SkinRows and ns.SkinRows() then   -- big-icon row: big icon, gold title, description under it (clickable via Skin.lua)
                 return { type = "description", order = order, width = "full", fontSize = "medium",
                     image = (type(icon) == "number" or icon:find("\\", 1, true)) and icon or ("Interface\\Icons\\" .. icon), imageWidth = 36, imageHeight = 36,
                     name = "|cffffd100" .. title .. "|r\n|cffffffff" .. desc .. "|r",
@@ -4646,7 +4646,7 @@ local function StopDrag(button)
 end
 
 -------------------------------------------------------------------------------
--- Reorder arrows (WeakAuras-style): small up / down triangles at the left of every rule and folder row under All Rules.
+-- Reorder arrows: small up / down triangles at the left of every rule and folder row under All Rules.
 -- A rule moves among the rules of its own folder (position in ns.rules); a folder moves among the folders that share its
 -- parent (position in ns.folders). Folders are always listed above rules, as before. Nothing else about a row changes.
 -------------------------------------------------------------------------------
@@ -5444,7 +5444,7 @@ local function PaintGuides(button)
     local uv = button.uniquevalue and tostring(button.uniquevalue) or nil
     local tb = ns.TREE_BAR   -- one muted color for every bar
     if uv then
-        -- WeakAuras-style: ONE bar only, for the grandparent group of the selected item (e.g. Defensives for a rule inside HUD),
+        -- ONE bar only, for the grandparent group of the selected item (e.g. Defensives for a rule inside HUD),
         -- drawn on the rows inside that group. No selection or a shallow selection = no bars.
         local segs = {}
         for seg in uv:gmatch("[^\001]+") do segs[#segs + 1] = seg end
@@ -5840,7 +5840,7 @@ local function DecorateButton(button)
         button.toggle:SetAlpha(canExpand and 0 or 1)
         button.toggle:EnableMouse(not canExpand)
     end
-    local tw = ns.PaintTypeIcon and ns.PaintTypeIcon(button, x0) or 0   -- WeakAuras-style icon at the left of the row (0 = none)
+    local tw = ns.PaintTypeIcon and ns.PaintTypeIcon(button, x0) or 0   -- icon at the left of the row (0 = none)
     button.xuiTwoRow = (tw > 0 and not (ns.CondensedOn and ns.CondensedOn())) and true or false
     local rk0 = tostring(button.uniquevalue or ""):match("([^\001]+)$") or ""
     local isRootRow = (rk0 == "all" or rk0 == "loaded" or rk0 == "notloaded" or rk0 == "disabled" or rk0 == "smart" or (inSC and rk0:match("^smart_") ~= nil))
@@ -5852,7 +5852,7 @@ local function DecorateButton(button)
         button.xuiChev:SetNormalTexture(expanded and 130821 or 130838)
         button.xuiChev:SetPushedTexture(expanded and 130820 or 130836)
         button.xuiChev:ClearAllPoints()
-        if isRootRow then          -- root headers: round toggle at the right end, like WeakAuras' Loaded / Not Loaded
+        if isRootRow then          -- root headers: round toggle at the right end
             chevMode = "right"
             button.xuiChev:SetSize(16, 16)
             button.xuiChev:SetPoint("RIGHT", button, "RIGHT", -(4 + 19 * 2 + 4), 0)
@@ -5919,7 +5919,7 @@ local function DecorateButton(button)
             b:Show()
         end
         if button.xuiTwoRow then
-            -- WeakAuras-style two rows: [preview] on top; [movement lock][edit lock] below it. The separate audio preview is gone;
+            -- two rows: [preview] on top; [movement lock][edit lock] below it. The separate audio preview is gone;
             -- a rule that only plays a sound (no display) keeps one preview button, in the same place.
             paint(button.xuiEye, vis, "visual", 4 + 19 * 3)
             if vis and #vis > 0 then button.xuiHead:Hide() else paint(button.xuiHead, snd, "sound", 4 + 19 * 3) end

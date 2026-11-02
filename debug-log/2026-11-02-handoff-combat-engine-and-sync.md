@@ -32,7 +32,7 @@ Before overwriting, the local files that differed were checked: none had content
    - The PRESENCE of added/updated/removed in each UNIT_AURA event is readable. Checked against a combat log: every logged removal (37/37), add (41/41) and refresh (268/268) had a matching flag within 0.15 s; flags arrive 0 to 110 ms after the real event. A flag says that some aura changed, not which.
    - Metamorphosis 187827 (Vengeance): 20 s normal cast (15 s base + Vengeful Beast 1265818 +5 s), 10 s when cast free via Untethered Rage (1270476). Same aura ID.
 3. **Apex talent data**, all 13 classes / 40 specs: `claude/XAYAUI-APEX-TALENTS-2026-11-02.md` and `Desktop\apex\apex-talents.csv`. Not in the addon.
-4. **0.5.29 (`0c6b6c3`): combat engine split into sibling addon `XayaUI_CombatEngine/`** (WeakAuras-style), own toc with `## Dependencies: XayaUI`, interim bridge global `XayaUI_NS`. Details: `XayaUI_CombatEngine/README.md`, project doc `claude/XAYAUI-COMBAT-ENGINE-SPLIT-CONTRACT-DRAFT-2026-11-02.md`. `stable` was moved to 0.5.28 first (it has since been moved to 0.5.32 by another instance).
+4. **0.5.29 (`0c6b6c3`): combat engine split into sibling addon `XayaUI_CombatEngine/`**, own toc with `## Dependencies: XayaUI`, interim bridge global `XayaUI_NS`. Details: `XayaUI_CombatEngine/README.md`, project doc `claude/XAYAUI-COMBAT-ENGINE-SPLIT-CONTRACT-DRAFT-2026-11-02.md`. `stable` was moved to 0.5.28 first (it has since been moved to 0.5.32 by another instance).
 5. **Issue #227**: prep outline for splitting Options into `XayaUI_Options` (no code changed).
 6. **`77bb26f`: `MANIFEST.md5` fix** (ChatReskin.lua checksum). No code change, no version bump.
 7. **Local folder and Drive synced to `main`** (section 1).

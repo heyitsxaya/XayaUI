@@ -1,5 +1,5 @@
 -- XayaUI: Actions. The things a rule DOES (as opposed to Cues, which are things it shows / plays) at three moments, modeled on the
--- WeakAuras Actions tab: On Initialization (the rule loads), During (the rule starts), After It Ends (the rule stops).
+-- Actions tab: On Initialization (the rule loads), During (the rule starts), After It Ends (the rule stops).
 -- Each moment can send a chat message, glow a frame and run custom code; "During" also has the rule's sound (with repeat), "After" a sound.
 -- Storage: rule.actions = { init = {...}, start = {...}, finish = {...} }
 --   msgOn, msgType (PRINT|ERROR|TTS|SAY|YELL|GROUP), msg, glowOn, glowTarget ("self"|"frame"), glowFrame, glowType, glowR/G/B,
