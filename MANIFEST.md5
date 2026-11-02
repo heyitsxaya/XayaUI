@@ -9,10 +9,10 @@ e13412c9b9f981664587033ebe80c7d0  ChatText.lua
 58d8c82b04724886f644e3447051fcbd  Console.lua
 196414df68f0c79dcfdda92d827ca489  Core.lua
 c8fad9671e0a5af677271689e639b1f1  Cues.lua
-154c324ed4426c16639bc76a63b51080  CursorHighlight.lua
+648f6bcc81f3a7ee3f719d1e93f88e4b  CursorHighlight.lua
 ba241e46458e8e4296563689c7708a51  CursorReminders.lua
 d2509a979a6adfeecb7534d619c9c500  CursorTracker.lua
-48275ca3bd3ff733152e4eec452c3a63  CursorTrail.lua
+ce23bb36aa6aaa87b2757f552e2f4605  CursorTrail.lua
 37c636802aae442cf86f02d0b9906447  Drafts.lua
 476749a36781705ed07d0328f19f84fc  Engine.lua
 d32239bcb673463ab874e80d47fae504  LICENSE

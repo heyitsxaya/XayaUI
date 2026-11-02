@@ -31,8 +31,8 @@ CursorTracker.lua
 CursorReminders.lua
 Bars.lua
 Media/Cursor/*
-# Arrow.tga was ignored by the line above, so GitHub downloads had no Arrow.tga and the trail's "Cursor arrow" shape showed nothing
-!Media/Cursor/Arrow.tga
+# every cursor picture (Arrow, Fill_*, Ring*, CircleHD, HLRing_*) is part of the addon; other files in this folder (backups) stay local
+!Media/Cursor/*.tga
 
 # CC0 (public domain) sounds ARE tracked: Kenney "Interface Sounds" 1.0, see Media/Audio/CC0/CREDITS.md
 !Media/Audio/CC0/

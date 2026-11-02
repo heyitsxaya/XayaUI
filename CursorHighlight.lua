@@ -12,8 +12,19 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 
+-- Circle: our own anti-aliased circle / ring pictures (Media\\Cursor\\CircleHD.tga and HLRing_01..20.tga). A square cut with a mask, or a ring built
+-- from straight Line pieces, shows jagged edges and corners; the pictures are smooth. The 20 rings go from a hairline to a full disc; the one whose
+-- thickness (as a share of the circle's width) is nearest to the chosen outline thickness is used. Ring k has thickness 0.006 * (0.5/0.006)^((k-1)/19).
+local MEDIA = "Interface\\AddOns\\XayaUI\\Media\\Cursor\\"
+local RING_N, RING_MIN, RING_MAX = 20, 0.006, 0.5
+local function RingPath(size, t)
+    local ratio = math.max(RING_MIN, math.min(RING_MAX, t / math.max(1, size)))
+    local k = math.floor(math.log(ratio / RING_MIN) / math.log(RING_MAX / RING_MIN) * (RING_N - 1) + 0.5) + 1
+    return ("%sHLRing_%02d.tga"):format(MEDIA, math.max(1, math.min(RING_N, k)))
+end
+
 local SHAPES = {
-    circle  = { "Circle",  "Interface\\Buttons\\WHITE8X8",  "BLEND" },
+    circle  = { "Circle",  MEDIA .. "CircleHD.tga",         "BLEND" },
     square  = { "Square",  "Interface\\Buttons\\WHITE8X8",  "BLEND" },
     diamond = { "Diamond", "Interface\\Buttons\\WHITE8X8",  "BLEND" },
     star    = { "Star",    "Interface\\Cooldown\\star4",    "ADD"   },
@@ -123,6 +134,13 @@ local function Segment(i, x1, y1, x2, y2, t, col)
     if i > MAX_LINES or not frame.CreateLine then return end
     local l = ringLines[i]
     if not l then l = frame:CreateLine(nil, "ARTWORK"); ringLines[i] = l end
+    -- run each side half a thickness past its corners so neighbouring sides overlap into a square corner (no notch)
+    local dx, dy = x2 - x1, y2 - y1
+    local len = math.sqrt(dx * dx + dy * dy)
+    if len > 0 then
+        local e = t * 0.5 / len
+        x1, y1, x2, y2 = x1 - dx * e, y1 - dy * e, x2 + dx * e, y2 + dy * e
+    end
     l:SetStartPoint("CENTER", anchor, x1, y1)
     l:SetEndPoint("CENTER", anchor, x2, y2)
     l:SetThickness(t)
@@ -136,15 +154,9 @@ local function Layout(c)
     local size, op = c.size or 56, c.opacity or 0.35
     tex:Hide(); if line then line:Hide() end; HideRing()
     frame:SetAlpha(1)
-    if c.style == "outline" and OUTLINE_OK[c.shape] then
+    if c.style == "outline" and OUTLINE_OK[c.shape] and c.shape ~= "circle" then
         local r, t, n = size / 2, c.thickness or 3, 0
-        if c.shape == "circle" then
-            local N = 64
-            for k = 0, N - 1 do
-                local a1, a2 = (k / N) * 2 * math.pi, ((k + 1) / N) * 2 * math.pi
-                n = n + 1; Segment(n, r * math.cos(a1), r * math.sin(a1), r * math.cos(a2), r * math.sin(a2), t, col)
-            end
-        elseif c.shape == "square" then
+        if c.shape == "square" then
             local pts = { { -r, -r }, { r, -r }, { r, r }, { -r, r } }
             for k = 1, 4 do
                 local p, q = pts[k], pts[k % 4 + 1]
@@ -175,10 +187,12 @@ local function Layout(c)
     local path = sh[2]
     if c.shape == "art" then
         path = (c.art == "custom") and (c.artPath ~= "" and c.artPath or nil) or (ART[c.art] and ART[c.art][2])
+    elseif c.shape == "circle" and c.style == "outline" then
+        path = RingPath(size, c.thickness or 3)
     end
     SetGameTex(tex, path)
     tex:SetBlendMode(sh[3])
-    SetMasked(c.shape == "circle")
+    SetMasked(false)
     if c.shape == "art" and c.keepColors then tex:SetVertexColor(1, 1, 1, op) else tex:SetVertexColor(col[1], col[2], col[3], op) end
     tex:SetSize(size, size)
     tex:ClearAllPoints()
