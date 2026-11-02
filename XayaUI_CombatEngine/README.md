@@ -8,6 +8,7 @@ It follows the WeakAuras layout: in the repo it is a folder; in the game it load
 - `AuraTracker.lua`: evidence ranking for aura state when the game hides auras in combat.
 - `AuraSetup.lua`: first-run "Combat Tracking Setup" window.
 - `AuraIDProbe.lua`: diagnostic probe (`/xui probe ids`), records UNIT_AURA flag stream and casts.
+- `AuraDisplay.lua`: draws a group's buff icons through Blizzard's own secure aura container so they show in combat (`/xuiengine`). It reads spell IDs from the user's own rules (those with an `engineTag` field), ships none, and never edits a rule. Built from Blizzard's published UI source only. Needs XayaUI 0.5.69 or later (a guard in `Visual.lua` keeps XayaUI's own icon hidden for rules the engine draws). Design and risks: GitHub issue #280.
 
 ## How it connects to XayaUI (interim bridge)
 - `XayaUI.toc` no longer lists these files. This folder has its own `XayaUI_CombatEngine.toc` with `## Dependencies: XayaUI`, so it loads after XayaUI.

@@ -1,0 +1,4 @@
+# Combat aura display engine: draw tagged groups through Blizzard's secure aura container (build 0.5.69, fork: main)
+Logged 2026-11-02-2345 UTC. Issue #280. Core bridge: one guard in `Visual.lua` `SetVisualShown`.
+
+Xaya: build the engine that tracks the buffs imported from another addon's aura bars so they work in XayaUI, and keep her personal buff lists out of git and out of other users' installs. Built: `XayaUI_CombatEngine/AuraDisplay.lua` (`/xuiengine on|off|refresh|list`), a user-switched-on group becomes one Blizzard `CustomAuraContainerTemplate` with `includeSpellIDs` set from the user's own tagged rules (read at runtime from `CueRulesDB`; nothing shipped). Tests: `tests/aura_display_run.py`, 26/26 against a stand-in container that enforces the argument rules read in Blizzard's source, made-up IDs only. Not tested in game. Open risk: `includeSpellIDs` is undocumented in the API docs (accepted). Display only; rules are not told which buffs are up.

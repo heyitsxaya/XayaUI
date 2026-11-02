@@ -1,14 +1,15 @@
 ## Interface: 120100
 ## Title: XayaUI Combat Engine
-## Notes: In-combat aura tracking for XayaUI: tracker, timing model, setup wizard, aura ID probe. Requires XayaUI.
+## Notes: In-combat aura tracking for XayaUI: tracker, timing model, setup wizard, aura ID probe, secure-container aura display. Requires XayaUI.
 ## Author: Xaya
-## Version: 0.1.0
+## Version: 0.2.0
 ## X-Date: 2026-11-02
 ## Dependencies: XayaUI
 ## Group: XayaUI
-## X-XayaUI-MinVersion: 0.5.29
+## X-XayaUI-MinVersion: 0.5.69
 
 AuraModel.lua
 AuraTracker.lua
 AuraSetup.lua
 AuraIDProbe.lua
+AuraDisplay.lua

@@ -1704,6 +1704,8 @@ function ns.SetVisualShown(rule, shown)
     local fr = GetFrame(rule)
     local pv = ns.IsPreview(rule, "visual")
     if not rule.visual.enabled and not pv then fr:Hide() return end
+    -- drawn instead by XayaUI_CombatEngine's secure aura container (works in combat): keep ours hidden unless unlocked / previewing
+    if ns.EngineOwns and not (Unl(rule) or GroupUnl(rule) or pv) and ns.EngineOwns(rule) then fr:Hide() return end
     if Unl(rule) or GroupUnl(rule) or pv or shown then fr:Show() else fr:Hide() end
     local dyn = rule.folder and DynAncestor(rule.folder)
     if dyn then LayoutDynamic(dyn) end

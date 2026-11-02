@@ -447,6 +447,12 @@ XayaUI can draw its own panel over the Game Menu (the ESC menu) and click Blizza
 
 **Where:** Settings > UI Options > Display, below the "Condensed rule list" option. The Settings page has a left sidebar with UI Options (Display and Theme tabs) and Debugging.
 
+### 12.9 Combat aura display
+
+In combat the game hides aura details from addons, so a normal rule cannot always see your buffs. XayaUI_CombatEngine can instead draw a group's buff icons through Blizzard's own aura container, which keeps working in combat. Switch it on per group with `/xuiengine on <group name>`; `/xuiengine off <group name>` hands the group back to XayaUI's own icons, `/xuiengine list` shows which groups have buff rules it could draw, and `/xuiengine` shows its status. It only draws rules that carry an "engine" tag (set by a profile import that asks for it); your other rules are never touched. The group must be a dynamic group that grows right, left, up, or down (use Group Type & Container); its spacing, wrap size, and position are used. This is display only: it cannot tell sounds or conditions that a buff is up. If Blizzard's container refuses the setup, XayaUI keeps drawing its own icons and `/xuiengine` says why. Not yet tested in game.
+
+**Where:** `/xuiengine`.
+
 ## 13. Maintaining this document
 
 1. **Describe behavior, not history.** Write what a feature does today. No "added in", "now supports", "previously", dates, or version notes in the body.
