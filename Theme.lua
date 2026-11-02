@@ -194,6 +194,8 @@ end
 T.cur = {}
 for _, t in ipairs(T.TOKENS) do T.cur[t[1]] = Copy4(t[4]) end
 T.binds = {}
+T.listeners = {}
+function T.OnResolve(fn) T.listeners[#T.listeners + 1] = fn end
 
 function T.Bind(key, tbl)
     T.binds[#T.binds + 1] = { key, tbl }
@@ -216,6 +218,7 @@ function T.Resolve()
         local c = cur[b[1]]
         if c then b[2][1], b[2][2], b[2][3], b[2][4] = c[1], c[2], c[3], c[4] end
     end
+    for _, fn in ipairs(T.listeners) do pcall(fn) end   -- widgets that were painted once (toolbar buttons ...) repaint here
 end
 
 -- color of a class property: the class override, else the token the class points at. Always returns a fresh {r,g,b,a}.

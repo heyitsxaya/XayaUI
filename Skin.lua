@@ -124,6 +124,8 @@ end
 ns.treeFilter = ""
 local filterStamp = 0
 
+local toolBtns = setmetatable({}, { __mode = "k" })
+local function HoverCol() return TC("xui-list-selected", "text", { 1, 1, 1, 1 }) end   -- lit / hover text: the theme's selected-text color (white was invisible on a light theme)
 local function ToolButton(parent, icon, label, onClick)
     local b = CreateFrame("Button", nil, parent)
     b:SetHeight(20)
@@ -131,25 +133,31 @@ local function ToolButton(parent, icon, label, onClick)
     b.icon:SetSize(16, 16); b.icon:SetPoint("LEFT", 0, 0); b.icon:SetTexture(icon)
     b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     b.text:SetPoint("LEFT", b.icon, "RIGHT", 4, 0)
+    toolBtns[b] = true
     b.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
     b:SetScript("OnClick", onClick)
-    b:SetScript("OnEnter", function(self) self.text:SetTextColor(1, 1, 1) end)
-    b:SetScript("OnLeave", function(self) if self.active then self.text:SetTextColor(1, 1, 1) else self.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3]) end end)
+    b:SetScript("OnEnter", function(self) local h = HoverCol(); self.text:SetTextColor(h[1], h[2], h[3]) end)
+    b:SetScript("OnLeave", function(self) if self.active then local h = HoverCol(); self.text:SetTextColor(h[1], h[2], h[3]) else self.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3]) end end)
     function b:SetActive(on)
         self.active = on and true or false
         -- lit = the same boxed look as a selected tab (color alone was lost under the theme's text color)
         if self.active then
             Flat(self, TC("xui-tab-selected", "bg", { 0.12, 0.05, 0.2, 0.9 }), TC("xui-tab-selected", "border", { 0.75, 0.4, 1, 1 }), { -5, -5, -2, -2 })
-            self.text:SetTextColor(1, 1, 1)
+            local h = HoverCol(); self.text:SetTextColor(h[1], h[2], h[3])
         else
             FlatHide(self)
             self.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
         end
     end
+    function b:Recolor()   -- theme changed: repaint the lit box and the text
+        self:SetActive(self.active)
+    end
     function b:SetLabel(t) self.text:SetText(t); self:SetWidth(20 + self.text:GetStringWidth() + 6) end
     b:SetLabel(label)
     return b
 end
+
+if TH and TH.OnResolve then TH.OnResolve(function() for b in pairs(toolBtns) do pcall(b.Recolor, b) end end) end
 
 -- Rule search box: nested at the top of the All Rules sidebar, above the Loaded row. Typing filters the rule lists (ns.treeFilter).
 -- Filtering ends in Notify(), which rebuilds the tree and can release / hide the box, dropping its keyboard focus (the next letter then
