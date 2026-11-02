@@ -3175,6 +3175,12 @@ ns.UI.DataPanels = function()   -- QoL UI Updates > Custom Data Panels and Bars 
     Notify()
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "datapanels")
 end
+ns.UI.Notepad = function()   -- QoL UI Updates > Notepad (also /xui notepad opens the box itself)
+    if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then pcall(ns.ToggleUI) end
+    ns.pageOpen = nil; ns.infoOpen = false
+    Notify()
+    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "notepad")
+end
 ns.UI.Settings = function()
     -- the Settings button is a switch: a second click leaves the settings pages and brings the Rules tabs back
     if ns.pageOpen == "settings" and ns.SkinRows and ns.SkinRows() then
@@ -4043,7 +4049,8 @@ local function BuildOptions()
     -- Tab "QoL UI Updates": left tree, options in the right pane. ElvUI Chat Reskin is always first (order 1); the older
     -- QoL Elements entries (stat boxes, cursor tracker, buff bars) follow it, and only exist while their files are loaded.
     local qolArgs = { chatreskin = ns.BuildChatTab and ns.BuildChatTab(Notify) or nil, cursor = ns.BuildCursorGroup and ns.BuildCursorGroup(Notify) or nil,
-        datapanels = ns.BuildDataPanelsTab and ns.BuildDataPanelsTab(Notify) or nil }
+        datapanels = ns.BuildDataPanelsTab and ns.BuildDataPanelsTab(Notify) or nil,
+        notepad = ns.BuildNotepadTab and ns.BuildNotepadTab(Notify) or nil }
     if ns.QoLOn then
         qolArgs.allqol = allQol
         qolArgs.allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil

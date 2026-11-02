@@ -547,6 +547,7 @@ f:SetScript("OnEvent", function(_, _, name)
     if ns.Cursor_OnDBReady then ns.Cursor_OnDBReady() end
     if ns.ChatReskin_OnDBReady then ns.ChatReskin_OnDBReady() end
     if ns.DataPanels_OnDBReady then ns.DataPanels_OnDBReady() end
+    if ns.Notepad_OnDBReady then ns.Notepad_OnDBReady() end
 end)
 
 -------------------------------------------------------------------------------
@@ -634,6 +635,8 @@ SlashCmdList["XAYAUI"] = function(msg)
         if ns.ChatPrivacy_Set and ns.chatDB then ns.ChatPrivacy_Set(not ns.chatDB.privOn); ns.Print("chat privacy cover " .. (ns.chatDB.privOn and "ON" or "OFF")) end
     elseif cmd == "data" then
         if ns.DataPanels_OpenSettings then ns.DataPanels_OpenSettings() end
+    elseif cmd == "notepad" or cmd == "note" then
+        if ns.Notepad_Toggle then ns.Notepad_Toggle() end
     elseif cmd == "panel" then
         if ns.ChatPanel_ShowWindow then ns.ChatPanel_ShowWindow() end
     elseif cmd == "gamemenu" then
