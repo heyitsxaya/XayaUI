@@ -8,11 +8,14 @@
 --   bar    Custom Bar          (free anchor, full width or fixed width)
 -- Data types = what the Chat Panel offers (time, FPS, latency, gold, durability, bag slots, custom text) plus the stat set of the
 -- old stat boxes (crit, haste, mastery, versatility, ilvl, ...). Every slot of every strip can show any of them.
+-- Each slot is a block: its own gaps, alignment, text scale, background and text color, plus "auto sized" or "even split" rows and
+-- "fill remaining space" blocks (settings under "Blocks" on every strip's page; layout and slot look live in DataBlocks.lua).
 -- Own code, written from the option set only (no third-party addon code or data). UNTESTED in game.
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 
-local MAXSLOTS = 20
+local B = ns.DataBlocks      -- DataBlocks.lua: the block engine shared with the chat info bars (ChatPanel.lua)
+local MAXSLOTS = B.MAXN
 local KEYS = { "bl", "br", "top", "panel", "bar" }
 local TITLES = { bl = "Bottom Left Panel", br = "Bottom Right Panel", top = "Top Data Bar", panel = "Custom Panel", bar = "Custom Bar" }
 local ANCHORS = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }
@@ -163,6 +166,7 @@ local function Def(over)
         tipAnchor = "TOP", tipX = 0, tipY = 4,
         mouseover = false, hideInCombat = false, visibility = "",
         locked = true, movable = false,
+        sizing = "EVEN", hoverHL = false, blocks = {},   -- per-block settings: blocks[i] = { gapL, gapR, fill, align, scale, bgOn, bgR/G/B/A, textOn, tR/G/B }
     }
     for k, v in pairs(over or {}) do d[k] = v end
     for i = 1, MAXSLOTS do d["text" .. i] = d["text" .. i] or "" end
@@ -193,6 +197,21 @@ local OUTLINES = { NONE = "", OUTLINE = "OUTLINE", THICKOUTLINE = "THICKOUTLINE"
 
 local function Cfg(key) local db = DB(); return db and db[key] end
 
+-- one block's setting; unset values fall back to the strip's own settings (Text Justify = the default alignment) and to B.DEF
+local BLOCK_FALLBACK = { gapL = 4, gapR = 4 }
+local function BGet(cfg, i, f)
+    local b = cfg.blocks and cfg.blocks[i]
+    if b and b[f] ~= nil then return b[f] end
+    if f == "align" then return cfg.justify or "CENTER" end
+    if BLOCK_FALLBACK[f] ~= nil then return BLOCK_FALLBACK[f] end
+    return B.DEF[f]
+end
+local function BSet(cfg, i, f, v)
+    cfg.blocks = cfg.blocks or {}
+    cfg.blocks[i] = cfg.blocks[i] or {}
+    cfg.blocks[i][f] = v
+end
+
 local function Over(f)
     if not f then return false end
     if f.IsMouseOver then local ok, v = pcall(f.IsMouseOver, f); if ok then return v and true or false end end
@@ -207,43 +226,25 @@ local function SlotText(cfg, i)
     if not ok then return "?" end
     v = tostring(v or "")
     if cfg.showLabels and d.label and v ~= "" then
-        return ("|cff%02x%02x%02x%s|r %s"):format((cfg.labelR or 0.7) * 255, (cfg.labelG or 0.7) * 255, (cfg.labelB or 0.7) * 255, d.label, v)
+        return ("|cff%02x%02x%02x%s|r %s"):format(math.floor((cfg.labelR or 0.7) * 255 + 0.5), math.floor((cfg.labelG or 0.7) * 255 + 0.5), math.floor((cfg.labelB or 0.7) * 255 + 0.5), d.label, v)
     end
     return v
 end
 
+local Layout   -- defined below
 local function UpdateText(key)
     local e, cfg = frames[key], Cfg(key)
     if not (e and cfg and e.f:IsShown()) then return end
     local n = math.max(1, math.min(MAXSLOTS, tonumber(cfg.slots) or 1))
     for i = 1, n do e.slots[i].fs:SetText(SlotText(cfg, i)) end
+    if cfg.sizing == "AUTO" then Layout(key) end   -- block widths follow the text
 end
 
-local function Layout(key)
+function Layout(key)
     local e, cfg = frames[key], Cfg(key)
     if not (e and cfg) then return end
     local n = math.max(1, math.min(MAXSLOTS, tonumber(cfg.slots) or 1))
-    local w, h = e.f:GetWidth() or 0, e.f:GetHeight() or 0
-    local vertical = cfg.growth == "V"
-    for i = 1, MAXSLOTS do
-        local s = e.slots[i]
-        s:ClearAllPoints()
-        if i <= n and w > 0 and h > 0 then
-            if vertical then
-                s:SetPoint("TOPLEFT", e.f, "TOPLEFT", 0, -(i - 1) * (h / n)); s:SetSize(w, h / n)
-            else
-                s:SetPoint("TOPLEFT", e.f, "TOPLEFT", (i - 1) * (w / n), 0); s:SetSize(w / n, h)
-            end
-            s.fs:ClearAllPoints()
-            local j = cfg.justify or "CENTER"
-            s.fs:SetJustifyH(j)
-            s.fs:SetWidth(math.max(10, s:GetWidth() - 8))
-            if j == "LEFT" then s.fs:SetPoint("LEFT", 4, 0) elseif j == "RIGHT" then s.fs:SetPoint("RIGHT", -4, 0) else s.fs:SetPoint("CENTER", 0, 0) end
-            s:Show()
-        else
-            s:Hide()
-        end
-    end
+    B.Layout(e.f, e.slots, { n = n, vert = cfg.growth == "V", sizing = cfg.sizing, get = function(i, f) return BGet(cfg, i, f) end })
 end
 
 local function PointPos(fr, p)
@@ -281,11 +282,8 @@ local function Build(key)
     end)
     f:SetScript("OnMouseUp", function(_, b) if b == "RightButton" then OpenSettings() end end)
     for i = 1, MAXSLOTS do
-        local s = CreateFrame("Button", nil, f)
+        local s = B.MakeSlot(f)
         s:RegisterForClicks("RightButtonUp")
-        s.fs = s:CreateFontString(nil, "OVERLAY")
-        s.fs:SetFont(STANDARD_TEXT_FONT, 12, "")
-        s.fs:SetWordWrap(false)
         s:RegisterForDrag("LeftButton")
         s:SetScript("OnDragStart", function() local sc = f:GetScript("OnDragStart"); if sc then sc(f) end end)
         s:SetScript("OnDragStop", function() local sc = f:GetScript("OnDragStop"); if sc then sc(f) end end)
@@ -327,11 +325,9 @@ local function Style(key, cfg)
     local path = ns.FontPath and ns.FontPath(g.font) or STANDARD_TEXT_FONT
     local size = math.max(6, math.min(64, tonumber(g.size) or 13))
     local outline = OUTLINES[g.outline or "OUTLINE"] or "OUTLINE"
-    for i = 1, MAXSLOTS do
-        local fs = e.slots[i].fs
-        if not fs:SetFont(path or STANDARD_TEXT_FONT, size, outline) then fs:SetFont(STANDARD_TEXT_FONT, size, outline) end
-        fs:SetTextColor(cfg.textR or 1, cfg.textG or 1, cfg.textB or 1)
-    end
+    local pp = { size = size, path = path, outline = outline, hover = cfg.hoverHL, r = cfg.textR or 1, g = cfg.textG or 1, b = cfg.textB or 1 }
+    local function get(i, f) return BGet(cfg, i, f) end
+    for i = 1, MAXSLOTS do B.StyleSlot(e.slots[i], i, get, pp) end
 end
 
 local function Place(cfg, f)
@@ -414,6 +410,9 @@ function ns.BuildDataPanelsTab(Notify)
     local general = { type = "group", name = "General", order = 1, args = {
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "Five on-screen info strips: a bottom left panel, a bottom right panel, a top data bar, and one custom panel and one custom bar you can place anywhere. Every slot of every strip can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). These font settings apply to all five. Right-click any strip to jump here." },
+        chatBars = { type = "execute", order = 0.5, name = "Open the chat info bars",
+            desc = "The bars attached to the chat windows (snap to any side of a chat window) are set up in their own window (also /xui panel). They use the same blocks and data types.",
+            func = function() if ns.ChatPanel_ShowWindow then ns.ChatPanel_ShowWindow() end end },
         blocks = { type = "group", name = "General", order = 1, inline = true, args = {
             click = { type = "toggle", order = 1, name = "Block combat click", get = function() return db.general.blockCombatClick end, set = function(_, v) db.general.blockCombatClick = v end },
             hover = { type = "toggle", order = 2, name = "Block combat hover", get = function() return db.general.blockCombatHover end, set = function(_, v) db.general.blockCombatHover = v end },
@@ -430,6 +429,7 @@ function ns.BuildDataPanelsTab(Notify)
         } },
     } }
 
+    local editIdx = {}
     local function Container(key, order)
         local cfg = db[key]
         local custom = (key == "panel" or key == "bar")
@@ -510,6 +510,57 @@ function ns.BuildDataPanelsTab(Notify)
                 get = function() return cfg["text" .. i] end, set = s("text" .. i) }
         end
         args.contents = contents
+
+        -- blocks: one slot = one block with its own look; "Editing block" picks which one the settings below change
+        local function nBlocks() return math.max(1, math.min(MAXSLOTS, tonumber(cfg.slots) or 1)) end
+        local function cur() local n = nBlocks(); if (editIdx[key] or 1) > n then editIdx[key] = n end; return editIdx[key] or 1 end
+        local function bg(f) return function() return BGet(cfg, cur(), f) end end
+        local function bs(f) return function(_, v) BSet(cfg, cur(), f, v); Re(key) end end
+        local function bcol(name, o, rf, gf, bf)
+            return { type = "color", order = o, name = name, hasAlpha = false,
+                get = function() local i = cur(); return BGet(cfg, i, rf), BGet(cfg, i, gf), BGet(cfg, i, bf), 1 end,
+                set = function(_, r, gg, b) local i = cur(); BSet(cfg, i, rf, r); BSet(cfg, i, gf, gg); BSet(cfg, i, bf, b); Re(key) end }
+        end
+        local function swap(i, j)   -- exchange two blocks: what they show, their custom text and their own settings
+            cfg.blocks = cfg.blocks or {}
+            cfg["slot" .. i], cfg["slot" .. j] = cfg["slot" .. j] or "NONE", cfg["slot" .. i] or "NONE"
+            cfg["text" .. i], cfg["text" .. j] = cfg["text" .. j] or "", cfg["text" .. i] or ""
+            cfg.blocks[i], cfg.blocks[j] = cfg.blocks[j], cfg.blocks[i]
+        end
+        args.blocks = { type = "group", name = "Blocks", order = 21, inline = true, args = {
+            n = { type = "description", order = 0, width = "full",
+                name = "Each data slot is a block. Auto sized: a block is as wide as its text plus its gaps; blocks set to \"Fill remaining space\" share what is left. Even split: every block gets the same width. Pick a block with \"Editing block\", then change it below." },
+            sizing = { type = "select", order = 1, name = "Block sizing", values = { EVEN = "Even split", AUTO = "Auto sized" }, sorting = { "EVEN", "AUTO" },
+                get = g("sizing"), set = s("sizing") },
+            hover = { type = "toggle", order = 2, name = "Hover highlight blocks", get = g("hoverHL"), set = s("hoverHL") },
+            idx = { type = "range", order = 3, name = "Editing block", min = 1, max = MAXSLOTS, step = 1,
+                get = function() return cur() end, set = function(_, v) editIdx[key] = math.min(v, nBlocks()); if Notify then Notify() end end },
+            what = { type = "description", order = 4, width = "full", fontSize = "medium",
+                name = function() local i = cur(); local d = DT.by[cfg["slot" .. i] or "NONE"]; return "Block " .. i .. " of " .. nBlocks() .. ": " .. (d and d.name or "?") end },
+            gapL = { type = "range", order = 5, name = "Left gap", min = 0, max = 200, step = 1, get = bg("gapL"), set = bs("gapL") },
+            gapR = { type = "range", order = 6, name = "Right gap", min = 0, max = 200, step = 1, get = bg("gapR"), set = bs("gapR") },
+            fill = { type = "toggle", order = 7, name = "Fill remaining space", desc = "Auto sized rows only.", get = bg("fill"), set = bs("fill") },
+            align = { type = "select", order = 8, name = "Text align", values = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }, sorting = { "LEFT", "CENTER", "RIGHT" },
+                get = bg("align"), set = bs("align") },
+            scale = { type = "range", order = 9, name = "Content scale (%)", min = 40, max = 300, step = 5, get = bg("scale"), set = bs("scale") },
+            bgOn = { type = "toggle", order = 10, name = "Block background", get = bg("bgOn"), set = bs("bgOn") },
+            bgCol = bcol("Block background color", 11, "bgR", "bgG", "bgB"),
+            bgA = { type = "range", order = 12, name = "Block background opacity (%)", min = 0, max = 100, step = 5, get = bg("bgA"), set = bs("bgA") },
+            textOn = { type = "toggle", order = 13, name = "Own text color", get = bg("textOn"), set = bs("textOn") },
+            textCol = bcol("This block's text color", 14, "tR", "tG", "tB"),
+            left = { type = "execute", order = 20, name = "Move left / up", func = function()
+                local i = cur(); if i > 1 then swap(i, i - 1); editIdx[key] = i - 1; Both(key) end end },
+            right = { type = "execute", order = 21, name = "Move right / down", func = function()
+                local i = cur(); if i < nBlocks() then swap(i, i + 1); editIdx[key] = i + 1; Both(key) end end },
+            add = { type = "execute", order = 22, name = "Add block", func = function()
+                local n = nBlocks(); if n < MAXSLOTS then cfg.slots = n + 1; editIdx[key] = n + 1; Both(key) end end },
+            remove = { type = "execute", order = 23, name = "Remove block", func = function()
+                local n, i = nBlocks(), cur(); if n <= 1 then return end
+                for j = i, n - 1 do swap(j, j + 1) end
+                cfg["slot" .. n], cfg["text" .. n] = nil, ""; if cfg.blocks then cfg.blocks[n] = nil end
+                cfg.slots = n - 1; if editIdx[key] > n - 1 then editIdx[key] = n - 1 end
+                Both(key) end },
+        } }
         args.reset = { type = "execute", order = 30, name = "Reset this strip",
             func = function() local d = ns.Copy(ns.DATAPANEL_DEFAULTS[key]); for k in pairs(cfg) do cfg[k] = nil end; for k, v in pairs(d) do cfg[k] = v end; Both(key) end }
         return { type = "group", name = TITLES[key], order = order, args = args }

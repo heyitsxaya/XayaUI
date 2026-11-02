@@ -3,6 +3,8 @@
 -- Works without the "ElvUI Chat Reskin" master switch and without the main XayaUI settings window:
 --   /xui panel   (or right-click a bar)   opens a small settings window of its own.
 -- Left panel = under the main chat window (ChatFrame1). Right panel = under the window chosen as "right chat window" (ChatPanels.lua).
+-- The block drawing itself (layout, slot look) is shared with the screen data panels: DataBlocks.lua. Extra data types (the stats)
+-- come from DataPanels.lua (ns.DataText).
 -- Each bar is a row of 1 to 20 blocks. A block shows time, FPS + latency, FPS, latency, friends, gold, durability, free bag slots, zone
 -- or your own text, and has its own gaps, alignment, text scale, background, text color and "fill remaining space" setting.
 -- The bar can be even-split or auto-sized, snapped to the top or bottom screen edge, and shown always / in combat / out of combat /
@@ -30,6 +32,7 @@ local BASE = {
     -- panelChatSide (BOTTOM | TOP | LEFT | RIGHT of the chat window) and panelMatch (resize the bar to the chat window's width, or height
     -- for LEFT / RIGHT) are read through ChatSide() / Match() below, which fall back to the older panelAnchor / panelWidthMode keys.
     panelVisibility = "ALWAYS",    -- ALWAYS | COMBAT | NOCOMBAT | MOUSEOVER
+    panelLabels = true,            -- stat types: put the stat name in front of the value
     panelHoverHL = false,          -- highlight the block under the mouse
     panelClearEdit = true,         -- keep the bar clear of the chat edit box (the bar moves out past it)
     panelPushChat = true,          -- push the main chat up when a bar under it would not fit above the screen's bottom edge
@@ -56,9 +59,9 @@ local NAMES = { NONE = "(empty)", TIME = "Time", FPSMS = "FPS and latency", FPS 
 -- per-block settings ------------------------------------------------------------------------------------------------------
 -- stored as s[<side>panelBlocks][i] = { src=, custom=, gapL=, gapR=, fill=, align=, scale=, bgOn=, bgR/G/B/A=, textOn=, tR/G/B= }.
 -- A block without its own entry reads the older panelSlotN / panelCustomN keys (first three) and the defaults below.
-local MAXN = 20
-local BLOCK_DEF = { gapL = 10, gapR = 10, fill = false, align = "CENTER", scale = 100,
-    bgOn = false, bgR = 0, bgG = 0, bgB = 0, bgA = 40, textOn = false, tR = 1, tG = 1, tB = 1 }
+local B = ns.DataBlocks          -- DataBlocks.lua: the shared block engine (layout, slot look)
+local MAXN = B.MAXN
+local BLOCK_DEF = B.DEF
 local function BGet(s, side, i, f)
     local t = s[K(side, "panelBlocks")]
     local b = t and t[i]
@@ -216,6 +219,42 @@ PROVIDERS.ZONE = {
 PROVIDERS.CUSTOM = { text = function(s, side, i) return BGet(s, side, i, "custom") end }
 
 
+-- data types: the ones above, plus every type DataPanels.lua registered in ns.DataText (the character stats). DataPanels loads after this
+-- file, so ns.DataText is only looked at while the game runs.
+local function Prov(key)
+    local p = PROVIDERS[key]
+    if p then return p end
+    local d = ns.DataText and ns.DataText.by and ns.DataText.by[key]
+    if not d then return PROVIDERS.NONE end
+    p = {
+        text = function(s, side, i)
+            local cfg = { decimals = 1, clock24 = s[K(side, "panelClock24")], localTime = s[K(side, "panelLocalTime")] }
+            local v = d.text(cfg, i)
+            if d.label and v ~= "" and s[K(side, "panelLabels")] ~= false then return d.label .. " " .. Val(s, side) .. v .. "|r" end
+            return v
+        end,
+        tip = d.tip and function(s) local t = d.tip({}, 1); return t[1], t[2], t[3] end or nil,
+    }
+    PROVIDERS[key] = p
+    return p
+end
+local function NameOf(key)
+    if NAMES[key] then return NAMES[key] end
+    local d = ns.DataText and ns.DataText.by and ns.DataText.by[key]
+    return d and ((d.group == "General") and d.name or (d.group .. ": " .. d.name)) or tostring(key)
+end
+local function TypeList()
+    local list = {}
+    for _, k in ipairs(ORDER) do list[#list + 1] = { k, NAMES[k] } end
+    if ns.DataText and ns.DataText.list then
+        for _, d in ipairs(ns.DataText.list) do
+            if not NAMES[d.key] and d.group ~= "General" then list[#list + 1] = { d.key, d.group .. ": " .. d.name } end
+        end
+    end
+    return list
+end
+
+
 -- frames ------------------------------------------------------------------------------------------------------------------
 local TOGGLE_W = 20
 local function OpenWindow() if ns.ChatPanel_ShowWindow then ns.ChatPanel_ShowWindow() end end
@@ -241,24 +280,22 @@ local function Sizing(s, side) return s[K(side, "panelSizing")] == "AUTO" and "A
 
 local function MakeSlot(side, i)
     local P = panels[side]
-    local slot = CreateFrame("Button", nil, P.frame)
+    local slot = B.MakeSlot(P.frame)
     slot:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    slot.bg = slot:CreateTexture(nil, "BACKGROUND"); slot.bg:SetAllPoints(); slot.bg:Hide()
-    slot.hl = slot:CreateTexture(nil, "HIGHLIGHT"); slot.hl:SetAllPoints(); slot.hl:SetColorTexture(1, 1, 1, 0.10)
-    slot.fs = slot:CreateFontString(nil, "OVERLAY")
-    slot.fs:SetPoint("CENTER", 0, 0)
-    slot.fs:SetFont(STANDARD_TEXT_FONT, 12, "")
-    slot.fs:SetWordWrap(false)
     slot:SetScript("OnClick", function(_, b)
         if b == "RightButton" then OpenWindow() return end
         local s = Store(); if not s then return end
-        local pr = PROVIDERS[BGet(s, side, i, "src")]
+        local g = ns.dataPanelDB and ns.dataPanelDB.general
+        if g and g.blockCombatClick and InCombatLockdown and InCombatLockdown() then return end   -- shared "block combat click" (Data Panels > General)
+        local pr = Prov(BGet(s, side, i, "src"))
         if pr and pr.click then pcall(pr.click) end
     end)
     slot:SetScript("OnEnter", function(self)
         local s = Store(); if not s then return end
+        local g = ns.dataPanelDB and ns.dataPanelDB.general
+        if g and g.blockCombatHover and InCombatLockdown and InCombatLockdown() then return end   -- shared "block combat hover"
         local key = BGet(s, side, i, "src")
-        local pr = PROVIDERS[key]
+        local pr = Prov(key)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         if pr and pr.tip then
             local a, b, c = pr.tip(s)
@@ -266,7 +303,7 @@ local function MakeSlot(side, i)
             if b then GameTooltip:AddLine(b, 1, 1, 1) end
             if c then GameTooltip:AddLine(c, 1, 1, 1) end
         else
-            GameTooltip:SetText(NAMES[key] or "")
+            GameTooltip:SetText(NameOf(key))
         end
         if pr and pr.click then GameTooltip:AddLine("Click: open", 0.6, 0.6, 0.6) end
         GameTooltip:AddLine("Right-click: panel settings", 0.6, 0.6, 0.6)
@@ -289,71 +326,13 @@ local function Layout(side)
     local n = Count(s, side)
     EnsureSlots(side, n)
     local vert = Vert(s, side)
-    local len = (vert and P.frame:GetHeight() or P.frame:GetWidth()) or 0
-    local thick = (vert and P.frame:GetWidth() or P.frame:GetHeight()) or 0
     local inset = ToggleInset(s, side)
-    local usable = len - inset
-    local pos = (vert or side == "L") and inset or 0
-    local sizes = {}
-    if usable > 0 then
-        if Sizing(s, side) == "EVEN" then
-            for i = 1, n do sizes[i] = usable / n end
-        else
-            local nat, sum, fills = {}, 0, 0
-            for i = 1, n do
-                local fs = P.slots[i].fs
-                local tw = (vert and fs:GetStringHeight() or fs:GetStringWidth()) or 0
-                nat[i] = math.max(16, tw + (BGet(s, side, i, "gapL") or 0) + (BGet(s, side, i, "gapR") or 0))
-                sum = sum + nat[i]
-                if BGet(s, side, i, "fill") then fills = fills + 1 end
-            end
-            if sum >= usable then                    -- too long: shrink every block by the same factor
-                for i = 1, n do sizes[i] = nat[i] * usable / sum end
-            else
-                local left = usable - sum
-                for i = 1, n do
-                    local extra
-                    if fills > 0 then extra = BGet(s, side, i, "fill") and left / fills or 0
-                    else extra = left / n end        -- nothing marked "fill": spread what is left evenly
-                    sizes[i] = nat[i] + extra
-                end
-            end
-        end
-    end
-    for i = 1, MAXN do
-        local slot = P.slots[i]
-        if slot then
-            slot:ClearAllPoints()
-            if i <= n and sizes[i] then
-                local sz = sizes[i]
-                local fs = slot.fs
-                fs:ClearAllPoints()
-                local al = BGet(s, side, i, "align")
-                if vert then
-                    slot:SetPoint("TOPLEFT", P.frame, "TOPLEFT", 0, -pos)
-                    slot:SetPoint("TOPRIGHT", P.frame, "TOPRIGHT", 0, -pos)
-                    slot:SetHeight(sz)
-                    fs:SetWidth(math.max(1, thick - 6))
-                    if al == "LEFT" then fs:SetPoint("LEFT", slot, "LEFT", 3, 0); fs:SetJustifyH("LEFT")
-                    elseif al == "RIGHT" then fs:SetPoint("RIGHT", slot, "RIGHT", -3, 0); fs:SetJustifyH("RIGHT")
-                    else fs:SetPoint("CENTER", slot, "CENTER", 0, 0); fs:SetJustifyH("CENTER") end
-                else
-                    slot:SetPoint("TOPLEFT", P.frame, "TOPLEFT", pos, 0)
-                    slot:SetPoint("BOTTOMLEFT", P.frame, "BOTTOMLEFT", pos, 0)
-                    slot:SetWidth(sz)
-                    local gl, gr = BGet(s, side, i, "gapL") or 0, BGet(s, side, i, "gapR") or 0
-                    fs:SetWidth(math.max(1, sz - gl - gr))
-                    if al == "LEFT" then fs:SetPoint("LEFT", slot, "LEFT", gl, 0); fs:SetJustifyH("LEFT")
-                    elseif al == "RIGHT" then fs:SetPoint("RIGHT", slot, "RIGHT", -gr, 0); fs:SetJustifyH("RIGHT")
-                    else fs:SetPoint("CENTER", slot, "CENTER", (gl - gr) / 2, 0); fs:SetJustifyH("CENTER") end
-                end
-                pos = pos + sz
-                slot:Show()
-            else
-                slot:Hide()
-            end
-        end
-    end
+    B.Layout(P.frame, P.slots, {
+        n = n, vert = vert, sizing = Sizing(s, side),
+        lead = (vert or side == "L") and inset or 0,     -- the toggle button sits at the start (left bar, vertical bar) or at the end (right bar)
+        trail = (not vert and side ~= "L") and inset or 0,
+        get = function(i, f) return BGet(s, side, i, f) end,
+    })
 end
 
 local function UpdateText(side)
@@ -363,7 +342,7 @@ local function UpdateText(side)
     EnsureSlots(side, n)
     for i = 1, n do
         local slot = P.slots[i]
-        local pr = PROVIDERS[BGet(s, side, i, "src")] or PROVIDERS.NONE
+        local pr = Prov(BGet(s, side, i, "src"))
         local ok, txt = pcall(pr.text, s, side, i)
         slot.fs:SetText(ok and txt or "?")
     end
@@ -454,25 +433,11 @@ local function Style(s, side)
     local path = (ns.FontPath and ns.FontPath(s.font)) or STANDARD_TEXT_FONT
     local base = math.max(6, math.min(40, tonumber(s[K(side, "panelTextSize")]) or 13))
     EnsureSlots(side, Count(s, side))
+    local pp = { size = base, path = path, outline = "OUTLINE", hover = s[K(side, "panelHoverHL")],
+        r = s[K(side, "panelTextR")] or 1, g = s[K(side, "panelTextG")] or 1, b = s[K(side, "panelTextB")] or 1 }
+    local function get(i, f) return BGet(s, side, i, f) end
     for i = 1, MAXN do
-        local slot = P.slots[i]
-        if slot then
-            local size = math.max(6, math.min(80, math.floor(base * (tonumber(BGet(s, side, i, "scale")) or 100) / 100 + 0.5)))
-            local fs = slot.fs
-            if not fs:SetFont(path or STANDARD_TEXT_FONT, size, "OUTLINE") then fs:SetFont(STANDARD_TEXT_FONT, size, "OUTLINE") end
-            if BGet(s, side, i, "textOn") then
-                fs:SetTextColor(BGet(s, side, i, "tR"), BGet(s, side, i, "tG"), BGet(s, side, i, "tB"))
-            else
-                fs:SetTextColor(s[K(side, "panelTextR")] or 1, s[K(side, "panelTextG")] or 1, s[K(side, "panelTextB")] or 1)
-            end
-            if BGet(s, side, i, "bgOn") then
-                slot.bg:SetColorTexture(BGet(s, side, i, "bgR"), BGet(s, side, i, "bgG"), BGet(s, side, i, "bgB"), (BGet(s, side, i, "bgA") or 40) / 100)
-                slot.bg:Show()
-            else
-                slot.bg:Hide()
-            end
-            slot.hl:SetShown(s[K(side, "panelHoverHL")] and true or false)
-        end
+        if P.slots[i] then B.StyleSlot(P.slots[i], i, get, pp) end
     end
 end
 
@@ -644,15 +609,14 @@ local function BuildWindow()
         local s = S(); local n, sel = Count(s, editSide), EB()
         local parts = {}
         for i = 1, n do
-            local nm = NAMES[BGet(s, editSide, i, "src")] or "?"
+            local nm = NameOf(BGet(s, editSide, i, "src"))
             parts[#parts + 1] = (i == sel) and ("|cffffd100[" .. i .. " " .. nm .. "]|r") or (i .. " " .. nm)
         end
         self.fs:SetText(table.concat(parts, "  |  "))
     end
     f:Add(ov, 56)
     f:Add(CW.Number("Editing block", function() return EB() end, function(v) editBlock = v; f:RefreshAll() end, 1, MAXN, 1), 20)
-    local values = {}
-    for _, k in ipairs(ORDER) do values[#values + 1] = { k, NAMES[k] } end
+    local values = TypeList()
     f:Add(CW.Cycle("Shows", values, bget("src"), bset("src")), 20)
     f:Add(CW.Text("Custom text (used when the block shows Custom text; color codes work)", bget("custom"), bset("custom")), 40)
     f:Add(bnum("Left gap", "gapL", 0, 200, 1), 20)
@@ -711,6 +675,13 @@ local function BuildWindow()
         function(v) local s = Store(); if s then s.cpHideToggles = v and true or false end; ns.ChatPanel_Refresh() end), 20)
     f:Add(CW.Check("Fade a toggle button while its chat window is hidden (both panels)", function() return S().cpFadeToggles end,
         function(v) local s = Store(); if s then s.cpFadeToggles = v and true or false end; ns.ChatPanel_Refresh() end), 20, 8)
+
+    f:Add(check("Stat blocks: show the stat name in front of the value", "panelLabels", true), 20, 8)
+    f:Add(CW.Note("These bars are attached to the chat windows. The screen data panels (corner panels, top bar, free panels) have their own page.", 0.6, 0.6, 0.6), 30)
+    local rowDP = CreateFrame("Frame")
+    local openDP = CW.Button(rowDP, 190, 20, "Open the screen data panels", function() if ns.DataPanels_OpenSettings then ns.DataPanels_OpenSettings() end end)
+    openDP:SetPoint("LEFT", 0, 0)
+    f:Add(rowDP, 24, 8)
 
     local row2 = CreateFrame("Frame")
     local reset = CW.Button(row2, 170, 20, "Reset this panel's settings", function()
