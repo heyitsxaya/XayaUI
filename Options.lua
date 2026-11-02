@@ -4050,7 +4050,6 @@ do
             if app ~= APP then return end
             LowerWindow()
             if ns.DraftsOnOpen then pcall(ns.DraftsOnOpen) end   -- remember every rule's saved version
-            if ns.RefreshSidebar then pcall(ns.RefreshSidebar) end   -- redraw the side panel from the current rules
             local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
             if of and of.frame and not of.frame.xuiDraftHook then   -- window closed (button, Esc, toggle): unsaved rules go to Drafts
                 of.frame.xuiDraftHook = true

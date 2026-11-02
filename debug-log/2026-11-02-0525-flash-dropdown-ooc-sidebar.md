@@ -16,3 +16,6 @@ Cause was a wrong aura ID picked by hand. A spell can apply several aura IDs and
 
 ## Update 05:35 ET: REVERTED the synchronous skin on group switch
 Xaya: after that change the addon pane could not be moved and the frame rate dropped. Likely cause (inference, not confirmed): ns.DecorateTrees can re-select the tree, which fires OnGroupSelected again, which decorated again with no re-entrancy guard. Skin.lua is back to the version before the change (dropdown row-height fix kept). The flash is open again; a retry needs a re-entrancy guard and a /xui perf check first.
+
+## Update 05:40 ET: frame-rate drop from the moment the window opens: FIXED (loop I introduced)
+The window-Open hook called ns.RefreshSidebar, which Notifies; AceConfigDialog then re-runs Open on the next frame, which hit the hook again: a full window rebuild every frame. Removed the call from the Open hook (Options.lua). The refresh stays after Save and after the window closes (Drafts.lua), where it runs once. The earlier revert of the synchronous skin change was not the cause.
