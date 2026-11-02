@@ -16,6 +16,10 @@ local ADDON, ns = ...
 
 local TITLE_H = 20
 local TB_H, TB_W, BTN_W = 20, 38, 26   -- toolbar thickness (horizontal), width (vertical), button width (horizontal)
+local NAME_H, NAME_MAX = 22, 40          -- height of the note-name row under the title bar; longest note name
+local HDR = TITLE_H + NAME_H              -- title bar + name row: everything below starts here
+local REF_W, REF_H = 280, 220             -- default box size; the toolbar grows with the box beyond this (up to 2x)
+local ICON_DIR = "Interface\\AddOns\\" .. ADDON .. "\\Media\\UI\\Notepad\\"   -- icon images (PNG, 64x64; SVG sources are in src/)
 local FB_H, FMT_MINW = 20, 262         -- format bar height, minimum box width while it is shown
 local MAX_CHARS = 8000                 -- per note
 local IDLE_SECS = 4                    -- pause in typing that saves a version
@@ -38,6 +42,7 @@ ns.NOTEPAD_DEFAULTS = {
     toolbar = true,
     toolbarPos = "TOP",      -- TOP | BOTTOM | LEFT | RIGHT
     toolbarHover = false,    -- true: toolbar only shows while the mouse is over the box
+    iconLines = false,       -- true: simple drawn line icons instead of the image icons
     maxHistory = 20,         -- earlier versions kept per note
     current = 0, nextId = 1,
 }
@@ -53,6 +58,11 @@ local function NewNoteTable(text)
     local n = { id = db.nextId, text = text or "", hist = {}, created = time(), modified = time() }
     db.nextId = db.nextId + 1
     return n
+end
+
+local function NoteName(n, idx)   -- a note's own name, or "Note N" (its position) until it is renamed
+    if n and type(n.name) == "string" and n.name ~= "" then return n.name end
+    return "Note " .. (idx or 1)
 end
 
 local function IndexOf(id)
@@ -167,14 +177,17 @@ local function SetEditText(text)
     if RefreshView then RefreshView() end
 end
 
-local function UpdateTitle()
-    local db = DB(); if not (db and frame) then return end
-    local n = Cur()
+local function UpdateTitle()   -- fills the note-name row: the name box, its grey default ("Note N"), and the position count
+    local db = DB(); if not (db and frame and frame.nr) then return end
+    local n = Cur(); if not n then return end
     local idx = IndexOf(db.current) or 1
-    local first = (n.text or ""):match("[^\r\n]+") or "(empty)"
-    if #first > 40 then first = first:sub(1, 40) .. "..." end
-    first = first:gsub("|", "||")
-    frame.title:SetText(("Notepad %d/%d  |cff999999%s|r"):format(idx, #db.notes, first))
+    local nr = frame.nr
+    nr.count:SetText(("%d/%d"):format(idx, #db.notes))
+    nr.ph:SetText("Note " .. idx)
+    if not nr.edit:HasFocus() then   -- never overwrite a name that is being typed
+        frame.settingName = true; nr.edit:SetText(n.name or ""); frame.settingName = nil
+    end
+    nr.ph:SetShown((nr.edit:GetText() or "") == "")
 end
 
 local Populate   -- restore list refresher (defined below)
@@ -216,7 +229,10 @@ end
 
 function ns.Notepad_Duplicate()
     local n = Cur(); if not n then return end
+    local name = n.name
     ns.Notepad_New(n.text, true)
+    local c = Cur()
+    if c and name and name ~= "" then c.name = (name .. " (copy)"):sub(1, NAME_MAX); UpdateTitle(); if PopulateList then PopulateList() end end
 end
 
 function ns.Notepad_Delete()
@@ -358,16 +374,17 @@ end
 -------------------------------------------------------------------------------
 -- toolbar
 -------------------------------------------------------------------------------
+-- { key, tooltip title, tooltip description, click handler }. The icons carry no words, so every button explains itself on hover.
 local BUTTONS = {
-    { "New",  "Add a new note",                         function() ns.Notepad_New(nil, true) end },
-    { "Dup",  "Duplicate this note",                    function() ns.Notepad_Duplicate() end },
-    { "Del",  "Delete this note (kept under the history button)",     function() ns.Notepad_Delete() end },
-    { "<",    "Previous note",                          function() ns.Notepad_Prev() end },
-    { ">",    "Next note",                              function() ns.Notepad_Next() end },
-    { "Hist", "Restore: earlier versions and deleted notes", function() ns.Notepad_ToggleRestore() end },
-    { "List", "List of all notes (click one to open it)", function() ns.Notepad_ToggleList() end },
-    { "Fmt",  "Formatting tools on / off: heading, bullet, checkbox, colors, spell icons, and a formatted view", function() ns.Notepad_ToggleFormat() end },
-    { "More", "Share this note to chat, export notes as text, import notes", function(self) if ns.NotepadShare_Menu then ns.NotepadShare_Menu(self) end end },
+    { "New",  "New note (+)",               "Creates an empty note and opens it.",                                  function() ns.Notepad_New(nil, true) end },
+    { "Dup",  "Duplicate note",             "Makes a copy of this note and opens the copy.",                        function() ns.Notepad_Duplicate() end },
+    { "Del",  "Delete note (trash bin)",    "Removes this note. It stays recoverable under the history button (clock).", function() ns.Notepad_Delete() end },
+    { "<",    "Previous note",              "Opens the previous note in the list.",                                 function() ns.Notepad_Prev() end },
+    { ">",    "Next note",                  "Opens the next note in the list.",                                     function() ns.Notepad_Next() end },
+    { "Hist", "History (clock)",            "Restore an earlier version of this note, or a note you deleted.",      function() ns.Notepad_ToggleRestore() end },
+    { "List", "All notes (list)",           "Shows every note at once; click one to open it. Click this again to return to your note.", function() ns.Notepad_ToggleList() end },
+    { "Fmt",  "Formatting tools (underlined A)", "Turns the format bar and formatted view on or off: heading, bullet, checkbox, colors, spell icons.", function() ns.Notepad_ToggleFormat() end },
+    { "More", "Menu (three lines)",         "Share this note to chat, export notes as text, or import notes.",      function(self) if ns.NotepadShare_Menu then ns.NotepadShare_Menu(self) end end },
 }
 
 -- Toolbar icons are drawn with lines and small squares (no font glyphs and no texture files, so they look the same on every client).
@@ -409,6 +426,28 @@ local ICONS = {
     More = function(L) L(-4.5, 3, 4.5, 3, 1.6); L(-4.5, 0, 4.5, 0, 1.6); L(-4.5, -3, 4.5, -3, 1.6) end,   -- hamburger menu
 }
 
+local ICON_FILES = { New = "plus", Dup = "pages", Del = "trash", ["<"] = "left", [">"] = "right", Hist = "history", List = "list", Fmt = "format", More = "menu" }
+local ICON_PX = 13   -- icon image size on a 1x toolbar; it scales with the toolbar
+
+local function ApplyIconScale(b, u)   -- sizes the image icon and re-aims the line icons for toolbar scale u
+    if b.tex then b.tex:ClearAllPoints(); b.tex:SetPoint("CENTER", b, "CENTER", 0, 0); b.tex:SetSize(ICON_PX * u, ICON_PX * u) end
+    for _, p in ipairs(b.icon) do
+        local c = p.c
+        if p.isLine then
+            p:SetThickness(c[5] * u); p:SetStartPoint("CENTER", b, c[1] * u, c[2] * u); p:SetEndPoint("CENTER", b, c[3] * u, c[4] * u)
+        else
+            p:SetSize(c[3] * u, c[3] * u); p:ClearAllPoints(); p:SetPoint("CENTER", b, "CENTER", c[1] * u, c[2] * u)
+        end
+    end
+end
+
+local function ApplyIconStyle(tb, lines)   -- image icons (default) or the simple drawn line icons
+    for _, b in ipairs(tb.btns) do
+        if b.tex then b.tex:SetShown(not lines) end
+        for _, p in ipairs(b.icon) do p:SetShown(lines and true or false) end
+    end
+end
+
 local function BuildToolbar(f)
     local tb = CreateFrame("Frame", nil, f)
     tb.bg = tb:CreateTexture(nil, "BACKGROUND"); tb.bg:SetAllPoints(); tb.bg:SetColorTexture(0.1, 0.1, 0.1, 0.9)
@@ -417,24 +456,31 @@ local function BuildToolbar(f)
         local b = CreateFrame("Button", nil, tb)
         b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(); b.bg:SetColorTexture(0.18, 0.18, 0.18, 0.9)
         b.hl = b:CreateTexture(nil, "HIGHLIGHT"); b.hl:SetAllPoints(); b.hl:SetColorTexture(0.2, 0.7, 1, 0.35)
-        b.icon = {}
+        b.icon = {}   -- the line-icon pieces (fallback style)
+        b.tex = b:CreateTexture(nil, "OVERLAY")
+        b.tex:SetTexture(ICON_DIR .. (ICON_FILES[def[1]] or "menu") .. ".png"); b.tex:SetVertexColor(0.92, 0.92, 0.92)
         local function L(x1, y1, x2, y2, th)
             local ln = b:CreateLine(nil, "OVERLAY")
-            ln:SetThickness(th or 1.2); ln:SetColorTexture(0.92, 0.92, 0.92, 1)
-            ln:SetStartPoint("CENTER", b, x1, y1); ln:SetEndPoint("CENTER", b, x2, y2)
+            ln:SetColorTexture(0.92, 0.92, 0.92, 1)
+            ln.isLine, ln.c = true, { x1, y1, x2, y2, th or 1.2 }
             b.icon[#b.icon + 1] = ln
         end
         local function Sq(x, y, size)
             local t = b:CreateTexture(nil, "OVERLAY")
-            t:SetColorTexture(0.92, 0.92, 0.92, 1); t:SetSize(size, size); t:SetPoint("CENTER", b, "CENTER", x, y)
+            t:SetColorTexture(0.92, 0.92, 0.92, 1); t.c = { x, y, size }
             b.icon[#b.icon + 1] = t
         end
         if ICONS[def[1]] then ICONS[def[1]](L, Sq) end
-        b:SetScript("OnClick", def[3])
-        b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:SetText(def[2]); GameTooltip:Show() end)
+        ApplyIconScale(b, 1)
+        b:SetScript("OnClick", def[4])
+        b:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:SetText(def[2], 1, 0.82, 0); GameTooltip:AddLine(def[3], 1, 1, 1, true); GameTooltip:Show()
+        end)
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
         tb.btns[i] = b; tb.byName[def[1]] = b
     end
+    ApplyIconStyle(tb, false)
+    tb.u = 1
     return tb
 end
 
@@ -443,23 +489,42 @@ local function Layout()
     local f, tb, sf = frame, frame.tb, frame.sf
     local pos = db.toolbarPos or "TOP"
     local vert = (pos == "LEFT" or pos == "RIGHT")
+    local fw, fh = f:GetWidth(), f:GetHeight()
+    if not fw or fw < 1 then fw = db.w or REF_W end
+    if not fh or fh < 1 then fh = db.h or REF_H end
+    -- The toolbar grows with the box: its buttons and icons scale from 1x (the default size, or any smaller box) up to 2x.
+    local u = math.max(1, math.min(2, vert and fh / REF_H or fw / REF_W))
+    f.nr:ClearAllPoints(); f.nr:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -TITLE_H); f.nr:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -TITLE_H)
     tb:ClearAllPoints()
-    local L, T, R, B = 6, TITLE_H + 4, 6, 14
+    local L, T, R, B = 6, HDR + 4, 6, 14
+    -- A top or bottom toolbar also wraps: when the box is too narrow for one row, the icons flow onto more rows and the text area gives up the room.
+    local cols, tbH, tbW = #BUTTONS, TB_H, TB_W
+    local bw, gap, pad, step = BTN_W * u, 2 * u, 2 * u, (TB_H - 2) * u
     if db.toolbar then
-        if pos == "TOP" then
-            tb:SetPoint("TOPLEFT", 0, -TITLE_H); tb:SetPoint("TOPRIGHT", 0, -TITLE_H); tb:SetHeight(TB_H); T = TITLE_H + TB_H + 3
-        elseif pos == "BOTTOM" then
-            tb:SetPoint("BOTTOMLEFT", 0, 0); tb:SetPoint("BOTTOMRIGHT", -16, 0); tb:SetHeight(TB_H); B = TB_H + 3
-        elseif pos == "LEFT" then
-            tb:SetPoint("TOPLEFT", 0, -TITLE_H); tb:SetPoint("BOTTOMLEFT", 0, 0); tb:SetWidth(TB_W); L = TB_W + 4
+        if vert then tbW = TB_W * u
         else
-            tb:SetPoint("TOPRIGHT", 0, -TITLE_H); tb:SetPoint("BOTTOMRIGHT", 0, 0); tb:SetWidth(TB_W); R = TB_W + 4
+            cols = math.max(1, math.floor((fw - (pos == "BOTTOM" and 16 or 0) - pad + gap) / (bw + gap)))
+            tbH = math.ceil(#BUTTONS / cols) * step + pad
         end
+        if pos == "TOP" then
+            tb:SetPoint("TOPLEFT", 0, -HDR); tb:SetPoint("TOPRIGHT", 0, -HDR); tb:SetHeight(tbH); T = HDR + tbH + 3
+        elseif pos == "BOTTOM" then
+            tb:SetPoint("BOTTOMLEFT", 0, 0); tb:SetPoint("BOTTOMRIGHT", -16, 0); tb:SetHeight(tbH); B = tbH + 3
+        elseif pos == "LEFT" then
+            tb:SetPoint("TOPLEFT", 0, -HDR); tb:SetPoint("BOTTOMLEFT", 0, 0); tb:SetWidth(tbW); L = tbW + 4
+        else
+            tb:SetPoint("TOPRIGHT", 0, -HDR); tb:SetPoint("BOTTOMRIGHT", 0, 0); tb:SetWidth(tbW); R = tbW + 4
+        end
+        if tb.u ~= u then tb.u = u; for _, b in ipairs(tb.btns) do ApplyIconScale(b, u) end end
         for i, b in ipairs(tb.btns) do
             b:ClearAllPoints()
-            if vert then b:SetSize(TB_W - 4, 18); b:SetPoint("TOP", tb, "TOP", 0, -2 - (i - 1) * 20)
-            else b:SetSize(BTN_W, TB_H - 4); b:SetPoint("LEFT", tb, "LEFT", 2 + (i - 1) * (BTN_W + 2), 0) end
+            if vert then b:SetSize((TB_W - 4) * u, 18 * u); b:SetPoint("TOP", tb, "TOP", 0, -(pad + (i - 1) * 20 * u))
+            else
+                local r, c = math.floor((i - 1) / cols), (i - 1) % cols
+                b:SetSize(bw, (TB_H - 4) * u); b:SetPoint("TOPLEFT", tb, "TOPLEFT", pad + c * (bw + gap), -(pad + r * step))
+            end
         end
+        ApplyIconStyle(tb, db.iconLines)
     end
     tb:SetShown(db.toolbar and true or false)
     local fb = f.fb
@@ -473,11 +538,15 @@ local function Layout()
     for _, area in ipairs({ sf, f.vf, f.lf }) do   -- typing area, formatted view, and note list share one spot
         area:ClearAllPoints(); area:SetPoint("TOPLEFT", f, "TOPLEFT", L, -T); area:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -R, B)
     end
-    local minW = vert and 150 or math.max(db.toolbar and #BUTTONS * (BTN_W + 2) + 6 or 140, db.format and FMT_MINW or 0)
+    local minW = vert and math.max(150, tbW + 100) or math.max(150, db.format and FMT_MINW or 0)
     f.minW = minW
-    local minH = (vert and db.toolbar) and (#BUTTONS * 20 + TITLE_H + 8) or 90   -- a side toolbar stacks its buttons
+    local minH = (vert and db.toolbar) and (#BUTTONS * 20 + HDR + 8) or 90   -- a side toolbar stacks its buttons
+    if db.toolbar and not vert then   -- keep about 30 pixels of typing room under a toolbar that has wrapped to several rows
+        minH = math.max(minH, HDR + tbH + 3 + (db.format and FB_H + 2 or 0) + 14 + 30)
+    end
     f.minH = minH
     if f.SetResizeBounds then f:SetResizeBounds(minW, minH, 900, 900) end
+    if f.GetHeight and f:GetHeight() < minH then f:SetHeight(minH) end   -- narrowing the box can add a toolbar row; make room for it
 end
 
 -------------------------------------------------------------------------------
@@ -490,7 +559,7 @@ function ns.Notepad_ListEntries()   -- pure data: one entry per note, in order
     local db = DB(); local out = {}
     if not db then return out end
     for i, n in ipairs(db.notes) do
-        out[i] = { id = n.id, index = i, text = Preview(n.text, 60), modified = n.modified, chars = #(n.text or ""), current = (n.id == db.current) }
+        out[i] = { id = n.id, index = i, name = NoteName(n, i), text = Preview(n.text, 60), modified = n.modified, chars = #(n.text or ""), current = (n.id == db.current) }
     end
     return out
 end
@@ -509,7 +578,7 @@ local function ListRow(i)
     b:SetScript("OnEnter", function(self)
         local _, n = IndexOf(self.id); if not n then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Note " .. (self.idx or "?"), 1, 0.82, 0)
+        GameTooltip:SetText(NoteName(n, self.idx), 1, 0.82, 0)
         GameTooltip:AddLine(Preview(n.text, 300), 1, 1, 1, true)
         GameTooltip:AddLine(("%d characters. Click to open."):format(#(n.text or "")), 0.6, 0.6, 0.6)
         GameTooltip:Show()
@@ -525,7 +594,7 @@ PopulateList = function()
     for i, e in ipairs(entries) do
         local b = ListRow(i)
         b:Show(); b.id, b.idx = e.id, e.index
-        b.fs:SetText(("|cff888888%d|r  %s"):format(e.index, e.text))
+        b.fs:SetText(("|cffffd100%s|r  |cff999999%s|r"):format(e.name:gsub("|", "||"), e.text))
         b.date:SetText(e.modified and date("%b %d", e.modified) or "")
         b.cur:SetShown(e.current and true or false)
     end
@@ -663,10 +732,51 @@ local function Build()
     lock:SetScript("OnLeave", function() GameTooltip:Hide() end)
     f.lock = lock
 
-    f.title = bar:CreateFontString(nil, "OVERLAY")
-    f.title:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE")
-    f.title:SetPoint("LEFT", 6, 0); f.title:SetPoint("RIGHT", lock, "LEFT", -4, 0)
-    f.title:SetJustifyH("LEFT"); f.title:SetWordWrap(false); f.title:SetTextColor(1, 0.82, 0)
+    f.title = bar:CreateFontString(nil, "OVERLAY")   -- the bar is the notepad's own: centered name, Lock and x at the right
+    f.title:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE")
+    f.title:SetPoint("CENTER", bar, "CENTER", 0, 0); f.title:SetText("Notepad"); f.title:SetTextColor(1, 0.82, 0)
+
+    -- Name row under the bar: the note's title. It reads as an input box (pencil icon, border, grey default name) so it is clear it can be renamed.
+    local nr = CreateFrame("Frame", nil, f); nr:SetHeight(NAME_H)
+    nr.bg = nr:CreateTexture(nil, "BACKGROUND"); nr.bg:SetAllPoints(); nr.bg:SetColorTexture(0.09, 0.09, 0.09, 0.95)
+    nr.count = nr:CreateFontString(nil, "OVERLAY"); nr.count:SetFont(STANDARD_TEXT_FONT, 10, ""); nr.count:SetPoint("RIGHT", -6, 0); nr.count:SetTextColor(0.55, 0.55, 0.55)
+    local box = CreateFrame("Frame", nil, nr, "BackdropTemplate")
+    box:SetPoint("LEFT", 4, 0); box:SetPoint("RIGHT", nr.count, "LEFT", -6, 0); box:SetHeight(NAME_H - 6)
+    box:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    box:SetBackdropColor(0.02, 0.02, 0.02, 0.9); box:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    local pen = box:CreateTexture(nil, "OVERLAY"); pen:SetTexture(ICON_DIR .. "pencil.png"); pen:SetSize(12, 12); pen:SetPoint("LEFT", 4, 0); pen:SetVertexColor(0.7, 0.7, 0.7)
+    local ne = CreateFrame("EditBox", nil, box)
+    ne:SetAllPoints(box); ne:SetAutoFocus(false); ne:SetMaxLetters(NAME_MAX); ne:SetTextInsets(21, 4, 0, 0)
+    ne:SetFont(STANDARD_TEXT_FONT, 12, ""); ne:SetTextColor(1, 0.82, 0)
+    local ph = box:CreateFontString(nil, "OVERLAY"); ph:SetFont(STANDARD_TEXT_FONT, 12, ""); ph:SetPoint("LEFT", box, "LEFT", 21, 0); ph:SetTextColor(0.55, 0.55, 0.55)
+    ne:SetScript("OnTextChanged", function(self, user)
+        ph:SetShown((self:GetText() or "") == "")
+        if user and not f.settingName then local n = Cur(); if n then n.name = self:GetText() end end
+    end)
+    ne:SetScript("OnEditFocusGained", function(self)
+        local n = Cur(); self.orig = n and n.name or ""
+        box:SetBackdropBorderColor(0.2, 0.7, 1, 1); pen:SetVertexColor(0.2, 0.7, 1); self:HighlightText()
+    end)
+    ne:SetScript("OnEditFocusLost", function(self)
+        box:SetBackdropBorderColor(0.4, 0.4, 0.4, 1); pen:SetVertexColor(0.7, 0.7, 0.7); self:HighlightText(0, 0)
+        local n = Cur()
+        if n then local t = (n.name or ""):match("^%s*(.-)%s*$"); n.name = (t ~= "") and t or nil end
+        UpdateTitle(); if PopulateList then PopulateList() end
+    end)
+    ne:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    ne:SetScript("OnEscapePressed", function(self)   -- cancel: back to the name it had when you started
+        local n = Cur(); if n then n.name = (self.orig ~= "") and self.orig or nil end
+        f.settingName = true; self:SetText(self.orig or ""); f.settingName = nil
+        self:ClearFocus()
+    end)
+    ne:SetScript("OnEnter", function(self)
+        local db = DB(); local idx = db and IndexOf(db.current) or 1
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:SetText("Rename this note", 1, 0.82, 0)
+        GameTooltip:AddLine("Click the name, type your own, and press Enter. Esc cancels. Leave it empty to go back to \"Note " .. idx .. "\".", 1, 1, 1, true); GameTooltip:Show()
+    end)
+    ne:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    nr.edit, nr.ph, nr.box = ne, ph, box
+    f.nr = nr
 
     f.tb = BuildToolbar(f)
 
@@ -738,6 +848,9 @@ local function Build()
     grip:SetScript("OnMouseDown", function() local db = DB(); if db and not db.locked then f:StartSizing("BOTTOMRIGHT"); f.sizing = true end end)
     grip:SetScript("OnMouseUp", function() if f.sizing then f.sizing = false; f:StopMovingOrSizing(); SavePosition(f) end end)
     f.grip = grip
+    f:SetScript("OnSizeChanged", function(self, w)   -- re-flow the toolbar icons when the width changes
+        if w and w ~= self.lastLayoutW then self.lastLayoutW = w; Layout() end
+    end)
 
     -- timer: saves a version after a pause in typing; hover-reveals the toolbar
     local acc = 0
@@ -748,7 +861,7 @@ local function Build()
         if pendingAt and GetTime() - pendingAt >= IDLE_SECS then Flush(); Populate() end
         local db = DB()
         if db and db.toolbar then
-            local show = (not db.toolbarHover) or f:IsMouseOver() or f.eb:HasFocus() or (popup and popup:IsShown() and popup:IsMouseOver())
+            local show = (not db.toolbarHover) or f:IsMouseOver() or f.eb:HasFocus() or f.nr.edit:HasFocus() or (popup and popup:IsShown() and popup:IsMouseOver())
             f.tb:SetAlpha(show and 1 or 0)
         end
     end)
@@ -810,7 +923,7 @@ ev:RegisterEvent("PLAYER_LOGOUT")
 ev:SetScript("OnEvent", function(_, e)
     local db = DB(); if not db or not frame then return end
     if e == "PLAYER_LOGOUT" then Flush(); return end
-    if e == "PLAYER_REGEN_DISABLED" and db.dropFocusInCombat and frame.eb:HasFocus() then frame.eb:ClearFocus() end
+    if e == "PLAYER_REGEN_DISABLED" and db.dropFocusInCombat and (frame.eb:HasFocus() or frame.nr.edit:HasFocus()) then frame.eb:ClearFocus(); frame.nr.edit:ClearFocus() end
     ns.Notepad_Refresh()
 end)
 
@@ -848,6 +961,9 @@ function ns.BuildNotepadTab(Notify)
             pos = { type = "select", order = 3, name = "Toolbar position", disabled = function() return not db.toolbar end,
                 values = { TOP = "Top", BOTTOM = "Bottom", LEFT = "Left", RIGHT = "Right" }, sorting = { "TOP", "BOTTOM", "LEFT", "RIGHT" },
                 get = g("toolbarPos"), set = s("toolbarPos") },
+            lines = { type = "toggle", order = 3.5, name = "Use simple line icons", width = "double",
+                desc = "Draws the toolbar icons as plain lines instead of using the icon images. Try this if the image icons do not show.",
+                disabled = function() return not db.toolbar end, get = g("iconLines"), set = s("iconLines") },
         } },
         hist = { type = "group", name = "Versions", order = 5, inline = true, args = {
             max = { type = "range", order = 1, name = "Earlier versions kept per note", desc = "A version is saved when you pause typing, and always right before a large amount of text is removed. Oldest versions drop off first.",
