@@ -6876,8 +6876,15 @@ do
                 if ns.UI and ns.UI.Notify then ns.UI.Notify() end
             end)
         end
-        f.btn.save:GetFontString():SetTextColor(1, 0.3, 0.3)
-        f.btn.save:HookScript("OnShow", function(self) self:GetFontString():SetTextColor(1, 0.3, 0.3) end)
+        -- the addon's own flat button look (Skin.lua); with the skin off, Save keeps the old red text on the Blizzard button
+        f.btn.save:HookScript("OnShow", function(self)
+            if ns.SkinPlainButton and not self.xuiFlatBtn then self:GetFontString():SetTextColor(1, 0.3, 0.3) end
+        end)
+        f.skinBtns = function()
+            if not ns.SkinPlainButton then return end
+            for key, btn in pairs(f.btn) do pcall(ns.SkinPlainButton, btn, key == "save") end
+        end
+        f.skinBtns()
         f:SetScript("OnSizeChanged", function() if f.rule then pcall(Layout) end end)
         return f
     end
@@ -6898,7 +6905,9 @@ do
         bar:SetFrameStrata(fr:GetFrameStrata()); bar:SetFrameLevel(fr:GetFrameLevel())
         if bar.rule ~= r then bar.armed = false end
         bar.rule = r
+        local wasShown = bar:IsShown()
         bar:Show()
+        if not wasShown and bar.skinBtns then bar.skinBtns() end   -- re-read the theme each time the strip appears
         pcall(Layout)
         return bar
     end
