@@ -1,5 +1,5 @@
 # Chat reskin is broken in game; Xaya asks to scrap most of it and rebuild cleanly (build 0.5.76, fork: main)
-Logged 2026-11-02-2335 UTC. GitHub issue: NOT YET CREATED from this session (GitHub attach refused by the permission check); create one when access works and link this file.
+Logged 2026-11-02-2335 UTC. GitHub issue: #297.
 
 Xaya (screenshot, chat in mover mode): "the whole chat is fucked. the databar isn't snapped to the bottom of the chat, the side bar looks janky, the panels are weird, and the friends button is randomly floating above everything. please review everything and redo this reskin cleanly. let's scrap most of the work."
 

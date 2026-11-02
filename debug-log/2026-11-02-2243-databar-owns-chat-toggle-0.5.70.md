@@ -1,5 +1,5 @@
 # Data bar arrow replaces the floating chat arrow; attached bar follows the chat's collapse (build 0.5.70, fork: main)
-Logged 2026-11-02-2243 UTC. Reported by Xaya with a screenshot (chat collapsed, bar at the bottom with its own arrow, a second arrow floating at the right). GitHub issue: NOT YET CREATED (this session's permission check refused the GitHub attach; create it when access is granted and link this file).
+Logged 2026-11-02-2243 UTC. Reported by Xaya with a screenshot (chat collapsed, bar at the bottom with its own arrow, a second arrow floating at the right). GitHub issue: #296.
 
 Xaya: "the arrow on the right should not exist. if the databar on the left is attached to the chat, it should inherit the same behavior of the chat."
 
