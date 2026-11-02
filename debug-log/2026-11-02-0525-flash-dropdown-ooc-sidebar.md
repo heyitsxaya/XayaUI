@@ -13,3 +13,6 @@ Not fixed: Conditions-tab Trigger 1 FALSE with the aura visible (status text onl
 
 ## Update 05:30 ET: Conditions Trigger 1 FALSE explained (Xaya)
 Cause was a wrong aura ID picked by hand. A spell can apply several aura IDs and the earlier request (all matching aura IDs from a spell lookup, any of them counts) is NOT implemented: a Buff / Aura trigger holds ONE ID (rule.buffID, Conditions.lua ns.BuffPresent(id)), and the aura search lists matches by name only. Open feature: (1) lookup that lists every aura ID tied to a spell name, (2) a Buff trigger that accepts several IDs (any present = TRUE).
+
+## Update 05:35 ET: REVERTED the synchronous skin on group switch
+Xaya: after that change the addon pane could not be moved and the frame rate dropped. Likely cause (inference, not confirmed): ns.DecorateTrees can re-select the tree, which fires OnGroupSelected again, which decorated again with no re-entrancy guard. Skin.lua is back to the version before the change (dropdown row-height fix kept). The flash is open again; a retry needs a re-entrancy guard and a /xui perf check first.

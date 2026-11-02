@@ -393,24 +393,12 @@ local function TraceGroupFire(w, what)
     w.xuiFireTraced = true
     local orig = w.Fire
     w.Fire = function(self, ev, ...)
-        if ev ~= "OnGroupSelected" then return orig(self, ev, ...) end
-        -- A tab / tree switch builds the new pane's widgets inside this call. They are plain AceGUI widgets until the skin pass runs, and
-        -- that pass used to wait for a 0.25 s timer, so the old skin showed for a few frames (the "flash"). Run it here instead: right
-        -- after the pane is built, in the same frame, before anything is drawn. Only the outermost switch does it (a tree click fires
-        -- the tab switch inside it).
-        local tracing = ns.perf and ns.perf.show
-        local t0
-        if tracing then ns.Trace("click"); ns.Trace(what .. " switch -> " .. tostring((...))); t0 = debugprofilestop() end
-        ns.xuiFireDepth = (ns.xuiFireDepth or 0) + 1
-        local okF, r1, r2 = pcall(orig, self, ev, ...)
-        ns.xuiFireDepth = ns.xuiFireDepth - 1   -- (pcall: an error in the pane must not leave the depth counter stuck)
-        if ns.xuiFireDepth == 0 and ns.DecorateTrees then
-            local t1 = tracing and debugprofilestop()
-            pcall(ns.DecorateTrees)
-            if tracing then ns.Trace(string.format("%s switch built in %.0f ms + skin %.0f ms", what, t1 - t0, debugprofilestop() - t1)) end
-        end
-        if tracing and C_Timer then C_Timer.After(0, function() ns.Trace("next frame after " .. what .. " switch (anything below this ran late)") end) end
-        if not okF then error(r1, 0) end
+        if ev ~= "OnGroupSelected" or not (ns.perf and ns.perf.show) then return orig(self, ev, ...) end
+        ns.Trace("click"); ns.Trace(what .. " switch -> " .. tostring((...)))
+        local t0 = debugprofilestop()
+        local r1, r2 = orig(self, ev, ...)
+        ns.Trace(string.format("%s switch built in %.0f ms", what, debugprofilestop() - t0))
+        if C_Timer then C_Timer.After(0, function() ns.Trace("next frame after " .. what .. " switch (anything below this ran late)") end) end
         return r1, r2
     end
     AddRest(w, "firetrace", function(self) rawset(self, "Fire", nil); self.xuiFireTraced = nil end)
