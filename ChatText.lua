@@ -282,7 +282,17 @@ local function Decide(s, event, msg, author, ...)
     res.msg = text
     if alertOK then
         local key = ALERT_OF_EVENT[event]
-        local choice = (kwHit and s.keywordSound ~= "" and s.keywordSound) or (key and s[key])
+        local chosen = key and s[key]
+        if event == "CHAT_MSG_CHANNEL" then
+            -- per named channel (General, Trade, ...): the part before " - " of the channel's base name; "Numbered channels" is the fallback
+            local base = select(7, ...)
+            if type(base) == "string" and not issecret(base) then
+                base = base:match("^(.-)%s+%-%s") or base
+                local per = type(s.alertChan) == "table" and s.alertChan[base]
+                if per and per ~= "" then chosen = per end
+            end
+        end
+        local choice = (kwHit and s.keywordSound ~= "" and s.keywordSound) or chosen
         if choice and choice ~= "" then
             soundUntil = GetTime() + 5
             T.PlayChoice(choice)

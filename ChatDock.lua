@@ -115,7 +115,8 @@ local function SideExtra(cf)
             if r and r > mx then mx = r end
         end
     end
-    see(_G.ChatFrame1ButtonFrame); see(cf.ScrollBar); see(cf.ScrollToBottomButton); see(_G.ChatFrame1Background)
+    local n = (cf.GetName and cf:GetName()) or "ChatFrame1"
+    see(_G[n .. "ButtonFrame"]); see(cf.ScrollBar); see(cf.ScrollToBottomButton); see(_G[n .. "Background"])
     if cf.GetRegions then
         for _, r in ipairs({ cf:GetRegions() }) do
             if r.IsObjectType and r:IsObjectType("Texture") then see(r) end
@@ -123,6 +124,8 @@ local function SideExtra(cf)
     end
     return math.min(math.max(mx - cr, 0), 80)
 end
+
+ns.ChatDock_SideExtra = SideExtra
 
 -- collapse button --------------------------------------------------------------------------------------------------------
 local function PlaceButton()

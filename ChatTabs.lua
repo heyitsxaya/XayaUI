@@ -51,6 +51,16 @@ local function ChatOfTab(tab)
     return tab.xuiOwner
 end
 
+-- Fade the tab's text: everywhere (old option), for undocked tabs, or for tabs docked in a panel whose backdrop is hidden (ElvUI's two options).
+local function FadeOn(s, chat)
+    if s.tabFadeUntilHover then return true end
+    if not chat then return false end
+    if s.fadeUndockedTabs and not chat.isDocked then return true end
+    if s.fadeTabsNoBackdrop and chat.isDocked and ns.ChatPanels_LeftBackdropHidden and ns.ChatPanels_LeftBackdropHidden() then return true end
+    return false
+end
+T.FadeOn = FadeOn
+
 local function StripArt(tab, name)
     for _, p in ipairs(TEX_PREFIXES) do
         for _, side in ipairs({ "Left", "Middle", "Right" }) do
@@ -119,7 +129,7 @@ function T.UpdateTab(tab, selected)
     else
         bg:Hide()
     end
-    if s.tabFadeUntilHover and not tab.xuiHover then bg:SetAlpha(0) else bg:SetAlpha(1) end
+    if FadeOn(s, chat) and not tab.xuiHover then bg:SetAlpha(0) else bg:SetAlpha(1) end
 end
 
 local function AlphaOf(tab, selected)
@@ -133,7 +143,7 @@ end
 
 local function Hover(chat, tab, on)
     local s = Store()
-    if not On(s) or not s.tabFadeUntilHover then return end
+    if not On(s) or not FadeOn(s, chat) then return end
     tab.xuiHover = on
     local text = TextOf(tab)
     if text then text:SetShown(on) end
@@ -180,7 +190,7 @@ local function StyleTab(chat)
     T.UpdateTab(tab, selected)
     local a = AlphaOf(tab)
     if a then tab:SetAlpha(a, true) end
-    if s.tabFadeUntilHover then
+    if FadeOn(s, chat) then
         if not tab.xuiHover then Hover(chat, tab, false) end
     else
         tab.xuiHover = nil

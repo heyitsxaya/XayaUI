@@ -417,6 +417,7 @@ function ns.ChatReskin_Debug()
     if ns.ChatText and ns.ChatText.Debug then ns.ChatText.Debug(say) end
     if ns.ChatTabs and ns.ChatTabs.Debug then ns.ChatTabs.Debug(say) end
     if ns.ChatDock_Debug then ns.ChatDock_Debug(say) end
+    if ns.ChatPanels_Debug then ns.ChatPanels_Debug(say) end
 end
 
 -------------------------------------------------------------------------------
@@ -485,6 +486,30 @@ function ns.BuildChatTab(Notify)
     local function note(text, order, small)
         return { type = "description", order = order, width = "full", fontSize = small and "small" or "medium", name = text }
     end
+    local function ChannelNames()
+        local names, seen = {}, {}
+        local function add(n)
+            if type(n) ~= "string" then return end
+            n = n:match("^(.-)%s+%-%s") or n
+            if n ~= "" and not seen[n] then seen[n] = true; names[#names + 1] = n end
+        end
+        if _G.GetChannelList then local tt = { _G.GetChannelList() }; for i = 2, #tt, 3 do add(tt[i]) end end
+        if type(s.alertChan) == "table" then for n in pairs(s.alertChan) do add(n) end end
+        table.sort(names)
+        return names
+    end
+    local function chanSound(name, order)
+        return { type = "select", name = name, order = order,
+            values = function() local v = SoundChoices(); return v end,
+            sorting = function() local _, o = SoundChoices(); return o end,
+            get = function() return (type(s.alertChan) == "table" and s.alertChan[name]) or "" end,
+            set = function(_, v)
+                if type(s.alertChan) ~= "table" then s.alertChan = {} end
+                s.alertChan[name] = v
+                if v ~= "" and ns.ChatText then ns.ChatText.PlayChoice(v) end
+                Re()
+            end }
+    end
     local EDIT_POS = { DEFAULT = "Default (Blizzard's place)", BELOW_CHAT = "Below the chat", ABOVE_CHAT = "Above the chat" }
     local EDIT_POS_ORDER = { "DEFAULT", "BELOW_CHAT", "ABOVE_CHAT" }
     local TS = ns.ChatText and ns.ChatText.STAMP_FORMATS or {}
@@ -502,7 +527,7 @@ function ns.BuildChatTab(Notify)
                 enabled = tog("Enable ElvUI Chat Reskin", "enabled", 3),
                 hideVoice = tog("Hide voice chat buttons", "hideVoiceButtons", 4),
                 secretNote = note("|cffaaaaaaProtected messages:|r the game marks some chat text (for example during boss encounters and inside some instances) as secret. Addons cannot read or change it, so such lines get no timestamp, link, color, history, or copy. This is a game limit, and /xui chat counts how many were skipped.", 8, true),
-                notBuilt = note("|cffaaaaaaNot built:|r emotion icons (the TwitchEmotes addon does this), role / mentorship / timerunning icons, Battle.net tag names, Quick Join messages, and ElvUI's datatext system (the Chat Panel tab has a simpler info bar below the chat instead), panel textures, and separate left / right chat panels. Voice button pin / fade options are not built; hiding them is.", 9, true),
+                notBuilt = note("|cffaaaaaaNot built:|r emotion icons (the TwitchEmotes addon does this), role / mentorship / timerunning icons, Battle.net tag names, Quick Join messages, and ElvUI's datatext engine (the Panels tab has simpler info bars instead). ElvUI's own left / right chat panels are approximated on the Blizzard chat windows (Panels tab). Voice button pin / fade options are not built; hiding them is.", 9, true),
             } },
             fonts = { type = "group", name = "Fonts & Tabs", order = 2, args = {
                 font = fontSel("Chat font", "font", 1), fontSize = rng("Chat font size", "fontSize", 2, 6, 40),
@@ -546,7 +571,8 @@ function ns.BuildChatTab(Notify)
             } },
             alerts = { type = "group", name = "Alerts", order = 4, args = {
                 kwOn = tog("Highlight keywords", "keywordsOn", 1),
-                kw = txt("Keywords (separated by commas; %MYNAME% is your character's name)", "keywords", 2),
+                kw = { type = "input", name = "Keywords (separated by commas; %MYNAME% is your character's name)", order = 2, width = "full", multiline = 5,
+                    get = function() return s.keywords or "" end, set = function(_, v) s.keywords = tostring(v or ""); Re() end },
                 kwCol = colA("Keyword color", "kw", 3),
                 kwSound = soundSel("Keyword sound", "keywordSound", 4),
                 chanHeader = { type = "header", name = "Sound when a message arrives", order = 10 },
@@ -556,7 +582,9 @@ function ns.BuildChatTab(Notify)
                 aParty = soundSel("Party", "alertPARTY", 14),
                 aRaid = soundSel("Raid", "alertRAID", 15),
                 aInstance = soundSel("Instance", "alertINSTANCE", 16),
-                aChannel = soundSel("Numbered channels (General, Trade, ...)", "alertCHANNEL", 17),
+                aChannel = soundSel("Other channels (any channel without its own sound below)", "alertCHANNEL", 17),
+                chanHdr = { type = "header", name = "Named channels", order = 30 },
+                chanNote = note("Channels you have joined are listed (General, Trade, ...). Join a channel, then reopen this window to see it here. A sound set here wins over \"Other channels\".", 31, true),
                 otherHeader = { type = "header", name = "Other", order = 20 },
                 noCombat = tog("No alert sounds in combat", "noAlertInCombat", 21),
                 flash = tog("Flash the game icon in the taskbar on a whisper", "flashClientIcon", 22),
@@ -609,7 +637,8 @@ function ns.BuildChatTab(Notify)
             } },
         },
     }
+    for i, name in ipairs(ChannelNames()) do chatReskin.args.alerts.args["chan_" .. name] = chanSound(name, 31 + i) end
     if ns.ChatDock_Options then chatReskin.args.dock = ns.ChatDock_Options(Notify) end
-    if ns.ChatPanel_Options then chatReskin.args.panel = ns.ChatPanel_Options(Notify) end
+    if ns.ChatPanels_Options then chatReskin.args.panels = ns.ChatPanels_Options(Notify) end
     return chatReskin
 end
