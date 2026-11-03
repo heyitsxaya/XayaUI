@@ -113,7 +113,8 @@ Each of these cycles on every click: **ignored** (unselected) -> **yes** (green)
 These are sets: with nothing ticked there is no restriction. Ticking items means "must be one of these"; the red "not" state means "must not be this."
 
 - **Instance type:** Open world, Dungeon, Raid, Battleground, Arena, Scenario.
-- **Specialization** and **Role**: both have an explicit "All" choice that restricts nothing.
+- **Class:** tick any of the 13 classes; the rule loads only on a character of one of the ticked classes. Every class is always listed, whatever character you are logged in on, so a rule can be set up for any class from any character. With no class ticked the rule loads on every class. A group's Load tab has the same Class list and is checked before each rule's own.
+- **Specialization** and **Role**: both have an explicit "All" choice that restricts nothing. Specialization lists every specialization of every class (shown as class and spec), whatever character you are logged in on, and you can tick several. Role allows one choice.
 - **Hero talents:** the active hero talent tree. Only matches when a hero tree is actually chosen.
 
 ### 3.4 Talents (also on the Load tab)
@@ -364,7 +365,7 @@ Chat note: in Midnight, addons may not send chat during Mythic+ runs, PvP matche
 | Works out of combat, not in combat | The value is secret in combat -> unknown | Right now line; Midnight notes |
 | Fires 1-2 seconds early | Spell Usable ignores cooldown | Use "Usable AND off cooldown" |
 | Glow does nothing | LibCustomGlow is not loaded | Enable ElvUI, BigWigs, or another addon that ships it |
-| Rule does not load | Group Never, group spec/role/instance gate, or talents | Load tab banner says "Overridden by group..." |
+| Rule does not load | Group Never, group class/spec/role/instance gate, or talents | Load tab banner says "Overridden by group..." |
 
 Slash commands: `/xui` opens the options, `/xui status` prints each rule's reasons (including per-trigger lines), `/xui mods` traces condition modifiers step by step (which conditions list each cue and whether they are true, the modifiers stored, the merged result, and what the cue's frame actually shows), `/xui debuffs [target|focus] [spellID]`, `/xui probe <spellID>`, `/xui loc`, `/xui perf [on|off]` (times the rule engine on this computer: steps per second, milliseconds per step, memory growth, and which game events arrive how often, which rules and which parts (rules, visuals, bars, per-frame effects) cost the most, which duration-text path each display took, and the game's own per-addon CPU meter; turn it on, play a fight, then type `/xui perf` to read it. Each report is also saved, so it can be read from the saved file after a reload), `/xui perf ui` (settings window rebuild timing), `/xui timing` (for every rule whose cues depend on time or stacks: how it gets them in combat, exact or estimated, and the one fix for anything not covered), `/xui chatprobe` (read-only: records how Blizzard's chat is laid out, and which frames sit in the top-left corner, into the saved file; used while the chat is being rebuilt; message text is never recorded).
 

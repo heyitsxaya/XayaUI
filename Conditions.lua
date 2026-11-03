@@ -717,6 +717,8 @@ function ns.ReadContext()
     end
     local okI, _, itype = pcall(IsInInstance)
     if okI and not issecret(itype) then ctx.instanceType = itype end
+    local okC, _, cfile = pcall(UnitClass, "player")
+    if okC and type(cfile) == "string" and not issecret(cfile) then ctx.class = cfile end
     local ok, id, role = pcall(CurrentSpec)
     if ok then
         if not issecret(id) then ctx.specID = id end
@@ -731,7 +733,7 @@ function ns.ReadContext()
     local parts = {}
     for i, c in ipairs(ns.LOAD_TRI) do local v = ctx[c.key]; parts[i] = (v == nil) and "?" or (v and "1" or "0") end
     parts[#parts + 1] = tostring(ctx.instanceType); parts[#parts + 1] = tostring(ctx.specID)
-    parts[#parts + 1] = tostring(ctx.role); parts[#parts + 1] = tostring(ctx.hero)
+    parts[#parts + 1] = tostring(ctx.role); parts[#parts + 1] = tostring(ctx.hero); parts[#parts + 1] = tostring(ctx.class)
     ctx.sig = table.concat(parts, "|")
     return ctx
 end
@@ -765,6 +767,9 @@ function CheckContextRaw(rule, ctx)
         while fid and guard < 32 do
             local f = ns.FolderById(fid)
             if not f then break end
+            if ns.SetActive(f.loadClasses) and not (ctx.class ~= nil and ns.SetMatch(f.loadClasses, ctx.class)) then
+                return false, "group " .. tostring(f.name) .. ": class" .. (ctx.class == nil and " (unknown)" or "")
+            end
             if ns.SetActive(f.loadSpecs) and not (ctx.specID ~= nil and ns.SetMatch(f.loadSpecs, tostring(ctx.specID))) then
                 return false, "group " .. tostring(f.name) .. ": specialization" .. (ctx.specID == nil and " (unknown)" or "")
             end
@@ -791,6 +796,9 @@ function CheckContextRaw(rule, ctx)
         checks[#checks + 1] = { key = "instance type", ok = known(ctx.instanceType, ctx.instanceType ~= nil and ns.SetMatch(load.instanceTypes, ctx.instanceType)) }
     end
     -- multi-select sets (empty / missing = any); the old single specID / role are still honored for saved rules
+    if load.classUse ~= false and ns.SetActive(load.classes) then
+        checks[#checks + 1] = { key = "class", ok = known(ctx.class, ctx.class ~= nil and ns.SetMatch(load.classes, ctx.class)) }
+    end
     if load.specUse ~= false and ns.SetActive(load.specs) then
         checks[#checks + 1] = { key = "spec", ok = known(ctx.specID, ctx.specID ~= nil and ns.SetMatch(load.specs, tostring(ctx.specID))) }
     elseif load.specUse ~= false and (load.specID or 0) > 0 then

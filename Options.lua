@@ -185,7 +185,51 @@ end
 
 -- Multi-select tick boxes for Specialization / Role. Storage: rule.load.specs {[specID]=true} and
 -- rule.load.roles {[ROLE]=true}; an EMPTY set means "All" (no restriction). The "All" box shows every box ticked.
-local function SpecChoices()
+-- Classes and specializations are ALWAYS offered in full, whatever character is logged in, so a rule or group can be set up
+-- for any class from any character. Class files are the game's own constants; names come from the game (localized).
+local SpecChoices   -- assigned in the block below (a block keeps the helpers off this file's 200-local limit)
+do
+local CLASS_FILES = { "DEATHKNIGHT", "DEMONHUNTER", "DRUID", "EVOKER", "HUNTER", "MAGE", "MONK", "PALADIN", "PRIEST", "ROGUE", "SHAMAN", "WARLOCK", "WARRIOR" }
+local CLASS_NAME_FALLBACK = { DEATHKNIGHT = "Death Knight", DEMONHUNTER = "Demon Hunter", DRUID = "Druid", EVOKER = "Evoker", HUNTER = "Hunter",
+    MAGE = "Mage", MONK = "Monk", PALADIN = "Paladin", PRIEST = "Priest", ROGUE = "Rogue", SHAMAN = "Shaman", WARLOCK = "Warlock", WARRIOR = "Warrior" }
+local function ClassName(file)
+    local n = (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[file]) or CLASS_NAME_FALLBACK[file] or file
+    local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[file]
+    if c and c.colorStr then return "|c" .. c.colorStr .. n .. "|r", n end
+    return n, n
+end
+function ns.ClassChoices()
+    local list = {}
+    for _, file in ipairs(CLASS_FILES) do list[#list + 1] = { key = file, id = file, text = (ClassName(file)) } end
+    return list
+end
+local specCache
+local function SpecChoicesAll()
+    if specCache then return specCache end
+    local list = {}
+    local nClasses = (GetNumClasses and GetNumClasses()) or 0
+    local infoFn = (C_SpecializationInfo and C_SpecializationInfo.GetSpecializationInfoForClassID) or GetSpecializationInfoForClassID
+    if infoFn and nClasses > 0 and GetClassInfo then
+        for ci = 1, nClasses do
+            local okC, cname, cfile, cid = pcall(GetClassInfo, ci)
+            if okC and cid and cfile then
+                local colored = (ClassName(cfile))
+                for si = 1, 4 do
+                    local ok, id, name, _, icon = pcall(infoFn, cid, si)
+                    if not ok or not id then break end
+                    list[#list + 1] = { key = cfile .. ":" .. id, id = tostring(id), class = cfile,
+                        text = (icon and ("|T" .. icon .. ":18:18|t  ") or "") .. colored .. "  -  " .. (name or tostring(id)) }
+                end
+            end
+        end
+    end
+    if #list > 0 then specCache = list end
+    return list
+end
+SpecChoices = function()
+    local all = SpecChoicesAll()
+    if #all > 0 then return all end
+    -- the game gave no class list (should not happen): fall back to the logged-in character's own specs
     local list = {}
     local n = (GetNumSpecializations and GetNumSpecializations()) or 0
     for i = 1, n do
@@ -201,6 +245,7 @@ local function SpecChoices()
         end
     end
     return list
+end
 end
 -- Hero talent specializations of the character's class (every spec's trees, de-duplicated). Needs the talent data to be loaded;
 -- right after the first login it can be empty until a /reload.
@@ -246,7 +291,7 @@ end
 -- bannerOpen table and ns.ArrowToggle +/- button), and unticking "use" clears the choices below instead of only
 -- disabling them - so a rule that shows "All" really has nothing recorded, not a hidden leftover pick.
 local bannerOpen = setmetatable({}, { __mode = "k" })   -- hoisted: ns.RadioGroup below uses it
-function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, useKey, rule, bannerKey)
+function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, useKey, rule, bannerKey, multi)
     local function isOn()
         local u = ld()[useKey]
         if u == nil then return ns.SetActive(getSet()) end
@@ -255,9 +300,15 @@ function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, use
     local body = {}
     for i, ch in ipairs(choices) do
         body["c" .. i] = { type = "toggle", order = i, width = "full", name = ch.text,
-            desc = "Click to choose only this one. Click it again to clear the choice.",
+            desc = multi and "Click to add or remove this one. Tick several to allow any of them."
+                or "Click to choose only this one. Click it again to clear the choice.",
             get = function() return getSet()[ch.id] == true end,
-            set = function(_, v) local s = getSet(); wipe(s); if v then s[ch.id] = true end; onChange() end }
+            set = function(_, v)
+                local s = getSet()
+                if multi then s["*"] = nil; s[ch.id] = v and true or nil
+                else wipe(s); if v then s[ch.id] = true end end
+                onChange()
+            end }
     end
     body.all = { type = "toggle", order = 100, width = "full", name = "All",
         desc = "Any is fine (no restriction). Nothing chosen means the same; this just states it.",
@@ -1391,7 +1442,7 @@ local function BuildRule(i, rule)
     loadArgs.instanceTypes = TriGroup("Instance Type", 61, noMatch,
         function() rule.load.instanceTypes = rule.load.instanceTypes or {}; return rule.load.instanceTypes end,
         instChoices, function() Changed(rule); Notify() end)
-    loadArgs.classHeader = { type = "header", name = "Specialization / Role", order = 0.55, hidden = noMatch }
+    loadArgs.classHeader = { type = "header", name = "Class / Specialization / Role", order = 0.55, hidden = noMatch }
     local function LoadSet(field, legacy, legacyOK)
         local ld = rule.load
         ld[field] = ld[field] or {}
@@ -1404,6 +1455,7 @@ local function BuildRule(i, rule)
     end
     local function specSet() return LoadSet("specs", "specID", function(v) return type(v) == "number" and v > 0 end) end
     local function roleSet() return LoadSet("roles", "role", function(v) return v ~= "none" and v ~= "" end) end
+    local function classSet() rule.load.classes = rule.load.classes or {}; return rule.load.classes end
     local function onSpecRole() Changed(rule); Notify() end
     -- Instance Options: types + Mythic+ + Boss encounter sit right under "Instance" and only show when Instance is
     -- "Only inside an instance", or when any of them already holds a setting (so an active restriction is never hidden).
@@ -1437,7 +1489,8 @@ local function BuildRule(i, rule)
             if rule.load.instance == "yes" then bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].instance = nil end
         end
     end
-    loadArgs.specs = ns.RadioGroup("Specialization", 0.6, noMatch, specSet, SpecChoices(), onSpecRole, function() return rule.load end, "specUse", rule, "specs")
+    loadArgs.classes = ns.RadioGroup("Class", 0.57, noMatch, classSet, ns.ClassChoices(), onSpecRole, function() return rule.load end, "classUse", rule, "classes", true)
+    loadArgs.specs = ns.RadioGroup("Specialization", 0.6, noMatch, specSet, SpecChoices(), onSpecRole, function() return rule.load end, "specUse", rule, "specs", true)
     loadArgs.roles = ns.RadioGroup("Role", 0.7, noMatch, roleSet, RoleChoices(), onSpecRole, function() return rule.load end, "roleUse", rule, "roles")
     -- A folder's Never / Always overrides this rule's load mode and match conditions (talents still apply). Values stay stored.
     local function folderLoadOv() return ns.FolderLoadOverride(rule) end
@@ -1449,7 +1502,7 @@ local function BuildRule(i, rule)
             return "|cffffd100Overridden by group " .. tostring(of and of.name) .. "|r: " .. (ov == "never" and "Never" or "Always")
                 .. ". Your own load settings below are kept and apply again if this rule leaves the group. Talents still apply."
         end }
-    local lockKeys = { "instanceTypes", "specs", "roles", "heroes" }
+    local lockKeys = { "instanceTypes", "classes", "specs", "roles", "heroes" }
     for _, k in ipairs(loadModeKeys) do lockKeys[#lockKeys + 1] = k end
     for _, c in ipairs(ns.LOAD_TRI) do lockKeys[#lockKeys + 1] = "tri_" .. c.key end
     for _, k in ipairs(lockKeys) do
@@ -3733,7 +3786,7 @@ local function BuildFolder(k, f)
     return g
 end
 
--- Real load conditions for a group (spec / role / instance type). They are checked on top of every rule's own Load tab and cannot be
+-- Real load conditions for a group (class / spec / role / instance type). They are checked on top of every rule's own Load tab and cannot be
 -- loosened by it (Conditions.lua ns.FolderLoadGate). Empty = no restriction. Never / Always above still wins.
 function ns.FolderLoadConditions(f)
     local function setOf(field) f[field] = f[field] or {}; return f[field] end
@@ -3742,6 +3795,8 @@ function ns.FolderLoadConditions(f)
             get = function(_, k) return setOf(field)[k] and true or false end,
             set = function(_, k, v) setOf(field)[k] = v and true or nil; if next(f[field]) == nil then f[field] = nil end; ns.MarkDirty(); Notify() end }
     end
+    local classV, classO = {}, {}
+    for _, c in ipairs(ns.ClassChoices()) do classV[c.id] = c.text; classO[#classO + 1] = c.id end
     local specV, specO = {}, {}
     for _, c in ipairs(SpecChoices()) do specV[c.id] = c.text; specO[#specO + 1] = c.id end
     local roleV, roleO = {}, {}
@@ -3752,6 +3807,7 @@ function ns.FolderLoadConditions(f)
         args = {
             note = { type = "description", order = 0, width = "full", fontSize = "small",
                 name = "Checked before each rule's own Load tab, for every rule in this group and its nested groups: a rule only loads if it passes both. Leave a list with nothing ticked to allow anything. Nothing on the rules is changed." },
+            classes = Multi(0.5, "Class", "loadClasses", classV, classO),
             specs = Multi(1, "Specialization", "loadSpecs", specV, specO),
             roles = Multi(2, "Role", "loadRoles", roleV, roleO),
             inst = Multi(3, "Instance type", "loadInst", instV, ns.INSTANCE_TYPE_ORDER),

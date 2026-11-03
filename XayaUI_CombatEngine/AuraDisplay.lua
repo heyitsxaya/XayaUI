@@ -171,6 +171,11 @@ local function CurrentSpecID()
     return ok2 and id or nil
 end
 local function LoadsForSpec(p, spec)
+    local classes = p.load and p.load.classes
+    if type(classes) == "table" and next(classes) and p.load.classUse ~= false then
+        local okC, _, file = pcall(UnitClass, "player")
+        if okC and file and ns.SetActive and ns.SetActive(classes) and not ns.SetMatch(classes, file) then return false end
+    end
     local specs = p.load and p.load.specs
     if spec == nil or type(specs) ~= "table" or next(specs) == nil then return true end
     return specs[tostring(spec)] and true or false
