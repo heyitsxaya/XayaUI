@@ -234,12 +234,33 @@ end
 -- Containers
 -------------------------------------------------------------------------------
 -- Blizzard's flow layout settings for a XayaUI growth direction (nil = unsupported).
-local function FlowFor(dir)
+local function FlowFor(dir, rev)
     local A, F = AnchorUtil.FlowLayoutAxis, AnchorUtil.FlowDirection
-    if dir == "RIGHT" then return A.Horizontal, "TOPLEFT", F.Right, F.Down end        -- wraps down
-    if dir == "LEFT" then return A.Horizontal, "TOPRIGHT", F.Left, F.Down end
-    if dir == "DOWN" then return A.Vertical, "TOPLEFT", F.Right, F.Down end            -- wraps right
-    if dir == "UP" then return A.Vertical, "BOTTOMLEFT", F.Right, F.Up end
+    if dir == "RIGHT" then
+        if rev then return A.Horizontal, "BOTTOMLEFT", F.Right, F.Up end                -- extra rows go up
+        return A.Horizontal, "TOPLEFT", F.Right, F.Down end                            -- wraps down
+    if dir == "LEFT" then
+        if rev then return A.Horizontal, "BOTTOMRIGHT", F.Left, F.Up end
+        return A.Horizontal, "TOPRIGHT", F.Left, F.Down end
+    if dir == "DOWN" then
+        if rev then return A.Vertical, "TOPRIGHT", F.Left, F.Down end                  -- extra columns go left
+        return A.Vertical, "TOPLEFT", F.Right, F.Down end                              -- wraps right
+    if dir == "UP" then
+        if rev then return A.Vertical, "BOTTOMRIGHT", F.Left, F.Up end
+        return A.Vertical, "BOTTOMLEFT", F.Right, F.Up end
+end
+
+-- The longest a line may be before it wraps: the container's width / height and / or "items per row / column" (same rule as XayaUI's
+-- Visual.lua LayoutDynamic; the engine's icons all use the first display's size, so for equal sizes the two agree exactly).
+local function WrapLimit(fo, horizontal, iw, ih, sp)
+    local limit = horizontal and (fo.cW or 0) or (fo.cH or 0)
+    local n = tonumber(fo.cWrapN) or 0
+    if n > 0 then
+        local by = n * (horizontal and iw or ih) + (n - 1) * sp + 0.5
+        if limit <= 0 or by < limit then limit = by end
+    end
+    if limit <= 0 then limit = math.huge end
+    return limit
 end
 
 -- XayaUI's "progress" direction -> status bar orientation / reverse fill (Visual.lua CropTex: "bottom" keeps the bottom part
@@ -440,7 +461,7 @@ local function BuildGroup(fo, members)
     groups[fo.id] = g
     g.members, g.ids, g.n, g.serial, g.allowed = members, {}, #members, serial, {}
     local dir = fo.cGrowth or "RIGHT"
-    local axis, anchor, hdir, vdir = FlowFor(dir)
+    local axis, anchor, hdir, vdir = FlowFor(dir, fo.cWrapRev and true or false)
     if not axis then
         Fail(g, "growth " .. tostring(dir) .. " not supported (Blizzard's layout has no centred growth)")
         return g
@@ -449,8 +470,7 @@ local function BuildGroup(fo, members)
     local display = members[1].spec.display
     local iw, ih = DisplaySize(display.visual)
     local sp = tonumber(fo.cSpacing) or 4
-    local limit = (axis == AnchorUtil.FlowLayoutAxis.Horizontal) and (fo.cW or 0) or (fo.cH or 0)
-    if limit <= 0 then limit = math.huge end
+    local limit = WrapLimit(fo, axis == AnchorUtil.FlowLayoutAxis.Horizontal, iw, ih, sp)
     local ok, err = pcall(function()
         if not g.frame then
             g.frame = NewContainer("player", "HELPFUL", g.ids, iw, ih, sp, display, math.huge)

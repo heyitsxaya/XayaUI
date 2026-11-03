@@ -232,6 +232,24 @@ check("every kept display has a reason", lua("return LEFT['m1 missing'] ~= nil a
 check("a cooldown-only display is not listed as kept (not an aura display)", lua("return LEFT['cooldown only'] == nil"))
 check("rules were never modified", lua("for i, r in ipairs(NS.rules) do local c = 0; for _ in pairs(r) do c = c + 1 end; if c ~= SNAP[i] then return false end end return true"))
 
+# 1b. wrap options (items per row / column, which way extra rows go): flow settings handed to Blizzard's container
+def flow(): return lua("local f = NS.AuraDisplay._groups.fA.frame.flow; return f.axis .. '|' .. f.anchor .. '|' .. f.h .. '|' .. f.v .. '|' .. tostring(f.max)")
+base = flow()
+check("default wrap: container width limit, rows go down (TOPLEFT, right, down)", base == "0|TOPLEFT|1|-1|100", base)
+lua("for _, f in ipairs(NS.folders) do if f.id == 'fA' then f.cWrapN = 2 end end; NS.AuraDisplay.Build()")
+check("items per row 2: limit = 2 icons + 1 gap (65.5) beats the container width", flow() == "0|TOPLEFT|1|-1|65.5", flow())
+lua("for _, f in ipairs(NS.folders) do if f.id == 'fA' then f.cWrapN = 5 end end; NS.AuraDisplay.Build()")
+check("items per row 5: container width (100) is the shorter limit", flow() == "0|TOPLEFT|1|-1|100", flow())
+lua("for _, f in ipairs(NS.folders) do if f.id == 'fA' then f.cWrapN = 3; f.cW = 0; f.cWrapRev = true end end; NS.AuraDisplay.Build()")
+check("rows go up: BOTTOMLEFT anchor, grows right and up, 3 per row (100.5)", flow() == "0|BOTTOMLEFT|1|1|100.5", flow())
+for g, rev, want in (("LEFT", False, "0|TOPRIGHT|-1|-1"), ("LEFT", True, "0|BOTTOMRIGHT|-1|1"), ("DOWN", False, "1|TOPLEFT|1|-1"), ("DOWN", True, "1|TOPRIGHT|-1|-1"),
+                     ("UP", False, "1|BOTTOMLEFT|1|1"), ("UP", True, "1|BOTTOMRIGHT|-1|1")):
+    lua("for _, f in ipairs(NS.folders) do if f.id == 'fA' then f.cGrowth = '%s'; f.cWrapRev = %s end end; NS.AuraDisplay.Build()" % (g, "true" if rev else "nil"))
+    got = flow().rsplit("|", 1)[0]
+    check("growth %s, %s: flow %s" % (g, "extra on the other side" if rev else "default side", want), got == want, got)
+lua("for _, f in ipairs(NS.folders) do if f.id == 'fA' then f.cGrowth = 'RIGHT'; f.cWrapN = nil; f.cWrapRev = nil; f.cW = 100 end end; NS.AuraDisplay.Build()")
+check("back to default", flow() == base, flow())
+
 # 2. placement of a single slot: on XayaUI's own icon, same parent, same strata
 check("single slot sits on XayaUI's icon (TOPLEFT at icon centre - half size)", lua("local s = NS.AuraDisplay._singles[S1]; local p = s.frame._points[#s.frame._points]; return p[1] == 'TOPLEFT' and p[2] == HOSTS[S1c] and p[3] == 'CENTER' and p[4] == -15 and p[5] == 15 and s.frame.parent == HOSTS[S1c].parent and s.frame.strata == 'MEDIUM'"))
 check("group container created as AuraContainer widgets only (stub asserts it)", lua("return #containers >= 5"))

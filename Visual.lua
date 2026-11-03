@@ -415,8 +415,9 @@ end
 -- icons with it, so the two can never disagree. Centred growth has no fixed first spot (it depends on the whole line): nil.
 function ns.DynamicFirstOffset(df, w, h)
     local dir = df and df.cGrowth or "RIGHT"
-    if dir == "RIGHT" or dir == "LEFT" then return 0, -h / 2 end
-    if dir == "DOWN" or dir == "UP" then return w / 2, 0 end
+    local rev = df and df.cWrapRev and true or false   -- extra rows go up / extra columns go left: the first line sits on the other side
+    if dir == "RIGHT" or dir == "LEFT" then return 0, rev and h / 2 or -h / 2 end
+    if dir == "DOWN" or dir == "UP" then return rev and -w / 2 or w / 2, 0 end
     return nil
 end
 
@@ -440,11 +441,13 @@ local function LayoutDynamic(df)
     local horiz = (dir == "RIGHT" or dir == "LEFT" or dir == "HCENTER")
     local sp = df.cSpacing or 4
     local limit = horiz and (df.cW or 0) or (df.cH or 0)   -- 0 = no wrapping
+    local wrapN = tonumber(df.cWrapN) or 0                  -- items per row / column (0 = no limit); the size limit above still applies
+    local cs = df.cWrapRev and -1 or 1                      -- which way extra rows / columns go: down or right (1), up or left (-1)
     -- split into lines along the main axis
     local lines, line, used = {}, {}, 0
     for _, it in ipairs(items) do
         local len = horiz and it.w or it.h
-        if #line > 0 and limit > 0 and used + sp + len > limit then
+        if #line > 0 and ((limit > 0 and used + sp + len > limit) or (wrapN > 0 and #line >= wrapN)) then
             lines[#lines + 1] = line; line, used = {}, 0
         end
         used = (#line == 0) and len or (used + sp + len)
@@ -472,10 +475,10 @@ local function LayoutDynamic(df)
         for i, it in ipairs(ln) do
             local p = pos[i] - shift
             local x, y = 0, 0
-            if dir == "RIGHT" or dir == "HCENTER" then x = p; y = -co
-            elseif dir == "LEFT" then x = -p; y = -co
-            elseif dir == "DOWN" or dir == "VCENTER" then y = -p; x = co
-            elseif dir == "UP" then y = p; x = co end
+            if dir == "RIGHT" or dir == "HCENTER" then x = p; y = -co * cs
+            elseif dir == "LEFT" then x = -p; y = -co * cs
+            elseif dir == "DOWN" or dir == "VCENTER" then y = -p; x = co * cs
+            elseif dir == "UP" then y = p; x = co * cs end
             it.fr:ClearAllPoints()
             it.fr:SetPoint("CENTER", container, "CENTER", x, y)
         end

@@ -3439,7 +3439,7 @@ function ns.FolderContainerGroup(f)
         hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end,
         args = {
             note = { type = "description", order = 0, width = "full", fontSize = "small",
-                name = "Every group is a container for the displays inside it (and inside its nested groups). Static: each display keeps its own position. Dynamic: the addon lays the visible displays out itself and ignores their own X / Y. The container settings below apply to everything inside. Width / height give the container a fixed box (also what the anchor point refers to); a dynamic group wraps onto a new row / column when its items would exceed that size." },
+                name = "Every group is a container for the displays inside it (and inside its nested groups). Static: each display keeps its own position. Dynamic: the addon lays the visible displays out itself and ignores their own X / Y. The container settings below apply to everything inside. Width / height give the container a fixed box (also what the anchor point refers to); a dynamic group wraps onto a new row / column when its items would exceed that size, or after the number of items you set in Items per row / column." },
         } }
     AddSquareRadio(g.args, "ctype", 1, { static = "Static group  (items keep their own positions)", dynamic = "Dynamic group  (positions its items automatically)" },
         { "static", "dynamic" }, function() return isDyn() and "dynamic" or "static" end,
@@ -3451,6 +3451,20 @@ function ns.FolderContainerGroup(f)
     g.args.spacing = { type = "range", name = "Spacing between items", order = 2.1, width = "double", min = 0, max = 200, step = 1,
         hidden = function() return not isDyn() end,
         get = function() return f.cSpacing or 4 end, set = function(_, v) f.cSpacing = v; apply() end }
+    g.args.wrapN = { type = "range", name = "Items per row / column (0 = no limit)", order = 2.11, width = "double", min = 0, max = 50, step = 1,
+        desc = "Start a new row (growing right or left) or a new column (growing down or up) after this many items. The container width / height below can also wrap it when the items would not fit.",
+        hidden = function() return not isDyn() end,
+        get = function() return f.cWrapN or 0 end, set = function(_, v) f.cWrapN = (v > 0) and v or nil; apply() end }
+    local function growsAcross() local d = f.cGrowth or "RIGHT"; return d == "RIGHT" or d == "LEFT" or d == "HCENTER" end
+    g.args.wrapDir = { type = "select", order = 2.12, width = "double", hidden = function() return not isDyn() end,
+        name = function() return growsAcross() and "New rows go" or "New columns go" end,
+        desc = "Which side of the first row / column the extra ones are added on.",
+        values = function()
+            if growsAcross() then return { fwd = "Below the first row", rev = "Above the first row" } end
+            return { fwd = "To the right of the first column", rev = "To the left of the first column" }
+        end,
+        sorting = { "fwd", "rev" },
+        get = function() return f.cWrapRev and "rev" or "fwd" end, set = function(_, v) f.cWrapRev = (v == "rev") or nil; apply() end }
     g.args.sort = { type = "select", name = "Sort items", order = 2.2, width = "double", hidden = function() return not isDyn() end,
         values = { none = "None (in rule order)", asc = "By name, A to Z", desc = "By name, Z to A" },
         sorting = { "none", "asc", "desc" },

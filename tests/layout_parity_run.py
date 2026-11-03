@@ -73,15 +73,21 @@ CASES = [
     ("UP", "TOPLEFT", (5, -7), 1.5, (100, 50), 36),
     ("DOWN", "BOTTOMRIGHT", (-30, 30), 0.8, (0, 0), 28),
     ("RIGHT", "TOPLEFT", (0, 0), 2, (-300, 200), 24),
+    # extra rows / columns on the other side (Items per row / column + "New rows go above / to the left")
+    ("RIGHT", "CENTER", (10, 20), 1, None, 30, True),
+    ("LEFT", "CENTER", (-200, 40), 1, None, 32, True),
+    ("DOWN", "CENTER", (-98, -187), 1, (-409, -2), 30, True),
+    ("UP", "TOPLEFT", (5, -7), 1.5, (100, 50), 36, True),
 ]
-for i, (dir, pt, off, sc, poff, sz) in enumerate(CASES):
+for i, case in enumerate(CASES):
+    (dir, pt, off, sc, poff, sz), rev = case[:6], (len(case) > 6 and case[6])
     L.execute(r'''
-    local ns, dir, pt, ox, oy, sc, hasParent, px, py, sz, i = NS, ...
+    local ns, dir, pt, ox, oy, sc, hasParent, px, py, sz, i, rev = NS, ...
     ns.folders, ns.rules = {}, {}
     CueRulesDB.folders, CueRulesDB.rules = ns.folders, ns.rules
     local parentId
     if hasParent then parentId = "fp" .. i; ns.folders[#ns.folders + 1] = { id = parentId, name = "P" .. i, cType = "dynamic", cGrowth = "DOWN", cX = px, cY = py } end
-    ns.folders[#ns.folders + 1] = { id = "fg" .. i, name = "G" .. i, parent = parentId, cType = "dynamic", cGrowth = dir, cPoint = pt, cX = ox, cY = oy, cScale = sc, cW = 0, cH = 0 }
+    ns.folders[#ns.folders + 1] = { id = "fg" .. i, name = "G" .. i, parent = parentId, cType = "dynamic", cGrowth = dir, cPoint = pt, cX = ox, cY = oy, cScale = sc, cW = 0, cH = 0, cWrapRev = rev or nil }
     RULE = { uid = "u" .. i, name = "r" .. i, folder = "fg" .. i, useBuff = true, buffID = 5000 + i, enabled = true,
       visual = { enabled = true, trigger = "buffActive", w = sz, h = sz } }
     ns.rules[1] = RULE
@@ -90,7 +96,7 @@ for i, (dir, pt, off, sc, poff, sz) in enumerate(CASES):
     ns.SetVisualShown(RULE, true)          -- XayaUI lays the group out (outside a step: at once)
     local fr = ns.VisualFramesOf(RULE)[1]
     XUI_X, XUI_Y = CenterAbs(fr)
-    ''', dir, pt, off[0], off[1], sc, poff is not None, (poff or (0, 0))[0], (poff or (0, 0))[1], sz, i)
+    ''', dir, pt, off[0], off[1], sc, poff is not None, (poff or (0, 0))[0], (poff or (0, 0))[1], sz, i, bool(rev))
     xui = (L.eval("XUI_X"), L.eval("XUI_Y"))
     if i == 0:
         L.execute(r'''
@@ -114,9 +120,46 @@ for i, (dir, pt, off, sc, poff, sz) in enumerate(CASES):
     ''', i)
     eng = (L.eval("ENG_X"), L.eval("ENG_Y"))
     d = max(abs(xui[0] - eng[0]), abs(xui[1] - eng[1]))
-    check("%s, group point %s, offset %s, scale %s, parent %s: engine icon on XayaUI's spot" % (dir, pt, off, sc, poff), d < 0.01,
+    check("%s%s, group point %s, offset %s, scale %s, parent %s: engine icon on XayaUI's spot" % (dir, " (extra lines on the other side)" if rev else "", pt, off, sc, poff), d < 0.01,
           "XayaUI %.2f,%.2f vs engine %.2f,%.2f" % (xui + eng))
     check("  ...and hosted by XayaUI's group frame", L.eval("ENG_HOSTED"))
+# XayaUI's own layout: wrap after N items, extra rows / columns on either side
+WRAPS = [
+    # growth, items per line, reverse
+    ("RIGHT", 2, False), ("RIGHT", 2, True), ("LEFT", 3, False), ("DOWN", 2, False), ("DOWN", 2, True), ("UP", 2, True),
+]
+for k, (dir, n, rev) in enumerate(WRAPS):
+    L.execute(r'''
+    local ns, dir, n, rev, k = NS, ...
+    ns.folders, ns.rules = {}, {}
+    CueRulesDB.folders, CueRulesDB.rules = ns.folders, ns.rules
+    ns.folders[1] = { id = "fw", name = "W", cType = "dynamic", cGrowth = dir, cSpacing = 5, cW = 0, cH = 0, cWrapN = n, cWrapRev = rev or nil }
+    WRAPPED = {}
+    for i = 1, 5 do
+      local r = { uid = "w" .. i, name = "w" .. i, folder = "fw", useBuff = true, buffID = 8000 + i, enabled = true,
+        visual = { enabled = true, trigger = "buffActive", w = 30, h = 30 } }
+      ns.rules[i] = r
+      if ns.NormalizeRule then pcall(ns.NormalizeRule, r) end
+      r.visual.enabled, r.visual.w, r.visual.h = true, 30, 30
+      ns.SetVisualShown(r, true)
+    end
+    for i = 1, 5 do
+      local fr = ns.VisualFramesOf(ns.rules[i])[1]
+      local x, y = CenterAbs(fr)
+      WRAPPED[i] = { x, y }
+    end
+    ''', dir, n, bool(rev), k)
+    W_ = L.eval("WRAPPED"); pos = [(W_[i][1], W_[i][2]) for i in range(1, 6)]
+    rel = [(round(p[0] - pos[0][0], 2), round(p[1] - pos[0][1], 2)) for p in pos]
+    horiz = dir in ("RIGHT", "LEFT")
+    along = {"RIGHT": (1, 0), "LEFT": (-1, 0), "DOWN": (0, -1), "UP": (0, 1)}[dir]
+    across = (0, -1) if horiz else (1, 0)
+    if rev: across = (-across[0], -across[1])
+    want = []
+    for i in range(5):
+        col, row = i % n, i // n
+        want.append((round(35 * (col * along[0] + row * across[0]), 2), round(35 * (col * along[1] + row * across[1]), 2)))
+    check("XayaUI wraps %s after %d%s: positions %s" % (dir, n, " (other side)" if rev else "", want), rel == want, "got %s" % rel)
 # Single slots (no group, or a static group): the engine icon must sit exactly on XayaUI's own icon
 SINGLES = [
     # group (None = no group), group offsets, group scale, display offsets, size
