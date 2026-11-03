@@ -472,6 +472,18 @@ check("on again: strip hidden once more", L.ChatFrame1ButtonFrame.IsShown(L.Chat
 for k in list(W.printed.keys()): W.printed[k] = None
 run("C.Command('status')")
 check("/xui chat status prints", any(v for v in W.printed.values() if v))
+# /xui chat indent: read-only report of the space at the left of the text; shows |-codes as typed and never reads protected text
+for k in list(W.printed.keys()): W.printed[k] = None
+run("local cf = C.Main(); cf.visibleLines = { { IsShown = function() return true end, GetText = function() return '|cff808080' .. '05:11 |rhello there' end, GetLeft = function() return 41 end } } ; C.Command('indent')")
+out = " ".join(str(v) for v in W.printed.values() if v)
+check("/xui chat indent prints the measures", "text area left" in out and "box left" in out, out[:200])
+check("/xui chat indent shows the |-codes as typed", "||cff808080" in out and "05:11" in out, out[:300])
+for k in list(W.printed.keys()): W.printed[k] = None
+run("local cf = C.Main(); cf.visibleLines = { { IsShown = function() return true end, GetText = function() return 'secret text' end, GetLeft = function() return 41 end } }; local old = C.IsSecret; C.IsSecret = function(v) return v == 'secret text' end; C.Command('indent'); C.IsSecret = old")
+out = " ".join(str(v) for v in W.printed.values() if v)
+check("/xui chat indent never prints protected text", "secret text" not in out and "empty or protected" in out, out[:300])
+run("C.Main().visibleLines = nil")
+check("/xui chat indent causes no module error", len(list(C.errors.keys())) == 0, dict(C.errors))
 run("C.Command('off')")
 check("/xui chat off sets enabled=false", run("return ns.chat2.enabled") is False)
 run("C.Command('on')")

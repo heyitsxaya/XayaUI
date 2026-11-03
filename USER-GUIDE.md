@@ -74,6 +74,8 @@ The engine re-checks every enabled rule about every 0.2 seconds, and immediately
 
 **Renaming:** Double-click a rule or group in the sidebar, or right-click it and choose Rename, to type the new name right in the row. Enter saves; Escape cancels. New groups are named Group, Dynamic Group, or Static Group, with no number. An empty name on a group is ignored.
 
+**The Disabled list:** Rules > Disabled lists each group that directly holds a disabled rule, one level under the list, with only those rules inside it. Parent groups, grandparent groups, and neighboring groups are not drawn around it, and a group's number is its own disabled rules. If two listed groups share a name (for example a "Defensives" under two different parents), the row adds the parent's name. Group rows in this list have no up and down arrows, because their neighbors here are not the groups they sit beside in the Enabled list. The preview (eye) icon on a group row here previews only the disabled rules the row shows. Enabled lists (Loaded and Not Loaded) keep their nested layout.
+
 **Rule tabs, in order:** Info | Trigger | Cues | Conditions | Actions | Load. The Info tab (called "Rule" before 0.5.72) holds the name, Enabled box, group, description, sidebar icon, status, and the delete button.
 
 ---
@@ -259,7 +261,7 @@ A cue is a named thing that happens. Create it with **Add a cue**, then choose *
 - Cues are numbered: "Cue 1: Sound 1." Give them your own names and descriptions (name up to 60 characters, description up to 300).
 - Up to **40 cues per rule**.
 - Under the hood a cue is a hidden child rule; it uses the parent's spell, buff, and load settings.
-- **Show tooltip on hover** (Text, Texture, and Icon cues; in the cue's Texture options, next to "Only show while this ability is on an action bar"): hovering the cue shows the tooltip of the spell or item it is about, which is the icon source chosen on the cue, else the rule's first trigger. Off by default. While it is on, the cue sees the mouse pointer but clicks still pass through to what is behind it. Icons drawn by XayaUI Combat Auras do not support it yet.
+- **Show tooltip on hover** (Text, Texture, and Icon cues; in the cue's Texture options, next to "Only show while this ability is on an action bar"): hovering the cue shows the tooltip of the spell or item it is about, which is the icon source chosen on the cue, else the rule's first trigger. Off by default. While it is on, the cue sees the mouse pointer but clicks still pass through to what is behind it. Icons drawn by XayaUI Combat Auras do not support it yet. It has its own tick box in Paste Settings (Cues > Display), so it can be copied to one rule or to every rule in a group on its own.
 
 ### When does a cue fire?
 

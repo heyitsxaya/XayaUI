@@ -766,7 +766,12 @@ function ns.ScopePath(r, ctx)   -- where a rule's row is in the Enabled / Disabl
     local sc = ns.RuleScope(r, ctx)
     local p = { "cooldowns", sc == "disabled" and "disabledTab" or "enabledTab", sc }
     local f = r.folder and FolderById(r.folder)
-    if f then for _, c in ipairs(FolderChain(f)) do if not ns.CueTransparent(c) then p[#p + 1] = c.id end end end
+    if f and sc == "disabled" then
+        -- the Disabled list is flat: a rule sits directly under its own group, which sits directly under the list (no parent groups)
+        if not ns.CueTransparent(f) then p[#p + 1] = f.id end
+    elseif f then
+        for _, c in ipairs(FolderChain(f)) do if not ns.CueTransparent(c) then p[#p + 1] = c.id end end
+    end
     for idx, rr in ipairs(ns.rules or {}) do if rr == r then p[#p + 1] = "rule" .. idx; break end end
     return unpack(p)
 end
@@ -833,6 +838,21 @@ function ns.SelectKeep(...)
             local f = tostring(a):match("^f%d") and ns.FolderById(a)
             if a ~= "smart" and not (f and ns.CueTransparent(f)) then p[#p + 1] = a end
         end
+        if newScope == "disabled" then
+            -- the Disabled list is flat: a rule sits directly under its own group, a group directly under the list. Rebuild the
+            -- tail from the rule / group itself (the path handed in is the nested Smart Categories one).
+            local last = args[#args]
+            local keep = {}
+            local rn2 = tostring(last):match("^rule(%d+)$")
+            if rn2 then
+                local r2 = ns.rules and ns.rules[tonumber(rn2)]
+                local f2 = r2 and r2.folder and ns.FolderById(r2.folder)
+                if f2 and not ns.CueTransparent(f2) then keep[#keep + 1] = f2.id end
+                keep[#keep + 1] = last
+            elseif ns.DisabledListed and ns.DisabledListed[last] then keep[1] = last end   -- a group the list does not show falls back to the list itself
+            p = { p[1], p[2], p[3] }
+            for _, k in ipairs(keep) do p[#p + 1] = k end
+        end
         args = p
     end
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(args))
@@ -866,6 +886,10 @@ function ns.PlaceNewGroup(f, scope)
     local p = { "cooldowns", (root == "all") and "smartTab" or (root == "disabled" and "disabledTab" or "enabledTab"), root }
     local chain = FolderChain(f)
     if root == "all" and ns.CueTop(chain[1]) then p[#p + 1] = "smart" end
+    if root == "disabled" then
+        if not ns.CueTransparent(f) then p[#p + 1] = f.id end   -- the Disabled list is flat: the group sits directly under the list
+        return unpack(p)
+    end
     for _, c in ipairs(chain) do if root == "all" or not ns.CueTransparent(c) then p[#p + 1] = c.id end end
     return unpack(p)
 end
@@ -981,6 +1005,7 @@ ns.PASTE_VIS = {
     vOutline = { "outline" },
     vBorder  = { "border", "bg" },
     vOnBar   = { "requireOnBar" },
+    vHoverTip = { "hoverTip" },   -- "Show tooltip on hover" (own tick box; no longer rides along with "Texture / art")
 }
 ns.PASTE_VIS_SKIP = { text = true, count = true, absorb = true, x = true, y = true, anchor = true, anchorPlace = true }
 ns.PASTE_TREE = {
@@ -1003,7 +1028,7 @@ ns.PASTE_TREE = {
             { "vTex", "Texture / art" }, { "vSize", "Size, aspect, zoom" }, { "vColor", "Color, tint, opacity" },
             { "vRotate", "Rotation and flip" }, { "vFade", "Fade (as the buff runs out)" }, { "vFlash", "Flash" },
             { "vFill", "Progress-bar wipe" }, { "vOverlay", "Overlay layer" }, { "vGlow", "Glow" },
-            { "vOutline", "Outline" }, { "vBorder", "Border and background" }, { "vOnBar", "Only show while on an action bar" } } },
+            { "vOutline", "Outline" }, { "vBorder", "Border and background" }, { "vOnBar", "Only show while on an action bar" }, { "vHoverTip", "Show tooltip on hover" } } },
         { "position", "Position (X / Y)" },
         { "Text", {
             { "textDur", "Buff Duration" }, { "textCnt", "Stacks / Charges Count" }, { "textAbs", "Shield / Absorb Amount" } } },
@@ -1112,7 +1137,7 @@ end
 -- Appearance / audio sections go onto the cues of the target: each copied cue is matched with a cue of the SAME KIND in list order.
 -- A rule with no cues (older rule) counts as one display / one sound. Returns pairs applied, copied parts left without a partner.
 function ns.PasteLook(dst, clip, sel, apply)
-    local VIS = { "vTex", "vSize", "vColor", "vRotate", "vFade", "vFlash", "vFill", "vOverlay", "vGlow", "vOutline", "vBorder", "vOnBar", "position", "textDur", "textCnt", "textAbs" }
+    local VIS = { "vTex", "vSize", "vColor", "vRotate", "vFade", "vFlash", "vFill", "vOverlay", "vGlow", "vOutline", "vBorder", "vOnBar", "vHoverTip", "position", "textDur", "textCnt", "textAbs" }
     local wantVis = false
     for _, k in ipairs(VIS) do if sel[k] then wantVis = true end end
     if not wantVis and not sel.sound and not sel.sndRep then return 0, 0 end
@@ -4285,7 +4310,49 @@ local function BuildOptions()
         end
         Apply(loadedArgs, "loaded")
         Apply(notArgs, "notloaded")
-        Apply(disabledArgs, "disabled")
+        -- Disabled list (2026-11-03): a group is listed only when it directly holds a disabled rule (or is a new, still-empty group made
+        -- here), straight under the list, with only those rules in it. No parent, grandparent or sibling groups are drawn around it, and
+        -- the count is its own rules. (Loaded / Not Loaded keep the nested layout above.)
+        local function ApplyFlat(scopeArgs, allowEmpty)
+            local top, moved, listed = {}, {}, {}
+            local function Label(f)   -- two listed groups can share a name (e.g. "Defensives" under two specs): then say which parent
+                local nm = tostring(f.name)
+                local clash = false
+                for id, o in pairs(listed) do if id ~= f.id and tostring(o.name) == nm then clash = true; break end end
+                if not clash then return nm end
+                local p, seen = f.parent and FolderById(f.parent), {}
+                while p and not seen[p.id] and ns.CueTransparent(p) do seen[p.id] = true; p = p.parent and FolderById(p.parent) or nil end
+                return p and (nm .. " - in " .. tostring(p.name)) or nm
+            end
+            for _, f in ipairs(ns.folders or {}) do
+                local g = groups[f.id]
+                if g and not ns.CueTransparent(f) then
+                    local kids, count = {}, 0
+                    for i, rule in ipairs(ns.rules or {}) do
+                        if ruleGroups[i] and rule.folder == f.id and scopeArgs["rule" .. i] then kids["rule" .. i] = ruleGroups[i]; count = count + 1 end
+                    end
+                    if count > 0 or (#FolderRules(f.id) == 0 and f.xuiScope == allowEmpty) then
+                        local args = {}
+                        for k, v in pairs(g.args or {}) do
+                            if not (type(k) == "string" and (k:match("^rule%d+$") or k:match("^f%d+$"))) then args[k] = v end
+                        end
+                        for k, v in pairs(kids) do args[k] = v end
+                        listed[f.id] = f
+                        top[f.id] = { type = "group", order = g.order, childGroups = "tree",
+                            name = function() return Label(f) .. " (" .. count .. ")" end, args = args }
+                    end
+                end
+            end
+            for i, rule in ipairs(ns.rules or {}) do
+                local key = "rule" .. i
+                local rf = rule.folder and groups[rule.folder] and ns.FolderById(rule.folder)
+                if scopeArgs[key] and rf and not ns.CueTransparent(rf) then moved[#moved + 1] = key end
+            end
+            for _, key in ipairs(moved) do scopeArgs[key] = nil end   -- listed under their own group instead
+            for id, n in pairs(top) do scopeArgs[id] = n end
+            ns.DisabledListed = listed   -- which groups the Disabled list shows (row selection falls back to the list for any other)
+        end
+        ApplyFlat(disabledArgs, "disabled")
     end
 
     ---------------------------------------------------------- QoL
@@ -4594,7 +4661,14 @@ local function Resolve(uv)
     n = last:match("^bar(%d+)$")
     if n then local b = ns.bars and ns.bars[tonumber(n)]; if b then return { b }, nil end return nil end
     if last:match("^f%d") then
-        local l = ns.PvFilter(FolderRules(last), uv, true)
+        local fl = FolderRules(last)
+        if ns.PvScope(uv) == "disabled" then
+            -- the Disabled list shows a group with only the rules it directly holds, so its preview covers exactly those
+            local direct = {}
+            for _, r in ipairs(fl) do if r.folder == last then direct[#direct + 1] = r end end
+            fl = direct
+        end
+        local l = ns.PvFilter(fl, uv, true)
         return l, l
     end
     if last == "smart" or last:match("^smart_") then
@@ -4836,12 +4910,12 @@ local function StopDrag(button)
         if ns.MultiHas and ns.MultiHas(obj) and ns.MultiCount() > 1 then ns.MultiMove(target); return end   -- dragging one selected rule moves them all
         if obj.folder == target then return end
         obj.folder = target
-        ns.MarkDirty(); Notify()
+        ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()
         ns.SelectKeep(RulePath(obj))
     else
         if obj.parent == target then return end
         obj.parent = target
-        ns.MarkDirty(); Notify()
+        ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()
         ns.SelectKeep(FolderPath(obj))
     end
 end
@@ -4915,6 +4989,7 @@ local function Siblings(uv)
     end
     local f = last:match("^f%d") and FolderById(last)
     if f then
+        if scope == "disabled" then return end   -- the Disabled list is flat: its group rows are not neighbors of each other, so no up / down arrows
         local key, list, pos = FolderParentKey(f), {}, nil
         for i, x in ipairs(ns.folders) do
             if FolderParentKey(x) == key and (x == f or FolderInScope(x)) then list[#list + 1] = i; if x == f then pos = #list end end
@@ -4923,6 +4998,7 @@ local function Siblings(uv)
     end
 end
 
+ns.SiblingsForTest = Siblings   -- read by tests/disabled_tree_run.py (arrows on Disabled group rows)
 local function ReorderRow(button, dir)
     local kind, obj, list, pos = Siblings(button.uniquevalue)
     if not obj or not pos then return end
@@ -4942,10 +5018,11 @@ local function ReorderRow(button, dir)
     local arr = (kind == "rule") and ns.rules or ns.folders
     local i = list[pos]
     arr[i], arr[other] = arr[other], arr[i]
-    ns.MarkDirty(); Notify()
+    ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()   -- the on-screen preview / dynamic groups lay out in rule order: redo it now
     if selRule then ns.SelectKeep(RulePath(selRule)) end
 end
 
+ns.ReorderRowForTest = ReorderRow   -- read by tests/disabled_tree_run.py (a reorder redraws the on-screen preview)
 local function MakeReorderArrow(button, dir)
     local b = CreateFrame("Button", nil, button)
     b:SetSize(ns.REORDER_W, 9)
@@ -5172,7 +5249,7 @@ local function AddMoveMenu(root, obj, kind)
     sub:CreateButton("Top Level (Smart Categories)", function()
         if multi then ns.MultiMove(nil); return end
         if kind == "rule" then obj.folder = nil else obj.parent = nil end
-        ns.MarkDirty(); Notify()
+        ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()
     end)
     local _, fOrder = FolderValues()
     for _, fid in ipairs(fOrder) do
@@ -5184,7 +5261,7 @@ local function AddMoveMenu(root, obj, kind)
             sub:CreateButton(string.rep("    ", depth) .. f.name, function()
                 if multi then ns.MultiMove(f.id); return end
                 if kind == "rule" then obj.folder = f.id else obj.parent = f.id end
-                ns.MarkDirty(); Notify()
+                ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()
                 if kind == "rule" then ns.SelectKeep(RulePath(obj))
                 else ns.SelectKeep(FolderPath(obj)) end
             end)
@@ -5826,7 +5903,7 @@ do
         local keep = {}
         for r in pairs(sel) do keep[#keep + 1] = r end
         ns.MultiReset()
-        ns.MarkDirty(); Notify()
+        ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()
         if ns.DecorateTrees then ns.DecorateTrees() end
         local g = fid and FolderById(fid)
         ns.Print(("moved %d rule(s) to %s"):format(#keep, g and tostring(g.name) or "the top level"))
