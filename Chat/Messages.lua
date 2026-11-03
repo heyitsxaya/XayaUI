@@ -153,9 +153,10 @@ C.Filter = Filter
 
 local function Install()
     if C.hooked.filters then return end
-    if type(_G.ChatFrame_AddMessageEventFilter) ~= "function" then return end
+    local add = ns.Compat.Chat("AddMessageEventFilter")   -- ChatFrameUtil.AddMessageEventFilter in 12.x (Compat.lua)
+    if not add then return end
     for _, ev in ipairs(C.MSG_EVENTS) do
-        if ev ~= "CHAT_MSG_WHISPER_INFORM" and ev ~= "CHAT_MSG_BN_WHISPER_INFORM" then pcall(_G.ChatFrame_AddMessageEventFilter, ev, Filter) end
+        if ev ~= "CHAT_MSG_WHISPER_INFORM" and ev ~= "CHAT_MSG_BN_WHISPER_INFORM" then pcall(add, ev, Filter) end
     end
     C.hooked.filters = true
 end

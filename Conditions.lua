@@ -433,14 +433,9 @@ end
 -- Rebuilt at most once per engine tick (ns.RefreshActionBarSpells), so this is a cheap lookup.
 -------------------------------------------------------------------------------
 local actionBarSpells = {}
--- HasAction (global) is deprecated since 12.0.0 in favor of C_ActionBar.HasAction; prefer the new one, fall back
--- to the old global for safety on builds where the shim is still present.
+-- C_ActionBar.HasAction (12.x); the old global only through Compat.lua
 local function SlotHasAction(slot)
-    if C_ActionBar and C_ActionBar.HasAction then
-        local ok, v = pcall(C_ActionBar.HasAction, slot)
-        if ok then return v end
-    end
-    local ok, v = pcall(HasAction, slot)
+    local ok, v = pcall(ns.Compat.HasAction, slot)
     return ok and v or false
 end
 function ns.RefreshActionBarSpells()
@@ -675,7 +670,7 @@ ns.LOAD_TRI = {
       read = function() return C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive
           and C_ChallengeMode.IsChallengeModeActive() end },
     { key = "encounter", label = "Boss encounter", yes = "Only during a boss encounter", no = "Only outside boss encounters",
-      read = function() return IsEncounterInProgress() end },
+      read = function() return ns.Compat.InEncounter() end },
     { key = "mounted", label = "Mounted", yes = "Only when mounted", no = "Only when not mounted",
       read = function() return IsMounted() end },
     { key = "resting", label = "Resting area", yes = "Only in a resting area", no = "Only outside resting areas",

@@ -16,11 +16,7 @@ local function Over(f)
 end
 
 local function Typing()
-    if _G.ChatEdit_GetActiveWindow then
-        local ok, eb = pcall(_G.ChatEdit_GetActiveWindow)
-        if ok and eb then return true end
-    end
-    return false
+    return ns.Compat.ActiveChatEditBox() ~= nil
 end
 
 -- the game's own fade of old lines (separate from the whole-pane fade)

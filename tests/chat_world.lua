@@ -274,6 +274,9 @@ end
 ChatEdit_GetActiveWindow = function() return W.activeEdit end
 ChatFrame_OpenChat = function(text, cf) W.openedChat = cf end
 ChatFrame_AddMessageEventFilter = function(ev, fn) W.filters[ev] = W.filters[ev] or {}; table.insert(W.filters[ev], fn) end
+-- 12.x keeps these in ChatFrameUtil (the globals above are only deprecation fallbacks there)
+ChatFrameUtil = { AddMessageEventFilter = ChatFrame_AddMessageEventFilter, GetActiveWindow = function() return W.activeEdit end,
+  OpenChat = function(text, cf) W.openedChat = cf end, ActivateChat = function() end, DeactivateChat = function() end }
 ChatFrame_ContainsMessageGroup = function(cf, group) return cf.groups and cf.groups[group] and true or false end
 W.cf1.messageTypeList = { "SAY", "GUILD", "WHISPER" }; W.cf1.channelList = {}
 W.cf2.messageTypeList = { "PARTY", "WHISPER" }; W.cf2.channelList = {}
@@ -310,6 +313,7 @@ local function load(rel)
 end
 W.load = load
 load("Modules.lua")   -- the core contract the chat files register through (0.5.108)
+load("Compat.lua")    -- current game API with fallbacks (0.6.0)
 load("DataBlocks.lua")
 for _, rel in ipairs({ "Chat/Core.lua", "Chat/Frame.lua", "Chat/Bar.lua", "Chat/Skin.lua", "Chat/Fade.lua", "Chat/Locate.lua", "Chat/Messages.lua", "Chat/History.lua",
   "Chat/Sounds.lua", "Chat/Options.lua", "ChatPrivacy.lua" }) do load(rel) end

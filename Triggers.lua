@@ -481,7 +481,7 @@ Add("weaponEnchant", {
         { key = "minSec", kind = "range", label = "At least this many seconds left (0 = ignore)", min = 0, max = 3600, step = 5 },
     },
     check = function(t)
-        local hm, mexp, _, _, ho, oexp = Call(GetWeaponEnchantInfo)
+        local hm, mexp, _, _, ho, oexp = Call(ns.Compat.WeaponEnchantInfo)
         local has, exp
         if t.weapon == "off" then has, exp = ho, oexp else has, exp = hm, mexp end
         if has == nil then return nil, "enchant info unreadable" end

@@ -136,7 +136,7 @@ function C.Frames()
     if type(names) == "table" and #names > 0 then
         for _, n in ipairs(names) do if _G[n] then out[#out + 1] = _G[n] end end
     else
-        for i = 1, (_G.NUM_CHAT_WINDOWS or 10) do
+        for i = 1, ns.Compat.MaxChatWindows() do
             local f = _G["ChatFrame" .. i]
             if f then out[#out + 1] = f end
         end

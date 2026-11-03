@@ -51,7 +51,8 @@ local function Build()
     inputA:RegisterForClicks("LeftButtonUp")
     inputA:SetScript("OnClick", function()
         if C.IsCollapsed() then return end
-        pcall(function() if _G.ChatFrame_OpenChat then _G.ChatFrame_OpenChat("", _G.ChatFrame1) end end)
+        local open = ns.Compat.Chat("OpenChat")
+        if open then pcall(open, "", _G.ChatFrame1) end
     end)
     hint = inputA:CreateFontString(nil, "OVERLAY")
     hint:SetPoint("LEFT", inputA, "LEFT", 8, 0)
@@ -364,7 +365,10 @@ end
 function C.SetCollapsed(v)
     local s = S(); if not s then return end
     s.collapsed = v and true or false
-    if s.collapsed then pcall(function() if _G.ChatEdit_DeactivateChat and _G.ChatEdit_GetActiveWindow then local eb = _G.ChatEdit_GetActiveWindow(); if eb then _G.ChatEdit_DeactivateChat(eb) end end end) end
+    if s.collapsed then
+        local eb, deactivate = ns.Compat.ActiveChatEditBox(), ns.Compat.Chat("DeactivateChat")
+        if eb and deactivate then pcall(deactivate, eb) end
+    end
     C.Layout()
 end
 
@@ -493,9 +497,14 @@ local function Refresh(s)
     container:Show()
     C.Layout()
     -- the game re-anchors these when windows are docked, locked or opened; anchor again right after
-    for _, key in ipairs({ "FCF_DockUpdate", "FCF_RestorePositionAndDimensions", "FCF_SetLocked", "FCF_UpdateButtonSide", "FCF_SetWindowAlpha", "ChatEdit_ActivateChat", "ChatEdit_DeactivateChat",
+    for _, key in ipairs({ "FCF_DockUpdate", "FCF_RestorePositionAndDimensions", "FCF_SetLocked", "FCF_UpdateButtonSide", "FCF_SetWindowAlpha",
         "FCF_StopDragging", "FCF_DockFrame", "FCF_UnDockFrame", "FCF_ResetChatWindows" }) do
         C.HookOnce("frame:" .. key, key, nil, Soft)
+    end
+    -- the edit box opening and closing: hooked where the game itself calls them (ChatFrameUtil in 12.x; see Compat.lua)
+    for _, key in ipairs({ "ActivateChat", "DeactivateChat" }) do
+        local tbl, method = ns.Compat.ChatHookTarget(key)
+        if tbl then C.HookOnce("frame:" .. key, tbl, method, Soft) end
     end
     -- the game moves a window by calling SetPoint / StopMovingOrSizing on it (dragging a tab, Edit Mode, a reset): glue it back at once
     local cf = C.Main()

@@ -19,6 +19,7 @@ LocalGraphics.lua
 UserMedia.lua
 Core.lua
 Modules.lua
+Compat.lua
 Conditions.lua
 Timing.lua
 ClassLearn.lua

@@ -96,6 +96,7 @@ ns.Print = function(s) ns.printed[#ns.printed + 1] = s end
 CueRulesDB = {}
 _G.__writes = function() return writes end
 assert(loadfile(__MOD__))("XayaUI", ns)   -- Modules.lua: the core contract Probe.lua registers through (0.5.108)
+assert(loadfile(((__MOD__):gsub("Modules%.lua$", "Compat.lua"))))("XayaUI", ns)   -- Compat.lua (0.6.0)
 local fn = assert(loadfile(__PATH__)); fn("XayaUI", ns)
 '''.replace("__PATH__", "'" + os.path.join(ROOT, "Chat", "Probe.lua").replace("\\", "/") + "'").replace("__MOD__", "'" + os.path.join(ROOT, "Modules.lua").replace("\\", "/") + "'"))
 lua.execute(r'''

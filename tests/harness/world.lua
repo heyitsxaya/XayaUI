@@ -64,7 +64,7 @@ for m in ([[SetBackdrop SetBackdropColor SetBackdropBorderColor GetBackdrop GetB
   ScrollToBottom ScrollToTop ScrollUp ScrollDown AddMessage SetMaxLines GetNumMessages Clear SetFading SetTimeVisible
   SetOwner AddLine AddDoubleLine ClearLines NumLines SetUnit SetSpellByID SetItemByID SetHyperlink AddTexture SetMinimumWidth
   GetUnit GetSpell GetItem SetPadding FadeOut SetTooltipData ProcessInfo IsOwned GetOwner
-  Init SetTitle SetPortraitToAsset SetPortraitTexture]]):gmatch("%S+") do MIXIN[m] = true end
+  Init SetTitle SetPortraitToAsset SetPortraitTexture ContainsMessageGroup ContainsChannel GetMessageInfo]]):gmatch("%S+") do MIXIN[m] = true end
 
 local proto = {}
 local function rectOf(f, depth)

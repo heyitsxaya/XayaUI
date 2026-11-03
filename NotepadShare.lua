@@ -185,7 +185,7 @@ pump:SetScript("OnUpdate", function(_, dt)
     tokens = math.min(BURST, tokens + dt / REFILL)   -- the game allows a burst, then about one message a second
     if #sendQueue == 0 then return end
     while tokens >= 1 and #sendQueue > 0 do
-        if IsEncounterInProgress and IsEncounterInProgress() then return end   -- wait: addon messages are paused in encounters
+        if ns.Compat.InEncounter() then return end   -- wait: addon messages are paused in encounters
         local item = table.remove(sendQueue, 1)
         local ok, err = SendOne(item)
         if not ok then
@@ -209,7 +209,7 @@ end
 function ns.NotepadShare_Send(text, channel, target, withText)
     text = ns.NotepadShare_Clean(text, MaxChars())
     if not text:match("%S") then return false, "The note is empty." end
-    if IsEncounterInProgress and IsEncounterInProgress() then return false, "Sharing is paused during a boss encounter. Try again afterwards." end
+    if ns.Compat.InEncounter() then return false, "Sharing is paused during a boss encounter. Try again afterwards." end
     if C_ChatInfo and C_ChatInfo.InChatMessagingLockdown then
         local ok, locked = pcall(C_ChatInfo.InChatMessagingLockdown)
         if ok and locked then return false, "Chat messaging is locked right now (a restricted activity). Try again afterwards." end
@@ -229,12 +229,9 @@ function ns.NotepadShare_Send(text, channel, target, withText)
     sending = sid
 
     if withText or true then   -- the header line always goes out (it tells everyone what is happening); the text lines are the option
-        local post = SendChatMessage
-        if post then
-            for _, line in ipairs(ns.NotepadShare_ChatLines(text, withText)) do
-                local ok = pcall(post, line, channel, nil, target)
-                if not ok then Say("The chat line could not be posted (chat may be locked); the note itself is still being sent."); break end
-            end
+        for _, line in ipairs(ns.NotepadShare_ChatLines(text, withText)) do
+            local ok, sent = pcall(ns.Compat.SendChatMessage, line, channel, nil, target)
+            if not (ok and sent) then Say("The chat line could not be posted (chat may be locked); the note itself is still being sent."); break end
         end
     end
     return true, #pieces

@@ -210,7 +210,7 @@ def static_checks(folders):
     out = []
     for name, files in addon_lua_files(folders).items():
         for f in files:
-            if not os.path.isfile(f):
+            if not os.path.isfile(f) or os.path.basename(f) == "Compat.lua":   # Compat.lua is the one allowed place (current API first)
                 continue
             code = strip_comments(open(f, encoding="utf-8", errors="replace").read())
             for n in dep:

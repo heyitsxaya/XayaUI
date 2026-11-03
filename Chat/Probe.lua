@@ -127,7 +127,7 @@ local SUSPECTS = {
 local function Run()
     lines = {}
     local frames = {}                                   -- chat objects, for the "what is anchored to chat" scan
-    local nChat = tonumber(NUM_CHAT_WINDOWS) or 10
+    local nChat = ns.Compat.MaxChatWindows()
     local sw, sh = try(GetScreenWidth), try(GetScreenHeight)
 
     Head("environment")
@@ -143,7 +143,7 @@ local function Run()
         table.sort(names)
         Add("C_Secrets functions: " .. table.concat(names, ", "))
     end
-    Add("DEFAULT_CHAT_FRAME=" .. Name(DEFAULT_CHAT_FRAME) .. " SELECTED_CHAT_FRAME=" .. Name(SELECTED_CHAT_FRAME) .. " NUM_CHAT_WINDOWS=" .. S(NUM_CHAT_WINDOWS))
+    Add("DEFAULT_CHAT_FRAME=" .. Name(DEFAULT_CHAT_FRAME) .. " SELECTED_CHAT_FRAME=" .. Name(SELECTED_CHAT_FRAME) .. " max chat windows=" .. S(nChat))
     Add("FCF_GetNumActiveChatFrames=" .. S(try(FCF_GetNumActiveChatFrames)))
     Add("EditModeManagerFrame present: " .. S(Global("EditModeManagerFrame") ~= nil))
 

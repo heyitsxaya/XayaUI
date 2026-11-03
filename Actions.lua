@@ -75,13 +75,13 @@ local function DoChat(rule, a)
             end
         end)
     elseif t == "SAY" or t == "YELL" then
-        if IsInInstance() then pcall(SendChatMessage, msg, t) end
+        if IsInInstance() then pcall(ns.Compat.SendChatMessage, msg, t) end
     elseif t == "GROUP" then
         local ch
         if UnitInBattleground and UnitInBattleground("player") then ch = "INSTANCE_CHAT"
         elseif IsInRaid() then ch = (IsInGroup(LE_PARTY_CATEGORY_INSTANCE) and "INSTANCE_CHAT") or "RAID"
         elseif IsInGroup() then ch = (IsInGroup(LE_PARTY_CATEGORY_INSTANCE) and "INSTANCE_CHAT") or "PARTY" end
-        if ch then pcall(SendChatMessage, msg, ch) end
+        if ch then pcall(ns.Compat.SendChatMessage, msg, ch) end
     end
 end
 

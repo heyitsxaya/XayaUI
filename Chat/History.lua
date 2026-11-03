@@ -43,10 +43,8 @@ function C.Shows(f, group, channelBase)
         for _, g in pairs(f.messageTypeList) do if g == group then return true end end
         return false
     end
-    if _G.ChatFrame_ContainsMessageGroup then
-        local ok, v = pcall(_G.ChatFrame_ContainsMessageGroup, f, group)
-        if ok then return v and true or false end
-    end
+    local v = ns.Compat.ChatShowsGroup(f, group)
+    if v ~= nil then return v end
     return false
 end
 
