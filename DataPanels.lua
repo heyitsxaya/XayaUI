@@ -1,14 +1,13 @@
 -------------------------------------------------------------------------------
 -- DataPanels.lua : "Custom Data Panels and Bars" (tab under QoL UI Updates).
 -- On-screen info strips, each showing 1-20 data slots. All of it is on the General tab as sections that open when switched on
--- (plus a Chat Panels tab for the chat window backdrops, built by ChatPanels.lua):
+-- (the chat's own bar, the Chat Bar, belongs to Chat Panel: QoL UI Updates > Chat Panel):
 --   bl      Left Panel     (bottom-left corner of the screen)
 --   br      Right Panel    (bottom-right corner)
 --   center  Center Panel   (bottom center; any anchor, drag to move, or full screen width)
 --   cpN     Custom Panels  (as many as you add: free anchor, drag to move, horizontal or vertical; stored in db.customs)
---   the Chat Panel section is the info bar beside the chat window (ChatPanel.lua)
 -- Older settings: Top Data Bar became the Center Panel; an enabled Custom Panel / Custom Bar became custom panels (originals kept in db.legacy).
--- Data types = what the Chat Panel offers (time, FPS, latency, gold, durability, bag slots, custom text) plus the stat set of the
+-- Data types = what the Chat Bar offers (time, FPS, latency, gold, durability, bag slots, custom text) plus the stat set of the
 -- old stat boxes (crit, haste, mastery, versatility, ilvl, ...). Every slot of every strip can show any of them.
 -- Each slot is a block: its own gaps, alignment, text scale, background and text color, plus "auto sized" or "even split" rows and
 -- "fill remaining space" blocks (settings under "Blocks" on every strip's page; layout and slot look live in DataBlocks.lua).
@@ -16,7 +15,7 @@
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 
-local B = ns.DataBlocks      -- DataBlocks.lua: the block engine shared with the chat info bars (ChatPanel.lua)
+local B = ns.DataBlocks      -- DataBlocks.lua: the block engine shared with the Chat Bar (Chat/Bar.lua)
 local MAXSLOTS = B.MAXN
 local FIXED = { "bl", "br", "center" }
 local TITLES = { bl = "Left Panel", br = "Right Panel", center = "Center Panel" }
@@ -455,11 +454,11 @@ function ns.BuildDataPanelsTab(Notify)
 
     local general = { type = "group", name = "General", order = 1, args = {
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Info panels for the screen and the chat. Tick the master switch below, then switch on the sections you want: a left, right, and center panel, the chat panel beside the chat window, and as many custom panels as you like. Every block of every panel can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). Right-click any panel to jump here. The Chat Panels tab holds the backdrops, tab panel, and sizes of the Blizzard chat windows." },
+            name = "Info panels for the screen. Tick the master switch below, then switch on the sections you want: a left, right, and center panel, and as many custom panels as you like. (The bar attached to the chat is the Chat Bar, under QoL UI Updates > Chat Panel.) Every block of every panel can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). Right-click any panel to jump here. The Chat Panels tab holds the backdrops, tab panel, and sizes of the Blizzard chat windows." },
         master = { type = "toggle", order = 0.1, width = "full", name = "Enable Custom Data Panels and Bars",
             desc = "Master switch. Off: no panel is shown and the sections below are hidden (their settings are kept). On: each section then has its own Enable switch.",
             get = function() return db.general.enabled and true or false end,
-            set = function(_, v) db.general.enabled = v and true or false; ns.DataPanels_Refresh(); if ns.ChatPanel_Refresh then ns.ChatPanel_Refresh() end; if Notify then Notify() end end },
+            set = function(_, v) db.general.enabled = v and true or false; ns.DataPanels_Refresh(); if Notify then Notify() end end },
         blocks = { type = "group", name = "Clicks and hovering", order = 1, inline = true, hidden = MasterHidden, args = {
             click = { type = "toggle", order = 1, name = "Block combat click", get = function() return db.general.blockCombatClick end, set = function(_, v) db.general.blockCombatClick = v end },
             hover = { type = "toggle", order = 2, name = "Block combat hover", get = function() return db.general.blockCombatHover end, set = function(_, v) db.general.blockCombatHover = v end },
@@ -646,7 +645,6 @@ function ns.BuildDataPanelsTab(Notify)
     gen.left = Section("bl", 10)
     gen.right = Section("br", 11)
     gen.center = Section("center", 12)
-    if ns.ChatPanel_Options then gen.chat = ns.ChatPanel_Options(Notify, 13) end   -- the chat panel: the info bar beside a chat window
 
     -- custom panels: added and removed while the window is open (AceConfig re-reads the args table on every redraw)
     local customGroup
@@ -674,10 +672,9 @@ function ns.BuildDataPanelsTab(Notify)
     for _, k in ipairs(ids) do customGroup.args[k] = Section(k, 10 + (tonumber(k:match("%d+")) or 0)) end
     gen.custom = customGroup
 
-    if ns.ChatPanels_Options then out.args.chatpanels = ns.ChatPanels_Options(Notify, 2) end
     return out
 end
 
-function ns.DataPanels_OpenSettings(tab)   -- tab (optional): a tab key such as "chatpanels"
+function ns.DataPanels_OpenSettings(tab)   -- tab (optional): a tab key such as "general"
     if ns.UI and ns.UI.DataPanels then ns.UI.DataPanels(tab) end
 end

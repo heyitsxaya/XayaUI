@@ -8,6 +8,5 @@
 - Ideas only, no code copied (a verbatim line-comparison of XayaUI's own Lua against the installed copies of these addons, run 2026-10-31, found only generic Blizzard-API idioms): BuffReminders (zerbi / Andrea Zerbini, PolyForm Shield 1.0.0), Buzzard Auras (Serina), EllesmereUI (Ellesmere, all rights reserved). The in-game "Addon Info" tab lists these credits with links.
 - **QoL Elements are out of the repository for now** (stat text boxes, Cursor Tracker + At-Cursor Reminders, Buff Bars: `QoL.lua`, `CursorTracker.lua`, `CursorReminders.lua`, `Bars.lua`, `Media/Cursor/`). They are git-ignored and not loaded. The Buff Bars option set was styled after EllesmereUI's Tracking Bars (ideas only); re-add that credit to the in-game tab when Buff Bars returns.
 
-- **ElvUI** (the ElvUI Team, all rights reserved): the Chat Reskin feature's option set and behavior were modelled on ElvUI's chat module (ideas only). A verbatim line-comparison of XayaUI's chat Lua against the installed ElvUI Lua, run 2026-11-02, found only four shared lines of 35+ characters, all generic Blizzard-API calls. ElvUI is not required, not bundled, and not affiliated with this project.
 
 World of Warcraft and Blizzard Entertainment are trademarks of Blizzard Entertainment, Inc. This project is not affiliated with or endorsed by Blizzard.

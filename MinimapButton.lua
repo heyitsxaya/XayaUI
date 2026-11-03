@@ -37,7 +37,7 @@ local ENTRIES = {
         function() local d = ns.notepadDB; return d and d.shown and "on" or "off" end },
     { "settings", "Settings", "Open the XayaUI settings window", function() if ns.ToggleUI then ns.ToggleUI() end end },
     { "data", "Custom data panels", "Open the custom data panels settings (also /xui data)", function() if ns.DataPanels_OpenSettings then ns.DataPanels_OpenSettings() end end },
-    { "chat", "Chat panel", "Open the settings of the info bar beside the chat window (also /xui panel)", function() if ns.ChatPanel_ShowWindow then ns.ChatPanel_ShowWindow() end end },
+    { "chat", "Chat Panel", "Open the Chat Panel settings (also /xui chat settings)", function() if ns.Chat and ns.Chat.OpenSettings then ns.Chat.OpenSettings() end end },
     { "privacy", "Chat privacy cover", "Cover or show the chat (also /xui privacy)",
         function() if ns.ChatPrivacy_Set and ns.chatDB then ns.ChatPrivacy_Set(not ns.chatDB.privOn) end end,
         function() return ns.chatDB and ns.chatDB.privOn and "on" or "off" end },

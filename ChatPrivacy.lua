@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
--- ChatPrivacy.lua : a privacy cover that sits over the chat window, toggled by a small button beside the chat (above the collapse
--- button) or with /xui privacy. Fill it with a color, a background texture, or your own picture.
+-- ChatPrivacy.lua : a privacy cover that sits over the Chat Panel's pane (tabs optional, text and the input line always), toggled by a
+-- small eye button beside the chat or with /xui privacy. The Chat Bar and its arrow stay visible. Fill it with a color, a background texture, or your own picture.
 -- It only hides the chat visually: messages are still received and logged, and nothing is deleted.
 -- Pictures: the game can only load TGA / BLP files that are inside its own Interface folder (it cannot read C:\Users\...).
 -- Put yours in Interface\AddOns\XayaUI_Media\ and type the file name (or the path from "Interface\" on) in the picture path box.
@@ -28,7 +28,6 @@ D.privBorder = true
 D.privShowText = true
 D.privText = "Chat hidden"
 D.privCoverTabs = false
-D.privCoverEdit = false
 D.privReveal = false             -- cover fades away while the mouse is over it
 
 local function Store() return ns.chatDB end
@@ -62,32 +61,26 @@ end
 
 -- cover frame ----------------------------------------------------------------------------------------------------------------
 local function Target()
-    local sel = _G.SELECTED_DOCK_FRAME
-    if sel and sel.IsVisible and sel:IsVisible() then return sel end
-    return _G.ChatFrame1
+    return ns.Chat and ns.Chat.Pane and ns.Chat.Pane() or nil
 end
 
+-- over the text and the input line; with "also cover the tabs" the tab row too
 local function Anchor(s)
-    local cf = Target()
-    if not (cover and cf) then return end
+    local pane = Target()
+    if not (cover and pane) then return end
+    local tabs = ns.Chat.TabsArea and ns.Chat.TabsArea()
     cover:ClearAllPoints()
-    cover:SetPoint("TOPLEFT", cf, "TOPLEFT", -2, 2 + (s.privCoverTabs and ((_G.ChatFrame1Tab and _G.ChatFrame1Tab:GetHeight() or 24) + 2) or 0))
-    local eb = _G.ChatFrame1EditBox
-    if s.privCoverEdit and eb then
-        cover:SetPoint("BOTTOMRIGHT", eb, "BOTTOMRIGHT", 2, -2)
-        cover:SetPoint("BOTTOMLEFT", eb, "BOTTOMLEFT", -2, -2)
-        cover:SetPoint("TOPRIGHT", cf, "TOPRIGHT", 2, 2 + (s.privCoverTabs and ((_G.ChatFrame1Tab and _G.ChatFrame1Tab:GetHeight() or 24) + 2) or 0))
-    else
-        cover:SetPoint("BOTTOMRIGHT", cf, "BOTTOMRIGHT", 2, -2)
-    end
-    cover.anchoredTo = cf
+    if s.privCoverTabs or not tabs then cover:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, 0)
+    else cover:SetPoint("TOPLEFT", tabs, "BOTTOMLEFT", 0, 0) end
+    cover:SetPoint("BOTTOMRIGHT", pane, "BOTTOMRIGHT", 0, 0)
+    cover.anchoredTo = pane
 end
 
 local function Style(s)
     if not cover then return end
     cover:SetAlpha((s.privAlpha or 100) / 100)
-    cover:SetFrameStrata(s.privCoverEdit and "DIALOG" or "MEDIUM")
-    cover:SetFrameLevel(s.privCoverEdit and 100 or 40)
+    cover:SetFrameStrata("DIALOG")          -- above the chat text AND the edit box, which the game draws in the dialog layer
+    cover:SetFrameLevel(100)
     cover.fill:SetColorTexture(s.privR or 0, s.privG or 0, s.privB or 0, (tonumber(s.privFillA) or 100) / 100)
     local mode = s.privMode or "COLOR"
     local tex = cover.tex
@@ -182,16 +175,11 @@ end
 local function PlaceButton()
     local s = Store()
     if not (btn and s) then return end
-    local cf = _G.ChatFrame1
+    local c = ns.Chat and ns.Chat.Container and ns.Chat.Container()
+    if not c then return end
     btn:ClearAllPoints()
-    local dx, dy = tonumber(s.privBtnX) or 0, tonumber(s.privBtnY) or 0
-    local c = _G.XayaUIChatCollapse
-    if c and c:IsShown() then
-        btn:SetPoint("BOTTOM", c, "TOP", dx, 2 + dy)
-    elseif cf then
-        local right = (s.dockBtnSide or "RIGHT") == "RIGHT"
-        if right then btn:SetPoint("BOTTOMLEFT", cf, "BOTTOMRIGHT", (ns.ChatDock_SideExtra and ns.ChatDock_SideExtra(cf) or 0) + 4 + dx, dy) else btn:SetPoint("BOTTOMRIGHT", cf, "BOTTOMLEFT", -4 + dx, dy) end
-    end
+    -- beside the chat block, level with its top edge (the strip option "Right of the chat" uses the same side: move one with the offsets)
+    btn:SetPoint("TOPLEFT", c, "TOPRIGHT", 4 + (tonumber(s.privBtnX) or 0), (tonumber(s.privBtnY) or 0))
 end
 
 local function BuildButton()
@@ -225,8 +213,8 @@ function ns.ChatPrivacy_Refresh()
     local size = math.max(16, math.min(64, tonumber(s.privBtnSize) or 28))
     btn:SetSize(size, size)
     if not (btn.IsMouseOver and btn:IsMouseOver()) then btn:SetAlpha((tonumber(s.privBtnAlpha) or 90) / 100) end
-    local collapsed = ns.ChatDock_IsCollapsed and ns.ChatDock_IsCollapsed()
-    local canShow = _G.ChatFrame1 and not collapsed
+    local collapsed = ns.Chat and ns.Chat.IsCollapsed and ns.Chat.IsCollapsed()
+    local canShow = Target() and ns.Chat.On() and not collapsed
     btn:SetShown(canShow and s.privBtn ~= false)
     PlaceButton()
     DrawEye(btn, s.privOn)
@@ -262,8 +250,8 @@ drv:SetScript("OnUpdate", function(_, dt)
     acc = 0
     local s = Store()
     if not (s and btn) then return end
-    local collapsed = ns.ChatDock_IsCollapsed and ns.ChatDock_IsCollapsed()
-    local want = (not collapsed) and s.privBtn ~= false and _G.ChatFrame1 ~= nil
+    local collapsed = ns.Chat and ns.Chat.IsCollapsed and ns.Chat.IsCollapsed()
+    local want = (not collapsed) and s.privBtn ~= false and Target() ~= nil and ns.Chat.On()
     if btn:IsShown() ~= want then btn:SetShown(want); PlaceButton() end
     if s.privOn and cover then
         local should = not collapsed
@@ -279,7 +267,7 @@ function ns.ChatPrivacy_Options(Notify)
     local function mode(m) return function() return S().privMode ~= m end end
     return { type = "group", name = "Chat Privacy", order = 10, args = {
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "A cover that sits over the chat window. The small eye button beside the chat (above the collapse button) turns it on and off, and so does /xui privacy. It only hides the chat visually; messages still arrive and are still logged." },
+            name = "A cover that sits over the Chat Panel's text and input line. The small eye button beside the chat turns it on and off, and so does /xui privacy. It only hides the chat visually; messages still arrive and are still logged." },
         on = { type = "toggle", order = 1, width = "full", name = "Cover the chat now", get = get("privOn"), set = set("privOn") },
         start = { type = "toggle", order = 2, width = "full", name = "Cover the chat at every login", get = get("privStartHidden"), set = set("privStartHidden") },
         btn = { type = "toggle", order = 3, width = "full", name = "Show the toggle button beside the chat", get = function() return S().privBtn ~= false end, set = set("privBtn") },
@@ -343,7 +331,6 @@ function ns.ChatPrivacy_Options(Notify)
         text = { type = "input", order = 22, name = "Label", get = get("privText"), set = set("privText") },
         areaHdr = { type = "header", order = 30, name = "Area and behavior" },
         tabs = { type = "toggle", order = 31, width = "full", name = "Also cover the chat tabs", get = get("privCoverTabs"), set = set("privCoverTabs") },
-        edit = { type = "toggle", order = 32, width = "full", name = "Also cover the edit box (the line you type in)", get = get("privCoverEdit"), set = set("privCoverEdit") },
         reveal = { type = "toggle", order = 33, width = "full", name = "Cover fades away while the mouse is over it", get = get("privReveal"), set = set("privReveal") },
     } }
 end

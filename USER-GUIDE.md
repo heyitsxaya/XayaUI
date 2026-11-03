@@ -7,7 +7,7 @@
 ## Contents
 
 - **Part 1: Rules**: how Load options, Triggers, Cues, Conditions, and Actions work (sections 1-11)
-- **Part 2: Features**: Class/Spec Rule Creator, Rule Drafts, Custom Data Panels and Bars, Notepad, Addon Theming, Minimap Button, Tooltips, Game Menu look (section 12)
+- **Part 2: Features**: Class/Spec Rule Creator, Rule Drafts, Custom Data Panels and Bars, Notepad, Addon Theming, Minimap Button, Tooltips, Game Menu look, Chat Panel (section 12)
 - **Maintaining this document** (section 13)
 
 ---
@@ -408,11 +408,11 @@ On/off state, name, group, collapse state, sidebar icon, and edit lock are not c
 
 ### 12.3 Custom Data Panels and Bars
 
-Info panels for the screen and the chat, each holding 1 to 20 data slots: a **Left Panel** and **Right Panel** along the bottom of the screen, a **Center Panel** you can anchor anywhere, the **Chat Panel** beside a chat window (above, below, left, or right of it, or snapped to a screen edge), and any number of **Custom Panels** you add yourself (up to 12). Every slot can show any data type: time, frame rate, latency, gold, durability, free bag slots, or your own custom text, plus a set of character stats (crit, haste, mastery, versatility, leech, avoidance, dodge, parry, block, item level, armor, primary stats, stamina, max health, absorb). Stats keep their last readable value when the game marks them secret.
+Info panels for the screen, each holding 1 to 20 data slots: a **Left Panel** and **Right Panel** along the bottom of the screen, a **Center Panel** you can anchor anywhere, and any number of **Custom Panels** you add yourself (up to 12). Every slot can show any data type: time, frame rate, latency, gold, durability, free bag slots, or your own custom text, plus a set of character stats (crit, haste, mastery, versatility, leech, avoidance, dodge, parry, block, item level, armor, primary stats, stamina, max health, absorb). Stats keep their last readable value when the game marks them secret.
 
-Each slot is a **block** with its own gaps, alignment, text scale, background, and text color. Rows can size blocks automatically or split them evenly, and a block can fill the remaining space. Each panel also has its own width, height, growth direction (horizontal or vertical), backdrop and border, colors, frame layer, tooltip placement, a hide-in-combat option, and a visibility macro. The General page sets the font, outline, and size, and can block clicks and mouseover during combat. The chat panel uses the same block engine and data-type list.
+Each slot is a **block** with its own gaps, alignment, text scale, background, and text color. Rows can size blocks automatically or split them evenly, and a block can fill the remaining space. Each panel also has its own width, height, growth direction (horizontal or vertical), backdrop and border, colors, frame layer, tooltip placement, a hide-in-combat option, and a visibility macro. The General page sets the font, outline, and size, and can block clicks and mouseover during combat. The Chat Bar of the Chat Panel (section 12.10) uses the same block engine and data-type list.
 
-**Where:** QoL UI Updates > Custom Data Panels and Bars, or `/xui data`; right-click any panel to jump there. Everything is on the **General** tab as sections: a master switch (**Enable Custom Data Panels and Bars**) shows or hides all panels and the sections below it, and each section (Left Panel, Right Panel, Center Panel, Chat Panel, Custom Panels) opens its settings once its own Enable switch is on. **Add a custom panel** creates another panel; **Remove this panel** deletes it. A panel attached to a chat window (not snapped to a screen edge) has an arrow at its outer end that hides and shows that chat window. While such a panel is on and its arrow is shown, that arrow is the chat's only collapse button, and the panel folds down to the arrow while the chat is hidden. With no attached panel, or with the toggle arrows hidden, the small arrow beside the chat window does the job instead (QoL UI Updates > Chat > Move & Collapse). The **Chat Panels** tab holds the chat window backdrops, tab panel, and sizes. On the center and custom panels, **Unlock to drag** (fixed width only) lets you place them; a blue border shows while unlocked.
+**Where:** QoL UI Updates > Custom Data Panels and Bars, or `/xui data`; right-click any panel to jump there. Everything is on the **General** tab as sections: a master switch (**Enable Custom Data Panels and Bars**) shows or hides all panels and the sections below it, and each section (Left Panel, Right Panel, Center Panel, Custom Panels) opens its settings once its own Enable switch is on. **Add a custom panel** creates another panel; **Remove this panel** deletes it. On the center and custom panels, **Unlock to drag** (fixed width only) lets you place them; a blue border shows while unlocked.
 
 ### 12.4 Notepad
 
@@ -432,7 +432,7 @@ XayaUI's look is driven by a style sheet in two layers. **Tokens** are the palet
 
 ### 12.6 Minimap Button
 
-A button on the minimap for quick access. **Left-click** opens a list of buttons: Notes (shows or hides the notepad), Settings, Custom data panels, Chat panel, and Chat privacy cover. **Right-click** opens the XayaUI settings window, and you can **drag** the button around the minimap edge. You choose which buttons the list shows, whether it closes after a choice, and whether the button is shown or locked in place, and how big the button is (from 16 to 48 pixels; the ring, icon, and backing scale together, and the icon is clipped to a circle so it never pokes out past the ring).
+A button on the minimap for quick access. **Left-click** opens a list of buttons: Notes (shows or hides the notepad), Settings, Custom data panels, Chat Panel, and Chat privacy cover. **Right-click** opens the XayaUI settings window, and you can **drag** the button around the minimap edge. You choose which buttons the list shows, whether it closes after a choice, and whether the button is shown or locked in place, and how big the button is (from 16 to 48 pixels; the ring, icon, and backing scale together, and the icon is clipped to a circle so it never pokes out past the ring).
 
 **Icon override:** leave the box empty for the built-in icon, or type a file ID (for example `1390944`), an icon name (for example `INV_Misc_Note_01`), `spell:` followed by a spell ID, or a full texture path. A preview and a "Using:" line show what was understood, and **Reset** returns to the built-in icon. A wrong value can show a green square or an empty button; clear the box or press Reset.
 
@@ -467,6 +467,23 @@ XayaUI can draw its own panel over the Game Menu (the ESC menu) and click Blizza
 In combat the game hides aura details from addons, so a normal rule cannot always see your buffs. XayaUI_CombatEngine can instead draw a group's buff icons through Blizzard's own aura container, which keeps working in combat. Switch it on per group with `/xuiengine on <group name>`; `/xuiengine off <group name>` hands the group back to XayaUI's own icons, `/xuiengine list` shows which groups have buff rules it could draw, and `/xuiengine` shows its status. It only draws rules that carry an "engine" tag (set by a profile import that asks for it); your other rules are never touched. The group must be a dynamic group that grows right, left, up, or down (use Group Type & Container); its spacing, wrap size, and position are used. This is display only: it cannot tell sounds or conditions that a buff is up. If Blizzard's container refuses the setup, XayaUI keeps drawing its own icons and `/xuiengine` says why. Not yet tested in game.
 
 **Where:** `/xuiengine`.
+
+### 12.10 Chat Panel
+
+The Chat Panel reskins Blizzard's own chat in place: one block that holds the tab row, the chat text, the input line, and an optional **Chat Bar** above or below it. XayaUI never replaces the message frame, so protected chat (Mythic+ runs, PvP matches, boss encounters) still shows normally. It is off when another chat addon (ElvUI's chat module, EllesmereUIChat) is active; the General tab says so.
+
+- **Block:** one width and height for the whole block, a mover (`/xui chat move`: drag the blue box, drag its top-right corner to resize), and a reset. Blizzard's side button strip can be hidden or moved to either side. The social button (the small floating button near the top left) can be hidden or kept. The scroll bar and the corner resize handle can be hidden.
+- **Chat Bar:** 1 to 8 blocks that use the Data Panels block engine: time, FPS, latency, FPS and latency, friends online, gold, durability, free bag slots, zone, a History button, or your own text. The bar sits above or below the chat. Its arrow, at the bar's left end, collapses the chat: the chat, tabs and input line fade out and the bar and arrow stay.
+- **Look:** background color, texture picker, border, input line and tab colors, fonts, sizes, outlines. **Use the XayaUI theme** (General tab) makes the colors and font follow the Theme page.
+- **Behavior:** fade when idle (delay, how far, speed; wakes on mouse over, typing, or new messages), collapse, tab height and visibility.
+- **Filters:** hide repeated messages from the same sender (Say, Yell, channels, emotes, whispers; not guild or group chat), a blocked-phrase list (one per line, whole-word option), Ctrl + right-click a name to ignore, and web addresses become clickable (a click opens a box to copy from).
+- **History:** a button in the pane's corner opens the last messages as selectable text (Ctrl+C to copy) with kind buttons and a search box. Kept in memory only; a protected message shows as "[protected message]".
+- **Sounds:** one sound per chat tab, played when a message arrives for a kind that tab shows. Your own messages and outgoing whispers never play one.
+- **Privacy cover:** a button beside the block covers the chat text and input line with a color or picture (the tab row too, if you choose). It has its own page under Privacy. The Chat Bar and the collapse arrow stay visible.
+
+**Where:** QoL UI Updates > Chat Panel (tabs: General, Chat Bar, Look, Behavior, Parts, Filters, History, Sounds, Privacy), or `/xui chat settings`. Commands: `/xui chat` (status), `/xui chat on|off|reset|move|history|settings`. `/xui chat off` plus `/reload` returns Blizzard's chat fully.
+
+**Limits:** the game does not let addons read or filter protected messages, so spam filters, links, history and sounds skip them. Blizzard can change its chat frames, so a part that cannot be found is skipped and listed as failed by `/xui chat`.
 
 ## 13. Maintaining this document
 

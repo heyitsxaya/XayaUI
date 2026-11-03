@@ -2,7 +2,7 @@
 ## Title: XayaUI
 ## Notes: Xaya's personal UI toolkit. Rule-based sound cues and alerts (buff, cooldown, talent, load conditions). Commands: /xui, /xayaui
 ## Author: Xaya
-## Version: 0.5.89
+## Version: 0.5.90
 ## X-Date: 2026-11-02
 ## SavedVariables: CueRulesDB, XayaUITalentDB
 ## OptionalDeps: LibSharedMedia-3.0, XayaUI_Media
@@ -32,15 +32,16 @@ Theme.lua
 Engine.lua
 CursorHighlight.lua
 CursorTrail.lua
-ChatReskin.lua
-ChatText.lua
-ChatTabs.lua
-ChatWidgets.lua
-ChatDock.lua
-ChatPanels.lua
 DataBlocks.lua
-ChatPanel.lua
-ChatTrade.lua
+Chat\Core.lua
+Chat\Frame.lua
+Chat\Bar.lua
+Chat\Skin.lua
+Chat\Fade.lua
+Chat\Messages.lua
+Chat\History.lua
+Chat\Sounds.lua
+Chat\Options.lua
 ChatPrivacy.lua
 Chat\Probe.lua
 DataPanels.lua

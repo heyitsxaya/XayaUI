@@ -3235,12 +3235,19 @@ ns.UI.Cursor = function()   -- the Cursor options live under QoL UI Updates > Cu
     Notify()
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "cursor")
 end
-ns.UI.DataPanels = function(tab)   -- QoL UI Updates > Custom Data Panels and Bars (also /xui data, right-click on any strip); tab = a tab key such as "chatpanels"
+ns.UI.DataPanels = function(tab)   -- QoL UI Updates > Custom Data Panels and Bars (also /xui data, right-click on any strip); tab = a tab key such as "general"
     if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then pcall(ns.ToggleUI) end
     ns.pageOpen = nil; ns.infoOpen = false
     Notify()
     if tab then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "datapanels", tab)
     else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "datapanels") end
+end
+ns.UI.ChatPanel = function(tab)   -- QoL UI Updates > Chat Panel (also /xui chat settings); tab = "general", "bar", "look", "behavior", "parts", "filters", "history", "sounds", "privacy"
+    if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then pcall(ns.ToggleUI) end
+    ns.pageOpen = nil; ns.infoOpen = false
+    Notify()
+    if tab then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "chatpanel", tab)
+    else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "chatpanel") end
 end
 ns.UI.Notepad = function()   -- QoL UI Updates > Notepad (also /xui notepad opens the box itself)
     if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then pcall(ns.ToggleUI) end
@@ -4127,7 +4134,7 @@ local function BuildOptions()
     -- QoL Elements (stat boxes, cursor tracker, buff bars) are switched off for now: their files are not in XayaUI.toc, so ns.QoLOn is nil and the tab is skipped.
     -- Tab "QoL UI Updates": left tree, options in the right pane. The entries are sorted alphabetically (see below); the older
     -- QoL Elements entries (stat boxes, cursor tracker, buff bars) come last, and only exist while their files are loaded.
-    local qolArgs = { chatreskin = ns.BuildChatTab and ns.BuildChatTab(Notify) or nil, cursor = ns.BuildCursorGroup and ns.BuildCursorGroup(Notify) or nil,
+    local qolArgs = { chatpanel = ns.BuildChatTab and ns.BuildChatTab(Notify) or nil, cursor = ns.BuildCursorGroup and ns.BuildCursorGroup(Notify) or nil,
         datapanels = ns.BuildDataPanelsTab and ns.BuildDataPanelsTab(Notify) or nil,
         notepad = ns.BuildNotepadTab and ns.BuildNotepadTab(Notify) or nil,
         minimap = ns.BuildMinimapTab and ns.BuildMinimapTab(Notify) or nil,

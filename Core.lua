@@ -645,7 +645,7 @@ f:SetScript("OnEvent", function(_, _, name)
     if ns.OnDBReady then ns.OnDBReady() end
     if ns.QoL_OnDBReady then ns.QoL_OnDBReady() end
     if ns.Cursor_OnDBReady then ns.Cursor_OnDBReady() end
-    if ns.ChatReskin_OnDBReady then ns.ChatReskin_OnDBReady() end
+    if ns.Chat_OnDBReady then ns.Chat_OnDBReady() end
     if ns.DataPanels_OnDBReady then ns.DataPanels_OnDBReady() end
     if ns.Notepad_OnDBReady then ns.Notepad_OnDBReady() end
     if ns.Minimap_OnDBReady then ns.Minimap_OnDBReady() end
@@ -735,7 +735,7 @@ SlashCmdList["XAYAUI"] = function(msg)
             ns.Print("cursor tracker " .. (on and "ON" or "OFF"))
         end
     elseif cmd == "chat" then
-        if ns.ChatReskin_Debug then ns.ChatReskin_Debug() end
+        if ns.Chat and ns.Chat.Command then ns.Chat.Command(arg) end
     elseif cmd == "perf" then   -- engine timing on this machine (Engine.lua)
         if ns.PerfCommand then ns.PerfCommand(arg) end
     elseif cmd == "chatprobe" then   -- read-only look at Blizzard's chat frames (Chat Panel rebuild, stage S0)
@@ -747,7 +747,7 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif cmd == "notepad" or cmd == "note" or cmd == "notes" then   -- show / hide the notepad
         if ns.Notepad_Toggle then ns.Notepad_Toggle() end
     elseif cmd == "panel" then
-        if ns.ChatPanel_ShowWindow then ns.ChatPanel_ShowWindow() end
+        if ns.Chat and ns.Chat.OpenSettings then ns.Chat.OpenSettings("bar") end
     elseif cmd == "gamemenu" then
         if ns.GameMenu_Diagnostics then ns.GameMenu_Diagnostics() end
         if ns.GameMenuSkin_Diagnostics then ns.GameMenuSkin_Diagnostics() end
@@ -760,6 +760,6 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif cmd == "bug" then
         if ns.ShowBugReport then ns.ShowBugReport() end
     else
-        ns.Print("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat | /xui chatprobe (read-only chat frame report) | /xui perf [on|off] (engine timing) | /xui notes (show / hide the notepad) | /xui panel (chat panel settings) | /xui data (custom data panels and bars) | /xui privacy (cover or show the chat) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media")
+        ns.Print("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat (Chat Panel: on, off, reset, move, history, settings) | /xui chatprobe (read-only chat frame report) | /xui perf [on|off] (engine timing) | /xui notes (show / hide the notepad) | /xui panel (Chat Bar settings) | /xui data (custom data panels and bars) | /xui privacy (cover or show the chat) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media")
     end
 end
