@@ -97,9 +97,10 @@ function ns.DecorateBuiltinTriggers(rule, args)
                     local t
                     if tok == "cd" then
                         t = { type = "cooldown", spellID = tonumber(rule.spellID) or 0, state = (rule.cdState and not ns.Ignored(rule.cdState)) and rule.cdState or "ready", maxCharges = tonumber(rule.maxCharges) or 0 }
-                    else   -- Buff / Aura: the copy is an additional Buff / Aura row holding the first aura ID (extra IDs are not copied)
-                        t = { type = "buffAura", spellID = tonumber(rule.buffID) or 0, state = (rule.buffState == "missing") and "no" or "yes" }
-                        if type(rule.buffAlt) == "table" and #rule.buffAlt > 0 then ns.Print("duplicated the Buff / Aura trigger with its first aura ID; the extra aura IDs were not copied") end
+                    else   -- Buff / Aura: the copy is a further Buff / Aura row with the same aura IDs, state, and seconds left (0.6.4: extras are kept)
+                        t = { type = "buffAura", spellID = tonumber(rule.buffID) or 0, state = (rule.buffState == "missing") and "no" or "yes",
+                            alt = (type(rule.buffAlt) == "table" and #rule.buffAlt > 0) and ns.Copy(rule.buffAlt) or nil,
+                            timeOp = rule.buffTimeOp, timeSec = rule.buffTimeSec }
                     end
                     local sq = ns.TriggerSequence(rule)
                     local at, jx = #sq + 1, 0
@@ -115,8 +116,18 @@ function ns.DecorateBuiltinTriggers(rule, args)
             }
         end
     end
-    setup("cd", "Cooldown", { "cdHeader", "spellID", "spellName", "spellSearch", "spellPick", "cdState", "maxCharges", "detected", "cdRemove" }, "cdRemove", ns.CooldownUsed)
-    setup("buff", "Buff / Aura", { "buffHeader", "buffState", "buffSearch", "buffID", "buffName", "buffAltSearch", "buffAlt", "buffAltNames", "buffRemove" }, "buffRemove", ns.BuffUsed)
+    -- "readable in combat?" line under each built-in trigger (ns.TriggerCombatNote)
+    local function CombatLine(tok, order, used)
+        return { type = "description", order = order, width = "full", fontSize = "small",
+            hidden = function() if not used(rule) then return true end; local okc, n = pcall(ns.TriggerCombatNote, rule, tok); return not (okc and n) end,
+            name = function() local okc, n = pcall(ns.TriggerCombatNote, rule, tok); return okc and n or "" end }
+    end
+    if ns.TriggerCombatNote then
+        args.cdCombat = CombatLine("cd", 6.6, ns.CooldownUsed)
+        args.buffCombat = CombatLine("buff", 13.6, ns.BuffUsed)
+    end
+    setup("cd", "Cooldown", { "cdHeader", "spellID", "spellName", "spellSearch", "spellPick", "cdState", "maxCharges", "detected", "cdCombat", "cdRemove" }, "cdRemove", ns.CooldownUsed)
+    setup("buff", "Buff / Aura", { "buffHeader", "buffState", "buffTimeOp", "buffTimeSec", "buffSearch", "buffID", "buffName", "buffAltSearch", "buffAlt", "buffAltNames", "buffCombat", "buffRemove" }, "buffRemove", ns.BuffUsed)
 end
 
 -------------------------------------------------------------------------------
@@ -182,7 +193,8 @@ local function FieldArgs(rule, t, f, H, order, row)
                 sorting = function() local _, o = f.dyn(); return o end,
                 get = function() return t[k] end, set = function(_, v) t[k] = v; onN() end }
         else
-            row[k] = H.Sel(t, k, f.label, order, f.vals.values, f.vals.order, onN, { width = "double" })
+            row[k] = H.Sel(t, k, f.label, order, f.vals.values, f.vals.order, onN, { width = f.width or "double" })
+            if f.default ~= nil then row[k].get = function() if t[k] == nil then return f.default end; return t[k] end end
         end
     elseif f.kind == "range" then
         row[k] = H.Rng(t, k, f.label, order, f.min, f.max, f.step, on, { width = "double" })
@@ -191,7 +203,50 @@ local function FieldArgs(rule, t, f, H, order, row)
             get = function() return t[k] ~= nil and tostring(t[k]) or "" end,
             set = function(_, v) t[k] = tonumber(v); on() end }
     elseif f.kind == "toggle" then
-        row[k] = H.Tog(t, k, f.label, order, on, { width = "double" })
+        row[k] = H.Tog(t, k, f.label, order, onN, { width = "normal" })
+    elseif f.kind == "idlist" then
+        -- several IDs in one box (extra aura IDs, ANY of them): search to add one, or type them comma separated
+        row[k .. "Search"] = H.SearchBox(order, function(id)
+            id = tonumber(id) or 0
+            if id == 0 or id == (tonumber(t.spellID) or 0) then return end
+            t[k] = type(t[k]) == "table" and t[k] or {}
+            for _, x in ipairs(t[k]) do if x == id then return end end
+            if #t[k] >= 30 then ns.Print("a trigger can watch at most 30 extra aura IDs"); return end
+            t[k][#t[k] + 1] = id; onN()
+        end, "Also count these auras: search to add another", f.search or "aura")
+        row[k] = { type = "input", name = f.label, order = order + 0.1, width = "full", desc = f.desc,
+            get = function() local l = type(t[k]) == "table" and t[k] or {}; local o = {}; for i, v in ipairs(l) do o[i] = tostring(v) end; return table.concat(o, ", ") end,
+            set = function(_, v)
+                local out, seen = {}, { [tonumber(t.spellID) or 0] = true }
+                for n in tostring(v or ""):gmatch("%d+") do
+                    local id = tonumber(n)
+                    if id and id > 0 and not seen[id] and #out < 30 then seen[id] = true; out[#out + 1] = id end
+                end
+                t[k] = (#out > 0) and out or nil
+                onN()
+            end }
+        row[k .. "Names"] = { type = "description", order = order + 0.2, width = "full", fontSize = "medium",
+            hidden = function() return type(t[k]) ~= "table" or #t[k] == 0 end,
+            name = function()
+                local o = {}
+                for _, id in ipairs(type(t[k]) == "table" and t[k] or {}) do o[#o + 1] = H.SpellName(id) .. "  [" .. id .. "]" end
+                return table.concat(o, "\n")
+            end }
+    end
+    -- a field that only matters for some settings (seconds left once a comparison is chosen ...); hiding never changes saved values
+    for _, key in ipairs({ k, k .. "Search", k .. "ID", k .. "Name", k .. "Pick", k .. "Names" }) do
+        local o = row[key]
+        if o then
+            if f.desc and not o.desc then o.desc = f.desc end
+            if f.showIf then
+                local prev = o.hidden
+                o.hidden = function()
+                    if not f.showIf(t) then return true end
+                    if type(prev) == "function" then return prev() end
+                    return prev and true or false
+                end
+            end
+        end
     end
 end
 
@@ -281,6 +336,11 @@ function ns.BuildExtraTriggerArgs(rule, H)
         else
             row.note = { type = "description", order = 0, width = "full",
                 name = "|cffff5555This trigger type ('" .. tostring(t.type) .. "') is not known to this version. It never fires; remove it or update XayaUI.|r" }
+        end
+        if ns.TriggerCombatNote then
+            row.combat = { type = "description", order = 89, width = "full", fontSize = "small",
+                hidden = function() local okc, n = pcall(ns.TriggerCombatNote, rule, "x", t); return not (okc and n) end,
+                name = function() local okc, n = pcall(ns.TriggerCombatNote, rule, "x", t); return okc and n or "" end }
         end
         row.status = { type = "description", order = 90, width = "double", fontSize = "medium",
             name = function()

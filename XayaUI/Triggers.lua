@@ -74,6 +74,9 @@ local function YesNo(t, v)
 end
 
 local function YN(yes, no) return { values = { yes = yes, no = no }, order = { "yes", "no" } } end
+-- a "Seconds left" comparison is chosen on this row (timeOp ">=", "<=", ">" or "<"; "any" / nil = any time left)
+local TIME_OP_OK = { [">="] = true, ["<="] = true, [">"] = true, ["<"] = true }
+local function TimeOn(t) return TIME_OP_OK[t.timeOp] == true end
 
 -------------------------------------------------------------------------------
 -- Player casts: UNIT_SPELLCAST_SUCCEEDED on "player" (the player's own casts are documented as not secret;
@@ -548,27 +551,66 @@ Add("resource", {
     end,
 })
 
--- 12b. Buff / Aura on you, repeatable. The rule's built-in "Buff / Aura" section holds ONE buff and can
--- be added once; this row is the same check (ns.BuffPresent: aura API, then the Cooldown Manager icon) so a rule can watch several
--- personal buffs at once. Each row is its own trigger number; combine them with the ALL / ANY switch under the trigger list.
+-- 12b. Buff / Aura on you, repeatable. The rule's built-in "Buff / Aura" section holds ONE aura trigger and can be added once; this row is
+-- the same trigger (0.6.4, #264 / #288): the same reading (ns.AuraPresentList: aura API, then the Cooldown Manager icon, then the
+-- duration engine), extra aura IDs that count as the same buff (ANY of them), an optional "seconds left" requirement, and stack /
+-- seconds-left numbers for conditions. Each row is its own trigger number; several rows can require several buffs at once (ALL).
+local rowAura = setmetatable({}, { __mode = "k" })   -- [row] = { tick, present, ref }: what the row read last (numbers for conditions)
+local function ReadRowAura(t)
+    local id = tonumber(t.spellID) or 0
+    if id == 0 then return nil, "not set: Buff spell ID" end
+    if not ns.AuraPresentList then return nil, "buff reader missing" end
+    local ok, present, src, ref, which = pcall(ns.AuraPresentList, id, t.alt)
+    if not ok then return nil, "error: " .. tostring(present) end
+    if present == true and type(ref) == "table" and not ref.expiration and t.estimate ~= false and ns.AuraEstimateInto then
+        local own, label = ns.AuraEstimateInto(t, which or id, ref)
+        if own then ref = own; src = tostring(src or ""):gsub(" | time: .*$", "") .. " | time: " .. tostring(label) end
+    end
+    rowAura[t] = { tick = ns.tickID, present = present, ref = ref }
+    return present, src, ref
+end
 Add("buffAura", {
-    label = "Buff / Aura (another)", group = "Aura",   -- offered once the built-in Buff / Aura is in use (BuildExtraTriggerArgs AddChoices); the extra aura IDs on the built-in one are ANY-of, a separate row lets you require several buffs at once (ALL) or mix ALL / ANY
-    note = "True while the buff is on you. Same reading as the rule's built-in Buff / Aura section (aura API; in combat the Cooldown Manager icon when the buff is tracked there). Use the ID of the BUFF. If the game hides the buff in combat and it is not in your Cooldown Manager, the answer is 'unknown' and the rule will not fire.",
+    label = "Buff / Aura (another)", group = "Aura",   -- offered once the built-in Buff / Aura is in use (BuildExtraTriggerArgs AddChoices); a separate row lets you require several buffs at once (ALL) or mix ALL / ANY
+    note = "True while the buff is on you. Same reading as the rule's built-in Buff / Aura trigger (aura API; in combat the Cooldown Manager icon when the buff is tracked there, and the duration engine's estimate for the time). Use the ID of the BUFF. If the game hides the buff in combat and it is not in your Cooldown Manager, the answer is 'unknown' and the rule will not fire.",
     new = { state = "yes" },
+    combat = "aura",
     fields = {
         { key = "spellID", kind = "spell", search = "aura", label = "Buff spell ID", required = true },
+        { key = "alt", kind = "idlist", search = "aura", label = "Extra aura IDs (any one counts)", required = false,
+          desc = "Other aura spell IDs that mean the same buff to this trigger (Well Fed variants, Demon Spikes IDs). PRESENT when any listed aura is on you, MISSING only when all are absent. If none is present and the game hides one of them (combat), the answer is UNKNOWN and the rule does not fire." },
         { key = "state", kind = "select", label = "State", required = true, vals = YN("Buff is present", "Buff is MISSING") },
+        { key = "timeOp", kind = "select", label = "Seconds left", width = "normal", default = "any", required = false, showIf = function(t) return t.state ~= "no" end,
+          vals = { values = { any = "Any time left", [">="] = "At least", ["<="] = "At most", [">"] = "More than", ["<"] = "Less than" }, order = { "any", ">=", "<=", ">", "<" } },
+          desc = "Only true while the buff has this much time left. In combat the time is exact when the game shows it, otherwise the duration engine's estimate (see /xui timing); with no estimate yet the trigger is unknown." },
+        { key = "timeSec", kind = "number", label = "Seconds", required = false, showIf = function(t) return t.state ~= "no" and TimeOn(t) end },
     },
     check = function(t)
-        local id = tonumber(t.spellID) or 0
-        if id == 0 then return nil, "not set: Buff spell ID" end
-        if not ns.BuffPresent then return nil, "buff reader missing" end
-        local ok, present, src = pcall(ns.BuffPresent, id)
-        if not ok then return nil, "error: " .. tostring(present) end
+        local present, src, ref = ReadRowAura(t)
         if present == nil then return nil, src or "unreadable" end
-        return YesNo(t, present), src
+        local v = YesNo(t, present)
+        if v == true and present == true and TimeOn(t) and ns.TimeLeftCheck then
+            local tv = ns.TimeLeftCheck(t.timeOp, t.timeSec, ref)
+            if tv == nil then return nil, "seconds left unknown (" .. tostring(src) .. ")" end
+            return tv, src
+        end
+        return v, src
     end,
 })
+-- stacks and seconds left of an aura trigger row (Buff / Aura (another), Target Debuff) for condition numbers. nil = unknown.
+function ns.TriggerAuraNumbers(t)
+    if type(t) ~= "table" then return nil, nil end
+    local c = rowAura[t]
+    if not c or ns.tickID == nil or c.tick ~= ns.tickID then ns.CheckTrigger(t); c = rowAura[t] end
+    if not c then return nil, nil end
+    if c.present == false then return 0, 0 end
+    if c.present ~= true then return nil, nil end
+    local stacks
+    local a = type(c.ref) == "table" and c.ref.applications
+    if type(a) == "number" and not issecret(a) then stacks = math.max(a, 1) elseif a == nil then stacks = 1 end
+    local rem = ns.AuraTimeLeft and ns.AuraTimeLeft(c.ref)
+    if rem == math.huge then rem = nil end
+    return stacks, rem
+end
 
 -- 13. Player State
 -- /xui debuffs [target|focus]: shows exactly what the game lets us read about your debuffs on that unit right now.
@@ -615,12 +657,17 @@ Add("targetDebuff", {
     label = "Target Debuff (yours)", group = "Aura",
     note = "True while a debuff cast BY YOU is on your target (or focus). Use the ID of the DEBUFF, not the ability you press: they usually differ (Sigil of Flame: ability 204596, debuff 204598). Midnight hides enemy aura details in combat, so inside combat this may read 'unknown' and then the rule will not fire; out of combat it is exact. In combat, 'absent' is reported only when the Cooldown Manager icon for this spell is inactive (target only; option below).",
     new = { unit = "target", state = "yes", cdmAbsent = "yes" },
+    combat = "debuff",
     fields = {
         { key = "spellID", kind = "spell", search = "aura", label = "Debuff spell ID", required = true },
         { key = "cdmID", kind = "spell", label = "Cooldown Manager spell ID  (optional: usually the ability, e.g. 204596)", required = false },
         { key = "cdmAbsent", kind = "select", label = "In combat: an INACTIVE Cooldown Manager icon means 'debuff absent'  (blank = yes)", required = false, vals = YN("Yes", "No - stay unknown in combat") },
         { key = "unit", kind = "select", label = "On which unit", required = true, vals = { values = { target = "Target", focus = "Focus" }, order = { "target", "focus" } } },
         { key = "state", kind = "select", label = "State", required = true, vals = YN("Debuff is on the unit", "Debuff is NOT on the unit") },
+        { key = "timeOp", kind = "select", label = "Seconds left", width = "normal", default = "any", required = false, showIf = function(t) return t.state ~= "no" end,
+          vals = { values = { any = "Any time left", [">="] = "At least", ["<="] = "At most", [">"] = "More than", ["<"] = "Less than" }, order = { "any", ">=", "<=", ">", "<" } },
+          desc = "Only true while your debuff has this much time left. Exact out of combat; in combat the game hides enemy aura times, so the trigger is unknown there." },
+        { key = "timeSec", kind = "number", label = "Seconds", required = false, showIf = function(t) return t.state ~= "no" and TimeOn(t) end },
     },
     check = function(t)
         local id = tonumber(t.spellID) or 0
@@ -628,8 +675,9 @@ Add("targetDebuff", {
         local unit = (t.unit == "focus") and "focus" or "target"
         local ex = Bool(UnitExists, unit)
         if ex == nil then return nil, "unreadable" end
-        if ex == false then return YesNo(t, false), "no " .. unit end
+        if ex == false then rowAura[t] = { tick = ns.tickID, present = false }; return YesNo(t, false), "no " .. unit end
         if not (C_UnitAuras and C_UnitAuras.GetUnitAuras) then return nil, "aura API missing" end
+        local foundAura
         local ok, found, sawHidden = pcall(function()
             local list = C_UnitAuras.GetUnitAuras(unit, "HARMFUL|PLAYER")
             if type(list) ~= "table" or issecret(list) then return nil, true end
@@ -637,7 +685,7 @@ Add("targetDebuff", {
             for i = 1, #list do
                 local sid = Field(list[i], "spellId")
                 if sid == nil then hidden = true
-                elseif sid == id then return true, hidden end
+                elseif sid == id then foundAura = list[i]; return true, hidden end
             end
             return false, hidden
         end)
@@ -648,7 +696,25 @@ Add("targetDebuff", {
             readErr = "aura read failed: " .. (tostring(found):gsub("^.-:%d+: ", ""))
             found, sawHidden = nil, nil
         end
-        if found == true then return YesNo(t, true) end
+        local function Found(src)
+            -- the time left (and stacks) of the debuff, when readable: numbers for conditions and the "Seconds left" requirement
+            local ref
+            if foundAura then
+                local exp, dur, apps = Field(foundAura, "expirationTime"), Field(foundAura, "duration"), Field(foundAura, "applications")
+                ref = { applications = apps }
+                if type(exp) == "number" and type(dur) == "number" then ref.expiration, ref.duration = exp, dur end
+            end
+            rowAura[t] = { tick = ns.tickID, present = true, ref = ref }
+            local v = YesNo(t, true)
+            if v == true and TimeOn(t) and ns.TimeLeftCheck then
+                local tv = ns.TimeLeftCheck(t.timeOp, t.timeSec, ref)
+                if tv == nil then return nil, "seconds left hidden right now" end
+                return tv, src
+            end
+            return v, src
+        end
+        local function Absent(src) rowAura[t] = { tick = ns.tickID, present = false }; return YesNo(t, false), src end
+        if found == true then return Found() end
         -- Cooldown Manager fallback, POSITIVE answers only: Blizzard marks a Cooldown Manager icon as aura-driven with plain
         -- (non-secret) fields, which stay readable in combat. Unverified for target debuffs; see /xui probe <id>.
         -- true = icon active, false = an icon exists and is inactive, nil = no icon / unreadable. Only icons count.
@@ -663,15 +729,15 @@ Add("targetDebuff", {
         -- Seen in game 2026-10-30: debuff up -> iid=secret unit=target; debuff gone -> iid=nil unit=nil (one sample each).
         if (found ~= false or sawHidden) and unit == "target" then
             local ca, cb = CdmState(id), CdmState(tonumber(t.cdmID))
-            if ca == true or cb == true then return YesNo(t, true), "seen in the Cooldown Manager" end
+            if ca == true or cb == true then return Found("seen in the Cooldown Manager") end
             if (ca == false or cb == false) and t.cdmAbsent ~= "no" then
-                return YesNo(t, false), "Cooldown Manager icon inactive (in combat)"
+                return Absent("Cooldown Manager icon inactive (in combat)")
             end
         end
         if readErr then return nil, readErr end
         if found == nil or sawHidden then return nil, "your debuffs on the " .. unit .. " are hidden right now" end
         if Bool(UnitAffectingCombat, "player") ~= false then return nil, "cannot confirm 'absent' in combat" end
-        return YesNo(t, false)
+        return Absent()
     end,
 })
 
@@ -697,6 +763,100 @@ Add("playerState", {
         elseif w == "focus" then v = Bool(UnitExists, "focus")
         elseif LOC_SETS[w] then v = ns.PlayerHasLossOfControl(w) end
         return YesNo(t, v)
+    end,
+})
+
+-- 13b. Loss of control on YOU, each effect separately, with seconds left (#155, #278 item 5; 0.6.4).
+-- C_LossOfControl.GetActiveLossOfControlData(index) has no secrecy flag in the 12.1.5 docs; GetActiveLossOfControlDataByUnit is secret for
+-- anyone but you, so there is no target / focus version. The effect names (locType) are Blizzard's own strings and are NOT listed in the docs:
+-- the sets below are the names the game's own loss-of-control alert uses, not confirmed in game (/xui loc prints what the game reports).
+-- "Any effect" counts every effect, including names this list does not know. Seconds left: the effect's timeRemaining, or its duration
+-- object (GetActiveLossOfControlDuration) when that is readable.
+local LOC_EFFECTS = {
+    { "stun", "Stunned", { STUN = true, STUN_MECHANIC = true } },
+    { "fear", "Feared", { FEAR = true, FEAR_MECHANIC = true } },
+    { "charm", "Charmed / mind controlled", { CHARM = true, POSSESS = true } },
+    { "incap", "Incapacitated / disoriented", { CONFUSE = true, DISORIENT = true, INCAPACITATE = true } },
+    { "sleep", "Asleep", { SLEEP = true } },
+    { "silence", "Silenced", { SILENCE = true, PACIFYSILENCE = true } },
+    { "school", "Interrupted (spell school locked)", { SCHOOL_INTERRUPT = true } },
+    { "root", "Rooted", { ROOT = true } },
+    { "disarm", "Disarmed", { DISARM = true } },
+    { "pacify", "Pacified (cannot attack)", { PACIFY = true, PACIFYSILENCE = true } },
+}
+ns.LOC_EFFECTS = LOC_EFFECTS
+-- the effects on you right now: list of { locType, remaining (number or nil) }, or nil when the game does not tell
+local function LossOfControlNow()
+    local LOC = C_LossOfControl
+    if not (LOC and LOC.GetActiveLossOfControlDataCount and LOC.GetActiveLossOfControlData) then return nil, "loss-of-control API missing" end
+    local okc, n = pcall(LOC.GetActiveLossOfControlDataCount)
+    if not okc or type(n) ~= "number" or issecret(n) then return nil, "loss-of-control count unreadable" end
+    local out = {}
+    for i = 1, n do
+        local ok, d = pcall(LOC.GetActiveLossOfControlData, i)
+        if not ok or issecret(d) then return nil, "loss-of-control data unreadable" end
+        if type(d) == "table" then
+            local lt = Field(d, "locType")
+            if lt == nil then return nil, "effect type hidden" end
+            local rem = Field(d, "timeRemaining")
+            if type(rem) ~= "number" and LOC.GetActiveLossOfControlDuration then
+                local okd, obj = pcall(LOC.GetActiveLossOfControlDuration, "player", i)
+                if okd and obj ~= nil and not issecret(obj) then
+                    local okr, r = pcall(function() return obj:GetRemainingDuration() end)
+                    if okr and type(r) == "number" and not issecret(r) then rem = r end
+                end
+            end
+            out[#out + 1] = { lt, type(rem) == "number" and rem or nil }
+        end
+    end
+    return out
+end
+Add("lossOfControl", {
+    label = "Loss of control on you", group = "Player",
+    note = "True while one of the ticked effects is on you. The effect names are the game's own and are not documented: if a tick box never reacts, use /xui loc while the effect is on you and report what it prints. 'Any effect' also catches names this list does not know.",
+    new = { state = "yes", any = true },
+    combat = "loc",
+    fields = {
+        { key = "any", kind = "toggle", label = "Any effect" },
+        { key = "stun", kind = "toggle", label = "Stunned", showIf = function(t) return not t.any end },
+        { key = "fear", kind = "toggle", label = "Feared", showIf = function(t) return not t.any end },
+        { key = "charm", kind = "toggle", label = "Charmed / mind controlled", showIf = function(t) return not t.any end },
+        { key = "incap", kind = "toggle", label = "Incapacitated / disoriented", showIf = function(t) return not t.any end },
+        { key = "sleep", kind = "toggle", label = "Asleep", showIf = function(t) return not t.any end },
+        { key = "silence", kind = "toggle", label = "Silenced", showIf = function(t) return not t.any end },
+        { key = "school", kind = "toggle", label = "Interrupted (school locked)", showIf = function(t) return not t.any end },
+        { key = "root", kind = "toggle", label = "Rooted", showIf = function(t) return not t.any end },
+        { key = "disarm", kind = "toggle", label = "Disarmed", showIf = function(t) return not t.any end },
+        { key = "pacify", kind = "toggle", label = "Pacified", showIf = function(t) return not t.any end },
+        { key = "state", kind = "select", label = "State", required = true, vals = YN("Effect is on me", "Effect is NOT on me") },
+        { key = "timeOp", kind = "select", label = "Seconds left", width = "normal", default = "any", required = false, showIf = function(t) return t.state ~= "no" end,
+          vals = { values = { any = "Any time left", [">="] = "At least", ["<="] = "At most", [">"] = "More than", ["<"] = "Less than" }, order = { "any", ">=", "<=", ">", "<" } },
+          desc = "Only true while the effect has this much time left (the longest of the matching effects)." },
+        { key = "timeSec", kind = "number", label = "Seconds", required = false, showIf = function(t) return t.state ~= "no" and TimeOn(t) end },
+    },
+    check = function(t)
+        local want, picked = {}, false
+        for _, e in ipairs(LOC_EFFECTS) do
+            if t.any or t[e[1]] then picked = true; for name in pairs(e[3]) do want[name] = true end end
+        end
+        if not picked then return nil, "not set: tick at least one effect" end
+        local list, why = LossOfControlNow()
+        if not list then return nil, why end
+        local on, best = false, nil
+        for _, x in ipairs(list) do
+            if t.any or want[x[1]] then
+                on = true
+                if x[2] and (best == nil or x[2] > best) then best = x[2] end
+            end
+        end
+        rowAura[t] = { tick = ns.tickID, present = on, ref = on and best and { expiration = GetTime() + best, duration = best } or nil }
+        local v = YesNo(t, on)
+        if v == true and on and TimeOn(t) and ns.TimeLeftCheck then
+            local tv = ns.TimeLeftCheck(t.timeOp, t.timeSec, rowAura[t].ref)
+            if tv == nil then return nil, "seconds left unreadable" end
+            return tv
+        end
+        return v
     end,
 })
 
@@ -762,7 +922,7 @@ function ns.CheckExtraTriggers(rule)
 end
 
 -- Clean a rule's extra block (saved or imported). Data only: unknown types are kept (shown as unknown, never fire).
-local NUMERIC = { "spellID", "talentID", "itemID", "count", "window", "minSec", "cdmID", "maxCharges" }
+local NUMERIC = { "spellID", "talentID", "itemID", "count", "window", "minSec", "cdmID", "maxCharges", "timeSec" }
 function ns.NormalizeExtra(r)
     if type(r.extra) ~= "table" then r.extra = { list = {} } end
     local X = r.extra
@@ -774,6 +934,15 @@ function ns.NormalizeExtra(r)
                 for _, k in ipairs(NUMERIC) do
                     if t[k] ~= nil then t[k] = tonumber(t[k]) or 0 end
                 end
+                if t.alt ~= nil then   -- extra aura IDs (ANY of them): numbers only, no repeats, at most 30
+                    local out, seen = {}, { [tonumber(t.spellID) or 0] = true }
+                    for _, v in ipairs(type(t.alt) == "table" and t.alt or {}) do
+                        local id = tonumber(v)
+                        if id and id > 0 and not seen[id] and #out < 30 then seen[id] = true; out[#out + 1] = id end
+                    end
+                    t.alt = (#out > 0) and out or nil
+                end
+                if not TIME_OP_OK[t.timeOp] then t.timeOp = nil end   -- "any" / unknown = any time left
                 clean[#clean + 1] = t
             end
         end
@@ -992,6 +1161,8 @@ for _, e in ipairs({
     "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST",
     "PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING", "PLAYER_FLAGS_CHANGED",
 }) do pcall(ev.RegisterEvent, ev, e) end
+-- loss of control on you reacts at once (12.1.5 LossOfControl docs; registered for every unit, only a re-check follows)
+for _, e in ipairs({ "LOSS_OF_CONTROL_ADDED", "LOSS_OF_CONTROL_UPDATE", "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED" }) do pcall(ev.RegisterEvent, ev, e) end
 for _, e in ipairs({ "UNIT_SPELLCAST_SUCCEEDED", "UNIT_PET", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE", "UNIT_INVENTORY_CHANGED" }) do
     pcall(ev.RegisterUnitEvent, ev, e, "player")
 end
@@ -1005,8 +1176,15 @@ ev:SetScript("OnEvent", function(_, event, _, _, spellID)
 end)
 
 -- The number a numeric extra trigger (Item Count, Class Resource) is reading right now, for condition comparisons. nil = unreadable (never guessed).
-function ns.TriggerNumber(t)
+-- what = nil (the row's own number), "s" (stacks of an aura row) or "t" (seconds left of an aura / loss-of-control row)
+function ns.TriggerNumber(t, what)
     if type(t) ~= "table" then return nil end
+    if what == "s" or what == "t" then
+        if not ns.TriggerAuraNumbers then return nil end
+        local st, rem = ns.TriggerAuraNumbers(t)
+        if what == "s" then return st end
+        return rem
+    end
     if t.type == "itemCount" then
         local id = tonumber(t.itemID)
         if not id or id == 0 then return nil end
@@ -1022,6 +1200,69 @@ function ns.TriggerNumber(t)
         if e == nil then return nil end
         local v = Call(UnitPower, "player", e)
         return type(v) == "number" and v or nil
+    end
+    return nil
+end
+
+-- "Readable in combat?" for one trigger (0.6.4, review 2b-13): a gray line in the trigger pane, so a trigger that will be unknown in combat is
+-- visible before testing. tok = "cd" | "buff" | "x" (row = the additional trigger row). Uses C_Secrets.GetSpellAuraSecrecy /
+-- GetSpellCooldownSecrecy (12.1.5 SecretPredicateAPI docs) and whether Blizzard's Cooldown Manager tracks the spell. nil = nothing to say.
+local function Secrecy(fnName, id)
+    local fn = C_Secrets and C_Secrets[fnName]
+    if not (fn and Enum and Enum.SecrecyLevel) then return nil end
+    local ok, lv = pcall(fn, id)
+    if not ok or issecret(lv) then return nil end
+    if lv == Enum.SecrecyLevel.NeverSecret then return "never" end
+    if lv == Enum.SecrecyLevel.AlwaysSecret then return "always" end
+    return "context"
+end
+local function InCDM(id)
+    if not ns.FindCDMFrame then return false end
+    local ok, fr = pcall(ns.FindCDMFrame, id)
+    return ok and fr ~= nil
+end
+local function AuraLine(ids)
+    local open, cdm, hidden = 0, 0, {}
+    for _, id in ipairs(ids) do
+        id = tonumber(id) or 0
+        if id > 0 then
+            if Secrecy("GetSpellAuraSecrecy", id) == "never" then open = open + 1
+            elseif InCDM(id) then cdm = cdm + 1
+            else hidden[#hidden + 1] = id end
+        end
+    end
+    if open + cdm + #hidden == 0 then return nil end
+    if #hidden == 0 and cdm == 0 then return "|cff55ff55In combat: readable|r (the game never hides this aura)" end
+    if #hidden == 0 then return "|cff55ff55In combat: through Blizzard's Cooldown Manager|r (present / missing; the time is exact when shown, else estimated)" end
+    local which = (#ids > 1) and (" (" .. table.concat(hidden, ", ") .. ")") or ""
+    return "|cffffd100In combat: hidden|r" .. which .. ": add it to Blizzard's Cooldown Manager (Tracked Buffs), or the trigger reads UNKNOWN in combat and the rule waits"
+end
+function ns.TriggerCombatNote(rule, tok, row)
+    if tok == "buff" then
+        local ids = { rule.buffID }
+        for _, id in ipairs(type(rule.buffAlt) == "table" and rule.buffAlt or {}) do ids[#ids + 1] = id end
+        return AuraLine(ids)
+    end
+    if tok == "cd" or (row and row.type == "cooldown") then
+        local id = tonumber(tok == "cd" and rule.spellID or row.spellID) or 0
+        if id == 0 then return nil end
+        local lv = Secrecy("GetSpellCooldownSecrecy", id)
+        if lv == "never" then return "|cff55ff55In combat: readable|r (the game never hides this cooldown)" end
+        if InCDM(id) then return "|cff55ff55In combat: through Blizzard's Cooldown Manager|r when the game hides the cooldown (time estimated after one use out of combat)" end
+        if lv == nil then return nil end
+        return "|cffffd100In combat: may be hidden|r: add the spell to Blizzard's Cooldown Manager so XayaUI can still read it"
+    end
+    if not row then return nil end
+    local def = TYPES[row.type]
+    local kind = def and def.combat
+    if kind == "aura" then
+        local ids = { row.spellID }
+        for _, id in ipairs(type(row.alt) == "table" and row.alt or {}) do ids[#ids + 1] = id end
+        return AuraLine(ids)
+    elseif kind == "debuff" then
+        return "|cffffd100In combat: usually hidden|r (your debuffs on enemies); on the target, a Cooldown Manager icon can still answer present / absent"
+    elseif kind == "loc" then
+        return "|cff55ff55In combat: readable|r (loss of control on you is not marked secret in the 12.1.5 docs; not yet confirmed in game)"
     end
     return nil
 end

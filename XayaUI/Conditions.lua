@@ -254,7 +254,10 @@ local function BuffPresentRaw(id)
     if not id or id == 0 then return nil, "no buff" end
     -- A real aura table proves presence, in any context.
     local api, aura = ReadAuraAPI(id)
-    if api == "found" then return true, "aura API", MakeRef(aura) end
+    if api == "found" then
+        if ns.LearnStacks then pcall(ns.LearnStacks, id, aura) end   -- what the stack count can be (#300; CountSupport below)
+        return true, "aura API", MakeRef(aura)
+    end
     -- Cooldown Manager frame: authoritative when the buff is tracked there.
     local fr, vname = FindCDMFrame(id)
     if fr then
@@ -315,19 +318,23 @@ end
 -- One Buff / Aura trigger can watch several auras that mean the same thing (rule.buffAlt = extra spell IDs beside rule.buffID).
 -- Present = ANY of them is present (the first present one supplies stacks / time left). Missing = ALL are absent.
 -- If none is present and any answer is unknown (hidden in combat), the answer stays unknown, so a rule never fires on a guess.
-function ns.BuffPresentAny(rule)
-    local alts = rule and rule.buffAlt
-    local p1, s1, r1 = ns.BuffPresent(rule.buffID)
-    if type(alts) ~= "table" or #alts == 0 then return p1, s1, r1 end
-    if p1 == true then return true, s1, r1 end
+-- The same reading serves every aura trigger row (Triggers.lua "Buff / Aura (another)"): ns.AuraPresentList(mainID, extraIDs).
+-- Returns present (true / false / nil), source text, aura reference, and the ID that was found (for the time estimate).
+function ns.AuraPresentList(mainID, alts)
+    local p1, s1, r1 = ns.BuffPresent(mainID)
+    if type(alts) ~= "table" or #alts == 0 then return p1, s1, r1, mainID end
+    if p1 == true then return true, s1, r1, mainID end
     local unknown, unkSrc = (p1 == nil), (p1 == nil) and s1 or nil
     for _, id in ipairs(alts) do
         local p, s, r = ns.BuffPresent(id)
-        if p == true then return true, "aura " .. tostring(id) .. ": " .. tostring(s), r end
+        if p == true then return true, "aura " .. tostring(id) .. ": " .. tostring(s), r, id end
         if p == nil then unknown = true; unkSrc = unkSrc or s end
     end
     if unknown then return nil, unkSrc or "unreadable" end
     return false, s1
+end
+function ns.BuffPresentAny(rule)
+    return ns.AuraPresentList(rule and rule.buffID, rule and rule.buffAlt)
 end
 
 local BuffPresentOnce
@@ -406,26 +413,60 @@ end
 -- When the game hides a present buff's time: the duration engine's estimate (Timing.lua: exact start from the Cooldown
 -- Manager or your cast + the measured length). On for every rule unless switched off (rule.buffEstimate == false); readable
 -- numbers are never replaced.
-local estimatePool = setmetatable({}, { __mode = "k" })   -- one copy table per rule, reused every step
+local estimatePool = setmetatable({}, { __mode = "k" })   -- one copy table per owner (rule or trigger row), reused every step
+-- The estimate for aura `id` when ref has no readable time: a copy of ref with the estimated time (the original may be shared by other
+-- rules this step), or nil plus nothing when there is no estimate yet. owner = the rule or the trigger row the copy belongs to.
+function ns.AuraEstimateInto(owner, id, ref)
+    if type(ref) ~= "table" or ref.expiration then return nil end
+    id = tonumber(id)
+    local exp, dur, label
+    if ns.Timing and id then exp, dur, label = ns.Timing.AuraEstimate(id, presentSince[id]) end
+    if not exp then return nil end
+    local own = (ns.InStep and ns.InStep()) and estimatePool[owner]
+    if own then for k in pairs(own) do own[k] = nil end
+    else own = {}; if ns.InStep and ns.InStep() then estimatePool[owner] = own end end
+    for k, v in pairs(ref) do own[k] = v end
+    own.expiration, own.duration, own.estimated, own.timeSource = exp, dur, true, label
+    return own, label
+end
 function ns.ApplyBuffEstimate(rule, info)
     local ref = info.buffRef
     if rule.buffEstimate == false or info.present ~= true or type(ref) ~= "table" or ref.expiration then return end
-    local id = tonumber(rule.buffID)
-    local exp, dur, label
-    if ns.Timing then exp, dur, label = ns.Timing.AuraEstimate(id, id and presentSince[id]) end
-    if exp then
-        -- the aura reference may be shared by other rules this step: write the estimate into this rule's own copy
-        local own = (ns.InStep and ns.InStep()) and estimatePool[rule]
-        if own then for k in pairs(own) do own[k] = nil end
-        else own = {}; if ns.InStep and ns.InStep() then estimatePool[rule] = own end end
-        for k, v in pairs(ref) do own[k] = v end
-        ref = own
-        info.buffRef = ref
-        ref.expiration, ref.duration, ref.estimated, ref.timeSource = exp, dur, true, label
+    local own, label = ns.AuraEstimateInto(rule, info.buffWhich or rule.buffID, ref)
+    if own then
+        info.buffRef = own
         if ns.statusDetail then info.buffSource = tostring(info.buffSource):gsub(" | time: .*$", "") .. " | time: " .. label end
     elseif ns.statusDetail then
         info.buffSource = tostring(info.buffSource) .. " | no time estimate yet (see /xui timing)"
     end
+end
+
+-- "Seconds left" as part of an aura trigger (#173, #278, #314): op = ">=" | "<=" | ">" | "<" (nil / "" = any time left), sec = number.
+-- present must be true (a missing aura is decided by the trigger's state). true / false / nil (time unknown: hidden and no estimate yet).
+-- Registers the moments the answer will change so the engine re-checks on that frame. A permanent aura has unlimited time left.
+ns.TIME_OPS = { values = { any = "Any time left", [">="] = "At least", ["<="] = "At most", [">"] = "More than", ["<"] = "Less than" },
+    order = { "any", ">=", "<=", ">", "<" } }
+function ns.AuraTimeLeft(ref)
+    if type(ref) ~= "table" then return nil end
+    local exp, dur = ref.expiration, ref.duration
+    if type(exp) ~= "number" or issecret(exp) then return nil end
+    if exp == 0 and (dur == 0 or dur == nil) then return math.huge end
+    if exp <= 0 then return nil end
+    return math.max(0, exp - GetTime())
+end
+function ns.TimeLeftCheck(op, sec, ref)
+    if op == nil or op == "" or op == "any" then return true end
+    local rem = ns.AuraTimeLeft(ref)
+    if rem == nil then return nil end
+    sec = tonumber(sec) or 0
+    if rem ~= math.huge and ns.Timing and ns.Timing.Deadline then
+        local now = GetTime()
+        if rem > sec then ns.Timing.Deadline(now + (rem - sec)) end
+        if rem > 0 then ns.Timing.Deadline(now + rem) end
+    end
+    if op == ">=" then return rem >= sec elseif op == "<=" then return rem <= sec
+    elseif op == ">" then return rem > sec elseif op == "<" then return rem < sec end
+    return true
 end
 
 -------------------------------------------------------------------------------
@@ -863,10 +904,15 @@ function ns.Evaluate(rule, ctx)
     local info = ns.InfoFor(rule)
     info.ctx = ctx
     info.cd = ns.ReadCooldown(rule)
-    info.present, info.buffSource, info.buffRef = ns.BuffPresentAny(rule)
+    info.present, info.buffSource, info.buffRef, info.buffWhich = ns.BuffPresentAny(rule)
     if rule.buffEstimate ~= false and info.present == true then ns.ApplyBuffEstimate(rule, info) end
     info.cdOK = ns.CheckCooldownState(rule, info.cd)
     info.buffOK = ns.CheckBuffState(rule, info.present)
+    -- "with N seconds left" on the built-in Buff / Aura (only with State = present): unknown time keeps the trigger unknown
+    if info.buffOK == true and rule.buffState == "present" and rule.buffTimeOp and rule.buffTimeOp ~= "any" then
+        info.buffOK = ns.TimeLeftCheck(rule.buffTimeOp, rule.buffTimeSec, info.buffRef)
+        if info.buffOK == nil and ns.statusDetail then info.buffSource = tostring(info.buffSource) .. " | seconds left unknown" end
+    end
     info.ctxOK, info.ctxFail = ns.CheckContext(rule, ctx)
     info.talentOK, info.talentDetail = ns.CheckTalents(rule)
     if ns.CheckExtraTriggers then info.extraOK, info.extraDetail, info.extraRows, info.extraWhys = ns.CheckExtraTriggers(rule) else info.extraOK = true end
@@ -1025,4 +1071,114 @@ function PrintStatusRaw()
             ns.Print("    " .. (okx and line or ("explain failed: " .. tostring(line))))
         end
     end
+end
+
+
+-------------------------------------------------------------------------------
+-- What can a stack / charge count show for a rule (#300)? It follows what the rule's triggers track:
+--   * a Cooldown trigger counts CHARGES, only when the spell really has more than one (the game's maxCharges, or the rule's override);
+--   * an aura trigger counts STACKS when the aura can stack. First the game's own answer, C_Spell.GetSpellMaxCumulativeAuraApplications
+--     (12.1.5 Spell docs; secret while auras are restricted, so read out of combat / in the options window). A readable answer above 1
+--     means it stacks; 0 or 1 means it does not, unless this client has SEEN it above 1 (the meaning of 0 / 1 is not confirmed in game).
+--     When the game gives no answer, this client's own observations: an aura seen at least twice and never above 1 does not stack.
+--     An aura never seen and not answered stays "may stack", so a real stacking aura is not hidden by a guess;
+--   * a trigger that tracks neither (item count, totem, range, player state ...) has nothing to count.
+-- Callers hide count options when nothing can be counted; an option that is already in use stays visible.
+-------------------------------------------------------------------------------
+do
+local MIN_SEEN = 2
+local function Store()
+    if type(CueRulesDB) ~= "table" then return nil end
+    if type(CueRulesDB.learnedAuraStacks) ~= "table" then CueRulesDB.learnedAuraStacks = {} end
+    return CueRulesDB.learnedAuraStacks
+end
+local lastIid = {}   -- spellID -> auraInstanceID last counted (session only)
+-- Called by the aura reader with the spell ID it asked for and the aura table it got back (readable numbers only).
+function ns.LearnStacks(id, aura)
+    local db = Store()
+    id = tonumber(id)
+    if not db or not id or id == 0 or type(aura) ~= "table" then return end
+    local oka, apps = pcall(function() return aura.applications end)
+    if not oka or type(apps) ~= "number" or issecret(apps) then return end
+    local okI, iid = pcall(function() return aura.auraInstanceID end)
+    if not okI or issecret(iid) then iid = nil end
+    local e = db[id]
+    if type(e) ~= "table" then e = { max = 0, seen = 0 }; db[id] = e end
+    if apps > (tonumber(e.max) or 0) then e.max = apps end
+    if iid == nil then
+        if (tonumber(e.seen) or 0) == 0 then e.seen = 1 end
+    elseif lastIid[id] ~= iid then
+        lastIid[id] = iid
+        e.seen = (tonumber(e.seen) or 0) + 1
+    end
+end
+-- the game's maximum stack count for an aura, or nil when it does not say (missing call, secret, error)
+function ns.AuraMaxStacks(id)
+    id = tonumber(id) or 0
+    if id == 0 or not (C_Spell and C_Spell.GetSpellMaxCumulativeAuraApplications) then return nil end
+    local ok, n = pcall(C_Spell.GetSpellMaxCumulativeAuraApplications, id)
+    if not ok or issecret(n) or type(n) ~= "number" then return nil end
+    return n
+end
+-- true = can (or may) stack, false = does not stack
+function ns.AuraMayStack(id)
+    id = tonumber(id) or 0
+    if id == 0 then return false end
+    local db = Store()
+    local e = db and db[id]
+    if type(e) == "table" and (tonumber(e.max) or 0) > 1 then return true end
+    local m = ns.AuraMaxStacks(id)
+    if m ~= nil then return m > 1 end
+    if type(e) == "table" and (tonumber(e.seen) or 0) >= MIN_SEEN then return false end
+    return true
+end
+function ns.SpellHasCharges(id, override)
+    id = tonumber(id) or 0
+    if (tonumber(override) or 0) > 1 then return true end
+    if id == 0 or not (C_Spell and C_Spell.GetSpellCharges) then return false end
+    local ok, ch = pcall(C_Spell.GetSpellCharges, id)
+    if ok and type(ch) == "table" then
+        local m = ch.maxCharges
+        if type(m) == "number" and not issecret(m) and m > 1 then return true end
+    end
+    return false
+end
+local function AnyStacks(ids)
+    for _, id in ipairs(ids) do if ns.AuraMayStack(id) then return true end end
+    return false
+end
+-- returns { charges = bool, stacks = bool, any = bool } for a rule (cues and conditions follow their rule's triggers)
+function ns.CountSupport(rule)
+    local r = rule
+    if rule and rule.parentUid and ns.FindParentRule then r = ns.FindParentRule(rule) or rule end
+    local out = { charges = false, stacks = false }
+    if type(r) ~= "table" then out.any = true; out.charges, out.stacks = true, true; return out end
+    if ns.CooldownUsed and ns.CooldownUsed(r) and ns.SpellHasCharges(r.spellID, r.maxCharges) then out.charges = true end
+    if ns.BuffUsed and ns.BuffUsed(r) then
+        local ids = { r.buffID }
+        for _, id in ipairs(type(r.buffAlt) == "table" and r.buffAlt or {}) do ids[#ids + 1] = id end
+        if AnyStacks(ids) then out.stacks = true end
+    end
+    local list = type(r.extra) == "table" and type(r.extra.list) == "table" and r.extra.list or {}
+    for _, t in ipairs(list) do
+        if type(t) == "table" and (t.type == "buffAura" or t.type == "targetDebuff") then
+            local ids = { t.spellID }
+            for _, id in ipairs(type(t.alt) == "table" and t.alt or {}) do ids[#ids + 1] = id end
+            if AnyStacks(ids) then out.stacks = true end
+        end
+    end
+    out.any = out.charges or out.stacks
+    return out
+end
+-- one aura trigger row (or the built-in, row = nil): can its stack count be more than 1?
+function ns.TriggerMayStack(rule, row)
+    if row then
+        local ids = { row.spellID }
+        for _, id in ipairs(type(row.alt) == "table" and row.alt or {}) do ids[#ids + 1] = id end
+        return AnyStacks(ids)
+    end
+    local ids = { rule.buffID }
+    for _, id in ipairs(type(rule.buffAlt) == "table" and rule.buffAlt or {}) do ids[#ids + 1] = id end
+    return AnyStacks(ids)
+end
 end
