@@ -34,7 +34,7 @@ d7e606b10ef3f5b67d3c55a94a5c3953  Theme.lua
 b2be31ae4f88f668dd1a6e03b15eeb0e  Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  UserMedia.lua
 f91f66467325cb41f1da79e09ac29c7f  Visual.lua
-16adc092448e373fc3a33aacde86bb8a  XayaUI.toc
+20956ba22cc9fc4ff3ae29a73d3ac4e8  XayaUI.toc
 ce647063cfe3b58b548ed2d6245949f6  XayaUI_CombatEngine/AuraDisplay.lua
 9bc6f1746b283708fe0d81cd362a08b1  XayaUI_CombatEngine/AuraIDProbe.lua
 43f2a088cb82828b57c1335133ca920c  XayaUI_CombatEngine/AuraModel.lua
@@ -60,4 +60,4 @@ c9792c8c1132cf5ded8dd003192157ab  Chat/Locate.lua
 9b640d12e6575a04ddb4319bd2b8c2fd  Chat/History.lua
 a881d60ba2f046583e6a0381bd7c3f38  Chat/Sounds.lua
 76995d010f34612dc36b529dd6248c5c  Chat/Options.lua
-bb6d7b3e290860add29d3de6b0e7d3f9  ChatPrivacy.lua
+db52ef8bdcad81b66ac21014e70061af  ChatPrivacy.lua

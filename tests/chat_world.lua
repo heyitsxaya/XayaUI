@@ -101,6 +101,16 @@ function proto:SetFrameLevel(l) self._level = l end
 function proto:GetFrameLevel() return self._level end
 function proto:SetID(i) self._id = i end
 function proto:GetID() return self._id end
+function proto:SetHitRectInsets(l, r, t, b) self._hit = { l or 0, r or 0, t or 0, b or 0 } end
+function proto:GetHitRectInsets() local h = self._hit or { 0, 0, 0, 0 }; return h[1], h[2], h[3], h[4] end
+-- would a click at (x, y) land on this frame's own mouse area (frame rectangle minus the hit-rect insets)?
+function proto:HitTest(x, y)
+  if not self._mouse then return false end
+  local r, h = rectOf(self), self._hit or { 0, 0, 0, 0 }
+  return x >= r.l + h[1] and x <= r.l + r.w - h[2] and y >= r.b + h[4] and y <= r.b + r.h - h[3]
+end
+function proto:GetEffectiveScale() return 1 end
+function proto:GetRect() local r = rectOf(self); return r.l, r.b, r.w, r.h end
 function proto:EnableMouse(v) self._mouse = v and true or false end
 function proto:IsMouseEnabled() return self._mouse end
 function proto:IsMouseOver()

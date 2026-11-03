@@ -1,0 +1,7 @@
+# Xaya: can't click chat tabs while the privacy cover is active (XayaUI 0.5.100, fork: main)
+Logged 2026-11-03 ~04:20 UTC. GitHub issue: #297 (comment). Reported against build 0.5.99 (chat code last changed in 0.5.94). Xaya: "can't click on tabs if the privacy panel is active" (screenshot: cover revealed on hover, cursor on the Combat Log tab).
+Cause (confirmed from her saved settings, read-only: privCoverTabs = true, privReveal = true): the cover is drawn over the tab row, is mouse-enabled, and sits above the tabs (DIALOG, level 100), so it swallows clicks on the tabs. With reveal-on-hover the tabs become visible but stay unclickable.
+Fix: the cover's mouse area now starts below the tab row (hit-rect top inset = tab row height when "Also cover the chat tabs" is on). The look is unchanged; clicks on the tabs reach the tabs. Reveal-on-hover now tests the cover's whole rectangle with the cursor position, so hovering the tab row still reveals. The text area and input line still block clicks and the mouse wheel.
+Trade-off (by design, not hidden): with cover-tabs on and reveal off, the tabs are hidden but still clickable blind.
+Verified offline: tests/chat_run.py 160 checks pass; the new click test fails without the fix and passes with it; all other suites pass. NOT verified in game (SetHitRectInsets honored by the real frame; GetRect/GetCursorPosition reveal check).
+Files: ChatPrivacy.lua, USER-GUIDE.md (12.10), XayaUI.toc, MANIFEST.md5, tests/chat_world.lua, tests/chat_run.py.

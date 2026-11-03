@@ -74,6 +74,10 @@ local function Anchor(s)
     else cover:SetPoint("TOPLEFT", tabs, "BOTTOMLEFT", 0, 0) end
     cover:SetPoint("BOTTOMRIGHT", pane, "BOTTOMRIGHT", 0, 0)
     cover.anchoredTo = pane
+    -- the tab row stays clickable even when the cover is drawn over it: the cover's mouse area starts below the tab row, so a click
+    -- on a tab reaches the tab (the cover still hides how the tabs look; it only stops swallowing their clicks)
+    local inset = (s.privCoverTabs and tabs) and (tabs:GetHeight() or 0) or 0
+    if cover.SetHitRectInsets then cover:SetHitRectInsets(0, 0, inset, 0) end
 end
 
 local function Style(s)
@@ -121,9 +125,17 @@ local function Style(s)
     cover.label:SetText(s.privShowText and (s.privText or "") or "")
 end
 
+-- true while the pointer is inside the cover's whole rectangle (the tab row too, even though that part does not take clicks)
 local function Over(f)
-    if f.IsMouseOver then local ok, v = pcall(f.IsMouseOver, f); if ok then return v and true or false end end
-    return MouseIsOver and MouseIsOver(f) and true or false
+    local ok, v = pcall(function()
+        local l, b, w, h = f:GetRect()
+        if not l then return false end
+        local x, y = GetCursorPosition()
+        local sc = f:GetEffectiveScale() or 1
+        x, y = x / sc, y / sc
+        return x >= l and x <= l + w and y >= b and y <= b + h
+    end)
+    return ok and v and true or false
 end
 
 local function BuildCover()
