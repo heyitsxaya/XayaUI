@@ -97,30 +97,10 @@ end
 -------------------------------------------------------------------------------
 -- 1. ID lines (TooltipData.id, documented on Struct_TooltipData)
 -------------------------------------------------------------------------------
--- The aura (or spell effect) an item or spell tooltip describes. Blizzard draws it as an embedded block (icon + name + text, e.g. the
--- "Well Fed" block on food): a NestedBlock line (Enum.TooltipDataLineType 19) with tooltipType and tooltipID (Struct_TooltipData lists the
--- fields without describing them, so "tooltipID is the spell / aura ID of a Spell-type block" is an INFERENCE; /xuitt lines shows the raw
--- values to check it). Only Spell-type blocks with a readable numeric ID are used; nothing is guessed when there are none.
-local function NestedType() return (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.NestedBlock) or 19 end
-local function SpellType() return (Enum and Enum.TooltipDataType and Enum.TooltipDataType.Spell) or 1 end
-
-function TT.EmbeddedAuras(data, skipID)
-    local out, seen = {}, {}
-    local lines = type(data) == "table" and data.lines
-    if type(lines) ~= "table" then return out end
-    local nb, sp = NestedType(), SpellType()
-    for _, ln in ipairs(lines) do
-        if type(ln) == "table" and readable(ln.type) and ln.type == nb and readable(ln.tooltipType) and ln.tooltipType == sp then
-            local sid = ln.tooltipID
-            if readable(sid) and type(sid) == "number" and sid ~= skipID and not seen[sid] then
-                seen[sid] = true
-                local okN, name = pcall(function() return C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(sid) end)
-                out[#out + 1] = { id = sid, name = (okN and readable(name) and type(name) == "string") and name or nil }
-            end
-        end
-    end
-    return out
-end
+-- The aura (or spell effect) an item or spell tooltip describes: TT.EmbeddedAuras reads Blizzard's embedded effect block. The reader
+-- lives in core (AuraSources.lua, AS.EmbeddedAuras) because the rule editor's "source" column needs it even when tooltips are off;
+-- this name stays so every caller and test keeps working.
+function TT.EmbeddedAuras(data, skipID) return ns.AuraSources.EmbeddedAuras(data, skipID) end
 
 local function SpellNameOf(id)
     local ok, nm = pcall(function() return C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id) end)
@@ -203,7 +183,7 @@ function TT.DumpLines()
     if not ok or type(data) ~= "table" or type(data.lines) ~= "table" then P("Hover an item or spell, then run it from a macro: /run C_Timer.After(3, function() SlashCmdList.XUITT('lines') end)"); return end
     P("tooltip type", tostring(readable(data.type) and data.type or "?"), "id", tostring(readable(data.id) and data.id or "?"), "lines", #data.lines)
     for i, ln in ipairs(data.lines) do
-        if type(ln) == "table" and readable(ln.type) and (ln.type == NestedType() or ln.tooltipID ~= nil) then
+        if type(ln) == "table" and readable(ln.type) and (ln.type == ns.AuraSources.NestedType() or ln.tooltipID ~= nil) then
             P(i, "lineType", tostring(ln.type), "tooltipType", tostring(readable(ln.tooltipType) and ln.tooltipType or "?"),
               "tooltipID", tostring(readable(ln.tooltipID) and ln.tooltipID or "?"), tostring(readable(ln.leftText) and ln.leftText or ""))
         end

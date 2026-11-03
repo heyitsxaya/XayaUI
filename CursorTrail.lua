@@ -449,3 +449,8 @@ function ns.BuildCursorGroup(Notify)
     local tr = ns.BuildCursorTab(Notify)
     return { type = "group", name = "Cursor", order = 2, childGroups = "tab", args = { highlight = hl, trail = tr } }
 end
+
+-------------------------------------------------------------------------------
+-- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
+-------------------------------------------------------------------------------
+ns.RegisterSettingsPage("qol", "cursor", ns.BuildCursorGroup)

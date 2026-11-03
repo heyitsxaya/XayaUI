@@ -159,3 +159,8 @@ f:SetScript("OnUpdate", function(_, e)
         if ns.qolBoxes then ns.QoL_RefreshAll() end
     end
 end)
+
+-------------------------------------------------------------------------------
+-- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
+-------------------------------------------------------------------------------
+ns.WhenReady(ns.QoL_OnDBReady)

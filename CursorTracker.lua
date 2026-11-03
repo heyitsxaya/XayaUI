@@ -681,3 +681,12 @@ function ns.CursorTrackerGroup(Notify)
     end
     return g
 end
+
+-------------------------------------------------------------------------------
+-- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
+-------------------------------------------------------------------------------
+ns.WhenReady(ns.Cursor_OnDBReady)
+ns.RegisterCommand("cursor", function()
+    local on = ns.Cursor_Toggle()
+    ns.Print("cursor tracker " .. (on and "ON" or "OFF"))
+end, "/xui cursor (cursor tracker on / off)")

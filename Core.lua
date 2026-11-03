@@ -3,7 +3,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 
-ns.name = addonName; XayaUI_NS = ns -- deliberate global: the sibling addon XayaUI_CombatEngine shares this namespace (interim bridge; to be narrowed to XayaUI_API)
+ns.name = addonName; XayaUI_NS = ns -- deliberate global: sibling addons (XayaUI_Chat, XayaUI_QoL, XayaUI_Bonus, XayaUI_Reskin, XayaUI_Options) share this namespace; they plug in through Modules.lua
 ns.rules = nil -- set at ADDON_LOADED to CueRulesDB.rules
 
 -- "Not chosen / none" helpers. Dropdowns start blank (nil) so a choice is forced;
@@ -659,13 +659,8 @@ f:SetScript("OnEvent", function(_, _, name)
     if name ~= addonName then return end
     InitDB()
     f:UnregisterEvent("ADDON_LOADED")
-    if ns.OnDBReady then ns.OnDBReady() end
-    if ns.QoL_OnDBReady then ns.QoL_OnDBReady() end
-    if ns.Cursor_OnDBReady then ns.Cursor_OnDBReady() end
-    if ns.Chat_OnDBReady then ns.Chat_OnDBReady() end
-    if ns.DataPanels_OnDBReady then ns.DataPanels_OnDBReady() end
-    if ns.Notepad_OnDBReady then ns.Notepad_OnDBReady() end
-    if ns.Minimap_OnDBReady then ns.Minimap_OnDBReady() end
+    if ns.OnDBReady then ns.OnDBReady() end   -- the rule engine first (Engine.lua)
+    ns.FireReady()                            -- then every feature that asked through ns.WhenReady (Modules.lua), in load order
 end)
 
 -------------------------------------------------------------------------------
@@ -746,30 +741,10 @@ SlashCmdList["XAYAUI"] = function(msg)
         if ns.ProbeLossOfControl then ns.ProbeLossOfControl() end
     elseif cmd == "seed" then
         if ns.rules then ns.SeedRules() end
-    elseif cmd == "cursor" then
-        if ns.Cursor_Toggle then
-            local on = ns.Cursor_Toggle()
-            ns.Print("cursor tracker " .. (on and "ON" or "OFF"))
-        end
-    elseif cmd == "chat" then
-        if ns.Chat and ns.Chat.Command then ns.Chat.Command(arg) end
     elseif cmd == "timing" then   -- how every time / stack dependent cue gets its numbers in combat (Timing.lua)
         if ns.Timing then ns.Timing.Report() end
     elseif cmd == "perf" then   -- engine timing on this machine (Engine.lua)
         if ns.PerfCommand then ns.PerfCommand(arg) end
-    elseif cmd == "chatprobe" then   -- read-only look at Blizzard's chat frames (Chat Panel rebuild, stage S0)
-        if ns.ChatProbe then ns.ChatProbe() end
-    elseif cmd == "privacy" then
-        if ns.ChatPrivacy_Set and ns.chatDB then ns.ChatPrivacy_Set(not ns.chatDB.privOn); ns.Print("chat privacy cover " .. (ns.chatDB.privOn and "ON" or "OFF")) end
-    elseif cmd == "data" then
-        if ns.DataPanels_OpenSettings then ns.DataPanels_OpenSettings() end
-    elseif cmd == "notepad" or cmd == "note" or cmd == "notes" then   -- show / hide the notepad
-        if ns.Notepad_Toggle then ns.Notepad_Toggle() end
-    elseif cmd == "panel" then
-        if ns.Chat and ns.Chat.OpenSettings then ns.Chat.OpenSettings("bar") end
-    elseif cmd == "gamemenu" then
-        if ns.GameMenu_Diagnostics then ns.GameMenu_Diagnostics() end
-        if ns.GameMenuSkin_Diagnostics then ns.GameMenuSkin_Diagnostics() end
     elseif cmd == "unlock" then
         if ns.ToggleUnlock then ns.ToggleUnlock() end
     elseif cmd == "media" then
@@ -778,7 +753,15 @@ SlashCmdList["XAYAUI"] = function(msg)
         if ns.ConsoleWindow then ns.ConsoleWindow() end
     elseif cmd == "bug" then
         if ns.ShowBugReport then ns.ShowBugReport() end
+    elseif ns.RunCommand(cmd, arg) then   -- a feature's own command (Modules.lua: ns.RegisterCommand)
+    elseif ns.ModuleMissingText(cmd) then   -- a feature's command whose addon is off or failed to load
+        ns.Print(ns.ModuleMissingText(cmd))
     else
-        ns.Print((("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat (Chat Panel: on, off, reset, move, history, settings) | /xui chatprobe (read-only chat frame report) | /xui perf [on|off] (engine timing) | /xui perf ui (settings window rebuild timing) | /xui timing (how every cue gets time in combat) | /xui notes (show / hide the notepad) | /xui panel (Chat Bar settings) | /xui data (custom data panels and bars) | /xui privacy (cover or show the chat) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media"):gsub("|", "||")))
+        local help = { "/xui (settings)", "/xui console (event log window)", "/xui bug (bug report)", "/xui status", "/xui probe <spellID|ids>",
+            "/xui debuffs [target|focus] [spellID]", "/xui unlock", "/xui perf [on|off] (engine timing)", "/xui perf ui (settings window rebuild timing)",
+            "/xui timing (how every cue gets time in combat)", "/xui seed", "/xui talents [status|<name>]", "/xui model [setup|<spellID>]",
+            "/xui tracker [shadow|status]", "/xui loc", "/xui media" }
+        for _, h in ipairs(ns.CommandHelp()) do help[#help + 1] = h end
+        ns.Print((("commands: " .. table.concat(help, " | ")):gsub("|", "||")))
     end
 end

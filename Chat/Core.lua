@@ -308,3 +308,10 @@ function C.Command(arg)
         ns.Print("  repeats and phrases hidden this session: " .. C.stats.suppressed .. "; protected (secret) lines not touched: " .. C.stats.protected)
     end
 end
+
+-------------------------------------------------------------------------------
+-- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
+-------------------------------------------------------------------------------
+ns.WhenReady(ns.Chat_OnDBReady)
+ns.RegisterCommand("chat", function(arg) C.Command(arg) end, "/xui chat (Chat Panel: on, off, reset, move, history, wrap, settings)")
+ns.RegisterCommand("panel", function() if C.OpenSettings then C.OpenSettings("bar") end end, "/xui panel (Chat Bar settings)")

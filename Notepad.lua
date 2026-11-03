@@ -1076,3 +1076,12 @@ end
 function ns.Notepad_OpenSettings()
     if ns.UI and ns.UI.Notepad then ns.UI.Notepad() end
 end
+
+-------------------------------------------------------------------------------
+-- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
+-------------------------------------------------------------------------------
+ns.WhenReady(ns.Notepad_OnDBReady)
+ns.RegisterCommand({ "notes", "notepad", "note" }, function() ns.Notepad_Toggle() end, "/xui notes (show / hide the notepad)")
+ns.RegisterLauncher({ "notes", "Notes", "Show or hide the notepad (also /xui notes)", function() ns.Notepad_Toggle() end,
+    function() local d = ns.notepadDB; return d and d.shown and "on" or "off" end, order = 10 })
+ns.RegisterSettingsPage("bonus", "notepad", ns.BuildNotepadTab)

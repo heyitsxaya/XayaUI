@@ -330,3 +330,9 @@ function ns.BuildChatTab(Notify)
     return { type = "group", name = "Chat Panel", order = 1, childGroups = "tab",
         args = { layout = layout, look = look, bar = bar, behavior = behavior, filters = filters, history = history, sounds = sounds, privacy = privacy } }
 end
+
+-------------------------------------------------------------------------------
+-- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
+-------------------------------------------------------------------------------
+ns.RegisterSettingsPage("chat", "chatpanel", ns.BuildChatTab)
+ns.RegisterLauncher({ "chat", "Chat Panel", "Open the Chat Panel settings (also /xui chat settings)", function() C.OpenSettings() end, order = 40 })

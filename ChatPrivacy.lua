@@ -348,3 +348,16 @@ function ns.ChatPrivacy_Options(Notify)
         reveal = { type = "toggle", order = 33, width = "full", name = "Cover fades away while the mouse is over it", get = get("privReveal"), set = set("privReveal") },
     } }
 end
+
+-------------------------------------------------------------------------------
+-- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
+-------------------------------------------------------------------------------
+local function TogglePrivacy()
+    if ns.ChatPrivacy_Set and ns.chatDB then ns.ChatPrivacy_Set(not ns.chatDB.privOn) end
+end
+ns.RegisterCommand("privacy", function()
+    if not ns.chatDB then return end
+    TogglePrivacy(); ns.Print("chat privacy cover " .. (ns.chatDB.privOn and "ON" or "OFF"))
+end, "/xui privacy (cover or show the chat)")
+ns.RegisterLauncher({ "privacy", "Chat privacy cover", "Cover or show the chat (also /xui privacy)", TogglePrivacy,
+    function() return ns.chatDB and ns.chatDB.privOn and "on" or "off" end, order = 50 })

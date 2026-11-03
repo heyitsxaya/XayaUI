@@ -4258,10 +4258,9 @@ local function BuildOptions()
     -- Tab "QoL UI Updates": left tree, options in the right pane. The entries are sorted alphabetically (see below); the older
     -- QoL Elements entries (stat boxes, cursor tracker, buff bars) come last, and only exist while their files are loaded.
     local minimapGroup = ns.BuildMinimapTab and ns.BuildMinimapTab(Notify) or nil   -- lives in Settings (Xaya, 2026-11-03), not under QoL UI Updates
-    local qolArgs = { chatpanel = ns.BuildChatTab and ns.BuildChatTab(Notify) or nil, cursor = ns.BuildCursorGroup and ns.BuildCursorGroup(Notify) or nil,
-        datapanels = ns.BuildDataPanelsTab and ns.BuildDataPanelsTab(Notify) or nil,
-        notepad = ns.BuildNotepadTab and ns.BuildNotepadTab(Notify) or nil,
-        tooltips = ns.BuildTooltipsTab and ns.BuildTooltipsTab(Notify) or nil }   -- Tooltips.lua / TooltipsUI.lua, part of core since 0.5.51
+    -- Every page a feature registered (Modules.lua: ns.RegisterSettingsPage). Until each sibling addon gets its own tab, all of them
+    -- share this one; a feature that is switched off registers nothing, so its page is simply absent.
+    local qolArgs = ns.BuildSettingsPages(nil, Notify)
     if ns.QoLOn then
         qolArgs.allqol = allQol
         qolArgs.allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil

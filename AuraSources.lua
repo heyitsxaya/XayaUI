@@ -2,8 +2,8 @@
 -- AuraSources.lua : which item or spell applies an aura (core module, 0.5.70).
 --
 -- The game has no call that maps an aura ID back to what applies it.  What it does have: an item or spell tooltip embeds the effect it
--- applies as a NestedBlock line (Enum.TooltipDataLineType 19) whose tooltipType / tooltipID name the spell (see Tooltips.lua
--- TT.EmbeddedAuras; that tooltipID is the aura / effect spell ID is an INFERENCE, check it with /xuitt lines).  This module builds the
+-- applies as a NestedBlock line (Enum.TooltipDataLineType 19) whose tooltipType / tooltipID name the spell (see
+-- AS.EmbeddedAuras below; that tooltipID is the aura / effect spell ID is an INFERENCE, check it with /xuitt lines).  This module builds the
 -- reverse map aura ID -> source from those tooltips, three ways:
 --   1. every item or spell tooltip you hover (Tooltips.lua reports it here),
 --   2. a background pass over the spells you know and the item-name index the spell search already builds,
@@ -17,6 +17,34 @@ local AS = {}
 ns.AuraSources = AS
 
 local isSecret = issecretvalue or function() return false end
+local function readable(v) return v ~= nil and not isSecret(v) end
+
+-- The aura (or spell effect) an item or spell tooltip describes. Blizzard draws it as an embedded block (icon + name + text, e.g. the
+-- "Well Fed" block on food): a NestedBlock line (Enum.TooltipDataLineType 19) with tooltipType and tooltipID (Struct_TooltipData lists the
+-- fields without describing them, so "tooltipID is the spell / aura ID of a Spell-type block" is an INFERENCE; /xuitt lines shows the raw
+-- values to check it). Only Spell-type blocks with a readable numeric ID are used; nothing is guessed when there are none.
+-- Moved here from Tooltips.lua in 0.5.108: the rule editor needs it, so it lives in core; Tooltips.lua (a feature) calls it from here.
+function AS.NestedType() return (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.NestedBlock) or 19 end
+function AS.SpellType() return (Enum and Enum.TooltipDataType and Enum.TooltipDataType.Spell) or 1 end
+
+function AS.EmbeddedAuras(data, skipID)
+    local out, seen = {}, {}
+    local lines = type(data) == "table" and data.lines
+    if type(lines) ~= "table" then return out end
+    local nb, sp = AS.NestedType(), AS.SpellType()
+    for _, ln in ipairs(lines) do
+        if type(ln) == "table" and readable(ln.type) and ln.type == nb and readable(ln.tooltipType) and ln.tooltipType == sp then
+            local sid = ln.tooltipID
+            if readable(sid) and type(sid) == "number" and sid ~= skipID and not seen[sid] then
+                seen[sid] = true
+                local okN, name = pcall(function() return C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(sid) end)
+                out[#out + 1] = { id = sid, name = (okN and readable(name) and type(name) == "string") and name or nil }
+            end
+        end
+    end
+    return out
+end
+
 local MAX_PER_AURA = 3     -- sources remembered per aura (the first is shown; the rest only count)
 
 local function DB()
@@ -104,9 +132,7 @@ local function Scan(kind, id)
         pcall(TooltipUtil.SurfaceArgs, data)
         if type(data.lines) == "table" then for _, ln in ipairs(data.lines) do pcall(TooltipUtil.SurfaceArgs, ln) end end
     end
-    local TT = ns.TT
-    if not (TT and TT.EmbeddedAuras) then return end
-    local auras = TT.EmbeddedAuras(data, kind == "spell" and id or nil)
+    local auras = AS.EmbeddedAuras(data, kind == "spell" and id or nil)
     if #auras > 0 then AS.Note(kind, id, auras) end
 end
 AS.Scan = Scan   -- for tests

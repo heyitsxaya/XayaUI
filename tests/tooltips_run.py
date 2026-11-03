@@ -37,8 +37,10 @@ function reset() lines = {} end
 ''')
 
 L.execute("XayaUI_NS = {}; CueRulesDB = {}")
-for f in ("Tooltips.lua","TooltipsUI.lua"):
+for f in ("Modules.lua","Tooltips.lua","AuraSources.lua","TooltipsUI.lua"):   # 0.5.108: core contract + the embedded-aura reader now in core
     L.eval('function(src,n) return load(src,n) end')(open(os.path.join(ROOT, f)).read(), f)("XayaUI", L.eval("XayaUI_NS"))
+# AuraSources is core and always loaded in game; these checks test Tooltips alone, so keep only its embedded-aura reader (0.5.108)
+L.execute("REAL_AS = XayaUI_NS.AuraSources; XayaUI_NS.AuraSources = { EmbeddedAuras = REAL_AS.EmbeddedAuras, NestedType = REAL_AS.NestedType }")
 fails=0
 def check(n,c):
     global fails
@@ -77,11 +79,11 @@ L.execute("XayaUI_NS.TT.DB().ids.auraHint=true")
 L.execute("XayaUI_NS.AuraModel = { AurasForCast=function(id) if id==196718 then return { {id=209426, name='Darkness'} } end return {} end }")
 check("learned cast link shows aura name and id", run("posts[1](GameTooltip,{id=196718})")==["Spell ID: 196718","Aura ID: 209426  (Darkness)"])
 L.execute("XayaUI_NS.AuraModel = nil")
-L.execute("XayaUI_NS.AuraSources = { AurasOf=function(k,id) if k=='spell' and id==555 then return { {id=556, name='Quick Buff Aura'} } end return {} end }")
+L.execute("XayaUI_NS.AuraSources = { EmbeddedAuras = REAL_AS.EmbeddedAuras, NestedType = REAL_AS.NestedType, AurasOf=function(k,id) if k=='spell' and id==555 then return { {id=556, name='Quick Buff Aura'} } end return {} end }")
 check("recorded source link shows aura", run("posts[1](GameTooltip,{id=555})")==["Spell ID: 555","Aura ID: 556  (Quick Buff Aura)"])
 check("recorded source link works for items", (L.execute("XayaUI_NS.AuraSources.AurasOf=function(k,id) if k=='item' and id==3 then return { {id=557} } end return {} end") or True) and run("posts[0](GameTooltip,{id=3})")==["Item ID: 3","Aura ID: 557"])
-L.execute("XayaUI_NS.AuraSources = nil")
-L.execute("noted=nil; XayaUI_NS.AuraSources = { Note=function(k,id,a) noted={k,id,a[1].id} end, AurasOf=function() return {} end }; C_UnitAuras = { GetAuraDataBySpellName=function(u,n,f) if u=='player' and n=='Darkness' and f=='HELPFUL' then return { spellId=209426 } end end }")
+L.execute("XayaUI_NS.AuraSources = { EmbeddedAuras = REAL_AS.EmbeddedAuras, NestedType = REAL_AS.NestedType, EmbeddedAuras = REAL_AS.EmbeddedAuras, NestedType = REAL_AS.NestedType }")
+L.execute("noted=nil; XayaUI_NS.AuraSources = { EmbeddedAuras = REAL_AS.EmbeddedAuras, NestedType = REAL_AS.NestedType, Note=function(k,id,a) noted={k,id,a[1].id} end, AurasOf=function() return {} end }; C_UnitAuras = { GetAuraDataBySpellName=function(u,n,f) if u=='player' and n=='Darkness' and f=='HELPFUL' then return { spellId=209426 } end end }")
 check("live buff with the same name gives the aura", run("posts[1](GameTooltip,{id=196718})")==["Spell ID: 196718","Aura ID: 209426  (Darkness)"])
 check("live match is remembered for next time", L.eval("noted~=nil and noted[1]=='spell' and noted[2]==196718 and noted[3]==209426"))
 L.execute("secret[209426]=true")

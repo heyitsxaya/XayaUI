@@ -64,3 +64,8 @@ SlashCmdList.XUITT = function(msg)
     elseif msg:find("lines") then TT.DumpLines()
     else print("XayaUI Tooltips: /xuitt probe (point at a unit first), /xuitt lines (raw lines of the tooltip under the mouse)") end
 end
+
+-------------------------------------------------------------------------------
+-- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
+-------------------------------------------------------------------------------
+ns.RegisterSettingsPage("bonus", "tooltips", ns.BuildTooltipsTab)

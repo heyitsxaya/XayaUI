@@ -309,6 +309,7 @@ local function load(rel)
   f("XayaUI", ns)
 end
 W.load = load
+load("Modules.lua")   -- the core contract the chat files register through (0.5.108)
 load("DataBlocks.lua")
 for _, rel in ipairs({ "Chat/Core.lua", "Chat/Frame.lua", "Chat/Bar.lua", "Chat/Skin.lua", "Chat/Fade.lua", "Chat/Locate.lua", "Chat/Messages.lua", "Chat/History.lua",
   "Chat/Sounds.lua", "Chat/Options.lua", "ChatPrivacy.lua" }) do load(rel) end

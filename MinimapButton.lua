@@ -15,7 +15,7 @@ local DEFAULTS = {
     radiusOffset = 5,        -- how far outside the minimap's edge the button sits
     size = 31,               -- button width and height in pixels, MIN_SIZE to MAX_SIZE; the ring, icon, and backing scale together
     closeOnClick = true,     -- the list closes after a choice
-    entries = { notes = true, settings = true, data = true, chat = true, privacy = true },
+    entries = {},            -- [key] = false hides that row; a row with no entry here is shown (features add rows: ns.RegisterLauncher)
     iconOverride = "",       -- "" = the built-in icon. Otherwise a file ID (1390944), an icon name (INV_Misc_Note_01), a texture path, or spell:ID
 }
 ns.MINIMAP_DEFAULTS = DEFAULTS
@@ -30,19 +30,12 @@ function ns.Minimap_OnDBReady()
     ns.Merge(CueRulesDB.minimap, DEFAULTS)
     ns.minimapDB = CueRulesDB.minimap
 end
+ns.WhenReady(ns.Minimap_OnDBReady)
 
--- the quick-access entries: key, label, tooltip, action, optional state text
-local ENTRIES = {
-    { "notes", "Notes", "Show or hide the notepad (also /xui notes)", function() if ns.Notepad_Toggle then ns.Notepad_Toggle() end end,
-        function() local d = ns.notepadDB; return d and d.shown and "on" or "off" end },
-    { "settings", "Settings", "Open the XayaUI settings window", function() if ns.ToggleUI then ns.ToggleUI() end end },
-    { "data", "Custom data panels", "Open the custom data panels settings (also /xui data)", function() if ns.DataPanels_OpenSettings then ns.DataPanels_OpenSettings() end end },
-    { "chat", "Chat Panel", "Open the Chat Panel settings (also /xui chat settings)", function() if ns.Chat and ns.Chat.OpenSettings then ns.Chat.OpenSettings() end end },
-    { "privacy", "Chat privacy cover", "Cover or show the chat (also /xui privacy)",
-        function() if ns.ChatPrivacy_Set and ns.chatDB then ns.ChatPrivacy_Set(not ns.chatDB.privOn) end end,
-        function() return ns.chatDB and ns.chatDB.privOn and "on" or "off" end },
-}
-ns.MINIMAP_ENTRIES = ENTRIES
+-- The quick-access rows come from ns.RegisterLauncher (Modules.lua): each feature adds its own row, so a feature that is switched off
+-- leaves no dead button. Row = { key, label, tooltip, action, optional state text, order = n }. Core adds only Settings.
+ns.RegisterLauncher({ "settings", "Settings", "Open the XayaUI settings window", function() if ns.ToggleUI then ns.ToggleUI() end end, order = 20 })
+local function Shown(db, key) return db.entries[key] ~= false end
 
 -- What the override text means: "" -> built-in icon; digits -> a file ID; "spell:ID" -> that spell's icon; a bare name (no slash) ->
 -- Interface\Icons\<name>; anything else -> used as a texture path as typed. Returns the texture and a short note for the options page.
@@ -103,7 +96,7 @@ local function ClosePopup() if popup then popup:Hide() end; if catcher then catc
 local function Visible()
     local db = DB(); local out = {}
     if not db then return out end
-    for _, e in ipairs(ENTRIES) do if db.entries[e[1]] then out[#out + 1] = e end end
+    for _, e in ipairs(ns.Launchers()) do if Shown(db, e[1]) then out[#out + 1] = e end end
     return out
 end
 
@@ -269,9 +262,9 @@ function ns.BuildMinimapTab(Notify)
             name = function() local _, note = ns.Minimap_ResolveIcon(DB().iconOverride); return "Using: " .. note .. ". A wrong ID or path can show a green square or an empty button; clear the box or press Reset." end },
         entries = { type = "group", name = "Buttons in the list", order = 10, inline = true, disabled = function() return DB().hide end, args = {} },
     }
-    for i, e in ipairs(ENTRIES) do
+    for i, e in ipairs(ns.Launchers()) do
         args.entries.args[e[1]] = { type = "toggle", order = i, name = e[2], desc = e[3],
-            get = function() return DB().entries[e[1]] and true or false end,
+            get = function() return Shown(DB(), e[1]) end,
             set = function(_, v) DB().entries[e[1]] = v and true or false; ns.Minimap_Refresh() end }
     end
     return { type = "group", name = "Minimap Button", order = 12, args = args }

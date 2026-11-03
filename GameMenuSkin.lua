@@ -556,3 +556,8 @@ function ns.GameMenuSkin_Options(Notify)
     }
     return { type = "group", name = "Game Menu", order = 3, args = args }
 end
+
+-------------------------------------------------------------------------------
+-- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
+-------------------------------------------------------------------------------
+ns.RegisterCommand("gamemenu", function() ns.GameMenuSkin_Diagnostics() end)

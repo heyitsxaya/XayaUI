@@ -266,3 +266,8 @@ function ns.ChatProbe()
     end
     if shown == 0 then ns.Print("  no named frames in the top-left corner (unnamed ones are in the saved report)") end
 end
+
+-------------------------------------------------------------------------------
+-- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
+-------------------------------------------------------------------------------
+ns.RegisterCommand("chatprobe", function() ns.ChatProbe() end, "/xui chatprobe (read-only chat frame report)")
