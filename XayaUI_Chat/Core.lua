@@ -276,7 +276,7 @@ if ns.Theme and ns.Theme.OnResolve then ns.Theme.OnResolve(function() C.Schedule
 -- /xui chat indent : READ ONLY. Where the empty space at the left of the chat text comes from. For the first visible lines it prints how far
 -- the line's own box sits from the window's left edge, and the first characters of the line's text with every |-code shown as typed (a
 -- timestamp or a hidden color / texture code in front of the words shows up there). Text the game marks secret is never read.
-function C.IndentReport()
+local function IndentReport()
     local cf, ta = C.Main(), C.TextArea()
     if not (cf and ta) then ns.Print("Chat Panel indent: the chat window is not there to measure."); return end
     local function f(v) v = tonumber(v); return (v and not C.IsSecret(v)) and ("%.1f"):format(v) or "?" end
@@ -301,6 +301,11 @@ function C.IndentReport()
         end
     end
     if shown == 0 then ns.Print("  the visible lines are empty or protected") end
+end
+
+function C.IndentReport()   -- never raises: a game value that cannot be read ends the report with one line, not an error
+    local ok, err = pcall(IndentReport)
+    if not ok then ns.Print(("Chat Panel indent: could not finish (%s)"):format((tostring(err):gsub("|", "||")))) end
 end
 
 -- /xui chat [on|off|reset|move|history|status]

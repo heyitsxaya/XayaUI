@@ -111,7 +111,7 @@ end)
 local MIN_W, MIN_H = 440, 300
 -- the bottom of the window is two rows: the buttons and status line (FOOT_BTN up from the bottom edge), and under them the privacy
 -- note, which may wrap to two lines. The scroll area stops above both (FOOT_SCROLL), so no text is drawn over, or hidden behind, another.
-local FOOT_BTN, FOOT_NOTE, FOOT_SCROLL = 32, 6, 60
+local FOOT_BTN, FOOT_NOTE, FOOT_SCROLL, NOTE_H = 36, 6, 64, 28   -- the note's height holds two 10 pt lines
 
 local function Btn(parent, label, w)
     local b = CreateFrame("Button", nil, parent)
@@ -243,12 +243,12 @@ local function Build()
         if st.histLive then C.History_Update() end
     end)
     frame.status = frame:CreateFontString(nil, "OVERLAY"); frame.status:SetFont(STANDARD_TEXT_FONT, 11, ""); frame.status:SetPoint("LEFT", frame.live, "RIGHT", 10, 0)
-    frame.status:SetPoint("RIGHT", frame, "RIGHT", -12, 0)   -- bounded on both sides: it can never run past the window edge
+    frame.status:SetPoint("RIGHT", frame, "BOTTOMRIGHT", -12, FOOT_BTN + 10)   -- bounded on both sides, and on the same height as the Live button's middle (both points must agree vertically)
     frame.status:SetJustifyH("LEFT"); frame.status:SetWordWrap(false)
     frame.status:SetTextColor(0.7, 0.7, 0.7, 1)
     local note = frame:CreateFontString(nil, "OVERLAY"); note:SetFont(STANDARD_TEXT_FONT, 10, "")
     note:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 12, FOOT_NOTE); note:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -24, FOOT_NOTE)   -- stops short of the resize grip
-    note:SetHeight(24); note:SetJustifyH("LEFT"); note:SetJustifyV("BOTTOM"); note:SetWordWrap(true)
+    note:SetHeight(NOTE_H); note:SetJustifyH("LEFT"); note:SetJustifyV("BOTTOM"); note:SetWordWrap(true)
     note:SetTextColor(0.55, 0.55, 0.55, 1)
     note:SetText("Select text, Ctrl+C. Kept in memory only. Combat log and protected lines are not recorded.")
     frame.note = note
