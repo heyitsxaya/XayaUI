@@ -244,6 +244,18 @@ tops = run("local f=_G.XayaUIChatHistory local ys={} for _,b in ipairs(f.kb) do 
 check("tab buttons wrap to a second row in a narrow window", len(set(str(tops).split(","))) >= 2, tops)
 sr, br2 = rect(hf.search), rect(hf.kb[4])
 check("search box sits below the last tab button row", sr[1] + sr[3] <= br2[1] + 0.5, (sr, br2))
+# bottom of the window: the scroll area, the button row (Refresh, Live, status) and the note must be three separate bands, all inside
+# the window and clear of the resize grip (the status line and the note used to be drawn over each other and behind the buttons)
+for (w_, h_) in ((540, 380), (440, 300), (900, 600)):
+    hf.SetSize(hf, w_, h_); hf._scripts["OnSizeChanged"](hf)
+    run("_G.XayaUIChatHistory.status:SetText('1000 newer messages. Click Refresh.')")
+    fr, sc, rf, lv, st, nt, gr = rect(hf), rect(hf.scroll), rect(hf.refresh), rect(hf.live), rect(hf.status), rect(hf.note), rect(hf.grip)
+    tag = "%dx%d" % (w_, h_)
+    check("footer %s: scroll area stays above the button row" % tag, sc[1] >= rf[1] + rf[3] - 0.5, (sc, rf))
+    check("footer %s: button row stays above the note" % tag, rf[1] >= nt[1] + nt[3] - 0.5, (rf, nt))
+    check("footer %s: note is inside the window and left of the grip" % tag, inside(hf.note, hf) and nt[0] + nt[2] <= gr[0] + 0.5, (nt, gr))
+    check("footer %s: status starts right of Live and ends inside the window" % tag, st[0] >= lv[0] + lv[2] - 0.5 and inside(hf.status, hf), (st, lv))
+    check("footer %s: status fits the width it has" % tag, hf.status.GetStringWidth(hf.status) <= st[2] + 0.5, (hf.status.GetStringWidth(hf.status), st))
 hf.SetSize(hf, 540, 380); hf._scripts["OnSizeChanged"](hf)
 C.History_Toggle()
 check("history frame hides", hf.IsShown(hf) is False)

@@ -108,7 +108,10 @@ end)
 -------------------------------------------------------------------------------
 -- The window
 -------------------------------------------------------------------------------
-local MIN_W, MIN_H = 400, 260
+local MIN_W, MIN_H = 440, 300
+-- the bottom of the window is two rows: the buttons and status line (FOOT_BTN up from the bottom edge), and under them the privacy
+-- note, which may wrap to two lines. The scroll area stops above both (FOOT_SCROLL), so no text is drawn over, or hidden behind, another.
+local FOOT_BTN, FOOT_NOTE, FOOT_SCROLL = 32, 6, 60
 
 local function Btn(parent, label, w)
     local b = CreateFrame("Button", nil, parent)
@@ -142,7 +145,7 @@ local function Relayout()
     frame.search:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -34 - used - 2)
     frame.scroll:ClearAllPoints()
     frame.scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -34 - used - 28)
-    frame.scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -30, 36)
+    frame.scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -30, FOOT_SCROLL)
     frame.edit:SetWidth(math.max(100, (frame:GetWidth() or 540) - 50))
 end
 
@@ -172,7 +175,7 @@ end
 UpdateStatus = function()
     if not frame then return end
     local n = NewCount()
-    if n > 0 then frame.status:SetText(n .. " newer message" .. (n == 1 and "" or "s") .. ". Click Refresh to show them.")
+    if n > 0 then frame.status:SetText(n .. " newer message" .. (n == 1 and "" or "s") .. ". Click Refresh.")
     else frame.status:SetText("Up to date.") end
     frame.refresh.bg:SetColorTexture(n > 0 and 0.2 or 1, n > 0 and 0.45 or 1, n > 0 and 0.8 or 1, n > 0 and 0.85 or 0.08)
 end
@@ -229,8 +232,8 @@ local function Build()
     scroll:SetScrollChild(edit)
     frame.scroll, frame.edit = scroll, edit
 
-    -- bottom row
-    frame.refresh = Btn(frame, "Refresh", 64); frame.refresh:SetPoint("BOTTOMLEFT", 12, 10)
+    -- bottom rows (see FOOT_*): buttons and status on the upper one, the note under them
+    frame.refresh = Btn(frame, "Refresh", 64); frame.refresh:SetPoint("BOTTOMLEFT", 12, FOOT_BTN)
     frame.refresh:SetScript("OnClick", function() C.History_Update() end)
     frame.live = Btn(frame, "Live: off", 70); frame.live:SetPoint("LEFT", frame.refresh, "RIGHT", 6, 0)
     frame.live:SetScript("OnClick", function()
@@ -240,10 +243,15 @@ local function Build()
         if st.histLive then C.History_Update() end
     end)
     frame.status = frame:CreateFontString(nil, "OVERLAY"); frame.status:SetFont(STANDARD_TEXT_FONT, 11, ""); frame.status:SetPoint("LEFT", frame.live, "RIGHT", 10, 0)
+    frame.status:SetPoint("RIGHT", frame, "RIGHT", -12, 0)   -- bounded on both sides: it can never run past the window edge
+    frame.status:SetJustifyH("LEFT"); frame.status:SetWordWrap(false)
     frame.status:SetTextColor(0.7, 0.7, 0.7, 1)
-    local note = frame:CreateFontString(nil, "OVERLAY"); note:SetFont(STANDARD_TEXT_FONT, 10, ""); note:SetPoint("BOTTOMRIGHT", -26, 12)
+    local note = frame:CreateFontString(nil, "OVERLAY"); note:SetFont(STANDARD_TEXT_FONT, 10, "")
+    note:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 12, FOOT_NOTE); note:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -24, FOOT_NOTE)   -- stops short of the resize grip
+    note:SetHeight(24); note:SetJustifyH("LEFT"); note:SetJustifyV("BOTTOM"); note:SetWordWrap(true)
     note:SetTextColor(0.55, 0.55, 0.55, 1)
     note:SetText("Select text, Ctrl+C. Kept in memory only. Combat log and protected lines are not recorded.")
+    frame.note = note
 
     -- resize grip
     local grip = CreateFrame("Button", nil, frame)

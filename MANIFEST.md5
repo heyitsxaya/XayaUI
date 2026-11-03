@@ -134,7 +134,7 @@ bd5ad941d96408c9a0a6d431144f65b7  XayaUI_Bonus/Notepad.lua
 2a9737ae2caa496c9b5d3e5747e5d950  XayaUI_Chat/Core.lua
 691117347e0437f78c88e3734c54c438  XayaUI_Chat/Fade.lua
 8524d53ecf0e78ac43a250103d6d0157  XayaUI_Chat/Frame.lua
-72f830e13531761a3939c1582a640cf7  XayaUI_Chat/History.lua
+0ad6c089dd44780b958834cda02d6930  XayaUI_Chat/History.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 fead8e3ce9e3203085d2516b6e967c51  XayaUI_Chat/Locate.lua
 41d22f24985c521d09267efaa3217f9b  XayaUI_Chat/Messages.lua
@@ -143,7 +143,7 @@ fead8e3ce9e3203085d2516b6e967c51  XayaUI_Chat/Locate.lua
 702bf934e55a476b21d3f912fb1c9d27  XayaUI_Chat/Probe.lua
 0d7c325a5b9a1bcbbcac9746295b8cd0  XayaUI_Chat/Skin.lua
 924ed63c29e3249e9052308753382184  XayaUI_Chat/Sounds.lua
-352701b445a6940938d75c81c8cddba2  XayaUI_Chat/XayaUI_Chat.toc
+1399a94792bb8aa6acd15a5fcd72817e  XayaUI_Chat/XayaUI_Chat.toc
 96a62368d1a1215dd73fc9fdf4e71716  XayaUI_GameDump/GameDump.lua
 f2775456d146dcf3ca0f5cccfa9d5e84  XayaUI_GameDump/XayaUI_GameDump.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
@@ -332,6 +332,7 @@ b6a77a4c836855ffd205ecc726b2730b  debug-log/2026-11-03-1941-fade-flash-grayout-p
 14c8796921624508ab212ab1e47e7f09  debug-log/2026-11-03-2041-deprecation-fallbacks-compat-0.6.0.md
 4e4afdd8a4679330417ae0fbfe174d23  debug-log/2026-11-03-2042-whole-addon-harness.md
 c772617313f2c4b7965ad8301258e669  debug-log/2026-11-03-2135-tester-requests-278-status-0.6.0.md
+5198e562f201957d7976849ce29d5a6d  debug-log/2026-11-03-2140-chat-history-footer-clipping-0.6.1.md
 7f9f4549410ba8da5e6fb9e9cb573be0  shelved/Bars.lua
 5857b882061b2df7a8d4fb33945efc80  shelved/CountSupport.lua
 ba241e46458e8e4296563689c7708a51  shelved/CursorReminders.lua
@@ -341,7 +342,7 @@ a354cbbb54ff4fb130af0063a401df9b  tests/Conditions.pre-0.5.83.lua
 1bc56b22adb5f1e1aa4a345d9fa19b8b  tests/aspect_run.py
 0e26218e09a9363dfa4c1d614cba2f95  tests/aura_display_run.py
 80c84f1f7ef017e7f04a6c3be28a3910  tests/aura_sources_run.py
-b915adc8a06c975c7f7aa068657bb746  tests/chat_run.py
+ddf0a2a56f9df7595ae459e9e2679a30  tests/chat_run.py
 011ed4393337e4f3ffbc1a619ba02f1a  tests/chat_world.lua
 abe22a2816956a2c3babb802857cc524  tests/chatprobe_run.py
 c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
