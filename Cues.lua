@@ -14,6 +14,8 @@ ns.MOD_STRATA_OK = {}
 for _, k in ipairs(ns.MOD_STRATA) do ns.MOD_STRATA_OK[k] = true end
 
 function ns.CuesOf(p)
+    local idx = ns.StepChildrenOf(p, "cues")
+    if idx then return idx end
     local out = {}
     if type(p.uid) ~= "string" then return out end
     for _, r in ipairs(ns.rules or {}) do
@@ -22,6 +24,8 @@ function ns.CuesOf(p)
     return out
 end
 function ns.ConditionsOf(p)
+    local idx = ns.StepChildrenOf(p, "conds")
+    if idx then return idx end
     local out = {}
     if type(p.uid) ~= "string" then return out end
     for _, r in ipairs(ns.rules or {}) do

@@ -16,11 +16,14 @@
 local addonName, ns = ...
 
 local MAX_TERMS = 24
+local issecret = issecretvalue or function() return false end   -- (was missing: numeric checks on cooldowns / stacks threw)
 
 function ns.NewUID() return "u" .. tostring(time()) .. tostring(math.random(100000, 999999)) end
 
 -- The rule an outcome follows (nil if missing). Outcomes cannot own outcomes, so there is no chain and no cycle.
 function ns.FindParentRule(rule)
+    local p, indexed = ns.StepParentOf(rule)
+    if indexed then return p end
     local uid = rule.parentUid
     if type(uid) ~= "string" or uid == "" then return nil end
     for _, r in ipairs(ns.rules or {}) do
@@ -45,6 +48,8 @@ function ns.RemapOutcomeRefs(parent, fn)
 end
 
 function ns.OutcomesOf(parent)
+    local idx = ns.StepChildrenOf(parent, "all")
+    if idx then return idx end
     local out = {}
     if type(parent.uid) ~= "string" then return out end
     for _, r in ipairs(ns.rules or {}) do
@@ -204,8 +209,8 @@ function ns.EvaluateOutcome(rule, ctx)
     if rule.maxCharges ~= p.maxCharges then rule.maxCharges = p.maxCharges end
     info.cdOK, info.buffOK, info.extraOK = true, true, true
     -- load conditions live in ONE place: the parent rule's Load tab. An outcome never has its own.
-    info.ctxOK, info.ctxFail = ns.CheckContext(p, ctx)
-    info.talentOK, info.talentDetail = ns.CheckTalents(p)
+    -- (the parent was just evaluated with the same context: reuse its answers instead of checking again)
+    info.ctxOK, info.ctxFail, info.talentOK, info.talentDetail = pi.ctxOK, pi.ctxFail, pi.talentOK, pi.talentDetail
     local list = (type(rule.when) == "table" and type(rule.when.list) == "table") and rule.when.list or {}
     info.whenOK, info.whenDetail = EvalWhen(list, p, pr, pi)
     info.result = (info.ctxOK == true) and (info.talentOK == true) and (info.whenOK == true)

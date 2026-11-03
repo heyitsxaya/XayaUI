@@ -303,7 +303,7 @@ function ns.Bars_Update()
                 end
                 -- stacks
                 local shown = false
-                if bar.showStacks and ref and ref.applications ~= nil then
+                if bar.showStacks and ref and ref.applications then
                     local okn, n = pcall(function() return ref.applications end)
                     local readable = okn and type(n) == "number" and not (ns.IsSecret and ns.IsSecret(n))
                     if not readable or n > 1 then shown = pcall(fr.stacks.SetText, fr.stacks, n) end

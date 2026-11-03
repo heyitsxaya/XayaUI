@@ -102,10 +102,13 @@ local function Collect(fo)
 end
 
 -- Effects XayaUI draws itself that the engine's container cannot: listed so nothing is lost silently.
+-- (The engine shows an icon whenever the aura is up; it does not know the rule's conditions.)
 local function Drops(p)
     local out = {}
-    local cue = ns.CuesOf and ns.CuesOf(p)
-    cue = cue and cue[1]
+    local cues = ns.CuesOf and ns.CuesOf(p) or {}
+    local cue
+    for _, c in ipairs(cues) do if c.visual and c.visual.enabled then cue = c; break end end
+    cue = cue or cues[1]
     local v = (cue and cue.visual) or p.visual or {}
     if v.fadeGrey then out[#out + 1] = "grey / colour fade" end
     if v.fadeAlpha then out[#out + 1] = "opacity fade" end
@@ -113,9 +116,22 @@ local function Drops(p)
     if v.fill and v.fill.enabled then out[#out + 1] = "wipe" end
     if v.glow then out[#out + 1] = "glow" end
     if v.desatOnCD then out[#out + 1] = "grey on cooldown" end
-    if ns.OutcomesOf then
-        local ok, oc = pcall(ns.OutcomesOf, p)
-        if ok and type(oc) == "table" and #oc > 0 then out[#out + 1] = "condition changes (" .. #oc .. ")" end
+    if cue and cue.cueKey and ns.ConditionsOf then
+        local gate, mod = 0, 0
+        for _, c in ipairs(ns.ConditionsOf(p)) do
+            if c.enabled ~= false and type(c.thenCues) == "table" then
+                for _, k in ipairs(c.thenCues) do
+                    if k == cue.cueKey then
+                        gate = gate + 1
+                        local m = type(c.thenMods) == "table" and c.thenMods[k]
+                        if type(m) == "table" and m.on ~= false then mod = mod + 1 end
+                        break
+                    end
+                end
+            end
+        end
+        if gate > 0 then out[#out + 1] = ("shows whenever the aura is up, not only while its condition%s %s true (%d)"):format(gate > 1 and "s" or "", gate > 1 and "are" or "is", gate) end
+        if mod > 0 then out[#out + 1] = ("glow / grey / opacity / tint changes from conditions (%d)"):format(mod) end
     end
     return out
 end
@@ -310,7 +326,7 @@ function D.Status()
                 for _, r in ipairs(ns.rules or {}) do
                     if r.folder == fo.id and Eligible(r) then
                         local d = Drops(r)
-                        if #d > 0 then dropN = dropN + 1; Say("   " .. tostring(r.name) .. ": the engine does not draw " .. table.concat(d, ", ")) end
+                        if #d > 0 then dropN = dropN + 1; Say("   " .. tostring(r.name) .. ": " .. table.concat(d, "; ")) end
                     end
                 end
             end
@@ -351,7 +367,8 @@ local function Slash(msg)
         end
     else
         D.Status()
-        Say("/xuiengine auto on|off, on|off|reset <group>, refresh, list.  Draws buff rules in dynamic groups through Blizzard's secure aura container so they show in combat; automatic unless switched off.")
+        -- (no "|r" in chat text: WoW reads it as a colour code)
+        Say("/xuiengine auto on / off;  /xuiengine on / off / reset <group>;  /xuiengine refresh;  /xuiengine list.  Draws buff rules in dynamic groups through Blizzard's secure aura container so they show in combat; automatic unless switched off.")
     end
 end
 

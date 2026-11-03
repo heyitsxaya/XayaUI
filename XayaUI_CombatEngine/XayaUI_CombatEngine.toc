@@ -2,7 +2,7 @@
 ## Title: XayaUI Combat Auras
 ## Notes: In-combat aura tracking for XayaUI: tracker, timing model, setup wizard, aura ID probe, secure-container aura display. Requires XayaUI.
 ## Author: Xaya
-## Version: 0.3.1
+## Version: 0.3.2
 ## X-Date: 2026-11-02
 ## Dependencies: XayaUI
 ## Group: XayaUI

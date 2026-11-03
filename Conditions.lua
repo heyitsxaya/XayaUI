@@ -14,14 +14,14 @@ ns.IsSecret = issecret
 local function CleanBool(t, key)
     if type(t) ~= "table" then return nil end
     local ok, v = pcall(function() return t[key] end)
-    if not ok or v == nil or issecret(v) then return nil end
+    if not ok or issecret(v) or v == nil then return nil end
     return v and true or false
 end
 
 local function CleanNumber(t, key)
     if type(t) ~= "table" then return nil end
     local ok, v = pcall(function() return t[key] end)
-    if not ok or v == nil or issecret(v) then return nil end
+    if not ok or issecret(v) or v == nil then return nil end
     if type(v) ~= "number" then return nil end
     return v
 end
@@ -99,9 +99,10 @@ local VIEWERS = {
 -- four viewers and built two throw-away closures per frame, several times a second: the garbage alone dragged the frame rate down.
 local cdmIndex, cdmTick, cdmAt = {}, -1, -1
 local function GetSpellIDOf(frame) return frame.GetSpellID and frame:GetSpellID() end
-local function FrameActive(fr) return (fr.wasSetFromAura == true) or (fr.auraInstanceID ~= nil) end
+-- (a secret value may be tested for truth but never compared, not even with nil)
+local function FrameActive(fr) return (fr.wasSetFromAura == true) or (fr.auraInstanceID and true or false) end
 local function IndexID(idx, v, fr, vname)
-    if v ~= nil and not issecret(v) and type(v) == "number" then
+    if not issecret(v) and type(v) == "number" then
         local l = idx[v]
         if not l then l = {}; idx[v] = l end
         local n = #l
@@ -225,7 +226,8 @@ local function BuffPresentRaw(id)
     -- Cooldown Manager frame: authoritative when the buff is tracked there.
     local fr, vname = FindCDMFrame(id)
     if fr then
-        local active = (fr.wasSetFromAura == true) or (fr.auraInstanceID ~= nil)
+        local okA, active = pcall(FrameActive, fr)
+        active = okA and active or false
         -- diagnostic detail for /xui status: what the frame actually reports (secret-safe, no arithmetic)
         local okd, detail = pcall(function()
             local iid = fr.auraInstanceID
@@ -328,8 +330,7 @@ function ns.BuffPresent(id)
     local note
     -- An estimated time is replaced by the game's own duration object whenever that answers with a plain number.
     if not ref.expiration or ref.estimated then
-        local okI, has = pcall(function() return ref.instanceID ~= nil end)
-        if okI and has then
+        if ref.instanceID then
             local exp, tot
             exp, tot, note = DurationObjectTimes(ref.instanceID)
             if exp then

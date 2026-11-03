@@ -23,6 +23,13 @@ local function RT(rule)
     return rt
 end
 
+local function ReportVisualError(rule, rt, err)
+    if rt.vErrored then return end
+    rt.vErrored = true
+    ns.Print("rule '" .. tostring(rule.name) .. "' display error: " .. tostring(err))
+    if ns.CaptureError then pcall(ns.CaptureError, "XayaUI display: " .. tostring(err)) end
+end
+
 local function Step()
     if not ns.rules then return end
     if barsDirty then
@@ -91,16 +98,24 @@ local function Step()
             end
             rt.visualWanted = wanted
             local pv = perf.on and debugprofilestop()
-            ns.SetVisualShown(rule, wanted)
+            -- (each display call is guarded: one failing display must not stop the rest of the step)
+            local okS, errS = pcall(ns.SetVisualShown, rule, wanted)
+            if not okS then ReportVisualError(rule, rt, errS) end
             -- a display the combat engine draws is hidden here, so its text / fade work is skipped entirely
-            if wanted and not (ns.EngineOwns and ns.EngineOwns(rule)) then ns.UpdateVisualText(rule, info) end
+            if wanted and not (ns.EngineOwns and ns.EngineOwns(rule)) then
+                local okT, errT = pcall(ns.UpdateVisualText, rule, info)
+                if not okT then ReportVisualError(rule, rt, errT) end
+            end
             if pv then local d = debugprofilestop() - pv; perf.visMs = perf.visMs + d; perf.rule[rule] = (perf.rule[rule] or 0) + d end
         else
             if rt.active and not rule.parentUid and ns.RunActions then ns.RunActions(rule, "finish") end
             rt.active = false
             rt.inited = nil
+            if rt.visualWanted ~= false or rt.shownOnce == nil then
+                rt.shownOnce = true
+                pcall(ns.SetVisualShown, rule, false)
+            end
             rt.visualWanted = false
-            ns.SetVisualShown(rule, false)
         end
         -- Preview (transient, set from the sidebar eye / headphone icons): force-show the visual and/or
         -- loop the sound without touching the rule's own switches or conditions.
@@ -148,10 +163,19 @@ function ns.PerfPath(rule, tag)   -- which duration-text path a rule took this t
     perf.paths[k] = (perf.paths[k] or 0) + 1
 end
 local rawStep = Step
+-- One step with its lookup index (Core.lua) and the group layouts it queued; the index is dropped even if the step fails.
+local function IndexedStep()
+    ns.BeginStepIndex()
+    if ns.BeginVisualStep then ns.BeginVisualStep() end
+    local ok, err = pcall(rawStep)
+    if ns.FlushLayouts then pcall(ns.FlushLayouts) end
+    ns.EndStepIndex()
+    if not ok then error(err, 0) end
+end
 Step = function()
-    if not perf.on then return rawStep() end
+    if not perf.on then return IndexedStep() end
     local t = debugprofilestop()
-    rawStep()
+    IndexedStep()
     local d = debugprofilestop() - t
     perf.steps, perf.total = perf.steps + 1, perf.total + d
     if d > perf.max then perf.max = d end
@@ -231,6 +255,8 @@ end
 ns.Step = function() return Step() end
 
 function ns.MarkDirty() dirty = true; forceNow = true; barsDirty = true; if ns.UndoNote then ns.UndoNote() end end
+-- game state changed (a cast, movement, target ...): re-evaluate on the next step, keeping the minimum gap between steps
+function ns.MarkStateDirty() dirty = true end
 
 function ns.OnDBReady()
     ns.RefreshAllVisuals()

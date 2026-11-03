@@ -259,14 +259,90 @@ function ns.NewFolder(name, parent)
     return f
 end
 
-function ns.FolderOf(rule)
-    if not rule.folder then return nil end
-    for _, f in ipairs(ns.folders or {}) do if f.id == rule.folder then return f end end
+-------------------------------------------------------------------------------
+-- Step index. While the engine runs one step (ns.BeginStepIndex .. ns.EndStepIndex), the hot lookups below (group by id,
+-- rule by uid, a rule's cues / conditions / outcomes) answer from maps built once for that step instead of scanning the
+-- whole rule or group list on every call; with a few hundred rules that scan, repeated for every rule, was most of the
+-- engine's time. Outside a step (the options window, slash commands) every lookup scans as before, so edits are seen at
+-- once. Lists handed out during a step are shared: callers read them, never change them.
+-------------------------------------------------------------------------------
+local stepIdx   -- nil outside a step
+local EMPTY = setmetatable({}, { __newindex = function() error("XayaUI: the step index lists are read-only") end })
+ns.EMPTY_LIST = EMPTY
+
+function ns.BeginStepIndex() stepIdx = {} end
+function ns.EndStepIndex() stepIdx = nil end
+
+local function FolderIndex()
+    local fi = stepIdx.folders
+    if not fi then
+        fi = {}
+        for _, f in ipairs(ns.folders or {}) do if f.id ~= nil and fi[f.id] == nil then fi[f.id] = f end end
+        stepIdx.folders = fi
+    end
+    return fi
+end
+
+-- parents[uid] = first parent rule with that uid; kids[uid] = every rule whose parentUid is uid, in rule order
+local function RuleIndex()
+    local ri = stepIdx.rules
+    if not ri then
+        local parents, kids = {}, {}
+        for _, r in ipairs(ns.rules or {}) do
+            local pu = r.parentUid
+            if pu ~= nil then
+                local l = kids[pu]
+                if not l then l = {}; kids[pu] = l end
+                l[#l + 1] = r
+            elseif type(r.uid) == "string" and parents[r.uid] == nil then
+                parents[r.uid] = r
+            end
+        end
+        ri = { parents = parents, kids = kids, cues = {}, conds = {} }
+        stepIdx.rules = ri
+    end
+    return ri
+end
+
+-- During a step: the parent rule for a parentUid (nil when not in a step: the caller scans).
+function ns.StepParentOf(rule)
+    if not stepIdx then return nil, false end
+    local uid = rule.parentUid
+    if type(uid) ~= "string" or uid == "" then return nil, true end
+    local p = RuleIndex().parents[uid]
+    if p == rule then p = nil end
+    return p, true
+end
+
+-- During a step: a parent's children, filtered by kind ("all" / "cues" / "conds"); nil when not in a step.
+function ns.StepChildrenOf(p, kind)
+    if not stepIdx then return nil end
+    local uid = p.uid
+    if type(uid) ~= "string" then return EMPTY end
+    if p.parentUid == uid then return nil end   -- a rule naming itself as parent: rare, let the caller scan
+    local ri = RuleIndex()
+    local all = ri.kids[uid]
+    if not all then return EMPTY end
+    if kind == "all" then return all end
+    local cache = (kind == "cues") and ri.cues or ri.conds
+    local l = cache[uid]
+    if not l then
+        l = {}
+        local wantCue = kind == "cues"
+        for i = 1, #all do local r = all[i]; if (r.isCue and true or false) == wantCue then l[#l + 1] = r end end
+        cache[uid] = l
+    end
+    return l
 end
 
 function ns.FolderById(id)
     if not id then return nil end
+    if stepIdx then return FolderIndex()[id] end
     for _, f in ipairs(ns.folders or {}) do if f.id == id then return f end end
+end
+
+function ns.FolderOf(rule)
+    return ns.FolderById(rule.folder)
 end
 
 -- Folder load override. folder.loadOverride = nil | "never" | "always". The nearest folder (starting at the given id, then its

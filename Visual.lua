@@ -1528,7 +1528,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
                 local cv = NumCurve("g", 1, d)
                 if cv then
                     local okr, res = pcall(dobj.EvaluateRemainingPercent, dobj, cv)
-                    if okr and res ~= nil then greyDone = pcall(fr.tex.SetDesaturation, fr.tex, res) end
+                    if okr and res then greyDone = pcall(fr.tex.SetDesaturation, fr.tex, res) end
                 end
             end
         end
@@ -1556,7 +1556,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
             local cv = NumCurve("t", 0, alpha)
             if cv then
                 local okr, res = pcall(dobj.EvaluateRemainingPercent, dobj, cv)
-                if okr and res ~= nil then alphaDone = pcall(fr.SetAlpha, fr, res) end
+                if okr and res then alphaDone = pcall(fr.SetAlpha, fr, res) end
             end
         end
     end
@@ -1569,7 +1569,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
             local cv = NumCurve("a", alpha * mn, alpha * mx)
             if cv then
                 local okr, res = pcall(dobj.EvaluateRemainingPercent, dobj, cv)
-                if okr and res ~= nil then alphaDone = pcall(fr.SetAlpha, fr, res) end
+                if okr and res then alphaDone = pcall(fr.SetAlpha, fr, res) end
             end
         end
     end
@@ -1638,16 +1638,16 @@ function ns.UpdateVisualText(rule, info, fxOnly)
             local ok, ch = pcall(C_Spell.GetSpellCharges, rule.spellID)
             if ok and type(ch) == "table" then
                 local okv, cur = pcall(function() return ch.currentCharges end)
-                if okv and cur ~= nil then shown = pcall(fr.count.SetText, fr.count, cur) end
+                if okv and cur then shown = pcall(fr.count.SetText, fr.count, cur) end
             end
         else
-            if ref and ref.applications ~= nil then
+            if ref and ref.applications then
                 shown = pcall(fr.count.SetText, fr.count, ref.applications)
             elseif ref and ref.instanceID and C_UnitAuras and C_UnitAuras.GetAuraApplicationDisplayCount then
                 -- found through the Cooldown Manager: no readable stack number, but the game formats one for display
                 -- ("" below 2 stacks, so a one-stack aura shows nothing)
                 local okc, str = pcall(C_UnitAuras.GetAuraApplicationDisplayCount, "player", ref.instanceID, 2, 999)
-                if okc and str ~= nil then shown = pcall(fr.count.SetText, fr.count, str) end
+                if okc and str then shown = pcall(fr.count.SetText, fr.count, str) end
             end
         end
         if not shown and sample then fr.count:SetText("3"); shown = true end
@@ -1673,7 +1673,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
             local ok, tot = pcall(UnitGetTotalAbsorbs, "player")
             if ok then val = tot end
         end
-        if val ~= nil then
+        if val then
             if not ns.IsSecret(val) and type(val) == "number" then
                 if val > 0 or not ab.hideZero then
                     local txt
@@ -1689,7 +1689,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
                 local out = val
                 if ab.abbreviate ~= false and AbbreviateLargeNumbers then
                     local okA, s2 = pcall(AbbreviateLargeNumbers, val)
-                    if okA and s2 ~= nil then out = s2 end
+                    if okA and s2 then out = s2 end
                 end
                 shown = pcall(fr.absorb.SetText, fr.absorb, out)
             end
@@ -1732,7 +1732,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
             -- and no dependence on Blizzard's cooldown-number setting
             if dur.GetRemainingDuration then
                 local okr, remS = pcall(dur.GetRemainingDuration, dur)
-                if okr and remS ~= nil then
+                if okr and remS then
                     local oks = pcall(function() fr.text:SetText(("%d"):format(remS)) end)
                     if oks then
                         if fr.cd then fr.cd:Hide() end
@@ -1779,15 +1779,38 @@ function ns.VisualFramesOf(rule)
     end
     return out
 end
+-- Dynamic groups are laid out when a member appears or disappears, once per group per engine step (flushed at the end of
+-- the step); outside a step (options, unlock) at once. Before, every member re-laid its whole group on every step.
+local layoutQueue, inStep = {}, false
+local function QueueLayout(df)
+    if not df then return end
+    if inStep then layoutQueue[df] = true else LayoutDynamic(df) end
+end
+function ns.BeginVisualStep() inStep = true end
+function ns.FlushLayouts()
+    inStep = false
+    for df in pairs(layoutQueue) do layoutQueue[df] = nil; LayoutDynamic(df) end
+end
+
 function ns.SetVisualShown(rule, shown)
-    local fr = GetFrame(rule)
     local pv = ns.IsPreview(rule, "visual")
-    if not rule.visual.enabled and not pv then fr:Hide() return end
-    -- drawn instead by XayaUI_CombatEngine's secure aura container (works in combat): keep ours hidden unless unlocked / previewing
-    if ns.EngineOwns and not (Unl(rule) or GroupUnl(rule) or pv) and ns.EngineOwns(rule) then fr:Hide() return end
-    if Unl(rule) or GroupUnl(rule) or pv or shown then fr:Show() else fr:Hide() end
-    local dyn = rule.folder and DynAncestor(rule.folder)
-    if dyn then LayoutDynamic(dyn) end
+    local want
+    if not rule.visual.enabled and not pv then
+        want = false
+    elseif ns.EngineOwns and not (Unl(rule) or GroupUnl(rule) or pv) and ns.EngineOwns(rule) then
+        want = false   -- drawn instead by the combat engine's secure aura container: ours stays hidden unless unlocked / previewing
+    else
+        want = (Unl(rule) or GroupUnl(rule) or pv or shown) and true or false
+    end
+    local fr = frames[rule]
+    if not fr then
+        if not want then return end   -- a display that has never shown needs no frame yet
+        ns.RefreshVisual(rule)        -- creates and styles it
+        fr = frames[rule]
+    end
+    if fr:IsShown() == want then return end
+    fr:SetShown(want)
+    QueueLayout(rule.folder and DynAncestor(rule.folder))
 end
 
 function ns.SetMoveUnlocked(objs, on)

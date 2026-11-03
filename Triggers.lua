@@ -1099,9 +1099,9 @@ ev:SetScript("OnEvent", function(_, event, _, _, spellID)
     if event == "UNIT_SPELLCAST_SUCCEEDED" then
         local now = GetTime()
         castLog.any = now
-        if spellID == nil or issecret(spellID) then castLog.unknown = now else castLog[spellID] = now end
+        if issecret(spellID) or spellID == nil then castLog.unknown = now else castLog[spellID] = now end
     end
-    if ns.MarkDirty then ns.MarkDirty() end
+    if ns.MarkStateDirty then ns.MarkStateDirty() end
 end)
 
 -------------------------------------------------------------------------------
