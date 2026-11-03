@@ -515,9 +515,20 @@ The Chat Panel reskins Blizzard's own chat in place: one block that holds the ta
 - **Sounds:** one sound per chat tab, played when a message arrives for a kind that tab shows. Your own messages and outgoing whispers never play one.
 - **Privacy cover:** a button beside the block covers the chat text and input line with a color or picture (the tab row too, if you choose; the tabs stay clickable under the cover so you can switch tabs while it is on). It has its own page under Privacy. The Chat Bar and the collapse arrow stay visible.
 
-**Where:** Chat > Chat Panel (XayaUI Chat; tabs: Layout, Appearance, Chat Bar, Fade and hide, Filters, History, Sounds, Privacy), or `/xui chat settings`. Commands: `/xui chat` (status), `/xui chat on|off|reset|move|history|settings`. `/xui chat off` gives Blizzard's chat back its own position, size, fonts, border, and scroll bar at once.
+**Where:** Chat > Chat Panel (XayaUI Chat), or `/xui chat settings`. The Chat Panel page holds the panel-wide switches (Enable Chat Panel, Use the XayaUI theme). Its parts are listed under it in the left pane: Layout, Appearance, Chat Bar, Fade and hide, Filters, History, Sounds, Privacy. Inside a part, its sections are tabs (for example Appearance: Background and border | Chat text | Tabs | Input line). Right-clicking a Chat Bar block opens Chat Bar > Blocks. Commands: `/xui chat` (status), `/xui chat on|off|reset|move|history|settings`. `/xui chat off` gives Blizzard's chat back its own position, size, fonts, border, and scroll bar at once.
 
 **Limits:** the game does not let addons read or filter protected messages, so spam filters, links, history and sounds skip them. Blizzard can change its chat frames, so a part that cannot be found is skipped and listed as failed by `/xui chat`.
+
+### 12.11 Cursor Highlight and Gradient Cursor Trail
+
+Two separate effects (XayaUI QoL) that make the mouse cursor easy to find. Both are off by default.
+
+- **Cursor Highlight:** a colored shape (or a picture from the game's own cursor art) drawn at the cursor. Tabs: Shape | Color and Size | Behavior (only in combat, hide while turning the camera).
+- **Gradient Cursor Trail:** a trail of dots whose colors run through a gradient (ready-made or your own, 2 to 6 colors). Tabs: Colors | Dots | Behavior (trail length, hide while turning the camera).
+
+**Where:** QoL > Cursor. The Cursor page has an on/off switch for each; the two effects are listed under Cursor in the left pane, each with its own page. `/xui cursor` opens the Cursor page; `/xui cursor highlight` and `/xui cursor trail` open one effect. The tabs appear once that effect is on.
+
+**How the settings pages are laid out (all feature tabs, from 0.6.1 on):** a feature is an entry in the left pane, its parts are entries under it, and the sections of one part are tabs. The feature's own page holds its main switches.
 
 ## 13. Maintaining this document
 

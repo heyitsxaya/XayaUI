@@ -22,6 +22,36 @@ ns.OptionsApi = {}
 -- 2026-11-02, #274); the older QoL Elements entries (shelved; qolExtra) come last.
 ns.OptionsApi.TABS = { chat = { key = "chat", name = "Chat", order = 5 }, qol = { key = "qol", name = "QoL", order = 5.1 },
     bonus = { key = "bonus", name = "Bonus Features", order = 5.2 } }
+ns.OptionsApi.featureParents = {}   -- module -> { [page key] = true } for pages whose parts are left-pane nodes (filled by ModuleTabs)
+-- Feature tabs: a feature's node starts open, so its parts show in the left pane right away (Xaya, 2026-11-03). Only the first
+-- time per session: a node the user closed with its arrow stays closed.
+function ns.FeatureTreesOpen()
+    if not AceConfigDialog.GetStatusTable then return end
+    for module, tab in pairs(ns.OptionsApi.TABS) do
+        local parents = ns.OptionsApi.featureParents[module]
+        if parents and next(parents) then
+            local st = AceConfigDialog:GetStatusTable(APP, { tab.key })
+            if st then
+                st.groups = st.groups or {}
+                st.groups.groups = st.groups.groups or {}
+                for key in pairs(parents) do if st.groups.groups[key] == nil then st.groups.groups[key] = true end end
+            end
+        end
+    end
+end
+-- Picking a feature's own node opens it too (a closed node shows its parts again). Called by the sidebar's Select (Skin.lua).
+function ns.OptionsApi.OpenOnSelect(tree, uv)
+    if type(uv) ~= "string" or not AceConfigDialog.GetStatusTable then return end
+    local status = tree and (tree.status or tree.localstatus)
+    if not status then return end
+    for module, tab in pairs(ns.OptionsApi.TABS) do
+        local parents = ns.OptionsApi.featureParents[module]
+        if parents and parents[uv] then
+            local st = AceConfigDialog:GetStatusTable(APP, { tab.key })
+            if st and st.groups == status then status.groups = status.groups or {}; status.groups[uv] = true; return end
+        end
+    end
+end
 function ns.SettingsTabOf(module) local t = ns.OptionsApi.TABS[module]; return t and t.key or "qol" end
 function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
     local out = {}
@@ -42,12 +72,22 @@ function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
             return a.key < b.key
         end)
         for i, e in ipairs(list) do args[e.key].order = i end
+        -- a feature node with parts under it (childGroups = "tree", Modules.lua ns.SectionTabs note) starts open: ns.FeatureTreesOpen
+        local parents = {}
+        for key, ent in pairs(args) do
+            if ent.childGroups == "tree" then
+                for _, sub in pairs(ent.args or {}) do
+                    if type(sub) == "table" and sub.type == "group" and not sub.inline then parents[key] = true; break end
+                end
+            end
+        end
+        ns.OptionsApi.featureParents[module] = parents
         if next(args) then out[tab.key] = { type = "group", name = tab.name, order = tab.order, childGroups = "tree", args = args } end
     end
     return out
 end
 
-local function Notify() if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end if ns.SmartOpen then pcall(ns.SmartOpen) end if ns.FixSelection then pcall(ns.FixSelection) end AceConfigRegistry:NotifyChange(APP) end
+local function Notify() if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end if ns.SmartOpen then pcall(ns.SmartOpen) end if ns.FeatureTreesOpen then pcall(ns.FeatureTreesOpen) end if ns.FixSelection then pcall(ns.FixSelection) end AceConfigRegistry:NotifyChange(APP) end
 
 local function Changed(rule)
     if rule then
@@ -3370,13 +3410,15 @@ ns.UI.Drafts = function() ns.OpenPage("drafts") end
 ns.UI.RecycleBin = function() ns.OpenPage("recyclebin") end   -- toolbar button, next to Export
 -- a page a feature registered (ns.RegisterSettingsPage), by module and key; sub = a tab inside the page. Used through
 -- ns.OpenSettingsPage (Modules.lua) by /xui chat settings, /xui data, right-click on a data strip, the Notepad's gear, and more.
-function ns.OptionsApi.OpenPage(module, key, sub)
+function ns.OptionsApi.OpenPage(module, key, ...)
     if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then pcall(ns.OptionsApi.Toggle) end
     ns.pageOpen = nil; ns.infoOpen = false
     Notify()
     local tab = ns.SettingsTabOf and ns.SettingsTabOf(module) or "qol"
-    if sub then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, tab, key, sub)
-    else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, tab, key) end
+    -- ... = deeper path (a part under the page, then a tab inside it); a path that no longer exists falls back to the page itself
+    if not (select("#", ...) > 0 and pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, tab, key, ...)) then
+        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, tab, key)
+    end
 end
 ns.UI.Settings = function()
     -- the Settings button is a switch: a second click leaves the settings pages and brings the Rules tabs back
@@ -4324,6 +4366,7 @@ local function BuildOptions()
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
         args = { cooldowns = track, recyclebin = binTab, chat = modTabs.chat, qol = modTabs.qol, bonus = modTabs.bonus, profiles = BuildProfiles(), info = infoGroup, settings = settings, set = setPage } }
     pcall(ns.SmartOpen)
+    pcall(ns.FeatureTreesOpen)
     pcall(ns.ApplyTreeFilter, out)
     if ns.SkinRows and ns.SkinRows() then pcall(ns.InfoPass, out) end   -- the info icons are part of the skin
     return out

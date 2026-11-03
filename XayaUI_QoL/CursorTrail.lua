@@ -339,7 +339,7 @@ local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_LOGIN")
 ev:SetScript("OnEvent", function() ns.CursorTrail_Apply() end)
 
--- options: the "Cursor" tab ----------------------------------------------------
+-- options: the Gradient Cursor Trail page (QoL > Cursor > Gradient Cursor Trail) ----------------------------------------------------
 -- A text strip showing the gradient (colored 1-px-wide texture escapes), so the colors can be judged without leaving the window.
 local function Preview(c)
     local st = Stops(c)
@@ -394,8 +394,10 @@ function ns.BuildCursorTab(Notify)
             set = function(_, r, g, b) C().custom[i] = { r, g, b }; Changed() end }
     end
 
+    -- Colors | Dots | Behavior tabs under the on/off switch (Xaya, 2026-11-03: a part's sections are tabs)
+    custom.order = 5
     return {
-        type = "group", name = "Gradient Cursor Trail", order = 2,
+        type = "group", name = "Gradient Cursor Trail", order = 2, childGroups = "tab",
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "A gradient trail that follows your mouse cursor. Off by default." },
@@ -403,8 +405,8 @@ function ns.BuildCursorTab(Notify)
                 desc = "Turns the trail on. While it is off nothing is drawn or polled.",
                 get = function() return C().enabled and true or false end,
                 set = function(_, v) C().enabled = v and true or false; Changed() end },
-            settings = {
-                type = "group", name = "Trail", order = 2, inline = true, hidden = isOff,
+            colors = {
+                type = "group", name = "Colors", order = 2, hidden = isOff,
                 args = {
                     preset = { type = "select", order = 1, width = "double", name = "Gradient",
                         desc = "A ready-made gradient, or Custom to choose your own colors (2 to 6).",
@@ -413,6 +415,16 @@ function ns.BuildCursorTab(Notify)
                         set = function(_, v) C().preset = v; Changed() end },
                     preview = { type = "description", order = 2, width = "full", fontSize = "medium",
                         name = function() return Preview(C()) end },
+                    reverse = { type = "toggle", order = 4, name = "Reverse colors",
+                        desc = "Swaps the ends: the first color ends up at the tail of the trail instead of next to the cursor.",
+                        get = function() return C().reverse and true or false end,
+                        set = function(_, v) C().reverse = v and true or false; Changed() end },
+                    custom = custom,
+                },
+            },
+            dots = {
+                type = "group", name = "Dots", order = 3, hidden = isOff,
+                args = {
                     shape = { type = "select", order = 3, name = "Dot shape", values = shapeValues, sorting = shapeSorting,
                         get = function() return C().shape end,
                         set = function(_, v) C().shape = v; Changed() end },
@@ -421,37 +433,58 @@ function ns.BuildCursorTab(Notify)
                         hidden = function() return C().shape ~= "game" end,
                         get = function() return C().gamePath or "" end,
                         set = function(_, v) C().gamePath = tostring(v or ""):sub(1, 200); Changed() end },
-                    reverse = { type = "toggle", order = 4, name = "Reverse colors",
-                        desc = "Swaps the ends: the first color ends up at the tail of the trail instead of next to the cursor.",
-                        get = function() return C().reverse and true or false end,
-                        set = function(_, v) C().reverse = v and true or false; Changed() end },
-                    length = { type = "range", order = 5, name = "Trail length (seconds)", min = 0.2, max = 1.5, step = 0.05,
-                        get = function() return C().length end,
-                        set = function(_, v) C().length = v; Changed() end },
                     size = { type = "range", order = 6, name = "Dot size", min = 6, max = 48, step = 1,
                         get = function() return C().size end,
                         set = function(_, v) C().size = v; Changed() end },
                     opacity = { type = "range", order = 7, name = "Opacity", min = 0.1, max = 1, step = 0.05, isPercent = true,
                         get = function() return C().opacity end,
                         set = function(_, v) C().opacity = v; Changed() end },
+                },
+            },
+            behavior = {
+                type = "group", name = "Behavior", order = 4, hidden = isOff,
+                args = {
+                    length = { type = "range", order = 5, name = "Trail length (seconds)", min = 0.2, max = 1.5, step = 0.05,
+                        get = function() return C().length end,
+                        set = function(_, v) C().length = v; Changed() end },
                     hideMouselook = { type = "toggle", order = 8, width = "double", name = "Hide while turning the camera (mouselook)",
                         get = function() return C().hideMouselook and true or false end,
                         set = function(_, v) C().hideMouselook = v and true or false; Changed() end },
                 },
             },
-            custom = custom,
         },
     }
 end
 
--- The whole Cursor page (left tree entry of the QoL tab): Cursor Highlight is the first tab, Gradient Cursor Trail the second.
+-- The Cursor node of the QoL tab (Xaya, 2026-11-03): its parts, Cursor Highlight and Gradient Cursor Trail, are nodes under it in
+-- the left pane; Cursor's own page is an overview with both on/off switches (the same settings as the switch on each part's page).
 function ns.BuildCursorGroup(Notify)
     local hl = ns.BuildCursorHighlightTab and ns.BuildCursorHighlightTab(Notify) or nil
     local tr = ns.BuildCursorTab(Notify)
-    return { type = "group", name = "Cursor", order = 2, childGroups = "tab", args = { highlight = hl, trail = tr } }
+    local overview = {
+        intro = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = "Two separate effects that make your mouse cursor easy to find. Turn either on here, then pick it on the left to set it up." },
+    }
+    if hl and hl.args and hl.args.enabled then
+        overview.highlightOn = { type = "toggle", order = 1, width = "full", name = "Cursor Highlight",
+            desc = "A colored shape that follows your mouse cursor.", get = hl.args.enabled.get, set = hl.args.enabled.set }
+    end
+    if tr and tr.args and tr.args.enabled then
+        overview.trailOn = { type = "toggle", order = 2, width = "full", name = "Gradient Cursor Trail",
+            desc = "A gradient trail that follows your mouse cursor.", get = tr.args.enabled.get, set = tr.args.enabled.set }
+    end
+    overview.highlight = hl
+    overview.trail = tr
+    return { type = "group", name = "Cursor", order = 2, childGroups = "tree", args = overview }
 end
 
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
 ns.RegisterSettingsPage("qol", "cursor", ns.BuildCursorGroup)
+-- /xui cursor [highlight|trail]: open the Cursor settings (Modules.lua lists this command as QoL's; it was never registered before 0.6.1)
+ns.RegisterCommand("cursor", function(arg)
+    arg = tostring(arg or ""):lower()
+    local part = (arg:find("^high") and "highlight") or (arg:find("^trail") and "trail") or nil
+    if part then ns.OpenSettingsPage("qol", "cursor", part) else ns.OpenSettingsPage("qol", "cursor") end
+end, "/xui cursor [highlight|trail] (cursor highlight and trail settings)")

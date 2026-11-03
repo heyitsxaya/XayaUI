@@ -306,6 +306,32 @@ return table.concat(bad, '\\n')
 """)
 check("every option has name/get/set and its getters run", str(bad) == "", bad)
 
+# ---- layout (Xaya, 2026-11-03): parts are left-pane nodes under Chat Panel; each part's sections are tabs ---------------------
+shape = run("""
+local o = ns.BuildChatTab(function() end)
+local out = { o.childGroups }
+for _, k in ipairs({ 'enabled', 'theme', 'intro' }) do out[#out+1] = (o.args[k] and o.args[k].type ~= 'group') and ('top:' .. k) or ('missing:' .. k) end
+local headers = 0
+local function walk(t) for _, v in pairs(t.args or {}) do if v.type == 'header' then headers = headers + 1 end if v.type == 'group' then walk(v) end end end
+walk(o)
+out[#out+1] = 'headers:' .. headers
+for _, k in ipairs({ 'layout', 'look', 'bar', 'behavior', 'filters', 'history', 'privacy' }) do out[#out+1] = k .. ':' .. tostring(o.args[k] and o.args[k].childGroups) end
+out[#out+1] = 'sounds:' .. tostring(o.args.sounds and o.args.sounds.childGroups)
+out[#out+1] = 'layoutTop:' .. tostring(o.args.layout.args.enabled == nil and o.args.layout.args.theme == nil)
+local p = o.args.privacy.args
+out[#out+1] = 'privOrder:' .. tostring(p.tab_lookHdr.order < p.tab_btnHdr.order and p.tab_btnHdr.order < p.tab_areaHdr.order)
+out[#out+1] = 'privTop:' .. tostring(p.on ~= nil and p.start ~= nil and p.btn == nil and p.tab_btnHdr.args.btn ~= nil)
+out[#out+1] = 'blocks:' .. tostring(o.args.bar.args.tab_blocksHdr ~= nil and o.args.bar.args.tab_blocksHdr.args.slot1 ~= nil and o.args.bar.args.on ~= nil)
+return table.concat(out, ' ')
+""")
+want = ["tree", "top:enabled", "top:theme", "top:intro", "headers:0", "layout:tab", "look:tab", "bar:tab", "behavior:tab", "filters:tab",
+        "history:tab", "privacy:tab", "sounds:nil", "layoutTop:true", "privOrder:true", "privTop:true", "blocks:true"]
+check("Chat Panel: parts under it, panel switches on its own page, sections as tabs (Privacy: Look, Button, Area)", str(shape).split() == want, shape)
+opened = []
+run("_G.__open = {}; ns.OpenSettingsPage = function(...) _G.__open = { ... } end")
+run("C.OpenSettings('bar', 'tab_blocksHdr')")
+check("right-click path opens Chat Bar > Blocks", str(run("return table.concat(_G.__open, '>')")) == "chat>chatpanel>bar>tab_blocksHdr")
+
 # ---- settings changes through the option setters actually refresh the layout ----------------------------------------------
 run("""
 local function find(t, key) for k, v in pairs(t.args or {}) do if k == key then return v end local r = v.args and find(v, key) if r then return r end end end

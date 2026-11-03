@@ -73,5 +73,33 @@ check("all pages build", lua("local n = 0 for _ in pairs(ns.BuildSettingsPages(n
 check("a broken page is skipped and reported", lua("return #ERRORS") == 1)
 check("pages filter by module", lua('local t = ns.BuildSettingsPages("bonus") return t.notepad ~= nil and t.chatpanel == nil'))
 
+# 5b. ns.SectionTabs: a part's header sections become tabs (Xaya, 2026-11-03)
+lua(r'''
+HID = function() return true end
+G = { type = "group", name = "Part", args = {
+  note  = { type = "description", order = 1, name = "top note" },
+  sw    = { type = "toggle", order = 2, name = "On", get = function() end, set = function() end },
+  aHdr  = { type = "header", order = 10, name = "Alpha", desc = "about alpha" },
+  a1    = { type = "range", order = 11, name = "a1", get = function() end, set = function() end },
+  a2    = { type = "group", order = 12, name = "a2", inline = true, args = { x = { type = "toggle", name = "x", order = 1 } } },
+  bHdr  = { type = "header", order = function() return 20 end, name = "Beta", hidden = HID },
+  b1    = { type = "toggle", order = 20, name = "b1", get = function() end, set = function() end },
+  b2    = { type = "select", order = 99, name = "b2", values = {}, get = function() end, set = function() end },
+} }
+function LEAVES(t) local n = 0 for _, v in pairs(t.args or {}) do if v.type == "group" then n = n + LEAVES(v) elseif v.type ~= "header" then n = n + 1 end end return n end
+BEFORE = LEAVES(G)
+R = ns.SectionTabs(G)
+''')
+check("SectionTabs returns the same group, now with tabs", lua('return R == G and G.childGroups == "tab"'))
+check("entries before the first header stay above the tabs", lua('return G.args.note ~= nil and G.args.sw ~= nil'))
+check("no header is left", lua('for _, v in pairs(G.args) do if v.type == "header" then return false end end return true'))
+check("each header became a tab with its own entries", lua('local a, b = G.args.tab_aHdr, G.args.tab_bHdr return a and b and a.type == "group" and a.name == "Alpha" and a.args.a1 and a.args.a2 and b.args.b1 and b.args.b2 and a.order == 10 and b.order == 20'))
+check("an entry with the same order as a header belongs to that header's tab", lua('return G.args.tab_bHdr.args.b1 ~= nil and G.args.tab_aHdr.args.b1 == nil'))
+check("a header's desc becomes the tab's first line", lua('local s = G.args.tab_aHdr.args.sectionNote return s and s.name == "about alpha" and s.order < 11'))
+check("a header's hidden carries over to its tab", lua('return G.args.tab_bHdr.hidden == HID and G.args.tab_aHdr.hidden == nil'))
+check("no setting is lost (leaf count unchanged, apart from the added tab notes)", lua('return LEAVES(G) == BEFORE + 1'))
+check("a group without headers is left as it was", lua('local g = { type = "group", args = { x = { type = "toggle", order = 1 } } } ns.SectionTabs(g) return g.childGroups == nil and g.args.x ~= nil'))
+check("SectionTabs ignores nonsense", lua('return ns.SectionTabs(nil) == nil and ns.SectionTabs(5) == 5'))
+
 print("%d checks, %d failed" % (n, fails))
 raise SystemExit(1 if fails else 0)

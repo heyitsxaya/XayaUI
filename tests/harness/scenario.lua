@@ -84,11 +84,22 @@ step("slash commands")
 local commands = { "status", "debug", "icons", "debuffs", "debuffs target 1234", "probe 203720", "probe ids", "talents", "talents status", "model",
   "model 203819", "tracker status", "mods", "groups", "loc", "timing", "perf", "perf on", "perf off", "perf ui", "perf ui", "unlock", "unlock", "media",
   "console", "console", "bug", "chat", "chat status", "chat wrap", "chat history", "chat history", "chat move", "chat move", "panel", "chatprobe",
-  "privacy", "privacy", "data", "notes", "notes", "gamemenu", "cursor", "nonsense-command" }
+  "privacy", "privacy", "data", "notes", "notes", "gamemenu", "cursor", "cursor highlight", "cursor trail", "chat settings", "panel",
+  "nonsense-command" }
 S.commands = 0
 local xui = SlashCmdList and SlashCmdList["XAYAUI"]
 if xui then
-  for _, c in ipairs(commands) do S.step = "slash /xui " .. c; W.safecall(xui, c); S.commands = S.commands + 1; W.tick(0.1, 2) end
+  for _, c in ipairs(commands) do
+    S.step = "slash /xui " .. c
+    local before = #W.printed
+    W.safecall(xui, c); S.commands = S.commands + 1; W.tick(0.1, 2)
+    -- A feature command whose addon IS loaded but never registered it (Modules.lua ns.ModuleMissingText) is a bug, not a message.
+    for i = before + 1, #W.printed do
+      if tostring(W.printed[i]):find("the command was never registered", 1, true) then
+        W.errors[#W.errors + 1] = "/xui " .. c .. ": " .. tostring(W.printed[i])
+      end
+    end
+  end
 end
 -- every other slash command our addons added (their names start with XUI or XAYA)
 for key, fn in pairs(SlashCmdList or {}) do

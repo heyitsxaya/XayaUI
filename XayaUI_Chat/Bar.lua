@@ -158,7 +158,7 @@ local function MakeSlot(i)
     slot:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     slot:SetScript("OnClick", function(_, button)
         local s = S(); if not s then return end
-        if button == "RightButton" then if C.OpenSettings then C.OpenSettings("bar") end return end
+        if button == "RightButton" then if C.OpenSettings then C.OpenSettings("bar", "tab_blocksHdr") end return end
         local pr = Prov(s["barType" .. i])
         if pr and pr.click then pcall(pr.click) end
     end)

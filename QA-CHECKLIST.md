@@ -1,4 +1,4 @@
-# XayaUI QA checklist (0.6.0)
+# XayaUI QA checklist (0.6.1)
 
 For testers. Tick each box in order; when something does not match the **Expect** line, stop that section and report it (see the end). Every step lists what you should see, so "it looked fine" is never a guess.
 
@@ -35,6 +35,8 @@ For testers. Tick each box in order; when something does not match the **Expect*
 ## D. XayaUI Chat
 
 - [ ] **D1.** With Chat on: **Expect** the restyled chat panel as before; `/xui chat` prints its commands; `/xui chat settings` opens Chat > Chat Panel.
+- [ ] **D1b.** In the window: Chat > Chat Panel. **Expect:** the Chat Panel page shows Enable Chat Panel and the theme switch; under Chat Panel in the left pane: Layout, Appearance, Chat Bar, Fade and hide, Filters, History, Sounds, Privacy. Click Appearance: tabs Background and border | Chat text | Tabs | Input line. Click Privacy: tabs Look | Button | Area and behavior. Every setting you had before is still there and keeps its value.
+- [ ] **D1c.** Right-click a block on the Chat Bar. **Expect:** the window opens on Chat > Chat Panel > Chat Bar, Blocks tab.
 - [ ] **D2.** A keyword or filter rule on the Chat Panel's Filters tab (for example highlight your name): have someone say it. **Expect:** it is highlighted or filtered (fixed in 0.6.0 for clients without the old chat functions).
 - [ ] **D3.** Click the input area under the panel. **Expect:** the chat edit box opens. Collapse the panel while typing. **Expect:** the edit box closes.
 - [ ] **D4.** `/xui privacy` twice. **Expect:** the cover hides the chat, then shows it again.
@@ -42,7 +44,9 @@ For testers. Tick each box in order; when something does not match the **Expect*
 
 ## E. XayaUI QoL
 
-- [ ] **E1.** QoL > Cursor: switch on Cursor Highlight and the Gradient Cursor Trail. **Expect:** the ring and trail follow the mouse; the ring textures show (not green squares).
+- [ ] **E1.** QoL > Cursor. **Expect:** the Cursor page has two switches (Cursor Highlight, Gradient Cursor Trail), and both appear under Cursor in the left pane. Switch both on. **Expect:** the ring and trail follow the mouse; the ring textures show (not green squares).
+- [ ] **E1b.** Click Cursor Highlight on the left. **Expect:** its switch at the top and the tabs Shape | Color and Size | Behavior. Click Gradient Cursor Trail. **Expect:** Colors | Dots | Behavior. Switch an effect off: its tabs go away, the switch stays.
+- [ ] **E1c.** Type `/xui cursor`, then `/xui cursor trail`. **Expect:** the window opens on the Cursor page, then on Gradient Cursor Trail (no "did not respond" line).
 - [ ] **E2.** Switch **XayaUI QoL** off, relog. **Expect:** no cursor changes, no QoL tab, no error.
 
 ## F. XayaUI Bonus Features

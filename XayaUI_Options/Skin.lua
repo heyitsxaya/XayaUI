@@ -725,6 +725,7 @@ local function SkinTree(w)
             end
             self.xuiLastSelUV = uv
             if ns.Trace then ns.Trace("tree new selection") end
+            if ns.OptionsApi and ns.OptionsApi.OpenOnSelect then pcall(ns.OptionsApi.OpenOnSelect, self, uv) end   -- a feature node shows its parts
             return origSelect(self, uv, ...)
         end
         AddRest(w, "sel", function(self) self.Select = origSelect; self.xuiSelHooked = nil end)

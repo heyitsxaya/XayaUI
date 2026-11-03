@@ -285,6 +285,7 @@ function ns.ChatPrivacy_Options(Notify)
             name = "A cover that sits over the Chat Panel's text and input line. The small eye button beside the chat turns it on and off, and so does /xui privacy. It only hides the chat visually; messages still arrive and are still logged." },
         on = { type = "toggle", order = 1, width = "full", name = "Cover the chat now", get = get("privOn"), set = set("privOn") },
         start = { type = "toggle", order = 2, width = "full", name = "Cover the chat at every login", get = get("privStartHidden"), set = set("privStartHidden") },
+        btnHdr = { type = "header", order = 2.5, name = "Button" },
         btn = { type = "toggle", order = 3, width = "full", name = "Show the toggle button beside the chat", get = function() return S().privBtn ~= false end, set = set("privBtn") },
         bsize = { type = "range", order = 3.5, name = "Button size (pixels)", min = 16, max = 64, step = 1, get = get("privBtnSize"), set = set("privBtnSize") },
         balpha = { type = "range", order = 3.6, name = "Button opacity when the mouse is away (%)", min = 20, max = 100, step = 5, get = get("privBtnAlpha"), set = set("privBtnAlpha") },

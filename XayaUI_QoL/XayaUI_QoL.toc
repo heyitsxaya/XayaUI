@@ -2,7 +2,7 @@
 ## Title: XayaUI QoL
 ## Notes: XayaUI quality-of-life changes: cursor highlight and cursor trail (friends and bags come later). Needs XayaUI.
 ## Author: Xaya
-## Version: 0.6.0
+## Version: 0.6.1
 ## X-Date: 2026-11-03
 ## Dependencies: XayaUI
 ## Group: XayaUI

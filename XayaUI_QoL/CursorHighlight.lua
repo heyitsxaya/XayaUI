@@ -237,7 +237,8 @@ local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_LOGIN")
 ev:SetScript("OnEvent", function() ns.CursorHighlight_Apply() end)
 
--- options: the "Cursor Highlight" tab --------------------------------------------
+-- options: the Cursor Highlight page (QoL > Cursor > Cursor Highlight in the left pane) ----------------------------------------
+-- The on/off switch stays at the top; everything else sits in tabs (Shape | Color and Size | Behavior), shown once it is on.
 function ns.BuildCursorHighlightTab(Notify)
     local function C() return Ensure() or ns.CURSORHIGHLIGHT_DEFAULTS end
     local function Changed() ns.CursorHighlight_Apply(); if Notify then Notify() end end
@@ -245,7 +246,7 @@ function ns.BuildCursorHighlightTab(Notify)
     local shapeValues = {}
     for _, k in ipairs(SHAPE_ORDER) do shapeValues[k] = SHAPES[k][1] end
     return {
-        type = "group", name = "Cursor Highlight", order = 1,
+        type = "group", name = "Cursor Highlight", order = 1, childGroups = "tab",
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "A colored shape that follows your mouse cursor so you can find it at a glance. Off by default." },
@@ -253,48 +254,58 @@ function ns.BuildCursorHighlightTab(Notify)
                 desc = "Turns the highlight on. While it is off nothing is drawn or polled.",
                 get = function() return C().enabled and true or false end,
                 set = function(_, v) C().enabled = v and true or false; Changed() end },
-            settings = {
-                type = "group", name = "Highlight", order = 2, inline = true, hidden = isOff,
+            shape = {
+                type = "group", name = "Shape", order = 2, hidden = isOff,
                 args = {
                     shape = { type = "select", order = 1, name = "Shape", values = shapeValues, sorting = SHAPE_ORDER,
                         get = function() return C().shape end,
                         set = function(_, v) C().shape = v; Changed() end },
-                    style = { type = "select", order = 1.5, name = "Style", values = { fill = "Filled", outline = "Outline only (just the perimeter line)" }, sorting = { "fill", "outline" },
+                    style = { type = "select", order = 2, name = "Style", values = { fill = "Filled", outline = "Outline only (just the perimeter line)" }, sorting = { "fill", "outline" },
                         desc = "Outline draws only the edge of a circle, square or diamond, so you can see what is under the cursor.",
                         hidden = function() return not OUTLINE_OK[C().shape] end,
                         get = function() return C().style end,
                         set = function(_, v) C().style = v; Changed() end },
-                    thickness = { type = "range", order = 1.6, name = "Outline thickness", min = 1, max = 12, step = 1,
+                    thickness = { type = "range", order = 3, name = "Outline thickness", min = 1, max = 12, step = 1,
                         hidden = function() return not (OUTLINE_OK[C().shape] and C().style == "outline") end,
                         get = function() return C().thickness end,
                         set = function(_, v) C().thickness = v; Changed() end },
-                    art = { type = "select", order = 1.7, name = "Game cursor picture", values = function() local t = {}; for k, v in pairs(ART) do t[k] = v[1] end; return t end, sorting = ART_ORDER,
+                    art = { type = "select", order = 4, name = "Game cursor picture", values = function() local t = {}; for k, v in pairs(ART) do t[k] = v[1] end; return t end, sorting = ART_ORDER,
                         desc = "A picture from the game's own Interface\\Cursor folder, drawn at the cursor IN ADDITION to the real pointer (an addon cannot hide the real pointer). Not yet checked in game: a green square means the path is wrong.",
                         hidden = function() return C().shape ~= "art" end,
                         get = function() return C().art end,
                         set = function(_, v) C().art = v; Changed() end },
-                    artPath = { type = "input", order = 1.8, name = "Picture path", width = "double",
+                    artPath = { type = "input", order = 5, name = "Picture path", width = "double",
                         desc = "Any game texture: a full in-game path (Interface\\Cursor\\Taxi, Interface\\Icons\\Spell_Nature_Lightning), a numeric file ID, or an atlas name. Files inside Interface\\AddOns work too (.blp, .tga or .png with power-of-two sides).",
                         hidden = function() return C().shape ~= "art" or C().art ~= "custom" end,
                         get = function() return C().artPath end,
                         set = function(_, v) C().artPath = tostring(v or ""):sub(1, 200); Changed() end },
-                    keepColors = { type = "toggle", order = 1.9, width = "double", name = "Keep the picture's own colors (no tint)",
+                    keepColors = { type = "toggle", order = 6, width = "double", name = "Keep the picture's own colors (no tint)",
                         hidden = function() return C().shape ~= "art" end,
                         get = function() return C().keepColors and true or false end,
                         set = function(_, v) C().keepColors = v and true or false; Changed() end },
-                    color = { type = "color", order = 2, name = "Color", hasAlpha = true,   -- the picker's transparency is the Opacity setting below
+                },
+            },
+            look = {
+                type = "group", name = "Color and Size", order = 3, hidden = isOff,
+                args = {
+                    color = { type = "color", order = 1, name = "Color", hasAlpha = true,   -- the picker's transparency is the Opacity setting below
                         get = function() local col = C().color; return col[1], col[2], col[3], C().opacity or 0.35 end,
                         set = function(_, r, g, b, a) C().color = { r, g, b }; if a then C().opacity = math.max(0.05, math.floor(a * 20 + 0.5) / 20) end; Changed() end },
-                    size = { type = "range", order = 3, name = "Size", min = 16, max = 160, step = 1,
+                    size = { type = "range", order = 2, name = "Size", min = 16, max = 160, step = 1,
                         get = function() return C().size end,
                         set = function(_, v) C().size = v; Changed() end },
-                    opacity = { type = "range", order = 4, name = "Opacity", min = 0.05, max = 1, step = 0.05, isPercent = true,
+                    opacity = { type = "range", order = 3, name = "Opacity", min = 0.05, max = 1, step = 0.05, isPercent = true,
                         get = function() return C().opacity end,
                         set = function(_, v) C().opacity = v; Changed() end },
-                    combatOnly = { type = "toggle", order = 5, width = "double", name = "Only show in combat",
+                },
+            },
+            behavior = {
+                type = "group", name = "Behavior", order = 4, hidden = isOff,
+                args = {
+                    combatOnly = { type = "toggle", order = 1, width = "double", name = "Only show in combat",
                         get = function() return C().combatOnly and true or false end,
                         set = function(_, v) C().combatOnly = v and true or false; Changed() end },
-                    hideMouselook = { type = "toggle", order = 6, width = "double", name = "Hide while turning the camera (mouselook)",
+                    hideMouselook = { type = "toggle", order = 2, width = "double", name = "Hide while turning the camera (mouselook)",
                         get = function() return C().hideMouselook and true or false end,
                         set = function(_, v) C().hideMouselook = v and true or false; Changed() end },
                 },

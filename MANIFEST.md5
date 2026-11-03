@@ -4,11 +4,11 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-7e72064bbdd272e827818f2c910b6b1e  QA-CHECKLIST.md
+bd8e0cfd217a76b410a2122309f709da  QA-CHECKLIST.md
 bd91fc606958a2216eee20e4178da655  README.md
 b826130d056956a70c3b6a5d50fb5e41  ROADMAP.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-751255c8e031fc88c0c6fbab5035d65d  USER-GUIDE.md
+aaf8bcec310ff6052e8ca05ebdd8bf35  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
 40b7591dd5f7fe4f0c4b0f5a965155bb  XayaUI/ClassLearn.lua
@@ -90,7 +90,7 @@ e94cfc0c3fc54c4e5188a7aadaf41d90  XayaUI/Media/UI/xui_progresstex.tga
 66226a0137e47566a0fd0ce9c41e6bcc  XayaUI/Media/UI/xui_sttexture.tga
 30d50e1964ffdb6d81b4e902ecb5accd  XayaUI/Media/UI/xui_text.tga
 97e47b6ce28ec4d1218ae800136c1e97  XayaUI/MinimapButton.lua
-b3f3556d8663a483d0e819c5b2eefcf6  XayaUI/Modules.lua
+4f50e1ee7a3e7349880d5c8d3fcf1570  XayaUI/Modules.lua
 5bf0711c59912f38edb950576c0a187a  XayaUI/Outcomes.lua
 b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 454d9c7477395f84a1f31950034b8c75  XayaUI/Sound.lua
@@ -101,7 +101,7 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 9ee3324fccbe74caf8d43bfe71999291  XayaUI/Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  XayaUI/UserMedia.lua
 5dc90d0b9fcd4ea1fa1183e384e7c844  XayaUI/Visual.lua
-9b0995f6932a63dc7e03b10b31703ff1  XayaUI/XayaUI.toc
+54e6379bfb7a895ec788e12ef55051ba  XayaUI/XayaUI.toc
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -130,7 +130,7 @@ bd5ad941d96408c9a0a6d431144f65b7  XayaUI_Bonus/Notepad.lua
 7c39f7c23a198007716aa50ae7cc97bb  XayaUI_Bonus/Tooltips.lua
 3bdbe04fec65f2518c41bfb5df7b6aa3  XayaUI_Bonus/TooltipsUI.lua
 5937ff4ea0d399362128fc40530fd2c6  XayaUI_Bonus/XayaUI_Bonus.toc
-08a8c527a37bdf71314973ab74d95636  XayaUI_Chat/Bar.lua
+83c87e8920a975caccb49149edab3556  XayaUI_Chat/Bar.lua
 2a9737ae2caa496c9b5d3e5747e5d950  XayaUI_Chat/Core.lua
 691117347e0437f78c88e3734c54c438  XayaUI_Chat/Fade.lua
 8524d53ecf0e78ac43a250103d6d0157  XayaUI_Chat/Frame.lua
@@ -138,12 +138,12 @@ bd5ad941d96408c9a0a6d431144f65b7  XayaUI_Bonus/Notepad.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 fead8e3ce9e3203085d2516b6e967c51  XayaUI_Chat/Locate.lua
 41d22f24985c521d09267efaa3217f9b  XayaUI_Chat/Messages.lua
-55e929999e3dec633cad179260fdc774  XayaUI_Chat/Options.lua
-14dc8f8069b80dc70c2edf7eec176330  XayaUI_Chat/Privacy.lua
+05a8bffdb22579571745f0975404581f  XayaUI_Chat/Options.lua
+9d4b2a2b5630132d0c0aceafb1eff313  XayaUI_Chat/Privacy.lua
 702bf934e55a476b21d3f912fb1c9d27  XayaUI_Chat/Probe.lua
 0d7c325a5b9a1bcbbcac9746295b8cd0  XayaUI_Chat/Skin.lua
 924ed63c29e3249e9052308753382184  XayaUI_Chat/Sounds.lua
-1399a94792bb8aa6acd15a5fcd72817e  XayaUI_Chat/XayaUI_Chat.toc
+9cc077ab661c4a6e5210b3606cafbd83  XayaUI_Chat/XayaUI_Chat.toc
 96a62368d1a1215dd73fc9fdf4e71716  XayaUI_GameDump/GameDump.lua
 f2775456d146dcf3ca0f5cccfa9d5e84  XayaUI_GameDump/XayaUI_GameDump.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
@@ -191,14 +191,14 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-4b5a0e5a975ef6550c3002c1597158f0  XayaUI_Options/Options.lua
+2a4836a2d6728ed02206711b57f836bc  XayaUI_Options/Options.lua
 13158526a0ecd991f4526104fa1ef452  XayaUI_Options/OutcomesEditor.lua
-48ec2b1205515c3f3d25c57ca27afdd2  XayaUI_Options/Skin.lua
+d88d32aef5e1f8c8f237f298bd6589b3  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 c4b6034528e60b2b5b572ca05d12d064  XayaUI_Options/TriggersEditor.lua
-e1477a3ff7183d07efaad026f807bcd1  XayaUI_Options/XayaUI_Options.toc
-978624ff9ce30493d2627c7dc748af92  XayaUI_QoL/CursorHighlight.lua
-1d31acfbfa4db4bd9807af5f890945a1  XayaUI_QoL/CursorTrail.lua
+1c5c5c0c352a8a118159c4a09e231837  XayaUI_Options/XayaUI_Options.toc
+98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
+e961de31e54ee41494bbd60ea3a2f996  XayaUI_QoL/CursorTrail.lua
 deef89f1ad9818ceb2f2d16c7e57ecaf  XayaUI_QoL/Media/Cursor/Arrow.tga
 55814a3db06aefcf919a6b8adc915d39  XayaUI_QoL/Media/Cursor/CircleHD.tga
 ee3e8c1489d55a6c47659502215c7c3d  XayaUI_QoL/Media/Cursor/Crosshair.tga
@@ -234,7 +234,7 @@ adf8cff0618432b3e10ee3d3091c09c1  XayaUI_QoL/Media/Cursor/HLRing_19.tga
 f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 08343552c22eb2676c663b0576e218c3  XayaUI_QoL/Media/Cursor/RingThick.tga
 054aa82635cfab8851fded7704d8f102  XayaUI_QoL/Media/Cursor/Sparkle.tga
-24e729d15b8b97f0b2456d5e683e2305  XayaUI_QoL/XayaUI_QoL.toc
+a8b117384f8a3392f2bb49719a78b982  XayaUI_QoL/XayaUI_QoL.toc
 6c204c615c32aeec49965a86f9649ccb  XayaUI_Reskin/GameMenuSkin.lua
 920bbd6d916017df661baf257a16b7d2  XayaUI_Reskin/XayaUI_Reskin.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
@@ -342,7 +342,7 @@ a354cbbb54ff4fb130af0063a401df9b  tests/Conditions.pre-0.5.83.lua
 1bc56b22adb5f1e1aa4a345d9fa19b8b  tests/aspect_run.py
 0e26218e09a9363dfa4c1d614cba2f95  tests/aura_display_run.py
 80c84f1f7ef017e7f04a6c3be28a3910  tests/aura_sources_run.py
-ddf0a2a56f9df7595ae459e9e2679a30  tests/chat_run.py
+dcd1c7792f7a36d1c3dd05b49eb6f2f7  tests/chat_run.py
 011ed4393337e4f3ffbc1a619ba02f1a  tests/chat_world.lua
 abe22a2816956a2c3babb802857cc524  tests/chatprobe_run.py
 c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
@@ -355,14 +355,14 @@ a36a03ecc872c2cf4b1b410e1aeba87e  tests/harness/build_api_index.py
 e419bc6fcc002cffc52e4a48a97807a8  tests/harness/build_framexml_index.py
 6f6d8a592b30903806cc446181eef8f5  tests/harness/loader.lua
 a86f56d3d0f0e1ed426ca5decffcbdbf  tests/harness/run.py
-05b70849d52361a08595dac9395c5f5f  tests/harness/scenario.lua
+65d36dfcb52b702837581ae71974958f  tests/harness/scenario.lua
 5cba875df79818b481d68b57f135aad6  tests/harness/world.lua
 4957fdc7190a0ee9fb2a985e1cbf982a  tests/import_run.py
 9a690e529ca4f2559aecc0cef6dbe042  tests/layout_parity_run.py
 a355daa7ba9fd11eb5737ffe110e4b57  tests/load_class_run.py
 77132f082006e60b78f5bbdc7cc3c57f  tests/lua51.py
 f19616c7613194a3b65115c2c4405087  tests/minimap_run.py
-3c47bfcf1eddcc8090d08c5e83d549a6  tests/modules_run.py
+adb52b5f86b97b5ac549353e59d97f36  tests/modules_run.py
 1b83e47e74181dd789ddcafe4b0d937e  tests/notepad_run.py
 b98b8b93e9068a136e462260a2aefcd1  tests/perf_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py

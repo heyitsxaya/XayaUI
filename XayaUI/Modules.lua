@@ -156,6 +156,55 @@ function ns.RegisterSettingsPage(module, key, build)
     pages[#pages + 1] = { module = module, key = key, build = build }
 end
 
+-- Page layout for every feature tab (Xaya, 2026-11-03; QoL and Chat first, the rule for new features):
+--   * a feature is a node in the left pane; its parts are child nodes under it (the feature's group has childGroups = "tree"),
+--     and the feature's own node shows its overview (on/off switches, a short note);
+--   * inside one part, its sections are tabs.
+-- ns.SectionTabs(group) gives a part that shape from a flat list: everything before the first header stays above the tabs, and
+-- each header becomes a tab holding the entries up to the next header. The header's desc becomes the tab's first line and its
+-- hidden carries over. The group is changed in place and returned; a group without headers is returned unchanged.
+function ns.SectionTabs(group)
+    local args = type(group) == "table" and group.args
+    if type(args) ~= "table" then return group end
+    local function ord(e)
+        local o = e.order
+        if type(o) == "function" then local ok, v = pcall(o); o = ok and v or nil end
+        return tonumber(o) or 100
+    end
+    local heads = {}
+    for k, e in pairs(args) do
+        if type(e) == "table" and e.type == "header" then heads[#heads + 1] = { key = k, e = e, o = ord(e) } end
+    end
+    if #heads == 0 then return group end
+    table.sort(heads, function(a, b) if a.o ~= b.o then return a.o < b.o end return tostring(a.key) < tostring(b.key) end)
+    local tabs = {}
+    for i, h in ipairs(heads) do
+        tabs[i] = { type = "group", name = h.e.name, order = h.o, hidden = h.e.hidden, args = {} }
+        if h.e.desc ~= nil and h.e.desc ~= "" then
+            tabs[i].args.sectionNote = { type = "description", order = h.o - 0.001, width = "full", fontSize = "medium", name = h.e.desc }
+        end
+    end
+    local moves = {}
+    for k, e in pairs(args) do
+        if type(e) == "table" and e.type ~= "header" then
+            local o, at = ord(e), nil
+            for i = #heads, 1, -1 do if heads[i].o <= o then at = i; break end end
+            if at then moves[#moves + 1] = { k = k, at = at } end
+        end
+    end
+    for _, m in ipairs(moves) do
+        local dest = tabs[m.at].args
+        local key = (m.k == "sectionNote") and "sectionNote2" or m.k
+        dest[key] = args[m.k]; args[m.k] = nil
+    end
+    for i, h in ipairs(heads) do
+        args[h.key] = nil
+        args["tab_" .. tostring(h.key)] = tabs[i]
+    end
+    group.childGroups = "tab"
+    return group
+end
+
 -- { [key] = group } for every page of one module (or of all modules when module is nil). A page whose builder errors is skipped.
 function ns.BuildSettingsPages(module, Notify)
     local out = {}
@@ -218,7 +267,8 @@ end
 function ns.ToggleUI() if ns.LoadOptions() then ns.Options.Toggle() end end
 function ns.EditRule(rule) if rule and ns.LoadOptions() then ns.Options.EditRule(rule) end end
 -- module = "chat" | "qol" | "bonus" | "reskin" | "core"; key = the page registered with ns.RegisterSettingsPage; sub = a tab inside it
-function ns.OpenSettingsPage(module, key, sub) if ns.LoadOptions() then ns.Options.OpenPage(module, key, sub) end end
+-- ... = the path below the page: a part (left-pane child node) and/or a tab, e.g. ("chat", "chatpanel", "bar", "tab_blocksHdr")
+function ns.OpenSettingsPage(module, key, ...) if ns.LoadOptions() then ns.Options.OpenPage(module, key, ...) end end
 function ns.IconReport() if ns.LoadOptions() and ns.Options.IconReport then ns.Options.IconReport() end end
 function ns.IsOptionsOpen() return ns.Options and ns.Options.IsOpen and ns.Options.IsOpen() or false end
 

@@ -1,6 +1,7 @@
 -------------------------------------------------------------------------------
--- Options.lua (XayaUI Chat) : the Chat Panel settings page (Chat > Chat Panel). Tabs: Layout, Appearance, Chat Bar, Fade and hide,
--- Filters, History, Sounds, Privacy. Every change applies at once. Own code. UNTESTED in game.
+-- Options.lua (XayaUI Chat) : the Chat Panel settings (Chat > Chat Panel). The Chat Panel node holds the panel-wide switches; its parts
+-- are nodes under it in the left pane (Layout, Appearance, Chat Bar, Fade and hide, Filters, History, Sounds, Privacy), and each
+-- part's sections are tabs (ns.SectionTabs, Modules.lua; Xaya, 2026-11-03). Every change applies at once. Own code. UNTESTED in game.
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
@@ -11,8 +12,11 @@ local OUTLINE_ORDER = { "none", "outline", "thick" }
 local TAB_OUTLINE = { none = "None", outline = "Outline", thick = "Thick outline", shadow = "Shadow" }
 local TAB_OUTLINE_ORDER = { "none", "outline", "thick", "shadow" }
 
-function C.OpenSettings(tab)
-    ns.OpenSettingsPage("chat", "chatpanel", tab)
+-- part = a part under Chat Panel ("layout", "look", "bar", ...); section = a tab inside it ("tab_<header key>", e.g. "tab_blocksHdr")
+function C.OpenSettings(part, section)
+    if part and section then ns.OpenSettingsPage("chat", "chatpanel", part, section)
+    elseif part then ns.OpenSettingsPage("chat", "chatpanel", part)
+    else ns.OpenSettingsPage("chat", "chatpanel") end
 end
 
 local soundCache
@@ -152,7 +156,7 @@ function ns.BuildChatTab(Notify)
         return o
     end
     local look = { type = "group", name = "Appearance", order = 2, args = {
-        themeNote = note("|cffaaaaaaThe XayaUI theme is on (Layout tab): the colors and fonts below are ignored; only the opacity sliders still apply.|r", 1, function() return not themeOn() end),
+        themeNote = note("|cffaaaaaaThe XayaUI theme is on (switch on the Chat Panel page): the colors and fonts below are ignored; only the opacity sliders still apply.|r", 1, function() return not themeOn() end),
         bgHdr = hdr("Background and border", 10),
         bg = tog("Draw a background", "bgOn", 11),
         bgCol = col("Background color", "bg", 12),
@@ -169,7 +173,7 @@ function ns.BuildChatTab(Notify)
         outline = sel("Outline", "fontOutline", 22, OUTLINE, OUTLINE_ORDER),
         fontSize = rng("Font size", "fontSize", 23, 8, 32),
 
-        tabHdr = hdr("Tabs", 30, "The tab row's height and whether it shows are on the Layout tab."),
+        tabHdr = hdr("Tabs", 30, "The tab row's height and whether it shows are under Layout > Inside the pane."),
         tabFont = fontSel("Tab font", "tabFont", 31),
         tabOutline = sel("Tab outline", "tabOutline", 32, TAB_OUTLINE, TAB_OUTLINE_ORDER),
         tabSize = rng("Tab font size", "tabFontSize", 33, 8, 24),
@@ -328,8 +332,18 @@ function ns.BuildChatTab(Notify)
     local privacy = ns.ChatPrivacy_Options and ns.ChatPrivacy_Options(Notify) or nil
     if privacy then privacy.order = 8; privacy.name = "Privacy" end
 
-    return { type = "group", name = "Chat Panel", order = 1, childGroups = "tab",
-        args = { layout = layout, look = look, bar = bar, behavior = behavior, filters = filters, history = history, sounds = sounds, privacy = privacy } }
+    -- The Chat Panel node: its own page holds the panel-wide switches (moved from the top of Layout); the parts are nodes under it,
+    -- and each part's header sections become tabs.
+    local overview = { blocked = layout.args.blocked, intro = layout.args.intro, enabled = layout.args.enabled, theme = layout.args.theme }
+    layout.args.blocked, layout.args.intro, layout.args.enabled, layout.args.theme = nil, nil, nil, nil
+    local parts = { layout = layout, look = look, bar = bar, behavior = behavior, filters = filters, history = history, sounds = sounds, privacy = privacy }
+    for key, part in pairs(parts) do
+        if ns.SectionTabs then ns.SectionTabs(part) end
+        overview[key] = part
+    end
+    -- Privacy's tabs in the order Xaya named them: Look, Button, then Area and behavior
+    if privacy and privacy.args and privacy.args.tab_btnHdr then privacy.args.tab_btnHdr.order = 20 end
+    return { type = "group", name = "Chat Panel", order = 1, childGroups = "tree", args = overview }
 end
 
 -------------------------------------------------------------------------------
