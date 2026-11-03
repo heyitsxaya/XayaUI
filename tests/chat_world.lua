@@ -314,7 +314,8 @@ end
 W.load = load
 load("Modules.lua")   -- the core contract the chat files register through (0.5.108)
 load("Compat.lua")    -- current game API with fallbacks (0.6.0)
-load("DataBlocks.lua")
+load("Libs/LibStub/LibStub.lua")
+load("Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua")
 for _, rel in ipairs({ "Chat/Core.lua", "Chat/Frame.lua", "Chat/Bar.lua", "Chat/Skin.lua", "Chat/Fade.lua", "Chat/Locate.lua", "Chat/Messages.lua", "Chat/History.lua",
   "Chat/Sounds.lua", "Chat/Options.lua", "ChatPrivacy.lua" }) do load(rel) end
 W.ns = ns

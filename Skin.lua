@@ -54,26 +54,7 @@ local function A()
     return a
 end
 
-SLASH_XUISKIN1 = "/xuiskin"
-SlashCmdList["XUISKIN"] = function(msg)
-    if not CueRulesDB then return end
-    CueRulesDB.ui = CueRulesDB.ui or {}
-    local pd = tostring(msg or ""):match("pad%s+(%d+)")
-    if pd then
-        CueRulesDB.ui.skinPad = math.max(0, math.min(30, tonumber(pd)))
-        print("|cffffd100XayaUI|r right-pane gutter " .. CueRulesDB.ui.skinPad .. "px (reopen the window to apply).")
-        return
-    end
-    local v = tostring(msg or ""):match("alpha%s+([%d%.]+)")
-    if v then
-        v = math.max(0.1, math.min(1, tonumber(v) or 0.5))
-        CueRulesDB.ui.skinAlpha = v
-        print("|cffffd100XayaUI|r window opacity " .. v .. " (reopen the window to apply).")
-        return
-    end
-    CueRulesDB.ui.skinOff = (not CueRulesDB.ui.skinOff) or nil
-    print("|cffffd100XayaUI|r window skin " .. (CueRulesDB.ui.skinOff and "OFF" or "ON") .. " - type /reload to apply.")
-end
+-- /xuiskin lives in core (Modules.lua) so it works before this addon is loaded.
 
 -- flat 1px-bordered box drawn with plain textures (inset = { l, r, t, b })
 local function Flat(f, bg, border, inset)

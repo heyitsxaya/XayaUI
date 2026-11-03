@@ -1,10 +1,11 @@
 local fails, n = 0, 0
 local function check(name, ok) n = n + 1; if not ok then fails = fails + 1; print("FAIL: " .. name) end end
 local function load_blocks(env)
-    local chunk = assert(load(DATA_SRC, "@DataBlocks.lua", "t", env))
-    local ns = {}
-    chunk("XayaUI", ns)
-    return ns.DataBlocks
+    -- a private LibStub per environment, so each check gets a fresh copy of the library (0.6.0: Data Blocks is a LibStub library)
+    assert(load(LIBSTUB_SRC, "@LibStub.lua", "t", env))()
+    local chunk = assert(load(DATA_SRC, "@XayaDataBlocks-1.0.lua", "t", env))
+    chunk("XayaUI_Chat", {})
+    return env.LibStub("XayaDataBlocks-1.0")
 end
 local function mkenv(extra)
     local env = setmetatable({}, { __index = _G })

@@ -59,6 +59,7 @@ ns.GameMenuSkin_Cfg = Cfg
 
 function ns.GameMenuSkin_Active() return Cfg().skin and not diag.failed end
 function ns.GameMenuSkin_MatchReal() return Cfg().matchReal ~= false end
+ns.Provide("gameMenuSkin", { Active = function() return ns.GameMenuSkin_Active() end, MatchReal = function() return ns.GameMenuSkin_MatchReal() end })
 
 -- colors -------------------------------------------------------------------------------------------------------------------------
 local function Accent()

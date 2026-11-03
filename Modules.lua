@@ -254,3 +254,34 @@ local function RegisterBlizzardPanel()
 end
 Call(RegisterBlizzardPanel)
 function XayaUI_OnCompartmentClick() ns.ToggleUI() end
+
+-- /xuiskin [pad N | alpha X]: the settings window's flat look (read by XayaUI_Options when the window opens)
+SLASH_XUISKIN1 = "/xuiskin"
+if type(SlashCmdList) == "table" then SlashCmdList["XUISKIN"] = function(msg)
+    if not CueRulesDB then return end
+    CueRulesDB.ui = CueRulesDB.ui or {}
+    local pd = tostring(msg or ""):match("pad%s+(%d+)")
+    if pd then
+        CueRulesDB.ui.skinPad = math.max(0, math.min(30, tonumber(pd)))
+        print("|cffffd100XayaUI|r right-pane gutter " .. CueRulesDB.ui.skinPad .. "px (reopen the window to apply).")
+        return
+    end
+    local v = tostring(msg or ""):match("alpha%s+([%d%.]+)")
+    if v then
+        v = math.max(0.1, math.min(1, tonumber(v) or 0.5))
+        CueRulesDB.ui.skinAlpha = v
+        print("|cffffd100XayaUI|r window opacity " .. v .. " (reopen the window to apply).")
+        return
+    end
+    CueRulesDB.ui.skinOff = (not CueRulesDB.ui.skinOff) or nil
+    print("|cffffd100XayaUI|r window skin " .. (CueRulesDB.ui.skinOff and "OFF" or "ON") .. " - type /reload to apply.")
+end
+end
+
+-------------------------------------------------------------------------------
+-- 8. Services: a feature that answers questions for others registers an object under a name; the asker gets nil when that feature
+-- is switched off. Today: "gameMenuSkin" (XayaUI_Reskin) answers Active() and MatchReal() for the ESC-menu button (GameMenu.lua).
+-------------------------------------------------------------------------------
+local services = {}
+function ns.Provide(name, obj) if type(name) == "string" and type(obj) == "table" then services[name] = obj end end
+function ns.Service(name) return services[name] end

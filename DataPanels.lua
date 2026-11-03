@@ -15,133 +15,15 @@
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 
-local B = ns.DataBlocks      -- DataBlocks.lua: the block engine shared with the Chat Bar (Chat/Bar.lua)
+-- the block engine and the data types, shared with the Chat Bar (XayaUI_Chat): a library both addons carry (LibStub runs one copy)
+local B = LibStub("XayaDataBlocks-1.0")
+local DT = B.Text
 local MAXSLOTS = B.MAXN
 local FIXED = { "bl", "br", "center" }
 local TITLES = { bl = "Left Panel", br = "Right Panel", center = "Center Panel" }
 local MAX_CUSTOM = 12
 local ANCHORS = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }
 
-local function num(v) if type(v) == "number" and not (ns.IsSecret and ns.IsSecret(v)) then return v end end
-
--------------------------------------------------------------------------------
--- data types
--------------------------------------------------------------------------------
-local DT = { list = {}, by = {} }
-ns.DataText = DT
-
--- def = { label = "Crit" (optional prefix), text = function(cfg, slotIndex) -> string, tip = function(cfg, slotIndex) -> { title, line, ... } }
-function DT.Register(key, name, group, def)
-    def.key, def.name, def.group = key, name, group
-    if not DT.by[key] then DT.list[#DT.list + 1] = def end
-    DT.by[key] = def
-end
-
-DT.Register("NONE", "(empty)", "General", { text = function() return "" end })
-DT.Register("CUSTOM", "Custom text", "General", { text = function(cfg, i) return cfg["text" .. i] or "" end })
-DT.Register("TIME", "Time", "General", {
-    text = function(cfg)
-        local h, m
-        if cfg.localTime == false and GetGameTime then h, m = GetGameTime() else h, m = tonumber(date("%H")), tonumber(date("%M")) end
-        if cfg.clock24 == false then
-            local suffix = h >= 12 and "pm" or "am"
-            h = h % 12; if h == 0 then h = 12 end
-            return ("%d:%02d %s"):format(h, m, suffix)
-        end
-        return ("%02d:%02d"):format(h, m)
-    end,
-    tip = function() return { "Time", date("%A %d %B") } end,
-})
-DT.Register("FPS", "Frame rate", "General", { usage = true, tip = function() return { "Frame rate", ("%d fps"):format(math.floor((GetFramerate and GetFramerate() or 0) + 0.5)) } end, text = function() return ("%d fps"):format(math.floor((GetFramerate and GetFramerate() or 0) + 0.5)) end })
-DT.Register("LATENCY", "Latency", "General", {
-    usage = true,
-    text = function() local _, _, home, world = GetNetStats(); return ("%d ms"):format(world or home or 0) end,
-    tip = function() local _, _, home, world = GetNetStats(); return { "Latency", ("Home: %d ms"):format(home or 0), ("World: %d ms"):format(world or 0) } end,
-})
-DT.Register("GOLD", "Gold", "General", {
-    text = function()
-        local g = math.floor((GetMoney and GetMoney() or 0) / 10000)
-        return (BreakUpLargeNumbers and BreakUpLargeNumbers(g) or tostring(g)) .. "|cffffd100g|r"
-    end,
-    tip = function() return { "Gold", GetCoinTextureString and GetCoinTextureString(GetMoney() or 0) or "" } end,
-})
-DT.Register("DURABILITY", "Durability", "General", {
-    label = "Dur",
-    text = function()
-        local lowest
-        for slot = 1, 18 do
-            if slot ~= 4 then
-                local cur, max = GetInventoryItemDurability(slot)
-                if cur and max and max > 0 then
-                    local pct = cur / max * 100
-                    if not lowest or pct < lowest then lowest = pct end
-                end
-            end
-        end
-        if not lowest then return "--" end
-        local c = lowest < 25 and "|cffff4040" or (lowest < 50 and "|cffffd100" or "|cff40ff40")
-        return ("%s%d%%|r"):format(c, math.floor(lowest + 0.5))
-    end,
-    tip = function() return { "Durability", "Shows your most damaged equipped piece." } end,
-})
-DT.Register("BAGS", "Free bag slots", "General", {
-    label = "Bags",
-    text = function()
-        local free, total = 0, 0
-        for bag = 0, (_G.NUM_TOTAL_EQUIPPED_BAG_SLOTS or 5) do
-            if C_Container and C_Container.GetContainerNumFreeSlots then
-                free = free + (C_Container.GetContainerNumFreeSlots(bag) or 0)
-                total = total + ((C_Container.GetContainerNumSlots and C_Container.GetContainerNumSlots(bag)) or 0)
-            end
-        end
-        return ("%d/%d"):format(free, total)
-    end,
-})
-
--- stats (values can be secret in restricted content: the last readable value is kept, "?" if never readable)
-local STATS = {
-    { "crit", "Crit", "pct", function() return GetCritChance() end },
-    { "haste", "Haste", "pct", function() return GetHaste() end },
-    { "mastery", "Mastery", "pct", function() return (GetMasteryEffect()) end },
-    { "vers", "Versatility", "pct", function()
-        local a, b = GetCombatRatingBonus(CR_VERSATILITY_DAMAGE_DONE), GetVersatilityBonus(CR_VERSATILITY_DAMAGE_DONE)
-        if num(a) == nil or num(b) == nil then return nil end
-        return a + b end },
-    { "leech", "Leech", "pct", function() return GetLifesteal() end },
-    { "avoidance", "Avoidance", "pct", function() return GetAvoidance() end },
-    { "dodge", "Dodge", "pct", function() return GetDodgeChance() end },
-    { "parry", "Parry", "pct", function() return GetParryChance() end },
-    { "block", "Block", "pct", function() return GetBlockChance() end },
-    { "ilvl", "Item Level", "dec", function() local _, eq = GetAverageItemLevel(); return eq end },
-    { "armor", "Armor", "int", function() local _, eff = UnitArmor("player"); return eff end },
-    { "str", "Strength", "int", function() local _, eff = UnitStat("player", 1); return eff end },
-    { "agi", "Agility", "int", function() local _, eff = UnitStat("player", 2); return eff end },
-    { "sta", "Stamina", "int", function() local _, eff = UnitStat("player", 3); return eff end },
-    { "int", "Intellect", "int", function() local _, eff = UnitStat("player", 4); return eff end },
-    { "hp", "Max Health", "int", function() return UnitHealthMax("player") end },
-    { "absorb", "Absorb (shield)", "int", function() return UnitGetTotalAbsorbs("player") end },
-}
-local statCache = {}
-for _, s in ipairs(STATS) do
-    local key, name, kind, fn = s[1], s[2], s[3], s[4]
-    DT.Register("STAT_" .. key, name, "Stats", {
-        label = name,
-        text = function(cfg)
-            local ok, v = pcall(fn)
-            v = ok and num(v) or nil
-            if v then
-                local decs = math.max(0, math.min(2, tonumber(cfg.decimals) or 1))
-                local txt
-                if kind == "pct" then txt = ("%." .. decs .. "f%%"):format(v)
-                elseif kind == "dec" then txt = ("%.1f"):format(v)
-                else txt = BreakUpLargeNumbers and BreakUpLargeNumbers(math.floor(v + 0.5)) or ("%d"):format(math.floor(v + 0.5)) end
-                statCache[key] = txt
-                return txt
-            end
-            return statCache[key] or "?"
-        end,
-    })
-end
 
 local function TypeValues()
     local values, order = {}, {}
@@ -228,7 +110,8 @@ function ns.DataPanels_OnDBReady()
     if dp.general and dp.general.enabled == nil then
         for _, k in ipairs({ "bl", "br", "center" }) do if type(dp[k]) == "table" and dp[k].enabled then dp.general.enabled = true; break end end
         for _, c in pairs(dp.customs) do if type(c) == "table" and c.enabled then dp.general.enabled = true; break end end
-        if ns.chatDB and (ns.chatDB.panelOn or ns.chatDB.rpanelOn) then dp.general.enabled = true end   -- a chat info bar counts too
+        local oldChat = CueRulesDB.chat   -- saved settings only (the Chat addon may be off): an old chat info bar counts too
+        if type(oldChat) == "table" and (oldChat.panelOn or oldChat.rpanelOn) then dp.general.enabled = true end
     end
     ns.Merge(dp, ns.DATAPANEL_DEFAULTS)
     for _, c in pairs(dp.customs) do if type(c) == "table" then ns.Merge(c, CustomDef()) end end   -- custom panels get any setting added since they were made

@@ -35,7 +35,7 @@ Theme.lua
 Engine.lua
 CursorHighlight.lua
 CursorTrail.lua
-DataBlocks.lua
+Libs\XayaDataBlocks-1.0\XayaDataBlocks-1.0.lua
 Chat\Core.lua
 Chat\Frame.lua
 Chat\Bar.lua

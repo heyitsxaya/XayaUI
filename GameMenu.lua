@@ -195,8 +195,9 @@ local function Install(menu)
     end
     CreateButton(menu)
     -- the skin (GameMenuSkin.lua) in OWN LAYOUT mode draws its own XayaUI row; in MATCH mode it needs the real slot below (it draws on it)
-    local skinOn = ns.GameMenuSkin_Active and ns.GameMenuSkin_Active()
-    local match = skinOn and ns.GameMenuSkin_MatchReal and ns.GameMenuSkin_MatchReal()
+    local skin = ns.Service("gameMenuSkin")   -- XayaUI_Reskin, when it is on (Modules.lua section 8)
+    local skinOn = skin and skin.Active()
+    local match = skinOn and skin.MatchReal()
     if (skinOn and not match) or not Enabled() then btn:Hide(); if fallbackSlot then fallbackSlot:Hide() end; return end
 
     local anchor, anchorText = FindAnchor(menu)

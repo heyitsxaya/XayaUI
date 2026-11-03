@@ -6,7 +6,7 @@
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 local C = ns.Chat
-local B = ns.DataBlocks
+local B = LibStub("XayaDataBlocks-1.0")   -- block engine and data types, shared with the data panels (carried by both addons)
 local issecret = C.IsSecret
 
 local slots = {}
@@ -116,7 +116,7 @@ local ORDER = { "NONE", "TIME", "FPS", "LATENCY", "FPSMS", "FRIENDS", "GOLD", "D
 -- every type of the character stats registered by DataPanels.lua (loaded later, so looked up while the game runs)
 local function Prov(key)
     if P[key] then return P[key] end
-    local d = ns.DataText and ns.DataText.by and ns.DataText.by[key]
+    local d = B.Text.by[key]
     if not d then return P.NONE end
     local p = {
         name = (d.group == "General") and d.name or (d.group .. ": " .. d.name),
@@ -134,8 +134,8 @@ end
 function C.Bar_Types()
     local list = {}
     for _, k in ipairs(ORDER) do list[#list + 1] = { k, P[k].name } end
-    if ns.DataText and ns.DataText.list then
-        for _, d in ipairs(ns.DataText.list) do
+    if B.Text.list then
+        for _, d in ipairs(B.Text.list) do
             if not P[d.key] and d.group ~= "General" then list[#list + 1] = { d.key, d.group .. ": " .. d.name } end
         end
     end
