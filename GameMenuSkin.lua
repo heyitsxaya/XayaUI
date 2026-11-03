@@ -1,12 +1,16 @@
 -------------------------------------------------------------------------------
 -- GameMenuSkin.lua : XayaUI's own look for the Game Menu (ESC menu). Own code, Blizzard's GameMenuFrame only (no other addon's code).
 --
--- Why a replacement and not a restyle: Blizzard recycles the menu's buttons from a pool and other UI addons (EllesmereUI) restyle those
+-- Why a replacement and not a restyle: Blizzard recycles the menu's buttons from a pool and other UI addons restyle those
 -- pooled buttons too, so two skins fight over the same buttons (0.5.37-0.5.40 showed that). This file never writes to a pooled button.
 --   * GameMenuFrame stays the real menu: it builds its entries, owns ESC, and runs every entry's action. We only fade it out (frame alpha).
---   * Our own frame (child of UIParent, never pooled) is drawn over it: one row per ACTIVE Blizzard entry, in Blizzard's order, with the
---     entry's own text and enabled state. Clicking a row calls that entry's :Click(), so the Blizzard action runs exactly as before.
---   * A row is added for XayaUI (after Macros by default). All sizes come from the settings (Settings > UI Options > Display), not from the siblings.
+--   * Our own frame (child of UIParent, never pooled) is drawn over it, one row per Blizzard entry, with the entry's own text and state.
+-- Two modes (Settings > UI Options > Display > Game Menu, "Match Blizzard's button positions", on by default since 0.5.106):
+--   * MATCH (default): every row is anchored to its real Blizzard button, so it sits exactly where that button is, and the rows take no
+--     mouse: a click lands on the real button under the pointer and runs its own action. No lookup, so no way to run another action.
+--     Hover / pressed looks are read from the real button (polled). The XayaUI row is the real slot GameMenu.lua adds to the menu.
+--   * OWN LAYOUT (old behavior): our own sizes and spacing; a click finds the real button by its text and calls :Click(). If it cannot
+--     be found with the same text, NOTHING is clicked (and /xui gamemenu says why) instead of running some other entry.
 -- Safety: default OFF. Any error while building turns the skin off for the session and gives Blizzard's menu back (alpha 1).
 -- Group gaps (Options / Shop | addons | ... | Log Out / Exit | Return) are read from where Blizzard laid its entries out.
 -- UNTESTED in game: the first check is /xui gamemenu (it lists what the menu exposes).
@@ -20,6 +24,7 @@ ns.GameMenuSkinDiag = diag
 
 local DEFAULTS = {
     skin = false,                 -- master switch (off until chosen)
+    matchReal = true,             -- draw on the real buttons' own positions (clicks go to the real buttons); false = our own layout
     w = 240, h = 34, gap = 6, groupGap = 18, pad = 18, scale = 100,
     font = "none", fontSize = 15, outline = "",
     textR = 1, textG = 1, textB = 1, textA = 100,   -- alpha in percent
@@ -53,6 +58,7 @@ end
 ns.GameMenuSkin_Cfg = Cfg
 
 function ns.GameMenuSkin_Active() return Cfg().skin and not diag.failed end
+function ns.GameMenuSkin_MatchReal() return Cfg().matchReal ~= false end
 
 -- colors -------------------------------------------------------------------------------------------------------------------------
 local function Accent()
@@ -159,7 +165,13 @@ local function ResolveSource(r)
             end
         end
     end
-    return match or r.src
+    if match then return match end
+    -- the remembered button only counts if it still says the same thing (the pool recycles buttons: it may now be another entry)
+    if r.src and r.label then
+        local ok, t = pcall(r.src.GetText, r.src)
+        if ok and t == r.label then return r.src end
+    end
+    return nil
 end
 
 local function GetRow(i)
@@ -183,7 +195,11 @@ local function GetRow(i)
             if ns.ToggleUI then ns.ToggleUI() end
         else
             local src = ResolveSource(self)
-            if not src then diag.lastError = "no real button found for '" .. tostring(self.label) .. "'"; return end
+            if not src then
+                diag.lastError = "no real button with the text '" .. tostring(self.label) .. "' - nothing was clicked"
+                if ns.Print then ns.Print("Game Menu skin: could not find the real '" .. tostring(self.label) .. "' button, so nothing was clicked. Turn on 'Match Blizzard's button positions' (Settings > UI Options > Display > Game Menu).") end
+                return
+            end
             local okE, en = pcall(src.IsEnabled, src)
             if okE and en == false then return end
             local ok, err = pcall(src.Click, src)         -- Blizzard's own action, unchanged
@@ -253,6 +269,99 @@ local function TitleText(menu)
     return "Game Menu"
 end
 
+-- MATCH mode ---------------------------------------------------------------------------------------------------------------------
+-- Every entry the menu really shows, read only: the pooled Blizzard buttons, our own XayaUI slot (GameMenu.lua), and buttons other
+-- addons added to the menu frame as plain children (they have text and are shown). Each gets a drawn row anchored to it.
+local function ReadEntriesMatch(menu)
+    local list, seen = {}, {}
+    local function add(b, isXui)
+        if seen[b] then return end
+        local okS, shown = pcall(b.IsShown, b)
+        if okS and shown == false then return end
+        local okT, text = pcall(b.GetText, b)
+        if not (okT and type(text) == "string" and text ~= "") then return end
+        seen[b] = true
+        local okE, en = pcall(b.IsEnabled, b)
+        list[#list + 1] = { src = b, text = text, enabled = not (okE and en == false), isXui = isXui and true or false }
+    end
+    if menu.buttonPool and menu.buttonPool.EnumerateActive then
+        for b in menu.buttonPool:EnumerateActive() do add(b, b.xuiGMslot) end
+    end
+    local okC, kids = pcall(function() return { menu:GetChildren() } end)
+    if okC and type(kids) == "table" then
+        for _, ch in ipairs(kids) do
+            local okN, nm = pcall(ch.GetName, ch)
+            local okO, ot = pcall(ch.GetObjectType, ch)
+            if ch ~= panel and not (okN and type(nm) == "string" and nm:find("^XayaUI_")) and okO and ot == "Button" then add(ch, false) end
+        end
+    end
+    return list
+end
+
+-- Hover and pressed looks come from the real buttons (our rows take no mouse), polled while the menu is up.
+local function PollRows(self, dt)
+    self.acc = (self.acc or 0) + dt
+    if self.acc < 0.03 then return end
+    self.acc = 0
+    local down = IsMouseButtonDown and IsMouseButtonDown("LeftButton")
+    for i = 1, (self.nRows or 0) do
+        local r = rows[i]
+        local src = r and r.matchSrc
+        if src then
+            local ok, over = pcall(src.IsMouseOver, src)
+            over = (ok and over) and not r.disabled
+            local pr = over and down and true or false
+            if over ~= (r.hover and true or false) or pr ~= (r.pressed and true or false) then
+                r.hover, r.pressed = over, pr
+                PaintRow(r)
+            end
+        end
+    end
+end
+
+local function BuildMatch(menu, c)
+    local list = ReadEntriesMatch(menu)
+    if #list == 0 then diag.lastError = "no menu entries found"; if panel then panel:Hide() end; menu:SetAlpha(1); return end
+    local p = Panel()
+    p:SetScale(1)
+    p:EnableMouse(false); p.cover:EnableMouse(false); p.cover:Hide()       -- nothing of ours takes a click: the real buttons do
+    p:SetFrameStrata((menu.GetFrameStrata and menu:GetFrameStrata()) or "DIALOG")
+    p:SetFrameLevel((menu:GetFrameLevel() or 1) + 200)
+    local pal = Pal()
+    p.bg:SetColorTexture(pal.bg[1], pal.bg[2], pal.bg[3], (c.bgA or 90) / 100)
+    local bd = pal.panelBorder
+    for i = 1, 4 do p.e[i]:SetColorTexture(bd[1], bd[2], bd[3], c.border and 1 or 0) end
+    p:ClearAllPoints()
+    p:SetPoint("TOPLEFT", menu, "TOPLEFT"); p:SetPoint("BOTTOMRIGHT", menu, "BOTTOMRIGHT")     -- exactly Blizzard's menu rectangle
+    if c.title then
+        p.title:SetFont(FontFile(c), c.titleSize or 14, c.outline or "")
+        p.title:SetTextColor(pal.title[1], pal.title[2], pal.title[3], 1)
+        p.title:SetText(TitleText(menu)); p.title:ClearAllPoints()
+        local hdr = menu.Header
+        if hdr then p.title:SetPoint("CENTER", hdr, "CENTER", 0, 0) else p.title:SetPoint("TOP", p, "TOP", 0, -8) end
+        p.title:Show()
+    else
+        p.title:Hide()
+    end
+    local used = 0
+    for i, e in ipairs(list) do
+        local r = GetRow(i)
+        r.src, r.srcIdx, r.isXui, r.label, r.disabled, r.matchSrc = e.src, nil, e.isXui, e.text, not e.enabled, e.src
+        r.hover, r.pressed = false, false
+        r:EnableMouse(false)
+        r:SetFrameLevel(p:GetFrameLevel() + 5)
+        r:ClearAllPoints()
+        r:SetPoint("TOPLEFT", e.src, "TOPLEFT"); r:SetPoint("BOTTOMRIGHT", e.src, "BOTTOMRIGHT")     -- on the real button, wherever it is
+        r:Show(); PaintRow(r); used = i
+    end
+    for i = used + 1, #rows do rows[i]:Hide(); rows[i].matchSrc = nil end
+    p.nRows = used
+    p:SetScript("OnUpdate", PollRows)
+    menu:SetAlpha(0)
+    p:Show()
+    diag.built, diag.rows = diag.built + 1, used
+end
+
 local function Build()
     local menu = GameMenuFrame
     if not menu then return end
@@ -262,11 +371,14 @@ local function Build()
         if menu.SetAlpha then menu:SetAlpha(1) end
         return
     end
+    if c.matchReal ~= false then return BuildMatch(menu, c) end
     local list = ReadEntries(menu)
     if #list == 0 then diag.lastError = "no menu entries found"; if panel then panel:Hide() end; menu:SetAlpha(1); return end
     MarkGroups(list)
     local entries = Place(LABEL, c.xuiRow, list)
     local p = Panel()
+    p:SetScript("OnUpdate", nil)
+    p:EnableMouse(true); p.cover:EnableMouse(true); p.cover:Show()
     p:SetScale((c.scale or 100) / 100)
     p:SetFrameStrata((menu.GetFrameStrata and menu:GetFrameStrata()) or "DIALOG")   -- same strata as Blizzard's menu, far above its buttons
     p:SetFrameLevel((menu:GetFrameLevel() or 1) + 200)
@@ -289,7 +401,8 @@ local function Build()
     local used = 0
     for i, e in ipairs(entries) do
         local r = GetRow(i)
-        r.src, r.srcIdx, r.isXui, r.label, r.disabled = e.src, e.idx, e.isXui, e.text, not e.enabled
+        r.src, r.srcIdx, r.isXui, r.label, r.disabled, r.matchSrc = e.src, e.idx, e.isXui, e.text, not e.enabled, nil
+        r:EnableMouse(true)
         r:SetFrameLevel(p:GetFrameLevel() + 5)
         r:SetSize(c.w, c.h)
         if i > 1 then y = y + (e.groupBreak and c.groupGap or c.gap) end
@@ -333,10 +446,15 @@ ns.GameMenuSkin_Hook = Hook
 
 function ns.GameMenuSkin_Diagnostics()
     local c = Cfg()
-    ns.Print(("game menu skin: on=%s failed=%s built=%d rows=%d title found=%s lastError=%s"):format(
-        tostring(c.skin), tostring(diag.failed), diag.built, diag.rows, tostring(diag.titleFound), tostring(diag.lastError)))
+    ns.Print(("game menu skin: on=%s mode=%s failed=%s built=%d rows=%d title found=%s lastError=%s"):format(
+        tostring(c.skin), c.matchReal ~= false and "match (rows sit on the real buttons)" or "own layout", tostring(diag.failed), diag.built, diag.rows, tostring(diag.titleFound), tostring(diag.lastError)))
     for i, r in ipairs(rows) do
-        if r:IsShown() then
+        if r:IsShown() and r.matchSrc then
+            local okP, top = pcall(function() return r.matchSrc:GetTop() end)
+            local okL, lx = pcall(function() return r.matchSrc:GetLeft() end)
+            ns.Print(("  row %d '%s' sits on its real button (layoutIndex=%s, top=%s, left=%s)%s"):format(i, tostring(r.label), tostring(r.matchSrc.layoutIndex),
+                okP and tostring(top and math.floor(top)) or "?", okL and tostring(lx and math.floor(lx)) or "?", r.isXui and " [XayaUI slot]" or ""))
+        elseif r:IsShown() then
             if r.isXui then ns.Print(("  row %d '%s' -> XayaUI (opens the settings)"):format(i, tostring(r.label)))
             else
                 local b = ResolveSource(r)
@@ -363,7 +481,8 @@ function ns.GameMenuSkin_Options(Notify)
     local function g(k) return function() return Cfg()[k] end end
     local function s(k) return function(_, v) Cfg()[k] = v; re() end end
     local off = function() return not Cfg().skin end
-    local function rng(name, k, order, lo, hi, desc) return { type = "range", name = name, order = order, min = lo, max = hi, step = 1, desc = desc, get = g(k), set = s(k), disabled = off } end
+    local ownOnly = function() return not Cfg().skin or Cfg().matchReal ~= false end   -- settings that only mean something in own-layout mode
+    local function rng(name, k, order, lo, hi, desc, dis) return { type = "range", name = name, order = order, min = lo, max = hi, step = 1, desc = desc, get = g(k), set = s(k), disabled = dis or off } end
     local function ColorOpt(name, order, kr, kg, kb, desc)
         return { type = "color", order = order, name = name, desc = desc, hasAlpha = false,
             disabled = function() return off() or not Cfg().useColors end,
@@ -372,12 +491,15 @@ function ns.GameMenuSkin_Options(Notify)
     end
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "XayaUI's own look for the ESC menu. It draws its own panel over Blizzard's menu and clicks Blizzard's entries for you, so it does not edit the buttons other UI addons restyle. If something goes wrong the skin turns itself off and Blizzard's menu comes back. Off by default; /xui gamemenu shows what the menu exposes." },
+            name = "XayaUI's own look for the ESC menu. It draws its own look over Blizzard's menu and never edits the buttons other UI addons restyle. If something goes wrong the skin turns itself off and Blizzard's menu comes back. Off by default; /xui gamemenu shows what the menu exposes." },
         skin = { type = "toggle", order = 1, width = "full", name = "Use the XayaUI Game Menu look", get = g("skin"), set = s("skin") },
+        match = { type = "toggle", order = 2, width = "full", name = "Match Blizzard's button positions (recommended)", disabled = off,
+            desc = "On: the look is drawn on top of Blizzard's own buttons, exactly where they are, and a click goes straight to the real button under the pointer, so no button can run the wrong action. Button size, spacing, padding, scale, the XayaUI button's position, and 'Leave out of this menu' only apply when this is off. A change takes effect the next time the menu opens.",
+            get = function() return Cfg().matchReal ~= false end, set = s("matchReal") },
         look = { type = "group", order = 10, inline = true, name = "Look", args = {
-            w = rng("Button width", "w", 1, 120, 480), h = rng("Button height", "h", 2, 20, 70),
-            gap = rng("Space between buttons", "gap", 3, 0, 30), groupGap = rng("Space between groups", "groupGap", 4, 0, 60),
-            pad = rng("Panel padding", "pad", 5, 4, 60), scale = rng("Scale (%)", "scale", 6, 50, 200),
+            w = rng("Button width", "w", 1, 120, 480, nil, ownOnly), h = rng("Button height", "h", 2, 20, 70, nil, ownOnly),
+            gap = rng("Space between buttons", "gap", 3, 0, 30, nil, ownOnly), groupGap = rng("Space between groups", "groupGap", 4, 0, 60, nil, ownOnly),
+            pad = rng("Panel padding", "pad", 5, 4, 60, nil, ownOnly), scale = rng("Scale (%)", "scale", 6, 50, 200, nil, ownOnly),
             bgA = rng("Panel opacity (%)", "bgA", 7, 0, 100), btnA = rng("Button opacity (%)", "btnA", 8, 0, 100),
             border = { type = "toggle", order = 9, name = "Panel border", get = g("border"), set = s("border"), disabled = off },
             hoverAccent = { type = "toggle", order = 10, name = "Hover uses the theme accent", get = g("hoverAccent"), set = s("hoverAccent"), disabled = off },
@@ -415,7 +537,7 @@ function ns.GameMenuSkin_Options(Notify)
         xui = { type = "group", order = 30, inline = true, name = "XayaUI button", args = {
             row = { type = "select", order = 1, name = "Position", disabled = off,
                 values = { AFTER_MACROS = "After Macros", TOP = "Top of the menu", BOTTOM = "Bottom of the menu", HIDE = "Hidden" },
-                sorting = { "AFTER_MACROS", "TOP", "BOTTOM", "HIDE" }, get = g("xuiRow"), set = s("xuiRow") },
+                sorting = { "AFTER_MACROS", "TOP", "BOTTOM", "HIDE" }, get = g("xuiRow"), set = s("xuiRow"), disabled = ownOnly },
             style = { type = "select", order = 2, name = "Style", disabled = off,
                 values = { gradient = "Gradient button, solid text", standard = "Standard button, accent text" }, sorting = { "gradient", "standard" },
                 get = g("xuiStyle"), set = s("xuiStyle") },
@@ -423,11 +545,11 @@ function ns.GameMenuSkin_Options(Notify)
         hide = { type = "group", order = 40, inline = true, name = "Leave out of this menu", args = {
             n = { type = "description", order = 0, width = "full", name = "Hides the entry from the XayaUI look only; Blizzard's own menu is unchanged. Names are Blizzard's, in your game language." },
             shop = { type = "toggle", order = 1, name = "Shop", get = function() return Cfg().hide[BLIZZARD_STORE or "Shop"] and true or false end,
-                set = function(_, v) Cfg().hide[BLIZZARD_STORE or "Shop"] = v or nil; re() end, disabled = off },
+                set = function(_, v) Cfg().hide[BLIZZARD_STORE or "Shop"] = v or nil; re() end, disabled = ownOnly },
             whatsnew = { type = "toggle", order = 2, name = "What's New", get = function() return Cfg().hide[GAMEMENU_NEW_BUTTON or "What's New"] and true or false end,
-                set = function(_, v) Cfg().hide[GAMEMENU_NEW_BUTTON or "What's New"] = v or nil; re() end, disabled = off },
+                set = function(_, v) Cfg().hide[GAMEMENU_NEW_BUTTON or "What's New"] = v or nil; re() end, disabled = ownOnly },
             support = { type = "toggle", order = 3, name = "Support", get = function() return Cfg().hide[GAMEMENU_SUPPORT or "Support"] and true or false end,
-                set = function(_, v) Cfg().hide[GAMEMENU_SUPPORT or "Support"] = v or nil; re() end, disabled = off },
+                set = function(_, v) Cfg().hide[GAMEMENU_SUPPORT or "Support"] = v or nil; re() end, disabled = ownOnly },
         } },
         reset = { type = "execute", order = 50, name = "Reset Game Menu settings", disabled = off,
             func = function() Ui().gm = nil; Cfg().skin = true; re() end },

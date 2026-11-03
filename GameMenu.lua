@@ -4,7 +4,7 @@
 -- "Menu button (ESC menu)": show toggle and style. /xui gamemenu prints diagnostics.
 --
 -- How it works (rewritten 0.5.41 after "Return to Game" showed Blizzard's red art):
---   * Blizzard rebuilds the menu from a pool of recycled buttons on every open (GameMenuFrame:InitButtons), and other skins (EllesmereUI)
+--   * Blizzard rebuilds the menu from a pool of recycled buttons on every open (GameMenuFrame:InitButtons), and other skins
 --     restyle those pooled buttons once. So this file NEVER edits a pooled button's art, font, or color.
 --   * It asks the frame for a layout SLOT through the frame's own AddButton (so spacing and menu height stay right), moves the slot
 --     to sit after "Macros" (layoutIndex), sizes it like the Macros button, and makes the slot invisible (frame alpha only, put back
@@ -194,7 +194,10 @@ local function Install(menu)
         end
     end
     CreateButton(menu)
-    if (ns.GameMenuSkin_Active and ns.GameMenuSkin_Active()) or not Enabled() then btn:Hide(); if fallbackSlot then fallbackSlot:Hide() end; return end   -- the skin (GameMenuSkin.lua) draws its own XayaUI row
+    -- the skin (GameMenuSkin.lua) in OWN LAYOUT mode draws its own XayaUI row; in MATCH mode it needs the real slot below (it draws on it)
+    local skinOn = ns.GameMenuSkin_Active and ns.GameMenuSkin_Active()
+    local match = skinOn and ns.GameMenuSkin_MatchReal and ns.GameMenuSkin_MatchReal()
+    if (skinOn and not match) or not Enabled() then btn:Hide(); if fallbackSlot then fallbackSlot:Hide() end; return end
 
     local anchor, anchorText = FindAnchor(menu)
     diag.anchor = anchorText or "none (appended)"
@@ -223,8 +226,7 @@ local function Install(menu)
     end
     if not slot then btn:Hide(); diag.lastError = "no slot created"; return end
     if anchor then Place(slot, anchor) else btn:SetPoint("CENTER", slot, "CENTER") end
-    btn:Show()
-    Paint()
+    if match then btn:Hide() else btn:Show(); Paint() end   -- in match mode the skin draws the row on the slot
     if menu.Layout then menu:Layout() end
     -- other skins may resize the menu buttons after us: check once more next frame
     if anchor and C_Timer then
