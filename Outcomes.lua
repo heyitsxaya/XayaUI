@@ -130,7 +130,12 @@ local function NumRef(ref, p, pi)
         local ok, cd = pcall(C_Spell.GetSpellCooldown, id)
         if not ok or type(cd) ~= "table" then return nil end
         local st, du, act, gcd = cd.startTime, cd.duration, cd.isActive, cd.isOnGCD
-        if issecret(st) or issecret(du) or issecret(act) or issecret(gcd) then return nil end
+        if issecret(st) or issecret(du) or issecret(act) or issecret(gcd) then
+            -- hidden (combat): the duration engine's estimate (Timing.lua)
+            local ready = ns.Timing and ns.Timing.CooldownEstimate(id)
+            if ready then return math.max(0, ready - now) end
+            return nil
+        end
         if not act or gcd or type(du) ~= "number" or du <= 0 or type(st) ~= "number" then return 0 end
         return math.max(0, st + du - now)
     elseif ref == "n:buffStacks" then
@@ -162,8 +167,18 @@ local function CmpNum(op, a, b)
 end
 
 -- One check: true / false / nil (unknown).
+-- time-left checks register the moments they will change (the threshold, and zero) so the engine steps on that exact frame
+local TIME_LEFT = { ["n:buffRemain"] = true, ["n:cdRemain"] = true }
 local function CheckValue(t, p, pr, pi)
-    if IsNumRef(t.ref) then return CmpNum(t.cmp, NumRef(t.ref, p, pi), tonumber(t.num) or 0) end
+    if IsNumRef(t.ref) then
+        local v, num = NumRef(t.ref, p, pi), tonumber(t.num) or 0
+        if TIME_LEFT[t.ref] and type(v) == "number" and ns.Timing then
+            local now = GetTime()
+            if v > num then ns.Timing.Deadline(now + (v - num)) end
+            if v > 0 then ns.Timing.Deadline(now + v) end
+        end
+        return CmpNum(t.cmp, v, num)
+    end
     local v = RefValue(t.ref, p, pr, pi)
     if v ~= nil and t.neg then v = not v end
     return v

@@ -24,20 +24,122 @@ local function RT(rule)
     return rt
 end
 
-local function ReportVisualError(rule, rt, err)
+-- Errors are reported once per rule (and saved to the error log); the other rules keep running.
+local function ReportRuleError(rule, rt, err)
     if rt.vErrored then return end
     rt.vErrored = true
     ns.Print("rule '" .. tostring(rule.name) .. "' error (the other rules keep running): " .. tostring(err))
-    if ns.CaptureError then pcall(ns.CaptureError, "XayaUI display: " .. tostring(err)) end
+    if ns.CaptureError then pcall(ns.CaptureError, "XayaUI rule: " .. tostring(err)) end
 end
 
 -- Actions and sounds run guarded per rule: one failing action can neither stop the step nor block the other rules.
 local function Guarded(rule, rt, fn, ...)
     local ok, err = pcall(fn, ...)
-    if not ok then ReportVisualError(rule, rt, err) end
+    if not ok then ReportRuleError(rule, rt, err) end
 end
 local function RunActionsSafe(rule, rt, phase) if ns.RunActions then Guarded(rule, rt, ns.RunActions, rule, phase) end end
 local function PlaySoundSafe(rule, rt) Guarded(rule, rt, function() ns.PlaySound(ns.EffectiveSound(rule)) end) end
+local function HasSound(rule) return ns.KindHas(rule, "sound") end
+local function SoundNote(rule)
+    local s = rule.sound
+    return (s and s.enabled and s.value ~= "" and HasSound(rule)) and "  (sound)" or ""
+end
+
+-- Does XayaUI want this rule's own display shown this step?
+local function DisplayWanted(rule, info, result)
+    local v = rule.visual
+    if not (v and v.enabled and ns.KindHas(rule, "visual")) then return false end
+    local wanted = false
+    if v.trigger == "buffActive" then wanted = info and info.present == true or false
+    elseif v.trigger == "condition" then wanted = result and true or false end   -- blank / none: nothing is shown
+    -- gate: never show while the rule's identifying spell isn't currently on an action bar
+    if wanted and v.requireOnBar and ns.SpellOnActionBar then
+        local checkID = (rule.spellID and rule.spellID ~= 0) and rule.spellID or rule.buffID
+        if not ns.SpellOnActionBar(checkID) then wanted = false end
+    end
+    return wanted
+end
+
+-- One enabled rule: evaluate; fire on the false -> true edge, repeat, clear; actions; its display.
+local function StepEnabled(rule, rt, ctx, now)
+    local pt = perf.on and debugprofilestop()
+    local ok, result, info = pcall(ns.Evaluate, rule, ctx)
+    if pt then local d = debugprofilestop() - pt; perf.evalMs = perf.evalMs + d; perf.rule[rule] = (perf.rule[rule] or 0) + d end
+    if not ok then
+        local err = result
+        result, info = false, nil
+        if not rt.errored then rt.errored = true; ns.Print("rule '" .. tostring(rule.name) .. "' error: " .. tostring(err)) end
+    end
+    rt.info = info
+    -- Actions tab: On Initialization (the rule's load conditions hold), During start, After It Ends
+    if not rule.parentUid and ns.RunActions and info then
+        if info.ctxOK then
+            if not rt.inited then rt.inited = true; RunActionsSafe(rule, rt, "init") end
+        elseif info.ctxOK == false then rt.inited = nil end
+    end
+    if result and not rt.active then
+        rt.active, rt.lastPlay = true, now
+        if not rule.parentUid then RunActionsSafe(rule, rt, "start") end
+        if HasSound(rule) then PlaySoundSafe(rule, rt) end
+        ns.Log("|cff55ff55FIRED|r %s%s", tostring(rule.name), SoundNote(rule))
+    elseif result then
+        local rep = rule.repeatSec or 0
+        if rep > 0 and (now - rt.lastPlay) >= rep then
+            rt.lastPlay = now
+            if HasSound(rule) then PlaySoundSafe(rule, rt) end
+            ns.Log("repeat  %s", tostring(rule.name))
+        end
+    else
+        if rt.active then
+            ns.Log("cleared %s: %s", tostring(rule.name), info and ns.WhyNot(info) or "error")
+            if not rule.parentUid then RunActionsSafe(rule, rt, "finish") end
+        end
+        rt.active = false
+    end
+    local wanted = DisplayWanted(rule, info, result)
+    rt.visualWanted = wanted
+    local pv = perf.on and debugprofilestop()
+    Guarded(rule, rt, ns.SetVisualShown, rule, wanted)
+    -- a display the combat engine draws is hidden here, so its text / fade work is skipped entirely
+    if wanted and not (ns.EngineOwns and ns.EngineOwns(rule)) then Guarded(rule, rt, ns.UpdateVisualText, rule, info) end
+    if pv then local d = debugprofilestop() - pv; perf.visMs = perf.visMs + d; perf.rule[rule] = (perf.rule[rule] or 0) + d end
+end
+
+-- One disabled rule: finish what it started and hide its display (once).
+local function StepDisabled(rule, rt)
+    if rt.active and not rule.parentUid then RunActionsSafe(rule, rt, "finish") end
+    rt.active, rt.inited = false, nil
+    if rt.visualWanted ~= false or rt.shownOnce == nil then
+        rt.shownOnce = true
+        Guarded(rule, rt, ns.SetVisualShown, rule, false)
+    end
+    rt.visualWanted = false
+end
+
+-- Preview (transient, set from the sidebar eye / headphone icons): force-show the visual and / or loop the sound without
+-- touching the rule's own switches or conditions.
+local function StepPreview(rule, rt, now)
+    if ns.IsPreview(rule, "visual") and ns.KindHas(rule, "visual") then
+        rt.visualWanted = true
+        ns.SetVisualShown(rule, true)
+        ns.UpdateVisualText(rule, rt.info)
+    end
+    if ns.IsPreview(rule, "sound") and ns.KindHas(rule, "sound") then
+        local iv = ((rule.repeatSec or 0) > 0) and math.max(0.5, rule.repeatSec) or 2
+        if now - (rt.pvLast or 0) >= iv then
+            rt.pvLast = now
+            ns.PlaySoundPreview(ns.EffectiveSound(rule))
+        end
+    else
+        rt.pvLast = nil
+    end
+end
+
+local function StepRule(rule, ctx, now)
+    local rt = RT(rule)
+    if rule.enabled then StepEnabled(rule, rt, ctx, now) else StepDisabled(rule, rt) end
+    StepPreview(rule, rt, now)
+end
 
 local function Step()
     if not ns.rules then return end
@@ -50,98 +152,10 @@ local function Step()
     local ctx = ns.ReadContext()
     ns.tickID = (ns.tickID or 0) + 1
     local now = GetTime()
+    -- every rule runs on its own: bad data in one can never delay or block the others
     for _, rule in ipairs(ns.rules) do
-        local rt = RT(rule)
-        if rule.enabled then
-            local pt = perf.on and debugprofilestop()
-            local ok, result, info = pcall(ns.Evaluate, rule, ctx)
-            if pt then local d = debugprofilestop() - pt; perf.evalMs = perf.evalMs + d; perf.rule[rule] = (perf.rule[rule] or 0) + d end
-            if not ok then
-                local err = result
-                result, info = false, nil
-                if not rt.errored then
-                    rt.errored = true
-                    ns.Print("rule '" .. rule.name .. "' error: " .. tostring(err))
-                end
-            end
-            rt.info = info
-            -- Actions tab: On Initialization (the rule's load conditions hold), During start, After It Ends
-            if not rule.parentUid and ns.RunActions then
-                if info and info.ctxOK then
-                    if not rt.inited then rt.inited = true; RunActionsSafe(rule, rt, "init") end
-                elseif info and info.ctxOK == false then rt.inited = nil end
-            end
-            if result and not rt.active then
-                rt.active = true
-                rt.lastPlay = now
-                if not rule.parentUid then RunActionsSafe(rule, rt, "start") end
-                if ns.KindHas(rule, "sound") then PlaySoundSafe(rule, rt) end
-                ns.Log("|cff55ff55FIRED|r %s%s", rule.name, (rule.sound.enabled and rule.sound.value ~= "" and ns.KindHas(rule, "sound")) and "  (sound)" or "")
-            elseif result and rt.active then
-                local rep = rule.repeatSec or 0
-                if rep > 0 and (now - rt.lastPlay) >= rep then
-                    rt.lastPlay = now
-                    if ns.KindHas(rule, "sound") then PlaySoundSafe(rule, rt) end
-                    ns.Log("repeat  %s", rule.name)
-                end
-            elseif not result then
-                if rt.active then
-                    ns.Log("cleared %s: %s", rule.name, info and ns.WhyNot(info) or "error")
-                    if not rule.parentUid then RunActionsSafe(rule, rt, "finish") end
-                end
-                rt.active = false
-            end
-            local wanted = false
-            if rule.visual.enabled and ns.KindHas(rule, "visual") then
-                local trig = rule.visual.trigger
-                if trig == "buffActive" then
-                    wanted = info and info.present == true or false
-                elseif trig == "condition" then
-                    wanted = result and true or false
-                end   -- blank / none: nothing is shown
-                -- gate: never show while the rule's identifying spell isn't currently on an action bar
-                if wanted and rule.visual.requireOnBar and ns.SpellOnActionBar then
-                    local checkID = (rule.spellID and rule.spellID ~= 0) and rule.spellID or rule.buffID
-                    if not ns.SpellOnActionBar(checkID) then wanted = false end
-                end
-            end
-            rt.visualWanted = wanted
-            local pv = perf.on and debugprofilestop()
-            -- (each display call is guarded: one failing display must not stop the rest of the step)
-            local okS, errS = pcall(ns.SetVisualShown, rule, wanted)
-            if not okS then ReportVisualError(rule, rt, errS) end
-            -- a display the combat engine draws is hidden here, so its text / fade work is skipped entirely
-            if wanted and not (ns.EngineOwns and ns.EngineOwns(rule)) then
-                local okT, errT = pcall(ns.UpdateVisualText, rule, info)
-                if not okT then ReportVisualError(rule, rt, errT) end
-            end
-            if pv then local d = debugprofilestop() - pv; perf.visMs = perf.visMs + d; perf.rule[rule] = (perf.rule[rule] or 0) + d end
-        else
-            if rt.active and not rule.parentUid then RunActionsSafe(rule, rt, "finish") end
-            rt.active = false
-            rt.inited = nil
-            if rt.visualWanted ~= false or rt.shownOnce == nil then
-                rt.shownOnce = true
-                pcall(ns.SetVisualShown, rule, false)
-            end
-            rt.visualWanted = false
-        end
-        -- Preview (transient, set from the sidebar eye / headphone icons): force-show the visual and/or
-        -- loop the sound without touching the rule's own switches or conditions.
-        if ns.IsPreview(rule, "visual") and ns.KindHas(rule, "visual") then
-            rt.visualWanted = true
-            ns.SetVisualShown(rule, true)
-            ns.UpdateVisualText(rule, rt.info)
-        end
-        if ns.IsPreview(rule, "sound") and ns.KindHas(rule, "sound") then
-            local iv = ((rule.repeatSec or 0) > 0) and math.max(0.5, rule.repeatSec) or 2
-            if now - (rt.pvLast or 0) >= iv then
-                rt.pvLast = now
-                ns.PlaySoundPreview(ns.EffectiveSound(rule))
-            end
-        else
-            rt.pvLast = nil
-        end
+        local ok, err = pcall(StepRule, rule, ctx, now)
+        if not ok then ReportRuleError(rule, RT(rule), err) end
     end
     if ns.Bars_Update then
         local pb = perf.on and debugprofilestop()
@@ -174,6 +188,7 @@ end
 local rawStep = Step
 -- One step with its lookup index (Core.lua) and the group layouts it queued; the index is dropped even if the step fails.
 local function IndexedStep()
+    if ns.Timing then ns.Timing.ClearDeadline() end   -- this step's checks register the next moments anew
     ns.BeginStepIndex()
     if ns.BeginVisualStep then ns.BeginVisualStep() end
     local ok, err = pcall(rawStep)
@@ -284,6 +299,7 @@ for _, e in ipairs({
 f:RegisterUnitEvent("UNIT_AURA", "player")
 f:SetScript("OnEvent", function(_, event)
     if perf.on then perf.events[event] = (perf.events[event] or 0) + 1 end
+    if event == "UNIT_AURA" then ns.lastAuraEventAt = GetTime() end   -- (Conditions.lua stamps an aura's appearance with it)
     if event == "PLAYER_ENTERING_WORLD" then
         if ns.ClearSecrecyCache then ns.ClearSecrecyCache() end
         inCombat = (UnitAffectingCombat and UnitAffectingCombat("player")) and true or false   -- a /reload can land mid-fight
@@ -316,9 +332,12 @@ local function SafeStep()
         end
     end
 end
+local Timing = ns.Timing
 f:SetScript("OnUpdate", function(_, elapsed)
     acc = acc + elapsed
     sinceStep = sinceStep + elapsed
+    -- a time-left threshold ("2 s left") is crossed on this frame: step now, not at the next tick (Timing.lua deadlines)
+    if Timing and GetTime() >= Timing.NextDeadline() then dirty, forceNow = true, true; Timing.ClearDeadline() end
     if acc >= TICK or (dirty and (forceNow or sinceStep >= MIN_GAP)) then
         dirty, forceNow = false, false
         acc, sinceStep = 0, 0

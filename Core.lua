@@ -719,7 +719,7 @@ SlashCmdList["XAYAUI"] = function(msg)
             yn(ns.ToggleUI), yn(ns.rules), yn(LibStub and LibStub("AceConfigDialog-3.0", true)),
             yn(LibStub and LibStub("AceConfigRegistry-3.0", true)), yn(LibStub and LibStub("AceGUI-3.0", true))))
         ns.Print("debug: OptionsLoaded=" .. tostring(ns.optionsLoaded) .. " OptionsError=" .. tostring(ns.optionsError))
-    elseif cmd == "perf" then
+    elseif cmd == "perf" and tostring(arg or ""):lower():match("^ui") then   -- settings-window rebuild timing (/xui perf ui); plain /xui perf is the engine meter below
         ns.perf = ns.perf or { n = 0 }; ns.perf.show = not ns.perf.show
         ns.Print("rebuild timing " .. (ns.perf.show and "ON: every window rebuild prints build + skin milliseconds" or "OFF"))
     elseif cmd == "icons" then
@@ -753,6 +753,8 @@ SlashCmdList["XAYAUI"] = function(msg)
         end
     elseif cmd == "chat" then
         if ns.Chat and ns.Chat.Command then ns.Chat.Command(arg) end
+    elseif cmd == "timing" then   -- how every time / stack dependent cue gets its numbers in combat (Timing.lua)
+        if ns.Timing then ns.Timing.Report() end
     elseif cmd == "perf" then   -- engine timing on this machine (Engine.lua)
         if ns.PerfCommand then ns.PerfCommand(arg) end
     elseif cmd == "chatprobe" then   -- read-only look at Blizzard's chat frames (Chat Panel rebuild, stage S0)
@@ -777,6 +779,6 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif cmd == "bug" then
         if ns.ShowBugReport then ns.ShowBugReport() end
     else
-        ns.Print((("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat (Chat Panel: on, off, reset, move, history, settings) | /xui chatprobe (read-only chat frame report) | /xui perf [on|off] (engine timing) | /xui notes (show / hide the notepad) | /xui panel (Chat Bar settings) | /xui data (custom data panels and bars) | /xui privacy (cover or show the chat) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media"):gsub("|", "||")))
+        ns.Print((("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat (Chat Panel: on, off, reset, move, history, settings) | /xui chatprobe (read-only chat frame report) | /xui perf [on|off] (engine timing) | /xui perf ui (settings window rebuild timing) | /xui timing (how every cue gets time in combat) | /xui notes (show / hide the notepad) | /xui panel (Chat Bar settings) | /xui data (custom data panels and bars) | /xui privacy (cover or show the chat) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media"):gsub("|", "||")))
     end
 end

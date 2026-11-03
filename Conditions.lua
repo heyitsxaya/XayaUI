@@ -61,8 +61,20 @@ function ReadCooldownRaw(rule)
     if not ok or type(cd) ~= "table" then r.why = "cooldown unreadable"; return r end
     local cdActive = CleanBool(cd, "isActive")
     local onGCD = CleanBool(cd, "isOnGCD")
-    if cdActive == nil then r.why = "cooldown.isActive secret/nil"; return r end
+    if cdActive == nil then
+        -- hidden (combat): the duration engine's estimate - exact start from the Cooldown Manager + the measured length
+        local T = ns.Timing
+        local ready, _, label
+        if T then ready, _, label = T.CooldownEstimate(id) end
+        if not ready then r.why = "cooldown hidden in combat, no estimate yet (see /xui timing)"; return r end
+        r.onCd = GetTime() < ready
+        r.readyAt, r.estimated = ready, true
+        r.atMax, r.empty = not r.onCd, r.onCd
+        r.known, r.why = true, label
+        return r
+    end
     r.onCd = cdActive and not onGCD
+    if cdActive and not onGCD and ns.Timing then ns.Timing.LearnCooldown(id, CleanNumber(cd, "duration"), onGCD) end
 
     local okc, ch = pcall(C_Spell.GetSpellCharges, id)
     local maxC = okc and CleanNumber(ch, "maxCharges") or nil
@@ -134,6 +146,7 @@ local function BuildCDMIndex()
             for i = 1, #kids do
                 local fr = kids[i]
                 if fr then
+                    if ns.Timing then ns.Timing.HookFrame(fr) end   -- exact applied / removed / cooldown moments (Timing.lua)
                     local ok, sid = pcall(GetSpellIDOf, fr)
                     if ok then IndexID(idx, sid, fr, vname) end
                     local info = fr.cooldownInfo
@@ -151,7 +164,9 @@ local function BuildCDMIndex()
     end
     return idx
 end
-local function FindCDMFrame(id)
+local FindCDMFrame
+function ns.FindCDMFrame(id) return FindCDMFrame(id) end
+function FindCDMFrame(id)
     -- several viewers can hold a frame for the same spell (buff icon, buff bar, cooldown): an ACTIVE match wins,
     -- otherwise the first match is returned (so an inactive placeholder cannot hide a live aura)
     local now = GetTime()
@@ -336,7 +351,11 @@ function BuffPresentOnce(id)
     if present == false then
         seenAbsent[id] = true; presentSince[id] = nil
     elseif present == true then
-        if not presentSince[id] and seenAbsent[id] then presentSince[id] = now end
+        -- appeared: stamped with the aura event that caused it when that was just now (the step runs up to 50 ms later)
+        if not presentSince[id] and seenAbsent[id] then
+            local ev = ns.lastAuraEventAt
+            presentSince[id] = (ev and now - ev >= 0 and now - ev < 0.3) and ev or now
+        end
     end
     local rawPresent = present
     local T = ns.AuraTracker
@@ -384,23 +403,28 @@ function BuffPresentOnce(id)
     return present, (src or "") .. " | time: " .. (ref.timeSource or ref.timeNote), ref
 end
 
--- Opt-in estimate (tier 3). Called by ns.Evaluate when rule.buffEstimate is on; leaves readable data alone.
+-- When the game hides a present buff's time: the duration engine's estimate (Timing.lua: exact start from the Cooldown
+-- Manager or your cast + the measured length). On for every rule unless switched off (rule.buffEstimate == false); readable
+-- numbers are never replaced.
+local estimatePool = setmetatable({}, { __mode = "k" })   -- one copy table per rule, reused every step
 function ns.ApplyBuffEstimate(rule, info)
     local ref = info.buffRef
-    if not (rule.buffEstimate and info.present == true and type(ref) == "table") or ref.expiration then return end
-    local id = rule.buffID
-    local since, L = presentSince[id], LearnedTable()
-    local dur = L and L[id]
-    if since and type(dur) == "number" and dur > 0 then
+    if rule.buffEstimate == false or info.present ~= true or type(ref) ~= "table" or ref.expiration then return end
+    local id = tonumber(rule.buffID)
+    local exp, dur, label
+    if ns.Timing then exp, dur, label = ns.Timing.AuraEstimate(id, id and presentSince[id]) end
+    if exp then
         -- the aura reference may be shared by other rules this step: write the estimate into this rule's own copy
-        local own = {}
+        local own = (ns.InStep and ns.InStep()) and estimatePool[rule]
+        if own then for k in pairs(own) do own[k] = nil end
+        else own = {}; if ns.InStep and ns.InStep() then estimatePool[rule] = own end end
         for k, v in pairs(ref) do own[k] = v end
         ref = own
         info.buffRef = ref
-        ref.expiration, ref.duration, ref.estimated, ref.timeSource = since + dur, dur, true, "estimate"
-        info.buffSource = tostring(info.buffSource):gsub(" | time: .*$", "") .. " | time: estimate (appeared + learned " .. string.format("%.1f", dur) .. "s)"
-    else
-        info.buffSource = tostring(info.buffSource) .. " | estimate unavailable (" .. (since and "duration never seen readable" or "appearance not observed") .. ")"
+        ref.expiration, ref.duration, ref.estimated, ref.timeSource = exp, dur, true, label
+        if ns.statusDetail then info.buffSource = tostring(info.buffSource):gsub(" | time: .*$", "") .. " | time: " .. label end
+    elseif ns.statusDetail then
+        info.buffSource = tostring(info.buffSource) .. " | no time estimate yet (see /xui timing)"
     end
 end
 
@@ -837,7 +861,7 @@ function ns.Evaluate(rule, ctx)
     info.ctx = ctx
     info.cd = ns.ReadCooldown(rule)
     info.present, info.buffSource, info.buffRef = ns.BuffPresentAny(rule)
-    if rule.buffEstimate then ns.ApplyBuffEstimate(rule, info) end
+    if rule.buffEstimate ~= false and info.present == true then ns.ApplyBuffEstimate(rule, info) end
     info.cdOK = ns.CheckCooldownState(rule, info.cd)
     info.buffOK = ns.CheckBuffState(rule, info.present)
     info.ctxOK, info.ctxFail = ns.CheckContext(rule, ctx)
@@ -971,7 +995,14 @@ function ns.LogStatusSnapshot(tag)
     end
 end
 
+local PrintStatusRaw
 function ns.PrintStatus()
+    ns.statusDetail = true   -- readable time-source labels while /xui status runs (Timing.lua)
+    local ok, err = pcall(PrintStatusRaw)
+    ns.statusDetail = nil
+    if not ok then ns.Print("status failed: " .. tostring(err)) end
+end
+function PrintStatusRaw()
     if not ns.rules or #ns.rules == 0 then ns.Print("no rules") return end
     local ctx = ns.ReadContext()
     ns.Print(("context: combat=%s group=%s raid=%s instance=%s(%s) mplus=%s encounter=%s mounted=%s spec=%s role=%s"):format(
