@@ -109,10 +109,15 @@ printed = {}
 local ns = { rules = {}, folders = {} }
 XayaUI_NS = ns
 function ns.Print(...) local t = {} for i = 1, select("#", ...) do t[#t + 1] = tostring((select(i, ...))) end printed[#printed + 1] = table.concat(t, " ") end
+function ns.FindParentRule(rule) for _, r in ipairs(ns.rules) do if r.uid == rule.parentUid and not r.isCue then return r end end end
 function ns.CuesOf(rule) local out = {} for _, r in ipairs(ns.rules) do if r.isCue and r.parentUid == rule.uid then out[#out + 1] = r end end return out end
 refreshed = 0
 function ns.RefreshAllVisuals() refreshed = refreshed + 1 end
 CueRulesDB = {}
+date = os.date
+Enum = { AddOnProfilerMetric = { RecentAverageTime = 1 } }
+profilerMs = 0.2
+C_AddOnProfiler = { GetAddOnMetric = function(name, metric) assert(name == "XayaUI_CombatEngine" and metric == 1); return profilerMs end }
 _G.NS = ns
 local f = assert(loadfile(AURA_DISPLAY_PATH))
 f("XayaUI_CombatEngine", ns)
@@ -148,7 +153,8 @@ ns.rules = {
 def lua(s):
     return L.execute(s)
 
-# 0. nothing is drawn before the user switches a group on
+# 0. with automatic mode off, nothing is drawn until the user switches a group on
+lua("CueRulesDB.engineDisplay = { groups = {}, auto = false }")
 check("EngineOwns false before any group is on", lua("return NS.EngineOwns(NS.rules[1]) == false and NS.EngineOwns(NS.rules[2]) == false"))
 lua('evHandler("PLAYER_ENTERING_WORLD")')
 check("no container is created while no group is switched on", lua("return #containers == 0"))
@@ -156,8 +162,8 @@ check("no container is created while no group is switched on", lua("return #cont
 # 1. switch group A on
 lua('SlashCmdList["XUIENGINE"]("on alpha")')
 check("one container for group A", lua("return #containers == 1 and containers[1].name == 'XayaUIEngine_fA' and containers[1].unit == 'player'"))
-check("includeSpellIDs = enabled tagged ids + alternates only",
-      lua("local s = containers[1].groups.main.filters.includeSpellIDs; local n = 0; for k in pairs(s) do n = n + 1 end; return n == 4 and s[9001] and s[9002] and s[9102] and s[9103] and not s[9003] and not s[7777]"))
+check("includeSpellIDs = enabled buff ids + alternates (no tag needed), not the disabled rule",
+      lua("local s = containers[1].groups.main.filters.includeSpellIDs; local n = 0; for k in pairs(s) do n = n + 1 end; return n == 5 and s[9001] and s[9002] and s[9102] and s[9103] and s[7777] and not s[9003]"))
 check("flow: horizontal, TOPLEFT, grows right/down, wrap size = cW",
       lua("local f = containers[1].flow; return f.axis == 0 and f.anchor == 'TOPLEFT' and f.h == 1 and f.v == -1 and f.max == 100"))
 check("layout: spacing 5 both ways, icon 30 x 30",
@@ -168,10 +174,10 @@ check("placement: container TOPLEFT puts first icon centre at (10, 20)",
       lua("local p = containers[1]._points[1]; return table.concat({tostring(p[1]), tostring(p[3]), tostring(p[4]), tostring(p[5])}, ' ')"))
 check("button init wires icon, cooldown (no swipe), duration text, stack text, zoom 0.08",
       lua("local b = buttons[1]; return b.log.icon and b.log.cd and b.log.cd.swipe == false and b.log.dur and b.log.count and b.log.icon.texcoord[1] == 0.08 and b.log.dur.fontsize == 12 and b.log.count.fontsize == 10"))
-check("EngineOwns true for tagged parent and cue in the group",
+check("EngineOwns true for parent and cue in the group",
       lua("return NS.EngineOwns(NS.rules[1]) and NS.EngineOwns(NS.rules[2]) and NS.EngineOwns(NS.rules[3])"))
-check("EngineOwns false for the user's own untagged rule and for rules in other groups",
-      lua("return NS.EngineOwns(NS.rules[7]) == false and NS.EngineOwns(NS.rules[8]) == false"))
+check("EngineOwns true for an untagged rule in the group, false for the disabled rule and for rules in other groups",
+      lua("return NS.EngineOwns(NS.rules[7]) == true and NS.EngineOwns(NS.rules[5]) == false and NS.EngineOwns(NS.rules[8]) == false"))
 check("core visuals were refreshed after the build", lua("return refreshed >= 1"))
 check("rules were never modified (no field added or removed)",
       lua("local r = NS.rules[7]; local n = 0; for _ in pairs(r) do n = n + 1 end; return n == 6"))
@@ -219,6 +225,32 @@ check("failed group is not engine-owned (no icon gap)", lua("return NS.EngineOwn
 lua("printed = {}")
 lua('SlashCmdList["XUIENGINE"]("on group")')
 check("ambiguous group name is refused, nothing changes", lua("return #printed >= 1 and printed[1]:find('groups match') ~= nil"))
+
+# 9. automatic mode: no tag, no switch
+lua('failAdd = false; containers = {}; NS.AuraDisplay._groups.fA = nil; NS.AuraDisplay._groups.fB = nil; CueRulesDB.engineDisplay = { groups = {}, auto = true }')
+lua('for _, r in ipairs(NS.rules) do r.engineTag = nil end')
+lua('SlashCmdList["XUIENGINE"]("refresh")')
+check("auto: dynamic groups are drawn without any switch or tag", lua("return #containers == 2 and NS.EngineOwns(NS.rules[1]) and NS.EngineOwns(NS.rules[2]) and NS.EngineOwns(NS.rules[8])"))
+check("auto: static and unsupported groups stay with XayaUI", lua("return NS.EngineOwns(NS.rules[10]) == false and NS.EngineOwns(NS.rules[12]) == false"))
+lua('SlashCmdList["XUIENGINE"]("off beta")')
+check("auto: an explicit off keeps one group with XayaUI", lua("return NS.EngineOwns(NS.rules[8]) == false and NS.EngineOwns(NS.rules[1]) == true"))
+lua('SlashCmdList["XUIENGINE"]("reset beta")')
+check("auto: reset hands the group back to automatic mode", lua("return NS.EngineOwns(NS.rules[8]) == true"))
+lua('NS.rules[2].visual.fadeGrey = true; printed = {}')
+lua('SlashCmdList["XUIENGINE"]("")')
+check("status lists effects the engine cannot draw", lua("for _, l in ipairs(printed) do if l:find('does not draw grey') then return true end end return false"))
+# performance guard
+lua('profilerMs = 0.2; NS.AuraDisplay.GuardCheck(); NS.AuraDisplay.GuardCheck(); NS.AuraDisplay.GuardCheck()')
+check("guard: a cheap engine addon never trips it", lua("return CueRulesDB.engineDisplay.auto == true and CueRulesDB.engineDisplay.guardTrips == nil"))
+lua('profilerMs = 3.5; NS.AuraDisplay.GuardCheck(); NS.AuraDisplay.GuardCheck()')
+check("guard: two high readings are not enough", lua("return CueRulesDB.engineDisplay.auto == true"))
+lua('profilerMs = 0.2; NS.AuraDisplay.GuardCheck(); profilerMs = 3.5; NS.AuraDisplay.GuardCheck(); NS.AuraDisplay.GuardCheck()')
+check("guard: a low reading resets the count", lua("return CueRulesDB.engineDisplay.auto == true"))
+lua('printed = {}; NS.AuraDisplay.GuardCheck()')
+check("guard: three high readings in a row switch automatic mode off, record it and say so",
+      lua("return CueRulesDB.engineDisplay.auto == false and #CueRulesDB.engineDisplay.guardTrips == 1 and NS.EngineOwns(NS.rules[1]) == false and #printed >= 1 and printed[1]:find('performance guard') ~= nil"))
+lua('SlashCmdList["XUIENGINE"]("auto on")')
+check("auto on turns it back on", lua("return CueRulesDB.engineDisplay.auto == true and NS.EngineOwns(NS.rules[1]) == true"))
 
 print()
 print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED")

@@ -92,7 +92,8 @@ local function Step()
             rt.visualWanted = wanted
             local pv = perf.on and debugprofilestop()
             ns.SetVisualShown(rule, wanted)
-            if wanted then ns.UpdateVisualText(rule, info) end
+            -- a display the combat engine draws is hidden here, so its text / fade work is skipped entirely
+            if wanted and not (ns.EngineOwns and ns.EngineOwns(rule)) then ns.UpdateVisualText(rule, info) end
             if pv then local d = debugprofilestop() - pv; perf.visMs = perf.visMs + d; perf.rule[rule] = (perf.rule[rule] or 0) + d end
         else
             if rt.active and not rule.parentUid and ns.RunActions then ns.RunActions(rule, "finish") end

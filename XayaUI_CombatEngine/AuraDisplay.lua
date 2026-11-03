@@ -8,9 +8,15 @@
 -- Built from Blizzard's published UI source only (Blizzard_AuraContainer: CustomAuraContainer / CustomAuraButton /
 -- AuraContainerUtil / AuraContainerFlowLayout, live branch).  No other addon's code or data is used.
 --
--- WHAT IT DRAWS: Buff-present rules (and their Icon cue) that carry an `engineTag` field, in folders the user switched on with
--- /xuiengine.  Nothing is shipped: the spell IDs come from the user's own saved rules (CueRulesDB), exactly like every other
--- rule.  Rules without the tag are never touched.  This module never edits a rule.
+-- WHAT IT DRAWS: every enabled Buff-present rule (and its Icon cue) that sits directly in a dynamic group, automatically
+-- (no tag, no switch).  Nothing is shipped: the spell IDs come from the user's own saved rules (CueRulesDB), exactly like
+-- every other rule.  This module never edits a rule.  `/xuiengine off <group>` keeps one group with XayaUI; `/xuiengine auto off`
+-- turns the automatic mode off for all groups.
+--
+-- PERFORMANCE GUARD: the user's condition for drawing everything through the engine is that it must not cost frames.  Every 5 s
+-- the game's own per-addon CPU meter (C_AddOnProfiler) is read for this addon; if its recent average stays above LIMIT_MS for
+-- NEED checks in a row, automatic mode is switched off (XayaUI draws again once combat ends) and the trip is saved to
+-- CueRulesDB.engineDisplay.guardTrips.  Unverified in game: that the meter is on by default and that its unit is milliseconds.
 --
 -- KNOWN LIMITS (also in the design doc):
 --   * candidateFilters.includeSpellIDs is real in Blizzard's code but absent from the generated API docs: it may change.
@@ -35,38 +41,83 @@ local TO_CENTER = {
 local groups = {}      -- [folderId] = { frame = container, ok = bool, err = string?, ids = {set}, n = count }
 local pendingBuild     -- build requested during combat lockdown
 local lastError
+local LIMIT_MS, NEED = 1.0, 3   -- performance guard (see the header)
+local guard = { bad = 0 }
 
 local function DB()
     local db = CueRulesDB
     if not db then return nil end
     db.engineDisplay = db.engineDisplay or {}
-    db.engineDisplay.groups = db.engineDisplay.groups or {}
+    db.engineDisplay.groups = db.engineDisplay.groups or {}   -- [folderId] = true (forced on) / false (kept with XayaUI)
+    if db.engineDisplay.auto == nil then db.engineDisplay.auto = true end
     return db.engineDisplay
 end
 
 local function Say(...) if ns.Print then ns.Print(...) end end
 
--- Is `rule` (a parent or its cue) drawn by the engine right now?  Core asks this before showing its own icon.
-function ns.EngineOwns(rule)
-    if not rule or not rule.engineTag or not rule.folder then return false end
-    local g = groups[rule.folder]
-    return (g and g.ok) and true or false
+-- The parent rule of `rule` (itself when it is a parent; its parent when it is a cue / condition rule).
+local function ParentOf(rule)
+    if not rule then return nil end
+    if rule.parentUid then return ns.FindParentRule and ns.FindParentRule(rule) or nil end
+    return rule
 end
 
--- Gather the user's tagged, enabled Buff-present rules of one folder.
+-- A Buff-present parent rule the engine can draw: enabled, tracks a buff, sits in a group.
+local function Eligible(p)
+    if type(p) ~= "table" or p.isCue or p.enabled == false or not p.useBuff or not p.folder then return false end
+    local id = tonumber(p.buffID)
+    return (id and id > 0) and true or false
+end
+
+-- Is `rule` (a parent or its cue) drawn by the engine right now?  Core asks this before showing its own icon.
+-- (cached per engine tick: finding a cue's parent scans the rule list, and this is asked for every rule every tick)
+local ownCache, ownTick, ownVer = setmetatable({}, { __mode = "k" }), -1, 0
+function ns.EngineOwns(rule)
+    local t = ns.tickID or 0
+    if ownTick ~= t then ownCache, ownTick = setmetatable({}, { __mode = "k" }), t end
+    local c = ownCache[rule]
+    if c ~= nil then return c end
+    local p = ParentOf(rule)
+    local res = false
+    if Eligible(p) then
+        local g = groups[p.folder]
+        res = (g and g.ok and g.ids and g.ids[tonumber(p.buffID)]) and true or false
+    end
+    ownCache[rule] = res
+    return res
+end
+local function OwnChanged() ownTick = -1 end   -- a build / failure / switch changes the answers at once
+
+-- Gather the enabled Buff-present rules of one folder.
 local function Collect(fo)
     local ids, n, first = {}, 0, nil
     for _, r in ipairs(ns.rules or {}) do
-        if not r.isCue and r.folder == fo.id and r.engineTag and r.enabled ~= false and r.useBuff then
-            local id = tonumber(r.buffID)
-            if id and id > 0 then
-                ids[id] = true; n = n + 1
-                if type(r.buffAlt) == "table" then for _, a in ipairs(r.buffAlt) do a = tonumber(a); if a and a > 0 then ids[a] = true end end end
-                first = first or r
-            end
+        if r.folder == fo.id and Eligible(r) then
+            ids[tonumber(r.buffID)] = true; n = n + 1
+            if type(r.buffAlt) == "table" then for _, a in ipairs(r.buffAlt) do a = tonumber(a); if a and a > 0 then ids[a] = true end end end
+            first = first or r
         end
     end
     return ids, n, first
+end
+
+-- Effects XayaUI draws itself that the engine's container cannot: listed so nothing is lost silently.
+local function Drops(p)
+    local out = {}
+    local cue = ns.CuesOf and ns.CuesOf(p)
+    cue = cue and cue[1]
+    local v = (cue and cue.visual) or p.visual or {}
+    if v.fadeGrey then out[#out + 1] = "grey / colour fade" end
+    if v.fadeAlpha then out[#out + 1] = "opacity fade" end
+    if v.flash and v.flash.enabled then out[#out + 1] = "flash" end
+    if v.fill and v.fill.enabled then out[#out + 1] = "wipe" end
+    if v.glow then out[#out + 1] = "glow" end
+    if v.desatOnCD then out[#out + 1] = "grey on cooldown" end
+    if ns.OutcomesOf then
+        local ok, oc = pcall(ns.OutcomesOf, p)
+        if ok and type(oc) == "table" and #oc > 0 then out[#out + 1] = "condition changes (" .. #oc .. ")" end
+    end
+    return out
 end
 
 local function CueOf(rule)
@@ -141,6 +192,7 @@ local function ButtonInit(w, h, cue)
 end
 
 local function Fail(g, why)
+    OwnChanged()
     g.ok, g.err = false, tostring(why)
     lastError = g.err
     if g.frame then g.frame:Hide() end
@@ -148,6 +200,7 @@ end
 
 -- Create (once) or update the container for one folder.
 local function BuildGroup(fo)
+    OwnChanged()
     local g = groups[fo.id] or {}
     groups[fo.id] = g
     local dir = fo.cGrowth or "RIGHT"
@@ -158,7 +211,7 @@ local function BuildGroup(fo)
     end
     local ids, n, first = Collect(fo)
     g.ids, g.n = ids, n
-    if n == 0 then g.ok, g.err = false, "no enabled tagged Buff rules in this group"; if g.frame then g.frame:Hide() end; return g end
+    if n == 0 then g.ok, g.err = false, "no enabled Buff rules in this group"; if g.frame then g.frame:Hide() end; return g end
     local cue = CueOf(first)
     local v = (cue and cue.visual) or {}
     local iw, ih = tonumber(v.w) or 30, tonumber(v.h) or 30
@@ -193,11 +246,12 @@ local function BuildGroup(fo)
         Place(c, fo, anchor, iw, ih)
         c:Show()
     end)
-    if ok then g.ok, g.err = true, nil else Fail(g, err) end
+    if ok then g.ok, g.err = true, nil; OwnChanged() else Fail(g, err) end
     return g
 end
 
 local function TearDownGroup(fid)
+    OwnChanged()
     local g = groups[fid]
     if g then g.ok = false; if g.frame then g.frame:Hide() end end
 end
@@ -213,9 +267,18 @@ function D.Build()
     if InCombatLockdown and InCombatLockdown() then pendingBuild = true; return end
     pendingBuild = nil
     for _, fo in ipairs(ns.folders or {}) do
-        if db.groups[fo.id] then BuildGroup(fo) else TearDownGroup(fo.id) end
+        if D.Wanted(fo) then BuildGroup(fo) else TearDownGroup(fo.id) end
     end
     RefreshCore()
+end
+
+-- Is this group drawn by the engine?  An explicit choice (/xuiengine on|off) wins; otherwise automatic mode decides.
+function D.Wanted(fo)
+    local db = DB()
+    if not db then return false end
+    local v = db.groups[fo.id]
+    if v ~= nil then return v and true or false end
+    return db.auto ~= false and fo.cType == "dynamic"
 end
 
 local function FindFolder(q)
@@ -233,16 +296,27 @@ end
 
 function D.Status()
     local db = DB()
-    local any = false
+    if not db then return end
+    local any, dropN = false, 0
     for _, fo in ipairs(ns.folders or {}) do
-        if db and db.groups[fo.id] then
+        local _, n = Collect(fo)
+        if n > 0 and D.Wanted(fo) then
             any = true
             local g = groups[fo.id]
-            local _, n = Collect(fo)
-            Say(string.format("%s: %s (%d tagged buff rules)%s", fo.name or fo.id, (g and g.ok) and "ENGINE DRAWN" or "NOT drawn by engine (XayaUI draws it)", n, (g and g.err) and (" - " .. g.err) or ""))
+            Say(string.format("%s: %s (%d buff rules)%s", fo.name or fo.id, (g and g.ok) and "ENGINE DRAWN" or "NOT drawn by engine (XayaUI draws it)", n, (g and g.err) and (" - " .. g.err) or ""))
+            if g and g.ok then
+                for _, r in ipairs(ns.rules or {}) do
+                    if r.folder == fo.id and Eligible(r) then
+                        local d = Drops(r)
+                        if #d > 0 then dropN = dropN + 1; Say("   " .. tostring(r.name) .. ": the engine does not draw " .. table.concat(d, ", ")) end
+                    end
+                end
+            end
         end
     end
-    if not any then Say("No group is switched on. Use /xuiengine on <group name>.") end
+    if not any then Say("Nothing is drawn by the engine (automatic mode " .. (db.auto ~= false and "on" or "OFF") .. ").") end
+    Say(string.format("automatic mode: %s.  Performance guard: %s", db.auto ~= false and "on" or "OFF",
+        guard.last and string.format("engine addon %.2f ms recent average (limit %.1f)", guard.last, LIMIT_MS) or "no reading yet (the game's addon meter may be off)"))
     if lastError then Say("last engine error: " .. lastError) end
 end
 
@@ -251,27 +325,58 @@ local function Slash(msg)
     cmd = cmd:lower()
     local db = DB()
     if not db then Say("saved data not loaded yet") return end
-    if cmd == "on" or cmd == "off" then
+    if cmd == "auto" then
+        local a = rest:lower()
+        if a == "on" or a == "off" then db.auto = (a == "on"); guard.bad = 0; D.Build() end
+        D.Status()
+    elseif cmd == "on" or cmd == "off" then
         local fo, err = FindFolder(rest)
         if not fo then Say(err) return end
-        db.groups[fo.id] = (cmd == "on") or nil
+        db.groups[fo.id] = (cmd == "on")
         D.Build()
         D.Status()
+    elseif cmd == "reset" then
+        local fo, err = FindFolder(rest)
+        if not fo then Say(err) return end
+        db.groups[fo.id] = nil   -- back to automatic
+        D.Build(); D.Status()
     elseif cmd == "refresh" or cmd == "build" then
         D.Build(); D.Status()
     elseif cmd == "list" then
         for _, fo in ipairs(ns.folders or {}) do
             local _, n = Collect(fo)
-            if n > 0 then Say(string.format("%s: %d tagged buff rules, %s", fo.name or fo.id, n, db.groups[fo.id] and "engine ON" or "engine off")) end
+            if n > 0 then Say(string.format("%s: %d buff rules, %s", fo.name or fo.id, n, D.Wanted(fo) and "engine ON" or "engine off")) end
         end
     else
         D.Status()
-        Say("/xuiengine on|off <group>, refresh, list.  Draws a group's tagged buffs through Blizzard's secure aura container so they show in combat.")
+        Say("/xuiengine auto on|off, on|off|reset <group>, refresh, list.  Draws buff rules in dynamic groups through Blizzard's secure aura container so they show in combat; automatic unless switched off.")
     end
 end
 
 SLASH_XUIENGINE1 = "/xuiengine"
 SlashCmdList["XUIENGINE"] = Slash
+
+-- Performance guard: read this addon's own CPU from the game's meter; trip automatic mode off if it stays high.
+local function GuardCheck()
+    local db = DB()
+    if not (db and db.auto ~= false) then guard.bad = 0; return end
+    if not (C_AddOnProfiler and C_AddOnProfiler.GetAddOnMetric and Enum and Enum.AddOnProfilerMetric) then return end
+    local ok, v = pcall(C_AddOnProfiler.GetAddOnMetric, "XayaUI_CombatEngine", Enum.AddOnProfilerMetric.RecentAverageTime)
+    if not ok or type(v) ~= "number" then return end
+    guard.last = v
+    if v > LIMIT_MS then guard.bad = guard.bad + 1 else guard.bad = 0 end
+    if guard.bad >= NEED then
+        guard.bad = 0
+        db.auto = false
+        db.guardTrips = db.guardTrips or {}
+        db.guardTrips[#db.guardTrips + 1] = { at = date("%Y-%m-%d %H:%M:%S"), ms = v, limit = LIMIT_MS }
+        while #db.guardTrips > 10 do table.remove(db.guardTrips, 1) end
+        Say(string.format("performance guard: the engine addon averaged %.2f ms per frame (limit %.1f) for %d checks, so automatic engine drawing is OFF; XayaUI draws again once combat ends. Turn it back on with /xuiengine auto on.", v, LIMIT_MS, NEED))
+        D.Build()
+    end
+end
+if C_Timer and C_Timer.NewTicker then C_Timer.NewTicker(5, function() pcall(GuardCheck) end) end
+D.GuardCheck = GuardCheck
 
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_ENTERING_WORLD")
