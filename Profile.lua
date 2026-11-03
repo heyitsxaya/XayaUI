@@ -226,6 +226,41 @@ function ns.Profile_SnapshotRule(rule, name)
     return snap
 end
 
+-- One group with every group nested in it, every rule inside them, and those rules' cues / conditions (the outcomes link to their rule
+-- by uid, so they come along even when they carry no folder of their own). The top group's parent is dropped so it lands inside
+-- the import wrapper; nested groups keep their parents.
+function ns.Profile_SnapshotFolder(fold, name)
+    local snap = { v = 1, name = name or tostring(fold and fold.name or ""), addonVersion = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addonName, "Version")) or "" }
+    local ids, order, stack = { [fold.id] = true }, { fold }, { fold.id }
+    while #stack > 0 do
+        local cur = table.remove(stack)
+        for _, f in ipairs(ns.folders or {}) do
+            if f.parent == cur and not ids[f.id] then ids[f.id] = true; order[#order + 1] = f; stack[#stack + 1] = f.id end
+        end
+    end
+    snap.folders = {}
+    for _, f in ipairs(order) do
+        local c = ns.Copy(f)
+        if f == fold then c.parent = nil end
+        snap.folders[#snap.folders + 1] = c
+    end
+    local have, rules = {}, {}
+    for _, r in ipairs(ns.rules or {}) do
+        if r.folder and ids[r.folder] then have[r] = true; rules[#rules + 1] = ns.Copy(r) end
+    end
+    if ns.OutcomesOf then
+        for _, r in ipairs(ns.rules or {}) do
+            if have[r] and not r.parentUid then
+                for _, o in ipairs(ns.OutcomesOf(r)) do
+                    if not have[o] then have[o] = true; rules[#rules + 1] = ns.Copy(o) end
+                end
+            end
+        end
+    end
+    snap.rules = rules
+    return snap
+end
+
 function ns.Profile_Encode(snap)
     local out = {}
     local ok, err = pcall(Enc, snap, out, 0)

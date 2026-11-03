@@ -4865,6 +4865,13 @@ StaticPopupDialogs["XAYAUI_EXPORT"] = {
     EditBoxOnEnterPressed = function(eb) eb:GetParent():Hide() end,
     EditBoxOnEscapePressed = function(eb) eb:GetParent():Hide() end,
 }
+ns.UI.ExportFolder = function(fold)
+    local snap = ns.Profile_SnapshotFolder(fold, tostring(fold.name or "Group"))
+    local txt, err = ns.Profile_Encode(snap)
+    if not txt then ns.Print("could not export '" .. tostring(fold.name) .. "': " .. tostring(err)); return end
+    ShowPopup("XAYAUI_EXPORT", "Export of the group '" .. tostring(fold.name) .. "': " .. #snap.folders .. " group(s), " .. #snap.rules .. " rule(s) including their cues and conditions"
+        .. "\nCtrl+C to copy, then paste it into Profiles > Import (or the Import button) on the other character or account.", { text = txt })
+end
 ns.UI.ExportRule = function(rule)
     local snap = ns.Profile_SnapshotRule(rule, tostring(rule.name or "Rule"))
     local txt, err = ns.Profile_Encode(snap)
@@ -5127,6 +5134,7 @@ local function RowMenu(button, root)
         end
         root:CreateButton("Enable All Rules Inside", function() for _, r in ipairs(FolderRules(fold.id)) do r.enabled = true; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
         root:CreateButton("Disable All Rules Inside", function() for _, r in ipairs(FolderRules(fold.id)) do r.enabled = false; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
+        root:CreateButton("Export Group", function() ns.UI.ExportFolder(fold) end)
         AddPasteMenu(root, "Paste Settings Into Rules Here", function() return FolderRules(fold.id) end,
             function() return "every rule in '" .. tostring(fold.name) .. "' (and its nested groups)" end)
         AddMoveMenu(root, fold, "folder")
