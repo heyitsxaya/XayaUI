@@ -284,6 +284,11 @@ lua('failAdd = true; for k, s in pairs(NS.AuraDisplay._singles) do s.frame = nil
 check("container error: nothing engine-owned, failures listed", (not own("U1")) and (not own("A1")) and lua("for _, e in ipairs(NS.AuraDisplay._Left()) do if e[2]:find('failed') then return true end end return false"))
 lua('failAdd = false')
 
+# 10. loaded twice (XayaUI loads the engine files and the separate XayaUI_CombatEngine folder is installed too): one copy only
+lua('BEFORE_D = NS.AuraDisplay; BEFORE_SLASH = SlashCmdList["XUIENGINE"]')
+L.execute(r'''local f = assert(loadfile(PATH)); f("XayaUI_CombatEngine", NS)'''.replace("PATH", repr(os.path.join(ROOT, "XayaUI_CombatEngine", "AuraDisplay.lua")).replace("'", '"')))
+check("second copy steps aside (same module, same command, no second set of hooks)", lua("return NS.AuraDisplay == BEFORE_D and SlashCmdList['XUIENGINE'] == BEFORE_SLASH"))
+
 print()
 print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED")
 sys.exit(1 if fails else 0)

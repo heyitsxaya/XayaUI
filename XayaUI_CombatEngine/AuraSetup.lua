@@ -12,6 +12,12 @@
 -- no saved setup.  It never opens in combat.
 -------------------------------------------------------------------------------
 local _, ns = ...; ns = XayaUI_NS or ns -- sibling addon XayaUI_CombatEngine shares XayaUI's namespace (interim bridge, see README)
+
+-- Loaded once: XayaUI itself loads the engine files (XayaUI.toc), so pulling the repo is enough; if the separate
+-- XayaUI_CombatEngine folder is installed too, its copy finds this and steps aside (no double load).
+ns.engineFiles = ns.engineFiles or {}
+if ns.engineFiles.AuraSetup then return end
+ns.engineFiles.AuraSetup = true
 local M = ns.AuraModel
 if not M then return end
 

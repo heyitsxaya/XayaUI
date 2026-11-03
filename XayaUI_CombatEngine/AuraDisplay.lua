@@ -31,6 +31,12 @@
 local _, ns = ...
 ns = XayaUI_NS or ns
 
+-- Loaded once: XayaUI itself loads the engine files (XayaUI.toc), so pulling the repo is enough; if the separate
+-- XayaUI_CombatEngine folder is installed too, its copy finds this and steps aside (no double load).
+ns.engineFiles = ns.engineFiles or {}
+if ns.engineFiles.AuraDisplay then return end
+ns.engineFiles.AuraDisplay = true
+
 local D = {}
 ns.AuraDisplay = D
 
@@ -661,9 +667,11 @@ local function GuardCheck()
     local db = DB()
     if not (db and db.auto ~= false) then guard.bad = 0; return end
     if not (C_AddOnProfiler and C_AddOnProfiler.GetAddOnMetric and Enum and Enum.AddOnProfilerMetric) then return end
-    local v = Metric("XayaUI_CombatEngine")
-    if not v then return end
-    v = v + (Metric("Blizzard_AuraContainer") or 0)
+    -- the engine's own Lua (counted under XayaUI when XayaUI loads it, under XayaUI_CombatEngine when installed on its own) is
+    -- tiny next to the containers' work, which the game counts under Blizzard_AuraContainer
+    local own, blizz = Metric("XayaUI_CombatEngine"), Metric("Blizzard_AuraContainer")
+    if not own and not blizz then return end
+    local v = (own or 0) + (blizz or 0)
     guard.last = v
     if v > LIMIT_MS then guard.bad = guard.bad + 1 else guard.bad = 0 end
     if guard.bad < NEED then return end

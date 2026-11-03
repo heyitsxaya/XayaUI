@@ -19,6 +19,12 @@
 --   * Precedence: your override > a measurement taken out of combat with this exact loadout > the live text.
 -------------------------------------------------------------------------------
 local _, ns = ...; ns = XayaUI_NS or ns -- sibling addon XayaUI_CombatEngine shares XayaUI's namespace (interim bridge, see README)
+
+-- Loaded once: XayaUI itself loads the engine files (XayaUI.toc), so pulling the repo is enough; if the separate
+-- XayaUI_CombatEngine folder is installed too, its copy finds this and steps aside (no double load).
+ns.engineFiles = ns.engineFiles or {}
+if ns.engineFiles.AuraModel then return end
+ns.engineFiles.AuraModel = true
 local M = {}
 ns.AuraModel = M
 

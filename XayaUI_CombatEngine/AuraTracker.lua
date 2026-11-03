@@ -28,6 +28,12 @@
 -- Secret-value safety: values of unknown secrecy are only tested with issecretvalue/type; never compared, formatted or used as
 -- table keys before that test.  Every game call is pcall-wrapped.
 local _, ns = ...; ns = XayaUI_NS or ns -- sibling addon XayaUI_CombatEngine shares XayaUI's namespace (interim bridge, see README)
+
+-- Loaded once: XayaUI itself loads the engine files (XayaUI.toc), so pulling the repo is enough; if the separate
+-- XayaUI_CombatEngine folder is installed too, its copy finds this and steps aside (no double load).
+ns.engineFiles = ns.engineFiles or {}
+if ns.engineFiles.AuraTracker then return end
+ns.engineFiles.AuraTracker = true
 local T = {}
 ns.AuraTracker = T
 
