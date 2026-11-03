@@ -338,6 +338,12 @@ local function Container(f)
 end
 -- XayaUI's frame for a group (created on first use, kept in place from the group's settings): the combat engine hangs its icons here
 function ns.GroupFrame(f) return f and Container(f) or nil end
+-- XayaUI's own frame for one display (created and styled on first use): the combat engine sits its single slot exactly on it
+function ns.DisplayFrame(rule)
+    if not rule then return nil end
+    if not frames[rule] then ns.RefreshVisual(rule) end
+    return frames[rule]
+end
 -- the frame a rule's display hangs from, and its dynamic-group ancestor (if any)
 local function ParentFor(rule)
     if rule.cursorConv and ns.CursorReminderFolder then   -- converted at-cursor reminder: hangs from the cursor group

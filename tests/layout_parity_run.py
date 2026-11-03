@@ -117,4 +117,43 @@ for i, (dir, pt, off, sc, poff, sz) in enumerate(CASES):
     check("%s, group point %s, offset %s, scale %s, parent %s: engine icon on XayaUI's spot" % (dir, pt, off, sc, poff), d < 0.01,
           "XayaUI %.2f,%.2f vs engine %.2f,%.2f" % (xui + eng))
     check("  ...and hosted by XayaUI's group frame", L.eval("ENG_HOSTED"))
+# Single slots (no group, or a static group): the engine icon must sit exactly on XayaUI's own icon
+SINGLES = [
+    # group (None = no group), group offsets, group scale, display offsets, size
+    (None, (0, 0), 1, (-250, 120), 48),
+    ("static", (300, -40), 1.5, (12, -8), 36),
+    ("static", (-60, 200), 0.75, (0, 0), 64),
+]
+for j, (grp, goff, gsc, voff, sz) in enumerate(SINGLES):
+    L.execute(r'''
+    local ns, hasGroup, gx, gy, gsc, vx, vy, sz, j = NS, ...
+    ns.folders, ns.rules = {}, {}
+    CueRulesDB.folders, CueRulesDB.rules = ns.folders, ns.rules
+    local fid
+    if hasGroup then fid = "fs" .. j; ns.folders[1] = { id = fid, name = "S" .. j, cX = gx, cY = gy, cScale = gsc, cW = 0, cH = 0 } end
+    RULE = { uid = "s" .. j, name = "single" .. j, folder = fid, useBuff = true, buffID = 7000 + j, buffState = "present", enabled = true,
+      visual = { enabled = true, trigger = "buffActive", w = sz, h = sz, x = vx, y = vy } }
+    ns.rules[1] = RULE
+    if ns.NormalizeRule then pcall(ns.NormalizeRule, RULE) end
+    RULE.visual.enabled, RULE.visual.w, RULE.visual.h, RULE.visual.x, RULE.visual.y, RULE.visual.trigger = true, sz, sz, vx, vy, "buffActive"
+    ns.SetVisualShown(RULE, true)
+    local fr = ns.VisualFramesOf(RULE)[1]
+    XUI_X, XUI_Y = CenterAbs(fr)
+    ns.AuraDisplay.Build()
+    local s = ns.AuraDisplay._singles[RULE]
+    assert(s and s.ok, "single slot not built: " .. tostring(s and s.err))
+    local c = s.frame
+    local a = c._pt
+    local rx, ry = PointAbs(a[2], a[3]); local es = EffScale(c)
+    -- the slot's TOPLEFT corner + half an icon right and down = the icon centre
+    ENG_X = rx + a[4] * es + 0.5 * sz * es
+    ENG_Y = ry + a[5] * es - 0.5 * sz * es
+    SIZE_OK = math.abs(sz * es - fr:GetWidth() * EffScale(fr)) < 0.001
+    ''', grp is not None, goff[0], goff[1], gsc, voff[0], voff[1], sz, j)
+    xui = (L.eval("XUI_X"), L.eval("XUI_Y")); eng = (L.eval("ENG_X"), L.eval("ENG_Y"))
+    d = max(abs(xui[0] - eng[0]), abs(xui[1] - eng[1]))
+    check("single (%s group, offset %s, scale %s, display offset %s, size %s): engine icon on XayaUI's icon" % (grp or "no", goff, gsc, voff, sz), d < 0.01,
+          "XayaUI %.2f,%.2f vs engine %.2f,%.2f" % (xui + eng))
+    check("  ...and the same size on screen", L.eval("SIZE_OK"))
+
 print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)

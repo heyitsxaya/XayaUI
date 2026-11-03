@@ -25,6 +25,9 @@ local function proxyFrame(kind)
         if k == "SetParent" then return function(self, p) self.parent = p end end
         if k == "GetParent" then return function(self) return self.parent end end
         if k == "SetShown" then return function(self, v) self.shown = v and true or false end end
+        if k == "IsShown" then return function(self) return self.shown end end
+        if k == "GetFrameStrata" then return function(self) return self.strata or "HIGH" end end
+        if k == "SetFrameStrata" then return function(self, v) self.strata = v end end
         if k == "SetAlpha" then return function(self, v) self.alpha = v end end
         if k == "SetTexCoord" then return function(self, ...) self.texcoord = { ... } end end
         if k == "SetDrawSwipe" then return function(self, v) self.swipe = v end end
@@ -72,7 +75,9 @@ function CreateFrame(kind, name, parent, template)
         function c:SetAuraProcessingPolicy(p) assert(isEnum(CustomAuraContainerAuraProcessingPolicy, p)); self.policy = p end
         function c:AddAuraGroup(key, filter, o)
             assert(type(key) == "string" and key ~= "", "groupKey")
-            assert(filter == "HELPFUL" or filter == "HARMFUL", "filterString")
+            -- Blizzard: AuraUtil.IsValidFilterString (tokens split on "|" / space, each a known AuraFilters value)
+            local valid = { HELPFUL = 1, HARMFUL = 1, PLAYER = 1, RAID = 1, CANCELABLE = 1, INCLUDE_NAME_PLATE_ONLY = 1, MAW = 1, EXTERNAL_DEFENSIVE = 1, CROWD_CONTROL = 1, RAID_IN_COMBAT = 1, RAID_PLAYER_DISPELLABLE = 1, BIG_DEFENSIVE = 1, IMPORTANT = 1, DISPELLABLE = 1 }
+            for tok in tostring(filter):gmatch("[^| ]+") do assert(valid[tok:gsub("^!", "")], "unknown aura filter component " .. tok) end
             assert(not self.groups[key], "group exists")
             if failAdd then error("simulated: includeSpellIDs rejected") end
             local cf = o.candidateFilters
@@ -86,7 +91,7 @@ function CreateFrame(kind, name, parent, template)
                 assert(l[k] == nil or (type(l[k]) == "number" and l[k] >= 0), k)
             end
             assert(o.initializeFrame == nil or type(o.initializeFrame) == "function")
-            self.groups[key] = { filters = cf, layout = l, init = o.initializeFrame }
+            self.groups[key] = { filters = cf, layout = l, init = o.initializeFrame, filter = filter, max = o.maxFrameCount }
             for i = 1, 3 do local b = newButton(); buttons[#buttons + 1] = b; o.initializeFrame(b) end   -- Blizzard pre-creates a batch
         end
         function c:SetAuraGroupCandidateFilters(key, cf) assert(self.groups[key], "no group"); self.groups[key].filters = cf; self.refiltered = (self.refiltered or 0) + 1 end
@@ -114,6 +119,24 @@ local ns = { rules = {}, folders = {} }
 XayaUI_NS = ns
 function ns.Print(...) local t = {} for i = 1, select("#", ...) do t[#t + 1] = tostring((select(i, ...))) end printed[#printed + 1] = table.concat(t, " ") end
 function ns.FolderById(id) for _, f in ipairs(ns.folders) do if f.id == id then return f end end end
+function ns.Ignored(s) return s == nil or s == "" or s == "none" or s == "any" end
+function ns.CooldownUsed(r) return r.useCooldown == true or (tonumber(r.spellID) or 0) ~= 0 or not ns.Ignored(r.cdState) end
+function ns.ConditionsOf(p) local out = {} for _, r in ipairs(ns.rules) do if r.parentUid == p.uid and not r.isCue then out[#out + 1] = r end end return out end
+ns.runtime = setmetatable({}, { __mode = "k" })
+HOSTS = {}
+function ns.DisplayFrame(rule) local h = HOSTS[rule]; if not h then h = proxyFrame("Host"); h.parent = "PARENT_OF_" .. tostring(rule.name); h.strata = "MEDIUM"; HOSTS[rule] = h end return h end
+HOOKS = {}
+function hooksecurefunc(t, name, fn) local orig = t[name]; t[name] = function(...) local a, b, c = orig(...); fn(...); return a, b, c end; HOOKS[name] = true end
+function ns.MarkDirty() end
+function ns.ToggleUnlock() end
+function ns.SetGroupUnlocked() end
+function ns.SetMoveUnlocked() end
+ns.groupUnlocked, ns.moveUnlocked = {}, {}
+TIMERS = {}
+C_Timer = { After = function(d, fn) TIMERS[#TIMERS + 1] = fn end, NewTicker = function() return {} end }
+function GetSpecialization() return 2 end
+function GetSpecializationInfo(i) return 250 end
+date = os.date
 function ns.FindParentRule(rule) for _, r in ipairs(ns.rules) do if r.uid == rule.parentUid and not r.isCue then return r end end end
 function ns.CuesOf(rule) local out = {} for _, r in ipairs(ns.rules) do if r.isCue and r.parentUid == rule.uid then out[#out + 1] = r end end return out end
 refreshed = 0
@@ -122,169 +145,144 @@ CueRulesDB = {}
 date = os.date
 Enum = { AddOnProfilerMetric = { RecentAverageTime = 1 } }
 profilerMs = 0.2
-C_AddOnProfiler = { GetAddOnMetric = function(name, metric) assert(name == "XayaUI_CombatEngine" and metric == 1); return profilerMs end }
+C_AddOnProfiler = { GetAddOnMetric = function(name, metric) assert(metric == 1); if name == "XayaUI_CombatEngine" then return profilerMs end if name == "Blizzard_AuraContainer" then return blizzMs or 0 end end }
 _G.NS = ns
 local f = assert(loadfile(AURA_DISPLAY_PATH))
 f("XayaUI_CombatEngine", ns)
 '''.replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI_CombatEngine", "AuraDisplay.lua")).replace("'", '"')))
+
 
 fails = []
 def check(name, cond, extra=""):
     print(("PASS " if cond else "FAIL ") + name + (("  [" + str(extra) + "]") if (extra and not cond) else ""))
     if not cond:
         fails.append(name)
+def lua(s): return L.execute(s)
 
-L.execute(r'''
+L.execute(r"""
 local ns = NS
 ns.folders = {
   { id = "fA", name = "Alpha Group", cType = "dynamic", cGrowth = "RIGHT", cSpacing = 5, cW = 100, cH = 0, cPoint = "CENTER", cX = 10, cY = 20 },
-  { id = "fB", name = "Beta Group",  cType = "dynamic", cGrowth = "DOWN",  cSpacing = 3, cW = 0, cH = 360, cPoint = "TOPLEFT", cX = -50, cY = 60, cScale = 2 },
-  { id = "fS", name = "Static Group", cType = "static" },
+  { id = "fAs", name = "Alpha static child", parent = "fA" },
+  { id = "fS", name = "Static Group" },
   { id = "fC", name = "Center Group", cType = "dynamic", cGrowth = "HCENTER" },
 }
-local function parent(uid, folder, id, extra) local r = { uid = uid, name = uid, folder = folder, useBuff = true, buffID = id, enabled = true, engineTag = "t" }; for k, v in pairs(extra or {}) do r[k] = v end return r end
-local function cue(uid, folder, id) return { name = uid .. " cue", folder = folder, isCue = true, parentUid = uid, buffID = id, engineTag = "t", visual = { w = 30, h = 30, zoom = 0, text = { enabled = true, size = 12, anchor = "CENTER", x = 0, y = 0 }, count = { enabled = true, size = 10, anchor = "BOTTOMRIGHT", x = 0, y = 0 } } } end
-ns.rules = {
-  parent("a1", "fA", 9001), cue("a1", "fA", 9001),
-  parent("a2", "fA", 9002, { buffAlt = { 9102, 9103 } }), cue("a2", "fA", 9002),
-  parent("a3", "fA", 9003, { enabled = false }), cue("a3", "fA", 9003),            -- disabled: must not be matched
-  { uid = "a4", name = "mine", folder = "fA", useBuff = true, buffID = 7777, enabled = true },   -- user's own rule, untagged: untouched
-  parent("b1", "fB", 9201), cue("b1", "fB", 9201),
-  parent("s1", "fS", 9301), cue("s1", "fS", 9301),
-  parent("c1", "fC", 9401), cue("c1", "fC", 9401),
-}
-''')
+local function cueVis() return { enabled = true, trigger = "condition", w = 30, h = 30, zoom = 0, text = { enabled = true, size = 12 }, count = { enabled = true, size = 10 } } end
+local n = 0
+function P(name, folder, id, extra)   -- a buff rule with an icon cue (the usual shape)
+  n = n + 1
+  local p = { uid = "u" .. n, name = name, folder = folder, useBuff = true, buffID = id, buffState = "present", cdState = "none", enabled = true, visual = { enabled = false } }
+  for k, v in pairs(extra or {}) do p[k] = v end
+  local c = { uid = "c" .. n, name = name .. " cue", folder = folder, isCue = true, parentUid = p.uid, cueKey = "k" .. n, visual = cueVis() }
+  ns.rules[#ns.rules + 1] = p; ns.rules[#ns.rules + 1] = c
+  return p, c
+end
+ns.rules = {}
+A1, A1c = P("a1", "fA", 9001)
+A2, A2c = P("a2", "fA", 9002, { buffAlt = { 9102 } })
+A3 = P("a3 disabled", "fA", 9003, { enabled = false })
+AS = P("a static child", "fAs", 9050)
+S1, S1c = P("s1 static", "fS", 9301)
+U1, U1c = P("u1 ungrouped", nil, 9401)
+M1 = P("m1 missing", nil, 9501, { buffState = "missing" })
+CD1 = P("cd1 also cooldown", nil, 9601, { useCooldown = true, spellID = 777, cdState = "ready" })
+C1 = P("c1 centred", "fC", 9701)
+-- a rule whose own display shows while the buff is up (no cue)
+OWN = { uid = "own", name = "own display", useBuff = true, buffID = 9801, buffState = "present", enabled = true, visual = { enabled = true, trigger = "buffActive", w = 40, h = 40 } }
+ns.rules[#ns.rules + 1] = OWN
+-- target debuff rules
+TD = { uid = "td", name = "td debuff", enabled = true, extra = { list = { { type = "targetDebuff", spellID = 204598, unit = "target", state = "yes" } } }, visual = { enabled = true, trigger = "condition", w = 30, h = 30 } }
+TDG = { uid = "tdg", name = "tdg debuff in group", folder = "fA", enabled = true, extra = { list = { { type = "targetDebuff", spellID = 204599, state = "yes" } } }, visual = { enabled = true, trigger = "condition", w = 30, h = 30 } }
+-- a cooldown-only display: not an aura display at all
+CDONLY = { uid = "cdo", name = "cooldown only", useCooldown = true, spellID = 555, cdState = "ready", enabled = true, visual = { enabled = true, trigger = "condition" } }
+SPEC = P("spec 251 only", nil, 9901, { load = { specs = { ["251"] = true } } })
+ns.rules[#ns.rules + 1] = TD; ns.rules[#ns.rules + 1] = TDG; ns.rules[#ns.rules + 1] = CDONLY
+SNAP = {}
+for i, r in ipairs(ns.rules) do local c = 0; for _ in pairs(r) do c = c + 1 end; SNAP[i] = c end
+""")
 
-def lua(s):
-    return L.execute(s)
-
-# 0. with automatic mode off, nothing is drawn until the user switches a group on
-lua("CueRulesDB.engineDisplay = { groups = {}, auto = false }")
-check("EngineOwns false before any group is on", lua("return NS.EngineOwns(NS.rules[1]) == false and NS.EngineOwns(NS.rules[2]) == false"))
+# 1. automatic: everything that can be drawn faithfully, without any switch or tag
 lua('evHandler("PLAYER_ENTERING_WORLD")')
-check("no container is created while no group is switched on", lua("return #containers == 0"))
+own = lambda r: lua("return NS.EngineOwns(%s) == true" % r)
+check("dynamic group drawn by one container (members incl. a static sub-group's rule)", lua("local g = NS.AuraDisplay._groups.fA; local s = g and g.frame.groups.main.filters.includeSpellIDs; return g.ok and s[9001] and s[9002] and s[9102] and s[9050] and not s[9003]"))
+check("parent and cue of a group member are engine-owned", own("A1") and own("A1c") and own("AS"))
+check("static-group rule gets its own slot", lua("local s = NS.AuraDisplay._singles[S1]; return s and s.ok and s.frame.groups.main.max == 1 and s.frame.unit == 'player'") and own("S1c"))
+check("ungrouped rule gets its own slot (the tester's Anti-Magic Shell case)", lua("local s = NS.AuraDisplay._singles[U1]; return s and s.ok") and own("U1") and own("U1c"))
+check("a rule's own display (no cue) gets a slot sized like it", lua("local s = NS.AuraDisplay._singles[OWN]; return s and s.ok and s.frame.groups.main.layout.elementWidth == 40"))
+check("your target debuff gets a target slot with your debuffs only", lua("local s = NS.AuraDisplay._singles[TD]; return s and s.ok and s.frame.unit == 'target' and s.frame.groups.main.filter == 'HARMFUL|PLAYER' and s.frame.groups.main.filters.includeSpellIDs[204598]"))
+check("'missing' rule stays with XayaUI (would be drawn backwards)", not own("M1"))
+check("rule that also needs a cooldown state stays with XayaUI", not own("CD1"))
+check("centred dynamic group fails cleanly, its rules stay with XayaUI", lua("return NS.AuraDisplay._groups.fC.ok == false") and not own("C1"))
+check("target debuff inside a dynamic group stays with XayaUI", not own("TDG"))
+check("disabled rule not drawn", not own("A3"))
+L.execute('LEFT = {}; for _, e in ipairs(NS.AuraDisplay._Left()) do LEFT[e[1].name] = e[2] end')
+check("every kept display has a reason", lua("return LEFT['m1 missing'] ~= nil and LEFT['cd1 also cooldown'] ~= nil and LEFT['c1 centred'] ~= nil and LEFT['tdg debuff in group'] ~= nil"))
+check("a cooldown-only display is not listed as kept (not an aura display)", lua("return LEFT['cooldown only'] == nil"))
+check("rules were never modified", lua("for i, r in ipairs(NS.rules) do local c = 0; for _ in pairs(r) do c = c + 1 end; if c ~= SNAP[i] then return false end end return true"))
 
-# 1. switch group A on
-lua('SlashCmdList["XUIENGINE"]("on alpha")')
-check("one container for group A", lua("return #containers == 1 and containers[1].name == 'XayaUIEngine_fA' and containers[1].unit == 'player'"))
-check("includeSpellIDs = enabled buff ids + alternates (no tag needed), not the disabled rule",
-      lua("local s = containers[1].groups.main.filters.includeSpellIDs; local n = 0; for k in pairs(s) do n = n + 1 end; return n == 5 and s[9001] and s[9002] and s[9102] and s[9103] and s[7777] and not s[9003]"))
-check("flow: horizontal, TOPLEFT, grows right/down, wrap size = cW",
-      lua("local f = containers[1].flow; return f.axis == 0 and f.anchor == 'TOPLEFT' and f.h == 1 and f.v == -1 and f.max == 100"))
-check("layout: spacing 5 both ways, icon 30 x 30",
-      lua("local l = containers[1].groups.main.layout; return l.elementSpacing == 5 and l.lineSpacing == 5 and l.elementWidth == 30 and l.elementHeight == 30"))
-# first icon centre must land at CENTER + (10, 20): TOPLEFT corner = centre + (-15, +15)
-# XayaUI lays a RIGHT-growing group's first icon half an icon below the group centre (10, 20): icon centre (10, 5), TOPLEFT corner (-5, 20)
-check("placement (no group frame shared): container TOPLEFT puts the first icon where XayaUI draws it",
-      lua("local p = containers[1]._points[1]; return p[1] == 'TOPLEFT' and p[3] == 'CENTER' and p[4] == -5 and p[5] == 20"),
-      lua("local p = containers[1]._points[1]; return table.concat({tostring(p[1]), tostring(p[3]), tostring(p[4]), tostring(p[5])}, ' ')"))
-check("button init wires icon, cooldown (no swipe), duration text, stack text, zoom 0.08",
-      lua("local b = buttons[1]; return b.log.icon and b.log.cd and b.log.cd.swipe == false and b.log.dur and b.log.count and b.log.icon.texcoord[1] == 0.08 and b.log.dur.fontsize == 12 and b.log.count.fontsize == 10"))
-check("EngineOwns true for parent and cue in the group",
-      lua("return NS.EngineOwns(NS.rules[1]) and NS.EngineOwns(NS.rules[2]) and NS.EngineOwns(NS.rules[3])"))
-check("EngineOwns true for an untagged rule in the group, false for the disabled rule and for rules in other groups",
-      lua("return NS.EngineOwns(NS.rules[7]) == true and NS.EngineOwns(NS.rules[5]) == false and NS.EngineOwns(NS.rules[8]) == false"))
-check("core visuals were refreshed after the build", lua("return refreshed >= 1"))
-check("rules were never modified (no field added or removed)",
-      lua("local r = NS.rules[7]; local n = 0; for _ in pairs(r) do n = n + 1 end; return n == 6"))
+# 2. placement of a single slot: on XayaUI's own icon, same parent, same strata
+check("single slot sits on XayaUI's icon (TOPLEFT at icon centre - half size)", lua("local s = NS.AuraDisplay._singles[S1]; local p = s.frame._points[#s.frame._points]; return p[1] == 'TOPLEFT' and p[2] == HOSTS[S1c] and p[3] == 'CENTER' and p[4] == -15 and p[5] == 15 and s.frame.parent == HOSTS[S1c].parent and s.frame.strata == 'MEDIUM'"))
+check("group container created as AuraContainer widgets only (stub asserts it)", lua("return #containers >= 5"))
 
-# 2. group B: TOPLEFT point, scale 2, grows down (vertical axis)
-lua('SlashCmdList["XUIENGINE"]("on Beta")')
-check("group B: vertical flow, TOPLEFT, wrap size = cH",
-      lua("local f = containers[2].flow; return f.axis == 1 and f.anchor == 'TOPLEFT' and f.v == -1 and f.max == 360"))
-# XayaUI: container TOPLEFT at CENTER?? no: point TOPLEFT -> centre = pos + (cW/2, -cH/2) with cW=1 (0 -> min 1), cH=360
-# group B (TOPLEFT point, scale 2, cW 0 -> 1, cH 360, DOWN): centre in group units (-50/2 + 0.5, 60/2 - 180) = (-24.5, -150);
-# first icon half an icon right of it; TOPLEFT corner of that icon = (-24.5, -135)
-check("group B placement: offsets in the group's scaled units, container size unscaled, first icon half an icon right",
-      lua("local p = containers[2]._points[1]; return p[1] == 'TOPLEFT' and p[4] == -24.5 and p[5] == -135 and containers[2].scale == 2"),
-      lua("local p = containers[2]._points[1]; return tostring(p[4]) .. ' ' .. tostring(p[5])"))
+# 3. load / talent settings followed live for 'condition' displays
+lua('NS.runtime[U1] = { info = { ctxOK = false } }; NS.AuraDisplay.SyncLive()')
+check("not loaded -> its slot hides", lua("return NS.AuraDisplay._singles[U1].frame.shown == false"))
+lua('NS.runtime[U1] = { info = { ctxOK = true, talentOK = true } }; NS.AuraDisplay.SyncLive()')
+check("loaded again -> shown", lua("return NS.AuraDisplay._singles[U1].frame.shown == true"))
+lua('NS.runtime[A2] = { info = { ctxOK = false } }; NS.AuraDisplay.SyncLive()')
+check("group member not loaded -> left out of the group's filter", lua("local s = NS.AuraDisplay._groups.fA.frame.groups.main.filters.includeSpellIDs; return s[9001] and not s[9002] and not s[9102]"))
+lua('NS.runtime[A2] = nil; NS.AuraDisplay.SyncLive()')
+check("and back in when loaded", lua("local s = NS.AuraDisplay._groups.fA.frame.groups.main.filters.includeSpellIDs; return s[9002] == true"))
+lua('local f = NS.AuraDisplay._groups.fA.frame; BEFORE = f.refiltered; NS.AuraDisplay.SyncLive(); NS.AuraDisplay.SyncLive()')
+check("no filter rewrite when nothing changed", lua("return NS.AuraDisplay._groups.fA.frame.refiltered == BEFORE"))
 
-# 2a. a rule in a STATIC group inside a dynamic group is laid out by the dynamic group (XayaUI), so the engine draws it there too
-lua('table.insert(NS.folders, { id = "fAs", name = "Alpha static child", parent = "fA" }); NS.rules[#NS.rules + 1] = { uid = "as1", name = "as1", folder = "fAs", useBuff = true, buffID = 9050, enabled = true }')
-lua('SlashCmdList["XUIENGINE"]("refresh")')
-check("static sub-group member is drawn by the dynamic group around it", lua("return containers[1].groups.main.filters.includeSpellIDs[9050] == true and NS.EngineOwns(NS.rules[#NS.rules]) == true"))
-lua('table.remove(NS.rules); table.remove(NS.folders); SlashCmdList["XUIENGINE"]("refresh")')
+# 4. unlock
+lua('NS.unlocked = true; NS.AuraDisplay.SyncLive()')
+check("everything unlocked: engine steps aside", lua("return NS.AuraDisplay._groups.fA.frame.shown == false and NS.AuraDisplay._singles[S1].frame.shown == false"))
+lua('NS.unlocked = false; NS.moveUnlocked[S1c] = true; NS.AuraDisplay.SyncLive()')
+check("one display unlocked: only its slot steps aside", lua("return NS.AuraDisplay._singles[S1].frame.shown == false and NS.AuraDisplay._singles[U1].frame.shown == true"))
+lua('NS.moveUnlocked[S1c] = nil; NS.groupUnlocked.fA = true; NS.AuraDisplay.SyncLive()')
+check("group unlocked: its container steps aside", lua("return NS.AuraDisplay._groups.fA.frame.shown == false"))
+lua('NS.groupUnlocked.fA = nil; NS.AuraDisplay.SyncLive()')
+check("locked again: all back", lua("return NS.AuraDisplay._groups.fA.frame.shown == true and NS.AuraDisplay._singles[S1].frame.shown == true"))
 
-# 2b. with XayaUI's group frame shared, the container hangs from it (parent offsets, scale, moves all carry over)
-lua('HOST = setmetatable({ _kind = "Host" }, getmetatable(UIParent)); NS.GroupFrame = function(fo) if fo.id == "fA" then return HOST end end')
-lua('SlashCmdList["XUIENGINE"]("refresh")')
-check("hosted: parented to XayaUI's group frame, scale 1, first icon at the group's layout spot",
-      lua("local c = containers[1]; local p = c._points[1]; return c.parent == HOST and c.scale == 1 and p[1] == 'TOPLEFT' and p[2] == HOST and p[3] == 'CENTER' and p[4] == -15 and p[5] == 0"),
-      lua("local c = containers[1]; local p = c._points[1]; return tostring(c.parent == HOST) .. ' ' .. tostring(c.scale) .. ' ' .. tostring(p[4]) .. ' ' .. tostring(p[5])"))
-lua('NS.unlocked = true; NS.AuraDisplay.SyncShown()')
-check("unlocked: the engine icons step aside for XayaUI's samples", lua("return containers[1].shown == false"))
-lua('NS.unlocked = false; NS.groupUnlocked = { fA = true }; NS.AuraDisplay.SyncShown()')
-check("group unlocked: hidden too", lua("return containers[1].shown == false"))
-lua('NS.groupUnlocked = {}; NS.AuraDisplay.SyncShown()')
-check("locked again: shown", lua("return containers[1].shown == true"))
-lua('NS.GroupFrame = nil')
+# 5. keep a group with XayaUI, and back
+lua('SlashCmdList["XUIENGINE"]("off static group")')
+check("off <group>: its rules go back to XayaUI", not own("S1"))
+lua('SlashCmdList["XUIENGINE"]("reset static group")')
+check("reset <group>: drawn again", own("S1"))
 
-# 3. unsupported groups are refused with a reason and XayaUI keeps drawing them
-lua('SlashCmdList["XUIENGINE"]("on static")'); lua('SlashCmdList["XUIENGINE"]("on center")')
-check("static group refused, reason recorded", lua("local g = NS.AuraDisplay._groups.fS; return g and g.ok == false and g.err:find('not a dynamic') ~= nil"))
-check("HCENTER growth refused, reason recorded", lua("local g = NS.AuraDisplay._groups.fC; return g and g.ok == false and g.err:find('not supported') ~= nil"))
-check("refused groups are not engine-owned", lua("return NS.EngineOwns(NS.rules[10]) == false and NS.EngineOwns(NS.rules[11]) == false and NS.EngineOwns(NS.rules[12]) == false"))
-check("no container made for refused groups", lua("return #containers == 2"))
-
-# 4. rebuild after the user adds a rule updates the filters instead of creating a second group
-lua('NS.rules[#NS.rules + 1] = { uid = "a5", name = "a5", folder = "fA", useBuff = true, buffID = 9005, enabled = true, engineTag = "t" }')
-before = lua("return containers[1].refiltered")
-lua('SlashCmdList["XUIENGINE"]("refresh")')
-check("refresh re-filters the existing group (no second group made)", lua("local c = containers[1]; return c.refiltered == %d + 1 and c.groups.main.filters.includeSpellIDs[9005] == true and #containers == 2" % before))
-
-# 5. combat: build is deferred, then runs when combat ends
-lua('combat = true; NS.rules[#NS.rules + 1] = { uid = "a6", name = "a6", folder = "fA", useBuff = true, buffID = 9006, enabled = true, engineTag = "t" }')
-lua('SlashCmdList["XUIENGINE"]("refresh")')
-check("no rebuild during combat lockdown", lua("return containers[1].groups.main.filters.includeSpellIDs[9006] == nil"))
+# 6. edits rebuild on their own (debounced) and combat defers
+check("edits are hooked (MarkDirty)", lua("return HOOKS.MarkDirty == true"))
+lua('TIMERS = {}; NS.MarkDirty(); NS.MarkDirty()')
+check("two quick edits queue one rebuild", lua("return #TIMERS == 1"))
+lua('combat = true; NS.rules[#NS.rules + 1] = { uid = "late", name = "late", useBuff = true, buffID = 9991, buffState = "present", enabled = true, visual = { enabled = true, trigger = "buffActive" } }; TIMERS[1]()')
+check("no rebuild during combat lockdown", lua("return NS.AuraDisplay._singles[NS.rules[#NS.rules]] == nil"))
 lua('combat = false; evHandler("PLAYER_REGEN_ENABLED")')
-check("deferred rebuild runs when combat ends", lua("return containers[1].groups.main.filters.includeSpellIDs[9006] == true"))
+check("deferred rebuild runs when combat ends", own("NS.rules[#NS.rules]"))
 
-# 6. off: XayaUI draws again
-lua('SlashCmdList["XUIENGINE"]("off alpha")')
-check("off hides the container and hands the rules back", lua("return containers[1].shown == false and NS.EngineOwns(NS.rules[1]) == false"))
+# 7. status names everything; help has no colour code
+lua('printed = {}; SlashCmdList["XUIENGINE"]("")')
+check("status: what the engine draws", lua("for _, l in ipairs(printed) do if l:find('^Engine draws:') then return true end end return false"))
+check("status: what XayaUI keeps, with reasons", lua("local a, b = false, false; for _, l in ipairs(printed) do if l:find('XayaUI keeps') then a = true end if l:find('MISSING') then b = true end end return a and b"))
+check("help text has no '|r' colour-code sequence", lua("for _, l in ipairs(printed) do if l:find('|r', 1, true) then return false end end return true"))
 
-# 7. failure: if the container rejects the call, the group falls back to XayaUI's own icons
-lua('failAdd = true; CueRulesDB.engineDisplay.groups = {}; NS.folders[1].cType = "dynamic"; containers = {}; NS.AuraDisplay._groups.fA = nil')
-lua('SlashCmdList["XUIENGINE"]("on alpha")')
-check("container error is caught and recorded", lua("local g = NS.AuraDisplay._groups.fA; return g and g.ok == false and g.err:find('includeSpellIDs rejected') ~= nil"))
-check("failed group is not engine-owned (no icon gap)", lua("return NS.EngineOwns(NS.rules[1]) == false"))
+# 8. guard: lean first, then off
+lua('profilerMs = 0.2; blizzMs = 0.1; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
+check("guard: cheap engine never trips", lua("return CueRulesDB.engineDisplay.lean == nil and CueRulesDB.engineDisplay.auto == true"))
+lua('profilerMs = 0.5; blizzMs = 0.7; NS.AuraDisplay.GuardCheck(); NS.AuraDisplay.GuardCheck(); profilerMs = 0.1; NS.AuraDisplay.GuardCheck()')
+check("guard: counts Blizzard's container cost too, and a low reading resets it", lua("return CueRulesDB.engineDisplay.lean == nil"))
+lua('profilerMs = 0.6; blizzMs = 0.6; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
+check("guard stage 1: lean mode (spec being played only)", lua("return CueRulesDB.engineDisplay.lean == true and CueRulesDB.engineDisplay.auto == true") and not own("SPEC") and own("U1"))
+lua('printed = {}; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
+check("guard stage 2: automatic mode off, all back to XayaUI, said in chat", lua("return CueRulesDB.engineDisplay.auto == false and #CueRulesDB.engineDisplay.guardTrips == 2 and printed[1]:find('performance guard') ~= nil") and not own("U1") and not own("A1"))
+lua('profilerMs = 0.1; blizzMs = 0; SlashCmdList["XUIENGINE"]("auto on")')
+check("auto on: everything back, lean mode cleared", lua("return CueRulesDB.engineDisplay.auto == true and CueRulesDB.engineDisplay.lean == nil") and own("U1") and own("SPEC"))
 
-# 8. name matching
-lua("printed = {}")
-lua('SlashCmdList["XUIENGINE"]("on group")')
-check("ambiguous group name is refused, nothing changes", lua("return #printed >= 1 and printed[1]:find('groups match') ~= nil"))
-
-# 9. automatic mode: no tag, no switch
-lua('failAdd = false; containers = {}; NS.AuraDisplay._groups.fA = nil; NS.AuraDisplay._groups.fB = nil; CueRulesDB.engineDisplay = { groups = {}, auto = true }')
-lua('for _, r in ipairs(NS.rules) do r.engineTag = nil end')
-lua('SlashCmdList["XUIENGINE"]("refresh")')
-check("auto: dynamic groups are drawn without any switch or tag", lua("return #containers == 2 and NS.EngineOwns(NS.rules[1]) and NS.EngineOwns(NS.rules[2]) and NS.EngineOwns(NS.rules[8])"))
-check("auto: static and unsupported groups stay with XayaUI", lua("return NS.EngineOwns(NS.rules[10]) == false and NS.EngineOwns(NS.rules[12]) == false"))
-lua('SlashCmdList["XUIENGINE"]("off beta")')
-check("auto: an explicit off keeps one group with XayaUI", lua("return NS.EngineOwns(NS.rules[8]) == false and NS.EngineOwns(NS.rules[1]) == true"))
-lua('SlashCmdList["XUIENGINE"]("reset beta")')
-check("auto: reset hands the group back to automatic mode", lua("return NS.EngineOwns(NS.rules[8]) == true"))
-lua('NS.rules[2].visual.fadeGrey = true; printed = {}')
-lua('SlashCmdList["XUIENGINE"]("")')
-check("status lists effects the engine cannot draw", lua("for _, l in ipairs(printed) do if l:find('grey / colour fade') then return true end end return false"))
-lua('NS.rules[2].visual.fadeGrey = nil; NS.rules[2].visual.enabled = true; NS.rules[2].cueKey = "k1"; NS.ConditionsOf = function(p) if p == NS.rules[1] then return { { name = "c", thenCues = { "k1" }, thenMods = { k1 = { glow = true } } }, { name = "d", thenCues = { "zz" } } } end return {} end; printed = {}')
-lua('SlashCmdList["XUIENGINE"]("")')
-check("status: only conditions that list the cue are counted (gate 1, modifier 1); the cue itself is not a condition",
-      lua("local g, m, bad = false, false, false; for _, l in ipairs(printed) do if l:find('while its condition is true %(1%)') then g = true end if l:find('from conditions %(1%)') then m = true end if l:find('a2:') then bad = true end end return g and m and not bad"))
-lua('NS.ConditionsOf = nil')
-check("help text has no '|r' colour-code sequence", lua("printed = {}; SlashCmdList['XUIENGINE']('help'); for _, l in ipairs(printed) do if l:find('|r', 1, true) then return false end end return true"))
-# performance guard
-lua('profilerMs = 0.2; NS.AuraDisplay.GuardCheck(); NS.AuraDisplay.GuardCheck(); NS.AuraDisplay.GuardCheck()')
-check("guard: a cheap engine addon never trips it", lua("return CueRulesDB.engineDisplay.auto == true and CueRulesDB.engineDisplay.guardTrips == nil"))
-lua('profilerMs = 3.5; NS.AuraDisplay.GuardCheck(); NS.AuraDisplay.GuardCheck()')
-check("guard: two high readings are not enough", lua("return CueRulesDB.engineDisplay.auto == true"))
-lua('profilerMs = 0.2; NS.AuraDisplay.GuardCheck(); profilerMs = 3.5; NS.AuraDisplay.GuardCheck(); NS.AuraDisplay.GuardCheck()')
-check("guard: a low reading resets the count", lua("return CueRulesDB.engineDisplay.auto == true"))
-lua('printed = {}; NS.AuraDisplay.GuardCheck()')
-check("guard: three high readings in a row switch automatic mode off, record it and say so",
-      lua("return CueRulesDB.engineDisplay.auto == false and #CueRulesDB.engineDisplay.guardTrips == 1 and NS.EngineOwns(NS.rules[1]) == false and #printed >= 1 and printed[1]:find('performance guard') ~= nil"))
-lua('SlashCmdList["XUIENGINE"]("auto on")')
-check("auto on turns it back on", lua("return CueRulesDB.engineDisplay.auto == true and NS.EngineOwns(NS.rules[1]) == true"))
+# 9. a container that fails hands its displays back
+lua('failAdd = true; for k, s in pairs(NS.AuraDisplay._singles) do s.frame = nil end; for k, g in pairs(NS.AuraDisplay._groups) do g.frame = nil end; NS.AuraDisplay.Build()')
+check("container error: nothing engine-owned, failures listed", (not own("U1")) and (not own("A1")) and lua("for _, e in ipairs(NS.AuraDisplay._Left()) do if e[2]:find('failed') then return true end end return false"))
+lua('failAdd = false')
 
 print()
 print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED")

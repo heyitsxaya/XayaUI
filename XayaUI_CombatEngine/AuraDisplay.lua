@@ -1,35 +1,50 @@
--- XayaUI: AuraDisplay -- draws a group's buff icons through Blizzard's own secure aura container, so they keep working in
--- combat when addon code cannot read auras.
+-- XayaUI: AuraDisplay -- draws every aura display through Blizzard's own secure aura container, so durations and stacks keep
+-- working in combat, when addon code may not read auras.
 --
--- WHY: in combat, addon code is refused aura reads (measured: GetUnitAuraInstanceIDs errors, UNIT_AURA payload tables are
--- secret).  Blizzard's CustomAuraContainer does the aura selection and the duration drawing in its own secure code, so the
--- icons are correct in combat without this addon ever reading a secret value.  This module only CONFIGURES that container.
+-- WHY: in combat, addon code is refused aura reads (measured: GetUnitAuraInstanceIDs errors, UNIT_AURA payloads are secret).
+-- Blizzard's CustomAuraContainer selects the auras and draws icon, time and stacks in its own secure code, so the display is
+-- right in combat without this addon ever reading a secret value. This module only CONFIGURES containers.
+-- Built from Blizzard's published UI source only (Blizzard_AuraContainer, live branch). No other addon's code or data is used.
 --
--- Built from Blizzard's published UI source only (Blizzard_AuraContainer: CustomAuraContainer / CustomAuraButton /
--- AuraContainerUtil / AuraContainerFlowLayout, live branch).  No other addon's code or data is used.
+-- WHAT IT DRAWS (automatically, no tag, no switch): every enabled display that shows an aura while it is up -
+--   * buff rules inside a DYNAMIC group: one container per group, laid out like the group (growth, spacing, wrap);
+--   * every other buff rule (no group, or a static group): one single-slot container sitting exactly on XayaUI's own icon;
+--   * "Target Debuff (yours)" rules outside dynamic groups: a single slot on the target / focus, your debuffs only.
+-- A display is taken only when the engine can show it faithfully: the display appears while the aura is up and nothing else
+-- but load / talent settings decides it (those are followed live). Everything else stays with XayaUI, and `/xuiengine` names
+-- every such display and the reason, so nothing slips through silently. Nothing is shipped: spell IDs come from the user's
+-- own rules. This module never edits a rule.
 --
--- WHAT IT DRAWS: every enabled Buff-present rule (and its Icon cue) that sits directly in a dynamic group, automatically
--- (no tag, no switch).  Nothing is shipped: the spell IDs come from the user's own saved rules (CueRulesDB), exactly like
--- every other rule.  This module never edits a rule.  `/xuiengine off <group>` keeps one group with XayaUI; `/xuiengine auto off`
--- turns the automatic mode off for all groups.
+-- POSITION: containers hang from XayaUI's own frames (the group frame, or the display's own frame) and use XayaUI's own
+-- layout rule (ns.DynamicFirstOffset), so parent groups, anchors, scale, opacity and moves are inherited, never recomputed.
+-- tests/layout_parity_run.py fails if the engine ever lands anywhere else.
 --
--- PERFORMANCE GUARD: the user's condition for drawing everything through the engine is that it must not cost frames.  Every 5 s
--- the game's own per-addon CPU meter (C_AddOnProfiler) is read for this addon; if its recent average stays above LIMIT_MS for
--- NEED checks in a row, automatic mode is switched off (XayaUI draws again once combat ends) and the trip is saved to
--- CueRulesDB.engineDisplay.guardTrips.  Unverified in game: that the meter is on by default and that its unit is milliseconds.
+-- PERFORMANCE GUARD: every 5 s the game's per-addon CPU meter (C_AddOnProfiler) is read for this addon plus Blizzard's
+-- container code. Above LIMIT_MS for NEED checks in a row: first the displays of specs you are not playing are handed back
+-- ("lean" mode); if it is still high, automatic mode goes off. Each trip is announced and saved (engineDisplay.guardTrips).
+-- Unverified in game: that the meter is on by default and that its unit is milliseconds.
 --
--- KNOWN LIMITS (also in the design doc):
---   * candidateFilters.includeSpellIDs is real in Blizzard's code but absent from the generated API docs: it may change.
---     Every call is pcall'd; on any failure the group is marked failed and XayaUI keeps drawing its own icons (no gap).
---   * The engine cannot tell XayaUI which buffs are up (that would be reading secret state), so rule-level sounds and
---     conditions for these rules are not driven by it.  This module is display-only.
---   * Group layout is Blizzard's flow layout (collapses empty space itself); XayaUI's per-item sort is not applied.
---   * HCENTER / VCENTER growth is not supported (Blizzard's flow has no centered mode); those groups are left to XayaUI.
+-- KNOWN LIMITS (all stated by /xuiengine): icon order inside a group follows the game's aura order; mixed icon sizes in one group
+-- are drawn at the first one's size; fades, flash, wipe, glow and condition-driven changes are XayaUI effects the container
+-- cannot draw; a cue that conditions switch on is shown whenever its aura is up. includeSpellIDs is real in Blizzard's code but
+-- absent from the generated API docs: every container call is pcall'd and a failure hands the display back to XayaUI (no gap).
 local _, ns = ...
 ns = XayaUI_NS or ns
 
 local D = {}
 ns.AuraDisplay = D
+
+-------------------------------------------------------------------------------
+-- State
+-------------------------------------------------------------------------------
+local groups = {}      -- [folderId] = { frame, ok, err, ids = {spellID=true}, n, members = {rule...}, sig }
+local singles = {}     -- [parentRule] = { frame, ok, err, host, kind, display }
+local owned = setmetatable({}, { __mode = "k" })   -- [rule] = slot record (a parent and its cues), rebuilt with every build
+local left = {}        -- displays the engine does not draw: { rule, reason }
+local pendingBuild, lastError
+local serial = 0       -- build number: a slot built by the latest build carries it
+local LIMIT_MS, NEED = 1.0, 3
+local guard = { bad = 0 }
 
 local REL_FRAMES = { player = "PlayerFrame", target = "TargetFrame", focus = "FocusFrame", minimap = "Minimap", chat = "ChatFrame1" }
 -- vector from a frame point to the frame centre, as a multiple of (width, height)
@@ -38,103 +53,149 @@ local TO_CENTER = {
     TOPLEFT = { .5, -.5 }, TOPRIGHT = { -.5, -.5 }, BOTTOMLEFT = { .5, .5 }, BOTTOMRIGHT = { -.5, .5 },
 }
 
-local groups = {}      -- [folderId] = { frame = container, ok = bool, err = string?, ids = {set}, n = count }
-local pendingBuild     -- build requested during combat lockdown
-local lastError
-local LIMIT_MS, NEED = 1.0, 3   -- performance guard (see the header)
-local guard = { bad = 0 }
-
 local function DB()
     local db = CueRulesDB
     if not db then return nil end
     db.engineDisplay = db.engineDisplay or {}
-    db.engineDisplay.groups = db.engineDisplay.groups or {}   -- [folderId] = true (forced on) / false (kept with XayaUI)
-    if db.engineDisplay.auto == nil then db.engineDisplay.auto = true end
-    return db.engineDisplay
+    local e = db.engineDisplay
+    e.groups = e.groups or {}   -- [folderId] = true (forced on) / false (kept with XayaUI)
+    if e.auto == nil then e.auto = true end
+    return e
 end
 
 local function Say(...) if ns.Print then ns.Print(...) end end
 
--- The parent rule of `rule` (itself when it is a parent; its parent when it is a cue / condition rule).
+-------------------------------------------------------------------------------
+-- Rules: which display does XayaUI draw for a rule, and can the engine draw it faithfully?
+-------------------------------------------------------------------------------
 local function ParentOf(rule)
     if not rule then return nil end
     if rule.parentUid then return ns.FindParentRule and ns.FindParentRule(rule) or nil end
     return rule
 end
 
--- The dynamic group that lays out a rule in `folderId`: the nearest dynamic group, starting at that group and walking up
--- (XayaUI's DynAncestor: a rule in a static sub-group is laid out by the dynamic group around it).
+-- The rule whose display XayaUI draws: the first cue with a display switched on, else the rule's own display.
+local function DisplayOf(p)
+    local cues = ns.CuesOf and ns.CuesOf(p) or {}
+    for _, c in ipairs(cues) do if c.visual and c.visual.enabled then return c end end
+    if p.visual and p.visual.enabled then return p end
+    return nil
+end
+-- XayaUI's own size for a display (Visual.lua RefreshVisual: at least 8, 128 when unset)
+local function DisplaySize(v)
+    return math.max(8, tonumber(v.w) or 128), math.max(8, tonumber(v.h) or 128)
+end
+
+local function FolderById(id) return id and ns.FolderById and ns.FolderById(id) or nil end
+-- The dynamic group that lays out a rule in `folderId` (the nearest dynamic group, walking up: XayaUI's DynAncestor).
 local function DynGroupId(folderId)
-    local id, guard = folderId, 0
-    while id and guard < 32 do
-        local f = ns.FolderById and ns.FolderById(id)
+    local id, n = folderId, 0
+    while id and n < 32 do
+        local f = FolderById(id)
         if not f then return nil end
         if f.cType == "dynamic" then return f.id end
-        id, guard = f.parent, guard + 1
+        id, n = f.parent, n + 1
     end
 end
-
--- A Buff-present parent rule the engine can draw: enabled, tracks a buff, sits in a group.
-local function Eligible(p)
-    if type(p) ~= "table" or p.isCue or p.enabled == false or not p.useBuff or not p.folder then return false end
-    local id = tonumber(p.buffID)
-    return (id and id > 0) and true or false
-end
-
--- Is `rule` (a parent or its cue) drawn by the engine right now?  Core asks this before showing its own icon.
--- (cached per engine tick: finding a cue's parent scans the rule list, and this is asked for every rule every tick)
-local ownCache, ownTick, ownVer = setmetatable({}, { __mode = "k" }), -1, 0
-function ns.EngineOwns(rule)
-    local t = ns.tickID or 0
-    if ownTick ~= t then ownCache, ownTick = setmetatable({}, { __mode = "k" }), t end
-    local c = ownCache[rule]
-    if c ~= nil then return c end
-    local p = ParentOf(rule)
-    local res = false
-    if Eligible(p) then
-        local g = groups[DynGroupId(p.folder) or p.folder]
-        res = (g and g.ok and g.ids and g.ids[tonumber(p.buffID)]) and true or false
+-- Did the user keep this group (or a group around it) with XayaUI? (/xuiengine off <group>)
+local function KeptWithXayaUI(folderId)
+    local db = DB()
+    local id, n = folderId, 0
+    while db and id and n < 32 do
+        if db.groups[id] == false then return true end
+        local f = FolderById(id)
+        if not f then return false end
+        id, n = f.parent, n + 1
     end
-    ownCache[rule] = res
-    return res
+    return false
 end
-local function OwnChanged() ownTick = -1 end   -- a build / failure / switch changes the answers at once
 
--- Gather the enabled Buff-present rules this dynamic group lays out (its own and those of static groups inside it).
-local function Members(fo, r) return Eligible(r) and DynGroupId(r.folder) == fo.id end
-local function Collect(fo)
-    local ids, n, first = {}, 0, nil
-    for _, r in ipairs(ns.rules or {}) do
-        if Members(fo, r) then
-            ids[tonumber(r.buffID)] = true; n = n + 1
-            if type(r.buffAlt) == "table" then for _, a in ipairs(r.buffAlt) do a = tonumber(a); if a and a > 0 then ids[a] = true end end end
-            first = first or r
+local function ExtraRows(p)
+    local l = type(p.extra) == "table" and type(p.extra.list) == "table" and p.extra.list or nil
+    return l or {}
+end
+local function NeedsCooldown(p)
+    return ns.CooldownUsed and ns.CooldownUsed(p) and not (ns.Ignored and ns.Ignored(p.cdState)) or false
+end
+
+-- Classify a parent rule. Returns spec (what to draw) or nil and the reason it stays with XayaUI ("" = not an aura display).
+--   spec = { kind = "buff" | "debuff", unit, filter, ids = {set}, display, trigger }
+local function Classify(p)
+    if type(p) ~= "table" or p.parentUid then return nil, "" end
+    if p.enabled == false then return nil, "" end
+    local display = DisplayOf(p)
+    if not display then return nil, "" end
+    local trigger = display.visual.trigger
+    local rows = ExtraRows(p)
+    local buffID = tonumber(p.buffID) or 0
+    if p.useBuff and buffID > 0 then
+        if p.buffState == "missing" then return nil, "shows while the aura is MISSING (the engine can only draw auras that are up)" end
+        if trigger ~= "buffActive" and trigger ~= "condition" then return nil, "its display has no 'show when' choice" end
+        if trigger == "condition" then
+            if NeedsCooldown(p) then return nil, "shown only when its cooldown state also matches" end
+            if #rows > 0 then return nil, "shown only when its other triggers also match" end
+        end
+        local ids = { [buffID] = true }
+        if type(p.buffAlt) == "table" then for _, a in ipairs(p.buffAlt) do a = tonumber(a); if a and a > 0 then ids[a] = true end end end
+        return { kind = "buff", unit = "player", filter = "HELPFUL", ids = ids, display = display, trigger = trigger }
+    end
+    -- a rule whose only trigger is one "Target Debuff (yours)" row
+    if #rows == 1 and type(rows[1]) == "table" and rows[1].type == "targetDebuff" and not NeedsCooldown(p) then
+        local t = rows[1]
+        local id = tonumber(t.spellID) or 0
+        if id <= 0 then return nil, "" end
+        if t.state == "no" then return nil, "shows while the debuff is MISSING (the engine can only draw auras that are up)" end
+        if trigger ~= "condition" then return nil, "its display has no 'show when' choice" end
+        return { kind = "debuff", unit = (t.unit == "focus") and "focus" or "target", filter = "HARMFUL|PLAYER", ids = { [id] = true }, display = display, trigger = trigger }
+    end
+    if p.useBuff or #rows > 0 then
+        for _, t in ipairs(rows) do
+            if type(t) == "table" and (t.type == "buffAura" or t.type == "targetDebuff") then return nil, "shows an aura only together with other triggers" end
         end
     end
-    return ids, n, first
+    return nil, ""   -- cooldown / state / other displays: not aura displays
 end
 
--- Effects XayaUI draws itself that the engine's container cannot: listed so nothing is lost silently.
--- (The engine shows an icon whenever the aura is up; it does not know the rule's conditions.)
-local function Drops(p)
+-- Spec filter for "lean" mode (performance guard first stage): only rules that load for the spec being played.
+local function CurrentSpecID()
+    if not (GetSpecialization and GetSpecializationInfo) then return nil end
+    local ok, i = pcall(GetSpecialization)
+    if not ok or not i then return nil end
+    local ok2, id = pcall(GetSpecializationInfo, i)
+    return ok2 and id or nil
+end
+local function LoadsForSpec(p, spec)
+    local specs = p.load and p.load.specs
+    if spec == nil or type(specs) ~= "table" or next(specs) == nil then return true end
+    return specs[tostring(spec)] and true or false
+end
+
+-- XayaUI's own answer to "may this display show now?" apart from the aura itself: load and talent settings, as the engine's
+-- last step found them (a display that shows only "when the aura is up" ignores load in XayaUI too).
+local function Allowed(p, trigger)
+    if trigger ~= "condition" then return true end
+    local rt = ns.runtime and ns.runtime[p]
+    local info = rt and rt.info
+    if not info then return true end
+    return info.ctxOK ~= false and info.talentOK ~= false
+end
+
+-- Effects XayaUI draws itself that the container cannot (said per rule by /xuiengine, so nothing differs silently).
+local function Drops(p, display)
     local out = {}
-    local cues = ns.CuesOf and ns.CuesOf(p) or {}
-    local cue
-    for _, c in ipairs(cues) do if c.visual and c.visual.enabled then cue = c; break end end
-    cue = cue or cues[1]
-    local v = (cue and cue.visual) or p.visual or {}
+    local v = (display and display.visual) or {}
     if v.fadeGrey then out[#out + 1] = "grey / colour fade" end
     if v.fadeAlpha then out[#out + 1] = "opacity fade" end
     if v.flash and v.flash.enabled then out[#out + 1] = "flash" end
     if v.fill and v.fill.enabled then out[#out + 1] = "wipe" end
     if v.glow then out[#out + 1] = "glow" end
     if v.desatOnCD then out[#out + 1] = "grey on cooldown" end
-    if cue and cue.cueKey and ns.ConditionsOf then
+    if display and display.cueKey and ns.ConditionsOf then
         local gate, mod = 0, 0
         for _, c in ipairs(ns.ConditionsOf(p)) do
             if c.enabled ~= false and type(c.thenCues) == "table" then
                 for _, k in ipairs(c.thenCues) do
-                    if k == cue.cueKey then
+                    if k == display.cueKey then
                         gate = gate + 1
                         local m = type(c.thenMods) == "table" and c.thenMods[k]
                         if type(m) == "table" and m.on ~= false then mod = mod + 1 end
@@ -149,95 +210,37 @@ local function Drops(p)
     return out
 end
 
--- The rule whose display XayaUI draws for this buff rule: its first icon cue with a display switched on, else the rule's own
--- display, else its first cue. Size, text and stack settings are read from it.
-local function CueOf(rule)
-    local cues = ns.CuesOf and ns.CuesOf(rule) or {}
-    for _, c in ipairs(cues) do if c.visual and c.visual.enabled then return c end end
-    if rule.visual and rule.visual.enabled then return rule end
-    return cues[1] or rule
+-------------------------------------------------------------------------------
+-- Ownership (asked by XayaUI for every display it is about to show)
+-------------------------------------------------------------------------------
+function ns.EngineOwns(rule)
+    local slot = owned[rule]
+    return (slot and slot.ok) and true or false
 end
--- XayaUI's own size for a display (Visual.lua RefreshVisual: at least 8, 128 when unset)
-local function DisplaySize(v)
-    return math.max(8, tonumber(v.w) or 128), math.max(8, tonumber(v.h) or 128)
+local function Own(slot, p)
+    owned[p] = slot
+    for _, c in ipairs(ns.CuesOf and ns.CuesOf(p) or {}) do owned[c] = slot end
 end
 
+-------------------------------------------------------------------------------
+-- Containers
+-------------------------------------------------------------------------------
 -- Blizzard's flow layout settings for a XayaUI growth direction (nil = unsupported).
 local function FlowFor(dir)
     local A, F = AnchorUtil.FlowLayoutAxis, AnchorUtil.FlowDirection
-    if dir == "RIGHT" then return A.Horizontal, "TOPLEFT", F.Right, F.Down, -1, 1 end        -- wraps down
-    if dir == "LEFT" then return A.Horizontal, "TOPRIGHT", F.Left, F.Down, 1, 1 end
-    if dir == "DOWN" then return A.Vertical, "TOPLEFT", F.Right, F.Down, -1, 1 end            -- wraps right
-    if dir == "UP" then return A.Vertical, "BOTTOMLEFT", F.Right, F.Up, -1, -1 end
+    if dir == "RIGHT" then return A.Horizontal, "TOPLEFT", F.Right, F.Down end        -- wraps down
+    if dir == "LEFT" then return A.Horizontal, "TOPRIGHT", F.Left, F.Down end
+    if dir == "DOWN" then return A.Vertical, "TOPLEFT", F.Right, F.Down end            -- wraps right
+    if dir == "UP" then return A.Vertical, "BOTTOMLEFT", F.Right, F.Up end
 end
 
--- Where XayaUI's dynamic layout puts a group's FIRST icon, relative to the group frame's centre, in icon sizes: half an icon
--- along the cross axis (Visual.lua LayoutDynamic: x = cross / 2 when growing up / down, y = -cross / 2 when growing sideways).
-local FIRST_ICON = { RIGHT = { 0, -.5 }, LEFT = { 0, -.5 }, DOWN = { .5, 0 }, UP = { .5, 0 } }
-
--- The strata XayaUI gives the group's displays: the nearest group (this one, then its parents) that sets one, else HIGH.
-local function StrataFor(fo)
-    local f, guard = fo, 0
-    while f and guard < 32 do
-        if f.cStrata then return f.cStrata end
-        f, guard = f.parent and ns.FolderById and ns.FolderById(f.parent), guard + 1
-    end
-    return "HIGH"
-end
-
--- Place the container so its first icon lands exactly where XayaUI would draw the group's first icon.
--- It hangs from XayaUI's own frame for the group, so the group's position, its parent groups' offsets, scale and opacity, and
--- any later move of the group all carry over without being recomputed here.
-local function Place(c, fo, anchor, iw, ih)
-    -- the first icon's spot comes from XayaUI itself when it can say (ns.DynamicFirstOffset), so a change to XayaUI's layout
-    -- moves the engine's icons with it; the table above is only the fallback for an older XayaUI
-    local fx, fy
-    if ns.DynamicFirstOffset then fx, fy = ns.DynamicFirstOffset(fo, iw, ih) end
-    if not fx then
-        local first = FIRST_ICON[fo.cGrowth or "RIGHT"] or { 0, 0 }
-        fx, fy = first[1] * iw, first[2] * ih
-    end
-    local ac = TO_CENTER[anchor] or TO_CENTER.CENTER   -- container corner `anchor` -> first icon centre, in icon sizes
-    local ox = fx - ac[1] * iw
-    local oy = fy - ac[2] * ih
-    local host = ns.GroupFrame and ns.GroupFrame(fo)
-    if host then
-        if c:GetParent() ~= host then c:SetParent(host) end
-        c:SetScale(1)
-        c:SetAlpha(1)
-        c:SetFrameStrata(StrataFor(fo))
-        c:ClearAllPoints()
-        c:SetPoint(anchor, host, "CENTER", ox, oy)
-        return
-    end
-    -- fallback (XayaUI too old to share its group frame): the same position worked out from the group's own settings only
-    local sc = math.max(0.1, fo.cScale or 1)
-    local target = UIParent
-    local rel = fo.cRel
-    local gname = (rel == "custom") and fo.cFrame or REL_FRAMES[rel]
-    local g = gname and gname ~= "" and _G[gname]
-    if g and g.GetCenter then target = g end
-    local pt = fo.cPoint or "CENTER"
-    local rp = fo.cRelPoint or pt
-    local tc = TO_CENTER[pt] or TO_CENTER.CENTER
-    local cw, ch = math.max(1, fo.cW or 1), math.max(1, fo.cH or 1)
-    -- (Visual.lua Container: the group frame is cW x cH in its own scaled units and its point sits cX / scale units from the target)
-    local cx = (fo.cX or 0) / sc + tc[1] * cw      -- group centre relative to target.rp, in the group's own units
-    local cy = (fo.cY or 0) / sc + tc[2] * ch
-    c:SetScale(sc)
-    c:SetAlpha(fo.cAlpha or 1)
-    c:SetFrameStrata(StrataFor(fo))
-    c:ClearAllPoints()
-    c:SetPoint(anchor, target, rp, cx + ox, cy + oy)
-end
-
-local function ButtonInit(w, h, cue)
-    local v = (cue and cue.visual) or {}
+local function ButtonInit(w, h, display)
+    local v = (display and display.visual) or {}
     local zoom = 0.08 + (tonumber(v.zoom) or 0)
     local tx, cn = v.text or {}, v.count or {}
     local font = STANDARD_TEXT_FONT
     return function(btn)
-        -- runs inside Blizzard's frame creation (securecallfunction); a failure here is caught by the caller
+        -- runs inside Blizzard's frame creation; a failure here is caught by the caller
         btn:SetSize(w, h)
         local icon = btn:CreateTexture(nil, "ARTWORK")
         icon:SetAllPoints(btn)
@@ -262,66 +265,132 @@ local function ButtonInit(w, h, cue)
     end
 end
 
--- While visuals or the group (or a group around it) are unlocked, XayaUI shows its own draggable samples: the engine's icons
--- step aside so there are no doubles, and come back (following the group's new position) when it is locked again.
-local function GroupUnlocked(fo)
+-- Create a container. The template is an AuraContainer widget: created as a plain "Frame" its built-in OnLoad never runs and
+-- Blizzard's own OnLoad errors with "attempt to index field 'dirtyFlags'" (seen in game, engine 0.3.0).
+local containerN = 0
+local function NewContainer(unit, filter, ids, w, h, sp, display, maxCount)
+    if C_AddOns and C_AddOns.LoadAddOn then pcall(C_AddOns.LoadAddOn, "Blizzard_AuraContainer") end
+    containerN = containerN + 1
+    local c = CreateFrame("AuraContainer", "XayaUIEngine" .. containerN, UIParent, "CustomAuraContainerTemplate")
+    c:SetUnit(unit)
+    c:SetAuraProcessingPolicy(CustomAuraContainerAuraProcessingPolicy.None)
+    c:AddAuraGroup("main", filter, {
+        candidateFilters = { includeSpellIDs = ids },
+        sortMethod = AuraContainerSortMethod.Default,
+        sortDirection = AuraContainerSortDirection.Normal,
+        maxFrameCount = maxCount,
+        layout = { elementSpacing = sp, lineSpacing = sp, elementWidth = w, elementHeight = h },
+        initializeFrame = ButtonInit(w, h, display),
+    })
+    return c
+end
+
+-- Where XayaUI puts a dynamic group's first icon (fallback when XayaUI is too old to say), in icon sizes.
+local FIRST_ICON = { RIGHT = { 0, -.5 }, LEFT = { 0, -.5 }, DOWN = { .5, 0 }, UP = { .5, 0 } }
+-- The strata XayaUI gives the group's displays: the nearest group (this one, then its parents) that sets one, else HIGH.
+local function StrataFor(fo)
+    local f, n = fo, 0
+    while f and n < 32 do
+        if f.cStrata then return f.cStrata end
+        f, n = FolderById(f.parent), n + 1
+    end
+    return "HIGH"
+end
+
+-- Place a group container so its first icon lands exactly where XayaUI would draw the group's first icon. It hangs from
+-- XayaUI's own frame for the group, so the group's position, its parent groups, scale, opacity and moves all carry over.
+local function PlaceGroup(c, fo, anchor, iw, ih)
+    local fx, fy
+    if ns.DynamicFirstOffset then fx, fy = ns.DynamicFirstOffset(fo, iw, ih) end
+    if not fx then local f = FIRST_ICON[fo.cGrowth or "RIGHT"] or { 0, 0 }; fx, fy = f[1] * iw, f[2] * ih end
+    local ac = TO_CENTER[anchor] or TO_CENTER.CENTER   -- container corner `anchor` -> first icon centre, in icon sizes
+    local ox, oy = fx - ac[1] * iw, fy - ac[2] * ih
+    local host = ns.GroupFrame and ns.GroupFrame(fo)
+    if host then
+        if c:GetParent() ~= host then c:SetParent(host) end
+        c:SetScale(1); c:SetAlpha(1)
+        c:SetFrameStrata(StrataFor(fo))
+        c:ClearAllPoints()
+        c:SetPoint(anchor, host, "CENTER", ox, oy)
+        return
+    end
+    -- fallback (XayaUI too old to share its group frame): the same position from the group's own settings
+    -- (Visual.lua Container: the group frame is cW x cH in its own scaled units and its point sits cX / scale units from the target)
+    local sc = math.max(0.1, fo.cScale or 1)
+    local target = UIParent
+    local gname = (fo.cRel == "custom") and fo.cFrame or REL_FRAMES[fo.cRel]
+    local g = gname and gname ~= "" and _G[gname]
+    if g and g.GetCenter then target = g end
+    local pt = fo.cPoint or "CENTER"
+    local tc = TO_CENTER[pt] or TO_CENTER.CENTER
+    local cx = (fo.cX or 0) / sc + tc[1] * math.max(1, fo.cW or 1)
+    local cy = (fo.cY or 0) / sc + tc[2] * math.max(1, fo.cH or 1)
+    c:SetScale(sc); c:SetAlpha(fo.cAlpha or 1); c:SetFrameStrata(StrataFor(fo))
+    c:ClearAllPoints()
+    c:SetPoint(anchor, target, fo.cRelPoint or pt, cx + ox, cy + oy)
+end
+
+-- Place a single slot exactly on XayaUI's own icon for the display: same parent (so the same group scale and opacity), anchored
+-- to that icon (which stays in place, hidden, while the engine draws), same strata.
+local function PlaceSingle(c, host, w, h)
+    local parent = host:GetParent() or UIParent
+    if c:GetParent() ~= parent then c:SetParent(parent) end
+    c:SetScale(1); c:SetAlpha(1)
+    c:SetFrameStrata(host:GetFrameStrata() or "HIGH")
+    c:ClearAllPoints()
+    c:SetPoint("TOPLEFT", host, "CENTER", -w / 2, h / 2)
+end
+
+-------------------------------------------------------------------------------
+-- Unlock: while visuals, a group or a display are unlocked, XayaUI shows its own draggable samples; the engine steps aside.
+-------------------------------------------------------------------------------
+local function FolderUnlocked(folderId)
     if ns.unlocked then return true end
     local gu = ns.groupUnlocked
     if not gu or not next(gu) then return false end
-    local f, guard = fo, 0
-    while f and guard < 32 do
-        if gu[f.id] then return true end
-        f, guard = f.parent and ns.FolderById and ns.FolderById(f.parent), guard + 1
+    local id, n = folderId, 0
+    while id and n < 32 do
+        if gu[id] then return true end
+        local f = FolderById(id)
+        if not f then return false end
+        id, n = f.parent, n + 1
     end
     return false
 end
-local function Fail(g, why)
-    OwnChanged()
-    g.ok, g.err = false, tostring(why)
-    lastError = g.err
-    if g.frame then g.frame:Hide() end
+local function RuleUnlocked(display)
+    return ns.unlocked or (ns.moveUnlocked and ns.moveUnlocked[display]) or FolderUnlocked(display.folder) or false
 end
 
--- Create (once) or update the container for one folder.
-local function BuildGroup(fo)
-    OwnChanged()
+-------------------------------------------------------------------------------
+-- Build
+-------------------------------------------------------------------------------
+local function Fail(slot, why)
+    slot.ok, slot.err = false, tostring(why)
+    lastError = slot.err
+    if slot.frame then slot.frame:Hide() end
+end
+
+local function BuildGroup(fo, members)
     local g = groups[fo.id] or {}
     groups[fo.id] = g
+    g.members, g.ids, g.n, g.serial, g.allowed = members, {}, #members, serial, {}
     local dir = fo.cGrowth or "RIGHT"
-    local axis, anchor, hdir, vdir, _, _ = FlowFor(dir)
-    if fo.cType ~= "dynamic" or not axis then
-        g.ok, g.err = false, (fo.cType ~= "dynamic") and "group is not a dynamic group" or ("growth " .. tostring(dir) .. " not supported")
+    local axis, anchor, hdir, vdir = FlowFor(dir)
+    if not axis then
+        Fail(g, "growth " .. tostring(dir) .. " not supported (Blizzard's layout has no centred growth)")
         return g
     end
-    local ids, n, first = Collect(fo)
-    g.ids, g.n = ids, n
-    if n == 0 then g.ok, g.err = false, "no enabled Buff rules in this group"; if g.frame then g.frame:Hide() end; return g end
-    local cue = CueOf(first)
-    local v = (cue and cue.visual) or {}
-    local iw, ih = DisplaySize(v)
+    for _, m in ipairs(members) do for id in pairs(m.spec.ids) do g.ids[id] = true end end
+    local display = members[1].spec.display
+    local iw, ih = DisplaySize(display.visual)
     local sp = tonumber(fo.cSpacing) or 4
     local limit = (axis == AnchorUtil.FlowLayoutAxis.Horizontal) and (fo.cW or 0) or (fo.cH or 0)
     if limit <= 0 then limit = math.huge end
-
     local ok, err = pcall(function()
         if not g.frame then
-            if C_AddOns and C_AddOns.LoadAddOn and not CustomAuraContainerTemplate then pcall(C_AddOns.LoadAddOn, "Blizzard_AuraContainer") end
-            -- the template is an AuraContainer widget: created as a plain "Frame" its built-in OnLoad never runs (no dirty-state
-            -- table) and Blizzard's own OnLoad errors with "attempt to index field 'dirtyFlags'" (seen in game, 0.3.0)
-            local c = CreateFrame("AuraContainer", "XayaUIEngine_" .. fo.id, UIParent, "CustomAuraContainerTemplate")
-            c:SetUnit("player")
-            c:SetAuraProcessingPolicy(CustomAuraContainerAuraProcessingPolicy.None)
-            c:AddAuraGroup("main", "HELPFUL", {
-                candidateFilters = { includeSpellIDs = ids },
-                sortMethod = AuraContainerSortMethod.Default,
-                sortDirection = AuraContainerSortDirection.Normal,
-                maxFrameCount = math.huge,
-                layout = { elementSpacing = sp, lineSpacing = sp, elementWidth = iw, elementHeight = ih },
-                initializeFrame = ButtonInit(iw, ih, cue),
-            })
-            g.frame = c
+            g.frame = NewContainer("player", "HELPFUL", g.ids, iw, ih, sp, display, math.huge)
         else
-            g.frame:SetAuraGroupCandidateFilters("main", { includeSpellIDs = ids })
+            g.frame:SetAuraGroupCandidateFilters("main", { includeSpellIDs = g.ids })
             g.frame:SetAuraGroupLayout("main", { elementSpacing = sp, lineSpacing = sp, elementWidth = iw, elementHeight = ih })
         end
         local c = g.frame
@@ -329,99 +398,224 @@ local function BuildGroup(fo)
         c:SetFlowLayoutAnchorPoint(anchor)
         c:SetFlowLayoutGrowthDirection(hdir, vdir)
         c:SetFlowLayoutMaximumLineSize(limit)
-        Place(c, fo, anchor, iw, ih)
-        c:SetShown(not GroupUnlocked(fo))
+        PlaceGroup(c, fo, anchor, iw, ih)
+        c:SetShown(not FolderUnlocked(fo.id))
     end)
-    if ok then g.ok, g.err = true, nil; OwnChanged() else Fail(g, err) end
+    g.dirty = true   -- the live filter (load) is set by D.SyncLive
+    if ok then g.ok, g.err = true, nil else Fail(g, err) end
     return g
 end
 
-function D.SyncShown()
-    for _, fo in ipairs(ns.folders or {}) do
-        local g = groups[fo.id]
-        if g and g.ok and g.frame then g.frame:SetShown(not GroupUnlocked(fo)) end
-    end
-end
-
-local function TearDownGroup(fid)
-    OwnChanged()
-    local g = groups[fid]
-    if g then g.ok = false; if g.frame then g.frame:Hide() end end
+local function BuildSingle(p, spec)
+    local s = singles[p] or {}
+    singles[p] = s
+    s.spec, s.ok, s.serial = spec, false, serial
+    local display = spec.display
+    local host = ns.DisplayFrame and ns.DisplayFrame(display)
+    if not host then Fail(s, "XayaUI has no frame for this display") return s end
+    s.host = host
+    local w, h = DisplaySize(display.visual)
+    local ok, err = pcall(function()
+        -- a container's unit and filter are fixed at creation: a slot whose aura kind changed gets a new container
+        if s.frame and (s.unit ~= spec.unit or s.filter ~= spec.filter or s.w ~= w or s.h ~= h) then s.frame:Hide(); s.frame = nil end
+        if not s.frame then
+            s.frame = NewContainer(spec.unit, spec.filter, spec.ids, w, h, 0, display, 1)
+            s.unit, s.filter, s.w, s.h = spec.unit, spec.filter, w, h
+        else
+            s.frame:SetAuraGroupCandidateFilters("main", { includeSpellIDs = spec.ids })
+        end
+        local c = s.frame
+        local A, F = AnchorUtil.FlowLayoutAxis, AnchorUtil.FlowDirection
+        c:SetFlowLayoutAxis(A.Horizontal)
+        c:SetFlowLayoutAnchorPoint("TOPLEFT")
+        c:SetFlowLayoutGrowthDirection(F.Right, F.Down)
+        c:SetFlowLayoutMaximumLineSize(math.huge)
+        PlaceSingle(c, host, w, h)
+    end)
+    if ok then s.ok, s.err = true, nil else Fail(s, err) end
+    return s
 end
 
 local function RefreshCore()
     if ns.RefreshAllVisuals then pcall(ns.RefreshAllVisuals) end
 end
 
--- (Re)build every switched-on group.  Safe to call any time; defers while in combat lockdown.
+-- (Re)build everything. Safe to call any time; waits for the end of combat when in combat lockdown.
 function D.Build()
     local db = DB()
     if not db then return end
     if InCombatLockdown and InCombatLockdown() then pendingBuild = true; return end
     pendingBuild = nil
-    for _, fo in ipairs(ns.folders or {}) do
-        if D.Wanted(fo) then BuildGroup(fo) else TearDownGroup(fo.id) end
+    serial = serial + 1
+    for k in pairs(owned) do owned[k] = nil end
+    left = {}
+    local spec = db.lean and CurrentSpecID() or nil
+    local byGroup, wantSingle = {}, {}
+    if db.auto ~= false then
+        for _, p in ipairs(ns.rules or {}) do
+            local s, why = Classify(p)
+            if not s then
+                if why ~= "" then left[#left + 1] = { p, why } end
+            elseif KeptWithXayaUI(s.display.folder) then
+                left[#left + 1] = { p, "its group is kept with XayaUI (/xuiengine reset <group> to undo)" }
+            elseif db.lean and not LoadsForSpec(p, spec) then
+                left[#left + 1] = { p, "lean mode: not for the spec you are playing" }
+            else
+                local gid = DynGroupId(s.display.folder)   -- (XayaUI lays a display out by ITS OWN group)
+                local fo = FolderById(gid)
+                if fo then
+                    if s.kind ~= "buff" then
+                        left[#left + 1] = { p, "a target debuff inside a dynamic group (the group's container shows your buffs only)" }
+                    else
+                        local l = byGroup[gid]
+                        if not l then l = {}; byGroup[gid] = l end
+                        l[#l + 1] = { rule = p, spec = s }
+                    end
+                else
+                    wantSingle[p] = s
+                end
+            end
+        end
     end
+    for _, fo in ipairs(ns.folders or {}) do
+        local members = byGroup[fo.id]
+        if members then
+            local g = BuildGroup(fo, members)
+            for _, m in ipairs(members) do
+                Own(g, m.rule)
+                if not g.ok then left[#left + 1] = { m.rule, "its group failed: " .. tostring(g.err) } end
+            end
+        elseif groups[fo.id] then
+            local g = groups[fo.id]
+            g.ok = false
+            if g.frame then g.frame:Hide() end
+        end
+    end
+    for p, s in pairs(singles) do
+        if not wantSingle[p] then s.ok = false; if s.frame then s.frame:Hide() end end
+    end
+    for p, spec in pairs(wantSingle) do
+        local s = BuildSingle(p, spec)
+        Own(s, p)
+        if not s.ok then left[#left + 1] = { p, "failed: " .. tostring(s.err) } end
+    end
+    D.SyncLive()
     RefreshCore()
 end
 
--- Is this group drawn by the engine?  An explicit choice (/xuiengine on|off) wins; otherwise automatic mode decides.
-function D.Wanted(fo)
+-------------------------------------------------------------------------------
+-- Live sync (4 times a second): load / talent answers and unlock state. Cheap: no allocation unless something changed.
+-------------------------------------------------------------------------------
+function D.SyncLive()
+    for p, s in pairs(singles) do
+        if s.ok and s.frame then
+            local show = Allowed(p, s.spec.trigger) and not RuleUnlocked(s.spec.display)
+            if s.frame:IsShown() ~= show then pcall(s.frame.SetShown, s.frame, show) end
+        end
+    end
+    for fid, g in pairs(groups) do
+        if g.ok and g.frame then
+            -- the group's filter holds the members that may show now; it is rewritten only when one of them changes
+            local changed = g.dirty
+            for i, m in ipairs(g.members) do
+                local a = Allowed(m.rule, m.spec.trigger)
+                if g.allowed[i] ~= a then g.allowed[i] = a; changed = true end
+            end
+            if changed then
+                local ids = {}
+                for i, m in ipairs(g.members) do
+                    if g.allowed[i] then for id in pairs(m.spec.ids) do ids[id] = true end end
+                end
+                if pcall(g.frame.SetAuraGroupCandidateFilters, g.frame, "main", { includeSpellIDs = ids }) then g.dirty = false end
+            end
+            local show = not FolderUnlocked(fid)
+            if g.frame:IsShown() ~= show then pcall(g.frame.SetShown, g.frame, show) end
+        end
+    end
+end
+D.SyncShown = D.SyncLive   -- (older name, used by the unlock hooks)
+
+-------------------------------------------------------------------------------
+-- Status (/xuiengine): what the engine draws, what it does not and why, and every difference it cannot avoid
+-------------------------------------------------------------------------------
+function D.Status()
     local db = DB()
-    if not db then return false end
-    local v = db.groups[fo.id]
-    if v ~= nil then return v and true or false end
-    return db.auto ~= false and fo.cType == "dynamic"
+    if not db then return end
+    if db.auto == false then
+        Say("automatic engine drawing is OFF: XayaUI draws every display itself. /xuiengine auto on to turn it on.")
+        if lastError then Say("last engine error: " .. lastError) end
+        return
+    end
+    local nG, nGRules, nS, nSOk = 0, 0, 0, 0
+    for _, fo in ipairs(ns.folders or {}) do
+        local g = groups[fo.id]
+        if g and g.members and g.serial == serial then
+            nG = nG + 1; nGRules = nGRules + #g.members
+            Say(string.format("%s: %s (%d buff rules)%s", fo.name or fo.id, g.ok and "ENGINE DRAWN" or "NOT drawn by engine (XayaUI draws it)",
+                #g.members, g.err and (" - " .. g.err) or ""))
+            if g.ok then
+                local w0, h0, mixed = nil, nil, false
+                for _, m in ipairs(g.members) do
+                    local w, h = DisplaySize(m.spec.display.visual)
+                    if w0 and (w ~= w0 or h ~= h0) then mixed = true end
+                    w0, h0 = w0 or w, h0 or h
+                end
+                if mixed then Say("   (icons in this group have different sizes; the engine draws them all at the first one's size)") end
+                if #g.members > 1 then Say("   (icon order follows the game's aura order" .. ((fo.cSort == "asc" or fo.cSort == "desc") and ", not the group's name sort" or ", not the rule list") .. ")") end
+                for _, m in ipairs(g.members) do
+                    local d = Drops(m.rule, m.spec.display)
+                    if #d > 0 then Say("   " .. tostring(m.rule.name) .. ": " .. table.concat(d, "; ")) end
+                end
+            end
+        end
+    end
+    for p, s in pairs(singles) do
+        if s.serial == serial then
+            nS = nS + 1
+            if s.ok then
+                nSOk = nSOk + 1
+                local d = Drops(p, s.spec.display)
+                if #d > 0 then Say("   " .. tostring(p.name) .. " (on its own): " .. table.concat(d, "; ")) end
+            end
+        end
+    end
+    Say(string.format("Engine draws: %d group%s (%d rules) and %d rule%s on their own.", nG, nG == 1 and "" or "s", nGRules, nSOk, nSOk == 1 and "" or "s"))
+    if #left > 0 then
+        -- grouped by reason, so a long list stays readable; every display XayaUI keeps is counted
+        local byWhy, order = {}, {}
+        for _, e in ipairs(left) do
+            local l = byWhy[e[2]]
+            if not l then l = {}; byWhy[e[2]] = l; order[#order + 1] = e[2] end
+            l[#l + 1] = tostring(e[1].name)
+        end
+        Say(string.format("XayaUI keeps %d aura display%s:", #left, #left == 1 and "" or "s"))
+        for _, why in ipairs(order) do
+            local l = byWhy[why]
+            local shown = {}
+            for i = 1, math.min(6, #l) do shown[i] = l[i] end
+            Say(string.format("   %d - %s: %s%s", #l, why, table.concat(shown, ", "), #l > 6 and (", and " .. (#l - 6) .. " more") or ""))
+        end
+    else
+        Say("XayaUI keeps no aura displays: every one is drawn by the engine.")
+    end
+    Say(string.format("automatic mode: %s%s.  Performance guard: %s", db.auto ~= false and "on" or "OFF", db.lean and " (lean: this spec only)" or "",
+        guard.last and string.format("%.2f ms recent average (limit %.1f)", guard.last, LIMIT_MS) or "no reading yet (the game's addon meter may be off)"))
+    if lastError then Say("last engine error: " .. lastError) end
 end
 
+-------------------------------------------------------------------------------
+-- Slash command
+-------------------------------------------------------------------------------
 local function FindFolder(q)
     q = tostring(q or ""):lower()
     if q == "" then return nil, "name a group" end
-    local hit, count
-    count = 0
+    local hit, count = nil, 0
     for _, fo in ipairs(ns.folders or {}) do
         if tostring(fo.id):lower() == q or tostring(fo.name or ""):lower() == q then return fo end
         if tostring(fo.name or ""):lower():find(q, 1, true) then hit, count = fo, count + 1 end
     end
     if count == 1 then return hit end
     return nil, (count == 0) and ("no group matches '" .. q .. "'") or (count .. " groups match '" .. q .. "'; use more of the name")
-end
-
-function D.Status()
-    local db = DB()
-    if not db then return end
-    local any, dropN = false, 0
-    for _, fo in ipairs(ns.folders or {}) do
-        local _, n = Collect(fo)
-        if n > 0 and D.Wanted(fo) then
-            any = true
-            local g = groups[fo.id]
-            Say(string.format("%s: %s (%d buff rules)%s", fo.name or fo.id, (g and g.ok) and "ENGINE DRAWN" or "NOT drawn by engine (XayaUI draws it)", n, (g and g.err) and (" - " .. g.err) or ""))
-            if g and g.ok then
-                -- layout differences the container cannot avoid (said once per group, so nothing differs silently)
-                local w0, h0, mixed = nil, nil, false
-                for _, r in ipairs(ns.rules or {}) do
-                    if Members(fo, r) then
-                        local c = CueOf(r); local w, h = DisplaySize((c and c.visual) or {})
-                        if w0 and (w ~= w0 or h ~= h0) then mixed = true end
-                        w0, h0 = w0 or w, h0 or h
-                    end
-                end
-                if mixed then Say("   (icons in this group have different sizes; the engine draws them all at the first one's size)") end
-                if n > 1 then Say("   (icon order follows the game's aura order" .. ((fo.cSort == "asc" or fo.cSort == "desc") and ", not the group's name sort" or ", not the rule list") .. ")") end
-                for _, r in ipairs(ns.rules or {}) do
-                    if Members(fo, r) then
-                        local d = Drops(r)
-                        if #d > 0 then dropN = dropN + 1; Say("   " .. tostring(r.name) .. ": " .. table.concat(d, "; ")) end
-                    end
-                end
-            end
-        end
-    end
-    if not any then Say("Nothing is drawn by the engine (automatic mode " .. (db.auto ~= false and "on" or "OFF") .. ").") end
-    Say(string.format("automatic mode: %s.  Performance guard: %s", db.auto ~= false and "on" or "OFF",
-        guard.last and string.format("engine addon %.2f ms recent average (limit %.1f)", guard.last, LIMIT_MS) or "no reading yet (the game's addon meter may be off)"))
-    if lastError then Say("last engine error: " .. lastError) end
 end
 
 local function Slash(msg)
@@ -431,14 +625,15 @@ local function Slash(msg)
     if not db then Say("saved data not loaded yet") return end
     if cmd == "auto" then
         local a = rest:lower()
-        if a == "on" or a == "off" then db.auto = (a == "on"); guard.bad = 0; D.Build() end
+        if a == "on" or a == "off" then db.auto = (a == "on"); db.lean = nil; guard.bad = 0; D.Build() end
         D.Status()
+    elseif cmd == "full" then   -- leave lean mode: every spec's displays again
+        db.lean = nil; guard.bad = 0; D.Build(); D.Status()
     elseif cmd == "on" or cmd == "off" then
         local fo, err = FindFolder(rest)
         if not fo then Say(err) return end
         db.groups[fo.id] = (cmd == "on")
-        D.Build()
-        D.Status()
+        D.Build(); D.Status()
     elseif cmd == "reset" then
         local fo, err = FindFolder(rest)
         if not fo then Say(err) return end
@@ -446,55 +641,82 @@ local function Slash(msg)
         D.Build(); D.Status()
     elseif cmd == "refresh" or cmd == "build" then
         D.Build(); D.Status()
-    elseif cmd == "list" then
-        for _, fo in ipairs(ns.folders or {}) do
-            local _, n = Collect(fo)
-            if n > 0 then Say(string.format("%s: %d buff rules, %s", fo.name or fo.id, n, D.Wanted(fo) and "engine ON" or "engine off")) end
-        end
     else
         D.Status()
         -- (no "|r" in chat text: WoW reads it as a colour code)
-        Say("/xuiengine auto on / off;  /xuiengine on / off / reset <group>;  /xuiengine refresh;  /xuiengine list.  Draws buff rules in dynamic groups through Blizzard's secure aura container so they show in combat; automatic unless switched off.")
+        Say("/xuiengine auto on / off;  /xuiengine off / reset <group>;  /xuiengine full (leave lean mode);  /xuiengine refresh.  Draws every aura display through Blizzard's secure aura container so time and stacks show in combat.")
     end
 end
-
 SLASH_XUIENGINE1 = "/xuiengine"
 SlashCmdList["XUIENGINE"] = Slash
 
--- Performance guard: read this addon's own CPU from the game's meter; trip automatic mode off if it stays high.
+-------------------------------------------------------------------------------
+-- Performance guard: this addon's CPU plus Blizzard's container code, from the game's own meter
+-------------------------------------------------------------------------------
+local function Metric(name)
+    local ok, v = pcall(C_AddOnProfiler.GetAddOnMetric, name, Enum.AddOnProfilerMetric.RecentAverageTime)
+    return (ok and type(v) == "number") and v or nil
+end
 local function GuardCheck()
     local db = DB()
     if not (db and db.auto ~= false) then guard.bad = 0; return end
     if not (C_AddOnProfiler and C_AddOnProfiler.GetAddOnMetric and Enum and Enum.AddOnProfilerMetric) then return end
-    local ok, v = pcall(C_AddOnProfiler.GetAddOnMetric, "XayaUI_CombatEngine", Enum.AddOnProfilerMetric.RecentAverageTime)
-    if not ok or type(v) ~= "number" then return end
+    local v = Metric("XayaUI_CombatEngine")
+    if not v then return end
+    v = v + (Metric("Blizzard_AuraContainer") or 0)
     guard.last = v
     if v > LIMIT_MS then guard.bad = guard.bad + 1 else guard.bad = 0 end
-    if guard.bad >= NEED then
-        guard.bad = 0
+    if guard.bad < NEED then return end
+    guard.bad = 0
+    db.guardTrips = db.guardTrips or {}
+    local step = db.lean and "off" or "lean"
+    db.guardTrips[#db.guardTrips + 1] = { at = date("%Y-%m-%d %H:%M:%S"), ms = v, limit = LIMIT_MS, step = step }
+    while #db.guardTrips > 10 do table.remove(db.guardTrips, 1) end
+    if step == "lean" then
+        db.lean = true
+        Say(string.format("performance guard: the engine cost %.2f ms per frame (limit %.1f), so it now draws only the displays of the spec you are playing (lean mode, applied once combat ends). /xuiengine full to undo.", v, LIMIT_MS))
+    else
         db.auto = false
-        db.guardTrips = db.guardTrips or {}
-        db.guardTrips[#db.guardTrips + 1] = { at = date("%Y-%m-%d %H:%M:%S"), ms = v, limit = LIMIT_MS }
-        while #db.guardTrips > 10 do table.remove(db.guardTrips, 1) end
-        Say(string.format("performance guard: the engine addon averaged %.2f ms per frame (limit %.1f) for %d checks, so automatic engine drawing is OFF; XayaUI draws again once combat ends. Turn it back on with /xuiengine auto on.", v, LIMIT_MS, NEED))
-        D.Build()
+        Say(string.format("performance guard: still %.2f ms per frame in lean mode, so automatic engine drawing is OFF; XayaUI draws again once combat ends. /xuiengine auto on to turn it back on.", v))
     end
+    D.Build()
 end
-if C_Timer and C_Timer.NewTicker then C_Timer.NewTicker(5, function() pcall(GuardCheck) end) end
 D.GuardCheck = GuardCheck
 
--- follow XayaUI's lock / unlock (both are plain functions on the shared namespace; hooks run after them)
+-------------------------------------------------------------------------------
+-- Events and hooks
+-------------------------------------------------------------------------------
+-- rule / group edits arrive as ns.MarkDirty; rebuild once, a second after the last one (never in combat)
+local rebuildQueued = false
+local function QueueBuild()
+    if rebuildQueued then return end
+    rebuildQueued = true
+    local function Run() rebuildQueued = false; pcall(D.Build) end
+    if C_Timer and C_Timer.After then C_Timer.After(1, Run) else Run() end
+end
+D.QueueBuild = QueueBuild
+
 if hooksecurefunc then
-    if ns.ToggleUnlock then hooksecurefunc(ns, "ToggleUnlock", function() pcall(D.SyncShown) end) end
-    if ns.SetGroupUnlocked then hooksecurefunc(ns, "SetGroupUnlocked", function() pcall(D.SyncShown) end) end
+    if ns.ToggleUnlock then hooksecurefunc(ns, "ToggleUnlock", function() pcall(D.SyncLive) end) end
+    if ns.SetGroupUnlocked then hooksecurefunc(ns, "SetGroupUnlocked", function() pcall(D.SyncLive) end) end
+    if ns.SetMoveUnlocked then hooksecurefunc(ns, "SetMoveUnlocked", function() pcall(D.SyncLive) end) end
+    if ns.MarkDirty then hooksecurefunc(ns, "MarkDirty", QueueBuild) end
+end
+if C_Timer and C_Timer.NewTicker then
+    C_Timer.NewTicker(0.25, function() pcall(D.SyncLive) end)
+    C_Timer.NewTicker(5, function() pcall(GuardCheck) end)
 end
 
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_ENTERING_WORLD")
 ev:RegisterEvent("PLAYER_REGEN_ENABLED")
-ev:SetScript("OnEvent", function(_, event)
+ev:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+ev:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_REGEN_ENABLED" and not pendingBuild then return end
-    D.Build()
+    if event == "PLAYER_SPECIALIZATION_CHANGED" and unit and unit ~= "player" then return end
+    pcall(D.Build)
 end)
 
-D._groups = groups   -- for tests
+-- for tests
+D._groups, D._singles, D._owned = groups, singles, owned
+function D._Left() return left end
