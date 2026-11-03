@@ -31,6 +31,13 @@ local DEFAULTS = {
     xuiRow = "AFTER_MACROS",      -- AFTER_MACROS | TOP | BOTTOM | HIDE
     xuiStyle = "gradient",        -- gradient | standard (the XayaUI row only)
     hide = {},                    -- [Blizzard entry text] = true : leave that entry out of OUR menu (it still exists in Blizzard's)
+    -- colors: off = follow the theme / class color (as before); on = the colors below. The defaults equal the built-in look.
+    useColors = false,
+    pbR = 0.25, pbG = 0.25, pbB = 0.25,       -- panel border
+    btnR = 0.07, btnG = 0.07, btnB = 0.07,    -- button fill
+    bbR = 0.25, bbG = 0.25, bbB = 0.25,       -- button border
+    accR = 0.75, accG = 0.25, accB = 1,       -- accent: hover border, glow, XayaUI row
+    ttR = 0.75, ttG = 0.25, ttB = 1,          -- title
 }
 ns.GameMenuSkinDefaults = DEFAULTS
 
@@ -49,6 +56,8 @@ function ns.GameMenuSkin_Active() return Cfg().skin and not diag.failed end
 
 -- colors -------------------------------------------------------------------------------------------------------------------------
 local function Accent()
+    local cfg = Cfg()
+    if cfg.useColors then return { cfg.accR, cfg.accG, cfg.accB } end
     local c = ns.Theme and ns.Theme.cur and ns.Theme.cur.accent
     if c then return { c[1], c[2], c[3] } end
     local ok, _, file = pcall(UnitClass, "player")
@@ -60,6 +69,18 @@ local function Border()
     local T = ns.Theme
     local c = T and T.Col and T.Col("xui-button", "border", { 0.25, 0.25, 0.25, 1 })
     return c or { 0.25, 0.25, 0.25, 1 }
+end
+
+-- panel border / button border / button fill / title / panel fill: the user's colors when "Use my own colors" is on, else the old look
+local function Pal()
+    local c = Cfg()
+    if c.useColors then
+        return { panelBorder = { c.pbR, c.pbG, c.pbB, 1 }, btnBorder = { c.bbR, c.bbG, c.bbB, 1 }, btn = { c.btnR, c.btnG, c.btnB },
+                 title = { c.ttR, c.ttG, c.ttB }, bg = { c.bgR, c.bgG, c.bgB } }
+    end
+    local b = Border()
+    local ac = Accent()
+    return { panelBorder = b, btnBorder = b, btn = { 0.07, 0.07, 0.07 }, title = ac, bg = { DEFAULTS.bgR, DEFAULTS.bgG, DEFAULTS.bgB } }
 end
 
 -- our frame and rows -------------------------------------------------------------------------------------------------------------
@@ -78,6 +99,7 @@ local function Panel()
     if panel then return panel end
     local f = CreateFrame("Frame", "XayaUI_GameMenuPanel", UIParent)
     f:SetFrameStrata("DIALOG"); f:EnableMouse(true)       -- swallow clicks on the panel so nothing behind it is hit
+    f.cover = CreateFrame("Frame", nil, f); f.cover:EnableMouse(true)   -- sits over Blizzard's whole menu: its invisible buttons can never be hit
     f.bg = f:CreateTexture(nil, "BACKGROUND")
     f.bg:SetAllPoints(f)
     Edges(f)
@@ -92,13 +114,14 @@ local function FontFile(c) return (ns.FontPath and ns.FontPath(c.font)) or STAND
 local function PaintRow(r)
     local c = Cfg()
     local ac = Accent()
-    local bd = Border()
+    local pal = Pal()
+    local bd = pal.btnBorder
     local isXui = r.isXui
     local hov, prs = r.hover, r.pressed
     local a = (c.btnA or 70) / 100
-    local base = 0.07
-    local fill = { base, base, base, a }
-    if r.disabled then fill = { base, base, base, a * 0.6 } end
+    local bc = pal.btn
+    local fill = { bc[1], bc[2], bc[3], a }
+    if r.disabled then fill = { bc[1], bc[2], bc[3], a * 0.6 } end
     if isXui and c.xuiStyle ~= "standard" then
         local k = prs and 0.70 or (hov and 0.62 or 0.48)
         r.bg:SetColorTexture(1, 1, 1, 1)
@@ -120,6 +143,25 @@ local function PaintRow(r)
     r.fs:SetText(r.label or "")
 end
 
+-- Which real Blizzard button does a drawn row stand for? Looked up by its label (and layout index) at CLICK time, because the menu
+-- recycles its buttons from a pool and a button remembered from build time can be a different entry by then (shifted-down mapping).
+local function ResolveSource(r)
+    local menu = GameMenuFrame
+    local match
+    if menu and menu.buttonPool and menu.buttonPool.EnumerateActive and r.label then
+        for b in menu.buttonPool:EnumerateActive() do
+            if not b.xuiGMslot then
+                local ok, t = pcall(b.GetText, b)
+                if ok and t == r.label then
+                    if r.srcIdx and b.layoutIndex == r.srcIdx then return b end
+                    match = match or b
+                end
+            end
+        end
+    end
+    return match or r.src
+end
+
 local function GetRow(i)
     local r = rows[i]
     if r then return r end
@@ -139,8 +181,12 @@ local function GetRow(i)
             pcall(PlaySound, SOUNDKIT and SOUNDKIT.IG_MAINMENU_OPTION or 852)
             if GameMenuFrame and GameMenuFrame:IsShown() then pcall(HideUIPanel, GameMenuFrame) end
             if ns.ToggleUI then ns.ToggleUI() end
-        elseif self.src then
-            local ok, err = pcall(self.src.Click, self.src)         -- Blizzard's own action, unchanged
+        else
+            local src = ResolveSource(self)
+            if not src then diag.lastError = "no real button found for '" .. tostring(self.label) .. "'"; return end
+            local okE, en = pcall(src.IsEnabled, src)
+            if okE and en == false then return end
+            local ok, err = pcall(src.Click, src)         -- Blizzard's own action, unchanged
             if not ok then diag.lastError = tostring(err) end
         end
     end)
@@ -222,14 +268,18 @@ local function Build()
     local entries = Place(LABEL, c.xuiRow, list)
     local p = Panel()
     p:SetScale((c.scale or 100) / 100)
-    p:SetFrameLevel((menu:GetFrameLevel() or 1) + 20)
-    p.bg:SetColorTexture(c.bgR, c.bgG, c.bgB, (c.bgA or 90) / 100)
-    local bd = Border()
+    p:SetFrameStrata((menu.GetFrameStrata and menu:GetFrameStrata()) or "DIALOG")   -- same strata as Blizzard's menu, far above its buttons
+    p:SetFrameLevel((menu:GetFrameLevel() or 1) + 200)
+    p.cover:ClearAllPoints(); p.cover:SetPoint("TOPLEFT", menu, "TOPLEFT"); p.cover:SetPoint("BOTTOMRIGHT", menu, "BOTTOMRIGHT")
+    p.cover:SetFrameLevel(p:GetFrameLevel() + 1)
+    local pal = Pal()
+    p.bg:SetColorTexture(pal.bg[1], pal.bg[2], pal.bg[3], (c.bgA or 90) / 100)
+    local bd = pal.panelBorder
     for i = 1, 4 do p.e[i]:SetColorTexture(bd[1], bd[2], bd[3], c.border and 1 or 0) end
     local y = c.pad
     if c.title then
         p.title:SetFont(FontFile(c), c.titleSize or 14, c.outline or "")
-        p.title:SetTextColor(Accent()[1], Accent()[2], Accent()[3], 1)
+        p.title:SetTextColor(pal.title[1], pal.title[2], pal.title[3], 1)
         p.title:SetText(TitleText(menu)); p.title:ClearAllPoints(); p.title:SetPoint("TOP", p, "TOP", 0, -c.pad)
         p.title:Show()
         y = y + (c.titleSize or 14) + c.groupGap * 0.6
@@ -239,7 +289,8 @@ local function Build()
     local used = 0
     for i, e in ipairs(entries) do
         local r = GetRow(i)
-        r.src, r.isXui, r.label, r.disabled = e.src, e.isXui, e.text, not e.enabled
+        r.src, r.srcIdx, r.isXui, r.label, r.disabled = e.src, e.idx, e.isXui, e.text, not e.enabled
+        r:SetFrameLevel(p:GetFrameLevel() + 5)
         r:SetSize(c.w, c.h)
         if i > 1 then y = y + (e.groupBreak and c.groupGap or c.gap) end
         r:ClearAllPoints(); r:SetPoint("TOP", p, "TOP", 0, -y)
@@ -284,6 +335,17 @@ function ns.GameMenuSkin_Diagnostics()
     local c = Cfg()
     ns.Print(("game menu skin: on=%s failed=%s built=%d rows=%d title found=%s lastError=%s"):format(
         tostring(c.skin), tostring(diag.failed), diag.built, diag.rows, tostring(diag.titleFound), tostring(diag.lastError)))
+    for i, r in ipairs(rows) do
+        if r:IsShown() then
+            if r.isXui then ns.Print(("  row %d '%s' -> XayaUI (opens the settings)"):format(i, tostring(r.label)))
+            else
+                local b = ResolveSource(r)
+                local okT, t = pcall(function() return b and b:GetText() end)
+                local okP, top = pcall(function() return b and b:GetTop() end)
+                ns.Print(("  row %d '%s' -> real '%s' layoutIndex=%s top=%s"):format(i, tostring(r.label), okT and tostring(t) or "?", tostring(b and b.layoutIndex), okP and tostring(top and math.floor(top)) or "?"))
+            end
+        end
+    end
     if GameMenuFrame and GameMenuFrame.buttonPool and GameMenuFrame.buttonPool.EnumerateActive then
         local n, names = 0, {}
         for b in GameMenuFrame.buttonPool:EnumerateActive() do
@@ -302,6 +364,12 @@ function ns.GameMenuSkin_Options(Notify)
     local function s(k) return function(_, v) Cfg()[k] = v; re() end end
     local off = function() return not Cfg().skin end
     local function rng(name, k, order, lo, hi, desc) return { type = "range", name = name, order = order, min = lo, max = hi, step = 1, desc = desc, get = g(k), set = s(k), disabled = off } end
+    local function ColorOpt(name, order, kr, kg, kb, desc)
+        return { type = "color", order = order, name = name, desc = desc, hasAlpha = false,
+            disabled = function() return off() or not Cfg().useColors end,
+            get = function() local c = Cfg(); return c[kr], c[kg], c[kb] end,
+            set = function(_, r, gg, b) local c = Cfg(); c[kr], c[kg], c[kb] = r, gg, b; re() end }
+    end
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "XayaUI's own look for the ESC menu. It draws its own panel over Blizzard's menu and clicks Blizzard's entries for you, so it does not edit the buttons other UI addons restyle. If something goes wrong the skin turns itself off and Blizzard's menu comes back. Off by default; /xui gamemenu shows what the menu exposes." },
@@ -315,6 +383,23 @@ function ns.GameMenuSkin_Options(Notify)
             hoverAccent = { type = "toggle", order = 10, name = "Hover uses the theme accent", get = g("hoverAccent"), set = s("hoverAccent"), disabled = off },
             title = { type = "toggle", order = 11, name = "Show the title", get = g("title"), set = s("title"), disabled = off },
             titleSize = rng("Title size", "titleSize", 12, 8, 30),
+        } },
+        colors = { type = "group", order = 15, inline = true, name = "Colors", args = {
+            use = { type = "toggle", order = 1, width = "full", name = "Use my own colors (off: follow the theme and class color)", disabled = off,
+                desc = "Off: the panel border, buttons, hover color and title follow the addon theme or your class color. On: the colors below are used.",
+                get = g("useColors"), set = s("useColors") },
+            panel = ColorOpt("Panel fill", 2, "bgR", "bgG", "bgB", "The panel's background color. Its opacity is the Panel opacity slider above."),
+            panelBd = ColorOpt("Panel border", 3, "pbR", "pbG", "pbB"),
+            btn = ColorOpt("Button fill", 4, "btnR", "btnG", "btnB", "The button background color. Its opacity is the Button opacity slider above."),
+            btnBd = ColorOpt("Button border", 5, "bbR", "bbG", "bbB"),
+            acc = ColorOpt("Accent (hover, glow, XayaUI row)", 6, "accR", "accG", "accB", "Used for the hover border and glow, and for the XayaUI row."),
+            title = ColorOpt("Title", 7, "ttR", "ttG", "ttB"),
+            reset = { type = "execute", order = 8, name = "Reset colors", disabled = off,
+                func = function()
+                    local c = Cfg()
+                    for _, k in ipairs({ "bgR", "bgG", "bgB", "pbR", "pbG", "pbB", "btnR", "btnG", "btnB", "bbR", "bbG", "bbB", "accR", "accG", "accB", "ttR", "ttG", "ttB" }) do c[k] = DEFAULTS[k] end
+                    re()
+                end },
         } },
         text = { type = "group", order = 20, inline = true, name = "Text", args = {
             font = { type = "select", order = 1, name = "Font", disabled = off,
