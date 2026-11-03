@@ -62,6 +62,7 @@ local function newButton()
     function b:SetIcon(tex) assert(tex._kind == "Texture", "SetIcon needs a Texture"); self.log.icon = tex end
     function b:SetDurationCooldown(cd) assert(cd._kind == "Cooldown", "SetDurationCooldown needs a Cooldown"); self.log.cd = cd end
     function b:SetDurationText(fs, opts) assert(fs._kind == "FontString", "SetDurationText needs a FontString"); assert(type(opts) == "table"); self.log.dur = fs end
+    function b:SetDurationBar(bar, opts) assert(bar._kind == "StatusBar", "SetDurationBar needs a StatusBar"); assert(type(opts) == "table"); self.log.bar, self.log.barOpts = bar, opts end
     function b:SetApplicationCount(fs, opts) assert(fs._kind == "FontString", "SetApplicationCount needs a FontString"); assert(type(opts) == "table"); self.log.count = fs end
     return b
 end
@@ -104,6 +105,14 @@ function CreateFrame(kind, name, parent, template)
         return c
     elseif kind == "Cooldown" then
         return proxyFrame("Cooldown")
+    elseif kind == "StatusBar" then
+        local b = proxyFrame("StatusBar")
+        b.tex = proxyFrame("Texture")
+        function b:SetStatusBarTexture(t) self.texPath = t end
+        function b:GetStatusBarTexture() return self.tex end
+        function b:SetOrientation(o) assert(o == "VERTICAL" or o == "HORIZONTAL"); self.orient = o end
+        function b:SetReverseFill(r) self.reverse = r end
+        return b
     end
     local f = proxyFrame(kind)
     function f:RegisterEvent() end
@@ -124,6 +133,7 @@ function ns.CooldownUsed(r) return r.useCooldown == true or (tonumber(r.spellID)
 function ns.ConditionsOf(p) local out = {} for _, r in ipairs(ns.rules) do if r.parentUid == p.uid and not r.isCue then out[#out + 1] = r end end return out end
 ns.runtime = setmetatable({}, { __mode = "k" })
 HOSTS = {}
+ns.PaintDisplayArt = function(tex, rule) NS_PAINT(tex, rule) end
 function ns.DisplayFrame(rule) local h = HOSTS[rule]; if not h then h = proxyFrame("Host"); h.parent = "PARENT_OF_" .. tostring(rule.name); h.strata = "MEDIUM"; HOSTS[rule] = h end return h end
 HOOKS = {}
 function hooksecurefunc(t, name, fn) local orig = t[name]; t[name] = function(...) local a, b, c = orig(...); fn(...); return a, b, c end; HOOKS[name] = true end
@@ -143,7 +153,9 @@ refreshed = 0
 function ns.RefreshAllVisuals() refreshed = refreshed + 1 end
 CueRulesDB = {}
 date = os.date
-Enum = { AddOnProfilerMetric = { RecentAverageTime = 1 } }
+Enum = { AddOnProfilerMetric = { RecentAverageTime = 1 }, StatusBarTimerDirection = { ElapsedTime = 0, RemainingTime = 1 } }
+PAINTED = {}
+function NS_PAINT(tex, rule) PAINTED[#PAINTED + 1] = { tex = tex, rule = rule } end
 profilerMs = 0.2
 C_AddOnProfiler = { GetAddOnMetric = function(name, metric) assert(metric == 1); if name == "XayaUI_CombatEngine" then return profilerMs end if name == "Blizzard_AuraContainer" then return blizzMs or 0 end end }
 _G.NS = ns
@@ -283,6 +295,27 @@ check("auto on: everything back, lean mode cleared", lua("return CueRulesDB.engi
 lua('failAdd = true; for k, s in pairs(NS.AuraDisplay._singles) do s.frame = nil end; for k, g in pairs(NS.AuraDisplay._groups) do g.frame = nil end; NS.AuraDisplay.Build()')
 check("container error: nothing engine-owned, failures listed", (not own("U1")) and (not own("A1")) and lua("for _, e in ipairs(NS.AuraDisplay._Left()) do if e[2]:find('failed') then return true end end return false"))
 lua('failAdd = false')
+
+# 9b. the tester's exact display: Anti-Magic Shell as a progress texture (drain), background, half opacity, time text off
+lua(r"""
+INS = { uid = "ins", name = "Anti-Magic Shell", useBuff = true, buffID = 48707, buffState = "present", enabled = true, load = { mode = "always" }, visual = { enabled = false } }
+INSc = { uid = "insc", name = "Anti-Magic Shell (cue)", isCue = true, parentUid = "ins", cueKey = "q1", cueKind = "texture", buffID = 48707, enabled = true,
+  visual = { enabled = true, trigger = "condition", kind = "spellicon", w = 94, h = 128, x = 0, y = -28, alpha = 0.5,
+    bg = { enabled = true, color = { 0, 0, 0, 0.5 } }, fill = { enabled = true, min = 0, max = 1, reverse = false },
+    flash = { enabled = true, threshold = 3 }, text = { enabled = false }, count = { enabled = false } } }
+NS.rules[#NS.rules + 1] = INS; NS.rules[#NS.rules + 1] = INSc
+buttons = {}; PAINTED = {}
+NS.AuraDisplay.Build()
+""")
+check("tester's Anti-Magic Shell: its own slot, 94 x 128", lua("local s = NS.AuraDisplay._singles[INS]; return s and s.ok and s.frame.groups.main.layout.elementWidth == 94 and s.frame.groups.main.layout.elementHeight == 128") and own("INS") and own("INSc"))
+lua("local s = NS.AuraDisplay._singles[INS]; for _, b in ipairs(buttons) do if b.log.bar then INSB = b end end")
+check("the drain is a duration bar the game drives: vertical, emptying with the REMAINING time", lua("return INSB ~= nil and INSB.log.bar.orient == 'VERTICAL' and INSB.log.bar.reverse == false and INSB.log.barOpts.direction == 1"))
+check("the bar is painted with the display's own art (XayaUI's art routine), not the aura icon", lua("for _, p in ipairs(PAINTED) do if p.tex == INSB.log.bar.tex and p.rule == INSc then return INSB.log.icon == nil end end return false"))
+check("half opacity and the background kept; no time text (it is off on his display)", lua("return INSB.alpha == 0.5 and INSB.log.dur == nil"))
+lua('printed = {}; SlashCmdList["XUIENGINE"]("")')
+check("status: the drain is NOT listed as missing for a single slot; the flash is", lua("local drain, flash = false, false; for _, l in ipairs(printed) do if l:find('Anti%-Magic Shell') then if l:find('drain') then drain = true end if l:find('flash') then flash = true end end end return flash and not drain"))
+lua("INSc.visual.fill.dir = 'right'; INSc.visual.fill.reverse = true; buttons = {}; NS.AuraDisplay.Build(); for _, b in ipairs(buttons) do if b.log.bar then INSB = b end end")
+check("an edited look makes a new slot: 'right' + reverse -> horizontal, reversed, growing with elapsed time", lua("return INSB.log.bar.orient == 'HORIZONTAL' and INSB.log.bar.reverse == true and INSB.log.barOpts.direction == 0"))
 
 # 10. loaded twice (XayaUI loads the engine files and the separate XayaUI_CombatEngine folder is installed too): one copy only
 lua('BEFORE_D = NS.AuraDisplay; BEFORE_SLASH = SlashCmdList["XUIENGINE"]')

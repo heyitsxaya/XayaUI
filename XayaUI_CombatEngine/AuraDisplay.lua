@@ -187,13 +187,15 @@ local function Allowed(p, trigger)
 end
 
 -- Effects XayaUI draws itself that the container cannot (said per rule by /xuiengine, so nothing differs silently).
-local function Drops(p, display)
+local function Drops(p, display, single)
     local out = {}
     local v = (display and display.visual) or {}
+    local f = v.fill
+    if f and f.enabled and not single then out[#out + 1] = "progress drain (drawn only for a display on its own, not inside a group)" end
+    if f and f.enabled and single and ((tonumber(f.min) or 0) ~= 0 or (tonumber(f.max) or 1) ~= 1) then out[#out + 1] = "drain start / end limits" end
     if v.fadeGrey then out[#out + 1] = "grey / colour fade" end
     if v.fadeAlpha then out[#out + 1] = "opacity fade" end
     if v.flash and v.flash.enabled then out[#out + 1] = "flash" end
-    if v.fill and v.fill.enabled then out[#out + 1] = "wipe" end
     if v.glow then out[#out + 1] = "glow" end
     if v.desatOnCD then out[#out + 1] = "grey on cooldown" end
     if display and display.cueKey and ns.ConditionsOf then
@@ -240,18 +242,62 @@ local function FlowFor(dir)
     if dir == "UP" then return A.Vertical, "BOTTOMLEFT", F.Right, F.Up end
 end
 
-local function ButtonInit(w, h, display)
+-- XayaUI's "progress" direction -> status bar orientation / reverse fill (Visual.lua CropTex: "bottom" keeps the bottom part
+-- of the art, so the top edge comes down = a vertical bar filling from the bottom; "top" the reverse; "left" / "right" sideways)
+local BAR_DIR = {
+    none = { "VERTICAL", false }, bottom = { "VERTICAL", false }, top = { "VERTICAL", true },
+    left = { "HORIZONTAL", false }, right = { "HORIZONTAL", true },
+}
+local function TimerDirection(reverse)
+    local E = Enum and Enum.StatusBarTimerDirection
+    if reverse then return E and E.ElapsedTime or 0 end
+    return E and E.RemainingTime or 1
+end
+-- Does this display use XayaUI's progress drain, which a single slot draws as a Blizzard duration bar?
+local function UsesBar(display, single)
+    local f = display and display.visual and display.visual.fill
+    return single and f and f.enabled and true or false
+end
+
+-- The button's look. A group's buttons show whichever of its auras is up, so they take the aura's own icon; a single slot
+-- shows one display, so it is painted with that display's own art (XayaUI's art routine), its background, opacity, and - for a
+-- progress display - a status bar the game itself drives from the aura's duration (the drain keeps working in combat).
+local function ButtonInit(w, h, display, single)
     local v = (display and display.visual) or {}
     local zoom = 0.08 + (tonumber(v.zoom) or 0)
     local tx, cn = v.text or {}, v.count or {}
     local font = STANDARD_TEXT_FONT
+    local paint = single and ns.PaintDisplayArt
     return function(btn)
         -- runs inside Blizzard's frame creation; a failure here is caught by the caller
         btn:SetSize(w, h)
-        local icon = btn:CreateTexture(nil, "ARTWORK")
-        icon:SetAllPoints(btn)
-        icon:SetTexCoord(zoom, 1 - zoom, zoom, 1 - zoom)
-        btn:SetIcon(icon)
+        if single then btn:SetAlpha(tonumber(v.alpha) or 1) end
+        if single and v.bg and v.bg.enabled then
+            local c = v.bg.color or { 0, 0, 0, 0.5 }
+            local bg = btn:CreateTexture(nil, "BACKGROUND")
+            bg:SetAllPoints(btn)
+            bg:SetColorTexture(c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 0.5)
+        end
+        if UsesBar(display, single) then
+            local bar = CreateFrame("StatusBar", nil, btn)
+            bar:SetAllPoints(btn)
+            bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8")
+            local art = bar:GetStatusBarTexture()
+            if paint then paint(art, display) else btn:SetIcon(art) end
+            local d = BAR_DIR[v.fill.dir or "bottom"] or BAR_DIR.bottom
+            bar:SetOrientation(d[1])
+            bar:SetReverseFill(d[2])
+            btn:SetDurationBar(bar, { direction = TimerDirection(v.fill.reverse) })
+        elseif paint then
+            local art = btn:CreateTexture(nil, "ARTWORK")
+            art:SetAllPoints(btn)
+            paint(art, display)
+        else
+            local icon = btn:CreateTexture(nil, "ARTWORK")
+            icon:SetAllPoints(btn)
+            icon:SetTexCoord(zoom, 1 - zoom, zoom, 1 - zoom)
+            btn:SetIcon(icon)
+        end
         local cd = CreateFrame("Cooldown", nil, btn, "CooldownFrameTemplate")
         cd:SetAllPoints(btn)
         cd:SetDrawSwipe(false); cd:SetDrawEdge(false); cd:SetHideCountdownNumbers(true)
@@ -274,7 +320,7 @@ end
 -- Create a container. The template is an AuraContainer widget: created as a plain "Frame" its built-in OnLoad never runs and
 -- Blizzard's own OnLoad errors with "attempt to index field 'dirtyFlags'" (seen in game, engine 0.3.0).
 local containerN = 0
-local function NewContainer(unit, filter, ids, w, h, sp, display, maxCount)
+local function NewContainer(unit, filter, ids, w, h, sp, display, maxCount, single)
     if C_AddOns and C_AddOns.LoadAddOn then pcall(C_AddOns.LoadAddOn, "Blizzard_AuraContainer") end
     containerN = containerN + 1
     local c = CreateFrame("AuraContainer", "XayaUIEngine" .. containerN, UIParent, "CustomAuraContainerTemplate")
@@ -286,7 +332,7 @@ local function NewContainer(unit, filter, ids, w, h, sp, display, maxCount)
         sortDirection = AuraContainerSortDirection.Normal,
         maxFrameCount = maxCount,
         layout = { elementSpacing = sp, lineSpacing = sp, elementWidth = w, elementHeight = h },
-        initializeFrame = ButtonInit(w, h, display),
+        initializeFrame = ButtonInit(w, h, display, single),
     })
     return c
 end
@@ -412,6 +458,19 @@ local function BuildGroup(fo, members)
     return g
 end
 
+-- Everything about a display's look that is baked into its slot's buttons (an edit to any of it makes a new slot)
+local function LookKey(display)
+    local v = display.visual or {}
+    local f, bg, t, c, tn = v.fill or {}, v.bg or {}, v.text or {}, v.count or {}, v.tint or {}
+    local bc = bg.color or {}
+    return table.concat({ tostring(v.kind), tostring(v.tex), tostring(v.zoom), tostring(v.rotation), tostring(v.flipH), tostring(v.flipV),
+        tostring(v.alpha), tostring(v.desaturate), tostring(tn[1]), tostring(tn[2]), tostring(tn[3]), tostring(tn[4]),
+        tostring(f.enabled), tostring(f.dir), tostring(f.reverse), tostring(bg.enabled), tostring(bc[1]), tostring(bc[2]), tostring(bc[3]), tostring(bc[4]),
+        tostring(t.enabled), tostring(t.size), tostring(t.anchor), tostring(t.x), tostring(t.y),
+        tostring(c.enabled), tostring(c.size), tostring(c.anchor), tostring(c.x), tostring(c.y),
+        tostring(display.spellID), tostring(display.buffID), tostring(v.iconSrc), tostring(v.iconPath), tostring(v.iconSpell), tostring(v.iconItem), tostring(v.iconW), tostring(v.iconH), tostring(v.keepAspect) }, "|")
+end
+
 local function BuildSingle(p, spec)
     local s = singles[p] or {}
     singles[p] = s
@@ -423,10 +482,12 @@ local function BuildSingle(p, spec)
     local w, h = DisplaySize(display.visual)
     local ok, err = pcall(function()
         -- a container's unit and filter are fixed at creation: a slot whose aura kind changed gets a new container
-        if s.frame and (s.unit ~= spec.unit or s.filter ~= spec.filter or s.w ~= w or s.h ~= h) then s.frame:Hide(); s.frame = nil end
+        -- unit, filter and the button's look are fixed when a container is made: a changed one gets a new container
+        local look = LookKey(display)
+        if s.frame and (s.unit ~= spec.unit or s.filter ~= spec.filter or s.w ~= w or s.h ~= h or s.look ~= look) then s.frame:Hide(); s.frame = nil end
         if not s.frame then
-            s.frame = NewContainer(spec.unit, spec.filter, spec.ids, w, h, 0, display, 1)
-            s.unit, s.filter, s.w, s.h = spec.unit, spec.filter, w, h
+            s.frame = NewContainer(spec.unit, spec.filter, spec.ids, w, h, 0, display, 1, true)
+            s.unit, s.filter, s.w, s.h, s.look = spec.unit, spec.filter, w, h, look
         else
             s.frame:SetAuraGroupCandidateFilters("main", { includeSpellIDs = spec.ids })
         end
@@ -580,7 +641,7 @@ function D.Status()
             nS = nS + 1
             if s.ok then
                 nSOk = nSOk + 1
-                local d = Drops(p, s.spec.display)
+                local d = Drops(p, s.spec.display, true)
                 if #d > 0 then Say("   " .. tostring(p.name) .. " (on its own): " .. table.concat(d, "; ")) end
             end
         end

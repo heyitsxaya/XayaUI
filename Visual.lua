@@ -216,6 +216,15 @@ local function SetArt(tex, rule, v)
 end
 
 function ns.ApplyTexture(tex, v) SetArt(tex, { spellID = 0 }, v) end
+-- Paint a display's own art (kind, texture / atlas / spell icon, zoom, rotation, mirror, tint, desaturation) onto any texture:
+-- the combat engine uses it so its icons look exactly like XayaUI's.
+function ns.PaintDisplayArt(tex, rule)
+    local v = rule.visual or {}
+    SetArt(tex, rule, v)
+    local t = v.tint or { 1, 1, 1, 1 }
+    tex:SetVertexColor(t[1] or 1, t[2] or 1, t[3] or 1, t[4] or 1)
+    pcall(tex.SetDesaturation, tex, v.desaturate and 1 or 0)
+end
 
 -- The overlay layer: same art as the base, or its own art (sharing the base's zoom / rotation / mirror).
 local function SetOverlayArt(tex, rule, v)
