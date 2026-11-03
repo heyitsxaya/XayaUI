@@ -4187,10 +4187,10 @@ local function BuildOptions()
     -- QoL Elements (stat boxes, cursor tracker, buff bars) are switched off for now: their files are not in XayaUI.toc, so ns.QoLOn is nil and the tab is skipped.
     -- Tab "QoL UI Updates": left tree, options in the right pane. The entries are sorted alphabetically (see below); the older
     -- QoL Elements entries (stat boxes, cursor tracker, buff bars) come last, and only exist while their files are loaded.
+    local minimapGroup = ns.BuildMinimapTab and ns.BuildMinimapTab(Notify) or nil   -- lives in Settings (Xaya, 2026-11-03), not under QoL UI Updates
     local qolArgs = { chatpanel = ns.BuildChatTab and ns.BuildChatTab(Notify) or nil, cursor = ns.BuildCursorGroup and ns.BuildCursorGroup(Notify) or nil,
         datapanels = ns.BuildDataPanelsTab and ns.BuildDataPanelsTab(Notify) or nil,
         notepad = ns.BuildNotepadTab and ns.BuildNotepadTab(Notify) or nil,
-        minimap = ns.BuildMinimapTab and ns.BuildMinimapTab(Notify) or nil,
         tooltips = ns.BuildTooltipsTab and ns.BuildTooltipsTab(Notify) or nil }   -- Tooltips.lua / TooltipsUI.lua, part of core since 0.5.51
     if ns.QoLOn then
         qolArgs.allqol = allQol
@@ -4222,7 +4222,7 @@ local function BuildOptions()
     local infoGroup = ns.BuildAddonInfo and ns.BuildAddonInfo() or nil
     if infoGroup then infoGroup.order = 8; infoGroup.hidden = function() return not ns.infoOpen end end
     -- Settings (skin on): its pages REPLACE the Rules / Smart Categories tabs while the toolbar's Settings button is on:
-    --   Settings page = left sidebar: UI Options (Display | Rule Creation | Theme tabs), Debugging
+    --   Settings page = left sidebar: UI Options (Display | Rule Creation | Theme tabs), Minimap Button, Debugging
     local function SettingsOn() return (ns.SkinRows and ns.SkinRows()) and ns.pageOpen == "settings" end
     local settings = BuildAddonSettings()
     local sa = settings.args
@@ -4237,7 +4237,11 @@ local function BuildOptions()
     local setDbg = { type = "group", name = "Debugging", order = 2, args = sa.debug.args }
     -- one top-level page with a left sidebar like the rest of the addon (UI Options, Debugging), instead of two top tabs (Xaya, 2026-11-02)
     local setPage = { type = "group", name = "Settings", order = 7, childGroups = "tree", hidden = function() return not SettingsOn() end,
-        args = { ui = setUi, debug = setDbg } }
+        args = { ui = setUi, minimap = minimapGroup, debug = setDbg } }
+    if minimapGroup then
+        minimapGroup.order = 1.5
+        settings.args.minimap = minimapGroup   -- the old single Settings tab (skin rows off) gets it too
+    end
     settings.hidden = function() return ns.SkinRows and ns.SkinRows() and true or false end   -- skin off: the old single Settings tab
     track.hidden = function() return SettingsOn() and true or false end
     if qol then qol.hidden = function() return SettingsOn() and true or false end end   -- Settings open: QoL UI Updates tab goes away (Xaya, 2026-11-01)

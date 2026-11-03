@@ -440,7 +440,7 @@ A button on the minimap for quick access. **Left-click** opens a list of buttons
 
 **Icon override:** leave the box empty for the built-in icon, or type a file ID (for example `1390944`), an icon name (for example `INV_Misc_Note_01`), `spell:` followed by a spell ID, or a full texture path. A preview and a "Using:" line show what was understood, and **Reset** returns to the built-in icon. A wrong value can show a green square or an empty button; clear the box or press Reset.
 
-**Where:** QoL UI Updates > Minimap Button.
+**Where:** Settings > Minimap Button.
 
 ### 12.7 Tooltips
 
@@ -464,7 +464,7 @@ If an imported group (older imports used ids like "feui1") could not be previewe
 
 XayaUI can draw its own panel over the Game Menu (the ESC menu) and click Blizzard's entries for you; Blizzard's own buttons are not edited, so other UI addons that restyle them are not touched. Each row finds the real Blizzard button it stands for by its name at the moment you click, and a transparent cover over Blizzard's menu keeps its hidden buttons from being clicked directly. `/xui gamemenu` lists each row and the real button it maps to. If something goes wrong the look turns itself off and Blizzard's menu comes back. The settings cover button size and spacing, panel padding, scale, panel and button opacity, border, hover color, the title, the font, size, outline and color of the text, colors (a "Use my own colors" switch plus panel fill, panel border, button fill, button border, accent for hover, glow and the XayaUI row, and title; with the switch off the look follows the theme or your class color), the XayaUI button (its position in the menu and its style), and hiding Shop, What's New, or Support from this look only. **Reset Game Menu settings** restores the defaults. `/xui gamemenu` prints what the menu exposes.
 
-**Where:** Settings > UI Options > Display, below the Menu button (ESC menu) options. The Settings page has a left sidebar with UI Options (Display, Rule Creation, and Theme tabs) and Debugging. The Rule Creation tab holds "Prompt for saving and enable drafts" and "Condensed rule list (no icons, compact rows)".
+**Where:** Settings > UI Options > Display, below the Menu button (ESC menu) options. The Settings page has a left sidebar with UI Options (Display, Rule Creation, and Theme tabs), Minimap Button, and Debugging. The Rule Creation tab holds "Prompt for saving and enable drafts" and "Condensed rule list (no icons, compact rows)".
 
 ### 12.9 Combat aura display
 

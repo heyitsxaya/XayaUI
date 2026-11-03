@@ -4,7 +4,7 @@
 --   Right-click  opens the XayaUI settings window.
 --   Drag         moves the button around the minimap edge (unless locked).
 -- Which entries the list shows, the position, the size (16 to 48 pixels), and whether the button is shown at all are settings
--- (QoL UI Updates > Minimap Button). The icon and its dark backing are clipped to a circle with a mask texture so no corner shows outside the ring.
+-- (Settings > Minimap Button). The icon and its dark backing are clipped to a circle with a mask texture so no corner shows outside the ring.
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 
@@ -236,7 +236,7 @@ ev:RegisterEvent("PLAYER_ENTERING_WORLD")
 ev:SetScript("OnEvent", function() C_Timer.After(0.2, ns.Minimap_Refresh) end)
 
 -------------------------------------------------------------------------------
--- options: QoL UI Updates > Minimap Button
+-- options: Settings > Minimap Button
 -------------------------------------------------------------------------------
 function ns.BuildMinimapTab(Notify)
     if not DB() then return nil end
