@@ -434,7 +434,7 @@ function ns.Profile_Apply(snap, mode)
     if ns.Bars_RefreshAll then ns.Bars_RefreshAll() end
     if ns.QoL_RefreshAll then ns.QoL_RefreshAll() end
     ns.MarkDirty()
-    if ns.OnRulesChanged then ns.OnRulesChanged() end
+    ns.Fire("CONFIG_CHANGED")
     return counts
 end
 

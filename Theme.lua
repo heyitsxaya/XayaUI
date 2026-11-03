@@ -306,7 +306,7 @@ function T.Defer(fn)
     -- live preview: repaint the windows that are already open IN PLACE (no rebuild, so no widget is recycled under the picker),
     -- at most ~8 times a second; the full rebuild waits for the picker to close
     qticker = C_Timer.NewTicker(0.12, function(t)
-        if T.liveDirty and ns.DecorateTrees then T.liveDirty = false; pcall(ns.DecorateTrees) end
+        if T.liveDirty then T.liveDirty = false; ns.Fire("THEME_CHANGED") end
         if ColorPickerFrame:IsShown() then return end
         t:Cancel(); qticker = nil
         local q = queue; queue = {}
@@ -314,8 +314,8 @@ function T.Defer(fn)
     end)
 end
 function T.UINotify()
-    if ns.UI and ns.UI.Notify then ns.UI.Notify() end
-    if ns.DecorateTrees then pcall(ns.DecorateTrees) end
+    ns.Fire("CONFIG_CHANGED")
+    ns.Fire("THEME_CHANGED")
 end
 function T.Changed()
     T.Resolve()

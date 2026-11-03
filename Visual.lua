@@ -516,7 +516,7 @@ end
 local function GroupPosChanged(fo)
     Container(fo)
     ns.MarkDirty()
-    if ns.UI and ns.UI.NotifyTwice then ns.UI.NotifyTwice() end
+    ns.Fire("CONFIG_CHANGED")
 end
 local function CenterGroup(fo, onX, onY)
     local l, b, r, t = GroupBounds(fo)
@@ -597,7 +597,7 @@ local function GroupHandle(f)
         if not self.drag then return end
         self.drag = nil
         ns.MarkDirty()
-        if ns.UI and ns.UI.NotifyTwice then ns.UI.NotifyTwice() end
+        ns.Fire("CONFIG_CHANGED")
     end
     h:SetScript("OnMouseDown", function(self, btn)
         if btn ~= "LeftButton" then return end
@@ -825,7 +825,7 @@ function ns.SetVisualAnchor(rule, anchor, place)
     if place ~= nil then v.anchorPlace = (place == "outer") and "outer" or nil end
     ns.SetVisualCenterOffset(rule, cx, cy)
     ns.RefreshVisual(rule)
-    if ns.OnPositionChanged then ns.OnPositionChanged(rule) end
+    ns.Fire("CONFIG_CHANGED")
 end
 local function Place(fr, rule, parent)
     local v = rule.visual
@@ -853,7 +853,7 @@ local function CommitDrag(rule, fr, useSnap)
     ns.SetVisualCenterOffset(rule, cox, coy)
     Place(fr, rule, parent)
     if dyn then LayoutDynamic(dyn) end
-    if ns.OnPositionChanged then ns.OnPositionChanged(rule) end
+    ns.Fire("CONFIG_CHANGED")
 end
 function ns.SnapToTarget(rule, key, pos)
     local v = rule.visual
@@ -865,7 +865,7 @@ function ns.SnapToTarget(rule, key, pos)
         if not SnapFrame(v) then ns.Print("that frame does not exist in this client, so the aura keeps its own position.") end
     end
     ns.RefreshVisual(rule)
-    if ns.OnPositionChanged then ns.OnPositionChanged(rule) end
+    ns.Fire("CONFIG_CHANGED")
 end
 -- Center on the current reference: the snap target's axis when snapped, otherwise the screen (the folder container's origin).
 function ns.CenterVisual(rule, axis)
@@ -881,7 +881,7 @@ function ns.CenterVisual(rule, axis)
         ns.SetVisualCenterOffset(rule, cx, cy)
     end
     ns.RefreshVisual(rule)
-    if ns.OnPositionChanged then ns.OnPositionChanged(rule) end
+    ns.Fire("CONFIG_CHANGED")
 end
 -- Paired auras (session only): dragging one drags the other with it. Pairing unlocks the partner for movement, and
 -- locking (or unpairing) puts that back.

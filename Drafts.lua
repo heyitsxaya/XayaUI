@@ -592,7 +592,7 @@ end
 
 -------------------------------------------------------------------------------
 -- Undo / redo for the rule being edited (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z while the options window has focus and no text box is being typed in).
--- One step = one burst of edits (a slider drag is one step): every edit calls ns.MarkDirty, which calls ns.UndoNote; half a second after the last
+-- One step = one burst of edits (a slider drag is one step): every edit calls ns.MarkDirty, which fires EDITED (UndoNote below); half a second after the last
 -- one the rule (with its cues and conditions) is compared with its last recorded state and, if different, the old state is kept. The first state
 -- is the one the rule had when the window opened (the Drafts baseline), so the very first edit can be undone too. History is per rule, lives only
 -- while the window is open (50 steps), and is not saved. On / off, group, collapse state, sidebar icon and edit lock follow the sidebar and are
@@ -643,7 +643,7 @@ local function Arm()
         if GetTime() - lastNote < 0.45 then Arm() else armed = false; Commit() end
     end)
 end
-function ns.UndoNote()   -- called from ns.MarkDirty after every edit
+local function UndoNote()   -- runs after every edit: ns.MarkDirty fires EDITED (Modules.lua section 6)
     if restoring or not windowOpen or not C_Timer or not ns.SelectedRuleForUndo then return end
     local root = RootOf(ns.SelectedRuleForUndo())
     if not (root and root.uid) then return end
@@ -652,6 +652,7 @@ function ns.UndoNote()   -- called from ns.MarkDirty after every edit
     lastNote = GetTime()
     if not armed then Arm() end
 end
+ns.On("EDITED", UndoNote)
 local function Restore(uid, st)
     restoring = true
     local live = GroupOf(uid)[1]

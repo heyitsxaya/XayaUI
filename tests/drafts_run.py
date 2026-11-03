@@ -36,6 +36,7 @@ C_Timer = { After = function() end }
 GetTime = function() return 0 end
 InCombatLockdown = function() return false end
 ''')
+lua.execute('local fn = assert(loadfile(...)); fn("XayaUI", ns)'.replace("...", repr(os.path.join(ROOT, "Modules.lua")).replace("'", '"')))   # core contract (0.6.0)
 lua.execute('local fn = assert(loadfile(...)); fn("XayaUI", ns)'.replace("...", repr(os.path.join(ROOT, "Drafts.lua")).replace("'", '"')))
 lua.execute(r'''
 local fails, n = 0, 0

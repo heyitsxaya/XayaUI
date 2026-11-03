@@ -279,7 +279,7 @@ end
 ns.Step = function() return Step() end
 
 -- (ns.configVersion: settings changed, so memos keyed on settings - load checks - start over)
-function ns.MarkDirty() dirty = true; forceNow = true; barsDirty = true; ns.configVersion = (ns.configVersion or 0) + 1; if ns.UndoNote then ns.UndoNote() end end
+function ns.MarkDirty() dirty = true; forceNow = true; barsDirty = true; ns.configVersion = (ns.configVersion or 0) + 1; ns.Fire("EDITED") end
 -- game state changed (a cast, movement, target ...): re-evaluate on the next step, keeping the minimum gap between steps
 function ns.MarkStateDirty() dirty = true end
 

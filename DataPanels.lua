@@ -705,7 +705,7 @@ function ns.BuildDataPanelsTab(Notify)
 end
 
 function ns.DataPanels_OpenSettings(tab)   -- tab (optional): a tab key such as "general"
-    if ns.UI and ns.UI.DataPanels then ns.UI.DataPanels(tab) end
+    ns.OpenSettingsPage("bonus", "datapanels", tab)
 end
 
 -------------------------------------------------------------------------------

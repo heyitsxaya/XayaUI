@@ -51,7 +51,7 @@ function ns.Log(fmt, ...)
         for i = 1, 300 do b[i] = b[n - 300 + i] end
         for i = 301, n do b[i] = nil end
     end
-    if ns.LogSink then ns.LogSink(line) end
+    ns.Fire("LOG", line)   -- the window's debug tray listens (XayaUI_Options)
     if ns.ConsoleSink then ns.ConsoleSink(line) end   -- the separate console window (Console.lua)
 end
 
@@ -693,7 +693,7 @@ function ns.SeedRules()
     for _, r in ipairs({ a, b, c }) do ns.rules[#ns.rules + 1] = r end
     ns.RefreshAllVisuals()
     ns.MarkDirty()
-    if ns.OnRulesChanged then ns.OnRulesChanged() end
+    ns.Fire("CONFIG_CHANGED")
     ns.Print("seeded 3 rules. Pick your sounds in /xui. Fiery Brand buff ID is a placeholder.")
 end
 
@@ -706,19 +706,18 @@ SlashCmdList["XAYAUI"] = function(msg)
     msg = (msg or ""):lower()
     local cmd, arg = msg:match("^(%S*)%s*(.-)$")
     if cmd == "" or cmd == "config" or cmd == "options" then
-        if ns.ToggleUI then ns.ToggleUI()
-        else ns.Print("settings window code did not load (Options.lua hit a Lua error at startup). Type /console scriptErrors 1 then /reload to see it, or run /xui debug.") end
+        ns.ToggleUI()   -- loads XayaUI_Options on first use (Modules.lua section 7)
     elseif cmd == "debug" then
         local function yn(v) return v and "yes" or "NO" end
         ns.Print(("debug: ToggleUI=%s rules=%s AceConfigDialog=%s AceConfigRegistry=%s AceGUI=%s"):format(
             yn(ns.ToggleUI), yn(ns.rules), yn(LibStub and LibStub("AceConfigDialog-3.0", true)),
             yn(LibStub and LibStub("AceConfigRegistry-3.0", true)), yn(LibStub and LibStub("AceGUI-3.0", true))))
-        ns.Print("debug: OptionsLoaded=" .. tostring(ns.optionsLoaded) .. " OptionsError=" .. tostring(ns.optionsError))
+        ns.Print("debug: settings window " .. (ns.Options and "loaded" or ("not loaded yet (" .. ns.ModuleState(ns.OPTIONS_ADDON) .. ")")))
     elseif cmd == "perf" and tostring(arg or ""):lower():match("^ui") then   -- settings-window rebuild timing (/xui perf ui); plain /xui perf is the engine meter below
         ns.perf = ns.perf or { n = 0 }; ns.perf.show = not ns.perf.show
         ns.Print("rebuild timing " .. (ns.perf.show and "ON: every window rebuild prints build + skin milliseconds" or "OFF"))
     elseif cmd == "icons" then
-        if ns.IconReport then ns.IconReport() end
+        ns.IconReport()
     elseif cmd == "status" then
         if ns.PrintStatus then ns.PrintStatus() end
     elseif cmd == "debuffs" then

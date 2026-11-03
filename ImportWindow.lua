@@ -96,7 +96,7 @@ local function Build()
     local function Apply()
         local c = ns.Profile_Apply(f.snap, "add")   -- "add" = into a new folder of its own (Profile.lua)
         if ns.MarkDirty then ns.MarkDirty() end
-        if ns.OnRulesChanged then pcall(ns.OnRulesChanged) end
+        ns.Fire("CONFIG_CHANGED")
         if ns.UI and ns.UI.Refresh then pcall(ns.UI.Refresh) end   -- redraw the options window where it is; no tab change
         local m = ("Imported %d rule(s), %d group(s), %d bar(s), %d QoL box(es)."):format(c.rules or 0, c.folders or 0, c.bars or 0, c.qol or 0)
         ns.Print(m)

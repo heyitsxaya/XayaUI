@@ -13,6 +13,8 @@ ns.NormalizeRule = function() end; ns.DropVisual = function() end; ns.RefreshAll
 ns.Merge = function() end; ns.BAR_DEFAULTS = {}; ns.NewUID = function() return "u" .. math.random(1e9) end
 CueRulesDB = { barGroup = {} }
 _G.XayaUI_NS = ns
+ns.Print = ns.Print or function() end
+assert(loadfile("''' + os.path.join(ROOT, "Modules.lua").replace("\\", "/") + r'''"))("XayaUI", ns)   -- core contract: ns.Fire (0.6.0)
 assert(loadfile("''' + os.path.join(ROOT, "Profile.lua").replace("\\", "/") + r'''"))("XayaUI", ns)
 function ns.OutcomesOf(p) local o = {} if not p.uid then return o end for _, r in ipairs(ns.rules) do if r ~= p and r.parentUid == p.uid then o[#o + 1] = r end end return o end
 ns.qolBoxes = {}; ns.bars = {}

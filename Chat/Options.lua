@@ -11,7 +11,7 @@ local TAB_OUTLINE = { none = "None", outline = "Outline", thick = "Thick outline
 local TAB_OUTLINE_ORDER = { "none", "outline", "thick", "shadow" }
 
 function C.OpenSettings(tab)
-    if ns.UI and ns.UI.ChatPanel then ns.UI.ChatPanel(tab) end
+    ns.OpenSettingsPage("chat", "chatpanel", tab)
 end
 
 local soundCache

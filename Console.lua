@@ -123,7 +123,7 @@ function ns.BuildBugReport(description, includeAddons)
     for _, r in ipairs(ns.rules or {}) do
         if r.isCue then nc = nc + 1 elseif r.parentUid then ncond = ncond + 1 else nr = nr + 1 end
     end
-    add(("Rules: %d | cues: %d | conditions: %d | skin on: %s"):format(nr, nc, ncond, tostring(ns.SkinRows and ns.SkinRows() and true or false)))
+    add(("Rules: %d | cues: %d | conditions: %d | skin on: %s"):format(nr, nc, ncond, (ns.Options and tostring(ns.Options.SkinOn()) or "window not loaded")))
     add("(No character name, realm, or rule contents are included.)")
     add("")
     add("What happened:")
@@ -234,7 +234,7 @@ function ns.ConsoleWindow(show)
     elseif win then
         win:Hide()
     end
-    if ns.UI and ns.UI.Notify then ns.UI.Notify() end
+    ns.Fire("CONFIG_CHANGED")
 end
 function ns.ConsoleWindowOn() return (win and win:IsShown()) and true or false end
 

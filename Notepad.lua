@@ -1074,7 +1074,7 @@ function ns.BuildNotepadTab(Notify)
 end
 
 function ns.Notepad_OpenSettings()
-    if ns.UI and ns.UI.Notepad then ns.UI.Notepad() end
+    ns.OpenSettingsPage("bonus", "notepad")
 end
 
 -------------------------------------------------------------------------------

@@ -58,7 +58,7 @@ SPOKEN = {}
 ''')
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
-for f in ("Core.lua", "Conditions.lua", "Timing.lua", "Triggers.lua", "Outcomes.lua", "Cues.lua", "Actions.lua", "Sound.lua", "Visual.lua", "Engine.lua"):
+for f in ("Core.lua", "Modules.lua", "Compat.lua", "Conditions.lua", "Timing.lua", "Triggers.lua", "Outcomes.lua", "Cues.lua", "Actions.lua", "Sound.lua", "Visual.lua", "Engine.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 L.execute(r'''
 local ns = NS

@@ -10,9 +10,13 @@ local APP = "CueRules"
 local AceConfigRegistry = LibStub and LibStub("AceConfigRegistry-3.0", true)
 local AceConfigDialog = LibStub and LibStub("AceConfigDialog-3.0", true)
 if not (AceConfigRegistry and AceConfigDialog) then
-    function ns.ToggleUI() ns.Print("Ace3 libraries not found - check the Libs folder.") end
+    local function missing() ns.Print("the settings window cannot open: its Ace3 libraries are missing (check the Libs folder of XayaUI_Options).") end
+    ns.Options = { Toggle = missing, EditRule = missing, OpenPage = missing, IsOpen = function() return false end }
     return
 end
+-- what XayaUI core may call (Modules.lua section 7); published as ns.Options at the end of this file once everything loaded.
+-- A table field, not locals: this chunk is near Lua's 200-locals limit.
+ns.OptionsApi = {}
 
 local function Notify() if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end if ns.SmartOpen then pcall(ns.SmartOpen) end if ns.FixSelection then pcall(ns.FixSelection) end AceConfigRegistry:NotifyChange(APP) end
 
@@ -2683,7 +2687,7 @@ local function OpenVDHList()
     creatorOpen = true
     creatorMsg = made and ("Created the static group |cffffd100" .. VDH_GROUP .. "|r (it shows under Smart Categories). Tick the auras below, then press Add ticked auras.")
         or ("The static group |cffffd100" .. VDH_GROUP .. "|r already exists; new rules are added to it.")
-    ns.MarkDirty(); if ns.OnRulesChanged then pcall(ns.OnRulesChanged) end
+    ns.MarkDirty(); ns.Fire("CONFIG_CHANGED")
     Notify()
 end
 local function AddTickedAuras()
@@ -2718,7 +2722,7 @@ local function AddTickedAuras()
         if dup > 0 then line = line .. (" %d already in the group (same ID), skipped."):format(dup) end
         if #noID > 0 then line = line .. " |cffffb040No ID yet, skipped: " .. table.concat(noID, ", ") .. ".|r" end
         creatorMsg = line
-        if made > 0 then ns.MarkDirty(); if ns.OnRulesChanged then pcall(ns.OnRulesChanged) end end
+        if made > 0 then ns.MarkDirty(); ns.Fire("CONFIG_CHANGED") end
     end
     ns.Print("rule creator: " .. (creatorMsg:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")))
     Notify()
@@ -3070,7 +3074,7 @@ local function AutoPopulate()
     end
     for _, r in ipairs(ns.rules) do if r.folder == fid then pcall(ns.RefreshVisual, r) end end
     ns.MarkDirty()
-    if ns.OnRulesChanged then pcall(ns.OnRulesChanged) end
+    ns.Fire("CONFIG_CHANGED")
     autoMsg.last = ("Added %d rule(s); %d already in that group were skipped."):format(made, skipped)
     ns.Print("auto-populate: " .. autoMsg.last)
     Notify()
@@ -3143,7 +3147,7 @@ function ns.AutoPopulateSpellbook(includeUnpicked)   -- fallback: spellbook cool
             made = made + 1; counts[fname] = (counts[fname] or 0) + 1
         end
     end
-    if made > 0 then ns.MarkDirty(); if ns.OnRulesChanged then pcall(ns.OnRulesChanged) end end
+    if made > 0 then ns.MarkDirty(); ns.Fire("CONFIG_CHANGED") end
     local parts = {}
     for _, k in ipairs({ "Defensive", "Offensive", "Utility", "Unsorted" }) do if counts[k] then parts[#parts + 1] = k .. " " .. counts[k] end end
     local msg = ("%s: added %d rule(s) (%s); %d already there."):format(parentName, made, #parts > 0 and table.concat(parts, ", ") or "none", skipped)
@@ -3244,7 +3248,7 @@ local function AutoPopulateData(specID, data, includeUnpicked)
             end
         end
     end
-    if made > 0 then ns.MarkDirty(); if ns.OnRulesChanged then pcall(ns.OnRulesChanged) end end
+    if made > 0 then ns.MarkDirty(); ns.Fire("CONFIG_CHANGED") end
     local keys = {}
     for k in pairs(counts) do keys[#keys + 1] = k end
     table.sort(keys)
@@ -3336,30 +3340,15 @@ end
 ns.UI.Creator = function() ns.OpenPage("creator") end
 ns.UI.Drafts = function() ns.OpenPage("drafts") end
 ns.UI.RecycleBin = function() ns.OpenPage("recyclebin") end   -- toolbar button, next to Export
-ns.UI.Cursor = function()   -- the Cursor options live under QoL UI Updates > Cursor now (no tab of their own)
+-- a page a feature registered (ns.RegisterSettingsPage), by module and key; sub = a tab inside the page. Used through
+-- ns.OpenSettingsPage (Modules.lua) by /xui chat settings, /xui data, right-click on a data strip, the Notepad's gear, and more.
+function ns.OptionsApi.OpenPage(module, key, sub)
+    if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then pcall(ns.OptionsApi.Toggle) end
     ns.pageOpen = nil; ns.infoOpen = false
     Notify()
-    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "cursor")
-end
-ns.UI.DataPanels = function(tab)   -- QoL UI Updates > Custom Data Panels and Bars (also /xui data, right-click on any strip); tab = a tab key such as "general"
-    if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then pcall(ns.ToggleUI) end
-    ns.pageOpen = nil; ns.infoOpen = false
-    Notify()
-    if tab then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "datapanels", tab)
-    else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "datapanels") end
-end
-ns.UI.ChatPanel = function(tab)   -- QoL UI Updates > Chat Panel (also /xui chat settings); tab = "layout", "look", "bar", "behavior", "filters", "history", "sounds", "privacy"
-    if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then pcall(ns.ToggleUI) end
-    ns.pageOpen = nil; ns.infoOpen = false
-    Notify()
-    if tab then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "chatpanel", tab)
-    else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "chatpanel") end
-end
-ns.UI.Notepad = function()   -- QoL UI Updates > Notepad (also /xui notepad opens the box itself)
-    if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then pcall(ns.ToggleUI) end
-    ns.pageOpen = nil; ns.infoOpen = false
-    Notify()
-    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "notepad")
+    local tab = ns.SettingsTabOf and ns.SettingsTabOf(module) or "qol"
+    if sub then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, tab, key, sub)
+    else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, tab, key) end
 end
 ns.UI.Settings = function()
     -- the Settings button is a switch: a second click leaves the settings pages and brings the Rules tabs back
@@ -4341,11 +4330,11 @@ ns.BuildOptionsTable = BuildOptions
 AceConfigRegistry:RegisterOptionsTable(APP, BuildOptions, true)
 AceConfigDialog:SetDefaultSize(APP, 780, 860)   -- tall rectangle
 
-function ns.OnRulesChanged() Notify() end
-function ns.OnPositionChanged() Notify() end
+-- anything outside the window that changed settings asks for a redraw (Modules.lua section 6)
+ns.On("CONFIG_CHANGED", function() Notify() end)
 
 -- open the window (if needed) and jump to a rule; used by clicking an aura on screen while unlocked
-function ns.EditRule(rule)
+function ns.OptionsApi.EditRule(rule)
     if not ns.rules then return end
     if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then
         local ok, err = pcall(AceConfigDialog.Open, AceConfigDialog, APP)
@@ -4356,7 +4345,7 @@ function ns.EditRule(rule)
 end
 
 local firstOpen = true
-function ns.ToggleUI()
+function ns.OptionsApi.Toggle()
     if not ns.rules then ns.Print("saved data is not ready yet (rules table is nil).") return end
     if AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP] then
         AceConfigDialog:Close(APP)
@@ -4469,9 +4458,9 @@ local function BuildTray()
     return t
 end
 
-function ns.LogSink(line)
+ns.On("LOG", function(line)
     if tray and tray.log then tray.log:AddMessage(line) end
-end
+end)
 
 -------------------------------------------------------------------------------
 -- Sidebar preview toggles: an eye (visual) and a headphone (sound) on tree rows.
@@ -4494,7 +4483,7 @@ local function ApplyIcon(tex, atlases, file)
     tex:SetTexture(file)
     return "file " .. file
 end
-function ns.IconReport()
+function ns.OptionsApi.IconReport()
     local function chk(list, file) for _, a in ipairs(list) do if AtlasOK(a) then return "atlas " .. a end end return "file " .. file end
     ns.Print("eye icon: " .. chk(EYE_ATLASES, EYE_FILE) .. " | headphone icon: " .. chk(HEAD_ATLASES, HEAD_FILE))
 end
@@ -7141,45 +7130,9 @@ driver:SetScript("OnUpdate", function(_, e)
 end)
 
 -------------------------------------------------------------------------------
--- Entry in Blizzard's Options > AddOns list (button that opens the real window)
+-- Publish what core may call (Modules.lua section 7). The game's Options > AddOns entry and the addon compartment click live in
+-- core (Modules.lua) so they work before this addon is loaded.
 -------------------------------------------------------------------------------
-local function CloseBlizzardSettings()
-    if SettingsPanel and SettingsPanel:IsShown() then
-        if HideUIPanel then HideUIPanel(SettingsPanel) else SettingsPanel:Hide() end
-    end
-end
-
-local function RegisterBlizzardPanel()
-    if not (Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory) then return end
-    local panel = CreateFrame("Frame")
-    panel.name = "XayaUI"
-
-    local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
-    title:SetPoint("TOPLEFT", 16, -16)
-    title:SetText("XayaUI")
-
-    local sub = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
-    sub:SetWidth(560)
-    sub:SetJustifyH("LEFT")
-    sub:SetText("Sound cues and on-screen alerts driven by rules: buff, cooldown, talent, and conditions.\nSlash commands: /xui (or /xayaui)  |  /xui status  |  /xui probe <spellID>  |  /xui unlock")
-
-    local btn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    btn:SetSize(200, 28)
-    btn:SetPoint("TOPLEFT", sub, "BOTTOMLEFT", 0, -20)
-    btn:SetText("Open XayaUI")
-    btn:SetScript("OnClick", function()
-        CloseBlizzardSettings()
-        if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then ns.ToggleUI() end
-    end)
-
-    local ok, category = pcall(Settings.RegisterCanvasLayoutCategory, panel, "XayaUI")
-    if ok and category then
-        pcall(Settings.RegisterAddOnCategory, category)
-        ns.settingsCategory = category
-    end
-end
-RegisterBlizzardPanel()
-
--- Addon compartment (minimap "addons" menu) click handler; named in the .toc
-function XayaUI_OnCompartmentClick() ns.ToggleUI() end
+function ns.OptionsApi.IsOpen() return (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) and true or false end
+function ns.OptionsApi.SkinOn() return (ns.SkinRows and ns.SkinRows()) and true or false end
+ns.Options = ns.OptionsApi

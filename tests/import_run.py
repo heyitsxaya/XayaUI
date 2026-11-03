@@ -17,6 +17,8 @@ ns.NormalizeRule = function() end; ns.DropVisual = function() end; ns.RefreshAll
 ns.Merge = function() end; ns.BAR_DEFAULTS = {}; ns.NewUID = function() return "u" .. math.random(1e9) end
 CueRulesDB = { barGroup = {} }
 _G.XayaUI_NS = ns
+ns.Print = ns.Print or function() end
+assert(loadfile("''' + os.path.join(ROOT, "Modules.lua").replace("\\", "/") + r'''"))("XayaUI", ns)   -- core contract: ns.Fire (0.6.0)
 -- load Profile.lua with the addon vararg
 local f = assert(loadfile("''' + os.path.join(ROOT, "Profile.lua").replace("\\", "/") + r'''"))
 f("XayaUI", ns)

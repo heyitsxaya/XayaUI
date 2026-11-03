@@ -167,3 +167,90 @@ function ns.BuildSettingsPages(module, Notify)
     end
     return out
 end
+
+-------------------------------------------------------------------------------
+-- 6. Messages between XayaUI's own parts (not game events). The sender never needs the receiver to exist: the settings window
+-- is in a load-on-demand addon and may never be loaded in a session.
+--   CONFIG_CHANGED   settings or rules changed outside the window (a drag on screen, a command, an import): redraw if open
+--   LOG (line)       a line for the debug console
+--   THEME_CHANGED    the theme changed: re-skin open windows
+--   EDITED           ns.MarkDirty ran (the window's undo journal listens)
+-------------------------------------------------------------------------------
+local listeners = {}
+function ns.On(event, fn)
+    if type(event) ~= "string" or type(fn) ~= "function" then return end
+    listeners[event] = listeners[event] or {}
+    table.insert(listeners[event], fn)
+end
+function ns.Fire(event, ...)
+    local list = listeners[event]
+    if not list then return end
+    for _, fn in ipairs(list) do Call(fn, ...) end
+end
+
+-------------------------------------------------------------------------------
+-- 7. The settings window. Its code is the addon XayaUI_Options, which the game loads only when asked (## LoadOnDemand). Everything
+-- outside it opens the window through these functions, so nothing else needs to know whether it is loaded yet. XayaUI_Options
+-- fills in ns.Options = { Toggle, EditRule, OpenPage, IconReport, IsOpen, SkinOn } when it loads.
+-------------------------------------------------------------------------------
+ns.OPTIONS_ADDON = "XayaUI_Options"
+local optionsWarned
+function ns.LoadOptions()
+    if ns.Options then return true end
+    if not isReady then ns.Print("saved settings are not ready yet; try again in a moment."); return false end
+    local A = C_AddOns
+    if not (A and A.LoadAddOn) then return false end
+    local ok, loaded, reason = pcall(A.LoadAddOn, ns.OPTIONS_ADDON)
+    if ok and loaded and ns.Options then return true end
+    if not optionsWarned then
+        optionsWarned = true
+        local state = ns.ModuleState(ns.OPTIONS_ADDON)
+        if state == "disabled" then
+            ns.Print("the settings window (XayaUI Options) is switched off in the game's AddOns list. Turn it on, then /reload.")
+        elseif state == "missing" then
+            ns.Print("the settings window (XayaUI Options) is not installed: the XayaUI_Options folder belongs next to XayaUI in Interface\\AddOns.")
+        else
+            ns.Print("the settings window could not load (" .. tostring(ok and reason or loaded) .. "). /xui bug shows errors.")
+        end
+    end
+    return false
+end
+function ns.ToggleUI() if ns.LoadOptions() then ns.Options.Toggle() end end
+function ns.EditRule(rule) if rule and ns.LoadOptions() then ns.Options.EditRule(rule) end end
+-- module = "chat" | "qol" | "bonus" | "reskin" | "core"; key = the page registered with ns.RegisterSettingsPage; sub = a tab inside it
+function ns.OpenSettingsPage(module, key, sub) if ns.LoadOptions() then ns.Options.OpenPage(module, key, sub) end end
+function ns.IconReport() if ns.LoadOptions() and ns.Options.IconReport then ns.Options.IconReport() end end
+function ns.IsOptionsOpen() return ns.Options and ns.Options.IsOpen and ns.Options.IsOpen() or false end
+
+-- The game's own Options > AddOns list gets an entry that opens the real window, and the addon compartment (the minimap "addons"
+-- menu) calls XayaUI_OnCompartmentClick (named in XayaUI.toc). Both live here so they work before the window's code is loaded.
+local function RegisterBlizzardPanel()
+    if not (Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory and CreateFrame) then return end
+    local panel = CreateFrame("Frame")
+    panel.name = "XayaUI"
+    local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
+    title:SetPoint("TOPLEFT", 16, -16)
+    title:SetText("XayaUI")
+    local sub = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
+    sub:SetWidth(560)
+    sub:SetJustifyH("LEFT")
+    sub:SetText("Sound cues and on-screen alerts driven by rules: buff, cooldown, talent, and conditions.\nSlash commands: /xui (or /xayaui)  |  /xui status  |  /xui probe <spellID>  |  /xui unlock")
+    local btn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    btn:SetSize(200, 28)
+    btn:SetPoint("TOPLEFT", sub, "BOTTOMLEFT", 0, -20)
+    btn:SetText("Open XayaUI")
+    btn:SetScript("OnClick", function()
+        if SettingsPanel and SettingsPanel:IsShown() then
+            if HideUIPanel then HideUIPanel(SettingsPanel) else SettingsPanel:Hide() end
+        end
+        if not ns.IsOptionsOpen() then ns.ToggleUI() end
+    end)
+    local ok, category = pcall(Settings.RegisterCanvasLayoutCategory, panel, "XayaUI")
+    if ok and category then
+        pcall(Settings.RegisterAddOnCategory, category)
+        ns.settingsCategory = category
+    end
+end
+Call(RegisterBlizzardPanel)
+function XayaUI_OnCompartmentClick() ns.ToggleUI() end
