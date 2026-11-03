@@ -14,7 +14,7 @@ ns.MOD_STRATA_OK = {}
 for _, k in ipairs(ns.MOD_STRATA) do ns.MOD_STRATA_OK[k] = true end
 
 function ns.CuesOf(p)
-    local idx = ns.StepChildrenOf(p, "cues")
+    local idx = ns.StepChildrenOf and ns.StepChildrenOf(p, "cues")
     if idx then return idx end
     local out = {}
     if type(p.uid) ~= "string" then return out end
@@ -24,7 +24,7 @@ function ns.CuesOf(p)
     return out
 end
 function ns.ConditionsOf(p)
-    local idx = ns.StepChildrenOf(p, "conds")
+    local idx = ns.StepChildrenOf and ns.StepChildrenOf(p, "conds")
     if idx then return idx end
     local out = {}
     if type(p.uid) ~= "string" then return out end
@@ -105,9 +105,11 @@ function ns.DeleteCue(cue)
     ns.MarkDirty()
 end
 
+local modsPool = setmetatable({}, { __mode = "k" })
 -- A cue is "on" while any enabled condition that lists it is true.
 function ns.EvaluateCue(rule, ctx)
-    local info = { ctx = ctx, missing = {}, outcome = true, cue = true }
+    local info = ns.InfoFor and ns.InfoFor(rule) or { missing = {} }
+    info.ctx, info.outcome, info.cue = ctx, true, true
     local p = ns.FindParentRule(rule)
     if not p then info.missing[1] = "parent rule not found"; info.result = false; return false, info end
     local pr, pi = ns.Evaluate(p, ctx)
@@ -133,7 +135,11 @@ function ns.EvaluateCue(rule, ctx)
                         hit = true
                         local m = type(c.thenMods) == "table" and c.thenMods[key] or nil
                         if type(m) == "table" and m.on ~= false then   -- on == false: the "modify this cue" box is unticked, values are kept but ignored
-                            mods = mods or {}
+                            if not mods then   -- (one table per cue, reused every step)
+                                mods = ns.InStep and ns.InStep() and modsPool[rule]
+                                if mods then for k in pairs(mods) do mods[k] = nil end
+                                else mods = {}; if ns.InStep and ns.InStep() then modsPool[rule] = mods end end
+                            end
                             if m.glow ~= nil then mods.glow = m.glow end
                             if m.desat ~= nil then mods.desat = m.desat end
                             if m.alpha ~= nil then mods.alpha = m.alpha end

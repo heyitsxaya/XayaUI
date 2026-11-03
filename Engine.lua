@@ -14,6 +14,7 @@ local acc = 0
 local sinceStep = 0
 local forceNow = false   -- an edit in the options window re-evaluates at once, without waiting for MIN_GAP
 local snapAcc = 0
+local inCombat = false   -- kept by the combat events (was asked of the game on every rendered frame)
 local SNAP_EVERY = 5   -- seconds between auto status snapshots while in combat
 local barsDirty = true   -- action bar spell set is rebuilt only when a bar event fires or rules change
 
@@ -26,9 +27,17 @@ end
 local function ReportVisualError(rule, rt, err)
     if rt.vErrored then return end
     rt.vErrored = true
-    ns.Print("rule '" .. tostring(rule.name) .. "' display error: " .. tostring(err))
+    ns.Print("rule '" .. tostring(rule.name) .. "' error (the other rules keep running): " .. tostring(err))
     if ns.CaptureError then pcall(ns.CaptureError, "XayaUI display: " .. tostring(err)) end
 end
+
+-- Actions and sounds run guarded per rule: one failing action can neither stop the step nor block the other rules.
+local function Guarded(rule, rt, fn, ...)
+    local ok, err = pcall(fn, ...)
+    if not ok then ReportVisualError(rule, rt, err) end
+end
+local function RunActionsSafe(rule, rt, phase) if ns.RunActions then Guarded(rule, rt, ns.RunActions, rule, phase) end end
+local function PlaySoundSafe(rule, rt) Guarded(rule, rt, function() ns.PlaySound(ns.EffectiveSound(rule)) end) end
 
 local function Step()
     if not ns.rules then return end
@@ -59,26 +68,26 @@ local function Step()
             -- Actions tab: On Initialization (the rule's load conditions hold), During start, After It Ends
             if not rule.parentUid and ns.RunActions then
                 if info and info.ctxOK then
-                    if not rt.inited then rt.inited = true; ns.RunActions(rule, "init") end
+                    if not rt.inited then rt.inited = true; RunActionsSafe(rule, rt, "init") end
                 elseif info and info.ctxOK == false then rt.inited = nil end
             end
             if result and not rt.active then
                 rt.active = true
                 rt.lastPlay = now
-                if not rule.parentUid and ns.RunActions then ns.RunActions(rule, "start") end
-                if ns.KindHas(rule, "sound") then ns.PlaySound(ns.EffectiveSound(rule)) end
+                if not rule.parentUid then RunActionsSafe(rule, rt, "start") end
+                if ns.KindHas(rule, "sound") then PlaySoundSafe(rule, rt) end
                 ns.Log("|cff55ff55FIRED|r %s%s", rule.name, (rule.sound.enabled and rule.sound.value ~= "" and ns.KindHas(rule, "sound")) and "  (sound)" or "")
             elseif result and rt.active then
                 local rep = rule.repeatSec or 0
                 if rep > 0 and (now - rt.lastPlay) >= rep then
                     rt.lastPlay = now
-                    if ns.KindHas(rule, "sound") then ns.PlaySound(ns.EffectiveSound(rule)) end
+                    if ns.KindHas(rule, "sound") then PlaySoundSafe(rule, rt) end
                     ns.Log("repeat  %s", rule.name)
                 end
             elseif not result then
                 if rt.active then
                     ns.Log("cleared %s: %s", rule.name, info and ns.WhyNot(info) or "error")
-                    if not rule.parentUid and ns.RunActions then ns.RunActions(rule, "finish") end
+                    if not rule.parentUid then RunActionsSafe(rule, rt, "finish") end
                 end
                 rt.active = false
             end
@@ -108,7 +117,7 @@ local function Step()
             end
             if pv then local d = debugprofilestop() - pv; perf.visMs = perf.visMs + d; perf.rule[rule] = (perf.rule[rule] or 0) + d end
         else
-            if rt.active and not rule.parentUid and ns.RunActions then ns.RunActions(rule, "finish") end
+            if rt.active and not rule.parentUid then RunActionsSafe(rule, rt, "finish") end
             rt.active = false
             rt.inited = nil
             if rt.visualWanted ~= false or rt.shownOnce == nil then
@@ -254,7 +263,8 @@ end
 
 ns.Step = function() return Step() end
 
-function ns.MarkDirty() dirty = true; forceNow = true; barsDirty = true; if ns.UndoNote then ns.UndoNote() end end
+-- (ns.configVersion: settings changed, so memos keyed on settings - load checks - start over)
+function ns.MarkDirty() dirty = true; forceNow = true; barsDirty = true; ns.configVersion = (ns.configVersion or 0) + 1; if ns.UndoNote then ns.UndoNote() end end
 -- game state changed (a cast, movement, target ...): re-evaluate on the next step, keeping the minimum gap between steps
 function ns.MarkStateDirty() dirty = true end
 
@@ -274,28 +284,46 @@ for _, e in ipairs({
 f:RegisterUnitEvent("UNIT_AURA", "player")
 f:SetScript("OnEvent", function(_, event)
     if perf.on then perf.events[event] = (perf.events[event] or 0) + 1 end
-    if event == "PLAYER_ENTERING_WORLD" and ns.ClearSecrecyCache then ns.ClearSecrecyCache() end
+    if event == "PLAYER_ENTERING_WORLD" then
+        if ns.ClearSecrecyCache then ns.ClearSecrecyCache() end
+        inCombat = (UnitAffectingCombat and UnitAffectingCombat("player")) and true or false   -- a /reload can land mid-fight
+    end
     if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "TRAIT_CONFIG_UPDATED" or event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" then ns.talentList = nil; ns.spellList = nil end
     -- auto-capture status into the ring-buffer log at combat start/end, since /xui status can't be typed mid-fight
     if event == "PLAYER_REGEN_DISABLED" then
+        inCombat = true
         snapAcc = 0
         if ns.LogStatusSnapshot then ns.LogStatusSnapshot("combat start") end
     elseif event == "PLAYER_REGEN_ENABLED" then
+        inCombat = false
         if ns.LogStatusSnapshot then ns.LogStatusSnapshot("combat end") end
     end
     if event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" or event == "PLAYER_SPECIALIZATION_CHANGED" or event == "UPDATE_SHAPESHIFT_FORM"
         or event == "ACTIONBAR_SLOT_CHANGED" or event == "UPDATE_BONUS_ACTIONBAR" or event == "ACTIONBAR_PAGE_CHANGED" then barsDirty = true end
     dirty = true
 end)
+-- A failing step must never stop the engine or flood the error window: it is caught here, reported once per distinct
+-- message (and saved to the error log), and the next step runs as normal.
+local lastStepErr
+local function SafeStep()
+    local ok, err = pcall(Step)
+    if not ok then
+        err = tostring(err)
+        if err ~= lastStepErr then
+            lastStepErr = err
+            if ns.Print then ns.Print("engine step error (the engine keeps running): " .. err) end
+            if ns.CaptureError then pcall(ns.CaptureError, "XayaUI engine: " .. err) end
+        end
+    end
+end
 f:SetScript("OnUpdate", function(_, elapsed)
     acc = acc + elapsed
     sinceStep = sinceStep + elapsed
     if acc >= TICK or (dirty and (forceNow or sinceStep >= MIN_GAP)) then
         dirty, forceNow = false, false
         acc, sinceStep = 0, 0
-        Step()
+        SafeStep()
     end
-    local inCombat = (UnitAffectingCombat and UnitAffectingCombat("player")) or false
     if inCombat then
         snapAcc = snapAcc + elapsed
         if snapAcc >= SNAP_EVERY then

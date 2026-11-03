@@ -596,9 +596,16 @@ f:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 f:RegisterEvent("TRAIT_CONFIG_UPDATED")
 f:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
-f:RegisterEvent("UNIT_SPELLCAST_SENT")
-f:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+-- (player only: registered for all units, every party, raid and nameplate cast woke this handler)
+if f.RegisterUnitEvent then
+    f:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player")
+    f:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+else
+    f:RegisterEvent("UNIT_SPELLCAST_SENT")
+    f:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+end
 f:RegisterEvent("SPELL_DATA_LOAD_RESULT")
+local dataReloadQueued = false
 f:SetScript("OnEvent", function(_, event, unit, a2, a3, a4)
     if event == "PLAYER_REGEN_ENABLED" then
         if pendingRefresh then RefreshSoon() end
@@ -609,8 +616,17 @@ f:SetScript("OnEvent", function(_, event, unit, a2, a3, a4)
         if C_Timer and C_Timer.After then C_Timer.After(0.5, RefreshSoon) else RefreshSoon() end
         return
     elseif event == "SPELL_DATA_LOAD_RESULT" then
-        M.cache = {}
-        if M.OnSpellDataLoaded then M.OnSpellDataLoaded() end
+        -- tooltips and other addons fire this constantly: the duration cache (whose rebuild re-reads spell and talent text)
+        -- is dropped at most once a second, after the burst
+        if not dataReloadQueued then
+            dataReloadQueued = true
+            local function Reload()
+                dataReloadQueued = false
+                M.cache = {}
+                if M.OnSpellDataLoaded then pcall(M.OnSpellDataLoaded) end
+            end
+            if C_Timer and C_Timer.After then C_Timer.After(1, Reload) else Reload() end
+        end
         return
     end
     if unit ~= "player" then return end

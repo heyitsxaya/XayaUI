@@ -426,12 +426,20 @@ drv:SetScript("OnEvent", function(_, ev)
     if ev == "PLAYER_ENTERING_WORLD" then C_Timer.After(0.3, function() ns.DataPanels_Refresh() end) else ns.DataPanels_Refresh() end
 end)
 local acc, accHover = 0, 0
+local keys, keysAt = nil, -1   -- the panel list, rebuilt at most once a second (it was rebuilt 11 times a second)
+local function Keys()
+    local now = GetTime()
+    if not keys or now - keysAt >= 1 or now < keysAt then keys, keysAt = AllKeys(), now end
+    return keys
+end
 drv:SetScript("OnUpdate", function(_, dt)
     acc = acc + dt; accHover = accHover + dt
-    if acc >= 1 then acc = 0; for _, k in ipairs(AllKeys()) do UpdateText(k) end end
+    if acc < 1 and accHover < 0.1 then return end
+    if not ns.DataPanels_MasterOn() then acc, accHover = 0, 0; return end   -- feature off: nothing to update
+    if acc >= 1 then acc = 0; for _, k in ipairs(Keys()) do UpdateText(k) end end
     if accHover >= 0.1 then
         accHover = 0
-        for _, k in ipairs(AllKeys()) do
+        for _, k in ipairs(Keys()) do
             local e, cfg = frames[k], Cfg(k)
             if e and cfg and e.f:IsShown() then
                 local a = (cfg.mouseover and not Over(e.f)) and 0 or 1

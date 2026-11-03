@@ -1122,22 +1122,7 @@ local function GetFrame(rule)
     end)
     -- smooth animation: the engine ticks 5x per second, which made the wipe / fades step. While one of those
     -- effects is active, re-run just that part every rendered frame from the stored (absolute) expiry time.
-    -- (capped at ~30 per second: at 60+ fps this ran the whole fade / wipe / text routine for every visible display on
-    -- every rendered frame, which is what made combat feel sticky with many displays on screen)
-    fr:SetScript("OnUpdate", function(self, elapsed)
-        local r = self.fxRule
-        if not r then return end
-        local acc = (self.fxAcc or 0) + (elapsed or 0)
-        if acc < 0.033 then self.fxAcc = acc; return end
-        self.fxAcc = 0
-        if ns.perfOn then
-            local t = debugprofilestop()
-            ns.UpdateVisualText(r, self.fxInfo, true)
-            ns.PerfAdd("fx", debugprofilestop() - t)
-        else
-            ns.UpdateVisualText(r, self.fxInfo, true)
-        end
-    end)
+    -- (the per-frame effects script is attached only while an effect is running: see FxOnUpdate / SetFxRule)
     frames[rule] = fr
     return fr
 end
@@ -1418,6 +1403,64 @@ end
 local SAMPLE_DURATION = 12.3
 
 -- Dynamic, per-tick parts: desaturation, duration text, stacks/charges text.
+-- One cached curve per display and purpose; rebuilt only when its end values change. (File-level functions taking the frame:
+-- defined inside UpdateVisualText they were two new closures on every call, up to 30 times a second per display.)
+local function NumCurve(fr, key, y0, y1)   -- remaining 0% -> y0, 100% -> y1
+    local e = fr.curves[key]
+    if e and e.a == y0 and e.b == y1 then return e.cv or nil end
+    e = e or {}
+    e.a, e.b, e.cv = y0, y1, false
+    local okc, cv = pcall(C_CurveUtil.CreateCurve)
+    if okc and cv then
+        if Enum and Enum.LuaCurveType and Enum.LuaCurveType.Linear then pcall(cv.SetType, cv, Enum.LuaCurveType.Linear) end
+        if pcall(cv.AddPoint, cv, 0, y0) and pcall(cv.AddPoint, cv, 1, y1) then e.cv = cv end
+    end
+    fr.curves[key] = e
+    return e.cv or nil
+end
+local function ColorCurve(fr, key, r0, g0, b0, a0, r1, g1, b1, a1)   -- remaining 0% -> colour 0, 100% -> colour 1
+    local e = fr.curves[key]
+    if e and e.a1 == r0 and e.a2 == g0 and e.a3 == b0 and e.a4 == a0
+        and e.b1 == r1 and e.b2 == g1 and e.b3 == b1 and e.b4 == a1 then return e.cv or nil end
+    e = e or {}
+    e.a1, e.a2, e.a3, e.a4, e.b1, e.b2, e.b3, e.b4, e.cv = r0, g0, b0, a0, r1, g1, b1, a1, false
+    local okc, cv = pcall(C_CurveUtil.CreateColorCurve)
+    if okc and cv and CreateColor then
+        if Enum and Enum.LuaCurveType and Enum.LuaCurveType.Linear then pcall(cv.SetType, cv, Enum.LuaCurveType.Linear) end
+        if pcall(cv.AddPoint, cv, 0, CreateColor(r0, g0, b0, a0)) and pcall(cv.AddPoint, cv, 1, CreateColor(r1, g1, b1, a1)) then e.cv = cv end
+    end
+    fr.curves[key] = e
+    return e.cv or nil
+end
+-- Smooth effects between engine ticks (wipe, fades, flash, tenths of a second), at most ~30 times a second. The script is
+-- attached to a display only while one of those effects is running, so idle displays cost nothing per rendered frame.
+local function FxOnUpdate(self, elapsed)
+    local r = self.fxRule
+    if not r then self:SetScript("OnUpdate", nil); return end
+    local acc = (self.fxAcc or 0) + (elapsed or 0)
+    if acc < 0.033 then self.fxAcc = acc; return end
+    self.fxAcc = 0
+    local t = ns.perfOn and debugprofilestop()
+    local ok, err = pcall(ns.UpdateVisualText, r, self.fxInfo, true)
+    if t then ns.PerfAdd("fx", debugprofilestop() - t) end
+    if not ok then   -- a failing effect stops itself instead of erroring every frame
+        self.fxRule = nil
+        self:SetScript("OnUpdate", nil)
+        if ns.CaptureError then pcall(ns.CaptureError, "XayaUI display effect: " .. tostring(err)) end
+    end
+end
+local function SetFxRule(fr, rule)
+    if fr.fxRule == rule then return end
+    local had = fr.fxRule ~= nil
+    fr.fxRule = rule
+    if rule and not had then fr.fxAcc = 0; fr:SetScript("OnUpdate", FxOnUpdate)
+    elseif not rule and had then fr:SetScript("OnUpdate", nil) end
+end
+
+-- secret-safe text writers for pcall (no closure per call)
+local function SetWholeSeconds(fs, sec) fs:SetText(("%d"):format(sec)) end
+local function SetVertexRGBA(tex, color) tex:SetVertexColor(color:GetRGBA()) end
+
 function ns.UpdateVisualText(rule, info, fxOnly)
     local fr = frames[rule]
     if not fr then return end
@@ -1453,36 +1496,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         local okd, d = pcall(C_UnitAuras.GetAuraDuration, "player", ref.instanceID)
         if okd and d and d.EvaluateRemainingPercent then dobj = d end
     end
-    -- one cached curve per purpose; rebuilt only when its end values change (no per-call string building, which was garbage)
     fr.curves = fr.curves or {}
-    local function NumCurve(key, y0, y1)   -- remaining 0% -> y0, 100% -> y1
-        local e = fr.curves[key]
-        if e and e.a == y0 and e.b == y1 then return e.cv or nil end
-        e = e or {}
-        e.a, e.b, e.cv = y0, y1, false
-        local okc, cv = pcall(C_CurveUtil.CreateCurve)
-        if okc and cv then
-            if Enum and Enum.LuaCurveType and Enum.LuaCurveType.Linear then pcall(cv.SetType, cv, Enum.LuaCurveType.Linear) end
-            if pcall(cv.AddPoint, cv, 0, y0) and pcall(cv.AddPoint, cv, 1, y1) then e.cv = cv end
-        end
-        fr.curves[key] = e
-        return e.cv or nil
-    end
-    local function ColorCurve(key, c0, c1)
-        local e = fr.curves[key]
-        if e and e.a1 == c0[1] and e.a2 == c0[2] and e.a3 == c0[3] and e.a4 == c0[4]
-            and e.b1 == c1[1] and e.b2 == c1[2] and e.b3 == c1[3] and e.b4 == c1[4] then return e.cv or nil end
-        e = e or {}
-        e.a1, e.a2, e.a3, e.a4, e.b1, e.b2, e.b3, e.b4, e.cv = c0[1], c0[2], c0[3], c0[4], c1[1], c1[2], c1[3], c1[4], false
-        local okc, cv = pcall(C_CurveUtil.CreateColorCurve)
-        if okc and cv and CreateColor then
-            if Enum and Enum.LuaCurveType and Enum.LuaCurveType.Linear then pcall(cv.SetType, cv, Enum.LuaCurveType.Linear) end
-            if pcall(cv.AddPoint, cv, 0, CreateColor(c0[1], c0[2], c0[3], c0[4]))
-                and pcall(cv.AddPoint, cv, 1, CreateColor(c1[1], c1[2], c1[3], c1[4])) then e.cv = cv end
-        end
-        fr.curves[key] = e
-        return e.cv or nil
-    end
 
     -- fade: desaturate (gray) or blend vertex color toward a chosen color as the buff runs out; gray while on cooldown
     local d = fr.baseDesat or 0
@@ -1531,13 +1545,13 @@ function ns.UpdateVisualText(rule, info, fxOnly)
                 -- handled by the alpha curve below
             elseif toColor then
                 local fc = v.fadeColor or { 1, 0.1, 0.1, 1 }
-                local cv = ColorCurve("c", { fc[1] or 1, fc[2] or 1, fc[3] or 1, fc[4] or 1 }, { cr, cg, cb, ca })
+                local cv = ColorCurve(fr, "c", fc[1] or 1, fc[2] or 1, fc[3] or 1, fc[4] or 1, cr, cg, cb, ca)
                 if cv then
                     local okr, res = pcall(dobj.EvaluateRemainingPercent, dobj, cv)
-                    if okr and res then colorDone = pcall(function() fr.tex:SetVertexColor(res:GetRGBA()) end) end
+                    if okr and res then colorDone = pcall(SetVertexRGBA, fr.tex, res) end
                 end
             else
-                local cv = NumCurve("g", 1, d)
+                local cv = NumCurve(fr, "g", 1, d)
                 if cv then
                     local okr, res = pcall(dobj.EvaluateRemainingPercent, dobj, cv)
                     if okr and res then greyDone = pcall(fr.tex.SetDesaturation, fr.tex, res) end
@@ -1565,7 +1579,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         if f ~= nil then
             alpha = alpha * f
         elseif dobj then
-            local cv = NumCurve("t", 0, alpha)
+            local cv = NumCurve(fr, "t", 0, alpha)
             if cv then
                 local okr, res = pcall(dobj.EvaluateRemainingPercent, dobj, cv)
                 if okr and res then alphaDone = pcall(fr.SetAlpha, fr, res) end
@@ -1578,7 +1592,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         if f ~= nil then
             alpha = alpha * (mn + (mx - mn) * f)
         elseif dobj then
-            local cv = NumCurve("a", alpha * mn, alpha * mx)
+            local cv = NumCurve(fr, "a", alpha * mn, alpha * mx)
             if cv then
                 local okr, res = pcall(dobj.EvaluateRemainingPercent, dobj, cv)
                 if okr and res then alphaDone = pcall(fr.SetAlpha, fr, res) end
@@ -1634,11 +1648,14 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     -- decimal range it is redrawn from here too
     local tx = v.text
     local wantsTenths = tx and tx.enabled and tx.decimals and rem ~= nil and rem > 0 and rem < (tx.decimalBelow or 5)
-    fr.fxRule = ((wantsFx or wantsTenths) and (f ~= nil or dobj ~= nil)) and rule or nil
+    SetFxRule(fr, ((wantsFx or wantsTenths) and (f ~= nil or dobj ~= nil)) and rule or nil)
     fr.fxInfo = info
     if wantsTenths then
-        fr.text:SetText(FmtRemaining(rem, tx.decimals, tx.decimalBelow))
+        local tk = math.floor(rem * 10)   -- tenths change 10 times a second: only then is the text rebuilt
+        if fr.tenthKey ~= tk then fr.tenthKey = tk; fr.text:SetText(FmtRemaining(rem, tx.decimals, tx.decimalBelow)) end
         fr.text:Show()
+    else
+        fr.tenthKey = nil
     end
     if fxOnly then return end
 
@@ -1738,23 +1755,23 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     if ref and ref.instanceID and C_UnitAuras and C_UnitAuras.GetAuraDuration then
         local ok, dur = pcall(C_UnitAuras.GetAuraDuration, "player", ref.instanceID)
         if not (ok and dur) then
-            ns.PerfPath(rule, "dur:GetAuraDuration " .. (ok and "returned nothing" or "failed"))
+            if ns.perfOn then ns.PerfPath(rule, "dur:GetAuraDuration " .. (ok and "returned nothing" or "failed")) end
         else
             -- path 2: our own text from the duration object's remaining time: whole seconds, full control of font / size / place,
             -- and no dependence on Blizzard's cooldown-number setting
             if dur.GetRemainingDuration then
                 local okr, remS = pcall(dur.GetRemainingDuration, dur)
                 if okr and remS then
-                    local oks = pcall(function() fr.text:SetText(("%d"):format(remS)) end)
+                    local oks = pcall(SetWholeSeconds, fr.text, remS)
                     if oks then
                         if fr.cd then fr.cd:Hide() end
                         fr.text:Show()
-                        ns.PerfPath(rule, "dur:own text (secret seconds)")
+                        if ns.perfOn then ns.PerfPath(rule, "dur:own text (secret seconds)") end
                         return
                     end
-                    ns.PerfPath(rule, "dur:format of secret seconds failed")
+                    if ns.perfOn then ns.PerfPath(rule, "dur:format of secret seconds failed") end
                 else
-                    ns.PerfPath(rule, "dur:GetRemainingDuration " .. (okr and "nil" or "failed"))
+                    if ns.perfOn then ns.PerfPath(rule, "dur:GetRemainingDuration " .. (okr and "nil" or "failed")) end
                 end
             end
             -- path 3: hand Blizzard's cooldown widget the duration object (its own countdown digits; they follow the
@@ -1764,14 +1781,14 @@ function ns.UpdateVisualText(rule, info, fxOnly)
                 if ok2 then
                     fr.text:Hide()
                     fr.cd:Show()
-                    ns.PerfPath(rule, "dur:cooldown widget")
+                    if ns.perfOn then ns.PerfPath(rule, "dur:cooldown widget") end
                     return
                 end
-                ns.PerfPath(rule, "dur:SetCooldownFromDurationObject failed: " .. tostring(err2):sub(1, 80))
+                if ns.perfOn then ns.PerfPath(rule, "dur:SetCooldownFromDurationObject failed: " .. tostring(err2):sub(1, 80)) end
             end
         end
     else
-        ns.PerfPath(rule, ref and "dur:no aura instance id" or "dur:no aura reference")
+        if ns.perfOn then ns.PerfPath(rule, ref and "dur:no aura instance id" or "dur:no aura reference") end
     end
     if fr.cd then fr.cd:Hide() end
     if sample then
@@ -1836,10 +1853,20 @@ function ns.SetMoveUnlocked(objs, on)
     end
 end
 
+-- Each rule is refreshed on its own (one broken display cannot stop the rest). A rule whose display is switched off and that
+-- has no frame yet gets none: sound-only cues and conditions no longer each carry a full display frame in memory.
+local refreshErrSeen = setmetatable({}, { __mode = "k" })
 function ns.RefreshAllVisuals()
     for _, r in ipairs(ns.rules or {}) do
-        ns.RefreshVisual(r)
-        ns.SetVisualShown(r, ns.runtime and ns.runtime[r] and ns.runtime[r].visualWanted)
+        if frames[r] or (r.visual and r.visual.enabled) or ns.IsPreview(r, "visual") then
+            local ok, err = pcall(ns.RefreshVisual, r)
+            if ok then ok, err = pcall(ns.SetVisualShown, r, ns.runtime and ns.runtime[r] and ns.runtime[r].visualWanted) end
+            if not ok and not refreshErrSeen[r] then
+                refreshErrSeen[r] = true
+                if ns.Print then ns.Print("display of '" .. tostring(r.name) .. "' could not be refreshed: " .. tostring(err)) end
+                if ns.CaptureError then pcall(ns.CaptureError, "XayaUI display refresh: " .. tostring(err)) end
+            end
+        end
     end
 end
 

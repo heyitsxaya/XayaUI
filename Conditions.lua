@@ -10,17 +10,21 @@ local addonName, ns = ...
 local issecret = issecretvalue or function() return false end
 ns.IsSecret = issecret
 
+-- One field read, run under pcall without building a closure per call.
+local function Field(t, key) return t[key] end
+ns.Field = Field
+
 -- Clean boolean field from a table, or nil if missing/secret.
 local function CleanBool(t, key)
     if type(t) ~= "table" then return nil end
-    local ok, v = pcall(function() return t[key] end)
+    local ok, v = pcall(Field, t, key)
     if not ok or issecret(v) or v == nil then return nil end
     return v and true or false
 end
 
 local function CleanNumber(t, key)
     if type(t) ~= "table" then return nil end
-    local ok, v = pcall(function() return t[key] end)
+    local ok, v = pcall(Field, t, key)
     if not ok or issecret(v) or v == nil then return nil end
     if type(v) ~= "number" then return nil end
     return v
@@ -36,7 +40,19 @@ end
 --   empty  : no charges (EXPERIMENTAL for multi-charge spells)
 --   why    : short note for /xui status
 -------------------------------------------------------------------------------
+local ReadCooldownRaw
 function ns.ReadCooldown(rule)
+    -- the same spell is often watched by several rules: read it once per engine step (the result is only ever read)
+    local memo = ns.StepMemo and ns.StepMemo("cooldown")
+    if not memo then return ReadCooldownRaw(rule) end
+    local id, mc = rule.spellID or 0, rule.maxCharges or 0
+    local byId = memo[id]
+    if not byId then byId = {}; memo[id] = byId end
+    local r = byId[mc]
+    if not r then r = ReadCooldownRaw(rule); byId[mc] = r end
+    return r
+end
+function ReadCooldownRaw(rule)
     local id = rule.spellID
     local r = { known = false, max = 1 }
     if not id or id == 0 then r.why = "no spell"; return r end
@@ -139,7 +155,8 @@ local function FindCDMFrame(id)
     -- several viewers can hold a frame for the same spell (buff icon, buff bar, cooldown): an ACTIVE match wins,
     -- otherwise the first match is returned (so an inactive placeholder cannot hide a live aura)
     local now = GetTime()
-    if cdmTick ~= ns.tickID or now - cdmAt > 0.2 then
+    -- rebuilt at most every 0.25 s: which spell a viewer frame stands for rarely changes, and whether it is ACTIVE is read live below
+    if cdmAt < 0 or now - cdmAt >= 0.25 or now < cdmAt then
         cdmIndex, cdmTick, cdmAt = BuildCDMIndex(), ns.tickID, now
     end
     local list = cdmIndex[id]
@@ -200,20 +217,20 @@ end
 -- Reference to a live aura for duration text. Numbers are only kept when readable.
 local function CleanNum(t, k)
     if type(t) ~= "table" then return nil end
-    local ok, v = pcall(function() return t[k] end)
+    local ok, v = pcall(Field, t, k)
     if ok and type(v) == "number" and not issecret(v) then return v end
 end
 local function MakeRef(aura, frame)
     local ref = {}
     if type(aura) == "table" then
-        local ok, iid = pcall(function() return aura.auraInstanceID end)
+        local ok, iid = pcall(Field, aura, "auraInstanceID")
         if ok then ref.instanceID = iid end
-        local oka, apps = pcall(function() return aura.applications end)
+        local oka, apps = pcall(Field, aura, "applications")
         if oka then ref.applications = apps end   -- may be secret; only ever passed to SetText
         ref.expiration, ref.duration = CleanNum(aura, "expirationTime"), CleanNum(aura, "duration")
         if not (ref.expiration and ref.duration) then ref.expiration, ref.duration = nil, nil end
     elseif frame then
-        local ok, iid = pcall(function() return frame.auraInstanceID end)
+        local ok, iid = pcall(Field, frame, "auraInstanceID")
         if ok then ref.instanceID = iid end
     end
     return ref
@@ -298,7 +315,20 @@ function ns.BuffPresentAny(rule)
     return false, s1
 end
 
+local BuffPresentOnce
+-- (one read per aura per engine step: several rules often watch the same aura, and the tracker's side effects should run once)
 function ns.BuffPresent(id)
+    local memo = id and ns.StepMemo and ns.StepMemo("buff")
+    if not memo then return BuffPresentOnce(id) end
+    local m = memo[id]
+    if not m then
+        m = {}
+        m[1], m[2], m[3] = BuffPresentOnce(id)
+        memo[id] = m
+    end
+    return m[1], m[2], m[3]
+end
+function BuffPresentOnce(id)
     local present, src, ref = BuffPresentRaw(id)
     if not id or id == 0 then return present, src, ref end
     local now = GetTime()
@@ -362,6 +392,11 @@ function ns.ApplyBuffEstimate(rule, info)
     local since, L = presentSince[id], LearnedTable()
     local dur = L and L[id]
     if since and type(dur) == "number" and dur > 0 then
+        -- the aura reference may be shared by other rules this step: write the estimate into this rule's own copy
+        local own = {}
+        for k, v in pairs(ref) do own[k] = v end
+        ref = own
+        info.buffRef = ref
         ref.expiration, ref.duration, ref.estimated, ref.timeSource = since + dur, dur, true, "estimate"
         info.buffSource = tostring(info.buffSource):gsub(" | time: .*$", "") .. " | time: estimate (appeared + learned " .. string.format("%.1f", dur) .. "s)"
     else
@@ -668,6 +703,12 @@ function ns.ReadContext()
         local okH, hid = pcall(C_ClassTalents.GetActiveHeroTalentSpec)
         if okH and not issecret(hid) then ctx.hero = tonumber(hid) or 0 end
     end
+    -- every value a load check reads, in one string: equal strings = equal load answers (ns.CheckContext memo)
+    local parts = {}
+    for i, c in ipairs(ns.LOAD_TRI) do local v = ctx[c.key]; parts[i] = (v == nil) and "?" or (v and "1" or "0") end
+    parts[#parts + 1] = tostring(ctx.instanceType); parts[#parts + 1] = tostring(ctx.specID)
+    parts[#parts + 1] = tostring(ctx.role); parts[#parts + 1] = tostring(ctx.hero)
+    ctx.sig = table.concat(parts, "|")
     return ctx
 end
 
@@ -676,7 +717,21 @@ end
 -- Returns ok(bool), name of the failing condition(s).
 local function known(v, result) if v == nil then return nil end return result end
 
+local CheckContextRaw
+local ctxMemo = setmetatable({}, { __mode = "k" })
 function ns.CheckContext(rule, ctx)
+    -- memo per rule: same context values (ctx.sig) and no settings edit since (ns.configVersion), re-checked at least once a second
+    local sig = ctx and ctx.sig
+    if not sig then return CheckContextRaw(rule, ctx) end
+    local now, ver = math.floor(GetTime()), ns.configVersion or 0
+    local m = ctxMemo[rule]
+    if m and m.sig == sig and m.ver == ver and m.sec == now then return m.ok, m.fail end
+    local ok, fail = CheckContextRaw(rule, ctx)
+    if not m then m = {}; ctxMemo[rule] = m end
+    m.sig, m.ver, m.sec, m.ok, m.fail = sig, ver, now, ok, fail
+    return ok, fail
+end
+function CheckContextRaw(rule, ctx)
     local load = rule.load or {}
     local ov, ovFolder = ns.FolderLoadOverride(rule)   -- a folder's Never / Always beats the rule's own load mode
     if ov == "never" then return false, "load: never (folder " .. tostring(ovFolder and ovFolder.name) .. ")" end
@@ -746,16 +801,40 @@ end
 -- One evaluation per rule per engine tick: outcome rules read their parent's result, so the parent must not be read twice.
 -- Only used inside the engine (ns.tickID is set there) and only for the SAME ctx table.
 local evalCache = setmetatable({}, { __mode = "k" })
+local function unset(v) return v == nil or v == "" end
+local function Remember(rule, ctx, res, info)
+    if not ns.tickID then return end
+    local c = evalCache[rule]   -- one entry per rule, reused every tick
+    if not c then c = {}; evalCache[rule] = c end
+    c.tick, c.ctx, c.res, c.info = ns.tickID, ctx, res, info
+end
+
+-- The result table a rule fills this step. During an engine step each rule reuses its own table (emptied first), so a few
+-- hundred rules no longer make a few hundred tables of garbage per step; outside a step (options, /xui status) it is new.
+-- Whoever keeps it (the runtime, a display's per-frame effects) always sees the rule's latest result.
+local infoPool = setmetatable({}, { __mode = "k" })
+function ns.InfoFor(rule)
+    if not (ns.InStep and ns.InStep()) then return { missing = {} } end
+    local t = infoPool[rule]
+    if not t then t = { missing = {} }; infoPool[rule] = t; return t end
+    local missing = t.missing
+    for k in pairs(t) do t[k] = nil end
+    for i = #missing, 1, -1 do missing[i] = nil end
+    t.missing = missing
+    return t
+end
+
 function ns.Evaluate(rule, ctx)
     ctx = ctx or ns.ReadContext()
     local c = ns.tickID and evalCache[rule]
     if c and c.tick == ns.tickID and c.ctx == ctx then return c.res, c.info end
     if rule.parentUid and ns.EvaluateOutcome then
         local res, oinfo = ns.EvaluateOutcome(rule, ctx)
-        if ns.tickID then evalCache[rule] = { tick = ns.tickID, ctx = ctx, res = res, info = oinfo } end
+        Remember(rule, ctx, res, oinfo)
         return res, oinfo
     end
-    local info = { ctx = ctx }
+    local info = ns.InfoFor(rule)
+    info.ctx = ctx
     info.cd = ns.ReadCooldown(rule)
     info.present, info.buffSource, info.buffRef = ns.BuffPresentAny(rule)
     if rule.buffEstimate then ns.ApplyBuffEstimate(rule, info) end
@@ -765,8 +844,6 @@ function ns.Evaluate(rule, ctx)
     info.talentOK, info.talentDetail = ns.CheckTalents(rule)
     if ns.CheckExtraTriggers then info.extraOK, info.extraDetail, info.extraRows, info.extraWhys = ns.CheckExtraTriggers(rule) else info.extraOK = true end
     -- the core cooldown / buff dropdowns must be chosen ("none" counts as a choice)
-    info.missing = {}
-    local function unset(v) return v == nil or v == "" end
     -- Triggers are added by hand (Triggers.lua): a section only needs its state chosen once it is "used" (added from the
     -- menu, or an ID is set). A rule with no trigger at all and both states blank cannot fire; both states set to "none"
     -- is still the explicit "load conditions only" rule.
@@ -792,7 +869,7 @@ function ns.Evaluate(rule, ctx)
     end
     info.trigOK = trigOK
     info.result = trigOK and info.ctxOK and (info.talentOK == true) and (#info.missing == 0)
-    if ns.tickID then evalCache[rule] = { tick = ns.tickID, ctx = ctx, res = info.result, info = info } end
+    Remember(rule, ctx, info.result, info)
     return info.result, info
 end
 
@@ -862,15 +939,27 @@ end
 
 -- Same detail as /xui status, but written to the ring-buffer log (ns.Log) instead of chat, so it can be read
 -- from the settings window's debug console tray AFTER a fight without typing anything while in combat.
+-- The periodic in-combat snapshot ("combat tick") logs only rules whose answer changed since the last snapshot, and reads the
+-- engine's own latest results instead of evaluating every rule a second time; combat start / end log everything.
+local snapLast = setmetatable({}, { __mode = "k" })
 function ns.LogStatusSnapshot(tag)
     if not ns.rules or #ns.rules == 0 then return end
     local ctx = ns.ReadContext()
-    ns.Log("-- status snapshot (%s) -- spec=%s role=%s combat=%s", tostring(tag or "?"),
-        tostring(ctx.specID), tostring(ctx.role), tostring(ctx.combat))
+    local changesOnly = tag == "combat tick"
+    ns.Log("-- status snapshot (%s) -- spec=%s role=%s combat=%s%s", tostring(tag or "?"),
+        tostring(ctx.specID), tostring(ctx.role), tostring(ctx.combat), changesOnly and " (changes only)" or "")
     for i, r in ipairs(ns.rules) do
         if r.enabled then
-            local ok, res, info = pcall(ns.Evaluate, r, ctx)
-            if ok then
+            local rt = ns.runtime and ns.runtime[r]
+            local ok, res, info
+            if rt and rt.info then ok, res, info = true, rt.info.result, rt.info
+            else ok, res, info = pcall(ns.Evaluate, r, ctx) end
+            local key = ok and (tostring(res) .. tostring(info.cdOK) .. tostring(info.buffOK) .. tostring(info.ctxOK) .. tostring(info.extraOK)) or "error"
+            local same = snapLast[r] == key
+            snapLast[r] = key
+            if changesOnly and same then
+                -- unchanged: not logged
+            elseif ok then
                 ns.Log("#%d %s result=%s | cd:%s(%s) buff:%s(%s via %s) ctx:%s talent:%s extra:%s",
                     i, r.name, tostring(res), tostring(r.cdState), tostring(info.cdOK),
                     tostring(r.buffState), tostring(info.buffOK), tostring(info.buffSource),

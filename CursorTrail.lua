@@ -179,10 +179,16 @@ local function ClearAll()
     capT = 0
 end
 
-local function Drop(x, y, limit)
+-- A dot never moves after it is dropped: it is anchored (and given its blend mode) once here, not on every rendered frame.
+local function Drop(x, y, limit, blend)
     ringN = ringN % limit + 1
     local d = dots[ringN] or NewDot(ringN)
     d.on = true; d.born = GetTime(); d.x, d.y = x, y
+    local t = d.tex
+    t:ClearAllPoints()
+    t:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
+    if blend then t:SetBlendMode(blend) end
+    d.placed = true
     d.px, d.py = lastDropX, lastDropY
     lastDropX, lastDropY = x, y
 end
@@ -224,14 +230,14 @@ local function OnUpdate()
                     for k = 1, n do
                         local t = k / n
                         local u = 1 - t
-                        Drop(u * u * m0x + 2 * u * t * lastX + t * t * m1x, u * u * m0y + 2 * u * t * lastY + t * t * m1y, limit)
+                        Drop(u * u * m0x + 2 * u * t * lastX + t * t * m1x, u * u * m0y + 2 * u * t * lastY + t * t * m1y, limit, blend)
                     end
                     midX, midY = m1x, m1y
                 else
                     local n = math.min(8, math.floor(dist / step))
                     for k = 1, n do
                         local f = k / n
-                        Drop(lastX + dx * f, lastY + dy * f, limit)
+                        Drop(lastX + dx * f, lastY + dy * f, limit, blend)
                     end
                 end
                 lastX, lastY = x, y
@@ -271,11 +277,14 @@ local function OnUpdate()
                     end
                     local t = d.tex
                     t:SetVertexColor(r, g, b, a)
-                    t:SetBlendMode(blend)
                     t:SetSize(sz, sz)
-                    t:ClearAllPoints()
-                    t:SetPoint("CENTER", UIParent, "BOTTOMLEFT", d.x, d.y)
-                    t:Show()
+                    if not d.placed then   -- (a dot placed by Drop keeps its anchor; this only covers one that was not)
+                        t:SetBlendMode(blend)
+                        t:ClearAllPoints()
+                        t:SetPoint("CENTER", UIParent, "BOTTOMLEFT", d.x, d.y)
+                        d.placed = true
+                    end
+                    if not t:IsShown() then t:Show() end
                 end
             end
         end
@@ -289,7 +298,7 @@ local function OnUpdate()
         else
             local r, g, b = Grad(stops, rev and (1 - f) or f)
             local sz = size * (1 - 0.45 * f)
-            SetGameTex(cap, curPath)
+            if cap.xuiPath ~= curPath then cap.xuiPath = curPath; SetGameTex(cap, curPath) end   -- (texture set only when it changes)
             cap:SetVertexColor(r, g, b, op * (1 - f))
             cap:SetBlendMode(blend)
             cap:SetSize(sz, sz)

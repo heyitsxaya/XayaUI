@@ -92,9 +92,30 @@ local function Scan(kind, id)
 end
 AS.Scan = Scan   -- for tests
 
--- Background pass (about 2 ms a frame): the spells you know first, then every item in the item-name index (`idx` = { ids, n, running },
+-- Background pass (about 1 ms a frame): the spells you know first, then every item in the item-name index (`idx` = { ids, n, running },
 -- the table the spell search fills; it must carry ids, n, running, nextId and max).  Safe to call again; it resumes where it stopped and finishes once per game build.
 local S = { running = false, stage = 1, pos = 1 }
+local BUDGET_MS = 1   -- per rendered frame, out of combat only (was 2: halved so the pass is never felt while it runs)
+-- one slice of the pass (a file-level function: no closure per frame)
+local function Work()
+    local t0 = debugprofilestop()
+    while debugprofilestop() - t0 < BUDGET_MS do
+        if S.stage == 1 then
+            local sp = S.spells
+            if sp == nil or S.pos > #sp then S.stage, S.pos = 2, 1
+            else Scan("spell", sp[S.pos]); S.pos = S.pos + 1 end
+        else
+            local ix = S.idx
+            if not ix then return end
+            if S.pos > (ix.n or 0) then
+                -- done only when the index itself is complete (its scan reached the last ID)
+                if not ix.running and ix.max and (ix.nextId or 0) > ix.max then S.finished = true end
+                return   -- caught up with the item index; wait for more (or finish)
+            end
+            Scan("item", ix.ids[S.pos]); S.pos = S.pos + 1
+        end
+    end
+end
 AS.state = S
 function AS.Start(idx, spellList)
     local a = DB()
@@ -104,27 +125,7 @@ function AS.Start(idx, spellList)
     S.frame = S.frame or CreateFrame("Frame")
     S.frame:SetScript("OnUpdate", function(self)
         if InCombatLockdown and InCombatLockdown() then return end
-        local okAll = pcall(function()
-            local t0 = debugprofilestop()
-            local n = 0
-            while debugprofilestop() - t0 < 2 do
-                if S.stage == 1 then
-                    local sp = S.spells
-                    if sp == nil or S.pos > #sp then S.stage, S.pos = 2, 1
-                    else Scan("spell", sp[S.pos]); S.pos = S.pos + 1 end
-                else
-                    local ix = S.idx
-                    if not ix then return end
-                    if S.pos > (ix.n or 0) then
-                        -- done only when the index itself is complete (its scan reached the last ID)
-                        if not ix.running and ix.max and (ix.nextId or 0) > ix.max then S.finished = true end
-                        return   -- caught up with the item index; wait for more (or finish)
-                    end
-                    Scan("item", ix.ids[S.pos]); S.pos = S.pos + 1
-                end
-                n = n + 1
-            end
-        end)
+        local okAll = pcall(Work)
         if S.finished or not okAll then
             S.running = false
             self:SetScript("OnUpdate", nil)

@@ -272,6 +272,23 @@ ns.EMPTY_LIST = EMPTY
 
 function ns.BeginStepIndex() stepIdx = {} end
 function ns.EndStepIndex() stepIdx = nil end
+-- true while the engine runs a step: per-step caches may be used (and reused tables handed out)
+function ns.InStep() return stepIdx ~= nil end
+-- Per-step memo tables: one table per name, emptied at the start of every step (reused, so no garbage). Outside a step: nil.
+local memos, memoStep = {}, {}
+local stepSerial = 0
+function ns.StepMemo(name)
+    if not stepIdx then return nil end
+    local t = memos[name]
+    if not t then t = {}; memos[name] = t end
+    if memoStep[name] ~= stepSerial then
+        for k in pairs(t) do t[k] = nil end
+        memoStep[name] = stepSerial
+    end
+    return t
+end
+local BeginStepIndex0 = ns.BeginStepIndex
+function ns.BeginStepIndex() stepSerial = stepSerial + 1; BeginStepIndex0() end
 
 local function FolderIndex()
     local fi = stepIdx.folders

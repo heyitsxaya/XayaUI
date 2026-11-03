@@ -364,8 +364,13 @@ local function Arm(on)
     if on == armed then return end
     armed = on
     if on then
-        f:RegisterEvent("UNIT_SPELLCAST_SENT")
-        f:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+        if f.RegisterUnitEvent then   -- player casts only (all units woke this for every nearby cast)
+            f:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player")
+            f:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+        else
+            f:RegisterEvent("UNIT_SPELLCAST_SENT")
+            f:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+        end
         f:RegisterUnitEvent("UNIT_AURA", "player")
         uaLogged, uaCount = { ooc = 0, combat = 0 }, { ooc = 0, combat = 0 }
         flagTotals = { A = 0, U = 0, R = 0, n = 0 }

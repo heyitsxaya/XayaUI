@@ -22,7 +22,8 @@ function ns.NewUID() return "u" .. tostring(time()) .. tostring(math.random(1000
 
 -- The rule an outcome follows (nil if missing). Outcomes cannot own outcomes, so there is no chain and no cycle.
 function ns.FindParentRule(rule)
-    local p, indexed = ns.StepParentOf(rule)
+    local p, indexed = nil, false
+    if ns.StepParentOf then p, indexed = ns.StepParentOf(rule) end
     if indexed then return p end
     local uid = rule.parentUid
     if type(uid) ~= "string" or uid == "" then return nil end
@@ -48,7 +49,7 @@ function ns.RemapOutcomeRefs(parent, fn)
 end
 
 function ns.OutcomesOf(parent)
-    local idx = ns.StepChildrenOf(parent, "all")
+    local idx = ns.StepChildrenOf and ns.StepChildrenOf(parent, "all")
     if idx then return idx end
     local out = {}
     if type(parent.uid) ~= "string" then return out end
@@ -172,21 +173,20 @@ ns.CheckValue = CheckValue
 -- true / false / nil, detail. (A AND B) OR (C) ... with per-condition NOT.
 local function EvalWhen(list, p, pr, pi)
     if #list == 0 then return nil, "no conditions added" end
-    local groups, cur = {}, nil
+    -- checks joined by AND form a group; "or" starts the next group. Groups are folded as they close (no tables).
+    local anyTrue, anyNil = false, false
+    local gFalse, gNil = false, false
     local why
     for i, t in ipairs(list) do
+        if i > 1 and t.op == "or" then
+            if not gFalse then if gNil then anyNil = true else anyTrue = true end end
+            gFalse, gNil = false, false
+        end
         local v = CheckValue(t, p, pr, pi)
         if v == nil then why = why or ("check " .. i .. (t.ref and " is unknown or its trigger was removed" or " has nothing chosen")) end
-        if i == 1 or t.op == "or" then cur = { anyFalse = false, anyNil = false }; groups[#groups + 1] = cur end
-        if v == false then cur.anyFalse = true elseif v == nil then cur.anyNil = true end
+        if v == false then gFalse = true elseif v == nil then gNil = true end
     end
-    local anyTrue, anyNil = false, false
-    for _, g in ipairs(groups) do
-        if g.anyFalse then
-            -- this AND-group is false
-        elseif g.anyNil then anyNil = true
-        else anyTrue = true end
-    end
+    if not gFalse then if gNil then anyNil = true else anyTrue = true end end
     if anyTrue then return true, "matched" end
     if anyNil then return nil, why or "unknown" end
     return false, "no combination matched"
@@ -194,7 +194,8 @@ end
 
 function ns.EvaluateOutcome(rule, ctx)
     if rule.isCue and ns.EvaluateCue then return ns.EvaluateCue(rule, ctx) end
-    local info = { ctx = ctx, missing = {}, outcome = true }
+    local info = ns.InfoFor and ns.InfoFor(rule) or { missing = {} }
+    info.ctx, info.outcome = ctx, true
     local p = ns.FindParentRule(rule)
     if not p then
         info.missing[1] = "parent rule not found"
