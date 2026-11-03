@@ -4621,6 +4621,13 @@ local function StartDrag(button)
     dragFrame:SetWidth(math.max(80, dragFrame.text:GetStringWidth() + 16))
     dragFrame:Show()
     dragFrame:SetScript("OnUpdate", function(self)
+        local ok, err = pcall(drag.tick, self)
+        if not ok then drag.fail(err) end
+    end)
+end
+-- the per-frame part of a drag; any error here ends the drag (see drag.fail) instead of repeating every frame
+drag.tick = function(self)
+    do
         local x, y = GetCursorPosition()
         local sc = UIParent:GetEffectiveScale()
         self:ClearAllPoints()
@@ -4633,7 +4640,16 @@ local function StartDrag(button)
             if want then want:LockHighlight() end
             drag.hl = want
         end
-    end)
+    end
+end
+-- a drag, drop or arrow move failed: put everything back, say what failed, and keep the message in the saved error log
+drag.fail = function(err)
+    drag.kind, drag.obj = nil, nil
+    if dragFrame then dragFrame:Hide(); dragFrame:SetScript("OnUpdate", nil) end
+    if drag.hl then pcall(drag.hl.UnlockHighlight, drag.hl); drag.hl = nil end
+    ns.Print("moving a row failed and was cancelled: " .. tostring(err))
+    if ns.CaptureError then pcall(ns.CaptureError, "XayaUI move: " .. tostring(err), debugstack and debugstack(2) or "") end
+    pcall(Notify)
 end
 local function StopDrag(button)
     local kind, obj = drag.kind, drag.obj
@@ -4772,7 +4788,7 @@ local function MakeReorderArrow(button, dir)
     b.tex:SetTexture(base)
     b:SetScript("OnMouseDown", function(self) if self:IsEnabled() then self.tex:SetPoint("CENTER", 0, -1) end end)
     b:SetScript("OnMouseUp", function(self) self.tex:SetPoint("CENTER", 0, 0) end)
-    b:SetScript("OnClick", function(self) ReorderRow(button, self.dir) end)
+    b:SetScript("OnClick", function(self) local ok, e = pcall(ReorderRow, button, self.dir); if not ok then drag.fail(e) end end)
     b:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         if self:IsEnabled() then
@@ -5785,6 +5801,15 @@ function ns.SidebarRenameLater(button)
 end
 
 local function DecorateButton(button)
+    do   -- the tree reuses its row buttons: when one now shows a different row, drop what the previous row left on it (height, note, type icons)
+        local uvnow = tostring(button.uniquevalue or "")
+        if button.xuiLastUV ~= uvnow then
+            button.xuiLastUV = uvnow
+            if button.xuiH0 and not button.xuiGone and (button:GetHeight() or 0) > button.xuiH0 + 0.5 then button:SetHeight(button.xuiH0) end
+            button.xuiNoteH = nil
+            for _, k in ipairs({ "xuiSub", "xuiType", "xuiType2" }) do if button[k] and button[k].Hide then button[k]:Hide() end end
+        end
+    end
     PaintBanner(button)
     PaintGuides(button)
     ns.MultiPaint(button)
@@ -5820,8 +5845,8 @@ local function DecorateButton(button)
         button:RegisterForDrag("LeftButton")
         button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         button:HookScript("OnClick", function(self, mouse) ns.Trace("click"); if mouse == "RightButton" then ShowRowMenu(self) else ns.MultiClick(self, mouse) end end)
-        button:HookScript("OnDragStart", StartDrag)
-        button:HookScript("OnDragStop", StopDrag)
+        button:HookScript("OnDragStart", function(self) local ok, e = pcall(StartDrag, self); if not ok then drag.fail(e) end end)
+        button:HookScript("OnDragStop", function(self) local ok, e = pcall(StopDrag, self); if not ok then drag.fail(e) end end)
     end
     if not button.xuiDblHooked then
         button.xuiDblHooked = true
