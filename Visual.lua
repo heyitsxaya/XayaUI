@@ -1110,9 +1110,21 @@ local function GetFrame(rule)
     end)
     -- smooth animation: the engine ticks 5x per second, which made the wipe / fades step. While one of those
     -- effects is active, re-run just that part every rendered frame from the stored (absolute) expiry time.
-    fr:SetScript("OnUpdate", function(self)
+    -- (capped at ~30 per second: at 60+ fps this ran the whole fade / wipe / text routine for every visible display on
+    -- every rendered frame, which is what made combat feel sticky with many displays on screen)
+    fr:SetScript("OnUpdate", function(self, elapsed)
         local r = self.fxRule
-        if r then ns.UpdateVisualText(r, self.fxInfo, true) end
+        if not r then return end
+        local acc = (self.fxAcc or 0) + (elapsed or 0)
+        if acc < 0.033 then self.fxAcc = acc; return end
+        self.fxAcc = 0
+        if ns.perfOn then
+            local t = debugprofilestop()
+            ns.UpdateVisualText(r, self.fxInfo, true)
+            ns.PerfAdd("fx", debugprofilestop() - t)
+        else
+            ns.UpdateVisualText(r, self.fxInfo, true)
+        end
     end)
     frames[rule] = fr
     return fr
@@ -1424,40 +1436,40 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     -- secret): use Blizzard's duration object + curves. The curve result goes straight into the widget setters,
     -- never into Lua arithmetic. (Midnight API, unverified in game - every call is pcall'd.)
     local dobj
-    if f == nil and ref and ref.instanceID ~= nil and C_UnitAuras and C_UnitAuras.GetAuraDuration
+    if f == nil and ref and ref.instanceID and C_UnitAuras and C_UnitAuras.GetAuraDuration
         and C_CurveUtil and (v.fadeGrey or v.fadeAlpha) then
         local okd, d = pcall(C_UnitAuras.GetAuraDuration, "player", ref.instanceID)
         if okd and d and d.EvaluateRemainingPercent then dobj = d end
     end
+    -- one cached curve per purpose; rebuilt only when its end values change (no per-call string building, which was garbage)
     fr.curves = fr.curves or {}
     local function NumCurve(key, y0, y1)   -- remaining 0% -> y0, 100% -> y1
-        local ck = key .. y0 .. "/" .. y1
-        local c = fr.curves[ck]
-        if c == nil then
-            local okc, cv = pcall(C_CurveUtil.CreateCurve)
-            c = false
-            if okc and cv then
-                if Enum and Enum.LuaCurveType and Enum.LuaCurveType.Linear then pcall(cv.SetType, cv, Enum.LuaCurveType.Linear) end
-                if pcall(cv.AddPoint, cv, 0, y0) and pcall(cv.AddPoint, cv, 1, y1) then c = cv end
-            end
-            fr.curves[ck] = c
+        local e = fr.curves[key]
+        if e and e.a == y0 and e.b == y1 then return e.cv or nil end
+        e = e or {}
+        e.a, e.b, e.cv = y0, y1, false
+        local okc, cv = pcall(C_CurveUtil.CreateCurve)
+        if okc and cv then
+            if Enum and Enum.LuaCurveType and Enum.LuaCurveType.Linear then pcall(cv.SetType, cv, Enum.LuaCurveType.Linear) end
+            if pcall(cv.AddPoint, cv, 0, y0) and pcall(cv.AddPoint, cv, 1, y1) then e.cv = cv end
         end
-        return c or nil
+        fr.curves[key] = e
+        return e.cv or nil
     end
     local function ColorCurve(key, c0, c1)
-        local ck = key .. table.concat(c0, ",") .. "/" .. table.concat(c1, ",")
-        local c = fr.curves[ck]
-        if c == nil then
-            local okc, cv = pcall(C_CurveUtil.CreateColorCurve)
-            c = false
-            if okc and cv and CreateColor then
-                if Enum and Enum.LuaCurveType and Enum.LuaCurveType.Linear then pcall(cv.SetType, cv, Enum.LuaCurveType.Linear) end
-                if pcall(cv.AddPoint, cv, 0, CreateColor(c0[1], c0[2], c0[3], c0[4]))
-                    and pcall(cv.AddPoint, cv, 1, CreateColor(c1[1], c1[2], c1[3], c1[4])) then c = cv end
-            end
-            fr.curves[ck] = c
+        local e = fr.curves[key]
+        if e and e.a1 == c0[1] and e.a2 == c0[2] and e.a3 == c0[3] and e.a4 == c0[4]
+            and e.b1 == c1[1] and e.b2 == c1[2] and e.b3 == c1[3] and e.b4 == c1[4] then return e.cv or nil end
+        e = e or {}
+        e.a1, e.a2, e.a3, e.a4, e.b1, e.b2, e.b3, e.b4, e.cv = c0[1], c0[2], c0[3], c0[4], c1[1], c1[2], c1[3], c1[4], false
+        local okc, cv = pcall(C_CurveUtil.CreateColorCurve)
+        if okc and cv and CreateColor then
+            if Enum and Enum.LuaCurveType and Enum.LuaCurveType.Linear then pcall(cv.SetType, cv, Enum.LuaCurveType.Linear) end
+            if pcall(cv.AddPoint, cv, 0, CreateColor(c0[1], c0[2], c0[3], c0[4]))
+                and pcall(cv.AddPoint, cv, 1, CreateColor(c1[1], c1[2], c1[3], c1[4])) then e.cv = cv end
         end
-        return c or nil
+        fr.curves[key] = e
+        return e.cv or nil
     end
 
     -- fade: desaturate (gray) or blend vertex color toward a chosen color as the buff runs out; gray while on cooldown
@@ -1629,7 +1641,14 @@ function ns.UpdateVisualText(rule, info, fxOnly)
                 if okv and cur ~= nil then shown = pcall(fr.count.SetText, fr.count, cur) end
             end
         else
-            if ref and ref.applications ~= nil then shown = pcall(fr.count.SetText, fr.count, ref.applications) end
+            if ref and ref.applications ~= nil then
+                shown = pcall(fr.count.SetText, fr.count, ref.applications)
+            elseif ref and ref.instanceID and C_UnitAuras and C_UnitAuras.GetAuraApplicationDisplayCount then
+                -- found through the Cooldown Manager: no readable stack number, but the game formats one for display
+                -- ("" below 2 stacks, so a one-stack aura shows nothing)
+                local okc, str = pcall(C_UnitAuras.GetAuraApplicationDisplayCount, "player", ref.instanceID, 2, 999)
+                if okc and str ~= nil then shown = pcall(fr.count.SetText, fr.count, str) end
+            end
         end
         if not shown and sample then fr.count:SetText("3"); shown = true end
         fr.count:SetShown(shown)
@@ -1702,18 +1721,45 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         fr.text:Hide()
         return
     end
-    -- path 2: numbers are secret -> hand Blizzard a duration object (experimental)
-    if ref and ref.instanceID ~= nil and fr.cd and fr.cd.SetCooldownFromDurationObject
-        and C_UnitAuras and C_UnitAuras.GetAuraDuration then
+    -- numbers are secret (in combat). Everything below only ever hands the secret to a widget or string.format.
+    -- (A boolean test of a secret is allowed; comparing it, even with nil, is not - so the instance id is tested by truthiness.)
+    if ref and ref.instanceID and C_UnitAuras and C_UnitAuras.GetAuraDuration then
         local ok, dur = pcall(C_UnitAuras.GetAuraDuration, "player", ref.instanceID)
-        if ok and dur then
-            local ok2 = pcall(fr.cd.SetCooldownFromDurationObject, fr.cd, dur)
-            if ok2 then
-                fr.text:Hide()
-                fr.cd:Show()
-                return
+        if not (ok and dur) then
+            ns.PerfPath(rule, "dur:GetAuraDuration " .. (ok and "returned nothing" or "failed"))
+        else
+            -- path 2: our own text from the duration object's remaining time: whole seconds, full control of font / size / place,
+            -- and no dependence on Blizzard's cooldown-number setting
+            if dur.GetRemainingDuration then
+                local okr, remS = pcall(dur.GetRemainingDuration, dur)
+                if okr and remS ~= nil then
+                    local oks = pcall(function() fr.text:SetText(("%d"):format(remS)) end)
+                    if oks then
+                        if fr.cd then fr.cd:Hide() end
+                        fr.text:Show()
+                        ns.PerfPath(rule, "dur:own text (secret seconds)")
+                        return
+                    end
+                    ns.PerfPath(rule, "dur:format of secret seconds failed")
+                else
+                    ns.PerfPath(rule, "dur:GetRemainingDuration " .. (okr and "nil" or "failed"))
+                end
+            end
+            -- path 3: hand Blizzard's cooldown widget the duration object (its own countdown digits; they follow the
+            -- game's "Show Numbers for Cooldowns" setting, which is why this is the fallback)
+            if fr.cd and fr.cd.SetCooldownFromDurationObject then
+                local ok2, err2 = pcall(fr.cd.SetCooldownFromDurationObject, fr.cd, dur)
+                if ok2 then
+                    fr.text:Hide()
+                    fr.cd:Show()
+                    ns.PerfPath(rule, "dur:cooldown widget")
+                    return
+                end
+                ns.PerfPath(rule, "dur:SetCooldownFromDurationObject failed: " .. tostring(err2):sub(1, 80))
             end
         end
+    else
+        ns.PerfPath(rule, ref and "dur:no aura instance id" or "dur:no aura reference")
     end
     if fr.cd then fr.cd:Hide() end
     if sample then

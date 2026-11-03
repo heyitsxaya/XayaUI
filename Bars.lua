@@ -289,7 +289,7 @@ function ns.Bars_Update()
                 elseif present == true then
                     -- numbers are secret: experimental duration-object path
                     local done = false
-                    if ref and ref.instanceID ~= nil and fr.bar.SetTimerDuration and C_UnitAuras and C_UnitAuras.GetAuraDuration then
+                    if ref and ref.instanceID and fr.bar.SetTimerDuration and C_UnitAuras and C_UnitAuras.GetAuraDuration then
                         local okd, d = pcall(C_UnitAuras.GetAuraDuration, "player", ref.instanceID)
                         if okd and d then done = pcall(fr.bar.SetTimerDuration, fr.bar, d) end
                     end

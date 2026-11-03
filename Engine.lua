@@ -6,6 +6,7 @@ local addonName, ns = ...
 
 ns.runtime = setmetatable({}, { __mode = "k" }) -- rule -> { active, lastPlay, visualWanted }
 
+local perf = { on = false }   -- /xui perf (see the bottom of this file)
 local dirty = true
 local TICK = 0.2
 local MIN_GAP = 0.05   -- events (UNIT_AURA, cooldown updates) fire many times a second in combat; re-evaluating on each one is what costs frames
@@ -36,7 +37,9 @@ local function Step()
     for _, rule in ipairs(ns.rules) do
         local rt = RT(rule)
         if rule.enabled then
+            local pt = perf.on and debugprofilestop()
             local ok, result, info = pcall(ns.Evaluate, rule, ctx)
+            if pt then local d = debugprofilestop() - pt; perf.evalMs = perf.evalMs + d; perf.rule[rule] = (perf.rule[rule] or 0) + d end
             if not ok then
                 local err = result
                 result, info = false, nil
@@ -87,8 +90,10 @@ local function Step()
                 end
             end
             rt.visualWanted = wanted
+            local pv = perf.on and debugprofilestop()
             ns.SetVisualShown(rule, wanted)
             if wanted then ns.UpdateVisualText(rule, info) end
+            if pv then local d = debugprofilestop() - pv; perf.visMs = perf.visMs + d; perf.rule[rule] = (perf.rule[rule] or 0) + d end
         else
             if rt.active and not rule.parentUid and ns.RunActions then ns.RunActions(rule, "finish") end
             rt.active = false
@@ -114,16 +119,32 @@ local function Step()
         end
     end
     if ns.Bars_Update then
+        local pb = perf.on and debugprofilestop()
         local okb, errb = pcall(ns.Bars_Update)
+        if pb then perf.barsMs = perf.barsMs + (debugprofilestop() - pb) end
         if not okb and not ns.barErr then ns.barErr = true; ns.Print("bars error: " .. tostring(errb)) end
     end
 end
 
--- /xui perf: measures the engine on this machine. Off by default; while on, each Step is timed with debugprofilestop.
-local perf = { on = false }
+-- /xui perf: measures the engine on this machine. Off by default; while on, each Step is timed with debugprofilestop,
+-- split into rule evaluation / visual updates / bars, with the most expensive rules named. Every report is also saved to
+-- CueRulesDB.perfLog (last 6) so it survives /reload and can be read from the saved variables.
 local function PerfReset()
     perf.steps, perf.total, perf.max, perf.events, perf.t0 = 0, 0, 0, {}, GetTime()
+    perf.evalMs, perf.visMs, perf.barsMs, perf.fxMs, perf.fxN = 0, 0, 0, 0, 0
+    perf.rule = {}
+    perf.paths = {}
     perf.mem0 = collectgarbage("count")
+    ns.perfOn = true
+end
+function ns.PerfAdd(key, ms)   -- other files add their own timings (per-frame effects)
+    if not perf.on then return end
+    if key == "fx" then perf.fxMs, perf.fxN = perf.fxMs + ms, perf.fxN + 1 end
+end
+function ns.PerfPath(rule, tag)   -- which duration-text path a rule took this tick (counted while measuring)
+    if not perf.on then return end
+    local k = tostring(tag)
+    perf.paths[k] = (perf.paths[k] or 0) + 1
 end
 local rawStep = Step
 Step = function()
@@ -134,6 +155,24 @@ Step = function()
     perf.steps, perf.total = perf.steps + 1, perf.total + d
     if d > perf.max then perf.max = d end
 end
+
+-- the game's own per-addon CPU meter (C_AddOnProfiler); read-only, no cost to the addons measured
+local function AddonCPU()
+    local out = {}
+    if not (C_AddOnProfiler and C_AddOnProfiler.GetAddOnMetric and Enum and Enum.AddOnProfilerMetric and C_AddOns and C_AddOns.GetNumAddOns) then return nil end
+    local M = Enum.AddOnProfilerMetric
+    for i = 1, C_AddOns.GetNumAddOns() do
+        local name = C_AddOns.GetAddOnInfo(i)
+        if name and C_AddOns.IsAddOnLoaded(name) then
+            local ok, avg = pcall(C_AddOnProfiler.GetAddOnMetric, name, M.RecentAverageTime)
+            local ok2, peak = pcall(C_AddOnProfiler.GetAddOnMetric, name, M.PeakTime)
+            if ok and type(avg) == "number" then out[#out + 1] = { name = name, avg = avg, peak = (ok2 and type(peak) == "number") and peak or 0 } end
+        end
+    end
+    table.sort(out, function(x, y) return x.avg > y.avg end)
+    return out
+end
+
 function ns.PerfCommand(arg)
     arg = tostring(arg or ""):lower():match("^%s*(%a*)") or ""
     if arg == "on" or arg == "reset" then
@@ -141,7 +180,7 @@ function ns.PerfCommand(arg)
         ns.Print("perf: measuring. Play (ideally a fight), then /xui perf to read it, /xui perf off to stop.")
         return
     elseif arg == "off" then
-        perf.on = false
+        perf.on = false; ns.perfOn = false
         ns.Print("perf: stopped")
         return
     end
@@ -153,10 +192,39 @@ function ns.PerfCommand(arg)
     table.sort(parts)
     local rules, on = #(ns.rules or {}), 0
     for _, r in ipairs(ns.rules or {}) do if r.enabled then on = on + 1 end end
-    ns.Print(("perf over %.0fs: %d steps (%.1f/s), %.2f ms avg, %.2f ms worst, %.1f%% of one frame budget at 60 fps (%d rules, %d on)"):format(
-        secs, perf.steps, perf.steps / secs, perf.total / steps, perf.max, (perf.total / secs) / 10, rules, on))
-    ns.Print(("perf: Lua memory %.0f KB now, %+.0f KB/s since start (a high number means garbage)"):format(collectgarbage("count"), (collectgarbage("count") - perf.mem0) / secs))
-    ns.Print("perf: events " .. (#parts > 0 and table.concat(parts, ", ") or "none counted yet"))
+    local lines = {}
+    local function L(fmt, ...) local t = fmt:format(...); lines[#lines + 1] = t; ns.Print(t) end
+    L("perf over %.0fs: %d steps (%.1f/s), %.2f ms avg, %.2f ms worst, %.1f%% of one frame budget at 60 fps (%d rules, %d on)",
+        secs, perf.steps, perf.steps / secs, perf.total / steps, perf.max, (perf.total / secs) / 10, rules, on)
+    L("perf: per second: rules %.2f ms, visuals %.2f ms, bars %.2f ms, per-frame effects %.2f ms (%d calls)",
+        perf.evalMs / secs, perf.visMs / secs, perf.barsMs / secs, perf.fxMs / secs, perf.fxN)
+    local top = {}
+    for r, ms in pairs(perf.rule) do top[#top + 1] = { r, ms } end
+    table.sort(top, function(a, b) return a[2] > b[2] end)
+    for i = 1, math.min(5, #top) do
+        local r = top[i][1]
+        L("perf: #%d %.2f ms/s  %s%s", i, top[i][2] / secs, tostring(r.name), r.isCue and " (cue)" or "")
+    end
+    L("perf: Lua memory %.0f KB now, %+.0f KB/s since start (a high number means garbage)", collectgarbage("count"), (collectgarbage("count") - perf.mem0) / secs)
+    L("perf: events %s", #parts > 0 and table.concat(parts, ", ") or "none counted yet")
+    local pp = {}
+    for k, n in pairs(perf.paths) do pp[#pp + 1] = ("%s x%d"):format(k, n) end
+    table.sort(pp)
+    if #pp > 0 then L("perf: duration-text paths: %s", table.concat(pp, ", ")) end
+    local cpu = AddonCPU()
+    if cpu then
+        local bits = {}
+        for i = 1, math.min(8, #cpu) do bits[#bits + 1] = ("%s %.2f/%.1f"):format(cpu[i].name, cpu[i].avg, cpu[i].peak) end
+        L("perf: game's own addon meter, recent avg/peak ms per frame, top 8: %s", table.concat(bits, "; "))
+    else
+        L("perf: the game's addon meter (C_AddOnProfiler) is not available here")
+    end
+    if type(CueRulesDB) == "table" then
+        local log = CueRulesDB.perfLog
+        if type(log) ~= "table" then log = {}; CueRulesDB.perfLog = log end
+        log[#log + 1] = { at = date("%Y-%m-%d %H:%M:%S"), build = ns.version or (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("XayaUI", "Version")), combat = (UnitAffectingCombat and UnitAffectingCombat("player")) and true or false, lines = lines }
+        while #log > 6 do table.remove(log, 1) end
+    end
 end
 
 ns.Step = function() return Step() end
