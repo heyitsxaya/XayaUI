@@ -336,6 +336,8 @@ local function Container(f)
     c.xuiTarget = target   -- what the group's X / Y is measured from (the group outline drag needs its scale)
     return c
 end
+-- XayaUI's frame for a group (created on first use, kept in place from the group's settings): the combat engine hangs its icons here
+function ns.GroupFrame(f) return f and Container(f) or nil end
 -- the frame a rule's display hangs from, and its dynamic-group ancestor (if any)
 local function ParentFor(rule)
     if rule.cursorConv and ns.CursorReminderFolder then   -- converted at-cursor reminder: hangs from the cursor group

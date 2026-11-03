@@ -22,6 +22,9 @@ local function proxyFrame(kind)
         if k == "Show" then return function(self) self.shown = true end end
         if k == "Hide" then return function(self) self.shown = false end end
         if k == "SetScale" then return function(self, v) self.scale = v end end
+        if k == "SetParent" then return function(self, p) self.parent = p end end
+        if k == "GetParent" then return function(self) return self.parent end end
+        if k == "SetShown" then return function(self, v) self.shown = v and true or false end end
         if k == "SetAlpha" then return function(self, v) self.alpha = v end end
         if k == "SetTexCoord" then return function(self, ...) self.texcoord = { ... } end end
         if k == "SetDrawSwipe" then return function(self, v) self.swipe = v end end
@@ -170,8 +173,9 @@ check("flow: horizontal, TOPLEFT, grows right/down, wrap size = cW",
 check("layout: spacing 5 both ways, icon 30 x 30",
       lua("local l = containers[1].groups.main.layout; return l.elementSpacing == 5 and l.lineSpacing == 5 and l.elementWidth == 30 and l.elementHeight == 30"))
 # first icon centre must land at CENTER + (10, 20): TOPLEFT corner = centre + (-15, +15)
-check("placement: container TOPLEFT puts first icon centre at (10, 20)",
-      lua("local p = containers[1]._points[1]; return p[1] == 'TOPLEFT' and p[3] == 'CENTER' and p[4] == -5 and p[5] == 35"),
+# XayaUI lays a RIGHT-growing group's first icon half an icon below the group centre (10, 20): icon centre (10, 5), TOPLEFT corner (-5, 20)
+check("placement (no group frame shared): container TOPLEFT puts the first icon where XayaUI draws it",
+      lua("local p = containers[1]._points[1]; return p[1] == 'TOPLEFT' and p[3] == 'CENTER' and p[4] == -5 and p[5] == 20"),
       lua("local p = containers[1]._points[1]; return table.concat({tostring(p[1]), tostring(p[3]), tostring(p[4]), tostring(p[5])}, ' ')"))
 check("button init wires icon, cooldown (no swipe), duration text, stack text, zoom 0.08",
       lua("local b = buttons[1]; return b.log.icon and b.log.cd and b.log.cd.swipe == false and b.log.dur and b.log.count and b.log.icon.texcoord[1] == 0.08 and b.log.dur.fontsize == 12 and b.log.count.fontsize == 10"))
@@ -188,9 +192,25 @@ lua('SlashCmdList["XUIENGINE"]("on Beta")')
 check("group B: vertical flow, TOPLEFT, wrap size = cH",
       lua("local f = containers[2].flow; return f.axis == 1 and f.anchor == 'TOPLEFT' and f.v == -1 and f.max == 360"))
 # XayaUI: container TOPLEFT at CENTER?? no: point TOPLEFT -> centre = pos + (cW/2, -cH/2) with cW=1 (0 -> min 1), cH=360
-check("group B placement divides by scale 2 and offsets by container size",
-      lua("local p = containers[2]._points[1]; return p[1] == 'TOPLEFT' and p[4] == ((-50 + 0.5) - (0.5 * 30)) / 2 and p[5] == ((60 - 180) + 0.5 * 30) / 2"),
+# group B (TOPLEFT point, scale 2, cW 0 -> 1, cH 360, DOWN): centre in group units (-50/2 + 0.5, 60/2 - 180) = (-24.5, -150);
+# first icon half an icon right of it; TOPLEFT corner of that icon = (-24.5, -135)
+check("group B placement: offsets in the group's scaled units, container size unscaled, first icon half an icon right",
+      lua("local p = containers[2]._points[1]; return p[1] == 'TOPLEFT' and p[4] == -24.5 and p[5] == -135 and containers[2].scale == 2"),
       lua("local p = containers[2]._points[1]; return tostring(p[4]) .. ' ' .. tostring(p[5])"))
+
+# 2b. with XayaUI's group frame shared, the container hangs from it (parent offsets, scale, moves all carry over)
+lua('HOST = setmetatable({ _kind = "Host" }, getmetatable(UIParent)); NS.GroupFrame = function(fo) if fo.id == "fA" then return HOST end end')
+lua('SlashCmdList["XUIENGINE"]("refresh")')
+check("hosted: parented to XayaUI's group frame, scale 1, first icon at the group's layout spot",
+      lua("local c = containers[1]; local p = c._points[1]; return c.parent == HOST and c.scale == 1 and p[1] == 'TOPLEFT' and p[2] == HOST and p[3] == 'CENTER' and p[4] == -15 and p[5] == 0"),
+      lua("local c = containers[1]; local p = c._points[1]; return tostring(c.parent == HOST) .. ' ' .. tostring(c.scale) .. ' ' .. tostring(p[4]) .. ' ' .. tostring(p[5])"))
+lua('NS.unlocked = true; NS.AuraDisplay.SyncShown()')
+check("unlocked: the engine icons step aside for XayaUI's samples", lua("return containers[1].shown == false"))
+lua('NS.unlocked = false; NS.groupUnlocked = { fA = true }; NS.AuraDisplay.SyncShown()')
+check("group unlocked: hidden too", lua("return containers[1].shown == false"))
+lua('NS.groupUnlocked = {}; NS.AuraDisplay.SyncShown()')
+check("locked again: shown", lua("return containers[1].shown == true"))
+lua('NS.GroupFrame = nil')
 
 # 3. unsupported groups are refused with a reason and XayaUI keeps drawing them
 lua('SlashCmdList["XUIENGINE"]("on static")'); lua('SlashCmdList["XUIENGINE"]("on center")')

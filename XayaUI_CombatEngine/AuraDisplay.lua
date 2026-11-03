@@ -150,8 +150,39 @@ local function FlowFor(dir)
     if dir == "UP" then return A.Vertical, "BOTTOMLEFT", F.Right, F.Up, -1, -1 end
 end
 
--- Place the container so the FIRST icon's centre lands where XayaUI puts a dynamic group's first icon (the container centre).
+-- Where XayaUI's dynamic layout puts a group's FIRST icon, relative to the group frame's centre, in icon sizes: half an icon
+-- along the cross axis (Visual.lua LayoutDynamic: x = cross / 2 when growing up / down, y = -cross / 2 when growing sideways).
+local FIRST_ICON = { RIGHT = { 0, -.5 }, LEFT = { 0, -.5 }, DOWN = { .5, 0 }, UP = { .5, 0 } }
+
+-- The strata XayaUI gives the group's displays: the nearest group (this one, then its parents) that sets one, else HIGH.
+local function StrataFor(fo)
+    local f, guard = fo, 0
+    while f and guard < 32 do
+        if f.cStrata then return f.cStrata end
+        f, guard = f.parent and ns.FolderById and ns.FolderById(f.parent), guard + 1
+    end
+    return "HIGH"
+end
+
+-- Place the container so its first icon lands exactly where XayaUI would draw the group's first icon.
+-- It hangs from XayaUI's own frame for the group, so the group's position, its parent groups' offsets, scale and opacity, and
+-- any later move of the group all carry over without being recomputed here.
 local function Place(c, fo, anchor, iw, ih)
+    local first = FIRST_ICON[fo.cGrowth or "RIGHT"] or { 0, 0 }
+    local ac = TO_CENTER[anchor] or TO_CENTER.CENTER   -- container corner `anchor` -> first icon centre, in icon sizes
+    local ox = first[1] * iw - ac[1] * iw
+    local oy = first[2] * ih - ac[2] * ih
+    local host = ns.GroupFrame and ns.GroupFrame(fo)
+    if host then
+        if c:GetParent() ~= host then c:SetParent(host) end
+        c:SetScale(1)
+        c:SetAlpha(1)
+        c:SetFrameStrata(StrataFor(fo))
+        c:ClearAllPoints()
+        c:SetPoint(anchor, host, "CENTER", ox, oy)
+        return
+    end
+    -- fallback (XayaUI too old to share its group frame): the same position worked out from the group's own settings only
     local sc = math.max(0.1, fo.cScale or 1)
     local target = UIParent
     local rel = fo.cRel
@@ -160,20 +191,16 @@ local function Place(c, fo, anchor, iw, ih)
     if g and g.GetCenter then target = g end
     local pt = fo.cPoint or "CENTER"
     local rp = fo.cRelPoint or pt
-    -- XayaUI: container point `pt` sits at target.rp + (cX, cY); the first icon is at the container's centre
     local tc = TO_CENTER[pt] or TO_CENTER.CENTER
     local cw, ch = math.max(1, fo.cW or 1), math.max(1, fo.cH or 1)
-    local fx = (fo.cX or 0) + tc[1] * cw      -- first-icon centre relative to target.rp
-    local fy = (fo.cY or 0) + tc[2] * ch
-    -- Blizzard: the container corner `anchor` is the first icon's matching corner
-    local ac = TO_CENTER[anchor] or TO_CENTER.CENTER   -- corner -> icon centre, in icon sizes
-    local ox = fx - ac[1] * iw
-    local oy = fy - ac[2] * ih
+    -- (Visual.lua Container: the group frame is cW x cH in its own scaled units and its point sits cX / scale units from the target)
+    local cx = (fo.cX or 0) / sc + tc[1] * cw      -- group centre relative to target.rp, in the group's own units
+    local cy = (fo.cY or 0) / sc + tc[2] * ch
     c:SetScale(sc)
     c:SetAlpha(fo.cAlpha or 1)
-    if fo.cStrata then c:SetFrameStrata(fo.cStrata) end
+    c:SetFrameStrata(StrataFor(fo))
     c:ClearAllPoints()
-    c:SetPoint(anchor, target, rp, ox / sc, oy / sc)
+    c:SetPoint(anchor, target, rp, cx + ox, cy + oy)
 end
 
 local function ButtonInit(w, h, cue)
@@ -207,6 +234,19 @@ local function ButtonInit(w, h, cue)
     end
 end
 
+-- While visuals or the group (or a group around it) are unlocked, XayaUI shows its own draggable samples: the engine's icons
+-- step aside so there are no doubles, and come back (following the group's new position) when it is locked again.
+local function GroupUnlocked(fo)
+    if ns.unlocked then return true end
+    local gu = ns.groupUnlocked
+    if not gu or not next(gu) then return false end
+    local f, guard = fo, 0
+    while f and guard < 32 do
+        if gu[f.id] then return true end
+        f, guard = f.parent and ns.FolderById and ns.FolderById(f.parent), guard + 1
+    end
+    return false
+end
 local function Fail(g, why)
     OwnChanged()
     g.ok, g.err = false, tostring(why)
@@ -262,10 +302,17 @@ local function BuildGroup(fo)
         c:SetFlowLayoutGrowthDirection(hdir, vdir)
         c:SetFlowLayoutMaximumLineSize(limit)
         Place(c, fo, anchor, iw, ih)
-        c:Show()
+        c:SetShown(not GroupUnlocked(fo))
     end)
     if ok then g.ok, g.err = true, nil; OwnChanged() else Fail(g, err) end
     return g
+end
+
+function D.SyncShown()
+    for _, fo in ipairs(ns.folders or {}) do
+        local g = groups[fo.id]
+        if g and g.ok and g.frame then g.frame:SetShown(not GroupUnlocked(fo)) end
+    end
 end
 
 local function TearDownGroup(fid)
@@ -396,6 +443,12 @@ local function GuardCheck()
 end
 if C_Timer and C_Timer.NewTicker then C_Timer.NewTicker(5, function() pcall(GuardCheck) end) end
 D.GuardCheck = GuardCheck
+
+-- follow XayaUI's lock / unlock (both are plain functions on the shared namespace; hooks run after them)
+if hooksecurefunc then
+    if ns.ToggleUnlock then hooksecurefunc(ns, "ToggleUnlock", function() pcall(D.SyncShown) end) end
+    if ns.SetGroupUnlocked then hooksecurefunc(ns, "SetGroupUnlocked", function() pcall(D.SyncShown) end) end
+end
 
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_ENTERING_WORLD")
