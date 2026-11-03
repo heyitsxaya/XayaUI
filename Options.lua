@@ -3242,7 +3242,7 @@ ns.UI.DataPanels = function(tab)   -- QoL UI Updates > Custom Data Panels and Ba
     if tab then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "datapanels", tab)
     else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "datapanels") end
 end
-ns.UI.ChatPanel = function(tab)   -- QoL UI Updates > Chat Panel (also /xui chat settings); tab = "general", "bar", "look", "behavior", "parts", "filters", "history", "sounds", "privacy"
+ns.UI.ChatPanel = function(tab)   -- QoL UI Updates > Chat Panel (also /xui chat settings); tab = "layout", "look", "bar", "behavior", "filters", "history", "sounds", "privacy"
     if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then pcall(ns.ToggleUI) end
     ns.pageOpen = nil; ns.infoOpen = false
     Notify()

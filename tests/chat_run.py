@@ -182,16 +182,69 @@ W.ctrl = False
 
 # ---- history --------------------------------------------------------------------------------------------------------------
 before = C.History_Count()
-run("for _,ev in ipairs({'CHAT_MSG_SAY'}) do for _,h in ipairs(C.__handlers or {}) do end end")
-n = run("local n=0 for _,ev in ipairs(C.MSG_EVENTS) do end return #C.MSG_EVENTS")
+n = run("return #C.MSG_EVENTS")
 check("message events registered", n >= 10, n)
+W.now += 1
 W.fireEvent("CHAT_MSG_SAY", "hi from the test", "Hal-Realm")
-check("history count after a message", C.History_Count() >= before, (before, C.History_Count()))
+W.fireEvent("CHAT_MSG_PARTY", "party line", "Ida-Realm")
+W.fireEvent("CHAT_MSG_CHANNEL", "WTS boost spam", "Spam-Realm", "", "2. Trade - City", "", "", 0, 2, "Trade")
+check("history count after three messages", C.History_Count() == before + 3, (before, C.History_Count()))
 check("plain text strips colors and links", C.Plain("|cffff0000|Hitem:1|h[Sword]|h|r ok") == "[Sword] ok", C.Plain("|cffff0000|Hitem:1|h[Sword]|h|r ok"))
+pl = C.Plain("|cnIQ4:|Hitem:123|h[Primeval Skyfriend]|h|r and |Kg1|k name")
+check("named colors (|cnNAME:) and name codes are stripped", "|cn" not in pl and "IQ4:" not in pl and "|K" not in pl and "[Primeval Skyfriend]" in pl, pl)
 C.History_Toggle()
-check("history frame built and shown", L.XayaUIChatHistory is not None and L.XayaUIChatHistory.IsShown(L.XayaUIChatHistory))
+hf = L.XayaUIChatHistory
+check("history frame built and shown", hf is not None and hf.IsShown(hf))
+labels = run("local t={} for _,b in ipairs(W.cf1 and {} or {}) do end local f=_G.XayaUIChatHistory local out={} for _,b in ipairs(f.kb) do if b:IsShown() then out[#out+1]=b.t._text end end return table.concat(out,',')")
+check("a button per tab (not Combat-free kinds): All, General, Combat Log, Trade", str(labels) == "All,General,Combat Log,Trade", labels)
+def lines(): return str(run("return table.concat(C.History_Lines(), '\\n')"))
+run("C.History_Select(1)")
+check("filter by tab: General shows the say line only", "hi from the test" in lines() and "party line" not in lines() and "boost spam" not in lines(), lines())
+run("C.History_Select(2)")
+check("filter by tab: tab 2 shows the party line", "party line" in lines() and "hi from the test" not in lines(), lines())
+run("C.History_Select(3)")
+check("filter by tab: Trade shows the channel line", "boost spam" in lines() and "party line" not in lines(), lines())
+run("C.History_Select('ALL')")
+check("filter All shows everything", "hi from the test" in lines() and "party line" in lines() and "boost spam" in lines())
+# the window is a snapshot: new messages must not rewrite the text (that is what killed text selection)
+run("_G.XayaUIChatHistory.edit._setCount = 0; local e=_G.XayaUIChatHistory.edit; local orig=e.SetText; e.SetText=function(self,t) self._setCount=(self._setCount or 0)+1; orig(self,t) end")
+run("ns.chat2.histLive=false; C.History_Update()")
+setn = int(run("return _G.XayaUIChatHistory.edit._setCount"))
+for i in range(5):
+    W.now += 1
+    W.fireEvent("CHAT_MSG_CHANNEL", "more trade spam %d" % i, "Spam-Realm", "", "2. Trade - City", "", "", 0, 2, "Trade")
+check("new messages do not rewrite the text while Live is off", int(run("return _G.XayaUIChatHistory.edit._setCount")) == setn, (setn, run("return _G.XayaUIChatHistory.edit._setCount")))
+check("status says there are newer messages", "5 newer messages" in str(run("return _G.XayaUIChatHistory.status._text")), run("return _G.XayaUIChatHistory.status._text"))
+W.click(hf.refresh)
+check("Refresh brings them in", "more trade spam 4" in str(hf.edit._text), str(hf.edit._text)[-80:])
+check("status up to date after Refresh", "Up to date" in str(hf.status._text))
+W.click(hf.live)
+check("Live on updates at once", run("return ns.chat2.histLive") is True)
+W.now += 1
+W.fireEvent("CHAT_MSG_SAY", "live line", "Hal-Realm")
+check("Live on: new message appears", "live line" in str(hf.edit._text))
+run("_G.XayaUIChatHistory.edit.HasFocus = function() return true end")
+W.now += 1
+W.fireEvent("CHAT_MSG_SAY", "typed line", "Hal-Realm")
+check("Live on but text box focused (selecting): no rewrite", "typed line" not in str(hf.edit._text))
+run("_G.XayaUIChatHistory.edit.HasFocus = nil; ns.chat2.histLive = false")
+# resizing
+check("history window is resizable with a grip", hf._resizable is True or run("return _G.XayaUIChatHistory.grip ~= nil"))
+hf.SetSize(hf, 700, 420)
+hf._scripts["OnSizeChanged"](hf)
+check("resize relayouts the scroll area", rect(hf.scroll)[2] > 600, rect(hf.scroll))
+run("local g=_G.XayaUIChatHistory.grip; g._scripts.OnMouseDown(g); g._scripts.OnMouseUp(g)")
+check("size is remembered", run("return ns.chat2.histW") == 700 and run("return ns.chat2.histH") == 420, (run("return ns.chat2.histW"), run("return ns.chat2.histH")))
+# tab buttons wrap instead of running into the search box
+run("_G.XayaUIChatHistory:SetWidth(200)")
+hf._scripts["OnSizeChanged"](hf)
+tops = run("local f=_G.XayaUIChatHistory local ys={} for _,b in ipairs(f.kb) do if b:IsShown() then ys[#ys+1]=b._pts[1][5] end end return table.concat(ys,',')")
+check("tab buttons wrap to a second row in a narrow window", len(set(str(tops).split(","))) >= 2, tops)
+sr, br2 = rect(hf.search), rect(hf.kb[4])
+check("search box sits below the last tab button row", sr[1] + sr[3] <= br2[1] + 0.5, (sr, br2))
+hf.SetSize(hf, 540, 380); hf._scripts["OnSizeChanged"](hf)
 C.History_Toggle()
-check("history frame hides", L.XayaUIChatHistory.IsShown(L.XayaUIChatHistory) is False)
+check("history frame hides", hf.IsShown(hf) is False)
 
 # ---- sounds ---------------------------------------------------------------------------------------------------------------
 run("ns.chat2.soundsOn=true; ns.chat2.soundsInCombat=true; ns.chat2.sounds[1]={enabled=true,source='kit',value='3081'}; ns.chat2.sounds[2]={enabled=true,source='file',value='Interface\\\\x.ogg'}")
@@ -217,7 +270,7 @@ check("outgoing whisper plays nothing", len([v for v in W.played.values() if v i
 opt = run("return ns.BuildChatTab(function() end)")
 check("options table builds", opt is not None)
 tabs = run("local out={} for k,v in pairs(ns.BuildChatTab(function() end).args) do out[#out+1]=k end table.sort(out) return table.concat(out,',')")
-check("all tabs present", all(t in str(tabs) for t in ["general","bar","look","behavior","parts","filters","history","sounds","privacy"]), tabs)
+check("all tabs present", all(t in str(tabs) for t in ["layout","look","bar","behavior","filters","history","sounds","privacy"]), tabs)
 bad = run("""
 local bad = {}
 local function walk(t, path)
@@ -273,6 +326,94 @@ W.update(0.3, 3)
 check("expanded: cover back", cover.IsShown(cover) is True)
 run("ns.ChatPrivacy_Set(false)")
 check("privacy off: cover hidden", cover.IsShown(cover) is False)
+
+# ---- the game's border pieces ------------------------------------------------------------------------------------------------
+for suf in ["TopLeftTexture", "BottomRightTexture", "LeftTexture", "TopTexture"]:
+    check("Blizzard border piece hidden: " + suf, L["ChatFrame1" + suf].IsShown(L["ChatFrame1" + suf]) is False)
+L.ChatFrame1TopTexture.Show(L.ChatFrame1TopTexture)
+check("Blizzard's Show on a border piece is undone", L.ChatFrame1TopTexture.IsShown(L.ChatFrame1TopTexture) is False)
+L.ChatFrame1TopTexture.SetShown(L.ChatFrame1TopTexture, True)
+check("Blizzard's SetShown(true) on a border piece is undone", L.ChatFrame1TopTexture.IsShown(L.ChatFrame1TopTexture) is False)
+sb = cf1.ScrollBar; sb.SetShown(sb, True)
+check("Blizzard's SetShown(true) on the scroll bar is undone", sb.IsShown(sb) is False)
+tb_ = cf1.ScrollToBottomButton
+check("back-to-newest arrow sits inside the text area", inside(tb_, textA), (rect(tb_), rect(textA)))
+
+# ---- glued to the container after the game moves things ----------------------------------------------------------------------
+cf1.ClearAllPoints(cf1); cf1.SetPoint(cf1, "BOTTOMLEFT", L.UIParent, "BOTTOMLEFT", 700, 500)
+W.flush()
+check("Blizzard re-anchors the chat window: glued back at once", rect(cf1) == rect(textA), (rect(cf1), rect(textA)))
+cf1.SetPoint(cf1, "BOTTOMRIGHT", L.UIParent, "BOTTOMRIGHT", -100, 100)    # only one of the two anchors replaced
+W.flush()
+check("only one anchor changed: still glued (the old check missed this)", rect(cf1) == rect(textA), (rect(cf1), rect(textA)))
+eb2 = L.ChatFrame1EditBox; eb2.ClearAllPoints(eb2); eb2.SetPoint(eb2, "TOPLEFT", L.UIParent, "TOPLEFT", 5, -5)
+W.update(0.4, 2)
+check("edit box re-anchored by the game: glued back by the upkeep", rect(eb2) == rect(inputA), (rect(eb2), rect(inputA)))
+run("ns.chat2.x = 600; ns.chat2.y = 300; C.Layout()")
+check("moving the container moves the chat with it", rect(cf1) == rect(textA) and int(rect(cont)[0]) == 600, (rect(cf1), rect(textA), rect(cont)))
+run("ns.chat2.x = 24; ns.chat2.y = 90; C.Layout()")
+
+# ---- mover: opaque, with the chat glued ---------------------------------------------------------------------------------------
+run("C.ToggleMover()")
+mv = L.XayaUIChatMover
+check("mover covers the container exactly", rect(mv) == rect(cont))
+check("mover is nearly opaque (the chat underneath must not show)", mv._bgc is not None and mv._bgc[4] >= 0.9, mv._bgc and mv._bgc[4])
+run("C.ToggleMover()")
+
+# ---- Locate ("show me where it is") -------------------------------------------------------------------------------------------
+run("C.Locate(nil, 5)")
+lab = run("local out={} for k,o in pairs(W.objects()) do if o._kind=='Frame' and o.label and o.label._text and o:IsShown() then out[#out+1]=o.label._text end end table.sort(out) return table.concat(out,'|')")
+check("Locate outlines every piece, labeling hidden ones", "Tab row" in str(lab) and "Chat Bar" in str(lab) and "Blizzard button strip (hidden)" in str(lab) and "Social button (hidden)" in str(lab), lab)
+W.now += 6; W.update(0.1, 2)
+lab2 = run("local out={} for k,o in pairs(W.objects()) do if o._kind=='Frame' and o.label and o.label._text and o:IsShown() then out[#out+1]=o.label._text end end return #out")
+check("outlines disappear after the time is up", int(lab2) == 0, lab2)
+run("""local function find(t, key) for k, v in pairs(t.args or {}) do if k == key then return v end local r = v.args and find(v, key) if r then return r end end end
+local o = ns.BuildChatTab(function() end)
+find(o, 'scroll').set({}, 'SHOW')""")
+check("changing a piece's setting flashes its outline", "Scroll bar" in str(run("local out={} for k,o in pairs(W.objects()) do if o._kind=='Frame' and o.label and o.label._text and o:IsShown() then out[#out+1]=o.label._text end end return table.concat(out,'|')")))
+run("ns.chat2.scrollBar = 'HIDE'; C.Refresh(); C.LocateClear()")
+
+# ---- bar blocks relayout when the bar's size settles ---------------------------------------------------------------------------
+run("ns.chat2.barAlign3 = 'RIGHT'; C.Refresh()")
+slot3 = run("local b=C.Bar() local k={} for _,o in ipairs(b._kids) do if o._kind=='Button' then k[#k+1]=o end end return k[3]")
+def lastkid(o): return run('return ...', o) if False else run('local o=...; return o._kids[#o._kids]', o)
+fs3 = lastkid(slot3)
+check("block 3 'Right': text anchored to the right of its block", fs3._pts[1][1] == "RIGHT", fs3._pts[1][1])
+run("ns.chat2.barAlign3 = 'LEFT'; C.Refresh()")
+check("block 3 'Left': text anchored to the left of its block", lastkid(slot3)._pts[1][1] == "LEFT")
+run("ns.chat2.width = 640; C.Layout()")
+W.flush()
+check("blocks follow the bar when it grows (size hook)", abs(rect(slot3)[0] + rect(slot3)[2] - (rect(bar)[0] + rect(bar)[2])) < 1.5, (rect(slot3), rect(bar)))
+run("ns.chat2.width = 440; ns.chat2.barAlign3 = 'CENTER'; C.Layout()")
+
+# ---- the command help keeps its pipe characters ---------------------------------------------------------------------------------
+import re
+for k in list(W.printed.keys()): W.printed[k] = None
+run("C.Command('status')")
+helptxt = " ".join(str(v) for v in W.printed.values() if v)
+check("help text escapes pipes (no stray single |)", re.search(r"(?<!\|)\|(?!\|)", helptxt) is None and "on||off" in helptxt, helptxt[:160])
+
+# ---- turning the Chat Panel off gives Blizzard's chat back --------------------------------------------------------------------------
+orig = {"cf1": (30.0, 40.0, 430.0, 120.0)}
+run("C.Command('off')")
+check("off: chat window is back at its own place", rect(cf1) == orig["cf1"], rect(cf1))
+check("off: edit box back under its window", rect(L.ChatFrame1EditBox)[0] == 25 and rect(L.ChatFrame1EditBox)[1] == 40 - 2 - 32, rect(L.ChatFrame1EditBox))
+check("off: dock manager back above its window", int(rect(L.GeneralDockManager)[1]) == 164, rect(L.GeneralDockManager))
+check("off: button strip shown again", L.ChatFrame1ButtonFrame.IsShown(L.ChatFrame1ButtonFrame) is True)
+check("off: social button shown again", L.QuickJoinToastButton.IsShown(L.QuickJoinToastButton) is True)
+check("off: scroll bar and border pieces shown again", sb.IsShown(sb) is True and L.ChatFrame1TopTexture.IsShown(L.ChatFrame1TopTexture) is True)
+check("off: chat alpha 1 and mouse on", cf1.GetAlpha(cf1) > 0.99 and L.ChatFrame1Tab.GetAlpha(L.ChatFrame1Tab) > 0.99)
+check("off: our container hidden", cont.IsShown(cont) is False)
+check("off: our privacy cover and button hidden", (L.XayaUIChatPrivacyButton is None) or L.XayaUIChatPrivacyButton.IsShown(L.XayaUIChatPrivacyButton) is False)
+check("off: game's chat font is back", cf1._font[1] == "Fonts\\ARIALN.TTF" and cf1._font[2] == 14, (cf1._font[1], cf1._font[2]))
+check("off: tab height back", L.ChatFrame1Tab.GetHeight(L.ChatFrame1Tab) == 32, L.ChatFrame1Tab.GetHeight(L.ChatFrame1Tab))
+cf1.ClearAllPoints(cf1); cf1.SetPoint(cf1, "BOTTOMLEFT", L.UIParent, "BOTTOMLEFT", 300, 300)
+W.flush(); W.update(0.5, 3)
+check("off: the game can move its chat and we do not fight it", rect(cf1)[0] == 300, rect(cf1))
+run("C.Command('on')")
+W.flush(); W.update(0.4, 2)
+check("on again: glued to the container", rect(cf1) == rect(textA) and rect(L.ChatFrame1EditBox) == rect(inputA), (rect(cf1), rect(textA)))
+check("on again: strip hidden once more", L.ChatFrame1ButtonFrame.IsShown(L.ChatFrame1ButtonFrame) is False)
 
 # ---- commands -------------------------------------------------------------------------------------------------------------
 for k in list(W.printed.keys()): W.printed[k] = None

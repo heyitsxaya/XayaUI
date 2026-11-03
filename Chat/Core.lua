@@ -32,6 +32,7 @@ C.DEFAULTS = {
     inputH = 26, inputHint = true, inputHintText = "Press Enter to chat",
     stripMode = "HIDE", stripX = 0, stripY = 0,       -- Blizzard's button strip: HIDE | LEFT | RIGHT of the pane
     socialMode = "HIDE", socialX = 0, socialY = 0,    -- the social / quick-join button: HIDE | SHOW (stays above the pane)
+    toBottom = "SHOW",                                -- the back-to-newest arrow: SHOW | HIDE
     scrollBar = "HIDE",                               -- HIDE | SHOW
     textInset = 6,
     histButton = true,
@@ -170,16 +171,79 @@ function C.Flags(mode)
     return ""
 end
 -- SetFont that always ends with a working font (a missing file makes SetFont return false)
+C.fonts, C.remembered, C.suppressed, C.alphaEls = {}, {}, {}, {}
 function C.SetFont(fs, path, size, flags)
     if not (fs and fs.SetFont) then return end
+    if not C.fonts[fs] and fs.GetFont then
+        local ok, p, sz, fl = pcall(fs.GetFont, fs)
+        if ok and p then C.fonts[fs] = { p, sz, fl } end
+    end
     local ok, res = pcall(fs.SetFont, fs, path or STANDARD_TEXT_FONT, size, flags or "")
     if not (ok and res) then pcall(fs.SetFont, fs, STANDARD_TEXT_FONT, size, flags or "") end
+end
+
+-- the game's own anchors, copied before the first time we move a frame, so switching the Chat Panel off can put them back
+function C.Remember(o)
+    if not o or o._xuiPts or not o.GetNumPoints then return end
+    local ok, n = pcall(o.GetNumPoints, o)
+    if not ok or not n or n < 1 then return end
+    local t = {}
+    for i = 1, n do
+        local ok2, p, rel, rp, x, y = pcall(o.GetPoint, o, i)
+        if ok2 and p then t[#t + 1] = { p, rel, rp, x, y } end
+    end
+    if #t == 0 then return end
+    o._xuiPts = t
+    C.remembered[#C.remembered + 1] = o
+end
+
+-- everything we changed on the game's chat goes back: shown / hidden pieces, alpha, mouse, anchors, fonts, tab heights.
+-- The game's own functions then lay the windows out again.
+function C.Teardown()
+    if not C.active then return end
+    C.active = false
+    for o in pairs(C.suppressed) do pcall(C.Unsuppress, o) end
+    C.suppressed = {}
+    C.master, C.fade = 1, 1
+    for _, el in ipairs(C.alphaEls) do
+        pcall(function()
+            el._xuiSetting = true
+            el:SetAlpha(el._xuiBase or 1)
+            el._xuiSetting = false
+            if el._xuiMouse ~= nil and el.EnableMouse then el:EnableMouse(el._xuiMouse); el._xuiMouse = nil end
+        end)
+    end
+    for _, o in ipairs(C.remembered) do
+        pcall(function()
+            o:ClearAllPoints()
+            for _, p in ipairs(o._xuiPts) do o:SetPoint(p[1], p[2], p[3], p[4], p[5]) end
+        end)
+        o._xuiPts = nil
+    end
+    C.remembered = {}
+    for fs, f in pairs(C.fonts) do pcall(fs.SetFont, fs, f[1], f[2], f[3]) end
+    C.fonts = {}
+    for _, f in ipairs(C.Frames()) do
+        local tab = C.TabOf(f)
+        if tab then
+            if tab._xuiH and tab.SetHeight then pcall(tab.SetHeight, tab, tab._xuiH); tab._xuiH = nil end
+            if tab.xuiBg then tab.xuiBg:Hide() end
+        end
+    end
+    if C.unlocked and C.ToggleMover then C.ToggleMover() end
+    if C.Container() then C.Container():Hide() end
+    if ns.ChatPrivacy_Refresh then ns.ChatPrivacy_Refresh() end
+    for _, fn in ipairs({ "FCF_DockUpdate", "FCF_UpdateButtonSide" }) do
+        if type(_G[fn]) == "function" then pcall(_G[fn]) end
+    end
 end
 
 -- the refresh bus ----------------------------------------------------------------------------------------------------------
 function C.Refresh()
     local s = ns.chat2
     if not s then return end
+    if not C.On() then C.Teardown(); return end      -- off (or blocked by another chat addon): give Blizzard's chat back, untouched
+    C.active = true
     for _, m in ipairs(C.mods) do C.Try(m.name, m.fn, s) end
 end
 
@@ -213,7 +277,7 @@ function C.Command(arg)
     arg = (arg or ""):lower():match("^%s*(%S*)") or ""
     local s = ns.chat2
     if not s then ns.Print("Chat Panel: settings are not loaded yet."); return end
-    if arg == "off" then s.enabled = false; ns.Print("Chat Panel OFF. Blizzard's chat comes back fully after /reload.")
+    if arg == "off" then s.enabled = false; C.Refresh(); ns.Print("Chat Panel OFF. Blizzard's chat is back as the game draws it.")
     elseif arg == "on" then s.enabled = true; C.Refresh(); ns.Print("Chat Panel ON.")
     elseif arg == "reset" then
         s.point, s.x, s.y, s.width, s.height = C.DEFAULTS.point, C.DEFAULTS.x, C.DEFAULTS.y, C.DEFAULTS.width, C.DEFAULTS.height
@@ -223,7 +287,7 @@ function C.Command(arg)
     elseif arg == "settings" or arg == "options" then if C.OpenSettings then C.OpenSettings() end
     else
         local why = C.BlockedReason()
-        ns.Print("Chat Panel: " .. (s.enabled and (why and ("blocked: " .. why) or "ON") or "OFF") .. ". /xui chat on|off|reset|move|history|settings")
+        ns.Print((("Chat Panel: " .. (s.enabled and (why and ("blocked: " .. why) or "ON") or "OFF") .. ". /xui chat on|off|reset|move|history|settings"):gsub("|", "||")))
         local names = {}
         for k in pairs(C.applied) do names[#names + 1] = k end
         table.sort(names)

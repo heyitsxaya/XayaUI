@@ -151,10 +151,36 @@ end
 -------------------------------------------------------------------------------
 local function Docked(f) return f == _G.ChatFrame1 or (f.isDocked and true or false) end
 
+local function PointsAt(o, rel, n)       -- true when every anchor of o is on rel (and there are n of them)
+    if not (o and o.GetNumPoints) then return true end
+    local ok, count = pcall(o.GetNumPoints, o)
+    if not ok or count ~= n then return false end
+    for i = 1, count do
+        local ok2, _, r = pcall(o.GetPoint, o, i)
+        if not ok2 or r ~= rel then return false end
+    end
+    return true
+end
+-- is the game's chat still glued to the container? (the game re-anchors windows when they are docked, dragged or reset)
+function C.Glued()
+    local cf = C.Main()
+    if cf and not PointsAt(cf, textA, 2) then return false end
+    local dock = _G.GeneralDockManager
+    if dock and not PointsAt(dock, tabsA, 2) then return false end
+    for _, f in ipairs(C.Frames()) do
+        local eb = C.EditBoxOf(f)
+        if eb and Docked(f) and not PointsAt(eb, inputA, 2) then return false end
+    end
+    return true
+end
+
 function C.Anchor()
     local s = S()
     if not (s and container and C.On()) then return end
+    C.anchoring = true
     local cf = C.Main()
+    C.Remember(cf); C.Remember(_G.GeneralDockManager)
+    for _, f in ipairs(C.Frames()) do C.Remember(C.EditBoxOf(f)) end
     if cf then
         C.Try("anchor", function()
             cf:ClearAllPoints()
@@ -183,23 +209,31 @@ function C.Anchor()
         end
     end
     C.Parts()
+    C.anchoring = false
 end
 
 -- keep Blizzard's own pieces out of the way (or placed) as the options say
 function C.Suppress(o)
     if not o then return end
+    if not o._xuiSuppressed and o.IsShown then local ok, v = pcall(o.IsShown, o); o._xuiWasShown = ok and v and true or false end
     o._xuiSuppressed = true
+    C.suppressed[o] = true
     if o.Hide then pcall(o.Hide, o) end
     if not o._xuiShowHook then
         o._xuiShowHook = true
         pcall(hooksecurefunc, o, "Show", function(self) if self._xuiSuppressed then self:Hide() end end)
+        -- the game also shows and hides these with SetShown (FloatingChatFrame_UpdateScroll does it to the scroll bar), which the Show hook never sees
+        if o.SetShown then pcall(hooksecurefunc, o, "SetShown", function(self, v) if v and self._xuiSuppressed then self:Hide() end end) end
     end
 end
 function C.Unsuppress(o)
     if not o or not o._xuiSuppressed then return end
     o._xuiSuppressed = false
-    if o.Show then pcall(o.Show, o) end
+    C.suppressed[o] = nil
+    if o.Show and o._xuiWasShown ~= false then pcall(o.Show, o) end
 end
+
+local BORDER_PIECES = { "TopLeftTexture", "BottomLeftTexture", "TopRightTexture", "BottomRightTexture", "LeftTexture", "RightTexture", "BottomTexture", "TopTexture" }
 
 function C.Parts()
     local s = S()
@@ -209,6 +243,7 @@ function C.Parts()
     -- Blizzard's button strip
     local bf = C.ButtonFrameOf(cf)
     if bf then
+        C.Remember(bf)
         C.Try("strip", function()
             if s.stripMode == "LEFT" or s.stripMode == "RIGHT" then
                 C.Unsuppress(bf)
@@ -224,6 +259,7 @@ function C.Parts()
     -- the social / quick-join button (Blizzard anchors it to the chat's strip; with the strip hidden it would float to a screen corner)
     local sb = _G.QuickJoinToastButton
     if sb then
+        C.Remember(sb)
         C.Try("social", function()
             if s.socialMode == "SHOW" then
                 C.Unsuppress(sb)
@@ -237,11 +273,32 @@ function C.Parts()
     -- scroll bar, resize grip, Blizzard's own background
     local sbar = cf.ScrollBar or _G[name .. "ScrollBar"]
     if sbar then C.Try("scrollbar", function() if s.scrollBar == "SHOW" then C.Unsuppress(sbar) else C.Suppress(sbar) end end) end
+    -- the "back to the newest message" arrow: the game anchors it beside the (hidden) resize grip, outside the text; keep it inside the text area
+    local tb = cf.ScrollToBottomButton
+    if tb then
+        C.Remember(tb)
+        C.Try("tobottom", function()
+            if s.toBottom == "HIDE" then C.Suppress(tb)
+            else
+                C.Unsuppress(tb)
+                tb:ClearAllPoints()
+                tb:SetPoint("BOTTOMRIGHT", textA, "BOTTOMRIGHT", 0, 2)
+            end
+        end)
+    end
     local rz = cf.ResizeButton or _G[name .. "ResizeButton"]
     if rz then C.Try("resize", function() C.Suppress(rz) end) end
     for _, f in ipairs(C.Frames()) do
-        local bg = f.Background or _G[C.NameOf(f) .. "Background"]
-        if bg and Docked(f) then C.Try("background", function() C.Suppress(bg) end) end
+        if Docked(f) then
+            local n = C.NameOf(f)
+            local bg = f.Background or _G[n .. "Background"]
+            if bg then C.Try("background", function() C.Suppress(bg) end) end
+            -- the game's own frame border: four corners and four edges drawn around the window (FloatingBorderedFrame). Without this
+            -- they stay on screen, offset from the pane, and look like a second chat under ours.
+            C.Try("border", function()
+                for _, suf in ipairs(BORDER_PIECES) do local t = _G[n .. suf]; if t then C.Suppress(t) end end
+            end)
+        end
     end
 end
 
@@ -251,6 +308,7 @@ end
 local function HookAlpha(el)
     if el._xuiAlphaHook then return end
     el._xuiAlphaHook = true
+    C.alphaEls[#C.alphaEls + 1] = el
     pcall(hooksecurefunc, el, "SetAlpha", function(self, a)
         if self._xuiSetting or type(a) ~= "number" or issecret(a) then return end
         self._xuiBase = a
@@ -316,7 +374,7 @@ local function BuildMover()
     mover = CreateFrame("Frame", "XayaUIChatMover", UIParent, "BackdropTemplate")
     mover:SetFrameStrata("DIALOG")
     mover:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-    mover:SetBackdropColor(0.1, 0.4, 0.9, 0.35); mover:SetBackdropBorderColor(0.4, 0.75, 1, 1)
+    mover:SetBackdropColor(0.05, 0.14, 0.3, 0.94)   -- nearly solid: the chat underneath must not show through while you place it; mover:SetBackdropBorderColor(0.4, 0.75, 1, 1)
     mover:EnableMouse(true); mover:RegisterForDrag("LeftButton")
     mover.label = mover:CreateFontString(nil, "OVERLAY")
     mover.label:SetFont(STANDARD_TEXT_FONT, 13, "OUTLINE"); mover.label:SetPoint("CENTER"); mover.label:SetTextColor(1, 1, 1, 1)
@@ -369,6 +427,12 @@ end
 -- Refresh, hooks, upkeep
 -------------------------------------------------------------------------------
 local function Soft() if C.On() then C.Schedule() end end
+local soonPending
+function C.SoonAnchor()
+    if soonPending then return end
+    soonPending = true
+    C_Timer.After(0, function() soonPending = false; if C.On() and not C.Glued() then C.Anchor() end end)
+end
 
 local function Refresh(s)
     if not C.On() then
@@ -379,8 +443,16 @@ local function Refresh(s)
     container:Show()
     C.Layout()
     -- the game re-anchors these when windows are docked, locked or opened; anchor again right after
-    for _, key in ipairs({ "FCF_DockUpdate", "FCF_RestorePositionAndDimensions", "FCF_SetLocked", "FCF_UpdateButtonSide", "FCF_SetWindowAlpha", "ChatEdit_ActivateChat", "ChatEdit_DeactivateChat" }) do
+    for _, key in ipairs({ "FCF_DockUpdate", "FCF_RestorePositionAndDimensions", "FCF_SetLocked", "FCF_UpdateButtonSide", "FCF_SetWindowAlpha", "ChatEdit_ActivateChat", "ChatEdit_DeactivateChat",
+        "FCF_StopDragging", "FCF_DockFrame", "FCF_UnDockFrame", "FCF_ResetChatWindows" }) do
         C.HookOnce("frame:" .. key, key, nil, Soft)
+    end
+    -- the game moves a window by calling SetPoint / StopMovingOrSizing on it (dragging a tab, Edit Mode, a reset): glue it back at once
+    local cf = C.Main()
+    if cf then
+        for _, m in ipairs({ "SetPoint", "ClearAllPoints", "StopMovingOrSizing", "SetUserPlaced" }) do
+            C.HookOnce("cf:" .. m, cf, m, function() if not C.anchoring and C.On() then C.SoonAnchor() end end)
+        end
     end
 end
 C.Register("frame", Refresh)
@@ -397,10 +469,7 @@ up:SetScript("OnUpdate", function(_, dt)
     if s and container and C.On() and slow >= 3 then slow = 0; C.Parts() end   -- the game may put its strip / social button back
     if not (s and container and C.On()) then return end
     local cf = C.Main()
-    if cf and cf.GetPoint then
-        local ok, _, rel = pcall(cf.GetPoint, cf, 1)
-        if ok and rel ~= textA then C.Anchor() end
-    end
+    if not C.Glued() then C.Anchor() end
     local eb = C.EditBoxOf(cf or {})
     local typing = eb and eb.IsShown and eb:IsShown()
     hint:SetShown(s.inputHint and not typing and not s.collapsed and true or false)

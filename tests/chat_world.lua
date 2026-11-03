@@ -54,6 +54,7 @@ local function new(kind, name, parent)
   return o
 end
 W.new = new
+function W.objects() return objects end
 
 function proto:GetName() return self._name end
 function proto:GetObjectType() return self._kind end
@@ -62,6 +63,7 @@ function proto:SetParent(p) self._parent = p end
 function proto:SetPoint(p, rel, rp, x, y)
   if type(rel) == "number" then x, y, rel, rp = rel, rp, nil, nil end
   if type(rp) == "number" then x, y, rp = rp, x, nil end
+  for i, e in ipairs(self._pts) do if e[1] == p then self._pts[i] = { p, rel, rp, x or 0, y or 0 }; return end end
   self._pts[#self._pts + 1] = { p, rel, rp, x or 0, y or 0 }
 end
 function proto:ClearAllPoints() self._pts = {} end
@@ -79,7 +81,7 @@ function proto:GetBottom() return rectOf(self).b end
 function proto:GetRight() local r = rectOf(self); return r.l + r.w end
 function proto:GetTop() local r = rectOf(self); return r.b + r.h end
 function proto:GetCenter() local r = rectOf(self); return r.l + r.w / 2, r.b + r.h / 2 end
-function proto:Show() self._shown = true; if self._hooks.Show then for _, f in ipairs(self._hooks.Show) do f(self) end end end
+function proto:Show() local was = self._shown; self._shown = true; if not was and self._scripts.OnShow then self._scripts.OnShow(self) end; if self._hooks.Show then for _, f in ipairs(self._hooks.Show) do f(self) end end end
 function proto:Hide() self._shown = false end
 function proto:SetShown(v) if v then self:Show() else self:Hide() end end
 function proto:IsShown() return self._shown end
@@ -134,7 +136,10 @@ function proto:SetFading(v) self._fading = v end
 function proto:SetTimeVisible(v) self._timeVisible = v end
 function proto:SetUserPlaced(v) self._userPlaced = v end
 function proto:StartMoving() self._moving = true end
-function proto:StopMovingOrSizing() self._moving = false end
+function proto:StartSizing() self._sizing = true end
+function proto:HasFocus() return self._focus and true or false end
+function proto:SetResizable(v) self._resizable = v end
+function proto:StopMovingOrSizing() self._moving = false; self._sizing = false end
 function proto:SetFocus() self._focus = true end
 function proto:HighlightText() end
 function proto:ClearFocus() self._focus = false end
@@ -228,6 +233,11 @@ local function chatWindow(i, docked, x, y)
   new("FontString", "ChatFrame" .. i .. "EditBoxHeader", eb)
   local bf = new("Frame", "ChatFrame" .. i .. "ButtonFrame", cf); bf._w, bf._h = 29, 100
   bf:SetPoint("TOPRIGHT", cf, "TOPLEFT", -2, 0)
+  for _, suf in ipairs({ "TopLeftTexture", "BottomLeftTexture", "TopRightTexture", "BottomRightTexture", "LeftTexture", "RightTexture", "BottomTexture", "TopTexture" }) do
+    new("Texture", "ChatFrame" .. i .. suf, cf)
+  end
+  cf.ScrollToBottomButton = new("Button", nil, cf); cf.ScrollToBottomButton._w, cf.ScrollToBottomButton._h = 17, 15
+  cf.ScrollToBottomButton:SetPoint("BOTTOMRIGHT", cf, "BOTTOMRIGHT", 14, -4)
   cf.ScrollBar = new("Frame", nil, cf); cf.ScrollBar._w, cf.ScrollBar._h = 8, 100
   cf.ResizeButton = new("Button", "ChatFrame" .. i .. "ResizeButton", cf)
   cf.Background = new("Texture", "ChatFrame" .. i .. "Background", cf)
@@ -247,7 +257,6 @@ GeneralDockManager:SetPoint("BOTTOMLEFT", W.cf1, "TOPLEFT", 0, 4)
 QuickJoinToastButton = new("Button", "QuickJoinToastButton", UIParent)
 QuickJoinToastButton._w, QuickJoinToastButton._h = 30, 30
 QuickJoinToastButton:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 12, -20)
-GetChatWindowInfo = function(i) if i <= 3 then return "Window" .. i, 14, 0, 0, 0, 1, true, false, i < 3 end return nil end
 for _, n in ipairs({ "FCF_DockUpdate", "FCF_RestorePositionAndDimensions", "FCF_SetLocked", "FCF_UpdateButtonSide", "FCF_SetWindowAlpha", "ChatEdit_ActivateChat",
   "ChatEdit_DeactivateChat", "FCF_SetChatWindowFontSize", "FCF_SelectDockFrame", "FCF_Tab_OnClick", "FCF_OpenNewWindow", "FCF_OpenTemporaryWindow", "SetItemRef" }) do
   _G[n] = function() end
@@ -256,9 +265,14 @@ ChatEdit_GetActiveWindow = function() return W.activeEdit end
 ChatFrame_OpenChat = function(text, cf) W.openedChat = cf end
 ChatFrame_AddMessageEventFilter = function(ev, fn) W.filters[ev] = W.filters[ev] or {}; table.insert(W.filters[ev], fn) end
 ChatFrame_ContainsMessageGroup = function(cf, group) return cf.groups and cf.groups[group] and true or false end
-W.cf1.groups = { SAY = true, GUILD = true, WHISPER = true }
-W.cf2.groups = { PARTY = true, WHISPER = true }
-W.cf3.groups = { CHANNEL = true }
+W.cf1.messageTypeList = { "SAY", "GUILD", "WHISPER" }; W.cf1.channelList = {}
+W.cf2.messageTypeList = { "PARTY", "WHISPER" }; W.cf2.channelList = {}
+W.cf3.messageTypeList = {}; W.cf3.channelList = { "Trade" }
+GetChatWindowInfo = function(i)
+  local names = { "General", "Combat Log", "Trade" }
+  if names[i] then return names[i], 14, 1, 1, 1, 1, true, false, (i < 3) and i or nil end
+  return nil
+end
 
 -- driving the world ---------------------------------------------------------------------------------------------------------------
 function W.update(dt, steps)
@@ -286,7 +300,7 @@ local function load(rel)
 end
 W.load = load
 load("DataBlocks.lua")
-for _, rel in ipairs({ "Chat/Core.lua", "Chat/Frame.lua", "Chat/Bar.lua", "Chat/Skin.lua", "Chat/Fade.lua", "Chat/Messages.lua", "Chat/History.lua",
+for _, rel in ipairs({ "Chat/Core.lua", "Chat/Frame.lua", "Chat/Bar.lua", "Chat/Skin.lua", "Chat/Fade.lua", "Chat/Locate.lua", "Chat/Messages.lua", "Chat/History.lua",
   "Chat/Sounds.lua", "Chat/Options.lua", "ChatPrivacy.lua" }) do load(rel) end
 W.ns = ns
 function W.start()

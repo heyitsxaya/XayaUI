@@ -17,20 +17,9 @@ local GROUP_OF = {
 }
 C.SOUND_GROUPS = GROUP_OF
 
-local function Contains(f, group)
-    if _G.ChatFrame_ContainsMessageGroup then
-        local ok, v = pcall(_G.ChatFrame_ContainsMessageGroup, f, group)
-        if ok then return v and true or false end
-    end
-    if type(f.messageTypeList) == "table" then
-        for _, g in ipairs(f.messageTypeList) do if g == group then return true end end
-    end
-    return false
-end
-
 local lastPlayed = {}
 
-C.OnMessage(function(event, _, author)
+C.OnMessage(function(event, _, author, _, _, _, _, _, _, channelBase)
     local s = S()
     if not (s and s.soundsOn) then return end
     local group = GROUP_OF[event]
@@ -42,7 +31,7 @@ C.OnMessage(function(event, _, author)
     for _, f in ipairs(C.Frames()) do
         local id = f.GetID and f:GetID()
         local cfg = id and s.sounds[id]
-        if cfg and cfg.enabled and cfg.value and cfg.value ~= "" and Contains(f, group) then
+        if cfg and cfg.enabled and cfg.value and cfg.value ~= "" and C.Shows(f, group, channelBase) then
             local key = tostring(cfg.source) .. "|" .. tostring(cfg.value)
             if not played[key] and (now - (lastPlayed[id] or 0)) > 0.25 then
                 played[key] = true

@@ -164,7 +164,10 @@ function C.StyleTabs()
                     end
                     fs:SetTextColor(r, g, b, 1)
                 end
-                if tab.SetHeight and tonumber(th) then tab:SetHeight(th) end
+                if tab.SetHeight and tonumber(th) then
+                    if not tab._xuiH and tab.GetHeight then tab._xuiH = tab:GetHeight() end
+                    tab:SetHeight(th)
+                end
             end)
         end
     end

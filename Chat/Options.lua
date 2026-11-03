@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Chat/Options.lua : the Chat Panel settings page (QoL UI Updates > Chat Panel). Tabs: General, Chat Bar, Look, Behavior, Parts,
+-- Chat/Options.lua : the Chat Panel settings page (QoL UI Updates > Chat Panel). Tabs: Layout, Appearance, Chat Bar, Fade and hide,
 -- Filters, History, Sounds, Privacy. Every change applies at once. Own code. UNTESTED in game.
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
@@ -29,24 +29,28 @@ end
 
 function ns.BuildChatTab(Notify)
     local function S() return ns.chat2 or {} end
-    local function Re() C.Refresh(); if Notify then Notify() end end
+    local function Re(flash)
+        C.Refresh()
+        if flash and C.Locate then C.Locate({ flash }, 3) end      -- outline the piece the setting changes, so the change can be seen
+        if Notify then Notify() end
+    end
     local function note(text, order, hidden)
         return { type = "description", order = order, width = "full", fontSize = "medium", name = text, hidden = hidden }
     end
-    local function tog(name, field, order, desc, hidden)
+    local function tog(name, field, order, desc, hidden, flash)
         return { type = "toggle", name = name, desc = desc, order = order, width = "full", hidden = hidden,
             get = function() return S()[field] and true or false end,
-            set = function(_, v) local s = ns.chat2; if s then s[field] = v and true or false end; Re() end }
+            set = function(_, v) local s = ns.chat2; if s then s[field] = v and true or false end; Re(flash) end }
     end
-    local function rng(name, field, order, min, max, desc, step, hidden)
+    local function rng(name, field, order, min, max, desc, step, hidden, flash)
         return { type = "range", name = name, desc = desc, order = order, min = min, max = max, step = step or 1, hidden = hidden,
             get = function() return S()[field] end,
-            set = function(_, v) local s = ns.chat2; if s then s[field] = v end; Re() end }
+            set = function(_, v) local s = ns.chat2; if s then s[field] = v end; Re(flash) end }
     end
-    local function sel(name, field, order, values, sorting, desc, hidden)
+    local function sel(name, field, order, values, sorting, desc, hidden, flash)
         return { type = "select", name = name, desc = desc, order = order, values = values, sorting = sorting, hidden = hidden,
             get = function() return S()[field] end,
-            set = function(_, v) local s = ns.chat2; if s then s[field] = v end; Re() end }
+            set = function(_, v) local s = ns.chat2; if s then s[field] = v end; Re(flash) end }
     end
     local function col(name, prefix, order, desc, hidden)   -- stored as <prefix>R / G / B and <prefix>A (percent)
         return { type = "color", name = name, desc = desc, order = order, hasAlpha = true, hidden = hidden,
@@ -73,72 +77,60 @@ function ns.BuildChatTab(Notify)
     local function themeOn() return S().useTheme end
 
     ---------------------------------------------------------------------------------------------------------------------------
-    local general = { type = "group", name = "General", order = 1, args = {
+    -- Tabs, in the order you think about the chat: where it is, how it looks, the bar, when it hides, what it filters, then the extras.
+    ---------------------------------------------------------------------------------------------------------------------------
+    local function hdr(name, order, desc) return { type = "header", name = name, order = order, desc = desc } end
+    local noStrip = function() return S().stripMode == "HIDE" end
+    local noSocial = function() return S().socialMode ~= "SHOW" end
+
+    -- 1. LAYOUT -------------------------------------------------------------------------------------------------------------
+    local layout = { type = "group", name = "Layout", order = 1, args = {
         blocked = { type = "description", order = 1, width = "full", fontSize = "medium",
             hidden = function() return C.BlockedReason() == nil end,
             name = function() return "|cffff5555Blocked:|r " .. tostring(C.BlockedReason()) end },
-        intro = note("Chat Panel restyles Blizzard's own chat window in place and gives it one container: the tabs, the text, and the line you type in are all inside the pane, and the Chat Bar is part of the same block. Turning it off fully takes effect after /reload. /xui chat shows what ran and what failed.", 2),
-        secretNote = note("|cffaaaaaaProtected messages:|r in some instance states the game marks chat text as secret. Addons cannot read or change that text, so the spam filters and links skip those lines, the history lists them as protected, and everything else (position, look, fade, sounds) still works.", 3),
-        enabled = { type = "toggle", name = "Enable Chat Panel", order = 4, width = "full",
+        intro = note("Chat Panel restyles Blizzard's own chat window in place and puts it in one block: the tabs, the text, and the line you type in are inside the pane, and the Chat Bar is part of the same block. /xui chat shows what ran and what failed.", 2),
+        enabled = { type = "toggle", name = "Enable Chat Panel", order = 3, width = "full",
+            desc = "Off gives Blizzard's chat back as the game draws it.",
             get = function() return S().enabled and true or false end,
             set = function(_, v) local s = ns.chat2; if s then s.enabled = v and true or false end; Re() end },
-        place = { type = "group", name = "Place and size", order = 10, inline = true, args = {
-            w = rng("Width (pixels)", "width", 1, 220, 1000, "The width of the whole block: pane and Chat Bar."),
-            h = rng("Height of the chat pane (pixels)", "height", 2, 90, 800, "Tabs, text and input line together. The Chat Bar is added to this."),
-            move = { type = "execute", name = "Move or resize the chat", order = 3, desc = "Shows a blue box over the chat: drag it to move, drag its top-right corner to resize. Run it again (or /xui chat move) to finish.",
-                func = function() C.ToggleMover() end },
-            reset = { type = "execute", name = "Reset position and size", order = 4, func = function() C.Command("reset"); if Notify then Notify() end end },
-        } },
-        theme = { type = "group", name = "XayaUI theme", order = 20, inline = true, args = {
-            use = tog("Use the XayaUI theme for the chat's colors and font", "useTheme", 1,
-                "When on, the background, border, tabs, input line, bar, and the chat font follow your selected XayaUI theme. The opacity sliders still apply on top. Turn it off to use the colors you pick under Look."),
-        } },
+        theme = tog("Use the XayaUI theme for the chat's colors and font", "useTheme", 4,
+            "When on, the background, border, tabs, input line, bar, and the chat font follow your selected XayaUI theme (Appearance colors are then ignored; opacity sliders still apply)."),
+
+        posHdr = hdr("Position and size", 10),
+        w = rng("Width (pixels)", "width", 11, 220, 1000, "The width of the whole block: pane and Chat Bar."),
+        h = rng("Height of the chat pane (pixels)", "height", 12, 90, 800, "Tabs, text and input line together. The Chat Bar is added to this."),
+        move = { type = "execute", name = "Move or resize the chat", order = 13, desc = "Shows a box over the chat: drag it to move, drag its top-right corner to resize. Run it again (or /xui chat move) to finish.",
+            func = function() C.ToggleMover() end },
+        reset = { type = "execute", name = "Reset position and size", order = 14, func = function() C.Command("reset"); if Notify then Notify() end end },
+
+        insideHdr = hdr("Inside the pane", 20),
+        tabs = tog("Show the tab row", "tabsShow", 21, "Hiding the tabs also hides the way to switch chat windows."),
+        tabH = rng("Tab height (pixels)", "tabHeight", 22, 16, 40, nil, 1, nil, "tabs"),
+        inH = rng("Input line height (pixels)", "inputH", 23, 18, 60, nil, 1, nil, "input"),
+        inset = rng("Text inset from the edge (pixels)", "textInset", 24, 0, 30, nil, 1, nil, "text"),
+
+        piecesHdr = hdr("Blizzard's own pieces", 30, "The button strip (menu, channels, voice), the round social button, the scroll bar, and the back-to-newest arrow."),
+        strip = sel("Blizzard button strip", "stripMode", 31, { HIDE = "Hidden", LEFT = "Left of chat", RIGHT = "Right of chat" }, { "HIDE", "LEFT", "RIGHT" },
+            "The column of small buttons beside the chat: chat menu, channels, voice.", nil, "strip"),
+        social = sel("Social button", "socialMode", 32, { HIDE = "Hidden", SHOW = "Above the chat" }, { "HIDE", "SHOW" },
+            "The round button with a number that the game anchors near the chat.", nil, "social"),
+        scroll = sel("Scroll bar", "scrollBar", 33, { HIDE = "Hidden", SHOW = "Shown" }, { "HIDE", "SHOW" }, nil, nil, "scroll"),
+        toBottom = sel("Back-to-newest arrow", "toBottom", 34, { SHOW = "Shown", HIDE = "Hidden" }, { "SHOW", "HIDE" },
+            "The small arrow that appears when you scroll up; it jumps to the newest message.", nil, "tobottom"),
+        stripX = rng("Button strip: move right", "stripX", 35, -600, 600, nil, 1, noStrip, "strip"),
+        stripY = rng("Button strip: move up", "stripY", 36, -600, 600, nil, 1, noStrip, "strip"),
+        socialX = rng("Social button: move right", "socialX", 37, -600, 600, nil, 1, noSocial, "social"),
+        socialY = rng("Social button: move up", "socialY", 38, -600, 600, nil, 1, noSocial, "social"),
+
+        locate = { type = "execute", name = "Show me where each piece is", order = 39, width = "double",
+            desc = "Outlines and labels every piece of the chat for 8 seconds, including pieces that are hidden.",
+            func = function() C.Locate(nil, 8) end },
+
+        noteHdr = hdr("Protected messages", 90),
+        secretNote = note("|cffaaaaaaIn some instance states the game marks chat text as secret. Addons cannot read or change that text, so the filters and links skip those lines and the history lists them as protected. Position, look, fade and sounds still work.|r", 91),
     } }
 
-    ---------------------------------------------------------------------------------------------------------------------------
-    local barArgs = {
-        on = tog("Show the Chat Bar", "barOn", 1, "A row of data blocks that is part of the chat: it is as wide as the chat, snapped to it, and collapses with it."),
-        side = sel("Place the bar", "barSide", 2, { TOP = "Above the chat", BOTTOM = "Below the chat" }, { "BOTTOM", "TOP" }),
-        h = rng("Bar height (pixels)", "barH", 3, 14, 60),
-        gap = rng("Gap between the bar and the chat (pixels)", "barGap", 4, 0, 20),
-        n = rng("Number of blocks", "barSlots", 5, 1, C.MAX_SLOTS),
-        sizing = sel("Block widths", "barSizing", 6, { EVEN = "Equal widths", AUTO = "Follow the text (blocks marked Fill take the rest)" }, { "EVEN", "AUTO" }),
-        textSize = rng("Text size", "barTextSize", 7, 8, 30),
-        bg = tog("Bar background", "barBgOn", 8),
-        bgCol = col("Background color", "barBg", 9),
-        bd = tog("Bar border", "barBorderOn", 10),
-        bdCol = col("Border color", "barBorder", 11),
-        text = col3("Text color", "barText", 12),
-        value = col3("Number color (friends and similar)", "barValue", 13, "The color of the numbers in blocks such as Friends."),
-        labels = tog("Put the name in front of the character stats", "barLabels", 14),
-        hover = tog("Highlight the block under the mouse", "barHover", 15),
-        c24 = tog("24-hour clock", "barClock24", 16),
-        loc = tog("Use the computer's time (off = the realm's time)", "barLocalTime", 17),
-    }
-    for i = 1, C.MAX_SLOTS do
-        local function hiddenSlot() return i > (tonumber(S().barSlots) or 3) end
-        barArgs["slot" .. i] = { type = "group", name = "Block " .. i, order = 30 + i, inline = true, hidden = hiddenSlot, args = {
-            type = { type = "select", name = "Shows", order = 1,
-                values = function() local v = {}; for _, t in ipairs(C.Bar_Types()) do v[t[1]] = t[2] end; return v end,
-                sorting = function() local o = {}; for _, t in ipairs(C.Bar_Types()) do o[#o + 1] = t[1] end; return o end,
-                get = function() return S()["barType" .. i] end,
-                set = function(_, v) local s = ns.chat2; if s then s["barType" .. i] = v end; Re() end },
-            align = { type = "select", name = "Align text", order = 2, values = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }, sorting = { "LEFT", "CENTER", "RIGHT" },
-                get = function() return S()["barAlign" .. i] or "CENTER" end,
-                set = function(_, v) local s = ns.chat2; if s then s["barAlign" .. i] = v end; Re() end },
-            fill = { type = "toggle", name = "Fill", order = 3, desc = "With 'Follow the text' widths: this block takes the space that is left.",
-                hidden = function() return S().barSizing ~= "AUTO" end,
-                get = function() return S()["barFill" .. i] and true or false end,
-                set = function(_, v) local s = ns.chat2; if s then s["barFill" .. i] = v and true or false end; Re() end },
-            custom = { type = "input", name = "Your text", order = 4, width = "full",
-                hidden = function() return S()["barType" .. i] ~= "CUSTOM" end,
-                get = function() return S()["barCustom" .. i] or "" end,
-                set = function(_, v) local s = ns.chat2; if s then s["barCustom" .. i] = v or "" end; Re() end },
-        } }
-    end
-    local bar = { type = "group", name = "Chat Bar", order = 2, args = barArgs }
-
-    ---------------------------------------------------------------------------------------------------------------------------
+    -- 2. APPEARANCE ---------------------------------------------------------------------------------------------------------
     local function TexValues()
         local v = { [""] = "(none)" }
         for _, t in ipairs(C.BUILTIN_TEX) do v[t[1]] = t[2] end
@@ -158,109 +150,147 @@ function ns.BuildChatTab(Notify)
         end
         return o
     end
-    local look = { type = "group", name = "Look", order = 3, args = {
-        themeNote = note("|cffaaaaaaWith 'Use the XayaUI theme' on (General tab) the colors and font below are ignored; only the opacity sliders still apply.|r", 1, function() return not themeOn() end),
-        bgHdr = { type = "header", name = "Background", order = 10 },
+    local look = { type = "group", name = "Appearance", order = 2, args = {
+        themeNote = note("|cffaaaaaaThe XayaUI theme is on (Layout tab): the colors and fonts below are ignored; only the opacity sliders still apply.|r", 1, function() return not themeOn() end),
+        bgHdr = hdr("Background and border", 10),
         bg = tog("Draw a background", "bgOn", 11),
         bgCol = col("Background color", "bg", 12),
-        tex = { type = "select", name = "Background texture", order = 13, values = TexValues, sorting = TexOrder,
+        bd = tog("Draw a border", "borderOn", 13),
+        bdCol = col("Border color", "border", 14),
+        tex = { type = "select", name = "Background texture", order = 15, values = TexValues, sorting = TexOrder,
             get = function() return S().bgTex or "" end,
             set = function(_, v) local s = ns.chat2; if s then s.bgTex = v end; Re() end },
-        tile = tog("Tile the texture", "bgTile", 14),
-        texA = rng("Texture opacity (%)", "bgTexA", 15, 0, 100, nil, 5),
-        bd = tog("Border", "borderOn", 16),
-        bdCol = col("Border color", "border", 17),
-        fontHdr = { type = "header", name = "Chat text", order = 20 },
+        texA = rng("Texture opacity (%)", "bgTexA", 16, 0, 100, nil, 5),
+        tile = tog("Tile the texture", "bgTile", 17),
+
+        fontHdr = hdr("Chat text", 20),
         font = fontSel("Font", "font", 21),
-        fontSize = rng("Font size", "fontSize", 22, 8, 32),
-        outline = sel("Outline", "fontOutline", 23, OUTLINE, OUTLINE_ORDER),
-        inHdr = { type = "header", name = "Input line", order = 30 },
-        inBg = col("Input background", "inputBg", 31),
-        inBd = col("Input border", "inputBd", 32),
-        inFocus = tog("Border takes the selected-tab color while typing", "inputFocusBd", 33),
-        hint = tog("Show a hint in the empty input line", "inputHint", 34),
-        hintText = { type = "input", name = "Hint text", order = 35,
+        outline = sel("Outline", "fontOutline", 22, OUTLINE, OUTLINE_ORDER),
+        fontSize = rng("Font size", "fontSize", 23, 8, 32),
+
+        tabHdr = hdr("Tabs", 30, "The tab row's height and whether it shows are on the Layout tab."),
+        tabFont = fontSel("Tab font", "tabFont", 31),
+        tabOutline = sel("Tab outline", "tabOutline", 32, TAB_OUTLINE, TAB_OUTLINE_ORDER),
+        tabSize = rng("Tab font size", "tabFontSize", 33, 8, 24),
+        tabText = col3("Tab text color", "tabText", 34),
+        tabSel = col3("Selected tab text color", "tabSel", 35, "Also the border color of the input line while you type."),
+        tabBgOn = tog("Flat tab backgrounds", "tabBgOn", 36),
+        tabBg = col("Tab background", "tabBg", 37),
+        tabSelBg = col("Selected tab background", "tabSelBg", 38),
+
+        inHdr = hdr("Input line", 40),
+        inBg = col("Input background", "inputBg", 41),
+        inBd = col("Input border", "inputBd", 42),
+        inFocus = tog("Border takes the selected-tab color while typing", "inputFocusBd", 43),
+        hint = tog("Show a hint in the empty input line", "inputHint", 44),
+        hintText = { type = "input", name = "Hint text", order = 45,
             get = function() return S().inputHintText or "" end,
             set = function(_, v) local s = ns.chat2; if s then s.inputHintText = v or "" end; Re() end },
-        inH = rng("Input line height (pixels)", "inputH", 36, 18, 60),
-        tabHdr = { type = "header", name = "Tabs", order = 40 },
-        tabs = tog("Show the tab row", "tabsShow", 41, "Hiding the tabs also hides the way to switch chat windows."),
-        tabH = rng("Tab height (pixels)", "tabHeight", 42, 16, 40),
-        tabFont = fontSel("Tab font", "tabFont", 43),
-        tabSize = rng("Tab font size", "tabFontSize", 44, 8, 24),
-        tabOutline = sel("Tab outline", "tabOutline", 45, TAB_OUTLINE, TAB_OUTLINE_ORDER),
-        tabText = col3("Tab text color", "tabText", 46),
-        tabSel = col3("Selected tab text color", "tabSel", 47, "Also the border color of the input line while you type."),
-        tabBgOn = tog("Flat tab backgrounds", "tabBgOn", 48),
-        tabBg = col("Tab background", "tabBg", 49),
-        tabSelBg = col("Selected tab background", "tabSelBg", 50),
     } }
 
-    ---------------------------------------------------------------------------------------------------------------------------
-    local behavior = { type = "group", name = "Behavior", order = 4, args = {
-        collapse = { type = "toggle", name = "Chat hidden (collapsed)", order = 1, width = "full",
+    -- 3. CHAT BAR -----------------------------------------------------------------------------------------------------------
+    local barArgs = {
+        on = tog("Show the Chat Bar", "barOn", 1, "A row of data blocks that is part of the chat: as wide as the chat, snapped to it, and it collapses with it."),
+        barHdr = hdr("Position", 5),
+        side = sel("Place the bar", "barSide", 6, { TOP = "Above the chat", BOTTOM = "Below the chat" }, { "BOTTOM", "TOP" }, nil, nil, "bar"),
+        sizing = sel("Block widths", "barSizing", 7, { EVEN = "Equal", AUTO = "Follow the text" }, { "EVEN", "AUTO" },
+            "Equal: every block is the same width. Follow the text: each block is as wide as its text; blocks marked Fill take the space that is left."),
+        h = rng("Bar height (pixels)", "barH", 8, 14, 60, nil, 1, nil, "bar"),
+        gap = rng("Gap between the bar and the chat (pixels)", "barGap", 9, 0, 20, nil, 1, nil, "bar"),
+
+        blocksHdr = hdr("Blocks", 10, "Each block shows one piece of data. Right-click a block on screen to open this page."),
+        n = rng("Number of blocks", "barSlots", 11, 1, C.MAX_SLOTS),
+    }
+    for i = 1, C.MAX_SLOTS do
+        local function hiddenSlot() return i > (tonumber(S().barSlots) or 3) end
+        barArgs["slot" .. i] = { type = "group", name = "Block " .. i, order = 20 + i, inline = true, hidden = hiddenSlot, args = {
+            type = { type = "select", name = "Shows", order = 1,
+                values = function() local v = {}; for _, t in ipairs(C.Bar_Types()) do v[t[1]] = t[2] end; return v end,
+                sorting = function() local o = {}; for _, t in ipairs(C.Bar_Types()) do o[#o + 1] = t[1] end; return o end,
+                get = function() return S()["barType" .. i] end,
+                set = function(_, v) local s = ns.chat2; if s then s["barType" .. i] = v end; Re() end },
+            align = { type = "select", name = "Align text", order = 2, values = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }, sorting = { "LEFT", "CENTER", "RIGHT" },
+                get = function() return S()["barAlign" .. i] or "CENTER" end,
+                set = function(_, v) local s = ns.chat2; if s then s["barAlign" .. i] = v end; Re() end },
+            fill = { type = "toggle", name = "Fill", order = 3, desc = "With 'Follow the text' widths: this block takes the space that is left.",
+                hidden = function() return S().barSizing ~= "AUTO" end,
+                get = function() return S()["barFill" .. i] and true or false end,
+                set = function(_, v) local s = ns.chat2; if s then s["barFill" .. i] = v and true or false end; Re() end },
+            custom = { type = "input", name = "Your text", order = 4, width = "full",
+                hidden = function() return S()["barType" .. i] ~= "CUSTOM" end,
+                get = function() return S()["barCustom" .. i] or "" end,
+                set = function(_, v) local s = ns.chat2; if s then s["barCustom" .. i] = v or "" end; Re() end },
+        } }
+    end
+    barArgs.lookHdr = hdr("Look", 40)
+    barArgs.textSize = rng("Text size", "barTextSize", 41, 8, 30)
+    barArgs.text = col3("Text color", "barText", 42)
+    barArgs.value = col3("Number color (friends and similar)", "barValue", 43, "The color of the numbers in blocks such as Friends.")
+    barArgs.bg = tog("Bar background", "barBgOn", 44)
+    barArgs.bgCol = col("Background color", "barBg", 45)
+    barArgs.bd = tog("Bar border", "barBorderOn", 46)
+    barArgs.bdCol = col("Border color", "barBorder", 47)
+    barArgs.hover = tog("Highlight the block under the mouse", "barHover", 48)
+    barArgs.dataHdr = hdr("Data options", 50)
+    barArgs.c24 = tog("24-hour clock", "barClock24", 51)
+    barArgs.loc = tog("Use the computer's time (off = the realm's time)", "barLocalTime", 52)
+    barArgs.labels = tog("Put the name in front of the character stats", "barLabels", 53)
+    local bar = { type = "group", name = "Chat Bar", order = 3, args = barArgs }
+
+    -- 4. FADE AND HIDE ------------------------------------------------------------------------------------------------------
+    local behavior = { type = "group", name = "Fade and hide", order = 4, args = {
+        hideHdr = hdr("Hide the chat", 1),
+        collapse = { type = "toggle", name = "Chat hidden (collapsed)", order = 2, width = "full",
             desc = "Same as the arrow on the Chat Bar. Only the bar (or the small arrow) stays on screen.",
             get = function() return S().collapsed and true or false end,
             set = function(_, v) C.SetCollapsed(v); if Notify then Notify() end end },
-        fadeHdr = { type = "header", name = "Auto-hide / fade", order = 10 },
-        fadeNote = note("After a while with no mouse over the chat, nothing typed, and no new message, the chat fades to the opacity below (0 = fully hidden). The mouse over it, typing, or a new message brings it back.", 11),
-        fade = tog("Fade the chat when it is idle", "fadeOn", 12),
-        after = rng("Seconds before it fades", "fadeAfter", 13, 2, 120),
-        to = rng("Opacity when faded (%)", "fadeTo", 14, 0, 100, "0 hides it completely.", 5),
-        secs = rng("Fade duration (seconds)", "fadeSeconds", 15, 0.1, 3, nil, 0.1),
-        wake = tog("A new message brings the chat back", "fadeWake", 16),
-        bar = tog("Fade the Chat Bar too", "fadeBar", 17),
-        textHdr = { type = "header", name = "Old lines", order = 20 },
+
+        fadeHdr = hdr("Fade when idle", 10, "After a while with no mouse over the chat, nothing typed, and no new message, the chat fades to the opacity below (0 = fully hidden). The mouse over it, typing, or a new message brings it back."),
+        fade = tog("Fade the chat when it is idle", "fadeOn", 11),
+        after = rng("Seconds before it fades", "fadeAfter", 12, 2, 120),
+        to = rng("Opacity when faded (%)", "fadeTo", 13, 0, 100, "0 hides it completely.", 5),
+        secs = rng("Fade duration (seconds)", "fadeSeconds", 14, 0.1, 3, nil, 0.1),
+        wake = tog("A new message brings the chat back", "fadeWake", 15),
+        bar = tog("Fade the Chat Bar too", "fadeBar", 16),
+
+        textHdr = hdr("Old lines", 20),
         textFade = tog("Fade old lines away", "textFade", 21, "The game's own per-line fade. Off keeps every line visible until it scrolls out."),
         textAfter = rng("Seconds a line stays visible", "textFadeAfter", 22, 10, 600, nil, 10, function() return not S().textFade end),
     } }
 
-    ---------------------------------------------------------------------------------------------------------------------------
-    local parts = { type = "group", name = "Parts", order = 5, args = {
-        n = note("Blizzard's own extra pieces around the chat.", 1),
-        stripHdr = { type = "header", name = "Button strip (menu, channels, voice)", order = 10 },
-        strip = sel("Button strip", "stripMode", 11, { HIDE = "Hidden", LEFT = "Left of the chat", RIGHT = "Right of the chat" }, { "HIDE", "LEFT", "RIGHT" }),
-        stripX = rng("Strip: move right (pixels)", "stripX", 12, -300, 300, nil, 1, function() return S().stripMode == "HIDE" end),
-        stripY = rng("Strip: move up (pixels)", "stripY", 13, -300, 300, nil, 1, function() return S().stripMode == "HIDE" end),
-        socialHdr = { type = "header", name = "Social / quick-join button", order = 20 },
-        social = sel("Social button", "socialMode", 21, { HIDE = "Hidden", SHOW = "Shown above the chat" }, { "HIDE", "SHOW" },
-            "The round button with a number that the game anchors near the chat."),
-        socialX = rng("Social button: move right (pixels)", "socialX", 22, -300, 300, nil, 1, function() return S().socialMode ~= "SHOW" end),
-        socialY = rng("Social button: move up (pixels)", "socialY", 23, -300, 300, nil, 1, function() return S().socialMode ~= "SHOW" end),
-        miscHdr = { type = "header", name = "Other", order = 30 },
-        scroll = sel("Scroll bar", "scrollBar", 31, { HIDE = "Hidden", SHOW = "Shown" }, { "HIDE", "SHOW" }),
-        inset = rng("Text inset from the edge (pixels)", "textInset", 32, 0, 30),
-        histBtn = tog("Show the small history button in the chat's corner", "histButton", 33),
-    } }
-
-    ---------------------------------------------------------------------------------------------------------------------------
-    local filters = { type = "group", name = "Filters", order = 6, args = {
+    -- 5. FILTERS AND LINKS --------------------------------------------------------------------------------------------------
+    local filters = { type = "group", name = "Filters", order = 5, args = {
         n = note("These work on public messages (say, yell, emotes, channels) and whispers. Your own messages are never filtered. Protected (secret) lines are never touched.", 1),
-        rep = tog("Hide repeated messages", "spamRepeat", 2, "Hides the same message from the same player when it comes again within the time below. Whispers are not checked."),
-        repSec = rng("Repeat window (seconds)", "spamSeconds", 3, 5, 300, nil, 5, function() return not S().spamRepeat end),
-        phrasesHdr = { type = "header", name = "Blocked phrases", order = 10 },
-        phrases = { type = "input", name = "Your blocked-phrase list (one per line)", order = 11, width = "full", multiline = 6,
+        repHdr = hdr("Repeated messages", 10),
+        rep = tog("Hide repeated messages", "spamRepeat", 11, "Hides the same message from the same player when it comes again within the time below. Whispers are not checked."),
+        repSec = rng("Repeat window (seconds)", "spamSeconds", 12, 5, 300, nil, 5, function() return not S().spamRepeat end),
+        phrasesHdr = hdr("Blocked phrases", 20),
+        phrases = { type = "input", name = "Your blocked-phrase list (one per line)", order = 21, width = "full", multiline = 6,
             desc = "A message containing any of these (ignoring capital letters) is hidden.",
             get = function() return S().spamPhrases or "" end,
             set = function(_, v) local s = ns.chat2; if s then s.spamPhrases = v or "" end; Re() end },
-        word = tog("Match whole words only", "spamWord", 12, "'gold' would then not match 'golden'."),
-        stats = { type = "description", order = 13, width = "full", name = function() return "Hidden this session: " .. tostring(C.stats.suppressed) end },
-        clickHdr = { type = "header", name = "Quick ignore", order = 20 },
-        click = tog("Ctrl + right-click a player's name in chat to ignore them", "ignoreClick", 21),
-        linkHdr = { type = "header", name = "Links", order = 30 },
-        links = tog("Make web addresses clickable", "links", 31, "Click one to open a box with the address selected; press Ctrl+C to copy it."),
-        linkCol = col3("Link color", "link", 32),
+        word = tog("Match whole words only", "spamWord", 22, "'gold' would then not match 'golden'."),
+        stats = { type = "description", order = 23, width = "full", name = function() return "Hidden this session: " .. tostring(C.stats.suppressed) end },
+        clickHdr = hdr("Quick ignore", 30),
+        click = tog("Ctrl + right-click a player's name in chat to ignore them", "ignoreClick", 31),
+        linkHdr = hdr("Links", 40),
+        links = tog("Make web addresses clickable", "links", 41, "Click one to open a box with the address selected; press Ctrl+C to copy it."),
+        linkCol = col3("Link color", "link", 42),
     } }
 
-    local history = { type = "group", name = "History", order = 7, args = {
-        n = note("The history pane lists recent messages as plain text you can select and copy. It is kept in memory only: nothing is written to disk, and it is gone when you log out or reload.", 1),
-        on = tog("Keep recent messages for the history pane", "histOn", 2),
-        size = rng("Messages kept", "histSize", 3, 20, 2000, nil, 10, function() return not S().histOn end),
-        open = { type = "execute", name = "Open the history pane", order = 4, func = function() C.History_Toggle() end },
+    -- 6. HISTORY ------------------------------------------------------------------------------------------------------------
+    local history = { type = "group", name = "History", order = 6, args = {
+        n = note("The history window lists recent messages as plain text you can select and copy, with a button per chat tab and a search box. It is kept in memory only: nothing is written to disk, and it is gone when you log out or reload. Combat log lines are not recorded.", 1),
+        keepHdr = hdr("Keeping messages", 10),
+        on = tog("Keep recent messages for the history window", "histOn", 11),
+        size = rng("Messages kept", "histSize", 12, 20, 2000, nil, 10, function() return not S().histOn end),
+        openHdr = hdr("Window", 20),
+        histBtn = tog("Show the small history button in the chat's corner", "histButton", 21, nil, nil, "hist"),
+        open = { type = "execute", name = "Open the history window", order = 22, func = function() C.History_Toggle() end },
     } }
 
-    ---------------------------------------------------------------------------------------------------------------------------
-    local sounds = { type = "group", name = "Sounds", order = 8, args = {
+    -- 7. SOUNDS -------------------------------------------------------------------------------------------------------------
+    local sounds = { type = "group", name = "Sounds", order = 7, args = {
         n = note("A sound for each chat tab. It plays when a message arrives for a kind of message that tab shows. Your own messages never play a sound. A tab keeps the kinds it shows in Blizzard's own chat settings (right-click the tab).", 1),
         on = tog("Play tab sounds", "soundsOn", 2),
         combat = tog("Also play them in combat", "soundsInCombat", 3),
@@ -295,8 +325,8 @@ function ns.BuildChatTab(Notify)
     end
 
     local privacy = ns.ChatPrivacy_Options and ns.ChatPrivacy_Options(Notify) or nil
-    if privacy then privacy.order = 9; privacy.name = "Privacy" end
+    if privacy then privacy.order = 8; privacy.name = "Privacy" end
 
     return { type = "group", name = "Chat Panel", order = 1, childGroups = "tab",
-        args = { general = general, bar = bar, look = look, behavior = behavior, parts = parts, filters = filters, history = history, sounds = sounds, privacy = privacy } }
+        args = { layout = layout, look = look, bar = bar, behavior = behavior, filters = filters, history = history, sounds = sounds, privacy = privacy } }
 end

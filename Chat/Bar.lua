@@ -219,6 +219,15 @@ local function Style(s)
     end
 end
 
+local last
+local function Place()
+    local bar, s = C.Bar(), S()
+    if not (bar and s and last and s.barOn and C.On()) then return end
+    B.Layout(bar, slots, { n = last.n, sizing = last.sizing, lead = C.ArrowLead(), get = last.get })
+    -- AUTO sizing measures the text, so lay out again once the strings have their widths
+    if last.sizing == "AUTO" then B.Layout(bar, slots, { n = last.n, sizing = "AUTO", lead = C.ArrowLead(), get = last.get }) end
+end
+
 local function Refresh(s)
     if not C.On() or not C.Bar() then return end
     local bar = C.Bar()
@@ -234,9 +243,14 @@ local function Refresh(s)
     }
     for i = 1, n do B.StyleSlot(slots[i], i, get, pr) end
     UpdateText()
-    B.Layout(bar, slots, { n = n, sizing = s.barSizing == "AUTO" and "AUTO" or "EVEN", lead = C.ArrowLead(), get = get })
-    -- AUTO sizing measures the text, so lay out again once the strings have their widths
-    if s.barSizing == "AUTO" then B.Layout(bar, slots, { n = n, sizing = "AUTO", lead = C.ArrowLead(), get = get }) end
+    last = { n = n, sizing = s.barSizing == "AUTO" and "AUTO" or "EVEN", get = get }
+    Place()
+    -- the game only knows a frame's real width a moment after it is anchored: lay out again whenever the bar's size is settled or changes
+    if not bar._xuiSizeHook then
+        bar._xuiSizeHook = true
+        bar:HookScript("OnSizeChanged", function() Place() end)
+    end
+    C_Timer.After(0, Place)
 end
 C.Register("bar", Refresh)
 

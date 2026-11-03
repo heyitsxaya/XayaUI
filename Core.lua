@@ -777,6 +777,6 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif cmd == "bug" then
         if ns.ShowBugReport then ns.ShowBugReport() end
     else
-        ns.Print("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat (Chat Panel: on, off, reset, move, history, settings) | /xui chatprobe (read-only chat frame report) | /xui perf [on|off] (engine timing) | /xui notes (show / hide the notepad) | /xui panel (Chat Bar settings) | /xui data (custom data panels and bars) | /xui privacy (cover or show the chat) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media")
+        ns.Print((("commands: /xui (settings) | /xui console (event log window) | /xui bug (bug report) | /xui status | /xui probe <spellID|ids> | /xui debuffs [target|focus] [spellID] | /xui unlock | /xui cursor | /xui chat (Chat Panel: on, off, reset, move, history, settings) | /xui chatprobe (read-only chat frame report) | /xui perf [on|off] (engine timing) | /xui notes (show / hide the notepad) | /xui panel (Chat Bar settings) | /xui data (custom data panels and bars) | /xui privacy (cover or show the chat) | /xui seed | /xui talents [status|<name>] | /xui model [setup|<spellID>] | /xui tracker [shadow|status] | /xui loc | /xui media"):gsub("|", "||")))
     end
 end

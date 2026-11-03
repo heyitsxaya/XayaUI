@@ -177,9 +177,11 @@ local function PlaceButton()
     if not (btn and s) then return end
     local c = ns.Chat and ns.Chat.Container and ns.Chat.Container()
     if not c then return end
+    local s2 = ns.chat2
     btn:ClearAllPoints()
     -- beside the chat block, level with its top edge (the strip option "Right of the chat" uses the same side: move one with the offsets)
-    btn:SetPoint("TOPLEFT", c, "TOPRIGHT", 4 + (tonumber(s.privBtnX) or 0), (tonumber(s.privBtnY) or 0))
+    local past = (s2 and s2.stripMode == "RIGHT") and 34 or 0   -- Blizzard's button strip may sit on that side: stay clear of it
+    btn:SetPoint("TOPLEFT", c, "TOPRIGHT", 4 + past + (tonumber(s.privBtnX) or 0), (tonumber(s.privBtnY) or 0))
 end
 
 local function BuildButton()
