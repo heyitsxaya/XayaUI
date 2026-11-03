@@ -86,6 +86,11 @@ local function ArtBox(v)
     local bw, bh = math.min(W, iw), math.min(H, ih)
     return W, H, bw, bh, bw / iw, bh / ih
 end
+-- How far the art sits inside the display on each side (0 when it fills or is cropped): the combat engine insets its slots' art with it.
+function ns.ArtInset(v)
+    local W, H, bw, bh = ArtBox(v or {})
+    return (W - bw) / 2, (H - bh) / 2
+end
 local function ApplyCoords(tex, v, base)
     local _, _, _, _, fx, fy = ArtBox(v)
     local l, r, t, b = base[1], base[2], base[3], base[4]
@@ -164,6 +169,30 @@ local function AtlasBase(name)
         return { info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord }
     end
     return { 0, 1, 0, 1 }
+end
+
+-- The art's own proportions (width / height), for "Maintain aspect ratio" (Options.lua). Zoom and the icon edge crop take the
+-- same fraction off every side, so they keep the proportions. nil when the game cannot tell: it has no way to report the size
+-- of a numeric file ID (the Blizzard alert art) or of a file path that is not in the graphics lists.
+local function GraphicSize(path)
+    path = tostring(path or ""):gsub("/", "\\"):lower()
+    for _, g in ipairs(ns.LocalGraphics or {}) do
+        if tostring(g[2]):lower() == path then return tonumber(g[3]), tonumber(g[4]) end
+    end
+end
+function ns.ArtNativeRatio(v)
+    v = v or {}
+    local kind, w, h = ns.Val(v.kind), nil, nil
+    if kind == "spellicon" then
+        if (v.iconSrc or "auto") == "file" then w, h = GraphicSize(v.iconPath) end
+        if not w then return 1 end   -- game icons are square (and your own icon files are required to be)
+    elseif kind == "atlas" and v.tex and v.tex ~= "" then
+        local ok, info = pcall(C_Texture.GetAtlasInfo, v.tex)
+        if ok and type(info) == "table" then w, h = tonumber(info.width), tonumber(info.height) end
+    elseif kind and v.tex and v.tex ~= "" and not tonumber(v.tex) then
+        w, h = GraphicSize(v.tex)
+    end
+    if w and h and w > 0 and h > 0 then return w / h end
 end
 
 -- Icon source for icon rules (v.iconSrc): auto = the first trigger's spell/item; spell / item = an ID chosen on the cue;

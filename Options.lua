@@ -18,6 +18,7 @@ local function Notify() if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end if ns
 
 local function Changed(rule)
     if rule then
+        if type(rule.visual) == "table" and ns.KeepArtAspect then ns.KeepArtAspect(rule.visual) end   -- swapped art keeps its own proportions
         ns.RefreshVisual(rule)
         -- an edit on a parent rule (aura / spell ID, triggers) changes what its cues resolve (the "automatic" icon comes from the parent's
         -- first trigger), but each cue is its own frame: repaint them too, or the icon stays a "?" until something else refreshes it
@@ -424,15 +425,56 @@ local function Tog(t, k, name, order, on, extra)
     if extra then for kk, vv in pairs(extra) do o[kk] = vv end end
     return o
 end
--- width / height sliders that move together while "Maintain aspect ratio" (V.keepAspect, on by default) is not switched off
-function ns.AspectSet(V, key, other, on)
+-- "Maintain aspect ratio" (V.keepAspect, on by default) is about the ART inside a display (icon, texture, progress texture): it
+-- keeps the picture's own proportions. The display box (Display width / height) is never touched by it, so a box of another shape
+-- crops the art instead of stretching it.
+--   turning it on      -> the art snaps back to its own proportions (its current width kept, height recomputed)
+--   while it is on     -> Icon width / height move together at those proportions; new art snaps to its own proportions
+-- When the game cannot tell the art's size (a Blizzard file ID), the art's current proportions are kept.
+local artSeen = setmetatable({}, { __mode = "k" })   -- display -> the art it showed last time we looked (no saved field)
+local function ArtSig(V) return tostring(V.kind) .. "|" .. tostring(V.tex) .. "|" .. tostring(V.iconSrc) .. "|" .. tostring(V.iconPath) end
+local function ArtPx(x) return math.max(1, math.floor(x + 0.5)) end
+local function ArtRatio(V)
+    local r = ns.ArtNativeRatio and ns.ArtNativeRatio(V)
+    if r then return r, true end
+    local W, H = math.max(8, V.w or 128), math.max(8, V.h or 128)
+    local iw, ih = tonumber(V.iconW) or 0, tonumber(V.iconH) or 0
+    return (iw > 0 and iw or W) / (ih > 0 and ih or H), false
+end
+-- Returns false when the art's own size is unknown (nothing changed).
+function ns.ResetArtAspect(V)
+    artSeen[V] = ArtSig(V)
+    local r, native = ArtRatio(V)
+    if not native then return false end
+    local W, H = math.max(8, V.w or 128), math.max(8, V.h or 128)
+    local iw, ih = tonumber(V.iconW) or 0, tonumber(V.iconH) or 0
+    if iw <= 0 and ih <= 0 and math.abs(W / r - H) < 1 then return true end   -- follows a display that already has the art's shape
+    local aw = iw > 0 and iw or W
+    local ah = aw / r
+    if ah > 512 then ah = 512; aw = ah * r end
+    if aw > 512 then aw = 512; ah = aw / r end
+    V.iconW, V.iconH = ArtPx(aw), ArtPx(ah)
+    return true
+end
+function ns.SeedArtAspect(V) if type(V) == "table" and artSeen[V] == nil then artSeen[V] = ArtSig(V) end end
+-- From every edit (Changed): art that was swapped while the toggle is on snaps to its own proportions.
+function ns.KeepArtAspect(V)
+    if type(V) ~= "table" or V.keepAspect == false then return end
+    local sig = ArtSig(V)
+    if artSeen[V] == nil then artSeen[V] = sig elseif artSeen[V] ~= sig then ns.ResetArtAspect(V) end
+end
+-- Icon width / height sliders: linked at the art's proportions while the toggle is on (0 = follow the display, both axes).
+function ns.ArtAspectSet(V, key, on)
     return function(_, val)
-        local kw, ow = V[key] or 128, V[other] or 128
-        if V.keepAspect ~= false and kw > 0 then
-            local ratio = ow / kw
-            local nv = val * ratio
-            if nv > 512 then nv = 512; val = nv / ratio elseif nv < 8 then nv = 8; val = nv / ratio end
-            V[key], V[other] = math.min(512, math.max(8, math.floor(val + 0.5))), math.floor(nv + 0.5)
+        if V.keepAspect ~= false then
+            if val <= 0 then V.iconW, V.iconH = 0, 0
+            else
+                local r = ArtRatio(V)
+                local w, h = val, val / r
+                if key == "iconH" then w, h = val * r, val end
+                local s = math.min(1, 512 / math.max(w, h))
+                V.iconW, V.iconH = ArtPx(w * s), ArtPx(h * s)
+            end
         else
             V[key] = val
         end
@@ -1439,6 +1481,7 @@ local function BuildRule(i, rule)
     local function olBorderHide() return not V.outline.enabled or olStyleNow() ~= "border" end
     local function olGlowHide() return olBorderHide() or V.outline.glowOn == false end
     if rule.cueKind == "icon" and V.kind ~= "spellicon" then V.kind = "spellicon" end   -- icon cues never use texture sources
+    ns.SeedArtAspect(V)   -- the art shown now: a later swap is detected against it (Maintain aspect ratio)
     local tex = {
         type = "group", inline = true, name = "Texture", order = 10, args = {
             kind = Sel(V, "kind", "Source", 1, TEX_KIND, TEX_KIND_ORDER, function() Changed(rule); Notify() end,
@@ -1525,8 +1568,9 @@ local function BuildRule(i, rule)
                 get = function() if V.kind == "file" then return tostring(V.tex) end end,
                 set = function(_, k)
                     if k == "0" then V.tex = "" else V.kind, V.tex = "file", k end
-                    for _, g in ipairs(ns.LocalGraphics or {}) do   -- keep the picture's proportions (capped at 256)
-                        if g[2] == k then
+                    local follows = (tonumber(V.iconW) or 0) <= 0 and (tonumber(V.iconH) or 0) <= 0
+                    for _, g in ipairs(ns.LocalGraphics or {}) do   -- art that follows the display: shape the display like the picture (capped at 256)
+                        if follows and g[2] == k then
                             local sc = math.min(1, 256 / math.max(g[3], g[4]))
                             V.w, V.h = math.max(8, math.floor(g[3] * sc)), math.max(8, math.floor(g[4] * sc))
                         end
@@ -1534,18 +1578,24 @@ local function BuildRule(i, rule)
                     Changed(rule); Notify()
                 end },
             sizeH = { type = "header", name = "Size & Orientation", order = 10 },
-            w = Rng(V, "w", "Display width", 11, 8, 512, 1, on, { set = ns.AspectSet(V, "w", "h", on),
-                desc = "The size of the display itself: its box on screen, its border, cooldown swipe, glow, and the area you click to move it. The icon art has its own size below." }),
-            h = Rng(V, "h", "Display height", 12, 8, 512, 1, on, { set = ns.AspectSet(V, "h", "w", on),
-                desc = "The size of the display itself: its box on screen, its border, cooldown swipe, glow, and the area you click to move it. The icon art has its own size below." }),
-            keepAspect = { type = "toggle", name = "Maintain aspect ratio", order = 12.5, width = "double",
-                desc = "On (default): changing Width or Height changes the other one too, keeping the proportions they have when you move the slider. Off: they move independently.",
+            w = Rng(V, "w", "Display width", 11, 8, 512, 1, on,
+                { desc = "The size of the display itself: its box on screen, its border, cooldown swipe, glow, and the area you click to move it. It is the sizing box: art of another shape is cropped by it, never stretched while Maintain aspect ratio is on. The art has its own size below." }),
+            h = Rng(V, "h", "Display height", 12, 8, 512, 1, on,
+                { desc = "The size of the display itself: its box on screen, its border, cooldown swipe, glow, and the area you click to move it. It is the sizing box: art of another shape is cropped by it, never stretched while Maintain aspect ratio is on. The art has its own size below." }),
+            keepAspect = { type = "toggle", name = "Maintain aspect ratio (art)", order = 12.5, width = "double",
+                desc = "For the art inside the display (icon, texture, progress texture). Turning it on resets the art to its own proportions (keeps its width, recomputes its height); while on, Icon width and height move together and new art snaps to its own proportions. The display box above is never changed by this, so it can crop the art. Art whose size the game cannot report (Blizzard alert file IDs) keeps its current proportions.",
                 get = function() return V.keepAspect ~= false end,
-                set = function(_, v) V.keepAspect = v and true or false; on() end },
-            iconW = Rng(V, "iconW", "Icon width (0 = same as display)", 13, 0, 512, 1, on,
-                { desc = "The size of the icon art inside the display, centered. Larger than the display width: the sides are cropped. Smaller: the icon is drawn smaller than the display. 0 follows the display width." }),
-            iconH = Rng(V, "iconH", "Icon height (0 = same as display)", 13.2, 0, 512, 1, on,
-                { desc = "The size of the icon art inside the display, centered. Larger than the display height: the top and bottom are cropped. Smaller: the icon is drawn smaller than the display. 0 follows the display height." }),
+                set = function(_, v)
+                    V.keepAspect = v and true or false
+                    if v and not ns.ResetArtAspect(V) then
+                        ns.Print("The game cannot report this art's own size (it is a file ID), so its current proportions are kept and locked.")
+                    end
+                    on(); Notify()
+                end },
+            iconW = Rng(V, "iconW", "Icon width (0 = same as display)", 13, 0, 512, 1, on, { set = ns.ArtAspectSet(V, "iconW", on),
+                desc = "The size of the art inside the display, centered. Larger than the display width: the sides are cropped. Smaller: the art is drawn smaller than the display. 0 follows the display (both axes while Maintain aspect ratio is on)." }),
+            iconH = Rng(V, "iconH", "Icon height (0 = same as display)", 13.2, 0, 512, 1, on, { set = ns.ArtAspectSet(V, "iconH", on),
+                desc = "The size of the art inside the display, centered. Larger than the display height: the top and bottom are cropped. Smaller: the art is drawn smaller than the display. 0 follows the display (both axes while Maintain aspect ratio is on)." }),
             rotation = Rng(V, "rotation", "Rotation (degrees)", 14, 0, 360, 1, on,
                 { desc = "Rotates the art about its center. Works best on square sizes; a square image shrinks slightly at diagonal angles so it is never cropped." }),
             flipH = Tog(V, "flipH", "Mirror (flip horizontally)", 15, on),

@@ -262,6 +262,19 @@ end
 -- The button's look. A group's buttons show whichever of its auras is up, so they take the aura's own icon; a single slot
 -- shows one display, so it is painted with that display's own art (XayaUI's art routine), its background, opacity, and - for a
 -- progress display - a status bar the game itself drives from the aura's duration (the drain keeps working in combat).
+-- A single slot's art sits where XayaUI draws it: art set smaller than the display (Icon width / height) is inset and centered;
+-- art larger than the display is cropped by its texture coordinates (PaintDisplayArt), so it fills the slot.
+local function FitArt(region, btn, v, single)
+    local ix, iy = 0, 0
+    if single and ns.ArtInset then ix, iy = ns.ArtInset(v) end
+    if ix > 0 or iy > 0 then
+        region:SetPoint("TOPLEFT", btn, "TOPLEFT", ix, -iy)
+        region:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -ix, iy)
+    else
+        region:SetAllPoints(btn)
+    end
+end
+
 local function ButtonInit(w, h, display, single)
     local v = (display and display.visual) or {}
     local zoom = 0.08 + (tonumber(v.zoom) or 0)
@@ -280,7 +293,7 @@ local function ButtonInit(w, h, display, single)
         end
         if UsesBar(display, single) then
             local bar = CreateFrame("StatusBar", nil, btn)
-            bar:SetAllPoints(btn)
+            FitArt(bar, btn, v, single)
             bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8")
             local art = bar:GetStatusBarTexture()
             if paint then paint(art, display) else btn:SetIcon(art) end
@@ -290,7 +303,7 @@ local function ButtonInit(w, h, display, single)
             btn:SetDurationBar(bar, { direction = TimerDirection(v.fill.reverse) })
         elseif paint then
             local art = btn:CreateTexture(nil, "ARTWORK")
-            art:SetAllPoints(btn)
+            FitArt(art, btn, v, single)
             paint(art, display)
         else
             local icon = btn:CreateTexture(nil, "ARTWORK")
