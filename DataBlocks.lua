@@ -14,6 +14,96 @@ B.MAXN = 20
 B.DEF = { gapL = 10, gapR = 10, fill = false, align = "CENTER", scale = 100,
     bgOn = false, bgR = 0, bgG = 0, bgB = 0, bgA = 40, textOn = false, tR = 1, tG = 1, tB = 1, tA = 100 }
 
+-------------------------------------------------------------------------------
+-- Addon usage for the FPS / latency tooltips: the same numbers the game's Addon List shows (C_AddOnProfiler: current / average / peak
+-- CPU as a share of the whole application, top addons by recent CPU) plus memory per addon (GetAddOnMemoryUsage, in KB).
+-- B.UsageLines(topN) -> a list of tooltip lines (plain strings; a line starting "#" is a heading). Never errors: a missing API just
+-- leaves its section out. Memory is a costly call, so it is re-read at most every 15 s (the game's own Addon List does the same).
+-------------------------------------------------------------------------------
+local issecret = _G.issecretvalue or function() return false end
+local function Number(v) v = tonumber(v); if v == nil or issecret(v) then return nil end return v end
+local function Pct(p)
+    if p >= 1 then return ("%.0f%%"):format(p) elseif p >= 0.1 then return ("%.1f%%"):format(p) elseif p >= 0.01 then return ("%.2f%%"):format(p) end
+    return "0%"
+end
+local function Mem(kb) if kb >= 1024 then return ("%.1f MB"):format(kb / 1024) end return ("%.0f KB"):format(kb) end
+local memCache, memAt
+
+function B.UsageLines(topN)
+    topN = math.max(1, math.min(15, tonumber(topN) or 8))
+    local out = { "#AddOn usage" }
+    local prof = _G.C_AddOnProfiler
+    local okEnabled, enabled = pcall(function() return prof and prof.IsEnabled and prof.IsEnabled() end)
+    if okEnabled and enabled and Enum and Enum.AddOnProfilerMetric then
+        pcall(function()
+            local M = Enum.AddOnProfilerMetric
+            local app = Number(prof.GetApplicationMetric(M.RecentAverageTime))
+            local function Overall(metric)
+                local a, o = Number(prof.GetApplicationMetric(metric)), Number(prof.GetOverallMetric(metric))
+                if a and o and a > 0 then return Pct(o / a * 100) end
+                return "--"
+            end
+            out[#out + 1] = ("CPU now: %s    average: %s    peak: %s"):format(Overall(M.RecentAverageTime), Overall(M.SessionAverageTime), Overall(M.PeakTime))
+            local overall = Number(prof.GetOverallMetric(M.RecentAverageTime))
+            local top = prof.GetTopKAddOnsForMetric and prof.GetTopKAddOnsForMetric(M.RecentAverageTime, topN)
+            if app and overall and top and #top > 0 then
+                out[#out + 1] = "#Top by CPU (now)"
+                for _, r in ipairs(top) do
+                    local name = r.addOnName
+                    local v = name and Number(prof.GetAddOnMetric(name, M.RecentAverageTime))
+                    local avg = name and Number(prof.GetAddOnMetric(name, M.SessionAverageTime))
+                    if v then
+                        local rel = app - overall + v
+                        local line = ("%s   %s"):format(rel > 0 and Pct(v / rel * 100) or "--", name)
+                        if avg then
+                            local relA = (Number(prof.GetApplicationMetric(M.SessionAverageTime)) or 0) - (Number(prof.GetOverallMetric(M.SessionAverageTime)) or 0) + avg
+                            if relA > 0 then line = line .. ("  (avg %s)"):format(Pct(avg / relA * 100)) end
+                        end
+                        out[#out + 1] = line
+                    end
+                end
+            end
+        end)
+    else
+        out[#out + 1] = "CPU use is not available (the game's addon profiler is off)."
+    end
+    if _G.GetAddOnMemoryUsage and _G.UpdateAddOnMemoryUsage and C_AddOns and C_AddOns.GetNumAddOns then
+        pcall(function()
+            local now = GetTime()
+            if not memCache or not memAt or now - memAt > 15 then
+                UpdateAddOnMemoryUsage()
+                local list, total = {}, 0
+                for i = 1, C_AddOns.GetNumAddOns() do
+                    local kb = Number(GetAddOnMemoryUsage(i))
+                    if kb and kb > 0 then
+                        local name = C_AddOns.GetAddOnInfo(i)
+                        if type(name) == "table" then name = name.name end
+                        list[#list + 1] = { name = name or ("#" .. i), kb = kb }
+                        total = total + kb
+                    end
+                end
+                table.sort(list, function(a, b) return a.kb > b.kb end)
+                memCache, memAt = { list = list, total = total }, now
+            end
+            if memCache.total > 0 then
+                out[#out + 1] = "#Memory: " .. Mem(memCache.total) .. " total"
+                for n = 1, math.min(topN, #memCache.list) do
+                    out[#out + 1] = ("%s   %s"):format(Mem(memCache.list[n].kb), memCache.list[n].name)
+                end
+            end
+        end)
+    end
+    return out
+end
+
+-- fills the game tooltip with `head` lines, then the usage lines; "#..." lines are gold headings
+function B.AddUsage(tooltip, topN)
+    tooltip:AddLine(" ")
+    for _, l in ipairs(B.UsageLines(topN)) do
+        if l:sub(1, 1) == "#" then tooltip:AddLine(l:sub(2), 1, 0.82, 0) else tooltip:AddLine(l, 1, 1, 1) end
+    end
+end
+
 -- a slot: button with a background texture, a mouse-over highlight and a text. The caller adds its own scripts.
 function B.MakeSlot(parent)
     local slot = CreateFrame("Button", nil, parent)

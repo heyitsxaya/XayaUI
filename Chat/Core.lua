@@ -285,9 +285,20 @@ function C.Command(arg)
     elseif arg == "move" then if C.ToggleMover then C.ToggleMover() end
     elseif arg == "history" then if C.History_Toggle then C.History_Toggle() end
     elseif arg == "settings" or arg == "options" then if C.OpenSettings then C.OpenSettings() end
+    elseif arg == "wrap" then
+        local st = C.WrapStatus and C.WrapStatus()
+        if not st then ns.Print("Chat Panel wrap: the chat window is not there to measure."); return end
+        local function f(v) return v and ("%.1f"):format(v) or "?" end
+        ns.Print(("Chat Panel wrap: window width %s, text area %s, line width %s (%s lines), widest text %s%s"):format(f(st.cf), f(st.text), f(st.line), tostring(st.numLines or "?"), f(st.widest), C.WrapOff() and "  <- OFF, laying out again" or "  (consistent)"))
+        local cf = C.Main()
+        local sc, tsc = cf and cf.GetEffectiveScale and cf:GetEffectiveScale(), C.TextArea() and C.TextArea():GetEffectiveScale()
+        ns.Print(("  scale: window %s, text area %s; relayouts done this session: %d"):format(f(sc), f(tsc), C.stats.rewraps or 0))
+        C.Rewrap(true)
+        local st2 = C.WrapStatus()
+        if st2 then ns.Print(("  after laying out again: line width %s, widest text %s"):format(f(st2.line), f(st2.widest))) end
     else
         local why = C.BlockedReason()
-        ns.Print((("Chat Panel: " .. (s.enabled and (why and ("blocked: " .. why) or "ON") or "OFF") .. ". /xui chat on|off|reset|move|history|settings"):gsub("|", "||")))
+        ns.Print((("Chat Panel: " .. (s.enabled and (why and ("blocked: " .. why) or "ON") or "OFF") .. ". /xui chat on|off|reset|move|history|wrap|settings"):gsub("|", "||")))
         local names = {}
         for k in pairs(C.applied) do names[#names + 1] = k end
         table.sort(names)

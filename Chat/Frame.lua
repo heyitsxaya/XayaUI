@@ -45,6 +45,7 @@ local function Build()
     pane:SetFrameStrata("BACKGROUND")
     tabsA = CreateFrame("Frame", nil, pane)
     textA = CreateFrame("Frame", nil, pane)
+    textA:SetScript("OnSizeChanged", function() if C.On() and C.Rewrap then C.Rewrap() end end)   -- the text area was resized: wrap at the new width
     inputA = CreateFrame("Button", "XayaUIChatInput", pane)     -- the input line's strip; clicking it opens the edit box
     inputA:SetFrameStrata("LOW")
     inputA:RegisterForClicks("LeftButtonUp")
@@ -188,6 +189,7 @@ function C.Anchor()
             cf:SetPoint("BOTTOMRIGHT", textA, "BOTTOMRIGHT", 0, 0)
             if cf.SetUserPlaced then cf:SetUserPlaced(true) end
         end)
+        if C_Timer and C_Timer.After then C_Timer.After(0.1, function() if C.On() then C.Rewrap(true) end end) end
         C.Try("dock", function()
             local dock = _G.GeneralDockManager
             if not dock then return end
@@ -434,6 +436,54 @@ function C.SoonAnchor()
     C_Timer.After(0, function() soonPending = false; if C.On() and not C.Glued() then C.Anchor() end end)
 end
 
+-------------------------------------------------------------------------------
+-- Wrapping. The game's message frame wraps every line at the width it had when it last laid its lines out (ScrollingMessageFrame:
+-- RefreshLayout sets each line's width to frame:GetWidth() once, and only again after a size change it hears about). The pane gives
+-- that frame its size through two anchors, so a width it had before the pane moved it can stay in use: text then runs past the pane's
+-- right edge and a long line or link breaks in the wrong place. C.WrapStatus measures it; C.Rewrap asks the frame to lay its lines
+-- out again at the width it has now. The upkeep below does that on its own when a line's width differs from the frame's.
+-------------------------------------------------------------------------------
+local function Num(v) v = tonumber(v); if not v or C.IsSecret(v) then return nil end return v end
+function C.WrapStatus()
+    local cf = C.Main()
+    if not (cf and textA) then return nil end
+    local st = { cf = Num(cf.GetWidth and cf:GetWidth()), text = Num(textA:GetWidth()) }
+    local lines = cf.visibleLines
+    if type(lines) == "table" then
+        st.numLines = #lines
+        local first = lines[1]
+        st.line = first and first.GetWidth and Num(first:GetWidth()) or nil
+        local widest = 0
+        for _, fs in ipairs(lines) do
+            local w = fs and fs.GetStringWidth and Num(fs:GetStringWidth()) or 0
+            if w > widest then widest = w end
+        end
+        st.widest = widest
+    end
+    return st
+end
+function C.WrapOff()   -- true when the frame is laying text out at a width that is not the one it has now
+    local st = C.WrapStatus()
+    if not st then return false end
+    if st.line and st.cf and math.abs(st.line - st.cf) > 0.6 then return true end
+    if st.cf and st.text and math.abs(st.cf - st.text) > 0.6 then return true end
+    return false
+end
+local lastRewrap = 0
+function C.Rewrap(force)
+    local cf = C.Main()
+    if not cf then return false end
+    local now = GetTime and GetTime() or 0
+    if not force and now - lastRewrap < 1 then return false end
+    lastRewrap = now
+    local ok = pcall(function()
+        if cf.MarkLayoutDirty then cf:MarkLayoutDirty() end
+        if cf.RefreshIfNecessary then cf:RefreshIfNecessary() end
+    end)
+    C.stats.rewraps = (C.stats.rewraps or 0) + (ok and 1 or 0)
+    return ok
+end
+
 local function Refresh(s)
     if not C.On() then
         if container then container:Hide() end
@@ -470,6 +520,7 @@ up:SetScript("OnUpdate", function(_, dt)
     if not (s and container and C.On()) then return end
     local cf = C.Main()
     if not C.Glued() then C.Anchor() end
+    if cf and cf.IsShown and cf:IsShown() and C.WrapOff() then C.Rewrap() end
     local eb = C.EditBoxOf(cf or {})
     local typing = eb and eb.IsShown and eb:IsShown()
     hint:SetShown(s.inputHint and not typing and not s.collapsed and true or false)

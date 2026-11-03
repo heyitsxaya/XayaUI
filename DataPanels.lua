@@ -52,8 +52,9 @@ DT.Register("TIME", "Time", "General", {
     end,
     tip = function() return { "Time", date("%A %d %B") } end,
 })
-DT.Register("FPS", "Frame rate", "General", { text = function() return ("%d fps"):format(math.floor((GetFramerate and GetFramerate() or 0) + 0.5)) end })
+DT.Register("FPS", "Frame rate", "General", { usage = true, tip = function() return { "Frame rate", ("%d fps"):format(math.floor((GetFramerate and GetFramerate() or 0) + 0.5)) } end, text = function() return ("%d fps"):format(math.floor((GetFramerate and GetFramerate() or 0) + 0.5)) end })
 DT.Register("LATENCY", "Latency", "General", {
+    usage = true,
     text = function() local _, _, home, world = GetNetStats(); return ("%d ms"):format(world or home or 0) end,
     tip = function() local _, _, home, world = GetNetStats(); return { "Latency", ("Home: %d ms"):format(home or 0), ("World: %d ms"):format(world or 0) } end,
 })
@@ -336,9 +337,9 @@ local function Build(key)
             if g.blockCombatClick and InCombat() then return end
             if b == "RightButton" then OpenSettings() end
         end)
-        s:SetScript("OnEnter", function(self)
-            local cfg, g = Cfg(key), (DB() and DB().general or {})
-            if not cfg or (g.blockCombatHover and InCombat()) then return end
+        local function ShowTip(self)
+            local cfg = Cfg(key)
+            if not cfg then return end
             local d = DT.by[cfg["slot" .. i] or "NONE"] or DT.by.NONE
             GameTooltip:SetOwner(self, "ANCHOR_NONE")
             GameTooltip:ClearAllPoints()
@@ -349,10 +350,30 @@ local function Build(key)
             lines = lines or { d.name }
             GameTooltip:SetText(lines[1] or "")
             for n = 2, #lines do GameTooltip:AddLine(lines[n], 1, 1, 1) end
+            if d.usage and B.AddUsage then
+                local ok, err = pcall(B.AddUsage, GameTooltip, 8)
+                if not ok then GameTooltip:AddLine("Addon usage unavailable: " .. tostring(err), 1, 0.4, 0.4) end
+            end
             GameTooltip:AddLine("Right-click: panel settings", 0.6, 0.6, 0.6)
             GameTooltip:Show()
+        end
+        s:SetScript("OnEnter", function(self)
+            local cfg, g = Cfg(key), (DB() and DB().general or {})
+            if not cfg or (g.blockCombatHover and InCombat()) then return end
+            ShowTip(self)
+            local d = DT.by[cfg["slot" .. i] or "NONE"] or DT.by.NONE
+            if d.usage then   -- the CPU numbers move: redraw once a second while the mouse is on the block
+                local t = 0
+                self:SetScript("OnUpdate", function(f, dt)
+                    t = t + dt
+                    if t < 1 then return end
+                    t = 0
+                    if InCombat() then f:SetScript("OnUpdate", nil); GameTooltip:Hide(); return end
+                    if GameTooltip:IsOwned(f) then ShowTip(f) else f:SetScript("OnUpdate", nil) end
+                end)
+            end
         end)
-        s:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        s:SetScript("OnLeave", function(self) self:SetScript("OnUpdate", nil); GameTooltip:Hide() end)
         e.slots[i] = s
     end
     return e

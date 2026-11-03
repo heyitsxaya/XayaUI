@@ -38,8 +38,8 @@ P.TIME = { name = "Time",
         return ("%02d:%02d"):format(h, m)
     end,
     tip = function() return "Time", (date("%A %d %B")) end }
-P.FPS = { name = "Frame rate", text = function() local f = math.floor(Num(GetFramerate and GetFramerate()) + 0.5); return ("%s%d|r fps"):format(Ramp(f, 60, 30), f) end }
-P.LATENCY = { name = "Latency",
+P.FPS = { name = "Frame rate", usage = true, tip = function() return "Frame rate", ("%d fps"):format(math.floor(Num(GetFramerate and GetFramerate()) + 0.5)) end, text = function() local f = math.floor(Num(GetFramerate and GetFramerate()) + 0.5); return ("%s%d|r fps"):format(Ramp(f, 60, 30), f) end }
+P.LATENCY = { name = "Latency", usage = true,
     text = function()
         local _, _, home, world = GetNetStats()
         local ms = Num(world or home)
@@ -49,7 +49,7 @@ P.LATENCY = { name = "Latency",
         local _, _, home, world = GetNetStats()
         return "Latency", ("Home: %d ms"):format(Num(home)), ("World: %d ms"):format(Num(world))
     end }
-P.FPSMS = { name = "Frame rate and latency",
+P.FPSMS = { name = "Frame rate and latency", usage = true,
     text = function()
         local f = math.floor(Num(GetFramerate and GetFramerate()) + 0.5)
         local _, _, home, world = GetNetStats()
@@ -161,9 +161,8 @@ local function MakeSlot(i)
         local pr = Prov(s["barType" .. i])
         if pr and pr.click then pcall(pr.click) end
     end)
-    slot:SetScript("OnEnter", function(self)
+    local function ShowTip(self)
         local s = S(); if not s then return end
-        if InCombatLockdown and InCombatLockdown() then return end
         local pr = Prov(s["barType" .. i])
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         if pr and pr.tip then
@@ -174,11 +173,31 @@ local function MakeSlot(i)
         else
             GameTooltip:SetText((pr and pr.name) or "")
         end
+        if pr and pr.usage and B.AddUsage then
+            local ok, err = pcall(B.AddUsage, GameTooltip, 8)
+            if not ok then GameTooltip:AddLine("Addon usage unavailable: " .. tostring(err), 1, 0.4, 0.4) end
+        end
         if pr and pr.click then GameTooltip:AddLine("Click: open", 0.6, 0.6, 0.6) end
         GameTooltip:AddLine("Right-click: Chat Panel settings", 0.6, 0.6, 0.6)
         GameTooltip:Show()
+    end
+    slot:SetScript("OnEnter", function(self)
+        local s = S(); if not s then return end
+        if InCombatLockdown and InCombatLockdown() then return end
+        ShowTip(self)
+        local pr = Prov(s["barType" .. i])
+        if pr and pr.usage then   -- the CPU numbers move: redraw once a second while the mouse is on the block
+            local t = 0
+            self:SetScript("OnUpdate", function(f, dt)
+                t = t + dt
+                if t < 1 then return end
+                t = 0
+                if InCombatLockdown and InCombatLockdown() then f:SetScript("OnUpdate", nil); GameTooltip:Hide(); return end
+                if GameTooltip:IsOwned(f) then ShowTip(f) else f:SetScript("OnUpdate", nil) end
+            end)
+        end
     end)
-    slot:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    slot:SetScript("OnLeave", function(self) self:SetScript("OnUpdate", nil); GameTooltip:Hide() end)
     slots[i] = slot
     return slot
 end

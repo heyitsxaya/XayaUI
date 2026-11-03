@@ -447,6 +447,35 @@ check("reset restores the position", run("return ns.chat2.x") == run("return C.D
 run("_G.ElvUI = {} ")
 check("(info) BlockedReason with ElvUI global only", True)
 
+# ---- wrapping: a message frame that laid its lines out at an old width is noticed and laid out again ----------------------------
+r = run("""
+local cf = C.Main()
+local calls = { dirty = 0, refresh = 0 }
+cf.MarkLayoutDirty = function() calls.dirty = calls.dirty + 1 end
+cf.RefreshIfNecessary = function() calls.refresh = calls.refresh + 1 end
+local w = cf:GetWidth()
+local function line(width, str) return { GetWidth = function() return width end, GetStringWidth = function() return str end } end
+cf.visibleLines = { line(w, 100), line(w, 120) }
+local out = {}
+out.okWhenSame = (C.WrapOff() == false)
+cf.visibleLines = { line(w + 30, 100), line(w + 30, 150) }
+out.offWhenStale = (C.WrapOff() == true)
+local st = C.WrapStatus()
+out.widest = st.widest; out.lineW = st.line; out.cfW = st.cf
+out.did = C.Rewrap(true)
+out.dirty, out.refresh = calls.dirty, calls.refresh
+local again = C.Rewrap()   -- throttled: not within the same second unless forced
+out.throttled = (again == false)
+cf.visibleLines = nil
+out.noLines = (C.WrapOff() == false)
+return out
+""")
+check("wrap: consistent widths are left alone", bool(r.okWhenSame))
+check("wrap: a stale line width is detected", bool(r.offWhenStale))
+check("wrap: status reports widths", r.widest == 150 and r.lineW == r.cfW + 30, (r.widest, r.lineW, r.cfW))
+check("wrap: Rewrap marks the layout dirty and refreshes", r.did and r.dirty == 1 and r.refresh == 1, (r.did, r.dirty, r.refresh))
+check("wrap: Rewrap is throttled", bool(r.throttled))
+check("wrap: no lines table is not an error", bool(r.noLines))
 check("no module errors at the end", len(list(C.errors.keys())) == 0, dict(C.errors))
 print("\n%d failed" % fails if fails else "\nall passed")
 sys.exit(1 if fails else 0)
