@@ -5,3 +5,4 @@ Logged 2026-11-02-2359 UTC.
 - #301 "duration isn't being detected for untethered rage". Cause unknown; needs `/xui probe 1270476` and `/xui status` in and out of combat.
 - #302 "rules that don't have conditions can not be moved up and down a list without breaking the sidebar" (arrows, build 0.5.83). Cause not confirmed; see the issue. Sidebar paths are built from array indexes, so a swap shifts tree state and recycled row decorations. Needs her description of what breaks.
 - Pending from the same session: fade / flash / gray-out placement question (scheduled for about 01:50 UTC, #284).
+- #303 "still no aura tracking" (two screenshots, build 0.5.83). Which aura / rule / symptom is not known; asked Xaya. Likely related to #301.
