@@ -572,7 +572,7 @@ Add("buffAura", {
 
 -- 13. Player State
 -- /xui debuffs [target|focus]: shows exactly what the game lets us read about your debuffs on that unit right now.
--- EUI's own net for "a debuff I put on the target": look the aura up BY NAME with the engine-enforced ownership filter.
+-- Fallback net for "a debuff I put on the target": look the aura up BY NAME with the engine-enforced ownership filter.
 -- Returns "found" | "none" | "secret" | "error: <text>". Whether it works in combat is what /xui debuffs reports.
 function ns.TargetAuraByName(unit, id)
     if not (C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName and C_Spell and C_Spell.GetSpellName) then return "api missing" end
@@ -605,7 +605,7 @@ function ns.ProbeDebuffs(arg)
         end
     end)
     if not ok then ns.Print("  the call failed: " .. tostring(err)) end
-    ns.Print("  by-name lookup (the method EllesmereUI uses): use /xui debuffs <unit> <spellID>  ->  " .. (ns.probeDebuffID and tostring(ns.TargetAuraByName(unit, ns.probeDebuffID)) or "give a spell ID, e.g. /xui debuffs target 204598"))
+    ns.Print("  by-name lookup: use /xui debuffs <unit> <spellID>  ->  " .. (ns.probeDebuffID and tostring(ns.TargetAuraByName(unit, ns.probeDebuffID)) or "give a spell ID, e.g. /xui debuffs target 204598"))
 end
 
 -- 3b. Target Debuff (yours)
@@ -688,7 +688,10 @@ Add("playerState", {
         elseif w == "vehicle" then v = Bool(UnitInVehicle, "player")
         elseif w == "pvp" then v = Bool(UnitIsPVP, "player")
         elseif w == "pet" then v = Bool(UnitExists, "pet")
-        elseif w == "moving" then local sp = Call(GetUnitSpeed, "player"); if type(sp) == "number" then v = sp > 0 end
+        elseif w == "moving" then
+            -- IsPlayerMoving has no secrecy flag in the 12.1.5 docs; GetUnitSpeed is secret while unit stats are restricted (fallback only)
+            v = Bool(IsPlayerMoving)
+            if v == nil then local sp = Call(GetUnitSpeed, "player"); if type(sp) == "number" then v = sp > 0 end end
         elseif w == "afk" then v = Bool(UnitIsAFK, "player")
         elseif w == "target" then v = Bool(UnitExists, "target")
         elseif w == "focus" then v = Bool(UnitExists, "focus")

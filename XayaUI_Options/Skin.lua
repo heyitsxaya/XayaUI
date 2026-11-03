@@ -852,7 +852,25 @@ local function MakeAction(f, key)
         b.tex:SetPoint("CENTER")
         if key == "up" then b.tex:SetTexture("Interface\\Buttons\\Arrow-Up-Up"); b.tex:SetSize(22, 22)
         elseif key == "down" then b.tex:SetTexture("Interface\\Buttons\\Arrow-Down-Up"); b.tex:SetSize(22, 22)
-        else b.tex:SetTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up"); b.tex:SetSize(16, 16) end
+        else
+            -- Duplicate (0.6.3, #257): two overlapping squares drawn from flat lines (own art), so it reads as "copy", not as a note
+            b.tex:SetTexture(nil); b.tex:SetSize(1, 1)
+            b.xuiCopyLines = {}
+            local function square(x, y, sz, fill)
+                if fill then
+                    local f0 = b:CreateTexture(nil, "ARTWORK", nil, 1); f0:SetColorTexture(0.06, 0.06, 0.06, 1)
+                    f0:SetPoint("TOPLEFT", b, "CENTER", x, y); f0:SetSize(sz, sz)
+                end
+                local function line(px, py, w, h)
+                    local t = b:CreateTexture(nil, "ARTWORK", nil, 2); t:SetColorTexture(1, 0.82, 0, 1)
+                    t:SetPoint("TOPLEFT", b, "CENTER", px, py); t:SetSize(w, h)
+                    b.xuiCopyLines[#b.xuiCopyLines + 1] = t
+                end
+                line(x, y, sz, 1.5); line(x, y - sz + 1.5, sz, 1.5); line(x, y, 1.5, sz); line(x + sz - 1.5, y, 1.5, sz)
+            end
+            square(-7, 7, 10, false)   -- back sheet
+            square(-3, 3, 10, true)    -- front sheet, covering the back one where they overlap
+        end
     end
     b:SetScript("OnClick", function(self) if self.fn then self.fn() end end)
     b:SetScript("OnEnter", function(self)
@@ -882,6 +900,7 @@ local function PaintActions(w, arg)
             b:SetEnabled(fn ~= false)
             local a = (fn ~= false) and 1 or 0.3
             if b.tex then b.tex:SetDesaturated(fn == false); b.tex:SetAlpha(a) end
+            if b.xuiCopyLines then for _, t in ipairs(b.xuiCopyLines) do t:SetAlpha(a) end end
             if b.label then b.label:SetAlpha(a) end
             b:ClearAllPoints(); b:SetPoint("RIGHT", f, "RIGHT", x, 0)
             b:Show()
@@ -945,7 +964,7 @@ local function PaintNameEdit(w, arg)
             end
         end
         eb:SetTextInsets(0, 6, 0, 0)
-        eb:SetPoint("TOPLEFT", f, "TOPLEFT", pre - (tonumber(arg and arg.xuiHeadOut) or 0), -(3 + ns.H3_SIZE + 7)); eb:SetWidth(220)
+        eb:SetPoint("TOPLEFT", f, "TOPLEFT", f.xuiTitleX or (pre - (tonumber(arg and arg.xuiHeadOut) or 0)), -(3 + ns.H3_SIZE + 7)); eb:SetWidth(220)
         if not f.xuiNamePH then
             f.xuiNamePH = eb:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
             f.xuiNamePH:SetPoint("LEFT", eb, "LEFT", 0, 0); f.xuiNamePH:SetTextColor(0.4, 0.4, 0.4); f.xuiNamePH:SetText("name (optional)")
@@ -955,7 +974,7 @@ local function PaintNameEdit(w, arg)
         end
     else
         eb:SetHeight(22); eb:SetFontObject(GameFontHighlight); eb:SetTextColor(1, 1, 1); eb:SetTextInsets(6, 6, 0, 0)
-        eb:SetPoint("LEFT", f, "LEFT", 30 - (tonumber(arg and arg.xuiHeadOut) or 0), 0); eb:SetWidth(220)
+        eb:SetPoint("LEFT", f, "LEFT", f.xuiTitleX or (30 - (tonumber(arg and arg.xuiHeadOut) or 0)), 0); eb:SetWidth(220)
         if f.xuiNamePH then f.xuiNamePH:Hide() end
     end
     if not eb:HasFocus() then eb:SetText(tostring(ed.get() or "")); eb:SetCursorPosition(0) end
@@ -964,6 +983,26 @@ local function PaintNameEdit(w, arg)
     local h = f.xuiNameHint
     h:ClearAllPoints(); h:SetPoint("LEFT", eb, "RIGHT", 8, 0)
     h:SetText(ed.hint and ed.hint() or ""); h:Show()
+end
+
+-- Open / close button at the left of a collapsible header (arg.xuiChevron = function returning true while open). 0.6.2: replaces the
+-- arrow that used to sit inside the title text (it hung into a margin the scroll area cuts off, so it never showed) and the red mouse-over
+-- glow of the whole row: the row itself no longer reacts to the mouse; only this button opens and closes the section.
+local CHEV_X, CHEV_TITLE_X = 2, 26
+local function MakeChevron(f)
+    local b = CreateFrame("Button", nil, f)
+    b:SetSize(20, 20)
+    b.tex = b:CreateTexture(nil, "ARTWORK")
+    b.tex:SetPoint("CENTER"); b.tex:SetSize(16, 16)
+    b:SetScript("OnClick", function(self) local w = self.xuiW; if w and w.Fire then w:Fire("OnClick", "LeftButton") end end)
+    b:SetScript("OnEnter", function(self)
+        self.tex:SetVertexColor(1, 1, 0.6)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(self.xuiOpen and "Collapse" or "Expand")
+        GameTooltip:AddLine("Never changes any setting.", 1, 1, 1, true); GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function(self) self.tex:SetVertexColor(1, 1, 1); GameTooltip:Hide() end)
+    f.xuiChevBtn = b
+    return b
 end
 
 local function SkinButton(w)
@@ -976,6 +1015,11 @@ local function SkinButton(w)
         -- collapsible section header (arrow + title): no box, bigger text
         HideRegions(f, f:GetHighlightTexture())
         FlatHide(f)
+        do   -- no mouse-over glow on header rows (Blizzard's highlight art is red); restored when the widget is released
+            local ht = f:GetHighlightTexture()
+            if ht then ht:SetAlpha(0); f.xuiHdrHL = true end
+        end
+        local chev = arg and type(arg.xuiChevron) == "function"
         if fs and not w.xuiFont then
             local font, size, flags = fs:GetFont()
             w.xuiFont = { font, size, flags }
@@ -986,7 +1030,7 @@ local function SkinButton(w)
         local subTxt = arg and type(arg.xuiSub) == "function" and select(2, pcall(arg.xuiSub)) or nil
         if type(subTxt) ~= "string" or subTxt == "" then subTxt = nil end
         local out = tonumber(arg and arg.xuiHeadOut) or 0   -- header hangs out into the margin its group's body is indented by (arg.xuiIndent)
-        local lx = ((arrowL and out <= 0) and 22 or 0) - out
+        local lx = chev and CHEV_TITLE_X or (((arrowL and out <= 0) and 22 or 0) - out)   -- a chevron header never hangs out of view
         if fs then
             fs:ClearAllPoints()
             if subTxt then fs:SetPoint("TOPLEFT", f, "TOPLEFT", lx, -3) else fs:SetPoint("LEFT", f, "LEFT", lx, 0) end
@@ -1014,6 +1058,25 @@ local function SkinButton(w)
             at:SetTexture((okOpen and open) and "Interface\\Buttons\\Arrow-Down-Up" or "Interface\\ChatFrame\\ChatFrameExpandArrow")
             at:SetVertexColor(0.8, 0.5, 1); at:Show()
         elseif f.xuiArrowTex then f.xuiArrowTex:Hide() end
+        if chev then
+            local b = f.xuiChevBtn or MakeChevron(f)
+            local okOpen, open = pcall(arg.xuiChevron)
+            b.xuiW, b.xuiOpen = w, (okOpen and open) and true or false
+            -- Blizzard's own collapse / expand buttons (minus = open, plus = closed): not the arrow art, which is also the Move down icon
+            b.tex:SetTexture(b.xuiOpen and "Interface\\Buttons\\UI-MinusButton-Up" or "Interface\\Buttons\\UI-PlusButton-Up")
+            b.tex:SetVertexColor(1, 1, 1)
+            b:SetFrameLevel(f:GetFrameLevel() + 3)
+            b:ClearAllPoints()
+            if subTxt then b:SetPoint("TOPLEFT", f, "TOPLEFT", CHEV_X, -3 - (ns.H3_SIZE or 14) / 2 + 10)   -- level with the title line
+            else b:SetPoint("LEFT", f, "LEFT", CHEV_X, 0) end
+            b:Show()
+            f:EnableMouse(false)   -- the row is not a click target: only the button opens / closes it
+            f.xuiTitleX = CHEV_TITLE_X
+        else
+            if f.xuiChevBtn then f.xuiChevBtn:Hide(); f.xuiChevBtn.xuiW = nil end
+            if f.xuiTitleX then f:EnableMouse(true) end
+            f.xuiTitleX = nil
+        end
     elseif arg and arg.xuiDel then
         -- remove-this-row "X": no box, the same red X as the header's remove icon
         HideRegions(f, f:GetHighlightTexture())
@@ -1054,6 +1117,9 @@ local function SkinButton(w)
         self.frame:SetHitRectInsets(0, 0, 0, 0)
         if self.frame.xuiNameEB then self.frame.xuiNameEB:Hide(); self.frame.xuiNameHint:Hide() end
         if self.frame.xuiArrowTex then self.frame.xuiArrowTex:Hide() end
+        if self.frame.xuiChevBtn then self.frame.xuiChevBtn:Hide(); self.frame.xuiChevBtn.xuiW = nil end
+        if self.frame.xuiTitleX then self.frame:EnableMouse(true); self.frame.xuiTitleX = nil end
+        if self.frame.xuiHdrHL then local ht = self.frame:GetHighlightTexture(); if ht then ht:SetAlpha(1) end; self.frame.xuiHdrHL = nil end
         if self.frame.xuiSubFS then self.frame.xuiSubFS:Hide() end
         if self.xuiSubH then self.frame:SetHeight(24); self.frame.height = 24; self.xuiSubH = nil end
         HideActions(self.frame)

@@ -335,6 +335,30 @@ check("status: the drain is NOT listed as missing for a single slot; the flash i
 lua("INSc.visual.fill.dir = 'right'; INSc.visual.fill.reverse = true; buttons = {}; NS.AuraDisplay.Build(); for _, b in ipairs(buttons) do if b.log.bar then INSB = b end end")
 check("an edited look makes a new slot: 'right' + reverse -> horizontal, reversed, growing with elapsed time", lua("return INSB.log.bar.orient == 'HORIZONTAL' and INSB.log.bar.reverse == true and INSB.log.barOpts.direction == 0"))
 
+# 9c. #347 (tester, 2026-11-03): Anti-Magic Shell with an Icon cue AND a separate Text cue (duration + shield amount). The single slot
+# draws the icon; the Text cue must stay with XayaUI (it was owned and hidden, so the texts vanished in game while the preview showed them).
+lua(r"""
+TX = { uid = "tx", name = "AMS two cues", useBuff = true, buffID = 48707, buffState = "present", enabled = true, load = { mode = "all" }, visual = { enabled = false } }
+TXi = { uid = "txi", name = "AMS icon cue", isCue = true, parentUid = "tx", cueKey = "q1", cueKind = "icon", enabled = true,
+  visual = { enabled = true, trigger = "condition", kind = "spellicon", w = 128, h = 128, alpha = 0.25, fill = { enabled = true, min = 0, max = 1 }, text = { enabled = false }, count = { enabled = false } } }
+TXt = { uid = "txt", name = "AMS text cue", isCue = true, parentUid = "tx", cueKey = "q2", cueKind = "text", enabled = true,
+  visual = { enabled = true, trigger = "condition", w = 128, h = 128, text = { enabled = true, size = 20 }, absorb = { enabled = true, source = "aura" }, count = { enabled = false } } }
+TXs = { uid = "txs", name = "AMS sound cue", isCue = true, parentUid = "tx", cueKey = "q3", cueKind = "sound", enabled = true, visual = { enabled = false } }
+NS.rules[#NS.rules + 1] = TX; NS.rules[#NS.rules + 1] = TXi; NS.rules[#NS.rules + 1] = TXt; NS.rules[#NS.rules + 1] = TXs
+-- the same shape inside the dynamic group fA
+GX = { uid = "gx", name = "group two cues", folder = "fA", useBuff = true, buffID = 9011, buffState = "present", enabled = true, visual = { enabled = false } }
+GXi = { uid = "gxi", name = "group icon cue", folder = "fA", isCue = true, parentUid = "gx", cueKey = "q1", cueKind = "icon", enabled = true, visual = { enabled = true, trigger = "condition", w = 30, h = 30, text = { enabled = false }, count = { enabled = false } } }
+GXt = { uid = "gxt", name = "group text cue", folder = "fA", isCue = true, parentUid = "gx", cueKey = "q2", cueKind = "text", enabled = true, visual = { enabled = true, trigger = "condition", w = 30, h = 30, text = { enabled = true }, count = { enabled = false } } }
+NS.rules[#NS.rules + 1] = GX; NS.rules[#NS.rules + 1] = GXi; NS.rules[#NS.rules + 1] = GXt
+NS.AuraDisplay.Build()
+""")
+check("#347: the single slot draws the icon cue (rule and icon cue engine-owned)", lua("local s = NS.AuraDisplay._singles[TX]; return s and s.ok and s.spec.display == TXi") and own("TX") and own("TXi"))
+check("#347: the separate Text cue (duration + shield) stays with XayaUI, so it shows in game", not own("TXt"))
+check("#347: a cue without a display (sound) is still owned as before", own("TXs"))
+check("#347: inside a dynamic group the extra display cue stays hidden (XayaUI's layout would misplace it)", own("GXi") and own("GXt"))
+lua('printed = {}; SlashCmdList["XUIENGINE"]("")')
+check("#347: /xuiengine says the group rule's text cue is hidden", lua("for _, l in ipairs(printed) do if l:find('group two cues', 1, true) and l:find('other display cue', 1, true) then return true end end return false"))
+
 # 10. loaded twice (XayaUI loads the engine files and the separate XayaUI_CombatEngine folder is installed too): one copy only
 lua('BEFORE_D = NS.AuraDisplay; BEFORE_SLASH = SlashCmdList["XUIENGINE"]')
 L.execute(r'''local f = assert(loadfile(PATH)); f("XayaUI_CombatEngine", NS)'''.replace("PATH", repr(os.path.join(ROOT, "XayaUI", "Combat", "AuraDisplay.lua")).replace("'", '"')))

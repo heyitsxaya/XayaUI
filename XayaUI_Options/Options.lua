@@ -468,7 +468,7 @@ do
             hidden = function() return not gate() end,
             args = {
                 hdr = { type = "execute", order = 1, width = "full",
-                    arg = { xuiLeft = true, xuiArrowLeft = true, xuiArrow = function() return not isShut() end },
+                    arg = { xuiLeft = true, xuiChevron = function() return not isShut() end },   -- open / close button at the left (Skin.lua)
                     name = function()
                         if ns.SkinRows and ns.SkinRows() then return title end   -- skin draws a vertically centered arrow itself
                         return (isShut() and CLOSED or OPEN) .. "  " .. title
@@ -1280,7 +1280,7 @@ local function BuildRule(i, rule)
 
     ---------------------------------------------------------------- Trigger
     local trigger = {
-        type = "group", name = "Trigger", order = 2, args = {
+        type = "group", name = "Trigger", order = 2, args = {   -- tab order (0.6.3): Display | Trigger | Cues | Conditions | Actions | Load | Info
             cdHeader = { type = "header", name = "Cooldown", order = 1 },
             spellID = {
                 type = "input", name = "Spell ID", order = 2, width = "half",
@@ -1614,7 +1614,7 @@ local function BuildRule(i, rule)
             end
         end
     end
-    local load = { type = "group", name = "Load", order = 4, args = loadArgs }
+    local load = { type = "group", name = "Load", order = 6, args = loadArgs }
 
     ---------------------------------------------------------------- Actions
     -- 1) Display Options  (texture -> position)
@@ -1774,7 +1774,7 @@ local function BuildRule(i, rule)
             flashSpeed = Rng(V.flash, "speed", "Flash speed (pulses per second)", 36, 1, 8, 0.5, on,
                 { disabled = function() return not V.flash.enabled end }),
             desatOnCD = Tog(V, "desatOnCD", "Gray out while the spell is on cooldown", 37, on, { width = "double" }),
-            hoverTip = Tog(V, "hoverTip", "Show tooltip on hover", 9.6, on, { width = "double",
+            hoverTip = Tog(V, "hoverTip", "Show tooltip on hover", 9.6, on, { width = "double", hidden = true,   -- set on the rule's Display tab (0.6.3)
                 desc = "Hover this cue to see the tooltip of the spell or item it is about (the icon source chosen above, else the rule's first trigger). While on, the cue also sees the mouse pointer, but clicks still pass through to what is behind it." }),
             requireOnBar = Tog(V, "requireOnBar", "Only show while this ability is on an action bar", 9.5, on, { width = "double",
                 desc = "Uses the Cooldown Spell ID (or the Aura spell ID if no Cooldown Spell ID is set). Hides the display whenever that spell is not currently placed on any of your 12 action bars, even if the rule would otherwise fire. Off by default so existing rules are unaffected." }),
@@ -2075,8 +2075,11 @@ local function BuildRule(i, rule)
         return {
             type = "group", inline = true, name = "", order = order, hidden = hiddenFn,
             args = {
-                hdr = { type = "execute", order = 1, width = "full", arg = { xuiLeft = true },
-                    name = function() return (subst()[key] and ARROW_OPEN or ARROW_CLOSED) .. "  " .. title end,
+                hdr = { type = "execute", order = 1, width = "full", arg = { xuiLeft = true, xuiChevron = function() return subst()[key] and true or false end },
+                    name = function()
+                        if ns.SkinRows and ns.SkinRows() then return title end   -- skin on: the open / close button is drawn at the left
+                        return (subst()[key] and ARROW_OPEN or ARROW_CLOSED) .. "  " .. title
+                    end,
                     desc = "Expand or collapse this section. Collapsing never changes any setting.",
                     func = function() subst()[key] = (not subst()[key]) or nil; Notify() end },
                 body = { type = "group", inline = true, name = "", order = 2,
@@ -2158,11 +2161,11 @@ local function BuildRule(i, rule)
         end }
     -- Tabs: Info | Trigger | Conditions | Actions | Load. "Conditions" holds the rule's conditions (its outcomes, each a named
     -- combination of triggers); "Actions" holds what happens: display, text and sound.
-    local conditionsTab = { type = "group", name = "Conditions", order = 3, args = {
+    local conditionsTab = { type = "group", name = "Conditions", order = 4, args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "IF the checks are met, THEN the chosen cues play. Add one condition per situation you care about." },
     } }
-    local cuesTab = { type = "group", name = "Cues", order = 2.5, args = {} }
+    local cuesTab = { type = "group", name = "Cues", order = 3, args = {} }
     local actions = { type = "group", name = "Actions", order = 3.5, args = {
         display = Banner("display", "Display Options", 1, display.args.enabled, dispBody, function() return V.enabled and true or false end),
         text = Banner("text", "Text", 2, textEnable, {
@@ -2220,7 +2223,7 @@ local function BuildRule(i, rule)
                 set = function(_, v) local t = getTbl(); t.snd = t.snd or { enabled = true, source = "kit", value = "" }; t.snd.channel = v; ns.MarkDirty() end },
         } }
     end
-    local actionsTab = { type = "group", name = "Actions", order = 3.5, args = ns.ActionsPane and ns.ActionsPane(rule, Notify, { finishSound = finishSound }) or {} }
+    local actionsTab = { type = "group", name = "Actions", order = 5, args = ns.ActionsPane and ns.ActionsPane(rule, Notify, { finishSound = finishSound }) or {} }
     -- Older rules that show / play things directly (from before cues): listed read-only with a button that moves them into cues.
     local function legacyKinds()
         if rule.isCue or rule.parentUid or (ns.HasOutcomes and ns.HasOutcomes(rule)) then return nil end
@@ -2270,7 +2273,7 @@ local function BuildRule(i, rule)
 
     ---------------------------------------------------------------- Info tab (was "Rule")
     local ruleTab = {
-        type = "group", name = "Info", order = 1, args = {
+        type = "group", name = "Info", order = 7, args = {
             name = { type = "input", name = "Name", order = 1, width = "double",
                 get = function() return rule.name end,
                 set = function(_, v) rule.name = tostring(v or ""):sub(1, 60); pcall(ns.RefreshVisual, rule); ns.MarkDirty(); Notify() end },
@@ -2325,7 +2328,9 @@ local function BuildRule(i, rule)
     }
 
     -- The unsaved-changes bar (Save changes / Add to drafts / Discard) is a strip under the window (ns.SaveBarUpdate), not part of the tabs.
-    for _, g in ipairs({ ruleTab, trigger, load, conditionsTab, cuesTab, actionsTab }) do
+    -- Display tab (0.6.3, DisplayTab.lua): the rule as the container of its cues. Not on cues / conditions themselves.
+    local displayTab = (ns.BuildDisplayTab and not rule.isCue and not rule.parentUid) and ns.BuildDisplayTab(rule, Notify, Changed) or nil
+    for _, g in ipairs({ ruleTab, trigger, load, conditionsTab, cuesTab, actionsTab, displayTab }) do
         ns.LockArgs(g.args, function() return ns.IsEditLocked(rule) end)
     end
     return {
@@ -2336,7 +2341,7 @@ local function BuildRule(i, rule)
             if nm == "" then return "|cff888888Unnamed rule|r" end
             return (rule.enabled and "" or "|cff888888") .. nm
         end,
-        args = { rule = ruleTab, trigger = trigger, cues = cuesTab, conditions = conditionsTab, actions = actionsTab, load = load },
+        args = { display = displayTab, trigger = trigger, cues = cuesTab, conditions = conditionsTab, actions = actionsTab, load = load, rule = ruleTab },
     }
 end
 
