@@ -6,7 +6,7 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 d32239bcb673463ab874e80d47fae504  LICENSE
 7e72064bbdd272e827818f2c910b6b1e  QA-CHECKLIST.md
 bd91fc606958a2216eee20e4178da655  README.md
-3d50fc9a87bd6e6c9e752372d5462176  ROADMAP.md
+b826130d056956a70c3b6a5d50fb5e41  ROADMAP.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 751255c8e031fc88c0c6fbab5035d65d  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
@@ -331,6 +331,7 @@ b6a77a4c836855ffd205ecc726b2730b  debug-log/2026-11-03-1941-fade-flash-grayout-p
 4ecbcccc78c78c09f9c844ae2ce038c9  debug-log/2026-11-03-2040-addon-split-0.6.0.md
 14c8796921624508ab212ab1e47e7f09  debug-log/2026-11-03-2041-deprecation-fallbacks-compat-0.6.0.md
 4e4afdd8a4679330417ae0fbfe174d23  debug-log/2026-11-03-2042-whole-addon-harness.md
+c772617313f2c4b7965ad8301258e669  debug-log/2026-11-03-2135-tester-requests-278-status-0.6.0.md
 7f9f4549410ba8da5e6fb9e9cb573be0  shelved/Bars.lua
 5857b882061b2df7a8d4fb33945efc80  shelved/CountSupport.lua
 ba241e46458e8e4296563689c7708a51  shelved/CursorReminders.lua

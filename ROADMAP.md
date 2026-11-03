@@ -1,6 +1,6 @@
 # XayaUI Roadmap
 
-Compiled 2026-11-03 against build 0.5.107. This is the single list of every feature suggested for XayaUI, whether built, planned, waiting on a decision, parked, or dropped.
+Compiled 2026-11-03 against build 0.5.107; section 9 and the #155 row updated the same evening against 0.6.0. This is the single list of every feature suggested for XayaUI, whether built, planned, waiting on a decision, parked, or dropped.
 
 ## How to read this
 
@@ -37,7 +37,7 @@ Issue numbers refer to this repository. Small interface tweaks, wording changes,
 | #192 | Trigger pane: "This rule is activated by" ALL / ANY / one trigger | Unclear | |
 | #193, #194 | Show TRUE / FALSE / UNKNOWN on each trigger header and condition | Unclear | |
 | #147 | Class resource as one trigger type with a resource dropdown (including Runes) | Open | |
-| #155 | Player-state conditions: stunned, feared, rooted, silenced | Candidate | |
+| #155 | Player-state conditions: stunned, feared, rooted, silenced | Partly built | A state trigger for the player exists in the code (stun; fear, charm, and incapacitate as one group; root; silence), read from the game's loss-of-control data; not confirmed in game. Extension (separate effects, asleep, slow, snare, target and focus) is in section 9, #278 items 5 and 6. |
 | #173 | Aura seconds-left conditions in combat | Partly built | The duration engine (#314, build 0.5.98) lets every cue fire on time left in combat; confirm in game. |
 | #222 | Combat tracking model and setup flow, with a capture button for other users | Candidate | |
 | #264 | One Buff / Aura trigger takes several aura IDs | Built (0.5.55) | A regression with a second Buff / Aura trigger is reported in #288. |
@@ -157,9 +157,25 @@ Each has a drafted spec with the API facts checked against the 12.1.5 documentat
 
 Earlier ideas folded into these: "report anticipated stat values" and "item level on tooltips" (stat panel, tooltip modifiers) and "friends list colors, sorted by who can provide what" (the second half needs a class-utility data source and is not part of this request).
 
+### Tester request set (#278, filed 2026-11-02; status checked 2026-11-03 against 0.6.0)
+
+Seven requests from one tester, resubmitted by Xaya on 2026-11-03. One issue (#278) holds all seven; the detail is in the project document `XAYAUI-TESTER-REQUESTS-278-STATUS-2026-11-03`. Nothing new was built for this entry. Two in-game probes come before any new trigger: `/xui loc` while affected by each effect, and a check of whether a target's or focus's cast data is readable in open world, dungeon, raid, and Mythic+.
+
+| # | Request | Status | Weakest point and open question |
+|---|---|---|---|
+| 1 | Sound and texture cues from remaining buff duration | Partly built (0.5.98, #314); unverified in game | In combat the real numbers are secret, so the engine uses an estimate that can be wrong on refreshes and extensions. Open duration defects: #301, #306, #311. Has the tester re-tested? |
+| 2 | Triggers that call a buff "unknown" | Candidate | Unclear meaning: fire on UNKNOWN, show "?" for a hidden value, or show UNKNOWN on headers (#193). Firing on unknown goes against the rule that a rule never fires on a guess, so it would be an explicit choice. |
+| 3 | More preloaded textures | Candidate | "More" has no target. Options: more Blizzard art by ID (no new license) or a bundled CC0 pack (needs approval and a `THIRD_PARTY.md` entry). Currently 85 entries. |
+| 4 | Cue volume that does not change game audio | Candidate, partial route | The game has a per-sound volume argument for sound kits only; file sounds have none. Speech already has its own volume. Today's slider changes the game's channel volume, which is what the tester objects to. The window would have to say which sources the slider covers. |
+| 5 | Track stunned, charmed, feared, asleep (each individually) | Partly built (you only; grouped) | Names for asleep and for separate fear and charm are not documented; a probe is needed. Target and focus reads are secret under restriction. |
+| 6 | Track slowed, snared, rooted (each individually) | Partly built (root only) | No documented source for slows or snares in the loss-of-control data; the speed read is secret under stats restrictions. |
+| 7 | Trigger when target or focus casts an interruptible spell | Candidate | The interruptible flag is secret when the game restricts cast data. A sound or speech cue cannot read a secret value; a visual can still be driven from it. Raids and Mythic+ are the likely blocked cases. |
+
+Open questions: 7, listed in the project document (section 6) and in the #278 comment.
+
 ## 10. Waiting on a decision
 
-These are logged and need an answer before work starts: #79, #80, #81, #82 (gated panes); #87 (backup); #88 (recycle bin); #90 (what happens when a Specialization or Role is unticked); #108 (skeleton rules); #115 and #117 (engine per-frame step, periodic snapshot); #123 (options refactor); #126 (gradient cursor trail); #151 (loaded-rule safeguard); #188 (rule build assistant); and the five new candidates (#321 to #325).
+These are logged and need an answer before work starts: #79, #80, #81, #82 (gated panes); #87 (backup); #88 (recycle bin); #90 (what happens when a Specialization or Role is unticked); #108 (skeleton rules); #115 and #117 (engine per-frame step, periodic snapshot); #123 (options refactor); #126 (gradient cursor trail); #151 (loaded-rule safeguard); #188 (rule build assistant); the five new candidates (#321 to #325); and the seven tester requests in #278 (meaning of item 2, scope and design of items 5 to 7, volume and texture approach).
 
 ## 11. Parked or dropped
 
