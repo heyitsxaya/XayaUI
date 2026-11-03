@@ -10,6 +10,7 @@ For testers. Tick each box in order; when something does not match the **Expect*
 
 - [ ] **A1.** Close the game. In `World of Warcraft\_retail_\Interface\AddOns\`, put these folders side by side: `XayaUI`, `XayaUI_Options`, `XayaUI_Chat`, `XayaUI_QoL`, `XayaUI_Bonus`, `XayaUI_Reskin` (and `XayaUI_Media` if you have one). Each must sit directly in `AddOns` (not inside another folder).
   **Expect:** `AddOns\XayaUI\XayaUI.toc`, `AddOns\XayaUI_Chat\XayaUI_Chat.toc`, and so on exist.
+  Using GitHub Desktop? Follow `QA-INSTALL.md` on the `qa-installer-branch` branch instead of copying folders by hand; the **Expect** line above still applies.
 - [ ] **A2.** If you had 0.5.x: delete or switch off `AddOns\XayaUI_CombatEngine` if it exists.
 - [ ] **A3.** Start the game. At the character screen open **AddOns**.
   **Expect:** XayaUI with its entries grouped under it: XayaUI Options, XayaUI Chat, XayaUI QoL, XayaUI Bonus Features, XayaUI Blizzard Reskin. None marked "out of date" or "missing dependency".

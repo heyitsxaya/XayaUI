@@ -48,6 +48,8 @@ Everything else in the repository (`tests/`, `debug-log/`, `shelved/`, the docum
 2. Coming from 0.5.x: an old `AddOns\XayaUI_CombatEngine` folder is no longer used (the combat tracking is inside XayaUI now); switch it off or delete it. Old files left inside `AddOns\XayaUI` from the one-folder layout (`Chat\`, `Notepad.lua`, `Options.lua` ...) are ignored by the game, but replacing the whole `XayaUI` folder is cleaner.
 3. Restart the game (new folders need a restart, not just /reload). Your settings carry over unchanged.
 
+Using GitHub Desktop? Do not clone into `AddOns` (the game cannot load addons nested inside another folder). Clone anywhere else, switch to the `qa-installer-branch` branch (an automatic copy of `main` that adds an installer), and double-click `Install-XayaUI.bat` once; it links each folder into `AddOns`, and from then on a plain "Pull origin" updates the game files. Details are in `QA-INSTALL.md` on that branch.
+
 ## Sounds
 
 No audio is bundled. See `XayaUI/Media/Audio/README.md` to add your own.

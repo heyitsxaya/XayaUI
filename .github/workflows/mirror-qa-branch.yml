@@ -1,0 +1,26 @@
+name: Mirror main to qa-installer-branch
+
+# Every push to main refreshes qa-installer-branch (main's files plus the tester installer). See tools/sync-qa-branch.sh.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: qa-installer-branch-mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Rebuild qa-installer-branch from main
+        run: bash tools/sync-qa-branch.sh
+      - name: Confirm the branch is an exact mirror
+        run: bash tools/sync-qa-branch.sh --check

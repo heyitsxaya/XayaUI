@@ -1,11 +1,12 @@
+a6de13ded2fd9031edf33c24e7f73e3f  .github/workflows/mirror-qa-branch.yml
 841bf9e56f8489facf3c983d48ba2e73  .gitignore
 0e754eb408e6fe9daf27d12660842ba6  Claude outputs/Plater_NpcColors_S2_block.lua
 ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-bd8e0cfd217a76b410a2122309f709da  QA-CHECKLIST.md
-bd91fc606958a2216eee20e4178da655  README.md
+9d9139aabf5ec63d7205a6c6b1cfd475  QA-CHECKLIST.md
+2484ce39c6b9186ecd85e331060aa43d  README.md
 b826130d056956a70c3b6a5d50fb5e41  ROADMAP.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 aaf8bcec310ff6052e8ca05ebdd8bf35  USER-GUIDE.md
@@ -333,6 +334,7 @@ b6a77a4c836855ffd205ecc726b2730b  debug-log/2026-11-03-1941-fade-flash-grayout-p
 4e4afdd8a4679330417ae0fbfe174d23  debug-log/2026-11-03-2042-whole-addon-harness.md
 c772617313f2c4b7965ad8301258e669  debug-log/2026-11-03-2135-tester-requests-278-status-0.6.0.md
 5198e562f201957d7976849ce29d5a6d  debug-log/2026-11-03-2140-chat-history-footer-clipping-0.6.1.md
+6d8ccc2f92991fe4e9998c39ee0c7157  debug-log/2026-11-03-2147-settings-layout-parts-and-tabs-0.6.1.md
 7f9f4549410ba8da5e6fb9e9cb573be0  shelved/Bars.lua
 5857b882061b2df7a8d4fb33945efc80  shelved/CountSupport.lua
 ba241e46458e8e4296563689c7708a51  shelved/CursorReminders.lua
@@ -372,3 +374,9 @@ f886a09a99f1c562e4ff35c25675a1bd  tests/timing_run.py
 7bdbd8daaa8aaab8b1a64cdbc9a0b436  tests/usage_check.lua
 06abd3bc39893cbb62c55a168ba32788  tests/usage_run.py
 5ea11cb0d56f3c473cd881158515069e  tools/manifest.py
+db4bc883dbe741a50417a8d183e9dc02  tools/qa-installer/.gitattributes
+eac7e9b69f7326ed1b0f0765391566ae  tools/qa-installer/Install-XayaUI.bat
+57f693b015d524a3a8bb28e806b2e39c  tools/qa-installer/Install-XayaUI.ps1
+a873a810a34f7512acbb2c0316ea1338  tools/qa-installer/QA-INSTALL.md
+9809b22ec9eead883fa1c7e1e5d4e74c  tools/qa-installer/Uninstall-XayaUI.bat
+b6c641e44164b6a2af5331e572b9e1be  tools/sync-qa-branch.sh
