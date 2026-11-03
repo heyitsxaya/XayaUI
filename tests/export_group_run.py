@@ -1,4 +1,4 @@
-"""Offline test: Profile_SnapshotFolder + encode / decode / apply round trip for a group export (build 0.5.84).
+"""Offline test: Share_SnapshotGroup + encode / decode / apply round trip for a group export (build 0.5.84).
 Run: python3 tests/export_group_run.py   (stand-in game; proves the data logic, not the menu or the popup).  Lua 5.1 via lupa."""
 import os, sys
 from lupa.lua51 import LuaRuntime
@@ -14,8 +14,8 @@ ns.Merge = function() end; ns.BAR_DEFAULTS = {}; ns.NewUID = function() return "
 CueRulesDB = { barGroup = {} }
 _G.XayaUI_NS = ns
 ns.Print = ns.Print or function() end
-assert(loadfile("''' + os.path.join(ROOT, "Modules.lua").replace("\\", "/") + r'''"))("XayaUI", ns)   -- core contract: ns.Fire (0.6.0)
-assert(loadfile("''' + os.path.join(ROOT, "Profile.lua").replace("\\", "/") + r'''"))("XayaUI", ns)
+assert(loadfile("''' + os.path.join(ROOT, "XayaUI/Modules.lua").replace("\\", "/") + r'''"))("XayaUI", ns)   -- core contract: ns.Fire (0.6.0)
+assert(loadfile("''' + os.path.join(ROOT, "XayaUI/Share.lua").replace("\\", "/") + r'''"))("XayaUI", ns)
 function ns.OutcomesOf(p) local o = {} if not p.uid then return o end for _, r in ipairs(ns.rules) do if r ~= p and r.parentUid == p.uid then o[#o + 1] = r end end return o end
 ns.qolBoxes = {}; ns.bars = {}
 ns.folders = { { id = "f1", name = "Other" }, { id = "f2", name = "Personal Buff Tracking", cType = "dynamic" }, { id = "f3", name = "Kid", parent = "f2" }, { id = "f4", name = "Elsewhere", parent = "f1" } }
@@ -30,7 +30,7 @@ ns.rules = {
 }
 results = {}
 local function check(n, ok) results[#results + 1] = { n, ok and true or false } end
-local snap = ns.Profile_SnapshotFolder(ns.folders[2])
+local snap = ns.Share_SnapshotGroup(ns.folders[2])
 check("2 groups (the group and its nested one)", #snap.folders == 2)
 check("top group's parent dropped", snap.folders[1].parent == nil and snap.folders[2].parent == "f2")
 check("group settings kept", snap.folders[1].cType == "dynamic")
@@ -39,11 +39,11 @@ for _, r in ipairs(snap.rules) do names[r.name] = true end
 check("4 rules in, with cues and conditions", #snap.rules == 5 and names["a"] and names["a cue"] and names["a cond"] and names["b"] and names["b cue"])
 check("rules outside the group are not exported", not names["outside"] and not names["outside cue"])
 check("the live data was not changed", ns.rules[1].folder == "f2" and ns.folders[2].parent == nil)
-local txt = assert(ns.Profile_Encode(snap))
-local back, err = ns.Profile_Decode(txt)
+local txt = assert(ns.Share.Encode("rules", snap))
+local back, err = ns.Share.Read(txt, "rules")
 check("string decodes", back ~= nil)
 local before = #ns.rules
-local c = ns.Profile_Apply(back, "add")
+local c = ns.Share_ApplyRules(back, "add")
 check("import adds 5 rules, 2 groups and a wrapper", #ns.rules == before + 5 and c.rules == 5 and c.folders == 3)
 local wrap
 for _, f in ipairs(ns.folders) do if f.name:match("^Imported: ") then wrap = f end end

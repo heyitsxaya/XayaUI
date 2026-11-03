@@ -23,7 +23,7 @@ CueRulesDB = {}
 ''')
 def load(f):
     L.eval('function(src,n) return load(src,n) end')(open(os.path.join(ROOT, f)).read(), f)("XayaUI", L.eval("XayaUI_NS"))
-load("Tooltips.lua"); load("AuraSources.lua")
+load("XayaUI_Bonus/Tooltips.lua"); load("XayaUI/AuraSources.lua")
 fails = 0
 def check(n, c):
     global fails

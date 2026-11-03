@@ -1,38 +1,38 @@
-# Audio is NOT tracked: sounds from other sources carry their own terms and are kept out of the repository. Add your own files locally; see Media/Audio/README.md.
-Media/Audio/*
-!Media/Audio/README.md
-!Media/Audio/Custom/
-Media/Audio/Custom/*
-!Media/Audio/Custom/.gitkeep
+# Layout since 0.6.0: one folder per addon (XayaUI, XayaUI_Chat, XayaUI_QoL, XayaUI_Bonus, XayaUI_Reskin, XayaUI_Options, plus the
+# support folders XayaUI_Media and XayaUI_GameDump). Each folder is copied as-is into Interface\AddOns.
+
+# Audio is NOT tracked: sounds from other sources carry their own terms and are kept out of the repository. Add your own files
+# locally; see XayaUI/Media/Audio/README.md.
+XayaUI/Media/Audio/*
+!XayaUI/Media/Audio/README.md
+!XayaUI/Media/Audio/Custom/
+XayaUI/Media/Audio/Custom/*
+!XayaUI/Media/Audio/Custom/.gitkeep
 *.ogg
 *.mp3
 *.wav
+# CC0 (public domain) sounds ARE tracked: Kenney "Interface Sounds" 1.0, see XayaUI/Media/Audio/CC0/CREDITS.md
+!XayaUI/Media/Audio/CC0/
+!XayaUI/Media/Audio/CC0/**
 
 # editor / OS / backups
 *.bak
 *.orig
 .DS_Store
 Thumbs.db
+__pycache__/
 
 # Extracted Blizzard UI art converted from Xaya's Iconography folder: personal use only
-Media/Graphics/*
-!Media/Graphics/README.md
+XayaUI/Media/Graphics/*
+!XayaUI/Media/Graphics/README.md
+
+# every cursor picture (Arrow, Fill_*, Ring*, CircleHD, HLRing_*) is part of XayaUI_QoL; other files in that folder (backups) stay local
+XayaUI_QoL/Media/Cursor/*
+!XayaUI_QoL/Media/Cursor/*.tga
 
 # Claude Code handoff notes (local only)
 CLAUDE-CODE-HANDOFF.md
 HANDOFF-TO-CLAUDE-CODE-*.md
 
-# QoL Elements: taken out for the time being (stat text boxes, cursor tracker + at-cursor reminders, buff bars).
-# The files stay on disk but are not loaded (see XayaUI.toc) and not published. To bring them back: delete these
-# lines, re-add the four files to XayaUI.toc after Visual.lua, then `git add` them.
-QoL.lua
-CursorTracker.lua
-CursorReminders.lua
-Bars.lua
-Media/Cursor/*
-# every cursor picture (Arrow, Fill_*, Ring*, CircleHD, HLRing_*) is part of the addon; other files in this folder (backups) stay local
-!Media/Cursor/*.tga
-
-# CC0 (public domain) sounds ARE tracked: Kenney "Interface Sounds" 1.0, see Media/Audio/CC0/CREDITS.md
-!Media/Audio/CC0/
-!Media/Audio/CC0/**
+# Shelved QoL Elements (stat text boxes, cursor tracker + at-cursor reminders, buff bars, count support) live in shelved/: tracked
+# for reference, loaded by no .toc. Bringing one back = moving it into the addon it belongs to and listing it in that .toc.

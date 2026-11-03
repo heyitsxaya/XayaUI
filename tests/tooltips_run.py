@@ -37,7 +37,7 @@ function reset() lines = {} end
 ''')
 
 L.execute("XayaUI_NS = {}; CueRulesDB = {}")
-for f in ("Modules.lua","Tooltips.lua","AuraSources.lua","TooltipsUI.lua"):   # 0.5.108: core contract + the embedded-aura reader now in core
+for f in ("XayaUI/Modules.lua","XayaUI_Bonus/Tooltips.lua","XayaUI/AuraSources.lua","XayaUI_Bonus/TooltipsUI.lua"):   # 0.5.108: core contract + the embedded-aura reader now in core
     L.eval('function(src,n) return load(src,n) end')(open(os.path.join(ROOT, f)).read(), f)("XayaUI", L.eval("XayaUI_NS"))
 # AuraSources is core and always loaded in game; these checks test Tooltips alone, so keep only its embedded-aura reader (0.5.108)
 L.execute("REAL_AS = XayaUI_NS.AuraSources; XayaUI_NS.AuraSources = { EmbeddedAuras = REAL_AS.EmbeddedAuras, NestedType = REAL_AS.NestedType }")

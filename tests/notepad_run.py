@@ -42,9 +42,9 @@ C_Timer = { After = function() end, NewTicker = function() return mk("t") end }
 CueRulesDB = {}
 ns = { Merge = function(a, b) for k, v in pairs(b or {}) do if a[k] == nil then a[k] = v end end end, Print = print }
 ''')
-src = open(os.path.join(ROOT, "Notepad.lua"), encoding="utf-8").read()
+src = open(os.path.join(ROOT, "XayaUI_Bonus/Notepad.lua"), encoding="utf-8").read()
 load = lua.eval("function(src) local f, e = load(src, '=Notepad.lua'); if not f then error(e) end; return f end")
-lua.eval("function(f) f('XayaUI', ns) end")(load(open(os.path.join(ROOT, "Modules.lua"), encoding="utf-8").read()))   # core contract (0.5.108)
+lua.eval("function(f) f('XayaUI', ns) end")(load(open(os.path.join(ROOT, "XayaUI/Modules.lua"), encoding="utf-8").read()))   # core contract (0.5.108)
 lua.eval("function(f) f('XayaUI', ns) end")(load(src))
 res = lua.execute(r'''
 local out, fails = {}, 0

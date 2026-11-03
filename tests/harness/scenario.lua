@@ -160,8 +160,17 @@ local function walk(node, path, root, depth)
   end
 end
 N = ns()
-local built = N and N.BuildOptionsTable and select(2, pcall(N.BuildOptionsTable))
-if type(built) == "table" then walk(built, {}, built, 0) else S.noOptions = true end
+-- with XayaUI_Options switched on, the window must have loaded and its option table must build; anything else is a failure
+local optionsOn = C_AddOns.GetAddOnEnableState("XayaUI_Options") == 2 and C_AddOns.DoesAddOnExist("XayaUI_Options")
+local okB, built = false, nil
+if N and N.BuildOptionsTable then okB, built = pcall(N.BuildOptionsTable) end
+if type(built) == "table" then walk(built, {}, built, 0)
+else
+  S.noOptions = true
+  if optionsOn then
+    W.errors[#W.errors + 1] = "the settings window did not build: " .. (N and N.BuildOptionsTable and tostring(built) or "XayaUI_Options never loaded (ns.BuildOptionsTable missing)")
+  end
+end
 step("settings window: close")
 if N and N.ToggleUI then W.safecall(N.ToggleUI) end
 W.tick(0.1, 10)

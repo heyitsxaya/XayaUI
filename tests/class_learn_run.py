@@ -19,7 +19,7 @@ local ns = {}
 _G.XayaUI_NS = ns
 ns.CurrentSpecID = function() return 999 end
 ns.CollectCooldownSpells = function() return { { id = 1, name = "Alpha", talent = nil }, { id = 2, name = "Beta", talent = true }, { id = "x", name = "Bad" } } end
-local chunk = assert(loadfile("''' + os.path.join(ROOT, "ClassLearn.lua").replace("\\", "/") + r'''"))
+local chunk = assert(loadfile("''' + os.path.join(ROOT, "XayaUI/ClassLearn.lua").replace("\\", "/") + r'''"))
 chunk("XayaUI", ns)
 results = {}
 local function check(name, ok) results[#results + 1] = { name, ok and true or false } end

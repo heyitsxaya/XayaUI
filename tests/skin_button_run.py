@@ -2,7 +2,7 @@
 import lupa, os
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 L = lupa.LuaRuntime(unpack_returned_tuples=True)
-src = open(os.path.join(ROOT, 'Skin.lua'), encoding='utf-8').read().split('\n')
+src = open(os.path.join(ROOT, 'XayaUI_Options/Skin.lua'), encoding='utf-8').read().split('\n')
 end_line = next(i for i, l in enumerate(src) if l.startswith('function ns.SkinPlainButton'))
 while src[end_line] != 'end': end_line += 1
 chunk = '\n'.join(src[:end_line + 1])
@@ -29,7 +29,7 @@ function newButton()
   function b:HookScript(n, f) self.hooks[n] = f end
   return b end
 ''')
-L.eval('function(src, ns) return load(src, "Skin.lua")("XayaUI", ns) end')(chunk, L.eval('(function() XayaUI_NS = {} return XayaUI_NS end)()'))
+L.eval('function(src, ns) return load(src, "XayaUI_Options/Skin.lua")("XayaUI", ns) end')(chunk, L.eval('(function() XayaUI_NS = {} return XayaUI_NS end)()'))
 fails = 0
 def check(n, c):
     global fails

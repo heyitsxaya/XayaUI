@@ -11,7 +11,7 @@ L.execute("CueRulesDB = { rules = {}, folders = {} }")
 L.execute(bench[a:b])
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
-for f in ("Core.lua", "Conditions.lua"):
+for f in ("XayaUI/Core.lua", "XayaUI/Conditions.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 L.execute(r'''
 local ns = NS
@@ -52,7 +52,7 @@ lua("NS.folders[1].loadClasses = { PALADIN = true, DEATHKNIGHT = true }")
 check("group allowing Paladin: rule loads", lua("local r = R({ mode = 'all' }); r.folder = 'f1'; return (loads(r))"))
 
 # the lists: the block in Options.lua, run against a stand-in class API (13 classes, 3 specs each; the character is a Paladin)
-src = open(os.path.join(ROOT, "Options.lua"), encoding="utf-8").read()
+src = open(os.path.join(ROOT, "XayaUI_Options/Options.lua"), encoding="utf-8").read()
 i = src.index("local SpecChoices   --"); j = src.index("-- Hero talent specializations of the character's class")
 L.globals().BLOCK = src[i:j]
 L.execute(r'''

@@ -5,7 +5,7 @@ import os, subprocess, sys
 from lupa import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 old_src = open(os.path.join(ROOT, "tests", "Conditions.pre-0.5.83.lua")).read()   # the 0.5.82 evaluator, kept for the comparison
-new_src = open(os.path.join(ROOT, "Conditions.lua")).read()
+new_src = open(os.path.join(ROOT, "XayaUI/Conditions.lua")).read()
 assert "local function FrameMatches" in old_src, "need the pre-0.5.83 Conditions.lua (git HEAD before the change)"
 passed = failed = 0
 def check(name, cond):

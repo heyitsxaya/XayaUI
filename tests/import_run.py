@@ -1,10 +1,10 @@
-"""Offline test: Profile_Apply puts an import into one folder of its own, and ns.FixFolderIds repairs non-standard group ids.
+"""Offline test: Share_ApplyRules puts an import into one folder of its own, and ns.FixFolderIds repairs non-standard group ids.
 Run: python3 tests/import_run.py   (stand-in game; proves the data logic, not the window or the tree).  Lua 5.1 via lupa."""
 import os, re
 from lupa.lua51 import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 L = LuaRuntime(unpack_returned_tuples=True)
-core = open(os.path.join(ROOT, "Core.lua")).read()
+core = open(os.path.join(ROOT, "XayaUI/Core.lua")).read()
 m = re.search(r"-- Rename every group whose id.*?\nend\n", core, re.S)
 fix = m.group(0)
 L.globals().FIXSRC = fix
@@ -18,16 +18,16 @@ ns.Merge = function() end; ns.BAR_DEFAULTS = {}; ns.NewUID = function() return "
 CueRulesDB = { barGroup = {} }
 _G.XayaUI_NS = ns
 ns.Print = ns.Print or function() end
-assert(loadfile("''' + os.path.join(ROOT, "Modules.lua").replace("\\", "/") + r'''"))("XayaUI", ns)   -- core contract: ns.Fire (0.6.0)
+assert(loadfile("''' + os.path.join(ROOT, "XayaUI/Modules.lua").replace("\\", "/") + r'''"))("XayaUI", ns)   -- core contract: ns.Fire (0.6.0)
 -- load Profile.lua with the addon vararg
-local f = assert(loadfile("''' + os.path.join(ROOT, "Profile.lua").replace("\\", "/") + r'''"))
+local f = assert(loadfile("''' + os.path.join(ROOT, "XayaUI/Share.lua").replace("\\", "/") + r'''"))
 f("XayaUI", ns)
 ns.rules = { { name = "mine", folder = "f111" } }
 ns.folders = { { id = "f111", name = "Mine" } }
 ns.qolBoxes = {}; ns.bars = {}
 local snap = { v = 1, name = "EUI bars", folders = { { id = "feui1", name = "Bar 1", cType = "dynamic", default = "display" }, { id = "feui2", name = "Child", parent = "feui1" } },
   rules = { { name = "a", folder = "feui1", uid = "ua" }, { name = "loose", uid = "ub" }, { name = "cue", isCue = true, parentUid = "ub" }, { name = "c", folder = "feui2", uid = "uc" } } }
-local c = ns.Profile_Apply(snap, "add")
+local c = ns.Share_ApplyRules(snap, "add")
 results = {}
 local function check(n, ok) results[#results + 1] = { n, ok and true or false } end
 local function byName(n) for _, x in ipairs(ns.folders) do if x.name == n then return x end end end

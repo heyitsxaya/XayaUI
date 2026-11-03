@@ -32,7 +32,7 @@ function ns.Merge(t, d) for k, v in pairs(d) do if t[k] == nil then t[k] = v end
 CueRulesDB = {}
 assert(loadfile(__MOD__))("XayaUI", ns)   -- Modules.lua: the core contract (0.5.108)
 local fn = assert(loadfile(__PATH__)); fn("XayaUI", ns)
-'''.replace("__PATH__", "'" + os.path.join(ROOT, "MinimapButton.lua").replace("\\", "/") + "'").replace("__MOD__", "'" + os.path.join(ROOT, "Modules.lua").replace("\\", "/") + "'"))
+'''.replace("__PATH__", "'" + os.path.join(ROOT, "XayaUI/MinimapButton.lua").replace("\\", "/") + "'").replace("__MOD__", "'" + os.path.join(ROOT, "XayaUI/Modules.lua").replace("\\", "/") + "'"))
 lua.execute(r'''
 local fails, n = 0, 0
 local function check(name, cond, extra) n = n + 1; if not cond then fails = fails + 1; print("FAIL: " .. name .. (extra and ("  -> " .. tostring(extra)) or "")) else print("ok:   " .. name) end end

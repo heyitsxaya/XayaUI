@@ -1,0 +1,311 @@
+-------------------------------------------------------------------------------
+-- Chat/History.lua : the history pane. A window with the recent messages as plain text you can select and copy (Ctrl+C), with one
+-- button per chat tab and a search box. Opened from the small button in the pane's corner, a History block on the Chat Bar, or
+-- /xui chat history. The lines are kept in memory only (never saved to disk). A message the game marks secret is listed as
+-- "[protected message]" because its text cannot be read. Combat log lines are not chat messages and are not recorded.
+-- The list is a SNAPSHOT: it stays still while you select text, and "Refresh" (or turning on Live) brings in newer lines.
+-- The window can be moved and resized; its size is remembered. Own code. UNTESTED in game.
+-------------------------------------------------------------------------------
+local ADDON, ns = ...
+ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+local C = ns.Chat
+local issecret = C.IsSecret
+local function S() return ns.chat2 end
+
+local TAG = { CHAT_MSG_SAY = "Say", CHAT_MSG_YELL = "Yell", CHAT_MSG_EMOTE = "Emote", CHAT_MSG_TEXT_EMOTE = "Emote", CHAT_MSG_PARTY = "Party",
+    CHAT_MSG_PARTY_LEADER = "Party", CHAT_MSG_RAID = "Raid", CHAT_MSG_RAID_LEADER = "Raid", CHAT_MSG_RAID_WARNING = "Raid warning",
+    CHAT_MSG_INSTANCE_CHAT = "Instance", CHAT_MSG_INSTANCE_CHAT_LEADER = "Instance", CHAT_MSG_GUILD = "Guild", CHAT_MSG_OFFICER = "Officer",
+    CHAT_MSG_WHISPER = "From", CHAT_MSG_WHISPER_INFORM = "To", CHAT_MSG_BN_WHISPER = "From", CHAT_MSG_BN_WHISPER_INFORM = "To", CHAT_MSG_CHANNEL = "Channel" }
+
+local hist = {}
+local tabKey, query = "ALL", ""          -- tabKey: "ALL" or a chat window number
+local shownCount = 0                      -- how many entries the snapshot in the window already holds
+local frame
+
+-- text without colors, textures, links and name codes (what you would want to paste). Named colors (|cnNAME:) and the colored
+-- |K...|k name codes are part of the newer game's text; an unremoved color code would tint everything after it.
+function C.Plain(text)
+    text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|cn[%w_%-]+:", ""):gsub("|r", ""):gsub("|H.-|h(.-)|h", "%1"):gsub("|T.-|t", ""):gsub("|A.-|a", "")
+    text = text:gsub("|K.-|k", "?"):gsub("|n", " ")
+    return (text:gsub("||", "|"))
+end
+
+-- which chat windows (tabs) show this message right now. Channel messages go by the channel's name, everything else by message group.
+function C.Shows(f, group, channelBase)
+    if group == "CHANNEL" then
+        if type(channelBase) ~= "string" or issecret(channelBase) then return false end
+        local up = channelBase:upper()
+        for _, name in pairs(type(f.channelList) == "table" and f.channelList or {}) do
+            if type(name) == "string" and name:upper() == up then return true end
+        end
+        return false
+    end
+    if type(f.messageTypeList) == "table" then
+        for _, g in pairs(f.messageTypeList) do if g == group then return true end end
+        return false
+    end
+    local v = ns.Compat.ChatShowsGroup(f, group)
+    if v ~= nil then return v end
+    return false
+end
+
+local function Windows()                  -- { {id=, name=} } for the tabs worth a button
+    local out = {}
+    for _, f in ipairs(C.Frames()) do
+        local id = f.GetID and f:GetID()
+        if id then
+            local name, shown, docked
+            if _G.GetChatWindowInfo then local n, _, _, _, _, _, sh, _, dk = _G.GetChatWindowInfo(id); name, shown, docked = n, sh, dk end
+            if not name or name == "" then local tab = C.TabOf(f); local fs = tab and (tab.Text or _G[C.NameOf(tab) .. "Text"]); name = fs and fs.GetText and fs:GetText() or nil end
+            if (shown or docked or f == C.Main()) and name and name ~= "" then out[#out + 1] = { id = id, name = name } end
+        end
+    end
+    return out
+end
+C.History_Windows = Windows
+
+function C.History_Lines()
+    local out, q = {}, query:lower()
+    for _, e in ipairs(hist) do
+        if tabKey == "ALL" or (e.frames and e.frames[tabKey]) then
+            local body = e.text and C.Plain(e.text) or "[protected message]"
+            local line = ("[%s] %s%s%s"):format(date("%H:%M:%S", e.t), e.tag and (e.tag .. " ") or "", e.who and (e.who .. ": ") or "", body)
+            if q == "" or line:lower():find(q, 1, true) then out[#out + 1] = line end
+        end
+    end
+    return out
+end
+
+local function NewCount() return #hist - shownCount end
+local UpdateStatus
+
+C.OnMessage(function(event, text, author, _, _, _, _, _, _, channelBase)
+    local s = S()
+    if not (s and s.histOn) then return end
+    local tag = TAG[event]
+    if not tag then return end
+    local group = C.SOUND_GROUPS and C.SOUND_GROUPS[event]
+    if event == "CHAT_MSG_WHISPER_INFORM" then group = "WHISPER" elseif event == "CHAT_MSG_BN_WHISPER_INFORM" then group = "BN_WHISPER" end
+    local e = { t = time(), tag = tag, frames = {} }
+    if group then
+        for _, f in ipairs(C.Frames()) do
+            local id = f.GetID and f:GetID()
+            if id and C.Shows(f, group, channelBase) then e.frames[id] = true end
+        end
+    end
+    if type(author) == "string" and not issecret(author) then e.who = (author:gsub("%-.+$", "")) end
+    if type(text) == "string" and not issecret(text) then e.text = text else C.stats.protected = C.stats.protected + 1 end
+    hist[#hist + 1] = e
+    local cap = math.max(20, math.min(2000, tonumber(s.histSize) or 300))
+    local drop = 0
+    while #hist > cap do table.remove(hist, 1); drop = drop + 1 end
+    shownCount = math.max(0, shownCount - drop)
+    if frame and frame:IsShown() then
+        if s.histLive and not (frame.edit and frame.edit:HasFocus()) then C.History_Update() else UpdateStatus() end
+    end
+end)
+
+-------------------------------------------------------------------------------
+-- The window
+-------------------------------------------------------------------------------
+local MIN_W, MIN_H = 400, 260
+
+local function Btn(parent, label, w)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(w or 70, 20)
+    b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints()
+    b.t = b:CreateFontString(nil, "OVERLAY"); b.t:SetFont(STANDARD_TEXT_FONT, 12, ""); b.t:SetPoint("CENTER"); b.t:SetText(label)
+    b.bg:SetColorTexture(1, 1, 1, 0.08)
+    return b
+end
+
+local function PlaceTabButtons()          -- the tab buttons flow into rows as wide as the window; returns the height they use
+    if not frame then return 0 end
+    local avail = (frame:GetWidth() or 540) - 24
+    local x, row = 0, 0
+    for _, b in ipairs(frame.kb) do
+        if b:IsShown() then
+            local w = b:GetWidth()
+            if x > 0 and x + w > avail then x = 0; row = row + 1 end
+            b:ClearAllPoints(); b:SetPoint("TOPLEFT", frame, "TOPLEFT", 12 + x, -34 - row * 24)
+            x = x + w + 4
+        end
+    end
+    return (row + 1) * 24
+end
+
+local function Relayout()
+    if not frame then return end
+    local used = PlaceTabButtons()
+    frame.search:ClearAllPoints()
+    frame.search:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -34 - used - 2)
+    frame.search:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -34 - used - 2)
+    frame.scroll:ClearAllPoints()
+    frame.scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -34 - used - 28)
+    frame.scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -30, 36)
+    frame.edit:SetWidth(math.max(100, (frame:GetWidth() or 540) - 50))
+end
+
+local function RebuildTabButtons()
+    for _, b in ipairs(frame.kb) do b:Hide() end
+    local list = { { id = "ALL", name = "All" } }
+    for _, w in ipairs(Windows()) do list[#list + 1] = w end
+    for i, w in ipairs(list) do
+        local b = frame.kb[i]
+        if not b then
+            b = Btn(frame, "", 70)
+            b:SetScript("OnClick", function(self) tabKey = self.key; C.History_Update() end)
+            frame.kb[i] = b
+        end
+        b.key = w.id
+        b.t:SetText(w.name)
+        b:SetWidth(math.max(44, math.ceil((b.t:GetStringWidth() or 40)) + 18))
+        b:Show()
+    end
+    if tabKey ~= "ALL" then
+        local ok = false
+        for _, w in ipairs(list) do if w.id == tabKey then ok = true end end
+        if not ok then tabKey = "ALL" end
+    end
+end
+
+UpdateStatus = function()
+    if not frame then return end
+    local n = NewCount()
+    if n > 0 then frame.status:SetText(n .. " newer message" .. (n == 1 and "" or "s") .. ". Click Refresh to show them.")
+    else frame.status:SetText("Up to date.") end
+    frame.refresh.bg:SetColorTexture(n > 0 and 0.2 or 1, n > 0 and 0.45 or 1, n > 0 and 0.8 or 1, n > 0 and 0.85 or 0.08)
+end
+
+local function Save()
+    local s = S(); if not (s and frame) then return end
+    s.histW, s.histH = math.floor(frame:GetWidth() + 0.5), math.floor(frame:GetHeight() + 0.5)
+    local l, b = frame:GetLeft(), frame:GetBottom()
+    if type(l) == "number" and type(b) == "number" then s.histX, s.histY = math.floor(l + 0.5), math.floor(b + 0.5) end
+end
+
+local function Build()
+    if frame then return end
+    local s = S()
+    frame = CreateFrame("Frame", "XayaUIChatHistory", UIParent, "BackdropTemplate")
+    frame:SetSize(tonumber(s and s.histW) or 540, tonumber(s and s.histH) or 380)
+    if s and tonumber(s.histX) and tonumber(s.histY) then frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", s.histX, s.histY)
+    else frame:SetPoint("CENTER", 0, 40) end
+    frame:SetFrameStrata("DIALOG")
+    frame:SetMovable(true); frame:SetResizable(true); frame:EnableMouse(true); frame:RegisterForDrag("LeftButton"); frame:SetClampedToScreen(true)
+    if frame.SetResizeBounds then frame:SetResizeBounds(MIN_W, MIN_H, 1400, 1000) end
+    frame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    frame:SetBackdropColor(0.04, 0.04, 0.06, 0.97); frame:SetBackdropBorderColor(0.3, 0.3, 0.35, 1)
+    frame:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    frame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); Save() end)
+    frame:SetScript("OnSizeChanged", function() Relayout() end)
+    frame:SetScript("OnShow", function() RebuildTabButtons(); Relayout(); C.History_Update() end)
+
+    local title = frame:CreateFontString(nil, "OVERLAY"); title:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE"); title:SetPoint("TOPLEFT", 12, -10)
+    title:SetText("Chat history")
+    local close = CreateFrame("Button", nil, frame)
+    close:SetSize(20, 20); close:SetPoint("TOPRIGHT", -6, -6)
+    close.t = close:CreateFontString(nil, "OVERLAY"); close.t:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE"); close.t:SetPoint("CENTER"); close.t:SetText("X")
+    close:SetScript("OnClick", function() frame:Hide() end)
+    frame.kb = {}
+
+    local search = CreateFrame("EditBox", nil, frame, "BackdropTemplate")
+    search:SetHeight(20)
+    search:SetFont(STANDARD_TEXT_FONT, 12, ""); search:SetAutoFocus(false)
+    search:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    search:SetBackdropColor(0, 0, 0, 0.6); search:SetBackdropBorderColor(0.3, 0.3, 0.35, 1)
+    search:SetTextInsets(6, 6, 0, 0)
+    search:SetScript("OnTextChanged", function(self) query = self:GetText() or ""; C.History_Update() end)
+    search:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    frame.search = search
+    search.hint = search:CreateFontString(nil, "OVERLAY"); search.hint:SetFont(STANDARD_TEXT_FONT, 11, ""); search.hint:SetPoint("LEFT", 8, 0)
+    search.hint:SetTextColor(0.5, 0.5, 0.5, 1); search.hint:SetText("Search")
+
+    local scroll = CreateFrame("ScrollFrame", "XayaUIChatHistoryScroll", frame, "UIPanelScrollFrameTemplate")
+    local edit = CreateFrame("EditBox", nil, scroll)
+    edit:SetMultiLine(true); edit:SetAutoFocus(false); edit:SetFont(STANDARD_TEXT_FONT, 12, ""); edit:SetTextColor(0.9, 0.9, 0.9, 1)
+    edit:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    edit:SetScript("OnTextChanged", function(self, user) if user and frame.text then self:SetText(frame.text) end end)   -- selectable, not editable
+    scroll:SetScrollChild(edit)
+    frame.scroll, frame.edit = scroll, edit
+
+    -- bottom row
+    frame.refresh = Btn(frame, "Refresh", 64); frame.refresh:SetPoint("BOTTOMLEFT", 12, 10)
+    frame.refresh:SetScript("OnClick", function() C.History_Update() end)
+    frame.live = Btn(frame, "Live: off", 70); frame.live:SetPoint("LEFT", frame.refresh, "RIGHT", 6, 0)
+    frame.live:SetScript("OnClick", function()
+        local st = S(); if not st then return end
+        st.histLive = not st.histLive
+        frame.live.t:SetText(st.histLive and "Live: on" or "Live: off")
+        if st.histLive then C.History_Update() end
+    end)
+    frame.status = frame:CreateFontString(nil, "OVERLAY"); frame.status:SetFont(STANDARD_TEXT_FONT, 11, ""); frame.status:SetPoint("LEFT", frame.live, "RIGHT", 10, 0)
+    frame.status:SetTextColor(0.7, 0.7, 0.7, 1)
+    local note = frame:CreateFontString(nil, "OVERLAY"); note:SetFont(STANDARD_TEXT_FONT, 10, ""); note:SetPoint("BOTTOMRIGHT", -26, 12)
+    note:SetTextColor(0.55, 0.55, 0.55, 1)
+    note:SetText("Select text, Ctrl+C. Kept in memory only. Combat log and protected lines are not recorded.")
+
+    -- resize grip
+    local grip = CreateFrame("Button", nil, frame)
+    grip:SetSize(16, 16); grip:SetPoint("BOTTOMRIGHT", -2, 2); grip:SetFrameLevel((frame:GetFrameLevel() or 1) + 10)
+    for i = 1, 3 do
+        local l = grip:CreateLine(nil, "OVERLAY"); l:SetThickness(1.5); l:SetColorTexture(0.7, 0.7, 0.75, 0.9)
+        l:SetStartPoint("BOTTOMRIGHT", grip, -2 - (i - 1) * 4, 2); l:SetEndPoint("BOTTOMRIGHT", grip, -2, 2 + (i - 1) * 4)
+    end
+    grip:SetScript("OnMouseDown", function() frame:StartSizing("BOTTOMRIGHT") end)
+    grip:SetScript("OnMouseUp", function() frame:StopMovingOrSizing(); Save(); Relayout() end)
+    frame.grip = grip
+
+    if _G.UISpecialFrames then table.insert(_G.UISpecialFrames, "XayaUIChatHistory") end
+    frame:Hide()
+end
+
+function C.History_Update()
+    if not frame then return end
+    local st = S()
+    for _, b in ipairs(frame.kb) do
+        if b:IsShown() then
+            if b.key == tabKey then b.bg:SetColorTexture(0.2, 0.45, 0.8, 0.8); b.t:SetTextColor(1, 1, 1, 1)
+            else b.bg:SetColorTexture(1, 1, 1, 0.08); b.t:SetTextColor(0.8, 0.8, 0.8, 1) end
+        end
+    end
+    frame.live.t:SetText((st and st.histLive) and "Live: on" or "Live: off")
+    frame.search.hint:SetShown((frame.search:GetText() or "") == "")
+    frame.text = table.concat(C.History_Lines(), "\n")
+    frame.edit:SetText(frame.text)
+    shownCount = #hist
+    UpdateStatus()
+    C_Timer.After(0, function() if frame.scroll.GetVerticalScrollRange then frame.scroll:SetVerticalScroll(frame.scroll:GetVerticalScrollRange() or 0) end end)
+end
+
+function C.History_Toggle()
+    Build()
+    if frame:IsShown() then frame:Hide() else frame:Show() end
+end
+function C.History_Count() return #hist end
+function C.History_Select(key) tabKey = key or "ALL" end   -- a Chat Bar block can open the pane on a given tab
+
+-- the small button in the pane's corner
+local btn
+local function Refresh(s)
+    if not C.On() or not C.Pane() then return end
+    if not btn then
+        btn = CreateFrame("Button", "XayaUIChatHistoryButton", C.Pane())
+        btn:SetSize(16, 16); btn:SetFrameStrata("MEDIUM")
+        btn.lines = {}
+        for i = 1, 3 do
+            local t = btn:CreateTexture(nil, "OVERLAY"); t:SetColorTexture(1, 1, 1, 1)
+            t:SetPoint("TOPLEFT", btn, "TOPLEFT", 2, -3 - (i - 1) * 4); t:SetPoint("TOPRIGHT", btn, "TOPRIGHT", -2, -3 - (i - 1) * 4); t:SetHeight(2)
+            btn.lines[i] = t
+        end
+        btn:SetAlpha(0.35)
+        btn:SetScript("OnClick", function() C.History_Toggle() end)
+        btn:SetScript("OnEnter", function(self) self:SetAlpha(1); GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:SetText("Chat history"); GameTooltip:AddLine("Copy recent messages", 1, 1, 1); GameTooltip:Show() end)
+        btn:SetScript("OnLeave", function(self) self:SetAlpha(0.35); GameTooltip:Hide() end)
+    end
+    -- inside the pane, at the right end of the tab row's lower edge (never outside the block)
+    btn:ClearAllPoints()
+    btn:SetPoint("TOPRIGHT", C.TabsArea() or C.TextArea(), (C.TabsArea() and "BOTTOMRIGHT" or "TOPRIGHT"), -4, -3)
+    btn:SetShown(s.histButton and not s.collapsed and true or false)
+end
+C.Register("history", Refresh)

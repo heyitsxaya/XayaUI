@@ -17,7 +17,7 @@ C_AddOns = {
 }
 ns = {}
 ''')
-L.execute('assert(loadfile(%r))("XayaUI", ns)' % os.path.join(ROOT, "Modules.lua").replace("\\", "/"))
+L.execute('assert(loadfile(%r))("XayaUI", ns)' % os.path.join(ROOT, "XayaUI/Modules.lua").replace("\\", "/"))
 
 n = fails = 0
 def check(name, cond):

@@ -1,0 +1,10 @@
+## Interface: 120100
+## Title: XayaUI Media (your own pictures and sounds)
+## Notes: Your own textures, icons and sounds for XayaUI. Lives outside the XayaUI folder so updating XayaUI never touches it. See README.txt.
+## Author: Xaya
+## Group: XayaUI
+## Version: 1.0
+## Dependencies:
+## LoadOnDemand: 0
+
+UserMedia.lua

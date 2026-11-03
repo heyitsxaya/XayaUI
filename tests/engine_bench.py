@@ -143,17 +143,17 @@ PlaySoundFile = function() return true end
 PlaySound = function() return true end
 C_Secrets = nil
 ''')
-toc = [l.strip() for l in open(os.path.join(ROOT, "XayaUI.toc")) if l.strip() and not l.startswith("#")]
+toc = [l.strip() for l in open(os.path.join(ROOT, "XayaUI", "XayaUI.toc")) if l.strip() and not l.startswith("#")]
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}")
 L.globals().NS = ns
-skip = ("Libs", "Chat", "Options.lua", "Skin.lua", "ImportWindow.lua", "Console.lua", "Drafts.lua", "Notepad", "GameMenu", "MinimapButton", "Tooltips", "DataPanels", "DataBlocks", "AddonInfo", "AuraSources")
+skip = ("Libs", "Console.lua", "GameMenu", "MinimapButton", "AuraSources")   # core files only (0.6.0 layout: XayaUI/XayaUI.toc)
 loaded, failed = [], []
 for f in toc:
     f = f.replace("\\", "/")
     if f.startswith(skip) or not f.endswith(".lua"): continue
     try:
-        load(open(os.path.join(ROOT, f), encoding='utf-8').read(), f, ns); loaded.append(f)
+        load(open(os.path.join(ROOT, "XayaUI", f), encoding='utf-8').read(), f, ns); loaded.append(f)
     except Exception as e:
         failed.append((f, str(e)[:150]))
 print("loaded:", " ".join(loaded)); print("failed:", failed)

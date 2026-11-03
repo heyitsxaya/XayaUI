@@ -1,0 +1,10 @@
+## Interface: 120100
+## Title: XayaUI Blizzard Reskin
+## Notes: Restyles Blizzard's own frames without changing what they do. Today: the Game Menu (ESC menu). Needs XayaUI.
+## Author: Xaya
+## Version: 0.6.0
+## X-Date: 2026-11-03
+## Dependencies: XayaUI
+## Group: XayaUI
+
+GameMenuSkin.lua

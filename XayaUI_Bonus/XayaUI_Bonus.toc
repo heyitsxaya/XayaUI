@@ -1,0 +1,16 @@
+## Interface: 120100
+## Title: XayaUI Bonus Features
+## Notes: XayaUI extras: enhanced tooltips (IDs, item level, enemy forces), the Notepad, and custom data panels. Needs XayaUI.
+## Author: Xaya
+## Version: 0.6.0
+## X-Date: 2026-11-03
+## Dependencies: XayaUI
+## Group: XayaUI
+
+Libs\XayaDataBlocks-1.0\XayaDataBlocks-1.0.lua
+
+Tooltips.lua
+TooltipsUI.lua
+DataPanels.lua
+Notepad.lua
+NotepadShare.lua

@@ -312,12 +312,12 @@ local function load(rel)
   f("XayaUI", ns)
 end
 W.load = load
-load("Modules.lua")   -- the core contract the chat files register through (0.5.108)
-load("Compat.lua")    -- current game API with fallbacks (0.6.0)
-load("Libs/LibStub/LibStub.lua")
-load("Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua")
-for _, rel in ipairs({ "Chat/Core.lua", "Chat/Frame.lua", "Chat/Bar.lua", "Chat/Skin.lua", "Chat/Fade.lua", "Chat/Locate.lua", "Chat/Messages.lua", "Chat/History.lua",
-  "Chat/Sounds.lua", "Chat/Options.lua", "ChatPrivacy.lua" }) do load(rel) end
+load("XayaUI/Modules.lua")   -- the core contract the chat files register through (0.5.108)
+load("XayaUI/Compat.lua")    -- current game API with fallbacks (0.6.0)
+load("XayaUI/Libs/LibStub/LibStub.lua")
+load("XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua")
+for _, rel in ipairs({ "XayaUI_Chat/Core.lua", "XayaUI_Chat/Frame.lua", "XayaUI_Chat/Bar.lua", "XayaUI_Chat/Skin.lua", "XayaUI_Chat/Fade.lua", "XayaUI_Chat/Locate.lua", "XayaUI_Chat/Messages.lua", "XayaUI_Chat/History.lua",
+  "XayaUI_Chat/Sounds.lua", "XayaUI_Chat/Options.lua", "XayaUI_Chat/Privacy.lua" }) do load(rel) end
 W.ns = ns
 function W.start()
   ns.Chat_OnDBReady()

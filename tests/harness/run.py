@@ -23,6 +23,8 @@ import lupa.lua51 as lua51
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 CORE = "XayaUI"
+FEATURES = ["XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options"]
+ALWAYS = ["XayaUI_Media"]
 
 
 def find_addons():
@@ -217,7 +219,43 @@ def static_checks(folders):
                 for m in re.finditer(r'(?:(?<![\w.:])|_G\.|_G\[")' + re.escape(n) + r'(?![\w])', code):
                     out.append("%s:%d uses %s, which 12.1.5 defines only as a deprecation fallback (%s)" % (
                         os.path.relpath(f, ROOT), code.count("\n", 0, m.start()) + 1, n, dep[n]))
+    out += boundary_checks(folders)
     return sorted(set(out))
+
+
+# names a feature addon publishes on purpose for core to read (Modules.lua): the settings window's API
+PUBLISHED = {"Options", "OptionsApi"}
+
+
+def boundary_checks(folders):
+    """Every addon may use its own names and XayaUI core's; reaching into another feature addon's names is a failure (they talk
+    through Modules.lua: registrations, messages, services). A name counts as an addon's when one of its files defines it
+    (function ns.X(...) or ns.X = ...)."""
+    files = addon_lua_files(folders)
+    owner, code = {}, {}
+    for addon, fl in files.items():
+        for f in fl:
+            if not os.path.isfile(f):
+                continue
+            c = strip_comments(open(f, encoding="utf-8", errors="replace").read())
+            code[(addon, f)] = c
+            for m in re.finditer(r"(?m)^\s*(?:function\s+ns\.([A-Za-z_]\w*)\s*\(|ns\.([A-Za-z_]\w*)\s*=[^=])", c):
+                owner.setdefault(m.group(1) or m.group(2), set()).add(addon)
+    out = []
+    for (addon, f), c in code.items():
+        for i, line in enumerate(c.split("\n"), 1):
+            for m in re.finditer(r"\bns\.([A-Za-z_]\w*)", line):
+                n = m.group(1)
+                o = owner.get(n)
+                if not o or addon in o or CORE in o or n in PUBLISHED:
+                    continue
+                out.append("%s:%d (%s) uses ns.%s, which belongs to %s; go through Modules.lua instead" % (
+                    os.path.relpath(f, ROOT), i, addon, n, "/".join(sorted(o))))
+    return out
+
+
+def run_combo_job(job):
+    return run_combo(*job)
 
 
 def main():
@@ -226,16 +264,21 @@ def main():
     ap.add_argument("--only", nargs="*", help="run one combination: core plus these addons")
     ap.add_argument("--fresh-only", action="store_true")
     ap.add_argument("--report", default=os.path.join(HERE, "reports"))
+    ap.add_argument("--jobs", type=int, default=max(1, os.cpu_count() or 1))
     args = ap.parse_args()
     folders = find_addons()
     if CORE not in folders:
         print("FAIL: no XayaUI folder found under", ROOT)
         return 1
-    optional = sorted(n for n in folders if n != CORE)
+    # the feature addons a player switches on and off; support folders are always on; tools only in the everything-on run
+    features = [n for n in FEATURES if n in folders]
+    always = [n for n in ALWAYS if n in folders]
+    tools = sorted(n for n in folders if n != CORE and n not in FEATURES and n not in ALWAYS)
     if args.only is not None:
-        combos = [tuple(args.only)]
+        combos = [tuple(always) + tuple(args.only)]
     else:
-        combos = [c for r in range(len(optional) + 1) for c in itertools.combinations(optional, r)]
+        combos = [tuple(always) + c for r in range(len(features) + 1) for c in itertools.combinations(features, r)]
+        combos.append(tuple(always) + tuple(features) + tuple(tools))
     datasets = [("fresh install", {})]
     if args.saved:
         real = read_saved(args.saved)
@@ -253,23 +296,28 @@ def main():
     total_fail += len(static)
     unknown = {}
     summary = []
+    jobs = []
     for dname, saved in datasets:
         for combo in combos:
             enabled = {CORE, *combo}
-            label = "%s | %s" % (dname, " + ".join(["XayaUI"] + list(combo)))
-            r = run_combo(folders, enabled, saved, label)
-            for s in (r["s1"], r["s2"]):
-                for k, tb in s["unknownGlobals"].items():
-                    unknown.setdefault(k, str(tb))
-                for k, tb in s["unknownMethods"].items():
-                    unknown.setdefault("method " + k, str(tb))
-            st = r["s1"]["stats"]
-            status = "FAIL" if r["fails"] else "ok  "
-            print("%s %-80s files %3d | cmds %2d | rows %d | options %5d nodes %6d calls | %4.1fs + %4.1fs | %d fail, %d warn" % (
-                status, label[:80], r["s1"]["files"], st["commands"], st["launchers"], st["optionNodes"], st["optionCalls"],
-                r["s1"]["seconds"], r["s2"]["seconds"], len(r["fails"]), len(r["warns"])))
-            total_fail += len(r["fails"])
-            summary.append(r)
+            label = "%s | %s" % (dname, " + ".join(["XayaUI"] + [c.replace("XayaUI_", "") for c in combo]))
+            jobs.append((folders, enabled, saved, label))
+    import multiprocessing
+    with multiprocessing.Pool(args.jobs) as pool:
+        results = pool.imap(run_combo_job, jobs)
+        for r in results:
+                for s in (r["s1"], r["s2"]):
+                    for k, tb in s["unknownGlobals"].items():
+                        unknown.setdefault(k, str(tb))
+                    for k, tb in s["unknownMethods"].items():
+                        unknown.setdefault("method " + k, str(tb))
+                st = r["s1"]["stats"]
+                status = "FAIL" if r["fails"] else "ok  "
+                print("%s %-80s files %3d | cmds %2d | rows %d | options %5d nodes %6d calls | %4.1fs + %4.1fs | %d fail, %d warn" % (
+                    status, r["label"][:80], r["s1"]["files"], st["commands"], st["launchers"], st["optionNodes"], st["optionCalls"],
+                    r["s1"]["seconds"], r["s2"]["seconds"], len(r["fails"]), len(r["warns"])))
+                total_fail += len(r["fails"])
+                summary.append(r)
     # unknown globals: names nothing defined that our code read. Filter out names our own files define later in a run.
     with open(os.path.join(args.report, "report.txt"), "w") as f:
         for r in summary:

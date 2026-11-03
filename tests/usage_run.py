@@ -2,11 +2,11 @@
 import lupa, os
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 L = lupa.LuaRuntime(unpack_returned_tuples=True)
-for f in ('Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua', 'Chat/Bar.lua', 'DataPanels.lua'):
+for f in ('XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua', 'XayaUI_Chat/Bar.lua', 'XayaUI_Bonus/DataPanels.lua'):
     src = open(os.path.join(ROOT, f), encoding='utf-8').read()
     res = L.eval('function(s, n) local f, e = load(s, n); if f then return "ok" end return e end')(src, '@' + f)
     assert res == 'ok', f"{f} does not compile: {res}"
     print('compiles:', f)
-L.globals().DATA_SRC = open(os.path.join(ROOT, 'Libs', 'XayaDataBlocks-1.0', 'XayaDataBlocks-1.0.lua'), encoding='utf-8').read()
-L.globals().LIBSTUB_SRC = open(os.path.join(ROOT, 'Libs', 'LibStub', 'LibStub.lua'), encoding='utf-8').read()
+L.globals().DATA_SRC = open(os.path.join(ROOT, 'XayaUI_Chat', 'Libs', 'XayaDataBlocks-1.0', 'XayaDataBlocks-1.0.lua'), encoding='utf-8').read()
+L.globals().LIBSTUB_SRC = open(os.path.join(ROOT, 'XayaUI', 'Libs', 'LibStub', 'LibStub.lua'), encoding='utf-8').read()
 L.execute(open(os.path.join(ROOT, 'tests', 'usage_check.lua'), encoding='utf-8').read())
