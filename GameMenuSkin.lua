@@ -562,3 +562,4 @@ end
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
 ns.RegisterCommand("gamemenu", function() ns.GameMenuSkin_Diagnostics() end)
+ns.RegisterSettingsPage("reskin", "gamemenu", ns.GameMenuSkin_Options)   -- shown inside Settings > UI Options > Display (Options.lua)

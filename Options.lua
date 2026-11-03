@@ -17,6 +17,34 @@ end
 -- what XayaUI core may call (Modules.lua section 7); published as ns.Options at the end of this file once everything loaded.
 -- A table field, not locals: this chunk is near Lua's 200-locals limit.
 ns.OptionsApi = {}
+-- The feature tabs: module -> top tab key, name and position. Pages inside a tab sort alphabetically by their shown name (Xaya,
+-- 2026-11-02, #274); the older QoL Elements entries (shelved; qolExtra) come last.
+ns.OptionsApi.TABS = { chat = { key = "chat", name = "Chat", order = 5 }, qol = { key = "qol", name = "QoL", order = 5.1 },
+    bonus = { key = "bonus", name = "Bonus Features", order = 5.2 } }
+function ns.SettingsTabOf(module) local t = ns.OptionsApi.TABS[module]; return t and t.key or "qol" end
+function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
+    local out = {}
+    for module, tab in pairs(ns.OptionsApi.TABS) do
+        local args = ns.BuildSettingsPages(module, Notify)
+        if module == "qol" and qolExtra then for k, v in pairs(qolExtra) do args[k] = v end end
+        local list = {}
+        for key, ent in pairs(args) do
+            local nm = ent.name
+            if type(nm) == "function" then local ok, v = pcall(nm); nm = ok and v or nil end
+            nm = (type(nm) == "string" and nm ~= "") and nm:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") or key
+            local old = (key == "allqol" or key == "allcursor" or key == "allbars") and 1 or 0
+            list[#list + 1] = { key = key, name = nm:lower(), old = old }
+        end
+        table.sort(list, function(a, b)
+            if a.old ~= b.old then return a.old < b.old end
+            if a.name ~= b.name then return a.name < b.name end
+            return a.key < b.key
+        end)
+        for i, e in ipairs(list) do args[e.key].order = i end
+        if next(args) then out[tab.key] = { type = "group", name = tab.name, order = tab.order, childGroups = "tree", args = args } end
+    end
+    return out
+end
 
 local function Notify() if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end if ns.SmartOpen then pcall(ns.SmartOpen) end if ns.FixSelection then pcall(ns.FixSelection) end AceConfigRegistry:NotifyChange(APP) end
 
@@ -4247,33 +4275,9 @@ local function BuildOptions()
     -- Tab "QoL UI Updates": left tree, options in the right pane. The entries are sorted alphabetically (see below); the older
     -- QoL Elements entries (stat boxes, cursor tracker, buff bars) come last, and only exist while their files are loaded.
     local minimapGroup = ns.BuildMinimapTab and ns.BuildMinimapTab(Notify) or nil   -- lives in Settings (Xaya, 2026-11-03), not under QoL UI Updates
-    -- Every page a feature registered (Modules.lua: ns.RegisterSettingsPage). Until each sibling addon gets its own tab, all of them
-    -- share this one; a feature that is switched off registers nothing, so its page is simply absent.
-    local qolArgs = ns.BuildSettingsPages(nil, Notify)
-    if ns.QoLOn then
-        qolArgs.allqol = allQol
-        qolArgs.allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil
-        qolArgs.allbars = allBars
-    end
-    -- The left list is sorted alphabetically by the entry's displayed name (Xaya, 2026-11-02, #274). Names are read once here; an
-    -- entry whose name is a function is called, and one that fails sorts by its key. The older QoL Elements entries stay last.
-    do
-        local list = {}
-        for key, ent in pairs(qolArgs) do
-            local nm = ent.name
-            if type(nm) == "function" then local ok, v = pcall(nm); nm = ok and v or nil end
-            nm = (type(nm) == "string" and nm ~= "") and nm:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") or key
-            local old = (key == "allqol" or key == "allcursor" or key == "allbars") and 1 or 0
-            list[#list + 1] = { key = key, name = nm:lower(), old = old }
-        end
-        table.sort(list, function(a, b)
-            if a.old ~= b.old then return a.old < b.old end
-            if a.name ~= b.name then return a.name < b.name end
-            return a.key < b.key
-        end)
-        for i, e in ipairs(list) do qolArgs[e.key].order = i end
-    end
-    local qol = next(qolArgs) and { type = "group", name = "QoL UI Updates", order = 5, childGroups = "tree", args = qolArgs } or nil
+    -- One top tab per feature addon (Chat, QoL, Bonus Features), built from the pages each registered (Modules.lua:
+    -- ns.RegisterSettingsPage). An addon that is switched off registers nothing, so its tab is simply absent.
+    local modTabs = ns.OptionsApi.ModuleTabs(Notify, ns.QoLOn and { allqol = allQol, allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil, allbars = allBars } or nil)
 
     -- Addon Info is not in the tab strip: the "Addon Info" link in the window's bottom-left corner opens it (ns.infoOpen) and it
     -- goes away again as soon as another tab is picked.
@@ -4302,11 +4306,12 @@ local function BuildOptions()
     end
     settings.hidden = function() return ns.SkinRows and ns.SkinRows() and true or false end   -- skin off: the old single Settings tab
     track.hidden = function() return SettingsOn() and true or false end
-    if qol then qol.hidden = function() return SettingsOn() and true or false end end   -- Settings open: QoL UI Updates tab goes away (Xaya, 2026-11-01)
+    for _, t in pairs(modTabs) do t.hidden = function() return SettingsOn() and true or false end end   -- Settings open: feature tabs go away (Xaya, 2026-11-01)
     -- Game Menu look settings live on the Display page (UI Options > Display), under the ESC-menu button toggles. A separate "Game Menu"
     -- top tab closed the Settings pages when clicked (0.5.67 fix, Xaya). The group's children are copied in flat, not nested, so each
     -- keeps its own inline box.
-    local setGm = ns.GameMenuSkin_Options and ns.GameMenuSkin_Options(Notify) or nil
+    -- The Blizzard Reskin addon (XayaUI_Reskin) registers its pages under module "reskin" (today: the Game Menu look).
+    local setGm = ns.BuildSettingsPages("reskin", Notify).gamemenu
     if setGm then
         dispArgs.gm_header = { type = "header", name = "Game Menu look (ESC menu)", order = 26, hidden = function() return not SettingsOn() end }
         for k, v in pairs(setGm.args) do
@@ -4314,10 +4319,10 @@ local function BuildOptions()
             dispArgs["gm_" .. k] = v
         end
     end
-    local oldGm = ns.GameMenuSkin_Options and ns.GameMenuSkin_Options(Notify) or nil   -- same group inside the old single Settings tab (skin rows off)
+    local oldGm = ns.BuildSettingsPages("reskin", Notify).gamemenu   -- same group inside the old single Settings tab (skin rows off)
     if oldGm then oldGm.order = 1.7; settings.args.gamemenu = oldGm end
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, recyclebin = binTab, qol = qol, profiles = BuildProfiles(), info = infoGroup, settings = settings, set = setPage } }
+        args = { cooldowns = track, recyclebin = binTab, chat = modTabs.chat, qol = modTabs.qol, bonus = modTabs.bonus, profiles = BuildProfiles(), info = infoGroup, settings = settings, set = setPage } }
     pcall(ns.SmartOpen)
     pcall(ns.ApplyTreeFilter, out)
     if ns.SkinRows and ns.SkinRows() then pcall(ns.InfoPass, out) end   -- the info icons are part of the skin
