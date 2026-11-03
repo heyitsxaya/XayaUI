@@ -113,6 +113,7 @@ printed = {}
 local ns = { rules = {}, folders = {} }
 XayaUI_NS = ns
 function ns.Print(...) local t = {} for i = 1, select("#", ...) do t[#t + 1] = tostring((select(i, ...))) end printed[#printed + 1] = table.concat(t, " ") end
+function ns.FolderById(id) for _, f in ipairs(ns.folders) do if f.id == id then return f end end end
 function ns.FindParentRule(rule) for _, r in ipairs(ns.rules) do if r.uid == rule.parentUid and not r.isCue then return r end end end
 function ns.CuesOf(rule) local out = {} for _, r in ipairs(ns.rules) do if r.isCue and r.parentUid == rule.uid then out[#out + 1] = r end end return out end
 refreshed = 0
@@ -197,6 +198,12 @@ check("group B: vertical flow, TOPLEFT, wrap size = cH",
 check("group B placement: offsets in the group's scaled units, container size unscaled, first icon half an icon right",
       lua("local p = containers[2]._points[1]; return p[1] == 'TOPLEFT' and p[4] == -24.5 and p[5] == -135 and containers[2].scale == 2"),
       lua("local p = containers[2]._points[1]; return tostring(p[4]) .. ' ' .. tostring(p[5])"))
+
+# 2a. a rule in a STATIC group inside a dynamic group is laid out by the dynamic group (XayaUI), so the engine draws it there too
+lua('table.insert(NS.folders, { id = "fAs", name = "Alpha static child", parent = "fA" }); NS.rules[#NS.rules + 1] = { uid = "as1", name = "as1", folder = "fAs", useBuff = true, buffID = 9050, enabled = true }')
+lua('SlashCmdList["XUIENGINE"]("refresh")')
+check("static sub-group member is drawn by the dynamic group around it", lua("return containers[1].groups.main.filters.includeSpellIDs[9050] == true and NS.EngineOwns(NS.rules[#NS.rules]) == true"))
+lua('table.remove(NS.rules); table.remove(NS.folders); SlashCmdList["XUIENGINE"]("refresh")')
 
 # 2b. with XayaUI's group frame shared, the container hangs from it (parent offsets, scale, moves all carry over)
 lua('HOST = setmetatable({ _kind = "Host" }, getmetatable(UIParent)); NS.GroupFrame = function(fo) if fo.id == "fA" then return HOST end end')

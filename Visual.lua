@@ -366,6 +366,16 @@ local function ApplyStrata(fr, folderId)
     if fr.txtHolder then fr.txtHolder:SetFrameLevel(fr:GetFrameLevel() + 10) end
     if fr.cd then fr.cd:SetFrameLevel(fr:GetFrameLevel() + 10) end
 end
+-- Where a dynamic group puts its FIRST display, relative to the group frame's centre, for a display of w x h.
+-- This is the single source of truth for that spot: LayoutDynamic below follows it, and the combat engine places its own
+-- icons with it, so the two can never disagree. Centred growth has no fixed first spot (it depends on the whole line): nil.
+function ns.DynamicFirstOffset(df, w, h)
+    local dir = df and df.cGrowth or "RIGHT"
+    if dir == "RIGHT" or dir == "LEFT" then return 0, -h / 2 end
+    if dir == "DOWN" or dir == "UP" then return w / 2, 0 end
+    return nil
+end
+
 local function LayoutDynamic(df)
     if not df then return end
     local items = {}

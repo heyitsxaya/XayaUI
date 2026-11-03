@@ -1,0 +1,120 @@
+"""Parity test: the combat engine's icons must land exactly where XayaUI draws a dynamic group's first display, for every growth
+direction, nested groups with their own offsets, group scale and group anchor points.
+It runs XayaUI's real Core.lua + Visual.lua layout and the engine's real AuraDisplay.lua placement against stand-in frames that
+resolve real screen positions (anchors, parents, scale), then compares the two first-icon centres.
+Run: python3 tests/layout_parity_run.py   (needs: pip install lupa)"""
+import os, sys
+from lupa.lua51 import LuaRuntime
+ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+bench = open(os.path.join(ROOT, "tests", "engine_bench.py")).read()
+a = bench.index("L.execute(r'''") + len("L.execute(r'''"); b = bench.index("''')", a)
+STUBS = bench[a:b]
+L = LuaRuntime(unpack_returned_tuples=True)
+L.execute("CueRulesDB = { rules = {}, folders = {} }")
+L.execute(STUBS)
+L.execute(r'''
+COMBAT = false
+local M = FRAME_METHODS
+-- real geometry: size, scale, parent, one anchor
+function M:SetSize(w, h) self._w, self._h = w, h end
+function M:SetWidth(w) self._w = w end
+function M:SetHeight(h) self._h = h end
+function M:GetWidth() return self._w or 30 end
+function M:GetHeight() return self._h or 30 end
+function M:GetSize() return self:GetWidth(), self:GetHeight() end
+function M:SetScale(s) self._scale = s end
+function M:GetScale() return self._scale or 1 end
+function M:SetParent(p) self._parent = p end
+function M:GetParent() return self._parent end
+function M:ClearAllPoints() self._pt = nil end
+function M:SetAllPoints() end
+function M:SetPoint(p, rel, rp, x, y)
+  if type(rel) == "number" or rel == nil then rel, rp, x, y = self._parent or UIParent, p, rel or 0, rp or 0 end
+  if type(rel) == "string" then rel = _G[rel] end
+  self._pt = { p, rel, rp or p, x or 0, y or 0 }
+end
+local V = { CENTER = {0,0}, TOP = {0,.5}, BOTTOM = {0,-.5}, LEFT = {-.5,0}, RIGHT = {.5,0},
+  TOPLEFT = {-.5,.5}, TOPRIGHT = {.5,.5}, BOTTOMLEFT = {-.5,-.5}, BOTTOMRIGHT = {.5,-.5} }
+function EffScale(f) local s = 1; while f and f ~= UIParent do s = s * (f._scale or 1); f = f._parent end return s end
+function PointAbs(f, pt)   -- screen position of a named point of f
+  local cx, cy = CenterAbs(f); local s = EffScale(f); local v = V[pt]
+  return cx + v[1] * f:GetWidth() * s, cy + v[2] * f:GetHeight() * s
+end
+function CenterAbs(f)
+  if f == UIParent then return 960, 540 end
+  local a = f._pt; assert(a, "frame has no anchor")
+  local rx, ry = PointAbs(a[2], a[3]); local s = EffScale(f); local v = V[a[1]]
+  local px, py = rx + a[4] * s, ry + a[5] * s          -- where f's own point sits
+  return px - v[1] * f:GetWidth() * s, py - v[2] * f:GetHeight() * s
+end
+UIParent._w, UIParent._h = 1920, 1080
+''')
+load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
+ns = L.eval("{}"); L.globals().NS = ns
+for f in ("Core.lua", "Conditions.lua", "Outcomes.lua", "Cues.lua", "Visual.lua"):
+    load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
+L.execute(r'''
+local ns = NS
+ns.Print = function() end
+ns.runtime = ns.runtime or {}
+XayaUI_NS = ns
+CueRulesDB.engineDisplay = { groups = {}, auto = true }
+''')
+fails = []
+def check(name, ok, extra=""):
+    print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
+    if not ok: fails.append(name)
+
+CASES = [
+    # growth, group point, group offsets, scale, parent offsets (None = top level), icon size
+    ("RIGHT", "CENTER", (10, 20), 1, None, 30),
+    ("LEFT", "CENTER", (-200, 40), 1, None, 32),
+    ("DOWN", "CENTER", (-98, -187), 1, (-409, -2), 30),      # Xaya's Active Mitigation inside Personal Buff Tracking
+    ("UP", "TOPLEFT", (5, -7), 1.5, (100, 50), 36),
+    ("DOWN", "BOTTOMRIGHT", (-30, 30), 0.8, (0, 0), 28),
+    ("RIGHT", "TOPLEFT", (0, 0), 2, (-300, 200), 24),
+]
+for i, (dir, pt, off, sc, poff, sz) in enumerate(CASES):
+    L.execute(r'''
+    local ns, dir, pt, ox, oy, sc, hasParent, px, py, sz, i = NS, ...
+    ns.folders, ns.rules = {}, {}
+    CueRulesDB.folders, CueRulesDB.rules = ns.folders, ns.rules
+    local parentId
+    if hasParent then parentId = "fp" .. i; ns.folders[#ns.folders + 1] = { id = parentId, name = "P" .. i, cType = "dynamic", cGrowth = "DOWN", cX = px, cY = py } end
+    ns.folders[#ns.folders + 1] = { id = "fg" .. i, name = "G" .. i, parent = parentId, cType = "dynamic", cGrowth = dir, cPoint = pt, cX = ox, cY = oy, cScale = sc, cW = 0, cH = 0 }
+    RULE = { uid = "u" .. i, name = "r" .. i, folder = "fg" .. i, useBuff = true, buffID = 5000 + i, enabled = true,
+      visual = { enabled = true, trigger = "buffActive", w = sz, h = sz } }
+    ns.rules[1] = RULE
+    if ns.NormalizeRule then pcall(ns.NormalizeRule, RULE) end
+    RULE.visual.enabled, RULE.visual.w, RULE.visual.h = true, sz, sz
+    ns.SetVisualShown(RULE, true)          -- XayaUI lays the group out (outside a step: at once)
+    local fr = ns.VisualFramesOf(RULE)[1]
+    XUI_X, XUI_Y = CenterAbs(fr)
+    ''', dir, pt, off[0], off[1], sc, poff is not None, (poff or (0, 0))[0], (poff or (0, 0))[1], sz, i)
+    xui = (L.eval("XUI_X"), L.eval("XUI_Y"))
+    if i == 0:
+        L.execute(r'''
+        local f = assert(loadfile(ENGINE_PATH)); f("XayaUI_CombatEngine", NS)
+        '''.replace("ENGINE_PATH", repr(os.path.join(ROOT, "XayaUI_CombatEngine", "AuraDisplay.lua")).replace("'", '"')))
+    L.execute(r'''
+    local ns = NS
+    for k in pairs(ns.AuraDisplay._groups) do ns.AuraDisplay._groups[k] = nil end
+    ns.AuraDisplay.Build()
+    local g = ns.AuraDisplay._groups["fg" .. ...]
+    assert(g and g.ok, "engine group not built: " .. tostring(g and g.err))
+    local c = g.frame
+    local a = c._pt
+    -- first icon centre = the container's anchored corner + (corner -> centre) in icon sizes, at the container's scale
+    local V = { CENTER = {0,0}, TOP = {0,-.5}, BOTTOM = {0,.5}, LEFT = {.5,0}, RIGHT = {-.5,0}, TOPLEFT = {.5,-.5}, TOPRIGHT = {-.5,-.5}, BOTTOMLEFT = {.5,.5}, BOTTOMRIGHT = {-.5,.5} }
+    local rx, ry = PointAbs(a[2], a[3]); local s = EffScale(c)
+    local sz = RULE.visual.w
+    ENG_X = rx + a[4] * s + V[a[1]][1] * sz * s
+    ENG_Y = ry + a[5] * s + V[a[1]][2] * sz * s
+    ENG_HOSTED = (c._parent ~= nil and c._parent ~= UIParent)
+    ''', i)
+    eng = (L.eval("ENG_X"), L.eval("ENG_Y"))
+    d = max(abs(xui[0] - eng[0]), abs(xui[1] - eng[1]))
+    check("%s, group point %s, offset %s, scale %s, parent %s: engine icon on XayaUI's spot" % (dir, pt, off, sc, poff), d < 0.01,
+          "XayaUI %.2f,%.2f vs engine %.2f,%.2f" % (xui + eng))
+    check("  ...and hosted by XayaUI's group frame", L.eval("ENG_HOSTED"))
+print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)

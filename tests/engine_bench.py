@@ -82,7 +82,8 @@ function methods:GetPoint() return "CENTER", UIParent, "CENTER", 0, 0 end
 function methods:GetFont() return "Fonts\\FRIZQT__.TTF", 12, "OUTLINE" end
 local noop = function() end
 FrameMT = { __index = function(t, k) local m = methods[k]; if m then return m end; if type(k) == "string" and k:match("^[A-Z]") then return noop end; return nil end }
-function CreateFrame(kind, name, parent, template) local f = NewFrame(kind or "Frame"); if name then _G[name] = f end; return f end
+FRAME_METHODS = methods   -- other tests add methods here (tests/layout_parity_run.py adds real geometry)
+function CreateFrame(kind, name, parent, template) local f = NewFrame(kind or "Frame"); if name then _G[name] = f end; if parent then f._parent = parent end; return f end
 UIParent = NewFrame("Frame"); WorldFrame = NewFrame("Frame")
 SlashCmdList = {}
 C_Timer = { After = function() end, NewTicker = function() return { Cancel = function() end } end, NewTimer = function() return { Cancel = function() end } end }

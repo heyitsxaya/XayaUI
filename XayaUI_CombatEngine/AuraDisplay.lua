@@ -62,6 +62,18 @@ local function ParentOf(rule)
     return rule
 end
 
+-- The dynamic group that lays out a rule in `folderId`: the nearest dynamic group, starting at that group and walking up
+-- (XayaUI's DynAncestor: a rule in a static sub-group is laid out by the dynamic group around it).
+local function DynGroupId(folderId)
+    local id, guard = folderId, 0
+    while id and guard < 32 do
+        local f = ns.FolderById and ns.FolderById(id)
+        if not f then return nil end
+        if f.cType == "dynamic" then return f.id end
+        id, guard = f.parent, guard + 1
+    end
+end
+
 -- A Buff-present parent rule the engine can draw: enabled, tracks a buff, sits in a group.
 local function Eligible(p)
     if type(p) ~= "table" or p.isCue or p.enabled == false or not p.useBuff or not p.folder then return false end
@@ -80,7 +92,7 @@ function ns.EngineOwns(rule)
     local p = ParentOf(rule)
     local res = false
     if Eligible(p) then
-        local g = groups[p.folder]
+        local g = groups[DynGroupId(p.folder) or p.folder]
         res = (g and g.ok and g.ids and g.ids[tonumber(p.buffID)]) and true or false
     end
     ownCache[rule] = res
@@ -88,11 +100,12 @@ function ns.EngineOwns(rule)
 end
 local function OwnChanged() ownTick = -1 end   -- a build / failure / switch changes the answers at once
 
--- Gather the enabled Buff-present rules of one folder.
+-- Gather the enabled Buff-present rules this dynamic group lays out (its own and those of static groups inside it).
+local function Members(fo, r) return Eligible(r) and DynGroupId(r.folder) == fo.id end
 local function Collect(fo)
     local ids, n, first = {}, 0, nil
     for _, r in ipairs(ns.rules or {}) do
-        if r.folder == fo.id and Eligible(r) then
+        if Members(fo, r) then
             ids[tonumber(r.buffID)] = true; n = n + 1
             if type(r.buffAlt) == "table" then for _, a in ipairs(r.buffAlt) do a = tonumber(a); if a and a > 0 then ids[a] = true end end end
             first = first or r
@@ -136,9 +149,17 @@ local function Drops(p)
     return out
 end
 
+-- The rule whose display XayaUI draws for this buff rule: its first icon cue with a display switched on, else the rule's own
+-- display, else its first cue. Size, text and stack settings are read from it.
 local function CueOf(rule)
-    local cues = ns.CuesOf and ns.CuesOf(rule)
-    return cues and cues[1]
+    local cues = ns.CuesOf and ns.CuesOf(rule) or {}
+    for _, c in ipairs(cues) do if c.visual and c.visual.enabled then return c end end
+    if rule.visual and rule.visual.enabled then return rule end
+    return cues[1] or rule
+end
+-- XayaUI's own size for a display (Visual.lua RefreshVisual: at least 8, 128 when unset)
+local function DisplaySize(v)
+    return math.max(8, tonumber(v.w) or 128), math.max(8, tonumber(v.h) or 128)
 end
 
 -- Blizzard's flow layout settings for a XayaUI growth direction (nil = unsupported).
@@ -168,10 +189,17 @@ end
 -- It hangs from XayaUI's own frame for the group, so the group's position, its parent groups' offsets, scale and opacity, and
 -- any later move of the group all carry over without being recomputed here.
 local function Place(c, fo, anchor, iw, ih)
-    local first = FIRST_ICON[fo.cGrowth or "RIGHT"] or { 0, 0 }
+    -- the first icon's spot comes from XayaUI itself when it can say (ns.DynamicFirstOffset), so a change to XayaUI's layout
+    -- moves the engine's icons with it; the table above is only the fallback for an older XayaUI
+    local fx, fy
+    if ns.DynamicFirstOffset then fx, fy = ns.DynamicFirstOffset(fo, iw, ih) end
+    if not fx then
+        local first = FIRST_ICON[fo.cGrowth or "RIGHT"] or { 0, 0 }
+        fx, fy = first[1] * iw, first[2] * ih
+    end
     local ac = TO_CENTER[anchor] or TO_CENTER.CENTER   -- container corner `anchor` -> first icon centre, in icon sizes
-    local ox = first[1] * iw - ac[1] * iw
-    local oy = first[2] * ih - ac[2] * ih
+    local ox = fx - ac[1] * iw
+    local oy = fy - ac[2] * ih
     local host = ns.GroupFrame and ns.GroupFrame(fo)
     if host then
         if c:GetParent() ~= host then c:SetParent(host) end
@@ -270,7 +298,7 @@ local function BuildGroup(fo)
     if n == 0 then g.ok, g.err = false, "no enabled Buff rules in this group"; if g.frame then g.frame:Hide() end; return g end
     local cue = CueOf(first)
     local v = (cue and cue.visual) or {}
-    local iw, ih = tonumber(v.w) or 30, tonumber(v.h) or 30
+    local iw, ih = DisplaySize(v)
     local sp = tonumber(fo.cSpacing) or 4
     local limit = (axis == AnchorUtil.FlowLayoutAxis.Horizontal) and (fo.cW or 0) or (fo.cH or 0)
     if limit <= 0 then limit = math.huge end
@@ -370,8 +398,19 @@ function D.Status()
             local g = groups[fo.id]
             Say(string.format("%s: %s (%d buff rules)%s", fo.name or fo.id, (g and g.ok) and "ENGINE DRAWN" or "NOT drawn by engine (XayaUI draws it)", n, (g and g.err) and (" - " .. g.err) or ""))
             if g and g.ok then
+                -- layout differences the container cannot avoid (said once per group, so nothing differs silently)
+                local w0, h0, mixed = nil, nil, false
                 for _, r in ipairs(ns.rules or {}) do
-                    if r.folder == fo.id and Eligible(r) then
+                    if Members(fo, r) then
+                        local c = CueOf(r); local w, h = DisplaySize((c and c.visual) or {})
+                        if w0 and (w ~= w0 or h ~= h0) then mixed = true end
+                        w0, h0 = w0 or w, h0 or h
+                    end
+                end
+                if mixed then Say("   (icons in this group have different sizes; the engine draws them all at the first one's size)") end
+                if n > 1 then Say("   (icon order follows the game's aura order" .. ((fo.cSort == "asc" or fo.cSort == "desc") and ", not the group's name sort" or ", not the rule list") .. ")") end
+                for _, r in ipairs(ns.rules or {}) do
+                    if Members(fo, r) then
                         local d = Drops(r)
                         if #d > 0 then dropN = dropN + 1; Say("   " .. tostring(r.name) .. ": " .. table.concat(d, "; ")) end
                     end
