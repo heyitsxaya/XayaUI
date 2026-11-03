@@ -7,7 +7,7 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 d32239bcb673463ab874e80d47fae504  LICENSE
 9d9139aabf5ec63d7205a6c6b1cfd475  QA-CHECKLIST.md
 2484ce39c6b9186ecd85e331060aa43d  README.md
-b826130d056956a70c3b6a5d50fb5e41  ROADMAP.md
+3606bf8d93773c41ae781c9ea0b746e0  ROADMAP.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 db03e740f3574d118e51f5b9e9f8b214  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
@@ -339,6 +339,7 @@ c772617313f2c4b7965ad8301258e669  debug-log/2026-11-03-2135-tester-requests-278-
 1bd558b19faf68bb775603a5d58d517c  debug-log/2026-11-03-2158-disabled-flat-list-hover-tip-paste-0.6.2.md
 81692cb2b0bd781488dd0bd31948315a  debug-log/2026-11-03-2216-chat-left-indent-diagnostic-0.6.3.md
 689a517f20b92cb9d1081455b4656034  debug-log/2026-11-03-2252-chat-footer-status-anchor-review-0.6.4.md
+ce45fc465bdd3ab3e215e3abd189e3ea  debug-log/2026-11-03-2254-tester-requests-278-sleep-snare-clarification.md
 fd3ccecccb27afb01262111787083ed9  debug-log/2026-11-03-2330-display-tab-chevrons-engine-text-cue-0.6.3.md
 7f9f4549410ba8da5e6fb9e9cb573be0  shelved/Bars.lua
 5857b882061b2df7a8d4fb33945efc80  shelved/CountSupport.lua
