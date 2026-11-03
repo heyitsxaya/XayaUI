@@ -132,10 +132,10 @@ bd5ad941d96408c9a0a6d431144f65b7  XayaUI_Bonus/Notepad.lua
 3bdbe04fec65f2518c41bfb5df7b6aa3  XayaUI_Bonus/TooltipsUI.lua
 5937ff4ea0d399362128fc40530fd2c6  XayaUI_Bonus/XayaUI_Bonus.toc
 83c87e8920a975caccb49149edab3556  XayaUI_Chat/Bar.lua
-8f8a3dfe63837381e99f7de4f4693b73  XayaUI_Chat/Core.lua
+b5ae82f4fdb8332fba9ddb299b8e9928  XayaUI_Chat/Core.lua
 691117347e0437f78c88e3734c54c438  XayaUI_Chat/Fade.lua
 8524d53ecf0e78ac43a250103d6d0157  XayaUI_Chat/Frame.lua
-0ad6c089dd44780b958834cda02d6930  XayaUI_Chat/History.lua
+d49980a01af3c56f8c74ad2c550d5155  XayaUI_Chat/History.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 fead8e3ce9e3203085d2516b6e967c51  XayaUI_Chat/Locate.lua
 41d22f24985c521d09267efaa3217f9b  XayaUI_Chat/Messages.lua
@@ -144,7 +144,7 @@ fead8e3ce9e3203085d2516b6e967c51  XayaUI_Chat/Locate.lua
 702bf934e55a476b21d3f912fb1c9d27  XayaUI_Chat/Probe.lua
 0d7c325a5b9a1bcbbcac9746295b8cd0  XayaUI_Chat/Skin.lua
 924ed63c29e3249e9052308753382184  XayaUI_Chat/Sounds.lua
-80b693713bbea4d8a5979c8c79173366  XayaUI_Chat/XayaUI_Chat.toc
+e9c2f7c6bc958bcaced3c0aa2ff05bbb  XayaUI_Chat/XayaUI_Chat.toc
 96a62368d1a1215dd73fc9fdf4e71716  XayaUI_GameDump/GameDump.lua
 f2775456d146dcf3ca0f5cccfa9d5e84  XayaUI_GameDump/XayaUI_GameDump.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
@@ -338,6 +338,7 @@ c772617313f2c4b7965ad8301258e669  debug-log/2026-11-03-2135-tester-requests-278-
 6d8ccc2f92991fe4e9998c39ee0c7157  debug-log/2026-11-03-2147-settings-layout-parts-and-tabs-0.6.1.md
 1bd558b19faf68bb775603a5d58d517c  debug-log/2026-11-03-2158-disabled-flat-list-hover-tip-paste-0.6.2.md
 81692cb2b0bd781488dd0bd31948315a  debug-log/2026-11-03-2216-chat-left-indent-diagnostic-0.6.3.md
+689a517f20b92cb9d1081455b4656034  debug-log/2026-11-03-2252-chat-footer-status-anchor-review-0.6.4.md
 fd3ccecccb27afb01262111787083ed9  debug-log/2026-11-03-2330-display-tab-chevrons-engine-text-cue-0.6.3.md
 7f9f4549410ba8da5e6fb9e9cb573be0  shelved/Bars.lua
 5857b882061b2df7a8d4fb33945efc80  shelved/CountSupport.lua
@@ -348,7 +349,7 @@ a354cbbb54ff4fb130af0063a401df9b  tests/Conditions.pre-0.5.83.lua
 1bc56b22adb5f1e1aa4a345d9fa19b8b  tests/aspect_run.py
 14eb69096fa0abacf4409052259da83b  tests/aura_display_run.py
 80c84f1f7ef017e7f04a6c3be28a3910  tests/aura_sources_run.py
-40260cd4fd072db21a35f99e23dd9219  tests/chat_run.py
+a77e110f43e02105c2f78ea1121dd48f  tests/chat_run.py
 011ed4393337e4f3ffbc1a619ba02f1a  tests/chat_world.lua
 abe22a2816956a2c3babb802857cc524  tests/chatprobe_run.py
 c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
