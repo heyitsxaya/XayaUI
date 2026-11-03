@@ -203,6 +203,11 @@ local function Drops(p, display, single)
     if v.flash and v.flash.enabled then out[#out + 1] = "flash" end
     if v.glow then out[#out + 1] = "glow" end
     if v.desatOnCD then out[#out + 1] = "grey on cooldown" end
+    if not single and display then   -- (single slots leave the rule's other display cues to XayaUI, see Own)
+        local n = 0
+        for _, c in ipairs(ns.CuesOf and ns.CuesOf(p) or {}) do if c ~= display and c.visual and c.visual.enabled then n = n + 1 end end
+        if n > 0 then out[#out + 1] = ("its other display cue%s (%d), such as a separate text, %s hidden while the group is drawn by the game"):format(n > 1 and "s" or "", n, n > 1 and "are" or "is") end
+    end
     if display and display.cueKey and ns.ConditionsOf then
         local gate, mod = 0, 0
         for _, c in ipairs(ns.ConditionsOf(p)) do
@@ -230,9 +235,16 @@ function ns.EngineOwns(rule)
     local slot = owned[rule]
     return (slot and slot.ok) and true or false
 end
-local function Own(slot, p)
+-- A slot owns the rule and the display it draws. 0.6.2 (#347): a single slot no longer owns the rule's OTHER display cues (a separate
+-- Text cue with the duration / shield amount, a second texture): the container cannot draw them, and owning them hid them, so they
+-- vanished in game while the preview showed them. They stay with XayaUI, placed where XayaUI puts them. In a dynamic group they
+-- stay owned (hidden), because XayaUI's own group layout would place them as extra items; /xuiengine says so (Drops).
+local function Own(slot, p, single)
     owned[p] = slot
-    for _, c in ipairs(ns.CuesOf and ns.CuesOf(p) or {}) do owned[c] = slot end
+    local display = slot and slot.spec and slot.spec.display
+    for _, c in ipairs(ns.CuesOf and ns.CuesOf(p) or {}) do
+        if not single or c == display or not (c.visual and c.visual.enabled) then owned[c] = slot end
+    end
 end
 
 -------------------------------------------------------------------------------
@@ -601,7 +613,7 @@ function D.Build()
     end
     for p, spec in pairs(wantSingle) do
         local s = BuildSingle(p, spec)
-        Own(s, p)
+        Own(s, p, true)
         if not s.ok then left[#left + 1] = { p, "failed: " .. tostring(s.err) } end
     end
     D.SyncLive()

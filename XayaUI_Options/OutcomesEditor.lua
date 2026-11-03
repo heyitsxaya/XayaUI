@@ -376,7 +376,7 @@ local OPEN = "|TInterface\\Buttons\\Arrow-Down-Up:16:16|t"
 local CLOSED = "|TInterface\\ChatFrame\\ChatFrameExpandArrow:16:16|t"
 local function Header(rule, titleFn, edit)
     return { type = "execute", order = 0.05, width = "full",
-        arg = { xuiLeft = true, xuiHeadOut = ns.BODY_INDENT or 20, xuiEdit = edit, xuiSub = (edit and edit.title) and function() return " " end or nil, xuiActions = function()
+        arg = { xuiLeft = true, xuiHeadOut = ns.BODY_INDENT or 20, xuiEdit = edit, xuiChevron = function() return not rule.ocCollapsed end, xuiSub = (edit and edit.title) and function() return " " end or nil, xuiActions = function()
             local list, pos = SiblingList(rule), nil
             for i, r in ipairs(list) do if r == rule then pos = i end end
             return {
@@ -386,7 +386,11 @@ local function Header(rule, titleFn, edit)
                 del = function() RemoveOutcome(rule) end,
             }
         end },
-        name = function() return (rule.ocCollapsed and CLOSED or OPEN) .. ((edit and not edit.title) and "" or ("  " .. ((edit and edit.title) and edit.title() or titleFn()))) end,
+        name = function()
+            local t = (edit and not edit.title) and "" or ((edit and edit.title) and edit.title() or titleFn())
+            if ns.SkinRows and ns.SkinRows() then return t end   -- skin on: the open / close button is drawn at the left (Skin.lua)
+            return (rule.ocCollapsed and CLOSED or OPEN) .. (t ~= "" and ("  " .. t) or "")
+        end,
         desc = "Expand or collapse.",
         func = function() rule.ocCollapsed = (not rule.ocCollapsed) or nil; ns.MarkDirty(); ns.UI.Notify() end }
 end

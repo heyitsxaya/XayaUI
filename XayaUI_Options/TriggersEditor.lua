@@ -24,16 +24,21 @@ function ns.TriggerNameArg(rule, tok, j, order, onChange)
 end
 local GLYPH_OPEN = "|TInterface\\Buttons\\Arrow-Down-Up:16:16|t"
 local GLYPH_CLOSED = "|TInterface\\ChatFrame\\ChatFrameExpandArrow:16:16|t"
--- Trigger pane header = the same header a cue or condition has: arrow + "Trigger 1:  Cooldown", and the optional name typed in the
--- gray "name (optional)" box under it (arg.xuiEdit, drawn by Skin.lua). Header sits flush left; the pane body is indented.
+-- Trigger pane header = the same header a cue or condition has: open / close button + "Trigger 1:  Cooldown", and the optional name
+-- typed in the gray "name (optional)" box under it (arg.xuiEdit, drawn by Skin.lua). The pane body is indented.
+-- 0.6.2: the open / close button is a real button at the left (arg.xuiChevron, drawn by Skin.lua) instead of an arrow inside the
+-- title text: the text arrow sat in a margin the scroll area cuts off, so it never showed. The row itself no longer reacts to the mouse.
 function ns.TriggerPaneHeader(pane, rule, tok, j, title, onChange)
     local hdr = pane.args.hdr
     local a = hdr.arg
-    local isOpen = a.xuiArrow
+    local isOpen = a.xuiChevron
     pane.arg = { xuiIndent = ns.BODY_INDENT or 20 }
     a.xuiHeadOut = ns.BODY_INDENT or 20
-    a.xuiArrow, a.xuiArrowLeft = nil, nil   -- the arrow is part of the title text, as on cue and condition headers
-    hdr.name = function() return ((not isOpen or isOpen()) and GLYPH_OPEN or GLYPH_CLOSED) .. "  " .. title end
+    a.xuiChevron = isOpen or function() return true end
+    hdr.name = function()
+        if ns.SkinRows and ns.SkinRows() then return title end
+        return ((not isOpen or isOpen()) and GLYPH_OPEN or GLYPH_CLOSED) .. "  " .. title
+    end
     local nameArg = ns.TriggerNameArg(rule, tok, j, 0, onChange)
     a.xuiEdit = {
         title = function() return title end,
