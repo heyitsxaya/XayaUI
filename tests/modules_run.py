@@ -1,6 +1,8 @@
 # Modules.lua: the core <-> feature contract (0.5.108). Stub-API checks only; nothing here runs the real game.
 import os
-from lupa import LuaRuntime
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from lua51 import runtime as LuaRuntime   # Lua 5.1, like the game (tests/lua51.py)
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 L = LuaRuntime(unpack_returned_tuples=True)
 L.execute(r'''

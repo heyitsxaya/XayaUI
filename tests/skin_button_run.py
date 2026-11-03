@@ -1,7 +1,10 @@
 # Checks ns.SkinPlainButton (Skin.lua) against stand-in frames: first 164 lines of Skin.lua are loaded (helpers + the function).
-import lupa, os
+import os
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import lua51 as lupa   # Lua 5.1, like the game (tests/lua51.py)
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
-L = lupa.LuaRuntime(unpack_returned_tuples=True)
+L = lupa.runtime(unpack_returned_tuples=True)
 src = open(os.path.join(ROOT, 'XayaUI_Options/Skin.lua'), encoding='utf-8').read().split('\n')
 end_line = next(i for i, l in enumerate(src) if l.startswith('function ns.SkinPlainButton'))
 while src[end_line] != 'end': end_line += 1

@@ -275,7 +275,7 @@ local function EnsureToolbar(of)
         -- no Drafts button: Drafts is a sub-tab under Rules now (2026-11-01). Recycle Bin sits next to Export.
         local rb = ToolButton(bar, "Interface\\AddOns\\XayaUI\\Media\\UI\\xui_recyclebin.tga", "Recycle Bin", function() if ns.UI and ns.UI.RecycleBin then ns.UI.RecycleBin() end end)
         rb:SetPoint("LEFT", ex, "RIGHT", 14, 0)
-        -- no Cursor button here: the Cursor options live only on the QoL UI Updates tab (Xaya, 2026-11-01)
+        -- no Cursor button here: the Cursor options live only on the QoL tab (Xaya, 2026-11-01)
         local lk = ToolButton(bar, "Interface\\PetBattles\\PetBattle-LockIcon", "Lock Positions", function()
             if ns.ToggleUnlock then ns.ToggleUnlock() end
             if ns.UI and ns.UI.Notify then ns.UI.Notify() end
@@ -638,7 +638,7 @@ local function SkinTree(w)
     -- Dragging the sidebar separator. AceGUI's own drag (StartSizing on the tree frame, then on release SetHeight(0) + ClearAllPoints +
     -- re-anchor + OnWidthSet + DoLayout) fights the skin: OnSizeChanged runs the skin's multi-pass RefreshTree on EVERY mouse move
     -- (it temporarily swaps tf.GetHeight), and the release re-anchors the frame the skin's band is anchored to. That blanked the window.
-    -- This replaces it for every tree (Rules, Smart Categories, QoL UI Updates, ...): nothing is re-anchored and no refresh runs while
+    -- This replaces it for every tree (Rules, Smart Categories, Chat, QoL, Bonus Features, ...): nothing is re-anchored and no refresh runs while
     -- dragging; only the width changes (clamped), the sidebar rows follow because they are anchored to the frame. On release, one
     -- deferred pass recomputes the content width, refreshes the rows and lays the pane out. Any error there rebuilds the window.
     do

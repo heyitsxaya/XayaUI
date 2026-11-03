@@ -1,7 +1,9 @@
 # Stub test for Drafts.lua (build 0.5.75): the Drafts page shows what each draft holds (triggers, cues, sound / icon) and compact buttons.
 # Run from the repo root: python3 tests/drafts_run.py   Needs: pip install lupa. Stand-in game functions: checks the text and the layout fields, not how it looks.
 import os, sys
-from lupa import LuaRuntime
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from lua51 import runtime as LuaRuntime   # Lua 5.1, like the game (tests/lua51.py)
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(r'''

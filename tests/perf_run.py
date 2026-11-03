@@ -2,7 +2,9 @@
 # and cost far less garbage / time when many Buff / Aura rules are absent. Run from the repo root: python3 tests/perf_run.py  (needs: pip install lupa)
 # The stub frames are stand-ins: the numbers show the relative saving in plain Lua, not frames per second in the game.
 import os, subprocess, sys
-from lupa import LuaRuntime
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from lua51 import runtime as LuaRuntime   # Lua 5.1, like the game (tests/lua51.py)
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 old_src = open(os.path.join(ROOT, "tests", "Conditions.pre-0.5.83.lua")).read()   # the 0.5.82 evaluator, kept for the comparison
 new_src = open(os.path.join(ROOT, "XayaUI/Conditions.lua")).read()

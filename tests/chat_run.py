@@ -1,7 +1,9 @@
 # Stub test for the Chat Panel (Chat/*.lua). Run from the repo root: python3 tests/chat_run.py   Needs: pip install lupa.
 # Uses tests/chat_world.lua (stand-in frames with real anchor geometry). Checks logic and placement, not the real game.
 import os, sys
-from lupa import LuaRuntime
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from lua51 import runtime as LuaRuntime   # Lua 5.1, like the game (tests/lua51.py)
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute("package.path = package.path")

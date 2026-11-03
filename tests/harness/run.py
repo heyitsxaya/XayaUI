@@ -220,6 +220,20 @@ def static_checks(folders):
                     out.append("%s:%d uses %s, which 12.1.5 defines only as a deprecation fallback (%s)" % (
                         os.path.relpath(f, ROOT), code.count("\n", 0, m.start()) + 1, n, dep[n]))
     out += boundary_checks(folders)
+    # a library carried by several addons must be the same file in each (LibStub runs one copy; a stale copy could win)
+    copies = {}
+    for name, d in folders.items():
+        libs = os.path.join(d, "Libs")
+        if not os.path.isdir(libs):
+            continue
+        for lib in os.listdir(libs):
+            for dirpath, _, fl in os.walk(os.path.join(libs, lib)):
+                for fn in fl:
+                    rel = os.path.relpath(os.path.join(dirpath, fn), d)
+                    copies.setdefault(rel, []).append((name, open(os.path.join(dirpath, fn), "rb").read()))
+    for rel, lst in copies.items():
+        if len(lst) > 1 and len({c for _, c in lst}) > 1:
+            out.append("%s differs between %s: the copies of a shared library must be identical" % (rel, ", ".join(n for n, _ in lst)))
     return sorted(set(out))
 
 

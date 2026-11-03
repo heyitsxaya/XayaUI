@@ -1,6 +1,9 @@
-import lupa, os
+import os
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import lua51 as lupa   # Lua 5.1, like the game (tests/lua51.py)
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
-L = lupa.LuaRuntime(unpack_returned_tuples=True)
+L = lupa.runtime(unpack_returned_tuples=True)
 L.execute(r'''
 secret = {}
 function issecretvalue(v) return secret[v] == true end
@@ -22,7 +25,7 @@ XayaUI_NS = {}
 CueRulesDB = {}
 ''')
 def load(f):
-    L.eval('function(src,n) return load(src,n) end')(open(os.path.join(ROOT, f)).read(), f)("XayaUI", L.eval("XayaUI_NS"))
+    L.eval('function(src,n) return (load(src,n)) end')(open(os.path.join(ROOT, f)).read(), f)("XayaUI", L.eval("XayaUI_NS"))
 load("XayaUI_Bonus/Tooltips.lua"); load("XayaUI/AuraSources.lua")
 fails = 0
 def check(n, c):

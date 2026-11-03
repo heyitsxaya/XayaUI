@@ -8,7 +8,7 @@
 --   * Formatting (toolbar underlined-A button, off by default): a format bar (heading, bullet, checkbox, colors, spell icon) and a formatted view.
 --     Markup is plain text: '# heading', '- bullet', '[ ] / [x] checkbox', |cffRRGGBBtext|r colors, {spell:ID} icon + name.
 --   * Toolbar: at the top, bottom, left, or right of the box; always visible, or only while the mouse is over the box.
---   * Open / close: /xui notepad, the x on the box, or QoL UI Updates > Notepad. Whether it is open is remembered.
+--   * Open / close: /xui notepad, the x on the box, or Bonus Features > Notepad. Whether it is open is remembered.
 --   * Drag the title bar to move, drag the bottom-right corner to resize. "Lock" stops both.
 -- Own code, written against Blizzard's frame API only (no other addon's code or data). UNTESTED in game.
 -------------------------------------------------------------------------------
@@ -1008,7 +1008,7 @@ ev:SetScript("OnEvent", function(_, e)
 end)
 
 -------------------------------------------------------------------------------
--- options page: QoL UI Updates > "Notepad"
+-- options page: Bonus Features > "Notepad"
 -------------------------------------------------------------------------------
 function ns.BuildNotepadTab(Notify)
     local db = DB()

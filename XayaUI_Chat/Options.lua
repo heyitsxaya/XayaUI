@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Chat/Options.lua : the Chat Panel settings page (QoL UI Updates > Chat Panel). Tabs: Layout, Appearance, Chat Bar, Fade and hide,
+-- Options.lua (XayaUI Chat) : the Chat Panel settings page (Chat > Chat Panel). Tabs: Layout, Appearance, Chat Bar, Fade and hide,
 -- Filters, History, Sounds, Privacy. Every change applies at once. Own code. UNTESTED in game.
 -------------------------------------------------------------------------------
 local ADDON, ns = ...

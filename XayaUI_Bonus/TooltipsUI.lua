@@ -3,7 +3,7 @@ local addonName, ns = ...
 ns = _G.XayaUI_NS or ns
 local TT = ns.TT
 
--- Returns an AceConfig group; XayaUI plugs it into the QoL UI Updates tree (Options.lua qolArgs).
+-- Returns an AceConfig group; registered as a Bonus Features page (ns.RegisterSettingsPage, Modules.lua).
 function ns.BuildTooltipsTab(Notify)
     local function get(path)
         return function() local t = TT.DB(); for _, k in ipairs(path) do t = t[k] end; return t end

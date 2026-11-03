@@ -2,7 +2,23 @@
 
 > **Living document.** This guide describes how XayaUI works *now*. It is not a changelog: when a feature changes, rewrite the affected section so it is correct, and do not add "new" or "changed" notes, dates, or version history (the release notes and git history hold that). Maintenance rules are at the end.
 
-**Applies to XayaUI:** 0.5.43 *(update this line when a section is re-checked against a newer version)*
+**Applies to XayaUI:** 0.6.0 *(update this line when a section is re-checked against a newer version)*
+
+## 0. The XayaUI addons (since 0.6.0)
+
+XayaUI is a group of addons. Each one is its own entry in the game's AddOns list (shown under XayaUI), so you can switch any of them off; the game needs a /reload after a change there.
+
+| Addon | What it holds | If you switch it off |
+|---|---|---|
+| **XayaUI** | Rules (cooldown, aura, and every other trigger), cues, conditions, actions, combat aura tracking, rule sharing and backups, themes, the debug console, the minimap button, the ESC-menu button | Nothing of XayaUI loads (every other XayaUI addon needs it) |
+| **XayaUI Options** | The settings window. It loads the first time you open it, so it costs nothing until then | /xui and the buttons say the window is switched off; everything else keeps working with your saved settings |
+| **XayaUI Chat** | Chat Panel, Chat Bar, message filters and sounds, history, privacy cover | Blizzard's chat as the game draws it; /xui chat says Chat is off |
+| **XayaUI QoL** | Cursor highlight and cursor trail (friends and bags later) | No cursor changes |
+| **XayaUI Bonus Features** | Tooltip additions, Notepad, custom data panels | Plain tooltips, no notepad, no panels |
+| **XayaUI Blizzard Reskin** | XayaUI's look on Blizzard's frames without changing what they do (today: the Game Menu) | Blizzard's own look |
+| **XayaUI Media** | Your own pictures and sounds (a support folder, not a feature) | Your own files are not in the lists |
+
+Each feature addon has its own tab in the settings window (**Chat**, **QoL**, **Bonus Features**); the Game Menu look stays under Settings > UI Options > Display. A tab, a minimap-button row, or a /xui command of an addon that is switched off is simply not there (a command says which addon to turn on). Your settings are kept either way: switching an addon off and on again loses nothing.
 
 ## Contents
 
@@ -329,7 +345,7 @@ Each moment can:
 |---|---|
 | **Send a chat message** | Types: Print to my chat window; red screen text; text-to-speech; Say; Yell; Group. Say and Yell only work in instances. Group picks instance, raid, or party. Placeholders: `%n` rule name, `%s` spell name, `%b` buff name. Max 255 characters. |
 | **Glow a frame** | Targets: the rule's own display (and cues), or any frame by global name (e.g. `PlayerFrame`). Types: button, pixel, autocast, proc. Color pickable. During only: **Keep glowing after the rule ends**. After It Ends: **Stop a glow**. Needs the LibCustomGlow library, which other addons such as ElvUI and BigWigs provide. |
-| **Run custom code** | Lua you type yourself, run under error protection. **Never kept from an imported profile.** In Midnight, code that reads or compares combat numbers errors. |
+| **Run custom code** | Lua you type yourself, run under error protection. **Never kept from imported rules.** In Midnight, code that reads or compares combat numbers errors. |
 | **Play a sound** | In **During**, this is the rule's own sound with repeat; in **After It Ends**, an extra sound. |
 
 ### Critical difference from cues
@@ -417,7 +433,7 @@ Info panels for the screen, each holding 1 to 20 data slots: a **Left Panel** an
 
 Each slot is a **block** with its own gaps, alignment, text scale, background, and text color. Rows can size blocks automatically or split them evenly, and a block can fill the remaining space. Each panel also has its own width, height, growth direction (horizontal or vertical), backdrop and border, colors, frame layer, tooltip placement, a hide-in-combat option, and a visibility macro. The General page sets the font, outline, and size, and can block clicks and mouseover during combat. The Chat Bar of the Chat Panel (section 12.10) uses the same block engine and data-type list.
 
-**Where:** QoL UI Updates > Custom Data Panels and Bars, or `/xui data`; right-click any panel to jump there. Everything is on the **General** tab as sections: a master switch (**Enable Custom Data Panels and Bars**) shows or hides all panels and the sections below it, and each section (Left Panel, Right Panel, Center Panel, Custom Panels) opens its settings once its own Enable switch is on. **Add a custom panel** creates another panel; **Remove this panel** deletes it. On the center and custom panels, **Unlock to drag** (fixed width only) lets you place them; a blue border shows while unlocked.
+**Where:** Bonus Features > Custom Data Panels and Bars (XayaUI Bonus Features), or `/xui data`; right-click any panel to jump there. Everything is on the **General** tab as sections: a master switch (**Enable Custom Data Panels and Bars**) shows or hides all panels and the sections below it, and each section (Left Panel, Right Panel, Center Panel, Custom Panels) opens its settings once its own Enable switch is on. **Add a custom panel** creates another panel; **Remove this panel** deletes it. On the center and custom panels, **Unlock to drag** (fixed width only) lets you place them; a blue border shows while unlocked.
 
 ### 12.4 Notepad
 
@@ -427,7 +443,7 @@ Notepad is a movable, resizable box for typed reminders. It holds any number of 
 
 The list button (three bulleted lines) shows every note in the box at once; click one to open it. The underlined **A** button turns on formatting tools: a format bar (heading, bullet, checkbox, red, yellow, green, and blue text, spell link) and a formatted view that you switch to with **View** and click to edit again. Notes stay plain text: `# Heading`, `- bullet`, `[ ] task` and `[x] done`, `|cffRRGGBBtext|r` colors, and `{spell:...}` (type a spell ID, a spell name, or paste a spell link between the braces; the formatted view shows the spell's icon and name, and an unknown spell stays visible in grey). The menu button (three horizontal lines) shares the current note to chat, or exports and imports notes. **Share** sends the note to your party, raid, instance group, guild, or one player: a header line (and optionally the first lines of the text) goes to chat, and other XayaUI users get a small window offering the note, with Save as new note, Dismiss, and Block sender. Nothing is saved without a click, and shared text is cleaned of links, textures, and escape codes. Addon messages are paused during boss encounters and some restricted content, and a long note takes up to about half a minute to send. **Export** gives a block of text (this note or all notes) to copy; **Import** reads such a block, or any plain text as one note, and adds the notes at the end of your list.
 
-**Where:** QoL UI Updates > Notepad, or `/xui notes` (also `/xui notepad`), which shows or hides the box. Drag the title bar to move and the bottom-right corner to resize; **Lock** stops both.
+**Where:** Bonus Features > Notepad (XayaUI Bonus Features), or `/xui notes` (also `/xui notepad`), which shows or hides the box. Drag the title bar to move and the bottom-right corner to resize; **Lock** stops both.
 
 ### 12.5 Addon Theming and Color Customization
 
@@ -449,17 +465,26 @@ A button on the minimap for quick access. **Left-click** opens a list of buttons
 
 Adds information to game tooltips. **ID lines** show the ID of spells, items, auras, and NPCs (on by default) and, if you turn them on, quests, currencies, achievements, mounts, toys, and battle pets, plus an optional icon ID line. On an item or spell tooltip that describes an effect (food's "Well Fed" block, for example), an **Aura ID** line gives the ID and name of that effect, so it can be pasted into a rule's aura field (it follows the Aura IDs option). For spells and items whose tooltip has no such block, the Aura ID line also appears when the aura is known from somewhere else: it was seen on an earlier tooltip, your own cast of the spell was seen to apply it (out of combat), or an aura with the spell's name is on you while you hover it (that match is remembered). Otherwise a spell that lasts for some seconds says "not known yet" (switch that off with the "not known yet" option); cast it once out of combat, or hover it while the aura is on you, and the name and ID appear. Nothing is guessed. `/xuitt lines` (hover an item or spell first, e.g. from a macro with a short delay) lists the raw lines the game reports, which shows where the Aura ID comes from. **Item level** shows the item level of the player under your mouse: yours from what you have equipped, other players' from an Inspect that runs by itself (one request at a time, never in combat, cached for a couple of minutes). **Enemy forces** shows the Mythic+ count and percent on hostile units, either only inside dungeons and raids or only during an active Mythic+ run. Anything the game does not let addons read is left out, never guessed. Crowd control, true sight, and cast information for enemies are not included. `/xuitt probe` (point at a unit first) prints what the game lets addons read for that unit.
 
-**Where:** QoL UI Updates > Tooltips.
+**Where:** Bonus Features > Tooltips (XayaUI Bonus Features).
 
 ### 12.7b Spell search: where an aura comes from
 
 When you search for an **aura** by name (the aura search boxes in a rule's trigger), many auras share one name, such as the dozens of "Well Fed" IDs. Each result now ends with **From item Name [id]** or **From spell Name [id]**, the item or spell whose tooltip applies that aura, with "+N more" when several do. The game has no direct lookup for this, so XayaUI learns it from tooltips: every item or spell tooltip you hover, the spells you know, and a background pass over the item index the search already builds (a percentage shows in the list's footer while it runs, never in combat). It is saved with your settings and rebuilt after a game patch. A result with no "From" part has no known source yet. Not yet tested in game.
 
-### 12.8b Import and export
+### 12.8b Import and export, backups
 
-**Export one group:** right-click a group in the sidebar and choose **Export Group**. A window shows one block of text holding that group, every group inside it, and every rule in them, with each rule's cues and conditions. Press Ctrl+C to copy it, then paste it into the Import window on the other character or account. **Export** on a single rule's right-click menu does the same for that rule. The Profiles tab still exports everything at once.
+Everything XayaUI shares is a block of text you copy and paste. The text says what it holds, so each place only takes its own kind and tells you where the other kind goes:
 
-Press **Import** in the top bar (or pick Import in the New Rule list). A small window opens; it does not switch tabs, so you can leave it open while you look at your rules. Paste a profile string: the window reads it as you paste and says what it holds (or what is wrong with it). Press **Import** and everything in the string is added as **one new top-level folder of its own**, named "Imported: [profile name] ([date and time])". Imported groups keep all their settings and sit inside that folder; rules that were not in a group go straight into it. Your existing rules and groups are never touched, and you can move or delete the imported folder as a unit. There is no "replace" choice any more. The Import button on the Profiles tab works the same way. (Loading a saved profile with "Load (replace)" on the Profiles tab still replaces, after a confirmation.)
+| Text | Holds | Export | Import |
+|---|---|---|---|
+| Rules | one rule (with its cues and conditions), a group (with every group and rule inside it), or several rules with their groups | right-click a rule or group > **Export**; or Import / Export > **Export rules** | the **Import** button (top bar, or Import in the New Rule list), or Import / Export > **Import rules** |
+| A theme | colors, font, and size of XayaUI's windows | Settings > UI Options > Theme | the **Import** button, or the Theme page |
+
+**Importing rules** adds everything in the text as **one new top-level folder of its own**, named "Imported: [name] ([date and time])". Imported groups keep all their settings and sit inside that folder; rules that were not in a group go straight into it. Your existing rules and groups are never touched, and you can move or delete the imported folder as a unit. Imported rules never bring custom code with them. **During combat** an import waits and happens as soon as combat ends (it says so), because the combat aura display cannot be changed in combat. Text made with a newer XayaUI is refused with "update XayaUI first" instead of being half-read.
+
+The Import button's window does not switch tabs, so you can leave it open while you look at your rules. It reads the text as you paste and says what it holds (or what is wrong with it).
+
+**Backups** (Import / Export > Backups saved on this computer): a backup is a copy of your rules (with their groups) kept inside XayaUI's saved settings on this computer. Name it and press **Save a backup**; each backup can be loaded back with **Load (add)** (into a new folder of its own, like an import) or **Load (replace)** (after a confirmation), shown as text, or deleted. A backup lives in the same saved-settings file as your rules, so it protects against a bad import or a mistaken delete, not against that file being lost; copy `WTF\Account\<account>\SavedVariables\XayaUI.lua` somewhere safe for that.
 
 If an imported group (older imports used ids like "feui1") could not be previewed, renamed, or moved, XayaUI gives it a standard id the next time it loads and says so in chat.
 
@@ -490,7 +515,7 @@ The Chat Panel reskins Blizzard's own chat in place: one block that holds the ta
 - **Sounds:** one sound per chat tab, played when a message arrives for a kind that tab shows. Your own messages and outgoing whispers never play one.
 - **Privacy cover:** a button beside the block covers the chat text and input line with a color or picture (the tab row too, if you choose; the tabs stay clickable under the cover so you can switch tabs while it is on). It has its own page under Privacy. The Chat Bar and the collapse arrow stay visible.
 
-**Where:** QoL UI Updates > Chat Panel (tabs: Layout, Appearance, Chat Bar, Fade and hide, Filters, History, Sounds, Privacy), or `/xui chat settings`. Commands: `/xui chat` (status), `/xui chat on|off|reset|move|history|settings`. `/xui chat off` gives Blizzard's chat back its own position, size, fonts, border, and scroll bar at once.
+**Where:** Chat > Chat Panel (XayaUI Chat; tabs: Layout, Appearance, Chat Bar, Fade and hide, Filters, History, Sounds, Privacy), or `/xui chat settings`. Commands: `/xui chat` (status), `/xui chat on|off|reset|move|history|settings`. `/xui chat off` gives Blizzard's chat back its own position, size, fonts, border, and scroll bar at once.
 
 **Limits:** the game does not let addons read or filter protected messages, so spam filters, links, history and sounds skip them. Blizzard can change its chat frames, so a part that cannot be found is skipped and listed as failed by `/xui chat`.
 

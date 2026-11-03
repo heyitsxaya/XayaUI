@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 -- CursorHighlight.lua : a colored shape (circle, square, diamond, star) that sits under the mouse cursor.
--- Left tab of QoL UI Updates > Cursor. OFF by default; while off nothing is created, polled, or drawn.
+-- Left tab of QoL > Cursor (XayaUI QoL). OFF by default; while off nothing is created, polled, or drawn.
 -- Saved settings: CueRulesDB.cursorHighlight. Not run in game when written (2026-11-01): the look needs an in-game check.
 --
 -- Shapes: circle = a square texture cut with a circular mask; diamond = a Line region as thick as it is long, drawn at 45 degrees

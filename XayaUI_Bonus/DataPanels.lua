@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
--- DataPanels.lua : "Custom Data Panels and Bars" (tab under QoL UI Updates).
+-- DataPanels.lua : "Custom Data Panels and Bars" (Bonus Features tab; XayaUI Bonus Features).
 -- On-screen info strips, each showing 1-20 data slots. All of it is on the General tab as sections that open when switched on
--- (the chat's own bar, the Chat Bar, belongs to Chat Panel: QoL UI Updates > Chat Panel):
+-- (the chat's own bar, the Chat Bar, belongs to Chat Panel: Chat > Chat Panel, XayaUI Chat):
 --   bl      Left Panel     (bottom-left corner of the screen)
 --   br      Right Panel    (bottom-right corner)
 --   center  Center Panel   (bottom center; any anchor, drag to move, or full screen width)
@@ -355,7 +355,7 @@ drv:SetScript("OnUpdate", function(_, dt)
 end)
 
 -------------------------------------------------------------------------------
--- options page: QoL UI Updates > "Custom Data Panels and Bars"
+-- options page: Bonus Features > "Custom Data Panels and Bars"
 -------------------------------------------------------------------------------
 function ns.BuildDataPanelsTab(Notify)
     local db = DB()
@@ -367,7 +367,7 @@ function ns.BuildDataPanelsTab(Notify)
 
     local general = { type = "group", name = "General", order = 1, args = {
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Info panels for the screen. Tick the master switch below, then switch on the sections you want: a left, right, and center panel, and as many custom panels as you like. (The bar attached to the chat is the Chat Bar, under QoL UI Updates > Chat Panel.) Every block of every panel can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). Right-click any panel to jump here. The Chat Panels tab holds the backdrops, tab panel, and sizes of the Blizzard chat windows." },
+            name = "Info panels for the screen. Tick the master switch below, then switch on the sections you want: a left, right, and center panel, and as many custom panels as you like. (The bar attached to the chat is the Chat Bar, under Chat > Chat Panel, part of XayaUI Chat.) Every block of every panel can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). Right-click any panel to jump here. The Chat Panels tab holds the backdrops, tab panel, and sizes of the Blizzard chat windows." },
         master = { type = "toggle", order = 0.1, width = "full", name = "Enable Custom Data Panels and Bars",
             desc = "Master switch. Off: no panel is shown and the sections below are hidden (their settings are kept). On: each section then has its own Enable switch.",
             get = function() return db.general.enabled and true or false end,

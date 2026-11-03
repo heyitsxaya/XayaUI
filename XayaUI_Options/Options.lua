@@ -4272,9 +4272,9 @@ local function BuildOptions()
         end
     end
     -- QoL Elements (stat boxes, cursor tracker, buff bars) are switched off for now: their files are not in XayaUI.toc, so ns.QoLOn is nil and the tab is skipped.
-    -- Tab "QoL UI Updates": left tree, options in the right pane. The entries are sorted alphabetically (see below); the older
+    -- Feature tabs (Chat, QoL, Bonus Features): left tree, options in the right pane. The entries are sorted alphabetically (see below); the older
     -- QoL Elements entries (stat boxes, cursor tracker, buff bars) come last, and only exist while their files are loaded.
-    local minimapGroup = ns.BuildMinimapTab and ns.BuildMinimapTab(Notify) or nil   -- lives in Settings (Xaya, 2026-11-03), not under QoL UI Updates
+    local minimapGroup = ns.BuildMinimapTab and ns.BuildMinimapTab(Notify) or nil   -- lives in Settings (Xaya, 2026-11-03), not under a feature tab
     -- One top tab per feature addon (Chat, QoL, Bonus Features), built from the pages each registered (Modules.lua:
     -- ns.RegisterSettingsPage). An addon that is switched off registers nothing, so its tab is simply absent.
     local modTabs = ns.OptionsApi.ModuleTabs(Notify, ns.QoLOn and { allqol = allQol, allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil, allbars = allBars } or nil)

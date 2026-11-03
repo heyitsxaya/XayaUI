@@ -36,7 +36,7 @@ local function Build()
     f.title:SetPoint("TOPLEFT", 14, -12); f.title:SetText("Import")
     f.help = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     f.help:SetPoint("TOPLEFT", 14, -38); f.help:SetPoint("TOPRIGHT", -14, -38)
-    f.help:SetJustifyH("LEFT"); f.help:SetText("Paste a profile string below (Ctrl+V). It is read as you paste; nothing changes until you press Import. Imports always go into a new folder of their own.")
+    f.help:SetJustifyH("LEFT"); f.help:SetText("Paste exported rules or a theme below (Ctrl+V). It is read as you paste; nothing changes until you press Import. Rules always go into a new folder of their own.")
 
     -- multi-line paste box
     local sf = CreateFrame("ScrollFrame", "XayaUIImportScroll", f, "UIPanelScrollFrameTemplate")

@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- CursorTrail.lua : the Gradient Cursor Trail tab (QoL UI Updates > Cursor). A gradient trail that follows the mouse cursor.
+-- CursorTrail.lua : the Gradient Cursor Trail tab (QoL > Cursor, XayaUI QoL). A gradient trail that follows the mouse cursor.
 --
 -- * OFF by default. While off nothing is created, polled or drawn.
 -- * Pre-populated with gradient presets; "Custom" lets you build your own with 2 to 6 colors.
@@ -444,7 +444,7 @@ function ns.BuildCursorTab(Notify)
     }
 end
 
--- The whole Cursor page (left tree entry of QoL UI Updates): Cursor Highlight is the first tab, Gradient Cursor Trail the second.
+-- The whole Cursor page (left tree entry of the QoL tab): Cursor Highlight is the first tab, Gradient Cursor Trail the second.
 function ns.BuildCursorGroup(Notify)
     local hl = ns.BuildCursorHighlightTab and ns.BuildCursorHighlightTab(Notify) or nil
     local tr = ns.BuildCursorTab(Notify)
