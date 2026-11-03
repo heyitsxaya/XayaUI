@@ -20,7 +20,7 @@ d32239bcb673463ab874e80d47fae504  LICENSE
 0cbcc5641dc51fcd9925744f5cbd1c59  LocalSounds.lua
 47d8a6646011bbd373dbcd6b045f3358  Notepad.lua
 c1cf3fea919f0a8e23d3d79583a6ecf4  ImportWindow.lua
-32939f7dceb4da2c27163e284896c3e7  Options.lua
+749a48f8c2f0f6ee95401ebde9203ba1  Options.lua
 6fb0249e2b27355476440e84b5aee5b8  Outcomes.lua
 87b82a2cbd79c06b015e704247d88273  Profile.lua
 6927ad26f4e5218baef5961cca11e634  QoL.lua
@@ -34,7 +34,7 @@ d7e606b10ef3f5b67d3c55a94a5c3953  Theme.lua
 b2be31ae4f88f668dd1a6e03b15eeb0e  Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  UserMedia.lua
 f91f66467325cb41f1da79e09ac29c7f  Visual.lua
-e3d2a5c8fdf6e111af9d4b831a19c481  XayaUI.toc
+b6bcb20256b2453202e90423e6e6fce0  XayaUI.toc
 ce647063cfe3b58b548ed2d6245949f6  XayaUI_CombatEngine/AuraDisplay.lua
 9bc6f1746b283708fe0d81cd362a08b1  XayaUI_CombatEngine/AuraIDProbe.lua
 f5e9a96689ba455b014431b33b3bd857  XayaUI_CombatEngine/AuraModel.lua

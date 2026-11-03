@@ -2443,11 +2443,6 @@ local function BuildAddonSettings()
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = function() return "XayaUI v" .. AddonVersion() .. ". Settings here affect the whole addon, not any one rule." end },
         ui = { type = "group", name = "UI Options", order = 1, args = {
-            savingHeader = { type = "header", name = "Saving", order = 10 },
-            promptSave = { type = "toggle", name = "Prompt for saving and enable drafts", order = 11, width = "full",
-                desc = "Off (default): every change is kept the moment you make it. On: a yellow bar appears under the window when a rule has unsaved changes (Save changes, Save as a copy, Add to drafts, Discard changes), and closing the window first puts unsaved changes in Drafts.",
-                get = function() return ns.DraftsEnabled and ns.DraftsEnabled() or false end,
-                set = function(_, v) Ui().promptSave = v and true or false; if ns.DraftsApplySetting then ns.DraftsApplySetting() end end },
             displayHeader = { type = "header", name = "Display Options", order = 20 },
             selStyle = { type = "select", name = "Selected item in the rule list", order = 21, width = "double",
                 desc = "How the row you have selected stands out in the left-hand list.",
@@ -2459,10 +2454,6 @@ local function BuildAddonSettings()
                 desc = "When the selected rule or group sits inside other groups, the topmost group of that chain gets a dark purple to black gradient (left to right). Off: no highlight on parent groups.",
                 get = function() return ns.ParentGradientOn() end,
                 set = function(_, v) Ui().parentGradient = v and true or false; Repaint() end },
-            condensedList = { type = "toggle", name = "Condensed rule list (no icons, compact rows)", order = 25, width = "full",
-                desc = "Drops the icons and the taller rows from the left-hand rule list and shows plain, compact rows with the +/- toggle on the left.",
-                get = function() return ns.CondensedOn() end,
-                set = function(_, v) Ui().condensedList = v and true or false; Repaint() end },
             paneHeader = { type = "header", name = "Window Size", order = 30 },
             paneNote = { type = "description", order = 30.5, width = "full",
                 name = "Sets the size of this window when it opens. 0 = automatic (780 wide by 860 tall). Values are kept on screen and no smaller than 600 by 400. Dragging the window's corner still resizes it for the current session." },
@@ -2489,6 +2480,18 @@ local function BuildAddonSettings()
                 desc = "Rules that track a spell or buff show that spell's icon in the left-hand list instead of the generic type icon. Each rule can override this in its Display Options (Sidebar icon).",
                 get = function() return ns.SidebarSpellIcons() end,
                 set = function(_, v) Ui().sidebarSpellIcons = v and true or false; Repaint() end },
+        } },
+        rules = { type = "group", name = "Rule Creation", order = 1.2, args = {
+            savingHeader = { type = "header", name = "Saving", order = 10 },
+            promptSave = { type = "toggle", name = "Prompt for saving and enable drafts", order = 11, width = "full",
+                desc = "Off (default): every change is kept the moment you make it. On: a yellow bar appears under the window when a rule has unsaved changes (Save changes, Save as a copy, Add to drafts, Discard changes), and closing the window first puts unsaved changes in Drafts.",
+                get = function() return ns.DraftsEnabled and ns.DraftsEnabled() or false end,
+                set = function(_, v) Ui().promptSave = v and true or false; if ns.DraftsApplySetting then ns.DraftsApplySetting() end end },
+            listHeader = { type = "header", name = "Rule list", order = 20 },
+            condensedList = { type = "toggle", name = "Condensed rule list (no icons, compact rows)", order = 21, width = "full",
+                desc = "Drops the icons and the taller rows from the left-hand rule list and shows plain, compact rows with the +/- toggle on the left.",
+                get = function() return ns.CondensedOn() end,
+                set = function(_, v) Ui().condensedList = v and true or false; Repaint() end },
         } },
         theme = { type = "group", name = "Theme", order = 1.5, args = ns.Theme and ns.Theme.BuildArgs(Repaint) or {} },
         debug = { type = "group", name = "Debugging", order = 2, args = {
@@ -4219,7 +4222,7 @@ local function BuildOptions()
     local infoGroup = ns.BuildAddonInfo and ns.BuildAddonInfo() or nil
     if infoGroup then infoGroup.order = 8; infoGroup.hidden = function() return not ns.infoOpen end end
     -- Settings (skin on): its pages REPLACE the Rules / Smart Categories tabs while the toolbar's Settings button is on:
-    --   Settings page = left sidebar: UI Options (Display | Theme tabs), Debugging
+    --   Settings page = left sidebar: UI Options (Display | Rule Creation | Theme tabs), Debugging
     local function SettingsOn() return (ns.SkinRows and ns.SkinRows()) and ns.pageOpen == "settings" end
     local settings = BuildAddonSettings()
     local sa = settings.args
@@ -4228,6 +4231,7 @@ local function BuildOptions()
     dispArgs.intro = sa.intro
     local setUi = { type = "group", name = "UI Options", order = 1, childGroups = "tab", args = {
         display = { type = "group", name = "Display", order = 1, args = dispArgs },
+        rules = { type = "group", name = "Rule Creation", order = 1.5, args = sa.rules.args },
         theme = { type = "group", name = "Theme", order = 2, args = sa.theme.args },
     } }
     local setDbg = { type = "group", name = "Debugging", order = 2, args = sa.debug.args }
