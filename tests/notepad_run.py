@@ -35,7 +35,8 @@ function GameTooltip:SetText(t) tipText = t end
 function GameTooltip:AddLine(t) tipDesc = t end
 UIParent = mk("UIParent")
 function CreateFrame(kind, name, parent) local f = mk(kind); if name then _G[name] = f end; return f end
-STANDARD_TEXT_FONT = "x"; time = os.time
+STANDARD_TEXT_FONT = "x"; time = os.time; clock = 100; function GetTime() return clock end
+ctrl, shift = false, false; function IsControlKeyDown() return ctrl end; function IsShiftKeyDown() return shift end
 InCombatLockdown = function() return false end; UnitAffectingCombat = function() return false end
 C_Timer = { After = function() end, NewTicker = function() return mk("t") end }
 CueRulesDB = {}
@@ -133,6 +134,69 @@ check("BOTTOM toolbar wraps too, 4 per row because the resize grip takes 16 px (
 db.toolbarPos = "LEFT"; resize(280, 220)
 check("LEFT toolbar: minH covers 9 buttons + header (" .. f.minH .. ")", f.minH == 9 * 20 + 42 + 8 and f.tb.w == 38)
 db.toolbarPos = "TOP"; resize(280)
+
+-- undo / redo (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z) and spell tokens
+do
+  ns.Notepad_New(nil, false)
+  local n = ns.notepadDB.notes[#ns.notepadDB.notes]
+  local eb = f.eb
+  eb.SetCursorPosition = function(self, p) self.cur = p end
+  local function type_(text) eb:SetText(text); eb.scripts.OnTextChanged(eb, true) end
+  local function key(k, c, sh) ctrl, shift = c, sh or false; eb.scripts.OnKeyDown(eb, k); ctrl, shift = false, false end
+  type_("a"); clock = clock + 0.2; type_("ab"); clock = clock + 0.2; type_("abc")
+  check("undo: typing right after each other is one step", n.text == "abc")
+  key("Z", true)
+  check("Ctrl+Z undoes the whole quick typing", n.text == "" and eb.text == "")
+  clock = clock + 5; type_("hello"); clock = clock + 5; type_("hello world")
+  key("Z", true)
+  check("Ctrl+Z after a pause undoes only the last step", n.text == "hello" and eb.text == "hello" and eb.cur == 5)
+  key("Z", true)
+  check("Ctrl+Z again goes back further", n.text == "")
+  key("Z", true)
+  check("Ctrl+Z with nothing left does nothing", n.text == "")
+  key("Y", true)
+  check("Ctrl+Y redoes", n.text == "hello")
+  key("Z", true, true)
+  check("Ctrl+Shift+Z redoes too", n.text == "hello world")
+  key("Z", false)
+  check("Z without Ctrl does nothing", n.text == "hello world")
+  key("Z", true); key("Z", true)
+  clock = clock + 5; type_("fresh")
+  key("Y", true)
+  check("typing after an undo drops the redo steps", n.text == "fresh")
+  clock = clock + 5; type_(string.rep("x", 40))
+  key("Z", true)
+  check("a big paste is its own undo step", n.text == "fresh")
+  ns.Notepad_Clear()
+  check("Clear empties the note", n.text == "")
+  key("Z", true)
+  check("Ctrl+Z brings back a cleared note", n.text == "fresh")
+  -- a different note keeps its own stack
+  ns.Notepad_Prev()
+  local before = ns.Notepad_CurrentText()
+  key("Z", true)
+  check("undo in another note does not touch this one", ns.notepadDB.notes[#ns.notepadDB.notes].text == "fresh")
+  ns.Notepad_Next()
+  -- cursor lands after the restored text, utf-8 safe
+  clock = clock + 5; type_("caf\195\169 ok"); clock = clock + 5; type_("caf\195\169 ok!")
+  key("Z", true)
+  check("undo keeps UTF-8 text intact", n.text == "caf\195\169 ok" and eb.cur == 7)
+end
+do
+  C_Spell = { GetSpellInfo = function(q)
+      if q == 196718 or q == "Darkness" then return { spellID = 196718, name = "Darkness", iconID = 1305154 } end
+    end, GetSpellTexture = function() return 1 end }
+  local id, name = ns.Notepad_SpellInfo("196718")
+  check("spell token: an ID resolves", id == 196718 and name == "Darkness")
+  id, name = ns.Notepad_SpellInfo("  Darkness ")
+  check("spell token: a name resolves (spaces trimmed)", id == 196718 and name == "Darkness")
+  id = ns.Notepad_SpellInfo("|cff71d5ff|Hspell:196718:0|h[Darkness]|h|r")
+  check("spell token: a pasted spell link resolves", id == 196718)
+  check("spell token: unknown or empty gives nothing", ns.Notepad_SpellInfo("Nope") == nil and ns.Notepad_SpellInfo("") == nil)
+  local r = ns.Notepad_Render("x {spell:Darkness} y {spell: 196718 } {spell:} {spell:Nope}")
+  check("render: icon and name for name and ID forms", select(2, r:gsub("|T1305154:14|t Darkness", "")) == 2)
+  check("render: empty and unknown tokens stay visible in grey", r:find("|cff888888{spell:}|r", 1, true) and r:find("|cff888888{spell:Nope}|r", 1, true))
+end
 out[#out+1] = fails == 0 and "ALL PASS" or ("FAILS: " .. fails)
 return table.concat(out, "\n")
 ''')

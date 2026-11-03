@@ -23,6 +23,7 @@ function ns.BuildTooltipsTab(Notify)
     local ids = {
         enabled = toggle(1, "Show IDs on tooltips", "Master switch for the ID lines below.", { "ids", "enabled" }),
         npc = toggle(2, "NPC IDs", "Read from the unit's GUID. Skipped when the game hides the GUID.", { "ids", "npc" }, idsOff),
+        auraHint = toggle(4, "Say \"not known yet\" when a spell's aura is not known", "Under a spell that lasts for some seconds. The aura's name and ID appear after you cast the spell once out of combat, or hover it while the aura is on you.", { "ids", "auraHint" }, idsOff),
         icon = toggle(3, "Icon IDs (under spell, aura and item lines)", nil, { "ids", "icon" }, idsOff),
     }
     for i, kind in ipairs(TT.ID_KINDS) do

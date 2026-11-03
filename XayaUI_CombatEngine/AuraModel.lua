@@ -165,6 +165,26 @@ local function Profile(create)
 end
 M.Profile = Profile
 
+-- Auras this client has seen a cast of `castID` apply (learned out of combat, any spec of this character). Returns { {id=, name=}, ... }.
+-- Used by the tooltip lines; nothing is guessed: an empty list means "not learned yet".
+function M.AurasForCast(castID)
+    local out, seen = {}, {}
+    local d = DB(); if not (d and type(castID) == "number") then return out end
+    for _, p in pairs(d.specs or {}) do
+        local e = type(p) == "table" and type(p.entries) == "table" and p.entries[castID]
+        if e and type(e.auras) == "table" then
+            for aid, a in pairs(e.auras) do
+                if type(aid) == "number" and aid ~= castID and not seen[aid] then
+                    seen[aid] = true
+                    out[#out + 1] = { id = aid, name = type(a) == "table" and a.name or nil }
+                end
+            end
+        end
+    end
+    table.sort(out, function(x, y) return x.id < y.id end)
+    return out
+end
+
 -------------------------------------------------------------------------------
 -- Spell text helpers
 -------------------------------------------------------------------------------

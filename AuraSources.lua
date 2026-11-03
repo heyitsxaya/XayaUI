@@ -59,6 +59,25 @@ function AS.Note(kind, id, auras)
     end
 end
 
+-- The other direction: the auras that item / spell `id` is known to apply (from tooltips seen and live matches). { {id=, name=}, ... }
+function AS.AurasOf(kind, id)
+    local out = {}
+    local a = DB(); if not (a and type(id) == "number") then return out end
+    for aid, e in pairs(a.map) do
+        if type(aid) == "number" and type(e) == "table" then
+            for _, s in ipairs(e) do
+                if s.k == kind and s.id == id then
+                    local ok, nm = pcall(function() return C_Spell.GetSpellName(aid) end)
+                    out[#out + 1] = { id = aid, name = (ok and type(nm) == "string" and not isSecret(nm) and nm ~= "") and nm or nil }
+                    break
+                end
+            end
+        end
+    end
+    table.sort(out, function(x, y) return x.id < y.id end)
+    return out
+end
+
 function AS.Get(auraID)
     local a = DB()
     local e = a and a.map[auraID]

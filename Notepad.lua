@@ -135,19 +135,32 @@ local function CharBefore(text, pos)   -- the UTF-8 character just before cursor
     end
     return last
 end
-local function SpellToken(id)
-    id = tonumber(id); if not id then return nil end
-    local name, icon
+-- What a {spell:...} token names: a spell ID, a spell name, or a pasted spell link. Returns id, name, icon (nil when the game cannot say).
+local function SpellInfo(arg)
+    arg = tostring(arg or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if arg == "" then return nil end
+    local query = tonumber(arg) or tonumber(arg:match("|Hspell:(%d+)")) or tonumber(arg:match("^spell:(%d+)$"))
+    if not query then query = (arg:gsub("^|c%x%x%x%x%x%x%x%x", ""):gsub("|r$", ""):gsub("^%[(.-)%]$", "%1"):gsub("^%s+", ""):gsub("%s+$", "")) end
+    if query == "" then return nil end
+    local id, name, icon
     if C_Spell and C_Spell.GetSpellInfo then
-        local ok, info = pcall(C_Spell.GetSpellInfo, id)
-        if ok and type(info) == "table" then name, icon = info.name, info.iconID end
+        local ok, info = pcall(C_Spell.GetSpellInfo, query)
+        if ok and type(info) == "table" then id, name, icon = info.spellID, info.name, info.iconID end
     end
-    if not icon and C_Spell and C_Spell.GetSpellTexture then local ok, t = pcall(C_Spell.GetSpellTexture, id); if ok then icon = t end end
-    if not name then return nil end
+    if not id and type(query) == "number" then id = query end
+    if id and not icon and C_Spell and C_Spell.GetSpellTexture then local ok, t = pcall(C_Spell.GetSpellTexture, id); if ok then icon = t end end
+    if id and not name and C_Spell and C_Spell.GetSpellName then local ok, nm = pcall(C_Spell.GetSpellName, id); if ok then name = nm end end
+    if not (id and name) then return nil end
+    return id, name, icon
+end
+ns.Notepad_SpellInfo = SpellInfo
+local function SpellToken(arg)
+    local id, name, icon = SpellInfo(arg)
+    if not id then return nil end
     return ("|T%s:14|t %s"):format(tostring(icon or 134400), name)
 end
 local function RenderLine(line)
-    line = line:gsub("{spell:(%d+)}", function(id) return SpellToken(id) or ("|cff888888{spell:" .. id .. "}|r") end)
+    line = line:gsub("{spell:([^}]*)}", function(a) return SpellToken(a) or ("|cff888888{spell:" .. a .. "}|r") end)
     local h = line:match("^#+%s*(.*)$")
     if h then return "|cffffd100" .. h .. "|r" end
     local d = line:match("^%s*%[[xX]%]%s?(.*)$")
@@ -169,7 +182,46 @@ ns.Notepad_CharBefore = CharBefore
 local mode = { list = false, view = false }   -- this session only: list of all notes / formatted view
 local RefreshView, ApplyMode, PopulateList     -- assigned below
 
+-- Undo and redo (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z in the typing box). One stack per note, this session only: quick typing is one step, a pause
+-- or a big paste / delete is its own step, clearing a note or restoring an older version is a step too (so Ctrl+Z brings it back).
+local undo = {}
+local UNDO_MAX, UNDO_GROUP = 200, 1.0
+local function UndoSync(n, text)   -- the stack follows the note's text; a change that did not come from typing becomes a step
+    if not n then return end
+    text = text or ""
+    local u = undo[n.id]
+    if not u then undo[n.id] = { s = { text }, pos = 1, t = 0 }; return end
+    if u.s[u.pos] ~= text then
+        for i = #u.s, u.pos + 1, -1 do u.s[i] = nil end
+        u.s[#u.s + 1] = text; u.pos = #u.s; u.t = 0
+    end
+end
+local function UndoRecord(n, old, new)   -- typed change: old text -> new text
+    UndoSync(n, old)
+    local u = undo[n.id]
+    for i = #u.s, u.pos + 1, -1 do u.s[i] = nil end   -- typing after an undo drops the redo steps
+    local now = GetTime()
+    local big = math.abs(#new - #old) >= BIG_DROP
+    if u.pos > 1 and not big and now - u.t < UNDO_GROUP then u.s[u.pos] = new
+    else u.s[#u.s + 1] = new; u.pos = #u.s end
+    u.t = big and 0 or now
+    if #u.s > UNDO_MAX then table.remove(u.s, 1); u.pos = u.pos - 1 end
+end
+local function UndoBreak() local n = Cur(); local u = n and undo[n.id]; if u then u.t = 0 end end   -- the next typing starts a new step
+local function CharCount(t) local c = 0; for _ in t:gmatch("[%z\1-\127\194-\244][\128-\191]*") do c = c + 1 end; return c end
+local function ChangedEnd(old, new)   -- cursor position (in characters) just after the part of `new` that differs from `old`
+    local p = 0
+    local m = math.min(#old, #new)
+    while p < m and old:byte(p + 1) == new:byte(p + 1) do p = p + 1 end
+    local q = 0
+    while q < m - p and old:byte(#old - q) == new:byte(#new - q) do q = q + 1 end
+    local cb = #new - q
+    while cb > 0 and cb < #new and (new:byte(cb + 1) or 0) >= 128 and (new:byte(cb + 1) or 0) < 192 do cb = cb - 1 end
+    return CharCount(new:sub(1, cb))
+end
+
 local function SetEditText(text)
+    UndoSync(Cur(), text)
     frame.settingText = true
     frame.eb:SetText(text or "")
     frame.settingText = false
@@ -189,6 +241,25 @@ local function UpdateTitle()   -- fills the note-name row: the name box, its gre
     end
     nr.ph:SetShown((nr.edit:GetText() or "") == "")
 end
+
+local function UndoApply(dir)   -- dir -1 = undo, +1 = redo
+    local n = Cur(); if not (n and frame) then return end
+    UndoSync(n, n.text)
+    local u = undo[n.id]
+    local np = u.pos + dir
+    if np < 1 or np > #u.s then return end
+    u.pos, u.t = np, 0
+    local old, new = n.text or "", u.s[np]
+    frame.restoring = true
+    frame.eb:SetText(new)
+    frame.restoring = nil
+    n.text, n.modified = new, time()
+    pendingAt, pendingNote = GetTime(), n
+    frame.eb:SetCursorPosition(ChangedEnd(old, new))
+    UpdateTitle()
+    if RefreshView then RefreshView() end
+end
+ns.Notepad_Undo, ns.Notepad_Redo = function() UndoApply(-1) end, function() UndoApply(1) end
 
 local Populate   -- restore list refresher (defined below)
 
@@ -656,6 +727,7 @@ local function Ins(text, back)   -- insert at the cursor, then step back so the 
     local db = DB(); if not (db and frame and db.format) then return end
     ToEdit()
     local eb = frame.eb
+    UndoBreak()
     eb:SetFocus(); eb:Insert(text)
     if back and back > 0 then eb:SetCursorPosition(math.max(0, eb:GetCursorPosition() - back)) end
 end
@@ -678,7 +750,7 @@ local FMT = {
     { w = 24, label = "|cffffd100Y|r", tip = "Yellow text: type between the color code and the closing ||r.", act = function() Ins("|cffffd100|r", 2) end },
     { w = 24, label = "|cff55dd55G|r", tip = "Green text: type between the color code and the closing ||r.", act = function() Ins("|cff55dd55|r", 2) end },
     { w = 24, label = "|cff66b3ffB|r", tip = "Blue text: type between the color code and the closing ||r.", act = function() Ins("|cff66b3ff|r", 2) end },
-    { w = 34, label = "Spell", tip = "Inserts {spell:} - type a spell ID between the braces and the formatted view shows its icon and name.", act = function() Ins("{spell:}", 1) end },
+    { w = 34, label = "Spell", tip = "Inserts {spell:} - type a spell ID, a spell name, or paste a spell link between the braces; the formatted view shows its icon and name.", act = function() Ins("{spell:}", 1) end },
 }
 
 local function BuildFormatBar(f)
@@ -800,10 +872,17 @@ local function Build()
 
     eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     eb:SetScript("OnEditFocusLost", function() Flush() end)
+    eb:SetScript("OnKeyDown", function(_, key)
+        if IsControlKeyDown() or (IsMetaKeyDown and IsMetaKeyDown()) then
+            if key == "Z" then UndoApply(IsShiftKeyDown() and 1 or -1)
+            elseif key == "Y" then UndoApply(1) end
+        end
+    end)
     eb:SetScript("OnTextChanged", function(self)
-        if f.settingText then return end
+        if f.settingText or f.restoring then return end
         local n = Cur(); if not n then return end
         local new, old = self:GetText(), n.text or ""
+        if new ~= old then UndoRecord(n, old, new) end
         if #old - #new >= BIG_DROP then Snapshot(n, old) end   -- a big deletion: the text before it is kept
         n.text, n.modified = new, time()
         pendingAt, pendingNote = GetTime(), n

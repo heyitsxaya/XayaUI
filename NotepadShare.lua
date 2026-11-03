@@ -77,7 +77,7 @@ end
 local function Title(text)
     local first = (text or ""):match("^%s*([^\n]+)") or ""
     first = first:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|", ""):gsub("^[#%-%*%s%[%]xX]+", "")
-    first = first:gsub("{spell:(%d+)}", "spell %1")
+    first = first:gsub("{spell:([^}]*)}", function(a) local nm = ns.Notepad_SpellInfo and select(2, ns.Notepad_SpellInfo(a)); return nm and ("spell " .. nm) or ("spell " .. a:gsub("^%s+", ""):gsub("%s+$", "")) end)
     if #first > 50 then first = first:sub(1, 47):gsub("[\192-\255][\128-\191]*$", "") .. "..." end
     return first ~= "" and first or "(untitled)"
 end
@@ -86,13 +86,15 @@ ns.NotepadShare_Title = Title
 -- text safe to post as an ordinary chat line: no escape codes; {spell:ID} becomes a clickable spell link when the game can make one
 local function ChatSafe(line)
     line = line:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|H[^|]*|h(.-)|h", "%1"):gsub("|", "/")
-    line = line:gsub("{spell:(%d+)}", function(id)
-        id = tonumber(id)
-        if C_Spell and C_Spell.GetSpellLink then
+    line = line:gsub("{spell:([^}]*)}", function(a)
+        local id, name = nil, nil
+        if ns.Notepad_SpellInfo then id, name = ns.Notepad_SpellInfo(a) end
+        id = id or tonumber((tostring(a):gsub("%s", "")))
+        if id and C_Spell and C_Spell.GetSpellLink then
             local ok, link = pcall(C_Spell.GetSpellLink, id)
             if ok and type(link) == "string" and link ~= "" then return link end
         end
-        return "[spell " .. id .. "]"
+        return "[spell " .. tostring(name or id or (tostring(a):gsub("^%s+", ""):gsub("%s+$", ""))) .. "]"
     end)
     return line
 end

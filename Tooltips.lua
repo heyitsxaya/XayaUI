@@ -27,7 +27,7 @@ local function readable(v) return v ~= nil and not isSecret(v) end
 -- Settings
 -------------------------------------------------------------------------------
 TT.DEFAULTS = {
-    ids = { enabled = true, spell = true, item = true, aura = true, npc = true, icon = false,
+    ids = { enabled = true, spell = true, item = true, aura = true, auraHint = true, npc = true, icon = false,
             quest = false, currency = false, achievement = false, mount = false, toy = false, battlepet = false },
     ilvl = { enabled = true, inspect = true, cacheSecs = 120 },
     forces = { enabled = true, onlyInDungeon = true, onlyMythicPlus = false },
@@ -122,6 +122,52 @@ function TT.EmbeddedAuras(data, skipID)
     return out
 end
 
+local function SpellNameOf(id)
+    local ok, nm = pcall(function() return C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id) end)
+    if ok and readable(nm) and type(nm) == "string" and nm ~= "" then return nm end
+end
+
+-- Every aura an item or spell is known to apply, with its own ID and name. Sources, in order (nothing is guessed; an empty list means
+-- "not known yet"): 1. the tooltip's own embedded effect block, 2. what this client has recorded before (AuraSources: tooltips seen and
+-- live matches), 3. what this character's own casts were seen to apply out of combat (AuraModel), 4. spells only: an aura on you right
+-- now whose NAME equals the spell's name (read through C_UnitAuras.GetAuraDataBySpellName; a match is remembered for next time).
+function TT.AurasFor(kind, id, data)
+    local out, seen = {}, {}
+    local function add(aid, name)
+        if type(aid) ~= "number" or seen[aid] or (kind == "spell" and aid == id) then return end
+        seen[aid] = true
+        out[#out + 1] = { id = aid, name = name or SpellNameOf(aid) }
+    end
+    for _, a in ipairs(TT.EmbeddedAuras(data, id)) do add(a.id, a.name) end
+    if #out > 0 and ns.AuraSources and ns.AuraSources.Note then pcall(ns.AuraSources.Note, kind, id, out) end   -- feeds the search's "source" column
+    if ns.AuraSources and ns.AuraSources.AurasOf then
+        local ok, list = pcall(ns.AuraSources.AurasOf, kind, id)
+        if ok and type(list) == "table" then for _, a in ipairs(list) do add(a.id, a.name) end end
+    end
+    if kind == "spell" then
+        if ns.AuraModel and ns.AuraModel.AurasForCast then
+            local ok, list = pcall(ns.AuraModel.AurasForCast, id)
+            if ok and type(list) == "table" then for _, a in ipairs(list) do add(a.id, a.name) end end
+        end
+        local nm = SpellNameOf(id)
+        if nm and C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName then
+            local ok, ad = pcall(C_UnitAuras.GetAuraDataBySpellName, "player", nm, "HELPFUL")
+            local sid = ok and type(ad) == "table" and ad.spellId
+            if sid and readable(sid) and type(sid) == "number" and sid ~= id and not seen[sid] then
+                add(sid, nm)
+                if ns.AuraSources and ns.AuraSources.Note then pcall(ns.AuraSources.Note, "spell", id, { { id = sid } }) end
+            end
+        end
+    end
+    return out
+end
+
+-- A spell whose text names a duration ("Lasts 8 sec") very likely applies an aura; used only to decide whether to say "not known yet".
+local function TextHasDuration(id)
+    local ok, d = pcall(function() return C_Spell and C_Spell.GetSpellDescription and C_Spell.GetSpellDescription(id) end)
+    return ok and readable(d) and type(d) == "string" and d:find("%d+%s*sec") ~= nil
+end
+
 function TT.OnIDData(tooltip, data, kind)
     local db = TT.DB()
     if not db.ids.enabled or not db.ids[kind.key] or type(data) ~= "table" then return end
@@ -132,15 +178,19 @@ function TT.OnIDData(tooltip, data, kind)
         local icon = IconID(kind.key, id)
         if icon then AddLine(tooltip, "Icon ID:", tostring(icon)) end
     end
-    -- items and spells: the aura / effect they apply, with its own ID (and icon ID when that option is on)
+    -- items and spells: the aura / effect they apply, with its own name, ID (and icon ID when that option is on)
     if kind.key == "item" or kind.key == "spell" then
-        local auras = TT.EmbeddedAuras(data, id)
-        if #auras > 0 and ns.AuraSources and ns.AuraSources.Note then pcall(ns.AuraSources.Note, kind.key, id, auras) end   -- feeds the search's "source" column
-        for _, a in ipairs(db.ids.aura and auras or {}) do
-            AddLine(tooltip, "Aura ID:", a.name and (tostring(a.id) .. "  (" .. a.name .. ")") or tostring(a.id))
-            if db.ids.icon then
-                local icon = IconID("aura", a.id)
-                if icon then AddLine(tooltip, "Aura icon ID:", tostring(icon)) end
+        local auras = TT.AurasFor(kind.key, id, data)
+        if db.ids.aura then
+            for _, a in ipairs(auras) do
+                AddLine(tooltip, "Aura ID:", a.name and (tostring(a.id) .. "  (" .. a.name .. ")") or tostring(a.id))
+                if db.ids.icon then
+                    local icon = IconID("aura", a.id)
+                    if icon then AddLine(tooltip, "Aura icon ID:", tostring(icon)) end
+                end
+            end
+            if #auras == 0 and db.ids.auraHint and kind.key == "spell" and TextHasDuration(id) then
+                tooltip:AddDoubleLine("Aura ID:", "not known yet", 1, 0.82, 0, 0.6, 0.6, 0.6)
             end
         end
     end
