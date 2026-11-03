@@ -222,7 +222,9 @@ local function BuildGroup(fo)
     local ok, err = pcall(function()
         if not g.frame then
             if C_AddOns and C_AddOns.LoadAddOn and not CustomAuraContainerTemplate then pcall(C_AddOns.LoadAddOn, "Blizzard_AuraContainer") end
-            local c = CreateFrame("Frame", "XayaUIEngine_" .. fo.id, UIParent, "CustomAuraContainerTemplate")
+            -- the template is an AuraContainer widget: created as a plain "Frame" its built-in OnLoad never runs (no dirty-state
+            -- table) and Blizzard's own OnLoad errors with "attempt to index field 'dirtyFlags'" (seen in game, 0.3.0)
+            local c = CreateFrame("AuraContainer", "XayaUIEngine_" .. fo.id, UIParent, "CustomAuraContainerTemplate")
             c:SetUnit("player")
             c:SetAuraProcessingPolicy(CustomAuraContainerAuraProcessingPolicy.None)
             c:AddAuraGroup("main", "HELPFUL", {

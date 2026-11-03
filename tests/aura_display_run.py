@@ -62,6 +62,7 @@ end
 
 function CreateFrame(kind, name, parent, template)
     if template == "CustomAuraContainerTemplate" then
+        assert(kind == "AuraContainer", "the container template must be created as an AuraContainer widget, not " .. tostring(kind))
         local c = proxyFrame("Container")
         c.name, c.groups, c.flow, c.refiltered = name, {}, {}, 0
         function c:SetUnit(u) assert(type(u) == "string"); self.unit = u end
