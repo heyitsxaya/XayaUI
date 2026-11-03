@@ -273,6 +273,36 @@ end
 drv:SetScript("OnEvent", function() C.Schedule() end)
 if ns.Theme and ns.Theme.OnResolve then ns.Theme.OnResolve(function() C.Schedule() end) end
 
+-- /xui chat indent : READ ONLY. Where the empty space at the left of the chat text comes from. For the first visible lines it prints how far
+-- the line's own box sits from the window's left edge, and the first characters of the line's text with every |-code shown as typed (a
+-- timestamp or a hidden color / texture code in front of the words shows up there). Text the game marks secret is never read.
+function C.IndentReport()
+    local cf, ta = C.Main(), C.TextArea()
+    if not (cf and ta) then ns.Print("Chat Panel indent: the chat window is not there to measure."); return end
+    local function f(v) v = tonumber(v); return (v and not C.IsSecret(v)) and ("%.1f"):format(v) or "?" end
+    local function left(o) local ok, v = pcall(function() return o:GetLeft() end); return ok and tonumber(v) or nil end
+    local cl, tl = left(cf), left(ta)
+    local s = ns.chat2 or {}
+    ns.Print(("Chat Panel indent: window left %s, text area left %s (setting: %s px), text area to window: %s px"):format(f(cl), f(tl), tostring(s.textInset), (cl and tl) and f(tl - cl) or "?"))
+    local fmt
+    if _G.Settings and _G.Settings.GetValue then local ok, v = pcall(_G.Settings.GetValue, "showTimestamps"); if ok and type(v) == "string" then fmt = v end end
+    ns.Print(("  the game's timestamp setting: %s"):format(fmt and ("\"" .. fmt:gsub("|", "||") .. "\"") or "unreadable"))
+    local lines = cf.visibleLines
+    if type(lines) ~= "table" or #lines == 0 then ns.Print("  no visible lines to measure (say something in chat first)"); return end
+    local shown = 0
+    for i = #lines, 1, -1 do
+        local fs = lines[i]
+        local txt = fs and fs.IsShown and fs:IsShown() and fs.GetText and fs:GetText() or nil
+        if type(txt) == "string" and not C.IsSecret(txt) and txt ~= "" then
+            local pre = txt:sub(1, 40):gsub("|", "||"):gsub("[%c]", "?")
+            ns.Print(("  line %d: box left %s px from the window edge, text starts \"%s\""):format(i, (cl and left(fs)) and f(left(fs) - cl) or "?", pre))
+            shown = shown + 1
+            if shown >= 4 then break end
+        end
+    end
+    if shown == 0 then ns.Print("  the visible lines are empty or protected") end
+end
+
 -- /xui chat [on|off|reset|move|history|status]
 function C.Command(arg)
     arg = (arg or ""):lower():match("^%s*(%S*)") or ""
@@ -297,9 +327,10 @@ function C.Command(arg)
         C.Rewrap(true)
         local st2 = C.WrapStatus()
         if st2 then ns.Print(("  after laying out again: line width %s, widest text %s"):format(f(st2.line), f(st2.widest))) end
+    elseif arg == "indent" then C.IndentReport()
     else
         local why = C.BlockedReason()
-        ns.Print((("Chat Panel: " .. (s.enabled and (why and ("blocked: " .. why) or "ON") or "OFF") .. ". /xui chat on|off|reset|move|history|wrap|settings"):gsub("|", "||")))
+        ns.Print((("Chat Panel: " .. (s.enabled and (why and ("blocked: " .. why) or "ON") or "OFF") .. ". /xui chat on|off|reset|move|history|wrap|indent|settings"):gsub("|", "||")))
         local names = {}
         for k in pairs(C.applied) do names[#names + 1] = k end
         table.sort(names)
@@ -314,5 +345,5 @@ end
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
 ns.WhenReady(ns.Chat_OnDBReady)
-ns.RegisterCommand("chat", function(arg) C.Command(arg) end, "/xui chat (Chat Panel: on, off, reset, move, history, wrap, settings)")
+ns.RegisterCommand("chat", function(arg) C.Command(arg) end, "/xui chat (Chat Panel: on, off, reset, move, history, wrap, indent, settings)")
 ns.RegisterCommand("panel", function() if C.OpenSettings then C.OpenSettings("bar") end end, "/xui panel (Chat Bar settings)")
