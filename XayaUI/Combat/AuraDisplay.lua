@@ -44,7 +44,8 @@ ns.AuraDisplay = D
 -- State
 -------------------------------------------------------------------------------
 local groups = {}      -- [folderId] = { frame, ok, err, ids = {spellID=true}, n, members = {rule...}, sig }
-local singles = {}     -- [parentRule] = { frame, ok, err, host, kind, display }
+local singles = {}     -- [parentRule] = { frame, ok, err, host, kind, display, single = true }
+local extras = {}      -- [displayCue] = the same, for a rule's OTHER display cues that show time / stacks (one slot each, #347)
 local owned = setmetatable({}, { __mode = "k" })   -- [rule] = slot record (a parent and its cues), rebuilt with every build
 local left = {}        -- displays the engine does not draw: { rule, reason }
 local pendingBuild, lastError
@@ -81,10 +82,14 @@ local function ParentOf(rule)
 end
 
 -- The rule whose display XayaUI draws: the first cue with a display switched on, else the rule's own display.
+local function IsDisplay(r)
+    if not (r and r.visual and r.visual.enabled) then return false end
+    return (not ns.KindHas) or ns.KindHas(r, "visual")   -- what Engine.lua DisplayWanted requires too
+end
 local function DisplayOf(p)
     local cues = ns.CuesOf and ns.CuesOf(p) or {}
-    for _, c in ipairs(cues) do if c.visual and c.visual.enabled then return c end end
-    if p.visual and p.visual.enabled then return p end
+    for _, c in ipairs(cues) do if IsDisplay(c) then return c end end
+    if IsDisplay(p) then return p end
     return nil
 end
 -- XayaUI's own size for a display (Visual.lua RefreshVisual: at least 8, 128 when unset)
@@ -145,6 +150,14 @@ local function Classify(p)
         if type(p.buffAlt) == "table" then for _, a in ipairs(p.buffAlt) do a = tonumber(a); if a and a > 0 then ids[a] = true end end end
         return { kind = "buff", unit = "player", filter = "HELPFUL", ids = ids, display = display, trigger = trigger }
     end
+    -- a rule whose only trigger is one "Buff / Aura (another)" row (the built-in one removed): the same as the built-in Buff / Aura
+    if #rows == 1 and type(rows[1]) == "table" and rows[1].type == "buffAura" and not p.useBuff and buffID == 0 and not NeedsCooldown(p) then
+        local id = tonumber(rows[1].spellID) or 0
+        if id <= 0 then return nil, "" end
+        if rows[1].state == "no" then return nil, "shows while the aura is MISSING (the engine can only draw auras that are up)" end
+        if trigger ~= "condition" then return nil, "its display has no 'show when' choice" end
+        return { kind = "buff", unit = "player", filter = "HELPFUL", ids = { [id] = true }, display = display, trigger = trigger }
+    end
     -- a rule whose only trigger is one "Target Debuff (yours)" row
     if #rows == 1 and type(rows[1]) == "table" and rows[1].type == "targetDebuff" and not NeedsCooldown(p) then
         local t = rows[1]
@@ -183,7 +196,14 @@ end
 
 -- XayaUI's own answer to "may this display show now?" apart from the aura itself: load and talent settings, as the engine's
 -- last step found them (a display that shows only "when the aura is up" ignores load in XayaUI too).
-local function Allowed(p, trigger)
+-- "Only while on an action bar" is followed too (Engine.lua DisplayWanted hides such a display whatever its trigger).
+local function Allowed(p, display, trigger)
+    local v = display and display.visual
+    if v and v.requireOnBar and ns.SpellOnActionBar then
+        local id = tonumber(p.spellID) or 0
+        if id == 0 then id = tonumber(p.buffID) or 0 end
+        if id ~= 0 and not ns.SpellOnActionBar(id) then return false end
+    end
     if trigger ~= "condition" then return true end
     local rt = ns.runtime and ns.runtime[p]
     local info = rt and rt.info
@@ -192,7 +212,7 @@ local function Allowed(p, trigger)
 end
 
 -- Effects XayaUI draws itself that the container cannot (said per rule by /xuiengine, so nothing differs silently).
-local function Drops(p, display, single)
+local function Drops(p, display, single, slot)
     local out = {}
     local v = (display and display.visual) or {}
     local f = v.fill
@@ -203,6 +223,10 @@ local function Drops(p, display, single)
     if v.flash and v.flash.enabled then out[#out + 1] = "flash" end
     if v.glow then out[#out + 1] = "glow" end
     if v.desatOnCD then out[#out + 1] = "grey on cooldown" end
+    -- the container cannot draw these two; a single slot gets them from XayaUI's companion texts, a group's icons do not
+    if not single and v.absorb and v.absorb.enabled then out[#out + 1] = "shield amount text (drawn only for a display on its own, not inside a group)" end
+    if not single and v.count and v.count.enabled and ns.Val and ns.Val(v.count.source) == "charges" then out[#out + 1] = "spell charges text (drawn only for a display on its own)" end
+    if v.text and v.text.enabled and slot and slot.fmtFallback then out[#out + 1] = "time text in the game's own format (XayaUI's format could not be set up in this client)" end
     if not single and display then   -- (single slots leave the rule's other display cues to XayaUI, see Own)
         local n = 0
         for _, c in ipairs(ns.CuesOf and ns.CuesOf(p) or {}) do if c ~= display and c.visual and c.visual.enabled then n = n + 1 end end
@@ -235,10 +259,25 @@ function ns.EngineOwns(rule)
     local slot = owned[rule]
     return (slot and slot.ok) and true or false
 end
+-- Does a display the engine draws on its own need XayaUI's companion texts (Visual.lua): a shield amount, or spell charges as its
+-- count? The container draws icon, time, drain and aura stacks only.
+local function NeedsCompanion(v)
+    if type(v) ~= "table" then return false end
+    if v.absorb and v.absorb.enabled then return true end
+    return (v.count and v.count.enabled and ns.Val and ns.Val(v.count.source) == "charges") and true or false
+end
+function ns.EngineCompanion(rule)
+    local slot = owned[rule]
+    if not (slot and slot.ok and slot.single and slot.spec and slot.spec.display == rule) then return false end
+    return NeedsCompanion(rule.visual)
+end
 -- A slot owns the rule and the display it draws. 0.6.2 (#347): a single slot no longer owns the rule's OTHER display cues (a separate
 -- Text cue with the duration / shield amount, a second texture): the container cannot draw them, and owning them hid them, so they
 -- vanished in game while the preview showed them. They stay with XayaUI, placed where XayaUI puts them. In a dynamic group they
 -- stay owned (hidden), because XayaUI's own group layout would place them as extra items; /xuiengine says so (Drops).
+-- 0.6.3: of those other display cues, the ones showing time / stacks / a drain get a slot of their own (ExtraDisplays, D.Build) when
+-- only the rule's trigger decides them; owned[cue] then points at that slot. A shield amount or charges count on any single slot is
+-- drawn by XayaUI's companion text (ns.EngineCompanion).
 local function Own(slot, p, single)
     owned[p] = slot
     local display = slot and slot.spec and slot.spec.display
@@ -313,7 +352,16 @@ local function FitArt(region, btn, v, single)
     end
 end
 
-local function ButtonInit(w, h, display, single)
+-- A container text styled like XayaUI's (ns.StyleText); a font is set first, so the text can never be left without one.
+local function Style(fs, btn, t, default, font)
+    fs:SetFont(font, 12, "OUTLINE")
+    if ns.StyleText and pcall(ns.StyleText, fs, btn, t, default) then return end
+    fs:SetFont(font, tonumber(t.size) or 12, "OUTLINE")
+    fs:ClearAllPoints()
+    fs:SetPoint(default, btn, default, tonumber(t.x) or 0, tonumber(t.y) or 0)
+end
+
+local function ButtonInit(w, h, display, single, rec)
     local v = (display and display.visual) or {}
     local zoom = 0.08 + (tonumber(v.zoom) or 0)
     local tx, cn = v.text or {}, v.count or {}
@@ -353,16 +401,22 @@ local function ButtonInit(w, h, display, single)
         cd:SetAllPoints(btn)
         cd:SetDrawSwipe(false); cd:SetDrawEdge(false); cd:SetHideCountdownNumbers(true)
         btn:SetDurationCooldown(cd)
-        if tx.enabled ~= false then
+        -- texts: shown exactly when XayaUI shows them (switched on), styled by XayaUI's own text routine (font, size, outline,
+        -- colour, inner / outer place), and the time in XayaUI's own format when the game accepts it (Visual.lua TimeFormatter)
+        if tx.enabled then
             local fs = btn:CreateFontString(nil, "OVERLAY")
-            fs:SetFont(font, tonumber(tx.size) or 11, "OUTLINE")
-            fs:SetPoint(tx.anchor or "CENTER", btn, tx.anchor or "CENTER", tonumber(tx.x) or 0, tonumber(tx.y) or 0)
-            btn:SetDurationText(fs, {})
+            Style(fs, btn, tx, "CENTER", font)
+            local fmt = ns.TimeFormatter and ns.TimeFormatter(tx.decimals, tx.decimalBelow)
+            local okF = fmt and pcall(btn.SetDurationText, btn, fs, { textFormatter = fmt })
+            if not okF then
+                if rec then rec.fmtFallback = true end   -- said by /xuiengine for this slot
+                btn:SetDurationText(fs, {})
+            end
         end
-        if cn.enabled ~= false then
+        -- aura stacks only: a count set to show spell CHARGES is drawn by XayaUI's companion text (the container counts stacks)
+        if cn.enabled and not (ns.Val and ns.Val(cn.source) == "charges") then
             local fs = btn:CreateFontString(nil, "OVERLAY")
-            fs:SetFont(font, tonumber(cn.size) or 11, "OUTLINE")
-            fs:SetPoint(cn.anchor or "BOTTOMRIGHT", btn, cn.anchor or "BOTTOMRIGHT", tonumber(cn.x) or 0, tonumber(cn.y) or 0)
+            Style(fs, btn, cn, "BOTTOMRIGHT", font)
             btn:SetApplicationCount(fs, {})
         end
     end
@@ -371,7 +425,7 @@ end
 -- Create a container. The template is an AuraContainer widget: created as a plain "Frame" its built-in OnLoad never runs and
 -- Blizzard's own OnLoad errors with "attempt to index field 'dirtyFlags'" (seen in game, engine 0.3.0).
 local containerN = 0
-local function NewContainer(unit, filter, ids, w, h, sp, display, maxCount, single)
+local function NewContainer(unit, filter, ids, w, h, sp, display, maxCount, single, rec)
     if C_AddOns and C_AddOns.LoadAddOn then pcall(C_AddOns.LoadAddOn, "Blizzard_AuraContainer") end
     containerN = containerN + 1
     local c = CreateFrame("AuraContainer", "XayaUIEngine" .. containerN, UIParent, "CustomAuraContainerTemplate")
@@ -383,7 +437,7 @@ local function NewContainer(unit, filter, ids, w, h, sp, display, maxCount, sing
         sortDirection = AuraContainerSortDirection.Normal,
         maxFrameCount = maxCount,
         layout = { elementSpacing = sp, lineSpacing = sp, elementWidth = w, elementHeight = h },
-        initializeFrame = ButtonInit(w, h, display, single),
+        initializeFrame = ButtonInit(w, h, display, single, rec),
     })
     return c
 end
@@ -490,7 +544,8 @@ local function BuildGroup(fo, members)
     local limit = WrapLimit(fo, axis == AnchorUtil.FlowLayoutAxis.Horizontal, iw, ih, sp)
     local ok, err = pcall(function()
         if not g.frame then
-            g.frame = NewContainer("player", "HELPFUL", g.ids, iw, ih, sp, display, math.huge)
+            g.fmtFallback = nil
+            g.frame = NewContainer("player", "HELPFUL", g.ids, iw, ih, sp, display, math.huge, false, g)
         else
             g.frame:SetAuraGroupCandidateFilters("main", { includeSpellIDs = g.ids })
             g.frame:SetAuraGroupLayout("main", { elementSpacing = sp, lineSpacing = sp, elementWidth = iw, elementHeight = ih })
@@ -508,6 +563,10 @@ local function BuildGroup(fo, members)
     return g
 end
 
+local function ColorKey(c)
+    if type(c) ~= "table" then return "-" end
+    return tostring(c[1]) .. "," .. tostring(c[2]) .. "," .. tostring(c[3]) .. "," .. tostring(c[4])
+end
 -- Everything about a display's look that is baked into its slot's buttons (an edit to any of it makes a new slot)
 local function LookKey(display)
     local v = display.visual or {}
@@ -517,14 +576,17 @@ local function LookKey(display)
         tostring(v.alpha), tostring(v.desaturate), tostring(tn[1]), tostring(tn[2]), tostring(tn[3]), tostring(tn[4]),
         tostring(f.enabled), tostring(f.dir), tostring(f.reverse), tostring(bg.enabled), tostring(bc[1]), tostring(bc[2]), tostring(bc[3]), tostring(bc[4]),
         tostring(t.enabled), tostring(t.size), tostring(t.anchor), tostring(t.x), tostring(t.y),
+        tostring(t.font), tostring(t.outline), tostring(t.place), tostring(t.decimals), tostring(t.decimalBelow), ColorKey(t.color),
         tostring(c.enabled), tostring(c.size), tostring(c.anchor), tostring(c.x), tostring(c.y),
+        tostring(c.font), tostring(c.outline), tostring(c.place), tostring(c.source), ColorKey(c.color),
         tostring(display.spellID), tostring(display.buffID), tostring(v.iconSrc), tostring(v.iconPath), tostring(v.iconSpell), tostring(v.iconItem), tostring(v.iconW), tostring(v.iconH), tostring(v.keepAspect) }, "|")
 end
 
-local function BuildSingle(p, spec)
-    local s = singles[p] or {}
-    singles[p] = s
-    s.spec, s.ok, s.serial = spec, false, serial
+local function BuildSingle(p, spec, store, key)
+    store, key = store or singles, key or p
+    local s = store[key] or {}
+    store[key] = s
+    s.spec, s.ok, s.serial, s.single, s.parent = spec, false, serial, true, p
     local display = spec.display
     local host = ns.DisplayFrame and ns.DisplayFrame(display)
     if not host then Fail(s, "XayaUI has no frame for this display") return s end
@@ -536,7 +598,8 @@ local function BuildSingle(p, spec)
         local look = LookKey(display)
         if s.frame and (s.unit ~= spec.unit or s.filter ~= spec.filter or s.w ~= w or s.h ~= h or s.look ~= look) then s.frame:Hide(); s.frame = nil end
         if not s.frame then
-            s.frame = NewContainer(spec.unit, spec.filter, spec.ids, w, h, 0, display, 1, true)
+            s.fmtFallback = nil
+            s.frame = NewContainer(spec.unit, spec.filter, spec.ids, w, h, 0, display, 1, true, s)
             s.unit, s.filter, s.w, s.h, s.look = spec.unit, spec.filter, w, h, look
         else
             s.frame:SetAuraGroupCandidateFilters("main", { includeSpellIDs = spec.ids })
@@ -551,6 +614,23 @@ local function BuildSingle(p, spec)
     end)
     if ok then s.ok, s.err = true, nil else Fail(s, err) end
     return s
+end
+
+-- A rule's OTHER display cues that show time or stacks (a separate Text cue with the duration, a second icon with a drain) get a slot
+-- of their own, so they are exact in combat too (#347). Only when nothing but the rule's trigger decides them: a rule with conditions
+-- switches its cues one by one, which the container cannot follow, so those stay with XayaUI (its duration estimate).
+local function ExtraDisplays(p, spec)
+    local out = {}
+    if ns.ConditionsOf and #ns.ConditionsOf(p) > 0 then return out end
+    for _, c in ipairs(ns.CuesOf and ns.CuesOf(p) or {}) do
+        if c ~= spec.display and IsDisplay(c) then
+            local v = c.visual
+            if (v.text and v.text.enabled) or (v.fill and v.fill.enabled) or (v.count and v.count.enabled and not (ns.Val and ns.Val(v.count.source) == "charges")) then
+                out[#out + 1] = c
+            end
+        end
+    end
+    return out
 end
 
 local function RefreshCore()
@@ -611,10 +691,24 @@ function D.Build()
     for p, s in pairs(singles) do
         if not wantSingle[p] then s.ok = false; if s.frame then s.frame:Hide() end end
     end
+    local wantExtra = {}
     for p, spec in pairs(wantSingle) do
         local s = BuildSingle(p, spec)
         Own(s, p, true)
-        if not s.ok then left[#left + 1] = { p, "failed: " .. tostring(s.err) } end
+        if not s.ok then
+            left[#left + 1] = { p, "failed: " .. tostring(s.err) }
+        else
+            -- the rule's other time / stack displays: one slot each, same aura, sized and placed like that display
+            for _, c in ipairs(ExtraDisplays(p, spec)) do
+                local es = { kind = spec.kind, unit = spec.unit, filter = spec.filter, ids = spec.ids, display = c, trigger = c.visual.trigger }
+                local x = BuildSingle(p, es, extras, c)
+                wantExtra[c] = true
+                if x.ok then owned[c] = x else left[#left + 1] = { c, "failed: " .. tostring(x.err) } end
+            end
+        end
+    end
+    for c, x in pairs(extras) do
+        if not wantExtra[c] then x.ok = false; if x.frame then x.frame:Hide() end end
     end
     D.SyncLive()
     RefreshCore()
@@ -623,11 +717,14 @@ end
 -------------------------------------------------------------------------------
 -- Live sync (4 times a second): load / talent answers and unlock state. Cheap: no allocation unless something changed.
 -------------------------------------------------------------------------------
+local STORES = { singles, extras }
 function D.SyncLive()
-    for p, s in pairs(singles) do
-        if s.ok and s.frame then
-            local show = Allowed(p, s.spec.trigger) and not RuleUnlocked(s.spec.display)
-            if s.frame:IsShown() ~= show then pcall(s.frame.SetShown, s.frame, show) end
+    for _, store in ipairs(STORES) do
+        for _, s in pairs(store) do
+            if s.ok and s.frame then
+                local show = Allowed(s.parent, s.spec.display, s.spec.trigger) and not RuleUnlocked(s.spec.display)
+                if s.frame:IsShown() ~= show then pcall(s.frame.SetShown, s.frame, show) end
+            end
         end
     end
     for fid, g in pairs(groups) do
@@ -635,7 +732,7 @@ function D.SyncLive()
             -- the group's filter holds the members that may show now; it is rewritten only when one of them changes
             local changed = g.dirty
             for i, m in ipairs(g.members) do
-                local a = Allowed(m.rule, m.spec.trigger)
+                local a = Allowed(m.rule, m.spec.display, m.spec.trigger)
                 if g.allowed[i] ~= a then g.allowed[i] = a; changed = true end
             end
             if changed then
@@ -680,7 +777,7 @@ function D.Status()
                 if mixed then Say("   (icons in this group have different sizes; the engine draws them all at the first one's size)") end
                 if #g.members > 1 then Say("   (icon order follows the game's aura order" .. ((fo.cSort == "asc" or fo.cSort == "desc") and ", not the group's name sort" or ", not the rule list") .. ")") end
                 for _, m in ipairs(g.members) do
-                    local d = Drops(m.rule, m.spec.display)
+                    local d = Drops(m.rule, m.spec.display, false, g)
                     if #d > 0 then Say("   " .. tostring(m.rule.name) .. ": " .. table.concat(d, "; ")) end
                 end
             end
@@ -691,12 +788,21 @@ function D.Status()
             nS = nS + 1
             if s.ok then
                 nSOk = nSOk + 1
-                local d = Drops(p, s.spec.display, true)
+                local d = Drops(p, s.spec.display, true, s)
                 if #d > 0 then Say("   " .. tostring(p.name) .. " (on its own): " .. table.concat(d, "; ")) end
             end
         end
     end
-    Say(string.format("Engine draws: %d group%s (%d rules) and %d rule%s on their own.", nG, nG == 1 and "" or "s", nGRules, nSOk, nSOk == 1 and "" or "s"))
+    local nX = 0
+    for c, x in pairs(extras) do
+        if x.serial == serial and x.ok then
+            nX = nX + 1
+            local d = Drops(x.parent, c, true, x)
+            if #d > 0 then Say("   " .. tostring(c.name) .. " (extra display of " .. tostring(x.parent and x.parent.name) .. "): " .. table.concat(d, "; ")) end
+        end
+    end
+    Say(string.format("Engine draws: %d group%s (%d rules) and %d rule%s on their own%s.", nG, nG == 1 and "" or "s", nGRules, nSOk, nSOk == 1 and "" or "s",
+        nX > 0 and string.format(", plus %d separate time / stack display%s of those rules", nX, nX == 1 and "" or "s") or ""))
     if #left > 0 then
         -- grouped by reason, so a long list stays readable; every display XayaUI keeps is counted
         local byWhy, order = {}, {}
@@ -826,16 +932,32 @@ if C_Timer and C_Timer.NewTicker then
     C_Timer.NewTicker(5, function() pcall(GuardCheck) end)
 end
 
+-- Blizzard's container does not follow a new target / focus on its own: Blizzard_AuraContainer.lua says UpdateAllAuras is
+-- "exposed to allow external events to trigger refreshes where needed (e.g. target changes)", and its own target frame calls it on
+-- PLAYER_TARGET_CHANGED. Without this a "Target Debuff (yours)" slot kept showing the previous target's debuff.
+local function RefreshUnit(unit)
+    for _, store in ipairs(STORES) do
+        for _, s in pairs(store) do
+            if s.ok and s.frame and s.unit == unit and s.frame.UpdateAllAuras then pcall(s.frame.UpdateAllAuras, s.frame) end
+        end
+    end
+end
+D.RefreshUnit = RefreshUnit
+
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_ENTERING_WORLD")
 ev:RegisterEvent("PLAYER_REGEN_ENABLED")
 ev:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+ev:RegisterEvent("PLAYER_TARGET_CHANGED")
+ev:RegisterEvent("PLAYER_FOCUS_CHANGED")
 ev:SetScript("OnEvent", function(_, event, unit)
+    if event == "PLAYER_TARGET_CHANGED" then RefreshUnit("target"); return end
+    if event == "PLAYER_FOCUS_CHANGED" then RefreshUnit("focus"); return end
     if event == "PLAYER_REGEN_ENABLED" and not pendingBuild then return end
     if event == "PLAYER_SPECIALIZATION_CHANGED" and unit and unit ~= "player" then return end
     pcall(D.Build)
 end)
 
 -- for tests
-D._groups, D._singles, D._owned = groups, singles, owned
+D._groups, D._singles, D._owned, D._extras = groups, singles, owned, extras
 function D._Left() return left end

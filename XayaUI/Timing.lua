@@ -145,6 +145,9 @@ local function Needs(p)
                 needs.display = needs.display or d
             end
             if v.count and v.count.enabled then needs.displayCount = true end
+            -- 12.1.5: the shield amount is always secret; the game helper that hides a zero cannot also abbreviate
+            local ab = v.absorb
+            if ab and ab.enabled and ab.abbreviate ~= false and ab.hideZero then needs.absorbZero = true end
         end
     end
     return needs
@@ -167,7 +170,15 @@ function T.Report()
                     else parts[#parts + 1] = "display: XayaUI, using the time below" end
                 end
                 if needs["n:buffRemain"] or (needs.display and not owned) then
-                    if buff == 0 then parts[#parts + 1] = "aura time: no aura on this rule"
+                    if buff == 0 then
+                        local row
+                        for _, t in ipairs(type(p.extra) == "table" and type(p.extra.list) == "table" and p.extra.list or {}) do
+                            if type(t) == "table" and (t.type == "buffAura" or t.type == "targetDebuff") then row = t.type; break end
+                        end
+                        if not row and spell ~= 0 then parts[#parts + 1] = "display time: the spell's cooldown, counted down by the game (exact, in combat too)"
+                        elseif not row then parts[#parts + 1] = "aura time: no aura on this rule"
+                        elseif owned then parts[#parts + 1] = "aura time: from its aura trigger row, drawn by the game (exact)"
+                        else parts[#parts + 1] = "aura time: from its " .. (row == "targetDebuff" and "Target Debuff" or "Buff / Aura") .. " row out of combat; hidden in combat (the combat engine draws it only when that row is the rule's only trigger)" end
                     elseif ns.AuraTrackable and ns.AuraTrackable(buff) then parts[#parts + 1] = "aura time: exact (the game never hides this aura)"
                     else
                         local inCDM = ns.FindCDMFrame and ns.FindCDMFrame(buff)
@@ -187,6 +198,7 @@ function T.Report()
                 end
                 if needs["n:buffStacks"] then bad = true; parts[#parts + 1] = "aura stacks: the game hides stack counts in combat, so a condition on stacks cannot fire there (the display still shows them)" end
                 if needs["n:cdCharges"] then parts[#parts + 1] = "charges: exact when shown" end
+                if needs.absorbZero then parts[#parts + 1] = "shield amount: a zero shows as '0' (the game hides the amount and cannot both abbreviate and hide a zero; switch Abbreviate off to hide zeros)" end
                 if bad then warn = warn + 1 else ok = ok + 1 end
                 rows[#rows + 1] = { bad, tostring(p.name) .. ": " .. table.concat(parts, "; ") }
             end

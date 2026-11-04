@@ -113,7 +113,7 @@ function ns.EvaluateCue(rule, ctx)
     local p = ns.FindParentRule(rule)
     if not p then info.missing[1] = "parent rule not found"; info.result = false; return false, info end
     local pr, pi = ns.Evaluate(p, ctx)
-    info.cd, info.present, info.buffSource, info.buffRef = pi.cd, pi.present, pi.buffSource, pi.buffRef
+    info.cd, info.present, info.buffSource, info.buffRef, info.auraRef = pi.cd, pi.present, pi.buffSource, pi.buffRef, pi.auraRef
     if rule.spellID ~= p.spellID then rule.spellID = p.spellID end
     if rule.buffID ~= p.buffID then rule.buffID = p.buffID end
     if rule.maxCharges ~= p.maxCharges then rule.maxCharges = p.maxCharges end
