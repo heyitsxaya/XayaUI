@@ -669,18 +669,27 @@ local function RenderSections(c, m, tab, y0)
                         lb:SetSize(lw, size + 6)
                         Rec("hit", 0, y, lw, size + 6, it.key)
                         y = y + math.max(rowH, size + 6) + 2
+                    elseif v == nil or v == "" then
+                        -- a line with no value (a spell: its name and ID, #380) uses the whole width
+                        local lh = PlaceFS(FS(), 0, y, W, size, it.label, it.minor and cMuted or cText, "LEFT", true, "label")
+                        y = y + lh + 1
                     else
                         local lw = math.floor(W * 0.5)
                         local lh = PlaceFS(FS(), 0, y, lw - 4, size, it.label, it.minor and cMuted or cText, "LEFT", true, "label")
                         local vh = PlaceFS(FS(), lw, y, W - lw, size, v, ToneColor(tone, cText), "RIGHT", true, "value")
                         y = y + math.max(lh, vh) + 1
                     end
+                    -- detail lines: one size smaller and muted, except an item that asks for full-size ones (spell math, #378: Xaya
+                    -- found them "way too tiny"); those also give the value 70% of the width so "83.1% of attack power; 1 Agility = +0.83"
+                    -- stays on one line
+                    local big = it.bigPairs == true
+                    local psz, pcol, frac = big and size or size - 1, big and cText or cMuted, big and 0.3 or 0.5
                     for _, p in ipairs(it.pairs or {}) do
                         if not short or p.short then
                             local x0 = 12
-                            local lw = math.floor((W - x0) * 0.5)
-                            local lh = PlaceFS(FS(), x0, y, lw - 4, size - 1, p.label, cMuted, "LEFT", true, "pairLabel")
-                            local vh = PlaceFS(FS(), x0 + lw, y, W - x0 - lw, size - 1, tostring(p.value), ToneColor(p.tone, cText), "RIGHT", true, "pairValue")
+                            local lw = math.floor((W - x0) * frac)
+                            local lh = PlaceFS(FS(), x0, y, lw - 4, psz, p.label, pcol, "LEFT", true, "pairLabel")
+                            local vh = PlaceFS(FS(), x0 + lw, y, W - x0 - lw, psz, tostring(p.value), ToneColor(p.tone, cText), "RIGHT", true, "pairValue")
                             y = y + math.max(lh, vh) + 1
                         end
                     end

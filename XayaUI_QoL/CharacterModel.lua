@@ -1574,8 +1574,11 @@ local function Note(key, label, value)
 end
 
 local function SpellItem(s, desc, nums, kind, refs, primary)
-    local it = Item("spell" .. s.id, SpellName(s.id))
-    it.value = "#" .. s.id
+    -- the spell ID beside the name, labelled (#380, Xaya: "Spell ID: " next to the name instead of "#N" at the right edge); the
+    -- line has no value of its own, so the name and its ID use the whole width
+    local it = Item("spell" .. s.id, SpellName(s.id) .. "   |cff9a9aa0Spell ID: " .. s.id .. "|r")
+    it.value, it.spellID = "", s.id
+    it.bigPairs = true   -- #378 (Xaya: "way too tiny"): its number lines at the panel's text size, in the text colour, value column wider
     local ref = (s.base == "sp") and refs.sp or refs.ap
     local refName = (s.base == "sp") and "spell power" or "attack power"
     if not desc or desc == "" then
