@@ -1177,6 +1177,7 @@ ev:SetScript("OnEvent", function(_, event, _, _, spellID)
         local now = GetTime()
         castLog.any = now
         if issecret(spellID) or spellID == nil then castLog.unknown = now else castLog[spellID] = now end
+        if ns.NoteChargeCast and not issecret(spellID) then ns.NoteChargeCast(spellID, now) end
     end
     if ns.MarkStateDirty then ns.MarkStateDirty() end
 end)

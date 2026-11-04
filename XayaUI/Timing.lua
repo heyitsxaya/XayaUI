@@ -45,12 +45,19 @@ local function OnAlertEvent(self, event)
     if event == CDM_EVENT.OnAuraApplied then self.xuiAppliedAt, self.xuiRemovedAt = now, nil
     elseif event == CDM_EVENT.OnAuraRemoved then self.xuiRemovedAt = now
     elseif event == CDM_EVENT.OnCooldown then self.xuiCdStartAt, self.xuiCdReadyAt = now, nil
-    elseif event == CDM_EVENT.Available then self.xuiCdReadyAt = now end
+    elseif event == CDM_EVENT.Available then self.xuiCdReadyAt = now
+    elseif event == CDM_EVENT.ChargeGained then   -- a charge came back (Conditions.lua counts charges in combat with these)
+        local l = self.xuiChargeGains
+        if not l then l = {}; self.xuiChargeGains = l end
+        l[#l + 1] = now
+        if #l > 12 then table.remove(l, 1) end
+    end
     if ns.MarkStateDirty then ns.MarkStateDirty() end
 end
 local function OnAuraUpdated(self) self.xuiUpdatedAt = GetTime() end
 local function OnReassigned(self)   -- a pooled icon now stands for another spell: its old moments are not this spell's
     self.xuiAppliedAt, self.xuiRemovedAt, self.xuiUpdatedAt, self.xuiCdStartAt, self.xuiCdReadyAt = nil, nil, nil, nil, nil
+    self.xuiChargeGains = nil
 end
 
 -- Called for every Cooldown Manager icon the condition reader indexes (Conditions.lua BuildCDMIndex).
@@ -197,7 +204,7 @@ function T.Report()
                     else parts[#parts + 1] = string.format("cooldown time: exact when shown, else estimate (measured %.1fs)", Lc[spell]) end
                 end
                 if needs["n:buffStacks"] then bad = true; parts[#parts + 1] = "aura stacks: the game hides stack counts in combat, so a condition on stacks cannot fire there (the display still shows them)" end
-                if needs["n:cdCharges"] then parts[#parts + 1] = "charges: exact out of combat; in combat exact at full charges, and for 2-charge spells also at 1 and 0" end
+                if needs["n:cdCharges"] then parts[#parts + 1] = "charges: exact out of combat; in combat counted from your casts (exact at 0, full, and for 2-charge spells; 3+ charges need the spell in the Cooldown Manager)" end
                 if needs.absorbZero then parts[#parts + 1] = "shield amount: a zero shows as '0' (the game hides the amount and cannot both abbreviate and hide a zero; switch Abbreviate off to hide zeros)" end
                 if bad then warn = warn + 1 else ok = ok + 1 end
                 rows[#rows + 1] = { bad, tostring(p.name) .. ": " .. table.concat(parts, "; ") }
