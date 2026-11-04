@@ -4,7 +4,7 @@ f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 d32239bcb673463ab874e80d47fae504  LICENSE
 9fb72bc013ddddedd5844ddefdcba078  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
-36ef7ce2b70eb245827ec6d883c9425b  ROADMAP.md
+cae6e603d20be1ec39ea86e8c64437b2  ROADMAP.md
 f283bc83a499e253705c4ac13c9b8d5b  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 fbf7340c33f5aa5b8b46ceb37ecd04d8  USER-GUIDE.md
@@ -399,6 +399,7 @@ b6081ac7220230557d672c454f40d570  debug-log/2026-11-04-1550-terms-check-blizzard
 aa36ea0e45fe22048f67fc5bb759e41d  debug-log/2026-11-04-1630-chat-history-button-tabs-gutter-0.6.8.md
 31b8add0951df007f1a8bb0a6c92bff5  debug-log/2026-11-04-1650-group-page-buttons-tabs-options-0.6.19.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
+9630e7d5d644d64200e6651a11814153  docs/plans/REFERENCE-SCREENS-AND-FEASIBILITY-2026-11-04.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 40cbf03f1bb153e7f09fb1fa7f51f9fa  docs/process/IN-GAME-DATA-2026-11-05.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
