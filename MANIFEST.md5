@@ -5,12 +5,12 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-260099393f1fad74785972e5e61b1af7  QA-CHECKLIST.md
+c9393ca2fd9ec5e319dc5d231c7a6917  QA-CHECKLIST.md
 a54d403da833eefe5b3661b57270da58  README.md
 b8830af74b74d3bd040661448e9ff565  ROADMAP.md
 795543b7edf9a1e47a284d967c0fc4bf  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-c7e71a660496b05cda95302a62b6d5ea  USER-GUIDE.md
+74cab11ccb896c8038ab8ca8493acaf8  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
@@ -22,7 +22,7 @@ eb3d3f5b6edd7c7791b48e2e8f6a62c1  XayaUI/Combat/AuraDisplay.lua
 37fa5175736d02a8aa486c64e9e6c143  XayaUI/Combat/AuraTracker.lua
 d9d202afce65354b4aaf84ffcd8f67aa  XayaUI/Combat/README.md
 30e5f32b2444eb29c1fb0060f1ef9758  XayaUI/Compat.lua
-a82c9aecc5005490226c88cdadcb99ce  XayaUI/Conditions.lua
+f54e1ea30fe3c670ca3804cf167c67c5  XayaUI/Conditions.lua
 96f92f64997a08afd03007f16642ad86  XayaUI/Console.lua
 e5f8763a88bd587ce8cdcdb77317794e  XayaUI/Core.lua
 31ca10718b57a4b0c5b1d5d91646454d  XayaUI/Cues.lua
@@ -94,17 +94,17 @@ e94cfc0c3fc54c4e5188a7aadaf41d90  XayaUI/Media/UI/xui_progresstex.tga
 30d50e1964ffdb6d81b4e902ecb5accd  XayaUI/Media/UI/xui_text.tga
 97e47b6ce28ec4d1218ae800136c1e97  XayaUI/MinimapButton.lua
 4f50e1ee7a3e7349880d5c8d3fcf1570  XayaUI/Modules.lua
-fbbd157c8fff91318ac28c4dbed71850  XayaUI/Outcomes.lua
+4d8ad946f49670227ad922e5188af7bd  XayaUI/Outcomes.lua
 b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 454d9c7477395f84a1f31950034b8c75  XayaUI/Sound.lua
 46f77b8a678f39da1db320a4883ae59f  XayaUI/TalentDump.lua
 7d0e35ac661d1db2569cdea98562ba17  XayaUI/TextureList.lua
 2bf4d9dac09dbaaeb00c82fab7753069  XayaUI/Theme.lua
-078ed15ea152c03a8a8f55311aac20eb  XayaUI/Timing.lua
-581f0a3c7660c2170992a099662de173  XayaUI/Triggers.lua
+b12ed7d37a2bd95286a90e5462422d15  XayaUI/Timing.lua
+3f9a858a808afbf2b84492c8d66080c1  XayaUI/Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  XayaUI/UserMedia.lua
 834e5e4d38c5d202148cf8f740319e25  XayaUI/Visual.lua
-01e9b43794ec741985ec64332d9c4c67  XayaUI/XayaUI.toc
+6018b3fa9ed3c9888455e62c644b089e  XayaUI/XayaUI.toc
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -367,8 +367,9 @@ bf4d7a3942a39d4c4ca50caf6ff07b05  debug-log/2026-11-04-0350-group-sort-manual-or
 e45749c532c7952440c7dbbb773254b5  debug-log/2026-11-04-0425-growth-from-anchor-centered-engine-core-0.6.7.md
 0919c15104022714609369325d583f95  debug-log/2026-11-04-0435-aura-catalogue-and-aura-log-gamedump-0.5.0.md
 d0bf301c612540e4b1f817199444a747  debug-log/2026-11-04-0455-death-and-decay-combat-core-0.6.8.md
+60b82b68c2c140cdfb8b3ae692683ff5  debug-log/2026-11-04-0520-charges-counted-from-casts-core-0.6.9.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
-b9300eaabf88d4ed02373618e27e444b  docs/reference/README.md
+e3efb36a4e9d74055bca045b8e3c107b  docs/reference/README.md
 1b7a634712b11938763d44b6dcead0c7  docs/reference/api/README.md
 459daa9e63696bd8d680b58af1366c02  docs/reference/api/api.json
 493ca3fb932fbd5d8be80dda75368f0a  docs/reference/api/constants.md
@@ -379,6 +380,7 @@ f95e28408de23bcd7d4ba03aed2853a3  docs/reference/api/namespaces.md
 40c1949dc20d3bd13fd2d76414cfcc85  docs/reference/api/structures.md
 285fb874f8d33ea047f7275f6b13e658  docs/reference/api/widgets.md
 9075ea16a84011176e733f817b9bcfb8  docs/reference/build_reference.py
+2d9d5a7e6d9adfc776b7e55344621ce2  docs/reference/charges.md
 abf6edfcffd8bdb89997b8c97fff077f  docs/reference/spells/DEATHKNIGHT.md
 6ee777f2918cf1cbdcac0f3dd7d74996  docs/reference/spells/DEMONHUNTER.md
 ff01e69b320b9fe2978ebcc9c8734a80  docs/reference/spells/DRUID.md
@@ -406,6 +408,7 @@ f7eda1ad57f5575a1f0695e51e870e1f  tests/aura_display_run.py
 80c84f1f7ef017e7f04a6c3be28a3910  tests/aura_sources_run.py
 f115df38e9fbc8e0ce989f9a4184ef18  tests/auras_cmd_run.py
 60a044079eaf5d5b722b73e63e5a90d0  tests/char_toolkit_run.py
+89cf79994c497b2fde1bf512b747993c  tests/charges_combat_run.py
 e6d5c9536965efd1498363c032f66116  tests/chat_run.py
 ffb253eb94301b31c413196ec237d13c  tests/chat_world.lua
 abe22a2816956a2c3babb802857cc524  tests/chatprobe_run.py

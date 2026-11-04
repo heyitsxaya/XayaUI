@@ -6,6 +6,7 @@ The two references to check BEFORE relying on memory or general knowledge for an
 |---|---|---|
 | [`api/`](api/README.md) | Everything that exists in the live game client: every `C_` namespace and its functions, enums with values, `Constants` tables, the methods of each widget type, and the documented global functions. Each name carries Blizzard's documented signature and flags where Blizzard documents it (secret-value rules such as `SecretReturns`, `RequiresNonSecretAura`, `NeverSecret` fields). Events and structures from the documentation. | XayaUI Game Data Capture `/xuidump api`, client 12.1.5 (70783), captured 2026-11-03; Blizzard's generated API documentation 12.1.5 (70688) |
 | [`spells/`](spells/README.md) | Every class, spec, hero tree and talent node (class, spec and hero trees of every spec, 13 classes), each spell's ID, name, ranks, cast time, base cooldown, charges and aura secrecy, and tier sets with their bonus spells. | XayaUI Game Data Capture `/xuidump static` (all-class scan through the game's talent view), built 2026-11-01 |
+| [`charges.md`](charges.md) | The spells the client reported with more than one charge, and the talents whose text changes a spell's charges (with the spell names they mention), by class and spec. | Built from the `spells/` capture by the 0.6.9 charge review, 2026-11-04 |
 
 ## Public version and full version
 This repository is public, so it holds the `--public` build:
