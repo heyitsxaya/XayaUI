@@ -606,10 +606,23 @@ H.SPELL_ACTIVATION_OVERLAY_SHOW = function(_, spellID, overlayFileDataID, locati
     Count("OS")
     Push(e)
 end
+-- A hide with no spell ID carries only its time. In Xaya's open-world run (2026-11-04 11:23-17:09, client 12.1.5.70783) the game sent
+-- 21,685 hides, about two a second, almost all with no ID; as log entries they pushed 22,811 older entries out of the 6,000 kept.
+-- So (Dev Assist 0.7.2) those are only counted: .ohNoID = { n, c (in combat), first, last }; the per-field tally still records them.
 H.SPELL_ACTIVATION_OVERLAY_HIDE = function(_, spellID)
     Begin()
-    local e = Entry("OH")
     local id = V(spellID)
+    if id == nil then
+        Tally("overlay.id", nil)
+        Count("OH")
+        local o = D.ohNoID
+        if type(o) ~= "table" then o = { n = 0, c = 0, first = CUR.t }; D.ohNoID = o end
+        o.n = o.n + 1
+        if CUR.c == true then o.c = o.c + 1 end
+        o.last = CUR.t
+        return
+    end
+    local e = Entry("OH")
     Put(e, "id", id, "overlay.id")
     if type(id) == "number" then e.s = Snap(id) end
     Count("OH")
@@ -1386,6 +1399,9 @@ function P.StatusLines()
         N("AN"), N("RD"), N("RE"), tostring(ctx.restr), tostring(ctx.aurasSecret), tostring(ctx.cdsSecret), tostring(ctx.logging), tostring(ctx.LoggingCombat))
     L[#L + 1] = ("2 glows: glow show %d / hide %d, proc art show %d / hide %d; spell ID %s; glow pairing %d reads (%s)."):format(
         N("GS"), N("GH"), N("OS"), N("OH"), RS("glow.id"), N("GP"), tostring(D.pairTable or "not checked"))
+    if type(D.ohNoID) == "table" then
+        L[#L] = L[#L]:gsub("%.$", "") .. ("; %d proc art hides had no spell ID (counted, not logged)."):format(D.ohNoID.n)
+    end
     local snapSecret = 0
     for k, st in pairs(D.stats) do if k:find("^snap%.") then snapSecret = snapSecret + (st.so or 0) + (st.sc or 0) end end
     L[#L + 1] = ("3 spell state: override %d, icon %d, usable %d, charges %d; %d spell snapshots (%d secret fields)."):format(
