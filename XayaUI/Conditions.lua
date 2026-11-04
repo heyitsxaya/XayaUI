@@ -240,6 +240,9 @@ function ReadCooldownRaw(rule)
     if not ok or type(cd) ~= "table" then r.why = "cooldown unreadable"; return r end
     local cdActive = CleanBool(cd, "isActive")
     local onGCD = CleanBool(cd, "isOnGCD")
+    -- the raw global-cooldown fact, for rules that count it (rule.countGCD, ns.CheckCooldownState). SpellCooldownInfo.isOnGCD: bool?
+    -- · NeverSecret, Nilable (docs/reference/api/structures.md:6549): readable in combat; nil (not given) counts as "not on the GCD"
+    r.onGCD = (onGCD == true)
     local okc, ch = pcall(C_Spell.GetSpellCharges, readID)
     local maxC = okc and CleanNumber(ch, "maxCharges") or nil
     if (not maxC or maxC < 2) and (rule.maxCharges or 0) > 1 then
@@ -286,10 +289,17 @@ function ReadCooldownRaw(rule)
 end
 
 -- Does cdState match? returns true/false/nil(unknown)
+-- rule.countGCD (Xaya 2026-11-04 backlog, from the cooldown-trigger options): while the spell is on the global cooldown it cannot be
+-- cast, so it counts as on cooldown: not ready, no charge available. The shared reading (ns.ReadCooldown, cached per spell for every
+-- rule) is never changed; only this rule's answer is.
 function ns.CheckCooldownState(rule, cdInfo)
     local s = rule.cdState
     if ns.Ignored(s) then return true end
     if not cdInfo or not cdInfo.known then return nil end
+    if rule.countGCD and cdInfo.onGCD then
+        if s == "ready" or s == "hasCharge" then return false end
+        if s == "notReady" or s == "empty" then return true end
+    end
     if s == "ready" then return cdInfo.atMax end
     if s == "notReady" then if cdInfo.atMax == nil then return nil end return not cdInfo.atMax end
     if s == "empty" then return cdInfo.empty end

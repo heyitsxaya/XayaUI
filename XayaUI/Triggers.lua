@@ -262,9 +262,11 @@ Add("cooldown", {
                        notReady = "Not fully ready (on cooldown)", empty = "Empty / on cooldown (experimental for multi-charge)" },
             order = { "ready", "hasCharge", "notReady", "empty" } } },
         { key = "maxCharges", kind = "range", label = "Max charges override (0 = auto-detect)", min = 0, max = 6, step = 1 },
+        { key = "countGCD", kind = "toggle", label = "Count the global cooldown",
+          desc = "Ticked: while the spell is on the global cooldown it counts as on cooldown (not ready, no charge available). Unticked (default): the global cooldown is ignored." },
     },
     check = function(t)
-        local pseudo = { spellID = tonumber(t.spellID), maxCharges = tonumber(t.maxCharges) or 0, cdState = t.state }
+        local pseudo = { spellID = tonumber(t.spellID), maxCharges = tonumber(t.maxCharges) or 0, cdState = t.state, countGCD = t.countGCD and true or nil }
         if not (ns.ReadCooldown and ns.CheckCooldownState) then return nil, "cooldown reader missing" end
         local info = ns.ReadCooldown(pseudo)
         if not info or not info.known then return nil, info and info.why or "cooldown unreadable" end

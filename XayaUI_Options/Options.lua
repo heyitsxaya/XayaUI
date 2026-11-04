@@ -1341,6 +1341,8 @@ local function BuildRule(i, rule)
                 set = function(_, v) rule.spellID = tonumber(v) or 0; Changed(rule); Notify() end,
             },
             cdState = ns.CdStateSelect(rule, on),
+            countGCD = Tog(rule, "countGCD", "Count the global cooldown", 4.5, on,
+                { desc = "Ticked: while this spell is on the global cooldown it counts as on cooldown (not ready, no charge available). Unticked (default): the global cooldown is ignored." }),
             maxCharges = Rng(rule, "maxCharges", "Max charges override (0 = auto)", 5, 0, 6, 1, on,
                 { desc = "Only used if the game reports no charge data. Auto-detection normally wins." }),
             detected = { type = "description", order = 6, width = "full", name = function() return DetectedMax(rule.spellID) end },
