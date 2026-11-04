@@ -1,0 +1,534 @@
+# Warrior talents and spells
+
+Class token `WARRIOR`. Specs: Arms (71), Fury (72), Protection (73).
+
+
+## Class talents (all specs)
+
+- Node 90326
+  - **Impending Victory** (spell 202168, 1 rank, instant, base cooldown 25 s, aura secret in some situations)
+- Node 90328
+  - **War Machine** (spell 262231, 1 rank, passive, instant, aura secret in some situations)
+- Node 90331
+  - **Rallying Cry** (spell 97462, 1 rank, instant, base cooldown 180 s, aura secret in some situations)
+- Node 90332
+  - **Second Wind** (spell 29838, 1 rank, passive, instant, aura secret in some situations)
+- Node 90337
+  - **Storm Bolt** (spell 107570, 1 rank, instant, base cooldown 30 s, aura secret in some situations)
+- Node 90343
+  - **Thunder Clap** (spell 6343, 1 rank, instant, base cooldown 6 s, aura secret in some situations)
+- Node 90344
+  - **Fast Footwork** (spell 382260, 1 rank, passive, instant, aura secret in some situations)
+- Node 90346
+  - **Heroic Leap** (spell 6544, 1 rank, instant, base cooldown 1.5 s, aura secret in some situations)
+- Node 90347
+  - **Barbaric Training** (spell 383082, 1 rank, passive, instant, aura secret in some situations)
+- Node 90348 · choice
+  - **Berserker Shout** (spell 384100, 1 rank, instant, base cooldown 60 s, aura secret in some situations)
+  - **Fearless** (spell 1271925, 1 rank, passive, instant, aura secret in some situations)
+- Node 90351 · choice
+  - **Wrecking Throw** (spell 384110, 1 rank, instant, base cooldown 45 s, aura secret in some situations)
+  - **Shattering Throw** (spell 64382, 1 rank, cast 1.5 s, base cooldown 180 s, aura secret in some situations)
+- Node 90352
+  - **Frothing Berserker** (spell 392792, 1 rank, passive, instant, aura secret in some situations)
+- Node 90353
+  - **Pain and Gain** (spell 382549, 1 rank, passive, instant, aura secret in some situations)
+- Node 90355
+  - **Bounding Stride** (spell 202163, 1 rank, passive, instant, aura secret in some situations)
+- Node 90360
+  - **Wild Strikes** (spell 382946, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90366
+  - **Armored to the Teeth** (spell 384124, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90368
+  - **Reinforced Plates** (spell 382939, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90371
+  - **Leeching Strikes** (spell 382258, 1 rank, passive, instant, aura secret in some situations)
+- Node 90374
+  - **Rumbling Earth** (spell 275339, 1 rank, passive, instant, aura secret in some situations)
+- Node 90375
+  - **Shockwave** (spell 46968, 1 rank, instant, base cooldown 40 s, aura secret in some situations)
+- Node 90378
+  - **Overwhelming Rage** (spell 382767, 1 rank, passive, instant, aura secret in some situations)
+- Node 90380
+  - **Champion's Spear** (spell 376079, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+- Node 90381
+  - **Cruel Strikes** (spell 392777, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90382
+  - **Double Time** (spell 103827, 1 rank, passive, instant, aura secret in some situations)
+- Node 90385
+  - **Spell Reflection** (spell 23920, 1 rank, instant, base cooldown 1 s, aura secret in some situations)
+- Node 95956
+  - **Honed Reflexes** (spell 391271, 1 rank, passive, instant, aura secret in some situations)
+- Node 95959
+  - **Crackling Thunder** (spell 203201, 1 rank, passive, instant, aura secret in some situations)
+- Node 108542
+  - **Stance Mastery** (spell 1280961, 1 rank, passive, instant, aura secret in some situations)
+- Node 108543
+  - **Anger Management** (spell 152278, 1 rank, passive, instant, aura secret in some situations)
+- Node 108544
+  - **Battlefield Commander** (spell 424742, 1 rank, passive, instant, aura secret in some situations)
+- Node 108685
+  - **Resonant Voice** (spell 1243660, 1 rank, passive, instant, aura secret in some situations)
+- Node 108686
+  - **Crushing Force** (spell 382764, 1 rank, passive, instant, aura secret in some situations)
+- Node 108705 · choice
+  - **Intimidating Shout** (spell 5246, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+  - **Piercing Howl** (spell 12323, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+- Node 110118
+  - **Javelineer** (spell 1271948, 1 rank, passive, instant, aura secret in some situations)
+- Node 110119
+  - **Field Dressing** (spell 1271926, 1 rank, passive, instant, aura secret in some situations)
+
+## Arms talents (spec 71)
+
+- Node 90267
+  - **Fervor of Battle** (spell 202316, 1 rank, passive, instant, aura secret in some situations)
+- Node 90269
+  - **Die by the Sword** (spell 118038, 1 rank, instant, base cooldown 120 s, aura secret in some situations)
+- Node 90270
+  - **Mortal Strike** (spell 12294, 1 rank, instant, base cooldown 6 s, aura secret in some situations)
+- Node 90271
+  - **Overpower** (spell 7384, 1 rank, instant, aura secret in some situations)
+- Node 90273
+  - **Improved Execute** (spell 316405, 1 rank, passive, instant, aura secret in some situations)
+- Node 90274
+  - **Sudden Death** (spell 29725, 1 rank, passive, instant, aura secret in some situations)
+- Node 90276 · choice
+  - **Fueled by Violence** (spell 383103, 1 rank, passive, instant, aura secret in some situations)
+  - **Ignore Pain** (spell 1277297, 1 rank, instant, base cooldown 20 s, aura secret in some situations)
+- Node 90277
+  - **Bloodsurge** (spell 384361, 1 rank, passive, instant, aura secret in some situations)
+- Node 90279
+  - **Improved Overpower** (spell 385571, 1 rank, passive, instant, aura secret in some situations)
+- Node 90282
+  - **Tactician** (spell 184783, 1 rank, passive, instant, aura secret in some situations)
+- Node 90283
+  - **Bloodborne** (spell 383287, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90285
+  - **Dreadnaught** (spell 262150, 1 rank, passive, instant, aura secret in some situations)
+- Node 90290
+  - **Colossus Smash** (spell 167105, 1 rank, instant, base cooldown 45 s, aura secret in some situations)
+- Node 90291
+  - **Massacre** (spell 281001, 1 rank, passive, instant, aura secret in some situations)
+- Node 90292
+  - **Impale** (spell 383430, 1 rank, passive, instant, aura secret in some situations)
+- Node 90293
+  - **Cleave** (spell 845, 1 rank, instant, base cooldown 4.5 s, aura secret in some situations)
+- Node 90322
+  - **Two-Handed Weapon Specialization** (spell 382896, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90327
+  - **Battle Stance** (spell 386164, 1 rank, instant, base cooldown 3 s, aura secret in some situations)
+- Node 90438
+  - **Bloodletting** (spell 383154, 1 rank, passive, instant, aura secret in some situations)
+- Node 90439
+  - **Fatality** (spell 383703, 1 rank, passive, instant, aura secret in some situations)
+- Node 90441 · choice
+  - **Bladestorm** (spell 227847, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+  - **Ravager** (spell 228920, 1 rank, instant, base cooldown 8 s, aura secret in some situations)
+- Node 90444
+  - **Critical Thinking** (spell 389306, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90445
+  - **Executioner's Precision** (spell 386634, 1 rank, passive, instant, aura secret in some situations)
+- Node 90447
+  - **Sharpened Blades** (spell 383341, 2 ranks, passive, instant, aura secret in some situations)
+- Node 92536
+  - **Powerful Momentum** (spell 1261050, 1 rank, passive, instant, aura secret in some situations)
+- Node 92537
+  - **Defensive Stance** (spell 386208, 1 rank, instant, base cooldown 3 s, aura secret in some situations)
+- Node 92614 · choice
+  - **Overpowering Finish** (spell 400205, 1 rank, passive, instant, aura secret in some situations)
+  - **Mass Execution** (spell 1273075, 1 rank, passive, instant, aura secret in some situations)
+- Node 92615
+  - **Master Tactician** (spell 1261057, 1 rank, passive, instant, aura secret in some situations)
+- Node 99853 · choice
+  - **?** (1 rank, picks hero tree 62)
+  - **?** (1 rank, picks hero tree 60)
+- Node 108676 · choice
+  - **Intervene** (spell 3411, 1 rank, instant, base cooldown 1.5 s, aura secret in some situations)
+  - **Interpose** (spell 1244088, 1 rank, instant, base cooldown 1.5 s, aura secret in some situations)
+- Node 109391
+  - **Rend** (spell 772, 1 rank, instant, aura secret in some situations)
+- Node 109679
+  - **Battlelord** (spell 386630, 1 rank, passive, instant, aura secret in some situations)
+- Node 109680
+  - **Martial Prowess** (spell 1273062, 1 rank, passive, instant, aura secret in some situations)
+- Node 109681 · choice
+  - **Brute Force** (spell 1261046, 1 rank, passive, instant, aura secret in some situations)
+  - **Efficiency** (spell 1261047, 1 rank, passive, instant, aura secret in some situations)
+- Node 109682
+  - **Collateral Damage** (spell 334779, 1 rank, passive, instant, aura secret in some situations)
+- Node 109683 · choice
+  - **Tactical Edge** (spell 1261051, 1 rank, passive, instant, aura secret in some situations)
+  - **Crushing Combo** (spell 1261056, 1 rank, passive, instant, aura secret in some situations)
+- Node 109684
+  - **Deep Wounds** (spell 1261060, 1 rank, passive, instant, aura secret in some situations)
+- Node 109685
+  - **Mortal Wounds** (spell 1261062, 1 rank, passive, instant, aura secret in some situations)
+- Node 109686 · choice
+  - **Just Warming Up** (spell 1261048, 1 rank, passive, instant, aura secret in some situations)
+  - **Broad Strokes** (spell 1261049, 1 rank, passive, instant, aura secret in some situations)
+- Node 109687
+  - **Strength of Arms** (spell 400803, 2 ranks, passive, instant, aura secret in some situations)
+- Node 110176
+  - **Avatar** (spell 107574, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+- Node 110407 · choice
+  - **Master of Warfare** (spell 1269314, 1 rank, passive, instant, aura secret in some situations)
+  - **Master of Warfare** (spell 1269306, 2 ranks, passive, instant, aura secret in some situations)
+  - **Master of Warfare** (spell 1269307, 1 rank, passive, instant, aura secret in some situations)
+
+## Fury talents (spec 72)
+
+- Node 90325
+  - **Berserker Stance** (spell 386196, 1 rank, instant, base cooldown 3 s, aura secret in some situations)
+- Node 90373
+  - **Dual Wield Specialization** (spell 382900, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90387
+  - **Wrath and Fury** (spell 392936, 1 rank, passive, instant, aura secret in some situations)
+- Node 90388
+  - **Reckless Abandon** (spell 396749, 1 rank, passive, instant, aura secret in some situations)
+- Node 90390
+  - **Improved Raging Blow** (spell 383854, 1 rank, passive, instant, aura secret in some situations)
+- Node 90391
+  - **Rampaging Ruin** (spell 1265357, 1 rank, passive, instant, aura secret in some situations)
+- Node 90392
+  - **Bloodthirst** (spell 23881, 1 rank, instant, base cooldown 4.5 s, aura secret in some situations)
+- Node 90394
+  - **Warpaint** (spell 208154, 1 rank, passive, instant, aura secret in some situations)
+- Node 90395
+  - **Enraged Regeneration** (spell 184364, 1 rank, instant, base cooldown 120 s, aura secret in some situations)
+- Node 90396
+  - **Raging Blow** (spell 85288, 1 rank, instant, aura secret in some situations)
+- Node 90397
+  - **Spite** (spell 383852, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90398 · choice
+  - **Frenzied Enrage** (spell 383848, 1 rank, passive, instant, aura secret in some situations)
+  - **Powerful Enrage** (spell 440277, 1 rank, passive, instant, aura secret in some situations)
+- Node 90399
+  - **Fresh Meat** (spell 215568, 1 rank, passive, instant, aura secret in some situations)
+- Node 90401
+  - **Bloodborne** (spell 385703, 1 rank, passive, instant, aura secret in some situations)
+- Node 90402
+  - **Cold Steel, Hot Blood** (spell 383959, 1 rank, passive, instant, aura secret in some situations)
+- Node 90403
+  - **Focus in Chaos** (spell 383486, 1 rank, passive, instant, aura secret in some situations)
+- Node 90405
+  - **Bloodcraze** (spell 393950, 1 rank, passive, instant, aura secret in some situations)
+- Node 90406
+  - **Frenzy** (spell 335077, 1 rank, passive, instant, aura secret in some situations)
+- Node 90407
+  - **Hack and Slash** (spell 383877, 1 rank, passive, instant, aura secret in some situations)
+- Node 90408
+  - **Rampage** (spell 184367, 1 rank, instant, aura secret in some situations)
+- Node 90410
+  - **Massacre** (spell 206315, 1 rank, passive, instant, aura secret in some situations)
+- Node 90412
+  - **Recklessness** (spell 1719, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+- Node 90415 · choice
+  - **Avatar** (spell 107574, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+  - **Bladestorm** (spell 227847, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+- Node 90421
+  - **Deft Experience** (spell 383295, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90425
+  - **Critical Thinking** (spell 383297, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90427
+  - **Improved Whirlwind** (spell 12950, 1 rank, passive, instant, aura secret in some situations)
+- Node 90428
+  - **Cruelty** (spell 392931, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90429
+  - **Improved Execute** (spell 316402, 1 rank, passive, instant, aura secret in some situations)
+- Node 90430
+  - **Sudden Death** (spell 29725, 1 rank, passive, instant, aura secret in some situations)
+- Node 92538
+  - **Defensive Stance** (spell 386208, 1 rank, instant, base cooldown 3 s, aura secret in some situations)
+- Node 99852 · choice
+  - **?** (1 rank, picks hero tree 61)
+  - **?** (1 rank, picks hero tree 60)
+- Node 108674 · choice
+  - **Intervene** (spell 3411, 1 rank, instant, base cooldown 1.5 s, aura secret in some situations)
+  - **Interpose** (spell 1244088, 1 rank, instant, base cooldown 1.5 s, aura secret in some situations)
+- Node 109962
+  - **Ragedrinker** (spell 1265356, 1 rank, passive, instant, aura secret in some situations)
+- Node 109963
+  - **Vicious Contempt** (spell 383885, 1 rank, passive, instant, aura secret in some situations)
+- Node 109964
+  - **Surge of Adrenaline** (spell 1265359, 1 rank, passive, instant, aura secret in some situations)
+- Node 109965
+  - **Kill or Be Killed** (spell 1265361, 1 rank, passive, instant, aura secret in some situations)
+- Node 109966
+  - **Deep Wounds** (spell 1261060, 1 rank, passive, instant, aura secret in some situations)
+- Node 109967 · choice
+  - **Meat Cleaver** (spell 280392, 1 rank, passive, instant, aura secret in some situations)
+  - **Carving Blades** (spell 1300463, 1 rank, passive, instant, aura secret in some situations)
+- Node 109968
+  - **Executioner's Wrath** (spell 1265570, 1 rank, passive, instant, aura secret in some situations)
+- Node 109969
+  - **Scent of Blood** (spell 1265355, 1 rank, passive, instant, aura secret in some situations)
+- Node 110203
+  - **Odyn's Fury** (spell 385059, 1 rank, instant, base cooldown 45 s, aura secret in some situations)
+- Node 110330
+  - **Invigorating Fury** (spell 383468, 1 rank, passive, instant, aura secret in some situations)
+- Node 110412 · choice
+  - **Rampaging Berserker** (spell 1269308, 1 rank, passive, instant, aura secret in some situations)
+  - **Rampaging Berserker** (spell 1269309, 2 ranks, passive, instant, aura secret in some situations)
+  - **Rampaging Berserker** (spell 1269310, 1 rank, passive, instant, aura secret in some situations)
+- Node 110654
+  - **Storm of Blood** (spell 1299025, 1 rank, passive, instant, aura secret in some situations)
+
+## Protection talents (spec 73)
+
+- Node 90261
+  - **Battle Stance** (spell 386164, 1 rank, instant, base cooldown 3 s, aura secret in some situations)
+- Node 90264 · choice
+  - **Bloodborne** (spell 385704, 1 rank, passive, instant, aura secret in some situations)
+  - **Sudden Death** (spell 29725, 1 rank, passive, instant, aura secret in some situations)
+- Node 90265
+  - **Violent Outburst** (spell 386477, 1 rank, passive, instant, aura secret in some situations)
+- Node 90295
+  - **Ignore Pain** (spell 190456, 1 rank, instant, base cooldown 1 s, aura secret in some situations)
+- Node 90296
+  - **Devastating Focus** (spell 1264330, 1 rank, passive, instant, aura secret in some situations)
+- Node 90297
+  - **Devastator** (spell 236279, 1 rank, passive, instant, aura secret in some situations)
+- Node 90298
+  - **Revenge** (spell 6572, 1 rank, instant, aura secret in some situations)
+- Node 90299
+  - **Fight Through the Flames** (spell 452494, 1 rank, passive, instant, aura secret in some situations)
+- Node 90300
+  - **Bloodsurge** (spell 384361, 1 rank, passive, instant, aura secret in some situations)
+- Node 90301
+  - **Instigate** (spell 394311, 1 rank, passive, instant, aura secret in some situations)
+- Node 90302
+  - **Shield Wall** (spell 871, 1 rank, instant, base cooldown 8 s, aura secret in some situations)
+- Node 90303
+  - **Strategist** (spell 384041, 1 rank, passive, instant, aura secret in some situations)
+- Node 90304
+  - **Brace For Impact** (spell 386030, 1 rank, passive, instant, aura secret in some situations)
+- Node 90305
+  - **Demoralizing Shout** (spell 1160, 1 rank, instant, base cooldown 45 s, aura secret in some situations)
+- Node 90306
+  - **Armor Specialization** (spell 1234769, 1 rank, passive, instant, aura secret in some situations)
+- Node 90308
+  - **Thunderlord** (spell 385840, 1 rank, passive, instant, aura secret in some situations)
+- Node 90309
+  - **Best Served Cold** (spell 202560, 1 rank, passive, instant, aura secret in some situations)
+- Node 90310
+  - **Deep Wounds** (spell 1261060, 1 rank, passive, instant, aura secret in some situations)
+- Node 90311
+  - **Enduring Defenses** (spell 386027, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90312 · choice
+  - **Heavy Repercussions** (spell 203177, 1 rank, passive, instant, aura secret in some situations)
+  - **Into the Fray** (spell 202603, 1 rank, passive, instant, aura secret in some situations)
+- Node 90313
+  - **Heavy Handed** (spell 1235088, 1 rank, passive, instant, aura secret in some situations)
+- Node 90314
+  - **Booming Voice** (spell 202743, 1 rank, passive, instant, aura secret in some situations)
+- Node 90315
+  - **Shield Specialization** (spell 386011, 1 rank, passive, instant, aura secret in some situations)
+- Node 90317
+  - **Shield Charge** (spell 385952, 1 rank, instant, base cooldown 45 s, aura secret in some situations)
+- Node 90318 · choice
+  - **Defender's Aegis** (spell 397103, 1 rank, passive, instant, aura secret in some situations)
+  - **Impenetrable Wall** (spell 384072, 1 rank, passive, instant, aura secret in some situations)
+- Node 90319
+  - **Fueled by Violence** (spell 383103, 1 rank, passive, instant, aura secret in some situations)
+- Node 90320
+  - **Tough as Nails** (spell 385888, 1 rank, passive, instant, aura secret in some situations)
+- Node 90324
+  - **One-Handed Weapon Specialization** (spell 382895, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90329
+  - **Intervene** (spell 3411, 1 rank, instant, base cooldown 1.5 s, aura secret in some situations)
+- Node 90330
+  - **Defensive Stance** (spell 386208, 1 rank, instant, base cooldown 3 s, aura secret in some situations)
+- Node 90432 · choice
+  - **Whirling Blade** (spell 1235113, 1 rank, passive, instant, aura secret in some situations)
+  - **Ravager** (spell 228920, 1 rank, instant, base cooldown 8 s, aura secret in some situations)
+- Node 90433
+  - **Avatar** (spell 107574, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+- Node 90434
+  - **Indomitable** (spell 202095, 1 rank, passive, instant, aura secret in some situations)
+- Node 90435
+  - **Battle-Scarred Veteran** (spell 386394, 1 rank, passive, instant, aura secret in some situations)
+- Node 90448
+  - **Punish** (spell 275334, 1 rank, passive, instant, aura secret in some situations)
+- Node 90449
+  - **Unyielding Stance** (spell 1235047, 1 rank, passive, instant, aura secret in some situations)
+- Node 90450 · choice
+  - **Spellbreaker** (spell 1235023, 1 rank, passive, instant, aura secret in some situations)
+  - **Hunker Down** (spell 1235022, 1 rank, passive, instant, aura secret in some situations)
+- Node 90451
+  - **Brutal Vitality** (spell 384036, 1 rank, passive, instant, aura secret in some situations)
+- Node 99851 · choice
+  - **?** (1 rank, picks hero tree 62)
+  - **?** (1 rank, picks hero tree 61)
+- Node 107575
+  - **Massacre** (spell 281001, 1 rank, passive, instant, aura secret in some situations)
+- Node 107576
+  - **Last Stand** (spell 1243659, 1 rank, passive, instant, aura secret in some situations)
+- Node 107577
+  - **Enduring Alacrity** (spell 384063, 1 rank, passive, instant, aura secret in some situations)
+- Node 107578
+  - **Focused Vigor** (spell 384067, 1 rank, passive, instant, aura secret in some situations)
+- Node 107579
+  - **Disrupting Shout** (spell 386071, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+- Node 110411 · choice
+  - **Phalanx** (spell 1269311, 1 rank, passive, instant, aura secret in some situations)
+  - **Phalanx** (spell 1269312, 2 ranks, passive, instant, aura secret in some situations)
+  - **Phalanx** (spell 1269313, 1 rank, passive, instant, aura secret in some situations)
+- Node 110653
+  - **Blood and Thunder** (spell 384277, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Slayer (60)
+
+- Node 94784 · specs Arms, Fury
+  - **Show No Mercy** (spell 444771, 1 rank, passive, instant, aura secret in some situations)
+- Node 94786 · choice · specs Arms, Fury
+  - **Culling Cyclone** (spell 444778, 1 rank, passive, instant, aura secret in some situations)
+  - **Brutal Finish** (spell 446085, 1 rank, passive, instant, aura secret in some situations)
+- Node 94787 · choice · specs Arms, Fury
+  - **Fierce Followthrough** (spell 444773, 1 rank, passive, instant, aura secret in some situations)
+  - **Opportunist** (spell 444774, 1 rank, passive, instant, aura secret in some situations)
+- Node 94788 · specs Arms, Fury
+  - **Imminent Demise** (spell 444769, 1 rank, passive, instant, aura secret in some situations)
+- Node 94795 · choice · specs Arms, Fury
+  - **Relentless Pursuit** (spell 444776, 1 rank, passive, instant, aura secret in some situations)
+  - **Vicious Agility** (spell 444777, 1 rank, passive, instant, aura secret in some situations)
+- Node 94801 · specs Arms, Fury
+  - **Slayer's Malice** (spell 444779, 1 rank, passive, instant, aura secret in some situations)
+- Node 94809 · specs Arms, Fury
+  - **Reap the Storm** (spell 444775, 1 rank, passive, instant, aura secret in some situations)
+- Node 94810 · specs Arms, Fury
+  - **Overwhelming Blades** (spell 444772, 1 rank, passive, instant, aura secret in some situations)
+- Node 94813 · specs Arms, Fury
+  - **Death Drive** (spell 444770, 1 rank, passive, instant, aura secret in some situations)
+- Node 94814 · specs Arms, Fury
+  - **Slayer's Dominance** (spell 444767, 1 rank, passive, instant, aura secret in some situations)
+- Node 94820 · specs Arms, Fury
+  - **Unrelenting Onslaught** (spell 444780, 1 rank, passive, instant, aura secret in some situations)
+- Node 109815 · specs Arms, Fury
+  - **Unhinged** (spell 386628, 1 rank, passive, instant, aura secret in some situations)
+- Node 109816 · specs Arms, Fury
+  - **Deadly Focus** (spell 1270718, 1 rank, passive, instant, aura secret in some situations)
+- Node 109817 · specs Arms, Fury
+  - **Violent Euphoria** (spell 1270717, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Mountain Thane (61)
+
+- Node 94785 · specs Fury, Protection
+  - **Thunder Blast** (spell 435607, 1 rank, passive, instant, aura secret in some situations)
+- Node 94792 · choice · specs Fury, Protection
+  - **Gathering Clouds** (spell 436201, 1 rank, passive, instant, aura secret in some situations)
+  - **Thorim's Might** (spell 436152, 1 rank, passive, instant, aura secret in some situations)
+- Node 94797 · choice · specs Fury, Protection
+  - **Flashing Skies** (spell 437079, 1 rank, passive, instant, aura secret in some situations)
+  - **Snap Induction** (spell 456270, 1 rank, passive, instant, aura secret in some situations)
+- Node 94798 · choice · specs Fury, Protection
+  - **Keep Your Feet on the Ground** (spell 438590, 1 rank, passive, instant, aura secret in some situations)
+  - **Steadfast as the Peaks** (spell 434970, 1 rank, passive, instant, aura secret in some situations)
+- Node 94800 · specs Fury, Protection
+  - **Ground Current** (spell 436148, 1 rank, passive, instant, aura secret in some situations)
+- Node 94803 · specs Fury, Protection
+  - **Lightning Strikes** (spell 434969, 1 rank, passive, instant, aura secret in some situations)
+- Node 94805 · specs Fury, Protection
+  - **Avatar of the Storm** (spell 437134, 1 rank, passive, instant, aura secret in some situations)
+- Node 94807 · specs Fury, Protection
+  - **Burst of Power** (spell 437118, 1 rank, passive, instant, aura secret in some situations)
+- Node 94808 · specs Fury, Protection
+  - **Strength of the Mountain** (spell 437068, 1 rank, passive, instant, aura secret in some situations)
+- Node 94816 · specs Fury, Protection
+  - **Crashing Thunder** (spell 436707, 1 rank, passive, instant, aura secret in some situations)
+- Node 94817 · choice · specs Fury, Protection
+  - **Storm Bolts** (spell 436162, 1 rank, passive, instant, aura secret in some situations)
+  - **Storm Shield** (spell 438597, 1 rank, passive, instant, aura secret in some situations)
+- Node 109809 · specs Fury, Protection
+  - **Capacitance** (spell 1270724, 1 rank, passive, instant, aura secret in some situations)
+- Node 109810 · specs Fury, Protection
+  - **Conductivity** (spell 1270723, 1 rank, passive, instant, aura secret in some situations)
+- Node 109811 · specs Fury, Protection
+  - **Storm Surge** (spell 275336, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Colossus (62)
+
+- Node 94789 · choice · specs Arms, Protection
+  - **Boneshaker** (spell 429639, 1 rank, passive, instant, aura secret in some situations)
+  - **Earthquaker** (spell 440992, 1 rank, passive, instant, aura secret in some situations)
+- Node 94793 · specs Arms, Protection
+  - **Dominance of the Colossus** (spell 429636, 1 rank, passive, instant, aura secret in some situations)
+- Node 94794 · specs Arms, Protection
+  - **Precise Might** (spell 431548, 1 rank, passive, instant, aura secret in some situations)
+- Node 94796 · specs Arms, Protection
+  - **Practiced Strikes** (spell 429647, 1 rank, passive, instant, aura secret in some situations)
+- Node 94799 · choice · specs Arms, Protection
+  - **One Against Many** (spell 429637, 1 rank, passive, instant, aura secret in some situations)
+  - **Arterial Bleed** (spell 440995, 1 rank, passive, instant, aura secret in some situations)
+- Node 94806 · specs Arms, Protection
+  - **Mountain of Muscle and Scars** (spell 429642, 1 rank, passive, instant, aura secret in some situations)
+- Node 94811 · specs Arms, Protection
+  - **Tide of Battle** (spell 429641, 1 rank, passive, instant, aura secret in some situations)
+- Node 94812 · specs Arms, Protection
+  - **Martial Expert** (spell 429638, 1 rank, passive, instant, aura secret in some situations)
+- Node 94815 · choice · specs Arms, Protection
+  - **No Stranger to Pain** (spell 429644, 1 rank, passive, instant, aura secret in some situations)
+  - **Veteran Vitality** (spell 440993, 1 rank, passive, instant, aura secret in some situations)
+- Node 94818 · specs Arms, Protection
+  - **Demolish** (spell 436358, 1 rank, instant, base cooldown 30 s, aura secret in some situations)
+- Node 94819 · specs Arms, Protection
+  - **Colossal Might** (spell 429634, 1 rank, passive, instant, aura secret in some situations)
+- Node 109812 · specs Arms, Protection
+  - **Celeritous Conclusion** (spell 1270710, 1 rank, passive, instant, aura secret in some situations)
+- Node 109813 · specs Arms, Protection
+  - **Cut to the Bone** (spell 1270709, 1 rank, passive, instant, aura secret in some situations)
+- Node 109814 · specs Arms, Protection
+  - **Decimator** (spell 1270704, 1 rank, passive, instant, aura secret in some situations)
+
+## Tier sets (Encounter Journal)
+
+- Voidlight Bindings (set 1971, item level 108, spec Arms): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Plate (set 1977, item level 197, spec Arms): items 255898, 255899, 255900, 255901, 255902, 255903, 255904, 255905
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Rage of the Night Ender (set 1990, item level 197, spec Arms): items 249955, 249953, 249952, 249951, 249950
+  - Bonus **Warrior Arms 12.0 Class Set 2pc** (spell 1264875, instant, aura secret in some situations)
+  - Bonus **Warrior Arms 12.0 Class Set 4pc** (spell 1264876, instant, aura secret in some situations)
+- Warmonger's Ward (set 2053, item level 259, spec Arms): items 270375, 270376, 270377, 270378, 270379, 270380, 270381, 270382
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Jade Warlord's Dominion (set 2067, item level 219, spec Arms): items 271459, 271457, 271456, 271455, 271454
+  - Bonus **Warrior Arms 12.1 Class Set 2pc** (spell 1296643, instant, aura secret in some situations)
+  - Bonus **Warrior Arms 12.1 Class Set 4pc** (spell 1296644, instant, aura secret in some situations)
+- Bite of Zul'jan (set 2070, item level 219, spec Arms): items 270173, 268209, 268213
+  - Bonus **Bite of Zul'jan** (spell 1291726, instant, aura secret in some situations)
+- Voidlight Bindings (set 1971, item level 108, spec Fury): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Plate (set 1977, item level 197, spec Fury): items 255898, 255899, 255900, 255901, 255902, 255903, 255904, 255905
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Rage of the Night Ender (set 1990, item level 197, spec Fury): items 249955, 249953, 249952, 249951, 249950
+  - Bonus **Warrior Fury 12.0 Class Set 2pc** (spell 1264877, instant, aura secret in some situations)
+  - Bonus **Warrior Fury 12.0 Class Set 4pc** (spell 1264878, instant, aura secret in some situations)
+- Warmonger's Ward (set 2053, item level 259, spec Fury): items 270375, 270376, 270377, 270378, 270379, 270380, 270381, 270382
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Jade Warlord's Dominion (set 2067, item level 219, spec Fury): items 271459, 271457, 271456, 271455, 271454
+  - Bonus **Warrior Fury 12.1 Class Set 2pc** (spell 1296645, instant, aura secret in some situations)
+  - Bonus **Warrior Fury 12.1 Class Set 4pc** (spell 1296646, instant, aura secret in some situations)
+- Bite of Zul'jan (set 2070, item level 219, spec Fury): items 270173, 268209, 268213
+  - Bonus **Bite of Zul'jan** (spell 1291726, instant, aura secret in some situations)
+- Torment's Duality (set 1970, item level 197, spec Protection): items 251884, 251885
+  - Bonus **Torment's Duality** (spell 1253358, instant, aura secret in some situations)
+- Voidlight Bindings (set 1971, item level 108, spec Protection): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Plate (set 1977, item level 197, spec Protection): items 255898, 255899, 255900, 255901, 255902, 255903, 255904, 255905
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Rage of the Night Ender (set 1990, item level 197, spec Protection): items 249955, 249953, 249952, 249951, 249950
+  - Bonus **Warrior Protection 12.0 Class Set 2pc** (spell 1264879, instant, aura secret in some situations)
+  - Bonus **Warrior Protection 12.0 Class Set 4pc** (spell 1264880, instant, aura secret in some situations)
+- Warmonger's Ward (set 2053, item level 259, spec Protection): items 270375, 270376, 270377, 270378, 270379, 270380, 270381, 270382
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Jade Warlord's Dominion (set 2067, item level 219, spec Protection): items 271459, 271457, 271456, 271455, 271454
+  - Bonus **Warrior Protection 12.1 Class Set 2pc** (spell 1296647, instant, aura secret in some situations)
+  - Bonus **Warrior Protection 12.1 Class Set 4pc** (spell 1296648, instant, aura secret in some situations)
+- Bite of Zul'jan (set 2070, item level 219, spec Protection): items 270173, 268209, 268213
+  - Bonus **Bite of Zul'jan** (spell 1291726, instant, aura secret in some situations)
