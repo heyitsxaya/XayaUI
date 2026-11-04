@@ -1542,19 +1542,38 @@ local function IdsMatch(set, current)
     end
     return (not hasOn) or hit
 end
+-- IdsMatch for one current value, without building { [v] = true } on every check (#309: the engine session's allocation profile,
+-- 2026-11-04, found the load checks making tables on every recheck)
+local function IdsMatchOne(set, v)
+    local hasOn, hit = false, false
+    for k, st in pairs(set) do
+        local n = tonumber(k)
+        if st == "not" and n and n == v then return false end
+        if st == true then hasOn = true; if n and n == v then hit = true end end
+    end
+    return (not hasOn) or hit
+end
+-- Every numeric item in the set is asked about (as before); an unknown answer makes the whole check unknown; a worn "not" item fails
+-- it; otherwise one worn ticked item passes it (or there is none ticked). Same answers as building the worn set and calling IdsMatch,
+-- without the table.
 local function EquippedMatch(set)
     local fn = (C_Item and C_Item.IsEquippedItem) or IsEquippedItem
     if type(fn) ~= "function" then return nil end
-    local worn, unknown = {}, false
-    for k in pairs(set) do
+    local hasOn, hit, blocked, unknown = false, false, false, false
+    for k, st in pairs(set) do
         local n = tonumber(k)
         if n then
             local ok, v = pcall(fn, n)
-            if not ok or v == nil or issecret(v) then unknown = true else worn[n] = v and true or nil end
+            if not ok or v == nil or issecret(v) then unknown = true
+            elseif v then
+                if st == "not" then blocked = true elseif st == true then hit = true end
+            end
         end
+        if st == true then hasOn = true end
     end
     if unknown then return nil end
-    return IdsMatch(set, worn)
+    if blocked then return false end
+    return (not hasOn) or hit
 end
 
 function ns.ReadContext()
@@ -1594,22 +1613,44 @@ end
 -- Returns ok(bool), name of the failing condition(s).
 local function known(v, result) if v == nil then return nil end return result end
 
--- The ID-list checks of a load table (a rule's `load`, or a group's `loadIds`), appended to `checks` as { key, ok = true / false / nil }
-local function IdListChecks(load, ctx, checks)
-    if type(load) ~= "table" then return checks end
+-- The ID lists a load table can hold besides zones: saved key, context key, the name a failed check reports (made once, not per check)
+local ID_LISTS = { { "instanceIDs", "instanceID", "instance ID" }, { "difficulties", "difficultyID", "difficulty" },
+    { "sizes", "instSize", "instance size" }, { "encounterIDs", "encounterID", "encounter" } }
+-- Walks the ID-list checks of a load table (a rule's `load`, or a group's `loadIds`), calling sink(acc, key, ok) for each
+-- (ok = true / false / nil); stops and returns what sink returns as soon as that is not nil. Makes no tables.
+local function IdListWalk(load, ctx, sink, acc)
+    if type(load) ~= "table" then return nil end
+    local r
     if ns.SetActive(load.mapIDs) then
-        checks[#checks + 1] = { key = "zone", ok = known(ctx.maps, ctx.maps and IdsMatch(load.mapIDs, ctx.maps)) }
+        r = sink(acc, "zone", known(ctx.maps, ctx.maps and IdsMatch(load.mapIDs, ctx.maps)))
+        if r ~= nil then return r end
     end
-    for _, d in ipairs({ { "instanceIDs", "instanceID", "instance ID" }, { "difficulties", "difficultyID", "difficulty" },
-            { "sizes", "instSize", "instance size" }, { "encounterIDs", "encounterID", "encounter" } }) do
+    for i = 1, #ID_LISTS do
+        local d = ID_LISTS[i]
         local set, v = load[d[1]], ctx[d[2]]
-        if ns.SetActive(set) then checks[#checks + 1] = { key = d[3], ok = known(v, v ~= nil and IdsMatch(set, { [v] = true })) } end
+        if ns.SetActive(set) then
+            r = sink(acc, d[3], known(v, v ~= nil and IdsMatchOne(set, v)))
+            if r ~= nil then return r end
+        end
     end
     if ns.SetActive(load.equipped) then
-        checks[#checks + 1] = { key = "item equipped", ok = EquippedMatch(load.equipped) }
+        r = sink(acc, "item equipped", EquippedMatch(load.equipped))
+        if r ~= nil then return r end
     end
-    return checks
+    return nil
 end
+local function AppendCheck(checks, key, ok) checks[#checks + 1] = { key = key, ok = ok } end
+-- the ID-list checks of a rule's load table, appended to `checks` as { key, ok = true / false / nil } (they join its other checks)
+local function IdListChecks(load, ctx, checks) IdListWalk(load, ctx, AppendCheck, checks); return checks end
+-- a group's lists: every one must match. Returns the first that does not (its name, and false or nil for unknown), or nil.
+local failOk
+local function FirstFail(_, key, ok) if ok ~= true then failOk = ok; return key end end
+local function IdListFirstFail(load, ctx)
+    local key = IdListWalk(load, ctx, FirstFail, nil)
+    if key then return key, failOk end
+end
+-- (shared, never written) the load table of a rule that has none, so a recheck makes no new {} for it
+local NO_LOAD = {}
 
 local CheckContextRaw
 local ctxMemo = setmetatable({}, { __mode = "k" })
@@ -1639,7 +1680,7 @@ local function AlwaysKeeps(classes, classOn, specs, specOn, ctx)
 end
 ns._AlwaysKeeps = AlwaysKeeps
 function CheckContextRaw(rule, ctx)
-    local load = rule.load or {}
+    local load = rule.load or NO_LOAD
     local ov, ovFolder = ns.FolderLoadOverride(rule)   -- a folder's Never / Always beats the rule's own load mode
     if ov == "never" then return false, "load: never (folder " .. tostring(ovFolder and ovFolder.name) .. ")" end
     if ov == "always" then
@@ -1672,9 +1713,8 @@ function CheckContextRaw(rule, ctx)
                 return false, "group " .. tostring(f.name) .. ": instance type" .. (ctx.instanceType == nil and " (unknown)" or "")
             end
             -- the group's own zone / instance / difficulty / size / encounter / item lists (core 0.6.33; every list must match)
-            for _, c in ipairs(IdListChecks(f.loadIds, ctx, {})) do
-                if c.ok ~= true then return false, "group " .. tostring(f.name) .. ": " .. c.key .. (c.ok == nil and " (unknown)" or "") end
-            end
+            local fk, fok = IdListFirstFail(f.loadIds, ctx)
+            if fk then return false, "group " .. tostring(f.name) .. ": " .. fk .. (fok == nil and " (unknown)" or "") end
             fid, guard = f.parent, guard + 1
         end
     end
