@@ -48,7 +48,52 @@ check("edit box sits inside the input area", rect(eb) == rect(inputA), (rect(eb)
 check("edit box inside the pane", inside(eb, pane))
 check("ChatFrame2's edit box (docked) inside input area too", rect(L.ChatFrame2EditBox) == rect(inputA))
 check("floating ChatFrame3 left alone", rect(W.cf3)[0] == 900, rect(W.cf3))
-check("dock manager on the tab strip", rect(L.GeneralDockManager) == rect(tabsA))
+dr_, tr_ = rect(L.GeneralDockManager), rect(tabsA)
+check("dock manager on the tab strip, stopping 22 px short of its right end for the history button",
+      dr_[0] == tr_[0] and dr_[1] == tr_[1] and dr_[3] == tr_[3] and abs((dr_[0] + dr_[2]) - (tr_[0] + tr_[2] - 22)) < 0.01, (dr_, tr_))
+# ---- history button vs scroll bar and tabs (Xaya 2026-11-04: "chat history icon still clips over sidebar") ------------------------
+def overlap(a, b):
+    ra, rb = rect(a), rect(b)
+    return ra[0] < rb[0] + rb[2] - 0.01 and rb[0] < ra[0] + ra[2] - 0.01 and ra[1] < rb[1] + rb[3] - 0.01 and rb[1] < ra[1] + ra[3] - 0.01
+hb, sb = L.XayaUIChatHistoryButton, L.XayaUIChatScrollBar
+check("history button exists and is shown by default", hb is not None and hb.IsShown(hb) is True)
+check("history button inside the pane and inside the tab row", inside(hb, pane) and inside(hb, tabsA), (rect(hb), rect(tabsA)))
+check("history button does not cover the Chat Panel's scroll bar (its up arrow)", sb is not None and not overlap(hb, sb), (rect(hb), rect(sb)))
+check("history button does not sit on the tabs (the dock stops short of it)", not overlap(hb, L.GeneralDockManager), (rect(hb), rect(L.GeneralDockManager)))
+run("ns.chat2.histButton = false; C.Refresh()")
+check("history button off: the tabs use the whole tab row", rect(L.GeneralDockManager) == rect(tabsA), (rect(L.GeneralDockManager), rect(tabsA)))
+run("ns.chat2.histButton = true; ns.chat2.tabsShow = false; C.Refresh()")
+check("tab row hidden: history button in the text area's corner, still off the scroll bar",
+      inside(hb, textA) and not overlap(hb, sb), (rect(hb), rect(textA), rect(sb)))
+run("ns.chat2.tabsShow = true; C.Refresh()")
+check("tab row back: history button back at the row's end", inside(hb, tabsA) and not overlap(hb, sb), (rect(hb), rect(tabsA)))
+# ---- tabs laid out again for the width they get (Xaya 2026-11-04: "user-created chat tabs should not have their boxes overflow") --
+run("""W.layoutCalls = {}
+FCFDock_UpdateTabs = function(dock, force) W.layoutCalls[#W.layoutCalls + 1] = { w = dock:GetWidth(), force = force } end
+C.dockLaidOutW = nil; C.Layout()""")
+calls = lua.eval("function(W) return W.layoutCalls end")(W)
+first = calls[1] if calls else None
+check("the game lays the tabs out again (forced) once the dock sits in the tab row, at the dock's new width",
+      first is not None and first.force is True and abs(first.w - rect(L.GeneralDockManager)[2]) < 0.01, (first and first.w, rect(L.GeneralDockManager)))
+n0 = len(list(calls.keys()))
+run("C.Layout(); C.Anchor()")
+check("same width again: not laid out again", len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == n0)
+run("ns.chat2.width = 380; C.Layout()")
+calls = lua.eval("function(W) return W.layoutCalls end")(W)
+lastc = calls[len(list(calls.keys()))]
+check("pane narrower: the tabs are laid out again at the narrower width", len(list(calls.keys())) == n0 + 1 and abs(lastc.w - rect(L.GeneralDockManager)[2]) < 0.01,
+      (len(list(calls.keys())), lastc.w, rect(L.GeneralDockManager)))
+run("W.combat = true; InCombatLockdown = function() return W.combat end; ns.chat2.width = 400; C.Layout()")
+check("in combat: the tabs are not laid out (the next layout out of combat does it)", len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == n0 + 1)
+run("W.combat = false; C.Layout()")
+check("after combat: laid out at the new width", len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == n0 + 2)
+run("ns.chat2.width = 440; C.Layout(); FCFDock_UpdateTabs = nil")
+# ---- text gutter (Xaya 2026-11-04: "create a small gutter of 2-3px for easier legibility") ---------------------------------------
+run("ns.chat2.textInset = 0; C.Layout()")
+check("text inset 0 saved: the text still starts 2 px in from the pane's edge", abs(rect(textA)[0] - rect(pane)[0] - 2) < 0.01, (rect(textA), rect(pane)))
+check("and the chat window follows the text area", rect(cf1)[0] == rect(textA)[0], (rect(cf1), rect(textA)))
+run("ns.chat2.textInset = 6; C.Layout()")
+check("default inset 6: text 6 px in", abs(rect(textA)[0] - rect(pane)[0] - 6) < 0.01, (rect(textA), rect(pane)))
 check("Blizzard side strip hidden", L.ChatFrame1ButtonFrame.IsShown(L.ChatFrame1ButtonFrame) is False)
 check("social button hidden by default", L.QuickJoinToastButton.IsShown(L.QuickJoinToastButton) is False)
 

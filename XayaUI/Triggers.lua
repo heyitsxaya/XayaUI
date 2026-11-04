@@ -262,14 +262,31 @@ Add("cooldown", {
                        notReady = "Not fully ready (on cooldown)", empty = "Empty / on cooldown (experimental for multi-charge)" },
             order = { "ready", "hasCharge", "notReady", "empty" } } },
         { key = "maxCharges", kind = "range", label = "Max charges override (0 = auto-detect)", min = 0, max = 6, step = 1 },
+        { key = "countGCD", kind = "toggle", label = "Count the global cooldown",
+          desc = "Ticked: while the spell is on the global cooldown it counts as on cooldown (not ready, no charge available). Unticked (default): the global cooldown is ignored." },
+        { key = "cdTimeOp", kind = "select", label = "Seconds left", width = "normal", default = "any", required = false,
+          vals = { values = { any = "Any", [">="] = "At least", ["<="] = "At most", ["="] = "Exactly", [">"] = "More than", ["<"] = "Less than" },
+                   order = { "any", ">=", "<=", "=", ">", "<" } },
+          desc = "Only true while the cooldown has this much time left. Exact when the game shows it; in combat the duration engine's estimate (see /xui timing); with no estimate yet the trigger is unknown." },
+        { key = "cdTimeSec", kind = "number", label = "Seconds", required = false, showIf = function(t) return t.cdTimeOp ~= nil and t.cdTimeOp ~= "any" end },
+        { key = "cdChargeOp", kind = "select", label = "Charges", width = "normal", default = "any", required = false,
+          vals = { values = { any = "Any", [">="] = "At least", ["<="] = "At most", ["="] = "Exactly", [">"] = "More than", ["<"] = "Less than" },
+                   order = { "any", ">=", "<=", "=", ">", "<" } },
+          desc = "Only true while the spell has this many charges. Exact out of combat; in combat counted from your casts (exact at 0 and at full; 3+ charges also use the Cooldown Manager). Unknown keeps the trigger unknown." },
+        { key = "cdChargeVal", kind = "number", label = "Charges", required = false, showIf = function(t) return t.cdChargeOp ~= nil and t.cdChargeOp ~= "any" end },
     },
     check = function(t)
-        local pseudo = { spellID = tonumber(t.spellID), maxCharges = tonumber(t.maxCharges) or 0, cdState = t.state }
+        local pseudo = { spellID = tonumber(t.spellID), maxCharges = tonumber(t.maxCharges) or 0, cdState = t.state, countGCD = t.countGCD and true or nil,
+                         cdTimeOp = t.cdTimeOp, cdTimeSec = t.cdTimeSec, cdChargeOp = t.cdChargeOp, cdChargeVal = t.cdChargeVal }
         if not (ns.ReadCooldown and ns.CheckCooldownState) then return nil, "cooldown reader missing" end
         local info = ns.ReadCooldown(pseudo)
         if not info or not info.known then return nil, info and info.why or "cooldown unreadable" end
         local v = ns.CheckCooldownState(pseudo, info)
         if v == nil then return nil, "state unreadable" end
+        if v == true and ns.CooldownNumChecks then   -- "Seconds left" / "Charges" comparisons (B2); AND with the state
+            local c, cwhy = ns.CooldownNumChecks(pseudo, info)
+            if c ~= true then return c, cwhy or info.why end
+        end
         return v, info.why
     end,
 })

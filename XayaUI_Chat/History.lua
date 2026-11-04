@@ -349,9 +349,16 @@ local function Refresh(s)
         btn:SetScript("OnEnter", function(self) self:SetAlpha(1); GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:SetText("Chat history"); GameTooltip:AddLine("Copy recent messages", 1, 1, 1); GameTooltip:Show() end)
         btn:SetScript("OnLeave", function(self) self:SetAlpha(0.35); GameTooltip:Hide() end)
     end
-    -- inside the pane, at the right end of the tab row's lower edge (never outside the block)
+    -- at the right end of the tab row, where the tabs stop short of it (Frame.lua, C.HIST_RESERVE). Not under the tab row: the
+    -- Chat Panel's scroll bar starts there and its up arrow was covered. With the tab row hidden: the text area's top-right corner,
+    -- which is left of the scroll bar.
     btn:ClearAllPoints()
-    btn:SetPoint("TOPRIGHT", C.TabsArea() or C.TextArea(), (C.TabsArea() and "BOTTOMRIGHT" or "TOPRIGHT"), -4, -3)
+    local tabs = C.TabsArea()
+    if tabs and s.tabsShow then
+        btn:SetPoint("RIGHT", tabs, "RIGHT", -3, 0)
+    else
+        btn:SetPoint("TOPRIGHT", C.TextArea(), "TOPRIGHT", -3, -3)
+    end
     btn:SetShown(s.histButton and not s.collapsed and true or false)
 end
 C.Register("history", Refresh)

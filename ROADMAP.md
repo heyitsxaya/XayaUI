@@ -179,6 +179,17 @@ Seven requests from one tester, resubmitted by Xaya on 2026-11-03. One issue (#2
 
 Open questions: 7, listed in the project document (section 6) and in the #278 comment.
 
+### Logged 2026-11-04 from Xaya's reference screens (details and API feasibility: `docs/plans/REFERENCE-SCREENS-AND-FEASIBILITY-2026-11-04.md`)
+
+| ID | Feature | Status | Notes |
+|---|---|---|---|
+| RM-BARS | **Progress bars as a display kind** in rules and both engines; groups support every texture type; dynamic groups hold several bars | Planned, priority after the current fixes (Xaya) | Engine single slots already drive a bar in combat; bars inside engine-drawn dynamic groups are not drawn today (AuraDisplay.lua:247) |
+| #372 | Group page: Config tab (name, type, sort, sound channel override); the Group tab gets the container properties of screen 1 (align, distribute, space, border / backdrop, anchor + offsets, strata) and a group background | Waiting on #372's open questions | The "Group Display" rename is reverted (Xaya) |
+| RM-TRIG | Spell cooldown trigger options of screen 5 (exact match, GCD, loss of control, rune CD, charge N, operators, show when) | Feasibility research running | Add what the API supports (Xaya) |
+| RM-LOAD | Load conditions of screen 7 (zone IDs, encounter IDs, instance size / difficulty / type, raid role, item equipped) | Feasibility research running | Add what the API supports (Xaya) |
+| RM-CODECOND | Conditions with a "run custom code" outcome (screen 6) | Candidate (future) | Code is never kept from imports (Profile.lua) |
+| #268 | 9-point anchors | Open, high priority | Screen 8 read as the wording answer (this point -> anchored to -> the target's point); to be confirmed |
+
 ## 10. Waiting on a decision
 
 These are logged and need an answer before work starts: #79, #80, #81, #82 (gated panes); #87 (backup); #90 (what happens when a Specialization or Role is unticked); #108 (skeleton rules); #115 and #117 (engine per-frame step, periodic snapshot); #123 (options refactor); #126 (gradient cursor trail); #151 (loaded-rule safeguard); #188 (rule build assistant); the five new candidates (#321 to #325); and the seven tester requests in #278 (meaning of item 2, scope and design of items 5 to 7, volume and texture approach).

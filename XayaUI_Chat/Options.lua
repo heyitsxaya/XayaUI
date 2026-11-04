@@ -112,7 +112,7 @@ function ns.BuildChatTab(Notify)
         tabs = tog("Show the tab row", "tabsShow", 21, "Hiding the tabs also hides the way to switch chat windows."),
         tabH = rng("Tab height (pixels)", "tabHeight", 22, 16, 40, nil, 1, nil, "tabs"),
         inH = rng("Input line height (pixels)", "inputH", 23, 18, 60, nil, 1, nil, "input"),
-        inset = rng("Text inset from the edge (pixels)", "textInset", 24, 0, 30, nil, 1, nil, "text"),
+        inset = rng("Text inset from the edge (pixels)", "textInset", 24, 2, 30, nil, 1, nil, "text"),
         wrapIndent = tog("Indent wrapped lines", "wrapIndent", 25,
             "When a message is longer than one line, the lines after the first start a little further in, so you can see where each message begins. The game's own chat does this.", nil, "text"),
         ownScroll = tog("Chat Panel scroll bar (slow scrolling)", "scrollOwn", 26,
@@ -300,7 +300,7 @@ function ns.BuildChatTab(Notify)
             "Lines printed by XayaUI (/xui output) and other addons, and the game's system messages, are kept in their own Console tab of the history window instead of mixing with chat. Lines an addon writes straight into a chat window without printing them are not seen.",
             function() return not S().histOn end),
         openHdr = hdr("Window", 20),
-        histBtn = tog("Show the small history button in the chat's corner", "histButton", 21, nil, nil, "hist"),
+        histBtn = tog("Show the small history button at the end of the tab row", "histButton", 21, nil, nil, "hist"),
         open = { type = "execute", name = "Open the history window", order = 22, func = function() C.History_Toggle() end },
     } }
 
