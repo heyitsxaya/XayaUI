@@ -65,17 +65,28 @@ Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.
 
 ## 4. Active items
 
-**NEXT SESSION: START HERE (updated 2026-11-04 19:38 UTC)**
-`main` = `f6f98cc` or later: check `git log origin/main`. Branch `claude/cool-ramanujan-ewx8e5` (draft PR heyitsxaya/XayaUI#374) holds
-load conditions, mover view, What If items, delete fix, icon cue text and whisper sounds (core 0.6.28-0.6.30, Options 0.6.25-0.6.28,
-QoL 0.7.2, Chat 0.6.10). They land on `main` when the full suite passes on the exact head (a run was going on `dcb3703`; check the PR).
+**NEXT SESSION: START HERE (updated 2026-11-04 21:16 UTC)**
+`main` = `f8c96ed` or later (check `git log origin/main`). Branch `claude/cool-ramanujan-ewx8e5` (draft PR heyitsxaya/XayaUI#385) holds:
+- group load lists (core 0.6.33 / Options 0.6.32);
+- #351 phase 1, one margin / gutter in the settings window (Options 0.6.33);
+- the V11 layout probe test (`tests/options_layout_v11_run.py`).
+They land on `main` when the full suite passes on the exact head.
 
-**First, ask Xaya** (asked 2026-11-04 19:38, unanswered when this was written):
-- Her installed **XayaUI_Options version** (the game's AddOns list). Her group-page screenshots still show the pre-0.6.19 buttons and
-  she reports sidebar names clipping "after any rule change" (task: sidebar clipping). The #369 fix (0.6.20) and #368 / #370 (0.6.19)
-  are on `main`. If she is on 0.6.20+, the clipping is a new bug: get steps, add tracing to `ns.EnsureNameRoom` (Skin.lua).
-- **Trigger delete** throwing the pane out of the rule: condition / cue deletes are fixed (Options 0.6.27, cause found); a trigger
-  delete alone did not reproduce offline. QA B67 asks for her steps.
+**Three Claude sessions work in parallel (2026-11-04 evening, coordinated by send_message):**
+- this one: settings window, Stat Calculator / Character Reskin plans, chat, mover view, load conditions;
+- `session_014bN6tSy3HbUDWYQsk69naX` (PR #386): owns `XayaUI_DevAssist/` and QA section J, and the toolkit's Enchant Slots
+  default (QoL 0.7.6, CharacterToolkit.lua / CharacterModel.lua SlotOverlay);
+- one instance (Xaya, 2026-11-04 evening: "one claude instance is working on the outstanding rule and combat engine issues"; most
+  likely `session_014bN6tV8wAAEXAShpTKqUfz`, told by message): rule evaluation and the combat engine (Combat/, Triggers.lua, the
+  cooldown / aura reads, Fel Flame Fortification, Boiling Point, B4-B6). This session stays out of those.
+- Landing rule agreed: whoever lands second merges `main` in, regenerates MANIFEST.md5 and reruns the full suite on the new head.
+
+**Xaya's answers so far** (plan `docs/plans/STAT-CALCULATOR-REDESIGN-2026-11-04.md`):
+- Q5: "a wider character viewport";
+- a QoL "Character Reskin" switch (on / off);
+- "track even if not known" (B6) dropped unless she wants it.
+- Still open: Q1 (Stat Values: rename or compute), Q2 (reskin scope), Q3 (Spells auto-fill: all spells or only those with
+  numbers), Q4 (Gear comparison: side by side or one at a time), Q6 (track colours).
 
 Backlog in Xaya's priority order (work the first one not blocked; see the rule in section 2):
 - A. **Progress bars as a display kind** (rules, both engines, every texture type in groups, several bars in a dynamic group;
