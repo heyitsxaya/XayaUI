@@ -46,11 +46,12 @@ function ns.ReadCooldown(rule)
     local memo = ns.StepMemo and ns.StepMemo("cooldown")
     if not memo then return ReadCooldownRaw(rule) end
     local id, mc = rule.spellID or 0, rule.maxCharges or 0
-    local byId = memo[id]
-    if not byId then byId = {}; memo[id] = byId end
-    local mk = rule.exactSpell and ("exact" .. mc) or mc   -- B4: an exact-ID rule reads another spell than a following one
-    local r = byId[mk]
-    if not r then r = ReadCooldownRaw(rule); byId[mk] = r end
+    -- #309: one flat memo; the plain case (no charge override, following the bar) is keyed by the spell ID itself, so no table
+    -- or string is made per spell per step. B4: an exact-ID rule reads another spell than a following one.
+    local key = id
+    if mc ~= 0 or rule.exactSpell then key = tostring(id) .. "/" .. tostring(mc) .. (rule.exactSpell and "x" or "") end
+    local r = memo[key]
+    if not r then r = ReadCooldownRaw(rule); memo[key] = r end
     return r
 end
 -------------------------------------------------------------------------------
@@ -547,6 +548,16 @@ local function MakeRef(aura, frame, unit)
     return ref
 end
 ns.MakeAuraRef = MakeRef
+-- diagnostic detail for /xui status: what a Cooldown Manager frame reports (secret-safe, no arithmetic). File level so no closure is made
+-- per read (#309).
+local function CDMDetail(fr)
+    local iid = fr.auraInstanceID
+    local u = fr.auraDataUnit
+    return ("iid=%s wasAura=%s shown=%s unit=%s"):format(
+        issecret(iid) and "secret" or tostring(iid),
+        tostring(fr.wasSetFromAura == true), tostring(fr:IsShown() and true or false),
+        issecret(u) and "secret" or tostring(u))
+end
 local function BuffPresentRaw(id)
     if not id or id == 0 then return nil, "no buff" end
     -- A real aura table proves presence, in any context.
@@ -561,14 +572,7 @@ local function BuffPresentRaw(id)
         local okA, active = pcall(FrameActive, fr)
         active = okA and active or false
         -- diagnostic detail for /xui status: what the frame actually reports (secret-safe, no arithmetic)
-        local okd, detail = pcall(function()
-            local iid = fr.auraInstanceID
-            local u = fr.auraDataUnit
-            return ("iid=%s wasAura=%s shown=%s unit=%s"):format(
-                issecret(iid) and "secret" or tostring(iid),
-                tostring(fr.wasSetFromAura == true), tostring(fr:IsShown() and true or false),
-                issecret(u) and "secret" or tostring(u))
-        end)
+        local okd, detail = pcall(CDMDetail, fr)
         return active and true or false, "CDM frame (" .. vname .. (okd and (": " .. detail) or "") .. ")", active and MakeRef(nil, fr) or nil
     end
     -- No proof of presence. "nil" only means MISSING if the read can be trusted.
@@ -910,18 +914,36 @@ local function SetBonusOff(id)
     return nil
 end
 ns.SetBonusOff = SetBonusOff
+-- #309: the set-bonus pre-check walks the IDs (mainID, then alts) without building a list each step. Returns the first reason when
+-- there is at least one ID and every one of them comes only from a set bonus that is off; nil otherwise.
+local function AllSetBonusOff(mainID, alts)
+    local n, why = 0, nil
+    local m = tonumber(mainID)
+    if m then
+        n = 1
+        local w = m > 0 and SetBonusOff(m)
+        if not w then return nil end
+        why = w
+    end
+    if type(alts) == "table" then
+        for _, a in ipairs(alts) do
+            local id = tonumber(a)
+            if id then
+                n = n + 1
+                local w = id > 0 and SetBonusOff(id)
+                if not w then return nil end
+                why = why or w
+            end
+        end
+    end
+    if n > 0 then return why end
+    return nil
+end
 function ns.AuraPresence(mainID, alts, spellID)
     -- 0. every listed aura comes only from a set bonus that is not active: missing, for sure (in combat too)
     do
-        local ids, why = { tonumber(mainID) }, nil
-        if type(alts) == "table" then for _, a in ipairs(alts) do ids[#ids + 1] = tonumber(a) end end
-        local all = #ids > 0
-        for _, id in ipairs(ids) do
-            local w = id and id > 0 and SetBonusOff(id)
-            if not w then all = false; break end
-            why = why or w
-        end
-        if all then return false, "set bonus: " .. why end
+        local why = AllSetBonusOff(mainID, alts)
+        if why then return false, "set bonus: " .. why end
     end
     local p, s, r, w = ns.AuraPresentList(mainID, alts)
     if p ~= nil then return p, s, r, w end
@@ -985,6 +1007,7 @@ local function RecordAura(id, present, src)
 end
 local BuffPresentOnce
 -- (one read per aura per engine step: several rules often watch the same aura, and the tracker's side effects should run once)
+local NOREAD = {}   -- memo marker: the presence read was done and came back unknown (nil)
 function ns.BuffPresent(id)
     local memo = id and ns.StepMemo and ns.StepMemo("buff")
     if not memo then
@@ -992,14 +1015,19 @@ function ns.BuffPresent(id)
         if id then RecordAura(id, p, s) end
         return p, s, r
     end
-    local m = memo[id]
-    if not m then
-        m = {}
-        m[1], m[2], m[3] = BuffPresentOnce(id)
-        memo[id] = m
-        if id then RecordAura(id, m[1], m[2]) end
+    -- #309: flat memos (presence, source, reference) instead of a new table per aura per step; NOREAD marks "unknown" (nil)
+    local memoS, memoR = ns.StepMemo("buffS"), ns.StepMemo("buffR")
+    local p = memo[id]
+    if p == nil then
+        local s, r
+        p, s, r = BuffPresentOnce(id)
+        memoS[id], memoR[id] = s, r
+        if id then RecordAura(id, p, s) end
+        memo[id] = (p == nil) and NOREAD or p
+        return p, s, r
     end
-    return m[1], m[2], m[3]
+    if p == NOREAD then p = nil end
+    return p, memoS[id], memoR[id]
 end
 function BuffPresentOnce(id)
     local present, src, ref = BuffPresentRaw(id)
@@ -1394,7 +1422,8 @@ end
 -- Passes when the value is not marked "not" and, if any true entries exist, is one of them.
 -- The key "*" is the explicit "All" choice of the Specialization / Role radios: it restricts nothing.
 function ns.SetActive(set)
-    for k in pairs(set or {}) do if k ~= "*" then return true end end
+    if not set then return false end   -- #309: no throwaway {} for a missing set (called for every load row of every rule)
+    for k in pairs(set) do if k ~= "*" then return true end end
     return false
 end
 function ns.SetMatch(set, value)
@@ -1542,19 +1571,38 @@ local function IdsMatch(set, current)
     end
     return (not hasOn) or hit
 end
+-- IdsMatch for one current value, without building { [v] = true } on every check (#309: the engine session's allocation profile,
+-- 2026-11-04, found the load checks making tables on every recheck)
+local function IdsMatchOne(set, v)
+    local hasOn, hit = false, false
+    for k, st in pairs(set) do
+        local n = tonumber(k)
+        if st == "not" and n and n == v then return false end
+        if st == true then hasOn = true; if n and n == v then hit = true end end
+    end
+    return (not hasOn) or hit
+end
+-- Every numeric item in the set is asked about (as before); an unknown answer makes the whole check unknown; a worn "not" item fails
+-- it; otherwise one worn ticked item passes it (or there is none ticked). Same answers as building the worn set and calling IdsMatch,
+-- without the table.
 local function EquippedMatch(set)
     local fn = (C_Item and C_Item.IsEquippedItem) or IsEquippedItem
     if type(fn) ~= "function" then return nil end
-    local worn, unknown = {}, false
-    for k in pairs(set) do
+    local hasOn, hit, blocked, unknown = false, false, false, false
+    for k, st in pairs(set) do
         local n = tonumber(k)
         if n then
             local ok, v = pcall(fn, n)
-            if not ok or v == nil or issecret(v) then unknown = true else worn[n] = v and true or nil end
+            if not ok or v == nil or issecret(v) then unknown = true
+            elseif v then
+                if st == "not" then blocked = true elseif st == true then hit = true end
+            end
         end
+        if st == true then hasOn = true end
     end
     if unknown then return nil end
-    return IdsMatch(set, worn)
+    if blocked then return false end
+    return (not hasOn) or hit
 end
 
 function ns.ReadContext()
@@ -1594,22 +1642,44 @@ end
 -- Returns ok(bool), name of the failing condition(s).
 local function known(v, result) if v == nil then return nil end return result end
 
--- The ID-list checks of a load table (a rule's `load`, or a group's `loadIds`), appended to `checks` as { key, ok = true / false / nil }
-local function IdListChecks(load, ctx, checks)
-    if type(load) ~= "table" then return checks end
+-- The ID lists a load table can hold besides zones: saved key, context key, the name a failed check reports (made once, not per check)
+local ID_LISTS = { { "instanceIDs", "instanceID", "instance ID" }, { "difficulties", "difficultyID", "difficulty" },
+    { "sizes", "instSize", "instance size" }, { "encounterIDs", "encounterID", "encounter" } }
+-- Walks the ID-list checks of a load table (a rule's `load`, or a group's `loadIds`), calling sink(acc, key, ok) for each
+-- (ok = true / false / nil); stops and returns what sink returns as soon as that is not nil. Makes no tables.
+local function IdListWalk(load, ctx, sink, acc)
+    if type(load) ~= "table" then return nil end
+    local r
     if ns.SetActive(load.mapIDs) then
-        checks[#checks + 1] = { key = "zone", ok = known(ctx.maps, ctx.maps and IdsMatch(load.mapIDs, ctx.maps)) }
+        r = sink(acc, "zone", known(ctx.maps, ctx.maps and IdsMatch(load.mapIDs, ctx.maps)))
+        if r ~= nil then return r end
     end
-    for _, d in ipairs({ { "instanceIDs", "instanceID", "instance ID" }, { "difficulties", "difficultyID", "difficulty" },
-            { "sizes", "instSize", "instance size" }, { "encounterIDs", "encounterID", "encounter" } }) do
+    for i = 1, #ID_LISTS do
+        local d = ID_LISTS[i]
         local set, v = load[d[1]], ctx[d[2]]
-        if ns.SetActive(set) then checks[#checks + 1] = { key = d[3], ok = known(v, v ~= nil and IdsMatch(set, { [v] = true })) } end
+        if ns.SetActive(set) then
+            r = sink(acc, d[3], known(v, v ~= nil and IdsMatchOne(set, v)))
+            if r ~= nil then return r end
+        end
     end
     if ns.SetActive(load.equipped) then
-        checks[#checks + 1] = { key = "item equipped", ok = EquippedMatch(load.equipped) }
+        r = sink(acc, "item equipped", EquippedMatch(load.equipped))
+        if r ~= nil then return r end
     end
-    return checks
+    return nil
 end
+local function AppendCheck(checks, key, ok) checks[#checks + 1] = { key = key, ok = ok } end
+-- the ID-list checks of a rule's load table, appended to `checks` as { key, ok = true / false / nil } (they join its other checks)
+local function IdListChecks(load, ctx, checks) IdListWalk(load, ctx, AppendCheck, checks); return checks end
+-- a group's lists: every one must match. Returns the first that does not (its name, and false or nil for unknown), or nil.
+local failOk
+local function FirstFail(_, key, ok) if ok ~= true then failOk = ok; return key end end
+local function IdListFirstFail(load, ctx)
+    local key = IdListWalk(load, ctx, FirstFail, nil)
+    if key then return key, failOk end
+end
+-- (shared, never written) the load table of a rule that has none, so a recheck makes no new {} for it
+local NO_LOAD = {}
 
 local CheckContextRaw
 local ctxMemo = setmetatable({}, { __mode = "k" })
@@ -1639,7 +1709,7 @@ local function AlwaysKeeps(classes, classOn, specs, specOn, ctx)
 end
 ns._AlwaysKeeps = AlwaysKeeps
 function CheckContextRaw(rule, ctx)
-    local load = rule.load or {}
+    local load = rule.load or NO_LOAD
     local ov, ovFolder = ns.FolderLoadOverride(rule)   -- a folder's Never / Always beats the rule's own load mode
     if ov == "never" then return false, "load: never (folder " .. tostring(ovFolder and ovFolder.name) .. ")" end
     if ov == "always" then
@@ -1672,9 +1742,8 @@ function CheckContextRaw(rule, ctx)
                 return false, "group " .. tostring(f.name) .. ": instance type" .. (ctx.instanceType == nil and " (unknown)" or "")
             end
             -- the group's own zone / instance / difficulty / size / encounter / item lists (core 0.6.33; every list must match)
-            for _, c in ipairs(IdListChecks(f.loadIds, ctx, {})) do
-                if c.ok ~= true then return false, "group " .. tostring(f.name) .. ": " .. c.key .. (c.ok == nil and " (unknown)" or "") end
-            end
+            local fk, fok = IdListFirstFail(f.loadIds, ctx)
+            if fk then return false, "group " .. tostring(f.name) .. ": " .. fk .. (fok == nil and " (unknown)" or "") end
             fid, guard = f.parent, guard + 1
         end
     end
