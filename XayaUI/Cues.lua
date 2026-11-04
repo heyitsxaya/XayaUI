@@ -13,6 +13,27 @@ ns.MOD_STRATA = { "BACKGROUND", "LOW", "MEDIUM", "HIGH", "DIALOG", "FULLSCREEN",
 ns.MOD_STRATA_OK = {}
 for _, k in ipairs(ns.MOD_STRATA) do ns.MOD_STRATA_OK[k] = true end
 
+-- A cue or condition sits in its parent rule's group: the group the RULE is in (moved by drag, arrows or "Move to") is the only
+-- truth. A child keeps a copy in .folder (older saves and exports read it), refreshed here before anything lays groups out
+-- (Visual.lua RefreshAllVisuals, the engine's AuraDisplay Build). Before 0.6.6 the copy was set at creation and refreshed only
+-- while the settings window rebuilt its rule tree, after the displays had already been placed (triage C-L2, #344).
+function ns.SyncCueFolders()
+    local rules = ns.rules
+    if type(rules) ~= "table" then return 0 end
+    local parentFolder, fixed = {}, 0
+    for _, r in ipairs(rules) do
+        if type(r.uid) == "string" and not r.parentUid then parentFolder[r.uid] = r.folder or false end
+    end
+    for _, r in ipairs(rules) do
+        local pf = r.parentUid and parentFolder[r.parentUid]
+        if pf ~= nil then
+            pf = pf or nil
+            if r.folder ~= pf then r.folder = pf; fixed = fixed + 1 end
+        end
+    end
+    return fixed
+end
+
 function ns.CuesOf(p)
     local idx = ns.StepChildrenOf and ns.StepChildrenOf(p, "cues")
     if idx then return idx end

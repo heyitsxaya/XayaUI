@@ -5,16 +5,17 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-83d747f715fd8029278cae50a3e3415b  QA-CHECKLIST.md
+aa9b1fe94084a142a689f36d79bdcd0f  QA-CHECKLIST.md
 ee42539002c7a831fd97da0c0d766f12  README.md
 b8830af74b74d3bd040661448e9ff565  ROADMAP.md
 795543b7edf9a1e47a284d967c0fc4bf  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-3744eedfc9ee1cc079b4fef6a8f82e23  USER-GUIDE.md
+3c6535671a79a801e22c594e3c4a33ba  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
+d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
 40b7591dd5f7fe4f0c4b0f5a965155bb  XayaUI/ClassLearn.lua
-39280af8a8f1e38ca8e04cab432205c8  XayaUI/Combat/AuraDisplay.lua
+cc8fc5973b9f1de2b9d160a9ba0c53c6  XayaUI/Combat/AuraDisplay.lua
 08fb3f5b7f03e228c97cbd1aaee422b7  XayaUI/Combat/AuraIDProbe.lua
 5356ed0d27b490020bdc89c5b0d3b682  XayaUI/Combat/AuraModel.lua
 18fac644c546ff078dfd704d044070c0  XayaUI/Combat/AuraSetup.lua
@@ -24,7 +25,7 @@ d9d202afce65354b4aaf84ffcd8f67aa  XayaUI/Combat/README.md
 6457a864641a2d9bc60b7cc177442b29  XayaUI/Conditions.lua
 96f92f64997a08afd03007f16642ad86  XayaUI/Console.lua
 e5f8763a88bd587ce8cdcdb77317794e  XayaUI/Core.lua
-6984cb7d9801d28d7c5889e7f92e750f  XayaUI/Cues.lua
+31ca10718b57a4b0c5b1d5d91646454d  XayaUI/Cues.lua
 83da18b391d67c42777cee89752b6627  XayaUI/Engine.lua
 62d0858038c6fa488bf5c43f4896ee6f  XayaUI/GameMenu.lua
 453fb0aae7a7f04befc588dd6046a438  XayaUI/Libs/LibStub/LibStub.lua
@@ -102,8 +103,8 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 85718c92f52d4b4033d40fa86bc7fc8d  XayaUI/Timing.lua
 581f0a3c7660c2170992a099662de173  XayaUI/Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  XayaUI/UserMedia.lua
-34c10db4ed8c283aa76753f93ba5e6a4  XayaUI/Visual.lua
-a879f72374818a1dbab2dcb6774cfd93  XayaUI/XayaUI.toc
+f6eefc8b8993e56a6d7abf4b81fe9ccb  XayaUI/Visual.lua
+5e1c35015bf184ab2bae77c74d3c2011  XayaUI/XayaUI.toc
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -198,12 +199,12 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-9b7b423bdde225c1c6b18228cc1da8db  XayaUI_Options/Options.lua
+ca20a65254f4d94b0ea962a0df81d96a  XayaUI_Options/Options.lua
 3c75d53e4a00afdd70716fe2a606708f  XayaUI_Options/OutcomesEditor.lua
 caae2078758f5ba22259d321c0a2b1f1  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 6f7b5e0e0f11b307ceb1d5f0877fc5e5  XayaUI_Options/TriggersEditor.lua
-2be67b9b2fcf916b5bba6b1fd88bf7ae  XayaUI_Options/XayaUI_Options.toc
+1331be1dded5a81c7ed6b3e372505603  XayaUI_Options/XayaUI_Options.toc
 2256567dc7d851dde6106a6d10dbca09  XayaUI_QoL/CharacterToolkit.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
 e961de31e54ee41494bbd60ea3a2f996  XayaUI_QoL/CursorTrail.lua
@@ -359,7 +360,9 @@ f4517b1b53b2f437c1a5cd5f859a21bc  debug-log/2026-11-04-0200-formula-capture-walk
 ba0f33a3757102945e58ab4c5d3e9e4c  debug-log/2026-11-04-0250-api-inventory-toolkit-checks-gamedump-0.4.0.md
 46c82c2716e940f5749f3f9da50fdd94  debug-log/2026-11-04-0300-chat-left-gap-clamp-0.6.6.md
 d2ed7d9791aa2037ff4a313e9619f397  debug-log/2026-11-04-0310-core-reference-api-talents-spells.md
+efb9f8c57f9d4495ff8785b5cc7a82b5  debug-log/2026-11-04-0340-xui-auras-restored-core-0.6.6.md
 412c61450d02965726c5517c79b9737d  debug-log/2026-11-04-0400-aura-id-cooldown-manager-in-combat-bonus-0.6.4.md
+2b1bb774c56bd675867c5bf7b82628c1  debug-log/2026-11-04-0440-group-sort-manual-order-core-0.6.6.md
 b9300eaabf88d4ed02373618e27e444b  docs/reference/README.md
 1b7a634712b11938763d44b6dcead0c7  docs/reference/api/README.md
 459daa9e63696bd8d680b58af1366c02  docs/reference/api/api.json
@@ -394,8 +397,9 @@ e710f0b422a995cc05581745bca74d4b  shelved/CursorTracker.lua
 895e4335214e9e08d4909d4a1ea8d0cc  shelved/QoL.lua
 a354cbbb54ff4fb130af0063a401df9b  tests/Conditions.pre-0.5.83.lua
 1bc56b22adb5f1e1aa4a345d9fa19b8b  tests/aspect_run.py
-521a8355c5bc29487d4b76a17db58d00  tests/aura_display_run.py
+00226b75644980a8b76ada8f73a4241b  tests/aura_display_run.py
 80c84f1f7ef017e7f04a6c3be28a3910  tests/aura_sources_run.py
+f115df38e9fbc8e0ce989f9a4184ef18  tests/auras_cmd_run.py
 60a044079eaf5d5b722b73e63e5a90d0  tests/char_toolkit_run.py
 e6d5c9536965efd1498363c032f66116  tests/chat_run.py
 ffb253eb94301b31c413196ec237d13c  tests/chat_world.lua

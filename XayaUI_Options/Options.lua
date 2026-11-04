@@ -3580,11 +3580,23 @@ function ns.FolderContainerGroup(f)
         sorting = { "RIGHT", "LEFT", "DOWN", "UP", "HCENTER", "VCENTER" },
         desc = "Which way the group adds its items. Centered keeps the line centered on the group's position.",
         get = function() return f.cGrowth or "RIGHT" end, set = function(_, v) f.cGrowth = v; apply() end }
-    g.args.sort = { type = "select", name = "Sort items", order = 2.05, hidden = function() return not isDyn() end,
-        values = { none = "Rule order", asc = "Name, A to Z", desc = "Name, Z to A" },
-        sorting = { "none", "asc", "desc" },
-        desc = "Rule order follows the rule list in the sidebar (move rules with the arrows or by dragging).",
-        get = function() return f.cSort or "none" end, set = function(_, v) f.cSort = (v ~= "none") and v or nil; apply() end }
+    -- Sort (0.6.6, Xaya: "default, expiration, name, important, manual"): one setting for XayaUI's own layout and the engine
+    -- (ns.GroupSortOf in Visual.lua; saved as cSort = nil for Manual, plus cSortRev; old "asc" / "desc" read as Name / Name reversed)
+    local function sortOf() if ns.GroupSortOf then return ns.GroupSortOf(f) end return "manual", false end
+    g.args.sort = { type = "select", name = "Sort", order = 2.05, hidden = function() return not isDyn() end,
+        values = { manual = "Manual (your order)", default = "Default", expiration = "Expiration", name = "Name", important = "Important" },
+        sorting = { "manual", "default", "expiration", "name", "important" },
+        desc = "Manual: the order of the rules in this group in the sidebar (arrows or drag); each icon keeps its own size and look, and an aura that appears takes its place between the others, also in combat.\nDefault, Expiration, Name, Important: the game's own sorts (Important puts the auras the game marks important first).",
+        get = function() return (sortOf()) end,
+        set = function(_, v) local _, rev = sortOf(); f.cSort = (v ~= "manual") and v or nil; f.cSortRev = rev or nil; apply() end }
+    g.args.sortRev = { type = "toggle", name = "Reverse", order = 2.06, width = "relative", relWidth = 0.22, hidden = function() return not isDyn() end,
+        desc = "Turn the sort around (Manual: last rule first).",
+        get = function() local _, rev = sortOf(); return rev end,
+        set = function(_, v) local mode = sortOf(); f.cSort = (mode ~= "manual") and mode or nil; f.cSortRev = v and true or nil; apply() end }
+    g.args.sortSave = { type = "execute", name = "Save order and reload", order = 2.07, width = "relative", relWidth = 0.3,
+        hidden = function() return not isDyn() or sortOf() ~= "manual" end,
+        desc = "Saves your settings and reloads the interface. Out of combat the new order already applies; this makes sure it is written to disk and rebuilt from scratch.",
+        func = function() if ReloadUI then ReloadUI() end end }
     g.args.spacing = { type = "range", name = "Spacing", order = 2.1, min = 0, max = 200, step = 1,
         desc = "Space between items, in pixels.",
         hidden = function() return not isDyn() end,

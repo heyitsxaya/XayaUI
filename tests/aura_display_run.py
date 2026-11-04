@@ -77,6 +77,7 @@ function CreateFrame(kind, name, parent, template)
         assert(kind == "AuraContainer", "the container template must be created as an AuraContainer widget, not " .. tostring(kind))
         local c = proxyFrame("Container")
         c.name, c.groups, c.flow, c.refiltered = name, {}, {}, 0
+        c.nGroups, c.enabledCalls = 0, 0   -- (set here: the stand-in frame answers unknown fields with a function)
         function c:SetUnit(u) assert(type(u) == "string"); self.unit = u end
         function c:UpdateAllAuras() FULL[self] = (FULL[self] or 0) + 1 end
         function c:SetAuraProcessingPolicy(p) assert(isEnum(CustomAuraContainerAuraProcessingPolicy, p)); self.policy = p end
@@ -94,15 +95,20 @@ function CreateFrame(kind, name, parent, template)
             assert(isEnum(AuraContainerSortDirection, o.sortDirection), "sortDirection")
             assert(nonNegIntOrInf(o.maxFrameCount), "maxFrameCount")
             local l = o.layout
-            for _, k in ipairs({ "elementSpacing", "lineSpacing", "elementWidth", "elementHeight" }) do
+            for _, k in ipairs({ "elementSpacing", "lineSpacing", "groupSpacing", "groupLineSpacing", "elementWidth", "elementHeight" }) do
                 assert(l[k] == nil or (type(l[k]) == "number" and l[k] >= 0), k)
             end
+            assert(l.layoutIndex == nil or type(l.layoutIndex) == "number", "layoutIndex must be a number.")   -- Blizzard_CustomAuraContainer.lua
             assert(o.initializeFrame == nil or type(o.initializeFrame) == "function")
-            self.groups[key] = { filters = cf, layout = l, init = o.initializeFrame, filter = filter, max = o.maxFrameCount }
+            self.groups[key] = { filters = cf, layout = l, init = o.initializeFrame, filter = filter, max = o.maxFrameCount,
+                sort = o.sortMethod, dir = o.sortDirection, enabled = true, order = self.nGroups + 1 }
+            self.nGroups = self.nGroups + 1
             for i = 1, 3 do local b = newButton(); buttons[#buttons + 1] = b; o.initializeFrame(b) end   -- Blizzard pre-creates a batch
         end
         function c:SetAuraGroupCandidateFilters(key, cf) assert(self.groups[key], "no group"); self.groups[key].filters = cf; self.refiltered = (self.refiltered or 0) + 1 end
         function c:SetAuraGroupLayout(key, l) assert(self.groups[key], "no group"); self.groups[key].layout = l end
+        function c:SetAuraGroupEnabled(key, en) assert(self.groups[key], "no group"); assert(type(en) == "boolean", "enabled must be a boolean."); self.groups[key].enabled = en; self.enabledCalls = self.enabledCalls + 1 end
+        function c:SetAuraGroupSortMethod(key, m, d) assert(self.groups[key], "no group"); assert(isEnum(AuraContainerSortMethod, m)); self.groups[key].sort, self.groups[key].dir = m, d end
         function c:SetFlowLayoutAxis(a) assert(isEnum(AnchorUtil.FlowLayoutAxis, a)); self.flow.axis = a end
         function c:SetFlowLayoutAnchorPoint(p) assert(type(p) == "string"); self.flow.anchor = p end
         function c:SetFlowLayoutGrowthDirection(h, v) assert(isEnum(AnchorUtil.FlowDirection, h) and isEnum(AnchorUtil.FlowDirection, v)); self.flow.h, self.flow.v = h, v end
@@ -222,7 +228,17 @@ for i, r in ipairs(ns.rules) do local c = 0; for _ in pairs(r) do c = c + 1 end;
 # 1. automatic: everything that can be drawn faithfully, without any switch or tag
 lua('evHandler("PLAYER_ENTERING_WORLD")')
 own = lambda r: lua("return NS.EngineOwns(%s) == true" % r)
-check("dynamic group drawn by one container (members incl. a static sub-group's rule)", lua("local g = NS.AuraDisplay._groups.fA; local s = g and g.frame.groups.main.filters.includeSpellIDs; return g.ok and s[9001] and s[9002] and s[9102] and s[9050] and not s[9003]"))
+L.execute("""
+function MG(i) local g = NS.AuraDisplay._groups.fA; return g.frame.groups[g.memberKey[i]] end   -- member i's own aura group
+function SG() local g = NS.AuraDisplay._groups.fA; return g.mainKey and g.frame.groups[g.mainKey] end   -- the shared group (game sorts)
+function NKEYS() return NS.AuraDisplay._groups.fA.nKeys end
+""")
+check("dynamic group drawn by one container (members incl. a static sub-group's rule)", lua("local g = NS.AuraDisplay._groups.fA; return g.ok and #g.memberKey == 3 and MG(1) and MG(2) and MG(3) and g.mainKey == nil"))
+# Manual sort (default: rule order): one aura group per member, only that member's IDs, numbered in rule order (Xaya's table)
+check("manual: member 1 = a1 (9001) only, layoutIndex 1, one icon", lua("local s = MG(1).filters.includeSpellIDs; return s[9001] and not s[9002] and MG(1).layout.layoutIndex == 1 and MG(1).max == 1"))
+check("manual: member 2 = a2 with its extra ID (9002, 9102), layoutIndex 2", lua("local s = MG(2).filters.includeSpellIDs; return s[9002] and s[9102] and not s[9001] and MG(2).layout.layoutIndex == 2"))
+check("manual: member 3 = the static sub-group's rule (9050), layoutIndex 3; the disabled rule (9003) is in no group", lua("return MG(3).filters.includeSpellIDs[9050] and MG(3).layout.layoutIndex == 3 and not MG(1).filters.includeSpellIDs[9003] and not MG(2).filters.includeSpellIDs[9003] and not MG(3).filters.includeSpellIDs[9003]"))
+check("manual: the group spacing is between members (groupSpacing = spacing)", lua("return MG(1).layout.groupSpacing == 5 and MG(2).layout.groupSpacing == 5"))
 check("parent and cue of a group member are engine-owned", own("A1") and own("A1c") and own("AS"))
 check("static-group rule gets its own slot", lua("local s = NS.AuraDisplay._singles[S1]; return s and s.ok and s.frame.groups.main.max == 1 and s.frame.unit == 'player'") and own("S1c"))
 check("ungrouped rule gets its own slot (the tester's Anti-Magic Shell case)", lua("local s = NS.AuraDisplay._singles[U1]; return s and s.ok") and own("U1") and own("U1c"))
@@ -266,11 +282,56 @@ check("not loaded -> its slot hides", lua("return NS.AuraDisplay._singles[U1].fr
 lua('NS.runtime[U1] = { info = { ctxOK = true, talentOK = true } }; NS.AuraDisplay.SyncLive()')
 check("loaded again -> shown", lua("return NS.AuraDisplay._singles[U1].frame.shown == true"))
 lua('NS.runtime[A2] = { info = { ctxOK = false } }; NS.AuraDisplay.SyncLive()')
-check("group member not loaded -> left out of the group's filter", lua("local s = NS.AuraDisplay._groups.fA.frame.groups.main.filters.includeSpellIDs; return s[9001] and not s[9002] and not s[9102]"))
+check("group member not loaded -> its own aura group is switched off, the others stay on", lua("return MG(2).enabled == false and MG(1).enabled == true and MG(3).enabled == true"))
 lua('NS.runtime[A2] = nil; NS.AuraDisplay.SyncLive()')
-check("and back in when loaded", lua("local s = NS.AuraDisplay._groups.fA.frame.groups.main.filters.includeSpellIDs; return s[9002] == true"))
-lua('local f = NS.AuraDisplay._groups.fA.frame; BEFORE = f.refiltered; NS.AuraDisplay.SyncLive(); NS.AuraDisplay.SyncLive()')
-check("no filter rewrite when nothing changed", lua("return NS.AuraDisplay._groups.fA.frame.refiltered == BEFORE"))
+check("and back on when loaded", lua("return MG(2).enabled == true"))
+lua('local f = NS.AuraDisplay._groups.fA.frame; BEFORE = f.enabledCalls; NS.AuraDisplay.SyncLive(); NS.AuraDisplay.SyncLive()')
+check("no group switch when nothing changed", lua("return NS.AuraDisplay._groups.fA.frame.enabledCalls == BEFORE"))
+
+# 3b. Sort (Xaya 2026-11-04: Default, Expiration, Name, Important, Manual; plus Reverse). The group keeps ONE container for the
+# session (Blizzard: aura groups are add-only); the game's sorts use one shared group with Blizzard's comparator, and switching
+# only turns groups on and off.
+def fa(field, value): lua("for _, f in ipairs(NS.folders) do if f.id == 'fA' then f.%s = %s end end; NS.AuraDisplay.Build()" % (field, value))
+lua("OLDFRAME = NS.AuraDisplay._groups.fA.frame; K0 = NKEYS(); OLDM1 = MG(1)")
+for key, method in (("default", 0), ("expiration", 4), ("name", 6), ("important", 3)):
+    fa("cSort", repr(key).replace("'", '"'))
+    check("sort %s: the shared group, Blizzard's %s comparator, every member's IDs, member groups off" % (key, method),
+          lua("local m = SG(); local s = m and m.filters.includeSpellIDs; return m and m.enabled and m.sort == %d and m.dir == 0 and s[9001] and s[9002] and s[9102] and s[9050] and OLDM1.enabled == false" % method))
+check("switching sorts kept the same container and made only one shared group", lua("return NS.AuraDisplay._groups.fA.frame == OLDFRAME and NKEYS() == K0 + 1"))
+fa("cSortRev", "true")
+check("reverse: Blizzard's Reverse direction", lua("return SG().dir == 1"))
+fa("cSortRev", "nil")
+fa("cSort", '"desc"')
+check("older save 'Name, Z to A' reads as Name, reversed", lua("return SG().sort == 6 and SG().dir == 1"))
+fa("cSort", '"asc"')
+check("older save 'Name, A to Z' reads as Name", lua("return SG().sort == 6 and SG().dir == 0"))
+lua("SHARED = SG()")
+fa("cSort", "nil")
+check("back to Manual: the same member groups on again, the shared group off, nothing new made", lua("return MG(1) == OLDM1 and OLDM1.enabled == true and SHARED.enabled == false and NKEYS() == K0 + 1 and NS.AuraDisplay._groups.fA.frame == OLDFRAME"))
+fa("cSortRev", "true")
+check("manual reversed: last rule gets number 1", lua("return MG(3).layout.layoutIndex == 1 and MG(1).layout.layoutIndex == 3"))
+fa("cSortRev", "nil")
+# each member keeps its own size (a game sort draws them all at member 1's size); a look change makes that member a new group
+lua("OLDM2 = MG(2); A2c.visual.w = 44; A2c.visual.h = 44; NS.AuraDisplay.Build()")
+check("manual: each member its own icon size (a2 at 44, a1 at 30)", lua("return MG(2).layout.elementWidth == 44 and MG(1).layout.elementWidth == 30"))
+check("a2's look changed: a new group for a2 only, its old one switched off", lua("return MG(2) ~= OLDM2 and OLDM2.enabled == false and MG(1) == OLDM1 and NKEYS() == K0 + 2"))
+lua("A2c.visual.w = 30; A2c.visual.h = 30; NS.AuraDisplay.Build()")
+check("a2's old look back: its first group is reused", lua("return MG(2) == OLDM2 and NKEYS() == K0 + 2"))
+# reorder the rules (drag / arrows change the list order): only the numbers change
+lua("""
+local i1, i2
+for i, r in ipairs(NS.rules) do if r == A1 then i1 = i elseif r == A2 then i2 = i end end
+NS.rules[i1], NS.rules[i2] = NS.rules[i2], NS.rules[i1]
+NS.AuraDisplay.Build()
+""")
+check("reordered rules: a2's group is number 1, a1's number 2, same groups and container", lua("return MG(1) == OLDM2 and MG(2) == OLDM1 and OLDM2.layout.layoutIndex == 1 and OLDM1.layout.layoutIndex == 2 and NKEYS() == K0 + 2 and NS.AuraDisplay._groups.fA.frame == OLDFRAME"))
+lua("""
+local i1, i2
+for i, r in ipairs(NS.rules) do if r == A1 then i1 = i elseif r == A2 then i2 = i end end
+NS.rules[i1], NS.rules[i2] = NS.rules[i2], NS.rules[i1]
+NS.AuraDisplay.Build()
+""")
+check("order restored", lua("return MG(1) == OLDM1 and OLDM1.layout.layoutIndex == 1"))
 
 # 4. unlock
 lua('NS.unlocked = true; NS.AuraDisplay.SyncLive()')
