@@ -28,6 +28,17 @@ For testers. Tick each box in order; when something does not match the **Expect*
 - [ ] **B8.** A rule with a **Boss encounter** load condition set to "Only during a boss encounter": enter a boss fight. **Expect:** the rule loads during the fight (this was broken for some clients before 0.6.0).
 - [ ] **B9.** A rule whose Actions **say** something in /say or /yell inside a dungeon, or in group chat: trigger it. **Expect:** the message is sent (also fixed in 0.6.0).
 
+### B-engine. What displays show in combat (XayaUI 0.6.3). Use a training dummy; type `/xuiengine` first and keep its printout for the report.
+
+- [ ] **B10.** A buff rule with an icon display, **Duration text** on, not in a dynamic group (for example Anti-Magic Shell or Power Word: Shield). Cast the buff in combat. **Expect:** the time counts down in combat, in XayaUI's format (`12`, then tenths such as `4.3` below 5 s if tenths are on), in the font, size and colour set on the display (before 0.6.3 it was small white text with an `s`). If it shows `12s` style instead, `/xuiengine` must say "time text in the game's own format" for that display: report that line.
+- [ ] **B11.** The same rule with **Stacks** on, on a buff that cannot stack. **Expect:** no number (before: `0` or `1`). On a buff that stacks: the number from 2 stacks up, in combat too.
+- [ ] **B12.** The same display with **Shield / absorb amount** on (source "this aura" or "total"). **Expect:** the amount shows over the engine's icon, in and out of combat. With **Abbreviate** off and **Hide when zero** on, nothing shows when you have no shield. (With both on, a `0` can show: known game limit, listed by `/xui timing`.)
+- [ ] **B13.** A rule with an icon cue and a separate **Text** cue showing the duration (the #347 shape, no conditions). **Expect:** both show in combat; the Text cue's time is exact (counts down smoothly, no jumps when you recast). `/xuiengine` ends its summary with "plus 1 separate time / stack display".
+- [ ] **B14.** A "Target Debuff (yours)" rule (the debuff as its only trigger, not in a dynamic group). Apply the debuff to dummy A, then target dummy B (no debuff), then back to A. **Expect:** the icon disappears at once on B and comes back at once on A, with A's remaining time (before 0.6.3 it could keep showing A's debuff on B).
+- [ ] **B15.** A cooldown rule shown while the spell is **not ready**, with Duration text on. Use the spell in combat. **Expect:** the text counts the cooldown down to 0 (exact), and the global cooldown alone shows no countdown. A spell with charges: the time to the next charge.
+- [ ] **B16.** A display with **Only while on an action bar** on: remove the spell from your bars. **Expect:** the display hides, also when the engine draws it.
+- [ ] **B17.** `/xui timing`. **Expect:** one line per rule that uses time or stacks, no Lua error.
+
 ## C. Settings window switched off
 
 - [ ] **C1.** At the character screen switch off **XayaUI Options** only. Log in, type `/xui`. **Expect:** one line saying the settings window is switched off and how to turn it on. Rules still work. No Lua error.
@@ -41,6 +52,10 @@ For testers. Tick each box in order; when something does not match the **Expect*
 - [ ] **D2.** A keyword or filter rule on the Chat Panel's Filters tab (for example highlight your name): have someone say it. **Expect:** it is highlighted or filtered (fixed in 0.6.0 for clients without the old chat functions).
 - [ ] **D3.** Click the input area under the panel. **Expect:** the chat edit box opens. Collapse the panel while typing. **Expect:** the edit box closes.
 - [ ] **D4.** `/xui privacy` twice. **Expect:** the cover hides the chat, then shows it again.
+- [ ] **D4b.** (0.6.5) Type `/xui` so a long help line prints. **Expect:** the lines after the first of that message start further in than "XayaUI:". `/xui chat indent` prints `indent wrapped lines: setting on, the window's font on, its first line on`. Layout > Indent wrapped lines off: the lines start flush again.
+- [ ] **D4c.** (0.6.5) A slim scroll bar sits right of the chat text. Click the up arrow once: **Expect** the chat moves up exactly one line. Hold it: after a short pause it keeps moving at about 6 lines a second; let go and it stops. The down arrow goes back toward the newest line. Drag the thumb; click above or below it (one page). Switch tabs: the bar scrolls the tab you see. Layout > Chat Panel scroll bar off: the bar goes and the text gets the space back.
+- [ ] **D4d.** (0.6.5) Open the history window (corner button). **Expect:** a **Console** tab button at the end of the row. Run `/xui chat wrap`, click Refresh: the printed lines are listed under Console, and not under All or General.
+- [ ] **D4e.** (0.6.5) `/xui chatprobe` inside a dungeon or in combat. **Expect:** no "chat probe failed ... Probe.lua:229 ... secret boolean" line; it prints "chat probe: N lines kept".
 - [ ] **D5.** Switch **XayaUI Chat** off, /reload (or relog). **Expect:** Blizzard's normal chat; the Chat tab is gone from the window; the minimap list has no Chat rows; `/xui chat` says XayaUI Chat is switched off. No Lua error. Switch it back on.
 
 ## E. XayaUI QoL

@@ -309,6 +309,52 @@ local function FmtRemaining(sec, decimals, below)
     return ("%.1f"):format(sec)
 end
 ns.FmtRemaining = FmtRemaining
+-- XayaUI's text style for any font string (the combat engine styles its own duration / stack text with it, so it matches).
+ns.StyleText = StyleText
+
+-- FmtRemaining as one of the game's own number formatters (C_StringUtil.CreateNumericRuleFormatter, 12.1.5), for text the GAME
+-- draws from a secret time: the combat engine's duration text and the cooldown countdown below. The secret number never reaches
+-- addon code; the game formats it with these rules. Before use, the formatter is checked against FmtRemaining on plain numbers (an
+-- allowed call); if any answer differs, or the API is missing, it is not used and the caller falls back to the game's own format.
+-- Breakpoint order (largest first) is what NumberAbbrevOptions documents; the other order is tried if the first one fails the check.
+local timeFmtCache = {}
+local TIME_PROBES = { 7325, 3600, 3599.5, 65.4, 60, 59.2, 12.2, 5, 4.96, 3.46, 1.04, 0.44 }
+local function BuildTimeFormatter(decimals, below, ascending)
+    local R = Enum and Enum.NumericRuleFormatRounding
+    if not (R and C_StringUtil and C_StringUtil.CreateNumericRuleFormatter) then return nil end
+    local f = C_StringUtil.CreateNumericRuleFormatter()
+    local bps = {
+        { threshold = 3600, format = "%dh", components = { { div = 3600, step = 1, rounding = R.Down } } },
+        { threshold = 60, format = "%d:%02d", components = { { div = 60, step = 1, rounding = R.Down }, { mod = 60, step = 1, rounding = R.Down } } },
+    }
+    if decimals then
+        bps[#bps + 1] = { threshold = below, format = "%d", step = 1, rounding = R.Up }
+        bps[#bps + 1] = { threshold = 0, format = "%.1f" }
+    else
+        bps[#bps + 1] = { threshold = 0, format = "%d", step = 1, rounding = R.Up }
+    end
+    if ascending then
+        local rev = {}
+        for i = #bps, 1, -1 do rev[#rev + 1] = bps[i] end
+        bps = rev
+    end
+    f:SetBreakpoints(bps)
+    for _, s in ipairs(TIME_PROBES) do
+        if f:FormatNumber(s) ~= FmtRemaining(s, decimals, below) then return nil end
+    end
+    return f
+end
+function ns.TimeFormatter(decimals, below)
+    decimals = decimals and true or false
+    below = tonumber(below) or 5
+    local key = (decimals and "d" or "n") .. below
+    local c = timeFmtCache[key]
+    if c ~= nil then return c or nil end
+    local ok, f = pcall(BuildTimeFormatter, decimals, below, false)
+    if not (ok and f) then ok, f = pcall(BuildTimeFormatter, decimals, below, true) end
+    timeFmtCache[key] = (ok and f) or false
+    return (ok and f) or nil
+end
 
 -------------------------------------------------------------------------------
 -- Frame
@@ -1508,13 +1554,195 @@ end
 local function SetWholeSeconds(fs, sec) fs:SetText(("%d"):format(sec)) end
 local function SetVertexRGBA(tex, color) tex:SetVertexColor(color:GetRGBA()) end
 
+-- Stack / charge count into a font string. Returns true when something is shown.
+-- Stacks follow Blizzard's own rule (Cooldown Manager, aura buttons): shown from 2 up, so a buff that cannot stack (0) or has one
+-- stack shows nothing, exactly like the combat engine's count. Charges show every readable value (0 charges is worth seeing).
+-- In combat a stack count is hidden by the game unless the aura is never secret; the combat engine draws it for its displays.
+local function DrawCount(fs, rule, ct, ref, sample, chargesOnly)
+    local shown = false
+    if ns.Val(ct.source) == "charges" then
+        local ok, ch = pcall(C_Spell.GetSpellCharges, rule.spellID)
+        if ok and type(ch) == "table" then
+            local okv, cur = pcall(ns.Field, ch, "currentCharges")
+            -- (secret in combat: tested only with issecretvalue, then handed to SetText)
+            if okv and (ns.IsSecret(cur) or type(cur) == "number") then shown = pcall(fs.SetText, fs, cur) end
+        end
+    elseif not chargesOnly then
+        local a = ref and ref.applications
+        if type(a) == "number" then
+            if a >= 2 then shown = pcall(fs.SetText, fs, a) end
+        elseif ref and ref.instanceID and C_UnitAuras and C_UnitAuras.GetAuraApplicationDisplayCount then
+            -- an aura with a readable id but no count read: the game's own display string ("" below 2 stacks)
+            local okc, str = pcall(C_UnitAuras.GetAuraApplicationDisplayCount, ref.unit or "player", ref.instanceID, 2, 999)
+            if okc and str then shown = pcall(fs.SetText, fs, str) end
+        end
+    end
+    if not shown and sample then fs:SetText("3"); shown = true end
+    fs:SetShown(shown)
+    return shown
+end
+
+-- The shield / absorb amount, as text. 12.1.5: UnitGetTotalAbsorbs returns a SECRET number always (SecretReturns, in and out of
+-- combat), and one aura's own amount (AuraData.points) is readable only out of combat. A secret number can be drawn (SetText and
+-- the game's number helpers accept it from addon code) but never compared, so "hide when zero" uses the game's
+-- C_StringUtil.TruncateWhenZero ("" for zero). That helper cannot abbreviate: with BOTH "abbreviate" and "hide when zero" on, a
+-- secret amount is abbreviated and a zero shows as "0" (no game helper does both; stated in /xui timing and the user guide).
+local function ReadAbsorb(ab, ref)
+    local val
+    if ns.Val(ab.source) == "aura" then
+        if ref and ref.instanceID and C_UnitAuras and C_UnitAuras.GetAuraDataByAuraInstanceID then
+            local ok, a = pcall(C_UnitAuras.GetAuraDataByAuraInstanceID, ref.unit or "player", ref.instanceID)
+            if ok and type(a) == "table" then
+                local okp, pts = pcall(function() return a.points and a.points[1] end)
+                if okp and type(pts) == "number" then val = pts end
+            end
+        end
+        -- this aura's own amount is hidden (combat): show your total absorbs instead, the only shield number the game still gives
+        -- (only for an aura on you: your absorbs are not the amount of a debuff on your target)
+        if val == nil and ref and (ref.unit or "player") == "player" then
+            local ok, tot = pcall(UnitGetTotalAbsorbs, "player")
+            if ok then val = tot end
+        end
+    else
+        local ok, tot = pcall(UnitGetTotalAbsorbs, "player")
+        if ok then val = tot end
+    end
+    return val
+end
+local function DrawAbsorb(fs, ab, ref, sample)
+    local shown = false
+    local val = ReadAbsorb(ab, ref)
+    local secret = ns.IsSecret(val)   -- (tested first: a secret is never compared, not even with nil)
+    if not secret and type(val) == "number" then
+        if val > 0 or not ab.hideZero then
+            local txt
+            if ab.abbreviate ~= false then
+                if val >= 1e6 then txt = ("%.1fM"):format(val / 1e6)
+                elseif val >= 1e3 then txt = ("%.1fK"):format(val / 1e3)
+                else txt = ("%d"):format(val) end
+            else txt = ("%d"):format(val) end
+            fs:SetText(txt); shown = true
+        end
+    elseif secret then
+        -- secret: handed only to the game's own number helpers and SetText
+        local out = val
+        if ab.abbreviate ~= false then
+            local A = AbbreviateLargeNumbers or AbbreviateNumbers
+            local okA, s2 = false, nil
+            if A then okA, s2 = pcall(A, val) end
+            if okA and s2 ~= nil then out = s2 end
+        elseif ab.hideZero and C_StringUtil and C_StringUtil.TruncateWhenZero then
+            local okT, s2 = pcall(C_StringUtil.TruncateWhenZero, val)
+            if okT and s2 ~= nil then out = s2 end
+        end
+        shown = pcall(fs.SetText, fs, out)
+    end
+    if not shown and sample then fs:SetText(ab.abbreviate ~= false and "12.3K" or "12345"); shown = true end
+    fs:SetShown(shown)
+    return shown
+end
+
+-- Cooldown countdown for a display with no aura to time: the game's duration object for the spell's cooldown (or its recharge,
+-- for a spell with charges) drives our own font string through a duration text binding (C_DurationUtil, 12.1.5). The game updates
+-- the text itself every frame, exact in combat too, with XayaUI's own time format (ns.TimeFormatter). Returns true when bound.
+local function StopCdBind(fr)
+    if fr.cdBind and fr.cdBindOn then pcall(fr.cdBind.SetEnabled, fr.cdBind, false); fr.cdBindOn = false end
+end
+local function CooldownDuration(rule, cd)
+    local id = tonumber(rule.spellID) or 0
+    if id == 0 or not (cd and cd.known) or not C_Spell then return nil end
+    if (cd.max or 1) > 1 then
+        if cd.atMax ~= false or not C_Spell.GetSpellChargeDuration then return nil end   -- all charges back: nothing to count
+        local ok, d = pcall(C_Spell.GetSpellChargeDuration, id)
+        return ok and d or nil
+    end
+    if not cd.onCd or not C_Spell.GetSpellCooldownDuration then return nil end
+    local ok, d = pcall(C_Spell.GetSpellCooldownDuration, id, true)   -- true: the global cooldown is not counted
+    return ok and d or nil
+end
+local function BindCooldownText(fr, t, dur)
+    if fr.cdBind == false then return false end
+    if not fr.cdBind then
+        if not (C_DurationUtil and C_DurationUtil.CreateDurationTextBinding) then fr.cdBind = false; return false end
+        local ok, b = pcall(C_DurationUtil.CreateDurationTextBinding)
+        if not (ok and b) then fr.cdBind = false; return false end
+        pcall(b.SetToDefaults, b)
+        if not pcall(b.SetFontString, b, fr.text) then fr.cdBind = false; return false end
+        pcall(b.SetZeroDurationText, b, ""); pcall(b.SetExpiredText, b, "")
+        fr.cdBind, fr.cdBindFmt = b, nil
+    end
+    local b = fr.cdBind
+    local fmt = ns.TimeFormatter(t.decimals, t.decimalBelow)
+    if not fmt and AuraContainerInbound and AuraContainerInbound.GetDefaultAuraDurationFormatter then
+        local okD, d = pcall(AuraContainerInbound.GetDefaultAuraDurationFormatter); fmt = okD and d or nil
+    end
+    if fmt and fr.cdBindFmt ~= fmt then if pcall(b.SetFormatter, b, fmt) then fr.cdBindFmt = fmt end end
+    if not pcall(b.SetDuration, b, dur) then return false end
+    if not fr.cdBindOn then
+        if not pcall(b.SetEnabled, b, true) then return false end
+        fr.cdBindOn = true
+    end
+    return true
+end
+
+-- The companion of a display the combat engine draws: the game's container cannot draw a shield amount or spell charges, so these
+-- two texts are drawn by XayaUI on a small frame of their own, laid exactly over the engine's icon (same place, parent and strata,
+-- above it), shown while XayaUI's own rule says the display is up. Created only for displays that need it.
+local function Companion(fr, rule)
+    local c = fr.comp
+    if not c then
+        c = CreateFrame("Frame", nil, fr:GetParent() or UIParent)
+        c:EnableMouse(false)
+        c.count = c:CreateFontString(nil, "OVERLAY", nil, 7); c.count:SetFontObject(GameFontNormal)
+        c.absorb = c:CreateFontString(nil, "OVERLAY", nil, 7); c.absorb:SetFontObject(GameFontNormal)
+        c:Hide()
+        fr.comp = c
+    end
+    -- placed and styled again only after a settings edit (ns.configVersion) or when its display moved to another parent
+    local parent = fr:GetParent() or UIParent
+    local ver = ns.configVersion or 0
+    if c.ver ~= ver or c:GetParent() ~= parent then
+        c.ver = ver
+        local v = rule.visual
+        if c:GetParent() ~= parent then c:SetParent(parent) end
+        c:ClearAllPoints(); c:SetAllPoints(fr)
+        StyleText(c.count, c, v.count or {}, "BOTTOMRIGHT")
+        StyleText(c.absorb, c, v.absorb or {}, "TOP")
+    end
+    local strata = fr:GetFrameStrata() or "HIGH"
+    if c:GetFrameStrata() ~= strata then c:SetFrameStrata(strata) end
+    local lvl = math.min(fr:GetFrameLevel() + 30, 9000)
+    if c:GetFrameLevel() ~= lvl then c:SetFrameLevel(lvl) end
+    c:SetAlpha(fr.baseAlpha or 1)
+    return c
+end
+local function SetCompanionShown(fr, rule, on)
+    if on then
+        local c = Companion(fr, rule)
+        if not c:IsShown() then c:Show() end
+    elseif fr.comp and fr.comp:IsShown() then
+        fr.comp:Hide()
+    end
+end
+
 function ns.UpdateVisualText(rule, info, fxOnly)
     local fr = frames[rule]
     if not fr then return end
     local v = rule.visual
     local previewing = ns.IsPreview(rule, "visual")
     local sample = ns.unlocked or previewing
-    local ref = info and info.buffRef
+    -- the aura this display times: the built-in Buff / Aura, else the first present aura trigger row (Conditions.lua AuraRowRef)
+    local ref = info and (info.buffRef or info.auraRef)
+
+    -- drawn by the combat engine: only the companion texts are XayaUI's (shield amount, spell charges)
+    local comp = fr.comp
+    if comp and comp:IsShown() then
+        if fxOnly then return end
+        local ct, ab = v.count, v.absorb
+        if ct and ct.enabled then DrawCount(comp.count, rule, ct, ref, false, true) else comp.count:Hide() end
+        if ab and ab.enabled then DrawAbsorb(comp.absorb, ab, ref, false) else comp.absorb:Hide() end
+        return
+    end
 
     -- remaining fraction of the buff (readable numbers only; secret numbers cannot be divided)
     local frac
@@ -1540,7 +1768,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     local dobj
     if f == nil and ref and ref.instanceID and C_UnitAuras and C_UnitAuras.GetAuraDuration
         and C_CurveUtil and (v.fadeGrey or v.fadeAlpha) then
-        local okd, d = pcall(C_UnitAuras.GetAuraDuration, "player", ref.instanceID)
+        local okd, d = pcall(C_UnitAuras.GetAuraDuration, ref.unit or "player", ref.instanceID)
         if okd and d and d.EvaluateRemainingPercent then dobj = d end
     end
     fr.curves = fr.curves or {}
@@ -1708,83 +1936,23 @@ function ns.UpdateVisualText(rule, info, fxOnly)
 
     -- stacks / charges text
     local ct = v.count
-    if ct and ct.enabled then
-        local shown = false
-        if ns.Val(ct.source) == "charges" then
-            local ok, ch = pcall(C_Spell.GetSpellCharges, rule.spellID)
-            if ok and type(ch) == "table" then
-                local okv, cur = pcall(function() return ch.currentCharges end)
-                if okv and cur then shown = pcall(fr.count.SetText, fr.count, cur) end
-            end
-        else
-            if ref and ref.applications then
-                shown = pcall(fr.count.SetText, fr.count, ref.applications)
-            elseif ref and ref.instanceID and C_UnitAuras and C_UnitAuras.GetAuraApplicationDisplayCount then
-                -- found through the Cooldown Manager: no readable stack number, but the game formats one for display
-                -- ("" below 2 stacks, so a one-stack aura shows nothing)
-                local okc, str = pcall(C_UnitAuras.GetAuraApplicationDisplayCount, "player", ref.instanceID, 2, 999)
-                if okc and str then shown = pcall(fr.count.SetText, fr.count, str) end
-            end
-        end
-        if not shown and sample then fr.count:SetText("3"); shown = true end
-        fr.count:SetShown(shown)
-    else
-        fr.count:Hide()
-    end
+    if ct and ct.enabled then DrawCount(fr.count, rule, ct, ref, sample, false) else fr.count:Hide() end
 
     -- shield / absorb amount text
     local ab = v.absorb
-    if ab and ab.enabled then
-        local shown = false
-        local val
-        if ns.Val(ab.source) == "aura" then
-            if ref and ref.instanceID then
-                local ok, a = pcall(C_UnitAuras.GetAuraDataByAuraInstanceID, "player", ref.instanceID)
-                if ok and type(a) == "table" then
-                    local okp, pts = pcall(function() return a.points and a.points[1] end)
-                    if okp then val = pts end
-                end
-            end
-        else
-            local ok, tot = pcall(UnitGetTotalAbsorbs, "player")
-            if ok then val = tot end
-        end
-        if val then
-            if not ns.IsSecret(val) and type(val) == "number" then
-                if val > 0 or not ab.hideZero then
-                    local txt
-                    if ab.abbreviate ~= false then
-                        if val >= 1e6 then txt = ("%.1fM"):format(val / 1e6)
-                        elseif val >= 1e3 then txt = ("%.1fK"):format(val / 1e3)
-                        else txt = ("%d"):format(val) end
-                    else txt = ("%d"):format(val) end
-                    fr.absorb:SetText(txt); shown = true
-                end
-            else
-                -- secret: display-only, cannot be compared (so hideZero does not apply)
-                local out = val
-                if ab.abbreviate ~= false and AbbreviateLargeNumbers then
-                    local okA, s2 = pcall(AbbreviateLargeNumbers, val)
-                    if okA and s2 then out = s2 end
-                end
-                shown = pcall(fr.absorb.SetText, fr.absorb, out)
-            end
-        end
-        if not shown and sample then fr.absorb:SetText(ab.abbreviate ~= false and "12.3K" or "12345"); shown = true end
-        fr.absorb:SetShown(shown)
-    else
-        fr.absorb:Hide()
-    end
+    if ab and ab.enabled then DrawAbsorb(fr.absorb, ab, ref, sample) else fr.absorb:Hide() end
 
     -- duration text
     local t = v.text
     if not (t and t.enabled) then
+        StopCdBind(fr)
         fr.text:Hide()
         if fr.cd then fr.cd:Hide() end
         return
     end
     -- path 1: readable numbers -> our own text (full control)
     if ref and ref.expiration and ref.duration then
+        StopCdBind(fr)
         if fr.cd then fr.cd:Hide() end
         if ref.duration > 0 then
             local rem = ref.expiration - GetTime()
@@ -1798,9 +1966,11 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         return
     end
     -- numbers are secret (in combat). Everything below only ever hands the secret to a widget or string.format.
-    -- (A boolean test of a secret is allowed; comparing it, even with nil, is not - so the instance id is tested by truthiness.)
+    -- (refs hold only readable instance ids since 0.6.3; in combat the game withholds aura access from addon code, so this path
+    -- serves never-secret auras and readable ids from the tracker; the combat engine draws the rest exactly)
     if ref and ref.instanceID and C_UnitAuras and C_UnitAuras.GetAuraDuration then
-        local ok, dur = pcall(C_UnitAuras.GetAuraDuration, "player", ref.instanceID)
+        StopCdBind(fr)
+        local ok, dur = pcall(C_UnitAuras.GetAuraDuration, ref.unit or "player", ref.instanceID)
         if not (ok and dur) then
             if ns.perfOn then ns.PerfPath(rule, "dur:GetAuraDuration " .. (ok and "returned nothing" or "failed")) end
         else
@@ -1834,9 +2004,20 @@ function ns.UpdateVisualText(rule, info, fxOnly)
                 if ns.perfOn then ns.PerfPath(rule, "dur:SetCooldownFromDurationObject failed: " .. tostring(err2):sub(1, 80)) end
             end
         end
+    elseif not ref and not sample then
+        -- path 4: no aura to time: the spell's cooldown (or recharge) counting down, drawn by the game from its duration object
+        local dur = CooldownDuration(rule, info and info.cd)
+        if dur and BindCooldownText(fr, t, dur) then
+            if fr.cd then fr.cd:Hide() end
+            fr.text:Show()
+            if ns.perfOn then ns.PerfPath(rule, "dur:cooldown countdown (bound)") end
+            return
+        end
+        if ns.perfOn then ns.PerfPath(rule, "dur:no aura reference") end
     else
         if ns.perfOn then ns.PerfPath(rule, ref and "dur:no aura instance id" or "dur:no aura reference") end
     end
+    StopCdBind(fr)
     if fr.cd then fr.cd:Hide() end
     if sample then
         fr.text:SetText(FmtRemaining(rem or SAMPLE_DURATION, t.decimals, t.decimalBelow)); fr.text:Show()
@@ -1870,20 +2051,24 @@ end
 
 function ns.SetVisualShown(rule, shown)
     local pv = ns.IsPreview(rule, "visual")
-    local want
+    local want, comp = nil, false
     if not rule.visual.enabled and not pv then
         want = false
     elseif ns.EngineOwns and not (Unl(rule) or GroupUnl(rule) or pv) and ns.EngineOwns(rule) then
         want = false   -- drawn instead by the combat engine's secure aura container: ours stays hidden unless unlocked / previewing
+        -- ... except the texts the container cannot draw (shield amount, spell charges): their companion shows while XayaUI's rule does
+        comp = (shown and ns.EngineCompanion and ns.EngineCompanion(rule)) and true or false
     else
         want = (Unl(rule) or GroupUnl(rule) or pv or shown) and true or false
     end
     local fr = frames[rule]
     if not fr then
-        if not want then return end   -- a display that has never shown needs no frame yet
+        if not want and not comp then return end   -- a display that has never shown needs no frame yet
         ns.RefreshVisual(rule)        -- creates and styles it
         fr = frames[rule]
     end
+    if comp or fr.comp then SetCompanionShown(fr, rule, comp) end
+    if not want then StopCdBind(fr) end   -- a hidden display's cooldown countdown stops updating
     if fr:IsShown() == want then return end
     fr:SetShown(want)
     QueueLayout(rule.folder and DynAncestor(rule.folder))
@@ -1929,7 +2114,11 @@ end
 
 function ns.DropVisual(rule)
     local fr = frames[rule]
-    if fr then fr:Hide(); frames[rule] = nil end
+    if fr then
+        fr:Hide(); StopCdBind(fr)
+        if fr.comp then fr.comp:Hide() end   -- (the companion hangs from the display's parent, not from the display)
+        frames[rule] = nil
+    end
 end
 
 -- /xui mods: what is really on a cue's frame right now (so a modifier that "does not apply" can be traced: data -> condition -> merged mods -> frame).

@@ -52,6 +52,7 @@ local function isEnum(e, v) for _, x in pairs(e) do if x == v then return true e
 local function nonNegIntOrInf(v) return v == math.huge or (type(v) == "number" and v >= 0 and v == math.floor(v)) end
 
 containers = {}
+FULL = {}   -- [container] = UpdateAllAuras calls
 failAdd = false
 buttons = {}
 
@@ -61,7 +62,11 @@ local function newButton()
     b.log = {}
     function b:SetIcon(tex) assert(tex._kind == "Texture", "SetIcon needs a Texture"); self.log.icon = tex end
     function b:SetDurationCooldown(cd) assert(cd._kind == "Cooldown", "SetDurationCooldown needs a Cooldown"); self.log.cd = cd end
-    function b:SetDurationText(fs, opts) assert(fs._kind == "FontString", "SetDurationText needs a FontString"); assert(type(opts) == "table"); self.log.dur = fs end
+    function b:SetDurationText(fs, opts)
+        assert(fs._kind == "FontString", "SetDurationText needs a FontString"); assert(type(opts) == "table")
+        if opts.textFormatter ~= nil and REJECT_FORMATTER then error("simulated: textFormatter rejected") end
+        self.log.dur, self.log.durOpts = fs, opts
+    end
     function b:SetDurationBar(bar, opts) assert(bar._kind == "StatusBar", "SetDurationBar needs a StatusBar"); assert(type(opts) == "table"); self.log.bar, self.log.barOpts = bar, opts end
     function b:SetApplicationCount(fs, opts) assert(fs._kind == "FontString", "SetApplicationCount needs a FontString"); assert(type(opts) == "table"); self.log.count = fs end
     return b
@@ -73,6 +78,7 @@ function CreateFrame(kind, name, parent, template)
         local c = proxyFrame("Container")
         c.name, c.groups, c.flow, c.refiltered = name, {}, {}, 0
         function c:SetUnit(u) assert(type(u) == "string"); self.unit = u end
+        function c:UpdateAllAuras() FULL[self] = (FULL[self] or 0) + 1 end
         function c:SetAuraProcessingPolicy(p) assert(isEnum(CustomAuraContainerAuraProcessingPolicy, p)); self.policy = p end
         function c:AddAuraGroup(key, filter, o)
             assert(type(key) == "string" and key ~= "", "groupKey")
@@ -353,11 +359,122 @@ NS.rules[#NS.rules + 1] = GX; NS.rules[#NS.rules + 1] = GXi; NS.rules[#NS.rules 
 NS.AuraDisplay.Build()
 """)
 check("#347: the single slot draws the icon cue (rule and icon cue engine-owned)", lua("local s = NS.AuraDisplay._singles[TX]; return s and s.ok and s.spec.display == TXi") and own("TX") and own("TXi"))
-check("#347: the separate Text cue (duration + shield) stays with XayaUI, so it shows in game", not own("TXt"))
+check("#347 (0.6.3): the separate Text cue gets its own slot, so its duration is exact in combat too", own("TXt") and lua("local x = NS.AuraDisplay._extras[TXt]; return x and x.ok and x.spec.display == TXt and x.frame.unit == 'player' and x.frame.groups.main.filters.includeSpellIDs[48707] == true"))
+check("#347 (0.6.3): its shield amount (the container cannot draw it) is XayaUI's companion text", lua("return NS.EngineCompanion(TXt) == true and NS.EngineCompanion(TXi) == false and NS.EngineCompanion(TX) == false"))
 check("#347: a cue without a display (sound) is still owned as before", own("TXs"))
 check("#347: inside a dynamic group the extra display cue stays hidden (XayaUI's layout would misplace it)", own("GXi") and own("GXt"))
 lua('printed = {}; SlashCmdList["XUIENGINE"]("")')
 check("#347: /xuiengine says the group rule's text cue is hidden", lua("for _, l in ipairs(printed) do if l:find('group two cues', 1, true) and l:find('other display cue', 1, true) then return true end end return false"))
+
+# 11. a new target / focus: Blizzard's container does not refresh by itself (its own target frame calls UpdateAllAuras on
+# PLAYER_TARGET_CHANGED); without the call a "Target Debuff (yours)" slot kept the previous target's debuff
+lua(r"""
+TDF = { uid = "tdf", name = "focus debuff", enabled = true, extra = { list = { { type = "targetDebuff", spellID = 204600, unit = "focus", state = "yes" } } }, visual = { enabled = true, trigger = "condition", w = 30, h = 30 } }
+NS.rules[#NS.rules + 1] = TDF
+NS.AuraDisplay.Build()
+TU0 = FULL[NS.AuraDisplay._singles[TD].frame] or 0; FU0 = FULL[NS.AuraDisplay._singles[TDF].frame] or 0; PU0 = FULL[NS.AuraDisplay._singles[U1].frame] or 0
+evHandler(nil, "PLAYER_TARGET_CHANGED")
+""")
+check("target changed: the target debuff slot refreshes at once", lua("return (FULL[NS.AuraDisplay._singles[TD].frame] or 0) == TU0 + 1"))
+check("target changed: focus and player slots are left alone", lua("return (FULL[NS.AuraDisplay._singles[TDF].frame] or 0) == FU0 and (FULL[NS.AuraDisplay._singles[U1].frame] or 0) == PU0"))
+lua('evHandler(nil, "PLAYER_FOCUS_CHANGED")')
+check("focus changed: the focus debuff slot refreshes", lua("return (FULL[NS.AuraDisplay._singles[TDF].frame] or 0) == FU0 + 1"))
+check("a target change does not rebuild anything (no Build in combat needed)", lua("return NS.AuraDisplay._singles[TD].ok == true"))
+
+# 12. texts: shown only when switched on (like XayaUI), styled by XayaUI's own text routine, a blank anchor never breaks a slot
+lua(r"""
+STYLED = {}
+NS.StyleText = function(fs, parent, t, default)
+  if t.anchor == "" then error("SetPoint: invalid point ''") end   -- what the game does with a blank point name
+  STYLED[#STYLED + 1] = { fs = fs, parent = parent, t = t, default = default }
+end
+FMT = { name = "XayaUI time format" }
+NS.TimeFormatter = function(decimals, below) return FMT end
+function newRule(uid, vis, extra)
+  local r = { uid = uid, name = uid, useBuff = true, buffID = 9900 + #NS.rules, buffState = "present", enabled = true, visual = vis }
+  for k, v in pairs(extra or {}) do r[k] = v end
+  NS.rules[#NS.rules + 1] = r
+  return r
+end
+TXOFF = newRule("text unset", { enabled = true, trigger = "buffActive", w = 30, h = 30, text = {}, count = {} })
+TXON = newRule("text on", { enabled = true, trigger = "buffActive", w = 30, h = 30, text = { enabled = true, size = 22, font = "lato", color = { 1, 0, 0, 1 }, anchor = "TOP", place = "outer" }, count = { enabled = true, size = 9 } })
+TXBL = newRule("blank anchor", { enabled = true, trigger = "buffActive", w = 30, h = 30, text = { enabled = true, anchor = "" }, count = { enabled = false } })
+buttons = {}
+NS.AuraDisplay.Build()
+function BTN(r) local s = NS.AuraDisplay._singles[r]; for _, b in ipairs(buttons) do if b.log.owner == s then return b end end end
+""")
+# (buttons are matched to slots by the order they were created in)
+lua(r"""
+BY = {}
+for _, b in ipairs(buttons) do BY[#BY + 1] = b end
+function LAST_WITH(pred) for i = #BY, 1, -1 do if pred(BY[i]) then return BY[i] end end end
+""")
+check("text and count left unset (not switched on): the engine draws neither (XayaUI does not either)", lua("return NS.AuraDisplay._singles[TXOFF].ok and (function() for _, b in ipairs(BY) do if b.log.dur or b.log.count then for _, st in ipairs(STYLED) do if st.fs == b.log.dur and st.t == TXOFF.visual.text then return false end end end end return true end)()"))
+check("duration text styled by XayaUI's own routine with the display's settings (font, size, colour, outer place)", lua("for _, st in ipairs(STYLED) do if st.t == TXON.visual.text and st.default == 'CENTER' then return true end end return false"))
+check("stack count styled the same way (default corner bottom right)", lua("for _, st in ipairs(STYLED) do if st.t == TXON.visual.count and st.default == 'BOTTOMRIGHT' then return true end end return false"))
+check("a blank text anchor no longer breaks the slot (it failed and the display fell back to XayaUI)", lua("return NS.AuraDisplay._singles[TXBL].ok == true") and own("TXBL"))
+check("time text uses XayaUI's format (the game formatter is handed to the container)", lua("local b = LAST_WITH(function(b) return b.log.durOpts and b.log.durOpts.textFormatter == FMT end); return b ~= nil and not NS.AuraDisplay._singles[TXON].fmtFallback"))
+
+# 13. the container refuses the formatter: the game's own format, said by /xuiengine; the slot still works
+lua('REJECT_FORMATTER = true; TXON.visual.text.size = 23; buttons = {}; NS.AuraDisplay.Build()')
+check("formatter refused: slot still drawn, game's own time format", lua("return NS.AuraDisplay._singles[TXON].ok == true and NS.AuraDisplay._singles[TXON].fmtFallback == true"))
+lua('printed = {}; SlashCmdList["XUIENGINE"]("")')
+check("/xuiengine says the time text uses the game's own format", lua("for _, l in ipairs(printed) do if l:find('text on', 1, true) and l:find(\"game's own format\", 1, true) then return true end end return false"))
+lua('REJECT_FORMATTER = nil')
+
+# 14. a count set to show spell CHARGES: the container counts aura stacks, so it is not handed the count; XayaUI's companion draws it
+lua(r"""
+CHG = newRule("charges count", { enabled = true, trigger = "buffActive", w = 30, h = 30, text = { enabled = false }, count = { enabled = true, source = "charges" } })
+NS.Val = function(v) if v == nil or v == "" or v == "none" then return nil end return v end
+buttons = {}; NS.AuraDisplay.Build()
+""")
+check("charges count: not handed to the container (it would show aura stacks)", lua("for _, b in ipairs(buttons) do if b.log.count then return false end end return true"))
+check("charges count: drawn by XayaUI's companion over the engine's icon", lua("return NS.EngineOwns(CHG) and NS.EngineCompanion(CHG) == true"))
+
+lua('GA, GAc = P("group absorb", "fA", 9020); GAc.visual.absorb = { enabled = true }; NS.AuraDisplay.Build(); printed = {}; SlashCmdList["XUIENGINE"]("")')
+check("inside a group: the shield amount is listed by /xuiengine as not drawn (no companion for a group's icons)", lua("for _, l in ipairs(printed) do if l:find('group absorb', 1, true) and l:find('shield amount text', 1, true) then return true end end return false") and lua("return NS.EngineCompanion(GAc) == false"))
+
+# 15. "only while on an action bar": followed by the engine too
+lua('BAR = newRule("bar gated", { enabled = true, trigger = "buffActive", requireOnBar = true, w = 30, h = 30, text = {}, count = {} }); NS.AuraDisplay.Build()')
+lua('NS.SpellOnActionBar = function(id) return false end; NS.AuraDisplay.SyncLive()')
+check("spell not on an action bar: the engine's slot hides (XayaUI would hide it too)", lua("return NS.AuraDisplay._singles[BAR].frame.shown == false"))
+lua('NS.SpellOnActionBar = function(id) return true end; NS.AuraDisplay.SyncLive()')
+check("back on a bar: shown", lua("return NS.AuraDisplay._singles[BAR].frame.shown == true"))
+lua('NS.SpellOnActionBar = nil')
+
+# 16. which display the engine draws: only one XayaUI itself would show (a sound cue with a stale display switch is skipped)
+lua(r"""
+NS.KindHas = function(r, what) if r.isCue then return r.cueKind ~= "sound" and r.cueKind ~= "speech" and r.cueKind ~= "custom" end return true end
+KH = newRule("kind check", { enabled = false })
+KHs = { uid = "khs", name = "kh sound cue", isCue = true, parentUid = KH.uid, cueKey = "q1", cueKind = "sound", enabled = true, visual = { enabled = true, trigger = "condition", w = 10, h = 10 } }
+KHi = { uid = "khi", name = "kh icon cue", isCue = true, parentUid = KH.uid, cueKey = "q2", cueKind = "icon", enabled = true, visual = { enabled = true, trigger = "condition", w = 44, h = 44, text = {}, count = {} } }
+NS.rules[#NS.rules + 1] = KHs; NS.rules[#NS.rules + 1] = KHi
+NS.AuraDisplay.Build()
+""")
+check("a sound cue's leftover display switch is ignored: the icon cue is drawn", lua("local s = NS.AuraDisplay._singles[KH]; return s and s.ok and s.spec.display == KHi and s.frame.groups.main.layout.elementWidth == 44"))
+
+# 17. a rule whose only trigger is one "Buff / Aura (another)" row: drawn like the built-in Buff / Aura
+lua(r"""
+ROW = { uid = "row", name = "aura row only", enabled = true, extra = { list = { { type = "buffAura", spellID = 9777, state = "yes" } } }, visual = { enabled = true, trigger = "condition", w = 30, h = 30, text = {}, count = {} } }
+ROWM = { uid = "rowm", name = "aura row missing", enabled = true, extra = { list = { { type = "buffAura", spellID = 9778, state = "no" } } }, visual = { enabled = true, trigger = "condition", w = 30, h = 30 } }
+NS.rules[#NS.rules + 1] = ROW; NS.rules[#NS.rules + 1] = ROWM
+NS.AuraDisplay.Build()
+""")
+check("lone aura row: its own slot on the player's buffs", lua("local s = NS.AuraDisplay._singles[ROW]; return s and s.ok and s.frame.unit == 'player' and s.frame.groups.main.filter == 'HELPFUL' and s.frame.groups.main.filters.includeSpellIDs[9777] == true"))
+check("lone aura row set to MISSING stays with XayaUI, with its reason", not own("ROWM") and lua("for _, e in ipairs(NS.AuraDisplay._Left()) do if e[1] == ROWM and e[2]:find('MISSING') then return true end end return false"))
+
+# 18. a rule WITH conditions switches its cues one by one: its separate Text cue stays with XayaUI (no extra slot)
+lua(r"""
+CX = { uid = "cx", name = "with condition", useBuff = true, buffID = 9811, buffState = "present", enabled = true, visual = { enabled = false } }
+CXi = { uid = "cxi", name = "cx icon", isCue = true, parentUid = "cx", cueKey = "q1", cueKind = "icon", enabled = true, visual = { enabled = true, trigger = "condition", w = 30, h = 30, text = {}, count = {} } }
+CXt = { uid = "cxt", name = "cx text", isCue = true, parentUid = "cx", cueKey = "q2", cueKind = "text", enabled = true, visual = { enabled = true, trigger = "condition", w = 30, h = 30, text = { enabled = true }, count = {} } }
+CXc = { uid = "cxc", name = "cx condition", parentUid = "cx", enabled = true, when = { list = {} }, thenCues = { "q2" } }
+NS.rules[#NS.rules + 1] = CX; NS.rules[#NS.rules + 1] = CXi; NS.rules[#NS.rules + 1] = CXt; NS.rules[#NS.rules + 1] = CXc
+NS.AuraDisplay.Build()
+""")
+check("rule with conditions: icon drawn by the engine, the condition-switched Text cue stays with XayaUI", own("CXi") and not own("CXt") and lua("return NS.AuraDisplay._extras[CXt] == nil or NS.AuraDisplay._extras[CXt].ok == false"))
+lua('printed = {}; SlashCmdList["XUIENGINE"]("")')
+check("/xuiengine counts the separate time / stack displays it draws", lua("for _, l in ipairs(printed) do if l:find('^Engine draws:') and l:find('separate time / stack display', 1, true) then return true end end return false"))
 
 # 10. loaded twice (XayaUI loads the engine files and the separate XayaUI_CombatEngine folder is installed too): one copy only
 lua('BEFORE_D = NS.AuraDisplay; BEFORE_SLASH = SlashCmdList["XUIENGINE"]')
