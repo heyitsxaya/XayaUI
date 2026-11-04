@@ -467,6 +467,36 @@ function ns.DynamicFirstOffset(df, w, h)
     return nil
 end
 
+-- Sort of a dynamic group (Group tab "Sort"; Xaya 2026-11-04): Default, Expiration, Name, Important, Manual, plus Reverse.
+-- One definition for XayaUI's own layout (below) and the engine's containers (Combat/AuraDisplay.lua, Blizzard's own sorts there).
+-- Older saves: cSort nil / "none" = manual (rule order); "asc" = name; "desc" = name, reversed.
+local SORT_OK = { default = true, expiration = true, name = true, important = true }
+function ns.GroupSortOf(fo)
+    local s, rev = fo and fo.cSort, (fo and fo.cSortRev) and true or false
+    if s == "asc" then s = "name" elseif s == "desc" then s = "name"; rev = not rev end
+    if not SORT_OK[s] then s = "manual" end
+    return s, rev
+end
+-- For XayaUI's own items (preview, unlocked, and displays the engine does not draw), each sort uses what XayaUI can read:
+--   manual      rule order (the sidebar)
+--   name        the rule's name
+--   important   the game's own flag for the rule's aura (C_Spell.IsSpellImportant), then rule order
+--   default     the game's priority flag for the rule's aura (C_Spell.IsPriorityAura), then rule order
+--   expiration  time left from the rule's own reading (exact or its estimate), soonest first; unknown after known; then rule order
+-- Engine-drawn groups use Blizzard's comparators for these instead (same names), which also look at who cast the aura.
+local function SpellFlag(fn, owner)
+    local id = tonumber(owner and owner.buffID) or 0
+    if id <= 0 or type(fn) ~= "function" then return false end
+    local ok, v = pcall(fn, id)
+    return ok and v == true
+end
+local function TimeLeftOf(owner)
+    local rt = ns.runtime and ns.runtime[owner]
+    local ref = rt and rt.info and rt.info.present == true and rt.info.buffRef
+    local e = ref and ref.expiration
+    if type(e) == "number" and not issecretvalue(e) and e > 0 then return e - GetTime() end
+end
+
 local function LayoutDynamic(df)
     if not df then return end
     -- One slot per RULE (the rule is the container of its cues), in the rule's own list order: the order of the sidebar, which the
@@ -487,7 +517,7 @@ local function LayoutDynamic(df)
             local it = byOwner[owner]
             if not it then
                 it = { fr = fr, w = fr:GetWidth(), h = fr:GetHeight(), name = tostring(owner.name or ""):lower(),
-                    pos = posOf[owner] or posOf[r] or 0, extra = nil }
+                    pos = posOf[owner] or posOf[r] or 0, extra = nil, owner = owner }
                 byOwner[owner] = it
                 items[#items + 1] = it
             else
@@ -499,10 +529,27 @@ local function LayoutDynamic(df)
     if #items == 0 then return end
     for i, it in ipairs(items) do it.i = i end
     table.sort(items, function(a, b) if a.pos ~= b.pos then return a.pos < b.pos end return a.i < b.i end)
-    if df.cSort == "asc" or df.cSort == "desc" then   -- Sort items (group option); ties keep rule order
+    do   -- Sort (group option); every sort falls back to rule order on ties
+        local mode, rev = ns.GroupSortOf(df)
         for i, it in ipairs(items) do it.i = i end   -- (renumbered after the rule-order sort above)
-        local asc = df.cSort == "asc"
-        table.sort(items, function(a, b) if a.name == b.name then return a.i < b.i end if asc then return a.name < b.name end return a.name > b.name end)
+        if mode == "name" then
+            table.sort(items, function(a, b) if a.name == b.name then return a.i < b.i end return a.name < b.name end)
+        elseif mode == "important" or mode == "default" then
+            local fn = (mode == "important") and (C_Spell and C_Spell.IsSpellImportant) or (C_Spell and C_Spell.IsPriorityAura)
+            for _, it in ipairs(items) do it.flag = SpellFlag(fn, it.owner) end
+            table.sort(items, function(a, b) if a.flag ~= b.flag then return a.flag end return a.i < b.i end)
+        elseif mode == "expiration" then
+            for _, it in ipairs(items) do it.left = TimeLeftOf(it.owner) end
+            table.sort(items, function(a, b)
+                if a.left and b.left then if a.left ~= b.left then return a.left < b.left end return a.i < b.i end
+                if a.left or b.left then return a.left ~= nil end
+                return a.i < b.i
+            end)
+        end
+        if rev then
+            local n = #items
+            for i = 1, math.floor(n / 2) do items[i], items[n - i + 1] = items[n - i + 1], items[i] end
+        end
     end
     local dir = df.cGrowth or "RIGHT"
     local horiz = (dir == "RIGHT" or dir == "LEFT" or dir == "HCENTER")
@@ -2113,6 +2160,7 @@ end
 -- has no frame yet gets none: sound-only cues and conditions no longer each carry a full display frame in memory.
 local refreshErrSeen = setmetatable({}, { __mode = "k" })
 function ns.RefreshAllVisuals()
+    if ns.SyncCueFolders then pcall(ns.SyncCueFolders) end   -- a cue's group is its parent rule's group (Cues.lua)
     for _, r in ipairs(ns.rules or {}) do
         if frames[r] or (r.visual and r.visual.enabled) or ns.IsPreview(r, "visual") then
             local ok, err = pcall(ns.RefreshVisual, r)
