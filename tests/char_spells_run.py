@@ -229,6 +229,28 @@ fire("SPELLS_CHANGED")
 check("on another tab: no redraw for spell events", renders == 0, renders)
 ns.CharToolkit_Render = savedRender
 
+-- 10b. #380 / #378: the spell ID beside the name; the spell's number lines at the panel's text size -------------------------------
+c.tab = "spells"; c.spellFilter = "all"; c.fontSize = 11
+d = render("spells")
+local fl = drawn().model.byKey.spell9001
+check("#380: a spell's line reads its name, then \"Spell ID: N\" (no \"#N\" at the right edge)", fl and fl.label:find("^Flame Ring") ~= nil and fl.label:find("Spell ID: 9001", 1, true) ~= nil
+  and fl.value == "", fl and (fl.label .. " | " .. tostring(fl.value)))
+local lab
+for _, r in ipairs(recs(d, "label")) do if tostring(r.text):find("Spell ID: 9001", 1, true) then lab = r end end
+check("  ...drawn across the whole width (no value column beside it)", lab ~= nil and lab.w == ns.CHARTOOLKIT_LAYOUT.content, lab and lab.w)
+local big, small = 0, 0
+for _, r in ipairs(recs(d, "pairValue")) do if r.size == c.fontSize then big = big + 1 else small = small + 1 end end
+check("#378: the spell math lines are drawn at the panel's text size (11), not one smaller", big > 0 and small == 0, big .. " at 11, " .. small .. " smaller")
+local pv
+for _, r in ipairs(recs(d, "pairValue")) do if tostring(r.text):find("of attack power", 1, true) then pv = r end end
+local Wc = ns.CHARTOOLKIT_LAYOUT.content
+check("  ...their value gets 70% of the line, so \"N% of attack power; 1 Agility = +N\" fits one line more often", pv ~= nil and pv.w == Wc - 12 - math.floor((Wc - 12) * 0.3), pv and pv.w)
+d = render("stats")
+local sm = 0
+for _, r in ipairs(recs(d, "pairValue")) do if r.size == c.fontSize - 1 then sm = sm + 1 end end
+check("  ...other tabs keep their smaller detail lines", sm > 0, sm)
+c.tab = "spells"
+
 -- 11. Settings -----------------------------------------------------------------------------------------------------------------
 local page = ns.BuildCharToolkitPage(function() end)
 local sp = page.args.spells.args

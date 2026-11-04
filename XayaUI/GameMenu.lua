@@ -198,15 +198,24 @@ local function BottomGap(menu)
     local okB, mb = pcall(menu.GetBottom, menu)
     if low and okB and type(mb) == "number" then return low - mb end
 end
+-- The height follows the buttons, shorter as well as taller (core 0.6.39). Core 0.6.32-0.6.38 only ever made it taller and measured
+-- the padding again on every open, from the menu as already drawn; a menu whose own layout keeps its height then took the last
+-- open's extra row for padding and grew by a row each open (Xaya 2026-11-04: "escape menu looks sus", "closing and reopening the esc
+-- menu made it even larger").
 local function FitHeight(menu, pad)
     local gap = BottomGap(menu)
     if not gap or not pad then return end
-    if gap < pad - 0.5 then
+    if math.abs(gap - pad) > 0.5 then
         local okH, h = pcall(menu.GetHeight, menu)
-        if okH and type(h) == "number" then pcall(menu.SetHeight, menu, h + (pad - gap)) end
+        if okH and type(h) == "number" then pcall(menu.SetHeight, menu, math.max(1, h + (pad - gap))) end
     end
     diag.fit = ("bottom gap %.0f, wanted %.0f"):format(gap, pad)
 end
+-- The menu's own bottom padding, measured once: the first time the menu is built with the XayaUI row, before this file adds or fits
+-- anything. A reading above PAD_MAX is not padding (INFERENCE: a menu already stretched by something else) and the fallback is used.
+local naturalPad
+local PAD_FALLBACK, PAD_MAX = 16, 60
+function ns.GameMenuResetPad() naturalPad = nil end   -- (tests)
 ns.GameMenuFitHeight = FitHeight   -- (tests)
 
 local fallbackSlot
@@ -236,8 +245,12 @@ local function Install(menu)
     local match = skinOn and skin.MatchReal()
     if (skinOn and not match) or not Enabled() then btn:Hide(); if fallbackSlot then fallbackSlot:Hide() end; return end
 
-    local padBefore = BottomGap(menu)   -- the bottom padding as the menu was drawn before this file added anything
-    if not padBefore or padBefore <= 0 then padBefore = 16 end
+    if not naturalPad then
+        local g = BottomGap(menu)   -- the bottom padding as the menu was drawn before this file added anything, the first time
+        naturalPad = (g and g > 0 and g <= PAD_MAX) and g or PAD_FALLBACK
+        diag.pad = ("natural bottom padding %.0f (read %s)"):format(naturalPad, g and ("%.0f"):format(g) or "nothing")
+    end
+    local padBefore = naturalPad
     local anchor, anchorText = FindAnchor(menu)
     diag.anchor = anchorText or "none (appended)"
     sibling = anchor
@@ -300,7 +313,7 @@ function ns.GameMenu_Diagnostics()
         tostring(Enabled()), Style(), tostring(diag.hooked), diag.path, diag.anchor, diag.opens, diag.paints, tostring(diag.lastError),
         tostring(GameMenuFrame and type(GameMenuFrame.AddButton) == "function"),
         tostring(GameMenuFrame and type(GameMenuFrame.InitButtons) == "function")))
-    ns.Print("game menu sizes: " .. tostring(diag.sizes) .. "; height fit: " .. tostring(diag.fit))
+    ns.Print("game menu sizes: " .. tostring(diag.sizes) .. "; height fit: " .. tostring(diag.fit) .. "; " .. tostring(diag.pad))
 end
 
 function ns.GameMenu_Repaint() if btn and btn:IsShown() then Paint() end end

@@ -65,15 +65,20 @@ Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.
 
 ## 4. Active items
 
-**NEXT SESSION: START HERE (updated 2026-11-04 21:45 UTC)**
-`main` = `d11f404` or later (check `git log origin/main`); it has the group load lists and #351 phase 1 (`853d913`) and the Dev
-Assist session's QoL 0.7.6. Branch `claude/cool-ramanujan-ewx8e5` (draft PR heyitsxaya/XayaUI#385) holds, merged with that `main`:
-- QoL 0.7.7: Stat Calculator Spells tab auto-populates from the spellbook; Defense / Offense are its filters (QA E1t);
-- QoL 0.7.8: the armor chain (item armor + armor from Agility, percent read from the mastery text) (QA E1u);
-- QoL 0.7.9: Gear tab icons of the equipped items (QA E1v);
-- the V11 layout probe test (`tests/options_layout_v11_run.py`).
-They land on `main` when the full suite passes on the exact head (running on `ce46d08` at 21:45). Next: #351 phase 2 (the other
-windows; a survey of their offsets was running), then the Stat Calculator items that wait on Xaya (task 43).
+**NEXT SESSION: START HERE (updated 2026-11-04 22:08 UTC)**
+`main` = `7df374b` or later (check `git log origin/main`). It has, from this session: the group load lists and #351 phase 1; the
+Stat Calculator Spells auto-fill with Offense / Defense filters (QoL 0.7.7, QA E1t), the armor chain (0.7.8, E1u), Gear icons
+(0.7.9, E1v), the shared margin / gutter in core `XayaUI/Modules.lua` (`ns.UI_MARGIN`, `ns.UI_GUTTER`) with the console, copy
+box, Import window and toolkit panel (core / Options 0.6.36, QoL 0.7.10, B76) and the chat history window (Chat 0.6.11, B77). From
+the engine session: core / Options 0.6.34-0.6.35. The Dev Assist session's Bonus 0.6.8 (calculator) lands next.
+Branch `claude/cool-ramanujan-ewx8e5` (draft PR heyitsxaya/XayaUI#385), not on `main` yet (next full suite, after the Dev Assist
+landing is merged in):
+- #351 phase 2c-2e: notepad popups (Bonus 0.6.9, B78), mover X / Y popup and frame picker (core 0.6.37, B79), the notepad (Bonus
+  0.6.10, B80). `tests/window_margins_run.py` covers every window (44 checks).
+- QoL 0.7.11: Spells shows "Spell ID: N" beside the name and readable number lines (#378, #380; E1w).
+- core 0.6.38: Actions > "Speak it" was silent (old SpeakText argument order; B81). #375: speech has no sound channel in the API.
+Next: wait for Xaya's answers (task 43: the Stat Calculator questions and issues #377 #379 #381 #382 #383 #387); the Character
+Reskin's wider viewport needs an in-game taint probe first (plan doc).
 
 **Three Claude sessions work in parallel (2026-11-04 evening, coordinated by send_message):**
 - this one: settings window, Stat Calculator / Character Reskin plans, chat, mover view, load conditions;
@@ -111,7 +116,9 @@ Backlog in Xaya's priority order (work the first one not blocked; see the rule i
   ask Xaya whether she wants that at all before building it.
 - D. **#372 group tabs** (Config tab; Group tab gets the reference screens' container properties and a background; "Group Display"
   rename reverted). BLOCKED on #372's open questions.
-- E. **#351:** one margin / gutter everywhere (large, not blocked).
+- E. **#351:** one margin / gutter everywhere: done offline (phase 1 settings window; phase 2 every other window). Left as they are
+  on purpose: the chat container (its text inset is a user setting), menus, data panels, the Game Menu skin. Needs in-game checks
+  (B75-B80).
 - F. **Dev Assist in-game captures** (item 2 below).
 - G. **Fel Flame Fortification (393009):** shows out of combat, not in combat. BLOCKED on her debug record.
 - H. **Boiling Point** rule does not fire with a stack-tracking trigger. BLOCKED on her rule export (procs.md: the aura does not
