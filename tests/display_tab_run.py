@@ -160,6 +160,19 @@ local function findG(t, depth)
 end
 local GP = findG(built2, 0)
 local PD = GP and GP.args.pageDisplay.args
+-- #370 (Xaya 2026-11-04: the group page's top-row controls "should be tabs, not buttons"): marked for the skin's tab look, one picked
+local TG, TD, TL = GP and GP.args.tabGroup, GP and GP.args.tabDisplay, GP and GP.args.tabLoad
+check("group page tabs: Group, Display and Load carry the tab marker for the skin", TG and TD and TL and TG.arg and TG.arg.xuiTab == true
+  and TD.arg.xuiTab == true and TL.arg.xuiTab == true)
+check("group page tabs: Group is picked at first, the others are not", TG.arg.xuiTabSel() == true and TL.arg.xuiTabSel() == false)
+TL.func()
+check("group page tabs: clicking Load picks Load (and Group is no longer picked)", TL.arg.xuiTabSel() == true and TG.arg.xuiTabSel() == false)
+check("group page tabs: with the skin on, the picked label has no color code (the skin colors it as a selected tab)",
+  TL.name() == "Load" and TG.name() == "Group")
+CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.skinOff = true
+check("group page tabs: with the skin off, the picked tab's label is gold", TL.name() == "|cffffd100Load|r" and TG.name() == "Group")
+CueRulesDB.ui.skinOff = nil
+TG.func()
 -- dynamic group wrap options (Xaya: "dynamic groups should have row / column wrap options")
 local CG = GP and GP.args.pageGroup.args.container and GP.args.pageGroup.args.container.args
 local fG = ns.folders[1]

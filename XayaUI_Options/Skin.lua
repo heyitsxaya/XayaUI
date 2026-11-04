@@ -1107,6 +1107,27 @@ local function SkinButton(w)
             if f.xuiTitleX then f:EnableMouse(true) end
             f.xuiTitleX = nil
         end
+    elseif arg and arg.xuiTab then
+        -- #370: a tab drawn as a button where AceConfig cannot make real tabs (a group page: its tree children are its rules and
+        -- nested groups). Same flat box and theme colors as a real tab (SkinTabGroup); the picked tab in the selected tab's colors.
+        HideRegions(f, f:GetHighlightTexture())
+        local okS, sel = pcall(arg.xuiTabSel or function() return false end)
+        local tcl = (okS and sel) and "xui-tab-selected" or "xui-tab"
+        Flat(f, TC(tcl, "bg", { 0.03, 0.03, 0.03, 0.7 }), TC(tcl, "border", { 0.22, 0.22, 0.22, 1 }))
+        do
+            local ht = f:GetHighlightTexture()
+            if ht then
+                if not f.xuiHLOrig then f.xuiHLOrig = { ht:GetTexture(), ht:GetBlendMode() } end
+                local hc = TC("xui-tab-selected", "border", { 0.75, 0.4, 1, 1 })
+                ht:SetTexture("Interface\\Buttons\\WHITE8X8"); ht:SetTexCoord(0, 1, 0, 1)
+                ht:SetBlendMode("ADD"); ht:SetVertexColor(hc[1], hc[2], hc[3]); ht:SetAlpha((okS and sel) and 0 or 0.2)
+                ht:ClearAllPoints(); ht:SetAllPoints(f)
+            end
+        end
+        if fs then
+            TF(fs)
+            local c = TC(tcl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]); LightFont(f, fs, c)
+        end
     elseif arg and arg.xuiDel then
         -- remove-this-row "X": no box, the same red X as the header's remove icon
         HideRegions(f, f:GetHighlightTexture())
@@ -1395,6 +1416,39 @@ function ns.RuleListArt(r)
     c.zoom = 0
     return c
 end
+-- #369 (Xaya 2026-11-04, screenshot): nested sidebar rows kept 1-3 characters of their names ("VD...", "A...", "F..."): the indent
+-- (8 px a level), the reorder arrows, the open / close arrow and the 32 px type icon on the left, the lock / note icons on the right.
+-- After the sidebar is drawn, it is widened just enough that every visible row keeps NAME_ROOM px for its name, never beyond
+-- AceGUI's own limit (min(400, window width - 50), AceGUIContainer-TreeGroup.lua:561). It only widens; the full name also shows on
+-- mouse-over (AceGUI's tree tooltip). Rows record their text's left / right insets (Options.lua, DecorateButton) as xuiTextL / xuiTextR.
+local NAME_ROOM = 80
+ns.SIDEBAR_NAME_ROOM = NAME_ROOM
+function ns.EnsureNameRoom(tree)
+    if not tree or tree.xuiRoomBusy or not tree.SetTreeWidth then return end
+    local status = tree.status or tree.localstatus
+    if not status then return end
+    local cur = tonumber(status.treewidth) or 0
+    local worst
+    for _, b in ipairs(tree.buttons or {}) do
+        local txt = b.text and b.text.GetText and b.text:GetText()
+        if b:IsShown() and b.xuiTextL and type(txt) == "string" and txt ~= "" then
+            local w = b:GetWidth() or 0
+            if w > 0 then
+                local room = w - b.xuiTextL - (b.xuiTextR or 4)
+                if not worst or room < worst then worst = room end
+            end
+        end
+    end
+    if not worst or worst >= NAME_ROOM then return end
+    local fw = (tree.frame and tree.frame.GetWidth and tree.frame:GetWidth()) or 0
+    local cap = math.min(400, fw - 50)
+    local want = math.min(cap, math.ceil(cur + (NAME_ROOM - worst)))
+    if want <= cur + 1 then return end
+    tree.xuiRoomBusy = true
+    pcall(tree.SetTreeWidth, tree, want, status.treesizable ~= false)
+    tree.xuiRoomBusy = nil
+end
+
 -- left-of-text icon on sidebar rows of the rule trees; returns the width the row text must leave free
 function ns.PaintTypeIcon(button, x)
     local uv = tostring(button.uniquevalue or "")
@@ -1638,7 +1692,10 @@ end
 -- its row and never a whole row by itself. Choices between options belong in a dropdown (with a tick box to its left where it can
 -- be switched off), not in a row of buttons. Exceptions: section headers (arg.xuiLeft), the red X (arg.xuiDel), and a button that
 -- explicitly asks to stay wide (arg.xuiWide).
-local COMPACT_PAD, COMPACT_MIN = 26, 64
+-- padding: AceGUI (and Skin.lua's flat button) pin the label 15 px in from each side, so the label's box is the width - 30; 34 leaves
+-- the whole label 2 px clear on each side (26 was 4 px short: even a well-measured label was cut by a few pixels, #368)
+local COMPACT_PAD, COMPACT_MIN = 34, 64
+local TAB_GAP = 2   -- between the tabs drawn as buttons (#370)
 function ns.IsCompactButton(ch)
     if ch.type ~= "Button" or not SkinOn() then return false end
     local o = ch.GetUserData and ch:GetUserData("option")
@@ -1647,8 +1704,19 @@ function ns.IsCompactButton(ch)
     if a and (a.xuiLeft or a.xuiDel or a.xuiWide or a.xuiRow) then return false end
     return true
 end
+-- The label's WHOLE width (#368). AceGUI pins a button's label between two anchors, so GetStringWidth gives the width of the text as
+-- it fits in the button now (INFERENCE from the in-game result, "Gro..."): measured that way, a button narrower than its label sized
+-- itself to the cut text, and lost 4 px on every layout pass (fitted width + 26 vs a box of width - 30) down to the 64 px minimum.
+-- GetUnboundedStringWidth is the text's own width (Blizzard sizes text-fitted controls with it: UIDropDownMenu.lua, SecureUtil.lua).
+local function LabelWidth(fs)
+    if not fs then return 0 end
+    local fn = fs.GetUnboundedStringWidth or fs.GetStringWidth
+    if not fn then return 0 end
+    local ok, w = pcall(fn, fs)
+    return (ok and type(w) == "number") and w or 0
+end
 local function CompactWidth(ch, width)
-    local tw = (ch.text and ch.text.GetStringWidth and ch.text:GetStringWidth()) or 0
+    local tw = LabelWidth(ch.text)
     return math.min(width, math.max(COMPACT_MIN, math.ceil(tw + COMPACT_PAD)))
 end
 function ns.FlexPrepass(content, children, bw)
@@ -1679,7 +1747,11 @@ function ns.FlexPrepass(content, children, bw)
             if math.abs((e.ch.frame.width or 0) - nw) > 0.4 then e.ch:SetWidth(nw) end
             e.ch.xuiFlexW = nw
         end
-        for i, e in ipairs(row) do e.ch.xuiGapX = (i > 1 and (#flex > 0 or e.compact or row[i - 1].compact)) and gap or nil end   -- compact buttons keep a gap too
+        for i, e in ipairs(row) do
+            local g = (i > 1 and (#flex > 0 or e.compact or row[i - 1].compact)) and gap or nil   -- compact buttons keep a gap too
+            if g and e.tab and row[i - 1].tab then g = TAB_GAP end   -- #370: tabs sit side by side like a real tab row
+            e.ch.xuiGapX = g
+        end
         row, used = {}, 0
     end
     for _, ch in ipairs(children) do
@@ -1689,7 +1761,8 @@ function ns.FlexPrepass(content, children, bw)
             if math.abs((ch.frame.width or 0) - w) > 0.4 then ch:SetWidth(w) end
             ch.xuiFlexW = w
             if #row > 0 and used + gap + w > width then flush() end
-            row[#row + 1] = { ch = ch, base = w, flex = false, compact = true }
+            local o = ch.GetUserData and ch:GetUserData("option")
+            row[#row + 1] = { ch = ch, base = w, flex = false, compact = true, tab = (o and type(o.arg) == "table" and o.arg.xuiTab) and true or nil }
             used = used + w
         elseif ch.width == "fill" then
             flush()

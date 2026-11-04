@@ -4033,9 +4033,16 @@ local function BuildFolder(k, f)
         if t == "display" and not isVisual() then t = "group" end
         return t
     end
+    -- #370: drawn as tabs by the skin (arg.xuiTab: the same flat box and colors as a real tab, the picked one in the selected
+    -- tab's colors). The gold label marks the picked tab only while the skin is off (a color code would override the theme's).
     local function Tab(key, label, order, hiddenFn)
+        local function sel() return cur() == key end
         return { type = "execute", order = order, width = 0.8, hidden = hiddenFn,
-            name = function() return cur() == key and ("|cffffd100" .. label .. "|r") or label end,
+            arg = { xuiTab = true, xuiTabSel = sel },
+            name = function()
+                local skinOff = CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.skinOff
+                return (sel() and skinOff) and ("|cffffd100" .. label .. "|r") or label
+            end,
             func = function() ns.folderTab[f] = key; Notify() end }
     end
     local function Page(key, args)
@@ -6193,6 +6200,7 @@ function ns.PaintSide(button, rules, vis, folder)
         off = off + 19
     elseif button.xuiMove then button.xuiMove:Hide() end
     if button.text then button.text:SetPoint("RIGHT", button, "RIGHT", -math.max(off, button.xuiIconR or 0), 2) end
+    button.xuiTextR = math.max(off, button.xuiIconR or 0)   -- #369: the name's right inset (Skin.lua ns.EnsureNameRoom)
 end
 
 local ROW_TOGGLES = {
@@ -6382,6 +6390,7 @@ function ns.SidebarRenameLater(button)
 end
 
 local function DecorateButton(button)
+    button.xuiTextL, button.xuiTextR = nil, nil   -- #369: set again below for this row (a reused button never keeps another row's)
     do   -- the tree reuses its row buttons: when one now shows a different row, drop what the previous row left on it (height, note, type icons)
         local uvnow = tostring(button.uniquevalue or "")
         if button.xuiLastUV ~= uvnow then
@@ -6454,6 +6463,7 @@ local function DecorateButton(button)
     if button.text then
         button.text:SetWordWrap(false)
         button.text:SetPoint("RIGHT", button, "RIGHT", -4, 2)
+        button.xuiTextR = 4
     end
     -- Every row of a level uses the same fixed slots: [arrow 16][eye 17][headphone 17][text]. A row without an arrow or
     -- without icons keeps its (empty) slots, so the text of all rows on one level lines up. Blizzard's tiny +/- is hidden
@@ -6582,6 +6592,7 @@ local function DecorateButton(button)
             elseif rr then note = "Top level" end
         end
         if button.text then button.text:SetPoint("LEFT", button, "LEFT", x0 + lead + iconSlots + 3, note and 8 or 2) end
+        button.xuiTextL = x0 + lead + iconSlots + 3   -- #369: the name's left inset (Skin.lua ns.EnsureNameRoom)
         if note then
             if not button.xuiSub then
                 button.xuiSub = button:CreateFontString(nil, "OVERLAY")
@@ -6633,6 +6644,7 @@ local function DecorateTree(tree)
         tree.RefreshTree = function(self, ...)
             orig(self, ...)
             for _, b in ipairs(self.buttons or {}) do if b:IsShown() then ns.SafeDecorate(b) end end
+            if ns.EnsureNameRoom then pcall(ns.EnsureNameRoom, self) end   -- #369: room for every visible name
         end
         local status = tree.status or tree.localstatus
         if status and not status.xuiWide then
