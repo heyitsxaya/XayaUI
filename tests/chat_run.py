@@ -198,7 +198,7 @@ C.History_Toggle()
 hf = L.XayaUIChatHistory
 check("history frame built and shown", hf is not None and hf.IsShown(hf))
 labels = run("local t={} for _,b in ipairs(W.cf1 and {} or {}) do end local f=_G.XayaUIChatHistory local out={} for _,b in ipairs(f.kb) do if b:IsShown() then out[#out+1]=b.t._text end end return table.concat(out,',')")
-check("a button per tab (not Combat-free kinds): All, General, Combat Log, Trade", str(labels) == "All,General,Combat Log,Trade", labels)
+check("a button per tab, then Console: All, General, Combat Log, Trade, Console", str(labels) == "All,General,Combat Log,Trade,Console", labels)
 def lines(): return str(run("return table.concat(C.History_Lines(), '\\n')"))
 run("C.History_Select(1)")
 check("filter by tab: General shows the say line only", "hi from the test" in lines() and "party line" not in lines() and "boost spam" not in lines(), lines())
@@ -512,14 +512,17 @@ local calls = { dirty = 0, refresh = 0 }
 cf.MarkLayoutDirty = function() calls.dirty = calls.dirty + 1 end
 cf.RefreshIfNecessary = function() calls.refresh = calls.refresh + 1 end
 local w = cf:GetWidth()
-local function line(width, str) return { GetWidth = function() return width end, GetStringWidth = function() return str end } end
+local function line(width, str) return { GetWidth = function() return width end, GetStringWidth = function() return 9999 end, GetWrappedWidth = function() return str end } end
 cf.visibleLines = { line(w, 100), line(w, 120) }
 local out = {}
 out.okWhenSame = (C.WrapOff() == false)
 cf.visibleLines = { line(w + 30, 100), line(w + 30, 150) }
 out.offWhenStale = (C.WrapOff() == true)
 local st = C.WrapStatus()
-out.widest = st.widest; out.lineW = st.line; out.cfW = st.cf
+out.wrapped = st.wrapped; out.over = st.over; out.lineW = st.line; out.cfW = st.cf
+cf.visibleLines = { line(w, w + 40), line(w, 100) }
+out.overflow = C.WrapStatus().over
+cf.visibleLines = { line(w + 30, 100), line(w + 30, 150) }
 out.did = C.Rewrap(true)
 out.dirty, out.refresh = calls.dirty, calls.refresh
 local again = C.Rewrap()   -- throttled: not within the same second unless forced
@@ -530,10 +533,126 @@ return out
 """)
 check("wrap: consistent widths are left alone", bool(r.okWhenSame))
 check("wrap: a stale line width is detected", bool(r.offWhenStale))
-check("wrap: status reports widths", r.widest == 150 and r.lineW == r.cfW + 30, (r.widest, r.lineW, r.cfW))
-check("wrap: Rewrap marks the layout dirty and refreshes", r.did and r.dirty == 1 and r.refresh == 1, (r.did, r.dirty, r.refresh))
+check("wrap: status reports the widest WRAPPED line, not the one-line text width", r.wrapped == 150 and r.lineW == r.cfW + 30, (r.wrapped, r.lineW, r.cfW))
+check("wrap: no line wider than its box is counted as 0", r.over == 0, r.over)
+check("wrap: a wrapped line wider than its box is counted", r.overflow == 1, r.overflow)
+check("wrap: Rewrap only marks the layout dirty (secure); it never runs the game's layout code itself", r.did and r.dirty == 1 and r.refresh == 0, (r.did, r.dirty, r.refresh))
 check("wrap: Rewrap is throttled", bool(r.throttled))
 check("wrap: no lines table is not an error", bool(r.noLines))
+
+# ---- indent wrapped lines (0.6.5): set again after the font changes; off restores the game's value -----------------------------
+r = run("""
+local cf = C.Main(); local out = {}
+cf._indent = false; cf._indentCalls = 0; cf._xuiIndent = nil
+C.Refresh(); W.flush()
+out.onAfterRefresh = cf._indent; out.calls1 = cf._indentCalls
+C.Refresh(); W.flush()
+out.calls2 = cf._indentCalls
+ns.chat2.wrapIndent = false; C.Refresh(); W.flush(); out.offWhenOff = (cf._indent == false)
+ns.chat2.wrapIndent = true; C.Refresh(); W.flush()
+ns.chat2.enabled = false; C.Refresh(); W.flush(); out.restored = cf._indent
+ns.chat2.enabled = true; C.Refresh(); W.flush()
+out.cf2 = W.cf2._indent
+return out
+""")
+check("indent: wrapped lines indented again after the Chat Panel sets the font", r.onAfterRefresh is True, r.onAfterRefresh)
+check("indent: set only when it differs (each set lays the lines out again)", r.calls1 == 1 and r.calls2 == 1, (r.calls1, r.calls2))
+check("indent: the setting turns it off", bool(r.offWhenOff))
+check("indent: turning the Chat Panel off gives the game's own value back", r.restored is False, r.restored)
+check("indent: docked ChatFrame2 gets it too", r.cf2 is True, r.cf2)
+L.ChatFrame1.visibleLines = None
+run("for k in pairs(W.printed) do W.printed[k] = nil end; C.Command('indent'); C.Command('wrap')")
+out = "\n".join(str(v) for v in run("return W.printed").values())
+check("/xui chat indent reports the indent setting and the window's value", "indent wrapped lines: setting on, the window's font on" in out, out[:600])
+check("/xui chat wrap no longer prints the one-line text width as 'widest text'", "widest text" not in out and "widest wrapped line" in out, out[:600])
+
+# ---- the Chat Panel scroll bar (0.6.5) ---------------------------------------------------------------------------------------
+sb, upB, downB, trk, th = L.XayaUIChatScrollBar, L.XayaUIChatScrollUp, L.XayaUIChatScrollDown, L.XayaUIChatScrollTrack, L.XayaUIChatScrollThumb
+check("scroll bar: built and shown by default", sb is not None and sb.IsShown(sb) is True)
+check("scroll bar: inside the pane", inside(sb, pane), (rect(sb), rect(pane)))
+tr, sr = rect(textA), rect(sb)
+check("scroll bar: right of the text, not over it", sr[0] >= tr[0] + tr[2] - 0.01, (tr, sr))
+check("scroll bar: as tall as the text area", abs(sr[3] - tr[3]) < 0.01 and abs(sr[1] - tr[1]) < 0.01, (tr, sr))
+check("scroll bar: chat window still fills the text area", rect(cf1) == rect(textA))
+check("scroll bar: Blizzard's own scroll bar hidden while ours is on", cf1.ScrollBar.IsShown(cf1.ScrollBar) is False)
+check("scroll bar: arrows and track inside the bar", inside(upB, sb) and inside(downB, sb) and inside(trk, sb))
+r = run("""
+local cf = C.Main(); local out = {}
+cf._off, cf._max, cf._vis, cf._calls = 0, 50, 10, {}
+local up, down = _G.XayaUIChatScrollUp, _G.XayaUIChatScrollDown
+up._scripts.OnMouseDown(up, "LeftButton"); out.afterClick = cf._off
+up._scripts.OnMouseUp(up)
+W.update(1.0, 1); out.noRepeatAfterRelease = cf._off
+up._scripts.OnMouseDown(up, "LeftButton")
+W.update(0.3, 1); out.beforeDelay = cf._off          -- still inside the pause before repeating
+W.update(0.05, 1); W.update(1.0, 1); out.afterHold = cf._off
+up._scripts.OnMouseUp(up)
+down._scripts.OnMouseDown(down, "LeftButton"); down._scripts.OnMouseUp(down); out.afterDown = cf._off
+local bar = _G.XayaUIChatScrollBar
+bar._scripts.OnMouseWheel(bar, 1); out.afterWheel = cf._off
+local secure = true
+for _, c in ipairs(cf._calls) do if c ~= "ScrollByAmount" and c ~= "SetScrollOffset" and c ~= "PageUp" and c ~= "PageDown" then secure = false end end
+out.secureOnly = secure
+-- the thumb: at the bottom when at the newest line, at the top when at the oldest
+cf._off = 0; C.ScrollBar_Update(); local th, tr = _G.XayaUIChatScrollThumb, _G.XayaUIChatScrollTrack
+out.thumbBottomAtNewest = math.abs(th:GetBottom() - tr:GetBottom()) < 0.01
+cf._off = cf._max; C.ScrollBar_Update()
+out.thumbTopAtOldest = math.abs(th:GetTop() - tr:GetTop()) < 0.01
+out.thumbSmaller = th:GetHeight() < tr:GetHeight()
+cf._max = 0; cf._off = 0; C.ScrollBar_Update(); out.fullWhenNothing = math.abs(th:GetHeight() - tr:GetHeight()) < 0.01
+cf._max = 50
+return out
+""")
+check("scroll bar: one click on the up arrow moves exactly one line", r.afterClick == 1, r.afterClick)
+check("scroll bar: nothing more after the arrow is let go", r.noRepeatAfterRelease == 1, r.noRepeatAfterRelease)
+check("scroll bar: holding waits a moment before repeating", r.beforeDelay == 2, r.beforeDelay)
+check("scroll bar: holding repeats at the set speed (6 lines a second by default)", 7 <= r.afterHold <= 9, r.afterHold)
+check("scroll bar: the down arrow moves one line toward the newest", r.afterDown == r.afterHold - 1, (r.afterHold, r.afterDown))
+check("scroll bar: the mouse wheel over the bar scrolls one line", r.afterWheel == r.afterDown + 1, r.afterWheel)
+check("scroll bar: only the window's secure scroll methods are called", bool(r.secureOnly))
+check("scroll bar: thumb at the bottom at the newest line", bool(r.thumbBottomAtNewest))
+check("scroll bar: thumb at the top at the oldest line", bool(r.thumbTopAtOldest))
+check("scroll bar: thumb shorter than the track when there is more to scroll", bool(r.thumbSmaller))
+check("scroll bar: full-height thumb when there is nothing to scroll", bool(r.fullWhenNothing))
+run("ns.chat2.scrollOwn = false; ns.chat2.scrollBar = 'SHOW'; C.Refresh(); W.flush()")
+check("scroll bar: off hides it", sb.IsShown(sb) is False)
+check("scroll bar: off + Blizzard's shown brings Blizzard's back", cf1.ScrollBar.IsShown(cf1.ScrollBar) is True)
+check("scroll bar: off gives the space back (Blizzard's 14 px only)", abs((rect(pane)[0] + rect(pane)[2]) - (rect(textA)[0] + rect(textA)[2]) - (2 + 6 + 14)) < 0.01, (rect(pane), rect(textA)))
+run("ns.chat2.scrollOwn = true; ns.chat2.scrollBar = 'HIDE'; C.Refresh(); W.flush()")
+check("scroll bar: back on", sb.IsShown(sb) is True and inside(sb, pane))
+
+# ---- history Console tab (0.6.5) -----------------------------------------------------------------------------------------------
+r = run("""
+local out = {}
+local before = C.History_ConsoleCount()
+print("|cff33ccffXayaUI|r: Chat Panel wrap: window width 426.0")
+W.fireEvent("CHAT_MSG_SYSTEM", "You are now Away: AFK")
+print("<<secret>>")
+out.added = C.History_ConsoleCount() - before
+out.stillPrinted = W.rawPrinted[#W.rawPrinted] == "<<secret>>"
+C.History_Select("CONSOLE"); out.console = table.concat(C.History_Lines(), "\\n")
+C.History_Select("ALL"); out.all = table.concat(C.History_Lines(), "\\n")
+ns.chat2.histConsole = false
+local n = C.History_ConsoleCount(); print("not kept"); out.offKeepsNothing = (C.History_ConsoleCount() == n)
+ns.chat2.histConsole = true
+return out
+""")
+check("console: print() lines, system messages and protected prints are kept", r.added == 3, r.added)
+check("console: the game still prints the line (post-hook only)", bool(r.stillPrinted))
+check("console: colors removed, text kept", "XayaUI: Chat Panel wrap: window width 426.0" in str(r.console) and "|c" not in str(r.console), r.console)
+check("console: system messages tagged", "System You are now Away: AFK" in str(r.console), r.console)
+check("console: protected text listed as protected, never printed", "[protected message]" in str(r.console) and "<<secret>>" not in str(r.console), r.console)
+check("console: kept out of the All tab", "426.0" not in str(r.all) and "AFK" not in str(r.all), r.all)
+check("console: the setting off keeps nothing", bool(r.offKeepsNothing))
+run("C.History_Toggle()")
+names = str(run("local t = {}; for _, b in ipairs(_G.XayaUIChatHistory.kb) do if b:IsShown() then t[#t + 1] = b.t:GetText() end end; return table.concat(t, ',')"))
+check("console: the history window has a Console tab button", "Console" in names, names)
+run("C.History_Toggle()")
+
+# ---- chat probe: a secret 'shown' no longer stops the probe (0.6.4: Probe.lua:229) -------------------------------------------
+probe = open(os.path.join(ROOT, "XayaUI_Chat", "Probe.lua")).read()
+check("probe: 'shown' is checked for secret before it is compared", "not secret(shown) and shown == true" in probe)
+
 check("no module errors at the end", len(list(C.errors.keys())) == 0, dict(C.errors))
 print("\n%d failed" % fails if fails else "\nall passed")
 sys.exit(1 if fails else 0)

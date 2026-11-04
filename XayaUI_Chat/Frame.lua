@@ -127,7 +127,8 @@ function C.Layout()
     inputA:SetPoint("BOTTOMLEFT", pane, "BOTTOMLEFT", 2, 2); inputA:SetPoint("BOTTOMRIGHT", pane, "BOTTOMRIGHT", -2, 2)
     inputA:SetHeight(ih)
     local inset = Clamp(s.textInset, 0, 30, 6)
-    local right = inset + ((s.scrollBar == "SHOW") and 14 or 0)
+    local own = s.scrollOwn and true or false      -- the Chat Panel's scroll bar (Scroll.lua) sits in the space right of the text
+    local right = inset + ((own and (Clamp(s.scrollW, 6, 20, 10) + 2)) or ((s.scrollBar == "SHOW") and 14 or 0))
     textA:ClearAllPoints()
     textA:SetPoint("TOPLEFT", tabsA, "BOTTOMLEFT", inset, -2)
     textA:SetPoint("BOTTOMRIGHT", inputA, "TOPRIGHT", -right, 3)
@@ -145,6 +146,7 @@ function C.Layout()
     pane:SetShown(not collapsed)
     if mover then mover:ClearAllPoints(); mover:SetAllPoints(container) end
     C.Anchor()
+    if C.ScrollBar_Layout then C.ScrollBar_Layout() end
     C.ApplyAlpha()
     if ns.ChatPrivacy_Refresh then ns.ChatPrivacy_Refresh() end
 end
@@ -276,7 +278,7 @@ function C.Parts()
     end
     -- scroll bar, resize grip, Blizzard's own background
     local sbar = cf.ScrollBar or _G[name .. "ScrollBar"]
-    if sbar then C.Try("scrollbar", function() if s.scrollBar == "SHOW" then C.Unsuppress(sbar) else C.Suppress(sbar) end end) end
+    if sbar then C.Try("scrollbar", function() if s.scrollBar == "SHOW" and not s.scrollOwn then C.Unsuppress(sbar) else C.Suppress(sbar) end end) end
     -- the "back to the newest message" arrow: the game anchors it beside the (hidden) resize grip, outside the text; keep it inside the text area
     local tb = cf.ScrollToBottomButton
     if tb then
@@ -458,12 +460,20 @@ function C.WrapStatus()
         st.numLines = #lines
         local first = lines[1]
         st.line = first and first.GetWidth and Num(first:GetWidth()) or nil
-        local widest = 0
+        -- GetStringWidth is the text's width as ONE line (0.6.4's "widest text 5567.7" was that), so it says nothing about wrapping.
+        -- GetWrappedWidth is the widest line after wrapping: wider than the line's own box means text runs past the box's right edge.
+        local wrapped, over, readable = 0, 0, false
         for _, fs in ipairs(lines) do
-            local w = fs and fs.GetStringWidth and Num(fs:GetStringWidth()) or 0
-            if w > widest then widest = w end
+            local w = fs and fs.GetWrappedWidth and Num(fs:GetWrappedWidth()) or nil
+            local box = fs and fs.GetWidth and Num(fs:GetWidth()) or nil
+            if w then
+                readable = true
+                if w > wrapped then wrapped = w end
+                if box and w > box + 0.6 then over = over + 1 end
+            end
         end
-        st.widest = widest
+        st.wrapped = readable and wrapped or nil
+        st.over = readable and over or nil
     end
     return st
 end
@@ -481,9 +491,11 @@ function C.Rewrap(force)
     local now = GetTime and GetTime() or 0
     if not force and now - lastRewrap < 1 then return false end
     lastRewrap = now
+    -- only MarkLayoutDirty: it is one of the window's secure methods (ScrollingMessageFrameSecureMixin), so the window lays its lines out
+    -- again in its own OnUpdate, untainted. 0.5.107 to 0.6.4 also called RefreshIfNecessary, which is NOT secure: the game's layout code
+    -- then ran as XayaUI_Chat code, and drawing protected (secret) text from tainted code may raise errors (risk, not seen in game).
     local ok = pcall(function()
         if cf.MarkLayoutDirty then cf:MarkLayoutDirty() end
-        if cf.RefreshIfNecessary then cf:RefreshIfNecessary() end
     end)
     C.stats.rewraps = (C.stats.rewraps or 0) + (ok and 1 or 0)
     return ok

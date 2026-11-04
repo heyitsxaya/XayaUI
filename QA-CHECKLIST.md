@@ -41,6 +41,10 @@ For testers. Tick each box in order; when something does not match the **Expect*
 - [ ] **D2.** A keyword or filter rule on the Chat Panel's Filters tab (for example highlight your name): have someone say it. **Expect:** it is highlighted or filtered (fixed in 0.6.0 for clients without the old chat functions).
 - [ ] **D3.** Click the input area under the panel. **Expect:** the chat edit box opens. Collapse the panel while typing. **Expect:** the edit box closes.
 - [ ] **D4.** `/xui privacy` twice. **Expect:** the cover hides the chat, then shows it again.
+- [ ] **D4b.** (0.6.5) Type `/xui` so a long help line prints. **Expect:** the lines after the first of that message start further in than "XayaUI:". `/xui chat indent` prints `indent wrapped lines: setting on, the window's font on, its first line on`. Layout > Indent wrapped lines off: the lines start flush again.
+- [ ] **D4c.** (0.6.5) A slim scroll bar sits right of the chat text. Click the up arrow once: **Expect** the chat moves up exactly one line. Hold it: after a short pause it keeps moving at about 6 lines a second; let go and it stops. The down arrow goes back toward the newest line. Drag the thumb; click above or below it (one page). Switch tabs: the bar scrolls the tab you see. Layout > Chat Panel scroll bar off: the bar goes and the text gets the space back.
+- [ ] **D4d.** (0.6.5) Open the history window (corner button). **Expect:** a **Console** tab button at the end of the row. Run `/xui chat wrap`, click Refresh: the printed lines are listed under Console, and not under All or General.
+- [ ] **D4e.** (0.6.5) `/xui chatprobe` inside a dungeon or in combat. **Expect:** no "chat probe failed ... Probe.lua:229 ... secret boolean" line; it prints "chat probe: N lines kept".
 - [ ] **D5.** Switch **XayaUI Chat** off, /reload (or relog). **Expect:** Blizzard's normal chat; the Chat tab is gone from the window; the minimap list has no Chat rows; `/xui chat` says XayaUI Chat is switched off. No Lua error. Switch it back on.
 
 ## E. XayaUI QoL

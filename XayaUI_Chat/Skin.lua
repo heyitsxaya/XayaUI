@@ -74,6 +74,7 @@ local function StyleFonts(s)
     for _, f in ipairs(C.Frames()) do
         if f == C.Main() or f.isDocked then
             C.Try("font", function() C.SetFont(f, path, size, flags) end)
+            C.Try("indent", function() C.SetWrapIndent(f, s.wrapIndent ~= false) end)
         end
     end
 end
