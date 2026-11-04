@@ -713,7 +713,7 @@ A panel beside the character window (XayaUI QoL; its title reads **Stat Calculat
   - Enchant Slots: the slots to check for an enchant (this expansion's enchantable slots until you change them).
 - **Spell Math:** the switch; List spells without numbers; adding a spell by ID, name, or shift-clicked link. Per spell: scales with attack or spell power, an optional coefficient, its filter (from its description, Offense, Defense, or both), remove.
 
-`/xui stats` shows or hides the panel (docked when the character window is open, otherwise free and draggable); `/xui stats on`, `off`, `options`, `status`.
+`/xui stats` shows or hides the panel (docked when the character window is open, otherwise free and draggable); `/xui stats on`, `off`, `options`, `status`. `/xui stats widthprobe [px]` / `widthprobe off` is a one-off test for the planned wider character window (QoL 0.7.12; QA E1x): it widens the open character window until you turn it off or /reload, and reports any action the game blocks.
 
 **Limits:**
 - Diminishing-return thresholds are found by scanning the game's own rating converter, not from a table. If the converter disagrees with the game's own current value, the stat says so; if the converter is missing, only current figures are shown. Thresholds are read out of combat.
