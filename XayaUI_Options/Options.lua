@@ -4868,6 +4868,11 @@ local function BuildOptions()
     -- one top-level page with a left sidebar like the rest of the addon (UI Options, Debugging), instead of two top tabs (Xaya, 2026-11-02)
     local setPage = { type = "group", name = "Settings", order = 7, childGroups = "tree", hidden = function() return not SettingsOn() end,
         args = { ui = setUi, minimap = minimapGroup, debug = setDbg } }
+    -- credits and attribution have their own page under Settings (AddonInfo.lua; Xaya 2026-11-04), in both settings layouts
+    if ns.BuildAcknowledgements then
+        setPage.args.credits = ns.BuildAcknowledgements()
+        settings.args.credits = ns.BuildAcknowledgements()
+    end
     if minimapGroup then
         minimapGroup.order = 1.5
         settings.args.minimap = minimapGroup   -- the old single Settings tab (skin rows off) gets it too
@@ -7570,11 +7575,25 @@ local function EnsureChrome(of)
         end)
         c.arrow:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
+        -- AceGUI's own status bar (a boxed strip from the bottom-left corner to the Close button) shows nothing in this window:
+        -- hidden while XayaUI uses the window, shown again on release (Xaya 2026-11-04: "bottom random bar left of close should be
+        -- removed"). AceGUI's Frame widget does not keep it as a field, only its text (AceGUIContainer-Frame.lua: widget.statustext),
+        -- so it is found as that text's parent.
+        c.statusbg = of.statustext and of.statustext.GetParent and of.statustext:GetParent()
+        -- the version in the bottom-left corner (Xaya 2026-11-04: "addon version should be put in the bottom left"), then the link
+        c.ver = fr:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        c.ver:SetPoint("BOTTOMLEFT", fr, "BOTTOMLEFT", 20, 13)
+        c.ver:SetTextColor(0.5, 0.5, 0.5)
+        do
+            local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+            local okV, v = pcall(get or function() end, ns.name or "XayaUI", "Version")
+            c.ver:SetText("XayaUI " .. ((okV and type(v) == "string" and v ~= "") and ("v" .. v) or "(version unknown)"))
+        end
         -- Addon Info: a small muted link in the bottom-left corner, outside the normal interaction area
         c.info = CreateFrame("Button", nil, fr)
         c.info:SetSize(80, 16)
         ns.infoLink = c.info   -- Skin.lua keeps the rule list above this link
-        c.info:SetPoint("BOTTOMLEFT", fr, "BOTTOMLEFT", 20, 11)
+        c.info:SetPoint("LEFT", c.ver, "RIGHT", 14, 0)
         c.info:SetFrameLevel(fr:GetFrameLevel() + 10)
         c.info.text = c.info:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         c.info.text:SetPoint("LEFT", 0, 0); c.info.text:SetText("Addon Info")
@@ -7628,6 +7647,8 @@ local function EnsureChrome(of)
             ns.MultiReset()
             c.delSel:Hide(); c.clr:Hide()
             c.info:Hide()
+            if c.ver then c.ver:Hide() end
+            if c.statusbg then c.statusbg:Show() end   -- the next addon to get this window keeps AceGUI's status bar
             c.close:Hide()
             c.arrow:Hide()
             if orig then return orig(self, ...) end
@@ -7636,6 +7657,8 @@ local function EnsureChrome(of)
     c.arrow:Show()
     c.close:Show()
     if c.info and not c.collapsed then c.info:Show() end
+    if c.ver then c.ver:SetShown(not c.collapsed) end
+    if c.statusbg and c.statusbg:IsShown() then c.statusbg:Hide() end
     -- first time the window opens in a session: every top-level group / Smart Categories list under Rules, Loaded and Not Loaded starts collapsed
     if not ns.sessionCollapsed and AceConfigDialog.GetStatusTable then
         local anyTab = false
