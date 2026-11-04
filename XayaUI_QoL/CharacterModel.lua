@@ -209,6 +209,9 @@ local function ThresholdsFor(idx, f, r0)
 end
 function CM.ClearCache() thresholdCache = {} end
 
+-- the spec's primary stat index (1 Strength, 2 Agility, 4 Intellect), for the What If auto-fill (CharacterToolkit.lua)
+function CM.PrimaryStatIndex() local sp = SpecIndex(); return PrimaryStat(sp and SpecInfo(sp) or {}) end
+
 local function Context(cfg)
     local ctx = { cfg = cfg }
     ctx.spec = SpecIndex()
@@ -219,6 +222,7 @@ local function Context(cfg)
     if not num(ctx.level) then ctx.level = N(UnitLevel, "player") end
     ctx.whatIfAll = cfg and num(cfg.whatIf) and cfg.whatIf or 0
     ctx.whatIfStat = cfg and type(cfg.whatIfStats) == "table" and cfg.whatIfStats or {}
+    ctx.whatIfPrimary = cfg and num(cfg.whatIfPrimary) and cfg.whatIfPrimary or 0   -- What If: primary stat added (Xaya 2026-11-04)
     ctx.short = cfg and cfg.detail == "short"
     return ctx
 end
@@ -1173,6 +1177,42 @@ local function PrimaryFrom(stats, p)
     return total
 end
 
+-- The equipped items an item could replace: every slot whose item has the same equip location (two rings, two trinkets, a
+-- one-hand weapon in either hand). CM.compareSlot (chosen on the What If tab, Xaya 2026-11-04: "prompt an item to slot in cases
+-- where there are more than one slot available") picks one; with no choice, the lower item level is replaced (as before).
+function CM.CompareCandidates(link)
+    local loc = link and EquipLoc(link)
+    local out = {}
+    if not loc then return out, nil end
+    for _, sl in ipairs(SLOTS) do
+        local s = CM.SlotInfo(sl[1])
+        if s and EquipLoc(s.link) == loc then out[#out + 1] = s end
+    end
+    return out, loc
+end
+local function Replaced(link)
+    local cands = CM.CompareCandidates(link)
+    local old
+    for _, s in ipairs(cands) do if CM.compareSlot and s.slot == CM.compareSlot then old = s end end
+    if not old then for _, s in ipairs(cands) do if not old or (s.ilvl or 0) < (old.ilvl or 0) then old = s end end end
+    return old, cands
+end
+-- what the compared item changes, for filling the What If boxes: rating by What If key, and the primary stat
+function CM.CompareDeltas(text, primary)
+    local link = ResolveItemLink(text)
+    if not link then return nil end
+    local newStats = ItemStats(link) or {}
+    local old = Replaced(link)
+    local delta = SM.StatDelta(newStats, old and old.stats or {})
+    local out = { ratings = {}, primary = 0 }
+    for _, gs in ipairs(GEAR_STATS) do
+        local d = delta[gs[1]]
+        if num(d) and d ~= 0 then out.ratings[(gs[2] == "speed") and "speed2" or gs[2]] = d end
+    end
+    out.primary = PrimaryFrom(newStats, primary) - PrimaryFrom(old and old.stats, primary)
+    return out
+end
+
 local function CompareItem(ctx, text)
     local it = Item("compare", "Compare an item", "stat")
     if not text or text == "" then
@@ -1188,19 +1228,22 @@ local function CompareItem(ctx, text)
     local items = { it }
     local newStats = ItemStats(link) or {}
     local newIlvl = ItemLevel(link)
-    local loc = EquipLoc(link)
-    -- the equipped item of the same kind (equip location from the game); two rings or trinkets: the lower item level is replaced
-    local old
-    if loc then
-        for _, sl in ipairs(SLOTS) do
-            local s = CM.SlotInfo(sl[1])
-            if s and EquipLoc(s.link) == loc and (not old or (s.ilvl or 0) < (old.ilvl or 0)) then old = s end
-        end
-    end
+    -- the equipped item of the same kind (equip location from the game); with two (rings, trinkets, one-hand weapons) the one chosen
+    -- below, else the lower item level
+    local old, cands = Replaced(link)
     it.value = (newIlvl and ("item level " .. Big(newIlvl)) or "item level " .. UNAV)
     if old then
         Pair(it, "Replaces", ("%s (item level %s)"):format(CM.SlotLabel(old.slot), old.ilvl and Big(old.ilvl) or "?"), nil, true)
-        if newIlvl and old.ilvl then Pair(it, "Item level change", SB(newIlvl - old.ilvl)) end
+        if newIlvl and old.ilvl then Pair(it, "Item level change", SB(newIlvl - old.ilvl), nil, true) end
+        if #cands > 1 then
+            for _, c in ipairs(cands) do
+                local ch = Item("cmpSlot" .. c.slot, (c == old) and "Replacing" or "Replace instead", "choice")
+                ch.slot = c.slot
+                ch.value, ch.tone = ("%s (item level %s)"):format(CM.SlotLabel(c.slot), c.ilvl and Big(c.ilvl) or "?"), (c == old) and "good" or "mute"
+                Tip(ch, "Click to compare against this one. Both equipped items of this kind are listed; with none chosen, the lower item level is replaced.")
+                items[#items + 1] = ch
+            end
+        end
     else
         Pair(it, "Replaces", "nothing equipped of the same kind (shown as an addition)", "mute", true)
     end
@@ -1218,9 +1261,10 @@ local function CompareItem(ctx, text)
             if key == "mastery" then local _, c = R(GetMasteryEffect); if num(c) and c > 0 then coeff = c end end
             if key == "crit" then idx = CritRead(); rating = N(GetCombatRating, idx); f = Converter(idx) end
             local w = num(rating) and f and SM.WhatIf(f, rating, d, coeff, thresholdCache[idx] and thresholdCache[idx].list)
-            if rating == HIDDEN then Pair(it, gs[2], SB(d) .. " rating, percent " .. HID, "mute")
-            elseif w then Pair(it, gs[2], ("%s rating = %s%s"):format(SB(d), SP(w.gain), #w.crossed > 0 and " (crosses a threshold)" or ""), w.gain >= 0 and "good" or "warn")
-            else Pair(it, gs[2], SB(d) .. " rating, percent " .. UNAV, "mute") end
+            -- (short = true: the stat changes are the point of a comparison, so they show in the short view too; Xaya 2026-11-04)
+            if rating == HIDDEN then Pair(it, gs[2], SB(d) .. " rating, percent " .. HID, "mute", true)
+            elseif w then Pair(it, gs[2], ("%s rating = %s%s"):format(SB(d), SP(w.gain), #w.crossed > 0 and " (crosses a threshold)" or ""), w.gain >= 0 and "good" or "warn", true)
+            else Pair(it, gs[2], SB(d) .. " rating, percent " .. UNAV, "mute", true) end
         end
     end
     local p = ctx.primary
@@ -1235,14 +1279,14 @@ local function CompareItem(ctx, text)
         elseif p == 4 then
             txt = txt .. " (spell power from it: " .. NA .. ")"
         end
-        Pair(it, StatName(p), txt, pd > 0 and "good" or "warn")
+        Pair(it, StatName(p), txt, pd > 0 and "good" or "warn", true)
     end
     local sd = (num(newStats.ITEM_MOD_STAMINA_SHORT) and newStats.ITEM_MOD_STAMINA_SHORT or 0) -
         ((old and old.stats and num(old.stats.ITEM_MOD_STAMINA_SHORT)) and old.stats.ITEM_MOD_STAMINA_SHORT or 0)
     if sd ~= 0 then
         any = true
         local hpPer, mod = N(UnitHPPerStamina, "player"), N(GetUnitMaxHealthModifier, "player")
-        Pair(it, StatName(3), SB(sd) .. (num(hpPer) and (" = %s health"):format(SB(sd * hpPer * (num(mod) and mod or 1))) or ""), sd > 0 and "good" or "warn")
+        Pair(it, StatName(3), SB(sd) .. (num(hpPer) and (" = %s health"):format(SB(sd * hpPer * (num(mod) and mod or 1))) or ""), sd > 0 and "good" or "warn", true)
     end
     local ad = (num(newStats.RESISTANCE0_NAME) and newStats.RESISTANCE0_NAME or 0) -
         ((old and old.stats and num(old.stats.RESISTANCE0_NAME)) and old.stats.RESISTANCE0_NAME or 0)
@@ -1255,9 +1299,9 @@ local function CompareItem(ctx, text)
             local r0, r1 = N(eff, armor, ctx.level), N(eff, math.max(0, armor + ad), ctx.level)
             if num(r0) and num(r1) then txt = txt .. (" = %s damage reduction"):format(SP((r1 - r0) * 100)) end
         end
-        Pair(it, L("STAT_ARMOR", "Armor"), txt)
+        Pair(it, L("STAT_ARMOR", "Armor"), txt, nil, true)
     end
-    if not any then Pair(it, "Stats", "no change in the stats the game lists", "mute") end
+    if not any then Pair(it, "Stats", "no change in the stats the game lists", "mute", true) end
     Pair(it, "Gems, enchant, set bonus", "not in the item's stat table", "mute")
     Pair(it, "On-use and proc effects", NA, "mute")
     Pair(it, "This item at another item level", NA, "mute")
@@ -1295,6 +1339,34 @@ local function WhatIfSections(ctx, out, ratingSecs)
             end
             Tip(it, ("Type extra %s rating (a minus sign for less) and press Enter. It is read through the game's converter, so diminishing-return thresholds apply."):format(r.label))
             Tip(it, "The amount shows on the stat's own line too (Stats tab), added to the All ratings amount.")
+            sec.items[#sec.items + 1] = it
+        end
+    end
+    -- the primary stat (Xaya 2026-11-04: "primary stat is also not included in the what if calculator"): Strength / Agility through
+    -- the game's GetAttackPowerForStat; the game gives no spell power per Intellect, so that is said, not guessed
+    do
+        local p = ctx.primary
+        if PRIMARY_WORD[p] then
+            local it = Item("wi_primary", StatName(p), "input")
+            it.input = "primary"
+            local amount = ctx.whatIfPrimary or 0
+            it.amount = amount
+            local _, eff = R(UnitStat, "player", p)
+            if amount == 0 then
+                it.value, it.tone = (num(eff) and (Big(eff) .. " now") or UNAV), "mute"
+            elseif not num(eff) then
+                it.value, it.tone = (eff == HIDDEN) and HID or UNAV, "mute"
+            else
+                local txt = ("%s -> %s"):format(Big(eff), Big(math.max(0, eff + amount)))
+                if p == 1 or p == 2 then
+                    local a0, a1 = N(GetAttackPowerForStat, p, eff), N(GetAttackPowerForStat, p, math.max(0, eff + amount))
+                    if num(a0) and num(a1) then txt = ("%s attack power (%s)"):format(SB(a1 - a0), txt) end
+                else
+                    txt = txt .. ", spell power from it: " .. NA
+                end
+                it.value, it.tone = txt, amount >= 0 and "good" or "warn"
+            end
+            Tip(it, ("Type extra %s (a minus sign for less) and press Enter."):format(StatName(p)))
             sec.items[#sec.items + 1] = it
         end
     end

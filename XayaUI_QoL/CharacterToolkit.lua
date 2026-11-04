@@ -89,6 +89,7 @@ local function Cfg()
         local n = math.floor(tonumber(v) or 0)
         c.whatIfStats[k] = (n ~= 0) and math.max(-100000, math.min(100000, n)) or nil
     end
+    do local n = math.floor(tonumber(c.whatIfPrimary) or 0); c.whatIfPrimary = (n ~= 0) and math.max(-100000, math.min(100000, n)) or nil end
     for k, v in pairs(c.lineModes) do if v ~= "rating" and v ~= "percent" then c.lineModes[k] = nil end end
     return c
 end
@@ -250,6 +251,8 @@ local function Btn()
                 ns.CharToolkit_FlipLine(it.key)
                 ns.CharToolkit_Render()
                 if self.IsMouseOver and self:IsMouseOver() then ShowTooltip(self, self.item) end
+            elseif it and it.kind == "choice" and it.slot then
+                ns.CharToolkit_SetCompareSlot(it.slot)
             end
         end)
         b:SetScript("OnMouseWheel", function(_, d) if panel and panel.Scroll then panel.Scroll(d) end end)
@@ -322,15 +325,45 @@ local function Box(key)
 end
 
 -- What If input: a stat key, "all", or "item" (an item link or ID)
+-- Xaya 2026-11-04: "adding the item does not auto-fill in information". A compared item fills the What If boxes (each rating and
+-- the primary stat) with what it changes against the item it replaces; a new item, another slot choice or an empty box takes back
+-- only the amounts the previous item filled in and the user has not changed since.
+local function AutoFill(c)
+    local prev = CM.compareFill
+    if prev then
+        for k, v in pairs(prev.ratings or {}) do if c.whatIfStats[k] == v then c.whatIfStats[k] = nil end end
+        if prev.primary and prev.primary ~= 0 and c.whatIfPrimary == prev.primary then c.whatIfPrimary = nil end
+        CM.compareFill = nil
+    end
+    local p = CM.PrimaryStatIndex and CM.PrimaryStatIndex() or nil
+    local d = (CM.compareText or "") ~= "" and CM.CompareDeltas and CM.CompareDeltas(CM.compareText, p) or nil
+    if not d then return end
+    for k, v in pairs(d.ratings) do c.whatIfStats[k] = math.max(-100000, math.min(100000, math.floor(v + 0.5))) end
+    if d.primary ~= 0 then c.whatIfPrimary = math.floor(d.primary + 0.5) end
+    CM.compareFill = { ratings = {}, primary = c.whatIfPrimary }
+    for k in pairs(d.ratings) do CM.compareFill.ratings[k] = c.whatIfStats[k] end
+end
 function ns.CharToolkit_SetInput(key, text)
     local c = Cfg(); if not c then return end
     if key == "item" then
         local t = tostring(text or "")
         CM.compareText = (t:gsub("^%s+", ""):gsub("%s+$", ""))
+        CM.compareSlot = nil   -- a new item: the lower item level again until a slot is chosen
+        AutoFill(c)
+    elseif key == "primary" then
+        local n = math.max(-100000, math.min(100000, math.floor(tonumber(text) or 0)))
+        c.whatIfPrimary = (n ~= 0) and n or nil
     else
         local n = math.max(-100000, math.min(100000, math.floor(tonumber(text) or 0)))
         if key == "all" then c.whatIf = n else c.whatIfStats[key] = (n ~= 0) and n or nil end
     end
+    ns.CharToolkit_Render()
+end
+-- the equipped item to compare against when two could be replaced (What If > Compare an item, "Replace instead")
+function ns.CharToolkit_SetCompareSlot(slot)
+    local c = Cfg(); if not c then return end
+    CM.compareSlot = slot
+    AutoFill(c)
     ns.CharToolkit_Render()
 end
 
@@ -1010,7 +1043,7 @@ function ns.BuildCharToolkitPage(Notify)
                     set = function(_, v) C().whatIf = math.max(-100000, math.min(100000, math.floor(tonumber(v) or 0))); Changed() end },
                 clear = { type = "execute", order = 2, name = "Clear all",
                     desc = "Sets the All ratings amount and every per-stat amount back to 0.",
-                    func = function() local c = C(); c.whatIf = 0; c.whatIfStats = {}; Changed() end },
+                    func = function() local c = C(); c.whatIf = 0; c.whatIfStats = {}; c.whatIfPrimary = nil; Changed() end },
                 resetLines = { type = "execute", order = 3, name = "Reset line flips",
                     desc = "Every rating line goes back to the Rating lines setting.",
                     func = function() C().lineModes = {}; Changed() end },
