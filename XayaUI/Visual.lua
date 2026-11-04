@@ -1477,6 +1477,9 @@ function ns.UnlinkAura(rule)
 end
 
 local DRAG_UP_WINDOW = 0.3   -- seconds after OnDragStop in which a left release still belongs to the drag (the mover view)
+-- A drag that moved the display this little (px, each axis) was a click with a shaky hand, not a move (core 0.6.43): Xaya's saved
+-- displays shifted by 2-4 px after clicks in the mover view (her XayaUI.lua, 2026-11-04, compared by the Dev Assist session).
+local CLICK_SLOP = 5
 function ns.ShowVisualMenu(rule, anchor)
     if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the menu API is not available in this client.") return end
     MenuUtil.CreateContextMenu(anchor, function(_, root)
@@ -1702,6 +1705,7 @@ local function GetFrame(rule)
                 end
             end
         end
+        self.dragFrom = { self:GetCenter() }   -- where it was, to tell a small slip from a move (CLICK_SLOP)
         self:StartMoving()
     end)
     -- left click (without dragging) selects the aura and opens it in the editor; right click opens the move / snap / edit menu
@@ -1727,6 +1731,20 @@ local function GetFrame(rule)
     fr:SetScript("OnDragStop", function(self)
         self.wasDragged, self.dragStoppedAt = false, GetTime()
         self:StopMovingOrSizing()
+        local from = self.dragFrom
+        self.dragFrom = nil
+        local cx, cy = self:GetCenter()
+        if from and from[1] and cx and math.abs(cx - from[1]) <= CLICK_SLOP and math.abs(cy - from[2]) <= CLICK_SLOP then
+            -- a click, not a move: everything goes back where it is saved (nothing is saved, no snap is cleared), then the click runs
+            -- (the left release that follows, or came first, is swallowed as part of the drag: one click action)
+            pcall(ns.RefreshVisual, rule)
+            for _, p in ipairs(self.linkRides or {}) do pcall(ns.RefreshVisual, p[1]) end
+            if self.pairRule then pcall(ns.RefreshVisual, self.pairRule) end
+            self.linkRides, self.linkHidden, self.linkStart, self.pairRule, self.pairFr = nil, nil, nil, nil, nil
+            ns.SelectVisual(rule)
+            if ns.EditRule then ns.EditRule(rule) end
+            return
+        end
         CommitDrag(rule, self, true)
         if self.linkRides then
             for _, p in ipairs(self.linkRides) do CommitDrag(p[1], p[2], false) end
