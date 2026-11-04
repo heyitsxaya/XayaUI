@@ -85,6 +85,8 @@ How it works: XayaUI keeps a number for each rule in the group, and the game's a
 
 **Undo and redo:** While you edit a rule in the options window, press Ctrl+Z to undo the last change to that rule (its cues and conditions included), and Ctrl+Y or Ctrl+Shift+Z to redo. One step is one burst of edits, so a slider drag is a single step. History is kept per rule for up to 50 steps while the window is open and is not saved; the first step goes back to how the rule looked when the window opened (or when you last pressed Save changes). Turning a rule on or off, moving it to another group, collapsing it, its sidebar icon, and its edit lock are not part of undo. Ctrl+Z does nothing while you are typing in a text box.
 
+**Mover view (everything unlocked, core 0.6.29):** while every display is unlocked (the Unlock button or `/xui unlock`), hovering a display names its rule and its group and says what each click does; a click opens its settings, a right-click opens its menu, which now also has **Edit Its Group**. Each group with a display on screen gets a faint orange outline and a small name tab above it (a nested group's tab sits above its parent's). Hover the tab to see the group's full path; click it to open the group's settings; right-click it for X / Y and centering; drag the tab to move the whole group. The outline itself takes no clicks, so the displays inside stay draggable. A group unlocked on its own shows its own outline handle instead (below).
+
 **Moving a whole group on screen:** Click the lock icon on a group's row in the sidebar. The group's displays show as samples inside one orange outline; drag the outline to move the group (this changes the group's X / Y). The displays inside are not individually draggable while only the group is unlocked. Unlock a single rule's own lock icon (or the Unlock button) to drag one display. Slash command: `/xui groups` lists every group with displays, its settings, and whether each display is attached to the group's container. Right-click the outline to type the group's X and Y, or to center it on the screen horizontally, vertically, or both (the middle of the outline goes to the middle of the screen).
 
 **Sidebar width:** the sidebar widens by itself when a nested rule or group would have less than about 80 px for its name (up to the width the window allows); drag its edge to make it wider still. Hovering a row shows its full name.
@@ -157,6 +159,24 @@ These are sets: with nothing ticked there is no restriction. Ticking items means
 - **Class:** tick any of the 13 classes; the rule loads only on a character of one of the ticked classes. Every class is always listed, whatever character you are logged in on, so a rule can be set up for any class from any character. With no class ticked the rule loads on every class. A group's Load tab has the same Class list and is checked before each rule's own.
 - **Specialization** and **Role**: both have an explicit "All" choice that restricts nothing. Specialization lists every specialization of every class (shown as class and spec), whatever character you are logged in on, and you can tick several. Role allows one choice.
 - **Hero talents:** the active hero talent tree. Only matches when a hero tree is actually chosen.
+
+### 3.3a Zones, instances, bosses and items (ID lists, core 0.6.28)
+
+A box on the Load tab, **Zones, Instances, Bosses and Items**, holds six lists. It starts closed unless one of them holds IDs. Each list
+is a text box of the game's IDs, separated by commas or spaces. An empty box restricts nothing; a minus before an ID (`-2552`) means
+"not there". Most rows show where you are now (**Here: ...**) with an **Add current** button.
+
+| List | Matches | Notes |
+|---|---|---|
+| **Zones (map IDs)** | the map you are on, or any map it sits in | A city's room is inside the city, the zone and the continent, so one zone ID covers everything in it. |
+| **Instances (instance IDs)** | the instance you are in | In the open world this is the continent's ID. |
+| **Difficulties (difficulty IDs)** | the instance's difficulty | 0 = open world. **Add a difficulty** lists the game's difficulties by name. |
+| **Instance sizes (largest group)** | the largest group the instance allows | As the game reports it; 0 = open world. |
+| **Boss encounters (encounter IDs)** | the boss encounter in progress | The ID arrives when the pull starts. After a /reload in the middle of a pull it is unknown until the next pull, so the rule does not load. **Add current** adds the boss you are fighting, or the last one pulled. |
+| **Items equipped (item IDs)** | any listed item being worn | A minus: only while that item is NOT worn. Use the item search next to it. |
+
+A value the game will not give (no map during a loading screen, for example) counts as unknown: a rule that needs it does not load.
+These lists are on rules only for now, not on a group's Load tab. `/xui status` prints the current values on its "place:" line.
 
 ### 3.4 Talents (also on the Load tab)
 
@@ -656,7 +676,7 @@ A panel beside the character window (XayaUI QoL) that shows every stat the game 
 - **What If:**
   - **Rating per stat:** type extra rating for any stat (a minus sign for less) and press Enter. The line shows the gain, the new percent from rating, the new rating, and any threshold it crosses. It is read through the game's own converter, so thresholds apply.
   - **All ratings:** adds the same amount to every stat. Each stat's line on the Stats tab shows its own amount plus this one.
-  - **Compare an item:** shift-click an item into the box (or type an item ID) and press Enter. The panel shows the item's level and the equipped item of the same kind it replaces (for two rings or trinkets, the lower item level). Then:
+  - **Compare an item:** shift-click an item (from the game's bags or another bag addon) or drag and drop it onto the box, and it is compared at once; or type an item ID and press Enter. A shift-click goes into the box while the What If tab is shown, unless a chat box is open (then the link goes to chat, as usual) (QoL 0.7.2). The panel shows the item's level and the equipped item of the same kind it replaces (for two rings or trinkets, the lower item level). Then:
     - each rating change, through the converter;
     - your primary stat change and the attack power it gives;
     - Stamina to health, and armor to damage reduction.

@@ -96,6 +96,18 @@ function Compat.ChatHookTarget(name)
     if old and type(G[old]) == "function" then return G, old end
     return nil
 end
+-- every place to hook: the 12.x function AND the old global when it exists. The old global is a COPY made when the fallback addon
+-- loaded (Deprecated_ChatFrame.lua:43, `ChatEdit_InsertLink = ChatFrameUtil.InsertLink`), so a hook on ChatFrameUtil does not see
+-- calls made through the old name (other addons' bag buttons still use it). A caller hooking both must ignore a second call for the
+-- same click, in case a client's old name calls the new one.
+function Compat.ChatHookTargets(name)
+    local out = {}
+    local U = G.ChatFrameUtil
+    if type(U) == "table" and type(U[name]) == "function" then out[#out + 1] = { U, name } end
+    local old = CHAT_OLD[name]
+    if old and type(G[old]) == "function" then out[#out + 1] = { G, old } end
+    return out
+end
 function Compat.ActiveChatEditBox()
     local fn = Compat.Chat("GetActiveWindow")
     if fn then local ok, eb = pcall(fn); if ok then return eb end end

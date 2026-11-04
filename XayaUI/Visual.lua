@@ -844,7 +844,138 @@ function ns.SetGroupUnlocked(f, on)
             ns.SetVisualShown(r, ns.runtime and ns.runtime[r] and ns.runtime[r].visualWanted)
         end
     end
+    if ns.RefreshGroupTags then ns.RefreshGroupTags() end   -- an unlocked group shows its handle instead of its mover-view tag
 end
+
+-------------------------------------------------------------------------------
+-- Mover view (Xaya 2026-11-04: "when you open the anchors/mover view, enable hover-over groups or individual icons and enable the
+-- ability to go to a specific element to modify its options"). While every display is unlocked (/xui unlock), each group with a
+-- display on screen gets a faint outline (it takes no mouse, so the displays inside stay draggable) and a name tab above it. Hovering
+-- the tab lights the outline and names the group; a click opens the group's settings, a right-click its X / Y popup, and dragging the
+-- tab moves the whole group. Nested groups stack their tabs upward so they do not cover each other. Displays get a tooltip (GetFrame).
+-------------------------------------------------------------------------------
+local groupTags = {}
+local TAG_H, TAG_PAD = 16, 4
+function ns.FolderPathText(fid)
+    local names, id, g = {}, fid, 0
+    while id and g < 32 do
+        local f = ns.FolderById(id)
+        if not f then break end
+        table.insert(names, 1, tostring(f.name)); id, g = f.parent, g + 1
+    end
+    return table.concat(names, " > ")
+end
+local function FolderDepth(f)
+    local d, id = 0, f.parent
+    while id and d < 32 do local p = ns.FolderById(id); if not p then break end; d, id = d + 1, p.parent end
+    return d
+end
+local function ShownIn(f)
+    local n = 0
+    for rule, fr in pairs(frames) do if fr:IsShown() and InFolder(rule.folder, f.id) then n = n + 1 end end
+    return n
+end
+local function TagWanted(f)
+    return ns.unlocked and f and f.default ~= "cursor" and not ns.groupUnlocked[f.id]   -- (an unlocked group has its own handle)
+end
+local function TagTooltip(t)
+    local fo = ns.FolderById(t.fid)
+    if not (fo and GameTooltip) then return end
+    GameTooltip:SetOwner(t, "ANCHOR_TOP")
+    GameTooltip:AddLine("Group: " .. ns.FolderPathText(fo.id), 1, 0.82, 0)
+    GameTooltip:AddLine(ShownIn(fo) .. " display(s) on screen", 1, 1, 1)
+    GameTooltip:AddLine("Click: open this group's settings", 0.6, 0.85, 1)
+    GameTooltip:AddLine("Right-click: X / Y, centering and anchoring", 0.6, 0.85, 1)
+    GameTooltip:AddLine("Drag this tab: move the whole group", 0.6, 0.85, 1)
+    GameTooltip:Show()
+end
+local function GroupTag(f)
+    local t = groupTags[f.id]
+    if t then return t end
+    t = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+    t:SetFrameStrata("MEDIUM"); t:SetFrameLevel(50)   -- under the displays (HIGH) and the settings window
+    t:EnableMouse(true)
+    t:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    t:SetBackdropColor(0.05, 0.05, 0.05, 0.85); t:SetBackdropBorderColor(1, 0.6, 0.1, 0.9)
+    t.label = t:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    t.label:SetPoint("LEFT", 4, 0)
+    t.box = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+    t.box:SetFrameStrata("MEDIUM"); t.box:SetFrameLevel(49)
+    t.box:EnableMouse(false)
+    t.box:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    t.box:SetBackdropBorderColor(1, 0.6, 0.1, 0.35)
+    t.fid = f.id
+    local function Lit(on) t.box:SetBackdropBorderColor(1, 0.6, 0.1, on and 1 or 0.35) end
+    t:SetScript("OnEnter", function(self) self.hovered = true; Lit(true); TagTooltip(self) end)
+    t:SetScript("OnLeave", function(self)
+        self.hovered = false; Lit(false)
+        if GameTooltip and GameTooltip.GetOwner and GameTooltip:GetOwner() == self then GameTooltip:Hide() end
+    end)
+    t:SetScript("OnMouseDown", function(self, btn)
+        if btn ~= "LeftButton" then return end
+        local fo = ns.FolderById(self.fid)
+        if not fo then return end
+        local cx, cy = GetCursorPosition()
+        self.drag = { cx = cx, cy = cy, x = fo.cX or 0, y = fo.cY or 0, moved = false }
+    end)
+    t:SetScript("OnMouseUp", function(self, btn)
+        local fo = ns.FolderById(self.fid)
+        if not fo then self.drag = nil; return end
+        if btn == "RightButton" then self.drag = nil; ShowGroupPosPopup(fo); return end
+        local d = self.drag
+        self.drag = nil
+        if d and d.moved then GroupPosChanged(fo)   -- a drag: the new X / Y is saved
+        elseif ns.EditFolder then ns.EditFolder(fo) end   -- a click: open the group's settings
+    end)
+    t:SetScript("OnUpdate", function(self)
+        local fo = ns.FolderById(self.fid)
+        if not TagWanted(fo) then self.drag = nil; self:Hide(); self.box:Hide(); return end
+        local d = self.drag
+        if d then
+            if not IsMouseButtonDown("LeftButton") then
+                self.drag = nil
+                if d.moved then GroupPosChanged(fo) end
+            else
+                local cx, cy = GetCursorPosition()
+                if d.moved or math.abs(cx - d.cx) + math.abs(cy - d.cy) > 3 then
+                    d.moved = true
+                    local ts = GroupTargetScale(fo)
+                    fo.cX = math.floor(d.x + (cx - d.cx) / ts + 0.5)
+                    fo.cY = math.floor(d.y + (cy - d.cy) / ts + 0.5)
+                    Container(fo)
+                end
+            end
+        end
+        local l, b, r, top = GroupBounds(fo)
+        if not l then   -- nothing of this group on screen: the tag stays, invisible and not clickable, until something shows
+            self:SetAlpha(0); self:EnableMouse(false); self.box:Hide()
+            return
+        end
+        self:SetAlpha(1); self:EnableMouse(true)
+        self.label:SetText(tostring(fo.name))
+        self:SetSize(math.max(40, (self.label:GetStringWidth() or 40) + 8), TAG_H)
+        self:ClearAllPoints()
+        self:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - TAG_PAD, top + TAG_PAD + 1 + FolderDepth(fo) * (TAG_H + 1))
+        self.box:ClearAllPoints()
+        self.box:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - TAG_PAD, b - TAG_PAD)
+        self.box:SetSize(r - l + 2 * TAG_PAD, top - b + 2 * TAG_PAD)
+        self.box:Show()
+    end)
+    t:Hide(); t.box:Hide()
+    groupTags[f.id] = t
+    return t
+end
+-- shows a tag for every group while everything is unlocked (its OnUpdate keeps it in place and hides it once that ends)
+function ns.RefreshGroupTags()
+    if not ns.unlocked then
+        for _, t in pairs(groupTags) do t.drag = nil; t:Hide(); t.box:Hide() end
+        return
+    end
+    for _, f in ipairs(ns.folders or {}) do
+        if TagWanted(f) then GroupTag(f):Show() elseif groupTags[f.id] then groupTags[f.id]:Hide(); groupTags[f.id].box:Hide() end
+    end
+end
+function ns.GroupTagFor(fid) return groupTags[fid] end   -- (tests)
 
 -- /xui groups: what each group holds and where its displays really hang, so "the group setting does nothing" can be told apart from
 -- "the display is not attached to the group". Read-only.
@@ -1165,6 +1296,8 @@ function ns.ShowVisualMenu(rule, anchor)
         radio(snap, "grid"); radio(snap, "auras"); radio(snap, "center")
         root:CreateDivider()
         root:CreateButton("Edit This Aura", function() if ns.EditRule then ns.EditRule(rule) end end)
+        local fo = rule.folder and ns.FolderById(rule.folder)
+        if fo then root:CreateButton("Edit Its Group (" .. tostring(fo.name) .. ")", function() if ns.EditFolder then ns.EditFolder(fo) end end) end
     end)
 end
 
@@ -1269,6 +1402,18 @@ local function GetFrame(rule)
         end
         self.hovered = true
         PaintBorder(rule, self)
+        -- mover view (Xaya 2026-11-04): name what this is and what a click does
+        if GameTooltip then
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            local par = rule.parentUid and ns.FindParentRule and ns.FindParentRule(rule)
+            GameTooltip:AddLine(tostring(par and par.name or rule.name), 1, 0.82, 0)
+            if par then GameTooltip:AddLine("A cue of this rule", 1, 1, 1) end
+            if rule.folder then GameTooltip:AddLine("Group: " .. ns.FolderPathText(rule.folder), 1, 1, 1) end
+            GameTooltip:AddLine("Click: open its settings", 0.6, 0.85, 1)
+            GameTooltip:AddLine("Right-click: snap, link, center, edit its group", 0.6, 0.85, 1)
+            GameTooltip:AddLine(rule.link and "Drag: move it with its linked auras (Shift: alone)" or "Drag: move it", 0.6, 0.85, 1)
+            GameTooltip:Show()
+        end
     end)
     fr:SetScript("OnLeave", function(self)
         self.hovered = false
@@ -2241,14 +2386,16 @@ function ns.RefreshAllVisuals()
             end
         end
     end
+    if ns.unlocked then ns.RefreshGroupTags() end   -- a group made or changed while everything is unlocked gets its mover-view tag
 end
 
 function ns.ToggleUnlock()
     ns.unlocked = not ns.unlocked
     if not ns.unlocked then for r in pairs(pairOf) do ns.ClearPair(r) end end
-    ns.Print(ns.unlocked and "visuals UNLOCKED: drag them, then /xui unlock again to lock."
+    ns.Print(ns.unlocked and "visuals UNLOCKED: drag them, then /xui unlock again to lock. Hover a display or a group's name tab to see what it is; click it to open its settings."
         or "visuals locked.")
     ns.RefreshAllVisuals()
+    ns.RefreshGroupTags()
     if ns.QoL_RefreshAll then ns.QoL_RefreshAll() end
     if ns.Bars_RefreshAll then ns.Bars_RefreshAll() end
 end

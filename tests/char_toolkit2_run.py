@@ -495,5 +495,45 @@ r = toolkit_world("ChatFrameUtil = {}   -- neither the 12.x function nor the old
                   '''check("neither function exists: nothing is hooked and the item box still takes typed text",
   ChatEdit_InsertLink == nil and ib ~= false and (function() ib.text = "123"; return ib.text == "123" end)())''')
 total_n += r[0]; total_fails += r[1]
+# Xaya 2026-11-04: "I can't drop or shift+click an item into the item comparison" (QoL 0.7.2). In 12.x the old global is a COPY of
+# ChatFrameUtil.InsertLink (Deprecated_ChatFrame.lua:43), so other addons' bags calling the old name never reached a hook on
+# ChatFrameUtil alone; the box also only listened while it had keyboard focus, and took no dropped item.
+COPY = "ChatFrameUtil = { InsertLink = function(link) return false end }; ChatEdit_InsertLink = ChatFrameUtil.InsertLink   -- 12.x: the old name is a copy"
+r = toolkit_world(COPY, '''ib.text, ib.focus = "", true
+ChatEdit_InsertLink(LINK)   -- a bag addon that still calls the old name
+ib.focus = false
+check("12.x: an item shift-clicked through the old name (other addons' bags) goes into the item box", ib.text == LINK, ib.text)''')
+total_n += r[0]; total_fails += r[1]
+r = toolkit_world(COPY, '''ib.text, ib.focus = "", false
+ChatFrameUtil.InsertLink(LINK)
+check("no focus, What If shown, no chat box open: the shift-clicked item goes in and is compared at once",
+  ib.text == LINK and ns.CharModel.compareText == LINK, ib.text)
+ib.text = ""
+ChatFrameUtil.GetActiveWindow = function() return { IsShown = function() return true end } end
+ChatFrameUtil.InsertLink(LINK)
+ChatFrameUtil.GetActiveWindow = nil
+check("no focus but a chat box open: the link goes to chat, not into the box", ib.text == "", ib.text)
+ns.CharToolkit_Cfg().tab = "stats"; ns.CharToolkit_Render()
+ChatFrameUtil.InsertLink(LINK)
+check("no focus on another tab: the box does not take it", ib.text == "", ib.text)
+ns.CharToolkit_Cfg().tab = "whatif"; ns.CharToolkit_SetInput("item", ""); ib.text = ""
+ChatFrameUtil.InsertLink("|cff71d5ff|Hspell:8936|h[Regrowth]|h|r")
+check("a spell link is not taken", ib.text == "", ib.text)''')
+total_n += r[0]; total_fails += r[1]
+r = toolkit_world(COPY, '''local cleared = false
+GetCursorInfo = function() return "item", 3, LINK end
+ClearCursor = function() cleared = true end
+check("the item box takes a dropped item", type(ib.scripts.OnReceiveDrag) == "function")
+if ib.scripts.OnReceiveDrag then ib.scripts.OnReceiveDrag(ib) end
+check("  ...dropping an item from the bags puts it in the box, compares it, and empties the cursor",
+  ib.text == LINK and ns.CharModel.compareText == LINK and cleared, ib.text)
+ib.text, cleared = "", false
+if ib.scripts.OnMouseUp then ib.scripts.OnMouseUp(ib, "LeftButton") end
+check("clicking the box with an item on the cursor does the same", ib.text == LINK and cleared, ib.text)
+ib.text, cleared = "", false
+GetCursorInfo = function() return "spell", 1, 8936 end
+if ib.scripts.OnReceiveDrag then ib.scripts.OnReceiveDrag(ib) end
+check("a dropped spell is ignored and stays on the cursor", ib.text == "" and not cleared, ib.text)''')
+total_n += r[0]; total_fails += r[1]
 print("%d checks, %d failed" % (total_n, total_fails))
 sys.exit(1 if total_fails else 0)
