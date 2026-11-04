@@ -130,6 +130,8 @@ function ns.SkinPlainButton(b, primary)
         fs:SetTextColor(c[1], c[2], c[3]); TF(fs)
     end
 end
+-- core's own windows (console, popups) take this look through the "buttonSkin" service (Modules.lua), never by calling this file
+if ns.Provide then ns.Provide("buttonSkin", { Apply = function(b, primary) return ns.SkinPlainButton(b, primary) end }) end
 
 -- run restoreFn once when the widget is released (the wrapper is installed only once per widget)
 local function OnRelease(w, restoreFn)
@@ -2006,7 +2008,12 @@ local function Walk(w, depth)
                     self.frame:SetHeight(math.min(height + 26, self.maxHeight or height + 26))
                     if self.FixScroll then self:FixScroll() end
                 end
-                local function small(s) return s and (s:gsub("(|T[^|:]+):%d+:%d+|t", "%1:22:22|t")) end
+                -- the closed box shows a small icon; the list's transparent padding (#336, Options.lua TexPickRow) is dropped there
+                local function small(s)
+                    if not s then return s end
+                    s = s:gsub("|T[^|:]*xui_blank%.tga:%d+:%d+|t", "")
+                    return (s:gsub("(|T[^|:]+):%d+:%d+|t", "%1:22:22|t"))
+                end
                 w.SetText = function(self, s) return origSetText(self, small(s)) end
                 if w.text then w.text:SetText(small(w.text:GetText())) end
                 AddRest(w, "texpick", function(self) self.xuiTexPick = nil; self.SetText = origSetText; if self.pullout then self.pullout.Open = origOpen end end)
