@@ -51,26 +51,29 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 - **"Profile"** means only the whole addon as configured (#354 is asking whether that changes).
 - **Wording to Xaya:** truth first; flag inferences; no unearned compliments; state what is not verified in game.
 
-## 3. Addons (versions from the .toc files, 2026-11-04 19:38 on branch `claude/cool-ramanujan-ewx8e5`; `main` gets them once the full suite passes, see section 5)
+## 3. Addons (versions from the .toc files, 2026-11-04 21:45 on branch `claude/cool-ramanujan-ewx8e5`; `main` gets them once the full suite passes, see section 5)
 | Folder | Version | Holds |
 |---|---|---|
-| `XayaUI` | 0.6.31 | core: rules, cues, conditions (incl. load by zone / instance / difficulty / size / encounter / item), actions, combat aura engine (`Combat/`), themes, mover view, console and debug record, minimap and ESC-menu buttons |
-| `XayaUI_Options` | 0.6.29 | the settings window (loads on first open; Ace3 libs) |
+| `XayaUI` | 0.6.33 | core: rules, cues, conditions (incl. load by zone / instance / difficulty / size / encounter / item), actions, combat aura engine (`Combat/`), themes, mover view, console and debug record, minimap and ESC-menu buttons |
+| `XayaUI_Options` | 0.6.33 | the settings window (loads on first open; Ace3 libs) |
 | `XayaUI_Chat` | 0.6.10 | Chat Panel, Chat Bar, filters, history, tab sounds and whisper sound overrides, privacy cover |
-| `XayaUI_QoL` | 0.7.2 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit (phase 2: one model, sheet, What If, slot overlays) |
+| `XayaUI_QoL` | 0.7.9 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit / Stat Calculator panel (one model; Sheet, Stats, Gear with icons, What If with the armor chain, Spells with All / Offense / Defense filters; slot overlays with this expansion's enchant slots by default) |
 | `XayaUI_Bonus` | 0.6.7 | tooltips, Notepad, data panels |
 | `XayaUI_Reskin` | 0.6.0 | Game Menu skin |
-| `XayaUI_Media`, `XayaUI_DevAssist` | 1.0, 0.7.0 | user media folder; XayaUI Dev Assist, the developer tool (was `XayaUI_GameDump` before 0.7.0): API, talents, Cooldown Manager catalogue, aura log, `/xuidev probe` (`/xuidump` still works) |
+| `XayaUI_Media`, `XayaUI_DevAssist` | 1.0, 0.7.1 | user media folder; XayaUI Dev Assist, the developer tool (was `XayaUI_GameDump` before 0.7.0): API, talents, Cooldown Manager catalogue, aura log, `/xuidev probe` (`/xuidump` still works) |
 Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.cursorHighlight`, `.cursorTrail`, `.characterToolkit`). Nothing is saved per character yet.
 
 ## 4. Active items
 
-**NEXT SESSION: START HERE (updated 2026-11-04 21:16 UTC)**
-`main` = `f8c96ed` or later (check `git log origin/main`). Branch `claude/cool-ramanujan-ewx8e5` (draft PR heyitsxaya/XayaUI#385) holds:
-- group load lists (core 0.6.33 / Options 0.6.32);
-- #351 phase 1, one margin / gutter in the settings window (Options 0.6.33);
+**NEXT SESSION: START HERE (updated 2026-11-04 21:45 UTC)**
+`main` = `d11f404` or later (check `git log origin/main`); it has the group load lists and #351 phase 1 (`853d913`) and the Dev
+Assist session's QoL 0.7.6. Branch `claude/cool-ramanujan-ewx8e5` (draft PR heyitsxaya/XayaUI#385) holds, merged with that `main`:
+- QoL 0.7.7: Stat Calculator Spells tab auto-populates from the spellbook; Defense / Offense are its filters (QA E1t);
+- QoL 0.7.8: the armor chain (item armor + armor from Agility, percent read from the mastery text) (QA E1u);
+- QoL 0.7.9: Gear tab icons of the equipped items (QA E1v);
 - the V11 layout probe test (`tests/options_layout_v11_run.py`).
-They land on `main` when the full suite passes on the exact head.
+They land on `main` when the full suite passes on the exact head (running on `ce46d08` at 21:45). Next: #351 phase 2 (the other
+windows; a survey of their offsets was running), then the Stat Calculator items that wait on Xaya (task 43).
 
 **Three Claude sessions work in parallel (2026-11-04 evening, coordinated by send_message):**
 - this one: settings window, Stat Calculator / Character Reskin plans, chat, mover view, load conditions;
@@ -85,8 +88,10 @@ They land on `main` when the full suite passes on the exact head.
 - Q5: "a wider character viewport";
 - a QoL "Character Reskin" switch (on / off);
 - "track even if not known" (B6) dropped unless she wants it.
-- Still open: Q1 (Stat Values: rename or compute), Q2 (reskin scope), Q3 (Spells auto-fill: all spells or only those with
-  numbers), Q4 (Gear comparison: side by side or one at a time), Q6 (track colours).
+- Still open (task 43): Q1 (Stat Values: rename or compute), Q2 (reskin scope), Q4 (Gear comparison: side by side or one at a
+  time), Q6 (track colours). Q3 was built with a default (only spells with numbers, plus a setting to list the rest).
+- Built without her confirmation, flagged to her: the Offense / Defense filters also draw the old tabs' stat sections; spells are
+  sorted into filters by English words; listed spells use spell power for Intellect specs, attack power otherwise.
 
 Backlog in Xaya's priority order (work the first one not blocked; see the rule in section 2):
 - A. **Progress bars as a display kind** (rules, both engines, every texture type in groups, several bars in a dynamic group;
