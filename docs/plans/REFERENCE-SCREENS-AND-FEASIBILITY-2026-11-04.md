@@ -153,3 +153,52 @@ add them under `docs/issue-screenshots/` or in the Drive process folder.
 9. Which text tokens?
 10. A custom sort?
 11. Save the space gap?
+
+## Spell cooldown trigger options (screen 5) and load conditions (screen 7): research, 2026-11-04 (read-only agent; flags as it quoted them from `docs/reference/api`, not each re-checked; nothing tested in game)
+
+**Trigger options already in XayaUI:**
+- required for activation: ALL / ANY / only one (`XayaUI_Options/TriggersEditor.lua:304-327`; AND / OR / NOT rows on the Conditions
+  tab);
+- pick by name, ID or spellbook;
+- show when: fully ready / has a charge / not ready / empty / ignore cooldown (`Options.lua:110-117`).
+
+**Feasible and missing, in order of value:**
+1. **Count the global cooldown.** `SpellCooldownInfo.isOnGCD` is NeverSecret.
+2. **Remaining time and charge comparisons on the trigger itself.** Today they are only on the Conditions tab. The time in combat is
+   an estimate from the Cooldown Manager; charges are counted from your casts.
+3. **A loss-of-control lockout counts as on cooldown.** `C_Spell.GetSpellLossOfControlCooldownInfo`; `isActive` is NeverSecret
+   (INFERENCE that it is readable in combat).
+4. **An exact spell ID toggle,** so a talent replacement is not followed (`C_Spell.GetOverrideSpell`).
+5. **Track: Auto / Charges / Spell cooldown.**
+6. **Track even if not known,** with a warning: the game reports an unknown spell as not active, so it would read "ready".
+7. **Spell count** (`C_Spell.GetSpellCastCount` / `GetSpellDisplayCount`): comparisons out of combat only; it can still be shown.
+
+**Not feasible in combat:**
+- **Ignore rune cooldown:** needs the spell's start time and duration, which are hidden when cooldowns are restricted.
+- **Cooldown of charge N:** the charge count and recharge times are hidden, and the game's duration object covers only the current
+  recharge.
+- **Spell count comparisons:** both calls are SecretWhenCooldownsRestricted.
+
+**Open questions:**
+- Does a Death Knight rune spell's `GetSpellCooldown` include the rune recharge?
+- Is the loss-of-control `isActive` readable in combat?
+- Is `isOnGCD` reliable at evaluation time?
+- Is `C_Secrets.ShouldCooldownsBeSecret` true in all combat or only in some content?
+
+**Load conditions:**
+| Condition | Today | Route | Proposal |
+|---|---|---|---|
+| Zone ID(s) | missing | `C_Map.GetBestMapForUnit("player")`, `GetInstanceInfo()` instanceID (no secret flags) | "Map / instance IDs" list with a "current ID" helper |
+| Encounter ID(s) | partly ("in a boss encounter") | ENCOUNTER_START / END encounterID (no secret flags); no getter for the current ID, so a /reload mid-pull loses it | "Encounter IDs" list; register ENCOUNTER_START / END in core |
+| Instance size | missing | `GetInstanceInfo()` maxPlayers; `GetDifficultyInfo` | size tick boxes |
+| Difficulty | missing (Mythic+ yes / no only) | `GetInstanceInfo()` difficultyID; `GetDifficultyInfo` | difficulty tick boxes named by the game |
+| Instance type | exists | `IsInInstance()` | none |
+| Raid role (MT / MA) | missing (the spec role exists) | `GetPartyAssignment` is undocumented in the reference | an in-game Dev Assist probe first, then Main Tank / Main Assist |
+| Item equipped | partly (a trigger exists) | `C_Item.IsEquippedItem` | an "Item equipped (IDs)" load row reusing the trigger's read |
+
+**How load is re-checked:**
+- Load is re-read every 0.2 s engine step, so polling catches changes, but a new value must be added to the load memo string
+  (`Conditions.lua:1409-1435`).
+- Encounter IDs arrive only with the event.
+- A value the game will not give fails the check (the rule does not load).
+- Group-level load would need the same rows.
