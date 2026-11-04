@@ -38,6 +38,10 @@ For testers. Tick each box in order; when something does not match the **Expect*
 - [ ] **B15.** A cooldown rule shown while the spell is **not ready**, with Duration text on. Use the spell in combat. **Expect:** the text counts the cooldown down to 0 (exact), and the global cooldown alone shows no countdown. A spell with charges: the time to the next charge.
 - [ ] **B16.** A display with **Only while on an action bar** on: remove the spell from your bars. **Expect:** the display hides, also when the engine draws it.
 - [ ] **B17.** `/xui timing`. **Expect:** one line per rule that uses time or stacks, no Lua error.
+- [ ] **B18.** Out of combat with a proc or buff on you: `/xui auras`. **Expect:** one line per buff with its ID, stacks and time, and a second line with readable in combat / Cooldown Manager / Blizzard flags; no Lua error. Turn a listed buff on in Blizzard's Cooldown Manager (Tracked Buffs) and run it again: that buff now says "on and shown".
+- [ ] **B19.** In combat: `/xui auras` says the game hides aura details right now; `/xui auras <an ID from B18>` still prints that spell's three facts. Paste both outputs into the report (testers with Divine Arbiter or Boiling Blood / Boiling Point: please include those).
+- [ ] **B20.** A dynamic group of 3 or more buff rules (your Active Mitigation group works), Sort = **Manual**. Use the buffs in combat in a different order than the rules. **Expect:** the icons always show in the rule order, with no gaps; a buff that appears takes its place between the others. Then drag one rule to another place in the group (out of combat): the order follows.
+- [ ] **B21.** Same group, Sort = **Expiration**, then **Important**, then **Name**, each with and without **Reverse**. **Expect:** the order changes accordingly, no Lua error; `/xuiengine` names the sort. Back to **Manual**: the rule order returns. **Save order and reload** reloads with the order kept.
 
 ## C. Settings window switched off
 

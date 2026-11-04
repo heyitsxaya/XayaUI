@@ -422,24 +422,80 @@ local function ButtonInit(w, h, display, single, rec)
     end
 end
 
+-- Sort of a dynamic group (Group tab, "Sort"; Xaya 2026-11-04: Default, Expiration, Name, Important, Manual).
+--   manual      the group's own member numbers: one aura group per member, numbered in rule order (layoutIndex). Blizzard's flow
+--               lays groups out by that number and skips empty ones ("Empty groups do not contribute spacing or force a new line",
+--               AnchorUtil.lua), so an aura that appears takes its place between the ones already up, in combat, with no gap.
+--   default / expiration / name / important   Blizzard's own comparators on one aura group (AuraContainerSortMethod Default,
+--               Expiration, Name, ImportantOnly; Blizzard_AuraContainerUtil.lua AuraContainerSortComparators).
+-- Reverse = AuraContainerSortDirection.Reverse for Blizzard's sorts, highest number first for manual.
+-- Older saves: cSort nil / "none" = manual (rule order); "asc" = name; "desc" = name, reversed.
+local SORT_METHOD = { default = "Default", expiration = "Expiration", name = "Name", important = "ImportantOnly" }
+local function SortOf(fo)   -- the shared definition lives in Visual.lua (ns.GroupSortOf), so XayaUI's own layout and the engine agree
+    if ns.GroupSortOf then return ns.GroupSortOf(fo) end
+    -- the same mapping, in case this file ever loads without Visual.lua (a setting must never be ignored silently)
+    local s, rev = fo and fo.cSort, (fo and fo.cSortRev) and true or false
+    if s == "asc" then s = "name" elseif s == "desc" then s = "name"; rev = not rev end
+    if not SORT_METHOD[s] then s = "manual" end
+    return s, rev
+end
+local function SortArgs(sortKey, rev)
+    local m = AuraContainerSortMethod[SORT_METHOD[sortKey] or "Default"] or AuraContainerSortMethod.Default
+    local d = rev and AuraContainerSortDirection.Reverse or AuraContainerSortDirection.Normal
+    return m, d
+end
+
 -- Create a container. The template is an AuraContainer widget: created as a plain "Frame" its built-in OnLoad never runs and
 -- Blizzard's own OnLoad errors with "attempt to index field 'dirtyFlags'" (seen in game, engine 0.3.0).
 local containerN = 0
-local function NewContainer(unit, filter, ids, w, h, sp, display, maxCount, single, rec)
+local function BareContainer(unit)
     if C_AddOns and C_AddOns.LoadAddOn then pcall(C_AddOns.LoadAddOn, "Blizzard_AuraContainer") end
     containerN = containerN + 1
     local c = CreateFrame("AuraContainer", "XayaUIEngine" .. containerN, UIParent, "CustomAuraContainerTemplate")
     c:SetUnit(unit)
     c:SetAuraProcessingPolicy(CustomAuraContainerAuraProcessingPolicy.None)
+    return c
+end
+local function NewContainer(unit, filter, ids, w, h, sp, display, maxCount, single, rec, sortKey, rev)
+    local c = BareContainer(unit)
+    local method, dir = SortArgs(sortKey or "default", rev)
     c:AddAuraGroup("main", filter, {
         candidateFilters = { includeSpellIDs = ids },
-        sortMethod = AuraContainerSortMethod.Default,
-        sortDirection = AuraContainerSortDirection.Normal,
+        sortMethod = method,
+        sortDirection = dir,
         maxFrameCount = maxCount,
         layout = { elementSpacing = sp, lineSpacing = sp, elementWidth = w, elementHeight = h },
         initializeFrame = ButtonInit(w, h, display, single, rec),
     })
     return c
+end
+-- A dynamic group's container keeps its aura groups for the whole session (Blizzard: groups are add-only, there is no remove;
+-- a group is switched off with SetAuraGroupEnabled). Each group is made for one MEMBER and one look (Blizzard bakes the button look
+-- in when the group is made, initializeFrame), keyed by the rule's uid + its look, so:
+--   reorder (drag / arrows)  only the groups' numbers change (SetAuraGroupLayout layoutIndex); nothing is created
+--   a member's look changes  that member gets a new group; its old one is switched off
+--   Blizzard sort            one shared group (keyed by member 1's look) is used and the member groups are switched off
+-- A hidden container does not listen to aura events (Blizzard_AuraContainer.lua: ShouldRegisterForDynamicEvents = IsVisible() and
+-- IsEnabled()), but its buttons stay in memory, so the container itself is never replaced while the group exists.
+local function EnsureGroup(g, key, kind, w, h, sp, display, rec, sortKey, rev)
+    g.keyOf = g.keyOf or {}
+    local name = g.keyOf[key]
+    if name then return name, false end
+    g.nKeys = (g.nKeys or 0) + 1
+    name = (kind == "main" and "s" or "g") .. g.nKeys
+    local method, dir = SortArgs(sortKey or "default", rev)
+    g.frame:AddAuraGroup(name, "HELPFUL", {
+        candidateFilters = { includeSpellIDs = {} },   -- an empty set shows nothing (Blizzard_AuraContainerUtil.lua); filled below
+        sortMethod = method,
+        sortDirection = dir,
+        maxFrameCount = (kind == "main") and math.huge or 1,
+        layout = { elementSpacing = sp, lineSpacing = sp, groupSpacing = sp, groupLineSpacing = sp, elementWidth = w, elementHeight = h },
+        initializeFrame = ButtonInit(w, h, display, false, rec),
+    })
+    g.keyOf[key] = name
+    g.made = g.made or {}
+    g.made[#g.made + 1] = name
+    return name, true
 end
 
 -- Where XayaUI puts a dynamic group's first icon (fallback when XayaUI is too old to say), in icon sizes.
@@ -527,42 +583,6 @@ local function Fail(slot, why)
     if slot.frame then slot.frame:Hide() end
 end
 
-local function BuildGroup(fo, members)
-    local g = groups[fo.id] or {}
-    groups[fo.id] = g
-    g.members, g.ids, g.n, g.serial, g.allowed = members, {}, #members, serial, {}
-    local dir = fo.cGrowth or "RIGHT"
-    local axis, anchor, hdir, vdir = FlowFor(dir, fo.cWrapRev and true or false)
-    if not axis then
-        Fail(g, "growth " .. tostring(dir) .. " not supported (Blizzard's layout has no centred growth)")
-        return g
-    end
-    for _, m in ipairs(members) do for id in pairs(m.spec.ids) do g.ids[id] = true end end
-    local display = members[1].spec.display
-    local iw, ih = DisplaySize(display.visual)
-    local sp = tonumber(fo.cSpacing) or 4
-    local limit = WrapLimit(fo, axis == AnchorUtil.FlowLayoutAxis.Horizontal, iw, ih, sp)
-    local ok, err = pcall(function()
-        if not g.frame then
-            g.fmtFallback = nil
-            g.frame = NewContainer("player", "HELPFUL", g.ids, iw, ih, sp, display, math.huge, false, g)
-        else
-            g.frame:SetAuraGroupCandidateFilters("main", { includeSpellIDs = g.ids })
-            g.frame:SetAuraGroupLayout("main", { elementSpacing = sp, lineSpacing = sp, elementWidth = iw, elementHeight = ih })
-        end
-        local c = g.frame
-        c:SetFlowLayoutAxis(axis)
-        c:SetFlowLayoutAnchorPoint(anchor)
-        c:SetFlowLayoutGrowthDirection(hdir, vdir)
-        c:SetFlowLayoutMaximumLineSize(limit)
-        PlaceGroup(c, fo, anchor, iw, ih)
-        c:SetShown(not FolderUnlocked(fo.id))
-    end)
-    g.dirty = true   -- the live filter (load) is set by D.SyncLive
-    if ok then g.ok, g.err = true, nil else Fail(g, err) end
-    return g
-end
-
 local function ColorKey(c)
     if type(c) ~= "table" then return "-" end
     return tostring(c[1]) .. "," .. tostring(c[2]) .. "," .. tostring(c[3]) .. "," .. tostring(c[4])
@@ -580,6 +600,65 @@ local function LookKey(display)
         tostring(c.enabled), tostring(c.size), tostring(c.anchor), tostring(c.x), tostring(c.y),
         tostring(c.font), tostring(c.outline), tostring(c.place), tostring(c.source), ColorKey(c.color),
         tostring(display.spellID), tostring(display.buffID), tostring(v.iconSrc), tostring(v.iconPath), tostring(v.iconSpell), tostring(v.iconItem), tostring(v.iconW), tostring(v.iconH), tostring(v.keepAspect) }, "|")
+end
+
+local function BuildGroup(fo, members)
+    local g = groups[fo.id] or {}
+    groups[fo.id] = g
+    g.members, g.ids, g.n, g.serial, g.allowed = members, {}, #members, serial, {}
+    local dir = fo.cGrowth or "RIGHT"
+    local axis, anchor, hdir, vdir = FlowFor(dir, fo.cWrapRev and true or false)
+    if not axis then
+        Fail(g, "growth " .. tostring(dir) .. " not supported (Blizzard's layout has no centred growth)")
+        return g
+    end
+    for _, m in ipairs(members) do for id in pairs(m.spec.ids) do g.ids[id] = true end end
+    local display = members[1].spec.display
+    local iw, ih = DisplaySize(display.visual)
+    local sp = tonumber(fo.cSpacing) or 4
+    local limit = WrapLimit(fo, axis == AnchorUtil.FlowLayoutAxis.Horizontal, iw, ih, sp)
+    local sortKey, rev = SortOf(fo)
+    local ok, err = pcall(function()
+        if not g.frame then
+            g.fmtFallback = nil
+            g.frame = BareContainer("player")
+            g.keyOf, g.made, g.nKeys = {}, {}, 0
+        end
+        local c = g.frame
+        local active = {}
+        g.memberKey, g.mainKey, g.mode = {}, nil, sortKey
+        if sortKey == "manual" then
+            local n = #members
+            for i, m in ipairs(members) do
+                local w, h = DisplaySize(m.spec.display.visual)
+                local id = tostring(m.rule.uid or m.rule.name or i)
+                local name = EnsureGroup(g, id .. "\n" .. LookKey(m.spec.display) .. "#" .. w .. "x" .. h, "member", w, h, sp, m.spec.display, g)
+                c:SetAuraGroupCandidateFilters(name, { includeSpellIDs = m.spec.ids })
+                c:SetAuraGroupLayout(name, { elementSpacing = sp, lineSpacing = sp, groupSpacing = sp, groupLineSpacing = sp,
+                    elementWidth = w, elementHeight = h, layoutIndex = rev and (n - i + 1) or i })
+                g.memberKey[i] = name
+                active[name] = true
+            end
+        else
+            local name = EnsureGroup(g, "\nmain\n" .. LookKey(display) .. "#" .. iw .. "x" .. ih, "main", iw, ih, sp, display, g, sortKey, rev)
+            c:SetAuraGroupSortMethod(name, SortArgs(sortKey, rev))
+            c:SetAuraGroupCandidateFilters(name, { includeSpellIDs = g.ids })
+            c:SetAuraGroupLayout(name, { elementSpacing = sp, lineSpacing = sp, elementWidth = iw, elementHeight = ih, layoutIndex = 1 })
+            g.mainKey = name
+            active[name] = true
+        end
+        -- every group not used now is switched off; the used ones start on (load / talent answers follow in D.SyncLive)
+        for _, name in ipairs(g.made) do c:SetAuraGroupEnabled(name, active[name] == true) end
+        c:SetFlowLayoutAxis(axis)
+        c:SetFlowLayoutAnchorPoint(anchor)
+        c:SetFlowLayoutGrowthDirection(hdir, vdir)
+        c:SetFlowLayoutMaximumLineSize(limit)
+        PlaceGroup(c, fo, anchor, iw, ih)
+        c:SetShown(not FolderUnlocked(fo.id))
+    end)
+    g.dirty = true   -- the live filter (load) is set by D.SyncLive
+    if ok then g.ok, g.err = true, nil else Fail(g, err) end
+    return g
 end
 
 local function BuildSingle(p, spec, store, key)
@@ -644,6 +723,7 @@ function D.Build()
     if InCombatLockdown and InCombatLockdown() then pendingBuild = true; return end
     pendingBuild = nil
     serial = serial + 1
+    if ns.SyncCueFolders then pcall(ns.SyncCueFolders) end   -- group membership = the parent rule's group (Cues.lua)
     for k in pairs(owned) do owned[k] = nil end
     left = {}
     local spec = db.lean and CurrentSpecID() or nil
@@ -736,11 +816,22 @@ function D.SyncLive()
                 if g.allowed[i] ~= a then g.allowed[i] = a; changed = true end
             end
             if changed then
-                local ids = {}
-                for i, m in ipairs(g.members) do
-                    if g.allowed[i] then for id in pairs(m.spec.ids) do ids[id] = true end end
+                if g.mode == "manual" then
+                    -- one aura group per member: switch the member's own group on or off (an empty ID set would also show
+                    -- nothing, Blizzard_AuraContainerUtil.lua: includeSpellIDs rejects every aura not in it)
+                    local okAll = true
+                    for i in ipairs(g.members) do
+                        local key = g.memberKey and g.memberKey[i]
+                        if key and not pcall(g.frame.SetAuraGroupEnabled, g.frame, key, g.allowed[i] and true or false) then okAll = false end
+                    end
+                    if okAll then g.dirty = false end
+                elseif g.mainKey then
+                    local ids = {}
+                    for i, m in ipairs(g.members) do
+                        if g.allowed[i] then for id in pairs(m.spec.ids) do ids[id] = true end end
+                    end
+                    if pcall(g.frame.SetAuraGroupCandidateFilters, g.frame, g.mainKey, { includeSpellIDs = ids }) then g.dirty = false end
                 end
-                if pcall(g.frame.SetAuraGroupCandidateFilters, g.frame, "main", { includeSpellIDs = ids }) then g.dirty = false end
             end
             local show = not FolderUnlocked(fid)
             if g.frame:IsShown() ~= show then pcall(g.frame.SetShown, g.frame, show) end
@@ -774,8 +865,14 @@ function D.Status()
                     if w0 and (w ~= w0 or h ~= h0) then mixed = true end
                     w0, h0 = w0 or w, h0 or h
                 end
-                if mixed then Say("   (icons in this group have different sizes; the engine draws them all at the first one's size)") end
-                if #g.members > 1 then Say("   (icon order follows the game's aura order" .. ((fo.cSort == "asc" or fo.cSort == "desc") and ", not the group's name sort" or ", not the rule list") .. ")") end
+                if mixed and SortOf(fo) ~= "manual" then Say("   (icons in this group have different sizes; with a game sort the engine draws them all at the first one's size; Manual sort keeps each size)") end
+                if #g.members > 1 then
+                    local mode, rev = SortOf(fo)
+                    local SORT_TEXT = { manual = "Manual: the group's own order (rule order), each member its own size and look; an aura that appears takes its place between the others",
+                        default = "Default (the game's own sort)", expiration = "Expiration (the game's own sort)", name = "Name (the game's own sort)",
+                        important = "Important first (the game's own sort)" }
+                    Say("   (sort: " .. SORT_TEXT[mode] .. (rev and ", reversed" or "") .. ")")
+                end
                 for _, m in ipairs(g.members) do
                     local d = Drops(m.rule, m.spec.display, false, g)
                     if #d > 0 then Say("   " .. tostring(m.rule.name) .. ": " .. table.concat(d, "; ")) end
