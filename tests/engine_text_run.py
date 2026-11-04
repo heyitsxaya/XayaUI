@@ -249,6 +249,21 @@ lua('COMBAT = false; PLAY(0.3)')
 check("charges count out of combat: '1'", txt("R4", "count") == "1", txt("R4", "count"))
 lua('CHG_CUR = 2; PLAY(0.3)')
 
+# 4b. charges in a CONDITION, in combat (Insivius's Death and Decay rule, 2026-11-04: "charges == 2" never fired, because the
+# count is hidden in combat). The game still says whether a charge is recharging, and the maximum (both NeverSecret).
+for cur, want in ((2, 2), (1, 1), (0, 0)):
+    v = lua('COMBAT = true; CHG_CUR = %d; local _, info = NS.Evaluate(R4); return NS.NumRef("n:cdCharges", R4, info)' % cur)
+    check("charges condition in combat, %d of 2 charges: reads %d" % (cur, want), v == want, v)
+v = lua('COMBAT = true; CHG_CUR = 2; local _, info = NS.Evaluate(R4); return NS.CheckValue({ ref = "n:cdCharges", cmp = "==", num = 2 }, R4, nil, info)')
+check("'charges == 2' is TRUE in combat at full charges (was unknown)", v is True, v)
+lua('''REAL_CHG = C_Spell.GetSpellCharges
+C_Spell.GetSpellCharges = function(id) local c = REAL_CHG(id); if c then c.maxCharges = 3 end; return c end''')
+v = lua('COMBAT = true; CHG_CUR = 1; local _, info = NS.Evaluate(R4); return NS.NumRef("n:cdCharges", R4, info)')
+check("3-charge spell recharging in combat: count stays unknown (no guess)", v is None, v)
+v = lua('COMBAT = true; CHG_CUR = 2; local _, info = NS.Evaluate(R4); return NS.NumRef("n:cdCharges", R4, info)')
+check("3-charge spell not recharging in combat: exactly its maximum", v == 3, v)
+lua('C_Spell.GetSpellCharges = REAL_CHG; COMBAT = false; CHG_CUR = 2')   # (no engine step here: the sections below keep their own timeline)
+
 # 5. "Target Debuff (yours)": the debuff's own time and stacks, out of combat
 lua('DEBUFF = { spellId = 204598, auraInstanceID = 5, applications = 2, expirationTime = NOW + 7.2, duration = 10 }; PLAY(0.3)')
 check("debuff rule shown", lua("return FR(R3):IsShown() == true"))
