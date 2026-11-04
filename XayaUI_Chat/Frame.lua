@@ -170,6 +170,7 @@ end
 function C.Glued()
     local cf = C.Main()
     if cf and not PointsAt(cf, textA, 2) then return false end
+    if cf and C.Clamped and C.Clamped(cf) then return false end   -- clamped again (#346): anchor again, which unclamps
     local dock = _G.GeneralDockManager
     if dock and not PointsAt(dock, tabsA, 2) then return false end
     for _, f in ipairs(C.Frames()) do
@@ -193,6 +194,8 @@ function C.Anchor()
             cf:SetPoint("BOTTOMRIGHT", textA, "BOTTOMRIGHT", 0, 0)
             if cf.SetUserPlaced then cf:SetUserPlaced(true) end
         end)
+        -- #346: the game's clamp-to-screen margin pushed the window off the text area at the screen edge; the pane is placed instead
+        for _, f in ipairs(C.Frames()) do C.Try("unclamp", function() C.Unclamp(f) end) end
         if C_Timer and C_Timer.After then C_Timer.After(0.1, function() if C.On() then C.Rewrap(true) end end) end
         C.Try("dock", function()
             local dock = _G.GeneralDockManager

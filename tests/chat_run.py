@@ -653,6 +653,30 @@ run("C.History_Toggle()")
 probe = open(os.path.join(ROOT, "XayaUI_Chat", "Probe.lua")).read()
 check("probe: 'shown' is checked for secret before it is compared", "not secret(shown) and shown == true" in probe)
 
+# ---- #346: the game's clamp-to-screen margin pushed the chat window off the text area at the screen edge ---------------------------
+r = run("""local out = {}
+local cf = C.Main()
+ns.chat2.enabled = false; C.Refresh(); W.flush()
+cf:SetClampedToScreen(true); cf:SetClampRectInsets(-32, 0, 0, 0); cf._xuiClamp = nil
+ns.chat2.enabled = true; C.Refresh(); W.flush()
+out.onClamped = cf:IsClampedToScreen()
+cf:SetClampedToScreen(true)                    -- the game turns it back on
+out.glued = C.Glued()
+C.Anchor(); W.flush()
+out.again = cf:IsClampedToScreen()
+ns.chat2.enabled = false; C.Refresh(); W.flush()
+out.offClamped = cf:IsClampedToScreen()
+ns.chat2.enabled = true; C.Refresh(); W.flush()
+return out""")
+check("#346: the chat window is not clamped to the screen while the Chat Panel is on", r["onClamped"] is False)
+check("#346: clamped again by the game = not glued (anchors again)", r["glued"] is False)
+check("#346: anchoring again unclamps it", r["again"] is False)
+check("#346: Chat Panel off gives the game its clamp back", r["offClamped"] is True)
+for k in list(W.printed.keys()): W.printed[k] = None
+run("local cf = C.Main(); cf:SetClampRectInsets(-32, 0, 0, 0); cf.visibleLines = { { IsShown = function() return true end, GetText = function() return 'hi' end, GetLeft = function() return 41 end } }; C.Command('indent')")
+out = " ".join(str(v) for v in W.printed.values() if v)
+check("#346: /xui chat indent prints the clamp state and margins", "clamped to the screen: no" in out and "clamp margins left -32.0" in out, out[:400])
+
 check("no module errors at the end", len(list(C.errors.keys())) == 0, dict(C.errors))
 print("\n%d failed" % fails if fails else "\nall passed")
 sys.exit(1 if fails else 0)

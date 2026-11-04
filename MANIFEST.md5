@@ -132,9 +132,9 @@ e9132a8a84c7ed34ebe9428b1fb1e164  XayaUI_Bonus/Tooltips.lua
 4766730ee9a687270d7ce006b7da0c0a  XayaUI_Bonus/TooltipsUI.lua
 7a357c6887be826e4b2271a64a3bddba  XayaUI_Bonus/XayaUI_Bonus.toc
 83c87e8920a975caccb49149edab3556  XayaUI_Chat/Bar.lua
-e97daab78918182fc0a5e1a6a57c5f5d  XayaUI_Chat/Core.lua
+492b101f5ca9ef33405ac5e0a24412c6  XayaUI_Chat/Core.lua
 691117347e0437f78c88e3734c54c438  XayaUI_Chat/Fade.lua
-6e1ca626b9696a8bee83de4875789c48  XayaUI_Chat/Frame.lua
+4661000735670a58afdfadebcfb30c81  XayaUI_Chat/Frame.lua
 56b26183057d45a59a7624d31d536796  XayaUI_Chat/History.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 3c0e14e6ad04c0b509e107036ddcef35  XayaUI_Chat/Locate.lua
@@ -145,7 +145,7 @@ e41e19a5f747332175ccd8122ae270b5  XayaUI_Chat/Options.lua
 be9610bdcced17c795922423eb46c687  XayaUI_Chat/Scroll.lua
 c60c6bfa477e38b0ef452b5d482ad934  XayaUI_Chat/Skin.lua
 924ed63c29e3249e9052308753382184  XayaUI_Chat/Sounds.lua
-29c03c43466a80dbf5d518dee20be40b  XayaUI_Chat/XayaUI_Chat.toc
+ac2f578eb04f04abaf092dfebc6c9447  XayaUI_Chat/XayaUI_Chat.toc
 857e41250c987f3251a9c8ae1a21ae97  XayaUI_GameDump/FORMULA-CAPTURE-WALKTHROUGH.md
 4e650b1654b192b5f3048f03425dbacf  XayaUI_GameDump/FormulaCapture.lua
 96a62368d1a1215dd73fc9fdf4e71716  XayaUI_GameDump/GameDump.lua
@@ -349,6 +349,7 @@ fd3ccecccb27afb01262111787083ed9  debug-log/2026-11-03-2330-display-tab-chevrons
 eba2360845f99d52521c5efa305657c1  debug-log/2026-11-04-0100-chat-indent-scrollbar-console-0.6.5.md
 373915571255dfbb710a96f5452290e6  debug-log/2026-11-04-0100-tooltip-formula-lines-bonus-0.6.2.md
 fc5639580b83237337e715e53c272e78  debug-log/2026-11-04-0200-formula-capture-walkthrough-gamedump-0.3.0.md
+46c82c2716e940f5749f3f9da50fdd94  debug-log/2026-11-04-0300-chat-left-gap-clamp-0.6.6.md
 7f9f4549410ba8da5e6fb9e9cb573be0  shelved/Bars.lua
 5857b882061b2df7a8d4fb33945efc80  shelved/CountSupport.lua
 ba241e46458e8e4296563689c7708a51  shelved/CursorReminders.lua
@@ -358,8 +359,8 @@ a354cbbb54ff4fb130af0063a401df9b  tests/Conditions.pre-0.5.83.lua
 1bc56b22adb5f1e1aa4a345d9fa19b8b  tests/aspect_run.py
 521a8355c5bc29487d4b76a17db58d00  tests/aura_display_run.py
 80c84f1f7ef017e7f04a6c3be28a3910  tests/aura_sources_run.py
-7319cc37bc191cf387f52dae3650d345  tests/chat_run.py
-6c39c70bd05b1d192f8354cfce137afb  tests/chat_world.lua
+e6d5c9536965efd1498363c032f66116  tests/chat_run.py
+ffb253eb94301b31c413196ec237d13c  tests/chat_world.lua
 abe22a2816956a2c3babb802857cc524  tests/chatprobe_run.py
 c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
 5d20324637578a787b84cbdf299ded74  tests/disabled_tree_run.py
