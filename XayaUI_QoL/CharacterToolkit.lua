@@ -298,6 +298,23 @@ local function Box(key)
             self:ClearFocus()
         end)
         eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        if key == "item" then
+            -- an item dropped on the box (dragged from the bags, or carried on the cursor and clicked) is compared at once.
+            -- GetCursorInfo (globals.md:158) is documented without returns; "item", itemID, itemLink is the form other UI code
+            -- reads. INFERENCE until seen in game.
+            local function TakeCursorItem(self)
+                local ok, kind, id, link = pcall(GetCursorInfo)
+                if not ok or kind ~= "item" then return end
+                local text = (type(link) == "string" and not isSecret(link)) and link or ((type(id) == "number" and not isSecret(id)) and tostring(id) or nil)
+                if not text then return end
+                if ClearCursor then pcall(ClearCursor) end
+                self:SetText(text)
+                ns.CharToolkit_SetInput("item", text)
+            end
+            eb:SetScript("OnReceiveDrag", TakeCursorItem)
+            if eb.GetScript and eb:GetScript("OnMouseUp") and eb.HookScript then eb:HookScript("OnMouseUp", TakeCursorItem)
+            else eb:SetScript("OnMouseUp", TakeCursorItem) end
+        end
         boxes[key] = eb
         b = eb
     end
@@ -401,17 +418,32 @@ local function Build()
         scroll:SetVerticalScroll(v)
     end
     scroll:SetScript("OnMouseWheel", function(_, d) panel.Scroll(d) end)
-    -- a shift-clicked item goes into the What If item box while it has focus (post-hook on the game's own link insert, where
-    -- Compat.lua says it lives: ChatFrameUtil.InsertLink in 12.x; Compat is the only file that may name the old fallback global).
-    -- INFERENCE: not run in game yet.
+    -- a shift-clicked item goes into the What If item box and is compared at once (post-hook on the game's own link insert, where
+    -- Compat.lua says it lives: ChatFrameUtil.InsertLink in 12.x, and the old global ChatEdit_InsertLink, which is a separate copy
+    -- that other addons' bags still call; Compat is the only file that may name it). Xaya 2026-11-04: "I can't drop or shift+click
+    -- an item into the item comparison". The box takes the link while it has focus, or while the What If tab is shown and no chat
+    -- box is open to take it. INFERENCE: not run in game yet.
+    local lastLink, lastAt
     local function InsertLink(link)
+        if type(link) ~= "string" or isSecret(link) or not link:find("|Hitem:", 1, true) then return end
         local eb = boxes.item
-        if eb and eb.HasFocus and eb:HasFocus() and type(link) == "string" and not isSecret(link) then eb:Insert(link) end
+        if not (eb and eb.xuiUsed and panel and panel:IsShown()) then return end
+        local c = Cfg()
+        local focused = eb.HasFocus and eb:HasFocus()
+        if not focused then
+            if not (c and c.tab == "whatif") then return end
+            local active = ns.Compat and ns.Compat.ActiveChatEditBox and ns.Compat.ActiveChatEditBox()
+            if active and active.IsShown and active:IsShown() then return end   -- an open chat box takes the link, as usual
+        end
+        local now = GetTime and GetTime() or 0
+        if link == lastLink and now == lastAt then return end   -- the same click seen through both hooks
+        lastLink, lastAt = link, now
+        eb:SetText(link)
+        ns.CharToolkit_SetInput("item", link)
     end
-    local hookTarget = ns.Compat and ns.Compat.ChatHookTarget
-    if type(hooksecurefunc) == "function" and type(hookTarget) == "function" then
-        local tbl, method = hookTarget("InsertLink")
-        if tbl then pcall(hooksecurefunc, tbl, method, InsertLink) end
+    local hookTargets = ns.Compat and ns.Compat.ChatHookTargets
+    if type(hooksecurefunc) == "function" and type(hookTargets) == "function" then
+        for _, t in ipairs(hookTargets("InsertLink")) do pcall(hooksecurefunc, t[1], t[2], InsertLink) end
     end
     panel:Hide()
 end

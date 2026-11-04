@@ -676,7 +676,7 @@ A panel beside the character window (XayaUI QoL) that shows every stat the game 
 - **What If:**
   - **Rating per stat:** type extra rating for any stat (a minus sign for less) and press Enter. The line shows the gain, the new percent from rating, the new rating, and any threshold it crosses. It is read through the game's own converter, so thresholds apply.
   - **All ratings:** adds the same amount to every stat. Each stat's line on the Stats tab shows its own amount plus this one.
-  - **Compare an item:** shift-click an item into the box (or type an item ID) and press Enter. The panel shows the item's level and the equipped item of the same kind it replaces (for two rings or trinkets, the lower item level). Then:
+  - **Compare an item:** shift-click an item (from the game's bags or another bag addon) or drag and drop it onto the box, and it is compared at once; or type an item ID and press Enter. A shift-click goes into the box while the What If tab is shown, unless a chat box is open (then the link goes to chat, as usual) (QoL 0.7.2). The panel shows the item's level and the equipped item of the same kind it replaces (for two rings or trinkets, the lower item level). Then:
     - each rating change, through the converter;
     - your primary stat change and the attack power it gives;
     - Stamina to health, and armor to damage reduction.
