@@ -2,8 +2,8 @@
 
 Shown in the in-game addon list as **XayaUI Combat Auras**; the folder, files, and slash commands keep the name `XayaUI_CombatEngine`.
 
-In-combat aura tracking for XayaUI, split out as its own addon so work on it does not collide with work on the core.
-In the repo it is a folder; in the game it loads as its own addon that depends on XayaUI.
+In-combat aura tracking for XayaUI. It is a folder of the core addon: `XayaUI.toc` loads these files, and there is no separate addon
+(checked 2026-11-04: no `.toc` in this folder). The name `XayaUI_CombatEngine` survives only in this heading, slash commands and older notes.
 
 ## What is in here
 - `AuraModel.lua`: timing model (cast-anchored duration estimates, learned durations).
@@ -14,7 +14,7 @@ In the repo it is a folder; in the game it loads as its own addon that depends o
 
 ## How it loads (since XayaUI 0.5.95 / engine 0.4.1)
 - XayaUI loads these files itself: `XayaUI.toc` lists them at the end. Cloning or pulling the repo into `Interface\AddOns\XayaUI` is all a player needs; no junction, no second folder.
-- This folder still has its own `XayaUI_CombatEngine.toc`, so it can also be installed as a separate addon. If both are present, whichever loads first (XayaUI) wins and the other copy steps aside (`ns.engineFiles` guard at the top of each file), so nothing loads twice.
+- There is no separate `XayaUI_CombatEngine.toc` any more (an old copy installed as its own addon would step aside: the `ns.engineFiles` guard at the top of each file stops a second load).
 - Turning the engine off is `/xuiengine auto off` (disabling the separate "XayaUI Combat Auras" entry in the addon list no longer turns it off, because XayaUI loads it).
 - XayaUI's `Core.lua` publishes one deliberate global, `XayaUI_NS` (its namespace table). Each file here does `ns = XayaUI_NS or ns`, so `ns.AuraModel`, `ns.AuraTracker`, `ns.AuraSetup_Open`, `ns.IDProbe`, `ns.AuraDisplay` land in XayaUI's namespace.
 - Saved data stays in XayaUI's `CueRulesDB` keys: auraTracker, auraModel, learnedAuraDur, idProbe, idProbeStream, setupShowError, setupBuildError, engineDisplay.
