@@ -154,6 +154,27 @@ C_Spell = {
   GetSpellDescription = function(id) return "Rapidly slash your target for 6,944 Physical damage, and shatter 2 Lesser Soul Fragments. Generates 25 Fury. 15% more." end,
   GetSpellCooldown = function() return { startTime = 1, duration = 1.16 } end,
 }
+GetSpecializationMasterySpells = function() return 203747 end
+GetAverageItemLevel = function() return 335.5, 334.25, 330 end
+GetUnitSpeed = function() return 0, 7, 21, 4.9 end
+BASE_MOVEMENT_SPEED = 7
+UnitSpellHaste = function() return 29.25 end
+GetRangedHaste = function() return 29.25 end
+GetPowerRegen = function() return 0, 0 end
+UnitPowerType = function() return 17, "FURY" end
+GetOverrideAPBySpellPower = function() return nil end
+GetShieldBlock = function() return 0 end
+UnitRangedDamage = function() return 0, 0, 0 end
+local GEAR = { [1] = "|Hitem:1::::|h[Helm]|h", [11] = "|Hitem:2::::|h[Ring]|h" }
+GetInventoryItemLink = function(_, slot) return GEAR[slot] end
+GetInventoryItemDurability = function(slot) if slot == 1 then return 78, 100 end end
+C_Item = {
+  GetDetailedItemLevelInfo = function(link) return link:find("Helm") and 336 or 330 end,
+  GetItemStats = function(link)
+    if link:find("Helm") then return { ITEM_MOD_CRIT_RATING_SHORT = 300, ITEM_MOD_HASTE_RATING_SHORT = 200, ITEM_MOD_AGILITY_SHORT = 500 } end
+    return { ITEM_MOD_CRIT_RATING_SHORT = 100, ITEM_MOD_MASTERY_RATING_SHORT = 400, EMPTY_SOCKET_PRISMATIC = 1 }
+  end,
+}
 issecretvalue = function(v) return v == "SECRET" end
 LARGE_NUMBER_SEPERATOR, DECIMAL_SEPERATOR = ",", "."
 printed = {}
@@ -199,6 +220,31 @@ check("gcd: read from the game's global cooldown", g.value == "1.16 s", g.value)
 check("gcd: unhasted estimate 1.50 s", has(g, "unhasted (estimate) 1.50 s"), g.lines[1])
 check("gcd: haste rating for -0.01 s", has(g, "Haste for -0.01 s"), g.lines[2])
 check("attack speed: unhasted estimate and haste for -0.01 s", has(row(m, "speed"), "Unhasted (estimate)") and has(row(m, "speed"), "Haste rating for -0.01 s"))
+
+-- sources, what-if, attributes, overview, gear
+local leech = row(m, "leech")
+check("leech: all 13.61% from other sources (rating 0)", has(leech, "Other sources: +13.61%"), leech and leech.lines[4])
+local haste = row(m, "haste")
+check("haste: other sources multiplied in, labelled (1.2925 / (1 + 1200/46/100) - 1 = 2.51%)",
+  has(haste, ("Other sources: +%.2f%%"):format((1.2925 / (1 + 1200 / 46 / 100) - 1) * 100)) and has(haste, "(multiplied in; estimate)"), haste and haste.lines[4])
+mas = row(m, "mastery")
+check("mastery: other sources = spec base (88.69 - 997/46*2.8)", has(mas, ("Other sources: +%.2f%%"):format(88.69 - 997 / 46 * 2.8)), mas and mas.lines[4])
+check("overview: compact crit line", (function() for _, r in ipairs(m) do if r.compact and r.key == "crit" then return r.lines[1]:find("528 rtg  46.0/1%  DR in 852", 1, true) ~= nil end end end)())
+check("overview: attribute rows (spec, agility base and buffs, item level, movement, mastery text)",
+  row(m, "spec") and row(m, "stat2") and has(row(m, "ilvl"), "Equipped 334.25") and has(row(m, "move"), "Run 100%  |  swim 70%  |  flight 300%") and row(m, "masteryText"))
+check("rows carry their tab", row(m, "crit").tab == "ratings" and row(m, "armor").tab == "defense" and row(m, "ap").tab == "offense" and row(m, "spec").tab == "overview")
+check("gear is not built unless its tab is asked for", row(m, "gearSum") == nil)
+c.whatIf = 852
+local wcrit = row(ns.CharToolkit_Model("ratings"), "crit")
+check("what if +852 crit: +18.52% (exactly to the 30% threshold)", has(wcrit, "What if +852 rating: +18.52% (total 41.00%)"), wcrit and wcrit.lines[5])
+c.whatIf = 0
+local gm = ns.CharToolkit_Model("gear")
+local gs = row(gm, "gearSum")
+check("gear: per-slot rows with item level and ratings", has(row(gm, "slot1"), "crit 300, haste 200") and row(gm, "slot1").value == "336")
+check("gear: durability under 100% shown", has(row(gm, "slot1"), "Durability 78%"))
+check("gear: empty socket flagged", has(row(gm, "slot11"), "1 empty socket"))
+check("gear totals vs character: crit gear 400, character 528, +128 elsewhere", has(gs, "crit: gear 400, character 528  (+128 from elsewhere)"), gs and gs.lines[1])
+check("gear totals: sockets and durability summary", has(gs, "1 empty socket in total") and has(gs, "Durability 78% overall"))
 
 -- secret values: shown as unavailable, never compared
 GetCombatRating = function(i) if i == 9 then return "SECRET" end; return ratings[i] or 0 end
@@ -256,6 +302,12 @@ for _, l in ipairs(GameTooltip.lines or {}) do if tostring(l):find("lost 0", 1, 
 check("tooltip: toolkit lines added to the crit tooltip", found)
 PaperDollFrame:Hide()
 check("panel hides with the character window", not XayaUICharacterToolkit:IsShown())
+for _, t in ipairs({ "overview", "ratings", "defense", "offense", "gear", "spells" }) do
+  c.tab = t
+  local ok, err = pcall(ns.CharToolkit_Render)
+  check("panel renders the " .. t .. " tab", ok, err)
+end
+c.tab = "overview"
 c.enabled = false; ns.CharToolkit_Apply()
 check("off: panel hidden", not XayaUICharacterToolkit:IsShown())
 

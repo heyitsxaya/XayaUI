@@ -40,7 +40,7 @@ Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.
 ## 4. Active items
 | Item | State | Next step |
 |---|---|---|
-| PR #358 Character Toolkit (QoL 0.6.2) | draft, offline tests pass, **unverified in game** | in-game check (QA-CHECKLIST E1d to E1f); Xaya decides: fill the "not given by the game" rows (primary to armor or dodge, block, AP to damage) from a named database? keep the name "Character Toolkit"? |
+| PR #358 Character Toolkit (QoL 0.6.2): tabbed panel; goal is to surface everything the API gives, not copy the character window | draft, offline tests pass, **unverified in game** | in-game check (QA-CHECKLIST E1d to E1f); Xaya decides: fill the "not given by the game" rows (primary to armor or dodge, block, AP to damage) from a named database? keep the name "Character Toolkit"? |
 | #354 QoL element profiles (per character or global) | decision needed | what a profile holds; named profiles or one switch; the word "profile" |
 | #357 chat emotes as a QoL element | queued | not started |
 | #278 tester requests (7 items) | partly built | two in-game probes first (`/xui loc` under each effect; target / focus cast readability) |

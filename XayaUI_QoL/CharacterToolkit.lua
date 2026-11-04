@@ -16,6 +16,15 @@
 --   Estimates (labelled in the panel): the unhasted attack speed and GCD are worked back from the live value and haste, assuming the
 --     value is divided by (1 + haste) and that haste sources multiply. The GCD itself is read from the game's global cooldown
 --     (spell 61304) the last time it ran out of combat.
+--   Where each value comes from: base vs buffs (primary stats, attack power, armor), rating vs other sources for every rating (haste
+--     multiplied in, labelled), crit and haste by kind (melee, ranged, spell), the spec's mastery spell text as the game fills it in.
+--   What if +N rating: every rating read through the converter at rating + N, so thresholds apply (#325's "+200 mastery" ask).
+--   More from the game: item level (equipped, best, PvP), movement speeds, spell power and the attack power / spell power links some
+--     specs have, resource regeneration, ranged weapon, off hand, expertise, block amount, stagger, armor against your target.
+--   Gear tab (built only while open): per-slot item level, the ratings each item lists, empty sockets, durability; gear totals against
+--     the character's ratings ("from elsewhere" = gems, enchants, buffs, or effects the item stat tables leave out).
+--   Layout: tabs Overview (character + one line per stat) | Ratings | Defense | Offense | Gear | Spells. It does not copy the
+--     character window; it adds what that window does not show.
 --   Spell math (advanced, off by default): for spells you list, every number in the spell's current description divided by your
 --     current attack power and spell power, and what one point of your primary stat adds. That is the ratio as it stands now, with
 --     every talent and buff already applied; it is NOT Blizzard's base coefficient. You can type a coefficient from a database
@@ -66,7 +75,13 @@ ns.CHARTOOLKIT_DEFAULTS = {
     advanced = false,      -- spell math
     spells = {},           -- { { id = spellID, coeff = number|nil, base = "ap"|"sp" } }
     free = { x = 0, y = 0 }, -- position when shown with /xui stats and the character window closed
+    tab = "overview",      -- the panel tab last shown
+    whatIf = 0,            -- "what if +N rating": applied to every rating through the game's converter (0 = off)
 }
+local TABS = { { "overview", "Overview" }, { "ratings", "Ratings" }, { "defense", "Defense" }, { "offense", "Offense" },
+    { "gear", "Gear" }, { "spells", "Spells" } }
+local TAB_OK = {}
+for _, t in ipairs(TABS) do TAB_OK[t[1]] = true end
 
 local function CopyVal(v)
     if type(v) ~= "table" then return v end
@@ -95,6 +110,8 @@ local function Cfg()
         end
     end
     if type(c.free) ~= "table" then c.free = { x = 0, y = 0 } end
+    if not TAB_OK[c.tab] then c.tab = "overview" end
+    c.whatIf = math.max(-100000, math.min(100000, math.floor(tonumber(c.whatIf) or 0)))
     return c
 end
 ns.CharToolkit_Cfg = Cfg
@@ -173,11 +190,15 @@ local function CritIndex()
 end
 
 -- One rating row. total = the stat's full value (other sources included); coeff = mastery factor; unit = what "1%" is of.
-local function RatingRow(key, label, idx, total, coeff, unit, short)
-    local row = { key = key, label = label, value = total and P(total) or UNAVAIL, lines = {}, tip = {} }
+-- opts.mult: other sources combine by multiplying (haste); opts.tip: extra hover lines (e.g. the crit breakdown).
+local function RatingRow(key, label, idx, total, coeff, unit, short, opts)
+    opts = opts or {}
+    local c = Cfg()
+    local whatIf = c and c.whatIf or 0
+    local row = { key = key, label = label, value = total and P(total) or UNAVAIL, lines = {}, tip = {}, tab = "ratings" }
     local rating = NumR(GetCombatRating, idx)
     local pctNow = NumR(GetCombatRatingBonus, idx)
-    if not rating then row.lines[1] = "Rating: " .. UNAVAIL; return row end
+    if not rating then row.lines[1] = "Rating: " .. UNAVAIL; row.ov = UNAVAIL; return row end
     local f = Converter(idx)
     local r0 = f and SM.BaseRate(f)
     if not r0 then
@@ -187,6 +208,7 @@ local function RatingRow(key, label, idx, total, coeff, unit, short)
             row.lines[2] = ("%s rating per 1%% %s (average, no threshold data)"):format(F(rating / (pctNow * (coeff or 1))), unit or "")
         end
         row.tip[1] = "The game's rating converter is not available, so lost rating and thresholds cannot be shown."
+        row.ov = Big(rating) .. " rating"
         return row
     end
     local th = ThresholdsFor(idx, f, r0)
@@ -207,15 +229,38 @@ local function RatingRow(key, label, idx, total, coeff, unit, short)
     else
         row.lines[3] = "Thresholds: past the last one"
     end
+    -- the part of the total that does not come from rating (talents, buffs, spec base, racials)
+    local other
+    if total and fromRating then
+        if opts.mult then other = ((1 + total / 100) / (1 + fromRating / 100) - 1) * 100
+        else other = total - fromRating end
+        if math.abs(other) < 0.005 then other = 0 end
+        row.lines[#row.lines + 1] = ("Other sources: %s%s"):format(other >= 0 and "+" or "", P(other)) ..
+            (opts.mult and (DIM .. " (multiplied in; estimate)|r") or "")
+    end
+    -- what if +N rating (through the game's converter, so thresholds apply)
+    local gain
+    if whatIf ~= 0 then
+        local now, later = f(rating), f(math.max(0, rating + whatIf))
+        if now and later then
+            gain = (later - now) * a.coeff
+            row.lines[#row.lines + 1] = ("What if %s%s rating: %s%s%s"):format(whatIf > 0 and "+" or "", Big(whatIf), gain >= 0 and "+" or "",
+                P(gain), total and (" (total " .. P(total + gain) .. ")") or "")
+        end
+    end
     if a.mismatch then
         row.lines[#row.lines + 1] = WARN .. "The converter disagrees with the game's current value; figures may be off.|r"
     end
+    -- one line for the Overview tab
+    row.ov = ("%s rtg  %s/1%%%s%s"):format(Big(rating), F(a.perPctNow or a.perPctBase),
+        a.nextThreshold and ("  DR in " .. Big(a.toNext)) or "", gain and ("  " .. GOOD .. (gain >= 0 and "+" or "") .. P(gain) .. "|r") or "")
     if short then row.lines = { row.lines[1] } end
     -- hover: the method and every threshold
     local tip = row.tip
     tip[#tip + 1] = ("From rating: +%s. Total %s includes every other source."):format(P(fromRating), total and P(total) or "?")
     tip[#tip + 1] = ("No-penalty rate: %s rating per 1%%%s."):format(F(a.perPctBase), unit and (" " .. unit) or "")
     if a.coeff ~= 1 then tip[#tip + 1] = ("Mastery factor for your spec: %s (from the game)."):format(F(a.coeff, 3)) end
+    for _, l in ipairs(opts.tip or {}) do tip[#tip + 1] = l end
     if th and #th > 0 then
         tip[#tip + 1] = " "
         tip[#tip + 1] = "Diminishing-return thresholds (found by scanning the game's converter):"
@@ -228,6 +273,7 @@ local function RatingRow(key, label, idx, total, coeff, unit, short)
     end
     tip[#tip + 1] = " "
     tip[#tip + 1] = DIM .. "Lost rating = rating - (percent from rating / no-penalty rate). Next 1% is solved on the converter, so it crosses thresholds correctly.|r"
+    if opts.mult then tip[#tip + 1] = DIM .. "Other sources for haste assume haste sources multiply (an estimate, not read from the game).|r" end
     return row
 end
 
@@ -272,15 +318,24 @@ local function DefenseRows(out, short)
     local level = NumR(UnitEffectiveLevel, "player") or NumR(UnitLevel, "player")
     local eff = C_PaperDollInfo and C_PaperDollInfo.GetArmorEffectiveness
     row = { key = "armor", label = L("STAT_ARMOR", "Armor"), value = num(armor) and Big(armor) or UNAVAIL, lines = {}, tip = {} }
+    local baseArmor = R(UnitArmor, "player")
+    if num(baseArmor) and num(armor) and armor ~= baseArmor then
+        row.lines[#row.lines + 1] = ("Base %s, from buffs and talents %s%s"):format(Big(baseArmor), armor >= baseArmor and "+" or "", Big(armor - baseArmor))
+    end
+    local vsTarget = C_PaperDollInfo and C_PaperDollInfo.GetArmorEffectivenessAgainstTarget
+    if num(armor) and type(vsTarget) == "function" and R(UnitExists, "target") and R(UnitCanAttack, "player", "target") then
+        local v = NumR(vsTarget, armor)
+        if v then row.lines[#row.lines + 1] = ("Damage reduction vs your target: %s"):format(P(v * 100)) end
+    end
     if num(armor) and level and type(eff) == "function" then
         local g = function(a) local v = NumR(eff, a, level); return v and v * 100 end
         local cur = g(armor)
         local need = cur and SM.Solve(g, cur + 1, armor, armor * 20 + 100000, true)
-        row.lines[1] = ("Damage reduction vs your level: %s"):format(P(cur))
-        row.lines[2] = ("Armor for the next 1%%: %s"):format(need and Big(need - armor) or (WARN .. "out of reach|r"))
+        table.insert(row.lines, 1, ("Armor for the next 1%%: %s"):format(need and Big(need - armor) or (WARN .. "out of reach|r")))
+        table.insert(row.lines, 1, ("Damage reduction vs your level: %s"):format(P(cur)))
         row.tip[1] = "From the game's armor effectiveness against an attacker of your level. It is not linear: each 1% costs more armor."
     else
-        row.lines[1] = "Damage reduction: " .. UNAVAIL
+        table.insert(row.lines, 1, "Damage reduction: " .. UNAVAIL)
     end
     if not short then row.lines[#row.lines + 1] = ("%s -> armor: %s"):format(StatName(primary), NA) end
     row.tip[#row.tip + 1] = "Primary stat to armor comes from a talent or your mastery (read it on the mastery tooltip); the game gives no number for it."
@@ -310,8 +365,19 @@ local function DefenseRows(out, short)
     out[#out + 1] = row
 
     local block = NumR(GetBlockChance)
-    row = { key = "block", label = L("STAT_BLOCK", "Block"), value = block and P(block) or UNAVAIL, lines = { "Stat -> block: " .. NA }, tip = {} }
+    row = { key = "block", label = L("STAT_BLOCK", "Block"), value = block and P(block) or UNAVAIL, lines = {}, tip = {} }
+    local blockAmt = NumR(GetShieldBlock)
+    if block and block > 0 and blockAmt and blockAmt > 0 then row.lines[1] = ("A block stops %s damage"):format(Big(blockAmt)) end
+    row.lines[#row.lines + 1] = "Stat -> block: " .. NA
     out[#out + 1] = row
+
+    -- Stagger (only when the spec has it)
+    local stagger, staggerT = R(C_PaperDollInfo and C_PaperDollInfo.GetStaggerPercentage, "player")
+    if num(stagger) and stagger > 0 then
+        row = { key = "stagger", label = L("STAT_STAGGER", "Stagger"), value = P(stagger), lines = {}, tip = {} }
+        if num(staggerT) and staggerT > 0 then row.lines[1] = ("Against your target: %s"):format(P(staggerT)) end
+        out[#out + 1] = row
+    end
 
     -- Versatility -> damage taken
     local taken = (NumR(GetCombatRatingBonus, IDX.versTaken) or 0) + (NumR(GetVersatilityBonus, IDX.versTaken) or 0)
@@ -355,9 +421,35 @@ local function OffenseRows(out, short)
     else
         row.lines[1] = ("%s -> attack power: %s"):format(StatName(primary), DIM .. "not used by this spec|r")
     end
+    if num(base) and ((num(pos) and pos ~= 0) or (num(neg) and neg ~= 0)) then
+        row.lines[#row.lines + 1] = ("Base %s, buffs +%s, debuffs %s"):format(Big(base), Big(num(pos) and pos or 0), Big(num(neg) and neg or 0))
+    end
+    local apFromSP = NumR(GetOverrideAPBySpellPower)
+    if apFromSP and apFromSP > 0 then row.lines[#row.lines + 1] = ("Attack power = %s of spell power (your spec)"):format(P(apFromSP * 100, 0)) end
     if not short then row.lines[#row.lines + 1] = "Secondary stat -> attack power modifier: " .. NA end
     row.tip[#row.tip + 1] = "A mastery or talent that raises attack power by a percent is only given as tooltip text, not as a number."
     out[#out + 1] = row
+
+    -- Spell power (shown when the spec has any)
+    local sp, spSchool
+    for school = 2, 7 do
+        local v = NumR(GetSpellBonusDamage, school)
+        if v and (not sp or v > sp) then sp, spSchool = v, school end
+    end
+    local heal = NumR(GetSpellBonusHealing)
+    local spFromAP = NumR(GetOverrideSpellPowerByAP)
+    if (sp and sp > 0) or (heal and heal > 0) then
+        row = { key = "sp", label = L("STAT_SPELLPOWER", "Spell Power"), value = sp and Big(sp) or UNAVAIL, lines = {}, tip = {} }
+        if heal and heal ~= sp then row.lines[#row.lines + 1] = ("Healing bonus: %s"):format(Big(heal)) end
+        if spFromAP and spFromAP > 0 then row.lines[#row.lines + 1] = ("Spell power = %s of attack power (your spec)"):format(P(spFromAP * 100, 0)) end
+        if primary == 4 then
+            local _, int = R(UnitStat, "player", 4)
+            if num(int) and sp and int > 0 then row.lines[#row.lines + 1] = ("%s per point of %s (average, all sources)"):format(F(sp / int, 2), StatName(4)) end
+        end
+        local sh = NumR(UnitSpellHaste, "player")
+        if sh then row.lines[#row.lines + 1] = ("Spell haste: %s"):format(P(sh)) end
+        out[#out + 1] = row
+    end
 
     -- Attack speed
     local mh, oh = R(UnitAttackSpeed, "player")
@@ -377,8 +469,41 @@ local function OffenseRows(out, short)
     local dmin, dmax = R(UnitDamage, "player")
     row = { key = "damage", label = L("DAMAGE", "Damage"), value = (num(dmin) and num(dmax)) and (Big(math.max(1, math.floor(dmin))) .. " - " .. Big(math.max(1, math.ceil(dmax)))) or UNAVAIL, lines = {}, tip = {} }
     if num(dmin) and num(dmax) and num(mh) and mh > 0 then row.lines[1] = ("Weapon DPS: %s"):format(F((dmin + dmax) / 2 / mh, 2)) end
+    local _, _, ohMin, ohMax, _, _, pct = R(UnitDamage, "player")
+    if num(ohMin) and num(ohMax) and ohMax > 0 and num(oh) and oh > 0 then
+        row.lines[#row.lines + 1] = ("Off hand: %s - %s, %s DPS"):format(Big(ohMin), Big(ohMax), F((ohMin + ohMax) / 2 / oh, 2))
+    end
+    if num(pct) and math.abs(pct - 1) > 0.0001 then row.lines[#row.lines + 1] = ("Physical damage modifier: x%s"):format(F(pct, 3)) end
+    local mhExp, ohExp = R(GetExpertise)
+    if num(mhExp) and mhExp > 0 then row.lines[#row.lines + 1] = ("Expertise: %s%s"):format(P(mhExp), num(ohExp) and ohExp > 0 and (" / " .. P(ohExp)) or "") end
     row.lines[#row.lines + 1] = "Attack power -> weapon damage: " .. NA
     out[#out + 1] = row
+
+    -- Ranged weapon (hunters and anyone with one)
+    local rSpeed, rMin, rMax = R(UnitRangedDamage, "player")
+    if num(rSpeed) and rSpeed > 0 and num(rMax) and rMax > 0 then
+        row = { key = "ranged", label = "Ranged", value = Big(rMin) .. " - " .. Big(rMax), lines = {}, tip = {} }
+        row.lines[1] = ("Speed %s s, %s DPS"):format(F(rSpeed, 2), F((rMin + rMax) / 2 / rSpeed, 2))
+        local rb, rp, rn = R(UnitRangedAttackPower, "player")
+        if num(rb) then row.lines[2] = ("Ranged attack power: %s"):format(Big(rb + (num(rp) and rp or 0) + (num(rn) and rn or 0))) end
+        local rh = NumR(GetRangedHaste)
+        if rh then row.lines[#row.lines + 1] = ("Ranged haste: %s"):format(P(rh)) end
+        out[#out + 1] = row
+    end
+
+    -- Resource regeneration
+    local inactive, active = R(GetPowerRegen)
+    local _, token = R(UnitPowerType, "player")
+    if num(inactive) and num(active) and (inactive > 0 or active > 0) then
+        local name = (type(token) == "string" and _G[token]) or "Resource"
+        row = { key = "regen", label = tostring(name) .. " regen", value = F(active, 2) .. "/s", lines = {}, tip = {} }
+        row.lines[1] = ("Out of combat: %s/s, in combat: %s/s"):format(F(inactive, 2), F(active, 2))
+        if token == "MANA" then
+            local mb, mc = R(GetManaRegen)
+            if num(mb) then row.lines[2] = ("Mana: %s/s, while casting %s/s"):format(F(mb, 1), num(mc) and F(mc, 1) or "?") end
+        end
+        out[#out + 1] = row
+    end
 
     -- Global cooldown
     row = { key = "gcd", label = "Global Cooldown", value = lastGCD and (F(lastGCD.dur, 2) .. " s") or UNAVAIL, lines = {}, tip = {} }
@@ -398,6 +523,148 @@ local function OffenseRows(out, short)
         row.lines[1] = DIM .. "Cast any spell out of combat to read it.|r"
     end
     out[#out + 1] = row
+end
+
+-------------------------------------------------------------------------------
+-- Attributes: primary stats with base and buffs, item level, movement, spec and mastery text
+-------------------------------------------------------------------------------
+local function MasterySpell()
+    local spec = NumR(GetSpecialization)
+    if not spec then return end
+    local id = R(GetSpecializationMasterySpells, spec)
+    if num(id) then return id end
+end
+
+local function AttributeRows(out, short)
+    local primary = PrimaryStat()
+    -- spec
+    local spec = NumR(GetSpecialization)
+    if spec and GetSpecializationInfo then
+        local r = { R(GetSpecializationInfo, spec) }
+        if type(r[2]) == "string" then
+            local mastery, coeff = R(GetMasteryEffect)
+            out[#out + 1] = { key = "spec", label = r[2], value = type(r[5]) == "string" and r[5] or "", lines = {
+                ("Primary stat: %s%s"):format(StatName(primary), num(coeff) and ("  |  mastery factor %s"):format(F(coeff, 3)) or "") }, tip = {} }
+        end
+    end
+    -- primary stats: effective, base, buffs (UnitStat: base, effective, positive buffs, negative buffs)
+    for _, i in ipairs({ primary, 3 }) do
+        local b, e, pos, neg = R(UnitStat, "player", i)
+        local row = { key = "stat" .. i, label = StatName(i), value = num(e) and Big(e) or UNAVAIL, lines = {}, tip = {} }
+        if num(b) and num(e) then
+            row.lines[1] = ("Base %s, buffs %s%s, debuffs %s"):format(Big(b), (num(pos) and pos >= 0) and "+" or "", Big(num(pos) and pos or 0),
+                Big(num(neg) and neg or 0))
+            if e ~= b and not (num(pos) and pos ~= 0) then row.lines[1] = ("Base %s, from talents and other sources %s%s"):format(Big(b), e >= b and "+" or "", Big(e - b)) end
+        end
+        out[#out + 1] = row
+    end
+    local others = {}
+    for _, i in ipairs({ 1, 2, 4 }) do
+        if i ~= primary then local _, e = R(UnitStat, "player", i); if num(e) then others[#others + 1] = StatName(i) .. " " .. Big(e) end end
+    end
+    if #others > 0 and not short then
+        out[#out + 1] = { key = "otherStats", label = "Other primary stats", value = "", lines = { table.concat(others, "  |  ") }, tip = {} }
+    end
+    -- item level
+    local overall, equipped, pvp = R(GetAverageItemLevel)
+    if num(overall) then
+        out[#out + 1] = { key = "ilvl", label = "Item Level", value = F(equipped or overall, 2), lines = {
+            ("Equipped %s  |  best in bags %s%s"):format(F(equipped, 2), F(overall, 2), num(pvp) and pvp > 0 and ("  |  PvP " .. F(pvp, 2)) or "") }, tip = {} }
+    end
+    -- movement
+    local cur, run, fly, swim = R(GetUnitSpeed, "player")
+    local base = type(BASE_MOVEMENT_SPEED) == "number" and BASE_MOVEMENT_SPEED or 7
+    if num(run) and run > 0 then
+        out[#out + 1] = { key = "move", label = "Movement", value = P(run / base * 100, 0), lines = {
+            ("Run %s  |  swim %s  |  flight %s%s"):format(P(run / base * 100, 0), num(swim) and P(swim / base * 100, 0) or "?",
+                num(fly) and P(fly / base * 100, 0) or "?", num(cur) and cur > 0 and ("  |  now " .. P(cur / base * 100, 0)) or "") },
+            tip = { ("Percent of the game's base speed (%s yards per second)."):format(F(base, 1)) } }
+    end
+    -- mastery: the spec's mastery spell, in the game's own words (its numbers are already filled in by the game)
+    local mid = MasterySpell()
+    if mid then
+        local name, desc = ns.CharToolkit_SpellName and ns.CharToolkit_SpellName(mid), nil
+        if C_Spell and C_Spell.GetSpellDescription then local d = R(C_Spell.GetSpellDescription, mid); if type(d) == "string" then desc = d end end
+        local row = { key = "masteryText", label = "Mastery: " .. tostring(name), value = "", lines = {}, tip = {} }
+        if desc and desc ~= "" then
+            local text = desc:gsub("\r?\n+", " ")
+            row.lines[1] = #text > 160 and (text:sub(1, 157) .. "...") or text
+            row.tip[1] = desc
+        else
+            row.lines[1] = DIM .. "Text not loaded yet; it fills in on the next refresh.|r"
+        end
+        out[#out + 1] = row
+    end
+end
+
+-------------------------------------------------------------------------------
+-- Gear: per-slot item level, ratings, empty sockets, durability; gear totals against the character's ratings
+-------------------------------------------------------------------------------
+local SLOTS = { { 1, "HEADSLOT", "Head" }, { 2, "NECKSLOT", "Neck" }, { 3, "SHOULDERSLOT", "Shoulder" }, { 15, "BACKSLOT", "Back" },
+    { 5, "CHESTSLOT", "Chest" }, { 9, "WRISTSLOT", "Wrist" }, { 10, "HANDSSLOT", "Hands" }, { 6, "WAISTSLOT", "Waist" },
+    { 7, "LEGSSLOT", "Legs" }, { 8, "FEETSLOT", "Feet" }, { 11, "FINGER0SLOT", "Finger 1" }, { 12, "FINGER1SLOT", "Finger 2" },
+    { 13, "TRINKET0SLOT", "Trinket 1" }, { 14, "TRINKET1SLOT", "Trinket 2" }, { 16, "MAINHANDSLOT", "Main Hand" },
+    { 17, "SECONDARYHANDSLOT", "Off Hand" } }
+local GEAR_STATS = { -- item stat key, short name, rating index key in IDX
+    { "ITEM_MOD_CRIT_RATING_SHORT", "crit", "critMelee" }, { "ITEM_MOD_HASTE_RATING_SHORT", "haste", "haste" },
+    { "ITEM_MOD_MASTERY_RATING_SHORT", "mastery", "mastery" }, { "ITEM_MOD_VERSATILITY", "vers", "versDone" },
+    { "ITEM_MOD_CR_LIFESTEAL_SHORT", "leech", "leech" }, { "ITEM_MOD_CR_AVOIDANCE_SHORT", "avoidance", "avoidance" },
+    { "ITEM_MOD_CR_SPEED_SHORT", "speed", "speed" },
+}
+local function ItemStats(link)
+    local fn = (C_Item and C_Item.GetItemStats) or GetItemStats
+    local t = R(fn, link)
+    if type(t) == "table" and not isSecret(t) then return t end
+end
+ns.CharToolkit_ItemStats = ItemStats
+
+local function GearRows(out)
+    local totals, sockets, durCur, durMax, lowest = {}, 0, 0, 0, nil
+    for _, sl in ipairs(SLOTS) do
+        local slot, g, fallback = sl[1], sl[2], sl[3]
+        local link = R(GetInventoryItemLink, "player", slot)
+        if type(link) == "string" then
+            local ilvl
+            if C_Item and C_Item.GetDetailedItemLevelInfo then ilvl = NumR(C_Item.GetDetailedItemLevelInfo, link) end
+            local row = { key = "slot" .. slot, label = L(g, fallback), value = ilvl and tostring(math.floor(ilvl + 0.5)) or "", lines = {}, tip = {} }
+            local st = ItemStats(link)
+            local parts, empty = {}, 0
+            if st then
+                for _, gs in ipairs(GEAR_STATS) do
+                    local v = st[gs[1]]
+                    if num(v) and v ~= 0 then parts[#parts + 1] = gs[2] .. " " .. Big(v); totals[gs[2]] = (totals[gs[2]] or 0) + v end
+                end
+                for k, v in pairs(st) do
+                    if type(k) == "string" and k:find("^EMPTY_SOCKET_") and num(v) then empty = empty + v end
+                end
+            end
+            row.lines[1] = #parts > 0 and table.concat(parts, ", ") or (st and DIM .. "no secondary ratings|r" or DIM .. "stats not readable|r")
+            if empty > 0 then row.lines[#row.lines + 1] = WARN .. ("%d empty socket%s|r"):format(empty, empty == 1 and "" or "s"); sockets = sockets + empty end
+            local dc, dm = R(GetInventoryItemDurability, slot)
+            if num(dc) and num(dm) and dm > 0 then
+                durCur, durMax = durCur + dc, durMax + dm
+                local pct = dc / dm * 100
+                if not lowest or pct < lowest then lowest = pct end
+                if pct < 100 then row.lines[#row.lines + 1] = ("Durability %s"):format(P(pct, 0)) end
+            end
+            row.tip[1] = "Ratings from the game's item stat table. It may leave out gems, enchants, set bonuses and on-use or proc effects."
+            out[#out + 1] = row
+        end
+    end
+    -- summary: gear totals against the character's ratings
+    local sum = { key = "gearSum", label = "Gear totals", value = "", lines = {}, tip = {} }
+    for _, gs in ipairs(GEAR_STATS) do
+        local have = NumR(GetCombatRating, IDX[gs[3]])
+        local g = totals[gs[2]] or 0
+        if (have and have > 0) or g > 0 then
+            sum.lines[#sum.lines + 1] = ("%s: gear %s, character %s%s"):format(gs[2], Big(g), have and Big(have) or "?",
+                (have and have - g ~= 0) and ("  (" .. (have - g > 0 and "+" or "") .. Big(have - g) .. " from elsewhere)") or "")
+        end
+    end
+    if sockets > 0 then sum.lines[#sum.lines + 1] = WARN .. ("%d empty socket%s in total|r"):format(sockets, sockets == 1 and "" or "s") end
+    if durMax > 0 then sum.lines[#sum.lines + 1] = ("Durability %s overall, lowest item %s"):format(P(durCur / durMax * 100, 0), P(lowest or 100, 0)) end
+    sum.tip[1] = "\"From elsewhere\" is the character's rating minus what the item stat tables list: gems, enchants, buffs, or effects the tables leave out."
+    table.insert(out, 1, sum)
 end
 
 -------------------------------------------------------------------------------
@@ -493,29 +760,77 @@ end
 -------------------------------------------------------------------------------
 -- The whole model: a list of { section = "..." } and rows
 -------------------------------------------------------------------------------
-function ns.CharToolkit_Model()
+-- only = a tab key to build just what that tab needs; nil = every tab except Gear (Gear reads every item, so it is built only
+-- when its tab is open). Each item carries .tab; the Overview tab also gets one compact line per stat from the other tabs.
+function ns.CharToolkit_Model(only)
     local c = Cfg()
     local short = c and c.detail == "short"
     local out = {}
-    out[#out + 1] = { section = "Ratings" }
-    local critIdx, critTotal = CritIndex()
-    out[#out + 1] = RatingRow("crit", L("STAT_CRITICAL_STRIKE", "Critical Strike"), critIdx, critTotal, 1, nil, short)
-    out[#out + 1] = RatingRow("haste", L("STAT_HASTE", "Haste"), IDX.haste, NumR(GetHaste), 1, nil, short)
-    local mastery, coeff = R(GetMasteryEffect)
-    out[#out + 1] = RatingRow("mastery", L("STAT_MASTERY", "Mastery"), IDX.mastery, num(mastery) and mastery or nil,
-        num(coeff) and coeff > 0 and coeff or 1, "mastery", short)
-    local vers = (NumR(GetCombatRatingBonus, IDX.versDone) or 0) + (NumR(GetVersatilityBonus, IDX.versDone) or 0)
-    out[#out + 1] = RatingRow("vers", L("STAT_VERSATILITY", "Versatility"), IDX.versDone, vers, 1, "damage done", short)
-    out[#out + 1] = RatingRow("avoidance", L("STAT_AVOIDANCE", "Avoidance"), IDX.avoidance, NumR(GetAvoidance), 1, nil, short)
-    out[#out + 1] = RatingRow("leech", L("STAT_LIFESTEAL", "Leech"), IDX.leech, NumR(GetLifesteal), 1, nil, short)
-    out[#out + 1] = RatingRow("speed2", L("STAT_SPEED", "Speed"), IDX.speed, NumR(GetSpeed), 1, nil, short)
-    out[#out + 1] = { section = "Defense and linked stats" }
-    DefenseRows(out, short)
-    out[#out + 1] = { section = "Offense" }
-    OffenseRows(out, short)
-    if c and c.advanced then
+    local function add(tab, fn)
+        if only and only ~= tab and not (only == "overview" and tab ~= "gear" and tab ~= "spells") then return end
+        local first = #out + 1
+        fn()
+        for i = first, #out do out[i].tab = tab end
+    end
+    add("overview", function()
+        out[#out + 1] = { section = "Character" }
+        AttributeRows(out, short)
+    end)
+    add("ratings", function()
+        out[#out + 1] = { section = "Ratings" }
+        local critIdx, critTotal = CritIndex()
+        local crits = {}
+        local m, r = NumR(GetCritChance), NumR(GetRangedCritChance)
+        if m then crits[#crits + 1] = "melee " .. P(m) end
+        if r then crits[#crits + 1] = "ranged " .. P(r) end
+        local sc = NumR(GetSpellCritChance, 2)
+        if sc then crits[#crits + 1] = "spell " .. P(sc) end
+        out[#out + 1] = RatingRow("crit", L("STAT_CRITICAL_STRIKE", "Critical Strike"), critIdx, critTotal, 1, nil, short,
+            { tip = { "Crit by kind: " .. (#crits > 0 and table.concat(crits, ", ") or "unavailable") .. ". The window shows the highest." } })
+        local hs = {}
+        local mh, rh, sh = NumR(GetMeleeHaste), NumR(GetRangedHaste), NumR(UnitSpellHaste, "player")
+        if mh then hs[#hs + 1] = "melee " .. P(mh) end
+        if rh then hs[#hs + 1] = "ranged " .. P(rh) end
+        if sh then hs[#hs + 1] = "spell " .. P(sh) end
+        out[#out + 1] = RatingRow("haste", L("STAT_HASTE", "Haste"), IDX.haste, NumR(GetHaste), 1, nil, short,
+            { mult = true, tip = { "Haste by kind: " .. (#hs > 0 and table.concat(hs, ", ") or "unavailable") .. "." } })
+        local mastery, coeff = R(GetMasteryEffect)
+        out[#out + 1] = RatingRow("mastery", L("STAT_MASTERY", "Mastery"), IDX.mastery, num(mastery) and mastery or nil,
+            num(coeff) and coeff > 0 and coeff or 1, "mastery", short)
+        local vers = (NumR(GetCombatRatingBonus, IDX.versDone) or 0) + (NumR(GetVersatilityBonus, IDX.versDone) or 0)
+        out[#out + 1] = RatingRow("vers", L("STAT_VERSATILITY", "Versatility"), IDX.versDone, vers, 1, "damage done", short)
+        out[#out + 1] = RatingRow("avoidance", L("STAT_AVOIDANCE", "Avoidance"), IDX.avoidance, NumR(GetAvoidance), 1, nil, short)
+        out[#out + 1] = RatingRow("leech", L("STAT_LIFESTEAL", "Leech"), IDX.leech, NumR(GetLifesteal), 1, nil, short)
+        out[#out + 1] = RatingRow("speed2", L("STAT_SPEED", "Speed"), IDX.speed, NumR(GetSpeed), 1, nil, short)
+    end)
+    add("defense", function()
+        out[#out + 1] = { section = "Defense and linked stats" }
+        DefenseRows(out, short)
+    end)
+    add("offense", function()
+        out[#out + 1] = { section = "Offense" }
+        OffenseRows(out, short)
+    end)
+    add("gear", function()
+        if only ~= "gear" then return end
+        out[#out + 1] = { section = "Gear" }
+        GearRows(out)
+    end)
+    add("spells", function()
         out[#out + 1] = { section = "Spell math (advanced)" }
-        SpellRows(out, c)
+        if c and c.advanced then SpellRows(out, c)
+        else out[#out + 1] = { label = "Spell Math is off", value = "", lines = { DIM .. "Turn it on in QoL > Character Toolkit > Spell Math.|r" }, tip = {} } end
+    end)
+    -- Overview: one compact line for every stat on the other tabs
+    if not only or only == "overview" then
+        out[#out + 1] = { section = "At a glance", tab = "overview" }
+        for i = 1, #out do
+            local it = out[i]
+            if not it.section and not it.compact and (it.tab == "ratings" or it.tab == "defense" or it.tab == "offense") then
+                out[#out + 1] = { key = it.key, label = it.label, value = it.value, lines = { it.ov or it.lines[1] }, tip = it.tip,
+                    tab = "overview", compact = true }
+            end
+        end
     end
     return out
 end
@@ -525,7 +840,8 @@ end
 -------------------------------------------------------------------------------
 local panel, scroll, content
 local pool, hits = {}, {}
-local PANEL_W, PAD = 330, 8
+local PANEL_W, PAD = 360, 8
+local HEADER = 20 + 22 + 24   -- title, tab row, what-if row
 
 local function Owner() return _G.PaperDollFrame or _G.CharacterFrame end
 local function Docked() local cf = _G.CharacterFrame; return cf and cf.IsShown and cf:IsShown() end
@@ -601,8 +917,53 @@ local function Build()
     close:SetPoint("TOPRIGHT", 2, 2)
     close:SetScript("OnClick", function() panel.userHidden = true; panel:Hide() end)
 
+    -- tab row
+    panel.tabs = {}
+    local tw = (PANEL_W - 2 * PAD) / #TABS
+    for i, t in ipairs(TABS) do
+        local b = CreateFrame("Button", nil, panel)
+        b:SetSize(tw - 2, 20)
+        b:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + (i - 1) * tw, -(PAD + 20))
+        local tbg = b:CreateTexture(nil, "BACKGROUND")
+        tbg:SetAllPoints(b)
+        tbg:SetColorTexture(1, 1, 1, 0.08)
+        b.bg = tbg
+        local fs = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        fs:SetPoint("CENTER")
+        fs:SetText(t[2])
+        b.text, b.key, b.label = fs, t[1], t[2]
+        b:SetScript("OnClick", function()
+            local c = Cfg(); if not c then return end
+            c.tab = t[1]
+            if scroll then scroll:SetVerticalScroll(0) end
+            ns.CharToolkit_Render()
+        end)
+        panel.tabs[i] = b
+    end
+    -- what if +N rating
+    local wl = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    wl:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, -(PAD + 46))
+    wl:SetText("What if +")
+    local ok, eb = pcall(CreateFrame, "EditBox", nil, panel, "InputBoxTemplate")
+    if not ok or not eb then eb = CreateFrame("EditBox", nil, panel) end
+    eb:SetSize(60, 18)
+    eb:SetPoint("LEFT", wl, "RIGHT", 8, 0)
+    eb:SetAutoFocus(false)
+    if eb.SetFontObject then eb:SetFontObject("GameFontHighlightSmall") end
+    eb:SetScript("OnEnterPressed", function(self)
+        local c = Cfg()
+        if c then c.whatIf = math.max(-100000, math.min(100000, math.floor(tonumber(self:GetText()) or 0))) end
+        self:ClearFocus()
+        ns.CharToolkit_Render()
+    end)
+    eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    panel.whatIf = eb
+    local wr = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    wr:SetPoint("LEFT", eb, "RIGHT", 6, 0)
+    wr:SetText(DIM .. "rating to every stat (Enter; 0 = off)|r")
+
     scroll = CreateFrame("ScrollFrame", nil, panel)
-    scroll:SetPoint("TOPLEFT", PAD, -(PAD + 20))
+    scroll:SetPoint("TOPLEFT", PAD, -(PAD + HEADER))
     scroll:SetPoint("BOTTOMRIGHT", -PAD, PAD)
     scroll:EnableMouseWheel(true)
     content = CreateFrame("Frame", nil, scroll)
@@ -632,7 +993,16 @@ end
 function ns.CharToolkit_Render()
     local c = Cfg(); if not c or not panel then return end
     panel.bg:SetAlpha(c.opacity)
-    local model = ns.CharToolkit_Model()
+    for _, b in ipairs(panel.tabs or {}) do
+        local on = b.key == c.tab
+        b.bg:SetColorTexture(on and 0.2 or 1, on and 0.6 or 1, on and 1 or 1, on and 0.35 or 0.08)
+        b.text:SetText((on and "|cffffffff" or "|cffa0a0a0") .. b.label .. "|r")
+    end
+    if panel.whatIf and not (panel.whatIf.HasFocus and panel.whatIf:HasFocus()) then
+        panel.whatIf:SetText(c.whatIf ~= 0 and tostring(c.whatIf) or "")
+    end
+    local model = {}
+    for _, item in ipairs(ns.CharToolkit_Model(c.tab)) do if item.tab == c.tab then model[#model + 1] = item end end
     local width = PANEL_W - 2 * PAD
     local size = c.fontSize
     local y, n, h = 0, 0, 0
@@ -655,7 +1025,7 @@ function ns.CharToolkit_Render()
             for _, line in ipairs(item.lines or {}) do
                 n = n + 1
                 local d = FS(n); d:Show()
-                SetFont(d, size - 1, "")
+                SetFont(d, item.compact and (size - 2) or (size - 1), "")
                 d:SetWidth(width - 10); d:ClearAllPoints(); d:SetPoint("TOPLEFT", content, "TOPLEFT", 10, -y)
                 d:SetText(GREY .. line .. "|r")
                 y = y + (d:GetStringHeight() or size) + 1
@@ -666,7 +1036,7 @@ function ns.CharToolkit_Render()
             hit:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top)
             hit:SetSize(width, math.max(1, y - top))
             hit.title, hit.tip = item.label, item.tip
-            y = y + 4
+            y = y + (item.compact and 2 or 4)
         end
     end
     for i = n + 1, #pool do pool[i]:Hide() end
@@ -675,7 +1045,7 @@ function ns.CharToolkit_Render()
     local cf = _G.CharacterFrame
     local maxH = (Docked() and cf.GetHeight and cf:GetHeight()) or 560
     if not num(maxH) or maxH < 300 then maxH = 560 end
-    panel:SetHeight(math.min(maxH, y + PAD * 2 + 22))
+    panel:SetHeight(math.min(maxH, y + PAD * 2 + HEADER))
     Place()
 end
 
@@ -684,8 +1054,10 @@ end
 -------------------------------------------------------------------------------
 local ev, pending
 local STAT_EVENTS = { "COMBAT_RATING_UPDATE", "MASTERY_UPDATE", "PLAYER_EQUIPMENT_CHANGED", "PLAYER_SPECIALIZATION_CHANGED",
-    "SPEED_UPDATE", "LIFESTEAL_UPDATE", "AVOIDANCE_UPDATE", "PLAYER_DAMAGE_DONE_MODS", "PLAYER_REGEN_ENABLED", "PLAYER_LEVEL_UP" }
-local UNIT_EVENTS = { "UNIT_STATS", "UNIT_ATTACK_POWER", "UNIT_ATTACK_SPEED", "UNIT_DAMAGE", "UNIT_MAXHEALTH", "UNIT_RESISTANCES" }
+    "SPEED_UPDATE", "LIFESTEAL_UPDATE", "AVOIDANCE_UPDATE", "PLAYER_DAMAGE_DONE_MODS", "PLAYER_REGEN_ENABLED", "PLAYER_LEVEL_UP",
+    "UPDATE_INVENTORY_DURABILITY", "PLAYER_TARGET_CHANGED", "PLAYER_AVG_ITEM_LEVEL_UPDATE" }
+local UNIT_EVENTS = { "UNIT_STATS", "UNIT_ATTACK_POWER", "UNIT_RANGEDDAMAGE", "UNIT_RANGED_ATTACK_POWER", "UNIT_ATTACK_SPEED", "UNIT_DAMAGE",
+    "UNIT_MAXHEALTH", "UNIT_RESISTANCES", "UNIT_SPELL_HASTE" }
 
 local function Refresh()
     if pending then return end
@@ -942,6 +1314,10 @@ function ns.BuildCharToolkitPage(Notify)
                     tooltips = { type = "toggle", order = 4, width = "double", name = "Add lines to the character window's stat tooltips",
                         get = function() return C().tooltips and true or false end,
                         set = function(_, v) C().tooltips = v and true or false; Changed() end },
+                    whatIf = { type = "input", order = 4.5, name = "What if +N rating",
+                        desc = "Adds this much rating to every stat and shows what each would gain, thresholds included (read through the game's own converter). 0 turns it off. The panel has the same box.",
+                        get = function() return tostring(C().whatIf or 0) end,
+                        set = function(_, v) C().whatIf = math.max(-100000, math.min(100000, math.floor(tonumber(v) or 0))); Changed() end },
                     fontSize = { type = "range", order = 5, name = "Text size", min = 8, max = 16, step = 1,
                         get = function() return C().fontSize end,
                         set = function(_, v) C().fontSize = v; Changed() end },
