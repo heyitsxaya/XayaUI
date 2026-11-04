@@ -48,6 +48,9 @@ For testers. Tick each box in order; when something does not match the **Expect*
 - [ ] **E1.** QoL > Cursor. **Expect:** the Cursor page has two switches (Cursor Highlight, Gradient Cursor Trail), and both appear under Cursor in the left pane. Switch both on. **Expect:** the ring and trail follow the mouse; the ring textures show (not green squares).
 - [ ] **E1b.** Click Cursor Highlight on the left. **Expect:** its switch at the top and the tabs Shape | Color and Size | Behavior. Click Gradient Cursor Trail. **Expect:** Colors | Dots | Behavior. Switch an effect off: its tabs go away, the switch stays.
 - [ ] **E1c.** Type `/xui cursor`, then `/xui cursor trail`. **Expect:** the window opens on the Cursor page, then on Gradient Cursor Trail (no "did not respond" line).
+- [ ] **E1d.** QoL > Character Toolkit: switch it on, open the character window (C). **Expect:** a panel on the right of the character window with Ratings, Defense and linked stats, Offense. Crit shows your rating, lost 0 (unless you are past a threshold), rating per 1%, and a next threshold. Compare its crit percent from rating with Blizzard's crit tooltip: they should match. `/xui stats status` should say "converter present".
+- [ ] **E1e.** Hover Critical Strike in Blizzard's stat list. **Expect:** a "XayaUI Character Toolkit" block under Blizzard's text. Hover Mastery in the panel. **Expect:** the threshold list and your mastery factor.
+- [ ] **E1f.** Cast any spell out of combat. **Expect:** Global Cooldown in the panel shows the GCD (about what your GCD display shows). Spell Math tab: switch it on, add Fracture (or any damage spell). **Expect:** its description numbers with a percent of attack power.
 - [ ] **E2.** Switch **XayaUI QoL** off, relog. **Expect:** no cursor changes, no QoL tab, no error.
 
 ## F. XayaUI Bonus Features

@@ -34,7 +34,7 @@ XayaUI is a group of addons; every folder at the top of this repository is one o
 | `XayaUI` | XayaUI | Core: rules, cues, conditions, actions, combat aura tracking (`Combat/`), sharing and backups, themes, console, minimap and ESC-menu buttons. Every other XayaUI addon needs it. |
 | `XayaUI_Options` | XayaUI Options | The settings window, loaded the first time it opens. |
 | `XayaUI_Chat` | XayaUI Chat | Chat Panel, Chat Bar, filters, sounds, history, privacy cover. |
-| `XayaUI_QoL` | XayaUI QoL | Cursor highlight and trail (friends and bags later). |
+| `XayaUI_QoL` | XayaUI QoL | Cursor highlight and trail; Character Toolkit stat panel (friends and bags later). |
 | `XayaUI_Bonus` | XayaUI Bonus Features | Tooltip additions, Notepad, custom data panels. |
 | `XayaUI_Reskin` | XayaUI Blizzard Reskin | XayaUI's look on Blizzard frames (today: the Game Menu). |
 | `XayaUI_Media` | XayaUI Media | Your own pictures and sounds (a support folder; see its README). |

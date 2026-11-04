@@ -13,7 +13,7 @@ XayaUI is a group of addons. Each one is its own entry in the game's AddOns list
 | **XayaUI** | Rules (cooldown, aura, and every other trigger), cues, conditions, actions, combat aura tracking, rule sharing and backups, themes, the debug console, the minimap button, the ESC-menu button | Nothing of XayaUI loads (every other XayaUI addon needs it) |
 | **XayaUI Options** | The settings window. It loads the first time you open it, so it costs nothing until then | /xui and the buttons say the window is switched off; everything else keeps working with your saved settings |
 | **XayaUI Chat** | Chat Panel, Chat Bar, message filters and sounds, history, privacy cover | Blizzard's chat as the game draws it; /xui chat says Chat is off |
-| **XayaUI QoL** | Cursor highlight and cursor trail (friends and bags later) | No cursor changes |
+| **XayaUI QoL** | Cursor highlight, cursor trail, Character Toolkit (friends and bags later) | No cursor changes, no Character Toolkit |
 | **XayaUI Bonus Features** | Tooltip additions, Notepad, custom data panels | Plain tooltips, no notepad, no panels |
 | **XayaUI Blizzard Reskin** | XayaUI's look on Blizzard's frames without changing what they do (today: the Game Menu) | Blizzard's own look |
 | **XayaUI Media** | Your own pictures and sounds (a support folder, not a feature) | Your own files are not in the lists |
@@ -533,6 +533,20 @@ Two separate effects (XayaUI QoL) that make the mouse cursor easy to find. Both 
 - **Gradient Cursor Trail:** a trail of dots whose colors run through a gradient (ready-made or your own, 2 to 6 colors). Tabs: Colors | Dots | Behavior (trail length, hide while turning the camera).
 
 **Where:** QoL > Cursor. The Cursor page has an on/off switch for each; the two effects are listed under Cursor in the left pane, each with its own page. `/xui cursor` opens the Cursor page; `/xui cursor highlight` and `/xui cursor trail` open one effect. The tabs appear once that effect is on.
+
+### 12.12 Character Toolkit
+
+A panel beside the character window (XayaUI QoL) that shows how your stats are built and what the next point of each one buys. Off by default. Every number is read from the game when the panel draws; anything the game does not give as a number is marked "not given by the game" and is never guessed.
+
+- **Ratings** (Critical Strike, Haste, Mastery, Versatility, Avoidance, Leech, Speed): the total, the rating you have (true rating), the percent it gives, rating lost to diminishing returns, the penalty on your next point, rating per 1%, the exact rating for your next 1% (it accounts for thresholds), and the next diminishing-return threshold with how far away it is. Hover a stat for every threshold and the method. Mastery is counted in mastery percent: the rating is multiplied by your spec's mastery factor, read from the game.
+- **Defense and linked stats:** Stamina to health (per point, and Stamina for +1% max health); armor to damage reduction against an attacker of your level, and armor for the next 1%; crit to parry for specs that have it (crit rating per 1% parry); Versatility to damage taken. Dodge, block, primary stat to armor, primary stat to dodge, and Strength to parry are shown as not given by the game.
+- **Offense:** attack power per point of Strength or Agility and the amount for +1% attack power; attack speed, with haste rating for 0.01 s faster; weapon damage and weapon DPS; global cooldown, with the haste and haste rating for 0.01 s shorter. The global cooldown is read from the game the last time one ran out of combat. The unhasted attack speed and GCD are estimates (live value x (1 + haste)), and the haste rating figures assume haste sources multiply; the panel labels them as estimates. A GCD of exactly 1 s with haste above 1% is flagged as possibly fixed.
+- **Spell Math (advanced, off by default):** for spells you add, each number in the spell's current description divided by your current attack power (or spell power), and what one point of your primary stat adds to that number. This is the ratio as it stands now, with talents and buffs already in it; it is not Blizzard's base coefficient, and numbers that do not scale with attack or spell power (durations, charges) give meaningless ratios. You can type a coefficient from a database such as Wowhead next to each spell; the panel shows it beside the measured ratio and flags a large difference.
+- **Character window tooltips:** hovering a stat in the character window adds the toolkit's lines under Blizzard's own text (can be switched off).
+
+**Where:** QoL > Character Toolkit. Tabs: Panel (show the panel, side, detail level, tooltip lines, text size, background opacity) | Spell Math (switch, add a spell by ID, name, or shift-clicked link; per spell: scales with attack or spell power, optional coefficient, remove). `/xui stats` shows or hides the panel (docked when the character window is open, otherwise free and draggable); `/xui stats on`, `off`, `options`, `status`.
+
+**Limits:** diminishing-return thresholds are found by scanning the game's own rating converter, not from a table. If the game's converter disagrees with its own current value, the stat says so. If the converter is missing, only current figures are shown. Thresholds are read out of combat. Stat reads that the game hides (secret values) show as unavailable. The tooltip lines rely on matching the stat names in the character window, so another addon that renames them stops the lines (the panel is unaffected).
 
 **How the settings pages are laid out (all feature tabs, from 0.6.1 on):** a feature is an entry in the left pane, its parts are entries under it, and the sections of one part are tabs. The feature's own page holds its main switches.
 
