@@ -75,7 +75,13 @@ if fit then fit(M, 20) end
 check("a menu that already fits keeps its height", fit ~= nil and M:GetHeight() == before)
 other:Hide()
 if fit then fit(M, 20) end
-check("never made shorter (with the other button hidden the menu stays as it is)", fit ~= nil and M:GetHeight() == before)
+-- core 0.6.39: the height follows the buttons, shorter as well as taller (only ever growing, the menu grew on every open; see
+-- tests/gamemenu_ratchet_run.py). With the other addon's button hidden, the menu fits its own buttons again.
+local low
+for _, b in ipairs(pool.active) do if b:IsShown() then local bb = b:GetBottom(); if not low or bb < low then low = bb end end end
+check("with the other addon's button hidden, the menu fits its own buttons: 20 px under the lowest one, one row shorter",
+  fit ~= nil and low ~= nil and math.abs((low - M:GetBottom()) - 20) < 0.6 and math.abs(M:GetHeight() - (before - 30)) < 0.6,
+  low and ("gap %.1f, height %.0f (was %.0f)"):format(low - M:GetBottom(), M:GetHeight(), before))
 return R
 end
 '''

@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-8f480e50957fbe1ee8296305b46cd99b  QA-CHECKLIST.md
+cb198c66bd4fcc150564bcbc8472feee  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 dd2eebcda02cac4b5495a998eee8dd79  ROADMAP.md
 103190c17965f9e740d3403464493086  SESSION-START-SUMMARY.md
@@ -26,7 +26,7 @@ a19207588e676cc8d0945015b5d1f9bb  XayaUI/Console.lua
 54cd777342d376237760b45e6c8c8358  XayaUI/Cues.lua
 2a0f2a633dae957c132cc16968ab9edf  XayaUI/DebugRecord.lua
 d817c5a68e5d3e797559c40b2571de8c  XayaUI/Engine.lua
-9d285deb3a3f66482121c16c05009f20  XayaUI/GameMenu.lua
+9352a6489d62d4fb1467fb421e8c5599  XayaUI/GameMenu.lua
 453fb0aae7a7f04befc588dd6046a438  XayaUI/Libs/LibStub/LibStub.lua
 15f96f4257c78c0e1bb0ed30e72c0103  XayaUI/Libs/LibStub/LibStub.toc
 5b23c624ed3e201b41a1137f657c58b7  XayaUI/Libs/LibStub/tests/test.lua
@@ -107,7 +107,7 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 c3f703812134ef2760a13dc61e48b67e  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
 e709333c38c04f468d672d1ca3a6f4fc  XayaUI/Visual.lua
-f787678de2ce485e978b9a1f38364310  XayaUI/XayaUI.toc
+d539769b7fdedddc1c579fda16927aab  XayaUI/XayaUI.toc
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -439,6 +439,7 @@ c86d21b18c98b498d1b5649bac4c4819  debug-log/2026-11-04-2157-margins-mover-popups
 6845e335eba6aef1e6e630174f383422  debug-log/2026-11-04-2200-spells-readable-id-qol-0.7.11.md
 62cd26a44271615ad8bd0c98146a25b5  debug-log/2026-11-04-2202-action-tts-silent-core-0.6.38.md
 c7868956d5a9f13edcbebb5956300968  debug-log/2026-11-04-2210-character-width-probe-qol-0.7.12.md
+9ba11c446d815ab3accc6ac2d61ae7f3  debug-log/2026-11-04-2213-game-menu-grows-core-0.6.39.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -545,7 +546,8 @@ ba76b8a4cede40d6a498477cb17fbd93  tests/flat_buttons_run.py
 73996db55adfc87161e59f4458dc4a2e  tests/flex_dropdown_run.py
 f490934467b632f21c38c487f87fbf32  tests/formula_capture_run.py
 f02c43c10e399a57286e1d36682f938d  tests/frame_anchor_run.py
-2556a852b4e526b4e5122abb7e7543b1  tests/gamemenu_fit_run.py
+60c2b4ed72565803ed1036b60bc58940  tests/gamemenu_fit_run.py
+cca9d978e3b3e2e5ae5ad632f2f78020  tests/gamemenu_ratchet_run.py
 e30b244c96ba84721bed4b5eb211b7d2  tests/gamemenu_run.py
 2432f77932fc7e94d63c1f8c3f453c37  tests/harness/.gitignore
 a36a03ecc872c2cf4b1b410e1aeba87e  tests/harness/build_api_index.py
