@@ -68,7 +68,7 @@ C.DEFAULTS = {
     spamRepeat = true, spamSeconds = 30, spamPhrases = "", spamWord = false, ignoreClick = true,
     links = true, linkR = 0.4, linkG = 0.75, linkB = 1,
     histOn = true, histSize = 300, histConsole = true,   -- histConsole: printed lines (addons, /xui) and system messages, in their own Console tab
-    soundsOn = true, soundsInCombat = true,
+    soundsOn = true, soundsInCombat = true, whisperSoundsOn = true,   -- whisperSoundsOn: the whisper sound overrides (Sounds.lua)
 }
 C.MAX_SLOTS = 8
 
@@ -315,6 +315,9 @@ function ns.Chat_OnDBReady()
     local s = CueRulesDB.chat2
     for k, v in pairs(C.DEFAULTS) do if s[k] == nil then s[k] = Copy(v) end end
     s.sounds = type(s.sounds) == "table" and s.sounds or {}
+    -- whisper sound overrides (Sounds.lua): { list = { { who, enabled, source, value, channel } ... }, fav = { enabled, source, value, channel } }
+    s.whisperSounds = type(s.whisperSounds) == "table" and s.whisperSounds or {}
+    s.whisperSounds.list = type(s.whisperSounds.list) == "table" and s.whisperSounds.list or {}
     ns.chat2 = s
 end
 

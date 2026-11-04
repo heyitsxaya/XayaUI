@@ -973,7 +973,14 @@ function ns.SelectKeep(...)
     local snap = {}
     if open then for kk, vv in pairs(open) do snap[kk] = vv end end
     local scope = (ns.CurrentSub() == "smartTab") and "all" or (ns.ScopeOfUV and ns.ScopeOfUV(S and S.selected) or "all")
-    if (scope == "loaded" or scope == "notloaded" or scope == "disabled") and args[1] == "cooldowns" and args[2] == "smartTab" and args[3] == "all" then
+    local lastRule = (args[1] == "cooldowns" and args[2] == "smartTab") and tostring(args[#args]):match("^rule(%d+)$")
+    local lr = lastRule and ns.rules and ns.rules[tonumber(lastRule)]
+    if lr and (scope == "loaded" or scope == "notloaded" or scope == "disabled") then
+        -- a rule asked for by its Smart Categories path (RulePath) while an Enabled / Disabled list is open: its row there is under
+        -- its groups, not under a type row, so take the list's own path for it (the type key in that path is not a row there)
+        local okc, ctx = pcall(ns.ReadContext)
+        args = { ns.ScopePath(lr, okc and ctx or nil) }
+    elseif (scope == "loaded" or scope == "notloaded" or scope == "disabled") and args[1] == "cooldowns" and args[2] == "smartTab" and args[3] == "all" then
         local newScope = scope
         local rn = tostring(args[#args]):match("^rule(%d+)$")
         local r = rn and ns.rules and ns.rules[tonumber(rn)]
@@ -1117,12 +1124,30 @@ function ns.ReselectRule(rule)
     pcall(function()
         local S = ns.RulesTreeStatus()
         local oldSel = S and S.selected
-        local newPath = { RulePath(rule) }
-        if oldSel == table.concat(newPath, "\001") then return end   -- the row did not move: the pane stays exactly as it is
-        -- the row moved (deleting a rule's last cue of a type removes the row it was selected through): follow it, and keep the same tab open
+        local sub = ns.CurrentSub()
+        if sub ~= "smartTab" and sub ~= "disabledTab" then sub = "enabledTab" end
+        -- the rule's row in the list that is open. Xaya 2026-11-04: "deleting a condition / a cue forces you out of the rule you're
+        -- editing entirely". This used the Smart Categories path even in the Enabled list; SelectKeep turned it into a path through
+        -- the type row ("loaded / smart_icon / rule5"), which does not exist there, so the pane fell back to another page.
+        local newPath
+        if sub == "smartTab" then
+            newPath = { RulePath(rule) }
+            local cat = type(oldSel) == "string" and oldSel:match("^all\001smart\001(smart_[%w_]+)\001")
+            if cat and ns.SmartMatch(rule, cat) then   -- still has the type it was picked under: stay on that row
+                for i, r in ipairs(ns.rules) do
+                    if r == rule then newPath = { "cooldowns", "smartTab", "all", "smart", cat, "rule" .. i }; break end
+                end
+            end
+        else
+            local okc, ctx = pcall(ns.ReadContext)
+            newPath = { ns.ScopePath(rule, okc and ctx or nil) }
+        end
+        if newPath[2] == sub and oldSel == table.concat(newPath, "\001", 3) then return end   -- the row did not move: nothing to do
+        -- the row moved (its index after a delete, or the type row it was selected through): follow it, and keep the same tab open.
+        -- The rule's own tab status lives at its full path (cooldowns / <sub-tab> / ...).
         local tab
         if type(oldSel) == "string" then
-            local segs = {}
+            local segs = { "cooldowns", sub }
             for seg in oldSel:gmatch("[^\001]+") do segs[#segs + 1] = seg end
             local st = AceConfigDialog:GetStatusTable(APP, segs)
             tab = st and st.groups and st.groups.selected
