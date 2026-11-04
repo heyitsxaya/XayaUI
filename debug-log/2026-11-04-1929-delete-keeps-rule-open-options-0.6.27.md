@@ -1,5 +1,5 @@
 # Deleting a condition or a cue no longer throws the pane out of the rule (XayaUI_Options 0.6.27; fork: main)
-Logged 2026-11-04 19:35 UTC. Session branch `claude/cool-ramanujan-ewx8e5`. Nothing here has run in the game.
+Logged 2026-11-04 19:29 UTC (first named 19:35, six minutes ahead; renamed). Session branch `claude/cool-ramanujan-ewx8e5`. Nothing here has run in the game.
 
 ## Report
 Xaya, 2026-11-04: "deleting a condition forces you out of the rule you're editing entirely", the same for a cue and for a trigger.
