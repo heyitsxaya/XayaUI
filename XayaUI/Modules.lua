@@ -266,6 +266,7 @@ function ns.LoadOptions()
 end
 function ns.ToggleUI() if ns.LoadOptions() then ns.Options.Toggle() end end
 function ns.EditRule(rule) if rule and ns.LoadOptions() then ns.Options.EditRule(rule) end end
+function ns.EditFolder(f) if f and ns.LoadOptions() and ns.Options.EditFolder then ns.Options.EditFolder(f) end end
 -- module = "chat" | "qol" | "bonus" | "reskin" | "core"; key = the page registered with ns.RegisterSettingsPage; sub = a tab inside it
 -- ... = the path below the page: a part (left-pane child node) and/or a tab, e.g. ("chat", "chatpanel", "bar", "tab_blocksHdr")
 function ns.OpenSettingsPage(module, key, ...) if ns.LoadOptions() then ns.Options.OpenPage(module, key, ...) end end

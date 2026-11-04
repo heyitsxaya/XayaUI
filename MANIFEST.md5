@@ -2,12 +2,12 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-515a6df165dc34f1ef74de7b44e0d4f3  QA-CHECKLIST.md
+fcdee36633616d858667fd36e7a04dba  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 74da2d4416f179dd457125711183fe00  ROADMAP.md
 bd8f3a28c3f360e3b495c3d382fc9d8a  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-f6996adc5aade3b8accfd88963a03701  USER-GUIDE.md
+b3ec0e82b4149bcbbe50fa134a7ed123  USER-GUIDE.md
 033856b0b9fd96de5360c42ec1b523b6  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 4cc1b0cabaf7b9fbfcbcdcbc5d14a9b4  XayaUI/AuraSound.lua
@@ -93,7 +93,7 @@ e94cfc0c3fc54c4e5188a7aadaf41d90  XayaUI/Media/UI/xui_progresstex.tga
 66226a0137e47566a0fd0ce9c41e6bcc  XayaUI/Media/UI/xui_sttexture.tga
 30d50e1964ffdb6d81b4e902ecb5accd  XayaUI/Media/UI/xui_text.tga
 97e47b6ce28ec4d1218ae800136c1e97  XayaUI/MinimapButton.lua
-c5b202df842bb06ffa57add25ae9cfee  XayaUI/Modules.lua
+97db96968a728cd3f1277d80f9fbee78  XayaUI/Modules.lua
 94cff7427b7f118d1d022b6ad46f6783  XayaUI/Outcomes.lua
 ac819cb3c0f1c6bd28bdcd33566a74f8  XayaUI/ProcGlows.lua
 b76823560a93ae68a07689af413b01ec  XayaUI/RecycleBin.lua
@@ -106,8 +106,8 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 3948f17e4d4520c468e201eb110ed947  XayaUI/Timing.lua
 95f083d18a1ab06eebb084bc36e8a7c0  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
-d78b277a69c869a56c306f0477181d04  XayaUI/Visual.lua
-b02c942cc613006139972f52e76c14fc  XayaUI/XayaUI.toc
+33321c0405b435b3898cd90288148e8a  XayaUI/Visual.lua
+3e3cecdf4667f12cb5428aec2e20e209  XayaUI/XayaUI.toc
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -204,12 +204,12 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-30d05b1ed57b74d3d1fc79456ba2eaaf  XayaUI_Options/Options.lua
+9c1c28e17f6090376ba6871b11bc3492  XayaUI_Options/Options.lua
 8d2bfd2b7b768d7e9991276be979558b  XayaUI_Options/OutcomesEditor.lua
 394ad27c1b151dff8a007fde6448f6ea  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
-dae54810a73871102308038a8a77d679  XayaUI_Options/XayaUI_Options.toc
+7b15336daf31ee26601e88d38a621530  XayaUI_Options/XayaUI_Options.toc
 1b7f9c9a6a6f181cc44dce7f1838d2de  XayaUI_QoL/CharacterModel.lua
 5ec70e32afc652587088daab9b733588  XayaUI_QoL/CharacterToolkit.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
@@ -405,6 +405,7 @@ aa36ea0e45fe22048f67fc5bb759e41d  debug-log/2026-11-04-1630-chat-history-button-
 492d020854827370f97085b7cb8aed59  debug-log/2026-11-04-1851-chat-tab-layout-guard-0.6.9.md
 c2806612bff849d19f5d04f2d3319b5c  debug-log/2026-11-04-1851-cue-pane-aurasound-guard-options-0.6.24.md
 cbf95dec053e0fd68b2bfd9db796a7a4  debug-log/2026-11-04-1903-load-id-lists-core-0.6.28-options-0.6.25.md
+77b1c8cbc5b1ef706c98e7f9be94705b  debug-log/2026-11-04-1924-mover-view-hover-and-edit-core-0.6.29-options-0.6.26.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
 9a907df3961024106bb6ae03b230abf3  docs/plans/REFERENCE-SCREENS-AND-FEASIBILITY-2026-11-04.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
@@ -510,6 +511,7 @@ dc3855ea364c43c556214eec8c15cdf7  tests/load_ids_options_run.py
 fb351c854fb47dee0e181ce1c3821350  tests/lua_pitfalls_run.py
 f19616c7613194a3b65115c2c4405087  tests/minimap_run.py
 adb52b5f86b97b5ac549353e59d97f36  tests/modules_run.py
+4cc2faca4a8d474ac1a5aae6273d30fa  tests/mover_view_run.py
 1b83e47e74181dd789ddcafe4b0d937e  tests/notepad_run.py
 b98b8b93e9068a136e462260a2aefcd1  tests/perf_run.py
 9c3206bd42a7e043987917327cc16e27  tests/precheck_run.py

@@ -12,7 +12,7 @@ local AceConfigRegistry = LibStub and LibStub("AceConfigRegistry-3.0", true)
 local AceConfigDialog = LibStub and LibStub("AceConfigDialog-3.0", true)
 if not (AceConfigRegistry and AceConfigDialog) then
     local function missing() ns.Print("the settings window cannot open: its Ace3 libraries are missing (check the Libs folder of XayaUI_Options).") end
-    ns.Options = { Toggle = missing, EditRule = missing, OpenPage = missing, IsOpen = function() return false end }
+    ns.Options = { Toggle = missing, EditRule = missing, EditFolder = missing, OpenPage = missing, IsOpen = function() return false end }
     return
 end
 -- what XayaUI core may call (Modules.lua section 7); published as ns.Options at the end of this file once everything loaded.
@@ -4870,6 +4870,17 @@ function ns.OptionsApi.EditRule(rule)
         if not ok then ns.Print("could not open the window: " .. tostring(err)) return end
     end
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(rule))
+    Notify()
+end
+
+-- open the window (if needed) and jump to a group's page; used by the group name tabs of the mover view (Visual.lua)
+function ns.OptionsApi.EditFolder(f)
+    if not (f and ns.FolderById and ns.FolderById(f.id)) then return end
+    if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then
+        local ok, err = pcall(AceConfigDialog.Open, AceConfigDialog, APP)
+        if not ok then ns.Print("could not open the window: " .. tostring(err)) return end
+    end
+    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(f))
     Notify()
 end
 
