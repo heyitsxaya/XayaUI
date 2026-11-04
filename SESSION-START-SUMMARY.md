@@ -66,15 +66,17 @@ Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.
 ## 4. Active items
 
 **NEXT SESSION: START HERE (updated 2026-11-04 22:46 UTC)**
-`main` = `fa4ccd7` or later (check `git log origin/main`). Everything this session built is on it, nothing is pending on the branch:
+`main` = `8d81e3f` or later (check `git log origin/main`). Everything this session built is on it, nothing is pending on the branch:
 - Stat Calculator: Spells auto-fill + Offense / Defense filters (QoL 0.7.7, QA E1t), armor chain (0.7.8, E1u), Gear icons (0.7.9,
   E1v), "Spell ID: N" and readable spell lines (0.7.11, #378 #380, E1w), `/xui stats widthprobe` (0.7.12, E1x: the in-game test
   before the wider character window; task 46).
 - #351 phase 2: `ns.UI_MARGIN` / `ns.UI_GUTTER` in core `XayaUI/Modules.lua`; console, copy box, Import window, toolkit panel,
   chat history, notepad and its popups, mover popups (B76-B80; `tests/window_margins_run.py`).
 - Core 0.6.38: Actions > "Speak it" was silent (B81). Core 0.6.39: the Game Menu grew on every open (Xaya's live report; B82).
-- Other sessions: engine core / Options 0.6.34-0.6.35; Dev Assist Bonus 0.6.8 (calculator), Dev Assist 0.7.2 next.
-Next free numbers: core 0.6.40, Options 0.6.37, QoL 0.7.13, Bonus 0.6.11, Chat 0.6.12; QA B83, E1y (engine session: B100+).
+- Other sessions: engine core / Options 0.6.34-0.6.35; Dev Assist session: Bonus 0.6.8 (calculator, `e3cf896`), Dev Assist
+  0.7.1-0.7.2 (`/xuidev instance`; the probe-log flood fix, `8d81e3f`).
+Next free numbers: core 0.6.40, Options 0.6.37, QoL 0.7.13, Bonus 0.6.11, Chat 0.6.12, Dev Assist 0.7.3; QA B83, E1y, F7, J16
+(engine session: B100+).
 Waiting on Xaya: task 43 (Stat Calculator questions and issues #377 #379 #381 #382 #383 #387), task 46 (the width probe in game),
 the QA steps above in game.
 
