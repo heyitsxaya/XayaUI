@@ -5,7 +5,7 @@ d32239bcb673463ab874e80d47fae504  LICENSE
 91417b5d518fbf709b2c99130594cf82  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 36ef7ce2b70eb245827ec6d883c9425b  ROADMAP.md
-19f7f6e26b14351ee4a351775c64c4da  SESSION-START-SUMMARY.md
+f283bc83a499e253705c4ac13c9b8d5b  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 74202b4cf2bc76a092b08235928bc1c9  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
@@ -394,12 +394,13 @@ f48e2672c267fbb66eb61799a51f478f  debug-log/2026-11-04-1453-rename-game-dump-to-
 9663057fb276d8840f58b00ee8ed47c7  debug-log/2026-11-04-1520-toolkit-link-insert-through-compat-core-0.6.23-qol-0.7.1.md
 a3e685b4a822d5a0007936c8f69ea1d7  debug-log/2026-11-04-1523-content-data-pulls-offline.md
 2ebbe41b951053d6b4713397fa1cb5f8  debug-log/2026-11-04-1535-playable-classes-marked.md
+b6081ac7220230557d672c454f40d570  debug-log/2026-11-04-1550-terms-check-blizzard-wago.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 40cbf03f1bb153e7f09fb1fa7f51f9fa  docs/process/IN-GAME-DATA-2026-11-05.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 18f99347734ff71d918aaa8c7bf8420f  docs/process/VERIFICATION.md
-b24f7e51ddbb2bf1c57ef99880f729b0  docs/reference/README.md
+7af233aeafadc9bade62ce5da4b21189  docs/reference/README.md
 1b7a634712b11938763d44b6dcead0c7  docs/reference/api/README.md
 deccd066a381b7db1228942cce2d659a  docs/reference/api/api.json
 493ca3fb932fbd5d8be80dda75368f0a  docs/reference/api/constants.md
