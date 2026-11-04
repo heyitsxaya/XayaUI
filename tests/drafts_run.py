@@ -74,7 +74,14 @@ check("cue line names the icon cue with its own name", strip(g1.cue.name):find("
 check("cue line: five cues, four shown, 'and 1 more'", strip(g1.cue.name):find("and 1 more", 1, true))
 check("buttons are small relative widths", g1.restore.width == "relative" and g1.restore.relWidth <= 0.15 and g1.delete.relWidth <= 0.12 and g1.head.relWidth + g1.restore.relWidth + g1.delete.relWidth < 0.97)
 check("button labels are short", g1.restore.name == "Restore" and g1.delete.name == "Delete")
-check("delete still asks first", g1.delete.confirm == true)
+-- 0.6.4: whether Delete asks first is a setting (Settings > Rule Creation, ui.draftsConfirmDelete, default on), so confirm is a
+-- function AceConfigDialog calls (true = ask, false = skip). Check what it returns, both ways, not just its type.
+local function AskDel() local c = g1.delete.confirm; if type(c) == "function" then return c() end return c end
+check("delete still asks first (default setting)", AskDel() == true and type(g1.delete.confirmText) == "string" and g1.delete.confirmText ~= "")
+CueRulesDB.ui.draftsConfirmDelete = false
+check("delete skips the question when 'Confirm delete' is off", AskDel() == false)
+CueRulesDB.ui.draftsConfirmDelete = nil
+check("delete asks again once the setting is back to default", AskDel() == true)
 check("draft 2 (new, empty rule) says so and shows 'none'", strip(a.d2.args.head.name):find("new rule, never saved", 1, true) and strip(a.d2.args.trig.name):find("none", 1, true) and strip(a.d2.args.cue.name):find("none", 1, true))
 check("draft 3 (old rule, own sound and icon) shows both", strip(a.d3.args.cue.name):find("Sound", 1, true) and strip(a.d3.args.cue.name):find("Icon: Metamorphosis (187827)", 1, true), strip(a.d3.args.cue.name))
 check("draft 4 (damaged) does not break the page and keeps its buttons", a.d4 and a.d4.args.restore and a.d4.args.delete)

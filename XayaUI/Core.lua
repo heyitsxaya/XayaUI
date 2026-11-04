@@ -598,6 +598,9 @@ function ns.NormalizeRule(r)
     if ns.NormalizeActions then ns.NormalizeActions(r) end
     -- legacy "any" -> "none" (explicit "ignore")
     for _, k in ipairs({ "cdState", "buffState", "talentState" }) do if r[k] == "any" then r[k] = "none" end end
+    -- built-in Buff / Aura "seconds left" (0.6.4): a comparison and a number, or nothing
+    if not (r.buffTimeOp == ">=" or r.buffTimeOp == "<=" or r.buffTimeOp == ">" or r.buffTimeOp == "<") then r.buffTimeOp = nil end
+    if r.buffTimeSec ~= nil then r.buffTimeSec = tonumber(r.buffTimeSec) end
     for k, v in pairs(r.load) do if v == "any" and k ~= "mode" then r.load[k] = "none" end end
     -- talents: single talentID/talentState -> list + mode
     if type(r.talents) ~= "table" then r.talents = {} end

@@ -69,6 +69,10 @@ end
 function proto:ClearAllPoints() self._pts = {} end
 function proto:SetAllPoints(rel) self._pts = { { "TOPLEFT", rel or self._parent, "TOPLEFT", 0, 0 }, { "BOTTOMRIGHT", rel or self._parent, "BOTTOMRIGHT", 0, 0 } } end
 function proto:GetNumPoints() return #self._pts end
+function proto:SetClampedToScreen(v) self._clamped = v and true or false end
+function proto:IsClampedToScreen() return self._clamped == true end
+function proto:SetClampRectInsets(l, r, t, b) self._ci = { l, r, t, b } end
+function proto:GetClampRectInsets() local c = self._ci or { 0, 0, 0, 0 }; return c[1], c[2], c[3], c[4] end
 function proto:GetPoint(i) local p = self._pts[i or 1]; if not p then return nil end return p[1], p[2], p[3], p[4], p[5] end
 function proto:SetSize(w, h) self._w, self._h = w, h end
 function proto:SetWidth(w) self._w = w end

@@ -3,9 +3,10 @@
 ## Notes: Separate debugging tool for XayaUI. Pulls every class, spec, talent, spell description, spellbook entry, gear and set-bonus line the game will give an addon, and records which auras each cast causes (with observed durations). Opens from XayaUI > Settings > Debugging or with /xuidump.
 ## Author: Xaya
 ## Group: XayaUI
-## Version: 0.2.0
-## X-Date: 2026-11-01
+## Version: 0.3.0
+## X-Date: 2026-11-04
 ## SavedVariables: XayaUIGameDumpDB
 ## OptionalDeps: XayaUI
 
 GameDump.lua
+FormulaCapture.lua

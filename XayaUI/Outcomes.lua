@@ -40,9 +40,10 @@ function ns.RemapOutcomeRefs(parent, fn)
         if type(o.when) == "table" and type(o.when.list) == "table" then
             for _, t in ipairs(o.when.list) do
                 local n = type(t.ref) == "string" and t.ref:match("^x(%d+)$")
-                local nn = (not n) and type(t.ref) == "string" and t.ref:match("^n:x(%d+)$")
+                local nn, suf
+                if not n and type(t.ref) == "string" then nn, suf = t.ref:match("^n:x(%d+)(%a?)$") end   -- "n:x3", "n:x3s" (stacks), "n:x3t" (seconds left)
                 if n then t.ref = fn(tonumber(n))
-                elseif nn then local r = fn(tonumber(nn)); t.ref = r and ("n:" .. r) or nil end
+                elseif nn then local r = fn(tonumber(nn)); t.ref = r and ("n:" .. r .. (suf or "")) or nil end
             end
         end
     end
@@ -154,8 +155,11 @@ local function NumRef(ref, p, pi)
         end
         return nil
     end
-    local n = tonumber(ref:match("^n:x(%d+)$"))
-    if n and type(p.extra) == "table" and type(p.extra.list) == "table" and ns.TriggerNumber then return ns.TriggerNumber(p.extra.list[n]) end
+    local ns_, suf = ref:match("^n:x(%d+)(%a?)$")
+    local n = tonumber(ns_)
+    if n and type(p.extra) == "table" and type(p.extra.list) == "table" and ns.TriggerNumber then
+        return ns.TriggerNumber(p.extra.list[n], (suf ~= "") and suf or nil)
+    end
     return nil
 end
 ns.NumRef = NumRef
@@ -173,7 +177,7 @@ local TIME_LEFT = { ["n:buffRemain"] = true, ["n:cdRemain"] = true }
 local function CheckValue(t, p, pr, pi)
     if IsNumRef(t.ref) then
         local v, num = NumRef(t.ref, p, pi), tonumber(t.num) or 0
-        if TIME_LEFT[t.ref] and type(v) == "number" and ns.Timing then
+        if (TIME_LEFT[t.ref] or t.ref:match("^n:x%d+t$")) and type(v) == "number" and ns.Timing then
             local now = GetTime()
             if v > num then ns.Timing.Deadline(now + (v - num)) end
             if v > 0 then ns.Timing.Deadline(now + v) end
@@ -255,13 +259,26 @@ local function RefChoices(p)  -- also exported below
             add("n:cdCharges", "Cooldown: charges  (number)")
             add("n:cdRemain", "Cooldown: seconds left  (number)")
         end
+        -- stacks only where the aura can stack (#300, ns.TriggerMayStack); a check that already uses one keeps it listed
+        local used = {}
+        for _, o in ipairs(ns.OutcomesOf(p)) do
+            local wl = type(o.when) == "table" and type(o.when.list) == "table" and o.when.list or {}
+            for _, t in ipairs(wl) do if type(t.ref) == "string" then used[t.ref] = true end end
+        end
+        local function MayStack(row) if not ns.TriggerMayStack then return true end; local ok, v = pcall(ns.TriggerMayStack, p, row); return not ok or v ~= false end
         if ns.BuffUsed(p) then
-            add("n:buffStacks", "Buff / Aura: stacks  (number)")
+            if used["n:buffStacks"] or MayStack(nil) then add("n:buffStacks", "Buff / Aura: stacks  (number)") end
             add("n:buffRemain", "Buff / Aura: seconds left  (number)")
         end
         for i, t in ipairs(list) do
+            local pos = "Trigger " .. ((P and P.xs[i]) or i) .. ":  "
             if t.type == "itemCount" or t.type == "resource" then
-                add("n:x" .. i, "Trigger " .. ((P and P.xs[i]) or i) .. ":  " .. ((t.type == "itemCount") and "item count" or "resource amount") .. "  (number)")
+                add("n:x" .. i, pos .. ((t.type == "itemCount") and "item count" or "resource amount") .. "  (number)")
+            elseif t.type == "buffAura" or t.type == "targetDebuff" then
+                if used["n:x" .. i .. "s"] or MayStack(t) then add("n:x" .. i .. "s", pos .. "stacks  (number)") end
+                add("n:x" .. i .. "t", pos .. "seconds left  (number)")
+            elseif t.type == "lossOfControl" then
+                add("n:x" .. i .. "t", pos .. "loss of control, seconds left  (number)")
             end
         end
     end
