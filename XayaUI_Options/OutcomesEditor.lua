@@ -437,6 +437,9 @@ local function EmbedCue(pg, og, rule, k)
         end,
         hint = function() return "" end,
     })
+    -- what decides this cue now (0.6.14): the rule's triggers, or the conditions that list it (Cues.lua ns.CueFiresNote)
+    g.args.fires = { type = "description", order = 0.12, width = "full", fontSize = "medium", hidden = collapsed,
+        name = function() local ok, s = pcall(ns.CueFiresNote, rule); return ok and s or "" end }
     g.args.descH = { type = "header", order = 0.15, name = "Description", hidden = collapsed }
     g.args.descGap = { type = "description", order = 0.25, width = "full", name = " ", fontSize = "large", hidden = collapsed }
     g.args.desc = { type = "input", order = 0.2, width = "full", name = "", hidden = collapsed,

@@ -238,6 +238,11 @@ function ns.EvaluateOutcome(rule, ctx)
         info.result = false
         return false, info
     end
+    if not p.enabled then   -- a switched-off rule switches off its conditions too (0.6.14; nil counts as off, as in Engine.lua StepRule)
+        info.missing[1] = "the rule is switched off"
+        info.result = false
+        return false, info
+    end
     local pr, pi = ns.Evaluate(p, ctx)
     -- inherit what the parent read, so this outcome's own display (buff time, charges, absorb text) works
     info.cd, info.present, info.buffSource, info.buffRef, info.auraRef = pi.cd, pi.present, pi.buffSource, pi.buffRef, pi.auraRef
