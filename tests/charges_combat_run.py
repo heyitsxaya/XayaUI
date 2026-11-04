@@ -95,6 +95,11 @@ lua("SP[43266].hold = true")
 check("cooldown on hold: not ready, count unknown", ev("READY(C2)") is False and ev("COUNT(C2)") is None, (ev("READY(C2)"), ev("COUNT(C2)")))
 lua("SP[43266].hold = false")
 
+# --- 3b. a lockout: the spell's own cooldown runs while no charge recharges (charges remain) ---
+lua("SP[43266].cd = true; SP[43266].recharging = false")
+check("lockout (own cooldown, nothing recharging): not ready, count unknown (not 0)", ev("READY(C2)") is False and ev("COUNT(C2)") is None, (ev("READY(C2)"), ev("COUNT(C2)")))
+lua("SP[43266].cd = false")
+
 # --- 4. a talent replaces the spell: the one on the bar is read, its casts count ---
 lua("COMBAT = false; SPELL(152280, 2); OVR[43265] = 152280; T = T + 1; WATCH()")
 lua("COMBAT = true; T = T + 1; CAST(152280); SP[152280].cur = 1; SP[152280].recharging = true")

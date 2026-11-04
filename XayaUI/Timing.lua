@@ -58,6 +58,7 @@ local function OnAuraUpdated(self) self.xuiUpdatedAt = GetTime() end
 local function OnReassigned(self)   -- a pooled icon now stands for another spell: its old moments are not this spell's
     self.xuiAppliedAt, self.xuiRemovedAt, self.xuiUpdatedAt, self.xuiCdStartAt, self.xuiCdReadyAt = nil, nil, nil, nil, nil
     self.xuiChargeGains = nil
+    self.xuiLastIDs = nil   -- the spell IDs it showed belong to its old spell (Conditions.lua FrameIDs)
 end
 
 -- Called for every Cooldown Manager icon the condition reader indexes (Conditions.lua BuildCDMIndex).
