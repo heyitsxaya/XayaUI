@@ -10,8 +10,8 @@ game (tests/harness places frames from their anchors) and measures them:
     backgrounds and borders, segmented rows (the toolkit's tabs and filter buttons keep their 2 px seams), single-line titles and
     hints (typography, only their margin is checked).
 Windows: the console window and the copy box (core), the import window (Options), the Stat Calculator panel (QoL), the chat history
-window (Chat), the notepad's shared-note offer, share, export / import and restore windows (Bonus). Still to come: the notepad
-window itself and the mover popups (Visual.lua).
+window (Chat), the notepad's shared-note offer, share, export / import and restore windows (Bonus), the mover view's group X / Y
+popup and the frame picker (core). Still to come: the notepad window itself.
 Run: python3 tests/window_margins_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -22,6 +22,8 @@ LUA = r'''
 return function(W, L)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
+IsShiftKeyDown = function() return false end
+GetMouseFoci = function() return {} end
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 3)
 local ns = rawget(_G, "XayaUI_NS")
@@ -177,6 +179,28 @@ local okRs, errRs = pcall(ns.Notepad_ToggleRestore)
 local rs = rawget(_G, "XayaUINotepadRestore")
 check("the notepad's restore list opens", okRs and rs ~= nil, errRs)
 if rs then measure("notepad restore list", rs) end
+-- 7. The mover view's group X / Y popup and the frame picker (core, Visual.lua) ---------------------------------------------------
+ns.folders = { { id = "fA", name = "Active Mitigation" } }
+CueRulesDB.folders = ns.folders
+local function rule(name, x, y)
+  local r = ns.NewRule(); r.name = name; r.folder = "fA"; r.enabled = true
+  ns.NormalizeRule(r); r.visual.enabled = true; r.visual.x, r.visual.y = x, y
+  return r
+end
+ns.rules = { rule("Demon Spikes", 0, 0), rule("Fiery Brand", 0, -60) }
+local okU = pcall(ns.ToggleUnlock); W.tick(0.05, 3)
+local tag = ns.GroupTagFor and ns.GroupTagFor("fA")
+local okP, errP = pcall(function() tag:GetScript("OnMouseUp")(tag, "RightButton") end)
+local pp = rawget(_G, "XayaUIGroupPosPopup")
+check("the group X / Y popup opens", okU and okP and pp ~= nil and pp:IsShown(), errP)
+if pp then
+  pp.anchorText:SetText("Anchored to: PlayerFrame (its LEFT to the frame's RIGHT)")
+  measure("group X / Y popup", pp)
+end
+local okF, errF = pcall(ns.PickFrame, "Anchor the group 'Active Mitigation' to a frame", function() end)
+local pk = rawget(_G, "XayaUIFramePicker")
+check("the frame picker opens", okF and pk ~= nil and pk:IsShown(), errF)
+if pk then measure("frame picker", pk) end
 return R
 end
 '''
