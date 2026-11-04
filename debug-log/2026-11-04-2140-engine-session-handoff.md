@@ -36,8 +36,11 @@ Logged 2026-11-04 21:40 UTC. Read with SESSION-START-SUMMARY.md. Branch `claude/
 #353 (QA B110), #155 (QA B111), B4's open fact (QA B113), G / H (Dev Assist `/xuidev instance` from her dungeon run, IN-GAME-DATA step 7).
 
 ## Next for the engine (not blocked)
-- #309 event-to-rule routing (large): build only after the perf capture, so it can be measured before / after; design notes in the
-  triage entry.
+- #309: per-step garbage on her rules is down from 52.49 to 13.79 KB and time from 0.884 to 0.663 ms (core 0.6.40, 0.6.41, 0.6.44; see
+  `debug-log/2026-11-04-2338-engine-garbage-measured-on-her-rules.md`). Event-to-rule routing (large) only after the perf capture, so it
+  can be measured before / after; design notes in the triage entry.
+- Ownership added later the same evening: the Dev Assist session (PR #386) owns `XayaUI/AuraSources.lua` with the search indexes, and the
+  QoL cursor highlight / trail. `Visual.lua` per-frame display work stays with the engine session.
 
 ## Container notes
 - Harness indexes: build the API doc concatenation with a short Python script (`sorted(glob(...))`, one `-- ===== FILE: <name>` line
