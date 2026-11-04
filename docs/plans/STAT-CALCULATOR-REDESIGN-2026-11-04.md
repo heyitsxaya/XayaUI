@@ -129,7 +129,9 @@ Xaya's requests (2026-11-04 evening, in order, her words):
    pick them from the theme?
 
 ## Build order once confirmed
-1. Spells auto-populate and filters. Defense / Offense tabs removed.
+1. Spells auto-populate and filters. Defense / Offense tabs removed. **Built in QoL 0.7.7** (2026-11-04), with Q3 defaulted:
+   only spells with numbers, and a "List spells without numbers" setting for the rest. The Offense / Defense filters also draw
+   the old tabs' stat sections under the spells (my reading of "show stat conversion rate"; not confirmed by Xaya).
 2. Gear icons and comparison column.
 3. Armor chain in What If and Gear.
 4. Character window restyle (track-coloured item levels, the enchant / gem column, the scale grip); Sheet tab removed.

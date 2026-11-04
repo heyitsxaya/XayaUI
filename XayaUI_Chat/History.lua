@@ -145,7 +145,13 @@ sys:SetScript("OnEvent", function(_, _, text) pcall(C.History_Console, "System",
 local MIN_W, MIN_H = 440, 300
 -- the bottom of the window is two rows: the buttons and status line (FOOT_BTN up from the bottom edge), and under them the privacy
 -- note, which may wrap to two lines. The scroll area stops above both (FOOT_SCROLL), so no text is drawn over, or hidden behind, another.
-local FOOT_BTN, FOOT_NOTE, FOOT_SCROLL, NOTE_H = 36, 6, 64, 28   -- the note's height holds two 10 pt lines
+-- #351 phase 2: the core margin (M) under the note and a gutter (G) between the bands (the note used to touch the buttons: 2 px)
+local M, G = ns.UI_MARGIN, ns.UI_GUTTER
+local NOTE_H, BTN_H = 28, 20                                      -- the note's height holds two 10 pt lines; the buttons are 20 tall
+local FOOT_NOTE = M                                               -- the note: M above the bottom edge
+local FOOT_BTN = FOOT_NOTE + NOTE_H + G                           -- the button row: G above the note
+local FOOT_SCROLL = FOOT_BTN + BTN_H + G                          -- the scroll area: G above the button row
+local TOP = 34                                                    -- the tab buttons' first row (under the title)
 
 local function Btn(parent, label, w)
     local b = CreateFrame("Button", nil, parent)
@@ -164,21 +170,21 @@ local function PlaceTabButtons()          -- the tab buttons flow into rows as w
         if b:IsShown() then
             local w = b:GetWidth()
             if x > 0 and x + w > avail then x = 0; row = row + 1 end
-            b:ClearAllPoints(); b:SetPoint("TOPLEFT", frame, "TOPLEFT", 12 + x, -34 - row * 24)
+            b:ClearAllPoints(); b:SetPoint("TOPLEFT", frame, "TOPLEFT", 12 + x, -TOP - row * 24)
             x = x + w + 4
         end
     end
-    return (row + 1) * 24
+    return row * 24 + 20   -- the rows' height: 24 apart, the last one 20 tall
 end
 
 local function Relayout()
     if not frame then return end
     local used = PlaceTabButtons()
     frame.search:ClearAllPoints()
-    frame.search:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -34 - used - 2)
-    frame.search:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -34 - used - 2)
+    frame.search:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -TOP - used - G)            -- G under the tab buttons
+    frame.search:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, -TOP - used - G)
     frame.scroll:ClearAllPoints()
-    frame.scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -34 - used - 28)
+    frame.scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -TOP - used - G - 20 - G)   -- G under the 20 px search box
     frame.scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -30, FOOT_SCROLL)
     frame.edit:SetWidth(math.max(100, (frame:GetWidth() or 540) - 50))
 end
@@ -245,6 +251,7 @@ local function Build()
     title:SetText("Chat history")
     local close = CreateFrame("Button", nil, frame)
     close:SetSize(20, 20); close:SetPoint("TOPRIGHT", -6, -6)
+    close.xuiEdge = true   -- a title-bar close button sits at the edge on purpose (#351)
     close.t = close:CreateFontString(nil, "OVERLAY"); close.t:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE"); close.t:SetPoint("CENTER"); close.t:SetText("X")
     close:SetScript("OnClick", function() frame:Hide() end)
     frame.kb = {}
@@ -272,7 +279,7 @@ local function Build()
     -- bottom rows (see FOOT_*): buttons and status on the upper one, the note under them
     frame.refresh = Btn(frame, "Refresh", 64); frame.refresh:SetPoint("BOTTOMLEFT", 12, FOOT_BTN)
     frame.refresh:SetScript("OnClick", function() C.History_Update() end)
-    frame.live = Btn(frame, "Live: off", 70); frame.live:SetPoint("LEFT", frame.refresh, "RIGHT", 6, 0)
+    frame.live = Btn(frame, "Live: off", 70); frame.live:SetPoint("LEFT", frame.refresh, "RIGHT", G, 0)
     frame.live:SetScript("OnClick", function()
         local st = S(); if not st then return end
         st.histLive = not st.histLive
@@ -284,7 +291,7 @@ local function Build()
     frame.status:SetJustifyH("LEFT"); frame.status:SetWordWrap(false)
     frame.status:SetTextColor(0.7, 0.7, 0.7, 1)
     local note = frame:CreateFontString(nil, "OVERLAY"); note:SetFont(STANDARD_TEXT_FONT, 10, "")
-    note:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 12, FOOT_NOTE); note:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -24, FOOT_NOTE)   -- stops short of the resize grip
+    note:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 12, FOOT_NOTE); note:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -(2 + 16 + G), FOOT_NOTE)   -- G short of the resize grip (16 px, 2 px in)
     note:SetHeight(NOTE_H); note:SetJustifyH("LEFT"); note:SetJustifyV("BOTTOM"); note:SetWordWrap(true)
     note:SetTextColor(0.55, 0.55, 0.55, 1)
     note:SetText("Select text, Ctrl+C. Kept in memory only. Combat log and protected lines are not recorded. Console: printed lines and system messages.")
@@ -293,6 +300,7 @@ local function Build()
     -- resize grip
     local grip = CreateFrame("Button", nil, frame)
     grip:SetSize(16, 16); grip:SetPoint("BOTTOMRIGHT", -2, 2); grip:SetFrameLevel((frame:GetFrameLevel() or 1) + 10)
+    grip.xuiEdge = true   -- a corner resize grip sits at the edge on purpose (#351)
     for i = 1, 3 do
         local l = grip:CreateLine(nil, "OVERLAY"); l:SetThickness(1.5); l:SetColorTexture(0.7, 0.7, 0.75, 0.9)
         l:SetStartPoint("BOTTOMRIGHT", grip, -2 - (i - 1) * 4, 2); l:SetEndPoint("BOTTOMRIGHT", grip, -2, 2 + (i - 1) * 4)
