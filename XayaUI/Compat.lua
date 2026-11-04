@@ -78,6 +78,7 @@ end
 local CHAT_OLD = {
     ActivateChat = "ChatEdit_ActivateChat", DeactivateChat = "ChatEdit_DeactivateChat", GetActiveWindow = "ChatEdit_GetActiveWindow",
     OpenChat = "ChatFrame_OpenChat", AddMessageEventFilter = "ChatFrame_AddMessageEventFilter",
+    InsertLink = "ChatEdit_InsertLink",   -- the game's shift-click link insert (Deprecated_ChatFrame.lua:43 copies ChatFrameUtil.InsertLink)
 }
 -- the function itself (current home first), or nil
 function Compat.Chat(name)

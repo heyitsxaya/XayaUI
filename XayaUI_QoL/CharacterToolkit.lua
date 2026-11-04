@@ -401,15 +401,17 @@ local function Build()
         scroll:SetVerticalScroll(v)
     end
     scroll:SetScript("OnMouseWheel", function(_, d) panel.Scroll(d) end)
-    -- a shift-clicked item goes into the What If item box while it has focus (post-hook on the game's own link insert;
-    -- ChatFrameUtil.InsertLink where it exists, else the older ChatEdit_InsertLink). INFERENCE: not run in game yet.
+    -- a shift-clicked item goes into the What If item box while it has focus (post-hook on the game's own link insert, where
+    -- Compat.lua says it lives: ChatFrameUtil.InsertLink in 12.x; Compat is the only file that may name the old fallback global).
+    -- INFERENCE: not run in game yet.
     local function InsertLink(link)
         local eb = boxes.item
         if eb and eb.HasFocus and eb:HasFocus() and type(link) == "string" and not isSecret(link) then eb:Insert(link) end
     end
-    if type(hooksecurefunc) == "function" then
-        if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then pcall(hooksecurefunc, ChatFrameUtil, "InsertLink", InsertLink)
-        elseif type(_G.ChatEdit_InsertLink) == "function" then pcall(hooksecurefunc, "ChatEdit_InsertLink", InsertLink) end
+    local hookTarget = ns.Compat and ns.Compat.ChatHookTarget
+    if type(hooksecurefunc) == "function" and type(hookTarget) == "function" then
+        local tbl, method = hookTarget("InsertLink")
+        if tbl then pcall(hooksecurefunc, tbl, method, InsertLink) end
     end
     panel:Hide()
 end
