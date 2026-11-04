@@ -203,7 +203,9 @@ local function OnItemRef(link, text, button)
         local name = strsplit(":", link:sub(8))
         if name and name ~= "" and not IsMe(name) and C_FriendList and C_FriendList.AddIgnore then
             pcall(C_FriendList.AddIgnore, name)
-            ns.Print("Ignoring " .. name .. " (Ctrl + right-click). Remove them in the social window's Ignore list.")
+            -- (names another player: never kept in XayaUI's debug record)
+            local say = ns.PrintPrivate or ns.Print
+            say("Ignoring " .. name .. " (Ctrl + right-click). Remove them in the social window's Ignore list.")
         end
     end
 end

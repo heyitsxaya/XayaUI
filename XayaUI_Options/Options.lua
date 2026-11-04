@@ -2767,9 +2767,43 @@ local function BuildAddonSettings()
         debug = { type = "group", name = "Debugging", order = 2, args = {
             debugHeader = { type = "header", name = "Debugging", order = 10 },
             advancedDebug = { type = "toggle", name = "Advanced Debugging (recommended)", order = 11, width = "full",
-                desc = "When a Lua error happens inside XayaUI, print it to the chat window as a system message (in addition to whatever BugSack or the default Lua-error UI already does). Off: XayaUI stays silent about its own errors in chat.",
+                desc = "Records automatically what is needed to find a problem, so you never have to type a debug command: every rule's state at the start and end of each combat, the combat engine's status, which source answered each aura and when that changed, proc-glow sightings, game-played sounds, XayaUI's messages and its own Lua errors. The record is saved with your settings (written at /reload or logout) and goes into the bug report below. Also sends XayaUI's messages to the console window instead of chat (change that below).",
                 get = function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug and true or false end,
-                set = function(_, v) Ui().advancedDebug = v and true or false end },
+                set = function(_, v) Ui().advancedDebug = v and true or false; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end; Notify() end },
+            -- the options Advanced Debugging brings (XayaUI/DebugRecord.lua)
+            msgDest = { type = "select", name = "XayaUI's messages", order = 11.1,
+                desc = "Where XayaUI's own messages and error notices appear: the main chat window, the XayaUI console window (its own movable frame, like BugSack; it keeps collecting in combat), or both. Default: the console window while Advanced Debugging is on, chat while it is off.",
+                values = { chat = "Chat window", console = "XayaUI console window", both = "Both" }, sorting = { "console", "chat", "both" },
+                get = function() return ns.MessageDest and ns.MessageDest() or "chat" end,
+                set = function(_, v) Ui().msgDest = v; Notify() end },
+            consoleAutoOpen = { type = "toggle", name = "Open the console window when a message arrives", order = 11.2,
+                desc = "With messages going to the console window: open it when one arrives (after combat if one arrives in combat). Off: the lines collect there until you open it (/xui console).",
+                hidden = function() return not (ns.MessageDest and ns.MessageDest() == "console") end,
+                get = function() return Ui().consoleAutoOpen ~= false end,
+                set = function(_, v) if v then Ui().consoleAutoOpen = nil else Ui().consoleAutoOpen = false end end },
+            recordOn = { type = "toggle", name = "Keep the debug record", order = 11.3, width = "full",
+                desc = "On (default with Advanced Debugging): the record described above is kept. It holds the newest 3000 lines; older ones are dropped and counted.",
+                hidden = function() return not Ui().advancedDebug end,
+                get = function() return Ui().recordOff ~= true end,
+                set = function(_, v) Ui().recordOff = (not v) and true or nil; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end end },
+            debugProbe = { type = "toggle", name = "Also run the game-data probe (XayaUI Game Data Capture)", order = 11.4, width = "full",
+                desc = "The separate Game Data Capture addon is installed: switch its event probe on together with Advanced Debugging (it records what the game lets addons read, for the run sheet in docs/process). It goes off again with Advanced Debugging if this switched it on.",
+                hidden = function() return not (Ui().advancedDebug and ns.ProbeInstalled and ns.ProbeInstalled()) end,
+                get = function() return Ui().debugProbe ~= false end,
+                set = function(_, v) if v then Ui().debugProbe = nil else Ui().debugProbe = false end; if ns.SyncDebugProbe then ns.SyncDebugProbe() end end },
+            recordInfo = { type = "description", order = 11.5, width = "full", fontSize = "medium",
+                hidden = function() return not Ui().advancedDebug end,
+                name = function()
+                    local n, drop, start = 0, 0, nil
+                    if ns.RecordSummary then n, drop, start = ns.RecordSummary() end
+                    if n == 0 then return "Debug record: empty so far (it fills as you play)." end
+                    return ("Debug record: %d lines since %s%s. To send it: Create bug report below (newest 1500 lines), or after a /reload send the file World of Warcraft\\_retail_\\WTF\\Account\\<your account>\\SavedVariables\\XayaUI.lua. It holds rule names, spell IDs and XayaUI's messages; no character name or realm. Messages that name another player are shown but never kept, here or in the bug report."):format(
+                        n, tostring(start), drop > 0 and (" (" .. drop .. " older lines dropped)") or "")
+                end },
+            recordClear = { type = "execute", name = "Clear the debug record", order = 11.6,
+                hidden = function() return not Ui().advancedDebug end,
+                confirm = true, confirmText = "Delete every line of the debug record?",
+                func = function() if ns.ClearRecord then ns.ClearRecord() end; Notify() end },
             showConsole = { type = "toggle", name = "Show the debug console at the bottom of the window", order = 12, width = "full",
                 desc = "The strip under the window with the live rule status and event log. Off: it is not drawn at all (turn it back on here).",
                 get = function() return ns.DebugConsoleOn() end,
@@ -2786,7 +2820,7 @@ local function BuildAddonSettings()
                     name = function()
                         local total, kinds = 0, 0
                         if ns.ErrorCount then total, kinds = ns.ErrorCount() end
-                        return "XayaUI keeps its own Lua errors (" .. total .. " so far, " .. kinds .. " different) and saves them between sessions. The report holds the version, the game build, those errors and the last console lines. It never includes your character name, realm, or the contents of your rules. Send it to Xaya or paste it into a GitHub issue."
+                        return "XayaUI keeps its own Lua errors (" .. total .. " so far, " .. kinds .. " different) and saves them between sessions. The report holds the version, the game build, those errors, the last console lines and, with Advanced Debugging on, the debug record. It never includes your character name, realm, or your rules' settings; rule names appear in the console lines and the record. Send it to Xaya or paste it into a GitHub issue."
                     end },
                 bugText = { type = "input", name = "What happened  (optional)", order = 2, width = "full", multiline = 4,
                     get = function() return Ui().bugText or "" end,

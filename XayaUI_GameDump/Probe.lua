@@ -1171,3 +1171,17 @@ loader:SetScript("OnEvent", function(self, _, name)
     end)
     if not ok then pcall(Fail, "resume", err) end
 end)
+
+-- XayaUI's "Advanced Debugging" (Settings > Debugging, core DebugRecord.lua) can switch the probe on and off, so a tester does not have
+-- to remember /xuidump probe on. Offered as the "gameDataProbe" service of XayaUI's feature contract (Modules.lua ns.Provide); this
+-- addon loads after XayaUI (## OptionalDeps), so the core namespace exists here when XayaUI is installed. Without XayaUI: nothing.
+do
+    local core = rawget(_G, "XayaUI_NS")
+    if type(core) == "table" and type(core.Provide) == "function" then
+        core.Provide("gameDataProbe", {
+            On = function() if not P.on then P.On() end end,
+            Off = function() if P.on then P.Off() end end,
+            Active = function() return P.on and true or false end,
+        })
+    end
+end

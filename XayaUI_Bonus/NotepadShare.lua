@@ -26,6 +26,8 @@ local BURST, REFILL = 8, 1.05   -- send pacing: 8 at once, then one per ~1 secon
 
 local function MaxChars() return ns.Notepad_MAX_CHARS or 8000 end
 local function Say(msg) if ns.Print then ns.Print(msg) else print("XayaUI: " .. msg) end end
+-- a message naming another player: shown, never kept in the debug record or a bug report (XayaUI/Core.lua ns.PrintPrivate)
+local function SayPrivate(msg) local p = ns.PrintPrivate or ns.Print; if p then p(msg) else print("XayaUI: " .. msg) end end
 local function DB() return ns.notepadDB end
 
 -------------------------------------------------------------------------------
@@ -318,7 +320,7 @@ local function BuildOffer()
         local o = pending[1]
         if o then
             local pos = ns.Notepad_AddNote and ns.Notepad_AddNote(o.text)
-            Say(pos and ("Saved " .. ShortName(o.sender) .. "'s note as note " .. pos .. ". Open it with /xui notes, then the list button.") or "The note could not be saved.")
+            SayPrivate(pos and ("Saved " .. ShortName(o.sender) .. "'s note as note " .. pos .. ". Open it with /xui notes, then the list button.") or "The note could not be saved.")
         end
         Next()
     end)
@@ -328,7 +330,7 @@ local function BuildOffer()
         if o then
             blocked[o.sender] = true
             for i = #pending, 1, -1 do if pending[i].sender == o.sender then table.remove(pending, i) end end
-            Say("Ignoring shared notes from " .. ShortName(o.sender) .. " until you log out or reload.")
+            SayPrivate("Ignoring shared notes from " .. ShortName(o.sender) .. " until you log out or reload.")
         end
         if #pending > 0 then ShowOffer() else f:Hide() end
     end)

@@ -125,7 +125,7 @@ function ns.BuildBugReport(description, includeAddons)
         if r.isCue then nc = nc + 1 elseif r.parentUid then ncond = ncond + 1 else nr = nr + 1 end
     end
     add(("Rules: %d | cues: %d | conditions: %d | skin on: %s"):format(nr, nc, ncond, (ns.Options and tostring(ns.Options.SkinOn()) or "window not loaded")))
-    add("(No character name, realm, or rule contents are included.)")
+    add("(No character name or realm, and no rule settings. Rule names appear in the console lines and the debug record below.)")
     add("")
     add("What happened:")
     add((description and description:match("%S")) and description or "(not filled in)")
@@ -142,6 +142,18 @@ function ns.BuildBugReport(description, includeAddons)
     add("Last console lines:")
     local buf = ns.logBuf or {}
     for i = math.max(1, #buf - 59), #buf do add("  " .. Plain(buf[i])) end
+    -- the saved debug record (DebugRecord.lua, kept while Advanced Debugging is on): the newest 1500 lines here, all of them in the
+    -- SavedVariables file. It holds rule names, spell IDs and XayaUI's own messages. Messages that name another player (ns.PrintPrivate) are
+    -- never kept: not in the record, and not in ns.logBuf, which the "Last console lines" above read.
+    local rn, rdrop, rstart = 0, 0, nil
+    if ns.RecordSummary then rn, rdrop, rstart = ns.RecordSummary() end
+    if rn > 0 then
+        local lines = CueRulesDB.debugRecord.lines
+        add("")
+        add(("Debug record: %d lines since %s%s (newest %d below; all of them are in WTF\\Account\\<account>\\SavedVariables\\XayaUI.lua after a /reload or logout):"):format(
+            rn, tostring(rstart), rdrop > 0 and (", " .. rdrop .. " older lines dropped") or "", math.min(rn, 1500)))
+        for i = math.max(1, rn - 1499), rn do add("  " .. tostring(lines[i])) end
+    end
     if includeAddons then
         add("")
         local names = {}

@@ -265,7 +265,9 @@ function ns.ChatProbe()
         local nm = s:match("^(%S+)")
         if nm and not nm:find("^<anon") then
             shown = shown + 1
-            if shown <= 6 then ns.Print("  top-left: " .. s:sub(1, 150)) end
+            -- a frame's own text can be a character name (player, target, party frames): shown, never recorded (Core.lua ns.PrintPrivate)
+            local say = ns.PrintPrivate or ns.Print
+            if shown <= 6 then say("  top-left: " .. s:sub(1, 150)) end
         end
     end
     if shown == 0 then ns.Print("  no named frames in the top-left corner (unnamed ones are in the saved report)") end

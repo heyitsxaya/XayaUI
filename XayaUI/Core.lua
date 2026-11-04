@@ -24,10 +24,25 @@ ns.rules = nil -- set at ADDON_LOADED to CueRulesDB.rules
 function ns.Ignored(s) return s == nil or s == "" or s == "none" or s == "any" end
 function ns.Val(v) if v == nil or v == "" or v == "none" then return nil end return v end
 
+-- A message that names another player (or anything else personal): shown like ns.Print, but never kept anywhere a report reads:
+-- not in the debug record, not in the console's line buffer (the bug report and "Copy" read it), not in collected output.
+local privateMsg = false
+function ns.PrintPrivate(...)
+    privateMsg = true
+    local ok, err = pcall(ns.Print, ...)
+    privateMsg = false
+    if not ok then error(err, 0) end
+end
 function ns.Print(...)
     local parts = {}
     for i = 1, select("#", ...) do parts[#parts + 1] = tostring((select(i, ...))) end
-    print("|cff33ccffXayaUI|r: " .. table.concat(parts, " "))
+    local text = table.concat(parts, " ")
+    if ns._capture and not privateMsg then ns._capture[#ns._capture + 1] = text; return end   -- (DebugRecord.lua ns.CaptureOutput)
+    if ns.RecordLine and not privateMsg then ns.RecordLine("msg", text) end
+    -- where messages go (DebugRecord.lua, Settings > Debugging): chat, the XayaUI console window, or both
+    local dest = ns.MessageDest and ns.MessageDest() or "chat"
+    if dest ~= "chat" and ns.ConsoleMessage and pcall(ns.ConsoleMessage, text, false, privateMsg) and dest == "console" then return end
+    print("|cff33ccffXayaUI|r: " .. text)
 end
 
 -------------------------------------------------------------------------------
@@ -45,8 +60,14 @@ do
             pcall(ns.CaptureError, text, okS and stack or "")
         end
         local ok, on = pcall(function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug end)
-        if ok and on and text:find(addonName, 1, true) and DEFAULT_CHAT_FRAME then
-            DEFAULT_CHAT_FRAME:AddMessage("|cffff5555[XayaUI Error]|r " .. text, 1, 0.35, 0.35)
+        if ok and on and text:find(addonName, 1, true) then
+            if ns.RecordLine then pcall(ns.RecordLine, "error", text) end
+            -- the same place as XayaUI's messages (DebugRecord.lua): the console window, chat, or both
+            local dest = ns.MessageDest and ns.MessageDest() or "chat"
+            local shown = dest ~= "chat" and ns.ConsoleMessage and pcall(ns.ConsoleMessage, text, true)
+            if (dest ~= "console" or not shown) and DEFAULT_CHAT_FRAME then
+                DEFAULT_CHAT_FRAME:AddMessage("|cffff5555[XayaUI Error]|r " .. text, 1, 0.35, 0.35)
+            end
         end
         if prevHandler then return prevHandler(msg) end
     end)
@@ -66,6 +87,7 @@ function ns.Log(fmt, ...)
     end
     ns.Fire("LOG", line)   -- the window's debug tray listens (XayaUI_Options)
     if ns.ConsoleSink then ns.ConsoleSink(line) end   -- the separate console window (Console.lua)
+    if ns.RecordLine then ns.RecordLine("log", msg) end   -- the saved debug record (DebugRecord.lua, Advanced Debugging)
 end
 
 -- Deep-copy helper for defaults.
