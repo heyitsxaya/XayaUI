@@ -5,7 +5,7 @@ This walkthrough records how your spells' numbers change when your gear changes.
 Nothing here is copied out of the game files. Every number is one the game shows you, read through the normal addon API.
 
 **Time:** about 5 minutes per spec and talent setup.
-**Needs:** XayaUI, XayaUI Bonus Features and XayaUI Game Data Capture turned on, plus 4 free bag slots.
+**Needs:** XayaUI, XayaUI Bonus Features and XayaUI Dev Assist turned on, plus 4 free bag slots.
 
 ## Why these steps
 
@@ -46,12 +46,12 @@ The fit also needs **one change to versatility while your power stays the same**
 7. **Check.** Type `/xuiformula status`. It should end with `This loadout is complete.`
 8. **Put your gear back on.** You can type `/xuiformula stop` before doing this, so the recovery snapshots aren't recorded. Recording them is harmless, though.
 9. **Next spec or talent setup (optional).** Switch spec or talents, then repeat steps 1 to 8. Each spec and talent combination is its own recording.
-10. **Save.** Type `/reload`, or log out. The game writes the data to `WTF\Account\<your account>\SavedVariables\XayaUI_GameDump.lua`.
+10. **Save.** Type `/reload`, or log out. The game writes the data to `WTF\Account\<your account>\SavedVariables\XayaUI_DevAssist.lua` (before Dev Assist 0.7.0: `XayaUI_GameDump.lua`; the tool reads either).
 11. **Send the file**, or run the fit yourself:
 
     ```
-    python3 tools/formula_fit.py "PATH\TO\XayaUI_GameDump.lua"
-    python3 tools/formula_fit.py "PATH\TO\XayaUI_GameDump.lua" --emit
+    python3 tools/formula_fit.py "PATH\TO\XayaUI_DevAssist.lua"
+    python3 tools/formula_fit.py "PATH\TO\XayaUI_DevAssist.lua" --emit
     ```
 
     - The first command writes `formula-report.md` with every fit.

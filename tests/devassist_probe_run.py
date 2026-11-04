@@ -1,8 +1,8 @@
-# Test for XayaUI_GameDump 0.6.0 Probe.lua: /xuidump probe (event probe for the 12.1.5 readability questions), run against stand-in
+# Test for XayaUI_DevAssist 0.6.0 Probe.lua: /xuidump probe (event probe for the 12.1.5 readability questions), run against stand-in
 # game functions in Lua 5.1. Nothing here is game data: unit names, GUIDs, creature / encounter IDs, secrecy levels and every return
 # value are made up to drive the code paths. Spell IDs are the ones the request names, used as labels only.
 #
-# What it checks (outcomes: what ends up in XayaUIGameDumpDB.probe and in chat):
+# What it checks (outcomes: what ends up in XayaUIDevAssistDB.probe and in chat):
 #   - secret values: issecretvalue says true for a sentinel userdata whose metatable RAISES on compare, arithmetic, concatenation,
 #     tostring, indexing, calling and length, and type() of which reports the underlying type (as the game does; INFERENCE). Every secret must come out as the string "secret"; no misuse may happen (counted even
 #     when a pcall swallows the error); no secret may be passed to a game function; none may be stored. (Lua 5.1 limit: `==` between
@@ -21,8 +21,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lua51 import runtime as LuaRuntime
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-GD_PATH = os.path.join(ROOT, "XayaUI_GameDump", "GameDump.lua").replace("\\", "/")
-PROBE_PATH = os.path.join(ROOT, "XayaUI_GameDump", "Probe.lua")
+GD_PATH = os.path.join(ROOT, "XayaUI_DevAssist", "DevAssist.lua").replace("\\", "/")
+PROBE_PATH = os.path.join(ROOT, "XayaUI_DevAssist", "Probe.lua")
 EVENTS_MD = os.path.join(ROOT, "docs", "reference", "api", "events.md")
 PROBE_SRC = open(PROBE_PATH, encoding="utf-8").read()
 DOC_EVENTS = sorted(set(re.findall(r"^- `([A-Z0-9_]+)`", open(EVENTS_MD, encoding="utf-8").read(), re.M)))
@@ -206,27 +206,27 @@ setmetatable(_G, { __newindex = function(t, k, v)
   rawset(t, k, v)
 end })
 
-function DBP() return XayaUIGameDumpDB and XayaUIGameDumpDB.probe end
+function DBP() return XayaUIDevAssistDB and XayaUIDevAssistDB.probe end
 function LOG() local p, out = DBP(), {}; if not p then return out end; for i = p.first, p.last do if p.log[i] then out[#out + 1] = p.log[i] end end; return out end
 function LAST(code, pred) local l = LOG(); for i = #l, 1, -1 do if l[i].e == code and (pred == nil or pred(l[i])) then return l[i] end end end
 function NUM(code, pred) local n = 0; for _, e in ipairs(LOG()) do if e.e == code and (pred == nil or pred(e)) then n = n + 1 end end; return n end
-function SLASH(s) SlashCmdList.XAYAUIDUMP(s) end
+function SLASH(s) SlashCmdList.XAYAUIDEV(s) end
 function NEAR(a, b) return type(a) == "number" and type(b) == "number" and math.abs(a - b) < 0.0015 end
 function KEYS(t) local l = {} for k in pairs(t or {}) do l[#l + 1] = tostring(k) end; table.sort(l); return table.concat(l, ",") end
 function HASEVENT(e) for _, f in ipairs(PROBEFRAMES()) do if f.events[e] then return f.events[e] end end end
 function NEVENTS() local n = 0; for _, f in ipairs(PROBEFRAMES()) do for _ in pairs(f.events) do n = n + 1 end end; return n end
 
 function LOAD()
-  LOADING = "GameDump"; assert(loadfile(GD_PATH))("XayaUI_GameDump")
-  LOADING = "Probe"; assert(loadstring(PROBE_SRC, "@Probe.lua"))("XayaUI_GameDump")
+  LOADING = "DevAssist"; assert(loadfile(GD_PATH))("XayaUI_DevAssist")
+  LOADING = "Probe"; assert(loadstring(PROBE_SRC, "@Probe.lua"))("XayaUI_DevAssist")
   LOADING = "test"
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------
 SECTION("load", function()
   LOAD()
-  FIRE("ADDON_LOADED", "XayaUI_GameDump")
-  check("load: /xuidump probe is a command", type(XayaUIGameDump.Probe) == "function" and SlashCmdList.XAYAUIDUMP ~= nil)
+  FIRE("ADDON_LOADED", "XayaUI_DevAssist")
+  check("load: /xuidump probe is a command", type(XayaUIDevAssist.Probe) == "function" and SlashCmdList.XAYAUIDEV ~= nil)
   check("load: off, no probe frame listens to any event", NEVENTS() == 0, NEVENTS())
 end)
 
@@ -553,7 +553,7 @@ end)
 SECTION("status", function()
   said = {}
   SLASH("probe status")
-  local lines = XayaUIGameDump.ProbeState.StatusLines()
+  local lines = XayaUIDevAssist.ProbeState.StatusLines()
   local p = DBP()
   check("status: header with on, entries recorded, kept, dropped", lines[1]:find(("ON: %d entries recorded, %d kept, %d dropped"):format(p.last, p.last - p.first + 1, p.dropped), 1, true) ~= nil, lines[1])
   local ok = true
@@ -583,7 +583,7 @@ function WALKDB()
       if type(v) == "table" and not issecretvalue(v) then walk(v, d + 1, seen) end
     end
   end
-  walk(XayaUIGameDumpDB, 0, {})
+  walk(XayaUIDevAssistDB, 0, {})
   return bad, names
 end
 
@@ -601,7 +601,7 @@ SECTION("ring buffer", function()
   check("ring buffer: keeps the newest 6000, drops the oldest, counts the drops", kept == 6000 and p.dropped == p.last - 6000 and p.log[p.first - 1] == nil
     and p.log[p.first] ~= nil and p.log[1] == nil and p.log[p.last].id == 106100 and p.log[p.first].id == 106100 - 5999, kept .. " kept, " .. p.dropped .. " dropped")
   check("ring buffer: anchors are kept apart and survive", p.anchors[1] and p.anchors[1].why == "on")
-  local lines = XayaUIGameDump.ProbeState.StatusLines()
+  local lines = XayaUIDevAssist.ProbeState.StatusLines()
   check("status after drops: kept and dropped counts", lines[1]:find(("6000 kept, %d dropped"):format(p.dropped), 1, true) ~= nil, lines[1])
 end)
 
@@ -625,7 +625,7 @@ SECTION("resume", function()
   SLASH("probe on")
   FRAMES = {}                       -- a /reload: every frame is gone, the saved table stays
   LOAD()
-  FIRE("ADDON_LOADED", "XayaUI_GameDump")
+  FIRE("ADDON_LOADED", "XayaUI_DevAssist")
   local p = DBP()
   check("after a reload the probe resumes, writes a resume anchor and says so", p.on == true and p.anchors[p.aLast].why == "resume" and HASEVENT("UNIT_SPELLCAST_START") == true and SAID("resumed after a reload") ~= nil)
   SLASH("probe off")

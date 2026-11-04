@@ -1,4 +1,4 @@
-# End to end, offline: /xuiformula snapshots (XayaUI_GameDump/FormulaCapture.lua) -> tools/formula_fit.py -> XayaUI_SpellData_<CLASS>
+# End to end, offline: /xuiformula snapshots (XayaUI_DevAssist/FormulaCapture.lua) -> tools/formula_fit.py -> XayaUI_SpellData_<CLASS>
 # -> the "Observed:" line on the spell tooltip (XayaUI_Bonus/Tooltips.lua). Stand-in game API; numbers follow a known formula.
 import os, sys, shutil, tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -63,20 +63,20 @@ C_Spell = {
   GetSpellName = function(id) return ({ [263642] = "Fracture", [258920] = "Immolation Aura" })[id] end,
 }
 ''')
-L.eval('function(src,n) return (load(src,n)) end')(open(os.path.join(ROOT, 'XayaUI_GameDump/FormulaCapture.lua'), encoding='utf-8').read(), 'FormulaCapture.lua')("XayaUI_GameDump")
+L.eval('function(src,n) return (load(src,n)) end')(open(os.path.join(ROOT, 'XayaUI_DevAssist/FormulaCapture.lua'), encoding='utf-8').read(), 'FormulaCapture.lua')("XayaUI_DevAssist")
 FC = 'XayaUIFormulaCapture'
 check("hash is stable 8 hex chars", len(L.eval(FC + '.Hash("1000,1010")')) == 8 and L.eval(FC + '.Hash("a")') == L.eval(FC + '.Hash("a")'))
 tpl = L.eval(FC + '.Split("Slash for 15,386 Physical damage within 8 yards.")')
 check("split: template and numbers", tpl[0] == "Slash for # Physical damage within # yards." and list(tpl[1].values()) == [15386, 8])
 # walkthrough: full gear, weapon off, trinket off, two more levels, then a versatility-only change
 L.execute(FC + '.Capture("start")')
-check("first snapshot taken", L.eval('#XayaUIGameDumpDB.formula.loadouts["DEMONHUNTER:581:" .. ' + FC + '.Loadout().hash].snaps') == 1)
+check("first snapshot taken", L.eval('#XayaUIDevAssistDB.formula.loadouts["DEMONHUNTER:581:" .. ' + FC + '.Loadout().hash].snaps') == 1)
 L.execute(FC + '.Capture("again")')
 check("no-change snapshot skipped", any("no change in stats" in str(p) for p in L.eval("printed").values()))
 for agi, vers in ((4200, 1.9), (3900, 1.9), (3500, 1.9), (3500, 0.4)):
     L.execute(f"st.agi = {agi}; st.vers = {vers}; st.haste = st.haste - 1.5; {FC}.Capture('gear change')")
 key = 'DEMONHUNTER:581:" .. ' + FC + '.Loadout().hash .. "'
-n = L.eval('#XayaUIGameDumpDB.formula.loadouts["' + key + '"].snaps')
+n = L.eval('#XayaUIDevAssistDB.formula.loadouts["' + key + '"].snaps')
 check("five snapshots across gear changes", n == 5)
 check("status reports the loadout complete", any("This loadout is complete" in str(p) for p in L.eval("printed").values()))
 L.execute("inCombat = true; printed = {}"); L.execute(FC + '.Capture("x")')
@@ -100,8 +100,8 @@ function ser(v, ind)
   else return tostring(v) end
 end''')
 tmp = tempfile.mkdtemp()
-saved = os.path.join(tmp, "XayaUI_GameDump.lua")
-open(saved, "w", encoding="utf-8").write("XayaUIGameDumpDB = " + L.eval("ser(XayaUIGameDumpDB)") + "\n")
+saved = os.path.join(tmp, "XayaUI_DevAssist.lua")
+open(saved, "w", encoding="utf-8").write("XayaUIDevAssistDB = " + L.eval("ser(XayaUIDevAssistDB)") + "\n")
 formula_fit.main([saved, "--emit", "--out", tmp])
 report = open(os.path.join(tmp, "formula-report.md"), encoding="utf-8").read()
 check("Fracture fitted: 2.77 x attack power, x (1 + versatility)", "| Fracture (263642) | #1 Physical damage | 2.77 × attack power, × (1 + versatility) | 5 |" in report)

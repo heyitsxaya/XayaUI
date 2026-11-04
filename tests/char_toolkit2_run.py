@@ -18,6 +18,7 @@ THEME = { ["xui-window"] = { bg = { 0.11, 0.12, 0.13, 1 }, border = { 0.21, 0.22
 ns.Theme = { Col = function(class, prop, fb) local c = THEME[class] and THEME[class][prop]; return c and { c[1], c[2], c[3], c[4] } or fb end,
   OnResolve = function(fn) themeListener = fn end, FontPath = function() return "Fonts\\THEME.TTF" end }
 assert(loadfile(__MOD__))("XayaUI", ns)
+assert(loadfile(__COMPAT__))("XayaUI", ns)   -- core loads Compat.lua after Modules.lua (XayaUI.toc)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
 assert(loadfile(__CT__))("XayaUI_QoL", ns)
@@ -448,5 +449,51 @@ check("theme changes repaint the open panel", type(themeListener) == "function" 
 
 print(("%d checks, %d failed"):format(n, fails))
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua"))
-   .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
-sys.exit(1 if lua.eval("fails") else 0)
+   .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua"))
+   .replace("__COMPAT__", P("XayaUI/Compat.lua")))
+total_n, total_fails = lua.eval("n"), lua.eval("fails")
+
+# The shift-click hook goes where Compat.lua says the game's link insert lives (QoL 0.7.1): ChatFrameUtil.InsertLink in 12.x (above),
+# the fallback global ChatEdit_InsertLink only when that is all the client has, and nothing (no error) when neither exists.
+# CharacterToolkit.lua itself never names the fallback global (tests/harness/run.py fails the build if it does).
+def toolkit_world(prelude, body):
+    L = LuaRuntime()
+    L.execute(r'''
+assert(loadfile(__WORLD__))()
+__PRELUDE__
+assert(loadfile(__MOD__))("XayaUI", ns)
+assert(loadfile(__COMPAT__))("XayaUI", ns)
+assert(loadfile(__SM__))("XayaUI_QoL", ns)
+assert(loadfile(__CM__))("XayaUI_QoL", ns)
+local ok, err = pcall(function()
+  assert(loadfile(__CT__))("XayaUI_QoL", ns)
+  ns.FireReady()
+  local c = ns.CharToolkit_Cfg()
+  CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
+  CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
+  c.enabled = true
+  ns.CharToolkit_Apply()
+  CharacterFrame.shown = true; PaperDollFrame:Show()
+  c.tab = "whatif"; ns.CharToolkit_Render()
+end)
+check("the panel builds and opens on What If", ok, err)
+local ib = ok and ns.CharToolkit_Drawn().boxes.item
+LINK = "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r"
+__BODY__
+'''.replace("__PRELUDE__", prelude).replace("__BODY__", body).replace("__WORLD__", P("tests/char_toolkit_world.lua"))
+       .replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua"))
+       .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
+    return L.eval("n"), L.eval("fails")
+
+r = toolkit_world("ChatFrameUtil = {}; ChatEdit_InsertLink = function(link) return false end   -- an older client: only the old global",
+                  '''ib.text, ib.focus = "", true
+ChatEdit_InsertLink(LINK)
+ib.focus = false
+check("older client (only ChatEdit_InsertLink): a shift-clicked item still goes into the item box", ib.text == LINK, ib.text)''')
+total_n += r[0]; total_fails += r[1]
+r = toolkit_world("ChatFrameUtil = {}   -- neither the 12.x function nor the old global",
+                  '''check("neither function exists: nothing is hooked and the item box still takes typed text",
+  ChatEdit_InsertLink == nil and ib ~= false and (function() ib.text = "123"; return ib.text == "123" end)())''')
+total_n += r[0]; total_fails += r[1]
+print("%d checks, %d failed" % (total_n, total_fails))
+sys.exit(1 if total_fails else 0)
