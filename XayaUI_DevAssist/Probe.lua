@@ -74,6 +74,7 @@ local LEGEND = {
 }
 
 local P = { on = false }
+local IX = {}                  -- /xuidev instance (section 12, Dev Assist 0.7.1): hooks filled in below, plus .enc (current encounter ID)
 local D                        -- XayaUIDevAssistDB.probe while a handler or command runs
 local CUR = {}                 -- t, c of the event being handled
 local open, mobCombat, lastWatch = {}, {}, {}
@@ -298,6 +299,7 @@ local function Anchor(why, extra)
     a.difficultyID = Res(st, r, 3)
     a.instanceID = Res(st, r, 8)
     a.ctx = Context({})
+    if IX.Context then IX.Context(a.instanceID, a.instance, a.instanceType, a.difficultyID) end
     for k, v in pairs(extra or {}) do a[k] = v end
     D.aLast = D.aLast + 1
     D.anchors[D.aLast] = a
@@ -342,6 +344,7 @@ local function RuleIDs()
     while #list > 400 do list[#list] = nil end
     return list
 end
+GD.RuleSpellIDs = RuleIDs   -- shared with TooltipCapture.lua (0.7.1): the spell / item IDs XayaUI's rules and bars name, sorted, at most 400
 
 -- C_Secrets.GetSpellCastSecrecy(spellIdentifier) -> secrecy: SecrecyLevel · SecretArguments=AllowedWhenUntainted
 -- C_Secrets.GetSpellAuraSecrecy(spellIdentifier) -> secrecy: SecrecyLevel · SecretArguments=AllowedWhenUntainted
@@ -683,6 +686,7 @@ local function Cast(event, unit, castGUID, spellID, interruptedBy)
     Put(e, "id", id, "cast.id")
     Put(e, "g", V(castGUID, 80), "cast.guid")
     if code == "CI" then Put(e, "ib", Who(interruptedBy), "cast.interruptedBy") end
+    if IX.Cast then IX.Cast(unit, id, code) end
     -- C_Secrets.GetSpellCastSecrecy(spellIdentifier) · SecretArguments=AllowedWhenUntainted: asked only with a readable ID
     if type(id) == "number" then Put(e, "sec", R1("C_Secrets.GetSpellCastSecrecy", NS("C_Secrets", "GetSpellCastSecrecy"), id), "cast.secrecy") end
     Count(code)
@@ -714,6 +718,7 @@ local function Identity(e, unit)
     Put(e, "dead", R1("UnitIsDead", UnitIsDead, unit), "mob.dead")
     Put(e, "rt", R1("CanBeRaidTarget", CanBeRaidTarget, unit), "mob.canBeRaidTarget")
     Put(e, "ac", R1("UnitAffectingCombat", UnitAffectingCombat, unit), "mob.affectingCombat")
+    if IX.Seen then IX.Seen(e, unit) end
 end
 
 local function Plate(code, unit)
@@ -798,6 +803,7 @@ H.ENCOUNTER_START = function(_, ...)
     local e = Entry("ES")
     e.a = a
     Encounter(e, ...)
+    IX.enc = (type(e.id) == "number") and e.id or nil   -- creatures seen from now on are filed under this encounter
     Count("ES")
     Push(e)
 end
@@ -805,6 +811,7 @@ H.ENCOUNTER_END = function(_, encounterID, encounterName, difficultyID, groupSiz
     Begin()
     local e = Entry("EE")
     Encounter(e, encounterID, encounterName, difficultyID, groupSize)
+    IX.enc = nil
     Put(e, "success", V(success), "encounter.success")
     if IsSecret(unitStatus) then
         Put(e, "units", SECRET, "encounter.unitStatus")
@@ -962,6 +969,292 @@ local function Unregister()
     pcall(frame.UnregisterAllEvents, frame)
     pcall(auraFrame.UnregisterAllEvents, auraFrame)
 end
+
+-------------------------------------------------------------------------------
+-- 12) Per-creature summary: /xuidev instance (Dev Assist 0.7.1, written 2026-11-04). UNTESTED IN GAME: tests/devassist_instance_run.py
+-- drives it with stand-in game functions only.
+-------------------------------------------------------------------------------
+-- What Blizzard's client data cannot say (docs/reference/content; debug-log 2026-11-04-1523): most creatures' names, which creatures
+-- cast what, which auras sit on them, their Mythic+ count, and which of a dungeon's two enemy-forces criteria the game uses. While the
+-- probe is on, every enemy read it already makes (nameplate added, combat flag change, enemy cast) also files the creature here.
+-- `/xuidev instance` reads the units visible right now (target, focus, boss1-5, nameplate1-40) and prints the summary.
+-- Output: XayaUIDevAssistDB.instance (apart from .probe: `/xuidev probe clear` leaves it; `/xuidev instance clear` empties it)
+--   .creatures[creatureID]  n / nc = sightings (nc in combat), name, cls (classification), inst[instanceKey] = n,
+--                           enc[encounterID] = n, mp = { a = actualValue, p = percentValue, n = readable reads, s = secret reads,
+--                           varies = true when two readable values differed }, casts[spellID] = n (nCasts distinct, castsMore =
+--                           spells past the cap), auras[spellID] = { n, f = "H" harmful / "B" helpful, name } (nAuras, aurasMore)
+--   .hidden[instanceKey]    sightings whose creature ID was not readable: o / c = out of / in combat, secret / none = why
+--   .orphanCasts[instanceKey] = { n = distinct, ids = { [spellID] = n } }: enemy casts whose caster's creature ID was not readable
+--   .instances[instanceKey] name, type, diffs[difficultyID] = n, cm (challenge-mode map ID), keyLevel, step (the scenario step with
+--                           every criterion's fields, read at each anchor and scan), last (date)
+--   .season                 C_MythicPlus.GetCurrentSeasonValues() and GetCurrentSeason() at the last read
+--   .fields[field]          readability tallies like the probe's .stats (r / s / n / e / m = readable / secret / nil / raised /
+--                           missing, then o / c = out of / in combat)
+-- instanceKey = GetInstanceInfo's instanceID, or "unknown" before the first read. Players are never filed (UnitIsPlayer true, or not
+-- readable as false: skipped). A secret is stored as "secret" and never compared, counted as a value or formatted.
+-- API (docs/reference/api, 12.1.5.70688):
+--   C_ScenarioInfo.GetUnitCriteriaProgressValues(unit: UnitToken) -> actualValue: number, percentValue: number,
+--     percentValueString: string · MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenUnitIdentityRestricted
+--   C_ScenarioInfo.GetScenarioStepInfo(scenarioStepID: number?) -> scenarioStepInfo: ScenarioStepInfo · MayReturnNothing,
+--     SecretArguments=AllowedWhenUntainted. ScenarioStepInfo: title, description, numCriteria, stepFailed, isBonusStep,
+--     isForCurrentStepOnly, shouldShowBonusObjective, spells, weightedProgress?, rewardQuestID, widgetSetID?, stepID
+--   C_ScenarioInfo.GetCriteriaInfo(criteriaIndex: number) -> scenarioCriteriaInfo: ScenarioCriteriaInfo · MayReturnNothing,
+--     SecretArguments=AllowedWhenUntainted. ScenarioCriteriaInfo: description, criteriaType, completed, quantity, totalQuantity,
+--     flags, assetID, criteriaID, duration, elapsed, failed, isWeightedProgress, isFormatted, quantityString
+--   C_ChallengeMode.GetActiveChallengeMapID() -> mapChallengeModeID: number? (no flags)
+--   C_ChallengeMode.GetActiveKeystoneInfo() -> activeKeystoneLevel: number, activeAffixIDs: table<number>, wasActiveKeystoneCharged: bool
+--   C_MythicPlus.GetCurrentSeasonValues() -> displaySeasonID: number, milestoneSeasonID: number, rewardSeasonID: number (no flags)
+--   C_MythicPlus.GetCurrentSeason() -> seasonID: number (no flags)
+--   C_UnitAuras.GetAuraDataByIndex(unit: UnitTokenRestrictedForAddOns, index: luaIndex, filter: AuraFilters?) -> aura: AuraData?
+--     · RequiresUnitAuraAccess, SecretArguments=AllowedWhenUntainted, SecretWhenUnitAuraRestricted. AuraData's fields are not in the
+--     generated reference: spellId and name are the fields DevAssist.lua's ReadAuras reads (INFERENCE: the same on enemy units).
+--   UnitExists(unit: UnitToken?) -> result: bool · SecretArguments=AllowedWhenUntainted. Identity reads: section 6.
+-- INFERENCE (not documented): which criterion is the enemy-forces bar. Every criterion of the step is kept with isWeightedProgress
+-- and totalQuantity, so it can be picked afterwards (Kings' Rest, Temple of Sethraliss and Seat of the Triumvirate have two trees).
+local INST_V = 1
+local CREATURE_CAP = 600       -- creatures kept (more are counted in .dropped)
+local PER_CREATURE = 30        -- distinct spells and distinct auras kept per creature
+local ORPHAN_CAP = 200         -- distinct spells of unreadable casters kept per instance
+local AURA_READ = 40           -- auras read per unit and filter
+local CRITERIA_READ = 20       -- criteria read per scenario step
+local SCAN_UNITS = { "target", "focus", "boss1", "boss2", "boss3", "boss4", "boss5" }
+for i = 1, 40 do SCAN_UNITS[#SCAN_UNITS + 1] = "nameplate" .. i end
+local CRIT_FIELDS = { "criteriaID", "assetID", "criteriaType", "description", "quantity", "totalQuantity", "isWeightedProgress",
+    "quantityString", "completed", "flags" }
+local AURA_FILTERS = { { "HARMFUL", "H" }, { "HELPFUL", "B" } }
+local CAST_FILED = { CS = true, CC = true, CL = true }   -- start, success, channel start (not interrupted / stop: the same cast again)
+local INST_LEGEND = {
+    creatures = "creature ID -> n sightings (nc in combat), name, cls, inst / enc counts, mp Mythic+ count, casts, auras",
+    hidden = "per instance: sightings whose creature ID was not readable (o / c out of / in combat; secret / none)",
+    orphanCasts = "per instance: enemy spells cast by a unit whose creature ID was not readable",
+    instances = "instanceID -> name, type, diffs, cm (challenge-mode map ID), keyLevel, step (scenario step and its criteria)",
+    season = "C_MythicPlus.GetCurrentSeasonValues (display / milestone / reward) and GetCurrentSeason",
+    fields = "readability tallies: r / s / n / e / m = readable / secret / nil / raised / missing, o / c = out of / in combat",
+}
+
+local X                        -- XayaUIDevAssistDB.instance while a handler or command runs
+local function InstData()
+    local d = GD.DB()
+    local x = d.instance
+    if type(x) ~= "table" or x.v ~= INST_V then
+        x = { v = INST_V, creatures = {}, nCreatures = 0, dropped = 0, skipped = 0, hidden = {}, orphanCasts = {}, instances = {},
+              fields = {}, scans = 0 }
+        d.instance = x
+    end
+    x.legend = INST_LEGEND
+    X = x
+    return x
+end
+
+local function ITally(field, v)
+    local s
+    if v == SECRET then s = "s" elseif v == nil then s = "n" elseif v == ERR then s = "e" elseif v == MISSING then s = "m" else s = "r" end
+    local k = s .. ((CUR.c == true) and "c" or "o")
+    local st = X.fields[field]
+    if not st then st = {}; X.fields[field] = st end
+    st[k] = (st[k] or 0) + 1
+end
+
+local function IBump(t, k) t[k] = (t[k] or 0) + 1 end
+local function Now() return R1("date", date, "%Y-%m-%d %H:%M:%S") end
+
+local function Creature(cid)
+    local c = X.creatures[cid]
+    if c then return c end
+    if X.nCreatures >= CREATURE_CAP then X.dropped = X.dropped + 1; return nil end
+    c = { n = 0, nc = 0, inst = {}, enc = {}, casts = {}, nCasts = 0, auras = {}, nAuras = 0, first = Now() }
+    X.creatures[cid] = c
+    X.nCreatures = X.nCreatures + 1
+    return c
+end
+
+-- the instance, its scenario step and criteria, the Mythic+ season. Called by Anchor (probe on / resume, zone change, encounter
+-- start, probe off) and by every /xuidev instance scan. The arguments are GetInstanceInfo values already checked by V.
+IX.Context = function(instanceID, name, itype, diff)
+    InstData()
+    local key = (type(instanceID) == "number") and instanceID or "unknown"
+    IX.inst = key
+    local rec = X.instances[key]
+    if not rec then rec = { diffs = {} }; X.instances[key] = rec end
+    if type(name) == "string" and Real(name) then rec.name = name end
+    if type(itype) == "string" and Real(itype) then rec.type = itype end
+    if type(diff) == "number" then IBump(rec.diffs, diff) end
+    rec.last = Now()
+    rec.cm = R1("C_ChallengeMode.GetActiveChallengeMapID", NS("C_ChallengeMode", "GetActiveChallengeMapID"))
+    local stK, rK = Call("C_ChallengeMode.GetActiveKeystoneInfo", NS("C_ChallengeMode", "GetActiveKeystoneInfo"))
+    rec.keyLevel = Res(stK, rK, 1)
+    local stS, rS = Call("C_ScenarioInfo.GetScenarioStepInfo", NS("C_ScenarioInfo", "GetScenarioStepInfo"))
+    local nCrit = ResF(stS, rS, "numCriteria")
+    ITally("scenario.numCriteria", nCrit)
+    if type(nCrit) == "number" and nCrit > 0 then
+        local step = { stepID = ResF(stS, rS, "stepID"), title = ResF(stS, rS, "title", 80), weighted = ResF(stS, rS, "weightedProgress"),
+                       numCriteria = nCrit, criteria = {} }
+        local fn = NS("C_ScenarioInfo", "GetCriteriaInfo")
+        for i = 1, math.min(nCrit, CRITERIA_READ) do
+            local stC, rC = Call("C_ScenarioInfo.GetCriteriaInfo", fn, i)
+            local cr = {}
+            for _, k in ipairs(CRIT_FIELDS) do cr[k] = ResF(stC, rC, k, 80) end
+            ITally("scenario.criteriaID", cr.criteriaID)
+            step.criteria[i] = cr
+        end
+        rec.step = step
+    end
+    local stV, rV = Call("C_MythicPlus.GetCurrentSeasonValues", NS("C_MythicPlus", "GetCurrentSeasonValues"))
+    X.season = { display = Res(stV, rV, 1), milestone = Res(stV, rV, 2), reward = Res(stV, rV, 3),
+                 season = R1("C_MythicPlus.GetCurrentSeason", NS("C_MythicPlus", "GetCurrentSeason")), at = rec.last }
+    ITally("season.display", X.season.display)
+end
+
+local function Auras(c, unit)
+    local fn = NS("C_UnitAuras", "GetAuraDataByIndex")
+    for _, fl in ipairs(AURA_FILTERS) do
+        for i = 1, AURA_READ do
+            local st, r = Call("C_UnitAuras.GetAuraDataByIndex", fn, unit, i, fl[1])
+            if st ~= "ok" then ITally("aura.data", st); break end
+            local a = r[2]
+            if IsSecret(a) then ITally("aura.data", SECRET); break end
+            if type(a) ~= "table" then break end
+            local id = F(a, "spellId")
+            ITally("aura.spellId", id)
+            if type(id) == "number" then
+                local x = c.auras[id]
+                if not x then
+                    if c.nAuras >= PER_CREATURE then
+                        c.aurasMore = (c.aurasMore or 0) + 1
+                    else
+                        x = { n = 0, f = fl[2] }
+                        c.auras[id] = x
+                        c.nAuras = c.nAuras + 1
+                    end
+                end
+                if x then
+                    x.n = x.n + 1
+                    if x.name == nil then
+                        local nm = F(a, "name", 80)
+                        if type(nm) == "string" and Real(nm) then x.name = nm end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- a sighting: called at the end of Identity (section 6) with its checked reads. NR (plate removed) is the same mob again: skipped.
+IX.Seen = function(e, unit)
+    if e.e == "NR" then return end
+    InstData()
+    if e.pl ~= false then
+        if e.pl ~= true then X.skipped = X.skipped + 1 end   -- not known to be a non-player: never filed
+        return
+    end
+    local cid = e.cid
+    ITally("creatureID", cid)
+    if type(cid) ~= "number" then
+        local key = IX.inst or "unknown"
+        local h = X.hidden[key]
+        if not h then h = { o = 0, c = 0 }; X.hidden[key] = h end
+        if CUR.c == true then h.c = h.c + 1 else h.o = h.o + 1 end
+        IBump(h, (cid == SECRET) and "secret" or "none")
+        return
+    end
+    local c = Creature(cid)
+    if not c then return end
+    c.n = c.n + 1
+    if CUR.c == true then c.nc = c.nc + 1 end
+    if type(e.name) == "string" and Real(e.name) then c.name = e.name end
+    if type(e.cls) == "string" and Real(e.cls) then c.cls = e.cls end
+    IBump(c.inst, IX.inst or "unknown")
+    if IX.enc then IBump(c.enc, IX.enc) end
+    c.last = Now()
+    local st, r = Call("C_ScenarioInfo.GetUnitCriteriaProgressValues", NS("C_ScenarioInfo", "GetUnitCriteriaProgressValues"), unit)
+    local a, p = Res(st, r, 1), Res(st, r, 2)
+    ITally("mplus.actualValue", a)
+    if a == SECRET or p == SECRET then
+        c.mp = c.mp or { n = 0, s = 0 }
+        c.mp.s = c.mp.s + 1
+    elseif type(a) == "number" then
+        local mp = c.mp or { n = 0, s = 0 }
+        c.mp = mp
+        if type(mp.a) == "number" and mp.a ~= a then mp.varies = true end
+        mp.a = a
+        if type(p) == "number" then mp.p = p end
+        mp.n = mp.n + 1
+    end
+    Auras(c, unit)
+end
+
+-- an enemy cast (section 4 / 5 already checked the spell ID): filed under its caster's creature ID when that is readable
+IX.Cast = function(unit, id, code)
+    if not CAST_FILED[code] then return end
+    InstData()
+    if R1("UnitIsPlayer", UnitIsPlayer, unit) ~= false then return end
+    local cid = R1("UnitCreatureID", UnitCreatureID, unit)
+    ITally("cast.creatureID", cid)
+    if type(id) ~= "number" then return end
+    if type(cid) == "number" then
+        local c = Creature(cid)
+        if not c then return end
+        if c.casts[id] == nil then
+            if c.nCasts >= PER_CREATURE then c.castsMore = (c.castsMore or 0) + 1; return end
+            c.nCasts = c.nCasts + 1
+        end
+        c.casts[id] = (c.casts[id] or 0) + 1
+    else
+        local key = IX.inst or "unknown"
+        local o = X.orphanCasts[key]
+        if not o then o = { n = 0, ids = {} }; X.orphanCasts[key] = o end
+        if o.ids[id] == nil then
+            if o.n >= ORPHAN_CAP then return end
+            o.n = o.n + 1
+        end
+        o.ids[id] = (o.ids[id] or 0) + 1
+    end
+end
+
+-- /xuidev instance: read the instance, then every unit visible now (Identity files each one through IX.Seen)
+local function InstScan()
+    Begin()
+    InstData()
+    local st, r = Call("GetInstanceInfo", GetInstanceInfo)
+    IX.Context(Res(st, r, 8), Res(st, r, 1, 80), Res(st, r, 2), Res(st, r, 3))
+    local n = 0
+    for _, unit in ipairs(SCAN_UNITS) do
+        if R1("UnitExists", UnitExists, unit) == true then
+            local e = Entry("IS", unit)
+            Identity(e, unit)
+            n = n + 1
+        end
+    end
+    X.scans = X.scans + 1
+    return n
+end
+
+local function InstLines()
+    InstData()
+    local nName, nMp, nCast, nAura = 0, 0, 0, 0
+    for _, c in pairs(X.creatures) do
+        if c.name then nName = nName + 1 end
+        if c.mp and c.mp.n > 0 then nMp = nMp + 1 end
+        if c.nCasts > 0 then nCast = nCast + 1 end
+        if c.nAuras > 0 then nAura = nAura + 1 end
+    end
+    local hO, hC = 0, 0
+    for _, h in pairs(X.hidden) do hO = hO + h.o; hC = hC + h.c end
+    local insts = {}
+    for k, rec in pairs(X.instances) do insts[#insts + 1] = ("%s (%s)"):format(tostring(rec.name or "?"), tostring(k)) end
+    table.sort(insts)
+    local s = X.season or {}
+    return {
+        ("instance: %d creatures%s: %d with a name, %d with a Mythic+ count, %d with spells seen cast, %d with auras seen."):format(
+            X.nCreatures, X.dropped > 0 and (" (" .. X.dropped .. " more not kept)") or "", nName, nMp, nCast, nAura),
+        ("creature ID hidden on %d sightings out of combat and %d in combat. Collecting: %s."):format(hO, hC,
+            P.on and "ON, with the probe" or "only when you type /xuidev instance (/xuidev probe on collects as you play)"),
+        ("instances: %s. Mythic+ season: display %s, milestone %s, reward %s."):format(#insts > 0 and table.concat(insts, ", ") or "none yet",
+            tostring(s.display), tostring(s.milestone), tostring(s.reward)),
+    }
+end
+IX.Lines = InstLines
+IX.Scan = InstScan
 
 -------------------------------------------------------------------------------
 -- Commands
@@ -1123,6 +1416,8 @@ function P.StatusLines()
     end
     L[#L + 1] = ("11 secrecy list: %d spells (%s from your rules); cast secrecy never %d, always %d, contextual %d, other %d."):format(
         nSp, tostring(D.ruleSpells or "not read yet"), lv.never, lv.always, lv.contextual, lv.other)
+    local xi = GD.DB().instance
+    L[#L + 1] = ("12 creatures filed for /xuidev instance: %d."):format(type(xi) == "table" and xi.nCreatures or 0)
     local refused = {}
     for ev in pairs(D.notRegistered or {}) do refused[#refused + 1] = ev end
     if #refused > 0 then table.sort(refused); L[#L + 1] = "events the game refused: " .. table.concat(refused, ", ") .. "." end
@@ -1158,6 +1453,34 @@ function GD.Probe(arg)
     if sub == "" then Say(USAGE) end
 end
 GD.ProbeState = P   -- (tests read it)
+
+-- /xuidev instance [status | clear] (section 12)
+local INST_USAGE = "usage: /xuidev instance (read the units you can see now, then the summary) | status | clear"
+function GD.Instance(arg)
+    local sub = (arg or ""):match("^(%S*)") or ""
+    local ok, err = pcall(function()
+        if sub == "" or sub == "scan" then
+            local n = IX.Scan()
+            GD.Say(("instance: read %d unit(s) you can see now."):format(n))
+            for _, l in ipairs(IX.Lines()) do GD.Say(l) end
+        elseif sub == "status" then
+            for _, l in ipairs(IX.Lines()) do GD.Say(l) end
+        elseif sub == "clear" then
+            GD.DB().instance = nil
+            GD.Say("instance: cleared.")
+        else
+            GD.Say(INST_USAGE)
+        end
+    end)
+    if not ok then
+        pcall(Fail, "instance " .. sub, err)
+        GD.Say("instance: that command failed and was logged: " .. tostring(V(err, 200)))
+    end
+end
+function GD.InstanceSummary()
+    local x = GD.DB().instance
+    return type(x) == "table" and x.nCreatures or 0
+end
 
 -- resume after a reload when the probe was on (the only thing that runs while it is off: this one ADDON_LOADED check)
 local loader = CreateFrame("Frame")
