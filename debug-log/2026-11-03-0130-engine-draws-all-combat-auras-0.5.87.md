@@ -1,6 +1,0 @@
-# All combat auras through the combat engine, guarded (XayaUI 0.5.87 / engine 0.3.0, fork: main)
-Logged 2026-11-03-0130 UTC. GitHub issue: #308. Xaya: "all combat-related auras should be handled through the engine"; "just use the combat engine for everything IF AND ONLY IF IT DOES NOT NUKE PERFORMANCE".
-Change: engine drawing is automatic for enabled Buff-present rules directly in dynamic groups (no tag, no switch); /xuiengine off|reset <group>, /xuiengine auto on|off. Performance guard on the engine addon's own CPU (game meter, 1.0 ms per frame, 3 checks of 5 s) turns automatic mode off and records the trip. XayaUI skips text/fade work for engine-drawn rules; ownership cached per tick (a cue's parent lookup scans the rule list).
-Limits: no fades / flash / wipe / glow / condition changes on engine-drawn icons (listed by /xuiengine); static groups, centered growth, ungrouped rules stay with XayaUI.
-Unverified in game: everything above, the meter's default state and unit, and whether the container's own cost (Blizzard code, not counted against this addon) is acceptable; /xui perf shows Blizzard_AuraContainer in its top-8 list if it costs.
-Files: XayaUI_CombatEngine/AuraDisplay.lua, XayaUI_CombatEngine/README.md, XayaUI_CombatEngine/XayaUI_CombatEngine.toc, Engine.lua, tests/aura_display_run.py, XayaUI.toc, MANIFEST.md5.
