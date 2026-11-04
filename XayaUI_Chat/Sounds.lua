@@ -20,14 +20,67 @@ C.SOUND_GROUPS = GROUP_OF
 
 local lastPlayed = {}
 
-C.OnMessage(function(event, _, author, _, _, _, _, _, _, channelBase)
+-- Whisper sound overrides (Xaya 2026-11-04: "specific sound overrides for specific bnet/character whispers/favorites"). A whisper
+-- from a listed sender (a character "Name" / "Name-Realm", or a Battle.net "BattleTag#1234" / "BattleTag") or from a Battle.net
+-- favorite plays that sound INSTEAD of the tab sounds. Every whisper event is SecretInChatMessagingLockdown (docs/reference/api/
+-- events.md:289 / 343), so during chat lockdown (C_ChatInfo.InChatMessagingLockdown, namespaces.md:827) or with any secret value no
+-- override is looked up and the tab sounds play as before. Battle.net: C_BattleNet.GetAccountInfoByID(bnSenderID) gives battleTag and
+-- isFavorite (structures.md:565 / 572). Blizzard has no friend groups of its own (only fixed friend tags), so groups made by another
+-- addon cannot be read here.
+local function Low(v) return (type(v) == "string" and not C.IsSecret(v)) and v:lower():gsub("^%s+", ""):gsub("%s+$", "") or nil end
+function C.WhisperOverride(event, author, bnID)
     local s = S()
-    if not (s and s.soundsOn) then return end
+    local ws = s and s.whisperSounds
+    if not (ws and s.whisperSoundsOn ~= false) then return nil end
+    if C_ChatInfo and C_ChatInfo.InChatMessagingLockdown then
+        local ok, locked = pcall(C_ChatInfo.InChatMessagingLockdown)
+        if not ok or locked ~= false then return nil end   -- locked, or the game cannot say
+    end
+    local keys, fav = {}, false
+    if event == "CHAT_MSG_BN_WHISPER" then
+        if type(bnID) ~= "number" or C.IsSecret(bnID) or not (C_BattleNet and C_BattleNet.GetAccountInfoByID) then return nil end
+        local ok, info = pcall(C_BattleNet.GetAccountInfoByID, bnID)
+        if not (ok and type(info) == "table") then return nil end
+        local tag = Low(info.battleTag)
+        if tag then keys[#keys + 1] = tag; keys[#keys + 1] = tag:match("^([^#]+)") end
+        fav = (info.isFavorite == true)
+    elseif event == "CHAT_MSG_WHISPER" then
+        local a = Low(author)
+        if not a then return nil end
+        keys[#keys + 1] = a; keys[#keys + 1] = a:match("^([^%-]+)")
+    else
+        return nil
+    end
+    for _, e in ipairs(ws.list or {}) do
+        local who = Low(e.who)
+        if e.enabled ~= false and who and who ~= "" and e.value and e.value ~= "" then
+            for _, k in ipairs(keys) do if k == who then return e end end
+        end
+    end
+    local f = ws.fav
+    if fav and f and f.enabled and f.value and f.value ~= "" then return f end
+    return nil
+end
+
+C.OnMessage(function(event, _, author, _, _, _, _, _, _, channelBase, _, _, _, bnID)
+    local s = S()
+    if not s then return end
     local group = GROUP_OF[event]
     if not group then return end                                    -- includes outgoing whispers: no group, no sound
     if C.IsMe(author) then return end
     if not s.soundsInCombat and InCombatLockdown and InCombatLockdown() then return end
     local now = GetTime()
+    if group == "WHISPER" or group == "BN_WHISPER" then
+        local ov = C.WhisperOverride(event, author, bnID)
+        if ov then
+            if (now - (lastPlayed.whisper or 0)) > 0.25 then
+                lastPlayed.whisper = now
+                if ns.PlaySound then pcall(ns.PlaySound, ov) end
+            end
+            return   -- instead of the tab sounds
+        end
+    end
+    if not s.soundsOn then return end
     local played = {}
     for _, f in ipairs(C.Frames()) do
         local id = f.GetID and f:GetID()
