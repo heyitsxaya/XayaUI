@@ -4232,8 +4232,10 @@ local function BuildFolder(k, f)
     end
     local isVisual = function() return ns.KindHas({ folder = f.id }, "visual") end
     local groupArgs = g.args
-    local dispArgs = take({ "arrange" })
+    local dispArgs = take({ "arrange", "pausePv" })
     if dispArgs.arrange then dispArgs.arrange.order = 9 end
+    -- Xaya, 2026-11-04: "Pause preview animations" belongs on the Display tab (as on a rule's Display tab), not on the Group tab
+    if dispArgs.pausePv then dispArgs.pausePv.order = 0.5 end
     -- 0.6.4 (#341, group display): the group as a whole first, then every display cue inside, edited live (DisplayTab.lua)
     dispArgs.placement = { type = "group", inline = true, order = 1, name = "Whole group: opacity, scale & layer", args = dispFromContainer }
     dispArgs.note = { type = "description", order = 0, width = "full", fontSize = "small",

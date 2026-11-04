@@ -58,7 +58,7 @@ Issue numbers refer to this repository. Small interface tweaks, wording changes,
 |---|---|---|---|
 | M5 | Glow styles, icon zoom, border, shape and mask, manual width and height, aspect-ratio lock | Partly overlapping | Aspect ratio shipped in 0.5.99 (#313); outline and glow are tracked in #64. Remaining parity gaps need an audit. |
 | #125 | Frame strata and level conditions for texture and text | Open | A pre-0.6.0 build of it (old layout) is kept on branch `archive/2026-11-04` (commit 6736aaa, see its ARCHIVE.md); to port, not merge. |
-| #195, #260 | Per-cue modifiers per condition (tint, desaturate, glow, opacity, strata) | Built, with an open defect | #260 reports that modifiers do not apply. |
+| #195, #260 | Per-cue modifiers per condition (tint, desaturate, glow, opacity, strata) | Built; the #260 defect fixed in core 0.6.19, unverified in game (QA B48) | Engine-drawn displays show opacity, grey and tint; glow, strata and dynamic-group members are not drawn by the engine (AuraDisplay.lua header). |
 | #270, #271 | Icon shapes (cropped, diamond, circle, square); icon size separate from display size | Candidate | |
 | M6c, #283 | Hover tooltip on every cue | Built per #283, issue open | Default OFF; hover-enabled frames block mouseover casting beneath them. |
 | #281 | Tooltip IDs: show the matching aura ID on item and spell tooltips | Built, issue open | |
@@ -84,10 +84,10 @@ Issue numbers refer to this repository. Small interface tweaks, wording changes,
 
 | ID | Feature | Status | Notes |
 |---|---|---|---|
-| #280, #308 | Combat aura display engine draws tagged groups, then every combat aura, with a performance guard | Built (0.5.87 and later), issues open | The engine lives in the sibling addon `XayaUI_CombatEngine`. |
-| #309 | Full review: refactor and optimize the engine for CPU and memory | Open | |
+| #280, #308 | Combat aura display engine draws tagged groups, then every combat aura, with a performance guard | Built (0.5.87 and later; guard rewritten in 0.6.13), unverified in game (QA B10-B23, B38) | The engine lives in core, `XayaUI/Combat/` (there is no separate `XayaUI_CombatEngine` addon). #280 is superseded by #308 (drawing is automatic, no tagging). |
+| #309 | Full review: refactor and optimize the engine for CPU and memory | Stages 1-2 done (0.5.88, 0.5.92); event-to-rule routing (AURA-PLAN phase 6) not started | Waits on an in-game perf capture (#307, QA B56) so the routing can be measured before and after. |
 | #310 | Engine-drawn groups follow parent-group position and lock / unlock | Built (0.5.88), issue open | |
-| #114 to #119, #298 | Performance items: action bar rescans, per-tick frame lookups, closures in text updates, linear lookups, Cooldown Manager rescans | Open | |
+| #114 to #119, #298 | Performance items: action bar rescans, per-tick frame lookups, closures in text updates, linear lookups, Cooldown Manager rescans | Done in code (0.5.83, 0.5.86, 0.5.88, 0.5.92), unverified in game (QA B16, B50, B56) | #115 (up to 50 ms between a game change and its sound) still waits on decision D7. #121's shadowed `rem` removed in core 0.6.34. |
 | #227 | Split the options into a sibling addon `XayaUI_Options` | Candidate | Analysis outline only. |
 | RM-QOL | Move everything under the QoL UI Updates tab into its own separate QoL addon directory, with XayaUI as a dependency, so users can enable or disable it independently | Planned by Xaya, structure not yet mapped | Xaya is mapping the structure herself before any build. Open question: whether Tooltips moves, since it was folded into core on 2026-11-02. |
 | #123 | Refactor: split the largest options file, isolate dormant QoL code | Candidate | |
