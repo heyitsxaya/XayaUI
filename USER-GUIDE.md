@@ -158,6 +158,24 @@ These are sets: with nothing ticked there is no restriction. Ticking items means
 - **Specialization** and **Role**: both have an explicit "All" choice that restricts nothing. Specialization lists every specialization of every class (shown as class and spec), whatever character you are logged in on, and you can tick several. Role allows one choice.
 - **Hero talents:** the active hero talent tree. Only matches when a hero tree is actually chosen.
 
+### 3.3a Zones, instances, bosses and items (ID lists, core 0.6.28)
+
+A box on the Load tab, **Zones, Instances, Bosses and Items**, holds six lists. It starts closed unless one of them holds IDs. Each list
+is a text box of the game's IDs, separated by commas or spaces. An empty box restricts nothing; a minus before an ID (`-2552`) means
+"not there". Most rows show where you are now (**Here: ...**) with an **Add current** button.
+
+| List | Matches | Notes |
+|---|---|---|
+| **Zones (map IDs)** | the map you are on, or any map it sits in | A city's room is inside the city, the zone and the continent, so one zone ID covers everything in it. |
+| **Instances (instance IDs)** | the instance you are in | In the open world this is the continent's ID. |
+| **Difficulties (difficulty IDs)** | the instance's difficulty | 0 = open world. **Add a difficulty** lists the game's difficulties by name. |
+| **Instance sizes (largest group)** | the largest group the instance allows | As the game reports it; 0 = open world. |
+| **Boss encounters (encounter IDs)** | the boss encounter in progress | The ID arrives when the pull starts. After a /reload in the middle of a pull it is unknown until the next pull, so the rule does not load. **Add current** adds the boss you are fighting, or the last one pulled. |
+| **Items equipped (item IDs)** | any listed item being worn | A minus: only while that item is NOT worn. Use the item search next to it. |
+
+A value the game will not give (no map during a loading screen, for example) counts as unknown: a rule that needs it does not load.
+These lists are on rules only for now, not on a group's Load tab. `/xui status` prints the current values on its "place:" line.
+
 ### 3.4 Talents (also on the Load tab)
 
 Tick **Talents** to require talents; the list appears below.

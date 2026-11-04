@@ -1443,6 +1443,111 @@ end
 
 function ns.CurrentSpecID() local id = CurrentSpec(); return id end
 
+-- Load by zone, instance, difficulty, instance size, boss encounter and equipped item (Xaya 2026-11-04: "more load conditions we
+-- should include if they're supported by the current api"). None of these calls or event values is marked secret in the 12.1.5 API
+-- reference: GetInstanceInfo (docs/reference/api/globals.md:188), C_Map.GetBestMapForUnit / GetMapInfo (namespaces.md:3150 / 3166),
+-- C_Item.IsEquippedItem (namespaces.md:2814), ENCOUNTER_START / ENCOUNTER_END (events.md:560-562). Each read is still pcall'd and
+-- checked with issecret; a value the game will not give is unknown, and a rule that needs it does not load.
+-- A zone matches the map you are on and every map it sits in (a city's room is in the city, the zone and the continent), so one
+-- zone ID covers its sub-maps. The game has no call for the encounter in progress, so its ID comes from ENCOUNTER_START: after a
+-- /reload in the middle of a pull it is unknown until the next pull.
+local mapChains = {}
+local function MapChain(id)
+    local c = mapChains[id]
+    if c then return c end
+    c = { [id] = true }
+    local cur = id
+    for _ = 1, 16 do
+        local ok, info = pcall(C_Map.GetMapInfo, cur)
+        local p = ok and type(info) == "table" and info.parentMapID
+        if type(p) ~= "number" or issecret(p) or p <= 0 or c[p] then break end
+        c[p] = true; cur = p
+    end
+    mapChains[id] = c
+    return c
+end
+local encNow, encLast, equipGen = nil, nil, 0
+function ns.LastEncounter() return encLast end
+function ns.LoadEvent(event, a1, a2)
+    if event == "ENCOUNTER_START" then
+        if type(a1) == "number" and not issecret(a1) then
+            encNow = { id = a1, name = (type(a2) == "string" and not issecret(a2)) and a2 or nil }
+            encLast = encNow
+        else
+            encNow = nil
+        end
+    elseif event == "ENCOUNTER_END" or event == "PLAYER_ENTERING_WORLD" then
+        encNow = nil
+    elseif event == "PLAYER_EQUIPMENT_CHANGED" then
+        equipGen = equipGen + 1
+    end
+    if ns.MarkStateDirty then ns.MarkStateDirty() end
+end
+if CreateFrame then
+    local lf = CreateFrame("Frame")
+    for _, e in ipairs({ "ENCOUNTER_START", "ENCOUNTER_END", "PLAYER_ENTERING_WORLD", "PLAYER_EQUIPMENT_CHANGED" }) do pcall(lf.RegisterEvent, lf, e) end
+    if lf.SetScript then lf:SetScript("OnEvent", function(_, event, ...) ns.LoadEvent(event, ...) end) end
+end
+local function ReadPlace(ctx)
+    if C_Map and C_Map.GetBestMapForUnit then
+        local ok, m = pcall(C_Map.GetBestMapForUnit, "player")
+        if ok and type(m) == "number" and not issecret(m) then
+            ctx.mapID = m
+            if C_Map.GetMapInfo then ctx.maps = MapChain(m) else ctx.maps = { [m] = true } end
+        end
+    end
+    local ok, _, _, diff, _, size, _, _, instID = pcall(GetInstanceInfo)
+    if ok then
+        if type(diff) == "number" and not issecret(diff) then ctx.difficultyID = diff end
+        if type(size) == "number" and not issecret(size) then ctx.instSize = size end
+        if type(instID) == "number" and not issecret(instID) then ctx.instanceID = instID end
+    end
+    if encNow then ctx.encounterID = encNow.id
+    elseif ctx.encounter == false then ctx.encounterID = 0 end   -- the game says no boss encounter is in progress
+end
+-- Where you are now, with the game's names, for the settings' "Add current" buttons. Any value the game will not give is nil.
+function ns.LoadPlaceNow()
+    local ctx = ns.ReadContext()
+    local out = { mapID = ctx.mapID, instanceID = ctx.instanceID, difficultyID = ctx.difficultyID, size = ctx.instSize,
+        encounterID = ctx.encounterID }
+    if ctx.mapID and C_Map and C_Map.GetMapInfo then
+        local ok, info = pcall(C_Map.GetMapInfo, ctx.mapID)
+        if ok and type(info) == "table" and type(info.name) == "string" and not issecret(info.name) then out.mapName = info.name end
+    end
+    local ok, name, _, _, dname = pcall(GetInstanceInfo)
+    if ok then
+        if type(name) == "string" and not issecret(name) then out.instanceName = name end
+        if type(dname) == "string" and not issecret(dname) and dname ~= "" then out.difficultyName = dname end
+    end
+    if encNow then out.encounterName = encNow.name end
+    return out
+end
+-- An ID list ({ ["2552"] = true, ["2601"] = "not" }) against a set of current IDs (several for a zone and its parent maps, one for
+-- the rest): no current ID marked "not", and when any IDs are ticked, one of them is current.
+local function IdsMatch(set, current)
+    local hasOn, hit = false, false
+    for k, st in pairs(set) do
+        local n = tonumber(k)
+        if st == "not" and n and current[n] then return false end
+        if st == true then hasOn = true; if n and current[n] then hit = true end end
+    end
+    return (not hasOn) or hit
+end
+local function EquippedMatch(set)
+    local fn = (C_Item and C_Item.IsEquippedItem) or IsEquippedItem
+    if type(fn) ~= "function" then return nil end
+    local worn, unknown = {}, false
+    for k in pairs(set) do
+        local n = tonumber(k)
+        if n then
+            local ok, v = pcall(fn, n)
+            if not ok or v == nil or issecret(v) then unknown = true else worn[n] = v and true or nil end
+        end
+    end
+    if unknown then return nil end
+    return IdsMatch(set, worn)
+end
+
 function ns.ReadContext()
     local ctx = {}
     for _, c in ipairs(ns.LOAD_TRI) do
@@ -1463,11 +1568,14 @@ function ns.ReadContext()
         local okH, hid = pcall(C_ClassTalents.GetActiveHeroTalentSpec)
         if okH and not issecret(hid) then ctx.hero = tonumber(hid) or 0 end
     end
+    ReadPlace(ctx)
     -- every value a load check reads, in one string: equal strings = equal load answers (ns.CheckContext memo)
     local parts = {}
     for i, c in ipairs(ns.LOAD_TRI) do local v = ctx[c.key]; parts[i] = (v == nil) and "?" or (v and "1" or "0") end
     parts[#parts + 1] = tostring(ctx.instanceType); parts[#parts + 1] = tostring(ctx.specID)
     parts[#parts + 1] = tostring(ctx.role); parts[#parts + 1] = tostring(ctx.hero); parts[#parts + 1] = tostring(ctx.class)
+    parts[#parts + 1] = tostring(ctx.mapID); parts[#parts + 1] = tostring(ctx.instanceID); parts[#parts + 1] = tostring(ctx.difficultyID)
+    parts[#parts + 1] = tostring(ctx.instSize); parts[#parts + 1] = tostring(ctx.encounterID); parts[#parts + 1] = tostring(equipGen)
     ctx.sig = table.concat(parts, "|")
     return ctx
 end
@@ -1574,6 +1682,18 @@ function CheckContextRaw(rule, ctx)
     end
     if load.heroUse ~= false and ns.SetActive(load.heroes) then
         checks[#checks + 1] = { key = "hero talents", ok = known(ctx.hero, ctx.hero ~= nil and ctx.hero > 0 and ns.SetMatch(load.heroes, tostring(ctx.hero))) }
+    end
+    -- ID lists (zone, instance, difficulty, size, encounter, equipped item); an empty or missing list restricts nothing
+    if ns.SetActive(load.mapIDs) then
+        checks[#checks + 1] = { key = "zone", ok = known(ctx.maps, ctx.maps and IdsMatch(load.mapIDs, ctx.maps)) }
+    end
+    for _, d in ipairs({ { "instanceIDs", "instanceID", "instance ID" }, { "difficulties", "difficultyID", "difficulty" },
+            { "sizes", "instSize", "instance size" }, { "encounterIDs", "encounterID", "encounter" } }) do
+        local set, v = load[d[1]], ctx[d[2]]
+        if ns.SetActive(set) then checks[#checks + 1] = { key = d[3], ok = known(v, v ~= nil and IdsMatch(set, { [v] = true })) } end
+    end
+    if ns.SetActive(load.equipped) then
+        checks[#checks + 1] = { key = "item equipped", ok = EquippedMatch(load.equipped) }
     end
     if #checks == 0 then return true end
     if load.mode == "any" then
@@ -1792,6 +1912,8 @@ function PrintStatusRaw()
         tostring(ctx.combat), tostring(ctx.group), tostring(ctx.raid), tostring(ctx.instance),
         tostring(ctx.instanceType), tostring(ctx.mythicPlus), tostring(ctx.encounter),
         tostring(ctx.mounted), tostring(ctx.specID), tostring(ctx.role)))
+    ns.Print(("place: map=%s instanceID=%s difficulty=%s size=%s encounterID=%s"):format(tostring(ctx.mapID), tostring(ctx.instanceID),
+        tostring(ctx.difficultyID), tostring(ctx.instSize), tostring(ctx.encounterID)))
     for i, r in ipairs(ns.rules) do
         local res, info = ns.Evaluate(r, ctx)
         ns.Print(("#%d %s [%s] result=%s | cd:%s(%s) buff:%s(%s via %s) ctx:%s talent:%s(known=%s)"):format(

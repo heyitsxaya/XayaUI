@@ -441,6 +441,126 @@ function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, use
     } }
 end
 
+-- ID-list load conditions (Xaya 2026-11-04: "more load conditions we should include if they're supported by the current api"; core
+-- 0.6.28, Conditions.lua). Each list is a set of IDs as text keys: true = one of these, "not" = never here. In the settings it is one
+-- text box: IDs separated by commas or spaces, a minus before an ID for "not" (e.g. "2339, -2552").
+function ns.LoadIdText(set)
+    local on, off = {}, {}
+    for k, st in pairs(set or {}) do
+        local n = tonumber(k)
+        if n then if st == "not" then off[#off + 1] = n elseif st == true then on[#on + 1] = n end end
+    end
+    table.sort(on); table.sort(off)
+    local out = {}
+    for _, n in ipairs(on) do out[#out + 1] = tostring(n) end
+    for _, n in ipairs(off) do out[#out + 1] = "-" .. n end
+    return table.concat(out, ", ")
+end
+function ns.LoadIdParse(text)
+    local set = {}
+    for neg, d in tostring(text or ""):gmatch("(%-?)(%d+)") do
+        local n = tonumber(d)
+        if n then set[tostring(n)] = (neg == "-") and "not" or true end
+    end
+    return next(set) and set or nil
+end
+-- The game's difficulties by name, for the "Add a difficulty" menu: every ID from 1 to 300 that GetDifficultyInfo names (read once).
+local diffChoices
+function ns.DifficultyChoices()
+    if diffChoices then return diffChoices[1], diffChoices[2] end
+    local v, o = {}, {}
+    if type(GetDifficultyInfo) == "function" then
+        for id = 1, 300 do
+            local ok, name, itype = pcall(GetDifficultyInfo, id)
+            if ok and type(name) == "string" and name ~= "" then
+                local kind = type(itype) == "string" and ns.INSTANCE_TYPES and ns.INSTANCE_TYPES[itype]
+                v[tostring(id)] = name .. "  (" .. id .. (kind and (", " .. kind) or "") .. ")"
+                o[#o + 1] = tostring(id)
+            end
+        end
+    end
+    diffChoices = { v, o }
+    return v, o
+end
+ns.LOAD_ID_ROWS = {
+    { field = "mapIDs", name = "Zones (map IDs)",
+      desc = "Loads only in these zones. A zone covers the maps inside it (a city in its zone, a room in its city), so the zone's or the continent's ID is enough.",
+      cur = function(p) return p.mapID, p.mapName end },
+    { field = "instanceIDs", name = "Instances (instance IDs)",
+      desc = "Loads only in these dungeons, raids or other instances, by the game's instance ID (in the open world it is the continent's).",
+      cur = function(p) return p.instanceID, p.instanceName end },
+    { field = "difficulties", name = "Difficulties (difficulty IDs)",
+      desc = "Loads only on these difficulties. 0 is the open world (no difficulty). Use the menu next to it to add one by its name.",
+      cur = function(p) return p.difficultyID, p.difficultyName end },
+    { field = "sizes", name = "Instance sizes (largest group)",
+      desc = "Loads only in instances of these sizes: the largest group the instance allows, as the game reports it. 0 is the open world.",
+      cur = function(p) return p.size end },
+    { field = "encounterIDs", name = "Boss encounters (encounter IDs)",
+      desc = "Loads only during these boss encounters. The game gives the ID when the pull starts, so after a /reload in the middle of a pull it is unknown until the next pull, and the rule does not load. Add current adds the boss you are fighting, or the last one you fought.",
+      cur = function(p)
+          if p.encounterID and p.encounterID > 0 then return p.encounterID, p.encounterName end
+          local last = ns.LastEncounter and ns.LastEncounter()
+          if last then return last.id, (last.name or "?") .. ", last pulled" end
+      end },
+    { field = "equipped", name = "Items equipped (item IDs)",
+      desc = "Loads while one of these items is equipped. A minus before an ID: only while that item is NOT equipped. Use the search next to it to add an item you own.",
+      cur = nil },
+}
+-- The rows of the "Zones, Instances, Bosses and Items" box. ld() returns the load table, changed() saves and redraws, locked() greys
+-- every row out (a group's Never / Always), searchBox is Options' item search.
+function ns.LoadIdRows(ld, changed, locked, searchBox)
+    local placeAt, place
+    local function Place()
+        local t = GetTime and GetTime() or 0
+        if placeAt ~= t then placeAt, place = t, (ns.LoadPlaceNow and ns.LoadPlaceNow()) or {} end
+        return place
+    end
+    local function add(field, id)
+        if not id then return end
+        local l = ld()
+        l[field] = l[field] or {}
+        l[field][tostring(id)] = true
+        changed()
+    end
+    local args = {
+        intro = { type = "description", order = 0, width = "full", fontSize = "small",
+            name = function()
+                if not ns.LoadPlaceNow then
+                    return "|cffff6060These need XayaUI core 0.6.28 or newer. Copy every XayaUI folder again, then restart the game.|r"
+                end
+                return "IDs separated by commas or spaces. A minus before an ID (-1234) means NOT there. An empty box restricts nothing."
+            end },
+    }
+    for i, r in ipairs(ns.LOAD_ID_ROWS) do
+        local f = r.field
+        args["ids_" .. f] = { type = "input", name = r.name, order = i, width = "double", desc = r.desc, disabled = locked,
+            get = function() return ns.LoadIdText(ld()[f]) end,
+            set = function(_, v) ld()[f] = ns.LoadIdParse(v); changed() end }
+        if r.cur then
+            args["now_" .. f] = { type = "description", order = i + 0.1, width = "normal", fontSize = "small",
+                name = function()
+                    local id, nm = r.cur(Place())
+                    if id == nil then return "Here: unknown" end
+                    return "Here: " .. (nm and (nm .. " (" .. id .. ")") or tostring(id))
+                end }
+            args["add_" .. f] = { type = "execute", name = "Add current", order = i + 0.2,
+                disabled = function() return locked() or r.cur(Place()) == nil end,
+                func = function() add(f, (r.cur(Place()))) end }
+        end
+        if f == "difficulties" then
+            args.pick_difficulties = { type = "select", name = "Add a difficulty", order = i + 0.3, width = "normal", disabled = locked,
+                values = function() local v = ns.DifficultyChoices(); return v end,
+                sorting = function() local _, o = ns.DifficultyChoices(); return o end,
+                get = function() return nil end,
+                set = function(_, v) add(f, tonumber(v)) end }
+        elseif f == "equipped" and searchBox then
+            local sb = searchBox(i + 0.3, function(id) add(f, id) end, "Add an item", "item")
+            if sb then sb.disabled = locked; args.search_equipped = sb end
+        end
+    end
+    return args
+end
+
 local function TriGroup(name, order, hiddenFn, getSet, choices, onChange)
     local function hasOn(set) for _, v in pairs(set) do if v == true then return true end end return false end
     local args = {
@@ -1667,6 +1787,24 @@ local function BuildRule(i, rule)
             return "|cffffd100Overridden by group " .. tostring(of and of.name) .. "|r: " .. (ov == "never" and "Never" or "Always")
                 .. ". Your own load settings below are kept and apply again if this rule leaves the group. Talents still apply."
         end }
+    -- Zones, instances, difficulties, sizes, boss encounters and equipped items (core 0.6.28): one ID list each, in a box that starts
+    -- closed unless a list holds IDs. A folder's Never / Always locks them like the other rows.
+    do
+        local ld = rule.load
+        local anyIds = false
+        for _, r in ipairs(ns.LOAD_ID_ROWS) do if ns.SetActive(ld[r.field]) then anyIds = true end end
+        bannerOpen[rule] = bannerOpen[rule] or {}
+        local bo = bannerOpen[rule]
+        if bo.loadIdsInit == nil then bo.loadIdsInit = true; if not anyIds then bo.loadIds = false end end
+        local body = ns.LoadIdRows(function() return rule.load end, function() Changed(rule); Notify() end,
+            function() return folderLoadOv() ~= nil end, SearchBox)
+        loadArgs.loadIds = { type = "group", inline = true, name = "Zones, Instances, Bosses and Items", order = 50, xuiRule = rule,
+            args = {
+                open = ns.ArrowToggle(rule, "loadIds", 1),
+                body = { type = "group", inline = true, name = "", order = 2,
+                    hidden = function() return not ns.ArrowOpen(rule, "loadIds") end, args = body },
+            } }
+    end
     local lockKeys = { "instanceTypes", "classes", "specs", "roles", "heroes" }
     for _, k in ipairs(loadModeKeys) do lockKeys[#lockKeys + 1] = k end
     for _, c in ipairs(ns.LOAD_TRI) do lockKeys[#lockKeys + 1] = "tri_" .. c.key end
