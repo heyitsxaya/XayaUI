@@ -49,6 +49,14 @@ function ns.BuildTooltipsTab(Notify)
                     function() return not TT.DB().forces.enabled end),
                 note = { type = "description", order = 9, name = "Crowd control, true sight and casts are not included: they need an enemy database that does not exist yet." },
             } },
+            formulas = { type = "group", name = "Formulas", order = 4, args = {
+                enabled = toggle(1, "Show formula lines on spell tooltips", "Out of combat only: the game hides stats and cooldown details in combat.", { "formulas", "enabled" }),
+                cooldown = toggle(2, "Cooldown and recharge", "The game's cooldown or recharge time divided by its rate (haste, when the rate matches your haste), checked against the time the tooltip prints. A spell that is not on cooldown shows only its base time: the game reports the rate only while it runs.", { "formulas", "cooldown" },
+                    function() return not TT.DB().formulas.enabled end),
+                damage = toggle(3, "Damage ratio", "Each damage number in the spell's text divided by your attack power (strength and agility characters) or spell power (intellect). The ratio already holds every bonus in that number (versatility, talents, auras), so it is not Blizzard's own coefficient. English game text only.", { "formulas", "damage" },
+                    function() return not TT.DB().formulas.enabled end),
+                note = { type = "description", order = 9, name = "Built only from numbers the game reports while you play. Blizzard's own spell coefficients are not readable by addons." },
+            } },
         },
     }
 end

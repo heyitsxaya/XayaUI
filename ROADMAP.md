@@ -15,7 +15,7 @@ Compiled 2026-11-03 against build 0.5.107; section 9 and the #155 row updated th
 **Reliability.** Statuses come from issue titles, labels, and project notes. They are not a fresh audit of the code. Items from the original milestone list (M0 to M12) carry statuses from a 2026-11-01 review, and several have been overtaken by later UI work. Where I could not tell, the note says so. Effort sizes (S, M, L) are estimates, not commitments.
 
 **Standing rules every item follows**
-- Game API only. No third-party addon code or data goes into XayaUI. Anything learned about classes, spells, or items comes from the game client at runtime (issue #290).
+- No third-party data (issue #290). Scope, per Xaya 2026-11-04: the rule applies ONLY to information officially marked as belonging to an addon or another third party, or obtained against Blizzard's terms. It does not forbid shipping game information. Strong preference: learn from the game directly at runtime; data observed in game through the addon API (for example a capture walkthrough in the developer plugin) may be shipped as a table.
 - Personal data stays local. Personal rules, buff lists, and anything about other players live only in the user's own saved settings and are excluded from profile export unless the user opts in.
 - Midnight secret values. Any read that can come back secret is wrapped, checked, and treated as unknown. A value that cannot be read is shown as unavailable, never guessed.
 - Options style: a dropdown never takes a whole row alone, labels stay short, and the explanation goes in the tooltip.

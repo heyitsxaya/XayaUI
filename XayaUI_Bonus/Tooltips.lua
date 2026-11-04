@@ -3,6 +3,7 @@
 --   1. ID lines: spell, item, aura, NPC, quest, currency, achievement, mount, toy, battle pet (+ optional icon ID)
 --   2. Item level of the player under the mouse (yourself: equipped; others: Inspect, cached)
 --   3. Enemy forces (Mythic+ count and percent) on hostile units, read live from the game
+--   4. Formula lines on spell tooltips (cooldown / recharge and damage), derived from live game values only (Bonus 0.6.2)
 -- Not here yet: crowd control, true sight, and casts need an enemy database that does not exist. That M+/instance data is meant to live in
 -- a separate optional sibling addon (data pack), not built; the base in this file never depends on it.
 --
@@ -31,6 +32,8 @@ TT.DEFAULTS = {
             quest = false, currency = false, achievement = false, mount = false, toy = false, battlepet = false },
     ilvl = { enabled = true, inspect = true, cacheSecs = 120 },
     forces = { enabled = true, onlyInDungeon = true, onlyMythicPlus = false },
+    -- spell tooltips: how the cooldown / recharge and the damage numbers come about, built from live game values (Bonus 0.6.2)
+    formulas = { enabled = true, cooldown = true, damage = true },
 }
 
 local function fill(dst, src)
@@ -180,7 +183,11 @@ end
 
 function TT.OnIDData(tooltip, data, kind)
     local db = TT.DB()
-    if not db.ids.enabled or not db.ids[kind.key] or type(data) ~= "table" then return end
+    if type(data) ~= "table" then return end
+    if kind.key == "spell" and TT.FormulaLines and readable(data.id) and type(data.id) == "number" then
+        pcall(TT.FormulaLines, tooltip, data.id, data)
+    end
+    if not db.ids.enabled or not db.ids[kind.key] then return end
     local id = data.id
     if not readable(id) or type(id) ~= "number" then return end
     AddLine(tooltip, kind.label .. ":", tostring(id))
@@ -203,6 +210,160 @@ function TT.OnIDData(tooltip, data, kind)
             if #auras == 0 and not same and db.ids.auraHint and kind.key == "spell" and TextHasDuration(id) then
                 tooltip:AddDoubleLine("Aura ID:", "not known yet", 1, 0.82, 0, 0.6, 0.6, 0.6)
             end
+        end
+    end
+end
+
+-------------------------------------------------------------------------------
+-- 1b. Formula lines on spell tooltips (Xaya 2026-11-04: "hover over abilities and see the formulas for how cooldowns and damage get
+-- calculated"; learn from direct runtime). The game does not expose Blizzard's own coefficients to addons, so every line here is built
+-- from numbers the game reports right now and says so:
+--   Recharge / Cooldown: the game's duration and rate (C_Spell.GetSpellCharges cooldownDuration + chargeModRate, or
+--     C_Spell.GetSpellCooldown duration + modRate while it is on cooldown) and your haste. The result is checked against the number the
+--     tooltip itself prints ("3.5 sec recharge"): "= tooltip" only when they agree. Base cooldown: GetSpellBaseCooldown.
+--   Damage: each "N <school> damage" in the spell's own text divided by your attack power (strength / agility characters) or spell
+--     power (intellect). The ratio holds every bonus already inside N (versatility, talents, auras); it is not Blizzard's coefficient.
+-- Out of combat only: stat and cooldown reads are secret in combat. Damage text is read only on English clients.
+-- TT.FormulaSource (optional, nil today) lets a learned table (the developer plugin, #339) add lines later without changing this code.
+-------------------------------------------------------------------------------
+local SCHOOL_INDEX = { physical = 1, holy = 2, fire = 3, nature = 4, frost = 5, shadow = 6, arcane = 7 }
+
+local function Num(v) if readable(v) and type(v) == "number" then return v end end
+local function Call(fn, ...) if type(fn) ~= "function" then return nil end local ok, a, b, c, d = pcall(fn, ...) if ok then return a, b, c, d end end
+local function Field(t, k) if type(t) ~= "table" then return nil end local ok, v = pcall(function() return t[k] end) if ok then return Num(v) end end
+
+-- 15386, 2.5, 1.5 -> "15,386", "2.5", "1.5"
+local function Grouped(n)
+    local s = (n % 1 == 0) and ("%d"):format(n) or ("%.1f"):format(n)
+    local int, frac = s:match("^(%d+)(.*)$")
+    if not int then return s end
+    int = int:reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
+    return int .. frac
+end
+local function Secs(x) return ((x % 1 == 0) and "%d s" or "%.1f s"):format(x) end
+
+-- the cooldown / recharge the tooltip itself prints, in seconds ("3.5 sec recharge", "12 sec cooldown", "2 min cooldown")
+function TT.TooltipCooldownText(data)
+    local lines = type(data) == "table" and data.lines
+    if type(lines) ~= "table" then return nil end
+    for _, ln in ipairs(lines) do
+        for _, k in ipairs({ "rightText", "leftText" }) do
+            local t = type(ln) == "table" and ln[k]
+            if type(t) == "string" and readable(t) then
+                local v, unit, what = t:match("([%d%.]+)%s*(%a+)%s+(%a+)")
+                v = tonumber(v)
+                if v and (what == "cooldown" or what == "recharge") then
+                    if unit == "min" then v = v * 60 elseif unit ~= "sec" then v = nil end
+                    if v then return v, what end
+                end
+            end
+        end
+    end
+end
+
+local function HastePct()
+    return Num(Call(UnitSpellHaste, "player")) or Num(Call(GetHaste))
+end
+
+-- one "Recharge:" or "Cooldown:" line, or nil when the game does not say enough
+function TT.CooldownFormula(id, data)
+    local shown, what = TT.TooltipCooldownText(data)
+    local dur, rate, label, extra
+    local ch = C_Spell and Call(C_Spell.GetSpellCharges, id)
+    local maxC = Field(ch, "maxCharges")
+    if maxC and maxC > 1 then
+        dur, rate, label = Field(ch, "cooldownDuration"), Field(ch, "chargeModRate") or 1, "Recharge:"
+        extra = ("  (%d charges)"):format(maxC)
+    else
+        local cd = C_Spell and Call(C_Spell.GetSpellCooldown, id)
+        local d, gcd = Field(cd, "duration"), type(cd) == "table" and cd.isOnGCD
+        if d and d > 0 and gcd ~= true then dur, rate, label = d, Field(cd, "modRate") or 1, "Cooldown:" end
+    end
+    local baseMS = Num(Call((C_Spell and C_Spell.GetSpellBaseCooldown) or GetSpellBaseCooldown, id))
+    local base = baseMS and baseMS > 0 and baseMS / 1000 or nil
+    if not dur or dur <= 0 or not rate or rate <= 0 then
+        -- not on cooldown (its rate is only reported while it runs): the base is all the game gives
+        if base then return "Cooldown:", Secs(base) .. " base; haste shows while it is on cooldown" end
+        return nil
+    end
+    local eff = dur / rate
+    local h = HastePct()
+    local why = (h and math.abs(rate - (1 + h / 100)) < 0.01) and (" (haste %.1f%%)"):format(h) or " (rate)"
+    local text
+    if math.abs(rate - 1) < 0.001 then text = Secs(dur) .. "  (no haste or rate change)"
+    else text = ("%s ÷ %.2f%s = %.1f s"):format(Secs(dur), rate, why, eff) end
+    if base and math.abs(base - dur) > 0.05 then text = text .. ("; base %s"):format(Secs(base)) end
+    if shown then
+        if math.abs(shown - eff) <= 0.06 then text = text .. " = tooltip"
+        else text = text .. ("; tooltip says %s"):format(Secs(shown)) end
+    end
+    return label, text .. (extra or "")
+end
+
+-- AP for strength / agility characters, spell power (of that school) for intellect ones; nil when unreadable
+local function PowerFor(school)
+    local str, agi, int = Num(select(2, Call(UnitStat, "player", 1))), Num(select(2, Call(UnitStat, "player", 2))), Num(select(2, Call(UnitStat, "player", 4)))
+    if not (str and agi and int) then return nil end
+    if int > math.max(str, agi) then
+        local sp = Num(Call(GetSpellBonusDamage, SCHOOL_INDEX[school] or 1))
+        if sp and sp > 0 then return sp, "spell power" end
+        return nil
+    end
+    local b, p, n = Call(UnitAttackPower, "player")
+    b, p, n = Num(b), Num(p) or 0, Num(n) or 0
+    if b and b + p + n > 0 then return b + p + n, "attack power" end
+end
+
+-- every "N <school> damage" in the spell text: { { n =, school =, over = "9 sec" | nil }, ... } (English text only)
+function TT.DamageNumbers(text)
+    local out = {}
+    if type(text) ~= "string" or not readable(text) then return out end
+    local pos = 1
+    while #out < 4 do
+        local _, e, num, school = text:find("(%d[%d,%.]*)%s+(%a+)%s+damage", pos)
+        if not e then break end
+        local n = tonumber((num:gsub(",", "")))
+        school = school:lower()
+        if n and n > 0 and SCHOOL_INDEX[school] then
+            -- "over 9 sec" counts only when it follows this number directly, never a later one
+            out[#out + 1] = { n = n, school = school, over = text:sub(e + 1):match("^%s+over%s+([%d%.]+%s*sec)") }
+        end
+        pos = e + 1
+    end
+    return out
+end
+
+function TT.DamageFormulas(id)
+    local loc = Call(GetLocale)
+    if type(loc) ~= "string" or loc:sub(1, 2) ~= "en" then return {} end
+    local desc = C_Spell and Call(C_Spell.GetSpellDescription, id)
+    local out = {}
+    for _, d in ipairs(TT.DamageNumbers(desc)) do
+        local pow, name = PowerFor(d.school)
+        if pow then
+            local school = d.school:sub(1, 1):upper() .. d.school:sub(2)
+            out[#out + 1] = ("%s %s%s ÷ %s %s = %.2f"):format(Grouped(d.n), school, d.over and (" over " .. d.over) or "",
+                Grouped(pow), name, d.n / pow)
+        end
+    end
+    return out
+end
+
+function TT.FormulaLines(tooltip, id, data)
+    local f = TT.DB().formulas
+    if not f.enabled then return end
+    if InCombatLockdown and InCombatLockdown() then return end   -- stats and cooldowns are secret in combat
+    if f.cooldown then
+        local label, text = TT.CooldownFormula(id, data)
+        if label then AddLine(tooltip, label, text) end
+    end
+    if f.damage then
+        for _, t in ipairs(TT.DamageFormulas(id)) do AddLine(tooltip, "Damage ratio:", t) end
+    end
+    if type(TT.FormulaSource) == "function" then
+        local ok, extra = pcall(TT.FormulaSource, id)
+        if ok and type(extra) == "table" then
+            for _, l in ipairs(extra) do if type(l) == "table" and l[1] then AddLine(tooltip, tostring(l[1]), tostring(l[2] or "")) end end
         end
     end
 end
