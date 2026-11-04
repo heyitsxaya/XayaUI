@@ -21,6 +21,7 @@ be marked in `docs/reference/content/instances.json` afterwards.
 window"): this branch also builds `/xuidev stats` (ratings and their percent conversion, out of combat) and `/xuidev tooltips`
 (tooltip lines of the spells and items XayaUI's rules use; Blizzard text, kept in the player's saved file only), in their own new
 files, by a parallel sub-agent. Still out of scope: item -> aura confirmation.
+**21:10 UTC:** Xaya stopped that sub-agent before it finished; stats and tooltips are not in 0.7.1 and stay on the list.
 
 ## Files this branch touches (the other session: please avoid these)
 - `XayaUI_DevAssist/*` (code, `.toc` version 0.7.0 -> 0.7.1)

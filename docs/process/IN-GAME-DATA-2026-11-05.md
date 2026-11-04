@@ -71,8 +71,6 @@ are kept in full. To keep the dummy part too, do step 11 and copy the file aside
 
 ## Other captures worth running the same morning (all optional)
 Each writes into the same file. Run them out of combat.
-- `/xuidev stats` (0.7.1): your ratings and the percent each gives. Once is enough; once more after a gear change if you like.
-- `/xuidev tooltips` (0.7.1): the tooltip text of the spells and items your XayaUI rules use. Once is enough.
 - `/xuidev toolkit`: Character Toolkit checks. It records your spells' base global cooldown, the global cooldown now, each item's
   durability and repair cost, the item levels the game builds for one of your items, an item's stats with and without gems, and
   whether the stat pane is there. Run it once away from a vendor and once while talking to a repair vendor.
