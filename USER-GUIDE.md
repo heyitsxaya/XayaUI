@@ -547,6 +547,15 @@ The list button (three bulleted lines) shows every note in the box at once; clic
 
 **Where:** Bonus Features > Notepad (XayaUI Bonus Features), or `/xui notes` (also `/xui notepad`), which shows or hides the box. Drag the title bar to move and the bottom-right corner to resize; **Lock** stops both.
 
+### 12.4b Calculator
+
+A little calculator, part of XayaUI Bonus Features.
+
+- **In chat:** type `/xui calc` and a sum, for example `/xui calc 23,249 / 3,472`. Chat shows the sum and its answer: `23,249 / 3,472 = 6.696141`.
+- **The window:** `/xui calc` with nothing after it, or **Calculator** in the minimap button's list, shows or hides a small window. Type a sum and press Enter, or use the keypad and **=**. The answer replaces the sum, so the next sum can build on it (press **×** then 2 to double it). **C** clears. The last three sums show above the line; the last ten are kept. Drag the title bar to move it; Escape or **x** closes it.
+- **What a sum can hold:** numbers (`3472`, `3,472`, `3.5`, `.5`), `k`, `m` or `b` right after a number (`12k` is 12,000), `+ - * / ^`, `x` or **×** for times, **÷** for divide, `%` after a number (`15%` is 0.15, so `200*15%` is 30), and brackets. Powers come before a leading minus: `-2^2` is -4. Commas must sit between groups of three digits.
+- Answers show commas and up to six decimals. A sum that cannot be worked out says why (for example "cannot divide by zero") instead of giving an answer. What you type is only ever read as a sum; it is never run as code.
+
 ### 12.5 Addon Theming and Color Customization
 
 XayaUI's look is driven by a style sheet in two layers. **Tokens** are the palette: accent, labels, body and muted text, window, panes, borders, title bar, buttons, primary buttons, tabs, selected tabs, tree bars, and danger marks. **Element classes** (window, pane, tab, button, heading, and more) each point at a token, and each class can be overridden on its own, so you can recolor "all buttons" or "all headings" without touching anything else. Start from the default purple, a **class** theme that follows your character's class color (or one you pick by hand), or a built-in preset, including colorblind-friendly palettes for red-weak, green-weak, and blue-yellow color vision, plus a light theme. Switch to **Custom** to layer your own changes on any base, and save themes by name to reuse them. Choose a font and a size (small, medium, or large). A theme is plain data, so importing and exporting a theme never runs code.
