@@ -173,6 +173,18 @@ CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.skinOff = true
 check("group page tabs: with the skin off, the picked tab's label is gold", TL.name() == "|cffffd100Load|r" and TG.name() == "Group")
 CueRulesDB.ui.skinOff = nil
 TG.func()
+-- Xaya 2026-11-04: "Pause preview animations" moves from the Group tab to the Display tab
+local PG = GP and GP.args.pageGroup.args
+check("pause preview: the tick box is on the group's Display tab, near the top", PD ~= nil and PD.pausePv ~= nil and PD.pausePv.type == "toggle"
+  and PD.pausePv.name == "Pause preview animations" and PD.pausePv.order < PD.placement.order)
+check("pause preview: the Group tab no longer has it", PG and PG.pausePv == nil and PG.name ~= nil)
+local pvBefore = ns.previewPaused
+local PV = PD and PD.pausePv
+if PV then PV.set(nil, true) end
+check("pause preview: ticking it on the Display tab pauses the previews", PV ~= nil and ns.previewPaused == true and PV.get() == true)
+if PV then PV.set(nil, false) end
+check("pause preview: unticking resumes them", PV ~= nil and not ns.previewPaused)
+ns.SetPreviewPaused(pvBefore)
 -- dynamic group wrap options (Xaya: "dynamic groups should have row / column wrap options")
 local CG = GP and GP.args.pageGroup.args.container and GP.args.pageGroup.args.container.args
 local fG = ns.folders[1]

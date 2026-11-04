@@ -13,8 +13,13 @@ def check(name, ok, extra=""):
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
-m = re.search(r"^local UI_MARGIN, UI_GUTTER = (\d+), (\d+)$", skin, re.M)
-check("the margin and the gutter are defined once in Skin.lua (UI_MARGIN, UI_GUTTER)", m is not None)
+# #351 phase 2: the values are defined once in core (XayaUI/Modules.lua); Skin.lua reads them (its 10s are only the fallback for
+# stand-in tests that load Skin.lua without core)
+modules = open(os.path.join(ROOT, "XayaUI", "Modules.lua"), encoding="utf-8").read()
+m = re.search(r"^ns\.UI_MARGIN, ns\.UI_GUTTER = (\d+), (\d+)$", modules, re.M)
+check("the margin and the gutter are defined once, in core (XayaUI/Modules.lua: ns.UI_MARGIN, ns.UI_GUTTER)", m is not None)
+check("Skin.lua reads them from core", re.search(r"^local UI_MARGIN, UI_GUTTER = ns\.UI_MARGIN or 10, ns\.UI_GUTTER or 10$", skin, re.M) is not None
+      and "ns.UI_MARGIN, ns.UI_GUTTER = UI_MARGIN" not in skin)
 MARGIN, GUTTER = (int(m.group(1)), int(m.group(2))) if m else (10, 10)
 insets = re.findall(r'content:SetPoint\("TOPLEFT", (?:w\.border, "TOPLEFT", )?(\S+?)[ ,]', skin)
 literal = [x for x in insets if x in ("10", "10,")]

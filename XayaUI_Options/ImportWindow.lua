@@ -17,7 +17,7 @@ end
 
 local function Build()
     local f = CreateFrame("Frame", "XayaUIImportWindow", UIParent)
-    f:SetSize(560, 330)
+    f:SetSize(560, 350)   -- (330 before #351 phase 2: the status lines ran under the buttons)
     f:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
     f:SetFrameStrata("TOOLTIP")          -- above the options window (it sits at HIGH) so it is never hidden behind it
     f:SetToplevel(true); f:EnableMouse(true); f:SetMovable(true); f:SetClampedToScreen(true)
@@ -52,13 +52,14 @@ local function Build()
     box:SetScript("OnEscapePressed", function() f:Hide() end)
 
     f.status = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    f.status:SetPoint("TOPLEFT", sf, "BOTTOMLEFT", 0, -10); f.status:SetPoint("RIGHT", f, "RIGHT", -14, 0)
-    f.status:SetJustifyH("LEFT"); f.status:SetHeight(48); f.status:SetJustifyV("TOP")
+    -- the status lines end a gutter above the buttons (12 from the bottom, 26 tall)
+    f.status:SetPoint("TOPLEFT", sf, "BOTTOMLEFT", 0, -10); f.status:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -14, 12 + 26 + ns.UI_GUTTER)
+    f.status:SetJustifyH("LEFT"); f.status:SetJustifyV("TOP")
 
     f.go = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     f.go:SetSize(110, 26); f.go:SetPoint("BOTTOMRIGHT", -14, 12); f.go:SetText("Import")
     f.close = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    f.close:SetSize(110, 26); f.close:SetPoint("RIGHT", f.go, "LEFT", -8, 0); f.close:SetText("Close")
+    f.close:SetSize(110, 26); f.close:SetPoint("RIGHT", f.go, "LEFT", -ns.UI_GUTTER, 0); f.close:SetText("Close")
     f.close:SetScript("OnClick", function() f:Hide() end)
 
     -- any share string: rules (a rule, a group, several rules) or a theme; Share.lua routes it by its prefix

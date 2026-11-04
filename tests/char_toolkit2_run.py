@@ -52,12 +52,17 @@ local d = render("stats")
 local hs = texts(d, "header")
 check("Stats tab: headers Character, Attributes, Secondary stats, Tertiary stats in order",
   hs[1] == "- Character" and hs[2] == "- Attributes" and hs[3] == "- Secondary stats" and hs[4] == "- Tertiary stats", table.concat(hs, " | "))
+-- QoL 0.7.7: Defense and Offense are the Spells tab's filters now (a saved "defense" / "offense" tab opens Spells with that filter);
+-- their sections follow the spells (tests/char_spells_run.py has the rest)
 d = render("defense"); hs = texts(d, "header")
-check("Defense tab: Health and armor, Avoidance, Damage taken", table.concat(hs, "|") == "- Health and armor|- Avoidance|- Damage taken", table.concat(hs, "|"))
+check("Spells, Defense filter: Defensive spells, then Health and armor, Avoidance, Damage taken", c.tab == "spells" and c.spellFilter == "defense"
+  and table.concat(hs, "|") == "- Defensive spells|- Health and armor|- Avoidance|- Damage taken", table.concat(hs, "|"))
 d = render("offense"); hs = texts(d, "header")
-check("Offense tab: Power, Weapons, Timing and resources", table.concat(hs, "|") == "- Power|- Weapons|- Timing and resources", table.concat(hs, "|"))
+check("Spells, Offense filter: Offensive spells, then Power, Weapons, Timing and resources", c.tab == "spells" and c.spellFilter == "offense"
+  and table.concat(hs, "|") == "- Offensive spells|- Power|- Weapons|- Timing and resources", table.concat(hs, "|"))
+c.spellFilter = "all"
 d = render("gear"); hs = texts(d, "header")
-check("Gear tab: Summary, Durability and repair, Slots", table.concat(hs, "|") == "- Summary|- Durability and repair|- Slots", table.concat(hs, "|"))
+check("Gear tab: Equipped (icons, QoL 0.7.9), Summary, Durability and repair, Slots", table.concat(hs, "|") == "- Equipped|- Summary|- Durability and repair|- Slots", table.concat(hs, "|"))
 d = render("whatif"); hs = texts(d, "header")
 check("What If tab: Rating per stat, All ratings, Compare an item", table.concat(hs, "|") == "- Rating per stat|- All ratings|- Compare an item", table.concat(hs, "|"))
 d = render("stats")
@@ -293,7 +298,15 @@ check("item compare: haste -200 rating (the old helm had it)", (pair(cm, "haste"
 check("item compare: mastery +100 rating with the factor (+6.09%)", pair(cm, "mastery") == "+100 rating = +6.09%", pair(cm, "mastery"))
 check("item compare: +100 Agility = +100 attack power (GetAttackPowerForStat)", pair(cm, "Agility") == "+100 Agility = +100 attack power", pair(cm, "Agility"))
 check("item compare: +900 Stamina = +19,080 health", pair(cm, "Stamina") == "+900 = +19,080 health", pair(cm, "Stamina"))
-check("item compare: +500 armor through the game's armor effectiveness", (pair(cm, "Armor") or ""):find("+500 = +", 1, true) == 1 and (pair(cm, "Armor") or ""):find("damage reduction", 1, true) ~= nil, pair(cm, "Armor"))
+-- QoL 0.7.8 armor chain (Xaya 2026-11-04: "armor from armor + armor_from_item + armor_from_agi"): the item's +500 armor plus +100
+-- Agility x 101.8% (the world's mastery text) = +601.8; 5,685 -> 6,286.8 armor through a/(a+12000) = +2.23% damage reduction
+check("item compare: armor = the item's +500 and +102 from its +100 Agility (mastery text), +2.23% damage reduction",
+  pair(cm, "Armor") == "+602 (item +500, Agility +102) = +2.23% damage reduction", pair(cm, "Armor"))
+local savedDesc = C_Spell.GetSpellDescription
+C_Spell.GetSpellDescription = function(id) if id == 203747 then return "Increases your damage done by 12.0%." end; return savedDesc(id) end
+local cmNo = CM.Build(c, "whatif").byKey.compare
+check("item compare: no armor link in the mastery text -> the item's armor only (+500 = +1.87%)", pair(cmNo, "Armor") == "+500 = +1.87% damage reduction", pair(cmNo, "Armor"))
+C_Spell.GetSpellDescription = savedDesc
 check("item compare: what the game does not give is shown as such", pair(cm, "This item at another item level") == "not given by the game"
   and pair(cm, "On-use and proc effects") == "not given by the game")
 ns.CharToolkit_SetInput("item", "999")
@@ -599,6 +612,10 @@ check("What If has the primary stat (Agility for this spec) as its own box", pri
 ns.CharToolkit_SetInput("primary", "100")
 for _, s2 in ipairs(CM.Build(c, "whatif").sections or {}) do for _, it in ipairs(s2.items or {}) do if it.key == "wi_primary" then prim = it end end end
 check("  ...+100 Agility shows its attack power through the game's GetAttackPowerForStat", c.whatIfPrimary == 100 and tostring(prim.value):find("+100 attack power", 1, true) ~= nil, prim and prim.value)
+local armorPair
+for _, pp in ipairs(prim.pairs or {}) do if pp.label == "Armor from it" then armorPair = pp end end
+check("  ...and the armor it gives through the mastery text (+100 x 101.8% = +102, +0.39% damage reduction), in the short view too",
+  armorPair ~= nil and armorPair.value == "+102 (101.8%, mastery) = +0.39% damage reduction" and armorPair.short == true, armorPair and armorPair.value)
 ns.CharToolkit_SetInput("primary", "0")
 ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
 check("a compared item fills the primary stat box too (Better Helm 600 Agility - Helm 500)", c.whatIfPrimary == 100, c.whatIfPrimary)''')

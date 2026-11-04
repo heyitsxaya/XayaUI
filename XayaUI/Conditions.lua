@@ -48,8 +48,9 @@ function ns.ReadCooldown(rule)
     local id, mc = rule.spellID or 0, rule.maxCharges or 0
     local byId = memo[id]
     if not byId then byId = {}; memo[id] = byId end
-    local r = byId[mc]
-    if not r then r = ReadCooldownRaw(rule); byId[mc] = r end
+    local mk = rule.exactSpell and ("exact" .. mc) or mc   -- B4: an exact-ID rule reads another spell than a following one
+    local r = byId[mk]
+    if not r then r = ReadCooldownRaw(rule); byId[mk] = r end
     return r
 end
 -------------------------------------------------------------------------------
@@ -109,6 +110,12 @@ function ns.SpellOnBar(id)
     local ok, ov = pcall(C_Spell.GetOverrideSpell, id)
     if ok and type(ov) == "number" and not issecret(ov) and ov > 0 then return ov end
     return id
+end
+-- B4 "Exact spell ID": a cooldown trigger (rule or "Cooldown (any spell)" row) with exactSpell ticked reads the spell ID it was
+-- given, never the talent that replaces it on the bar. Unticked (default): the spell on the bar, as before.
+function ns.CooldownReadID(t, id)
+    if t and t.exactSpell then return id end
+    return ns.SpellOnBar(id)
 end
 -- count (or nil), full (true / false / nil), note
 local function ChargeState(readID, baseID, ch, maxC, cd)
@@ -182,21 +189,23 @@ local function WatchCharges()
     local done = {}
     -- the rule's own spell, and every "Cooldown (any spell)" row (retrospective gap 22: rows were not watched, so after a /reload
     -- in combat a used charge read "full")
+    -- each entry: the spell ID and whether it is read exactly (B4) or as the spell on the bar
     local ids = {}
     for _, r in ipairs(ns.rules) do
         if r.enabled ~= false then
-            ids[#ids + 1] = tonumber(r.spellID)
+            ids[#ids + 1] = { tonumber(r.spellID), r.exactSpell }
             if type(r.extra) == "table" and type(r.extra.list) == "table" then
                 for _, row in ipairs(r.extra.list) do
-                    if type(row) == "table" and row.type == "cooldown" then ids[#ids + 1] = tonumber(row.spellID) end
+                    if type(row) == "table" and row.type == "cooldown" then ids[#ids + 1] = { tonumber(row.spellID), row.exactSpell } end
                 end
             end
         end
     end
-    for _, id in ipairs(ids) do
-        if id and id > 0 and not done[id] then
-            done[id] = true
-            local readID = ns.SpellOnBar(id)
+    for _, e in ipairs(ids) do
+        local id = e[1]
+        local readID = (id and id > 0) and ns.CooldownReadID({ exactSpell = e[2] }, id) or nil
+        if readID and not done[readID] then
+            done[readID] = true
             local okc, ch = pcall(C_Spell.GetSpellCharges, readID)
             local maxC = okc and CleanNumber(ch, "maxCharges") or nil
             if maxC and maxC > 1 then
@@ -218,7 +227,7 @@ function ReadCooldownRaw(rule)
     local id = rule.spellID
     local r = { known = false, max = 1 }
     if not id or id == 0 then r.why = "no spell"; return r end
-    local readID = ns.SpellOnBar(id)   -- a talent that replaces the spell: the one on your bar
+    local readID = ns.CooldownReadID(rule, id)   -- a talent that replaces the spell: the one on your bar (unless exactSpell, B4)
     -- A spell you do not have now (talent or specialization swapped away) is "not known", never "ready" (retrospective gap 10;
     -- the game reports isActive = false for it, which read as ready). C_SpellBook.IsSpellKnownOrInSpellBook(spellID, bank,
     -- includeOverrides) has no secrecy flag (12.1.5); the player and the pet spellbook are both asked, and IsPlayerSpell too.

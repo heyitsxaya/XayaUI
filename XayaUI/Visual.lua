@@ -2468,8 +2468,8 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         StopCdBind(fr)
         if fr.cd then fr.cd:Hide() end
         if ref.duration > 0 then
-            local rem = ref.expiration - GetTime()
-            if rem > 0 then
+            -- #121: reuse the remaining time worked out at the top (same ref, same condition) instead of a second, shadowing `rem`
+            if rem and rem > 0 then
                 fr.text:SetText(FmtRemaining(rem, t.decimals, t.decimalBelow))
                 fr.text:Show()
                 return

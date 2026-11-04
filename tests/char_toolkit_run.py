@@ -133,7 +133,19 @@ check("parry from crit: 528 crit rating = 10.15% parry, before diminishing retur
 check("parry from crit: 52.0 crit rating per 1%", pair(parry, "Crit rating per 1%") == "52.0", pair(parry, "Crit rating per 1%"))
 local armor = row(m, "armor")
 check("armor: reduction and armor for next 1%", pair(armor, "Damage reduction") ~= nil and pair(armor, "Armor for the next 1%") ~= nil)
-check("armor: primary -> armor marked not given", pair(armor, "Agility -> armor") == "not given by the game")
+-- QoL 0.7.8 armor chain: the world's mastery text (spell 203747) reads "Increases Armor by 101.8% of your Agility."
+check("armor: Agility -> armor read from the mastery text (2,637 x 101.8% = 2,684)", pair(armor, "From Agility") == "2,684 (101.8%, mastery)", pair(armor, "From Agility"))
+check("Agility line: the armor it gives (2,684, 101.8%)", pair(row(m, "stat2"), "Armor from it") == "2,684 (101.8%)", pair(row(m, "stat2"), "Armor from it"))
+local savedDesc = C_Spell.GetSpellDescription
+C_Spell.GetSpellDescription = function(id) if id == 203747 then return "Increases your damage done by 12.0%." end; return savedDesc(id) end
+local m2 = ns.CharToolkit_Model()
+check("armor: a mastery text with no armor link -> marked not given", pair(row(m2, "armor"), "Agility -> armor") == "not given by the game" and pair(row(m2, "armor"), "From Agility") == nil)
+check("Agility line: no armor link -> marked not given", pair(row(m2, "stat2"), "Agility -> armor") == "not given by the game")
+C_Spell.GetSpellDescription = function(id) if id == 203747 then return "Increases Armor by 101.8% of your Strength." end; return savedDesc(id) end
+check("armor: the link names another stat than the primary one -> not used", pair(row(ns.CharToolkit_Model(), "armor"), "From Agility") == nil)
+C_Spell.GetSpellDescription = function(id) if id == 203747 then return "|cffffffffIncreases Armor by 1,5% of your Agility.|r" end; return savedDesc(id) end
+check("armor: colour codes and a decimal comma are read (1,5% of 2,637 = 40)", pair(row(ns.CharToolkit_Model(), "armor"), "From Agility") == "40 (1.5%, mastery)", pair(row(ns.CharToolkit_Model(), "armor"), "From Agility"))
+C_Spell.GetSpellDescription = savedDesc
 local ap = row(m, "ap")
 check("attack power: 1 Agility = 1.00 attack power", pair(ap, "1 Agility =") == "1.00 attack power", pair(ap, "1 Agility ="))
 check("dodge: primary -> dodge per point marked not given", pair(row(m, "dodge"), "Agility -> dodge per point") == "not given by the game")
