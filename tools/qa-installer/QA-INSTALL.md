@@ -24,9 +24,8 @@ To see what the installer would do without changing anything, run it from a comm
 
 ## Updating to a new build
 
-1. Close the game.
-2. In GitHub Desktop (with `qa-installer-branch` selected): **Fetch origin**, then **Pull origin**.
-3. Start the game. Edits to existing files take effect on login; new files need a full restart, not only `/reload`.
+1. In GitHub Desktop (with `qa-installer-branch` selected): **Fetch origin**, then **Pull origin**. The game can stay open.
+2. In the game, type `/reload`. That is all it takes; the game does not need to be restarted.
 
 You do not need to run the installer again unless the release note says a new `XayaUI_*` folder was added. Running it again is always safe.
 
