@@ -6,22 +6,15 @@ discussion.
 
 ## Most important (they decide whether existing features work as expected)
 
-### 1. #260: conditions vs the combat engine
-**What happens now.** The combat engine draws a rule's first display through Blizzard's own aura container, so time and stacks stay
-exact in combat. But it does not follow conditions:
-- a display that a condition switches on or off is shown whenever the aura is up;
-- condition changes (tint, desaturate, glow, opacity, strata) are not drawn on it.
-
-Verified in the code (`XayaUI/Combat/AuraDisplay.lua`). The engine is on by default.
-
-**Options:**
-- **A.** Leave any display that a condition lists to XayaUI. Conditions work; time in combat becomes XayaUI's estimate.
-- **B.** Keep it in the engine. Time is exact; conditions are ignored on that display (today).
-- **C.** Keep it in the engine and apply opacity, desaturate and tint on top. Time is exact; conditions partly work. Switching the
-  display on and off still follows the aura only.
-
-**Recommendation:** A for displays a condition switches on or off, because a wrong display is worse than an estimated time. C for
-displays a condition only restyles. Weakest point: A loses exact time in combat for those displays.
+### 1. #260: conditions vs the combat engine. **Answered by Xaya 2026-11-04; built in core 0.6.19.**
+Xaya: "If a condition is enabled it should be enforced in or out of combat."
+- **Built.** An engine-drawn display that a condition lists shows only while that condition is true. On a single slot, opacity, grey
+  and tint are drawn too.
+- **Consequence, told to Xaya.** A condition XayaUI cannot read in combat (stacks, a hidden aura time) is not met there, so the
+  display stays hidden in combat.
+- **Still not drawn by the engine:**
+  - glow and strata;
+  - any change inside a dynamic group (only its show / hide).
 
 ### 2. #343: which drag is broken?
 - **A.** Dragging a rule row in the sidebar.
@@ -35,17 +28,13 @@ Xaya: "class or spec selection should have a tick box that appears next to the r
 (class or spec)". Built as a tick box on the Class and Specialization rows ("Always load: only this class / spec"), shown while
 Always load is on, on the rule's and the group's Load tab. Unticked (the default) keeps the old behaviour.
 
-### 4. #334: cue volume
-**Today.** The volume slider in a cue changes the game's whole channel volume (WoW has no per-sound volume for sound files).
-
-**Options:**
-- **1.** Move channel volumes to Settings, with a warning.
-- **2.** Bundle louder / quieter copies of the sounds.
-- **3.** Put every cue on one quiet channel.
-- **5.** Real per-cue volume for the game's own sound kits (`C_Sound.PlaySoundWithOptions`, `volumeOverride`; not yet checked in
-  game).
-
-**Recommendation:** 5 + 1.
+### 4. #334: cue volume. **Partly built in core 0.6.19** (Xaya: Insivius wants a modifier on the cue's own sound, like the Speech volume)
+- **Built.** "This cue's volume" on Sound cues, exact for the game's own sounds (`C_Sound.PlaySoundWithOptions` volumeOverride).
+- **Not possible in the game:** a per-sound volume for sound files. `PlaySoundFile` takes only a file and a channel.
+- **Still open for files:**
+  - **a.** Ship quieter copies (for example 25 / 50 / 75 %) of the 33 bundled CC0 sounds. The slider would then pick the nearest copy.
+    This works only for bundled sounds, not the player's own files.
+  - **b.** Move the shared channel-volume slider out of the cue editor into Settings, with a warning.
 
 ### 5. Switched-off condition (0.6.14, this session's call)
 **What 0.6.14 does.**

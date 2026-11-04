@@ -28,7 +28,8 @@
 --
 -- KNOWN LIMITS (all stated by /xuiengine): icon order inside a group follows the game's aura order; mixed icon sizes in one group
 -- are drawn at the first one's size; fades, flash, wipe, glow and condition-driven changes are XayaUI effects the container
--- cannot draw; a cue that conditions switch on is shown whenever its aura is up. includeSpellIDs is real in Blizzard's code but
+-- cannot draw; a cue that a condition lists shows only while that condition is true (0.6.19, #260), with its opacity, grey and tint
+-- changes drawn on a single slot (not inside a dynamic group; glow and strata not at all). includeSpellIDs is real in Blizzard's code but
 -- absent from the generated API docs: every container call is pcall'd and a failure hands the display back to XayaUI (no gap).
 local _, ns = ...
 ns = XayaUI_NS or ns
@@ -222,6 +223,15 @@ local function Allowed(p, display, trigger)
         if id == 0 then id = tonumber(p.buffID) or 0 end
         if id ~= 0 and not ns.SpellOnActionBar(id) then return false end
     end
+    -- #260 (Xaya, 2026-11-04: "If a condition is enabled it should be enforced in or out of combat"): a display cue that a condition
+    -- lists shows only while XayaUI's own reading of that cue is true (one of its switched-on conditions is true; Cues.lua
+    -- EvaluateCue). Before 0.6.19 the engine showed it whenever the aura was up. A condition XayaUI cannot read in combat (for example
+    -- stacks, which the game hides) is not met there, so such a display stays hidden in combat: unknown never shows.
+    if display and display ~= p and display.isCue and ns.CueGated and ns.CueGated(p, display) then
+        local crt = ns.runtime and ns.runtime[display]
+        local cinfo = crt and crt.info
+        if not (cinfo and cinfo.result == true) then return false end
+    end
     if trigger ~= "condition" then return true end
     local rt = ns.runtime and ns.runtime[p]
     local info = rt and rt.info
@@ -264,8 +274,9 @@ local function Drops(p, display, single, slot)
                 end
             end
         end
-        if gate > 0 then out[#out + 1] = ("shows whenever the aura is up, not only while its condition%s %s true (%d)"):format(gate > 1 and "s" or "", gate > 1 and "are" or "is", gate) end
-        if mod > 0 then out[#out + 1] = ("glow / grey / opacity / tint changes from conditions (%d)"):format(mod) end
+        -- (0.6.19, #260: a listed display now shows only while its condition is true, and a single slot draws opacity, grey and tint)
+        if gate > 0 then out[#out + 1] = "a condition XayaUI cannot read in combat (stacks, aura time) is not met there, so the display stays hidden in combat until it can be read" end
+        if mod > 0 then out[#out + 1] = single and ("glow and strata changes from conditions (opacity, grey and tint are drawn) (%d)"):format(mod) or ("changes from conditions inside a dynamic group (glow, grey, opacity, tint, strata) (%d)"):format(mod) end
     end
     return out
 end
@@ -422,6 +433,7 @@ local function ButtonInit(w, h, display, single, rec)
         -- runs inside Blizzard's frame creation; a failure here is caught by the caller
         btn:SetSize(w, h)
         if single then btn:SetAlpha(tonumber(v.alpha) or 1) end
+        if single and rec then rec.btns = rec.btns or {}; rec.btns[#rec.btns + 1] = btn; rec.modSig = nil end   -- (a new button: draw the current condition changes on it too)
         if single and v.bg and v.bg.enabled then
             local c = v.bg.color or { 0, 0, 0, 0.5 }
             local bg = btn:CreateTexture(nil, "BACKGROUND")
@@ -434,6 +446,7 @@ local function ButtonInit(w, h, display, single, rec)
             bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8")
             local art = bar:GetStatusBarTexture()
             if paint then paint(art, display) else btn:SetIcon(art) end
+            if paint and rec then rec.arts = rec.arts or {}; rec.arts[#rec.arts + 1] = art end
             local d = BAR_DIR[v.fill.dir or "bottom"] or BAR_DIR.bottom
             bar:SetOrientation(d[1])
             bar:SetReverseFill(d[2])
@@ -442,6 +455,7 @@ local function ButtonInit(w, h, display, single, rec)
             local art = btn:CreateTexture(nil, "ARTWORK")
             FitArt(art, btn, v, single)
             paint(art, display)
+            if rec then rec.arts = rec.arts or {}; rec.arts[#rec.arts + 1] = art end
         else
             local icon = btn:CreateTexture(nil, "ARTWORK")
             icon:SetAllPoints(btn)
@@ -760,6 +774,7 @@ local function BuildSingle(p, spec, store, key)
         if s.frame and (s.unit ~= spec.unit or s.filter ~= spec.filter or s.w ~= w or s.h ~= h or s.look ~= look) then s.frame:Hide(); s.frame = nil end
         if not s.frame then
             s.fmtFallback = nil
+            s.arts, s.btns, s.modSig = {}, {}, nil   -- (the old container's buttons are gone)
             s.frame = NewContainer(spec.unit, spec.filter, spec.ids, w, h, 0, display, 1, true, s)
             s.unit, s.filter, s.w, s.h, s.look = spec.unit, spec.filter, w, h, look
         else
@@ -881,12 +896,46 @@ end
 -- Live sync (4 times a second): load / talent answers and unlock state. Cheap: no allocation unless something changed.
 -------------------------------------------------------------------------------
 local STORES = { singles, extras }
+-- #260: the changes a true condition makes to a cue (opacity, desaturate, tint; Cues.lua EvaluateCue info.mods), drawn on a single
+-- slot's own art and buttons, the same way XayaUI draws them on its own frame (Visual.lua). When they change, the art is first
+-- painted again from the display's own settings, so nothing is left from a condition that is no longer true. Glow and strata are not
+-- drawn on engine slots (/xuiengine says so); inside a dynamic group the members' icons are the game's, so changes are not drawn there.
+local function ModsOf(display)
+    local crt = ns.runtime and ns.runtime[display]
+    return crt and crt.info and crt.info.mods
+end
+local function ApplyMods(s, display)
+    local mods = ModsOf(display)
+    local sig = ""
+    if mods then
+        local t = mods.tint
+        sig = tostring(mods.desat) .. "|" .. tostring(mods.alpha) .. "|" .. (type(t) == "table" and table.concat({ t[1] or 1, t[2] or 1, t[3] or 1, t[4] or 1 }, ",") or "-")
+    end
+    if s.modSig == sig then return end
+    s.modSig = sig
+    local v = (display and display.visual) or {}
+    for _, art in ipairs(s.arts or {}) do
+        if ns.PaintDisplayArt then pcall(ns.PaintDisplayArt, art, display) end   -- the display's own look first
+        if mods then
+            if mods.desat ~= nil then pcall(art.SetDesaturation, art, mods.desat and 1 or 0) end
+            if type(mods.tint) == "table" then
+                local t = mods.tint
+                pcall(art.SetVertexColor, art, t[1] or 1, t[2] or 1, t[3] or 1, t[4] or 1)
+            end
+        end
+    end
+    local alpha = (mods and mods.alpha ~= nil) and tonumber(mods.alpha) or (tonumber(v.alpha) or 1)
+    for _, b in ipairs(s.btns or {}) do pcall(b.SetAlpha, b, alpha) end
+end
+D._ApplyMods = ApplyMods
+
 function D.SyncLive()
     for _, store in ipairs(STORES) do
         for _, s in pairs(store) do
             if s.ok and s.frame then
                 local show = Allowed(s.parent, s.spec.display, s.spec.trigger) and not RuleUnlocked(s.spec.display)
                 if s.frame:IsShown() ~= show then pcall(s.frame.SetShown, s.frame, show) end
+                if show and s.spec.display and s.spec.display.isCue then pcall(ApplyMods, s, s.spec.display) end
             end
         end
     end

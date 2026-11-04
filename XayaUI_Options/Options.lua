@@ -2055,6 +2055,16 @@ local function BuildRule(i, rule)
                 get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v end },
             channel = { type = "select", name = "Sound channel", order = 5, values = CHANNEL_VALUES, sorting = CHANNEL_ORDER,
                 get = function() return rule.sound.channel end, set = function(_, v) rule.sound.channel = v end },
+            -- #334 (Insivius): a volume on the cue's own sound, like Speech volume. The game allows it only for its own sound kits.
+            cueVolume = { type = "range", order = 5.5, width = "double", min = 0, max = 100, step = 5,
+                name = function()
+                    if rule.sound.source == "kit" then return "This cue's volume" end
+                    return "This cue's volume (only for [Game] sounds)"
+                end,
+                desc = "Volume of this cue only, without touching the game's channel volume. Works for the game's own sounds ([Game] in the list). The game has no per-sound volume for sound FILES (.ogg / .mp3: it plays them only at the channel's volume), so for a file this slider does nothing; pick a [Game] sound, or set the channel volume below (shared with everything on that channel).",
+                disabled = function() return rule.sound.source ~= "kit" end,
+                get = function() return tonumber(rule.sound.cueVolume) or 100 end,
+                set = function(_, v) rule.sound.cueVolume = (tonumber(v) and v < 100) and v or nil; ns.MarkDirty() end },
             volume = {
                 type = "range", name = function()
                     return "Volume of the '" .. (ns.Val(rule.sound.channel) or "Master") .. "' channel (game setting, shared)"
