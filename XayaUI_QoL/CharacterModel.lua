@@ -425,6 +425,28 @@ end
 -- Character and attributes
 -------------------------------------------------------------------------------
 
+-- Armor from the primary stat: only where the game's own text for the spec's mastery says so. Vengeance's reads "Increases Armor by
+-- 88.7% of your Agility" (Xaya's screenshot, 2026-11-04). The percent is read from that text, which the game fills in with the current
+-- mastery, so it moves with mastery; no formula is typed in (Xaya 2026-11-04: "show what will happen to your agility and therefore
+-- armor from armor + armor_from_item + armor_from_agi"). Matched: the game's own word for armor (STAT_ARMOR) and stat name
+-- (SPELL_STATn_NAME) around "by N% of your". On another client's wording, or a spec whose mastery text names no such link, it is nil
+-- and the lines say the game gives no number. Returns the percent and the mastery spell's name.
+local function Esc(w) return (w:gsub("(%W)", "%%%1")) end
+local function ArmorPerPrimary(ctx)
+    local p = ctx and ctx.primary
+    if not (p == 1 or p == 2 or p == 4) then return nil end
+    local pat = Esc(L("STAT_ARMOR", "Armor"):lower()) .. " by ([%d%.,]+)%% of your " .. Esc(StatName(p):lower())
+    for _, mid in ipairs(MasterySpells(ctx.spec)) do
+        local d = SpellDesc(mid)
+        if type(d) == "string" and d ~= "" then
+            local raw = d:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):lower():match(pat)
+            local v = raw and tonumber((raw:gsub(",", ".")))
+            if num(v) and v > 0 then return v, SpellName(mid) end
+        end
+    end
+end
+CM.ArmorPerPrimary = ArmorPerPrimary
+
 -- primary stat or Stamina: UnitStat gives (stat, effective, positive buffs, negative buffs); base = stat - buffs - debuffs
 -- (how the character window works it out, PaperDollFrame_SetStat).
 local function StatItem(ctx, i)
@@ -467,7 +489,14 @@ local function PrimaryItem(ctx)
         end
         Pair(it, StatName(1) .. " -> parry per point", NA, "mute")
     end
-    Pair(it, StatName(p) .. " -> armor", NA, "mute")
+    local apct, src = ArmorPerPrimary(ctx)
+    if apct then
+        Pair(it, "Armor from it", ("%s (%s%%)"):format(Big(eff * apct / 100), F(apct, 1)))
+        Tip(it, ("Linked: your mastery (%s) gives armor equal to %s%% of your %s: %s armor. The percent is read from its text, which the game fills in."):format(
+            src, F(apct, 1), StatName(p), Big(eff * apct / 100)))
+    else
+        Pair(it, StatName(p) .. " -> armor", NA, "mute")
+    end
     return it
 end
 
@@ -561,6 +590,15 @@ end
 -------------------------------------------------------------------------------
 local function ArmorEff() return C_PaperDollInfo and C_PaperDollInfo.GetArmorEffectiveness end
 local function ArmorVsTarget() return C_PaperDollInfo and C_PaperDollInfo.GetArmorEffectivenessAgainstTarget end
+-- the change in damage reduction (percent points) from delta more armor, through the game's armor effectiveness against your level
+local function ArmorDRChange(ctx, delta)
+    local _, armor = R(UnitArmor, "player")
+    local eff = ArmorEff()
+    if num(armor) and num(ctx.level) and type(eff) == "function" then
+        local r0, r1 = N(eff, armor, ctx.level), N(eff, math.max(0, armor + delta), ctx.level)
+        if num(r0) and num(r1) then return (r1 - r0) * 100 end
+    end
+end
 local function HasAttackableTarget() return R(UnitExists, "target") == true and R(UnitCanAttack, "player", "target") == true end
 
 local function DefenseSections(ctx, out)
@@ -593,8 +631,16 @@ local function DefenseSections(ctx, out)
             Tip(it, ("Armor %s = base %s %s from buffs and talents (UnitArmor)."):format(Big(armor), Big(base), SB(armor - base)))
         end
         if num(bonus) and bonus > 0 then Pair(it, "Bonus armor", Big(bonus)) end
-        Pair(it, StatName(ctx.primary) .. " -> armor", NA, "mute")
-        Tip(it, "Primary stat to armor comes from a talent or your mastery (its text is on the Stats tab); the game gives no number for it.")
+        local apct, src = ArmorPerPrimary(ctx)
+        local _, peff = R(UnitStat, "player", ctx.primary)
+        if apct and num(peff) then
+            Pair(it, "From " .. StatName(ctx.primary), ("%s (%s%%, mastery)"):format(Big(peff * apct / 100), F(apct, 1)))
+            Tip(it, ("From %s: %s x %s%% = %s armor (your mastery, %s; the percent is read from its text). It is part of the armor above; which UnitArmor figure counts it is to be checked in game (QA E1u)."):format(
+                StatName(ctx.primary), Big(peff), F(apct, 1), Big(peff * apct / 100), src))
+        else
+            Pair(it, StatName(ctx.primary) .. " -> armor", NA, "mute")
+            Tip(it, "Primary stat to armor comes from a talent or your mastery (its text is on the Stats tab); the game gives no number for it.")
+        end
     end
     sec.items[#sec.items + 1] = it
     sec.items[#sec.items + 1] = StaminaItem(ctx)
@@ -1248,18 +1294,24 @@ local function CompareItem(ctx, text)
         local hpPer, mod = N(UnitHPPerStamina, "player"), N(GetUnitMaxHealthModifier, "player")
         Pair(it, StatName(3), SB(sd) .. (num(hpPer) and (" = %s health"):format(SB(sd * hpPer * (num(mod) and mod or 1))) or ""), sd > 0 and "good" or "warn", true)
     end
+    -- armor: the item's own armor, plus the armor its primary stat change gives where the mastery text links them (Xaya 2026-11-04:
+    -- "armor from armor + armor_from_item + armor_from_agi")
     local ad = (num(newStats.RESISTANCE0_NAME) and newStats.RESISTANCE0_NAME or 0) -
         ((old and old.stats and num(old.stats.RESISTANCE0_NAME)) and old.stats.RESISTANCE0_NAME or 0)
-    if ad ~= 0 then
+    local apct = ArmorPerPrimary(ctx)
+    local fromP = (apct and pd ~= 0) and (pd * apct / 100) or 0
+    if ad ~= 0 or fromP ~= 0 then
         any = true
-        local _, armor = R(UnitArmor, "player")
-        local eff = ArmorEff()
-        local txt = SB(ad)
-        if num(armor) and num(ctx.level) and type(eff) == "function" then
-            local r0, r1 = N(eff, armor, ctx.level), N(eff, math.max(0, armor + ad), ctx.level)
-            if num(r0) and num(r1) then txt = txt .. (" = %s damage reduction"):format(SP((r1 - r0) * 100)) end
+        local total = ad + fromP
+        local txt = SB(total)
+        if fromP ~= 0 then txt = txt .. (" (item %s, %s %s)"):format(SB(ad), StatName(p), SB(fromP)) end
+        local dr = ArmorDRChange(ctx, total)
+        if dr then txt = txt .. (" = %s damage reduction"):format(SP(dr)) end
+        Pair(it, L("STAT_ARMOR", "Armor"), txt, total >= 0 and "good" or "warn", true)
+        if fromP ~= 0 then
+            Tip(it, ("Armor from %s: %s x %s%% (your mastery's text) = %s. Armor buffs that multiply your armor right now are not applied to the change."):format(
+                StatName(p), SB(pd), F(apct, 1), SB(fromP)))
         end
-        Pair(it, L("STAT_ARMOR", "Armor"), txt, nil, true)
     end
     if not any then Pair(it, "Stats", "no change in the stats the game lists", "mute", true) end
     Pair(it, "Gems, enchant, set bonus", "not in the item's stat table", "mute")
@@ -1325,6 +1377,13 @@ local function WhatIfSections(ctx, out, ratingSecs)
                     txt = txt .. ", spell power from it: " .. NA
                 end
                 it.value, it.tone = txt, amount >= 0 and "good" or "warn"
+                local apct = ArmorPerPrimary(ctx)
+                if apct then
+                    local da = amount * apct / 100
+                    local dr = ArmorDRChange(ctx, da)
+                    Pair(it, "Armor from it", ("%s (%s%%, mastery)%s"):format(SB(da), F(apct, 1), dr and (" = %s damage reduction"):format(SP(dr)) or ""),
+                        amount >= 0 and "good" or "warn", true)
+                end
             end
             Tip(it, ("Type extra %s (a minus sign for less) and press Enter."):format(StatName(p)))
             sec.items[#sec.items + 1] = it
