@@ -51,16 +51,16 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 - **"Profile"** means only the whole addon as configured (#354 is asking whether that changes).
 - **Wording to Xaya:** truth first; flag inferences; no unearned compliments; state what is not verified in game.
 
-## 3. Addons (versions from the .toc files, 2026-11-04 21:45 on branch `claude/cool-ramanujan-ewx8e5`; `main` gets them once the full suite passes, see section 5)
+## 3. Addons (versions from the .toc files on `main` 8d81e3f, 2026-11-04 22:45 UTC)
 | Folder | Version | Holds |
 |---|---|---|
-| `XayaUI` | 0.6.33 | core: rules, cues, conditions (incl. load by zone / instance / difficulty / size / encounter / item), actions, combat aura engine (`Combat/`), themes, mover view, console and debug record, minimap and ESC-menu buttons |
-| `XayaUI_Options` | 0.6.33 | the settings window (loads on first open; Ace3 libs) |
-| `XayaUI_Chat` | 0.6.10 | Chat Panel, Chat Bar, filters, history, tab sounds and whisper sound overrides, privacy cover |
-| `XayaUI_QoL` | 0.7.9 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit / Stat Calculator panel (one model; Sheet, Stats, Gear with icons, What If with the armor chain, Spells with All / Offense / Defense filters; slot overlays with this expansion's enchant slots by default) |
-| `XayaUI_Bonus` | 0.6.7 | tooltips, Notepad, data panels |
+| `XayaUI` | 0.6.39 | core: rules, cues, conditions (incl. load by zone / instance / difficulty / size / encounter / item), actions, combat aura engine (`Combat/`), themes, mover view, console and debug record, minimap and ESC-menu buttons |
+| `XayaUI_Options` | 0.6.36 | the settings window (loads on first open; Ace3 libs) |
+| `XayaUI_Chat` | 0.6.11 | Chat Panel, Chat Bar, filters, history, tab sounds and whisper sound overrides, privacy cover |
+| `XayaUI_QoL` | 0.7.12 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit / Stat Calculator panel (one model; Sheet, Stats, Gear with icons, What If with the armor chain, Spells with All / Offense / Defense filters; slot overlays with this expansion's enchant slots by default) |
+| `XayaUI_Bonus` | 0.6.10 | tooltips, Notepad, data panels, calculator (`/xui calc`) |
 | `XayaUI_Reskin` | 0.6.0 | Game Menu skin |
-| `XayaUI_Media`, `XayaUI_DevAssist` | 1.0, 0.7.1 | user media folder; XayaUI Dev Assist, the developer tool (was `XayaUI_GameDump` before 0.7.0): API, talents, Cooldown Manager catalogue, aura log, `/xuidev probe` (`/xuidump` still works) |
+| `XayaUI_Media`, `XayaUI_DevAssist` | 1.0, 0.7.2 | user media folder; XayaUI Dev Assist, the developer tool (was `XayaUI_GameDump` before 0.7.0): API, talents, Cooldown Manager catalogue, aura log, `/xuidev probe` (`/xuidump` still works) |
 Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.cursorHighlight`, `.cursorTrail`, `.characterToolkit`). Nothing is saved per character yet.
 
 ## 4. Active items
@@ -79,6 +79,15 @@ landing is merged in):
 - core 0.6.38: Actions > "Speak it" was silent (old SpeakText argument order; B81). #375: speech has no sound channel in the API.
 Next: wait for Xaya's answers (task 43: the Stat Calculator questions and issues #377 #379 #381 #382 #383 #387); the Character
 Reskin's wider viewport needs an in-game taint probe first (plan doc).
+
+**Open with Xaya from session 014bN6tSy3HbUDWYQsk69naX (PR #386), asked 2026-11-04 evening, unanswered:**
+- Cursor Highlight: "right clicking mouse with the cursor shape enabled makes cursor less responsive". No cause found in the code (the
+  frame takes no mouse input; one cursor read and one move per frame). Asked: which feels slow (camera turn / shape lag after release /
+  clicks), which shape and style, trail on, "hide while turning" on, and whether it goes away with the shape off.
+- Fiery Brand tooltip: hide "Aura icon ID" when it equals the spell's icon, and name each aura ID's source (Bonus): her yes needed.
+- The combat-log analyser (RM-INST's "complete" part, an offline tool in `tools/`): proposed as the next large safe item; her go needed.
+- The Enchant Slots default (QoL 0.7.6) uses eight slot numbers derived from the client data: flagged against the terms question (3b).
+- Deferred / dropped by her that evening: talent window labels (#388, deferred); raid role load condition (dropped).
 
 **Three Claude sessions work in parallel (2026-11-04 evening, coordinated by send_message):**
 - this one: settings window, Stat Calculator / Character Reskin plans, chat, mover view, load conditions;
@@ -104,8 +113,8 @@ Backlog in Xaya's priority order (work the first one not blocked; see the rule i
   textures?
 - B. **Spell trigger options:** B1-B3 done (count GCD, remaining / charge comparisons, lockout). Open: exact spell ID (memo key and
   charge-watcher design first), track auto / charges / cooldown, track if not known. Not blocked.
-- C. **Load conditions:** done on rules (core 0.6.28). Open: the same lists on a group's Load tab; raid role (MT / MA) needs an
-  in-game probe of `GetPartyAssignment` (not in the API reference).
+- C. **Load conditions:** done on rules (core 0.6.28) and groups (core 0.6.33). Raid role (MT / MA) dropped (Xaya, 2026-11-04:
+  "that's not something we care to track").
 - Done 2026-11-04 evening on the branch, after this list was first written:
   - **anchor to any frame** (core 0.6.31): group X / Y popup "Anchor to a frame on screen..." (picker: point, press Shift), Snap
     flush, Anchor to the screen; displays: Snap Target > Pick a frame on screen. QA B69.
@@ -119,7 +128,7 @@ Backlog in Xaya's priority order (work the first one not blocked; see the rule i
 - E. **#351:** one margin / gutter everywhere: done offline (phase 1 settings window; phase 2 every other window). Left as they are
   on purpose: the chat container (its text inset is a user setting), menus, data panels, the Game Menu skin. Needs in-game checks
   (B75-B80).
-- F. **Dev Assist in-game captures** (item 2 below).
+- F. **Dev Assist in-game captures** (item 2 below): `/xuidev instance` built (0.7.1); stats, tooltips, item -> aura not built.
 - G. **Fel Flame Fortification (393009):** shows out of combat, not in combat. BLOCKED on her debug record.
 - H. **Boiling Point** rule does not fire with a stack-tracking trigger. BLOCKED on her rule export (procs.md: the aura does not
   stack; stacks are unknown in combat).
@@ -141,6 +150,14 @@ Backlog in Xaya's priority order (work the first one not blocked; see the rule i
    fallback-only global `ChatEdit_InsertLink` unnoticed; fixed in QoL 0.7.1 / core 0.6.23 through `Compat.lua`.
 2. **In-game captures for the data pulls** (Xaya's list, 2026-11-04). The offline part is done: `docs/reference/content/` (see
    `debug-log/2026-11-04-1523-content-data-pulls-offline.md`).
+   - **Status 2026-11-04 22:45 UTC (session 014bN6tSy3HbUDWYQsk69naX, PR #386):** on `main` 8d81e3f:
+     - `/xuidev instance` (Dev Assist 0.7.1, QA J13-J14), built on the probe's enemy reads; it collects while `/xuidev probe` is on.
+     - Proc-art hides with no spell ID are counted, not logged (0.7.2, QA J15): in Xaya's open-world probe upload (2026-11-04
+       11:23-17:09) 21,685 of them had pushed 22,811 entries out of the 6,000 kept.
+     - Not built: `/xuidev stats`, `/xuidev tooltips` (the sub-agent was stopped), item -> aura confirmation.
+     - Upload findings (`debug-log/2026-11-04-2218-probe-findings-oh-flood-devassist-0.7.2.md`): mob identity readable in open-world
+       combat (188 of 188); own casts and glow IDs readable in combat; UNIT_AURA payload secret in combat; no enemy casts seen;
+       Fiery Brand 207771 vs 207744 still unsettled; Fel Flame Fortification (393009) filed under Immolation Aura, out of combat only.
    - **Build in Dev Assist,** each capture marking every read the game hides:
      - `/xuidev instance`: per creature seen on nameplates, target or boss units: ID, name, classification, Mythic+ count; the
        spells it casts and the auras on it when readable; the encounter and instance IDs.
