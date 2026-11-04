@@ -192,11 +192,8 @@ if ($RepoFull -match '(?i)OneDrive|My Drive|Google Drive|Dropbox') {
     Say '         A plain local folder such as C:\GitHub\XayaUI is safer.' 'Yellow'
 }
 
-# ---------------------------------------------------------------- the game must be closed
-if (-not $DryRun) {
-    $running = @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -in 'Wow', 'WowT', 'WowB', 'WowClassic' })
-    if ($running.Count -gt 0) { Fail 'World of Warcraft is running. Close the game completely, then run this again.' }
-}
+# The game may stay open: like any addon install, the new folders are picked up by a /reload in game (Xaya, 2026-11-04:
+# "whenever I download an addon from curseforge, I don't close the game; I just reload after it installs").
 
 # ---------------------------------------------------------------- what is in AddOns now
 $existing = @{}
