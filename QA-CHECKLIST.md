@@ -155,6 +155,7 @@ For testers. Tick each box in order; when something does not match the **Expect*
 - [ ] **F3.** Hover a spell or item. **Expect:** ID lines as configured on Bonus Features > Tooltips.
 - [ ] **F4.** Chat and Bonus both on: the Chat Bar and the data panels both show their blocks. Then switch only **XayaUI Chat** off: the data panels still work. Then only **Bonus** off (Chat on): the Chat Bar still works.
 - [ ] **F5.** Switch **XayaUI Bonus Features** off, relog. **Expect:** no notepad, no panels, plain tooltips, no Bonus Features tab; `/xui notes` says Bonus Features is switched off.
+- [ ] **F6.** (Bonus 0.6.8) `/xui calc 23,249 / 3,472`. **Expect:** chat prints `23,249 / 3,472 = 6.696141`. `/xui calc 1/0`: **Expect:** `calc: cannot divide by zero (1/0)`. `/xui calc` alone: **Expect:** the Calculator window opens in the middle of the screen with a typing line and 20 keys, none of them cut off. Click 1, 2, +, 3, =: **Expect:** 15 shows, and the line above lists `12+3 = 15`. Type `200*15%` and press Enter: **Expect:** 30. Move the window, `/reload`, `/xui calc`: **Expect:** it opens where you left it. Escape: **Expect:** it closes. The minimap button's list has **Calculator**.
 
 ## G. XayaUI Blizzard Reskin
 
