@@ -2,12 +2,12 @@ f973ac7536f8b9c99421ed3b3f1cad53  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-91417b5d518fbf709b2c99130594cf82  QA-CHECKLIST.md
+673f5cec6e12cdf37899b637e8593e90  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
-36ef7ce2b70eb245827ec6d883c9425b  ROADMAP.md
+23d71eea2660e3de72217d3ff4d71704  ROADMAP.md
 f283bc83a499e253705c4ac13c9b8d5b  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-74202b4cf2bc76a092b08235928bc1c9  USER-GUIDE.md
+4889eaed60e9510b6c76931ead1f4ad4  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 4cc1b0cabaf7b9fbfcbcdcbc5d14a9b4  XayaUI/AuraSound.lua
@@ -210,8 +210,8 @@ ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
 ddaee5ba2415e79a1c5fe4554ad0ca23  XayaUI_Options/XayaUI_Options.toc
-1b7f9c9a6a6f181cc44dce7f1838d2de  XayaUI_QoL/CharacterModel.lua
-5ec70e32afc652587088daab9b733588  XayaUI_QoL/CharacterToolkit.lua
+86450604548c11e78b66e713b852ea77  XayaUI_QoL/CharacterModel.lua
+b8810955d3f9da66130a5c5d7b09ae12  XayaUI_QoL/CharacterToolkit.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
 e961de31e54ee41494bbd60ea3a2f996  XayaUI_QoL/CursorTrail.lua
 deef89f1ad9818ceb2f2d16c7e57ecaf  XayaUI_QoL/Media/Cursor/Arrow.tga
@@ -250,7 +250,7 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 08343552c22eb2676c663b0576e218c3  XayaUI_QoL/Media/Cursor/RingThick.tga
 054aa82635cfab8851fded7704d8f102  XayaUI_QoL/Media/Cursor/Sparkle.tga
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
-b04f3621895f558da7747c213c33260f  XayaUI_QoL/XayaUI_QoL.toc
+e7da16d1866b57a261c78f4ef863fe1b  XayaUI_QoL/XayaUI_QoL.toc
 6c204c615c32aeec49965a86f9649ccb  XayaUI_Reskin/GameMenuSkin.lua
 920bbd6d916017df661baf257a16b7d2  XayaUI_Reskin/XayaUI_Reskin.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
@@ -395,6 +395,14 @@ f48e2672c267fbb66eb61799a51f478f  debug-log/2026-11-04-1453-rename-game-dump-to-
 a3e685b4a822d5a0007936c8f69ea1d7  debug-log/2026-11-04-1523-content-data-pulls-offline.md
 2ebbe41b951053d6b4713397fa1cb5f8  debug-log/2026-11-04-1535-playable-classes-marked.md
 b6081ac7220230557d672c454f40d570  debug-log/2026-11-04-1550-terms-check-blizzard-wago.md
+cf4c985936e98ebabfe1867bd4dbc79a  debug-log/2026-11-04-1812-mythic-plus-rating-stashed-qol-0.7.2.md
+7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
+8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
+026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
+0d22d13bb61c889c0170258da5508644  docs/issue-screenshots/speech-cue-no-sound-channel.png
+d219067bc85426f02913fb1b3eece809  docs/issue-screenshots/toolkit-spells-id-placement.png
+75cbcb1373abb70c2b2cda9817175c50  docs/issue-screenshots/toolkit-spells-tab.png
+a2e49515e283e72fc94f220e8148b746  docs/issue-screenshots/toolkit-window-resize.png
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 40cbf03f1bb153e7f09fb1fa7f51f9fa  docs/process/IN-GAME-DATA-2026-11-05.md
@@ -440,6 +448,7 @@ eaa8da10b5a8d76dce1fdfeeef149d63  docs/reference/spells/spells.json
 5857b882061b2df7a8d4fb33945efc80  shelved/CountSupport.lua
 ba241e46458e8e4296563689c7708a51  shelved/CursorReminders.lua
 e710f0b422a995cc05581745bca74d4b  shelved/CursorTracker.lua
+4ed1b75026805cef9658f7cb6bc85fc7  shelved/MythicPlusRating.lua
 895e4335214e9e08d4909d4a1ea8d0cc  shelved/QoL.lua
 a354cbbb54ff4fb130af0063a401df9b  tests/Conditions.pre-0.5.83.lua
 99488fe8ce8e8e889669e5c3f5e21fe9  tests/art_picker_run.py
@@ -451,7 +460,7 @@ b96c22f839c7166fa44cc33ca05b7b78  tests/aura_gaps_run.py
 f115df38e9fbc8e0ce989f9a4184ef18  tests/auras_cmd_run.py
 85b42e051f93867990bead97395d8ac3  tests/build_content_run.py
 a48d4b3a546f29c2dbd4fdfb8bc661c4  tests/build_set_auras_run.py
-0831b46398b5188278a229dcb627fcac  tests/char_toolkit2_run.py
+461e64f19334eb1ad7903afe68b1ceba  tests/char_toolkit2_run.py
 663119064ca4acff4719eb939ba8957e  tests/char_toolkit_run.py
 965ec5befb388656c8d395f5c7e59b69  tests/char_toolkit_world.lua
 396b0fc9fa6a88b4131443cae359900c  tests/charges_combat_run.py

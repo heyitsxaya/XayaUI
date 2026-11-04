@@ -154,13 +154,10 @@ check("GCD secret in combat: hidden in combat, the last readable value listed", 
 C_Spell.GetSpellCooldown = function() return { startTime = 1, duration = 1.16, isActive = true } end
 combat = false
 ns.CharToolkit_ReadGCD()
-local mp = CM.Build(c, "stats").byKey.mplus
-check("Mythic+: score from the game (2,451) and each dungeon's best run, best first", mp.value == "2,451" and mp.pairs[1].label == "Dungeon B"
-  and mp.pairs[1].value == "+13 (over time), 310" and mp.pairs[2].value == "+12, 285", mp.value .. " / " .. tostring(mp.pairs[1].value))
-check("Mythic+: best this expansion", pair(mp, "Best this expansion") == "2,600 (season 15)")
-local savedPI = C_PlayerInfo; C_PlayerInfo = nil
-check("Mythic+: falls back to the overall dungeon score", CM.Build(c, "stats").byKey.mplus.value == "1,999")
-C_PlayerInfo = savedPI
+-- QoL 0.7.2: the Mythic+ rating was stashed in shelved/MythicPlusRating.lua. The test world still serves every Mythic+ call
+-- (char_toolkit_world.lua), so these fail on 0.7.1, where the line was built from them.
+check("Mythic+ rating is not a line on the Stats tab (the game gives it; the toolkit leaves it out)", CM.Build(c, "stats").byKey.mplus == nil)
+check("the panel did not ask the server for Mythic+ details", mythicRequested == nil or mythicRequested == false)
 m = CM.Build(c, "gear")
 check("durability: 89% overall (178 / 200), lowest item 78%", m.byKey.durability.value == "89%" and pair(m.byKey.durability, "Lowest item") == "78%", m.byKey.durability.value)
 check("repair cost: the sum of the items' repair cost (12,345 copper = 1g 23s 45c)", m.byKey.repair.value == "1g 23s 45c", m.byKey.repair.value)
@@ -210,8 +207,8 @@ local function cellVal(label)
   if not L then return nil end
   for _, r in ipairs(recs(d, "cellValue")) do if r.y == L.y and r.x > L.x and r.x < L.x + 190 then return r.text end end
 end
-check("sheet: every stat as a compact cell (crit 22.48%, armor 5,685, attack power 3,472, Mythic+ 2,451)",
-  cellVal("Critical Strike") == "22.48%" and cellVal("Armor") == "5,685" and cellVal("Attack Power") == "3,472" and cellVal("Mythic+ rating") == "2,451",
+check("sheet: every stat as a compact cell (crit 22.48%, armor 5,685, attack power 3,472), and no Mythic+ cell",
+  cellVal("Critical Strike") == "22.48%" and cellVal("Armor") == "5,685" and cellVal("Attack Power") == "3,472" and cellVal("Mythic+ rating") == nil,
   tostring(cellVal("Critical Strike")) .. " " .. tostring(cellVal("Armor")))
 check("sheet: section headers", hasText(d, "header", "- Secondary stats") and hasText(d, "header", "- Avoidance") and hasText(d, "header", "- Power"))
 check("sheet: no mastery text row and no duplicate Stamina", not hasText(d, "cellLabel", "Mastery: Fel Blood") and #(function() local t = {}; for _, r in ipairs(recs(d, "cellLabel")) do if r.text == "Stamina" then t[#t + 1] = r end end; return t end)() == 1)

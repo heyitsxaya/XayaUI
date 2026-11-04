@@ -20,9 +20,7 @@
 --     GetStaggerPercentage / OffhandHasShield, GetCritChanceProvidesParryEffect, UnitPowerType (MayReturnNothing),
 --     C_SpecializationInfo.GetSpecialization / GetSpecializationInfo / GetSpecializationMasterySpells, C_Spell.GetSpellName /
 --     GetSpellInfo / GetSpellDescription (MayReturnNothing), C_Item.GetItemStats / GetDetailedItemLevelInfo / GetItemInfo /
---     GetItemInfoInstant (MayReturnNothing), C_Item.RequestLoadItemDataByID, C_TooltipInfo.GetInventoryItem (MayReturnNothing),
---     C_PlayerInfo.GetPlayerMythicPlusRatingSummary (MayReturnNothing), C_ChallengeMode.GetOverallDungeonScore / GetMapUIInfo,
---     C_MythicPlus.GetSeasonBestMythicRatingFromThisExpansion (MayReturnNothing)
+--     GetItemInfoInstant (MayReturnNothing), C_Item.RequestLoadItemDataByID, C_TooltipInfo.GetInventoryItem (MayReturnNothing).
 --   undocumented, read the way Blizzard's UI reads them: GetInventoryItemLink, GetInventoryItemDurability (EquipmentManager.lua),
 --     GetRepairAllCost (MerchantFrame.lua: cost, canRepair), GetAverageItemLevel (PaperDollFrame.lua), InCombatLockdown,
 --     GetSpecialization / GetSpecializationInfo / GetSpecializationMasterySpells (older globals, used only when the C_ ones are
@@ -423,43 +421,6 @@ end
 -- Character and attributes
 -------------------------------------------------------------------------------
 
-local function MythicPlusItem()
-    local it = Item("mplus", "Mythic+ rating")
-    local score, runs, hidden
-    local sum = C_PlayerInfo and R(C_PlayerInfo.GetPlayerMythicPlusRatingSummary, "player")
-    if sum == HIDDEN then hidden = true
-    elseif type(sum) == "table" then
-        local s = Field(sum, "currentSeasonScore")
-        if s == HIDDEN then hidden = true elseif num(s) then score = s end
-        local r = Field(sum, "runs")
-        if type(r) == "table" then runs = r end
-    end
-    if score == nil and not hidden then
-        local s = C_ChallengeMode and N(C_ChallengeMode.GetOverallDungeonScore)
-        if s == HIDDEN then hidden = true elseif num(s) then score = s end
-    end
-    if hidden then SetValue(it, HIDDEN); return it end
-    SetValue(it, score, Big)
-    local list = {}
-    for _, run in ipairs(runs or {}) do
-        local id, sc, lvl, ok = Field(run, "challengeModeID"), Field(run, "mapScore"), Field(run, "bestRunLevel"), Field(run, "finishedSuccess")
-        if num(id) and num(sc) and num(lvl) then list[#list + 1] = { id = id, score = sc, level = lvl, timed = ok == true } end
-    end
-    table.sort(list, function(a, b) if a.score ~= b.score then return a.score > b.score end; return a.id < b.id end)
-    for _, run in ipairs(list) do
-        local name = C_ChallengeMode and R(C_ChallengeMode.GetMapUIInfo, run.id)
-        if type(name) ~= "string" then name = "Dungeon " .. tostring(run.id) end
-        Pair(it, name, ("+%d%s, %s"):format(run.level, run.timed and "" or " (over time)", Big(run.score)))
-    end
-    if num(score) and #list == 0 then Pair(it, "This season", score > 0 and "no dungeon details given" or "no rated runs yet", "mute") end
-    local best, season = R(C_MythicPlus and C_MythicPlus.GetSeasonBestMythicRatingFromThisExpansion)
-    if num(best) and best > 0 then Pair(it, "Best this expansion", Big(best) .. (num(season) and (" (season " .. tostring(season) .. ")") or "")) end
-    Tip(it, "From the game: C_PlayerInfo.GetPlayerMythicPlusRatingSummary (your overall score and each dungeon's best run), else C_ChallengeMode.GetOverallDungeonScore.")
-    Tip(it, "Dungeon names come from C_ChallengeMode.GetMapUIInfo. The game may send the details only after the Mythic+ tab has been opened once.")
-    return it
-end
-CM.MythicPlusItem = MythicPlusItem
-
 -- primary stat or Stamina: UnitStat gives (stat, effective, positive buffs, negative buffs); base = stat - buffs - debuffs
 -- (how the character window works it out, PaperDollFrame_SetStat).
 local function StatItem(ctx, i)
@@ -550,7 +511,6 @@ local function CharacterSection(ctx, out)
         Tip(il, "From the game's average item level (equipped, best you own, PvP), the same call the character window uses.")
     end
     sec.items[#sec.items + 1] = il
-    sec.items[#sec.items + 1] = MythicPlusItem()
     local cur, run, fly, swim = R(GetUnitSpeed, "player")
     local base = num(BASE_MOVEMENT_SPEED) and BASE_MOVEMENT_SPEED or 7
     local mv = Item("move", "Movement")
