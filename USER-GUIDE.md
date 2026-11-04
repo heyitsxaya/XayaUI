@@ -672,8 +672,7 @@ A panel beside the character window (XayaUI QoL; its title reads **Stat Calculat
 - **Rating or percent:** the "Show: %" / "Show: rating" button in the title row switches every rating line between its percent and its rating. Clicking one rating line flips that line alone; the button resets every single-line flip.
 
 **Tabs:**
-- **Tabs (QoL 0.7.7):** Sheet | Stats | Gear | What If | Spells. Defense and Offense are not tabs any more: they are filters on the Spells tab (below), which also draw these two sections.
-- **Sheet:** every stat of the Stats, Defense and Offense sections in two compact columns, grouped under the same section headers. Each entry has its own hover with the same detail as the full line, and a click flips a rating between percent and rating.
+- **Tabs (QoL 0.7.13):** Stats | Gear | What If | Spells. The Sheet tab was removed (the character window itself is to be restyled instead: QoL Character Reskin). Defense and Offense are not tabs any more: they are filters on the Spells tab (below), which also draw these two sections.
 - **Stats:**
   - **Character:** your spec and role, primary stat and mastery factor; item level (equipped, best in bags, PvP); movement speeds (run, swim, flight, now) as a percent of base speed; your mastery spell in the game's own words, numbers filled in.
   - **Attributes:** your primary stat and Stamina with base, buffs and debuffs, the attack power your primary stat gives, the dodge (Agility) or parry (Strength) it gives where the game reports it, and Stamina to health. Your other primary stats are listed in grey.

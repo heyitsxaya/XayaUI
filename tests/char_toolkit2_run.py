@@ -1,5 +1,5 @@
 # Stub test for QoL > Character Toolkit phase 2 (XayaUI_QoL 0.7.0): what the panel shows. Sections with headers (and folding them),
-# the rating / percent toggle (every line and one line), the conversion hover, detail pairs, the compact sheet and its own hover, the
+# the rating / percent toggle (every line and one line), the conversion hover, detail pairs, no Sheet tab (QoL 0.7.13), the
 # What If pane (per-stat inputs and an item compare through the stand-in converter), the slot overlays, secret values shown as
 # "hidden in combat" and never compared, the settings page layout, layout bounds (V11), and the new game reads (dodge from Agility,
 # block reduction, attack power to DPS, base = stat - buffs, live GCD in combat, Mythic+ rating, durability and repair cost).
@@ -203,30 +203,14 @@ C_PaperDollInfo.GetStaggerPercentage = nil
 UnitDamage = function() return 8138.2, 8944.6, 0, 0, 0, 0, 1 end
 GetExpertise = nil; GetOverrideSpellPowerByAP = nil; GetSpellBonusHealing = nil
 
--- 5. The sheet ------------------------------------------------------------------------------------------------------------
+-- 5. No Sheet tab (QoL 0.7.13; Xaya 2026-11-04: "I don't care about this sheet at all. I want a reskin OF THE CHARACTER MENU AND
+-- NOTHING ELSE") ------------------------------------------------------------------------------------------------------------
+local tabKeys = {}
+for _, t in ipairs(CM.TABS) do tabKeys[#tabKeys + 1] = t[1] end
+check("no Sheet tab: Stats, Gear, What If, Spells", table.concat(tabKeys, ",") == "stats,gear,whatif,spells", table.concat(tabKeys, ","))
 d = render("sheet")
-local cells = recs(d, "cell")
-local function cellVal(label)
-  local L
-  for _, r in ipairs(recs(d, "cellLabel")) do if r.text == label then L = r end end
-  if not L then return nil end
-  for _, r in ipairs(recs(d, "cellValue")) do if r.y == L.y and r.x > L.x and r.x < L.x + 190 then return r.text end end
-end
-check("sheet: every stat as a compact cell (crit 22.48%, armor 5,685, attack power 3,472), and no Mythic+ cell",
-  cellVal("Critical Strike") == "22.48%" and cellVal("Armor") == "5,685" and cellVal("Attack Power") == "3,472" and cellVal("Mythic+ rating") == nil,
-  tostring(cellVal("Critical Strike")) .. " " .. tostring(cellVal("Armor")))
-check("sheet: section headers", hasText(d, "header", "- Secondary stats") and hasText(d, "header", "- Avoidance") and hasText(d, "header", "- Power"))
-check("sheet: no mastery text row and no duplicate Stamina", not hasText(d, "cellLabel", "Mastery: Fel Blood") and #(function() local t = {}; for _, r in ipairs(recs(d, "cellLabel")) do if r.text == "Stamina" then t[#t + 1] = r end end; return t end)() == 1)
-ns.CharToolkit_SetValueMode("rating"); d = render("sheet")
-check("sheet follows the value mode (crit 528)", cellVal("Critical Strike") == "528", cellVal("Critical Strike"))
-ns.CharToolkit_SetValueMode("percent"); d = render("sheet")
-local sheetTip = tipLines(buttonFor(d, "crit"))
-d = render("stats")
-local rowTip = tipLines(buttonFor(d, "crit"))
-check("sheet hover = the stat line's hover (one model, its own tooltip)", #sheetTip > 10 and table.concat(sheetTip, "\n") == table.concat(rowTip, "\n"), #sheetTip)
-d = render("sheet")
-b = buttonFor(d, "crit"); b.scripts.OnClick(b); d = drawn()
-check("clicking a sheet cell flips that rating", cellVal("Critical Strike") == "528" and cellVal("Haste") == "29.25%")
+check("a saved Sheet tab opens Stats", c.tab == "stats" and hasText(d, "header", "- Secondary stats") and #recs(d, "cell") == 0, c.tab)
+check("a fresh profile starts on Stats", ns.CHARTOOLKIT_DEFAULTS.tab == "stats", ns.CHARTOOLKIT_DEFAULTS.tab)
 c.lineModes = {}
 
 -- 6. Layout (V11) ----------------------------------------------------------------------------------------------------------
@@ -247,22 +231,14 @@ local function layoutOK(d)
   end end
   return true
 end
-for _, t in ipairs({ "sheet", "stats", "defense", "offense", "gear", "whatif", "spells" }) do
+for _, t in ipairs({ "stats", "defense", "offense", "gear", "whatif", "spells" }) do
   local ok, why = layoutOK(render(t))
   check("layout " .. t .. ": every element inside the content width, no overlaps", ok, why)
 end
-d = render("sheet")
-local cellsOK = true
-for _, r in ipairs(recs(d, "cell")) do if r.w > (LAY.content - 8) / 2 + 0.01 then cellsOK = false end end
-check("sheet: two columns of cells, each at most half the width", cellsOK and #recs(d, "cell") >= 20, #recs(d, "cell"))
 local function fits(kind, state)
   for _, r in ipairs(recs(d, kind)) do if #tostring(r.text) * 0.55 * r.size > r.w + 0.01 then return false, tostring(r.text) .. " (" .. state .. ")" end end
   return true
 end
-local okF, whyF = fits("cellLabel", "labels")
-check("sheet: every label fits its cell (estimated 0.55 x size per character)", okF, whyF)
-okF, whyF = fits("cellValue", "values")
-check("sheet: every value fits its cell", okF, whyF)
 local tw = LAY.content / #CM.TABS
 local fit = true
 for _, t in ipairs(CM.TABS) do if #t[2] * 0.55 * 10 > tw - 4 then fit = false end end
@@ -383,7 +359,7 @@ misuse = 0
 local okGCD, errGCD = pcall(ns.CharToolkit_ReadGCD)
 check("secret values: reading a secret GCD runs without an error", okGCD, errGCD)
 c.whatIf = 50; c.whatIfStats = { crit = 10 }
-for _, t in ipairs({ "sheet", "stats", "defense", "offense", "gear", "whatif", "spells" }) do
+for _, t in ipairs({ "stats", "defense", "offense", "gear", "whatif", "spells" }) do
   local ok, err = pcall(render, t)
   check("secret values: the " .. t .. " tab draws without an error", ok, err)
 end
@@ -395,10 +371,10 @@ check("secret values: crit shows hidden in combat (percent and rating)", v("crit
 check("secret values: Agility, armor, attack power and dodge show hidden in combat", v("stat2") == "hidden in combat"
   and v("armor") == "hidden in combat" and v("ap") == "hidden in combat" and v("dodge") == "hidden in combat")
 check("secret values: the GCD shows hidden in combat", v("gcd") == "hidden in combat")
-local okS = pcall(render, "sheet")
+local okS = pcall(render, "stats")
 d = drawn()
-check("secret values: the sheet shows hidden in combat", okS and cellVal("Critical Strike") == "hidden in combat", cellVal("Critical Strike"))
-check("secret values: \"hidden in combat\" fits a sheet cell", (fits("cellValue", "hidden")))
+check("secret values: the Stats tab shows hidden in combat", okS and valueOf(d, "Critical Strike") == "hidden in combat", valueOf(d, "Critical Strike"))
+check("secret values: \"hidden in combat\" fits its value column", (fits("value", "hidden")))
 local bcrit = buttonFor(d, "crit")
 local okT, tlS = pcall(function() return tipLines(bcrit) end)
 check("secret values: the hover says why", okT and linesHave(tlS, "hides ratings while unit stats are restricted"))

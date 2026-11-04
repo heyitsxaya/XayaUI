@@ -6,7 +6,8 @@
 --
 -- Every number comes from the one model in CharacterModel.lua (the game's own reads; what the game does not give is marked, never
 -- guessed; secret values show as "hidden in combat"). This file only draws it:
---   Tabs: Sheet (every stat in two compact columns, one hover each) | Stats | Gear | What If | Spells. The Spells tab lists the
+--   Tabs: Stats | Gear | What If | Spells (the Sheet tab was removed in QoL 0.7.13: the character window itself is restyled instead,
+--   QoL Character Reskin). The Spells tab lists the
 --   spells added by hand and every spell of the spellbook with numbers in its description, under All / Offense / Defense filter
 --   buttons; Offense and Defense also draw the stat sections that were the Offense and Defense tabs before QoL 0.7.7.
 --   Each tab is made of sections with a header (click a header to fold it). Each stat line is label and value, with its detail
@@ -41,7 +42,7 @@ ns.CHARTOOLKIT_DEFAULTS = {
     spellFilter = "all",   -- the Spells tab's filter: all | offense | defense (QoL 0.7.7: these were the Defense and Offense tabs)
     spellsAll = false,     -- list spellbook spells whose description has no numbers too
     free = { x = 0, y = 0 }, -- position when shown with /xui stats and the character window closed
-    tab = "sheet",         -- the panel tab last shown
+    tab = "stats",         -- the panel tab last shown
     whatIf = 0,            -- What If: rating added to every stat (0 = off)
     whatIfStats = {},      -- What If: rating added to one stat, by stat key
     valueMode = "percent", -- rating lines show their percent or their rating
@@ -53,7 +54,7 @@ ns.CHARTOOLKIT_DEFAULTS = {
     enchantSlots = {},     -- slot IDs the player ticked to flag when they have no enchant; empty = this expansion's slots (CM.EnchantSlots)
     -- enchantSlotsSet: true once the player has changed a tick (then enchantSlots is used even when empty)
 }
-local OLD_TABS = { overview = "sheet", ratings = "stats" }
+local OLD_TABS = { overview = "stats", ratings = "stats", sheet = "stats" }   -- (the Sheet tab: removed in QoL 0.7.13)
 
 local function CopyVal(v)
     if type(v) ~= "table" then return v end
@@ -88,7 +89,7 @@ local function Cfg()
     c.tab = OLD_TABS[c.tab] or c.tab
     -- QoL 0.7.7: the Defense and Offense tabs became the Spells tab's filters (Xaya 2026-11-04)
     if c.tab == "defense" or c.tab == "offense" then c.spellFilter = c.tab; c.tab = "spells" end
-    if not CM.TAB_OK[c.tab] then c.tab = "sheet" end
+    if not CM.TAB_OK[c.tab] then c.tab = "stats" end
     c.spellFilter = CM.FilterOf(c)
     c.spellsAll = c.spellsAll == true
     c.whatIf = math.max(-100000, math.min(100000, math.floor(tonumber(c.whatIf) or 0)))
@@ -709,61 +710,6 @@ local function RenderSections(c, m, tab, y0)
     return y
 end
 
--- the Sheet: every stat of the Stats, Defense and Offense tabs in two compact columns, one hover each
-local SHEET_TABS = { stats = true, defense = true, offense = true }
-local function RenderSheet(c, m)
-    local size = c.fontSize
-    local cText = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
-    local cLabel = TC("xui-label", "text", { 1, 0.82, 0, 1 })
-    local cMuted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
-    local cLine = TC("xui-window", "border", { 0.3, 0.3, 0.3, 1 })
-    local colW = math.floor((W - GUT) / 2)   -- two columns of cells, a gutter between them (a cell's label and value are one control)
-    local cellH = size + 5
-    local lw = math.floor(colW * 0.5)
-    local y = 0
-    for _, sec in ipairs(m.sections) do
-        local cells = {}
-        if SHEET_TABS[sec.tab] then
-            for _, it in ipairs(sec.items) do
-                if it.kind ~= "wide" and it.sheet ~= false then cells[#cells + 1] = it end
-            end
-        end
-        if #cells > 0 then
-            if y > 0 then y = y + 4 end
-            local folded = c.collapsed["sheet:" .. sec.key]
-            local h = Hdr()
-            h.key = "sheet:" .. sec.key
-            h:ClearAllPoints()
-            h:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-            h:SetSize(W, size + 6)
-            SetFont(h.text, size, "")
-            h.text:SetText((folded and "+ " or "- ") .. sec.title)
-            Paint(h.text, cLabel)
-            h.line:SetColorTexture(cLine[1], cLine[2], cLine[3], 0.8)
-            Rec("header", 0, y, W, size + 6, (folded and "+ " or "- ") .. sec.title, size)
-            y = y + size + 8
-            if not folded then
-                for i, it in ipairs(cells) do
-                    local col = (i - 1) % 2
-                    local x = col * (colW + GUT)
-                    local mode = it.kind == "rating" and ModeFor(c, it.key) or nil
-                    local v, tone = CM.ValueFor(it, mode)
-                    PlaceFS(FS(), x, y, lw - 2, size - 1, it.sheetLabel or it.label, it.minor and cMuted or cText, "LEFT", false, "cellLabel")
-                    PlaceFS(FS(), x + lw, y, colW - lw, size - 1, v, ToneColor(tone, cText), "RIGHT", false, "cellValue")
-                    local b = Btn()
-                    b.item = it
-                    b:ClearAllPoints()
-                    b:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
-                    b:SetSize(colW, cellH)
-                    Rec("cell", x, y, colW, cellH, it.key)
-                    if col == 1 or i == #cells then y = y + cellH + 1 end
-                end
-            end
-        end
-    end
-    return y
-end
-
 -- the filter row at the top of the Spells tab; returns the height it took
 local function RenderFilters(c)
     local size = c.fontSize
@@ -819,8 +765,7 @@ function ns.CharToolkit_Render()
     panel.model = m
     local y
     local nFilters = 0
-    if c.tab == "sheet" then y = RenderSheet(c, m)
-    elseif c.tab == "spells" then nFilters = #CM.SPELL_FILTERS; y = RenderSections(c, m, c.tab, RenderFilters(c))
+    if c.tab == "spells" then nFilters = #CM.SPELL_FILTERS; y = RenderSections(c, m, c.tab, RenderFilters(c))
     else y = RenderSections(c, m, c.tab) end
     for i = nFilters + 1, #filterBtns do filterBtns[i]:Hide() end
     for i = nIcon + 1, #iconBtns do iconBtns[i]:Hide(); iconBtns[i].slot, iconBtns[i].link = nil, nil end
