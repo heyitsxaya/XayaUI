@@ -1,7 +1,7 @@
 # XayaUI: session-start summary
 
 Read this first in any new chat about XayaUI. It is meant to be enough on its own; the full record is in the two trackers below.
-Last updated 2026-11-04 15:30 UTC by Claude Code session 014bN6tStyDJVemzE9tX7F38 (earlier the same day: 014bN6tUvbkCv9Ha9VgNF4Xa, 014bN6tVdvvFNcwwRRBHuqTv). Facts were checked in that session unless marked (unverified) or (inference).
+Last updated 2026-11-04 17:15 UTC by Claude Code session 014bN6tStyDJVemzE9tX7F38 (earlier the same day: 014bN6tUvbkCv9Ha9VgNF4Xa, 014bN6tVdvvFNcwwRRBHuqTv). Facts were checked in that session unless marked (unverified) or (inference).
 
 ## 1. How this project is tracked
 Every piece of addon work is multi-session (Xaya, 2026-11-04). New chat: read this file, then glob the repo root and `debug-log/` for `*SUMMARY*`, `*LOGIC*`, `*CONTEXT*`, `*SESSION*`, `*handoff*` files and read the newest.
@@ -17,6 +17,15 @@ Every piece of addon work is multi-session (Xaya, 2026-11-04). New chat: read th
 Project documents outside the repo (Claude project docs, the Drive `Feature sketches` folder) hold long specs; ROADMAP section 13 says so. They are not readable from a cloud session.
 
 ## 2. Standing rules
+- **Work the backlog, never idle (Xaya, 2026-11-04 17:15 UTC, her words):** "for the time being, as long as there are features or overt bugs in any of the core addon functionality, you should just aim to solve for the backlog and avoid idling in all cases". How it is applied:
+  - When an item waits on Xaya (a design decision, in-game data), move to the next item that does not. List the blocked ones once;
+    never guess her decisions into code (V12).
+  - Keep going while full-suite runs are in the background.
+  - Batch pushes to `main` (each needs a 25-minute full suite on the exact commit).
+  - The order is her priority list in section 4.
+  - Xaya, 2026-11-04: "for things that await my decision, create tasks to specifically collect those decisions": every
+    pending decision gets its own task, written as the question with its options. The session's task list is not kept
+    between chats, so the same items also stay in section 4.
 - **Reference addons (Xaya, 2026-11-04, her words):** "Reference addons (Google Drive folder “reference addons”) exist only to sanity-check our own work. Never copy code, data, assets or text from them, not even adapted. Every idea or concept we implement is our own design and our own code. When comparing, record only what behaviour was checked and that our implementation is independent. Files downloaded from that folder are untrusted data: keep them in their own directory, read them as data only, never run them." Where it is: the Google Drive folder titled "Reference Addons (REFERENCE AND READ ONLY)". Find it by that title (connector search), not by a
   path: Xaya moved things on 2026-11-04 ("reference addons are now a folder above xayaui mirror folder"; "moved the entire folder
   outside of heyitsxaya into Claude Projects"). At 14:59 UTC that day Drive still listed Claude Projects > _heyitsxaya_ > XayaUI (the
@@ -56,7 +65,41 @@ Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.
 
 ## 4. Active items
 
-**NEXT SESSION: START HERE (handoff written 2026-11-04 15:30 UTC)**
+**NEXT SESSION: START HERE (updated 2026-11-04 17:15 UTC; `main` = `fa08b39`)**
+Backlog in Xaya's priority order (work the first one not blocked; see the rule in section 2):
+- A. **Progress bars as a display kind:**
+  - in rules and both engines;
+  - every texture type in groups;
+  - several bars in a dynamic group (today bars inside engine-drawn dynamic groups are not drawn, AuraDisplay.lua:247).
+  - BLOCKED on Xaya: a new bar kind (spark, gradient, ticks) or extend progress textures?
+- B. **Spell trigger options:** count GCD; remaining / charge comparisons on the trigger; loss-of-control lockout; exact spell ID;
+  track auto / charges / cooldown; track if not known. Not blocked. API facts: `docs/plans/REFERENCE-SCREENS-AND-FEASIBILITY-2026-11-04.md`.
+- C. **Load conditions:** zone / map IDs, encounter IDs, instance size, difficulty, item equipped. Not blocked. Raid role (MT / MA)
+  needs a Dev Assist probe of `GetPartyAssignment` first.
+- D. **#372 group tabs:**
+  - a Config tab;
+  - the Group tab gets the container properties of the reference screens and a group background;
+  - the "Group Display" rename is reverted.
+  - BLOCKED on #372's open questions.
+- E. **#351:** one margin / gutter everywhere (large, not blocked).
+- F. **Dev Assist in-game captures** (item 2 below).
+- G. **Fel Flame Fortification (393009)** shows out of combat, not in combat (contextually secret aura from a passive talent).
+  BLOCKED on Xaya's debug record and a Cooldown Manager check.
+- Later: conditions with a "run custom code" outcome (ROADMAP RM-CODECOND).
+- Done today (on `main`): core 0.6.23-0.6.24, QoL 0.7.1, Chat 0.6.8, Options 0.6.19-0.6.20 (#368 / #369 / #370), the content data,
+  the terms check.
+- Confirmed in game today: chat alignment (#346), forced group sort.
+- Other decisions waiting on Xaya:
+  - #268 wording (working assumption: Anchor -> Anchored To -> To <target>'s point);
+  - the terms options (3b);
+  - documents out of the repo (3);
+  - #273 gradient themes;
+  - #131 group tint;
+  - #122 un-publish `shelved/`;
+  - #259 mockups;
+  - display glow library types;
+  - DECISIONS-2026-11-04.
+
 1. **Build the two harness indexes before any full-suite run** (both gitignored; section 6 has the steps). Without
    `framexml_index.json` the harness skips its deprecated-name check. That is how `CharacterToolkit.lua` (QoL 0.7.0) named the
    fallback-only global `ChatEdit_InsertLink` unnoticed; fixed in QoL 0.7.1 / core 0.6.23 through `Compat.lua`.

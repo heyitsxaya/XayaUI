@@ -1084,7 +1084,9 @@ local function PasteApply(key, dst, src)
         dst.buffAlt = src.buffAlt and ns.Copy(src.buffAlt) or nil
     elseif key == "activation" then dst.trigMode, dst.trigOrder = src.trigMode, src.trigOrder and C(src.trigOrder) or nil
     elseif key == "actions" then dst.actions = src.actions and C(src.actions) or nil
-    elseif key == "stCd" then dst.cdState = src.cdState
+    elseif key == "stCd" then
+        dst.cdState, dst.countGCD = src.cdState, src.countGCD
+        dst.cdTimeOp, dst.cdTimeSec, dst.cdChargeOp, dst.cdChargeVal = src.cdTimeOp, src.cdTimeSec, src.cdChargeOp, src.cdChargeVal
     elseif key == "stBuff" then dst.buffState, dst.buffTimeOp, dst.buffTimeSec = src.buffState, src.buffTimeOp, src.buffTimeSec
     elseif key == "talents" then dst.talents, dst.talentMode = C(src.talents or {}), src.talentMode
     elseif key == "extra" then dst.extra = C(src.extra or { list = {} })
@@ -1341,6 +1343,25 @@ local function BuildRule(i, rule)
                 set = function(_, v) rule.spellID = tonumber(v) or 0; Changed(rule); Notify() end,
             },
             cdState = ns.CdStateSelect(rule, on),
+            countGCD = Tog(rule, "countGCD", "Count the global cooldown", 4.5, on,
+                { desc = "Ticked: while this spell is on the global cooldown it counts as on cooldown (not ready, no charge available). Unticked (default): the global cooldown is ignored." }),
+            -- "Seconds left" / "Charges" comparisons on the trigger itself (B2): a dropdown with its number box beside it
+            cdTimeOp = Sel(rule, "cdTimeOp", "Seconds left", 4.6, ns.CMP_OPS and ns.CMP_OPS.values or { any = "Any" }, ns.CMP_OPS and ns.CMP_OPS.order or { "any" },
+                function() Changed(rule); Notify() end,
+                { get = function() return rule.cdTimeOp or "any" end,
+                  desc = "Only true while the cooldown has this much time left. Exact when the game shows it; in combat the duration engine's estimate (/xui timing); with no estimate yet the trigger is unknown." }),
+            cdTimeSec = { type = "input", name = "Seconds", order = 4.61, width = "half",
+                hidden = function() return not ns.CooldownUsed(rule) or not rule.cdTimeOp or rule.cdTimeOp == "any" end,
+                get = function() return rule.cdTimeSec ~= nil and tostring(rule.cdTimeSec) or "" end,
+                set = function(_, v) rule.cdTimeSec = tonumber(v); Changed(rule) end },
+            cdChargeOp = Sel(rule, "cdChargeOp", "Charges", 4.7, ns.CMP_OPS and ns.CMP_OPS.values or { any = "Any" }, ns.CMP_OPS and ns.CMP_OPS.order or { "any" },
+                function() Changed(rule); Notify() end,
+                { get = function() return rule.cdChargeOp or "any" end,
+                  desc = "Only true while the spell has this many charges. Exact out of combat; in combat counted from your casts (exact at 0 and at full; 3+ charges also use the Cooldown Manager). Unknown keeps the trigger unknown." }),
+            cdChargeVal = { type = "input", name = "Charges", order = 4.71, width = "half",
+                hidden = function() return not ns.CooldownUsed(rule) or not rule.cdChargeOp or rule.cdChargeOp == "any" end,
+                get = function() return rule.cdChargeVal ~= nil and tostring(rule.cdChargeVal) or "" end,
+                set = function(_, v) rule.cdChargeVal = tonumber(v); Changed(rule) end },
             maxCharges = Rng(rule, "maxCharges", "Max charges override (0 = auto)", 5, 0, 6, 1, on,
                 { desc = "Only used if the game reports no charge data. Auto-detection normally wins." }),
             detected = { type = "description", order = 6, width = "full", name = function() return DetectedMax(rule.spellID) end },
@@ -1399,7 +1420,7 @@ local function BuildRule(i, rule)
 
     -- Triggers are added by hand: Cooldown and Buff / Aura only show once added (or while they hold data).
     -- Hiding never changes saved values; "Remove" resets that section.
-    for _, k in ipairs({ "cdHeader", "spellID", "spellName", "spellSearch", "spellPick", "cdState", "maxCharges", "detected" }) do
+    for _, k in ipairs({ "cdHeader", "spellID", "spellName", "spellSearch", "spellPick", "cdState", "countGCD", "cdTimeOp", "cdChargeOp", "maxCharges", "detected" }) do
         local o = trigger.args[k]
         if o then o.hidden = function() return not ns.CooldownUsed(rule) end end
     end
@@ -1410,7 +1431,11 @@ local function BuildRule(i, rule)
     trigger.args.cdRemove = { type = "execute", name = "Remove", order = 7, width = "half",
         desc = "Remove the Cooldown trigger: clears this rule's Cooldown spell, max charges, and state.",
         hidden = function() return not ns.CooldownUsed(rule) end,
-        func = function() rule.useCooldown = false; rule.spellID = 0; rule.maxCharges = 0; rule.cdState = nil; Changed(rule); Notify() end }
+        func = function()
+            rule.useCooldown = false; rule.spellID = 0; rule.maxCharges = 0; rule.cdState = nil
+            rule.countGCD, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil
+            Changed(rule); Notify()
+        end }
     trigger.args.buffRemove = { type = "execute", name = "Remove", order = 14, width = "half",
         desc = "Remove the Buff / Aura trigger: clears this rule's aura ID and state.",
         hidden = function() return not ns.BuffUsed(rule) end,

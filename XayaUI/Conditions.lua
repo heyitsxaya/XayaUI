@@ -240,6 +240,9 @@ function ReadCooldownRaw(rule)
     if not ok or type(cd) ~= "table" then r.why = "cooldown unreadable"; return r end
     local cdActive = CleanBool(cd, "isActive")
     local onGCD = CleanBool(cd, "isOnGCD")
+    -- the raw global-cooldown fact, for rules that count it (rule.countGCD, ns.CheckCooldownState). SpellCooldownInfo.isOnGCD: bool?
+    -- · NeverSecret, Nilable (docs/reference/api/structures.md:6549): readable in combat; nil (not given) counts as "not on the GCD"
+    r.onGCD = (onGCD == true)
     local okc, ch = pcall(C_Spell.GetSpellCharges, readID)
     local maxC = okc and CleanNumber(ch, "maxCharges") or nil
     if (not maxC or maxC < 2) and (rule.maxCharges or 0) > 1 then
@@ -286,10 +289,17 @@ function ReadCooldownRaw(rule)
 end
 
 -- Does cdState match? returns true/false/nil(unknown)
+-- rule.countGCD (Xaya 2026-11-04 backlog, from the cooldown-trigger options): while the spell is on the global cooldown it cannot be
+-- cast, so it counts as on cooldown: not ready, no charge available. The shared reading (ns.ReadCooldown, cached per spell for every
+-- rule) is never changed; only this rule's answer is.
 function ns.CheckCooldownState(rule, cdInfo)
     local s = rule.cdState
     if ns.Ignored(s) then return true end
     if not cdInfo or not cdInfo.known then return nil end
+    if rule.countGCD and cdInfo.onGCD then
+        if s == "ready" or s == "hasCharge" then return false end
+        if s == "notReady" or s == "empty" then return true end
+    end
     if s == "ready" then return cdInfo.atMax end
     if s == "notReady" then if cdInfo.atMax == nil then return nil end return not cdInfo.atMax end
     if s == "empty" then return cdInfo.empty end
@@ -1095,6 +1105,44 @@ function ns.AuraTimeLeft(ref)
     if exp <= 0 then return nil end
     return math.max(0, exp - GetTime())
 end
+-- Comparisons on the cooldown trigger itself (backlog B2, Xaya 2026-11-04): "Seconds left [op] [s]" and "Charges [op] [n]" in the
+-- rule's Cooldown section and on "Cooldown (any spell)" rows. Same numbers as the Conditions tab rows (ns.NumRef "n:cdRemain" /
+-- "n:cdCharges", Outcomes.lua): exact when the game shows them; in combat the time is the duration engine's estimate and the charge
+-- count is built from your casts; nil (not known) keeps the answer unknown, never a guess. AND: a false comparison wins, then unknown.
+ns.CMP_OPS = { values = { any = "Any", [">="] = "At least", ["<="] = "At most", ["="] = "Exactly", [">"] = "More than", ["<"] = "Less than" },
+    order = { "any", ">=", "<=", "=", ">", "<" } }
+local function Cmp(op, x, v)
+    if op == ">=" then return x >= v elseif op == "<=" then return x <= v elseif op == "=" then return x == v
+    elseif op == ">" then return x > v elseif op == "<" then return x < v end
+    return true
+end
+local function OpOn(op) return op ~= nil and op ~= "" and op ~= "any" and ns.CMP_OPS.values[op] ~= nil end
+function ns.CooldownNumChecks(rule, cdInfo)
+    local tOn, cOn = OpOn(rule.cdTimeOp), OpOn(rule.cdChargeOp)
+    if not tOn and not cOn then return true end
+    local anyFalse, anyNil, why = false, false, nil
+    if tOn then
+        local rem = ns.NumRef and ns.NumRef("n:cdRemain", rule, { cd = cdInfo }) or nil
+        if rem == nil then anyNil, why = true, "seconds left unknown"
+        else
+            local sec = tonumber(rule.cdTimeSec) or 0
+            if rem > 0 and ns.Timing and ns.Timing.Deadline then   -- re-check at the moment the answer changes
+                local now = GetTime()
+                if rem > sec then ns.Timing.Deadline(now + (rem - sec)) end
+                ns.Timing.Deadline(now + rem)
+            end
+            if not Cmp(rule.cdTimeOp, rem, sec) then anyFalse = true end
+        end
+    end
+    if cOn then
+        local n = (cdInfo and cdInfo.known) and cdInfo.count or nil
+        if n == nil then anyNil, why = true, why or "charge count unknown"
+        elseif not Cmp(rule.cdChargeOp, n, tonumber(rule.cdChargeVal) or 0) then anyFalse = true end
+    end
+    if anyFalse then return false end
+    if anyNil then return nil, why end
+    return true
+end
 function ns.TimeLeftCheck(op, sec, ref)
     if op == nil or op == "" or op == "any" then return true end
     local rem = ns.AuraTimeLeft(ref)
@@ -1577,6 +1625,11 @@ function ns.Evaluate(rule, ctx)
     info.present, info.buffSource, info.buffRef, info.buffWhich = ns.BuffPresentAny(rule)
     if rule.buffEstimate ~= false and info.present == true then ns.ApplyBuffEstimate(rule, info) end
     info.cdOK = ns.CheckCooldownState(rule, info.cd)
+    -- "Seconds left" / "Charges" comparisons of the Cooldown section (B2); AND with the state
+    if (rule.cdTimeOp or rule.cdChargeOp) and (not ns.CooldownUsed or ns.CooldownUsed(rule)) then
+        local v = ns.CooldownNumChecks(rule, info.cd)
+        if v == false then info.cdOK = false elseif v == nil and info.cdOK == true then info.cdOK = nil end
+    end
     info.buffOK = ns.CheckBuffState(rule, info.present)
     -- "with N seconds left" on the built-in Buff / Aura (only with State = present): unknown time keeps the trigger unknown
     if info.buffOK == true and rule.buffState == "present" and rule.buffTimeOp and rule.buffTimeOp ~= "any" then
