@@ -152,29 +152,43 @@ function ns.PlaySoundPreview(s)
     ns.PlaySound(c)
 end
 
+-- Returns what it tried (one readable line, for the debug record's "Sounds") and the game's raw first return value. What PlaySound /
+-- PlaySoundFile return is not in the 12.1.5 API documentation (docs/reference/api), so the value is recorded as-is, not interpreted.
 function ns.PlaySound(s)
     if not s or not s.enabled or s.value == "" then return end
     local channel = ns.Val(s.channel) or "Master"
     if s.source == "tts" then
         ns.Speak(s)
+        return "speech: " .. tostring(s.value):sub(1, 40), nil
     elseif s.source == "kit" then
         -- #334: the cue's own volume (0-100) for the game's sound kits: C_Sound.PlaySoundWithOptions with volumeOverride (0-1), the
         -- documented 12.1.5 call Blizzard's own Cooldown Manager and combat audio alerts use. The channel goes in as before (#353: what
         -- the game does with a channel name there is not confirmed). Without a cue volume, or if that call is refused, plays as before.
         local vol = tonumber(s.cueVolume)
-        local played = false
+        local played, res, tried = false, nil, false
         if vol and vol < 100 and C_Sound and C_Sound.PlaySoundWithOptions then
-            local ok, res = pcall(C_Sound.PlaySoundWithOptions, { soundKitID = tonumber(s.value), uiSoundSubType = channel,
+            tried = true
+            local ok
+            ok, res = pcall(C_Sound.PlaySoundWithOptions, { soundKitID = tonumber(s.value), uiSoundSubType = channel,
                 volumeOverride = math.max(0, math.min(100, vol)) / 100 })
             played = ok and res ~= false
+            if played then return ("game sound %s on %s at %d%% (PlaySoundWithOptions)"):format(tostring(s.value), channel, vol), res end
         end
-        if not played then PlaySound(tonumber(s.value), channel) end
+        local r = PlaySound(tonumber(s.value), channel)
+        local note = tried and " (the game refused its own volume; played at the channel's volume)"
+            or ((vol and vol < 100) and " (this client has no per-sound volume; played at the channel's volume)" or "")
+        return ("game sound %s on %s%s"):format(tostring(s.value), channel, note), r
     elseif s.source == "lsm" then
         local lsm = LSM()
         local path = lsm and lsm:Fetch("sound", s.value, true)
-        if path then PlaySoundFile(path, channel) end
+        if path then
+            local r = PlaySoundFile(path, channel)
+            return ("shared-media sound '%s' on %s"):format(tostring(s.value), channel), r
+        end
+        return ("shared-media sound '%s' not found"):format(tostring(s.value)), nil
     else -- file: path or FileDataID
-        PlaySoundFile(tonumber(s.value) or s.value, channel)
+        local r = PlaySoundFile(tonumber(s.value) or s.value, channel)
+        return ("sound file %s on %s"):format(tostring(s.value), channel), r
     end
 end
 

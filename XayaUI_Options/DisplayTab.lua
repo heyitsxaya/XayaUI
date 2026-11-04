@@ -194,7 +194,9 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
                 if not d then return nil end
                 local t = d.visual
                 if sub then t = t[sub] end
-                return type(t) == "table" and t[k] or nil
+                -- (not `type(t) == "table" and t[k] or nil`: that turns a stored false into nil, i.e. "the default")
+                if type(t) == "table" then return t[k] end
+                return nil
             end,
             __newindex = function(_, k, v)
                 for _, d in ipairs(list()) do
@@ -216,7 +218,9 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
             local first
             for i, d in ipairs(l) do
                 local t = sub and d.visual[sub] or d.visual
-                local s = Sig(type(t) == "table" and t[k] or nil)
+                local val
+                if type(t) == "table" then val = t[k] end
+                local s = Sig(val)
                 if i == 1 then first = s elseif s ~= first then out[#out + 1] = label; break end
             end
         end

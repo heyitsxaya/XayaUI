@@ -75,7 +75,16 @@ end
 
 -- In-game event log (shown in the settings window's debug console tray).
 ns.logBuf = {}
+-- ns.LogKind(kind, fmt, ...): the same, with the debug record's category for the line ("rule", "snapshot" ...; DebugRecord.lua)
+local logKind = "log"
+function ns.LogKind(kind, fmt, ...)
+    logKind = kind or "log"
+    local ok, err = pcall(ns.Log, fmt, ...)
+    logKind = "log"
+    if not ok then error(err, 0) end
+end
 function ns.Log(fmt, ...)
+    local kind = logKind
     local msg = (select("#", ...) > 0) and fmt:format(...) or fmt
     local line = ("|cff888888%.1f|r %s"):format(GetTime() % 10000, msg)
     local b = ns.logBuf
@@ -87,7 +96,7 @@ function ns.Log(fmt, ...)
     end
     ns.Fire("LOG", line)   -- the window's debug tray listens (XayaUI_Options)
     if ns.ConsoleSink then ns.ConsoleSink(line) end   -- the separate console window (Console.lua)
-    if ns.RecordLine then ns.RecordLine("log", msg) end   -- the saved debug record (DebugRecord.lua, Advanced Debugging)
+    if ns.RecordLine then ns.RecordLine(kind, msg) end   -- the saved debug record (DebugRecord.lua, Advanced Debugging)
 end
 
 -- Deep-copy helper for defaults.

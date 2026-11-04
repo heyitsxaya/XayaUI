@@ -1182,6 +1182,9 @@ do
             On = function() if not P.on then P.On() end end,
             Off = function() if P.on then P.Off() end end,
             Active = function() return P.on and true or false end,
+            -- the file this addon's captures are saved in, for XayaUI's "What to send" (Settings > Debugging)
+            savedFile = "XayaUI_GameDump.lua",
+            savedWhat = "the probe and the other developer captures",
         })
     end
 end

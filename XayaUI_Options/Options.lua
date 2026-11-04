@@ -2767,7 +2767,7 @@ local function BuildAddonSettings()
         debug = { type = "group", name = "Debugging", order = 2, args = {
             debugHeader = { type = "header", name = "Debugging", order = 10 },
             advancedDebug = { type = "toggle", name = "Advanced Debugging (recommended)", order = 11, width = "full",
-                desc = "Records automatically what is needed to find a problem, so you never have to type a debug command: every rule's state at the start and end of each combat, the combat engine's status, which source answered each aura and when that changed, proc-glow sightings, game-played sounds, XayaUI's messages and its own Lua errors. The record is saved with your settings (written at /reload or logout) and goes into the bug report below. Also sends XayaUI's messages to the console window instead of chat (change that below).",
+                desc = "Records automatically what is needed to find a problem, so you never have to type a debug command or remember a chat line. Choose below what is recorded: each kind of line has its own switch and says what it costs. The record is saved with your settings (written at /reload or logout); \"What to send\" below says which file to send and where it is. Also sends XayaUI's messages to the console window instead of chat (change that below).",
                 get = function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug and true or false end,
                 set = function(_, v) Ui().advancedDebug = v and true or false; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end; Notify() end },
             -- the options Advanced Debugging brings (XayaUI/DebugRecord.lua)
@@ -2782,28 +2782,101 @@ local function BuildAddonSettings()
                 get = function() return Ui().consoleAutoOpen ~= false end,
                 set = function(_, v) if v then Ui().consoleAutoOpen = nil else Ui().consoleAutoOpen = false end end },
             recordOn = { type = "toggle", name = "Keep the debug record", order = 11.3, width = "full",
-                desc = "On (default with Advanced Debugging): the record described above is kept. It holds the newest 3000 lines; older ones are dropped and counted.",
+                desc = "On (default with Advanced Debugging): the lines chosen below are kept. Off: nothing is recorded (messages still go where chosen above).",
                 hidden = function() return not Ui().advancedDebug end,
                 get = function() return Ui().recordOff ~= true end,
-                set = function(_, v) Ui().recordOff = (not v) and true or nil; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end end },
-            debugProbe = { type = "toggle", name = "Also run the game-data probe (XayaUI Game Data Capture)", order = 11.4, width = "full",
+                set = function(_, v) Ui().recordOff = (not v) and true or nil; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end; Notify() end },
+            recWhat = { type = "group", inline = true, name = "What to record", order = 11.4,
+                hidden = function() return not (Ui().advancedDebug and Ui().recordOff ~= true) end,
+                args = (function()
+                    local a = {
+                        recIntro = { type = "description", order = 0, width = "full", fontSize = "medium",
+                            name = "Each switch adds one kind of line; one that is off costs nothing. XayaUI's own errors, combat start and end, and any action the game blocked are always kept. The cost is in grey." },
+                        presetLight = { type = "execute", name = "Light set", order = 90, width = "normal",
+                            desc = "Only rules firing and clearing, game state and messages: the cheapest record that still says what happened.",
+                            func = function() if ns.SetRecPreset then ns.SetRecPreset("light"); ns.DebugSettingsChanged() end; Notify() end },
+                        presetAll = { type = "execute", name = "Everything", order = 91, width = "normal",
+                            desc = "Every kind of line, including trigger detail (for the rules chosen above), displays and performance timing.",
+                            func = function() if ns.SetRecPreset then ns.SetRecPreset("all"); ns.DebugSettingsChanged() end; Notify() end },
+                        presetDefault = { type = "execute", name = "Defaults", order = 92, width = "normal",
+                            func = function() if ns.SetRecPreset then ns.SetRecPreset("default"); ns.DebugSettingsChanged() end; Notify() end },
+                        recordMax = { type = "select", name = "Lines kept", order = 95,
+                            desc = "The newest lines are kept; older ones are dropped and counted. More lines make a bigger saved file.",
+                            values = { [1000] = "1000", [3000] = "3000 (default)", [10000] = "10000 (a bigger file)" }, sorting = { 1000, 3000, 10000 },
+                            get = function() local n = tonumber(Ui().recordMax); return (n == 1000 or n == 10000) and n or 3000 end,
+                            set = function(_, v) v = tonumber(v); Ui().recordMax = (v == 1000 or v == 10000) and v or nil end },
+                        recFocus = { type = "multiselect", name = "Rules for trigger detail", order = 4.5, width = "full", dialogControl = "Dropdown",
+                            desc = "The rules whose every trigger change is recorded (their cues and conditions too). Pick only the rules you are looking into.",
+                            hidden = function() return not (ns.RecCatSetting and ns.RecCatSetting("triggers")) end,
+                            values = function()
+                                local v = {}
+                                for _, r in ipairs(ns.rules or {}) do
+                                    if not r.isCue and not r.parentUid then
+                                        if not r.uid and ns.NewUID then r.uid = ns.NewUID() end
+                                        if r.uid then v[r.uid] = tostring(r.name or "?") end
+                                    end
+                                end
+                                return v
+                            end,
+                            get = function(_, key) local f = Ui().recFocus; return type(f) == "table" and f[key] and true or false end,
+                            set = function(_, key, val)
+                                local u = Ui()
+                                u.recFocus = type(u.recFocus) == "table" and u.recFocus or {}
+                                u.recFocus[key] = val and true or nil
+                                if next(u.recFocus) == nil then u.recFocus = nil end
+                                if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end
+                            end },
+                    }
+                    for i, c in ipairs((ns.DebugRecordInfo and ns.DebugRecordInfo.CATS) or {}) do
+                        local key = c.key
+                        a["cat_" .. key] = { type = "toggle", order = i, width = "full",
+                            name = c.name .. "  |cff888888(" .. c.cost .. ")|r", desc = c.desc,
+                            get = function() return ns.RecCatSetting and ns.RecCatSetting(key) or false end,
+                            set = function(_, v) if ns.SetRecCat then ns.SetRecCat(key, v); ns.DebugSettingsChanged() end; Notify() end }
+                        if key == "triggers" then a.recFocus.order = i + 0.5 end
+                    end
+                    return a
+                end)() },
+            debugProbe = { type = "toggle", name = "Also run the game-data probe (XayaUI Game Data Capture)", order = 11.5, width = "full",
                 desc = "The separate Game Data Capture addon is installed: switch its event probe on together with Advanced Debugging (it records what the game lets addons read, for the run sheet in docs/process). It goes off again with Advanced Debugging if this switched it on.",
                 hidden = function() return not (Ui().advancedDebug and ns.ProbeInstalled and ns.ProbeInstalled()) end,
                 get = function() return Ui().debugProbe ~= false end,
                 set = function(_, v) if v then Ui().debugProbe = nil else Ui().debugProbe = false end; if ns.SyncDebugProbe then ns.SyncDebugProbe() end end },
-            recordInfo = { type = "description", order = 11.5, width = "full", fontSize = "medium",
+            recordInfo = { type = "description", order = 11.6, width = "full", fontSize = "medium",
                 hidden = function() return not Ui().advancedDebug end,
                 name = function()
                     local n, drop, start = 0, 0, nil
                     if ns.RecordSummary then n, drop, start = ns.RecordSummary() end
                     if n == 0 then return "Debug record: empty so far (it fills as you play)." end
-                    return ("Debug record: %d lines since %s%s. To send it: Create bug report below (newest 1500 lines), or after a /reload send the file World of Warcraft\\_retail_\\WTF\\Account\\<your account>\\SavedVariables\\XayaUI.lua. It holds rule names, spell IDs and XayaUI's messages; no character name or realm. Messages that name another player are shown but never kept, here or in the bug report."):format(
+                    return ("Debug record: %d lines since %s%s. It holds rule names, spell IDs and XayaUI's messages; no character name or realm. Messages that name another player are shown but never kept."):format(
                         n, tostring(start), drop > 0 and (" (" .. drop .. " older lines dropped)") or "")
                 end },
-            recordClear = { type = "execute", name = "Clear the debug record", order = 11.6,
+            recordView = { type = "execute", name = "View the debug record", order = 11.7,
+                hidden = function() return not Ui().advancedDebug end,
+                desc = "Opens the whole record as text you can read and copy: what each kind of line means, the lines (newest at the bottom), and what to send.",
+                func = function() if ns.RecordText and ns.ShowCopyBox then ns.ShowCopyBox("XayaUI debug record", ns.RecordText()) end end },
+            recordClear = { type = "execute", name = "Clear the debug record", order = 11.8,
                 hidden = function() return not Ui().advancedDebug end,
                 confirm = true, confirmText = "Delete every line of the debug record?",
                 func = function() if ns.ClearRecord then ns.ClearRecord() end; Notify() end },
+            send = { type = "group", inline = true, name = "What to send", order = 11.9, args = {
+                sendText = { type = "description", order = 1, width = "full", fontSize = "medium",
+                    name = "1. Type /reload (or log out): the game writes the files only then.  2. Open the folder below (copy the path, then replace <YOUR ACCOUNT FOLDER> with your account's folder inside WTF\\Account, often a number such as 12345678#1; if there are several, use the one with the newest XayaUI.lua).  3. Send the files below to Xaya. They hold no password, character name, realm or chat text; XayaUI.lua holds your rule names and settings." },
+                sendCore = { type = "input", name = "XayaUI.lua: your rules, settings, saved errors and the debug record  (click, Ctrl+A, Ctrl+C)", order = 2, width = "full",
+                    get = function() return ns.SavedFilePath and ns.SavedFilePath("XayaUI.lua") or "" end,
+                    set = function() end },
+                sendDev = { type = "input", order = 3, width = "full",
+                    name = function()
+                        local svc = ns.Service and ns.Service("gameDataProbe")
+                        return tostring(svc and svc.savedFile or "") .. ": " .. tostring(svc and svc.savedWhat or "the developer captures") .. "  (click, Ctrl+A, Ctrl+C)"
+                    end,
+                    hidden = function() local svc = ns.Service and ns.Service("gameDataProbe"); return not (svc and type(svc.savedFile) == "string") end,
+                    get = function() local svc = ns.Service and ns.Service("gameDataProbe"); return (svc and ns.SavedFilePath) and ns.SavedFilePath(svc.savedFile) or "" end,
+                    set = function() end },
+                sendCopy = { type = "execute", name = "Copy all of this", order = 4,
+                    desc = "Opens these steps and paths as one text, selected and ready for Ctrl+C.",
+                    func = function() if ns.SendText and ns.ShowCopyBox then ns.ShowCopyBox("XayaUI: what to send", ns.SendText()) end end },
+            } },
             showConsole = { type = "toggle", name = "Show the debug console at the bottom of the window", order = 12, width = "full",
                 desc = "The strip under the window with the live rule status and event log. Off: it is not drawn at all (turn it back on here).",
                 get = function() return ns.DebugConsoleOn() end,

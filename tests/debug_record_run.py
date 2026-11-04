@@ -44,8 +44,13 @@ ns.Fire = function() end
 function UI() CueRulesDB.ui = CueRulesDB.ui or {}; return CueRulesDB.ui end
 function RECN() local r = CueRulesDB.debugRecord; return r and #r.lines or 0 end
 function REC(i) local r = CueRulesDB.debugRecord; return r and r.lines[i or #r.lines] end
+-- a line of this kind (shown by its label: "12:00:00  Message  text") that holds this text
 function HAS(kind, text) local r = CueRulesDB.debugRecord; if not r then return false end
-  for _, l in ipairs(r.lines) do if l:find(" " .. kind .. " ", 1, true) and l:find(text, 1, true) then return true end end return false end
+  local label = NS.DebugRecordInfo.LABEL[kind] or kind
+  for _, l in ipairs(r.lines) do if l:find("^%S+  " .. label .. "%s") and l:find(text, 1, true) then return true end end return false end
+function NKIND(kind) local r = CueRulesDB.debugRecord; if not r then return 0 end
+  local label, n = NS.DebugRecordInfo.LABEL[kind] or kind, 0
+  for _, l in ipairs(r.lines) do if l:find("^%S+  " .. label .. "%s") then n = n + 1 end end return n end
 function RESET() CHAT = {}; SINK = {}; WINDOW.open = false; WINDOW.calls = 0 end
 ''')
 fails = []
@@ -111,7 +116,8 @@ check("collected output (used for the engine status) is neither shown nor record
 # 4. combat end adds the combat engine's status
 L.execute("NS.AuraDisplay = { Status = function() NS.Print('Engine draws: 3 displays') end }; FIRE('PLAYER_REGEN_DISABLED'); FIRE('PLAYER_REGEN_ENABLED')")
 check("each combat is marked, and its end records the engine's status (what /xuiengine prints)",
-      E("HAS('combat', 'combat start') and HAS('combat', 'combat end') and HAS('engine', 'Engine draws: 3 displays')"))
+      E("HAS('combat', 'combat 1 starts') and HAS('combat', 'combat 1 ends') and HAS('engine', 'Engine draws: 3 displays')"))
+check("a line reads 'time  Category  what happened'", E("REC():find('^%d%d:%d%d:%d%d  Engine   Engine draws') ~= nil"), E("tostring(REC())"))
 
 # 5. XayaUI's own Lua errors
 L.execute("RESET(); HANDLER('Interface/AddOns/XayaUI/Engine.lua:12: boom')")
@@ -179,5 +185,166 @@ L.execute("SET('msgDest', 'chat'); RESET(); NS.Print('to chat now')")
 check("Settings: 'XayaUI's messages' = Chat window sends messages to chat", E("GET('msgDest') == 'chat' and #CHAT == 1 and #SINK == 0"))
 L.execute("SET('advancedDebug', false)")
 check("Settings: unticking Advanced Debugging stops the probe it started", E("UI().advancedDebug == false and PROBE.on == false"))
+
+# 9. categories (core 0.6.22, Xaya: "discrete functionality toggles", "cpu friendly"): each kind of line has its own switch
+L.execute("CueRulesDB.debugRecord = nil; UI().advancedDebug = true; UI().recordOff = nil; UI().recCats = nil; NS.DebugSettingsChanged()")
+check("defaults: rules, snapshots, auras, glows, sounds, game, engine, messages on; trigger detail, displays, performance off",
+      E("NS.RecCatOn('rules') and NS.RecCatOn('snapshots') and NS.RecCatOn('auras') and NS.RecCatOn('glows') and NS.RecCatOn('sounds') "
+        "and NS.RecCatOn('game') and NS.RecCatOn('engine') and NS.RecCatOn('messages') and not NS.RecCatOn('triggers') "
+        "and not NS.RecCatOn('displays') and not NS.RecCatOn('perf')"))
+L.execute("NS.SetRecCat('messages', false); RESET(); NS.Print('not kept now'); NS.LogKind('rule', 'FIRED kept'); NS.LogKind('snapshot', '#1 snap kept')")
+L.execute("SHOWN = function(t) for _, l in ipairs(CHAT) do if l:find(t, 1, true) then return true end end for _, l in ipairs(SINK) do if l:find(t, 1, true) then return true end end return false end")
+check("a category switched off: its lines are not kept (the message is still shown)", E("SHOWN('not kept now') and not HAS('msg', 'not kept now')"))
+check("  ...other categories still are, each under its own label", E("HAS('rule', 'FIRED kept') and HAS('snapshot', '#1 snap kept')"))
+L.execute("NS.SetRecCat('snapshots', false); NS.LogKind('snapshot', '#2 snap gone'); NS.Log('plain log line')")
+check("snapshots off: snapshot lines go; a plain console line counts as a rule line", E("not HAS('snapshot', '#2 snap gone') and HAS('log', 'plain log line')"))
+check("a setting equal to the default is not stored (the saved settings stay small)", E("UI().recCats.messages == false and UI().recCats.rules == nil"))
+L.execute("NS.SetRecCat('messages', true); NS.SetRecCat('snapshots', true)")
+check("  ...and switching back to the default removes it", E("UI().recCats == nil"))
+L.execute("HANDLER('Interface/AddOns/XayaUI/Engine.lua:5: always kept'); NS.SetRecPreset('light')")
+check("errors are kept whatever the categories", E("HAS('error', 'always kept')"))
+check("'Light set': rules, game state, messages only", E("NS.RecCatOn('rules') and NS.RecCatOn('game') and NS.RecCatOn('messages') and not NS.RecCatOn('auras') and not NS.RecCatOn('engine')"))
+L.execute("NS.SetRecPreset('all')")
+check("'Everything': every category", E("NS.RecCatOn('triggers') and NS.RecCatOn('displays') and NS.RecCatOn('perf') and NS.RecCatOn('auras')"))
+L.execute("NS.SetRecPreset('default')")
+check("'Defaults': back to the defaults, nothing stored", E("UI().recCats == nil and not NS.RecCatOn('perf')"))
+L.execute("UI().advancedDebug = false")
+check("Advanced Debugging off: every category reads off, but each keeps its own setting for next time",
+      E("not NS.RecCatOn('rules') and NS.RecCatSetting('rules') == true and NS.RecCatSetting('perf') == false"))
+L.execute("UI().advancedDebug = true")
+
+# 10. size: 1000 / 3000 / 10000 lines
+L.execute("CueRulesDB.debugRecord = nil; UI().recordMax = 1000; for i = 1, 1300 do NS.LogKind('rule', 'fill ' .. i) end")
+check("'Lines kept' 1000: the record keeps about the newest 1000", E("RECN() >= 1000 and RECN() <= 1200 and REC():find('fill 1300') ~= nil"))
+L.execute("UI().recordMax = 777")
+check("  ...a value that is not one of the choices falls back to 3000", E("NS.DebugRecordInfo.MaxLines() == 3000"))
+L.execute("UI().recordMax = nil; CueRulesDB.debugRecord = nil")
+
+# 11. game state (category "game"): what the game was doing
+L.execute(r"""
+GetInstanceInfo = function() return 'Test Dungeon', 'party', 8, 'Mythic Keystone', 5, 0, false, 2810 end
+C_Map = { GetBestMapForUnit = function() return 2339 end }
+C_Secrets = { ShouldAurasBeSecret = function() return true end, ShouldCooldownsBeSecret = function() return false end }
+C_ChallengeMode = { GetActiveKeystoneInfo = function() return 12, {}, true end }
+GetNumGroupMembers = function() return 5 end
+IsInRaid = function() return false end
+GetInventoryItemID = function(_, slot) return slot == 1 and 212345 or nil end
+local H = NS.DebugRecordInfo.handlers
+H.ENCOUNTER_START(3012, 'Test Boss', 8, 5); H.ENCOUNTER_END(3012, 'Test Boss', 8, 5, 0)
+H.CHALLENGE_MODE_START(503); H.CHALLENGE_MODE_COMPLETED()
+H.GROUP_ROSTER_UPDATE(); H.GROUP_ROSTER_UPDATE()
+H.PLAYER_EQUIPMENT_CHANGED(1, true); H.ZONE_CHANGED_NEW_AREA(); H.TRAIT_CONFIG_UPDATED(77)
+""")
+check("boss encounters: ID, name, difficulty, group size, and kill or wipe",
+      E("HAS('game', \"boss encounter 3012 'Test Boss' starts (difficulty 8, 5 players)\") and HAS('game', 'ends: wipe')"))
+check("Mythic+: challenge map and keystone level, then completion", E("HAS('game', 'Mythic+ starts: challenge map 503, keystone level 12') and HAS('game', 'Mythic+ completed')"))
+check("group size once per change (two updates with the same size: one line)", E("NKIND('game') > 0") and L.eval("(function() local n = 0 for _, l in ipairs(CueRulesDB.debugRecord.lines) do if l:find('group: 5 members', 1, true) then n = n + 1 end end return n end)()") == 1)
+check("gear, zone (instance type, difficulty, instance ID, map ID) and talent changes",
+      E("HAS('game', 'gear: slot 1 now item 212345') and HAS('game', 'zone: Test Dungeon (party, Mythic Keystone, difficulty 8, instance 2810), map 2339') and HAS('game', 'talents changed')"))
+L.execute("FIRE('PLAYER_REGEN_DISABLED')")
+check("combat start says where, and what the game hides from addons now", E("HAS('combat', 'starts | Test Dungeon') and HAS('combat', 'the game hides auras: yes, cooldowns: no')"))
+L.execute("FIRE('PLAYER_REGEN_ENABLED'); NS.SetRecCat('game', false); local H = NS.DebugRecordInfo.handlers; H.ENCOUNTER_START(9999, 'Hidden Boss', 8, 5)")
+check("game state off: no game lines", E("not HAS('game', 'Hidden Boss')"))
+L.execute("NS.SetRecCat('game', true)")
+L.execute("C_AddOns = { GetNumAddOns = function() return 3 end, GetAddOnInfo = function(i) return ({ 'XayaUI', 'XayaUI_Options', 'SomeOtherAddon' })[i] end, "
+          "IsAddOnLoaded = function(n) return true, n ~= 'XayaUI_Options' end, DoesAddOnHaveLoadError = function() return false end, "
+          "GetAddOnMetadata = function(n) return n == 'XayaUI' and '0.6.22' or '0.6.17' end }; "
+          "GetPhysicalScreenSize = function() return 2560, 1440 end; UIParent = { GetEffectiveScale = function() return 0.71 end }; "
+          "NS.DebugRecordInfo.handlers.PLAYER_ENTERING_WORLD(true, false)")
+check("login: game version, every XayaUI addon with its version (and which is not loaded), screen, UI scale, rules",
+      E("HAS('session', 'login | game 12.1.5 (build 70783)') and HAS('session', 'XayaUI 0.6.22, XayaUI_Options 0.6.17 (not loaded)') "
+        "and HAS('session', 'screen 2560x1440, UI scale 0.710') and not HAS('session', 'SomeOtherAddon')"))
+
+# 12. performance (category "perf"): the engine's timer runs for a combat and its report is recorded
+L.execute(r"""
+PERF = { calls = {} }
+NS.perfOn = false
+NS.PerfCommand = function(arg) PERF.calls[#PERF.calls + 1] = arg
+  if arg == 'on' then NS.perfOn = true; NS.Print('perf: measuring')
+  elseif arg == 'off' then NS.perfOn = false; NS.Print('perf: stopped')
+  else NS.Print('perf over 30s: 150 steps, 0.20 ms avg') end end
+NS.SetRecCat('perf', true); CHAT = {}; SINK = {}
+FIRE('PLAYER_REGEN_DISABLED'); FIRE('PLAYER_REGEN_ENABLED')
+""")
+check("performance on: the timer starts with the combat and stops after it", E("PERF.calls[1] == 'on' and PERF.calls[2] == '' and PERF.calls[3] == 'off' and NS.perfOn == false"))
+check("  ...its report is recorded, and none of its own messages reach the player", E("HAS('perf', 'perf over 30s') and #SINK == 0 and #CHAT == 0"))
+L.execute("PERF.calls = {}; NS.perfOn = true; FIRE('PLAYER_REGEN_DISABLED'); FIRE('PLAYER_REGEN_ENABLED')")
+check("  ...a timer the player started (/xui perf on) is read but never stopped", E("PERF.calls[1] == '' and PERF.calls[2] == nil and NS.perfOn == true"))
+L.execute("NS.perfOn = false; NS.SetRecCat('perf', false); PERF.calls = {}; FIRE('PLAYER_REGEN_DISABLED'); FIRE('PLAYER_REGEN_ENABLED')")
+check("performance off: the timer is never touched", E("#PERF.calls == 0"))
+
+# 13. actions the game blocked (always kept), trigger / display / sound lines
+L.execute("local H = NS.DebugRecordInfo.handlers; H.ADDON_ACTION_BLOCKED('XayaUI', 'CastSpellByID'); H.ADDON_ACTION_FORBIDDEN('SomeOtherAddon', 'Jump')")
+check("an action the game blocked for XayaUI is kept; another addon's is not", E("HAS('blocked', \"blocked XayaUI's call to CastSpellByID\") and not HAS('blocked', 'SomeOtherAddon')"))
+L.execute("R1 = { uid = 'r1', name = 'Watched' }; R2 = { uid = 'r2', name = 'Other' }; NS.SetRecCat('triggers', true); UI().recFocus = { r1 = true }; NS.DebugSettingsChanged()")
+L.execute("NS.WhyNot = function(i) return 'buff=false (aura API)' end")
+L.execute("for i = 1, 5 do NS.RecTrigger(R1, false, { buffOK = false, buffSource = 'aura API', cdOK = true }) end; NS.RecTrigger(R2, false, { buffOK = false })")
+check("trigger detail: a chosen rule's answer is recorded once per change, with why it does not fire",
+      E("NKIND('trigger') == 1 and HAS('trigger', \"'Watched' does not fire: buff=false (aura API)\")"))
+check("  ...a rule not chosen is not recorded", E("not HAS('trigger', 'Other')"))
+L.execute("NS.RecTrigger(R1, true, { buffOK = true, buffSource = 'aura API | time: duration object', cdOK = true }); "
+          "NS.RecTrigger({ uid = 'c1', parentUid = 'r1', isCue = true, name = 'Its cue' }, false, { buffOK = false })")
+check("  ...a change is recorded again, and the chosen rule's cues are included", E("HAS('trigger', \"'Watched' fires | aura true via aura API\") and HAS('trigger', \"'Its cue' (cue) does not fire\")"))
+L.execute("UI().recFocus = nil; NS.DebugSettingsChanged(); N0 = NKIND('trigger'); NS.RecTrigger(R1, false, { buffOK = false, buffSource = 'x' })")
+check("  ...no rule chosen: nothing (and nothing is built)", E("NKIND('trigger') == N0"))
+L.execute("NS.SetRecCat('triggers', false); NS.RecDisplay(R1, true, true); NS.SetRecCat('displays', true); NS.RecDisplay(R1, true, true); NS.RecDisplay(R1, false, false)")
+check("displays: only with the category on; says who draws it", E("NKIND('display') == 2 and HAS('display', \"'Watched' display shown (drawn by the combat engine)\") and HAS('display', \"'Watched' display hidden\")"))
+L.execute("NS.RecSound(R1, 'sound file x.ogg on Master', true); NS.SetRecCat('sounds', false); NS.RecSound(R1, 'sound file y.ogg on Master', true); NS.SetRecCat('sounds', true); NS.SetRecCat('displays', false)")
+check("sounds: which sound, channel and the game's raw answer; off: none", E("HAS('sound', \"'Watched': sound file x.ogg on Master | the game returned true\") and not HAS('sound', 'y.ogg')"))
+
+# 14. what to send: the files and where they are, as copyable text
+L.execute("IsBetaBuild = function() return false end; IsPublicTestClient = function() return false end")
+check("the path of XayaUI.lua, with the account folder marked for the player to fill in",
+      E("NS.SavedFilePath('XayaUI.lua') == 'World of Warcraft\\\\_retail_\\\\WTF\\\\Account\\\\<YOUR ACCOUNT FOLDER>\\\\SavedVariables\\\\XayaUI.lua'"), E("NS.SavedFilePath('XayaUI.lua')"))
+L.execute("IsPublicTestClient = function() return true end")
+check("  ...a test client's own game folder", E("NS.SavedFilePath('XayaUI.lua'):find('\\\\_ptr_\\\\WTF', 1, true) ~= nil and NS.SendText():find('_xptr_', 1, true) ~= nil"))
+L.execute("IsPublicTestClient = function() return false end")
+check("the steps: /reload first, the folder, the files", E("NS.SendText():find('/reload', 1, true) and NS.SendText():find('XayaUI.lua', 1, true) and NS.SendText():find('<YOUR ACCOUNT FOLDER>', 1, true)") is not None and E("NS.SendText():find('/reload', 1, true) ~= nil"))
+check("  ...the developer addon's file is listed only when it says which file it is (through its service)",
+      E("NS.SendText():find('XayaUI_GameDump.lua', 1, true) == nil"))
+L.execute("NS.Provide('gameDataProbe', { On = function() end, Off = function() end, Active = function() return false end, savedFile = 'XayaUI_DevTest.lua', savedWhat = 'test captures' })")
+check("  ...and then it is", E("NS.SendText():find('XayaUI_DevTest.lua  (test captures)', 1, true) ~= nil"))
+L.execute("CueRulesDB.debugRecord = nil; NS.LogKind('rule', 'FIRED readable')")
+TXT = E("NS.RecordText()")
+check("'View the debug record': what each label means, the lines, and what to send",
+      "Categories:" in TXT and "Snapshot" in TXT and "FIRED readable" in TXT and "WHAT TO SEND" in TXT and "(off now)" in TXT, TXT[:300])
+
+
+# 15. the real Settings > Debugging controls for the categories, presets, size, rule picker and "What to send" (Options.lua)
+L.execute("UI().advancedDebug = true; UI().recordOff = nil; UI().recCats = nil; UI().msgDest = 'console'; NS.DebugSettingsChanged(); CueRulesDB.debugRecord = nil")
+L.execute("W = DBG.recWhat.args; SEND = DBG.send.args")
+check("Settings: one tick box per category, each with its cost in the label", E("W.cat_auras ~= nil and W.cat_perf ~= nil and W.cat_triggers ~= nil and W.cat_game ~= nil "
+      "and W.cat_auras.name:find('(small)', 1, true) ~= nil and W.cat_perf.name:find('timer', 1, true) ~= nil"))
+L.execute("W.cat_messages.set(nil, false); RESET(); NS.Print('settings says no')")
+check("Settings: unticking 'XayaUI's messages' stops recording them (they are still shown)",
+      E("W.cat_messages.get() == false and SHOWN('settings says no') and not HAS('msg', 'settings says no')"))
+L.execute("W.cat_messages.set(nil, true); NS.Print('settings says yes')")
+check("Settings: ticking it again records them", E("W.cat_messages.get() == true and HAS('msg', 'settings says yes')"))
+L.execute("W.presetLight.func()")
+check("Settings: 'Light set' button", E("W.cat_rules.get() and W.cat_game.get() and W.cat_messages.get() and not W.cat_auras.get() and not W.cat_snapshots.get()"))
+L.execute("W.presetAll.func()")
+check("Settings: 'Everything' button", E("W.cat_perf.get() and W.cat_triggers.get() and W.cat_displays.get()"))
+L.execute("W.presetDefault.func()")
+check("Settings: 'Defaults' button", E("UI().recCats == nil"))
+check("Settings: the rule picker for trigder detail is hidden until 'Trigger detail' is ticked".replace("trigder", "trigger"), E("W.recFocus.hidden() == true"))
+L.execute("UIDN = 0; NS.NewUID = function() UIDN = UIDN + 1; return 'gen' .. UIDN end")   # (Outcomes.lua's, not loaded here)
+L.execute("W.cat_triggers.set(nil, true); NS.rules = { { uid = 'u1', name = 'First rule' }, { name = 'No uid yet' }, { uid = 'u1c', parentUid = 'u1', isCue = true, name = 'cue' } }")
+VALS = L.eval("W.recFocus.values()")
+check("Settings: the picker lists rules (not their cues), giving a rule without an ID one", E("W.recFocus.hidden() == false") and
+      L.eval("(function() local v = W.recFocus.values(); local n = 0 for k, name in pairs(v) do n = n + 1 end return n == 2 and v.u1 == 'First rule' and NS.rules[2].uid ~= nil and v[NS.rules[2].uid] == 'No uid yet' end)()"))
+L.execute("W.recFocus.set(nil, 'u1', true); NS.RecTrigger(NS.rules[1], false, { buffOK = false })")
+check("Settings: picking a rule records its trigger detail", E("W.recFocus.get(nil, 'u1') == true and HAS('trigger', \"'First rule' does not fire\")"))
+L.execute("W.recFocus.set(nil, 'u1', false)")
+check("Settings: unpicking the last rule clears the list", E("UI().recFocus == nil"))
+L.execute("W.recordMax.set(nil, 10000)")
+check("Settings: 'Lines kept' 10000 is stored; 3000 is the default and stores nothing", E("UI().recordMax == 10000 and W.recordMax.get() == 10000") and
+      (L.execute("W.recordMax.set(nil, 3000)") or True) and E("UI().recordMax == nil and W.recordMax.get() == 3000"))
+L.execute("IsBetaBuild = function() return false end; IsPublicTestClient = function() return false end")
+check("Settings: 'What to send' shows XayaUI.lua's path in a box to copy, and typing in it changes nothing",
+      E("SEND.sendCore.get():find('SavedVariables\\\\XayaUI.lua', 1, true) ~= nil") and (L.execute("SEND.sendCore.set(nil, 'typed over')") or True)
+      and E("SEND.sendCore.get():find('<YOUR ACCOUNT FOLDER>', 1, true) ~= nil"))
+check("Settings: the developer file's box shows only when that addon says its file", E("SEND.sendDev.hidden() == false and SEND.sendDev.get():find('XayaUI_DevTest.lua', 1, true) ~= nil"))
+check("Settings: 'What to send' is shown even with Advanced Debugging off (a bug report needs it too)", E("DBG.send.hidden == nil"))
+
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)
