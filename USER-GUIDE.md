@@ -279,7 +279,7 @@ A rule needs at least one trigger, or both cooldown and buff states set to "none
 
 ### 4.4 Target Debuff in combat (special case)
 
-Enemy aura data is hidden in combat. The trigger first tries the aura list. If that is blocked and the unit is your **target**, it falls back to the Cooldown Manager buff icon for the spell: an active icon means the debuff is up; an inactive icon means it is absent (switchable off with the "In combat: an INACTIVE icon means absent" option). With no icon, the answer is unknown. Use the **debuff's** ID, not the ability's. Focus never uses the icon fallback. A new target or focus is read at once (since 0.6.3; before, up to a fifth of a second later), and the combat engine's target / focus icon follows the new unit at once too. Out of combat, a display on this rule shows the debuff's own time and stacks.
+Enemy aura data is hidden in combat. The trigger first tries the aura list. If that is blocked and the unit is your **target**, it falls back to the Cooldown Manager buff icon for the spell: an active icon means the debuff is up; an inactive icon means it is absent (switchable off with the "Unlit icon in combat" option: "Stay unknown"). With no icon, the answer is unknown. Use the **debuff's** ID, not the ability's. Focus never uses the icon fallback. A new target or focus is read at once (since 0.6.3; before, up to a fifth of a second later), and the combat engine's target / focus icon follows the new unit at once too. Out of combat, a display on this rule shows the debuff's own time and stacks.
 
 ---
 

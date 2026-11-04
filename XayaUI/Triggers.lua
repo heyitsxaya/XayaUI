@@ -390,7 +390,7 @@ Add("setPieces", {
     new = { setID = 0, op = ">=", count = 4 },
     combat = "sets",
     fields = {
-        { key = "setID", kind = "number", label = "Item set ID (0 = the set you wear most of)", required = false },
+        { key = "setID", kind = "number", label = "Item set ID (0 = most worn)", desc = "0 = the set you wear the most pieces of. The pane below lists the sets you wear now with their IDs.", required = false },
         { key = "op", kind = "select", label = "Pieces worn", required = true, vals = { values = OPS, order = OPS_ORDER } },
         { key = "count", kind = "number", label = "Pieces", required = true },
     },
@@ -777,8 +777,11 @@ Add("targetDebuff", {
     combat = "debuff",
     fields = {
         { key = "spellID", kind = "spell", search = "aura", label = "Debuff spell ID", required = true },
-        { key = "cdmID", kind = "spell", label = "Cooldown Manager spell ID  (optional: usually the ability, e.g. 204596)", required = false },
-        { key = "cdmAbsent", kind = "select", label = "In combat: an INACTIVE Cooldown Manager icon means 'debuff absent'  (blank = yes)", required = false, vals = YN("Yes", "No - stay unknown in combat") },
+        -- #99: short labels (the long ones were cut off to "Cooldown M..."); the detail is in each field's tooltip
+        { key = "cdmID", kind = "spell", label = "Cooldown Manager ID", required = false,
+          desc = "Optional. The spell ID the Cooldown Manager files this debuff under: usually the ability you press (Sigil of Flame: 204596). Blank = the debuff's own ID." },
+        { key = "cdmAbsent", kind = "select", label = "Unlit icon in combat", required = false, vals = YN("Means: debuff absent", "Stay unknown"),
+          desc = "In combat: does an INACTIVE Cooldown Manager icon mean the debuff is absent? Blank = yes. 'Stay unknown' keeps the trigger unknown in combat instead." },
         { key = "unit", kind = "select", label = "On which unit", required = true, vals = { values = { target = "Target", focus = "Focus" }, order = { "target", "focus" } } },
         { key = "state", kind = "select", label = "State", required = true, vals = YN("Debuff is on the unit", "Debuff is NOT on the unit") },
         { key = "timeOp", kind = "select", label = "Seconds left", width = "normal", default = "any", required = false, showIf = function(t) return t.state ~= "no" end,

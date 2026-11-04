@@ -1660,7 +1660,15 @@ function ns.FlexPrepass(content, children, bw)
         local n = #row
         if n == 0 then return end
         local flex = {}
-        for _, e in ipairs(row) do if e.flex then flex[#flex + 1] = e end end
+        -- #352 (Xaya's standing rule): a dropdown never takes a whole row by itself. Alone on its row it keeps its own width: one
+        -- grid column, or its longest option when that is wider. It still shares leftover width with other controls on its row.
+        local lone = (n == 1 and row[1].ch.type == "Dropdown" and row[1].flex)
+        if lone then
+            local e = row[1]
+            if math.abs((e.ch.frame.width or 0) - e.base) > 0.4 then e.ch:SetWidth(e.base) end
+            e.ch.xuiFlexW = e.base
+        end
+        for _, e in ipairs(row) do if e.flex and not lone then flex[#flex + 1] = e end end
         local extra = math.max(0, math.floor(width - gap * (n - 1) - used - 0.05))
         local each, rem = 0, 0
         if #flex > 0 then each = math.floor(extra / #flex); rem = extra - each * #flex end
