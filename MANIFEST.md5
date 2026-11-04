@@ -1,3 +1,4 @@
+9ed45ce3e319d0d6f487b1c6b4f66332  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 841bf9e56f8489facf3c983d48ba2e73  .gitignore
 0e754eb408e6fe9daf27d12660842ba6  Claude outputs/Plater_NpcColors_S2_block.lua
@@ -8,7 +9,7 @@ d32239bcb673463ab874e80d47fae504  LICENSE
 74846d5f73d3cdb05dfb31234a2da3b7  QA-CHECKLIST.md
 a54d403da833eefe5b3661b57270da58  README.md
 b8830af74b74d3bd040661448e9ff565  ROADMAP.md
-795543b7edf9a1e47a284d967c0fc4bf  SESSION-START-SUMMARY.md
+3063eddc6fe0a81db13c1f5d834fe8eb  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 74cab11ccb896c8038ab8ca8493acaf8  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
@@ -299,10 +300,10 @@ d0b947c2a5d97f3d0cfb374daaba5225  debug-log/2026-11-02-2345-save-bar-buttons-fla
 28500c61bfd027603aa7a9104aa11736  debug-log/2026-11-02-2358-engine-fps-cdm-index-0.5.83.md
 8188b36d355ad4e1c3867f7c3f80f85d  debug-log/2026-11-02-2358-third-party-data-removed-class-data-learned-0.5.78.md
 b72e5f8cd170b9f39dcd28694be37288  debug-log/2026-11-02-2359-rule-drag-stack-gate-duration-reports-0.5.82.md
-5de732921c1b111e6844f90d752d8986  debug-log/2026-11-02-2400-combat-engine-display-name-combat-auras-0.2.1.md
 8c09f747d9582a6403753028b5fea7a6  debug-log/2026-11-02-handoff-combat-engine-and-sync.md
 a72f0ae71c61ffaed000e280d5b5bfc7  debug-log/2026-11-02-handoff-gamemenu-and-local-sync.md
 055fcde00e14240332fbbedbb174e4fb  debug-log/2026-11-02-handoff-notepad-and-sync.md
+8115341c267dbaa891230cd8d754aea3  debug-log/2026-11-03-0000-combat-engine-display-name-combat-auras-0.2.1.md
 8a9b703b91933b52fb91c312cb42bb6b  debug-log/2026-11-03-0010-group-export-0.5.84.md
 ef9da5e092d5377b0e4ff78f68914bd7  debug-log/2026-11-03-0020-import-window-own-folder-group-ids-0.5.80.md
 fc7c4d2bde0d1f073cc1bbba00339246  debug-log/2026-11-03-0030-move-rule-bricks-ui-hardening-0.5.85.md
@@ -371,7 +372,10 @@ d0bf301c612540e4b1f817199444a747  debug-log/2026-11-04-0455-death-and-decay-comb
 e1b173a40bd9a3934d51f8ba1b66994e  debug-log/2026-11-04-0535-cdm-icon-ids-kept-lockout-core-0.6.10.md
 90f8a7362428a82653a74541bcd5b6bb  debug-log/2026-11-04-0600-missing-debuff-by-name-outcome-off-core-0.6.11.md
 5ccbc4a4edba90f1db144fdde07f31ac  debug-log/2026-11-04-0627-procs-index-reference.md
+4a05bccd5006f49933304746f4a68295  debug-log/2026-11-04-0648-retrospective-verification-precheck.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
+18184c791751d642a658098539cff908  docs/process/RETROSPECTIVE.md
+18f99347734ff71d918aaa8c7bf8420f  docs/process/VERIFICATION.md
 f1ca498f62dbb48f516b33154d0b1061  docs/reference/README.md
 1b7a634712b11938763d44b6dcead0c7  docs/reference/api/README.md
 459daa9e63696bd8d680b58af1366c02  docs/reference/api/api.json
@@ -446,6 +450,7 @@ f19616c7613194a3b65115c2c4405087  tests/minimap_run.py
 adb52b5f86b97b5ac549353e59d97f36  tests/modules_run.py
 1b83e47e74181dd789ddcafe4b0d937e  tests/notepad_run.py
 b98b8b93e9068a136e462260a2aefcd1  tests/perf_run.py
+9c3206bd42a7e043987917327cc16e27  tests/precheck_run.py
 69c610cd804812db130140e9e506c453  tests/preview_layout_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
@@ -458,4 +463,5 @@ f886a09a99f1c562e4ff35c25675a1bd  tests/timing_run.py
 06abd3bc39893cbb62c55a168ba32788  tests/usage_run.py
 f1bae520db3fdef262ef708a60557571  tools/formula_fit.py
 5ea11cb0d56f3c473cd881158515069e  tools/manifest.py
+f7da6506c18b451dcf535c9484dbcbb1  tools/precheck.py
 00d767360289b467ac011d61b76f43da  tools/sync-qa-branch.sh

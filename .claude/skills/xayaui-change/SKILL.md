@@ -1,0 +1,35 @@
+---
+name: xayaui-change
+description: Use for every code, test or data change to the XayaUI addon suite (any XayaUI* folder, tests/, tools/, docs/reference), including bug fixes from GitHub issues or tester reports. Gives the verification steps (rules V1-V13) that stop the defect patterns found in the 2026-11-04 retrospective, and the commit / push routine.
+---
+
+# Changing XayaUI
+
+Read `docs/process/VERIFICATION.md` (rules V1-V13) and follow it; `docs/process/RETROSPECTIVE.md` says why each rule exists.
+Read `SESSION-START-SUMMARY.md` first in a new session.
+
+## The short version
+1. **Reproduce first (V3).** A reported bug: load the reporter's export or saved data into a test and watch it fail.
+2. **List the scope (V4).** `git grep` every reader, caller, display kind, trigger type, widget and install path the change touches.
+   Put the list in the debug-log entry.
+3. **Check the game API (V2).** Look the call up in `docs/reference/api/` and quote the entry in full (secrecy flags, edge cases).
+   Look at how Blizzard's own UI calls it. Undocumented behaviour is an INFERENCE and the code fails safe (unknown, never a guess).
+   Proc / button-highlight questions: `docs/reference/procs.md`. Charges: `docs/reference/charges.md`.
+4. **Test the outcome (V1, V5, V11).** Assert what the player sees or hears. Every new test must fail on the old code. Two paths
+   that decide the same thing get a parity test.
+5. **Before committing:**
+   - `python3 tests/lua_pitfalls_run.py`
+   - the targeted tests, then `XUI_API_INDEX=tests/harness/api_index.json python3 tests/run_all.py`
+   - bump the `## Version` of every addon whose code changed; add the debug-log entry (`debug-log/YYYY-MM-DD-HHMM-topic-version.md`,
+     UTC, never a future time) and a QA-CHECKLIST step with exact steps and the expected result (V13)
+   - `git add` the files, THEN `python3 tools/manifest.py`, then `git add MANIFEST.md5`
+   - `python3 tools/precheck.py` must end with `FAILS: 0` (use `--base origin/main` before pushing to main)
+6. **Done = on main and confirmed (V6).** Cite the main commit in the reply. Issues close only after an in-game confirmation; until
+   then they carry `unverified-in-game`.
+
+## Standing rules (from Xaya)
+- No code or data copied from another addon (#290); facts only (IDs, event names) and say where they came from.
+- Never invent data; mark inferences; never present an unrun check as passed.
+- Never force-push `main` or `qa-installer-branch`. Changes that reach `main` directly are announced in the reply.
+- The cloud session's git proxy refuses tag pushes and branch deletions (HTTP 403): do not retry or route around it; list the
+  branches for Xaya instead. Xaya allows deleting branches with no functionality beyond `main`.
