@@ -110,6 +110,59 @@ local function SpellNameOf(id)
     if ok and readable(nm) and type(nm) == "string" and nm ~= "" then return nm end
 end
 
+-- Cooldown Manager links (Bonus 0.6.4). Blizzard's Cooldown Manager data says which auras each tracked ability watches, and its API
+-- (C_CooldownViewer; Blizzard_APIDocumentationGenerated/CooldownViewerDocumentation.lua) has no secret returns, so it reads the same in
+-- combat, where every aura read is hidden (GetPlayerAuraBySpellID: SecretWhenUnitAuraRestricted, RequiresNonSecretAura).
+-- Two readings, both taken from Blizzard's own Cooldown Manager code (Blizzard_CooldownViewer/CooldownViewerItemData.lua, live 12.1.5):
+--   1. linkedSpellIDs are aura IDs: FindLinkedSpellForCurrentAuras looks each one up with C_UnitAuras.GetUnitAuraBySpellID.
+--   2. A buff tracker (TrackedBuff / TrackedBar) with no linked IDs and no overrides can only match an aura with its own spellID
+--      (GetAssociatedAuraSpellPriority matches linkedSpellIDs, overrideTooltipSpellID, overrideSpellID, spellID).
+-- hasAura and selfAura are NOT used: Blizzard's own code never reads them and the documentation does not say what they mean.
+local BUFF_CATEGORIES = { TrackedBuff = true, TrackedBar = true }
+local cooldownLinks   -- [spellID] = { auras = { auraID, ... }, own = true | nil }; reset on spec, talent and Cooldown Manager changes
+function TT.ResetCooldownLinks() cooldownLinks = nil end
+function TT.CooldownLinks()
+    if cooldownLinks then return cooldownLinks end
+    local map, any = {}, false
+    local CV = C_CooldownViewer
+    local cats = type(Enum) == "table" and Enum.CooldownViewerCategory
+    if type(CV) ~= "table" or type(CV.GetCooldownViewerCategorySet) ~= "function" or type(CV.GetCooldownViewerCooldownInfo) ~= "function"
+        or type(cats) ~= "table" then
+        return map
+    end
+    for catName, cat in pairs(cats) do
+        local okS, ids = pcall(CV.GetCooldownViewerCategorySet, cat, true)
+        if okS and type(ids) == "table" then
+            for _, cid in ipairs(ids) do
+                local okI, info = pcall(CV.GetCooldownViewerCooldownInfo, cid)
+                local sid = okI and type(info) == "table" and info.spellID
+                if readable(sid) and type(sid) == "number" then
+                    any = true
+                    local links = {}
+                    if type(info.linkedSpellIDs) == "table" then
+                        for _, l in ipairs(info.linkedSpellIDs) do
+                            if readable(l) and type(l) == "number" then links[#links + 1] = l end
+                        end
+                    end
+                    local over, tipOver = info.overrideSpellID, info.overrideTooltipSpellID
+                    local e = map[sid]
+                    if not e then e = { auras = {} }; map[sid] = e end
+                    for _, l in ipairs(links) do e.auras[#e.auras + 1] = l end
+                    if #links == 0 and BUFF_CATEGORIES[catName] and over == nil and tipOver == nil then e.own = true end
+                    -- the ability as the game shows it now (an override) watches the same linked auras
+                    if readable(over) and type(over) == "number" and over ~= sid and #links > 0 then
+                        local o = map[over]
+                        if not o then o = { auras = {} }; map[over] = o end
+                        for _, l in ipairs(links) do o.auras[#o.auras + 1] = l end
+                    end
+                end
+            end
+        end
+    end
+    if any then cooldownLinks = map end   -- an empty answer (data not loaded yet at login) is asked again next time
+    return map
+end
+
 -- Spells whose aura has the spell's OWN ID (Immolation Aura 258920 is both). Remembered per game build, like AuraSources, because the
 -- live proof (the buff on you) is gone a few seconds later. Saved in CueRulesDB.tooltips.selfAura = { build =, ids = { [id] = true } }.
 local function SelfAuraIDs()
@@ -144,6 +197,11 @@ function TT.AurasFor(kind, id, data)
         if ok and type(list) == "table" then for _, a in ipairs(list) do add(a.id, a.name) end end
     end
     if kind == "spell" then
+        local link = TT.CooldownLinks()[id]
+        if link then
+            for _, aid in ipairs(link.auras) do if aid == id then same = true else add(aid) end end
+            if link.own then same = true end
+        end
         if ns.AuraModel and ns.AuraModel.AurasForCast then
             local ok, list = pcall(ns.AuraModel.AurasForCast, id)
             if ok and type(list) == "table" then for _, a in ipairs(list) do add(a.id, a.name) end end
@@ -208,7 +266,8 @@ function TT.OnIDData(tooltip, data, kind)
                 end
             end
             if #auras == 0 and not same and db.ids.auraHint and kind.key == "spell" and TextHasDuration(id) then
-                tooltip:AddDoubleLine("Aura ID:", "not known yet", 1, 0.82, 0, 0.6, 0.6, 0.6)
+                local hint = (InCombatLockdown and InCombatLockdown()) and "not known yet (auras are hidden in combat)" or "not known yet"
+                tooltip:AddDoubleLine("Aura ID:", hint, 1, 0.82, 0, 0.6, 0.6, 0.6)
             end
         end
     end
@@ -428,6 +487,42 @@ function TT.ObservedLines(id)
     return out
 end
 TT.FormulaSource = TT.FormulaSource or TT.ObservedLines
+
+-- /xuitt aura [spellID]: what every aura source says for one spell (the spell under the mouse when no ID is given). Read only.
+function TT.AuraReport(id)
+    local function P(...) print("|cff9966ffXayaUI Tooltips|r", ...) end
+    if not id then
+        local ok, data = pcall(function() return GameTooltip:GetTooltipData() end)
+        id = ok and type(data) == "table" and readable(data.id) and data.id or nil
+    end
+    id = tonumber(id)
+    if not id then P("Hover a spell and run it from a macro (/run C_Timer.After(3, function() SlashCmdList.XUITT('aura') end)), or: /xuitt aura 258920"); return end
+    local ver = C_AddOns and C_AddOns.GetAddOnMetadata and select(2, pcall(C_AddOns.GetAddOnMetadata, "XayaUI_Bonus", "Version"))
+    local inCombat = InCombatLockdown and InCombatLockdown() and true or false
+    P(("spell %d (%s); XayaUI Bonus %s; in combat: %s"):format(id, tostring(SpellNameOf(id) or "?"), tostring(ver or "?"), inCombat and "yes" or "no"))
+    local link = TT.CooldownLinks()[id]
+    if link then
+        local t = {}
+        for _, a in ipairs(link.auras) do t[#t + 1] = tostring(a) end
+        P(("  Cooldown Manager: linked auras {%s}; buff tracker with its own ID: %s"):format(table.concat(t, ", "), link.own and "yes" or "no"))
+    else
+        P("  Cooldown Manager: no entry for this spell (not in your spec's Cooldown Manager list, or its data is not loaded)")
+    end
+    local okA, ad = pcall(function() return C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID and C_UnitAuras.GetPlayerAuraBySpellID(id) end)
+    P("  aura with this ID on you now: " .. (not okA and "error" or ad == nil and (inCombat and "no answer (hidden in combat)" or "no") or isSecret(ad) and "hidden" or "yes"))
+    local cast = {}
+    if ns.AuraModel and ns.AuraModel.AurasForCast then
+        local ok, list = pcall(ns.AuraModel.AurasForCast, id)
+        if ok and type(list) == "table" then for _, a in ipairs(list) do cast[#cast + 1] = tostring(a.id) end end
+    end
+    local castSelf = ns.AuraModel and ns.AuraModel.CastAppliesSelf and select(2, pcall(ns.AuraModel.CastAppliesSelf, id))
+    P(("  your recorded casts: auras {%s}; same-ID aura seen: %s"):format(table.concat(cast, ", "), castSelf == true and "yes" or "no"))
+    local auras, same = TT.AurasFor("spell", id, nil)
+    local t = {}
+    if same then t[#t + 1] = tostring(id) .. " (same as the spell)" end
+    for _, a in ipairs(auras) do t[#t + 1] = tostring(a.id) .. (a.name and (" " .. a.name) or "") end
+    P("  tooltip shows: " .. (#t > 0 and table.concat(t, "; ") or "not known yet"))
+end
 
 -- /xuitt lines: dump the raw lines of the tooltip under the mouse (type, tooltipType, tooltipID) so the aura-ID source can be verified.
 function TT.DumpLines()

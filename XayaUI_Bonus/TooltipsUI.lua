@@ -66,9 +66,14 @@ boot:RegisterEvent("PLAYER_LOGIN")
 boot:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED")
 boot:RegisterEvent("TRAIT_CONFIG_UPDATED")
 boot:RegisterEvent("PLAYER_REGEN_ENABLED")
+boot:RegisterEvent("COOLDOWN_VIEWER_DATA_LOADED")
+boot:RegisterEvent("COOLDOWN_VIEWER_TABLE_HOTFIXED")
 boot:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_LOGIN" then TT.DB(); TT.Init() end
-    if event ~= "PLAYER_REGEN_ENABLED" then TT.talentHash = nil end   -- talents or spec changed: match observed data again
+    if event ~= "PLAYER_REGEN_ENABLED" then
+        TT.talentHash = nil                                     -- talents or spec changed: match observed data again
+        if TT.ResetCooldownLinks then TT.ResetCooldownLinks() end   -- and read the Cooldown Manager's aura links again
+    end
     -- observed formulas: your own class's data folder only, loaded out of combat; talent changes reset the talent match
     if TT.LoadClassData then pcall(TT.LoadClassData) end
 end)
@@ -77,8 +82,9 @@ SLASH_XUITT1 = "/xuitt"
 SlashCmdList.XUITT = function(msg)
     msg = (msg or ""):lower()
     if msg:find("probe") then TT.Probe()
+    elseif msg:find("^%s*aura") then TT.AuraReport(tonumber(msg:match("aura%s+(%d+)")))
     elseif msg:find("lines") then TT.DumpLines()
-    else print("XayaUI Tooltips: /xuitt probe (point at a unit first), /xuitt lines (raw lines of the tooltip under the mouse)") end
+    else print("XayaUI Tooltips: /xuitt aura [spellID] (what each aura source says), /xuitt probe (point at a unit first), /xuitt lines (raw lines of the tooltip under the mouse)") end
 end
 
 -------------------------------------------------------------------------------

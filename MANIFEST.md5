@@ -9,7 +9,7 @@ f9120a37d5ef9856404784d0a9996499  QA-CHECKLIST.md
 2484ce39c6b9186ecd85e331060aa43d  README.md
 47e53875b76ac2d538c6e0f92e95ff01  ROADMAP.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-4d518a131ff9b24394ccbf3fb42efc2d  USER-GUIDE.md
+37168bedf7fc5ccc504cba1fa2d84709  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
 40b7591dd5f7fe4f0c4b0f5a965155bb  XayaUI/ClassLearn.lua
@@ -128,9 +128,9 @@ ded1de1be47477a60c0740ef7769629d  XayaUI_Bonus/Media/UI/Notepad/src/plus.svg
 2a22ac682397b06e682d4cc0a0cd7abc  XayaUI_Bonus/Media/UI/Notepad/trash.png
 bd5ad941d96408c9a0a6d431144f65b7  XayaUI_Bonus/Notepad.lua
 78aac0cd2914a50bc733b64bd2da93d2  XayaUI_Bonus/NotepadShare.lua
-e9132a8a84c7ed34ebe9428b1fb1e164  XayaUI_Bonus/Tooltips.lua
-4766730ee9a687270d7ce006b7da0c0a  XayaUI_Bonus/TooltipsUI.lua
-7a357c6887be826e4b2271a64a3bddba  XayaUI_Bonus/XayaUI_Bonus.toc
+53172619ca885d3fc8e9621db8f79f5a  XayaUI_Bonus/Tooltips.lua
+7964bb7d450bb9f0c26fed89749d5536  XayaUI_Bonus/TooltipsUI.lua
+51e5dba7d2fa1f2215f1138074c25476  XayaUI_Bonus/XayaUI_Bonus.toc
 83c87e8920a975caccb49149edab3556  XayaUI_Chat/Bar.lua
 492b101f5ca9ef33405ac5e0a24412c6  XayaUI_Chat/Core.lua
 691117347e0437f78c88e3734c54c438  XayaUI_Chat/Fade.lua
@@ -345,11 +345,12 @@ c772617313f2c4b7965ad8301258e669  debug-log/2026-11-03-2135-tester-requests-278-
 ce45fc465bdd3ab3e215e3abd189e3ea  debug-log/2026-11-03-2254-tester-requests-278-sleep-snare-clarification.md
 fd3ccecccb27afb01262111787083ed9  debug-log/2026-11-03-2330-display-tab-chevrons-engine-text-cue-0.6.3.md
 1468935b0edcc87af4f3d4c48014d962  debug-log/2026-11-04-0010-combat-engine-api-review-0.6.3.md
-3601077d8e9a021a972a2faa7093fc45  debug-log/2026-11-04-0011-tooltip-self-id-aura-bonus-0.6.1.md
+f177b0c30f652b97af27717f4434a7d3  debug-log/2026-11-04-0011-tooltip-self-id-aura-bonus-0.6.1.md
 eba2360845f99d52521c5efa305657c1  debug-log/2026-11-04-0100-chat-indent-scrollbar-console-0.6.5.md
-373915571255dfbb710a96f5452290e6  debug-log/2026-11-04-0100-tooltip-formula-lines-bonus-0.6.2.md
-fc5639580b83237337e715e53c272e78  debug-log/2026-11-04-0200-formula-capture-walkthrough-gamedump-0.3.0.md
+5578cf7edacb5c2d9f3b37ab9f856154  debug-log/2026-11-04-0100-tooltip-formula-lines-bonus-0.6.2.md
+f4517b1b53b2f437c1a5cd5f859a21bc  debug-log/2026-11-04-0200-formula-capture-walkthrough-gamedump-0.3.0.md
 46c82c2716e940f5749f3f9da50fdd94  debug-log/2026-11-04-0300-chat-left-gap-clamp-0.6.6.md
+412c61450d02965726c5517c79b9737d  debug-log/2026-11-04-0400-aura-id-cooldown-manager-in-combat-bonus-0.6.4.md
 7f9f4549410ba8da5e6fb9e9cb573be0  shelved/Bars.lua
 5857b882061b2df7a8d4fb33945efc80  shelved/CountSupport.lua
 ba241e46458e8e4296563689c7708a51  shelved/CursorReminders.lua
@@ -391,7 +392,7 @@ b98b8b93e9068a136e462260a2aefcd1  tests/perf_run.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
 f886a09a99f1c562e4ff35c25675a1bd  tests/timing_run.py
 4ab5fd24ca1bb0910e3372c636868b5c  tests/tooltip_formulas_run.py
-ce3a5675548fdab11df2f0f9561cbe06  tests/tooltips_run.py
+13739960223aa277ea151196e46a1a19  tests/tooltips_run.py
 7bdbd8daaa8aaab8b1a64cdbc9a0b436  tests/usage_check.lua
 06abd3bc39893cbb62c55a168ba32788  tests/usage_run.py
 f1bae520db3fdef262ef708a60557571  tools/formula_fit.py
