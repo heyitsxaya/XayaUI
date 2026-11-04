@@ -608,6 +608,13 @@ function ns.ProbeDebuffs(arg)
     ns.Print("  by-name lookup: use /xui debuffs <unit> <spellID>  ->  " .. (ns.probeDebuffID and tostring(ns.TargetAuraByName(unit, ns.probeDebuffID)) or "give a spell ID, e.g. /xui debuffs target 204598"))
 end
 
+-- The readable debuff the "Target Debuff (yours)" row found this engine step (time, duration, stacks), or nil. Filled by the row's
+-- own check, so it costs no second aura read; nil in combat when the game hides your debuffs (the combat engine draws those).
+function ns.TargetDebuffRef(unit, id)
+    local memo = ns.StepMemo and ns.StepMemo("debuffRef")
+    return memo and memo[tostring(unit) .. ":" .. tostring(id)] or nil
+end
+
 -- 3b. Target Debuff (yours)
 -- Reads C_UnitAuras.GetUnitAuras(unit, "HARMFUL|PLAYER") and looks for the spell ID. FOUND is trusted. NOT found only counts
 -- as "absent" when nothing was hidden AND you are out of combat; otherwise the answer is unknown and the rule does not fire.
@@ -637,7 +644,12 @@ Add("targetDebuff", {
             for i = 1, #list do
                 local sid = Field(list[i], "spellId")
                 if sid == nil then hidden = true
-                elseif sid == id then return true, hidden end
+                elseif sid == id then
+                    -- the debuff itself (readable here): its time and stacks feed the rule's display (ns.TargetDebuffRef)
+                    local memo = ns.StepMemo and ns.StepMemo("debuffRef")
+                    if memo and ns.MakeAuraRef then memo[unit .. ":" .. id] = ns.MakeAuraRef(list[i], nil, unit) end
+                    return true, hidden
+                end
             end
             return false, hidden
         end)

@@ -127,8 +127,15 @@ local VIEWERS = {
 -- four viewers and built two throw-away closures per frame, several times a second: the garbage alone dragged the frame rate down.
 local cdmIndex, cdmTick, cdmAt = {}, -1, -1
 local function GetSpellIDOf(frame) return frame.GetSpellID and frame:GetSpellID() end
--- (a secret value may be tested for truth but never compared, not even with nil)
-local function FrameActive(fr) return (fr.wasSetFromAura == true) or (fr.auraInstanceID and true or false) end
+-- Is a Cooldown Manager icon showing a live aura? wasSetFromAura is a plain boolean Blizzard sets itself. The instance id is
+-- secret while auras are restricted (seen in game: "iid=secret"): a secret id means an aura IS assigned, and it is only ever
+-- passed to issecretvalue, never compared or tested for truth (whether a boolean test of a secret is allowed is not documented).
+local function FrameActive(fr)
+    if fr.wasSetFromAura == true then return true end
+    local iid = fr.auraInstanceID
+    if issecret(iid) then return true end
+    return iid ~= nil
+end
 local function IndexID(idx, v, fr, vname)
     if not issecret(v) and type(v) == "number" then
         local l = idx[v]
@@ -229,27 +236,37 @@ local function ReadAuraAPI(id)
     return "nil"
 end
 
--- Reference to a live aura for duration text. Numbers are only kept when readable.
+-- Reference to a live aura for duration text, stacks and shield amount. Only READABLE values are kept: a secret instance id or
+-- stack count is useless to addon code anyway (12.1.5: the aura calls that take an instance id refuse secret arguments from
+-- addon code and need aura access, which combat withholds), and keeping it would hand a secret to every reader downstream.
+-- ref.hiddenID marks "an aura is there, its id is hidden" for /xui status.
 local function CleanNum(t, k)
     if type(t) ~= "table" then return nil end
     local ok, v = pcall(Field, t, k)
     if ok and type(v) == "number" and not issecret(v) then return v end
 end
-local function MakeRef(aura, frame)
+local function MakeRef(aura, frame, unit)
     local ref = {}
+    -- the unit the aura is on: every later read by instance id must name it (a debuff's id means nothing on "player")
+    if not unit and frame then
+        local okU, u = pcall(Field, frame, "auraDataUnit")
+        if okU and type(u) == "string" and not issecret(u) then unit = u end
+    end
+    ref.unit = unit or "player"
+    local src = (type(aura) == "table") and aura or frame
+    if src then
+        local ok, iid = pcall(Field, src, "auraInstanceID")
+        if ok and issecret(iid) then ref.hiddenID = true
+        elseif ok and type(iid) == "number" then ref.instanceID = iid end
+    end
     if type(aura) == "table" then
-        local ok, iid = pcall(Field, aura, "auraInstanceID")
-        if ok then ref.instanceID = iid end
-        local oka, apps = pcall(Field, aura, "applications")
-        if oka then ref.applications = apps end   -- may be secret; only ever passed to SetText
+        ref.applications = CleanNum(aura, "applications")
         ref.expiration, ref.duration = CleanNum(aura, "expirationTime"), CleanNum(aura, "duration")
         if not (ref.expiration and ref.duration) then ref.expiration, ref.duration = nil, nil end
-    elseif frame then
-        local ok, iid = pcall(Field, frame, "auraInstanceID")
-        if ok then ref.instanceID = iid end
     end
     return ref
 end
+ns.MakeAuraRef = MakeRef
 local function BuffPresentRaw(id)
     if not id or id == 0 then return nil, "no buff" end
     -- A real aura table proves presence, in any context.
@@ -265,9 +282,9 @@ local function BuffPresentRaw(id)
             local iid = fr.auraInstanceID
             local u = fr.auraDataUnit
             return ("iid=%s wasAura=%s shown=%s unit=%s"):format(
-                iid == nil and "nil" or (issecret(iid) and "secret" or tostring(iid)),
+                issecret(iid) and "secret" or tostring(iid),
                 tostring(fr.wasSetFromAura == true), tostring(fr:IsShown() and true or false),
-                u == nil and "nil" or (issecret(u) and "secret" or tostring(u)))
+                issecret(u) and "secret" or tostring(u))
         end)
         return active and true or false, "CDM frame (" .. vname .. (okd and (": " .. detail) or "") .. ")", active and MakeRef(nil, fr) or nil
     end
@@ -297,9 +314,9 @@ local function LearnedTable()
 end
 
 -- returns expiration, totalDuration (either may be nil), note
-local function DurationObjectTimes(iid)
+local function DurationObjectTimes(iid, unit)
     if not (C_UnitAuras and C_UnitAuras.GetAuraDuration) then return nil, nil, "no duration API" end
-    local ok, obj = pcall(C_UnitAuras.GetAuraDuration, "player", iid)
+    local ok, obj = pcall(C_UnitAuras.GetAuraDuration, unit or "player", iid)
     if not ok then return nil, nil, "duration object call refused" end
     if obj == nil then return nil, nil, "no duration object" end
     if issecret(obj) or type(obj) ~= "table" and type(obj) ~= "userdata" then return nil, nil, "duration object unusable" end
@@ -381,7 +398,7 @@ function BuffPresentOnce(id)
     if not ref.expiration or ref.estimated then
         if ref.instanceID then
             local exp, tot
-            exp, tot, note = DurationObjectTimes(ref.instanceID)
+            exp, tot, note = DurationObjectTimes(ref.instanceID, ref.unit)
             if exp then
                 ref.expiration = exp
                 if tot then ref.duration = tot end
@@ -426,6 +443,39 @@ function ns.ApplyBuffEstimate(rule, info)
     elseif ns.statusDetail then
         info.buffSource = tostring(info.buffSource) .. " | no time estimate yet (see /xui timing)"
     end
+end
+
+-- The aura a rule's display shows when the rule has no built-in Buff / Aura: the first present aura among its "Buff / Aura
+-- (another)" and "Target Debuff (yours)" trigger rows. Display only (duration text, stacks, drain, fades): conditions keep reading
+-- the built-in Buff / Aura (n:buffRemain / n:buffStacks), so their meaning does not change. Returns a ref or nil.
+local rowRefPool = setmetatable({}, { __mode = "k" })
+function ns.AuraRowRef(rule)
+    local list = type(rule.extra) == "table" and rule.extra.list
+    if type(list) ~= "table" then return nil end
+    for _, t in ipairs(list) do
+        local id = type(t) == "table" and tonumber(t.spellID) or 0
+        if id and id > 0 and t.state ~= "no" then
+            if t.type == "buffAura" then
+                local p, _, r = ns.BuffPresent(id)
+                if p == true and type(r) == "table" then
+                    if r.expiration or rule.buffEstimate == false or not ns.Timing then return r end
+                    -- hidden time (combat): the duration engine's estimate, written into this rule's own copy (the ref is shared)
+                    local exp, dur, label = ns.Timing.AuraEstimate(id, presentSince[id])
+                    if not exp then return r end
+                    local own = (ns.InStep and ns.InStep()) and rowRefPool[rule]
+                    if own then for k in pairs(own) do own[k] = nil end
+                    else own = {}; if ns.InStep and ns.InStep() then rowRefPool[rule] = own end end
+                    for k, v in pairs(r) do own[k] = v end
+                    own.expiration, own.duration, own.estimated, own.timeSource = exp, dur, true, label
+                    return own
+                end
+            elseif t.type == "targetDebuff" and ns.TargetDebuffRef then
+                local r = ns.TargetDebuffRef((t.unit == "focus") and "focus" or "target", id)
+                if r then return r end
+            end
+        end
+    end
+    return nil
 end
 
 -------------------------------------------------------------------------------
@@ -870,6 +920,8 @@ function ns.Evaluate(rule, ctx)
     info.ctxOK, info.ctxFail = ns.CheckContext(rule, ctx)
     info.talentOK, info.talentDetail = ns.CheckTalents(rule)
     if ns.CheckExtraTriggers then info.extraOK, info.extraDetail, info.extraRows, info.extraWhys = ns.CheckExtraTriggers(rule) else info.extraOK = true end
+    -- no built-in aura to show: the display takes its time / stacks from the first present aura trigger row (after the rows ran)
+    if info.buffRef == nil and type(rule.extra) == "table" then info.auraRef = ns.AuraRowRef(rule) end
     -- the core cooldown / buff dropdowns must be chosen ("none" counts as a choice)
     -- Triggers are added by hand (Triggers.lua): a section only needs its state chosen once it is "used" (added from the
     -- menu, or an ID is set). A rule with no trigger at all and both states blank cannot fire; both states set to "none"
