@@ -22,7 +22,8 @@ Xaya's requests (2026-11-04 evening, in order, her words):
 10. "improved character pane should show ilvl colored based on ilv tier (track (common, adventurer, veteran, champion, heroic,
     mythic) AND upgrade tier (color gradient))".
 11. "enchants + gems should show to the side of the character pane".
-12. "character pane should be resizable".
+12. "character pane should be resizable". Asked to choose: "a wider character viewport" (not a scale grip).
+13. "also create a QoL Character Reskin option to toggle on or off".
 
 ## Today (QoL 0.7.4)
 - Tabs: Sheet | Stats | Defense | Offense | Gear | What If | Spells.
@@ -66,10 +67,25 @@ Xaya's requests (2026-11-04 evening, in order, her words):
   - Gems: `C_Item.GetItemGem` / `GetItemGemID` (`namespaces.md:2764-2765`).
   - The enchant: the item link's enchant field and the tooltip's enchant line (the slot overlays already read enchants).
   - Empty sockets and missing enchants are marked.
-- **Size:**
-  - INFERENCE: Blizzard's character window has a fixed layout, so "resizable" is a drag grip that changes its scale (saved);
-    making it wider would mean re-laying out Blizzard's frame.
-  - Out of combat only (it is a UI panel; INFERENCE: scaling it in combat may be blocked).
+- **Size: a wider character viewport** (her answer to question 5):
+  - the character window is made wider and the model area (the character viewport) grows with it, rather than scaling the
+    window;
+  - How Blizzard sets it (live 12.1.5 source, `Blizzard_UIPanels_Game/Mainline/CharacterFrame.lua`, read 2026-11-04):
+    - `CharacterFrameMixin:UpdateSize()` (lines 123-140) sets the window's width from a table: 540 with the stats pane open
+      (`CHARACTERFRAME_EXPANDED_WIDTH`, line 2), `PANEL_DEFAULT_WIDTH` without it;
+    - the paper-doll inset (slots and model) is pinned to `PANEL_DEFAULT_WIDTH` on purpose (line 131: "PaperDollFrame always wants
+      the same sized inset regardless of the CharacterFrame width");
+    - then `UpdateUIPanelPositions` places the panel.
+  - Plan:
+    - after `UpdateSize` (a post-hook), while the reskin is on and the character tab is shown, widen the window by an amount you
+      choose and move the inset's right edge out by the same amount;
+    - the right-hand slot column and the stats pane follow (they hang from the inset's right side / the right inset), and the model
+      scene inside grows.
+  - INFERENCE, to check in game first: changing the width of a UI panel from addon code may taint the game's panel placement; a
+    small in-game probe comes before anything else. Out of combat only.
+  - out of combat only (INFERENCE: changing a UI panel's size in combat may be blocked).
+- **On / off:** all of this is one QoL feature, **Character Reskin**, with its own switch (her item 13), off by default like the
+  other QoL parts. With it off, Blizzard's character window is untouched.
 
 ### Spells (items 5, 9)
 - **Auto-populate:**
@@ -108,7 +124,7 @@ Xaya's requests (2026-11-04 evening, in order, her words):
    their description?
 4. Gear comparison column: several items compared side by side, or one at a time?
 5. Resizing the character window: is a scale grip (the whole window bigger or smaller) what you want, or a wider window with more
-   room for the stats?
+   room for the stats? **Answered (Xaya, 2026-11-04): "a wider character viewport".**
 6. Track colours: do you have colours in mind (e.g. the game's own quality colours: green, blue, purple, orange), or should XayaUI
    pick them from the theme?
 
