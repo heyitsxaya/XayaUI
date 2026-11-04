@@ -148,6 +148,12 @@ local function OnRelease(w, restoreFn)
 end
 
 -- several independent restore functions per widget (the helper above keeps only one, and SkinInline re-registers it every pass)
+-- #351 (Xaya, 2026-11-03: "set a standard gutter and margin so that all elements are not smushed directly into their container bounds"):
+-- the space inside every container XayaUI insets (margin) and between two controls on a row (gutter), defined once.
+-- AceGUI's own default inset is the same 10 px; release handlers that give a widget back to AceGUI restore AceGUI's literal 10.
+local UI_MARGIN, UI_GUTTER = 10, 10
+ns.UI_MARGIN, ns.UI_GUTTER = UI_MARGIN, UI_GUTTER
+
 local function AddRest(w, key, fn)
     w.xuiRest = w.xuiRest or {}
     w.xuiRest[key] = fn
@@ -804,8 +810,8 @@ local function SkinTree(w)
     local pad = Pad()
     if w.xuiPadApplied ~= pad and w.content and w.border then
         w.content:ClearAllPoints()
-        w.content:SetPoint("TOPLEFT", w.border, "TOPLEFT", 10 + pad, -(10 + pad))
-        w.content:SetPoint("BOTTOMRIGHT", w.border, "BOTTOMRIGHT", -(10 + pad), 10 + pad)
+        w.content:SetPoint("TOPLEFT", w.border, "TOPLEFT", UI_MARGIN + pad, -(UI_MARGIN + pad))
+        w.content:SetPoint("BOTTOMRIGHT", w.border, "BOTTOMRIGHT", -(UI_MARGIN + pad), UI_MARGIN + pad)
         w.xuiPadApplied = pad
     end
     PaneColors(w.border, { 0.04, 0.04, 0.04, A() * 0.6 }, { 0.3, 0.3, 0.3 })
@@ -1220,7 +1226,7 @@ local function SkinInline(w)
             self.content:SetWidth(cw); self.content.width = cw
         end
         w.content:ClearAllPoints()
-        w.content:SetPoint("TOPLEFT", 10 + ind, -10); w.content:SetPoint("BOTTOMRIGHT", -10, 10)
+        w.content:SetPoint("TOPLEFT", UI_MARGIN + ind, -UI_MARGIN); w.content:SetPoint("BOTTOMRIGHT", -UI_MARGIN, UI_MARGIN)
         local fw = w.frame.width or w.frame:GetWidth() or 0
         if fw > 0 then w:OnWidthSet(fw) end
         if w.xuiFlexed and w.DoLayout then pcall(w.DoLayout, w) end   -- not flexed yet: FlexOn runs right after this and lays it out
@@ -1663,7 +1669,7 @@ ns.H3_SIZE = 16   -- the single header size (Heading widgets and collapsible sec
 ns.H2_SIZE = 14   -- inside trigger / cue / condition panes: "Description" and every yellow field label ("Sound", "State", "IF", "THEN") use this size
 ns.BODY_INDENT = 20   -- trigger / cue / condition panes: the header sits flush left and everything under it is indented by this much
 local NOFLEX = { Icon = true, Label = true, InteractiveLabel = true, Heading = true, ColorPicker = true, Image = true }
-local GAP = 10        -- gutter between free-flowing controls
+local GAP = ns.UI_GUTTER or 10   -- gutter between two controls on a row (#351: every row, not only rows that stretch a control)
 local GRID_GAP = 30   -- gutter between the two columns of the grid (wide, so the two columns read as separate)
 local function BaseW(ch)
     local fr = ch.frame
@@ -1733,7 +1739,10 @@ function ns.FlexPrepass(content, children, bw)
             e.ch.xuiFlexW = nw
         end
         for i, e in ipairs(row) do
-            local g = (i > 1 and (#flex > 0 or e.compact or row[i - 1].compact)) and gap or nil   -- compact buttons keep a gap too
+            -- #351: the gutter goes between every two controls on a row. It used to be added only when the row stretched a control
+            -- (or held a compact button), so rows of fixed-width controls (icons, labels, colour pickers, relative widths) touched.
+            -- The row-wrap check above already counts the gutter, so this never pushes a control past the edge.
+            local g = (i > 1) and gap or nil
             if g and e.tab and row[i - 1].tab then g = TAB_GAP end   -- #370: tabs sit side by side like a real tab row
             e.ch.xuiGapX = g
         end

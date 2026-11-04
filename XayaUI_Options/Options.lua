@@ -4311,6 +4311,10 @@ function ns.FolderLoadConditions(f)
             specAlways = AlwaysRow(1.05, "spec", "loadSpecs", "alwaysSpec"),
             roles = Multi(2, "Role", "loadRoles", roleV, roleO),
             inst = Multi(3, "Instance type", "loadInst", instV, ns.INSTANCE_TYPE_ORDER),
+            -- the zone / instance / difficulty / size / encounter / item lists, as on a rule's Load tab (core 0.6.33; kept in f.loadIds)
+            loadIds = { type = "group", inline = true, order = 4, name = "Zones, Instances, Bosses and Items",
+                args = ns.LoadIdRows(function() f.loadIds = f.loadIds or {}; return f.loadIds end,
+                    function() ns.MarkDirty(); Notify() end, function() return false end, SearchBox) },
         } }
 end
 
