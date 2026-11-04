@@ -314,6 +314,12 @@ SECTION("glows out of combat", function()
   FIRE("SPELL_ACTIVATION_OVERLAY_HIDE", 50842)
   local os_, oh = LAST("OS"), LAST("OH")
   check("proc art: spell ID, file ID, location; hide", os_ and os_.id == 50842 and os_.file == 450913 and os_.loc == 1 and os_.s and oh and oh.id == 50842)
+  -- 0.7.2: hides with no spell ID are counted, never logged (Xaya's run: 21,685 of them pushed 22,811 entries out of the log)
+  local before, nOH = DBP().last, DBP().count.OH or 0
+  for _ = 1, 50 do FIRE("SPELL_ACTIVATION_OVERLAY_HIDE") end
+  local o = DBP().ohNoID
+  check("proc art: hides with no spell ID are counted, not logged", DBP().last == before and (DBP().count.OH or 0) == nOH + 50
+    and o and o.n == 50 and o.c == 0 and o.first ~= nil and o.last ~= nil, tostring(DBP().last - before))
 end)
 
 SECTION("plates out of combat", function()
@@ -666,6 +672,7 @@ def run(src):
 
 # Deliberate breaks: (name, [(exact text in Probe.lua, replacement), ...])
 MUTATIONS = [
+    ("no-ID proc art hides logged again", [("    if id == nil then\n        Tally(\"overlay.id\", nil)", "    if false then\n        Tally(\"overlay.id\", nil)")]),
     ("issecretvalue ignored", [("    return s == true\nend", "    return false\nend")]),
     ("ring never drops", [("    while D.last - D.first + 1 > CAP do", "    while false do")]),
     ("drops not counted", [("        D.dropped = D.dropped + 1", "        D.dropped = D.dropped")]),
