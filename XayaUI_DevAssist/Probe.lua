@@ -344,7 +344,6 @@ local function RuleIDs()
     while #list > 400 do list[#list] = nil end
     return list
 end
-GD.RuleSpellIDs = RuleIDs   -- shared with TooltipCapture.lua (0.7.1): the spell / item IDs XayaUI's rules and bars name, sorted, at most 400
 
 -- C_Secrets.GetSpellCastSecrecy(spellIdentifier) -> secrecy: SecrecyLevel · SecretArguments=AllowedWhenUntainted
 -- C_Secrets.GetSpellAuraSecrecy(spellIdentifier) -> secrecy: SecrecyLevel · SecretArguments=AllowedWhenUntainted

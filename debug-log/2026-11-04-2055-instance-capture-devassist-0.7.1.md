@@ -1,4 +1,4 @@
-# /xuidev instance, stats and tooltips captures (XayaUI_DevAssist 0.7.1; fork: main)
+# /xuidev instance: a per-creature summary of instances (XayaUI_DevAssist 0.7.1; fork: main)
 Logged 2026-11-04 20:55 UTC. Session 014bN6tSy3HbUDWYQsk69naX, branch `claude/inspiring-mendel-8r8qao` (draft PR #386). Nothing here has
 run in the game.
 
@@ -12,15 +12,13 @@ graph: `docs/plans/INSTANCE-CAPTURE-2026-11-04.md`.
 ## Scope (V4: every reader and caller touched)
 - `XayaUI_DevAssist/Probe.lua`: new section 12; hooks at the end of `Identity` (nameplate added / combat flag change; NR skipped),
   in `Cast` (CS / CC / CL), in `Anchor` (on, resume, zone, encounter, off), and `IX.enc` set at ENCOUNTER_START, cleared at
-  ENCOUNTER_END; status line 12; `GD.RuleSpellIDs` exported (the existing `RuleIDs`, for TooltipCapture.lua); `GD.Instance`,
-  `GD.InstanceSummary`.
-- `XayaUI_DevAssist/DevAssist.lua`: `/xuidev instance | stats | tooltips` routes, help text, `/xuidev status` fields.
+  ENCOUNTER_END; status line 12; `GD.Instance`, `GD.InstanceSummary`.
+- `XayaUI_DevAssist/DevAssist.lua`: the `/xuidev instance` route, help text, `/xuidev status` field.
 - `XayaUI_DevAssist/AuraCatalogue.lua`: `mplus.seasonValues` from `C_MythicPlus.GetCurrentSeasonValues()`.
-- `XayaUI_DevAssist/StatsCapture.lua`, `TooltipCapture.lua` (new; written by a parallel sub-agent of this session, see below).
-- `XayaUI_DevAssist/XayaUI_DevAssist.toc`: 0.7.1, the two files, Notes.
+- `XayaUI_DevAssist/XayaUI_DevAssist.toc`: 0.7.1, Notes.
 - Other readers of the same calls, unchanged: `XayaUI_Bonus/Tooltips.lua:607-693` reads `GetUnitCriteriaProgressValues` for the
   enemy-forces tooltip line (it displays; Dev Assist records). No parity test: they do not decide the same thing.
-- Saved data: new `XayaUIDevAssistDB.instance`, `.stats`, `.tooltips`; `.probe` unchanged except one hook-free field.
+- Saved data: new `XayaUIDevAssistDB.instance`; `.probe` unchanged.
 
 ## API (V2; quoted in full in the Probe.lua section 12 header)
 - `C_ScenarioInfo.GetUnitCriteriaProgressValues(unit)` -> actualValue, percentValue, percentValueString · MayReturnNothing,
@@ -55,6 +53,12 @@ graph: `docs/plans/INSTANCE-CAPTURE-2026-11-04.md`.
 - `tests/devassist_probe_run.py` (99 checks, 103 breaks), `devassist_api_run.py`, `devassist_catalogue_run.py`,
   `lua_pitfalls_run.py`: pass.
 
+## Not built
+`/xuidev stats` and `/xuidev tooltips` were planned for this version and given to a parallel sub-agent of this session. Xaya stopped
+that agent at about 21:10 UTC before it finished; its work is treated as cancelled. Its partial `StatsCapture.lua` was never
+reviewed, tested or committed (kept outside the repository). Their routes, help text, user-guide lines and QA steps were taken out
+again before this reached `main`. They stay on the list (SESSION-START-SUMMARY item 2).
+
 ## Not verified
-Everything in game: QA J13-J16. Whether creature IDs, Mythic+ counts and enemy auras are readable out of combat in a Mythic+ run at
+Everything in game: QA J13-J14. Whether creature IDs, Mythic+ counts and enemy auras are readable out of combat in a Mythic+ run at
 all is exactly what J14 answers.
