@@ -538,5 +538,50 @@ total_n += r[0]; total_fails += r[1]
 r = toolkit_world("", '''local panel = _G.XayaUICharacterToolkit
 check("the panel's title reads Stat Calculator (Xaya 2026-11-04)", panel and panel.title and panel.title.text == "Stat Calculator", panel and panel.title and panel.title.text)''')
 total_n += r[0]; total_fails += r[1]
+# Xaya 2026-11-04: "adding the item does not auto-fill in information and does[n't] prompt an item to slot in cases where there are
+# more than one slot available (weapon, trinket, ring)" and "primary stat is also not included in the what if calculator" (QoL 0.7.4)
+RINGS = """ITEMS["Ring2"] = { ilvl = 340, loc = "INVTYPE_FINGER", stats = { ITEM_MOD_CRIT_RATING_SHORT = 50, ITEM_MOD_HASTE_RATING_SHORT = 300 } }
+ITEMS["New Ring"] = { ilvl = 345, loc = "INVTYPE_FINGER", stats = { ITEM_MOD_CRIT_RATING_SHORT = 300, ITEM_MOD_HASTE_RATING_SHORT = 150 } }
+GEAR[12] = "|cffa335ee|Hitem:4::::::::90:::::|h[Ring2]|h|r"
+NEWRING = "|cffa335ee|Hitem:5::::::::90:::::|h[New Ring]|h|r"
+"""
+r = toolkit_world(RINGS, '''local c = ns.CharToolkit_Cfg()
+local CM = ns.CharModel
+ns.CharToolkit_SetInput("item", NEWRING)
+check("auto-fill: the item's rating changes against the lower ring (Ring, 330) fill the What If boxes",
+  c.whatIfStats.crit == 200 and c.whatIfStats.mastery == -400 and c.whatIfStats.haste == 150,
+  tostring(c.whatIfStats.crit) .. " " .. tostring(c.whatIfStats.mastery) .. " " .. tostring(c.whatIfStats.haste))
+local sec
+for _, s2 in ipairs(CM.Build(c, "whatif").sections or {}) do if s2.key == "whatifItem" then sec = s2 end end
+local choices = {}
+for _, it in ipairs(sec and sec.items or {}) do if it.kind == "choice" then choices[#choices + 1] = it end end
+check("two rings equipped: both are offered to replace, the lower one marked as replaced", #choices == 2
+  and ((choices[1].slot == 11 and choices[1].label == "Replacing") or (choices[2].slot == 11 and choices[2].label == "Replacing")), #choices)
+ns.CharToolkit_SetCompareSlot(12)
+check("choosing the other ring compares against it, and the boxes follow (crit 300 - 50, haste 150 - 300, no mastery)",
+  c.whatIfStats.crit == 250 and c.whatIfStats.haste == -150 and c.whatIfStats.mastery == nil,
+  tostring(c.whatIfStats.crit) .. " " .. tostring(c.whatIfStats.haste) .. " " .. tostring(c.whatIfStats.mastery))
+c.detail = "short"
+local cmp = CM.Build(c, "whatif").byKey.compare
+local shortCrit = false
+for _, p in ipairs(cmp and cmp.pairs or {}) do if p.short and tostring(p.label):lower():find("crit") then shortCrit = true end end
+check("the short view shows the item's stat changes (they were detail-only)", shortCrit)
+c.whatIfStats.haste = 999   -- the user changes one box by hand
+ns.CharToolkit_SetInput("item", "")
+check("emptying the item box takes back the amounts it filled, keeps the one changed by hand", c.whatIfStats.crit == nil and c.whatIfStats.haste == 999,
+  tostring(c.whatIfStats.crit) .. " " .. tostring(c.whatIfStats.haste))''')
+total_n += r[0]; total_fails += r[1]
+r = toolkit_world("", '''local c = ns.CharToolkit_Cfg()
+local CM = ns.CharModel
+local prim
+for _, s2 in ipairs(CM.Build(c, "whatif").sections or {}) do for _, it in ipairs(s2.items or {}) do if it.key == "wi_primary" then prim = it end end end
+check("What If has the primary stat (Agility for this spec) as its own box", prim ~= nil and prim.label == "Agility" and prim.input == "primary", prim and prim.label)
+ns.CharToolkit_SetInput("primary", "100")
+for _, s2 in ipairs(CM.Build(c, "whatif").sections or {}) do for _, it in ipairs(s2.items or {}) do if it.key == "wi_primary" then prim = it end end end
+check("  ...+100 Agility shows its attack power through the game's GetAttackPowerForStat", c.whatIfPrimary == 100 and tostring(prim.value):find("+100 attack power", 1, true) ~= nil, prim and prim.value)
+ns.CharToolkit_SetInput("primary", "0")
+ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
+check("a compared item fills the primary stat box too (Better Helm 600 Agility - Helm 500)", c.whatIfPrimary == 100, c.whatIfPrimary)''')
+total_n += r[0]; total_fails += r[1]
 print("%d checks, %d failed" % (total_n, total_fails))
 sys.exit(1 if total_fails else 0)
