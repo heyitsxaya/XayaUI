@@ -1,5 +1,6 @@
 # Dynamic groups: Sort (Default, Expiration, Name, Important, Manual) and rule order in combat (XayaUI core 0.6.6, XayaUI_Options 0.6.5; fork: main)
-Logged 2026-11-04 04:40 UTC. Branch `claude/eloquent-rubin-n9zb99`. Nothing here has run in the game yet.
+Logged 2026-11-04 03:50 UTC (commit 8f7305e, 03:51 UTC). Branch `claude/eloquent-rubin-n9zb99`. Nothing here has run in the game yet.
+_Corrected 2026-11-04 04:33 UTC (core 0.6.7 commit): this entry was first written with the time 04:40 UTC, which was wrong (it was later than the commit); the file name changed from 0440 to 0350 with it. Also see the 0.6.7 entry: the `groupSpacing` check below set the members two spacings apart in combat, fixed there._
 
 ## Requests behind this change
 Xaya, 2026-11-04:
