@@ -1,3 +1,0 @@
-# Windows scripts must keep Windows line endings so double-clicking them works on any Git setting.
-*.bat text eol=crlf
-*.ps1 text eol=crlf
