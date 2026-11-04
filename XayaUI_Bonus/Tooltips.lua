@@ -224,7 +224,7 @@ end
 --   Damage: each "N <school> damage" in the spell's own text divided by your attack power (strength / agility characters) or spell
 --     power (intellect). The ratio holds every bonus already inside N (versatility, talents, auras); it is not Blizzard's coefficient.
 -- Out of combat only: stat and cooldown reads are secret in combat. Damage text is read only on English clients.
--- TT.FormulaSource (optional, nil today) lets a learned table (the developer plugin, #339) add lines later without changing this code.
+-- TT.FormulaSource adds lines from a learned table: section 1c (observed formulas from the developer plugin's capture walkthrough).
 -------------------------------------------------------------------------------
 local SCHOOL_INDEX = { physical = 1, holy = 2, fire = 3, nature = 4, frost = 5, shadow = 6, arcane = 7 }
 
@@ -367,6 +367,67 @@ function TT.FormulaLines(tooltip, id, data)
         end
     end
 end
+
+-------------------------------------------------------------------------------
+-- 1c. Observed formulas (XayaUI_SpellData_<CLASS>, load on demand): fitted by tools/formula_fit.py from /xuiformula snapshots taken in
+-- game (XayaUI_GameDump walkthrough). Only YOUR class's folder is ever loaded (Xaya: own characters only), out of combat, at login and
+-- on a spec change. Data: XayaUI_SpellData[CLASS] = { build =, specs = { [specID] = { [spellID] = { {i, x, a, b, vers, n, label, tal}, ... } } } }
+-------------------------------------------------------------------------------
+local X_LABEL = { ap = "attack power", sp = "spell power", heal = "healing power", primary = "primary stat", hp = "maximum health",
+                  weapon = "weapon damage", mastery = "mastery %", haste = "haste %", crit = "crit %", vers = "versatility %" }
+
+-- same djb2 hash as XayaUI_GameDump/FormulaCapture.lua (FC.Hash) over the sorted active talent spell IDs
+function TT.TalentHash()
+    local list = {}
+    if ns.AuraModel and ns.AuraModel.ActiveTalentSpells then
+        local ok, l = pcall(ns.AuraModel.ActiveTalentSpells)
+        if ok and type(l) == "table" then for i, v in ipairs(l) do list[i] = v end end
+    end
+    table.sort(list)
+    local str, h = table.concat(list, ","), 5381
+    for i = 1, #str do h = (h * 33 + str:byte(i)) % 4294967296 end
+    return ("%08x"):format(h)
+end
+
+function TT.LoadClassData()
+    if InCombatLockdown and InCombatLockdown() then return end
+    local _, classFile = Call(UnitClass, "player")
+    if type(classFile) ~= "string" then return end
+    if type(XayaUI_SpellData) == "table" and XayaUI_SpellData[classFile] then return end
+    local name = "XayaUI_SpellData_" .. classFile
+    local A = C_AddOns
+    if not (A and A.LoadAddOn) then return end
+    if A.DoesAddOnExist and not Call(A.DoesAddOnExist, name) then return end   -- no data captured for this class yet
+    Call(A.LoadAddOn, name)
+end
+
+function TT.ObservedLines(id)
+    local _, classFile = Call(UnitClass, "player")
+    local cls = type(XayaUI_SpellData) == "table" and XayaUI_SpellData[classFile]
+    if type(cls) ~= "table" or type(cls.specs) ~= "table" then return nil end
+    local si = Call(GetSpecialization)
+    local specID = si and Num(Call(GetSpecializationInfo, si))
+    local rows = specID and cls.specs[specID] and cls.specs[specID][id]
+    if type(rows) ~= "table" then return nil end
+    TT.talentHash = TT.talentHash or TT.TalentHash()
+    local picked = {}
+    for _, r in ipairs(rows) do   -- one row per number: prefer the one observed with your own talents
+        if type(r) == "table" and r.i and (not picked[r.i] or r.tal == TT.talentHash) then picked[r.i] = r end
+    end
+    local out = {}
+    for _, r in pairs(picked) do
+        local f = ("%.3f × %s"):format(r.a or 0, X_LABEL[r.x] or tostring(r.x))
+        if r.b and r.b ~= 0 then f = f .. (r.b > 0 and " + %.0f" or " - %.0f"):format(math.abs(r.b)) end
+        if r.vers == true then f = f .. " × (1 + versatility)" end
+        local note = ("%s; %d gear sets%s"):format((r.label and r.label ~= "") and r.label or ("number " .. r.i), r.n or 0,
+            r.tal ~= TT.talentHash and "; other talents" or "")
+        out[#out + 1] = { i = r.i, line = { "Observed:", f .. "  (" .. note .. ")" } }
+    end
+    table.sort(out, function(a, b) return a.i < b.i end)
+    for k, v in ipairs(out) do out[k] = v.line end
+    return out
+end
+TT.FormulaSource = TT.FormulaSource or TT.ObservedLines
 
 -- /xuitt lines: dump the raw lines of the tooltip under the mouse (type, tooltipType, tooltipID) so the aura-ID source can be verified.
 function TT.DumpLines()

@@ -63,7 +63,15 @@ end
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
-boot:SetScript("OnEvent", function() TT.DB(); TT.Init() end)
+boot:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED")
+boot:RegisterEvent("TRAIT_CONFIG_UPDATED")
+boot:RegisterEvent("PLAYER_REGEN_ENABLED")
+boot:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_LOGIN" then TT.DB(); TT.Init() end
+    if event ~= "PLAYER_REGEN_ENABLED" then TT.talentHash = nil end   -- talents or spec changed: match observed data again
+    -- observed formulas: your own class's data folder only, loaded out of combat; talent changes reset the talent match
+    if TT.LoadClassData then pcall(TT.LoadClassData) end
+end)
 
 SLASH_XUITT1 = "/xuitt"
 SlashCmdList.XUITT = function(msg)

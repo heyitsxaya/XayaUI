@@ -9,7 +9,7 @@ d32239bcb673463ab874e80d47fae504  LICENSE
 2484ce39c6b9186ecd85e331060aa43d  README.md
 47e53875b76ac2d538c6e0f92e95ff01  ROADMAP.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-091aba347dd377d88d039eb36fcdb653  USER-GUIDE.md
+bea477084083a452d5b13dfb3e3d048e  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
 40b7591dd5f7fe4f0c4b0f5a965155bb  XayaUI/ClassLearn.lua
@@ -128,9 +128,9 @@ ded1de1be47477a60c0740ef7769629d  XayaUI_Bonus/Media/UI/Notepad/src/plus.svg
 2a22ac682397b06e682d4cc0a0cd7abc  XayaUI_Bonus/Media/UI/Notepad/trash.png
 bd5ad941d96408c9a0a6d431144f65b7  XayaUI_Bonus/Notepad.lua
 78aac0cd2914a50bc733b64bd2da93d2  XayaUI_Bonus/NotepadShare.lua
-34c73c35e69ec285e870df340f780345  XayaUI_Bonus/Tooltips.lua
-a67bb352543a802dd4d1bc4e6b2fa7c6  XayaUI_Bonus/TooltipsUI.lua
-5842296e33ab5ef06e3af63f534b5e27  XayaUI_Bonus/XayaUI_Bonus.toc
+e9132a8a84c7ed34ebe9428b1fb1e164  XayaUI_Bonus/Tooltips.lua
+4766730ee9a687270d7ce006b7da0c0a  XayaUI_Bonus/TooltipsUI.lua
+7a357c6887be826e4b2271a64a3bddba  XayaUI_Bonus/XayaUI_Bonus.toc
 83c87e8920a975caccb49149edab3556  XayaUI_Chat/Bar.lua
 b5ae82f4fdb8332fba9ddb299b8e9928  XayaUI_Chat/Core.lua
 691117347e0437f78c88e3734c54c438  XayaUI_Chat/Fade.lua
@@ -145,8 +145,10 @@ fead8e3ce9e3203085d2516b6e967c51  XayaUI_Chat/Locate.lua
 0d7c325a5b9a1bcbbcac9746295b8cd0  XayaUI_Chat/Skin.lua
 924ed63c29e3249e9052308753382184  XayaUI_Chat/Sounds.lua
 e9c2f7c6bc958bcaced3c0aa2ff05bbb  XayaUI_Chat/XayaUI_Chat.toc
+857e41250c987f3251a9c8ae1a21ae97  XayaUI_GameDump/FORMULA-CAPTURE-WALKTHROUGH.md
+4e650b1654b192b5f3048f03425dbacf  XayaUI_GameDump/FormulaCapture.lua
 96a62368d1a1215dd73fc9fdf4e71716  XayaUI_GameDump/GameDump.lua
-f2775456d146dcf3ca0f5cccfa9d5e84  XayaUI_GameDump/XayaUI_GameDump.toc
+94961ba57a3ce0a125ba79b0d2e42811  XayaUI_GameDump/XayaUI_GameDump.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
@@ -343,6 +345,7 @@ ce45fc465bdd3ab3e215e3abd189e3ea  debug-log/2026-11-03-2254-tester-requests-278-
 fd3ccecccb27afb01262111787083ed9  debug-log/2026-11-03-2330-display-tab-chevrons-engine-text-cue-0.6.3.md
 02b97d90b18206b198d039adc8d1e437  debug-log/2026-11-04-0011-tooltip-self-id-aura-bonus-0.6.1.md
 373915571255dfbb710a96f5452290e6  debug-log/2026-11-04-0100-tooltip-formula-lines-bonus-0.6.2.md
+fc5639580b83237337e715e53c272e78  debug-log/2026-11-04-0200-formula-capture-walkthrough-gamedump-0.3.0.md
 7f9f4549410ba8da5e6fb9e9cb573be0  shelved/Bars.lua
 5857b882061b2df7a8d4fb33945efc80  shelved/CountSupport.lua
 ba241e46458e8e4296563689c7708a51  shelved/CursorReminders.lua
@@ -361,6 +364,7 @@ c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
 c2b86efd19cc6531f468c1243f6ba3b3  tests/drafts_run.py
 1dc5b3e89ca41f69f7eaf662e76da132  tests/engine_bench.py
 91e69f1cabaacf58537aa37237ffb06c  tests/export_group_run.py
+c7f384823034727d484a12ba5c38e48f  tests/formula_capture_run.py
 e30b244c96ba84721bed4b5eb211b7d2  tests/gamemenu_run.py
 2432f77932fc7e94d63c1f8c3f453c37  tests/harness/.gitignore
 a36a03ecc872c2cf4b1b410e1aeba87e  tests/harness/build_api_index.py
@@ -385,6 +389,7 @@ f886a09a99f1c562e4ff35c25675a1bd  tests/timing_run.py
 ce3a5675548fdab11df2f0f9561cbe06  tests/tooltips_run.py
 7bdbd8daaa8aaab8b1a64cdbc9a0b436  tests/usage_check.lua
 06abd3bc39893cbb62c55a168ba32788  tests/usage_run.py
+f1bae520db3fdef262ef708a60557571  tools/formula_fit.py
 5ea11cb0d56f3c473cd881158515069e  tools/manifest.py
 db4bc883dbe741a50417a8d183e9dc02  tools/qa-installer/.gitattributes
 eac7e9b69f7326ed1b0f0765391566ae  tools/qa-installer/Install-XayaUI.bat
