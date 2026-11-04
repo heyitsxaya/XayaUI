@@ -2,12 +2,12 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-cb198c66bd4fcc150564bcbc8472feee  QA-CHECKLIST.md
+cf26fc1257226a6c6b9f5c065caff00c  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 dd2eebcda02cac4b5495a998eee8dd79  ROADMAP.md
 103190c17965f9e740d3403464493086  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-723b07b749369b9dee998da1b5c9ae2f  USER-GUIDE.md
+d27793943eed883afed4d664862907a4  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 4cc1b0cabaf7b9fbfcbcdcbc5d14a9b4  XayaUI/AuraSound.lua
@@ -108,6 +108,7 @@ c3f703812134ef2760a13dc61e48b67e  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
 e709333c38c04f468d672d1ca3a6f4fc  XayaUI/Visual.lua
 d539769b7fdedddc1c579fda16927aab  XayaUI/XayaUI.toc
+5d8ef2b3d9cd4855e81ae79e59a247ba  XayaUI_Bonus/Calculator.lua
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -135,7 +136,7 @@ a71ac7b866221b1be83fedd9e8ef7d40  XayaUI_Bonus/Notepad.lua
 3bc3beb9eb5d5db244a4e646bd9b6062  XayaUI_Bonus/NotepadShare.lua
 21d279804aa0ab7530e6ae5755176903  XayaUI_Bonus/Tooltips.lua
 7964bb7d450bb9f0c26fed89749d5536  XayaUI_Bonus/TooltipsUI.lua
-13de3840f6ccfb2f5129811fa2fb6871  XayaUI_Bonus/XayaUI_Bonus.toc
+a097e6740cc35e6c4c7ed0d974e28bba  XayaUI_Bonus/XayaUI_Bonus.toc
 83c87e8920a975caccb49149edab3556  XayaUI_Chat/Bar.lua
 b484c9d047a69769000f756fd0c00175  XayaUI_Chat/Core.lua
 691117347e0437f78c88e3734c54c438  XayaUI_Chat/Fade.lua
@@ -428,6 +429,7 @@ ffa11fbba5d731310966d21dcec98c9e  debug-log/2026-11-04-2018-stat-calculator-titl
 3d71b3ba0c89ed156dd69211ac7393e6  debug-log/2026-11-04-2130-spells-autofill-filters-qol-0.7.7.md
 e8b54caa160275bd8ee4caa958f98f6f  debug-log/2026-11-04-2132-engine-issue-triage-pause-preview-core-0.6.34-options-0.6.34.md
 ef410223373a536ca804a0eb02288efb  debug-log/2026-11-04-2134-armor-chain-qol-0.7.8.md
+831b2797f9b7bacf59d1e1277b24920f  debug-log/2026-11-04-2137-calculator-bonus-0.6.8.md
 cec2b7fa38d9fd84c8f399c9f79c556a  debug-log/2026-11-04-2137-exact-spell-id-b4-core-0.6.35-options-0.6.35.md
 280a97f86ae12564a9d67336750d02e8  debug-log/2026-11-04-2138-gear-icons-qol-0.7.9.md
 32b649365a51568fe495177bb64ea53c  debug-log/2026-11-04-2140-engine-session-handoff.md
@@ -511,6 +513,7 @@ b96c22f839c7166fa44cc33ca05b7b78  tests/aura_gaps_run.py
 f115df38e9fbc8e0ce989f9a4184ef18  tests/auras_cmd_run.py
 85b42e051f93867990bead97395d8ac3  tests/build_content_run.py
 a48d4b3a546f29c2dbd4fdfb8bc661c4  tests/build_set_auras_run.py
+65503283e0c12a3b57ecfe5ae496b507  tests/calculator_run.py
 5529eb594ffff1ed7bcf9886f5161c3e  tests/char_gear_icons_run.py
 f12b32b38fb923090735c0534040e6eb  tests/char_spells_run.py
 41c289140eb2125acbaa590e5579c912  tests/char_toolkit2_run.py
