@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-7946d4c01e458a8ae3c2dcfca08560b4  QA-CHECKLIST.md
+f95c9328e5c5f61336515e95ecb5cf91  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 394bd8eae709aa7c0942ce98b06e4375  ROADMAP.md
 64b887e4bffa11008f517a29c7d447a1  SESSION-START-SUMMARY.md
@@ -216,7 +216,7 @@ a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 d97612c37b4c68f27415a9ee0fc845e5  XayaUI_QoL/CharacterToolkit.lua
 51995f01e31136f0c68b4db7ef5f7fe1  XayaUI_QoL/CharacterWidthProbe.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
-e961de31e54ee41494bbd60ea3a2f996  XayaUI_QoL/CursorTrail.lua
+5845286dd16b8c3f711fc5cc2f235676  XayaUI_QoL/CursorTrail.lua
 deef89f1ad9818ceb2f2d16c7e57ecaf  XayaUI_QoL/Media/Cursor/Arrow.tga
 55814a3db06aefcf919a6b8adc915d39  XayaUI_QoL/Media/Cursor/CircleHD.tga
 ee3e8c1489d55a6c47659502215c7c3d  XayaUI_QoL/Media/Cursor/Crosshair.tga
@@ -253,7 +253,7 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 08343552c22eb2676c663b0576e218c3  XayaUI_QoL/Media/Cursor/RingThick.tga
 054aa82635cfab8851fded7704d8f102  XayaUI_QoL/Media/Cursor/Sparkle.tga
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
-b5916983af31e3f7b22706927d067443  XayaUI_QoL/XayaUI_QoL.toc
+9e391742ae2896cea50f96bda880bbee  XayaUI_QoL/XayaUI_QoL.toc
 6c204c615c32aeec49965a86f9649ccb  XayaUI_Reskin/GameMenuSkin.lua
 920bbd6d916017df661baf257a16b7d2  XayaUI_Reskin/XayaUI_Reskin.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
@@ -448,6 +448,7 @@ cc9d1ed3dee5d80a51312a494fd7c128  debug-log/2026-11-04-2218-probe-findings-oh-fl
 c1d7d03ab3ff7630015402cd7d314428  debug-log/2026-11-04-2303-mover-right-click-core-0.6.42.md
 368776f26a56f31f0c9615d565ea41bd  debug-log/2026-11-04-2311-mover-click-slop-core-0.6.43.md
 a7820cd111f019a93a67a9a972cd12b6  debug-log/2026-11-04-2326-engine-kept-step-index-core-0.6.44.md
+69ffe23eb4ff195f29d0c1f718564a03  debug-log/2026-11-04-2341-cursor-trail-cost-qol-0.7.13.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -536,6 +537,7 @@ c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
 e78532613d70ebbdcc90fcfb23c97f0a  tests/cue_fire_run.py
 dd665e9accfdaf1a4488086f855742a2  tests/cue_sound_guard_run.py
 e72897e247fb535d4756722cd9f5aad7  tests/cue_volume_run.py
+ce5fb54409e4963e90d8e7918b424581  tests/cursor_trail_cost_run.py
 468a208772bf47d9d5b03f5f786b7989  tests/debug_record_engine_run.py
 e1638da5fc1a7cf666dbd4db06d717b4  tests/debug_record_run.py
 c135893b4f8ae3d58b00fd2be6d813af  tests/delete_keeps_rule_run.py
