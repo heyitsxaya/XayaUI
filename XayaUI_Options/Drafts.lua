@@ -9,7 +9,13 @@ ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends 
 
 local baseline = {}      -- [rootUid] = { sig = string, rules = { deep copies }, isNew = true when the rule was made in this window and never saved }
 local windowOpen = false
-local MAX_DRAFTS = 30
+local MAX_DRAFTS = 30   -- default; Settings > UI Options > Rule Creation > "Keep up to" (ui.draftsMax, 5 to 100)
+-- Draft settings (0.6.4, Settings > UI Options > Rule Creation). All default to the behavior before they existed.
+local function DUi() return (CueRulesDB and CueRulesDB.ui) or {} end
+function ns.DraftsMax() local n = tonumber(DUi().draftsMax) or MAX_DRAFTS; return math.max(5, math.min(100, math.floor(n))) end
+function ns.DraftsConfirmDiscard() return DUi().draftsConfirmDiscard ~= false end
+function ns.DraftsConfirmDelete() return DUi().draftsConfirmDelete ~= false end
+function ns.DraftsCloseNotice() return DUi().draftsCloseNotice ~= false end
 
 local ROOT_IGNORE = { enabled = true, folder = true, name = true, ocCollapsed = true, listIcon = true, listIconID = true, editLocked = true }
 local CHILD_IGNORE = { folder = true, ocCollapsed = true, spellID = true, buffID = true, maxCharges = true, listIcon = true, listIconID = true, editLocked = true }
@@ -244,7 +250,12 @@ local function StoreDraft(uid, group, isNew)
     local root = group[1]
     local nm = root and tostring(root.name or "") or ""
     table.insert(list, 1, { id = uid .. ":" .. tostring(time()), uid = uid, name = (nm ~= "") and nm or "Unnamed rule", ts = time(), isNew = isNew and true or nil, rules = Copies(group) })
-    while #list > MAX_DRAFTS do table.remove(list) end
+    while #list > ns.DraftsMax() do table.remove(list) end
+end
+-- the "Keep up to" number was lowered: drop the oldest drafts beyond it now
+function ns.DraftsTrim()
+    local list = Drafts()
+    while #list > ns.DraftsMax() do table.remove(list) end
 end
 
 -- the window closed (or the game is logging out): unsaved rules go to Drafts and go back to their saved version
@@ -266,7 +277,7 @@ function ns.DraftsOnClose()
     end
     wipe(baseline)
     ns.RefreshSidebar()   -- reverted rules: redraw the side panel so it matches what is saved
-    if moved > 0 and ns.Print then
+    if moved > 0 and ns.Print and ns.DraftsCloseNotice() then
         ns.Print(("%d rule(s) had unsaved changes. The changes were kept in Drafts (toolbar > Drafts) and the rule(s) went back to the last saved version."):format(moved))
     end
 end
@@ -412,7 +423,7 @@ function ns.DraftArgs(rule)
             func = function() ns.DraftAddCopyToDrafts(rule) end },
         discard = { type = "execute", order = -98, width = "normal", hidden = clean,
             name = function() return ns.DraftIsNew(rule) and "Discard new rule" or "Discard changes" end,
-            confirm = true,
+            confirm = function() return ns.DraftsConfirmDiscard() end,   -- Settings > Rule Creation > "Confirm Discard changes"
             confirmText = "Throw away the unsaved changes? The rule goes back to its last saved version (a new, never-saved rule is deleted).",
             func = function() ns.DraftDiscard(rule) end },
         gap = { type = "description", order = -97, width = "full", name = " ", fontSize = "small", hidden = clean },
@@ -563,13 +574,38 @@ end
 -- The Drafts page (opened from the toolbar). Built fresh on every options refresh.
 -- One small box per draft: the date line with the two buttons beside it (Restore, Delete), then what its triggers and cues are.
 function ns.BuildDraftsPage()
+    local function Notify() if ns.UI and ns.UI.Notify then ns.UI.Notify() end end
     local args = {
+        -- 0.6.4 (Xaya): the tab is always there. With drafts off it explains what they do and offers the switch; with drafts on the same
+        -- switch turns them off. The finer settings (how many are kept, confirmations, the chat notice) are in Settings > Rule Creation.
+        about = { type = "description", order = -3, width = "full", fontSize = "medium",
+            name = function()
+                if ns.DraftsEnabled() then
+                    return "|cffffd100Drafts are on.|r While you edit a rule, a bar under the window offers Save changes, Save as a copy, Add to drafts, and Discard changes. Closing the window with unsaved changes moves them here and puts the rule back to its last saved version."
+                end
+                return "|cffffd100Drafts are off.|r Every change is kept the moment you make it, with no save bar.\n\nWith drafts on, edits are tried out live but kept only when you select Save changes. Closing the window first moves unsaved changes to this tab, where Restore puts them back in the editor. You can also Save as a copy, park an edit with Add to drafts, or Discard changes."
+            end },
+        toggle = { type = "execute", order = -2,
+            name = function() return ns.DraftsEnabled() and "Turn drafts off" or "Turn drafts on" end,
+            desc = "Turning drafts on starts from a clean slate: the rules as they are now count as saved. Turning them off keeps every edit you have made. Drafts already on this tab stay here either way.",
+            func = function()
+                local ui = CueRulesDB and CueRulesDB.ui
+                if not ui then return end
+                ui.promptSave = not ns.DraftsEnabled()
+                if ns.DraftsApplySetting then ns.DraftsApplySetting() end
+                Notify()
+            end },
+        settings = { type = "execute", order = -1.9, name = "Draft settings",
+            desc = "Settings > UI Options > Rule Creation: how many drafts are kept, which actions ask first, and the chat notice.",
+            func = function() if ns.OpenDraftSettings then ns.OpenDraftSettings() end end },
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Changes you did not save before closing the window are kept here. Restore loads a draft into its rule (or recreates a rule that was never saved); then select Save changes on the rule to keep it. Up to " .. MAX_DRAFTS .. " drafts are kept, newest first." },
+            hidden = function() return not ns.DraftsEnabled() and #Drafts() == 0 end,
+            name = function() return "Changes you did not save before closing the window are kept here. Restore loads a draft into its rule (or recreates a rule that was never saved); then select Save changes on the rule to keep it. Up to " .. ns.DraftsMax() .. " drafts are kept, newest first." end },
     }
     local list = Drafts()
     if #list == 0 then
-        args.none = { type = "description", order = 1, width = "full", fontSize = "medium", name = "|cff888888No drafts.|r" }
+        args.none = { type = "description", order = 1, width = "full", fontSize = "medium", name = "|cff888888No drafts.|r",
+            hidden = function() return not ns.DraftsEnabled() end }
     end
     for i, d in ipairs(list) do
         local ok, head, trig, cue = pcall(DraftLines, d)
@@ -581,7 +617,7 @@ function ns.BuildDraftsPage()
             restore = { type = "execute", order = 2, width = "relative", relWidth = 0.13, name = "Restore",
                 desc = "Put this draft back in the editor: it is loaded into its rule (replacing the rule's current version). It is not saved until you select Save changes.",
                 func = function() ns.DraftRestore(d.id) end },
-            delete = { type = "execute", order = 3, width = "relative", relWidth = 0.11, name = "Delete", confirm = true, confirmText = "Delete this draft for good?",
+            delete = { type = "execute", order = 3, width = "relative", relWidth = 0.11, name = "Delete", confirm = function() return ns.DraftsConfirmDelete() end, confirmText = "Delete this draft for good?",
                 func = function() ns.DraftDelete(d.id) end },
         }
         if trig then box.trig = { type = "description", order = 4, width = "full", fontSize = "medium", name = trig } end

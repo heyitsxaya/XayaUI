@@ -469,17 +469,38 @@ end
 
 local function LayoutDynamic(df)
     if not df then return end
-    local items = {}
+    -- One slot per RULE (the rule is the container of its cues), in the rule's own list order: the order of the sidebar, which the
+    -- up / down arrows and drag-and-drop change. A cue is not a slot of its own (0.6.4, #344): cues are kept in the list in the order
+    -- they were made, so the old one-slot-per-cue layout ignored the sidebar order, and a rule's second display cue (a separate Text
+    -- cue) took a slot of its own at the end of the group. The slot's size is the rule's first shown display; its other shown display
+    -- cues sit centered on that slot.
+    local items, byOwner, posOf, byUid = {}, {}, {}, {}
+    for i, r in ipairs(ns.rules or {}) do
+        posOf[r] = i
+        if type(r.uid) == "string" and not r.parentUid then byUid[r.uid] = r end   -- one pass, so the layout stays linear in the rule count
+    end
     for _, r in ipairs(ns.rules or {}) do
         local fr = frames[r]
         if fr and fr:IsShown() and ((r.folder and DynAncestor(r.folder) == df)
             or (r.cursorConv and ns.CursorReminderFolder and ns.CursorReminderFolder() == df)) then
-            items[#items + 1] = { fr = fr, w = fr:GetWidth(), h = fr:GetHeight(), name = tostring(r.name or ""):lower() }
+            local owner = (r.parentUid and byUid[r.parentUid]) or r
+            local it = byOwner[owner]
+            if not it then
+                it = { fr = fr, w = fr:GetWidth(), h = fr:GetHeight(), name = tostring(owner.name or ""):lower(),
+                    pos = posOf[owner] or posOf[r] or 0, extra = nil }
+                byOwner[owner] = it
+                items[#items + 1] = it
+            else
+                it.extra = it.extra or {}
+                it.extra[#it.extra + 1] = fr
+            end
         end
     end
     if #items == 0 then return end
+    for i, it in ipairs(items) do it.i = i end
+    table.sort(items, function(a, b) if a.pos ~= b.pos then return a.pos < b.pos end return a.i < b.i end)
     if df.cSort == "asc" or df.cSort == "desc" then   -- Sort items (group option); ties keep rule order
-        for i, it in ipairs(items) do it.i = i end
+        for i, it in ipairs(items) do it.i = i end   -- (renumbered after the rule-order sort above)
         local asc = df.cSort == "asc"
         table.sort(items, function(a, b) if a.name == b.name then return a.i < b.i end if asc then return a.name < b.name end return a.name > b.name end)
     end
@@ -527,6 +548,9 @@ local function LayoutDynamic(df)
             elseif dir == "UP" then y = p; x = co * cs end
             it.fr:ClearAllPoints()
             it.fr:SetPoint("CENTER", container, "CENTER", x, y)
+            if it.extra then   -- the rule's other display cues: on the same slot
+                for _, ef in ipairs(it.extra) do ef:ClearAllPoints(); ef:SetPoint("CENTER", container, "CENTER", x, y) end
+            end
         end
         crossOff = crossOff + cross + sp
     end

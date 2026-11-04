@@ -67,17 +67,20 @@ function ns.BuildDisplayTab(rule, Notify, Changed)
                 return table.concat(lines, "\n")
             end },
     }
-    for i, k in ipairs(ADD_KINDS) do
-        args["add_" .. k[1]] = { type = "execute", order = 1.2 + i / 100, width = "normal", name = "+ " .. k[2],
-            desc = "Adds a new " .. k[2]:lower() .. " cue to this rule. It takes this tab's settings (such as the hover tooltip) and is edited on the Cues tab. A new cue plays only when a condition on the Conditions tab lists it.",
-            func = function()
-                local before = list()
-                local allTip = #before > 0 and CountOn(before, "hoverTip") == #before
-                local c = ns.NewCueRule and ns.NewCueRule(rule, k[1])
-                if c and allTip then c.visual.hoverTip = true end
-                if c then done({ c }) end
-            end }
-    end
+    -- adding a display cue is a choice between kinds: one dropdown beside the list (Xaya's rule: no row of big buttons for a choice)
+    local ADD_VALUES, ADD_ORDER = {}, {}
+    for _, k in ipairs(ADD_KINDS) do ADD_VALUES[k[1]] = k[2]; ADD_ORDER[#ADD_ORDER + 1] = k[1] end
+    args.shows.width = "normal"
+    args.add = { type = "select", order = 1.2, width = "normal", name = "Add a display cue", values = ADD_VALUES, sorting = ADD_ORDER,
+        desc = "Adds a new icon, texture, or text cue to this rule. It takes this tab's settings (such as the hover tooltip) and is edited on the Cues tab. A new cue plays only when a condition on the Conditions tab lists it (or always, while the rule has no conditions).",
+        get = function() return nil end,
+        set = function(_, kind)
+            local before = list()
+            local allTip = #before > 0 and CountOn(before, "hoverTip") == #before
+            local c = ns.NewCueRule and ns.NewCueRule(rule, kind)
+            if c and allTip then c.visual.hoverTip = true end
+            if c then done({ c }) end
+        end }
 
     ---------------------------------------------------------------- behavior of all displays
     args.behH = { type = "header", order = 2, name = "All display cues", hidden = none }
@@ -140,4 +143,182 @@ function ns.BuildDisplayTab(rule, Notify, Changed)
         hidden = function() if none() then return true end; return (same("alpha", 1)) and (same("oocAlpha", 1)) end,
         name = "|cff999999The displays have different opacities; the sliders show the first display's value, and moving one sets it on all of them.|r" }
     return { type = "group", name = "Display", order = 1, args = args }
+end
+
+-------------------------------------------------------------------------------
+-- Group Display tab (0.6.4): every display cue of every rule in a group (and its nested groups), edited at once and live. Same model as
+-- a group's display in the reference addon (one set of controls, a change applies to every item inside), mapped to the trigger / cue /
+-- condition split: a group holds rules, a rule holds cues, and only display cues (icon, texture, text) have a look. Replaces the old
+-- "Apply Text Settings to All Rules in This Group" panel (#341): no Apply button, no "leave alone" blanks; each control shows the first
+-- display's value, a gray line under each section names the settings that differ between displays, and a change makes them all the same.
+-- Controls are the cue editor's own builders (ns.UI), fed a proxy table: reading gives the first display's value, writing sets every
+-- display's own field (a table value, such as a color, is copied for each display so no two displays share one table).
+-------------------------------------------------------------------------------
+local function Sig(v)
+    if type(v) ~= "table" then return tostring(v) end
+    local p = {}
+    for i = 1, 4 do p[i] = tostring(v[i]) end
+    return table.concat(p, ",")
+end
+
+function ns.GroupDisplayArgs(f, folderRules, Notify)
+    local U = ns.UI
+    local function locked(r) return ns.IsEditLocked and ns.IsEditLocked(r) or false end   -- an edit-locked rule is never changed from here
+    local function list()
+        local out = {}
+        for _, r in ipairs(folderRules(f.id)) do
+            if not r.parentUid and not locked(r) then for _, d in ipairs(ns.RuleDisplays(r)) do out[#out + 1] = d end end
+        end
+        return out
+    end
+    local function nRules()
+        local n = 0
+        for _, r in ipairs(folderRules(f.id)) do if not r.parentUid and not locked(r) and #ns.RuleDisplays(r) > 0 then n = n + 1 end end
+        return n
+    end
+    local function nLocked()
+        local n = 0
+        for _, r in ipairs(folderRules(f.id)) do if not r.parentUid and locked(r) and #ns.RuleDisplays(r) > 0 then n = n + 1 end end
+        return n
+    end
+    local function none() return #list() == 0 end
+    local function on()
+        for _, d in ipairs(list()) do pcall(ns.RefreshVisual, d) end
+        ns.MarkDirty(); Notify()
+    end
+    -- sub = nil: the display's visual table; otherwise one of its sub-tables (text, count, absorb, border, bg)
+    local function Proxy(sub)
+        return setmetatable({}, {
+            __index = function(_, k)
+                local d = list()[1]
+                if not d then return nil end
+                local t = d.visual
+                if sub then t = t[sub] end
+                return type(t) == "table" and t[k] or nil
+            end,
+            __newindex = function(_, k, v)
+                for _, d in ipairs(list()) do
+                    local t = d.visual
+                    if sub then
+                        if type(t[sub]) ~= "table" then t[sub] = {} end
+                        t = t[sub]
+                    end
+                    t[k] = (type(v) == "table" and ns.Copy) and ns.Copy(v) or v
+                end
+            end })
+    end
+    -- the labels of the settings that differ between the displays (nil when they all agree)
+    local function Differs(sub, keys)
+        local l, out = list(), {}
+        if #l < 2 then return nil end
+        for _, kv in ipairs(keys) do
+            local k, label = kv[1], kv[2]
+            local first
+            for i, d in ipairs(l) do
+                local t = sub and d.visual[sub] or d.visual
+                local s = Sig(type(t) == "table" and t[k] or nil)
+                if i == 1 then first = s elseif s ~= first then out[#out + 1] = label; break end
+            end
+        end
+        if #out == 0 then return nil end
+        return "|cff999999Differs between displays: " .. table.concat(out, ", ") .. ". The controls show the first display's values; a change makes them all the same.|r"
+    end
+    local function DiffLine(order, sub, keys)
+        return { type = "description", order = order, width = "full", fontSize = "small",
+            hidden = function() return Differs(sub, keys) == nil end,
+            name = function() return Differs(sub, keys) or "" end }
+    end
+    local function Section(id, title, order, args) return ns.GatedPane(f, "gdisp_" .. id, title, order, function() return not none() end, args) end
+
+    local V = Proxy(nil)
+    local args = {}
+    args.scope = { type = "description", order = 0.5, width = "full", fontSize = "small",
+        name = function()
+            local n = #list()
+            if n == 0 then return "|cff999999No rule in this group shows anything on screen yet, so there is nothing to style here. Add a display cue to a rule (its Display or Cues tab).|r" end
+            local lk = nLocked()
+            return "Every setting below applies right away to every display cue in this group and its nested groups: |cffffd100" .. n .. " display" .. (n == 1 and "" or "s") .. " in " .. nRules() .. " rule" .. (nRules() == 1 and "" or "s") .. "|r. Each cue's other settings stay its own (Cues tab of the rule)."
+                .. ((lk > 0) and ("  |cff999999" .. lk .. " edit-locked rule" .. (lk == 1 and " is" or "s are") .. " left out.|r") or "")
+        end }
+
+    -- behavior of every display
+    local beh = {
+        hoverTip = U.Tog(V, "hoverTip", "Show tooltip on hover", 1, on, { width = "double",
+            desc = "Hovering a display shows the tooltip of the spell or item it is about. While on, the display sees the mouse pointer, but clicks still pass through to what is behind it." }),
+        requireOnBar = U.Tog(V, "requireOnBar", "Only show while on an action bar", 2, on, { width = "double",
+            desc = "Hides a display whenever its rule's spell is not placed on any of your action bars." }),
+    }
+    beh.diff = DiffLine(9, nil, { { "hoverTip", "Show tooltip on hover" }, { "requireOnBar", "Only show while on an action bar" } })
+    args.behavior = Section("beh", "Every display: behavior", 2, beh)
+
+    -- size of every display
+    local size = {
+        w = U.Rng(V, "w", "Display width", 1, 8, 512, 1, on),
+        h = U.Rng(V, "h", "Display height", 2, 8, 512, 1, on),
+        zoom = U.Rng(V, "zoom", "Zoom / crop edges", 3, 0, 0.3, 0.01, on, { desc = "Spell icons: how much of the icon's edge is cropped away." }),
+    }
+    size.diff = DiffLine(9, nil, { { "w", "Display width" }, { "h", "Display height" }, { "zoom", "Zoom" } })
+    args.size = Section("size", "Every display: size", 3, size)
+
+    -- opacity of every display
+    local op = {
+        alpha = U.Rng(V, "alpha", "Opacity", 1, 0, 1, 0.05, on, { isPercent = true }),
+        oocAlpha = U.Rng(V, "oocAlpha", "Out of combat", 2, 0, 1, 0.05, on, { isPercent = true, def = 1,
+            desc = "Opacity multiplier while you are out of combat (100% = the same as in combat)." }),
+    }
+    op.diff = DiffLine(9, nil, { { "alpha", "Opacity" }, { "oocAlpha", "Out of combat" } })
+    args.opacity = Section("op", "Every display: opacity", 4, op)
+
+    -- border and background of every display
+    local B, BG = Proxy("border"), Proxy("bg")
+    local bd = {
+        bdOn = U.Tog(B, "enabled", "Border", 1, on),
+        bdSize = U.Rng(B, "size", "Border size (px)", 2, 1, 8, 1, on, { disabled = function() return not B.enabled end }),
+        bdColor = U.Col(B, "color", "Border color", 3, on, { disabled = function() return not B.enabled end }),
+        bgOn = U.Tog(BG, "enabled", "Background fill", 4, on),
+        bgColor = U.Col(BG, "color", "Background color", 5, on, { disabled = function() return not BG.enabled end }),
+    }
+    bd.diff = DiffLine(9, "border", { { "enabled", "Border" }, { "size", "Border size" }, { "color", "Border color" } })
+    bd.diff2 = DiffLine(9.1, "bg", { { "enabled", "Background fill" }, { "color", "Background color" } })
+    args.border = Section("bd", "Every display: border and background", 5, bd)
+
+    -- the three text elements, each its own section (what to change is the section you open, not a tick list)
+    local STYLE = { { "font", "Font" }, { "size", "Text size" }, { "outline", "Outline" }, { "color", "Text color" }, { "place", "Placement" },
+        { "anchor", "Position" }, { "x", "X offset" }, { "y", "Y offset" } }
+    local function TextSection(id, title, order, sub, head)
+        local P = Proxy(sub)
+        local a = U.TextStyleArgs(P, on, 10)
+        local keys = {}
+        for k, o in pairs(head(P)) do a[k] = o end
+        for _, kv in ipairs(STYLE) do keys[#keys + 1] = kv end
+        local hk = { { "enabled", "Shown" } }
+        if sub == "text" then hk[#hk + 1] = { "decimals", "Tenths" }; hk[#hk + 1] = { "decimalBelow", "Tenths below" } end
+        if sub == "count" then hk[#hk + 1] = { "source", "Count of" } end
+        if sub == "absorb" then hk[#hk + 1] = { "source", "Amount from" }; hk[#hk + 1] = { "abbreviate", "Abbreviate" }; hk[#hk + 1] = { "hideZero", "Hide when zero" } end
+        for _, kv in ipairs(keys) do hk[#hk + 1] = kv end
+        a.diff = DiffLine(9, sub, hk)
+        return Section(id, title, order, a)
+    end
+    args.textDur = TextSection("dur", "Buff duration text", 6, "text", function(P)
+        return {
+            enabled = U.Tog(P, "enabled", "Show remaining buff time", 1, on, { width = "double" }),
+            decimals = U.Tog(P, "decimals", "Show tenths (decimals)", 2, on),
+            decimalBelow = U.Rng(P, "decimalBelow", "Tenths only below (s)", 3, 1, 30, 1, on, { disabled = function() return not P.decimals end }),
+        }
+    end)
+    args.textCnt = TextSection("cnt", "Stacks / charges count", 7, "count", function(P)
+        return {
+            enabled = U.Tog(P, "enabled", "Show a count", 1, on),
+            source = U.Sel(P, "source", "Count of", 2, U.COUNT_SOURCE, U.COUNT_SOURCE_ORDER, on),
+        }
+    end)
+    args.textAbs = TextSection("abs", "Shield / absorb amount", 8, "absorb", function(P)
+        return {
+            enabled = U.Tog(P, "enabled", "Show shield / absorb amount", 1, on, { width = "double" }),
+            source = U.Sel(P, "source", "Amount from", 2, U.ABSORB_SOURCE, U.ABSORB_SOURCE_ORDER, on),
+            abbreviate = U.Tog(P, "abbreviate", "Abbreviate (12.3K)", 3, on),
+            hideZero = U.Tog(P, "hideZero", "Hide when zero", 4, on),
+        }
+    end)
+    return args
 end

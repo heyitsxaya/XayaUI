@@ -616,6 +616,28 @@ local function PartitionAllRules(w)
     EnsureTreeSearch(w)
     local pad = TopPad(w)
     if w.xuiPart or pad ~= 10 or w.xuiTopApplied then ResetChain(w); w.xuiPart = nil; w.xuiTopApplied = (pad ~= 10) and pad or nil end
+    do   -- 0.6.4: the scrollbar starts below the search box. AceGUI puts its top 26 px from the frame's top, so once the list was long
+         -- enough to scroll, the bar's up arrow sat on the right end of the search box. (The up arrow is 16 px tall, above the bar.)
+        local sbar = w.scrollbar
+        if sbar then
+            local top = (pad ~= 10) and (pad + 16) or 26
+            if sbar.xuiTop ~= top then
+                sbar:ClearAllPoints()
+                sbar:SetPoint("TOPRIGHT", tf, "TOPRIGHT", -10, -top)
+                sbar:SetPoint("BOTTOMRIGHT", tf, "BOTTOMRIGHT", -10, 26)
+                sbar.xuiTop = top
+            end
+            AddRest(w, "sbartop", function(self)   -- AceGUI hands this tree to other windows: put AceGUI's own anchors back
+                local b2 = self.scrollbar
+                if b2 and b2.xuiTop and b2.xuiTop ~= 26 and self.treeframe then
+                    b2:ClearAllPoints()
+                    b2:SetPoint("TOPRIGHT", self.treeframe, "TOPRIGHT", -10, -26)
+                    b2:SetPoint("BOTTOMRIGHT", self.treeframe, "BOTTOMRIGHT", -10, 26)
+                end
+                if b2 then b2.xuiTop = nil end
+            end)
+        end
+    end
     if not SkinOn() or w.showscroll then return end   -- scrolling list: rows stay in AceGUI's own order
     local btns = {}
     for _, b in ipairs(w.buttons) do if b:IsShown() then btns[#btns + 1] = b end end
@@ -989,6 +1011,13 @@ end
 -- arrow that used to sit inside the title text (it hung into a margin the scroll area cuts off, so it never showed) and the red mouse-over
 -- glow of the whole row: the row itself no longer reacts to the mouse; only this button opens and closes the section.
 local CHEV_X, CHEV_TITLE_X = 2, 26
+-- One open / close look everywhere (0.6.4): the chat frame's expand arrow, pointing right while closed and turned to point down while
+-- open. Gold, so it never reads as the red "remove" color, and not the Move up / down arrow art. Also used by collapsible headings.
+function ns.PaintOpenClose(tex, open)
+    tex:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+    tex:SetTexCoord(0, 1, 0, 1)
+    tex:SetRotation(open and -math.pi / 2 or 0)
+end
 local function MakeChevron(f)
     local b = CreateFrame("Button", nil, f)
     b:SetSize(20, 20)
@@ -1062,8 +1091,7 @@ local function SkinButton(w)
             local b = f.xuiChevBtn or MakeChevron(f)
             local okOpen, open = pcall(arg.xuiChevron)
             b.xuiW, b.xuiOpen = w, (okOpen and open) and true or false
-            -- Blizzard's own collapse / expand buttons (minus = open, plus = closed): not the arrow art, which is also the Move down icon
-            b.tex:SetTexture(b.xuiOpen and "Interface\\Buttons\\UI-MinusButton-Up" or "Interface\\Buttons\\UI-PlusButton-Up")
+            ns.PaintOpenClose(b.tex, b.xuiOpen)
             b.tex:SetVertexColor(1, 1, 1)
             b:SetFrameLevel(f:GetFrameLevel() + 3)
             b:ClearAllPoints()
@@ -1604,6 +1632,23 @@ local function BaseW(ch)
     if ch.type == "Dropdown" then local m = DDMin(ch); if m > b then b = m end end
     return b
 end
+-- Compact buttons (0.6.4, Xaya's standing rule for every window): an action button is as wide as its label, never stretched to fill
+-- its row and never a whole row by itself. Choices between options belong in a dropdown (with a tick box to its left where it can
+-- be switched off), not in a row of buttons. Exceptions: section headers (arg.xuiLeft), the red X (arg.xuiDel), and a button that
+-- explicitly asks to stay wide (arg.xuiWide).
+local COMPACT_PAD, COMPACT_MIN = 26, 64
+function ns.IsCompactButton(ch)
+    if ch.type ~= "Button" or not SkinOn() then return false end
+    local o = ch.GetUserData and ch:GetUserData("option")
+    if not o or o.type ~= "execute" then return false end
+    local a = type(o.arg) == "table" and o.arg or nil
+    if a and (a.xuiLeft or a.xuiDel or a.xuiWide or a.xuiRow) then return false end
+    return true
+end
+local function CompactWidth(ch, width)
+    local tw = (ch.text and ch.text.GetStringWidth and ch.text:GetStringWidth()) or 0
+    return math.min(width, math.max(COMPACT_MIN, math.ceil(tw + COMPACT_PAD)))
+end
 function ns.FlexPrepass(content, children, bw)
     local width = content.width or content:GetWidth() or 0
     if width < 120 then return end
@@ -1624,11 +1669,19 @@ function ns.FlexPrepass(content, children, bw)
             if math.abs((e.ch.frame.width or 0) - nw) > 0.4 then e.ch:SetWidth(nw) end
             e.ch.xuiFlexW = nw
         end
-        for i, e in ipairs(row) do e.ch.xuiGapX = (i > 1 and #flex > 0) and gap or nil end
+        for i, e in ipairs(row) do e.ch.xuiGapX = (i > 1 and (#flex > 0 or e.compact or row[i - 1].compact)) and gap or nil end   -- compact buttons keep a gap too
         row, used = {}, 0
     end
     for _, ch in ipairs(children) do
-        if ch.width == "fill" then
+        if ns.IsCompactButton(ch) then   -- sized to its label, shares the row, never stretched
+            if ch.width == "fill" or ch.width == "relative" then ch.width = nil end   -- (AceConfigDialog sets it again on the next build)
+            local w = CompactWidth(ch, width)
+            if math.abs((ch.frame.width or 0) - w) > 0.4 then ch:SetWidth(w) end
+            ch.xuiFlexW = w
+            if #row > 0 and used + gap + w > width then flush() end
+            row[#row + 1] = { ch = ch, base = w, flex = false, compact = true }
+            used = used + w
+        elseif ch.width == "fill" then
             flush()
         else
             local w, flex
@@ -1965,7 +2018,8 @@ local function Walk(w, depth)
             edge:SetBackdropBorderColor(0.4, 0.4, 0.45, 1)
         end
     elseif t == "Heading" then
-        -- a header with arg.xuiCollapse gets a + / - at its far right end that hides the options under it (Options.lua: ns.CollapsibleHeaders)
+        -- a header with arg.xuiCollapse gets the open / close button at its LEFT, before the title (0.6.4: was a red + / - at the far right),
+        -- that hides the options under it (Options.lua: ns.CollapsibleHeaders; the title is moved right by ns.LeftAlign)
         do
             local ho = w.GetUserData and w:GetUserData("option")
             local ha = ho and type(ho.arg) == "table" and ho.arg.xuiCollapse and ho.arg or nil
@@ -1973,41 +2027,27 @@ local function Walk(w, depth)
                 local b = w.xuiCollBtn
                 if not b then
                     b = CreateFrame("Button", nil, w.frame)
-                    b:SetSize(16, 16)
-                    b:SetPoint("RIGHT", w.frame, "RIGHT", -2, 0)
-                    b:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+                    b:SetSize(20, 20)
+                    b:SetPoint("LEFT", w.frame, "LEFT", 0, 0)
+                    b.tex = b:CreateTexture(nil, "ARTWORK"); b.tex:SetPoint("CENTER"); b.tex:SetSize(16, 16)
                     b:SetScript("OnClick", function(self) if self.fn then self.fn() end end)
                     b:SetScript("OnEnter", function(self)
+                        self.tex:SetVertexColor(1, 1, 0.6)
                         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
                         GameTooltip:SetText("Collapse or expand this section")
                         GameTooltip:AddLine("Only hides the options below; nothing is changed.", 1, 1, 1, true)
                         GameTooltip:Show()
                     end)
-                    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+                    b:SetScript("OnLeave", function(self) self.tex:SetVertexColor(1, 1, 1); GameTooltip:Hide() end)
                     w.xuiCollBtn = b
                 end
+                -- (re-registered every pass: the restore list is emptied each time AceGUI releases the widget)
+                AddRest(w, "collbtn", function(self) if self.xuiCollBtn then self.xuiCollBtn:Hide(); self.xuiCollBtn.fn = nil end end)
                 b.fn = ha.xuiToggle
                 local closed = ha.xuiCollapsed and ha.xuiCollapsed()
-                b:SetNormalTexture(closed and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
-                b:SetPushedTexture(closed and "Interface\\Buttons\\UI-PlusButton-Down" or "Interface\\Buttons\\UI-MinusButton-Down")
+                ns.PaintOpenClose(b.tex, not closed)
                 b:Show()
-                if w.right and not w.xuiCollPts then   -- the line after the title stops short of the button
-                    w.xuiCollPts = {}
-                    for i = 1, w.right:GetNumPoints() do w.xuiCollPts[i] = { w.right:GetPoint(i) } end
-                    w.right:ClearAllPoints()
-                    for _, p in ipairs(w.xuiCollPts) do
-                        if p[1] == "RIGHT" and p[2] == w.frame then w.right:SetPoint("RIGHT", b, "LEFT", -4, 0)
-                        else w.right:SetPoint(p[1], p[2], p[3], p[4], p[5]) end
-                    end
-                    AddRest(w, "collbtn", function(self)
-                        if self.xuiCollBtn then self.xuiCollBtn:Hide(); self.xuiCollBtn.fn = nil end
-                        if self.right and self.xuiCollPts then
-                            self.right:ClearAllPoints()
-                            for _, p in ipairs(self.xuiCollPts) do self.right:SetPoint(p[1], p[2], p[3], p[4], p[5]) end
-                        end
-                        self.xuiCollPts = nil
-                    end)
-                end
+                if ns.LeftAlign then w.xuiLeftOn = nil; pcall(ns.LeftAlign, w) end   -- title starts right of the button
             end
         end
         -- ONE header size across the whole UI (section titles between the lines, collapsible headers, "Description" etc.)
