@@ -122,6 +122,17 @@ local function NumRef(ref, p, pi)
         if ok and type(ch) == "table" then
             local c = ch.currentCharges
             if type(c) == "number" and not issecret(c) then return c end
+            -- Hidden in combat (Insivius's Death and Decay rule, 2026-11-04: "charges == 2" never fired). The game still tells
+            -- whether a charge is recharging and the maximum: both are NeverSecret in 12.1.5 (SpellChargeInfo.isActive "False if
+            -- recharging is not active (ex: at maximum available charges ...)", .maxCharges). Not recharging = exactly the maximum.
+            -- Recharging with a maximum of 2 = 1 charge, or 0 while the spell's own cooldown runs: the same reading as the
+            -- cooldown trigger's "empty" (ReadCooldown: the main cooldown only runs at 0 charges; an inference, not documented).
+            -- With a maximum of 3 or more, a recharging count is not known.
+            local maxC, active = ch.maxCharges, ch.isActive
+            if type(maxC) == "number" and not issecret(maxC) and type(active) == "boolean" and not issecret(active) then
+                if active == false then return maxC end
+                if maxC == 2 and pi.cd and pi.cd.known and not pi.cd.estimated then return pi.cd.onCd and 0 or 1 end
+            end
             return nil
         end
         if pi.cd and pi.cd.known then return pi.cd.onCd and 0 or 1 end

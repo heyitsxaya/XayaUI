@@ -45,6 +45,7 @@ For testers. Tick each box in order; when something does not match the **Expect*
 - [ ] **B22.** (0.6.7) A dynamic group with Sort = **Manual** and Spacing 4, 3 or more buffs up in combat. **Expect:** the icons are 4 pixels apart, the same as unlocked (0.6.6 put them 8 apart in combat).
 - [ ] **B23.** (0.6.7) Same group, Grow direction **Centered row**. Use the buffs one by one in combat. **Expect:** the row stays centered on the group's position and widens both ways as each buff appears, and closes up when one ends. Unlock the group: the preview shows the same spots.
 - [ ] **B24.** (0.6.7) Grow direction **From anchor point, rows**, then set This group's anchor point to TOPRIGHT, then BOTTOMLEFT, then BOTTOM. **Expect:** TOPRIGHT: icons start at the group's top right and grow left; BOTTOMLEFT: start bottom left, grow right, new rows above; BOTTOM: centered on the bottom middle. In combat the icons stay on those spots as buffs come and go. Also try **From anchor point, columns**.
+- [ ] **B25.** (0.6.8) Unholy, Death and Decay in the Cooldown Manager's Tracked Buffs, Insivius's rule (Death and Decay ready AND its buff 188290 / 434034 missing, loaded in combat; Condition 1: buff AND charges == 2 shows a texture and plays a sound). In combat with both charges, not standing in it: **Expect:** the texture shows and the sound plays; step into it: they stop; with one charge: they stay off. `/xui status` in combat shows the rule's buff answer coming from "CDM tracked buff of the rule's spell 43265".
 
 ## C. Settings window switched off
 
