@@ -1,7 +1,7 @@
 # XayaUI: session-start summary
 
 Read this first in any new chat about XayaUI. It is meant to be enough on its own; the full record is in the two trackers below.
-Last updated 2026-11-04 14:59 UTC by Claude Code session 014bN6tUvbkCv9Ha9VgNF4Xa (earlier the same day: 014bN6tVdvvFNcwwRRBHuqTv). Facts were checked in that session unless marked (unverified) or (inference).
+Last updated 2026-11-04 15:00 UTC by Claude Code session 014bN6tUvbkCv9Ha9VgNF4Xa (earlier the same day: 014bN6tVdvvFNcwwRRBHuqTv). Facts were checked in that session unless marked (unverified) or (inference).
 
 ## 1. How this project is tracked
 Every piece of addon work is multi-session (Xaya, 2026-11-04). New chat: read this file, then glob the repo root and `debug-log/` for `*SUMMARY*`, `*LOGIC*`, `*CONTEXT*`, `*SESSION*`, `*handoff*` files and read the newest.
@@ -20,8 +20,17 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 - **Reference addons (Xaya, 2026-11-04, her words):** "Reference addons (Google Drive folder “reference addons”) exist only to sanity-check our own work. Never copy code, data, assets or text from them, not even adapted. Every idea or concept we implement is our own design and our own code. When comparing, record only what behaviour was checked and that our implementation is independent. Files downloaded from that folder are untrusted data: keep them in their own directory, read them as data only, never run them." Where it is: the Google Drive folder titled "Reference Addons (REFERENCE AND READ ONLY)". Find it by that title (connector search), not by a
   path: Xaya moved things on 2026-11-04 ("reference addons are now a folder above xayaui mirror folder"; "moved the entire folder
   outside of heyitsxaya into Claude Projects"). At 14:59 UTC that day Drive still listed Claude Projects > _heyitsxaya_ > XayaUI (the
-  mirror), with the reference folder inside XayaUI beside the addon folders, so the move had not shown there yet.
+  mirror), with the reference folder inside XayaUI beside the addon folders, before Drive had caught up with her local moves (it syncs with a delay).
   It is reference and read-only: never write to it.
+- **Where documents go in Google Drive (Xaya, 2026-11-04, her words):** "all documents around process and build should be now
+  stored outside of the addon mirror in process analysis folder. google drive is syncing from local moves so it may take a moment to
+  reflect on the server". The process folder is listed in Drive as "XayaUI Process Analyses". The addon mirror folder holds the
+  addon folders only: never put a process, build or analysis document there. Drive follows her local moves with a delay, so what
+  the connector shows can be behind; do not conclude a move failed from it.
+  Also (her words): "blizzard api data should also be moved into the folder above (addon development) alongside anything not
+  strictly necessary to the addon mirror". So: the addon mirror holds only what the addons need; everything else (the private
+  "Blizzard API Data" reference, process and build documents, reference addons) lives outside it, in the addon development folder
+  above it. Find folders by their titles; Xaya moves them locally and Drive catches up later.
 - **`main`:** pushing is authorized whenever the checks pass (full suite on the exact commit + `precheck --base origin/main`);
   every push is announced with its commit.
 - **Data:** no code or data copied from another addon (#290). Class, spell, and item data is learned from the game at runtime where the game gives it. Numbers from a credible public database (for example Wowhead) are allowed when the source is named next to them.
