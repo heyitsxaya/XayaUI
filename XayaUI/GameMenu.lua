@@ -173,6 +173,42 @@ local function ActiveSet(menu)
     return set
 end
 
+-- Xaya 2026-11-04: "game menu when button is enabled clips incorrectly" (the menu's box ended at the bottom of Return to Game). The
+-- menu's own Layout sizes it from its layout entries only; a button another addon places itself (and the extra height it gave the
+-- menu) is lost when this file calls Layout after adding its slot. INFERENCE from her screenshot (an EllesmereUI button in the menu)
+-- and the fact that it clips only with this button on. So after laying out, the menu is made at least as tall as its lowest shown
+-- button plus the bottom padding it had before this file touched it; it is never made shorter.
+local function LowestButton(menu)
+    local lowest
+    local ok, kids = pcall(function() return { menu:GetChildren() } end)
+    if not (ok and type(kids) == "table") then return nil end
+    for _, ch in ipairs(kids) do
+        local okS, shown = pcall(ch.IsShown, ch)
+        local okT, ot = pcall(ch.GetObjectType, ch)
+        if okS and shown and okT and ot == "Button" then
+            local okB, b = pcall(ch.GetBottom, ch)
+            local okH, h = pcall(ch.GetHeight, ch)
+            if okB and type(b) == "number" and okH and type(h) == "number" and h > 0 and (not lowest or b < lowest) then lowest = b end
+        end
+    end
+    return lowest
+end
+local function BottomGap(menu)
+    local low = LowestButton(menu)
+    local okB, mb = pcall(menu.GetBottom, menu)
+    if low and okB and type(mb) == "number" then return low - mb end
+end
+local function FitHeight(menu, pad)
+    local gap = BottomGap(menu)
+    if not gap or not pad then return end
+    if gap < pad - 0.5 then
+        local okH, h = pcall(menu.GetHeight, menu)
+        if okH and type(h) == "number" then pcall(menu.SetHeight, menu, h + (pad - gap)) end
+    end
+    diag.fit = ("bottom gap %.0f, wanted %.0f"):format(gap, pad)
+end
+ns.GameMenuFitHeight = FitHeight   -- (tests)
+
 local fallbackSlot
 local function Place(slot, anchor)
     -- size the slot (and our button) like the Macros button
@@ -200,6 +236,8 @@ local function Install(menu)
     local match = skinOn and skin.MatchReal()
     if (skinOn and not match) or not Enabled() then btn:Hide(); if fallbackSlot then fallbackSlot:Hide() end; return end
 
+    local padBefore = BottomGap(menu)   -- the bottom padding as the menu was drawn before this file added anything
+    if not padBefore or padBefore <= 0 then padBefore = 16 end
     local anchor, anchorText = FindAnchor(menu)
     diag.anchor = anchorText or "none (appended)"
     sibling = anchor
@@ -229,10 +267,12 @@ local function Install(menu)
     if anchor then Place(slot, anchor) else btn:SetPoint("CENTER", slot, "CENTER") end
     if match then btn:Hide() else btn:Show(); Paint() end   -- in match mode the skin draws the row on the slot
     if menu.Layout then menu:Layout() end
+    FitHeight(menu, padBefore)
     -- other skins may resize the menu buttons after us: check once more next frame
-    if anchor and C_Timer then
+    if C_Timer then
         C_Timer.After(0, function()
-            if btn and btn:IsShown() and slot and anchor then Place(slot, anchor); if menu.Layout then menu:Layout() end end
+            if anchor and btn and btn:IsShown() and slot then Place(slot, anchor); if menu.Layout then menu:Layout() end end
+            FitHeight(menu, padBefore)
         end)
     end
 end
@@ -260,7 +300,7 @@ function ns.GameMenu_Diagnostics()
         tostring(Enabled()), Style(), tostring(diag.hooked), diag.path, diag.anchor, diag.opens, diag.paints, tostring(diag.lastError),
         tostring(GameMenuFrame and type(GameMenuFrame.AddButton) == "function"),
         tostring(GameMenuFrame and type(GameMenuFrame.InitButtons) == "function")))
-    ns.Print("game menu sizes: " .. tostring(diag.sizes))
+    ns.Print("game menu sizes: " .. tostring(diag.sizes) .. "; height fit: " .. tostring(diag.fit))
 end
 
 function ns.GameMenu_Repaint() if btn and btn:IsShown() then Paint() end end

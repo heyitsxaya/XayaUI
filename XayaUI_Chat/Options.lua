@@ -339,6 +339,63 @@ function ns.BuildChatTab(Notify)
             } }
     end
 
+    -- Whisper sound overrides (Sounds.lua C.WhisperOverride): a sound for Battle.net favorites, and one per listed sender
+    do
+        local function WS()
+            local s = ns.chat2; if not s then return nil end
+            s.whisperSounds = s.whisperSounds or {}; s.whisperSounds.list = s.whisperSounds.list or {}
+            return s.whisperSounds
+        end
+        local function SoundArgs(getCfg, base)
+            return {
+                snd = { type = "select", name = "Sound", order = base + 1, width = "double",
+                    values = function() local v = SoundChoices(); return v end, sorting = function() local _, o = SoundChoices(); return o end,
+                    get = function() local c = getCfg(); return (c and c.value and c.value ~= "") and (tostring(c.source) .. "|" .. tostring(c.value)) or "" end,
+                    set = function(_, k)
+                        local c = getCfg(true); if not c then return end
+                        if k == "" then c.value = "" else c.source, c.value = k:match("^(%w+)|(.*)$") end
+                    end },
+                chan = { type = "select", name = "Sound channel", order = base + 2,
+                    values = { Master = "Master", SFX = "Sound effects", Music = "Music", Ambience = "Ambience", Dialog = "Dialog" }, sorting = { "Master", "SFX", "Music", "Ambience", "Dialog" },
+                    get = function() local c = getCfg(); return c and c.channel or "Master" end,
+                    set = function(_, v) local c = getCfg(true); if c then c.channel = v end end },
+                test = { type = "execute", name = "Test", order = base + 3, width = "half",
+                    func = function() local c = getCfg(); if c and c.value and c.value ~= "" and ns.PlaySoundPreview then ns.PlaySoundPreview(c) end end },
+            }
+        end
+        local function wOff() return ns.chat2 and ns.chat2.whisperSoundsOn == false end
+        local W = {}   -- one titled box (a header line would split the Sounds page into tabs)
+        sounds.args.whisper = { type = "group", inline = true, order = 40, name = "Whisper sound overrides", args = W }
+        W.wNote = note("A whisper from someone on this list, or from one of your Battle.net favorites, plays its own sound instead of the tab sounds. Type a character name (Name or Name-Realm) or a BattleTag (Name#1234, or only the part before #). While the game hides who sent a message (chat lockdown), the tab sounds play as usual. Friend groups made by other addons cannot be read: the game itself has no friend groups, only favorites.", 41)
+        W.wOn = tog("Use whisper sound overrides", "whisperSoundsOn", 42)
+        local function favCfg(create)
+            local ws = WS(); if not ws then return nil end
+            if create and not ws.fav then ws.fav = { enabled = false, source = "kit", value = "", channel = "Master" } end
+            return ws.fav
+        end
+        local favArgs = SoundArgs(favCfg, 1)
+        favArgs.en = { type = "toggle", name = "Play a sound for Battle.net favorites", order = 1, width = "double",
+            get = function() local c = favCfg(); return c and c.enabled and true or false end,
+            set = function(_, v) favCfg(true).enabled = v and true or false end }
+        W.wFav = { type = "group", inline = true, order = 43, name = "Battle.net favorites", hidden = wOff, args = favArgs }
+        local MAXW = 20
+        for i = 1, MAXW do
+            local function eCfg() local ws = WS(); return ws and ws.list[i] end
+            local a = SoundArgs(eCfg, 1)
+            a.who = { type = "input", name = "Character or BattleTag", order = 1, width = "double",
+                get = function() local c = eCfg(); return c and c.who or "" end,
+                set = function(_, v) local c = eCfg(); if c then c.who = tostring(v or ""):sub(1, 64) end; Notify() end }
+            a.remove = { type = "execute", name = "Remove", order = 9, width = "half",
+                func = function() local ws = WS(); if ws and ws.list[i] then table.remove(ws.list, i) end; Notify() end }
+            W["w" .. i] = { type = "group", inline = true, order = 44 + i / 100,
+                name = function() local c = eCfg(); local w = c and c.who or ""; return "Override " .. i .. ((w ~= "") and (": " .. w) or "") end,
+                hidden = function() local ws = WS(); return wOff() or not (ws and ws.list[i]) end, args = a }
+        end
+        W.wAdd = { type = "execute", name = "+ Add a sender", order = 46, hidden = wOff,
+            disabled = function() local ws = WS(); return ws and #ws.list >= MAXW end,
+            func = function() local ws = WS(); if ws and #ws.list < MAXW then ws.list[#ws.list + 1] = { who = "", enabled = true, source = "kit", value = "", channel = "Master" } end; Notify() end }
+    end
+
     local privacy = ns.ChatPrivacy_Options and ns.ChatPrivacy_Options(Notify) or nil
     if privacy then privacy.order = 8; privacy.name = "Privacy" end
 

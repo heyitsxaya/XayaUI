@@ -115,6 +115,23 @@ local function Pane(id, title, count, sub, order, entries)
     } }
 end
 
+-- Credits and attribution, on their own page under Settings (Xaya 2026-11-04: "acknowledgements still needs to be put into
+-- settings into its own tab"); Addon Info points there.
+function ns.BuildAcknowledgements()
+    local args = {
+        creditsH1 = { type = "description", order = 10, width = "full", fontSize = "large", arg = { xuiH1 = 26 },
+            name = PURPLE .. "Credits and attribution" .. END },
+        creditsRule = { type = "header", order = 10.5, name = "" },
+        creditsIntro = { type = "description", order = 11, width = "full", fontSize = "medium",
+            name = "XayaUI stands on other people's work. Everything below is credited as precisely as this project's own records allow; where a name is not on record, that is stated rather than guessed." },
+    }
+    for i, sec in ipairs(CREDITS) do
+        args["sec" .. i] = Pane("info" .. i, sec.title, #sec.entries, sec.sub, 20 + i * 10, sec.entries)
+    end
+    return { type = "group", name = "Acknowledgements", order = 9,
+        args = { page = { type = "group", inline = true, name = "", order = 1, arg = { xuiFlat = true }, args = args } } }
+end
+
 function ns.BuildAddonInfo()
     local args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "large",
@@ -128,22 +145,16 @@ function ns.BuildAddonInfo()
         author = { type = "description", order = 2, width = "full", fontSize = "medium",
             name = function() return PURPLE .. "Author:" .. END .. " " .. (Meta("Author") or "Xaya") end },
         license = { type = "description", order = 3, width = "full", fontSize = "medium",
-            name = PURPLE .. "License:" .. END .. " GPL-3.0-or-later for XayaUI's own code. Bundled libraries and any media keep their own licenses (listed below)." },
+            name = PURPLE .. "License:" .. END .. " GPL-3.0-or-later for XayaUI's own code. Bundled libraries and any media keep their own licenses (listed in Settings > Acknowledgements)." },
         cmds = { type = "description", order = 4, width = "full", fontSize = "medium",
             name = PURPLE .. "Commands:" .. END .. " /xui or /xayaui" },
         repo = { type = "input", order = 5, width = "full", name = "Source code (click the box, Ctrl+A, Ctrl+C)",
             get = function() return REPO_URL end, set = function() end },
         howto = { type = "description", order = 6, width = "full", fontSize = "small",
             name = GREY .. "Version and date are read from XayaUI.toc (## Version and ## X-Date). Update both when you ship a change." .. END },
-        creditsH1 = { type = "description", order = 10, width = "full", fontSize = "large", arg = { xuiH1 = 26 },
-            name = PURPLE .. "Credits and attribution" .. END },
-        creditsRule = { type = "header", order = 10.5, name = "" },
-        creditsIntro = { type = "description", order = 11, width = "full", fontSize = "medium",
-            name = "XayaUI stands on other people's work. Everything below is credited as precisely as this project's own records allow; where a name is not on record, that is stated rather than guessed." },
+        creditsWhere = { type = "description", order = 10, width = "full", fontSize = "medium",
+            name = PURPLE .. "Credits and attribution:" .. END .. " Settings > Acknowledgements." },
     }
-    for i, sec in ipairs(CREDITS) do
-        args["sec" .. i] = Pane("info" .. i, sec.title, #sec.entries, sec.sub, 20 + i * 10, sec.entries)
-    end
     return { type = "group", name = "Addon Info", order = 6.5,
         args = { page = { type = "group", inline = true, name = "", order = 1, arg = { xuiFlat = true }, args = args } } }
 end

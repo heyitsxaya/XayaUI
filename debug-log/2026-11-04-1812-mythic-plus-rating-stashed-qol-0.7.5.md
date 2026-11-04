@@ -1,4 +1,4 @@
-# Mythic+ rating taken out of the Character Toolkit and stashed in shelved/ (QoL 0.7.2)
+# Mythic+ rating taken out of the Character Toolkit and stashed in shelved/ (QoL 0.7.5)
 Logged 2026-11-04 18:12 UTC. Session branch `claude/fervent-cerf-hldtwn`. Requested by Xaya (2026-11-04), with a screenshot of the Stats tab showing the line.
 
 ## Request
@@ -20,7 +20,7 @@ but could be useful down the line. make a note somewhere that the code exists."
 ## What was done
 - New `shelved/MythicPlusRating.lua`: the function and the one-time request copied verbatim, with a header giving the API it reads
   (names only), what the line showed, and the four steps to bring it back. Loaded by no `.toc` (same convention as the other files in `shelved/`).
-- QoL `## Version` 0.7.1 -> 0.7.2.
+- QoL `## Version` 0.7.4 -> 0.7.5 (main had moved to 0.7.4 from other sessions; the first draft of this change used 0.7.2).
 
 ## Verification
 - `tests/char_toolkit2_run.py`: 0 failed after the change. Negative control: the same tests run against the 0.7.1 code (stash of

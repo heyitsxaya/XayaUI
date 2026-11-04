@@ -51,53 +51,66 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 - **"Profile"** means only the whole addon as configured (#354 is asking whether that changes).
 - **Wording to Xaya:** truth first; flag inferences; no unearned compliments; state what is not verified in game.
 
-## 3. Addons (versions from the .toc files, 2026-11-04 15:30; `main` gets them once the full suite passes, see section 5)
+## 3. Addons (versions from the .toc files, 2026-11-04 19:38 on branch `claude/cool-ramanujan-ewx8e5`; `main` gets them once the full suite passes, see section 5)
 | Folder | Version | Holds |
 |---|---|---|
-| `XayaUI` | 0.6.23 | core: rules, cues, conditions, actions, combat aura engine (`Combat/`), themes, console and debug record, minimap and ESC-menu buttons |
-| `XayaUI_Options` | 0.6.18 | the settings window (loads on first open; Ace3 libs) |
-| `XayaUI_Chat` | 0.6.7 | Chat Panel, Chat Bar, filters, history, privacy cover |
-| `XayaUI_QoL` | 0.7.1 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit (phase 2: one model, sheet, What If, slot overlays) |
-| `XayaUI_Bonus` | 0.6.6 | tooltips, Notepad, data panels |
+| `XayaUI` | 0.6.31 | core: rules, cues, conditions (incl. load by zone / instance / difficulty / size / encounter / item), actions, combat aura engine (`Combat/`), themes, mover view, console and debug record, minimap and ESC-menu buttons |
+| `XayaUI_Options` | 0.6.29 | the settings window (loads on first open; Ace3 libs) |
+| `XayaUI_Chat` | 0.6.10 | Chat Panel, Chat Bar, filters, history, tab sounds and whisper sound overrides, privacy cover |
+| `XayaUI_QoL` | 0.7.2 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit (phase 2: one model, sheet, What If, slot overlays) |
+| `XayaUI_Bonus` | 0.6.7 | tooltips, Notepad, data panels |
 | `XayaUI_Reskin` | 0.6.0 | Game Menu skin |
 | `XayaUI_Media`, `XayaUI_DevAssist` | 1.0, 0.7.0 | user media folder; XayaUI Dev Assist, the developer tool (was `XayaUI_GameDump` before 0.7.0): API, talents, Cooldown Manager catalogue, aura log, `/xuidev probe` (`/xuidump` still works) |
 Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.cursorHighlight`, `.cursorTrail`, `.characterToolkit`). Nothing is saved per character yet.
 
 ## 4. Active items
 
-**NEXT SESSION: START HERE (updated 2026-11-04 17:15 UTC; `main` = `fa08b39`)**
+**NEXT SESSION: START HERE (updated 2026-11-04 19:38 UTC)**
+`main` = `f6f98cc` or later: check `git log origin/main`. Branch `claude/cool-ramanujan-ewx8e5` (draft PR heyitsxaya/XayaUI#374) holds
+load conditions, mover view, What If items, delete fix, icon cue text and whisper sounds (core 0.6.28-0.6.30, Options 0.6.25-0.6.28,
+QoL 0.7.2, Chat 0.6.10). They land on `main` when the full suite passes on the exact head (a run was going on `dcb3703`; check the PR).
+
+**First, ask Xaya** (asked 2026-11-04 19:38, unanswered when this was written):
+- Her installed **XayaUI_Options version** (the game's AddOns list). Her group-page screenshots still show the pre-0.6.19 buttons and
+  she reports sidebar names clipping "after any rule change" (task: sidebar clipping). The #369 fix (0.6.20) and #368 / #370 (0.6.19)
+  are on `main`. If she is on 0.6.20+, the clipping is a new bug: get steps, add tracing to `ns.EnsureNameRoom` (Skin.lua).
+- **Trigger delete** throwing the pane out of the rule: condition / cue deletes are fixed (Options 0.6.27, cause found); a trigger
+  delete alone did not reproduce offline. QA B67 asks for her steps.
+
 Backlog in Xaya's priority order (work the first one not blocked; see the rule in section 2):
-- A. **Progress bars as a display kind:**
-  - in rules and both engines;
-  - every texture type in groups;
-  - several bars in a dynamic group (today bars inside engine-drawn dynamic groups are not drawn, AuraDisplay.lua:247).
-  - BLOCKED on Xaya: a new bar kind (spark, gradient, ticks) or extend progress textures?
-- B. **Spell trigger options:** count GCD; remaining / charge comparisons on the trigger; loss-of-control lockout; exact spell ID;
-  track auto / charges / cooldown; track if not known. Not blocked. API facts: `docs/plans/REFERENCE-SCREENS-AND-FEASIBILITY-2026-11-04.md`.
-- C. **Load conditions:** zone / map IDs, encounter IDs, instance size, difficulty, item equipped. Not blocked. Raid role (MT / MA)
-  needs a Dev Assist probe of `GetPartyAssignment` first.
-- D. **#372 group tabs:**
-  - a Config tab;
-  - the Group tab gets the container properties of the reference screens and a group background;
-  - the "Group Display" rename is reverted.
-  - BLOCKED on #372's open questions.
+- A. **Progress bars as a display kind** (rules, both engines, every texture type in groups, several bars in a dynamic group;
+  bars in engine-drawn dynamic groups are not drawn today, AuraDisplay.lua:247). BLOCKED on Xaya: a new bar kind or extend progress
+  textures?
+- B. **Spell trigger options:** B1-B3 done (count GCD, remaining / charge comparisons, lockout). Open: exact spell ID (memo key and
+  charge-watcher design first), track auto / charges / cooldown, track if not known. Not blocked.
+- C. **Load conditions:** done on rules (core 0.6.28). Open: the same lists on a group's Load tab; raid role (MT / MA) needs an
+  in-game probe of `GetPartyAssignment` (not in the API reference).
+- Done 2026-11-04 evening on the branch, after this list was first written:
+  - **anchor to any frame** (core 0.6.31): group X / Y popup "Anchor to a frame on screen..." (picker: point, press Shift), Snap
+    flush, Anchor to the screen; displays: Snap Target > Pick a frame on screen. QA B69.
+  - **search in a rule's settings** (Options 0.6.29, `RuleSearch.lua`): above the rule's tabs (move it into the right-hand panel
+    if task 23 is decided that way). QA B70.
+- B4 (exact spell ID) needs a design first: the cooldown memo key (spellID, maxCharges), the charge watcher and the cast tracker
+  all key by the replacement spell. B6 (track if not known) would read an unknown spell as "ready" (the game reports it inactive):
+  ask Xaya whether she wants that at all before building it.
+- D. **#372 group tabs** (Config tab; Group tab gets the reference screens' container properties and a background; "Group Display"
+  rename reverted). BLOCKED on #372's open questions.
 - E. **#351:** one margin / gutter everywhere (large, not blocked).
 - F. **Dev Assist in-game captures** (item 2 below).
-- G. **Fel Flame Fortification (393009)** shows out of combat, not in combat (contextually secret aura from a passive talent).
-  BLOCKED on Xaya's debug record and a Cooldown Manager check.
-- Later: conditions with a "run custom code" outcome (ROADMAP RM-CODECOND).
-- Done today (on `main`): core 0.6.23-0.6.24, QoL 0.7.1, Chat 0.6.8, Options 0.6.19-0.6.20 (#368 / #369 / #370), the content data,
-  the terms check.
-- Confirmed in game today: chat alignment (#346), forced group sort.
+- G. **Fel Flame Fortification (393009):** shows out of combat, not in combat. BLOCKED on her debug record.
+- H. **Boiling Point** rule does not fire with a stack-tracking trigger. BLOCKED on her rule export (procs.md: the aura does not
+  stack; stacks are unknown in combat).
+- Later: conditions with a "run custom code" outcome (ROADMAP RM-CODECOND); friend categories of her own for whisper sounds.
+- Done 2026-11-04 evening:
+  - on `main` (`f6f98cc`): Insivius's AuraSound crash (Options 0.6.24) and the lua_pitfalls gate rule; B1-B3; the chat tab guard;
+  - on the branch: everything listed in the first paragraph. The group-wide "tooltip on hover" already existed: Group page > Display
+    tab > "Every display: behavior".
 - Other decisions waiting on Xaya:
+  - task list items 13-23;
   - #268 wording (working assumption: Anchor -> Anchored To -> To <target>'s point);
   - the terms options (3b);
   - documents out of the repo (3);
-  - #273 gradient themes;
-  - #131 group tint;
-  - #122 un-publish `shelved/`;
-  - #259 mockups;
-  - display glow library types;
+  - #273 gradient themes; #131 group tint; #122 un-publish `shelved/`; #259 mockups; display glow library types;
   - DECISIONS-2026-11-04.
 
 1. **Build the two harness indexes before any full-suite run** (both gitignored; section 6 has the steps). Without
@@ -186,9 +199,9 @@ Proposed order (not a commitment): ROADMAP section 12.
    - **keep for now:** `claude/frame-strata-conditions` (#125 strata / level, waits on a decision) and `wip/notepad-icons` (see
      `debug-log/2026-11-04-0655-old-branch-audit.md`);
    - **always keep:** `main`, `qa-installer-branch`, the session branch and `archive/2026-11-04`.
-4. **`main` status:** core up to 0.6.23, Options 0.6.18, Chat 0.6.7, QoL 0.7.1, Dev Assist 0.7.0, Bonus 0.6.6, Reskin 0.6.0 and
-   `docs/reference/content/` are on `main` (the commit that carries this line; the session reply names it).
-   Later versions land on `main` only after the full suite passes on them; the session's reply says when, with the commit.
+4. **`main` status:** `f6f98cc` (2026-11-04 19:05) carries core 0.6.27, Options 0.6.24, Chat 0.6.9, QoL 0.7.1, Bonus 0.6.7, Dev Assist
+   0.7.0, Reskin 0.6.0. The branch's later versions (section 3) land on `main` only after the full suite passes on them; the session's
+   reply says when, with the commit.
 
 ## 6. How to work here (cloud session)
 - **Process:** follow `docs/process/VERIFICATION.md` (the project skill `.claude/skills/xayaui-change` sums it up). `python3 tools/precheck.py` must end with `FAILS: 0` before a commit (`--base origin/main` before pushing to main).

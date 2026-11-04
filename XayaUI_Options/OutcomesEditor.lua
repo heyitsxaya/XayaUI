@@ -479,12 +479,22 @@ local function EmbedCue(pg, og, rule, k)
                 parts.ensureText()
                 flat("txt", 3, parts.textBody)
             else
-                box("tex", 3, (rule.cueKind == "icon") and "Icon Options" or "Texture Options", parts.tex)
+                -- Xaya 2026-11-04: "icon options should have their own nested text options to display things like progress /
+                -- duration; stacks; absorb values". Since 0.6.1 the cue's text options never reached Icon / Texture cues: this read
+                -- the old Actions tab's Text banner (acts.text), which the new Actions tab no longer has, so nothing was shown. The
+                -- three text parts (each with its own on / off) now sit INSIDE the Icon / Texture Options box, after its art and size.
+                local texArgs = parts.tex
+                local tb = parts.textBody
+                if tb then
+                    texArgs = {}
+                    for k2, v2 in pairs(parts.tex) do texArgs[k2] = v2 end   -- (parts.tex is shared with the rule's other panes)
+                    texArgs.xuiTextNested = { type = "group", inline = true, order = 900, name = "Text: duration, stacks / charges, absorb",
+                        args = { dur = tb.dur, cnt = tb.cnt, abs = tb.abs } }
+                end
+                box("tex", 3, (rule.cueKind == "icon") and "Icon Options" or "Texture Options", texArgs)
                 sub("pos", 4, parts.posSub)       -- Position sits above Color & Transparency
                 sub("color", 5, parts.colorSub)
                 sub("anim", 6, parts.animSub)
-                local tx = acts.text
-                if tx then put("text", tx); tx.order = 7 end
             end
         end
     else

@@ -2,7 +2,7 @@
 --
 -- What it is: the "Mythic+ rating" line that XayaUI_QoL's Character Toolkit showed on the Stats tab (and as a cell on the Sheet tab)
 -- from QoL 0.7.0 to 0.7.1. Xaya, 2026-11-04: "m+ rating does not belong in character toolkit at all. partition it out and stash
--- it, it isn't useful YET for any planned feature but could be useful down the line." Removed from the Toolkit in QoL 0.7.2.
+-- it, it isn't useful YET for any planned feature but could be useful down the line." Removed from the Toolkit in QoL 0.7.5.
 --
 -- What it showed: the season's overall rating as the value, then one pair per dungeon (best key level, "(over time)" when not
 -- timed, the dungeon's score), best first; a "This season" note when there were no details; "Best this expansion (season N)".
@@ -23,7 +23,7 @@
 --      Big and HIDDEN are already local.
 --   2. Add `sec.items[#sec.items + 1] = MythicPlusItem()` after the item level line in the "Character" section of the "stats" tab.
 --   3. Call the one-time RequestMapInfo (below) where the panel is first shown.
---   4. Restore the tests removed in QoL 0.7.2 (tests/char_toolkit2_run.py, "Mythic+" checks; git history has them) and QA E1l.
+--   4. Restore the tests removed in QoL 0.7.5 (tests/char_toolkit2_run.py, "Mythic+" checks; git history has them) and QA E1l.
 -- Nothing here has been run in game. It was written for the 0.7.0 Toolkit; the helpers it calls may have changed since.
 
 local function MythicPlusItem()

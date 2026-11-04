@@ -366,26 +366,8 @@ local function SkinFrame(of)
     fr.xuiDrag:SetShown(not collapsed)
     of.titletext:ClearAllPoints(); of.titletext:SetPoint("TOP", fr, "TOP", 0, -9)
     do local tt = TC("xui-titlebar", "text", GOLD); of.titletext:SetTextColor(tt[1], tt[2], tt[3]); TF(of.titletext) end
-    -- bottom banner: the status container becomes a flat full-width band (no box), the Close button sits inside it
-    do
-        local sb = of.statusbg
-        if sb then
-            if sb.SetBackdrop then sb:SetBackdrop(nil) end
-            sb:ClearAllPoints(); sb:SetPoint("BOTTOMLEFT", fr, "BOTTOMLEFT", 1, 1); sb:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", -1, 1); sb:SetHeight(36)
-            if not sb.xuiBand then
-                sb.xuiBand = sb:CreateTexture(nil, "BACKGROUND")
-                sb.xuiBandLine = sb:CreateTexture(nil, "BORDER")
-            end
-            local tb = TC("xui-titlebar", "bg", { 0.13, 0.13, 0.13, 1 })
-            local bd = TC("xui-window", "border", { 0.32, 0.32, 0.32, 1 })
-            sb.xuiBand:SetAllPoints(); sb.xuiBand:SetColorTexture(tb[1], tb[2], tb[3], tb[4] or 1)
-            sb.xuiBandLine:ClearAllPoints(); sb.xuiBandLine:SetPoint("TOPLEFT"); sb.xuiBandLine:SetPoint("TOPRIGHT"); sb.xuiBandLine:SetHeight(1)
-            sb.xuiBandLine:SetColorTexture(bd[1], bd[2], bd[3], 1)
-            sb:SetShown(not collapsed)
-            local cb = of.closebutton
-            if cb then cb:ClearAllPoints(); cb:SetPoint("RIGHT", sb, "RIGHT", -30, 0) end
-        end
-    end
+    -- (AceGUI's status bar under the content is hidden by Options.lua EnsureChrome: this window does not use it. A flat "band" that
+    -- was meant to replace it here never ran: it looked for of.statusbg, which AceGUI's Frame widget does not keep.)
     -- toolbar (content moves down to make room)
     local bar = EnsureToolbar(of)
     bar:ClearAllPoints(); bar:SetPoint("TOPLEFT", fr, "TOPLEFT", 17, -34); bar:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -17, -34)
@@ -691,7 +673,7 @@ local function SkinTree(w)
                 local width = math.max(lo, math.min(hi, tf:GetWidth() or lo))
                 tf:SetWidth(width)   -- while OnSizeChanged is still off: the deferred pass below does the single refresh
                 tf:SetScript("OnSizeChanged", origSize)
-                if st then st.treewidth = width end
+                if st then st.treewidth = width; st.xuiManualWidth = true end   -- (ns.EnsureNameRoom no longer widens it)
                 pcall(w.Fire, w, "OnTreeResize", width)
                 C_Timer.After(0, function()
                     if w.treeframe ~= tf or not tf:IsVisible() then return end
@@ -1422,27 +1404,30 @@ end
 -- AceGUI's own limit (min(400, window width - 50), AceGUIContainer-TreeGroup.lua:561). It only widens; the full name also shows on
 -- mouse-over (AceGUI's tree tooltip). Rows record their text's left / right insets (Options.lua, DecorateButton) as xuiTextL / xuiTextR.
 local NAME_ROOM = 80
+local ROW_INSET = 22   -- AceGUI's rows end 22 px left of the sidebar's right edge while its scroll bar shows (AceGUIContainer-TreeGroup.lua:481 / 538)
 ns.SIDEBAR_NAME_ROOM = NAME_ROOM
+-- Xaya 2026-11-04: "clicking tabs force-resizes the left and right panes". The first version measured each row with GetWidth() right
+-- after AceGUI rebuilt the tree (every tab click and every edit rebuilds it), when a rebuilt tree has just been set to AceGUI's
+-- default 175 px and then to the saved width: a row still measured at the old width looked too narrow, and the sidebar was widened
+-- again on every rebuild, up to the cap. Now the width a row needs comes from its own text insets (plus the scroll bar column),
+-- so the same rows always ask for the same width and a rebuild changes nothing. A sidebar the user dragged keeps their width.
 function ns.EnsureNameRoom(tree)
     if not tree or tree.xuiRoomBusy or not tree.SetTreeWidth then return end
     local status = tree.status or tree.localstatus
-    if not status then return end
+    if not status or status.xuiManualWidth then return end   -- dragged by hand: their width stands (full names show on mouse-over)
     local cur = tonumber(status.treewidth) or 0
-    local worst
+    local need
     for _, b in ipairs(tree.buttons or {}) do
         local txt = b.text and b.text.GetText and b.text:GetText()
         if b:IsShown() and b.xuiTextL and type(txt) == "string" and txt ~= "" then
-            local w = b:GetWidth() or 0
-            if w > 0 then
-                local room = w - b.xuiTextL - (b.xuiTextR or 4)
-                if not worst or room < worst then worst = room end
-            end
+            local n = b.xuiTextL + (b.xuiTextR or 4) + NAME_ROOM + ROW_INSET
+            if not need or n > need then need = n end
         end
     end
-    if not worst or worst >= NAME_ROOM then return end
+    if not need then return end
     local fw = (tree.frame and tree.frame.GetWidth and tree.frame:GetWidth()) or 0
     local cap = math.min(400, fw - 50)
-    local want = math.min(cap, math.ceil(cur + (NAME_ROOM - worst)))
+    local want = math.min(cap, math.ceil(need))
     if want <= cur + 1 then return end
     tree.xuiRoomBusy = true
     pcall(tree.SetTreeWidth, tree, want, status.treesizable ~= false)

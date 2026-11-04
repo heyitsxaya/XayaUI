@@ -70,7 +70,7 @@ check("tab row back: history button back at the row's end", inside(hb, tabsA) an
 # ---- tabs laid out again for the width they get (Xaya 2026-11-04: "user-created chat tabs should not have their boxes overflow") --
 run("""W.layoutCalls = {}
 FCFDock_UpdateTabs = function(dock, force) W.layoutCalls[#W.layoutCalls + 1] = { w = dock:GetWidth(), force = force } end
-C.dockLaidOutW = nil; C.Layout()""")
+C.dockLaidOutW, C.dockLaidOutAt = nil, nil; W.now = (W.now or 0) + 5; C.Layout()""")
 calls = lua.eval("function(W) return W.layoutCalls end")(W)
 first = calls[1] if calls else None
 check("the game lays the tabs out again (forced) once the dock sits in the tab row, at the dock's new width",
@@ -78,15 +78,26 @@ check("the game lays the tabs out again (forced) once the dock sits in the tab r
 n0 = len(list(calls.keys()))
 run("C.Layout(); C.Anchor()")
 check("same width again: not laid out again", len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == n0)
-run("ns.chat2.width = 380; C.Layout()")
+run("W.now = W.now + 2; ns.chat2.width = 380; C.Layout()")
 calls = lua.eval("function(W) return W.layoutCalls end")(W)
 lastc = calls[len(list(calls.keys()))]
 check("pane narrower: the tabs are laid out again at the narrower width", len(list(calls.keys())) == n0 + 1 and abs(lastc.w - rect(L.GeneralDockManager)[2]) < 0.01,
       (len(list(calls.keys())), lastc.w, rect(L.GeneralDockManager)))
-run("W.combat = true; InCombatLockdown = function() return W.combat end; ns.chat2.width = 400; C.Layout()")
+run("W.now = W.now + 2; W.combat = true; InCombatLockdown = function() return W.combat end; ns.chat2.width = 400; C.Layout()")
 check("in combat: the tabs are not laid out (the next layout out of combat does it)", len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == n0 + 1)
 run("W.combat = false; C.Layout()")
 check("after combat: laid out at the new width", len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == n0 + 2)
+# never on every re-anchor (a re-run resets Blizzard's tab alpha: it would look like blinking tabs)
+run("W.now = W.now + 2; ns.chat2.width = 401; C.Layout()")
+nA = len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys()))
+run("ns.chat2.width = 402; C.Layout(); ns.chat2.width = 403; C.Layout(); ns.chat2.width = 404; C.Layout()")
+check("several width changes within one second: laid out at most once in that second",
+      len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == nA, (nA, len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys()))))
+run("W.now = W.now + 1.5; C.Layout()")
+check("a second later: laid out once for the latest width", len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == nA + 1)
+run("W.now = W.now + 2; GeneralDockManager._wobble = 0.3; C.Layout(); W.now = W.now + 2; GeneralDockManager._wobble = -0.2; C.Layout(); GeneralDockManager._wobble = nil")
+check("a width that wobbles by a fraction of a pixel never lays out again",
+      len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == nA + 1, len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())))
 run("ns.chat2.width = 440; C.Layout(); FCFDock_UpdateTabs = nil")
 # ---- text gutter (Xaya 2026-11-04: "create a small gutter of 2-3px for easier legibility") ---------------------------------------
 run("ns.chat2.textInset = 0; C.Layout()")
@@ -326,6 +337,64 @@ check("own message plays nothing", len([v for v in W.played.values() if v is not
 W.now += 1
 W.fireEvent("CHAT_MSG_WHISPER_INFORM", "outgoing", "Kai-R")
 check("outgoing whisper plays nothing", len([v for v in W.played.values() if v is not None]) == 0)
+
+# ---- whisper sound overrides (Chat 0.6.10; Xaya 2026-11-04) -----------------------------------------------------------------
+def fired(ev, *args):
+    W.now += 1
+    for k in list(W.played.keys()): W.played[k] = None
+    W.fireEvent(ev, *args)
+    return sorted(str(v) for v in W.played.values() if v is not None)
+def bn(bnID):   # a Battle.net whisper: arg13 is the sender's bnSenderID
+    return fired("CHAT_MSG_BN_WHISPER", "hi", "|Kq1|k", "", "", "", "", 0, 0, "", 0, 1, "", bnID)
+TABS = sorted(["kit|3081", "file|Interface\\x.ogg"])
+BNTABS = []   # the stand-in tabs do not show Battle.net whispers: with no override, a Battle.net whisper plays nothing here
+run("""C_ChatInfo = C_ChatInfo or {}; LOCKED = false; C_ChatInfo.InChatMessagingLockdown = function() return LOCKED end
+C_BattleNet = C_BattleNet or {}
+FRIENDS = { [7] = { battleTag = "AllTheFox#1872", isFavorite = false }, [8] = { battleTag = "Other#99", isFavorite = true } }
+C_BattleNet.GetAccountInfoByID = function(id) return FRIENDS[id] end""")
+check("no overrides: a whisper plays the tab sounds", fired("CHAT_MSG_WHISPER", "hi", "Kai-R") == TABS, fired("CHAT_MSG_WHISPER", "hi", "Kai-R"))
+run("ns.chat2.whisperSounds.list[1] = { who = 'kai', enabled = true, source = 'kit', value = '999', channel = 'Master' }")
+check("an override for 'kai': a whisper from Kai-R plays only its sound", fired("CHAT_MSG_WHISPER", "hi", "Kai-R") == ["kit|999"], fired("CHAT_MSG_WHISPER", "hi", "Kai-R"))
+run("ns.chat2.whisperSounds.list[1].who = ' KAI-R '")
+check("the full name works too, in any case and with spaces around it", fired("CHAT_MSG_WHISPER", "hi", "Kai-R") == ["kit|999"])
+check("someone not on the list: the tab sounds", fired("CHAT_MSG_WHISPER", "hi", "Bob-R") == TABS)
+run("ns.chat2.whisperSounds.list[2] = { who = 'allthefox', enabled = true, source = 'kit', value = '777', channel = 'Master' }")
+check("Battle.net: a listed BattleTag (the part before #) plays its sound", bn(7) == ["kit|777"], bn(7))
+run("ns.chat2.whisperSounds.list[2].who = 'AllTheFox#1872'")
+check("Battle.net: the full BattleTag works too", bn(7) == ["kit|777"])
+check("Battle.net: a favorite with no favorites sound set: the tab sounds (none here)", bn(8) == BNTABS, bn(8))
+run("ns.chat2.whisperSounds.fav = { enabled = true, source = 'kit', value = '555', channel = 'Master' }")
+check("Battle.net: a favorite plays the favorites sound", bn(8) == ["kit|555"], bn(8))
+check("Battle.net: a listed sender wins over the favorites sound", (run("FRIENDS[7].isFavorite = true") or True) and bn(7) == ["kit|777"])
+run("LOCKED = true")
+check("chat lockdown: no override is looked up, the tab sounds play", fired("CHAT_MSG_WHISPER", "hi", "Kai-R") == TABS and bn(8) == BNTABS)
+run("LOCKED = nil")
+check("the game cannot say whether chat is locked down: the tab sounds", fired("CHAT_MSG_WHISPER", "hi", "Kai-R") == TABS)
+run("LOCKED = false")
+check("a secret sender name: the tab sounds", fired("CHAT_MSG_WHISPER", "hi", "<<secret>>") == TABS)
+check("a secret Battle.net sender ID: the tab sounds (none here)", bn("<<secret>>") == BNTABS)
+run("ns.chat2.whisperSoundsOn = false")
+check("overrides switched off: the tab sounds", fired("CHAT_MSG_WHISPER", "hi", "Kai-R") == TABS)
+run("ns.chat2.whisperSoundsOn = true; ns.chat2.soundsOn = false")
+check("tab sounds off, an override still plays", fired("CHAT_MSG_WHISPER", "hi", "Kai-R") == ["kit|999"])
+check("tab sounds off, an unlisted whisper plays nothing", fired("CHAT_MSG_WHISPER", "hi", "Bob-R") == [])
+run("ns.chat2.soundsOn = true")
+check("a SAY from a listed name still plays the tab sound (overrides are for whispers)", fired("CHAT_MSG_SAY", "hi", "Kai-R") == ["kit|3081"])
+wopt = run("""local t = ns.BuildChatTab(function() end); local snd
+for _, part in pairs(t.args) do if type(part) == 'table' and part.args and part.args.wAdd then snd = part end end
+if not snd then for _, part in pairs(t.args) do for _, p2 in pairs(part.args or {}) do if type(p2) == 'table' and p2.args and p2.args.wAdd then snd = p2 end end end end
+if not snd then return 'no sounds group' end
+local n0 = #ns.chat2.whisperSounds.list
+snd.args.wAdd.func()
+local n1 = #ns.chat2.whisperSounds.list
+local row = snd.args['w' .. n1]
+row.args.who.set(nil, 'Zed-R')
+row.args.snd.set(nil, 'kit|4242')
+local okRow = ns.chat2.whisperSounds.list[n1].who == 'Zed-R' and ns.chat2.whisperSounds.list[n1].value == '4242' and row.hidden() == false
+row.args.remove.func()
+return (n1 == n0 + 1 and okRow and #ns.chat2.whisperSounds.list == n0 and snd.args['w' .. n1].hidden() == true) and 'ok' or ('bad ' .. n0 .. ' ' .. n1 .. ' ' .. tostring(okRow))""")
+check("options: + Add a sender adds a row, its name and sound are saved, Remove takes it away", wopt == "ok", wopt)
+run("ns.chat2.whisperSounds.list = {}; ns.chat2.whisperSounds.fav = nil; C_BattleNet.GetAccountInfoByID = nil")
 
 # ---- options --------------------------------------------------------------------------------------------------------------
 opt = run("return ns.BuildChatTab(function() end)")

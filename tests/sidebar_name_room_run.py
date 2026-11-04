@@ -75,5 +75,30 @@ end
       ns.EnsureNameRoom(t); return { t.status.treewidth }
     end)()''')
     check("a row that recorded no inset (a reused button before decoration) is ignored", r[1] == 185, r[1])
+    # Xaya 2026-11-04: "clicking tabs force-resizes the left and right panes". Every tab click rebuilds the tree; a rebuilt tree is set
+    # to AceGUI's default 175 px first, so its rows can still measure that old width while the saved width is wide. The rows below
+    # report a stale 153 px (175 - 22) whatever the tree's width: the sidebar must not grow on each rebuild.
+    r = L.eval('''(function()
+      local t = Tree(300, 1000, { { L = 58, R = 41 }, { L = 95, R = 41 } })
+      for _, b in ipairs(t.buttons) do function b:GetWidth() return 175 - SB end end
+      local w = {}
+      for i = 1, 5 do ns.EnsureNameRoom(t); w[i] = t.status.treewidth end   -- five rebuilds (tab clicks)
+      return { w[1], w[5], t.calls }
+    end)()''')
+    check("stale row widths after a rebuild: a sidebar that already fits its names is left alone (300 stays 300, 5 rebuilds)", r[1] == 300 and r[2] == 300 and r[3] == 0, r)
+    r = L.eval('''(function()
+      local t = Tree(185, 1000, { { L = 95, R = 41 } })
+      for _, b in ipairs(t.buttons) do function b:GetWidth() return 175 - SB end end
+      local w = {}
+      for i = 1, 5 do ns.EnsureNameRoom(t); w[i] = t.status.treewidth end
+      return { w[1], w[5], t.calls }
+    end)()''')
+    check("stale row widths: a narrow sidebar widens once to what its names need (95 + 41 + 80 + 22 = 238), not again on each rebuild",
+          r[1] == 238 and r[2] == 238 and r[3] == 1, r)
+    r = L.eval('''(function()
+      local t = Tree(185, 1000, { { L = 95, R = 41 } }); t.status.xuiManualWidth = true
+      ns.EnsureNameRoom(t); return { t.status.treewidth, t.calls }
+    end)()''')
+    check("a sidebar the user dragged keeps their width (names show in full on mouse-over)", r[1] == 185 and r[2] == 0, r)
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)

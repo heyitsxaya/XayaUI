@@ -12,7 +12,7 @@ local AceConfigRegistry = LibStub and LibStub("AceConfigRegistry-3.0", true)
 local AceConfigDialog = LibStub and LibStub("AceConfigDialog-3.0", true)
 if not (AceConfigRegistry and AceConfigDialog) then
     local function missing() ns.Print("the settings window cannot open: its Ace3 libraries are missing (check the Libs folder of XayaUI_Options).") end
-    ns.Options = { Toggle = missing, EditRule = missing, OpenPage = missing, IsOpen = function() return false end }
+    ns.Options = { Toggle = missing, EditRule = missing, EditFolder = missing, OpenPage = missing, IsOpen = function() return false end }
     return
 end
 -- what XayaUI core may call (Modules.lua section 7); published as ns.Options at the end of this file once everything loaded.
@@ -441,6 +441,126 @@ function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, use
     } }
 end
 
+-- ID-list load conditions (Xaya 2026-11-04: "more load conditions we should include if they're supported by the current api"; core
+-- 0.6.28, Conditions.lua). Each list is a set of IDs as text keys: true = one of these, "not" = never here. In the settings it is one
+-- text box: IDs separated by commas or spaces, a minus before an ID for "not" (e.g. "2339, -2552").
+function ns.LoadIdText(set)
+    local on, off = {}, {}
+    for k, st in pairs(set or {}) do
+        local n = tonumber(k)
+        if n then if st == "not" then off[#off + 1] = n elseif st == true then on[#on + 1] = n end end
+    end
+    table.sort(on); table.sort(off)
+    local out = {}
+    for _, n in ipairs(on) do out[#out + 1] = tostring(n) end
+    for _, n in ipairs(off) do out[#out + 1] = "-" .. n end
+    return table.concat(out, ", ")
+end
+function ns.LoadIdParse(text)
+    local set = {}
+    for neg, d in tostring(text or ""):gmatch("(%-?)(%d+)") do
+        local n = tonumber(d)
+        if n then set[tostring(n)] = (neg == "-") and "not" or true end
+    end
+    return next(set) and set or nil
+end
+-- The game's difficulties by name, for the "Add a difficulty" menu: every ID from 1 to 300 that GetDifficultyInfo names (read once).
+local diffChoices
+function ns.DifficultyChoices()
+    if diffChoices then return diffChoices[1], diffChoices[2] end
+    local v, o = {}, {}
+    if type(GetDifficultyInfo) == "function" then
+        for id = 1, 300 do
+            local ok, name, itype = pcall(GetDifficultyInfo, id)
+            if ok and type(name) == "string" and name ~= "" then
+                local kind = type(itype) == "string" and ns.INSTANCE_TYPES and ns.INSTANCE_TYPES[itype]
+                v[tostring(id)] = name .. "  (" .. id .. (kind and (", " .. kind) or "") .. ")"
+                o[#o + 1] = tostring(id)
+            end
+        end
+    end
+    diffChoices = { v, o }
+    return v, o
+end
+ns.LOAD_ID_ROWS = {
+    { field = "mapIDs", name = "Zones (map IDs)",
+      desc = "Loads only in these zones. A zone covers the maps inside it (a city in its zone, a room in its city), so the zone's or the continent's ID is enough.",
+      cur = function(p) return p.mapID, p.mapName end },
+    { field = "instanceIDs", name = "Instances (instance IDs)",
+      desc = "Loads only in these dungeons, raids or other instances, by the game's instance ID (in the open world it is the continent's).",
+      cur = function(p) return p.instanceID, p.instanceName end },
+    { field = "difficulties", name = "Difficulties (difficulty IDs)",
+      desc = "Loads only on these difficulties. 0 is the open world (no difficulty). Use the menu next to it to add one by its name.",
+      cur = function(p) return p.difficultyID, p.difficultyName end },
+    { field = "sizes", name = "Instance sizes (largest group)",
+      desc = "Loads only in instances of these sizes: the largest group the instance allows, as the game reports it. 0 is the open world.",
+      cur = function(p) return p.size end },
+    { field = "encounterIDs", name = "Boss encounters (encounter IDs)",
+      desc = "Loads only during these boss encounters. The game gives the ID when the pull starts, so after a /reload in the middle of a pull it is unknown until the next pull, and the rule does not load. Add current adds the boss you are fighting, or the last one you fought.",
+      cur = function(p)
+          if p.encounterID and p.encounterID > 0 then return p.encounterID, p.encounterName end
+          local last = ns.LastEncounter and ns.LastEncounter()
+          if last then return last.id, (last.name or "?") .. ", last pulled" end
+      end },
+    { field = "equipped", name = "Items equipped (item IDs)",
+      desc = "Loads while one of these items is equipped. A minus before an ID: only while that item is NOT equipped. Use the search next to it to add an item you own.",
+      cur = nil },
+}
+-- The rows of the "Zones, Instances, Bosses and Items" box. ld() returns the load table, changed() saves and redraws, locked() greys
+-- every row out (a group's Never / Always), searchBox is Options' item search.
+function ns.LoadIdRows(ld, changed, locked, searchBox)
+    local placeAt, place
+    local function Place()
+        local t = GetTime and GetTime() or 0
+        if placeAt ~= t then placeAt, place = t, (ns.LoadPlaceNow and ns.LoadPlaceNow()) or {} end
+        return place
+    end
+    local function add(field, id)
+        if not id then return end
+        local l = ld()
+        l[field] = l[field] or {}
+        l[field][tostring(id)] = true
+        changed()
+    end
+    local args = {
+        intro = { type = "description", order = 0, width = "full", fontSize = "small",
+            name = function()
+                if not ns.LoadPlaceNow then
+                    return "|cffff6060These need XayaUI core 0.6.28 or newer. Copy every XayaUI folder again, then restart the game.|r"
+                end
+                return "IDs separated by commas or spaces. A minus before an ID (-1234) means NOT there. An empty box restricts nothing."
+            end },
+    }
+    for i, r in ipairs(ns.LOAD_ID_ROWS) do
+        local f = r.field
+        args["ids_" .. f] = { type = "input", name = r.name, order = i, width = "double", desc = r.desc, disabled = locked,
+            get = function() return ns.LoadIdText(ld()[f]) end,
+            set = function(_, v) ld()[f] = ns.LoadIdParse(v); changed() end }
+        if r.cur then
+            args["now_" .. f] = { type = "description", order = i + 0.1, width = "normal", fontSize = "small",
+                name = function()
+                    local id, nm = r.cur(Place())
+                    if id == nil then return "Here: unknown" end
+                    return "Here: " .. (nm and (nm .. " (" .. id .. ")") or tostring(id))
+                end }
+            args["add_" .. f] = { type = "execute", name = "Add current", order = i + 0.2,
+                disabled = function() return locked() or r.cur(Place()) == nil end,
+                func = function() add(f, (r.cur(Place()))) end }
+        end
+        if f == "difficulties" then
+            args.pick_difficulties = { type = "select", name = "Add a difficulty", order = i + 0.3, width = "normal", disabled = locked,
+                values = function() local v = ns.DifficultyChoices(); return v end,
+                sorting = function() local _, o = ns.DifficultyChoices(); return o end,
+                get = function() return nil end,
+                set = function(_, v) add(f, tonumber(v)) end }
+        elseif f == "equipped" and searchBox then
+            local sb = searchBox(i + 0.3, function(id) add(f, id) end, "Add an item", "item")
+            if sb then sb.disabled = locked; args.search_equipped = sb end
+        end
+    end
+    return args
+end
+
 local function TriGroup(name, order, hiddenFn, getSet, choices, onChange)
     local function hasOn(set) for _, v in pairs(set) do if v == true then return true end end return false end
     local args = {
@@ -853,7 +973,14 @@ function ns.SelectKeep(...)
     local snap = {}
     if open then for kk, vv in pairs(open) do snap[kk] = vv end end
     local scope = (ns.CurrentSub() == "smartTab") and "all" or (ns.ScopeOfUV and ns.ScopeOfUV(S and S.selected) or "all")
-    if (scope == "loaded" or scope == "notloaded" or scope == "disabled") and args[1] == "cooldowns" and args[2] == "smartTab" and args[3] == "all" then
+    local lastRule = (args[1] == "cooldowns" and args[2] == "smartTab") and tostring(args[#args]):match("^rule(%d+)$")
+    local lr = lastRule and ns.rules and ns.rules[tonumber(lastRule)]
+    if lr and (scope == "loaded" or scope == "notloaded" or scope == "disabled") then
+        -- a rule asked for by its Smart Categories path (RulePath) while an Enabled / Disabled list is open: its row there is under
+        -- its groups, not under a type row, so take the list's own path for it (the type key in that path is not a row there)
+        local okc, ctx = pcall(ns.ReadContext)
+        args = { ns.ScopePath(lr, okc and ctx or nil) }
+    elseif (scope == "loaded" or scope == "notloaded" or scope == "disabled") and args[1] == "cooldowns" and args[2] == "smartTab" and args[3] == "all" then
         local newScope = scope
         local rn = tostring(args[#args]):match("^rule(%d+)$")
         local r = rn and ns.rules and ns.rules[tonumber(rn)]
@@ -997,12 +1124,30 @@ function ns.ReselectRule(rule)
     pcall(function()
         local S = ns.RulesTreeStatus()
         local oldSel = S and S.selected
-        local newPath = { RulePath(rule) }
-        if oldSel == table.concat(newPath, "\001") then return end   -- the row did not move: the pane stays exactly as it is
-        -- the row moved (deleting a rule's last cue of a type removes the row it was selected through): follow it, and keep the same tab open
+        local sub = ns.CurrentSub()
+        if sub ~= "smartTab" and sub ~= "disabledTab" then sub = "enabledTab" end
+        -- the rule's row in the list that is open. Xaya 2026-11-04: "deleting a condition / a cue forces you out of the rule you're
+        -- editing entirely". This used the Smart Categories path even in the Enabled list; SelectKeep turned it into a path through
+        -- the type row ("loaded / smart_icon / rule5"), which does not exist there, so the pane fell back to another page.
+        local newPath
+        if sub == "smartTab" then
+            newPath = { RulePath(rule) }
+            local cat = type(oldSel) == "string" and oldSel:match("^all\001smart\001(smart_[%w_]+)\001")
+            if cat and ns.SmartMatch(rule, cat) then   -- still has the type it was picked under: stay on that row
+                for i, r in ipairs(ns.rules) do
+                    if r == rule then newPath = { "cooldowns", "smartTab", "all", "smart", cat, "rule" .. i }; break end
+                end
+            end
+        else
+            local okc, ctx = pcall(ns.ReadContext)
+            newPath = { ns.ScopePath(rule, okc and ctx or nil) }
+        end
+        if newPath[2] == sub and oldSel == table.concat(newPath, "\001", 3) then return end   -- the row did not move: nothing to do
+        -- the row moved (its index after a delete, or the type row it was selected through): follow it, and keep the same tab open.
+        -- The rule's own tab status lives at its full path (cooldowns / <sub-tab> / ...).
         local tab
         if type(oldSel) == "string" then
-            local segs = {}
+            local segs = { "cooldowns", sub }
             for seg in oldSel:gmatch("[^\001]+") do segs[#segs + 1] = seg end
             local st = AceConfigDialog:GetStatusTable(APP, segs)
             tab = st and st.groups and st.groups.selected
@@ -1085,7 +1230,7 @@ local function PasteApply(key, dst, src)
     elseif key == "activation" then dst.trigMode, dst.trigOrder = src.trigMode, src.trigOrder and C(src.trigOrder) or nil
     elseif key == "actions" then dst.actions = src.actions and C(src.actions) or nil
     elseif key == "stCd" then
-        dst.cdState, dst.countGCD = src.cdState, src.countGCD
+        dst.cdState, dst.countGCD, dst.countLOC = src.cdState, src.countGCD, src.countLOC
         dst.cdTimeOp, dst.cdTimeSec, dst.cdChargeOp, dst.cdChargeVal = src.cdTimeOp, src.cdTimeSec, src.cdChargeOp, src.cdChargeVal
     elseif key == "stBuff" then dst.buffState, dst.buffTimeOp, dst.buffTimeSec = src.buffState, src.buffTimeOp, src.buffTimeSec
     elseif key == "talents" then dst.talents, dst.talentMode = C(src.talents or {}), src.talentMode
@@ -1345,6 +1490,8 @@ local function BuildRule(i, rule)
             cdState = ns.CdStateSelect(rule, on),
             countGCD = Tog(rule, "countGCD", "Count the global cooldown", 4.5, on,
                 { desc = "Ticked: while this spell is on the global cooldown it counts as on cooldown (not ready, no charge available). Unticked (default): the global cooldown is ignored." }),
+            countLOC = Tog(rule, "countLOC", "Count a lockout as cooldown", 4.55, on,
+                { desc = "Ticked: while a loss-of-control lockout (an interrupt or silence) blocks this spell, it counts as on cooldown. Unticked (default): only the spell's own cooldown counts." }),
             -- "Seconds left" / "Charges" comparisons on the trigger itself (B2): a dropdown with its number box beside it
             cdTimeOp = Sel(rule, "cdTimeOp", "Seconds left", 4.6, ns.CMP_OPS and ns.CMP_OPS.values or { any = "Any" }, ns.CMP_OPS and ns.CMP_OPS.order or { "any" },
                 function() Changed(rule); Notify() end,
@@ -1420,7 +1567,7 @@ local function BuildRule(i, rule)
 
     -- Triggers are added by hand: Cooldown and Buff / Aura only show once added (or while they hold data).
     -- Hiding never changes saved values; "Remove" resets that section.
-    for _, k in ipairs({ "cdHeader", "spellID", "spellName", "spellSearch", "spellPick", "cdState", "countGCD", "cdTimeOp", "cdChargeOp", "maxCharges", "detected" }) do
+    for _, k in ipairs({ "cdHeader", "spellID", "spellName", "spellSearch", "spellPick", "cdState", "countGCD", "countLOC", "cdTimeOp", "cdChargeOp", "maxCharges", "detected" }) do
         local o = trigger.args[k]
         if o then o.hidden = function() return not ns.CooldownUsed(rule) end end
     end
@@ -1433,7 +1580,7 @@ local function BuildRule(i, rule)
         hidden = function() return not ns.CooldownUsed(rule) end,
         func = function()
             rule.useCooldown = false; rule.spellID = 0; rule.maxCharges = 0; rule.cdState = nil
-            rule.countGCD, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil
+            rule.countGCD, rule.countLOC, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil, nil
             Changed(rule); Notify()
         end }
     trigger.args.buffRemove = { type = "execute", name = "Remove", order = 14, width = "half",
@@ -1665,6 +1812,24 @@ local function BuildRule(i, rule)
             return "|cffffd100Overridden by group " .. tostring(of and of.name) .. "|r: " .. (ov == "never" and "Never" or "Always")
                 .. ". Your own load settings below are kept and apply again if this rule leaves the group. Talents still apply."
         end }
+    -- Zones, instances, difficulties, sizes, boss encounters and equipped items (core 0.6.28): one ID list each, in a box that starts
+    -- closed unless a list holds IDs. A folder's Never / Always locks them like the other rows.
+    do
+        local ld = rule.load
+        local anyIds = false
+        for _, r in ipairs(ns.LOAD_ID_ROWS) do if ns.SetActive(ld[r.field]) then anyIds = true end end
+        bannerOpen[rule] = bannerOpen[rule] or {}
+        local bo = bannerOpen[rule]
+        if bo.loadIdsInit == nil then bo.loadIdsInit = true; if not anyIds then bo.loadIds = false end end
+        local body = ns.LoadIdRows(function() return rule.load end, function() Changed(rule); Notify() end,
+            function() return folderLoadOv() ~= nil end, SearchBox)
+        loadArgs.loadIds = { type = "group", inline = true, name = "Zones, Instances, Bosses and Items", order = 50, xuiRule = rule,
+            args = {
+                open = ns.ArrowToggle(rule, "loadIds", 1),
+                body = { type = "group", inline = true, name = "", order = 2,
+                    hidden = function() return not ns.ArrowOpen(rule, "loadIds") end, args = body },
+            } }
+    end
     local lockKeys = { "instanceTypes", "classes", "specs", "roles", "heroes" }
     for _, k in ipairs(loadModeKeys) do lockKeys[#lockKeys + 1] = k end
     for _, c in ipairs(ns.LOAD_TRI) do lockKeys[#lockKeys + 1] = "tri_" .. c.key end
@@ -2134,7 +2299,14 @@ local function BuildRule(i, rule)
                 set = function(_, v) rule.gameSound.alsoXayaUI = v and true or nil; ns.MarkDirty() end },
             gameSoundStatus = { type = "description", order = 15, width = "full", fontSize = "small",
                 hidden = function() return not (type(rule.gameSound) == "table" and rule.gameSound.enabled) end,
-                name = function() local ok, s = pcall(ns.AuraSound.StatusLine, rule); return ok and s or "" end },
+                name = function()
+                    -- Insivius 2026-11-04: "attempt to index field 'AuraSound' (a nil value)" here broke the whole cue pane. AuraSound.lua
+                    -- is part of XayaUI core (0.6.13+); a core folder without it (older, or copied without a game restart) must not break this.
+                    if not (ns.AuraSound and ns.AuraSound.StatusLine) then
+                        return "|cffff6060The game-played sound needs XayaUI core 0.6.13 or newer. Copy every XayaUI folder again, then restart the game (a /reload does not load new files).|r"
+                    end
+                    local ok, s = pcall(ns.AuraSound.StatusLine, rule); return ok and s or ""
+                end },
         },
     }
 
@@ -2454,7 +2626,7 @@ local function BuildRule(i, rule)
     for _, g in ipairs({ ruleTab, trigger, load, conditionsTab, cuesTab, actionsTab, displayTab }) do
         ns.LockArgs(g.args, function() return ns.IsEditLocked(rule) end)
     end
-    return {
+    local rg = {
         type = "group", childGroups = "tab", order = 1000 + i,
         hidden = function() local q = ns.treeFilter; return q and q ~= "" and not tostring(rule.name or ""):lower():find(q, 1, true) end,
         name = function()
@@ -2464,6 +2636,26 @@ local function BuildRule(i, rule)
         end,
         args = { display = displayTab, trigger = trigger, cues = cuesTab, conditions = conditionsTab, actions = actionsTab, load = load, rule = ruleTab },
     }
+    -- a search box above the tabs (RuleSearch.lua; Xaya 2026-11-04). Not on cues / conditions, which show inside their rule.
+    if ns.RuleSearchArgs and not rule.isCue and not rule.parentUid then
+        local okS, sa = pcall(ns.RuleSearchArgs, rule, rg, Notify)
+        if okS and type(sa) == "table" then for k, v in pairs(sa) do rg.args[k] = v end end
+    end
+    return rg
+end
+-- open one tab of the rule that is selected in the sidebar (RuleSearch.lua results)
+function ns.SelectRuleTab(tabKey)
+    local S = ns.RulesTreeStatus()
+    local sel = S and S.selected
+    if type(sel) ~= "string" or not tabKey then return end
+    local sub = ns.CurrentSub()
+    if sub ~= "smartTab" and sub ~= "disabledTab" then sub = "enabledTab" end
+    local segs = { "cooldowns", sub }
+    for seg in sel:gmatch("[^\001]+") do segs[#segs + 1] = seg end
+    local st = AceConfigDialog:GetStatusTable(APP, segs)
+    st.groups = st.groups or {}
+    st.groups.selected = tabKey
+    Notify()
 end
 
 -- Edit lock: a rule (or a folder, which covers everything inside it) can be made read-only from the sidebar.
@@ -4676,6 +4868,11 @@ local function BuildOptions()
     -- one top-level page with a left sidebar like the rest of the addon (UI Options, Debugging), instead of two top tabs (Xaya, 2026-11-02)
     local setPage = { type = "group", name = "Settings", order = 7, childGroups = "tree", hidden = function() return not SettingsOn() end,
         args = { ui = setUi, minimap = minimapGroup, debug = setDbg } }
+    -- credits and attribution have their own page under Settings (AddonInfo.lua; Xaya 2026-11-04), in both settings layouts
+    if ns.BuildAcknowledgements then
+        setPage.args.credits = ns.BuildAcknowledgements()
+        settings.args.credits = ns.BuildAcknowledgements()
+    end
     if minimapGroup then
         minimapGroup.order = 1.5
         settings.args.minimap = minimapGroup   -- the old single Settings tab (skin rows off) gets it too
@@ -4723,6 +4920,17 @@ function ns.OptionsApi.EditRule(rule)
         if not ok then ns.Print("could not open the window: " .. tostring(err)) return end
     end
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(rule))
+    Notify()
+end
+
+-- open the window (if needed) and jump to a group's page; used by the group name tabs of the mover view (Visual.lua)
+function ns.OptionsApi.EditFolder(f)
+    if not (f and ns.FolderById and ns.FolderById(f.id)) then return end
+    if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then
+        local ok, err = pcall(AceConfigDialog.Open, AceConfigDialog, APP)
+        if not ok then ns.Print("could not open the window: " .. tostring(err)) return end
+    end
+    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(f))
     Notify()
 end
 
@@ -6738,7 +6946,7 @@ function SX.Start(kind)
         SX.II.max = SX.II_MAX
         local ids = {}
         for _, sp in ipairs(ns.BuildSpellList() or {}) do if sp.id then ids[#ids + 1] = sp.id end end
-        pcall(ns.AuraSources.Start, SX.II, ids)
+        if ns.AuraSources and ns.AuraSources.Start then pcall(ns.AuraSources.Start, SX.II, ids) end   -- core module (AuraSources.lua)
     end
 end
 function SX.OwnedItems()
@@ -7367,11 +7575,25 @@ local function EnsureChrome(of)
         end)
         c.arrow:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
+        -- AceGUI's own status bar (a boxed strip from the bottom-left corner to the Close button) shows nothing in this window:
+        -- hidden while XayaUI uses the window, shown again on release (Xaya 2026-11-04: "bottom random bar left of close should be
+        -- removed"). AceGUI's Frame widget does not keep it as a field, only its text (AceGUIContainer-Frame.lua: widget.statustext),
+        -- so it is found as that text's parent.
+        c.statusbg = of.statustext and of.statustext.GetParent and of.statustext:GetParent()
+        -- the version in the bottom-left corner (Xaya 2026-11-04: "addon version should be put in the bottom left"), then the link
+        c.ver = fr:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        c.ver:SetPoint("BOTTOMLEFT", fr, "BOTTOMLEFT", 20, 13)
+        c.ver:SetTextColor(0.5, 0.5, 0.5)
+        do
+            local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+            local okV, v = pcall(get or function() end, ns.name or "XayaUI", "Version")
+            c.ver:SetText("XayaUI " .. ((okV and type(v) == "string" and v ~= "") and ("v" .. v) or "(version unknown)"))
+        end
         -- Addon Info: a small muted link in the bottom-left corner, outside the normal interaction area
         c.info = CreateFrame("Button", nil, fr)
         c.info:SetSize(80, 16)
         ns.infoLink = c.info   -- Skin.lua keeps the rule list above this link
-        c.info:SetPoint("BOTTOMLEFT", fr, "BOTTOMLEFT", 20, 11)
+        c.info:SetPoint("LEFT", c.ver, "RIGHT", 14, 0)
         c.info:SetFrameLevel(fr:GetFrameLevel() + 10)
         c.info.text = c.info:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         c.info.text:SetPoint("LEFT", 0, 0); c.info.text:SetText("Addon Info")
@@ -7425,6 +7647,8 @@ local function EnsureChrome(of)
             ns.MultiReset()
             c.delSel:Hide(); c.clr:Hide()
             c.info:Hide()
+            if c.ver then c.ver:Hide() end
+            if c.statusbg then c.statusbg:Show() end   -- the next addon to get this window keeps AceGUI's status bar
             c.close:Hide()
             c.arrow:Hide()
             if orig then return orig(self, ...) end
@@ -7433,6 +7657,8 @@ local function EnsureChrome(of)
     c.arrow:Show()
     c.close:Show()
     if c.info and not c.collapsed then c.info:Show() end
+    if c.ver then c.ver:SetShown(not c.collapsed) end
+    if c.statusbg and c.statusbg:IsShown() then c.statusbg:Hide() end
     -- first time the window opens in a session: every top-level group / Smart Categories list under Rules, Loaded and Not Loaded starts collapsed
     if not ns.sessionCollapsed and AceConfigDialog.GetStatusTable then
         local anyTab = false

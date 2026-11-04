@@ -77,7 +77,7 @@ function proto:GetPoint(i) local p = self._pts[i or 1]; if not p then return nil
 function proto:SetSize(w, h) self._w, self._h = w, h end
 function proto:SetWidth(w) self._w = w end
 function proto:SetHeight(h) self._h = h end
-function proto:GetWidth() return rectOf(self).w end
+function proto:GetWidth() return rectOf(self).w + (self._wobble or 0) end   -- _wobble: a test-set fraction (pixel-snapping noise)
 function proto:GetHeight() return rectOf(self).h end
 function proto:GetSize() local r = rectOf(self); return r.w, r.h end
 function proto:GetLeft() return rectOf(self).l end

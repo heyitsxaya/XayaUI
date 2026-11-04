@@ -89,6 +89,7 @@ local function Cfg()
         local n = math.floor(tonumber(v) or 0)
         c.whatIfStats[k] = (n ~= 0) and math.max(-100000, math.min(100000, n)) or nil
     end
+    do local n = math.floor(tonumber(c.whatIfPrimary) or 0); c.whatIfPrimary = (n ~= 0) and math.max(-100000, math.min(100000, n)) or nil end
     for k, v in pairs(c.lineModes) do if v ~= "rating" and v ~= "percent" then c.lineModes[k] = nil end end
     return c
 end
@@ -250,6 +251,8 @@ local function Btn()
                 ns.CharToolkit_FlipLine(it.key)
                 ns.CharToolkit_Render()
                 if self.IsMouseOver and self:IsMouseOver() then ShowTooltip(self, self.item) end
+            elseif it and it.kind == "choice" and it.slot then
+                ns.CharToolkit_SetCompareSlot(it.slot)
             end
         end)
         b:SetScript("OnMouseWheel", function(_, d) if panel and panel.Scroll then panel.Scroll(d) end end)
@@ -298,6 +301,23 @@ local function Box(key)
             self:ClearFocus()
         end)
         eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        if key == "item" then
+            -- an item dropped on the box (dragged from the bags, or carried on the cursor and clicked) is compared at once.
+            -- GetCursorInfo (globals.md:158) is documented without returns; "item", itemID, itemLink is the form other UI code
+            -- reads. INFERENCE until seen in game.
+            local function TakeCursorItem(self)
+                local ok, kind, id, link = pcall(GetCursorInfo)
+                if not ok or kind ~= "item" then return end
+                local text = (type(link) == "string" and not isSecret(link)) and link or ((type(id) == "number" and not isSecret(id)) and tostring(id) or nil)
+                if not text then return end
+                if ClearCursor then pcall(ClearCursor) end
+                self:SetText(text)
+                ns.CharToolkit_SetInput("item", text)
+            end
+            eb:SetScript("OnReceiveDrag", TakeCursorItem)
+            if eb.GetScript and eb:GetScript("OnMouseUp") and eb.HookScript then eb:HookScript("OnMouseUp", TakeCursorItem)
+            else eb:SetScript("OnMouseUp", TakeCursorItem) end
+        end
         boxes[key] = eb
         b = eb
     end
@@ -305,15 +325,45 @@ local function Box(key)
 end
 
 -- What If input: a stat key, "all", or "item" (an item link or ID)
+-- Xaya 2026-11-04: "adding the item does not auto-fill in information". A compared item fills the What If boxes (each rating and
+-- the primary stat) with what it changes against the item it replaces; a new item, another slot choice or an empty box takes back
+-- only the amounts the previous item filled in and the user has not changed since.
+local function AutoFill(c)
+    local prev = CM.compareFill
+    if prev then
+        for k, v in pairs(prev.ratings or {}) do if c.whatIfStats[k] == v then c.whatIfStats[k] = nil end end
+        if prev.primary and prev.primary ~= 0 and c.whatIfPrimary == prev.primary then c.whatIfPrimary = nil end
+        CM.compareFill = nil
+    end
+    local p = CM.PrimaryStatIndex and CM.PrimaryStatIndex() or nil
+    local d = (CM.compareText or "") ~= "" and CM.CompareDeltas and CM.CompareDeltas(CM.compareText, p) or nil
+    if not d then return end
+    for k, v in pairs(d.ratings) do c.whatIfStats[k] = math.max(-100000, math.min(100000, math.floor(v + 0.5))) end
+    if d.primary ~= 0 then c.whatIfPrimary = math.floor(d.primary + 0.5) end
+    CM.compareFill = { ratings = {}, primary = c.whatIfPrimary }
+    for k in pairs(d.ratings) do CM.compareFill.ratings[k] = c.whatIfStats[k] end
+end
 function ns.CharToolkit_SetInput(key, text)
     local c = Cfg(); if not c then return end
     if key == "item" then
         local t = tostring(text or "")
         CM.compareText = (t:gsub("^%s+", ""):gsub("%s+$", ""))
+        CM.compareSlot = nil   -- a new item: the lower item level again until a slot is chosen
+        AutoFill(c)
+    elseif key == "primary" then
+        local n = math.max(-100000, math.min(100000, math.floor(tonumber(text) or 0)))
+        c.whatIfPrimary = (n ~= 0) and n or nil
     else
         local n = math.max(-100000, math.min(100000, math.floor(tonumber(text) or 0)))
         if key == "all" then c.whatIf = n else c.whatIfStats[key] = (n ~= 0) and n or nil end
     end
+    ns.CharToolkit_Render()
+end
+-- the equipped item to compare against when two could be replaced (What If > Compare an item, "Replace instead")
+function ns.CharToolkit_SetCompareSlot(slot)
+    local c = Cfg(); if not c then return end
+    CM.compareSlot = slot
+    AutoFill(c)
     ns.CharToolkit_Render()
 end
 
@@ -345,7 +395,7 @@ local function Build()
     end
     panel.title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     panel.title:SetPoint("TOPLEFT", PAD, -PAD)
-    panel.title:SetText("Character Toolkit")
+    panel.title:SetText("Stat Calculator")   -- Xaya 2026-11-04: the panel's title (the feature is still Character Toolkit in the settings)
     local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", 2, 2)
     close:SetScript("OnClick", function() panel.userHidden = true; panel:Hide() end)
@@ -401,17 +451,32 @@ local function Build()
         scroll:SetVerticalScroll(v)
     end
     scroll:SetScript("OnMouseWheel", function(_, d) panel.Scroll(d) end)
-    -- a shift-clicked item goes into the What If item box while it has focus (post-hook on the game's own link insert, where
-    -- Compat.lua says it lives: ChatFrameUtil.InsertLink in 12.x; Compat is the only file that may name the old fallback global).
-    -- INFERENCE: not run in game yet.
+    -- a shift-clicked item goes into the What If item box and is compared at once (post-hook on the game's own link insert, where
+    -- Compat.lua says it lives: ChatFrameUtil.InsertLink in 12.x, and the old global ChatEdit_InsertLink, which is a separate copy
+    -- that other addons' bags still call; Compat is the only file that may name it). Xaya 2026-11-04: "I can't drop or shift+click
+    -- an item into the item comparison". The box takes the link while it has focus, or while the What If tab is shown and no chat
+    -- box is open to take it. INFERENCE: not run in game yet.
+    local lastLink, lastAt
     local function InsertLink(link)
+        if type(link) ~= "string" or isSecret(link) or not link:find("|Hitem:", 1, true) then return end
         local eb = boxes.item
-        if eb and eb.HasFocus and eb:HasFocus() and type(link) == "string" and not isSecret(link) then eb:Insert(link) end
+        if not (eb and eb.xuiUsed and panel and panel:IsShown()) then return end
+        local c = Cfg()
+        local focused = eb.HasFocus and eb:HasFocus()
+        if not focused then
+            if not (c and c.tab == "whatif") then return end
+            local active = ns.Compat and ns.Compat.ActiveChatEditBox and ns.Compat.ActiveChatEditBox()
+            if active and active.IsShown and active:IsShown() then return end   -- an open chat box takes the link, as usual
+        end
+        local now = GetTime and GetTime() or 0
+        if link == lastLink and now == lastAt then return end   -- the same click seen through both hooks
+        lastLink, lastAt = link, now
+        eb:SetText(link)
+        ns.CharToolkit_SetInput("item", link)
     end
-    local hookTarget = ns.Compat and ns.Compat.ChatHookTarget
-    if type(hooksecurefunc) == "function" and type(hookTarget) == "function" then
-        local tbl, method = hookTarget("InsertLink")
-        if tbl then pcall(hooksecurefunc, tbl, method, InsertLink) end
+    local hookTargets = ns.Compat and ns.Compat.ChatHookTargets
+    if type(hooksecurefunc) == "function" and type(hookTargets) == "function" then
+        for _, t in ipairs(hookTargets("InsertLink")) do pcall(hooksecurefunc, t[1], t[2], InsertLink) end
     end
     panel:Hide()
 end
@@ -973,7 +1038,7 @@ function ns.BuildCharToolkitPage(Notify)
                     set = function(_, v) C().whatIf = math.max(-100000, math.min(100000, math.floor(tonumber(v) or 0))); Changed() end },
                 clear = { type = "execute", order = 2, name = "Clear all",
                     desc = "Sets the All ratings amount and every per-stat amount back to 0.",
-                    func = function() local c = C(); c.whatIf = 0; c.whatIfStats = {}; Changed() end },
+                    func = function() local c = C(); c.whatIf = 0; c.whatIfStats = {}; c.whatIfPrimary = nil; Changed() end },
                 resetLines = { type = "execute", order = 3, name = "Reset line flips",
                     desc = "Every rating line goes back to the Rating lines setting.",
                     func = function() C().lineModes = {}; Changed() end },
