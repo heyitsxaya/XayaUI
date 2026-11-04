@@ -2626,7 +2626,7 @@ local function BuildRule(i, rule)
     for _, g in ipairs({ ruleTab, trigger, load, conditionsTab, cuesTab, actionsTab, displayTab }) do
         ns.LockArgs(g.args, function() return ns.IsEditLocked(rule) end)
     end
-    return {
+    local rg = {
         type = "group", childGroups = "tab", order = 1000 + i,
         hidden = function() local q = ns.treeFilter; return q and q ~= "" and not tostring(rule.name or ""):lower():find(q, 1, true) end,
         name = function()
@@ -2636,6 +2636,26 @@ local function BuildRule(i, rule)
         end,
         args = { display = displayTab, trigger = trigger, cues = cuesTab, conditions = conditionsTab, actions = actionsTab, load = load, rule = ruleTab },
     }
+    -- a search box above the tabs (RuleSearch.lua; Xaya 2026-11-04). Not on cues / conditions, which show inside their rule.
+    if ns.RuleSearchArgs and not rule.isCue and not rule.parentUid then
+        local okS, sa = pcall(ns.RuleSearchArgs, rule, rg, Notify)
+        if okS and type(sa) == "table" then for k, v in pairs(sa) do rg.args[k] = v end end
+    end
+    return rg
+end
+-- open one tab of the rule that is selected in the sidebar (RuleSearch.lua results)
+function ns.SelectRuleTab(tabKey)
+    local S = ns.RulesTreeStatus()
+    local sel = S and S.selected
+    if type(sel) ~= "string" or not tabKey then return end
+    local sub = ns.CurrentSub()
+    if sub ~= "smartTab" and sub ~= "disabledTab" then sub = "enabledTab" end
+    local segs = { "cooldowns", sub }
+    for seg in sel:gmatch("[^\001]+") do segs[#segs + 1] = seg end
+    local st = AceConfigDialog:GetStatusTable(APP, segs)
+    st.groups = st.groups or {}
+    st.groups.selected = tabKey
+    Notify()
 end
 
 -- Edit lock: a rule (or a folder, which covers everything inside it) can be made read-only from the sidebar.
