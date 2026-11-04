@@ -6,12 +6,12 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-74846d5f73d3cdb05dfb31234a2da3b7  QA-CHECKLIST.md
+442aa86bb333a72fa6f9cb280c53accc  QA-CHECKLIST.md
 a54d403da833eefe5b3661b57270da58  README.md
-b8830af74b74d3bd040661448e9ff565  ROADMAP.md
+0bd12795647b367bed5c27c17a20652b  ROADMAP.md
 3063eddc6fe0a81db13c1f5d834fe8eb  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-74cab11ccb896c8038ab8ca8493acaf8  USER-GUIDE.md
+fd9b31441d52088256a4b61bc2d7fe6a  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
@@ -96,6 +96,7 @@ e94cfc0c3fc54c4e5188a7aadaf41d90  XayaUI/Media/UI/xui_progresstex.tga
 97e47b6ce28ec4d1218ae800136c1e97  XayaUI/MinimapButton.lua
 4f50e1ee7a3e7349880d5c8d3fcf1570  XayaUI/Modules.lua
 4d8ad946f49670227ad922e5188af7bd  XayaUI/Outcomes.lua
+b76823560a93ae68a07689af413b01ec  XayaUI/RecycleBin.lua
 b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 454d9c7477395f84a1f31950034b8c75  XayaUI/Sound.lua
 46f77b8a678f39da1db320a4883ae59f  XayaUI/TalentDump.lua
@@ -105,7 +106,7 @@ cb9d21b960b27334e26f2471590294f1  XayaUI/Timing.lua
 8a09dcea01e7c6459128466196227db1  XayaUI/Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  XayaUI/UserMedia.lua
 834e5e4d38c5d202148cf8f740319e25  XayaUI/Visual.lua
-6bf62117625bb7f919b2de2118157fbc  XayaUI/XayaUI.toc
+d0533a513fda1ed886d4d4352a330769  XayaUI/XayaUI.toc
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -201,12 +202,12 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-0a8ef558e544ca410e71f6457a55e84b  XayaUI_Options/Options.lua
+49a3e928fc31caa07f987cfd1fbf34d1  XayaUI_Options/Options.lua
 6c9e9fa18ef236d4d9add21dd540a1ba  XayaUI_Options/OutcomesEditor.lua
 caae2078758f5ba22259d321c0a2b1f1  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 6f7b5e0e0f11b307ceb1d5f0877fc5e5  XayaUI_Options/TriggersEditor.lua
-01b5ed0555789066804ea99554a19d66  XayaUI_Options/XayaUI_Options.toc
+d4fd31d853c9b63ca354d8ba3de5d905  XayaUI_Options/XayaUI_Options.toc
 2256567dc7d851dde6106a6d10dbca09  XayaUI_QoL/CharacterToolkit.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
 e961de31e54ee41494bbd60ea3a2f996  XayaUI_QoL/CursorTrail.lua
@@ -373,6 +374,8 @@ e1b173a40bd9a3934d51f8ba1b66994e  debug-log/2026-11-04-0535-cdm-icon-ids-kept-lo
 90f8a7362428a82653a74541bcd5b6bb  debug-log/2026-11-04-0600-missing-debuff-by-name-outcome-off-core-0.6.11.md
 5ccbc4a4edba90f1db144fdde07f31ac  debug-log/2026-11-04-0627-procs-index-reference.md
 4a05bccd5006f49933304746f4a68295  debug-log/2026-11-04-0648-retrospective-verification-precheck.md
+779a321dbecb4a1783220e2a6d3a8bd2  debug-log/2026-11-04-0654-recycle-bin-core-0.6.12.md
+1d5000927ad83a500a69f914296f54a4  debug-log/2026-11-04-0655-old-branch-audit.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
 18184c791751d642a658098539cff908  docs/process/RETROSPECTIVE.md
 18f99347734ff71d918aaa8c7bf8420f  docs/process/VERIFICATION.md
@@ -452,6 +455,7 @@ adb52b5f86b97b5ac549353e59d97f36  tests/modules_run.py
 b98b8b93e9068a136e462260a2aefcd1  tests/perf_run.py
 9c3206bd42a7e043987917327cc16e27  tests/precheck_run.py
 69c610cd804812db130140e9e506c453  tests/preview_layout_run.py
+c41c52d02e5112eb8c21794ea85c0b18  tests/recycle_bin_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
 f886a09a99f1c562e4ff35c25675a1bd  tests/timing_run.py

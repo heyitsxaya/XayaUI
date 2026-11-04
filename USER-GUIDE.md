@@ -23,7 +23,7 @@ Each feature addon has its own tab in the settings window (**Chat**, **QoL**, **
 ## Contents
 
 - **Part 1: Rules**: how Load options, Triggers, Cues, Conditions, and Actions work (sections 1-11)
-- **Part 2: Features**: Class/Spec Rule Creator, Rule Drafts, Custom Data Panels and Bars, Notepad, Addon Theming, Minimap Button, Tooltips, Game Menu look, Chat Panel (section 12)
+- **Part 2: Features**: Class/Spec Rule Creator, Rule Drafts, Recycle Bin, Custom Data Panels and Bars, Notepad, Addon Theming, Minimap Button, Tooltips, Game Menu look, Chat Panel (section 12)
 - **Maintaining this document** (section 13)
 
 ---
@@ -468,6 +468,20 @@ Rules apply the moment you change them, so you can test an edit in game right aw
 On/off state, name, group, collapse state, sidebar icon, and edit lock are not counted as changes, so flipping a rule on or off never creates a draft.
 
 **Where:** Rules > Drafts. The Save changes, Save as a copy, Add to drafts, Add as a copy to drafts, and Discard buttons appear in a strip attached under the options window (above the debug console) whenever the selected rule differs from its saved version. The strip takes no room from the editor tabs. Discard needs a second click within four seconds to confirm (unless **Confirm Discard changes** is off).
+
+### 12.2b Recycle Bin
+
+Deleting a rule or a group does not throw it away: it goes to the **Recycle Bin** (the bin button in the toolbar, or Rules > Recycle Bin), where it waits for the time you choose and can be put back with **Restore**. Every delete prompt says how long it will be kept.
+
+- **A rule** goes with its cues and conditions, and comes back with them.
+- **A group deleted on its own:** its rules and nested groups stay and move up one level, as the prompt says; only the group goes to the bin. Restore brings the group back and moves back into it whatever is still where it was moved (anything you moved somewhere else in the meantime stays where you put it).
+- **A group deleted with its contents:** the group, every group nested in it and every rule inside them go to the bin as **one item** and come back together.
+- **Selected rules** (multi-select): each one is its own item, so you can restore them one at a time.
+- **Restore** puts an item back where it was. If its group no longer exists, it comes back at the top level, and the chat line says so.
+- **Keep deleted items for:** 36 hours, 3 days, **7 days** (default) or 14 days. Older items are removed for good when you log in and every 30 minutes; a shorter time takes effect at once.
+- **Delete now** removes one item for good; **Empty Recycle Bin** removes everything for good. Both ask first.
+- Not kept here: a single cue or condition removed inside a rule (that is an edit), drafts, and backups.
+- While something is in the bin it does not load, show, fire, or appear in exports and backups.
 
 ### 12.3 Custom Data Panels and Bars
 
