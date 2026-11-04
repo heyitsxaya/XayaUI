@@ -34,6 +34,8 @@ local function proxyFrame(kind)
         if k == "GetFrameStrata" then return function(self) return self.strata or "HIGH" end end
         if k == "SetFrameStrata" then return function(self, v) self.strata = v end end
         if k == "SetAlpha" then return function(self, v) self.alpha = v end end
+        if k == "SetDesaturation" then return function(self, v) self.desat = v end end
+        if k == "SetVertexColor" then return function(self, r, g, b, a) self.vc = { r, g, b, a } end end
         if k == "SetTexCoord" then return function(self, ...) self.texcoord = { ... } end end
         if k == "SetDrawSwipe" then return function(self, v) self.swipe = v end end
         if k == "SetFont" then return function(self, font, size) self.fontsize = size end end
@@ -560,6 +562,36 @@ check("its condition switched off: the Text cue it lists stays with XayaUI (sile
 lua('CXc.enabled = true; NS.AuraDisplay.Build()')
 lua('printed = {}; SlashCmdList["XUIENGINE"]("")')
 check("/xuiengine counts the separate time / stack displays it draws", lua("for _, l in ipairs(printed) do if l:find('^Engine draws:') and l:find('separate time / stack display', 1, true) then return true end end return false"))
+
+# 19. #260 (core 0.6.19, Xaya: "If a condition is enabled it should be enforced in or out of combat"): an engine-drawn display that a
+# condition lists shows only while that condition is true, and its changes (opacity, grey, tint) are drawn on the engine's slot
+lua(r"""
+GC = { uid = "gc", name = "gated", useBuff = true, buffID = 9901, buffState = "present", enabled = true, visual = { enabled = false } }
+GCi = { uid = "gci", name = "gated icon", isCue = true, parentUid = "gc", cueKey = "q1", cueKind = "texture", enabled = true,
+  visual = { enabled = true, trigger = "condition", w = 40, h = 40, alpha = 0.8, text = {}, count = {} } }
+GCc = { uid = "gcc", name = "Condition 1", parentUid = "gc", enabled = true, when = { list = {} }, thenCues = { "q1" } }
+NS.rules[#NS.rules + 1] = GC; NS.rules[#NS.rules + 1] = GCi; NS.rules[#NS.rules + 1] = GCc
+NS.runtime[GCi] = { info = { result = false } }
+NS.AuraDisplay.Build(); NS.AuraDisplay.SyncLive()
+GS = NS.AuraDisplay._singles[GC]
+""")
+check("a display a condition lists is still drawn by the engine (exact time in combat)", own("GCi") and lua("return GS ~= nil and GS.ok == true"))
+check("its condition is false: the engine's slot is hidden (before 0.6.19 it showed whenever the aura was up)", lua("return GS.frame.shown == false"))
+lua('NS.runtime[GCi].info.result = true; NS.AuraDisplay.SyncLive()')
+check("its condition is true: shown", lua("return GS.frame.shown == true"))
+lua('NS.runtime[GCi].info = { result = nil }; NS.AuraDisplay.SyncLive()')
+check("its condition unknown (e.g. stacks hidden in combat): hidden, never shown on a guess", lua("return GS.frame.shown == false"))
+lua('NS.runtime[GCi].info = { result = true, mods = { alpha = 0.3, desat = true, tint = { 1, 0, 0, 1 } } }; NS.AuraDisplay.SyncLive()')
+check("a true condition's changes are drawn on the slot: opacity 0.3",
+      lua("if #(GS.btns or {}) == 0 then return false end; for _, b in ipairs(GS.btns) do if b.alpha ~= 0.3 then return false end end return true"))
+check("... grey and red tint on the display's art",
+      lua("if #(GS.arts or {}) == 0 then return false end; for _, a in ipairs(GS.arts) do if not (a.desat == 1 and a.vc and a.vc[1] == 1 and a.vc[2] == 0) then return false end end return true"))
+lua('PAINTED = {}; NS.runtime[GCi].info = { result = true }; NS.AuraDisplay.SyncLive()')
+check("the condition's changes end: the art is painted again from the display's own settings and the opacity is its own (0.8)",
+      lua("local n = 0; for _, p in ipairs(PAINTED) do if p.rule == GCi then n = n + 1 end end; if n < #GS.arts then return false end; for _, b in ipairs(GS.btns) do if b.alpha ~= 0.8 then return false end end return true"))
+lua('GCc.thenCues = nil; NS.runtime[GCi].info = { result = false }; NS.AuraDisplay.SyncLive()')
+check("no condition lists the display: it follows the aura as before (shown whatever the cue's own reading)", lua("return GS.frame.shown == true"))
+lua('GCc.thenCues = { "q1" }')
 
 # 10. loaded twice (XayaUI loads the engine files and the separate XayaUI_CombatEngine folder is installed too): one copy only
 lua('BEFORE_D = NS.AuraDisplay; BEFORE_SLASH = SlashCmdList["XUIENGINE"]')

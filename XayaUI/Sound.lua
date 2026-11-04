@@ -158,7 +158,17 @@ function ns.PlaySound(s)
     if s.source == "tts" then
         ns.Speak(s)
     elseif s.source == "kit" then
-        PlaySound(tonumber(s.value), channel)
+        -- #334: the cue's own volume (0-100) for the game's sound kits: C_Sound.PlaySoundWithOptions with volumeOverride (0-1), the
+        -- documented 12.1.5 call Blizzard's own Cooldown Manager and combat audio alerts use. The channel goes in as before (#353: what
+        -- the game does with a channel name there is not confirmed). Without a cue volume, or if that call is refused, plays as before.
+        local vol = tonumber(s.cueVolume)
+        local played = false
+        if vol and vol < 100 and C_Sound and C_Sound.PlaySoundWithOptions then
+            local ok, res = pcall(C_Sound.PlaySoundWithOptions, { soundKitID = tonumber(s.value), uiSoundSubType = channel,
+                volumeOverride = math.max(0, math.min(100, vol)) / 100 })
+            played = ok and res ~= false
+        end
+        if not played then PlaySound(tonumber(s.value), channel) end
     elseif s.source == "lsm" then
         local lsm = LSM()
         local path = lsm and lsm:Fetch("sound", s.value, true)
