@@ -710,10 +710,36 @@ A separate addon (XayaUI Game Data Capture, `XayaUI_GameDump`) that is not neede
 
 ### 12.14 Debugging: Advanced Debugging and the debug record
 
-**Settings > Debugging > Advanced Debugging (recommended)** records automatically what is needed to find a problem, so you never have to remember a debug command:
-- **the debug record** (kept while it is on, with "Keep the debug record"): every rule's state at the start and end of each combat, the combat engine's status at the end of each combat (what `/xuiengine` prints), which source answered each aura and when that changed (aura API, Cooldown Manager, proc glow, set bonus), proc-glow sightings, game-played sounds being set up, XayaUI's messages and its own Lua errors. The newest 3000 lines are kept. The game writes it to `World of Warcraft\_retail_\WTF\Account\<your account>\SavedVariables\XayaUI.lua` at `/reload` or logout; **Create bug report** (same page, or the console window's Bug report button) shows the newest 1500 lines as copyable text. It holds rule names, spell IDs and XayaUI's messages; no character name or realm. Messages that name another player (the Ctrl + right-click ignore notice, shared-note notices, `/xui chat indent` and `/xui chatprobe` output) are shown but never kept: not in the record, not in the bug report, and not in the console window's Copy. **Clear the debug record** empties it;
-- **XayaUI's messages in their own frame:** "XayaUI's messages" chooses the main chat window, the **XayaUI console window** (its own movable, resizable frame that keeps collecting in combat; `/xui console`), or both. With Advanced Debugging on, the console window is the default, and it opens by itself when a message arrives (after combat, if one arrives in combat; switch that off with "Open the console window when a message arrives");
-- **the game-data probe:** when the separate XayaUI Game Data Capture addon is installed, "Also run the game-data probe" switches its event probe on with Advanced Debugging (and off again with it, if it was the one that switched it on).
+**Settings > Debugging > Advanced Debugging (recommended)** records automatically what is needed to find a problem, so you never have to remember a debug command or a chat line.
+
+**What to record.** Each kind of line has its own switch, with its cost in grey; a switch that is off costs nothing. XayaUI's own Lua errors, combat start and end, and any action the game blocked for XayaUI are always kept.
+
+| Switch | Default | What it records | Cost |
+|---|---|---|---|
+| Rules firing and clearing | on | one line when a rule fires, repeats or clears, with the reason it cleared | tiny |
+| Rule snapshots in combat | on | every switched-on rule's answer at combat start and end, and the ones that changed every 5 seconds | small |
+| Aura answers | on | one line when an aura's answer (present, missing, unknown) or its source changes | small |
+| Trigger detail for chosen rules | off | for the rules picked in "Rules for trigger detail" (and their cues and conditions): one line each time the answer or any part of it changes, with why it does not fire | small for each chosen rule |
+| Displays shown and hidden | off | one line each time a display appears or goes, and whether XayaUI or the combat engine draws it | small |
+| Proc glows | on | each glow sighting used to pair a button's glow with an aura | tiny |
+| Sounds | on | each sound a rule plays (which sound, channel, volume, the game's raw answer) and the set-up of game-played sounds | tiny |
+| Game state | on | login and `/reload` (versions of every XayaUI addon, game build, screen size, UI scale, rule counts), spec, talent and gear changes, zone and instance (difficulty, instance ID, map ID), boss encounters (ID, difficulty, group size, kill or wipe), Mythic+ start and end (map, keystone level), group size, and what the game hides from addons at each combat start | tiny |
+| Combat engine status at combat end | on | what `/xuiengine` prints | tiny |
+| Performance | off | times the engine during each combat and records at its end the cost per second, the slowest rules, memory and the game's own per-addon CPU meter (a timer you started with `/xui perf on` is read, never stopped) | a small timer on every engine step, in combat only |
+| XayaUI's messages | on | every message XayaUI shows you | tiny |
+
+**Light set** (rules, game state, messages), **Everything** and **Defaults** set all switches at once. **Lines kept**: 1000, 3000 (default) or 10000; older lines are dropped and counted.
+
+**Reading it.** Each line reads `time  Category  what happened`, for example `21:04:12  Aura     Rime (59052): present, aura API`. Combats are marked `---------- combat 3 starts | <zone> | the game hides auras: yes, cooldowns: no ----------`. **View the debug record** opens the whole record as text to read or copy, with what each category means at the top. **Clear the debug record** empties it.
+
+**What to send** (same page, shown with or without Advanced Debugging; also the console window's **What to send** button and the end of every bug report):
+1. Type `/reload` (or log out): the game writes the files only then.
+2. Open `World of Warcraft\_retail_\WTF\Account\<YOUR ACCOUNT FOLDER>\SavedVariables\` (on a test client the game folder is `_ptr_` or `_xptr_`, on the beta `_beta_`). `<YOUR ACCOUNT FOLDER>` is your account's folder inside `WTF\Account`, often a number such as `12345678#1`; if there are several, use the one whose `SavedVariables` holds the newest `XayaUI.lua`. The game gives addons no way to read that folder's name, so the path box shows it as a placeholder.
+3. Send `XayaUI.lua` (your rules, settings, saved errors and the debug record) and, when the developer addon is installed, its file (named in its own box). The path boxes can be selected and copied (click, Ctrl+A, Ctrl+C). They hold no password, character name, realm or chat text. Messages that name another player (the Ctrl + right-click ignore notice, shared-note notices, `/xui chat indent` and `/xui chatprobe` output) are shown but never kept: not in the record, not in the bug report, and not in the console window's Copy.
+
+**XayaUI's messages in their own frame:** "XayaUI's messages" chooses the main chat window, the **XayaUI console window** (its own movable, resizable frame that keeps collecting in combat; `/xui console`), or both. With Advanced Debugging on, the console window is the default, and it opens by itself when a message arrives (after combat, if one arrives in combat; switch that off with "Open the console window when a message arrives").
+
+**The game-data probe:** when the separate XayaUI Game Data Capture addon is installed, "Also run the game-data probe" switches its event probe on with Advanced Debugging (and off again with it, if it was the one that switched it on).
 
 ## 13. Maintaining this document
 
