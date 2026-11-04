@@ -366,26 +366,8 @@ local function SkinFrame(of)
     fr.xuiDrag:SetShown(not collapsed)
     of.titletext:ClearAllPoints(); of.titletext:SetPoint("TOP", fr, "TOP", 0, -9)
     do local tt = TC("xui-titlebar", "text", GOLD); of.titletext:SetTextColor(tt[1], tt[2], tt[3]); TF(of.titletext) end
-    -- bottom banner: the status container becomes a flat full-width band (no box), the Close button sits inside it
-    do
-        local sb = of.statusbg
-        if sb then
-            if sb.SetBackdrop then sb:SetBackdrop(nil) end
-            sb:ClearAllPoints(); sb:SetPoint("BOTTOMLEFT", fr, "BOTTOMLEFT", 1, 1); sb:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", -1, 1); sb:SetHeight(36)
-            if not sb.xuiBand then
-                sb.xuiBand = sb:CreateTexture(nil, "BACKGROUND")
-                sb.xuiBandLine = sb:CreateTexture(nil, "BORDER")
-            end
-            local tb = TC("xui-titlebar", "bg", { 0.13, 0.13, 0.13, 1 })
-            local bd = TC("xui-window", "border", { 0.32, 0.32, 0.32, 1 })
-            sb.xuiBand:SetAllPoints(); sb.xuiBand:SetColorTexture(tb[1], tb[2], tb[3], tb[4] or 1)
-            sb.xuiBandLine:ClearAllPoints(); sb.xuiBandLine:SetPoint("TOPLEFT"); sb.xuiBandLine:SetPoint("TOPRIGHT"); sb.xuiBandLine:SetHeight(1)
-            sb.xuiBandLine:SetColorTexture(bd[1], bd[2], bd[3], 1)
-            sb:SetShown(not collapsed)
-            local cb = of.closebutton
-            if cb then cb:ClearAllPoints(); cb:SetPoint("RIGHT", sb, "RIGHT", -30, 0) end
-        end
-    end
+    -- (AceGUI's status bar under the content is hidden by Options.lua EnsureChrome: this window does not use it. A flat "band" that
+    -- was meant to replace it here never ran: it looked for of.statusbg, which AceGUI's Frame widget does not keep.)
     -- toolbar (content moves down to make room)
     local bar = EnsureToolbar(of)
     bar:ClearAllPoints(); bar:SetPoint("TOPLEFT", fr, "TOPLEFT", 17, -34); bar:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -17, -34)
