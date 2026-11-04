@@ -5,11 +5,11 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-9d9139aabf5ec63d7205a6c6b1cfd475  QA-CHECKLIST.md
+d2cb928b1df80470cf9fc03b191a2605  QA-CHECKLIST.md
 2484ce39c6b9186ecd85e331060aa43d  README.md
 3606bf8d93773c41ae781c9ea0b746e0  ROADMAP.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-db03e740f3574d118e51f5b9e9f8b214  USER-GUIDE.md
+ab75e27a02103615c88224add0d214ac  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
 40b7591dd5f7fe4f0c4b0f5a965155bb  XayaUI/ClassLearn.lua
@@ -132,19 +132,19 @@ bd5ad941d96408c9a0a6d431144f65b7  XayaUI_Bonus/Notepad.lua
 3bdbe04fec65f2518c41bfb5df7b6aa3  XayaUI_Bonus/TooltipsUI.lua
 5937ff4ea0d399362128fc40530fd2c6  XayaUI_Bonus/XayaUI_Bonus.toc
 83c87e8920a975caccb49149edab3556  XayaUI_Chat/Bar.lua
-b5ae82f4fdb8332fba9ddb299b8e9928  XayaUI_Chat/Core.lua
+e97daab78918182fc0a5e1a6a57c5f5d  XayaUI_Chat/Core.lua
 691117347e0437f78c88e3734c54c438  XayaUI_Chat/Fade.lua
-8524d53ecf0e78ac43a250103d6d0157  XayaUI_Chat/Frame.lua
-d49980a01af3c56f8c74ad2c550d5155  XayaUI_Chat/History.lua
+6e1ca626b9696a8bee83de4875789c48  XayaUI_Chat/Frame.lua
+56b26183057d45a59a7624d31d536796  XayaUI_Chat/History.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
-fead8e3ce9e3203085d2516b6e967c51  XayaUI_Chat/Locate.lua
+3c0e14e6ad04c0b509e107036ddcef35  XayaUI_Chat/Locate.lua
 41d22f24985c521d09267efaa3217f9b  XayaUI_Chat/Messages.lua
-05a8bffdb22579571745f0975404581f  XayaUI_Chat/Options.lua
+e41e19a5f747332175ccd8122ae270b5  XayaUI_Chat/Options.lua
 9d4b2a2b5630132d0c0aceafb1eff313  XayaUI_Chat/Privacy.lua
-702bf934e55a476b21d3f912fb1c9d27  XayaUI_Chat/Probe.lua
-0d7c325a5b9a1bcbbcac9746295b8cd0  XayaUI_Chat/Skin.lua
+5899ad76456cffa9bae53aa75cb26689  XayaUI_Chat/Probe.lua
+c60c6bfa477e38b0ef452b5d482ad934  XayaUI_Chat/Skin.lua
 924ed63c29e3249e9052308753382184  XayaUI_Chat/Sounds.lua
-e9c2f7c6bc958bcaced3c0aa2ff05bbb  XayaUI_Chat/XayaUI_Chat.toc
+29c03c43466a80dbf5d518dee20be40b  XayaUI_Chat/XayaUI_Chat.toc
 96a62368d1a1215dd73fc9fdf4e71716  XayaUI_GameDump/GameDump.lua
 f2775456d146dcf3ca0f5cccfa9d5e84  XayaUI_GameDump/XayaUI_GameDump.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
@@ -350,8 +350,8 @@ a354cbbb54ff4fb130af0063a401df9b  tests/Conditions.pre-0.5.83.lua
 1bc56b22adb5f1e1aa4a345d9fa19b8b  tests/aspect_run.py
 14eb69096fa0abacf4409052259da83b  tests/aura_display_run.py
 80c84f1f7ef017e7f04a6c3be28a3910  tests/aura_sources_run.py
-a77e110f43e02105c2f78ea1121dd48f  tests/chat_run.py
-011ed4393337e4f3ffbc1a619ba02f1a  tests/chat_world.lua
+7319cc37bc191cf387f52dae3650d345  tests/chat_run.py
+6c39c70bd05b1d192f8354cfce137afb  tests/chat_world.lua
 abe22a2816956a2c3babb802857cc524  tests/chatprobe_run.py
 c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
 5d20324637578a787b84cbdf299ded74  tests/disabled_tree_run.py

@@ -34,8 +34,10 @@ C.DEFAULTS = {
     stripMode = "HIDE", stripX = 0, stripY = 0,       -- Blizzard's button strip: HIDE | LEFT | RIGHT of the pane
     socialMode = "HIDE", socialX = 0, socialY = 0,    -- the social / quick-join button: HIDE | SHOW (stays above the pane)
     toBottom = "SHOW",                                -- the back-to-newest arrow: SHOW | HIDE
-    scrollBar = "HIDE",                               -- HIDE | SHOW
+    scrollBar = "HIDE",                               -- Blizzard's own scroll bar: HIDE | SHOW (used only while scrollOwn is off)
+    scrollOwn = true, scrollSpeed = 6, scrollW = 10,  -- the Chat Panel's scroll bar: arrows step one line; held, scrollSpeed lines a second
     textInset = 6,
+    wrapIndent = true,                                -- the lines after the first of a long message start further in (the game's default)
     histButton = true,
     -- look
     useTheme = false,                                 -- take colors and font from the XayaUI theme
@@ -65,7 +67,7 @@ C.DEFAULTS = {
     -- messages
     spamRepeat = true, spamSeconds = 30, spamPhrases = "", spamWord = false, ignoreClick = true,
     links = true, linkR = 0.4, linkG = 0.75, linkB = 1,
-    histOn = true, histSize = 300,
+    histOn = true, histSize = 300, histConsole = true,   -- histConsole: printed lines (addons, /xui) and system messages, in their own Console tab
     soundsOn = true, soundsInCombat = true,
 }
 C.MAX_SLOTS = 8
@@ -183,6 +185,29 @@ function C.SetFont(fs, path, size, flags)
     if not (ok and res) then pcall(fs.SetFont, fs, STANDARD_TEXT_FONT, size, flags or "") end
 end
 
+-- "Indent wrapped lines": the game's chat turns this on for its font (ChatFrameOverrides.lua: self:SetIndentedWordWrap(true)), so the
+-- lines after the first of a long message start further in. Setting a font makes the window a font object of its own
+-- (FontableFrameMixin:MakeFontObjectCustom copies the old one); whether that copy keeps the indent is not documented, and Xaya's
+-- screenshots of 0.6.4 show wrapped lines starting flush with the message (inference: the indent was lost). So the setting is applied
+-- again after every font change. SetIndentedWordWrap is one of the window's secure methods (ScrollingMessageFrameSecureMixin), so
+-- calling it from an addon does not taint the window. It is only called when the value differs: each call lays the lines out again.
+local function IndentOf(o)
+    if not (o and o.GetIndentedWordWrap) then return nil end
+    local ok, v = pcall(o.GetIndentedWordWrap, o)
+    if ok and not issecret(v) and type(v) == "boolean" then return v end
+    return nil
+end
+C.IndentOf = IndentOf
+function C.SetWrapIndent(f, on)
+    if not (f and f.SetIndentedWordWrap) then return false end
+    on = on and true or false
+    local cur = IndentOf(f)
+    if f._xuiIndent == nil and cur ~= nil then f._xuiIndent = cur end   -- the game's own value, for turning the Chat Panel off
+    if cur == on then return false end
+    f:SetIndentedWordWrap(on)
+    return true
+end
+
 -- the game's own anchors, copied before the first time we move a frame, so switching the Chat Panel off can put them back
 function C.Remember(o)
     if not o or o._xuiPts or not o.GetNumPoints then return end
@@ -224,6 +249,9 @@ function C.Teardown()
     C.remembered = {}
     for fs, f in pairs(C.fonts) do pcall(fs.SetFont, fs, f[1], f[2], f[3]) end
     C.fonts = {}
+    for _, f in ipairs(C.Frames()) do   -- the game's own "indent wrapped lines" value, as it was before the Chat Panel set it
+        if f._xuiIndent ~= nil and f.SetIndentedWordWrap then pcall(f.SetIndentedWordWrap, f, f._xuiIndent); f._xuiIndent = nil end
+    end
     for _, f in ipairs(C.Frames()) do
         local tab = C.TabOf(f)
         if tab then
@@ -287,7 +315,10 @@ local function IndentReport()
     local fmt
     if _G.Settings and _G.Settings.GetValue then local ok, v = pcall(_G.Settings.GetValue, "showTimestamps"); if ok and type(v) == "string" then fmt = v end end
     ns.Print(("  the game's timestamp setting: %s"):format(fmt and ("\"" .. fmt:gsub("|", "||") .. "\"") or "unreadable"))
+    local function onoff(v) if v == nil then return "unreadable" end return v and "on" or "off" end
     local lines = cf.visibleLines
+    ns.Print(("  indent wrapped lines: setting %s, the window's font %s, its first line %s"):format(onoff(s.wrapIndent ~= false), onoff(C.IndentOf(cf)),
+        onoff(type(lines) == "table" and C.IndentOf(lines[1]) or nil)))
     if type(lines) ~= "table" or #lines == 0 then ns.Print("  no visible lines to measure (say something in chat first)"); return end
     local shown = 0
     for i = #lines, 1, -1 do
@@ -325,13 +356,13 @@ function C.Command(arg)
         local st = C.WrapStatus and C.WrapStatus()
         if not st then ns.Print("Chat Panel wrap: the chat window is not there to measure."); return end
         local function f(v) return v and ("%.1f"):format(v) or "?" end
-        ns.Print(("Chat Panel wrap: window width %s, text area %s, line width %s (%s lines), widest text %s%s"):format(f(st.cf), f(st.text), f(st.line), tostring(st.numLines or "?"), f(st.widest), C.WrapOff() and "  <- OFF, laying out again" or "  (consistent)"))
+        ns.Print(("Chat Panel wrap: window width %s, text area %s, line width %s (%s lines), widest wrapped line %s, lines wider than their box: %s%s"):format(f(st.cf), f(st.text), f(st.line), tostring(st.numLines or "?"), f(st.wrapped), tostring(st.over or "?"), C.WrapOff() and "  <- OFF, laying out again" or "  (consistent)"))
         local cf = C.Main()
         local sc, tsc = cf and cf.GetEffectiveScale and cf:GetEffectiveScale(), C.TextArea() and C.TextArea():GetEffectiveScale()
-        ns.Print(("  scale: window %s, text area %s; relayouts done this session: %d"):format(f(sc), f(tsc), C.stats.rewraps or 0))
+        ns.Print(("  scale: window %s, text area %s; relayouts asked for this session: %d; indent wrapped lines: %s"):format(f(sc), f(tsc), C.stats.rewraps or 0,
+            (C.IndentOf(cf) == nil and "unreadable") or (C.IndentOf(cf) and "on" or "off")))
         C.Rewrap(true)
-        local st2 = C.WrapStatus()
-        if st2 then ns.Print(("  after laying out again: line width %s, widest text %s"):format(f(st2.line), f(st2.widest))) end
+        ns.Print("  the window lays its lines out again on its next frame; run /xui chat wrap again to see the result")
     elseif arg == "indent" then C.IndentReport()
     else
         local why = C.BlockedReason()
