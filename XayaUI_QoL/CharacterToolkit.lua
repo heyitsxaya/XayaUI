@@ -46,7 +46,8 @@ ns.CHARTOOLKIT_DEFAULTS = {
     overlays = false,      -- item level / socket / enchant marks on the character window's slots
     ovIlvl = true, ovSockets = true, ovEnchants = true,
     ovSize = 11,
-    enchantSlots = {},     -- slot IDs to flag when they have no enchant (the game does not say which slots take one)
+    enchantSlots = {},     -- slot IDs the player ticked to flag when they have no enchant; empty = this expansion's slots (CM.EnchantSlots)
+    -- enchantSlotsSet: true once the player has changed a tick (then enchantSlots is used even when empty)
 }
 local OLD_TABS = { overview = "sheet", ratings = "stats" }
 
@@ -91,6 +92,7 @@ local function Cfg()
     end
     do local n = math.floor(tonumber(c.whatIfPrimary) or 0); c.whatIfPrimary = (n ~= 0) and math.max(-100000, math.min(100000, n)) or nil end
     for k, v in pairs(c.lineModes) do if v ~= "rating" and v ~= "percent" then c.lineModes[k] = nil end end
+    if c.enchantSlotsSet ~= true then c.enchantSlotsSet = nil end
     return c
 end
 ns.CharToolkit_Cfg = Cfg
@@ -735,7 +737,8 @@ local function UpdateOverlay(button)
         o.marks:SetPoint("TOP", o, "TOP", 0, -2)
         overlays[button] = o
     end
-    local data = CM.SlotOverlay(slot, { ilvl = c.ovIlvl, sockets = c.ovSockets, enchants = c.ovEnchants, enchantSlots = c.enchantSlots })
+    local eSlots, eDefault = CM.EnchantSlots(c)
+    local data = CM.SlotOverlay(slot, { ilvl = c.ovIlvl, sockets = c.ovSockets, enchants = c.ovEnchants, enchantSlots = eSlots, enchantDefault = eDefault })
     SetFont(o.ilvl, c.ovSize, "OUTLINE")
     SetFont(o.marks, math.max(8, c.ovSize - 2), "OUTLINE")
     o.ilvl:SetText(data.ilvl or "")
@@ -1052,14 +1055,26 @@ function ns.BuildCharToolkitPage(Notify)
 
     local slotToggles = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "The game does not say which slots take an enchant, so tick the slots to check. A ticked slot with no enchant shows E? (orange); an enchanted one shows E (green)." },
+            name = "Ticked to start with: the slots this expansion's enchants cover (head, shoulders, chest, legs, feet, both rings, main hand, and off hand when it holds a weapon). Change any tick and your own choice is kept. A ticked slot with no enchant shows E? (orange); an enchanted one shows E (green)." },
+        reset = { type = "execute", order = 99, name = "This expansion's slots",
+            desc = "Back to the slots this expansion's enchants cover: head, shoulders, chest, legs (spellthread or armor kit), feet, both rings, main hand, and off hand when it holds a weapon. Taken from the expansion's enchant items in Blizzard's game data; the game has no call that says it.",
+            func = function() local c = C(); c.enchantSlots = {}; c.enchantSlotsSet = nil; Changed() end },
     }
     for i, s in ipairs(CM.SLOTS) do
         local slot = s[1]
         slotToggles["slot" .. slot] = { type = "toggle", order = i, name = CM.SlotLabel(slot),
             desc = "Flag this slot on the character window when its item has no enchant (read from the item link).",
-            get = function() return C().enchantSlots[slot] and true or false end,
-            set = function(_, v) C().enchantSlots[slot] = v and true or nil; Changed() end }
+            get = function() return CM.EnchantSlots(C())[slot] and true or false end,
+            set = function(_, v)
+                local c = C()
+                if c.enchantSlotsSet ~= true then   -- the first change keeps every slot that shows ticked now
+                    local now = {}
+                    for k in pairs((CM.EnchantSlots(c))) do now[k] = true end
+                    c.enchantSlots, c.enchantSlotsSet = now, true
+                end
+                c.enchantSlots[slot] = v and true or nil
+                Changed()
+            end }
     end
     local overlayPart = {
         type = "group", name = "Slot Overlays", order = 20, childGroups = "tab", hidden = isOff,
@@ -1068,7 +1083,7 @@ function ns.BuildCharToolkitPage(Notify)
                 overlays = Toggle("overlays", 1, "Slot overlays", "Marks on the character window's item slots. Off by default.", "full"),
                 ovIlvl = Toggle("ovIlvl", 2, "Item level", "The item's level, at the bottom of the slot."),
                 ovSockets = Toggle("ovSockets", 3, "Empty sockets", "How many empty sockets the item's stat table lists (for example 2S), at the top."),
-                ovEnchants = Toggle("ovEnchants", 4, "Enchant check", "E? on a ticked slot with no enchant, E when it has one. Pick the slots on the Enchant Slots tab."),
+                ovEnchants = Toggle("ovEnchants", 4, "Enchant check", "E? on a ticked slot with no enchant, E when it has one. This expansion's enchantable slots are ticked until you pick your own on the Enchant Slots tab."),
                 ovSize = { type = "range", order = 5, name = "Text size", min = 8, max = 16, step = 1,
                     get = function() return C().ovSize end, set = function(_, v) C().ovSize = v; Changed() end },
             } },

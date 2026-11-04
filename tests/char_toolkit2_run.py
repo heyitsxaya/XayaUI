@@ -321,14 +321,28 @@ ns.CharToolkit_UpdateOverlays()
 check("overlays off by default: nothing on the head slot", ns.CharToolkit_OverlayText("HeadSlot") == nil)
 c.overlays = true; ns.CharToolkit_Apply()
 local il, mk1 = ns.CharToolkit_OverlayText("HeadSlot")
-check("overlay: head shows its item level (336), no marks", il == "336" and mk1 == "", tostring(il) .. " / " .. tostring(mk1))
+check("overlay: head shows its item level (336) and, with no slots ticked, E? (head takes an enchant this expansion: QoL 0.7.6 default)",
+  il == "336" and mk1:find("E?", 1, true) ~= nil, tostring(il) .. " / " .. tostring(mk1))
 il, mk1 = ns.CharToolkit_OverlayText("Finger0Slot")
 check("overlay: ring shows 330 and its empty socket (1S)", il == "330" and mk1:find("1S", 1, true) ~= nil, tostring(il) .. " / " .. tostring(mk1))
 check("overlay: an empty slot shows nothing", select(1, ns.CharToolkit_OverlayText("NeckSlot")) == "")
+-- QoL 0.7.6: this expansion's enchantable slots are checked until the player ticks their own
+local ES = ns.CharModel.EnchantSlots
+check("enchant default: the enchanted ring shows E, not E?", (select(2, ns.CharToolkit_OverlayText("Finger0Slot")) or ""):find("E?", 1, true) == nil
+  and (select(2, ns.CharToolkit_OverlayText("Finger0Slot")) or ""):find("E|r", 1, true) ~= nil)
+check("enchant default: neck, back, wrist, waist, hands, trinkets not checked; head, shoulders, chest, legs, feet, rings, main hand checked",
+  not ES(c)[2] and not ES(c)[15] and not ES(c)[9] and not ES(c)[6] and not ES(c)[10] and not ES(c)[13] and not ES(c)[14]
+  and ES(c)[1] and ES(c)[3] and ES(c)[5] and ES(c)[7] and ES(c)[8] and ES(c)[11] and ES(c)[12] and ES(c)[16] and select(2, ES(c)) == true)
+GEAR[17] = "|cffa335ee|Hitem:5::::::::90:::::|h[Frill]|h|r"; ns.CharToolkit_UpdateOverlays()
+check("enchant default: an off-hand frill is not checked", (select(2, ns.CharToolkit_OverlayText("SecondaryHandSlot")) or ""):find("E?", 1, true) == nil and not ES(c)[17])
+GEAR[17] = "|cffa335ee|Hitem:6::::::::90:::::|h[Glaive]|h|r"; ns.CharToolkit_UpdateOverlays()
+check("enchant default: an off-hand weapon is checked (E?)", (select(2, ns.CharToolkit_OverlayText("SecondaryHandSlot")) or ""):find("E?", 1, true) ~= nil)
+GEAR[17] = nil; ns.CharToolkit_UpdateOverlays()
 c.enchantSlots = { [1] = true, [11] = true }; ns.CharToolkit_UpdateOverlays()
 check("overlay: a ticked slot with no enchant shows E?", (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
 check("overlay: a ticked slot with an enchant shows E", (select(2, ns.CharToolkit_OverlayText("Finger0Slot")) or ""):find("|rE|r", 1, true) == nil
   and (select(2, ns.CharToolkit_OverlayText("Finger0Slot")) or ""):find("E|r", 1, true) ~= nil and (select(2, ns.CharToolkit_OverlayText("Finger0Slot")) or ""):find("E?", 1, true) == nil)
+check("a list ticked before QoL 0.7.6 is kept: only its slots are checked", ns.CharModel.EnchantSlots(c)[3] == nil and select(2, ns.CharModel.EnchantSlots(c)) == false)
 c.ovIlvl = false; ns.CharToolkit_UpdateOverlays()
 check("overlay: item level switched off", select(1, ns.CharToolkit_OverlayText("HeadSlot")) == "")
 c.ovIlvl = true
@@ -436,6 +450,15 @@ page.args.overlaysOn.set(nil, true)
 check("settings: the Slot overlays switch draws the overlays", ns.CharToolkit_OverlayText("HeadSlot") == "336")
 page.args.overlayPart.args.enchants.args.slot1.set(nil, true)
 check("settings: ticking Head in Enchant Slots flags it (E?)", (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
+do
+  local cc = CueRulesDB.characterToolkit
+  page.args.overlayPart.args.enchants.args.slot1.set(nil, false)
+  check("settings: unticking Head is kept and the other default slots stay ticked", cc.enchantSlotsSet == true and not cc.enchantSlots[1] and cc.enchantSlots[11] == true
+    and page.args.overlayPart.args.enchants.args.slot3.get() == true and (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) == nil)
+  page.args.overlayPart.args.enchants.args.reset.func()
+  check("settings: the reset button goes back to this expansion's slots (Head E? again)", cc.enchantSlotsSet == nil and next(cc.enchantSlots) == nil
+    and (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
+end
 page.args.overlaysOn.set(nil, false)
 page.args.panelPart.args.values.args.whatIf.set(nil, "200")
 d = render("stats")

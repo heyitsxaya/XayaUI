@@ -984,9 +984,42 @@ function CM.SlotInfo(slot)
     return s
 end
 
+-- Which slots take an enchant this expansion: the default the enchant check uses until the player ticks slots of their own (QoL
+-- 0.7.6; Xaya, 2026-11-04: "read professions for a current expansion and see what enchanting options are available and make an
+-- educated guess from there"). The game has no call that says which slots take an enchant, and an addon cannot list Enchanting
+-- recipes on a character without the profession (C_TradeSkillUI works on the open profession), so this is a default, not a reading.
+-- Source: the Item Enhancement items (classID 8) of expansion 11 in Blizzard's client data, build 12.1.5.70783
+-- (docs/reference/content/items.json), counted by subclass: helm 12, shoulders 21 (with cosmetic adornments), chest 8, legs 12
+-- (spellthreads and armor kits), boots 6, ring 18, weapon 32 (with profession-tool enchants), ranged scopes 8. None for neck, back,
+-- wrist, waist, hands, shirt, tabard, trinkets, shields or off-hand frills. Only slot numbers come from it; no IDs or values.
+CM.ENCHANT_DEFAULT = { [1] = true, [3] = true, [5] = true, [7] = true, [8] = true, [11] = true, [12] = true, [16] = true }
+local ITEM_CLASS_WEAPON = 2   -- Enum.ItemClass.Weapon (docs/reference/api/enums.md)
+
+-- The off hand takes a weapon enchant only when it holds a weapon (INFERENCE from the data above: no shield or frill enchants exist).
+-- C_Item.GetItemInfoInstant(itemInfo) -> itemID, itemType, itemSubType, itemEquipLoc, icon, classID, subClassID · MayReturnNothing,
+-- SecretArguments=AllowedWhenUntainted
+function CM.OffHandIsWeapon()
+    local link = R(GetInventoryItemLink, "player", 17)
+    if type(link) ~= "string" or not (C_Item and C_Item.GetItemInfoInstant) then return false end
+    local _, _, _, _, _, classID = R(C_Item.GetItemInfoInstant, link)
+    if num(classID) and classID == ITEM_CLASS_WEAPON then return true end
+    return false
+end
+
+-- The slots the enchant check looks at, and whether they are the default. The player's own ticks win once they have changed any
+-- (c.enchantSlotsSet), and so does a list saved before QoL 0.7.6 (any slot ticked then was the player's choice).
+function CM.EnchantSlots(c)
+    local own = (type(c) == "table" and type(c.enchantSlots) == "table") and c.enchantSlots or {}
+    if (type(c) == "table" and c.enchantSlotsSet == true) or next(own) ~= nil then return own, false end
+    local t = {}
+    for k in pairs(CM.ENCHANT_DEFAULT) do t[k] = true end
+    if CM.OffHandIsWeapon() then t[17] = true end
+    return t, true
+end
+
 -- What the overlay on one character-window slot shows: { ilvl = text or nil, marks = { { text, tone, why } } }.
--- opts: { ilvl = bool, sockets = bool, enchants = bool, enchantSlots = { [slot] = true } }.
--- The game does not say which slots take an enchant, so "no enchant" is flagged only on the slots the player ticked.
+-- opts: { ilvl = bool, sockets = bool, enchants = bool, enchantSlots = { [slot] = true }, enchantDefault = bool }.
+-- "No enchant" is flagged only on the slots in enchantSlots (CM.EnchantSlots: this expansion's slots, or the player's own ticks).
 function CM.SlotOverlay(slot, opts)
     opts = opts or {}
     local s = CM.SlotInfo(slot)
@@ -997,7 +1030,8 @@ function CM.SlotOverlay(slot, opts)
         o.marks[#o.marks + 1] = { s.sockets .. "S", "warn", ("%d empty socket%s (the item's stat table lists it)"):format(s.sockets, s.sockets == 1 and "" or "s") }
     end
     if opts.enchants ~= false and opts.enchantSlots and opts.enchantSlots[slot] then
-        if s.enchanted == false then o.marks[#o.marks + 1] = { "E?", "warn", "no enchant (you asked to check this slot)" }
+        if s.enchanted == false then
+            o.marks[#o.marks + 1] = { "E?", "warn", opts.enchantDefault and "no enchant (this slot takes one this expansion)" or "no enchant (you asked to check this slot)" }
         elseif s.enchanted == true then o.marks[#o.marks + 1] = { "E", "good", "enchanted" } end
     end
     return o
