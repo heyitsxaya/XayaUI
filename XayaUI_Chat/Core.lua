@@ -208,6 +208,27 @@ function C.SetWrapIndent(f, on)
     return true
 end
 
+-- #346 (Xaya's /xui chat indent, 2026-11-04: window left 32.0, text area left 6.0, every line 0.0 px from the window edge): the game
+-- keeps its chat windows clamped to the screen (FloatingChatFrameTemplate clampedToScreen="true") and Edit Mode gives the main window
+-- clamp margins from its selection box (EditModeSystemMixin:UpdateClampOffsets -> SetClampRectInsets; wow-ui-source live 12.1.5.70783).
+-- With the Chat Panel at the screen's left edge, that margin pushes the whole window right of the text area: the empty space at the left.
+-- The pane is what is placed now, so its windows are not clamped while the Chat Panel is on; the game's value comes back when it is off.
+local function Clamped(f)
+    if not (f and f.IsClampedToScreen) then return nil end
+    local ok, v = pcall(f.IsClampedToScreen, f)
+    if ok and not issecret(v) and type(v) == "boolean" then return v end
+    return nil
+end
+C.Clamped = Clamped
+function C.Unclamp(f)
+    if not (f and f.SetClampedToScreen) then return false end
+    local cur = Clamped(f)
+    if f._xuiClamp == nil and cur ~= nil then f._xuiClamp = cur end
+    if cur == false then return false end
+    f:SetClampedToScreen(false)
+    return true
+end
+
 -- the game's own anchors, copied before the first time we move a frame, so switching the Chat Panel off can put them back
 function C.Remember(o)
     if not o or o._xuiPts or not o.GetNumPoints then return end
@@ -249,6 +270,9 @@ function C.Teardown()
     C.remembered = {}
     for fs, f in pairs(C.fonts) do pcall(fs.SetFont, fs, f[1], f[2], f[3]) end
     C.fonts = {}
+    for _, f in ipairs(C.Frames()) do   -- the game's own "clamped to screen" value (#346)
+        if f._xuiClamp ~= nil and f.SetClampedToScreen then pcall(f.SetClampedToScreen, f, f._xuiClamp); f._xuiClamp = nil end
+    end
     for _, f in ipairs(C.Frames()) do   -- the game's own "indent wrapped lines" value, as it was before the Chat Panel set it
         if f._xuiIndent ~= nil and f.SetIndentedWordWrap then pcall(f.SetIndentedWordWrap, f, f._xuiIndent); f._xuiIndent = nil end
     end
@@ -312,6 +336,10 @@ local function IndentReport()
     local cl, tl = left(cf), left(ta)
     local s = ns.chat2 or {}
     ns.Print(("Chat Panel indent: window left %s, text area left %s (setting: %s px), text area to window: %s px"):format(f(cl), f(tl), tostring(s.textInset), (cl and tl) and f(tl - cl) or "?"))
+    local okI, cL, cR, cT, cB = pcall(function() return cf:GetClampRectInsets() end)
+    local cl0 = Clamped(cf)
+    ns.Print(("  clamped to the screen: %s; clamp margins left %s, right %s, top %s, bottom %s (a left margin pushes the window right at the screen edge)"):format(
+        cl0 == nil and "unreadable" or (cl0 and "yes" or "no"), okI and f(cL) or "?", okI and f(cR) or "?", okI and f(cT) or "?", okI and f(cB) or "?"))
     local fmt
     if _G.Settings and _G.Settings.GetValue then local ok, v = pcall(_G.Settings.GetValue, "showTimestamps"); if ok and type(v) == "string" then fmt = v end end
     ns.Print(("  the game's timestamp setting: %s"):format(fmt and ("\"" .. fmt:gsub("|", "||") .. "\"") or "unreadable"))

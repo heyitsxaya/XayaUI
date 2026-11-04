@@ -57,9 +57,9 @@ i1.visual.hoverTip = false
 check("mixed state: box unticked and the note says 1 of 2", D.hoverTip.get() == false and D.hoverMixed.hidden() == false and D.hoverMixed.name():find("1 of 2", 1, true))
 D.hoverTip.set(nil, true)
 local n0 = #ns.CuesOf(A)
-D.add_texture.func()
+D.add.set(nil, "texture")
 local newC = ns.CuesOf(A)[n0 + 1]
-check("+ Texture adds a texture cue that takes the hover tooltip", newC and newC.cueKind == "texture" and newC.visual.hoverTip == true)
+check("Add a display cue > Texture adds a texture cue that takes the hover tooltip", newC and newC.cueKind == "texture" and newC.visual.hoverTip == true)
 -- position as a group: the first display is the reference, all move by the same amount
 D.posX.set(nil, 25)
 check("X moves every display by the same amount (spacing kept)", i1.visual.x == 25 and t1.visual.x == 45)
@@ -78,7 +78,8 @@ check("older rule: its own display is the one display", GO and #ns.RuleDisplays(
 -- a rule with no display cue: the tab offers the add buttons only
 local E = rule("Empty", true); ns.rules[#ns.rules + 1] = E
 local DE = ns.BuildDisplayTab(E, function() end, function() end).args
-check("no displays: shared settings hidden, add buttons shown", DE.hoverTip.hidden() == true and DE.posX.hidden() == true and DE.add_icon ~= nil)
+check("no displays: shared settings hidden, the add dropdown shown (one control, not a row of buttons)", DE.hoverTip.hidden() == true and DE.posX.hidden() == true and DE.add ~= nil and DE.add.type == "select" and DE.add_icon == nil)
+check("the add dropdown shares its row with the cue list (both 'normal' width)", D.add.width == "normal" and D.shows.width == "normal")
 -- open / close buttons: trigger pane header and cue header carry arg.xuiChevron and no arrow glyph in the title (skin on)
 local trig = a.trigger.args
 local foundChev, glyph = false, false
@@ -107,6 +108,123 @@ local function findHover(t, depth)
 end
 findHover(a.cues, 0)
 check("per-cue 'Show tooltip on hover' is hidden", hidden == true)
+-- ===== Group Display tab (0.6.4): every display cue of every rule in the group, edited live =====
+ns.folders = { { id = "fG", name = "Group G", cType = "dynamic" }, { id = "fN", name = "Nested", parent = "fG" } }
+local P1 = rule("P1", true); P1.folder = "fG"; ns.rules[#ns.rules + 1] = P1
+local P2 = rule("P2", true); P2.folder = "fN"; ns.rules[#ns.rules + 1] = P2
+local c1 = ns.NewCueRule(P1, "icon"); local c2 = ns.NewCueRule(P1, "text"); local c3 = ns.NewCueRule(P2, "icon"); local cs = ns.NewCueRule(P2, "sound")
+c1.visual.w, c2.visual.w, c3.visual.w = 30, 128, 40
+local function fr(fid) local out = {}; local function inF(id) while id do if id == fid then return true end; local f; for _, x in ipairs(ns.folders) do if x.id == id then f = x end end; id = f and f.parent end return false end
+  for _, r in ipairs(ns.rules) do if r.folder and inF(r.folder) then out[#out + 1] = r end end return out end
+local GA = ns.GroupDisplayArgs(ns.folders[1], fr, function() end)
+local function body(sec) return GA[sec].args.body.args end
+check("group display: the old Apply Text Settings panel is gone (no Apply button)", GA.apply == nil and GA.targets == nil)
+check("group display: scope line counts 3 displays in 2 rules (nested group included, sound cue not a display)", GA.scope.name():find("3 displays in 2 rules", 1, true) ~= nil)
+local S = body("size")
+check("size shows the first display's width", S.w.get() == 30)
+check("differing widths are named under the section", S.diff.hidden() == false and S.diff.name():find("Display width", 1, true))
+S.w.set(nil, 36)
+check("width written to every display cue in the group (nested too)", c1.visual.w == 36 and c2.visual.w == 36 and c3.visual.w == 36)
+check("no 'differs' line once they agree", S.diff.hidden() == true)
+local BD = body("border")
+BD.bdColor.set(nil, 1, 0, 0, 1)
+check("a color is written as each display's own table (never one shared table)", c1.visual.border.color ~= c2.visual.border.color and c1.visual.border.color[1] == 1 and c3.visual.border.color[1] == 1)
+local T = body("textDur")
+T.enabled.set(nil, true)
+check("duration text switched on for every display", c1.visual.text.enabled == true and c2.visual.text.enabled == true and c3.visual.text.enabled == true)
+T.size.set(nil, 17)
+check("text size for every display", c1.visual.text.size == 17 and c3.visual.text.size == 17)
+local A = body("textAbs")
+A.source.set(nil, "aura")
+check("shield amount source for every display", c1.visual.absorb.source == "aura" and c3.visual.absorb.source == "aura")
+local Bh = body("behavior")
+Bh.hoverTip.set(nil, true)
+check("hover tooltip for every display in the group", c1.visual.hoverTip and c2.visual.hoverTip and c3.visual.hoverTip and not cs.visual.hoverTip)
+P2.editLocked = true
+local GL = ns.GroupDisplayArgs(ns.folders[1], fr, function() end)
+local wBefore = c3.visual.w
+GL.size.args.body.args.w.set(nil, 50)
+check("an edit-locked rule is left out of group edits and the scope line says so", c3.visual.w == wBefore and c1.visual.w == 50 and GL.scope.name():find("1 edit-locked rule is left out", 1, true) ~= nil)
+P2.editLocked = nil
+local GE = ns.GroupDisplayArgs({ id = "fEmpty", name = "Empty" }, function() return {} end, function() end)
+check("a group with no displays hides every section and says why", GE.size.hidden() == true and GE.scope.name():find("nothing to style", 1, true) ~= nil)
+-- the real group page: Display tab built from these pieces, Apply Text panel gone
+local built2 = ns.BuildOptionsTable()
+local function findG(t, depth)
+  if type(t) ~= "table" or depth > 30 then return nil end
+  if t.type == "group" and t.args and t.args.pageDisplay and t.args.tabDisplay then
+    local nm = type(t.name) == "function" and t.name() or t.name
+    if tostring(nm):find("Group G", 1, true) then return t end
+  end
+  for _, v in pairs(t.args or {}) do local x = findG(v, depth + 1); if x then return x end end
+end
+local GP = findG(built2, 0)
+local PD = GP and GP.args.pageDisplay.args
+-- dynamic group wrap options (Xaya: "dynamic groups should have row / column wrap options")
+local CG = GP and GP.args.pageGroup.args.container and GP.args.pageGroup.args.container.args
+local fG = ns.folders[1]
+check("wrap: a 'Wrap into rows' tick box exists for a dynamic group growing across", CG and CG.wrapOn and CG.wrapOn.type == "toggle" and CG.wrapOn.name() == "Wrap into rows" and CG.wrapOn.hidden() == false)
+check("wrap: off by default, per-row count hidden until ticked", CG.wrapOn.get() == false and CG.wrapN.hidden() == true)
+CG.wrapOn.set(nil, true)
+check("wrap: ticking it wraps after 6 and shows the count and 'New rows go'", fG.cWrapN == 6 and CG.wrapN.hidden() == false and CG.wrapDir.hidden() == false and CG.wrapN.name() == "Items per row")
+CG.wrapN.set(nil, 9)
+check("wrap: the count is saved", fG.cWrapN == 9)
+fG.cGrowth = "DOWN"
+check("wrap: growing down it reads 'Wrap into columns' / 'Items per column' / 'New columns go'", CG.wrapOn.name() == "Wrap into columns" and CG.wrapN.name() == "Items per column" and CG.wrapDir.name() == "New columns go")
+CG.wrapOn.set(nil, false)
+check("wrap: unticking removes the wrap", fG.cWrapN == nil and CG.wrapN.hidden() == true)
+check("layout dropdowns no longer take a whole row each (no 'double' width)", CG.growth.width == nil and CG.sort.width == nil and CG.wrapDir.width == nil)
+-- Rules sub-tabs (Xaya, 0.6.4): Smart Categories | Enabled | Disabled | Drafts, Enabled opens by default, the last one is remembered
+local RT = built2.args.cooldowns.args
+check("sub-tab order: Smart Categories, Enabled, Disabled, Drafts", RT.smartTab.order < RT.enabledTab.order and RT.enabledTab.order < RT.disabledTab.order and (not RT.draftsTab or RT.disabledTab.order < RT.draftsTab.order))
+CueRulesDB.ui = CueRulesDB.ui or {}
+CueRulesDB.ui.rulesSub = nil
+pcall(ns.ToggleUI); W.tick(0.1, 4)
+check("first opening with nothing remembered: Enabled is open", ns.CurrentSub() == "enabledTab", ns.CurrentSub())
+local ACD = LibStub("AceConfigDialog-3.0")
+pcall(ACD.SelectGroup, ACD, "CueRules", "cooldowns", "smartTab"); W.tick(0.1, 4)
+check("the open sub-tab is remembered while the window is open (saved for the next opening)", CueRulesDB.ui.rulesSub == "smartTab", tostring(CueRulesDB.ui.rulesSub))
+pcall(ns.ToggleUI); W.tick(0.1, 2)
+-- ===== Drafts (Xaya, 0.6.4): the tab is always there; off = description + switch; settings under Settings > Rule Creation =====
+CueRulesDB.ui.promptSave = nil
+CueRulesDB.drafts = {}
+local b3 = ns.BuildOptionsTable()
+local DT = b3.args.cooldowns.args.draftsTab
+local function hid(o) local h = o and o.hidden; if type(h) == "function" then return h() end; return h and true or false end
+check("drafts: tab shown even with drafts off and none stored", DT and not hid(DT))
+check("drafts off: a description pane says what drafts do", DT.args.about and not hid(DT.args.about) and DT.args.about.name():find("Drafts are off") ~= nil and DT.args.about.name():find("Save changes") ~= nil)
+check("drafts off: the switch reads 'Turn drafts on'", DT.args.toggle and DT.args.toggle.type == "execute" and DT.args.toggle.name() == "Turn drafts on")
+check("drafts off: no empty list text and no list intro", hid(DT.args.intro) and hid(DT.args.none))
+check("drafts: a 'Draft settings' button exists", DT.args.settings and DT.args.settings.type == "execute")
+check("drafts: switch and settings are compact buttons (no width / not full)", DT.args.toggle.width == nil and DT.args.settings.width == nil)
+DT.args.toggle.func()
+check("drafts: the switch turns drafts on", ns.DraftsEnabled() == true and DT.args.toggle.name() == "Turn drafts off" and DT.args.about.name():find("Drafts are on") ~= nil)
+check("drafts on: list intro and 'No drafts.' shown", not hid(DT.args.intro) and not hid(DT.args.none))
+local SR = b3.args.settings.args.rules.args
+check("settings: Use drafts toggle follows the same switch", SR.promptSave.get() == true)
+check("settings: Keep up to (5 to 100, default 30)", SR.draftsMax and SR.draftsMax.min == 5 and SR.draftsMax.max == 100 and SR.draftsMax.get() == 30)
+check("settings: confirm discard / confirm delete / chat notice, all on by default", SR.draftsConfirmDiscard.get() and SR.draftsConfirmDelete.get() and SR.draftsCloseNotice.get())
+for i = 1, 12 do table.insert(CueRulesDB.drafts, { id = "x" .. i, uid = "x" .. i, name = "D" .. i, ts = i, rules = {} }) end
+SR.draftsMax.set(nil, 8)
+check("settings: lowering 'Keep up to' trims the oldest drafts at once", #CueRulesDB.drafts == 8 and CueRulesDB.drafts[1].id == "x1", #CueRulesDB.drafts)
+check("drafts intro states the chosen number", DT.args.intro.name():find("Up to 8 drafts") ~= nil)
+SR.draftsMax.set(nil, 500)
+check("settings: 'Keep up to' is clamped to 100", ns.DraftsMax() == 100)
+SR.draftsConfirmDelete.set(nil, false)
+local b4 = ns.BuildOptionsTable()
+local d1 = b4.args.cooldowns.args.draftsTab.args.d1
+check("confirm deleting a draft off: Delete asks nothing", d1 and d1.args.delete.confirm() == false)
+SR.draftsConfirmDelete.set(nil, true)
+check("confirm deleting a draft on: Delete asks first", d1.args.delete.confirm() == true)
+SR.draftsConfirmDiscard.set(nil, false)
+check("confirm discard off: setting read by the save bar", ns.DraftsConfirmDiscard() == false)
+SR.draftsConfirmDiscard.set(nil, true)
+DT.args.toggle.func()
+check("drafts: the switch turns them off again; stored drafts stay listed", ns.DraftsEnabled() == false and #CueRulesDB.drafts == 8 and not hid(DT.args.intro))
+check("settings: the finer draft settings gray out while drafts are off (delete confirm stays usable for leftovers)", SR.draftsMax.disabled() == true and SR.draftsConfirmDiscard.disabled() == true and SR.draftsCloseNotice.disabled() == true and SR.draftsConfirmDelete.disabled == nil)
+CueRulesDB.drafts = {}
+CueRulesDB.ui.draftsMax = nil
+check("group page Display tab has the whole-group section and every-display sections, no Apply Text panel", PD and PD.placement and PD.size and PD.textDur and PD.textCnt and PD.textAbs and PD.applyText == nil)
 return R
 end
 '''

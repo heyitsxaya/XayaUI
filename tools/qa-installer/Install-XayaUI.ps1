@@ -122,6 +122,17 @@ function New-Junction([string]$Link, [string]$Source) {
     }
 }
 
+# Any unexpected error: say where it happened (2026-11-04: Xaya got "You cannot call a method on a null-valued expression" with no
+# line number, right after the AddOns line), so the next report points at the exact line.
+trap {
+    Say ''
+    Say ('STOPPED: ' + $_.Exception.Message) 'Red'
+    if ($_.InvocationInfo) { Say ('Where: ' + $_.InvocationInfo.PositionMessage) 'Red' }
+    if ($_.ScriptStackTrace) { Say $_.ScriptStackTrace 'DarkGray' }
+    Say 'Send a screenshot of this window. Link-XayaUI.bat (right-click, Run as administrator) does the same job without PowerShell.' 'Yellow'
+    Finish 1
+}
+
 # ---------------------------------------------------------------- find the checkout and its addon folders
 if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot 'XayaUI\XayaUI.toc'))) {
     Fail ('This script must stay in the top folder of the XayaUI checkout, next to the XayaUI folder. It is in: ' + $RepoRoot)

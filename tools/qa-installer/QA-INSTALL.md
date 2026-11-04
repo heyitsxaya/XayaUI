@@ -30,6 +30,10 @@ To see what the installer would do without changing anything, run it from a comm
 
 You do not need to run the installer again unless the release note says a new `XayaUI_*` folder was added. Running it again is always safe.
 
+## If the installer stops with a red error
+
+Use the simple installer instead: in `tools\qa-installer\` (or the top folder on `qa-installer-branch`), right-click **`Link-XayaUI.bat`** and choose **Run as administrator**. It does the same linking with plain Windows commands (no PowerShell), works on any branch, moves real folders in the way to `Interface\XayaUI-backup-<number>`, and leaves `XayaUI_GameDump` alone. If your game is not in `C:\Program Files (x86)\World of Warcraft`, run it from a command window with your AddOns folder in quotes after the file name.
+
 ## If something is off
 
 | What you see | What to do |

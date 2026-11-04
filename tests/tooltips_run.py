@@ -94,6 +94,73 @@ check("live match is remembered for next time", L.eval("noted~=nil and noted[1]=
 L.execute("secret[209426]=true")
 check("secret live aura id is skipped", run("posts[1](GameTooltip,{id=196718})")==["Spell ID: 196718","Aura ID: not known yet"])
 L.execute("secret[209426]=nil; C_UnitAuras=nil; XayaUI_NS.AuraSources=nil")
+# Bonus 0.6.1: a spell whose aura has the spell's OWN ID (Xaya: Immolation Aura 258920 said "not known yet" while the buff was on her)
+L.execute("XayaUI_NS.AuraSources = { EmbeddedAuras = REAL_AS.EmbeddedAuras, NestedType = REAL_AS.NestedType }; C_Spell.GetSpellName=function(id) return 'Fire Ring' end; C_Spell.GetSpellDescription=function(id) return 'Burns for 9 sec.' end")
+L.execute("C_UnitAuras = { GetPlayerAuraBySpellID=function(id) if id==258920 then return { spellId=258920 } end end }")
+check("self-ID buff on you: aura line says same as the spell", run("posts[1](GameTooltip,{id=258920})")==["Spell ID: 258920","Aura ID: 258920  (same as the spell)"])
+L.execute("C_UnitAuras = nil")
+check("self-ID remembered after the buff ends", run("posts[1](GameTooltip,{id=258920})")==["Spell ID: 258920","Aura ID: 258920  (same as the spell)"])
+check("self-ID remembered in saved data", L.eval("(XayaUI_NS.TT.DB().selfAura or {ids={}}).ids[258920]==true"))
+check("other duration spell still not known", run("posts[1](GameTooltip,{id=258921})")==["Spell ID: 258921","Aura ID: not known yet"])
+L.execute("XayaUI_NS.AuraModel = { AurasForCast=function() return {} end, CastAppliesSelf=function(id) return id==258922 end }")
+check("self-ID from a recorded cast", run("posts[1](GameTooltip,{id=258922})")==["Spell ID: 258922","Aura ID: 258922  (same as the spell)"])
+L.execute("XayaUI_NS.AuraModel = nil; C_UnitAuras = { GetAuraDataBySpellName=function(u,n,f) return { spellId=258923 } end }")
+check("self-ID from the same-name read", run("posts[1](GameTooltip,{id=258923})")==["Spell ID: 258923","Aura ID: 258923  (same as the spell)"])
+L.execute("C_UnitAuras = { GetPlayerAuraBySpellID=function(id) return 'S' end }; secret['S']=true")
+check("secret aura answer is not proof", run("posts[1](GameTooltip,{id=258924})")==["Spell ID: 258924","Aura ID: not known yet"])
+L.execute("C_UnitAuras = { GetPlayerAuraBySpellID=function(id) error('blocked') end }")
+check("throwing aura API contained", run("posts[1](GameTooltip,{id=258925})")==["Spell ID: 258925","Aura ID: not known yet"])
+L.execute("C_UnitAuras = { GetPlayerAuraBySpellID=function(id) return {} end }; XayaUI_NS.TT.DB().ids.aura=false")
+check("aura option off hides the self-ID line", run("posts[1](GameTooltip,{id=258926})")==["Spell ID: 258926"])
+L.execute("XayaUI_NS.TT.DB().ids.aura=true; C_UnitAuras=nil")
+check("self-ID never shown on items", run("posts[0](GameTooltip,{id=258920})")==["Item ID: 258920"])
+
+# Bonus 0.6.4: Cooldown Manager links. Modelled on the real rules: IN COMBAT every aura read gives no answer (GetPlayerAuraBySpellID is
+# SecretWhenUnitAuraRestricted / RequiresNonSecretAura), the Cooldown Manager data still reads (no secret returns in its documentation).
+L.execute("""
+XayaUI_NS.AuraSources = { EmbeddedAuras = REAL_AS.EmbeddedAuras, NestedType = REAL_AS.NestedType }
+XayaUI_NS.AuraModel = nil
+C_Spell.GetSpellName = function(id) return ({ [203720] = 'Demon Spikes', [203819] = 'Demon Spikes', [300001] = 'Own Buff', [300002] = 'Big Hit',
+  [300003] = 'Base', [300005] = 'Linked Buff' })[id] end
+C_Spell.GetSpellDescription = function(id) return 'Lasts 12 sec.' end
+C_UnitAuras = { GetPlayerAuraBySpellID = function() return nil end, GetAuraDataBySpellName = function() return nil end }   -- combat: no answers
+inCombat = true
+Enum.CooldownViewerCategory = { Essential = 0, Utility = 1, TrackedBuff = 2, TrackedBar = 3 }
+cdmLoaded = false
+cdmSets = { [0] = { 11, 13 }, [1] = {}, [2] = { 12, 14 }, [3] = { 15 } }
+cdmInfo = {
+  [11] = { spellID = 203720, linkedSpellIDs = { 203819 } },                                   -- Demon Spikes: linked aura
+  [12] = { spellID = 300001, linkedSpellIDs = {} },                                           -- buff tracker, own ID
+  [13] = { spellID = 300002, linkedSpellIDs = {} },                                           -- cooldown tracker, no aura known
+  [14] = { spellID = 300003, overrideSpellID = 300004, linkedSpellIDs = {} },                 -- buff tracker with an override: ambiguous
+  [15] = { spellID = 300006, overrideSpellID = 300007, linkedSpellIDs = { 300005, 777001 } },  -- linked aura, also under the override
+}
+C_CooldownViewer = {
+  GetCooldownViewerCategorySet = function(cat, allow) if not cdmLoaded then return {} end return cdmSets[cat] or {} end,
+  GetCooldownViewerCooldownInfo = function(id) return cdmInfo[id] end,
+}
+if XayaUI_NS.TT.ResetCooldownLinks then XayaUI_NS.TT.ResetCooldownLinks() end
+""")
+check("cdm: data not loaded yet -> not known, and the empty answer is not kept", run("posts[1](GameTooltip,{id=203720})")==["Spell ID: 203720","Aura ID: not known yet (auras are hidden in combat)"])
+L.execute("cdmLoaded = true; secret[777001] = true")
+check("cdm: Demon Spikes in combat -> its linked aura 203819", run("posts[1](GameTooltip,{id=203720})")==["Spell ID: 203720","Aura ID: 203819  (Demon Spikes)"])
+check("cdm: buff tracker with no links -> same as the spell, in combat", run("posts[1](GameTooltip,{id=300001})")==["Spell ID: 300001","Aura ID: 300001  (same as the spell)"])
+check("cdm: cooldown tracker with no links -> still not known (no guess)", run("posts[1](GameTooltip,{id=300002})")==["Spell ID: 300002","Aura ID: not known yet (auras are hidden in combat)"])
+check("cdm: buff tracker with an override and no links -> no guess", run("posts[1](GameTooltip,{id=300003})")==["Spell ID: 300003","Aura ID: not known yet (auras are hidden in combat)"])
+check("cdm: linked aura also found from the override spell; secret link skipped", run("posts[1](GameTooltip,{id=300007})")==["Spell ID: 300007","Aura ID: 300005  (Linked Buff)"])
+L.execute("C_CooldownViewer.GetCooldownViewerCooldownInfo = function() error('blocked') end; if XayaUI_NS.TT.ResetCooldownLinks then XayaUI_NS.TT.ResetCooldownLinks() end")
+check("cdm: a throwing API is contained", run("posts[1](GameTooltip,{id=300002})")==["Spell ID: 300002","Aura ID: not known yet (auras are hidden in combat)"])
+L.execute("C_CooldownViewer.GetCooldownViewerCooldownInfo = function(id) return cdmInfo[id] end; if XayaUI_NS.TT.ResetCooldownLinks then XayaUI_NS.TT.ResetCooldownLinks() end; inCombat = false")
+check("out of combat the hint has no combat note", run("posts[1](GameTooltip,{id=300002})")==["Spell ID: 300002","Aura ID: not known yet"])
+# /xuitt aura report
+L.execute("printed = {}; print = function(...) local t = {} for i = 1, select('#', ...) do t[#t+1] = tostring(select(i, ...)) end printed[#printed+1] = table.concat(t, ' ') end")
+L.execute("C_AddOns = { GetAddOnMetadata = function(a, k) return '0.6.4' end }; inCombat = true; SlashCmdList.XUITT('aura 203720')")
+rep = " | ".join(L.eval("printed").values())
+check("/xuitt aura: version, combat, Cooldown Manager links, live read, result", "XayaUI Bonus 0.6.4" in rep and "in combat: yes" in rep and "linked auras {203819}" in rep
+      and "no answer (hidden in combat)" in rep and "tooltip shows: 203819 Demon Spikes" in rep)
+if "tooltip shows: 203819" not in rep: print("   report was:", rep)
+L.execute("inCombat = false; C_CooldownViewer = nil; if XayaUI_NS.TT.ResetCooldownLinks then XayaUI_NS.TT.ResetCooldownLinks() end; C_UnitAuras = nil; XayaUI_NS.AuraSources = nil")
+
 check("npc id (6th field)", "NPC ID: 12345" in run('isPlayer=false; canAttack=false; guid="Creature-0-1-2-3-12345-0000A"; posts[2](GameTooltip,{guid=guid})'))
 check("player guid no npc", not any("NPC" in l for l in run('isPlayer=true; guid="Player-1-0000ABCD"; posts[2](GameTooltip,{guid=guid})')))
 check("own ilvl equipped", "Item level: 480.2" in " ".join(run('isPlayer=true; GameTooltip.GetUnit=function() return "player","player" end; guid="Player-1-A"; posts[2](GameTooltip,{guid=guid})')) or "Item level: 480.3" in " ".join(lines()))

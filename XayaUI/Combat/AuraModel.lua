@@ -185,6 +185,17 @@ function M.AurasForCast(castID)
     return out
 end
 
+-- True when a cast of `castID` was seen to apply an aura with the SAME ID (many buffs share their spell's ID, e.g. Immolation Aura
+-- 258920). AurasForCast leaves that case out because the tooltip already shows the spell ID; the tooltip asks this instead. (Bonus 0.6.1)
+function M.CastAppliesSelf(castID)
+    local d = DB(); if not (d and type(castID) == "number") then return false end
+    for _, p in pairs(d.specs or {}) do
+        local e = type(p) == "table" and type(p.entries) == "table" and p.entries[castID]
+        if e and type(e.auras) == "table" and e.auras[castID] ~= nil then return true end
+    end
+    return false
+end
+
 -------------------------------------------------------------------------------
 -- Spell text helpers
 -------------------------------------------------------------------------------

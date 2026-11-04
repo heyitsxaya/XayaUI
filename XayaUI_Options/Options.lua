@@ -690,6 +690,9 @@ local function TextStyleArgs(t, on, base, opts)
     a.y = Rng(t, "y", "Y offset", base + 8, -200, 200, 1, on)
     return a
 end
+-- the same builders for DisplayTab.lua (the group Display tab edits every display with the cue editor's own controls)
+ns.UI.Col, ns.UI.TextStyleArgs = Col, TextStyleArgs
+ns.UI.COUNT_SOURCE, ns.UI.COUNT_SOURCE_ORDER, ns.UI.ABSORB_SOURCE, ns.UI.ABSORB_SOURCE_ORDER = COUNT_SOURCE, COUNT_SOURCE_ORDER, ABSORB_SOURCE, ABSORB_SOURCE_ORDER
 
 -------------------------------------------------------------------------------
 -- Rule group
@@ -1056,7 +1059,7 @@ local function PasteApply(key, dst, src)
     elseif key == "activation" then dst.trigMode, dst.trigOrder = src.trigMode, src.trigOrder and C(src.trigOrder) or nil
     elseif key == "actions" then dst.actions = src.actions and C(src.actions) or nil
     elseif key == "stCd" then dst.cdState = src.cdState
-    elseif key == "stBuff" then dst.buffState = src.buffState
+    elseif key == "stBuff" then dst.buffState, dst.buffTimeOp, dst.buffTimeSec = src.buffState, src.buffTimeOp, src.buffTimeSec
     elseif key == "talents" then dst.talents, dst.talentMode = C(src.talents or {}), src.talentMode
     elseif key == "extra" then dst.extra = C(src.extra or { list = {} })
     elseif key == "load" then dst.load = C(src.load or {})
@@ -1222,10 +1225,11 @@ function ns.ArrowOpen(rule, key) local b = bannerOpen[rule]; return not (b and b
 function ns.ArrowToggle(rule, key, order)
     return { type = "execute", order = order, width = "normal",
         name = function()
+            if ns.SkinRows and ns.SkinRows() then return "Options" end   -- skin on: the open / close button is drawn at the left (Skin.lua)
             return (ns.ArrowOpen(rule, key) and "|TInterface\\Buttons\\UI-MinusButton-Up:16:16|t" or "|TInterface\\Buttons\\UI-PlusButton-Up:16:16|t") .. "  Options"
         end,
         desc = "Open or close the options below. Closing never changes any setting.",
-        arg = { xuiLeft = true },
+        arg = { xuiLeft = true, xuiChevron = function() return ns.ArrowOpen(rule, key) end },
         func = function()
             bannerOpen[rule] = bannerOpen[rule] or {}
             local b = bannerOpen[rule]
@@ -1315,7 +1319,17 @@ local function BuildRule(i, rule)
                 { desc = "Only used if the game reports no charge data. Auto-detection normally wins." }),
             detected = { type = "description", order = 6, width = "full", name = function() return DetectedMax(rule.spellID) end },
             buffHeader = { type = "header", name = "Buff / Aura", order = 10 },
-            buffState = Sel(rule, "buffState", "State", 11, BUFF_VALUES, BUFF_ORDER, on, { width = "double" }),
+            buffState = Sel(rule, "buffState", "State", 11, BUFF_VALUES, BUFF_ORDER, function() Changed(rule); Notify() end),
+            -- "with N seconds left" (0.6.4, #173 / #278 / #314): only while State is "present"; unknown time keeps the trigger unknown
+            buffTimeOp = Sel(rule, "buffTimeOp", "Seconds left", 11.1, ns.TIME_OPS and ns.TIME_OPS.values or { any = "Any time left" }, ns.TIME_OPS and ns.TIME_OPS.order or { "any" },
+                function() Changed(rule); Notify() end,
+                { get = function() return rule.buffTimeOp or "any" end,
+                  hidden = function() return not ns.BuffUsed(rule) or rule.buffState ~= "present" end,
+                  desc = "Only true while the buff has this much time left. In combat the time is exact when the game shows it, otherwise the duration engine's estimate (/xui timing); with no estimate yet the trigger is unknown and the rule waits." }),
+            buffTimeSec = { type = "input", name = "Seconds", order = 11.2, width = "half",
+                hidden = function() return not ns.BuffUsed(rule) or rule.buffState ~= "present" or not rule.buffTimeOp or rule.buffTimeOp == "any" end,
+                get = function() return rule.buffTimeSec ~= nil and tostring(rule.buffTimeSec) or "" end,
+                set = function(_, v) rule.buffTimeSec = tonumber(v); Changed(rule) end },
             buffSearch = SearchBox(11.5, function(id) rule.buffID = id; Changed(rule); Notify() end, nil, "aura"),
             buffID = {
                 type = "input", name = "Aura spell ID", order = 12, width = "half",
@@ -1944,6 +1958,22 @@ local function BuildRule(i, rule)
     local cntArgs = TextStyleArgs(C, on, 10)
     cntArgs.enabled = Tog(C, "enabled", "Show a count", 1, on, { desc = "Aura stacks or spell charges. Experimental under Midnight secrecy: the number can only be displayed, not compared." })
     cntArgs.source = Sel(C, "source", "Count of", 2, COUNT_SOURCE, COUNT_SOURCE_ORDER, on)
+    -- #300: only counts the rule's triggers can have (stacks of an aura that stacks, charges of a spell with more than one); the choice in use stays
+    local function CountSup() local okc, cs = pcall(ns.CountSupport or function() return { any = true, stacks = true, charges = true } end, rule); return okc and cs or { any = true, stacks = true, charges = true } end
+    cntArgs.source.values = function()
+        local cs, v = CountSup(), {}
+        for k, label in pairs(COUNT_SOURCE) do
+            if k == C.source or (k == "none" and cs.stacks) or (k == "stacks" and cs.stacks) or (k == "charges" and cs.charges) then v[k] = label end
+        end
+        if not next(v) then v.none = COUNT_SOURCE.none end
+        return v
+    end
+    cntArgs.source.sorting = function()
+        local v, o = cntArgs.source.values(), {}
+        for _, k in ipairs(COUNT_SOURCE_ORDER) do if v[k] then o[#o + 1] = k end end
+        return o
+    end
+    local function CountHidden() return not (C.enabled or CountSup().any) end
     ns.GateRest(rule, cntArgs, "cnt", "Count options", 5, function() return C.enabled end, { enabled = true })
     local AB = V.absorb
     local absArgs = TextStyleArgs(AB, on, 10)
@@ -2170,7 +2200,7 @@ local function BuildRule(i, rule)
         display = Banner("display", "Display Options", 1, display.args.enabled, dispBody, function() return V.enabled and true or false end),
         text = Banner("text", "Text", 2, textEnable, {
             dur = Sub("dur", "Buff Duration Text", 1, durArgs),
-            cnt = Sub("cnt", "Stacks / Charges Count", 2, cntArgs),
+            cnt = Sub("cnt", "Stacks / Charges Count", 2, cntArgs, CountHidden),
             abs = Sub("abs", "Shield / Absorb Amount", 3, absArgs),
         }, function() return (T.enabled or C.enabled or AB.enabled) and true or false end),
         sound = Banner("sound", "Sound", 3, soundEnable, soundBody, function() return rule.sound.enabled and true or false end),
@@ -2181,7 +2211,7 @@ local function BuildRule(i, rule)
         colorSub = Sub("cq_color", "Color & Transparency", 1, colorArgs),
         posSub = Sub("cq_pos", "Position (Offset From the Anchor)", 1, posArgs),
         animSub = Sub("cq_anim", "Animation Options", 1, animArgs),
-        textBody = { dur = Sub("cq_dur", "Buff Duration Text", 1, durArgs), cnt = Sub("cq_cnt", "Stacks / Charges Count", 2, cntArgs), abs = Sub("cq_abs", "Shield / Absorb Amount", 3, absArgs) },
+        textBody = { dur = Sub("cq_dur", "Buff Duration Text", 1, durArgs), cnt = Sub("cq_cnt", "Stacks / Charges Count", 2, cntArgs, CountHidden), abs = Sub("cq_abs", "Shield / Absorb Amount", 3, absArgs) },
         soundBody = soundBody,
         speechBody = speechBody,
         ensureText = function() if not (T.enabled or C.enabled or AB.enabled) then T.enabled = true end end,
@@ -2640,10 +2670,27 @@ local function BuildAddonSettings()
         } },
         rules = { type = "group", name = "Rule Creation", order = 1.2, args = {
             savingHeader = { type = "header", name = "Saving", order = 10 },
-            promptSave = { type = "toggle", name = "Prompt for saving and enable drafts", order = 11, width = "full",
-                desc = "Off (default): every change is kept the moment you make it. On: a yellow bar appears under the window when a rule has unsaved changes (Save changes, Save as a copy, Add to drafts, Discard changes), and closing the window first puts unsaved changes in Drafts.",
+            promptSave = { type = "toggle", name = "Use drafts (save bar)", order = 11,
+                desc = "Off (default): every change is kept the moment you make it. On: a bar appears under the window when a rule has unsaved changes (Save changes, Save as a copy, Add to drafts, Discard changes), and closing the window first puts unsaved changes in Drafts. The Drafts tab has the same switch.",
                 get = function() return ns.DraftsEnabled and ns.DraftsEnabled() or false end,
                 set = function(_, v) Ui().promptSave = v and true or false; if ns.DraftsApplySetting then ns.DraftsApplySetting() end end },
+            -- draft settings (0.6.4): what asks first, how many are kept, the chat notice. Grayed out while drafts are off.
+            draftsMax = { type = "range", name = "Keep up to (drafts)", order = 11.1, min = 5, max = 100, step = 1,
+                desc = "The newest drafts are kept; older ones beyond this number are dropped (lowering it drops them at once).",
+                disabled = function() return not (ns.DraftsEnabled and ns.DraftsEnabled()) end,
+                get = function() return ns.DraftsMax and ns.DraftsMax() or 30 end,
+                set = function(_, v) Ui().draftsMax = v; if ns.DraftsTrim then ns.DraftsTrim() end end },
+            draftsConfirmDiscard = { type = "toggle", name = "Confirm Discard changes", order = 11.2,
+                desc = "Ask before throwing away a rule's unsaved changes.",
+                disabled = function() return not (ns.DraftsEnabled and ns.DraftsEnabled()) end,
+                get = function() return Ui().draftsConfirmDiscard ~= false end, set = function(_, v) Ui().draftsConfirmDiscard = v and true or false end },
+            draftsConfirmDelete = { type = "toggle", name = "Confirm deleting a draft", order = 11.3,
+                desc = "Ask before a draft is deleted from the Drafts tab.",
+                get = function() return Ui().draftsConfirmDelete ~= false end, set = function(_, v) Ui().draftsConfirmDelete = v and true or false end },
+            draftsCloseNotice = { type = "toggle", name = "Chat notice on close", order = 11.4,
+                desc = "When the window closes with unsaved changes, say in chat how many rules went to Drafts.",
+                disabled = function() return not (ns.DraftsEnabled and ns.DraftsEnabled()) end,
+                get = function() return Ui().draftsCloseNotice ~= false end, set = function(_, v) Ui().draftsCloseNotice = v and true or false end },
             listHeader = { type = "header", name = "Rule list", order = 20 },
             condensedList = { type = "toggle", name = "Condensed rule list (no icons, compact rows)", order = 21, width = "full",
                 desc = "Drops the icons and the taller rows from the left-hand rule list and shows plain, compact rows with the +/- toggle on the left.",
@@ -3436,6 +3483,13 @@ function ns.OpenPage(key)
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, (key == "settings" and skinned) and "set" or key)
 end
 ns.UI.Creator = function() ns.OpenPage("creator") end
+-- Settings > UI Options > Rule Creation (the draft settings live there)
+function ns.OpenDraftSettings()
+    ns.OpenPage("settings")
+    local skinned = ns.SkinRows and ns.SkinRows()
+    if skinned then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "set", "ui", "rules")
+    else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "settings", "rules") end
+end
 ns.UI.Drafts = function() ns.OpenPage("drafts") end
 ns.UI.RecycleBin = function() ns.OpenPage("recyclebin") end   -- toolbar button, next to Export
 -- a page a feature registered (ns.RegisterSettingsPage), by module and key; sub = a tab inside the page. Used through
@@ -3463,76 +3517,6 @@ end
 
 local function FolderRuleCount(f)
     return #FolderRules(f.id)
-end
-
--- Session-only choices for "apply to all rules in this folder" (nothing here is saved).
-local folderApply = setmetatable({}, { __mode = "k" })
-
-local function FolderApplyGroup(f)
-    local function st()
-        local t = folderApply[f]
-        if not t then t = { targets = { dur = true, cnt = true, abs = true } }; folderApply[f] = t end
-        return t
-    end
-    local ch = setmetatable({}, { __index = function(_, k) return st()[k] end, __newindex = function(_, k, v) st()[k] = v end })
-    local TARGETS = { dur = "Buff Duration Text", cnt = "Stacks / Charges Count", abs = "Shield / Absorb Amount" }
-    local ONOFF = { on = "Turn On", off = "Turn Off" }
-    local function nRules() return #FolderRules(f.id) end
-    return {
-        type = "group", inline = true, order = 6,
-        name = "Apply Text Settings to All Rules in This Group",
-        args = {
-            note = { type = "description", order = 0, width = "full", fontSize = "small",
-                name = "Choose which text elements to change and what to change, then press Apply. A blank choice (or 0) leaves that setting alone. Includes rules in nested groups. Nothing is changed until you press Apply." },
-            targets = { type = "multiselect", name = "Text Elements to Change", order = 1, width = "full", values = TARGETS,
-                get = function(_, k) return st().targets[k] and true or false end,
-                set = function(_, k, v) st().targets[k] = v and true or nil end },
-            font = { type = "select", name = "Font", order = 2,
-                values = function() local v = ns.FontList(); return v end,
-                sorting = function() local _, o = ns.FontList(); return o end,
-                get = function() return st().font end, set = function(_, v) st().font = v end },
-            size = { type = "range", name = "Text Size (0 = Leave As Is)", order = 3, min = 0, max = 96, step = 1,
-                get = function() return st().size or 0 end, set = function(_, v) st().size = v > 0 and v or nil end },
-            outline = Sel(ch, "outline", "Outline", 4, TEXT_OUTLINE, TEXT_OUTLINE_ORDER, function() end),
-            place = Sel(ch, "place", "Placement", 5, TEXT_PLACE, TEXT_PLACE_ORDER, function() end),
-            anchor = Sel(ch, "anchor", "Position", 6, TEXT_ANCHOR, TEXT_ANCHOR_ORDER, function() end),
-            enable = { type = "select", name = "Show Selected Text Elements", order = 7, values = ONOFF, sorting = { "on", "off" },
-                get = function() return st().enable end, set = function(_, v) st().enable = v end },
-            decimals = { type = "select", name = "Tenths (Decimals) on Duration Text", order = 8, values = ONOFF, sorting = { "on", "off" },
-                get = function() return st().decimals end, set = function(_, v) st().decimals = v end },
-            decimalBelow = { type = "range", name = "Tenths Only Below (Seconds, 0 = Leave As Is)", order = 9, min = 0, max = 30, step = 1, width = "double",
-                get = function() return st().decimalBelow or 0 end, set = function(_, v) st().decimalBelow = v > 0 and v or nil end },
-            apply = { type = "execute", order = 20, width = "double",
-                name = function() return "Apply to " .. nRules() .. " Rule(s)" end,
-                confirm = true, confirmText = "Overwrite the chosen text settings on every rule in this group (and its nested groups)?",
-                func = function()
-                    local c = st()
-                    local keys = { dur = "text", cnt = "count", abs = "absorb" }
-                    local n = 0
-                    for _, r in ipairs(FolderRules(f.id)) do
-                        for tk, vk in pairs(keys) do
-                            local t = c.targets[tk] and r.visual[vk]
-                            if t then
-                                if c.font then t.font = c.font end
-                                if c.size then t.size = c.size end
-                                if c.outline then t.outline = c.outline end
-                                if c.place then t.place = c.place end
-                                if c.anchor then t.anchor = c.anchor end
-                                if c.enable then t.enabled = (c.enable == "on") end
-                                if tk == "dur" then
-                                    if c.decimals then t.decimals = (c.decimals == "on") end
-                                    if c.decimalBelow then t.decimalBelow = c.decimalBelow end
-                                end
-                            end
-                        end
-                        ns.RefreshVisual(r)
-                        n = n + 1
-                    end
-                    ns.MarkDirty(); Notify()
-                    ns.Print(("applied text settings to %d rule(s) in group '%s'"):format(n, f.name))
-                end },
-        },
-    }
 end
 
 local LOAD_OV_VALUES = {
@@ -3586,31 +3570,45 @@ function ns.FolderContainerGroup(f)
     AddSquareRadio(g.args, "ctype", 1, { static = "Static group  (items keep their own positions)", dynamic = "Dynamic group  (positions its items automatically)" },
         { "static", "dynamic" }, function() return isDyn() and "dynamic" or "static" end,
         function(v) f.cType = (v == "dynamic") and "dynamic" or nil; apply() end)
-    g.args.growth = { type = "select", name = "Grow direction", order = 2, width = "double", hidden = function() return not isDyn() end,
-        values = { RIGHT = "Right", LEFT = "Left", DOWN = "Down", UP = "Up", HCENTER = "Centered, horizontal", VCENTER = "Centered, vertical" },
+    -- Dynamic layout (0.6.4): every dropdown shares its row (Grow + Sort, Spacing + Wrap, Per row + New rows go), and wrapping is an
+    -- explicit tick box with its count beside it (Xaya: "dynamic groups should have row / column wrap options"; the old "Items per row /
+    -- column (0 = no limit)" slider was easy to miss). Saved fields are unchanged: cGrowth, cSort, cSpacing, cWrapN (nil = no wrap), cWrapRev.
+    local function growsAcross() local d = f.cGrowth or "RIGHT"; return d == "RIGHT" or d == "LEFT" or d == "HCENTER" end
+    local function wrapOn() return (tonumber(f.cWrapN) or 0) > 0 end
+    g.args.growth = { type = "select", name = "Grow direction", order = 2, hidden = function() return not isDyn() end,
+        values = { RIGHT = "Right", LEFT = "Left", DOWN = "Down", UP = "Up", HCENTER = "Centered, across", VCENTER = "Centered, down" },
         sorting = { "RIGHT", "LEFT", "DOWN", "UP", "HCENTER", "VCENTER" },
+        desc = "Which way the group adds its items. Centered keeps the line centered on the group's position.",
         get = function() return f.cGrowth or "RIGHT" end, set = function(_, v) f.cGrowth = v; apply() end }
-    g.args.spacing = { type = "range", name = "Spacing between items", order = 2.1, width = "double", min = 0, max = 200, step = 1,
+    g.args.sort = { type = "select", name = "Sort items", order = 2.05, hidden = function() return not isDyn() end,
+        values = { none = "Rule order", asc = "Name, A to Z", desc = "Name, Z to A" },
+        sorting = { "none", "asc", "desc" },
+        desc = "Rule order follows the rule list in the sidebar (move rules with the arrows or by dragging).",
+        get = function() return f.cSort or "none" end, set = function(_, v) f.cSort = (v ~= "none") and v or nil; apply() end }
+    g.args.spacing = { type = "range", name = "Spacing", order = 2.1, min = 0, max = 200, step = 1,
+        desc = "Space between items, in pixels.",
         hidden = function() return not isDyn() end,
         get = function() return f.cSpacing or 4 end, set = function(_, v) f.cSpacing = v; apply() end }
-    g.args.wrapN = { type = "range", name = "Items per row / column (0 = no limit)", order = 2.11, width = "double", min = 0, max = 50, step = 1,
-        desc = "Start a new row (growing right or left) or a new column (growing down or up) after this many items. The container width / height below can also wrap it when the items would not fit.",
+    g.args.wrapOn = { type = "toggle", order = 2.11,
+        name = function() return growsAcross() and "Wrap into rows" or "Wrap into columns" end,
+        desc = "Start a new row (growing right or left) or a new column (growing down or up) after a set number of items. A container width / height (below) also wraps the line when the items would not fit.",
         hidden = function() return not isDyn() end,
-        get = function() return f.cWrapN or 0 end, set = function(_, v) f.cWrapN = (v > 0) and v or nil; apply() end }
-    local function growsAcross() local d = f.cGrowth or "RIGHT"; return d == "RIGHT" or d == "LEFT" or d == "HCENTER" end
-    g.args.wrapDir = { type = "select", order = 2.12, width = "double", hidden = function() return not isDyn() end,
+        get = function() return wrapOn() end,
+        set = function(_, v) if v then f.cWrapN = wrapOn() and f.cWrapN or 6 else f.cWrapN = nil end; apply() end }
+    g.args.wrapN = { type = "range", order = 2.115, min = 1, max = 50, step = 1,
+        name = function() return growsAcross() and "Items per row" or "Items per column" end,
+        hidden = function() return not (isDyn() and wrapOn()) end,
+        get = function() return tonumber(f.cWrapN) or 6 end, set = function(_, v) f.cWrapN = (v > 0) and v or nil; apply() end }
+    g.args.wrapDir = { type = "select", order = 2.12,
+        hidden = function() return not (isDyn() and (wrapOn() or (tonumber(f.cW) or 0) > 0 or (tonumber(f.cH) or 0) > 0)) end,
         name = function() return growsAcross() and "New rows go" or "New columns go" end,
         desc = "Which side of the first row / column the extra ones are added on.",
         values = function()
-            if growsAcross() then return { fwd = "Below the first row", rev = "Above the first row" } end
-            return { fwd = "To the right of the first column", rev = "To the left of the first column" }
+            if growsAcross() then return { fwd = "Below", rev = "Above" } end
+            return { fwd = "To the right", rev = "To the left" }
         end,
         sorting = { "fwd", "rev" },
         get = function() return f.cWrapRev and "rev" or "fwd" end, set = function(_, v) f.cWrapRev = (v == "rev") or nil; apply() end }
-    g.args.sort = { type = "select", name = "Sort items", order = 2.2, width = "double", hidden = function() return not isDyn() end,
-        values = { none = "None (in rule order)", asc = "By name, A to Z", desc = "By name, Z to A" },
-        sorting = { "none", "asc", "desc" },
-        get = function() return f.cSort or "none" end, set = function(_, v) f.cSort = (v ~= "none") and v or nil; apply() end }
     g.args.alpha = { type = "range", name = "Group opacity", order = 3, min = 0, max = 1, step = 0.05,
         get = function() return f.cAlpha or 1 end, set = function(_, v) f.cAlpha = (v < 1) and v or nil; apply() end }
     g.args.scale = { type = "range", name = "Group scale", order = 3.01, min = 0.25, max = 3, step = 0.05,
@@ -3772,19 +3770,19 @@ local function BuildFolder(k, f)
         args = {
             name = { type = "input", name = "Group name", order = 1, width = "double",
                 get = function() return f.name end, set = function(_, v) if v ~= "" then f.name = v end; Notify() end },
-            deleteTop = { type = "execute", name = "|cffff6060Delete this group|r", order = 1.5, width = 1,
-                desc = "Its rules and nested groups are kept and move up one level. Keyboard: press Delete while this group is open.",
+            deleteTop = { type = "execute", name = "|cffff6060Delete group|r", order = 1.5,
+                desc = "Deletes this group only. Its rules and nested groups are kept and move up one level. Keyboard: press Delete while this group is open.",
                 confirm = true, confirmText = "Delete this group? The rules and nested groups inside are kept and move up one level.",
                 func = function() ns.DeleteFolderById(f.id) end },
-            deleteAllTop = { type = "execute", name = "|cffff6060Delete group and all contents|r", order = 1.6, width = 1,
+            deleteAllTop = { type = "execute", name = "|cffff6060Delete with contents|r", order = 1.6,
                 desc = "Deletes this group, every nested group, and every rule inside them. This cannot be undone.",
                 confirm = true, confirmText = "Delete this group AND all rules and nested groups inside it? This cannot be undone.",
                 func = function() ns.DeleteFolderAllById(f.id) end },
-            newRule = { type = "execute", name = "+ New rule in this group", order = 2, width = "double",
+            newRule = { type = "execute", name = "+ New rule", order = 2, desc = "Adds a new rule to this group.",
                 func = function()
                     StartNewRule(f.id)
                 end },
-            newSub = { type = "execute", name = "+ New nested group", order = 2.5, width = "double",
+            newSub = { type = "execute", name = "+ Nested group", order = 2.5, desc = "Adds a new group inside this one.",
                 func = function()
                     local nf = ns.NewFolder("Group", f.id)
                     local scope = ns.CurrentScope()
@@ -3792,9 +3790,9 @@ local function BuildFolder(k, f)
                     Notify()
                     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(path))
                 end },
-            enableAll = { type = "execute", name = "Enable all rules in this group (and nested groups)", order = 3, width = "double",
+            enableAll = { type = "execute", name = "Enable all", order = 3, desc = "Switches on every rule in this group and its nested groups.",
                 func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = true; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
-            disableAll = { type = "execute", name = "Disable all rules in this group (and nested groups)", order = 4, width = "double",
+            disableAll = { type = "execute", name = "Disable all", order = 4, desc = "Switches off every rule in this group and its nested groups.",
                 func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
             pausePv = { type = "toggle", name = "Pause preview animations", order = 4.5, width = "double",
                 hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end,
@@ -3809,21 +3807,6 @@ local function BuildFolder(k, f)
             soundChannel = FolderSoundGroup(f),
             container = ns.FolderContainerGroup(f),
             arrange = ns.FolderArrangeGroup(f),
-            applyText = (function()
-                local g = FolderApplyGroup(f)
-                g.hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end
-                return g
-            end)(),
-            delete = { type = "execute", name = "Delete group (contents move up one level)", order = 9, width = "double",
-                confirm = true, confirmText = "Delete this group? The rules and nested groups inside are kept and move up one level.",
-                func = function()
-                    for _, r in ipairs(ns.rules) do if r.folder == f.id then r.folder = f.parent end end
-                    for _, ff in ipairs(ns.folders) do if ff.parent == f.id then ff.parent = f.parent end end
-                    for idx, ff in ipairs(ns.folders) do if ff == f then table.remove(ns.folders, idx); break end end
-                    local tab = ns.CurrentTab()
-                    Notify()
-                    ns.GoHome(tab)
-                end },
         },
     }
     -- Tabs (like a rule): Group | Display | Load. The pieces above are sorted into them here.
@@ -3841,10 +3824,13 @@ local function BuildFolder(k, f)
     end
     local isVisual = function() return ns.KindHas({ folder = f.id }, "visual") end
     local groupArgs = g.args
-    local dispArgs = take({ "arrange", "applyText" })
-    dispArgs.placement = { type = "group", inline = true, order = 1, name = "Opacity, Scale & Layer", args = dispFromContainer }
+    local dispArgs = take({ "arrange" })
+    if dispArgs.arrange then dispArgs.arrange.order = 9 end
+    -- 0.6.4 (#341, group display): the group as a whole first, then every display cue inside, edited live (DisplayTab.lua)
+    dispArgs.placement = { type = "group", inline = true, order = 1, name = "Whole group: opacity, scale & layer", args = dispFromContainer }
     dispArgs.note = { type = "description", order = 0, width = "full", fontSize = "small",
-        name = "Display settings for every display inside this group and its nested groups: opacity, scale, layer (frame strata), alignment, and shared text formatting. The group's own position is on the Group tab. Tinting / color for a whole group is not built yet." }
+        name = "The group's own opacity, scale, and layer apply to everything inside it on top of each display's own settings. Below them, the settings of every display cue in this group and its nested groups. The group's position, type, and container are on the Group tab." }
+    if ns.GroupDisplayArgs then for k, v in pairs(ns.GroupDisplayArgs(f, FolderRules, Notify)) do dispArgs[k] = v end end
     local loadArgs = { override = take({ "loadOverride" }).loadOverride, conds = ns.FolderLoadConditions(f) }
     local lock = function() return ns.IsEditLocked({ folder = f.id }) end
     ns.LockArgs(groupArgs, lock); ns.LockArgs(dispArgs, lock); ns.LockArgs(loadArgs, lock)
@@ -4141,7 +4127,9 @@ local function BuildOptions()
     ns.PickerInto(loadedArgs); ns.PickerInto(disabledArgs)
     -- Rules is a tab group with its own row of sub-tabs (2026-11-01). Each sub-tab keeps the same root rows as before (Loaded / Not Loaded,
     -- All Rules, a Disabled root), so every row path below the sub-tab is unchanged.
-    local enabledTab = { type = "group", name = "Enabled", order = 1, childGroups = "tree", args = {
+    -- Rules sub-tab order (Xaya, 0.6.4): Smart Categories | Enabled | Disabled | Drafts (Class/Spec Rule Creator pinned right). Enabled is
+    -- the default tab: the window opens on it unless another sub-tab was open when the window was last closed (ui.rulesSub, saved while open).
+    local enabledTab = { type = "group", name = "Enabled", order = 2, childGroups = "tree", args = {
         loaded = { type = "group", order = 1, childGroups = "tree",
             name = function() return "LOADED (" .. nLoaded .. ")" end, args = loadedArgs },
         spacer = { type = "group", order = 2.5, name = " ", disabled = true, args = {} },
@@ -4151,14 +4139,14 @@ local function BuildOptions()
             name = function() return "NOT LOADED (" .. nNot .. ")" end, args = notArgs },
         -- AUTO-POPULATE RULES moved to the Class/Spec Rule Creator tab (2026-10-31)
         } }
-    local smartTab = { type = "group", name = "Smart Categories", order = 3, childGroups = "tree", args = { all = all } }
+    local smartTab = { type = "group", name = "Smart Categories", order = 1, childGroups = "tree", args = { all = all } }
     local draftsTab = ns.BuildDraftsPage and ns.BuildDraftsPage() or nil
     if draftsTab then
-        draftsTab.order = 2; draftsTab.name = "Drafts"; ns.PickerInto(draftsTab.args)
-        -- with the setting off the Drafts tab is out of the way, unless drafts from earlier are still waiting in it
-        draftsTab.hidden = function() return not (ns.DraftsEnabled and ns.DraftsEnabled()) and #(CueRulesDB.drafts or {}) == 0 end
+        draftsTab.order = 4; draftsTab.name = "Drafts"; ns.PickerInto(draftsTab.args)
+        -- 0.6.4 (Xaya): always shown; with drafts off it explains them and offers the switch (Drafts.lua BuildDraftsPage)
+        draftsTab.hidden = nil
     end
-    local disabledTab = { type = "group", name = "Disabled", order = 4, childGroups = "tree", args = {
+    local disabledTab = { type = "group", name = "Disabled", order = 3, childGroups = "tree", args = {
         disabled = { type = "group", order = 1, childGroups = "tree",
             name = function() return "DISABLED (" .. nDisabled .. ")" end, args = disabledArgs },
         } }
@@ -4815,7 +4803,13 @@ local function MakeChevron(button)
     return b
 end
 
--- Drag a rule row or a folder row (not "All rules") onto a folder row, "All rules", or a rule row to move it.
+-- Drag a rule row or a folder row (not "All rules") to move it (#343, 0.6.4):
+--   rule onto a rule row      -> placed just above / below that rule (top / bottom half of the row), joining its group
+--   rule onto a group row     -> moved into that group (end of its rules); onto "All rules" -> top level
+--   group onto a group row    -> top quarter: placed above it, bottom quarter: below it (same parent), middle: nested inside it
+--   group onto a rule row     -> moved into that rule's group
+-- A gold line shows where an above / below drop lands; the row lights up for "into". Dropping anywhere else does nothing.
+-- Reordering only swaps rules among the list positions their group already uses (like the arrows), so no other row changes place.
 local drag, dragFrame = {}, nil
 local function LastKey(uv) return uv and uv:match("([^\001]+)$") end
 local function RowUnderCursor(tree)
@@ -4823,24 +4817,113 @@ local function RowUnderCursor(tree)
         if b:IsShown() and b:IsMouseOver() then return b end
     end
 end
--- returns ok, folderId (nil = top level)
-local function DropTarget(b, kind, obj)
+function drag.DragNested(r) return (r and r.parentUid and ns.FindParentRule and ns.FindParentRule(r)) and true or false end
+function drag.DragRuleKey(r) return (r.folder and FolderById(r.folder)) and r.folder or false end
+function drag.DragFolderKey(f) return (f.parent and FolderById(f.parent)) and f.parent or false end
+-- where on row b the cursor is: "before" / "after" / "into"
+function drag.DropZone(b, kind, isFolderRow)
+    local _, y = GetCursorPosition()
+    local sc = (b.GetEffectiveScale and b:GetEffectiveScale()) or 1
+    local top, bot = b:GetTop(), b:GetBottom()
+    if not (y and top and bot) or top <= bot then return isFolderRow and "into" or "after" end
+    local frac = (top - y / sc) / (top - bot)   -- 0 at the top edge, 1 at the bottom edge
+    if not isFolderRow then return frac < 0.5 and "before" or "after" end
+    if kind ~= "folder" then return "into" end
+    if frac < 0.25 then return "before" end
+    if frac > 0.75 then
+        local st = b.obj and (b.obj.status or b.obj.localstatus)
+        if st and st.groups and st.groups[b.uniquevalue] then return "into" end   -- open group: "below" would land after its whole contents
+        return "after"
+    end
+    return "into"
+end
+-- returns ok, target folder id (nil = top level), anchor (rule or folder to sit next to, or nil), where ("before" / "after" / "into")
+local function DropTarget(b, kind, obj, zone)
     local last = LastKey(b and b.uniquevalue)
     if not last then return false end
-    if last == "all" then return true, nil end
+    local scope = tostring(b.uniquevalue or ""):match("^([^\001]+)")
+    if last == "all" then return true, nil, nil, "into" end
     if last:match("^f%d") then
-        if not FolderById(last) then return false end
-        if kind == "folder" and IsInFolder(last, obj.id) then return false end  -- itself or its own subfolder
-        return true, last
+        local f = FolderById(last)
+        if not f then return false end
+        if kind == "rule" then
+            if ns.IsCategoryRoot(f) then return false end   -- same rule as Move to: rules do not go straight into a Smart Category
+            return true, last, nil, "into"
+        end
+        if f == obj or IsInFolder(last, obj.id) then return false end  -- itself or its own subfolder
+        if zone == "into" or scope == "disabled" then return true, last, nil, "into" end   -- the Disabled list is flat: no above / below
+        local parent = drag.DragFolderKey(f) or nil
+        if parent and IsInFolder(parent, obj.id) then return false end
+        return true, parent, f, zone
     end
     local n = last:match("^rule(%d+)$")
     local r = n and ns.rules and ns.rules[tonumber(n)]
     if r then
+        if drag.DragNested(r) then r = ns.FindParentRule(r) end   -- a cue / condition row stands for its rule
         local fid = (r.folder and FolderById(r.folder)) and r.folder or nil
-        if kind == "folder" and fid and IsInFolder(fid, obj.id) then return false end
-        return true, fid
+        if kind == "folder" then
+            if fid and IsInFolder(fid, obj.id) then return false end
+            return true, fid, nil, "into"
+        end
+        if r == obj then return false end
+        return true, fid, r, (zone == "before") and "before" or "after"
     end
     return false
+end
+-- put item at the place the drop asked for, inside list positions that hold its siblings (rules in ns.rules, groups in ns.folders)
+function drag.Rotate(arr, slots, item, anchor, where)
+    local order, at = {}, nil
+    for _, i in ipairs(slots) do if arr[i] ~= item then order[#order + 1] = arr[i] end end
+    for k, x in ipairs(order) do if x == anchor then at = (where == "before") and k or (k + 1) end end
+    table.insert(order, at or (#order + 1), item)
+    local moved = false
+    for k, i in ipairs(slots) do if arr[i] ~= order[k] then moved = true end; arr[i] = order[k] end
+    return moved
+end
+-- apply a drop; returns true when anything changed (also used by tests/drag_drop_run.py)
+function ns.DragPlace(kind, obj, target, anchor, where)
+    local changed = false
+    if kind == "rule" then
+        if obj.folder ~= target then
+            obj.folder = target; changed = true
+            if not anchor then   -- dropped on a group row: it goes to the end of that group, where it can be seen
+                for _, r in ipairs(ns.rules) do if r ~= obj and not drag.DragNested(r) and drag.DragRuleKey(r) == drag.DragRuleKey(obj) then anchor = r end end
+                where = "after"
+            end
+        end
+        if anchor then
+            local key, slots = drag.DragRuleKey(obj), {}
+            for i, r in ipairs(ns.rules) do if not drag.DragNested(r) and drag.DragRuleKey(r) == key then slots[#slots + 1] = i end end
+            if drag.Rotate(ns.rules, slots, obj, anchor, where) then changed = true end
+        end
+    else
+        if anchor and ns.NormalizeFolderOrder then ns.NormalizeFolderOrder() end   -- folders keep list order from the first move on
+        if obj.parent ~= target then
+            obj.parent = target; changed = true
+            if not anchor and CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.folderOrdered then   -- nested into a group: last of its groups
+                for _, f in ipairs(ns.folders) do if f ~= obj and drag.DragFolderKey(f) == drag.DragFolderKey(obj) then anchor = f end end
+                where = "after"
+            end
+        end
+        if anchor then
+            local key, slots = drag.DragFolderKey(obj), {}
+            for i, f in ipairs(ns.folders) do if drag.DragFolderKey(f) == key then slots[#slots + 1] = i end end
+            if drag.Rotate(ns.folders, slots, obj, anchor, where) then changed = true end
+        end
+    end
+    return changed
+end
+function drag.DropLine(b)
+    if not b.xuiDropLine then
+        local t = b:CreateTexture(nil, "OVERLAY")
+        t:SetHeight(2); t:SetColorTexture(1, 0.82, 0, 1)
+        b.xuiDropLine = t
+    end
+    return b.xuiDropLine
+end
+function drag.ClearMarks()
+    if drag.hl then pcall(drag.hl.UnlockHighlight, drag.hl); drag.hl = nil end
+    if drag.line then pcall(drag.line.Hide, drag.line); drag.line = nil end
 end
 local function StartDrag(button)
     local last = LastKey(button.uniquevalue) or ""
@@ -4848,6 +4931,7 @@ local function StartDrag(button)
     local n = last:match("^rule(%d+)$")
     if n then
         kind, obj = "rule", ns.rules and ns.rules[tonumber(n)]
+        if obj and drag.DragNested(obj) then obj = nil end   -- cue / condition rows are moved with their rule
         if obj then
             label = obj.name
             if not label or label == "" then local ok, sn = pcall(C_Spell.GetSpellName, obj.spellID); label = ok and sn or ("Rule " .. n) end
@@ -4857,7 +4941,7 @@ local function StartDrag(button)
         label = obj and obj.name
     end
     if not obj then return end
-    drag.kind, drag.obj, drag.src, drag.hl = kind, obj, button, nil
+    drag.kind, drag.obj, drag.src, drag.hl, drag.line, drag.label, drag.shown = kind, obj, button, nil, nil, tostring(label or ""), nil
     if not dragFrame then
         dragFrame = CreateFrame("Frame", nil, UIParent)
         dragFrame:SetFrameStrata("TOOLTIP")
@@ -4867,7 +4951,7 @@ local function StartDrag(button)
         dragFrame.text = dragFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         dragFrame.text:SetPoint("CENTER")
     end
-    dragFrame.text:SetText(label or "")
+    dragFrame.text:SetText(drag.label)
     dragFrame:SetWidth(math.max(80, dragFrame.text:GetStringWidth() + 16))
     dragFrame:Show()
     dragFrame:SetScript("OnUpdate", function(self)
@@ -4875,28 +4959,54 @@ local function StartDrag(button)
         if not ok then drag.fail(err) end
     end)
 end
+function drag.TargetName(anchor, target)
+    if anchor then return tostring(anchor.name or "") end
+    local f = target and FolderById(target)
+    return f and tostring(f.name or "") or "the top level"
+end
 -- the per-frame part of a drag; any error here ends the drag (see drag.fail) instead of repeating every frame
 drag.tick = function(self)
-    do
-        local x, y = GetCursorPosition()
-        local sc = UIParent:GetEffectiveScale()
-        self:ClearAllPoints()
-        self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / sc + 12, y / sc - 4)
-        local tb = RowUnderCursor(drag.src and drag.src.obj)
-        local ok = tb and tb ~= drag.src and DropTarget(tb, drag.kind, drag.obj)
-        local want = ok and tb or nil
-        if drag.hl ~= want then
-            if drag.hl then drag.hl:UnlockHighlight() end
-            if want then want:LockHighlight() end
-            drag.hl = want
-        end
+    local x, y = GetCursorPosition()
+    local sc = UIParent:GetEffectiveScale()
+    self:ClearAllPoints()
+    self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / sc + 12, y / sc - 4)
+    local tb = RowUnderCursor(drag.src and drag.src.obj)
+    local ok, target, anchor, where
+    if tb and tb ~= drag.src then
+        local isF = (LastKey(tb.uniquevalue) or ""):match("^f%d") ~= nil
+        ok, target, anchor, where = DropTarget(tb, drag.kind, drag.obj, drag.DropZone(tb, drag.kind, isF))
+    end
+    local wantHL = (ok and where == "into") and tb or nil
+    local wantLine = (ok and where ~= "into") and tb or nil
+    if drag.hl ~= wantHL then
+        if drag.hl then drag.hl:UnlockHighlight() end
+        if wantHL then wantHL:LockHighlight() end
+        drag.hl = wantHL
+    end
+    if drag.line and drag.line:GetParent() ~= wantLine then drag.line:Hide(); drag.line = nil end
+    if wantLine then
+        local t = drag.DropLine(wantLine)
+        t:ClearAllPoints()
+        local edge = (where == "before") and "TOP" or "BOTTOM"
+        t:SetPoint(edge .. "LEFT", wantLine, edge .. "LEFT", 0, 0); t:SetPoint(edge .. "RIGHT", wantLine, edge .. "RIGHT", 0, 0)
+        t:Show(); drag.line = t
+    end
+    -- the floating label says what a drop here would do
+    local say = drag.label
+    if ok then
+        say = say .. "  |cffaaaaaa" .. (where == "before" and "above " or where == "after" and "below " or "into ") .. "|r" .. drag.TargetName(anchor, target)
+    end
+    if drag.shown ~= say then
+        drag.shown = say
+        self.text:SetText(say)
+        self:SetWidth(math.max(80, self.text:GetStringWidth() + 16))
     end
 end
 -- a drag, drop or arrow move failed: put everything back, say what failed, and keep the message in the saved error log
 drag.fail = function(err)
     drag.kind, drag.obj = nil, nil
     if dragFrame then dragFrame:Hide(); dragFrame:SetScript("OnUpdate", nil) end
-    if drag.hl then pcall(drag.hl.UnlockHighlight, drag.hl); drag.hl = nil end
+    drag.ClearMarks()
     ns.Print("moving a row failed and was cancelled: " .. tostring(err))
     if ns.CaptureError then pcall(ns.CaptureError, "XayaUI move: " .. tostring(err), debugstack and debugstack(2) or "") end
     pcall(Notify)
@@ -4906,24 +5016,18 @@ local function StopDrag(button)
     if not obj then return end
     drag.kind, drag.obj = nil, nil
     if dragFrame then dragFrame:Hide(); dragFrame:SetScript("OnUpdate", nil) end
-    if drag.hl then drag.hl:UnlockHighlight(); drag.hl = nil end
+    drag.ClearMarks()
     local tb = RowUnderCursor(button.obj)
     if not tb or tb == button then return end
-    local ok, target = DropTarget(tb, kind, obj)
+    local isF = (LastKey(tb.uniquevalue) or ""):match("^f%d") ~= nil
+    local ok, target, anchor, where = DropTarget(tb, kind, obj, drag.DropZone(tb, kind, isF))
     if not ok then return end
-    if kind == "rule" then
-        if ns.MultiHas and ns.MultiHas(obj) and ns.MultiCount() > 1 then ns.MultiMove(target); return end   -- dragging one selected rule moves them all
-        if obj.folder == target then return end
-        obj.folder = target
-        ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()
-        ns.SelectKeep(RulePath(obj))
-    else
-        if obj.parent == target then return end
-        obj.parent = target
-        ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()
-        ns.SelectKeep(FolderPath(obj))
-    end
+    if kind == "rule" and ns.MultiHas and ns.MultiHas(obj) and ns.MultiCount() > 1 then ns.MultiMove(target); return end   -- dragging one selected rule moves them all
+    if not ns.DragPlace(kind, obj, target, anchor, where) then return end
+    ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()   -- the on-screen preview / dynamic groups lay out in rule order: redo it now
+    ns.SelectKeep(kind == "rule" and RulePath(obj) or FolderPath(obj))
 end
+ns.DragForTest = { start = StartDrag, stop = StopDrag, zone = drag.DropZone, target = DropTarget, state = drag }   -- tests/drag_drop_run.py
 
 -------------------------------------------------------------------------------
 -- Reorder arrows: small up / down triangles at the left of every rule and folder row under All Rules.
@@ -4955,6 +5059,7 @@ local function NormalizeFolderOrder()
     for i, e in ipairs(keyed) do ns.folders[i] = e.f end
     ui.folderOrdered = true
 end
+ns.NormalizeFolderOrder = NormalizeFolderOrder   -- drag and drop (above) places groups by list position too
 
 -- returns kind, obj, list of sibling indices, position in that list
 local function Siblings(uv)
@@ -5163,7 +5268,7 @@ local function ConvertFolder(src, mode)
     for _, r in ipairs(rules) do
         local n = ns.NewRule()
         n.name = r.name
-        for _, k in ipairs({ "spellID", "maxCharges", "cdState", "buffID", "buffState", "talentMode" }) do n[k] = r[k] end
+        for _, k in ipairs({ "spellID", "maxCharges", "cdState", "buffID", "buffState", "buffTimeOp", "buffTimeSec", "talentMode" }) do n[k] = r[k] end
         n.buffAlt = r.buffAlt and ns.Copy(r.buffAlt) or nil
         n.talents = ns.Copy(r.talents or {})
         n.extra = ns.Copy(r.extra or { list = {} })
@@ -6813,8 +6918,10 @@ function ns.LeftAlign(w)
         if w.xuiLeftOn then return end
         ns.HookRelease(w)
         w.xuiLeftOn = true
+        local hoptC = w.GetUserData and w:GetUserData("option")
         w.label:ClearAllPoints()
-        w.label:SetPoint("TOPLEFT", w.frame, "TOPLEFT", 4, 0); w.label:SetPoint("BOTTOMLEFT", w.frame, "BOTTOMLEFT", 4, 0)
+        local lx = (hoptC and type(hoptC.arg) == "table" and hoptC.arg.xuiCollapse) and 24 or 4   -- room for the open / close button (Skin.lua)
+        w.label:SetPoint("TOPLEFT", w.frame, "TOPLEFT", lx, 0); w.label:SetPoint("BOTTOMLEFT", w.frame, "BOTTOMLEFT", lx, 0)
         w.label:SetJustifyH("LEFT")
         w.left:Hide()
         w.right:ClearAllPoints()
@@ -7159,7 +7266,7 @@ do
             b:SetScript("OnClick", function()
                 local r = f.rule
                 if not r then return end
-                if d[1] == "discard" then
+                if d[1] == "discard" and not (ns.DraftsConfirmDiscard and not ns.DraftsConfirmDiscard()) then   -- Settings > Rule Creation > "Confirm Discard changes"
                     if not f.armed then
                         f.armed = true
                         f.armTok = (f.armTok or 0) + 1
@@ -7220,6 +7327,7 @@ driver:SetScript("OnUpdate", function(_, e)
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
     local fr = of and of.frame
     if ns.AnyPreview() and not (fr and fr:IsShown()) then ns.ClearPreview() end
+    if fr and fr:IsShown() and ns.SaveRulesSub then pcall(ns.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
     if fr and fr:IsShown() then pcall(EnsureChrome, of) end
     if fr and fr:IsShown() and ns.DecorateTrees then ns.DecorateTrees(of) end
     if fr and fr:IsShown() and ns.rules then
