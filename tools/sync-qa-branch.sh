@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# Keeps qa-installer-branch an exact mirror of main, plus the tester installer from tools/qa-installer/.
+# Keeps qa-installer-branch an exact mirror of main (the branch testers pull with GitHub Desktop; they copy the XayaUI*
+# folders from it into AddOns and /reload). The tester installer was removed on 2026-11-04 (Xaya: "just eliminate the
+# installers"); the branch keeps its name. Later it is to become the test stage before main ("the qa-test environment can be
+# the test environment before pushing to main later down the road"); until then it only mirrors main.
 #
 #   tools/sync-qa-branch.sh            rebuild the branch from origin/main and push it (fast-forward only, never force)
 #   tools/sync-qa-branch.sh --check    change nothing; exit 1 if the branch is not an exact mirror of origin/main right now
 #   tools/sync-qa-branch.sh --dry-run  build the commit, print what would be pushed, push nothing
 #
-# What the branch contains: every file of origin/main, unchanged, plus the files of tools/qa-installer/ placed at the
-# branch root (Install-XayaUI.bat, Install-XayaUI.ps1, Uninstall-XayaUI.bat, QA-INSTALL.md, .gitattributes).
-# Nothing is ever taken from the branch back into main.
+# What the branch contains: every file of origin/main, unchanged, nothing else. Nothing is ever taken from the branch back
+# into main.
 #
 # Why it is safe for GitHub Desktop: each run adds ONE new commit on top of the branch's current tip (its second parent is the
 # main commit it mirrors), so every tester's "Pull origin" is a plain fast-forward. The branch is never rewritten or force-pushed.
@@ -20,13 +22,12 @@ set -euo pipefail
 REMOTE="${QA_REMOTE:-origin}"
 MAIN="${QA_MAIN_BRANCH:-main}"
 QA="${QA_BRANCH:-qa-installer-branch}"
-OVERLAY="tools/qa-installer"
 MODE=push
 for arg in "$@"; do
   case "$arg" in
     --check)   MODE=check ;;
     --dry-run) MODE=dry ;;
-    -h|--help) sed -n '2,19p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -41,27 +42,8 @@ if git ls-remote --exit-code --heads "$REMOTE" "$QA" >/dev/null 2>&1; then
   qa_sha=$(git rev-parse "refs/remotes/$REMOTE/$QA")
 fi
 
-if ! git cat-file -e "$main_sha:$OVERLAY" 2>/dev/null; then
-  echo "ERROR: $REMOTE/$MAIN has no $OVERLAY, so there is nothing to install with." >&2
-  exit 1
-fi
-
-# Build the tree in a throw-away index so the working tree and the real index are never touched.
-idx=$(mktemp -u)
-trap 'rm -f "$idx"' EXIT
-export GIT_INDEX_FILE="$idx"
-git read-tree "$main_sha"
-while IFS=$'\t' read -r meta name; do
-  read -r fmode ftype fsha <<<"$meta"
-  [ "$ftype" = "blob" ] || continue
-  if git cat-file -e "$main_sha:$name" 2>/dev/null; then
-    echo "ERROR: $name exists at the root of $MAIN and in $OVERLAY; refusing to overwrite it silently." >&2
-    exit 1
-  fi
-  git update-index --add --cacheinfo "$fmode,$fsha,$name"
-done < <(git ls-tree "$main_sha:$OVERLAY")
-tree=$(git write-tree)
-unset GIT_INDEX_FILE
+# The branch's files are main's files: main's own tree (the working tree and the index are never touched).
+tree=$(git rev-parse "$main_sha^{tree}")
 
 short=${main_sha:0:9}
 if [ -n "$qa_sha" ] && [ "$(git rev-parse "$qa_sha^{tree}")" = "$tree" ]; then
@@ -69,7 +51,7 @@ if [ -n "$qa_sha" ] && [ "$(git rev-parse "$qa_sha^{tree}")" = "$tree" ]; then
   exit 0
 fi
 if [ "$MODE" = check ]; then
-  echo "OUT OF DATE: $QA does not match $MAIN @ $short (+ installer)" >&2
+  echo "OUT OF DATE: $QA does not match $MAIN @ $short" >&2
   exit 1
 fi
 
@@ -88,7 +70,7 @@ fi
 subject=$(git log -1 --format=%s "$main_sha")
 msg="Mirror $MAIN @ $short: $subject
 
-Automatic mirror: this commit's files are exactly those of $MAIN @ $main_sha plus the installer from $OVERLAY.
+Automatic mirror: this commit's files are exactly those of $MAIN @ $main_sha.
 Do not commit to this branch; the next sync replaces anything changed here."
 if [ -n "${QA_COMMIT_TRAILER:-}" ]; then msg="$msg
 
