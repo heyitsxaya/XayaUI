@@ -36,3 +36,6 @@ HANDOFF-TO-CLAUDE-CODE-*.md
 
 # Shelved QoL Elements (stat text boxes, cursor tracker + at-cursor reminders, buff bars, count support) live in shelved/: tracked
 # for reference, loaded by no .toc. Bringing one back = moving it into the addon it belongs to and listing it in that .toc.
+
+# Claude Code agent worktrees (temporary working copies of this repository; never part of the addon)
+.claude/worktrees/

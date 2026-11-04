@@ -1,6 +1,6 @@
 9ed45ce3e319d0d6f487b1c6b4f66332  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
-841bf9e56f8489facf3c983d48ba2e73  .gitignore
+5c5ac14c568c8773d3259349300399e3  .gitignore
 0e754eb408e6fe9daf27d12660842ba6  Claude outputs/Plater_NpcColors_S2_block.lua
 ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
