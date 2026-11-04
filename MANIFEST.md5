@@ -2,13 +2,13 @@ f973ac7536f8b9c99421ed3b3f1cad53  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-91417b5d518fbf709b2c99130594cf82  QA-CHECKLIST.md
+7f553a5a98999dde51bfe4e79f321aea  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 36ef7ce2b70eb245827ec6d883c9425b  ROADMAP.md
 f283bc83a499e253705c4ac13c9b8d5b  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-74202b4cf2bc76a092b08235928bc1c9  USER-GUIDE.md
-e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
+894831adaad098b645ef0bc56d51892f  USER-GUIDE.md
+033856b0b9fd96de5360c42ec1b523b6  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 4cc1b0cabaf7b9fbfcbcdcbc5d14a9b4  XayaUI/AuraSound.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
@@ -107,7 +107,7 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 5a43c10ca2f4822464b3aadef5f98578  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
 d78b277a69c869a56c306f0477181d04  XayaUI/Visual.lua
-5d2e0a4012d9543cf63e6d76760e9ad2  XayaUI/XayaUI.toc
+4bd548a25336a2a14d5320d42624e235  XayaUI/XayaUI.toc
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -395,6 +395,7 @@ f48e2672c267fbb66eb61799a51f478f  debug-log/2026-11-04-1453-rename-game-dump-to-
 a3e685b4a822d5a0007936c8f69ea1d7  debug-log/2026-11-04-1523-content-data-pulls-offline.md
 2ebbe41b951053d6b4713397fa1cb5f8  debug-log/2026-11-04-1535-playable-classes-marked.md
 b6081ac7220230557d672c454f40d570  debug-log/2026-11-04-1550-terms-check-blizzard-wago.md
+73af9722ecfb7731786f5eac0722bea4  debug-log/2026-11-04-1624-action-glow-types-alpha-core-0.6.24.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 40cbf03f1bb153e7f09fb1fa7f51f9fa  docs/process/IN-GAME-DATA-2026-11-05.md
@@ -442,6 +443,7 @@ ba241e46458e8e4296563689c7708a51  shelved/CursorReminders.lua
 e710f0b422a995cc05581745bca74d4b  shelved/CursorTracker.lua
 895e4335214e9e08d4909d4a1ea8d0cc  shelved/QoL.lua
 a354cbbb54ff4fb130af0063a401df9b  tests/Conditions.pre-0.5.83.lua
+1c9d3b3d69071011a068d55babbcc7be  tests/action_glow_run.py
 99488fe8ce8e8e889669e5c3f5e21fe9  tests/art_picker_run.py
 f3dca8a8e18dd9682701196827a9cb2c  tests/art_rows_run.py
 1bc56b22adb5f1e1aa4a345d9fa19b8b  tests/aspect_run.py
