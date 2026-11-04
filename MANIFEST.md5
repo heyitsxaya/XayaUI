@@ -9,7 +9,7 @@ d32239bcb673463ab874e80d47fae504  LICENSE
 ae3f2f027a93b42635799657f6e7f6a7  QA-CHECKLIST.md
 a54d403da833eefe5b3661b57270da58  README.md
 63e39d9eff15e0037d26d3d7d39f51d9  ROADMAP.md
-3063eddc6fe0a81db13c1f5d834fe8eb  SESSION-START-SUMMARY.md
+c3270604aafd3cfd29f7f29425abb6c4  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 ab5e23cf1cc5aa61f10d74fb0acf9e9e  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
@@ -387,6 +387,7 @@ bed4e456089978e1da702f671342f0dd  debug-log/2026-11-04-0824-ingame-probe-gamedum
 c4b1cf2b9db971da28d0bb93cbb449ae  debug-log/2026-11-04-0857-art-picker-missing-files-core-0.6.15.md
 99d0e2ac83dbd30ba8b9d6aa296b7bfe  debug-log/2026-11-04-0902-ui-bugs-dropdown-buttons-labels-core-0.6.16.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
+7dcf713a41e746dbd49bf9bb50f5b72d  docs/process/DECISIONS-2026-11-04.md
 f54b8f5064294401abd280cf2c464599  docs/process/IN-GAME-DATA-2026-11-05.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 18f99347734ff71d918aaa8c7bf8420f  docs/process/VERIFICATION.md
