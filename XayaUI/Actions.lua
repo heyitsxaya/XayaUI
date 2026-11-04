@@ -94,11 +94,17 @@ local function DoChat(rule, a)
     elseif t == "ERROR" then
         if UIErrorsFrame then UIErrorsFrame:AddMessage(msg, 1, 0.1, 0.1) end
     elseif t == "TTS" then
+        -- Through the speech cue's own helper (Sound.lua ns.Speak), which uses the 12.x signature
+        -- C_VoiceChat.SpeakText(voiceID, text, rate, volume [, overlap]) (docs/reference/api/namespaces.md:5450). This line used the old one,
+        -- (voiceID, text, destination, rate, volume): Enum.VoiceTtsDestination is gone in 12.1.5 (not in enums.md), so it passed rate 1
+        -- and volume 0, and an action's speech was silent. The voice: the game's own Standard text-to-speech voice when it is installed.
         pcall(function()
-            if C_VoiceChat and C_VoiceChat.SpeakText then
-                local vid = C_TTSSettings and C_TTSSettings.GetVoiceOptionID and C_TTSSettings.GetVoiceOptionID(Enum.TtsVoiceType.Standard) or 0
-                C_VoiceChat.SpeakText(vid, msg, Enum.VoiceTtsDestination and Enum.VoiceTtsDestination.LocalPlayback or 1, 0, 100)
+            local vid
+            if C_TTSSettings and C_TTSSettings.GetVoiceOptionID and Enum and Enum.TtsVoiceType then
+                local ok, v = pcall(C_TTSSettings.GetVoiceOptionID, Enum.TtsVoiceType.Standard)
+                if ok and type(v) == "number" and not (issecretvalue and issecretvalue(v)) then vid = v end
             end
+            if ns.Speak then ns.Speak({ value = msg, voice = vid, rate = 0, ttsVolume = 100 }) end
         end)
     elseif t == "SAY" or t == "YELL" then
         if IsInInstance() then pcall(ns.Compat.SendChatMessage, msg, t) end
