@@ -214,7 +214,7 @@ At the top of the tab one line sums up the whole rule (0.6.13): **In combat: eve
 | Not fully ready | Opposite of Fully ready. |
 | Empty / on cooldown | No charge available. *Experimental for multi-charge spells* (the code infers it from the main cooldown running). |
 
-For a spell **without charges**, the list shortens to **Cooldown ready (off cooldown)** and **On cooldown**. The global cooldown is ignored unless **Count the global cooldown** is ticked (in the Cooldown section and on each "Cooldown (any spell)" trigger): then, while the spell is on the global cooldown, it counts as on cooldown (not ready, no charge available). The game says whether a spell is on the global cooldown even in combat.
+For a spell **without charges**, the list shortens to **Cooldown ready (off cooldown)** and **On cooldown**. The global cooldown is ignored unless **Count the global cooldown** is ticked (in the Cooldown section and on each "Cooldown (any spell)" trigger): then, while the spell is on the global cooldown, it counts as on cooldown (not ready, no charge available). The game says whether a spell is on the global cooldown even in combat. Two comparisons narrow the trigger further, in the Cooldown section and on each "Cooldown (any spell)" trigger: **Seconds left** (At least / At most / Exactly / More than / Less than, then the seconds) and **Charges** (the same choices, then the count). Both must hold together with the state. Out of combat they use the game's exact numbers; in combat the time is the duration engine's estimate (`/xui timing`) and charges are counted from your casts. When a number is not known, the trigger is unknown rather than guessed.
 
 An optional **Max charges override** exists for spells where the game does not report charges.
 

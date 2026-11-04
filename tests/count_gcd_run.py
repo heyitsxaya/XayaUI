@@ -33,7 +33,7 @@ C_Spell.GetSpellCharges = function(id)
 end
 C_Spell.GetSpellCooldown = function(id)
   local s = SP[id] or { cd = false, hold = false }
-  return { startTime = COMBAT and SECRET or 0, duration = COMBAT and SECRET or 0, isActive = s.cd or s.gcd, isOnGCD = s.gcd, isEnabled = not s.hold, modRate = 1 }
+  return { startTime = COMBAT and SECRET or (s.start or 0), duration = COMBAT and SECRET or (s.dur or 0), isActive = s.cd or s.gcd, isOnGCD = s.gcd, isEnabled = not s.hold, modRate = 1 }
 end
 -- the Cooldown Manager: an Essential icon for a 3-charge spell (its ChargeGained alerts are counted)
 local function item(spellID)
@@ -103,4 +103,40 @@ trig = open(os.path.join(ROOT, "XayaUI", "Triggers.lua"), encoding="utf-8").read
 opts = open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
 check("the 'Cooldown (any spell)' row has a 'Count the global cooldown' tick box", 'key = "countGCD", kind = "toggle", label = "Count the global cooldown"' in trig)
 check("the built-in Cooldown section has a 'Count the global cooldown' tick box", 'countGCD = Tog(rule, "countGCD", "Count the global cooldown"' in opts)
+# ===== B2: "Seconds left" and "Charges" comparisons on the cooldown trigger itself =====
+lua("SPELL(7003, 1); E = RULE(7003, 'empty'); E.cdTimeOp = '<='; E.cdTimeSec = 3; NS.rules = { E }")
+lua("SP[7003].cd = true; SP[7003].start = T; SP[7003].dur = 10")
+check("on cooldown, 10 s left, 'Seconds left at most 3': false", ev("READY(E)") is False, ev("READY(E)"))
+lua("T = T + 8")
+check("2 s left: true", ev("READY(E)") is True, ev("READY(E)"))
+lua("E.cdTimeOp = '>'; E.cdTimeSec = 5")
+check("2 s left, 'More than 5': false", ev("READY(E)") is False)
+lua("E.cdTimeOp = 'any'")
+check("'Any': the state alone decides (on cooldown: true)", ev("READY(E)") is True)
+lua("SP[7003].cd = false; SP[7003].dur = 0")
+# charges
+lua("SPELL(7004, 3); G = RULE(7004, 'hasCharge'); G.cdChargeOp = '>='; G.cdChargeVal = 2; NS.rules = { G }; WATCH()")
+check("3 of 3 charges, 'Charges at least 2': true", ev("READY(G)") is True, ev("READY(G)"))
+lua("SP[7004].cur = 1; SP[7004].recharging = true")
+check("1 charge, 'at least 2': false (and the state 'has a charge' alone would be true)", ev("READY(G)") is False, ev("READY(G)"))
+lua("G.cdChargeOp = '='; G.cdChargeVal = 1")
+check("1 charge, 'Exactly 1': true", ev("READY(G)") is True)
+# unknown keeps the trigger unknown, never a guess; a false comparison wins over unknown
+lua("H = RULE(7003, 'empty'); H.cdTimeOp = '<='; H.cdTimeSec = 3; NS.rules = { H }; COMBAT = true; T = T + 2; SP[7003].cd = true")   # state true (on cooldown), so the comparison decides
+check("in combat, cooldown time hidden and no estimate: 'Seconds left' unknown (nil), not a guess",
+      ev("(function() local _, info = NS.Evaluate(H, { combat = COMBAT }); return info.cdOK end)()") is None)
+lua("COMBAT = false; SP[7003].cd = false; T = T + 30")
+# the trigger row
+lua("""ROWT = { type = 'cooldown', spellID = 7004, state = 'hasCharge', cdChargeOp = '>=', cdChargeVal = 2 }""")
+lua("SP[7004].cur = 1; SP[7004].recharging = true")
+check("trigger row, 1 charge, 'Charges at least 2': false", ev("(select(1, NS.CheckTrigger(ROWT)))") is False, ev("(select(1, NS.CheckTrigger(ROWT)))"))
+lua("SP[7004].cur = 3; SP[7004].recharging = false")
+check("trigger row, 3 charges: true", ev("(select(1, NS.CheckTrigger(ROWT)))") is True)
+# the options: shown only with the Cooldown section, cleared by Remove, carried by 'copy section'
+opts = open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
+check("the Cooldown section hides countGCD / Seconds left / Charges with the section",
+      '"cdState", "countGCD", "cdTimeOp", "cdChargeOp", "maxCharges"' in opts)
+check("Remove clears countGCD and the comparisons", "rule.countGCD, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil" in opts)
+check("copying the Cooldown section carries them", "dst.cdTimeOp, dst.cdTimeSec, dst.cdChargeOp, dst.cdChargeVal = src.cdTimeOp, src.cdTimeSec, src.cdChargeOp, src.cdChargeVal" in opts
+      and "dst.cdState, dst.countGCD = src.cdState, src.countGCD" in opts)
 print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)
