@@ -52,15 +52,181 @@ function ns.ReadCooldown(rule)
     if not r then r = ReadCooldownRaw(rule); byId[mc] = r end
     return r
 end
+-------------------------------------------------------------------------------
+-- Charges in combat (0.6.9). The game hides a spell's charge count in combat (SpellChargeInfo.currentCharges is secret), but
+-- keeps three things readable (all NeverSecret in 12.1.5): the maximum (maxCharges), whether a charge is recharging
+-- (SpellChargeInfo.isActive), and whether the spell's own cooldown runs (SpellCooldownInfo.isActive / isOnGCD / isEnabled).
+-- 0.6.8 read "not recharging" as "full". Insivius, 2026-11-04: his Death and Decay rule fired "before he has charges
+-- available": a charge that was used is not always recharging at once (Blizzard's documentation: "isActive: False if
+-- recharging is not active (ex: at maximum available charges, start time or duration are zero)"; a cooldown can also be on
+-- hold), so "not recharging" alone does not prove "full". The count is now built from anchors and your own casts:
+--   * out of combat: the exact count (an anchor);
+--   * the spell's own cooldown runs (not the global cooldown): 0 charges (Blizzard's Cooldown Manager shows the spell's own
+--     cooldown only once no charge is left, Blizzard_CooldownViewer CheckCacheCooldownValuesFromCharges; an anchor);
+--   * the spell's own cooldown is on hold (isEnabled false): it cannot be used: not full, count unknown;
+--   * full only when nothing is recharging AND none of your casts of the spell came after the last moment it was seen full
+--     (an exact read at the maximum, or a recharge seen to finish: recharging -> not recharging);
+--   * in between: the last anchor, minus your casts of the spell since, plus the charges the Cooldown Manager reported
+--     gained since (its ChargeGained alert, when the spell is in it), kept within what the flags allow. A 2-charge spell that
+--     is recharging is exactly 1.
+-- Your own casts are readable in combat (UNIT_SPELLCAST_SUCCEEDED on "player"; Triggers.lua). A talent that replaces the
+-- spell (an override, C_Spell.GetOverrideSpell) is read instead of the base spell, and its casts count too.
+-- When nothing proves the count, it is unknown (nil), never a guess; a rule waiting for it does not fire.
+-------------------------------------------------------------------------------
+local chargeSeen = {}   -- [readID] = { fullAt = t, anchorN = n, anchorT = t, recharging = bool, max = n }
+local castTimes = {}    -- [spellID] = { t1, t2, ... } own casts, newest last (at most 12)
+local function NoteCast(spellID, t)
+    if type(spellID) ~= "number" or issecret(spellID) then return end
+    local l = castTimes[spellID]
+    if not l then l = {}; castTimes[spellID] = l end
+    l[#l + 1] = t
+    if #l > 12 then table.remove(l, 1) end
+end
+ns.NoteChargeCast = NoteCast
+local function CastsAfter(t, a, b)
+    local n, last = 0, nil
+    for _, id in ipairs({ a, b }) do
+        local l = id and castTimes[id]
+        if l then
+            for i = 1, #l do
+                if l[i] > t then n = n + 1; if not last or l[i] > last then last = l[i] end end
+            end
+        end
+        if b == a then break end
+    end
+    return n, last
+end
+local function GainsAfter(readID, baseID, t)
+    local find = ns.FindCDMFrame
+    local fr = find and (find(readID) or find(baseID))
+    local l = fr and fr.xuiChargeGains
+    local n = 0
+    if l then for i = 1, #l do if l[i] > t then n = n + 1 end end end
+    return n, l ~= nil
+end
+function ns.SpellOnBar(id)
+    if not (C_Spell and C_Spell.GetOverrideSpell) then return id end
+    local ok, ov = pcall(C_Spell.GetOverrideSpell, id)
+    if ok and type(ov) == "number" and not issecret(ov) and ov > 0 then return ov end
+    return id
+end
+-- count (or nil), full (true / false / nil), note
+local function ChargeState(readID, baseID, ch, maxC, cd)
+    local now = GetTime()
+    local st = chargeSeen[readID]
+    if not st then st = {}; chargeSeen[readID] = st end
+    st.max = maxC
+    local cur = CleanNumber(ch, "currentCharges")
+    local recharging = CleanBool(ch, "isActive")
+    if cur then   -- readable (out of combat): exact
+        if cur > maxC then cur = maxC end
+        st.anchorN, st.anchorT, st.recharging = cur, now, (recharging == nil) and (cur < maxC) or recharging
+        if cur >= maxC then st.fullAt = now end
+        return cur, cur >= maxC, "exact"
+    end
+    local prev = st.recharging
+    if recharging ~= nil then st.recharging = recharging end
+    local cdActive, onGCD, enabled = CleanBool(cd, "isActive"), CleanBool(cd, "isOnGCD"), CleanBool(cd, "isEnabled")
+    if cdActive == true and onGCD ~= true then
+        st.anchorN, st.anchorT = 0, now
+        return 0, false, "0: the spell's own cooldown runs (no charge left)"
+    end
+    if enabled == false then return nil, false, "the spell's cooldown is on hold: not usable, count unknown" end
+    if recharging == nil then return nil, nil, "charges unreadable" end
+    if recharging == false and prev == true then st.fullAt = now end   -- a recharge just finished
+    local fullAt = st.fullAt or -1
+    local castsSinceFull = CastsAfter(fullAt, baseID, readID)
+    if recharging == false then
+        if castsSinceFull == 0 then
+            st.anchorN, st.anchorT = maxC, now
+            if not st.fullAt then st.fullAt = now end
+            return maxC, true, (fullAt < 0) and "full (nothing recharging, none of your casts seen)" or "full"
+        end
+        -- not recharging, yet a charge was used after it was last seen full: the recharge has not started
+        local n
+        if st.anchorT and st.anchorN then
+            local c = CastsAfter(st.anchorT, baseID, readID)
+            local g = GainsAfter(readID, baseID, st.anchorT)
+            local v = st.anchorN - c + g
+            if v >= 0 and v <= maxC - 1 then n = v end   -- (a count that does not add up stays unknown)
+        end
+        return n, false, "a charge was used and its recharge has not started yet"
+    end
+    -- recharging: between 1 and max - 1
+    if maxC == 2 then st.anchorN, st.anchorT = 1, now; return 1, false, "1 (recharging, 2 charges)" end
+    -- 3 or more: counted only when the Cooldown Manager reports this spell's charge gains, and only when the count adds up
+    if st.anchorT and st.anchorN then
+        local c = CastsAfter(st.anchorT, baseID, readID)
+        local g, tracked = GainsAfter(readID, baseID, st.anchorT)
+        if tracked then
+            local v = st.anchorN - c + g
+            if v >= 1 and v <= maxC - 1 then return v, false, "counted: your casts and the Cooldown Manager's charge gains" end
+            return nil, false, "the count does not add up (a cast or a charge gain was missed): unknown until full, 0 or out of combat"
+        end
+    end
+    return nil, false, "recharging; with 3 or more charges the count needs the spell in the Cooldown Manager"
+end
+ns._ChargeState = ChargeState
+
+-- The watcher: every rule's charge spell is read whenever the game reports a charge change, at login, on talent / spell
+-- changes and when combat starts or ends, whether or not the rule is loaded. Out of combat that records the exact count, so a
+-- rule that only loads in combat starts from an exact count, and casts from an earlier pull never hold it back; in combat it
+-- sees a recharge finish even between engine steps.
+local function WatchCharges()
+    if not (ns.rules and C_Spell and C_Spell.GetSpellCharges) then return end
+    local done = {}
+    for _, r in ipairs(ns.rules) do
+        local id = tonumber(r.spellID)
+        if id and id > 0 and not done[id] and r.enabled ~= false then
+            done[id] = true
+            local readID = ns.SpellOnBar(id)
+            local okc, ch = pcall(C_Spell.GetSpellCharges, readID)
+            local maxC = okc and CleanNumber(ch, "maxCharges") or nil
+            if maxC and maxC > 1 then
+                local okd, cd = pcall(C_Spell.GetSpellCooldown, readID)
+                pcall(ChargeState, readID, id, ch, maxC, okd and cd or nil)
+            end
+        end
+    end
+end
+ns._WatchCharges = WatchCharges
+if CreateFrame then
+    local wf = CreateFrame("Frame")
+    for _, e in ipairs({ "SPELL_UPDATE_CHARGES", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
+        "SPELLS_CHANGED", "TRAIT_CONFIG_UPDATED", "PLAYER_SPECIALIZATION_CHANGED" }) do pcall(wf.RegisterEvent, wf, e) end
+    if wf.SetScript then wf:SetScript("OnEvent", function() pcall(WatchCharges) end) end
+end
+
 function ReadCooldownRaw(rule)
     local id = rule.spellID
     local r = { known = false, max = 1 }
     if not id or id == 0 then r.why = "no spell"; return r end
+    local readID = ns.SpellOnBar(id)   -- a talent that replaces the spell: the one on your bar
 
-    local ok, cd = pcall(C_Spell.GetSpellCooldown, id)
+    local ok, cd = pcall(C_Spell.GetSpellCooldown, readID)
     if not ok or type(cd) ~= "table" then r.why = "cooldown unreadable"; return r end
     local cdActive = CleanBool(cd, "isActive")
     local onGCD = CleanBool(cd, "isOnGCD")
+    local okc, ch = pcall(C_Spell.GetSpellCharges, readID)
+    local maxC = okc and CleanNumber(ch, "maxCharges") or nil
+    if (not maxC or maxC < 2) and (rule.maxCharges or 0) > 1 then
+        -- manual override: only meaningful if the game did report a charge table
+        if okc and type(ch) == "table" then maxC = rule.maxCharges end
+    end
+    r.max = maxC or 1
+    if readID ~= id then r.readID = readID end
+
+    if r.max > 1 and type(ch) == "table" then
+        local n, full, note = ChargeState(readID, id, ch, r.max, cd)
+        r.count, r.atMax = n, full
+        if n ~= nil then r.empty = (n == 0) elseif full == true then r.empty = false end
+        r.onCd = (cdActive == true and onGCD ~= true) or false
+        r.known = (full ~= nil) or (n ~= nil)
+        r.why = "charges (max " .. r.max .. "): " .. tostring(note) .. ((readID ~= id) and (" | reading " .. readID .. ", the spell on your bar") or "")
+        if cdActive and not onGCD and ns.Timing then ns.Timing.LearnCooldown(id, CleanNumber(cd, "duration"), onGCD) end
+        return r
+    end
+
     if cdActive == nil then
         -- hidden (combat): the duration engine's estimate - exact start from the Cooldown Manager + the measured length
         local T = ns.Timing
@@ -70,31 +236,18 @@ function ReadCooldownRaw(rule)
         r.onCd = GetTime() < ready
         r.readyAt, r.estimated = ready, true
         r.atMax, r.empty = not r.onCd, r.onCd
+        r.count = r.onCd and 0 or 1
         r.known, r.why = true, label
         return r
     end
     r.onCd = cdActive and not onGCD
     if cdActive and not onGCD and ns.Timing then ns.Timing.LearnCooldown(id, CleanNumber(cd, "duration"), onGCD) end
-
-    local okc, ch = pcall(C_Spell.GetSpellCharges, id)
-    local maxC = okc and CleanNumber(ch, "maxCharges") or nil
-    if (not maxC or maxC < 2) and (rule.maxCharges or 0) > 1 then
-        -- manual override: only meaningful if the game did report a charge table
-        if okc and type(ch) == "table" then maxC = rule.maxCharges end
-    end
-    r.max = maxC or 1
-
-    if r.max > 1 then
-        local active = CleanBool(ch, "isActive") -- false <=> at max charges (NeverSecret)
-        if active == nil then r.why = "charges.isActive secret/nil"; return r end
-        r.atMax = not active
-        r.empty = r.onCd            -- inference: main cooldown only runs at 0 charges
-        r.why = "multi-charge (max " .. r.max .. "), empty=inferred"
-    else
-        r.atMax = not r.onCd
-        r.empty = r.onCd
-        r.why = "single-charge"
-    end
+    -- an ability on hold (its cooldown starts only after something ends) cannot be used yet
+    if CleanBool(cd, "isEnabled") == false then r.onCd = true end
+    r.atMax = not r.onCd
+    r.empty = r.onCd
+    r.count = r.onCd and 0 or 1
+    r.why = "single-charge"
     r.known = true
     return r
 end
@@ -105,9 +258,9 @@ function ns.CheckCooldownState(rule, cdInfo)
     if ns.Ignored(s) then return true end
     if not cdInfo or not cdInfo.known then return nil end
     if s == "ready" then return cdInfo.atMax end
-    if s == "notReady" then return not cdInfo.atMax end
+    if s == "notReady" then if cdInfo.atMax == nil then return nil end return not cdInfo.atMax end
     if s == "empty" then return cdInfo.empty end
-    if s == "hasCharge" then return not cdInfo.empty end
+    if s == "hasCharge" then if cdInfo.empty == nil then return nil end return not cdInfo.empty end
     return nil
 end
 
