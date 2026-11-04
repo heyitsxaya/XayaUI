@@ -136,7 +136,7 @@ check("trigger row, 3 charges: true", ev("(select(1, NS.CheckTrigger(ROWT)))") i
 # the options: shown only with the Cooldown section, cleared by Remove, carried by 'copy section'
 opts = open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
 check("the Cooldown section hides countGCD / Seconds left / Charges with the section",
-      '"cdState", "countGCD", "countLOC", "cdTimeOp", "cdChargeOp", "maxCharges"' in opts)
+      '"cdState", "countGCD", "countLOC", "exactSpell", "cdTimeOp", "cdChargeOp", "maxCharges"' in opts)
 check("Remove clears countGCD and the comparisons", "rule.countGCD, rule.countLOC, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil, nil" in opts)
 check("copying the Cooldown section carries them", "dst.cdTimeOp, dst.cdTimeSec, dst.cdChargeOp, dst.cdChargeVal = src.cdTimeOp, src.cdTimeSec, src.cdChargeOp, src.cdChargeVal" in opts
       and "dst.cdState, dst.countGCD, dst.countLOC = src.cdState, src.countGCD, src.countLOC" in opts)
@@ -152,7 +152,32 @@ lua("COMBAT = false")
 lua("""ROWL = { type = 'cooldown', spellID = 7005, state = 'ready', countLOC = true }; SP[7005].loc = true""")
 check("trigger row, locked out, countLOC on: false", ev("(select(1, NS.CheckTrigger(ROWL)))") is False)
 lua("SP[7005].loc = false")
-check("Remove / copy / hide cover countLOC", '"countGCD", "countLOC", "cdTimeOp"' in open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
+check("Remove / copy / hide cover countLOC", '"countGCD", "countLOC", "exactSpell", "cdTimeOp"' in open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
       and "rule.countGCD, rule.countLOC, rule.cdTimeOp" in open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
       and "dst.countLOC = src.cdState, src.countGCD, src.countLOC" in open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read())
+
+# ===== B4: "Exact spell ID" (core 0.6.35): a talent replacement on the bar is not followed =====
+# made-up 7010 (base) replaced on the bar by 7011; 7011 is on cooldown, 7010 is not (the game reads each ID on its own)
+lua("SPELL(7010, 1); SPELL(7011, 1); OVR[7010] = 7011; SP[7011].cd = true")
+lua("F = RULE(7010, 'ready'); X = RULE(7010, 'ready'); X.exactSpell = true; NS.rules = { F, X }")
+check("B4: unticked (default) follows the replacement on the bar: NOT ready (7011 is on cooldown)", ev("READY(F)") is False, ev("READY(F)"))
+check("B4: ticked reads 7010 itself: ready", ev("READY(X)") is True, ev("READY(X)"))
+check("B4: both rules on the same spell in the same engine step answer apart (the shared reading is keyed by exact / not)",
+      ev("(function() local a = READY(F); local b = READY(X); return a == false and b == true end)()") is True)
+lua("SP[7011].cd = false; SP[7010].cd = true")
+check("B4: the other way round: following reads 7011 (ready), exact reads 7010 (on cooldown)", ev("READY(F)") is True and ev("READY(X)") is False)
+lua("SP[7010].cd = false")
+# the trigger row
+lua("""ROWF = { type = 'cooldown', spellID = 7010, state = 'ready' }; ROWX = { type = 'cooldown', spellID = 7010, state = 'ready', exactSpell = true }
+SP[7011].cd = true""")
+check("B4 row: unticked follows the replacement: false", ev("(select(1, NS.CheckTrigger(ROWF)))") is False)
+check("B4 row: ticked reads the exact ID: true", ev("(select(1, NS.CheckTrigger(ROWX)))") is True)
+lua("SP[7011].cd = false")
+# charges: the watcher reads the exact spell's charges for an exact rule (2-charge base 7012 replaced by 1-charge 7013)
+lua("SPELL(7012, 2); SPELL(7013, 1); OVR[7012] = 7013; CX = RULE(7012, 'hasCharge'); CX.exactSpell = true; NS.rules = { CX }; WATCH()")
+check("B4: an exact rule on a 2-charge spell counts that spell's charges (2), not the replacement's", ev("COUNT(CX)") == 2, ev("COUNT(CX)"))
+lua("OVR[7010] = nil; OVR[7012] = nil")
+optsB4 = open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
+check("B4: the tick box is in the Cooldown section, cleared by Remove, copied with the spell",
+      'exactSpell = Tog(rule, "exactSpell", "Exact spell ID"' in optsB4 and "rule.exactSpell = nil" in optsB4 and "dst.exactSpell = src.exactSpell" in optsB4)
 print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)

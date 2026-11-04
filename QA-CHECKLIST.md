@@ -110,6 +110,7 @@ For testers. Tick each box in order; when something does not match the **Expect*
 - [ ] **B110.** (#353) A Sound cue with a [Game] sound and channel "Master". In the game's Sound settings untick Sound Effects (keep Master on) and test the cue. **Expect:** it plays. Then set the cue's channel to "Ambience", untick Ambience in the game: **Expect:** silent. Report both.
 - [ ] **B111.** (#155) While stunned, then feared, rooted and silenced (a duel or a mob that does it), type `/xui loc` each time. **Expect:** one line per effect with its type and spell ID. Send all lines (they settle which effect names the "Loss of control on you" trigger uses).
 - [ ] **B112.** (core 0.6.34, #121) Any icon with time text on a buff with a readable duration, out of combat. **Expect:** the time counts down as before (an internal tidy-up of the same code; nothing should look different).
+- [ ] **B113.** (core 0.6.35, B4) Pick a spell a talent replaces on your bar (the bar shows the replacement). Make two rules on the base spell's ID, State "Cooldown ready", each with an icon; tick **Exact spell ID** on the second. Use the replacement, then `/xui status`. **Expect:** the first rule reads the replacement (its status line says "reading <ID>, the spell on your bar" for a charge spell); the second reads the base ID. Report whether the two icons differ: the game's documentation does not say whether it gives the base ID its own cooldown while it is replaced (if both always match, the tick box changes nothing for that spell).
 
 ## C. Settings window switched off
 
