@@ -749,6 +749,7 @@ local function ShowGroupPosPopup(fo)
             local b = CreateFrame("Button", nil, p, "UIPanelButtonTemplate")
             b:SetSize(228, 22); b:SetPoint("TOP", 0, y); b:SetText(text)
             b:SetScript("OnClick", function() fn() end)
+            if ns.FlatButton then ns.FlatButton(b) end
             return b
         end
         Btn("Apply X / Y", -94, Apply)

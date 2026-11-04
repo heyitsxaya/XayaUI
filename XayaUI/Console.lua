@@ -55,6 +55,7 @@ function ns.ShowCopyBox(title, text)
         local sel = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
         sel:SetSize(110, 24); sel:SetPoint("BOTTOMLEFT", 12, 12); sel:SetText("Select all")
         sel:SetScript("OnClick", function() eb:SetFocus(); eb:HighlightText() end)
+        if ns.FlatButton then ns.FlatButton(sel) end
         tinsert(UISpecialFrames, "XayaUICopyBox")
         copyBox = f
     end
@@ -193,6 +194,7 @@ local function BuildWindow()
     local function Btn(label, w, fn)
         local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
         b:SetSize(w, 18); b:SetText(label); b:SetScript("OnClick", fn)
+        if ns.FlatButton then ns.FlatButton(b) end
         return b
     end
     local x = CreateFrame("Button", nil, f, "UIPanelCloseButton")
