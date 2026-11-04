@@ -2,12 +2,12 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-f95c9328e5c5f61336515e95ecb5cf91  QA-CHECKLIST.md
+e3d276f0244fbe228d5992b5d1ed2cf7  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 74acac5eb276995c47208b6d09b72a7d  ROADMAP.md
 64b887e4bffa11008f517a29c7d447a1  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-d27793943eed883afed4d664862907a4  USER-GUIDE.md
+06795bce481a5b4443f2e3172f7b1027  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 4cc1b0cabaf7b9fbfcbcdcbc5d14a9b4  XayaUI/AuraSound.lua
@@ -205,13 +205,13 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-1d1620fd0e6df9035b939d7276364b77  XayaUI_Options/Options.lua
+dbb7e9587ca1471cde92693620fbc40f  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
 9efe560f68aac4b020938000ee2c7d6b  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
-1ebdb05454b542fcadcfe4b65e1913c2  XayaUI_Options/XayaUI_Options.toc
+ecc5e8ae419e2290f06640eb7f8a48b6  XayaUI_Options/XayaUI_Options.toc
 31064539a4f975d6f1cdc21879affab8  XayaUI_QoL/CharacterModel.lua
 d97612c37b4c68f27415a9ee0fc845e5  XayaUI_QoL/CharacterToolkit.lua
 51995f01e31136f0c68b4db7ef5f7fe1  XayaUI_QoL/CharacterWidthProbe.lua
@@ -450,6 +450,7 @@ c1d7d03ab3ff7630015402cd7d314428  debug-log/2026-11-04-2303-mover-right-click-co
 a7820cd111f019a93a67a9a972cd12b6  debug-log/2026-11-04-2326-engine-kept-step-index-core-0.6.44.md
 dd5578186e7bd08a7a4d9ecadd75bf82  debug-log/2026-11-04-2338-engine-garbage-measured-on-her-rules.md
 69ffe23eb4ff195f29d0c1f718564a03  debug-log/2026-11-04-2341-cursor-trail-cost-qol-0.7.13.md
+842f92774a782b67439718e1e9414090  debug-log/2026-11-04-2345-spell-search-scope-options-0.6.37.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -593,6 +594,7 @@ c41c52d02e5112eb8c21794ea85c0b18  tests/recycle_bin_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py
 033cc3815741ca63d85f3a67a2bd0409  tests/sidebar_name_room_run.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
+278c42a27cbbe21ebff29250f3f77e9c  tests/spell_search_scope_run.py
 f886a09a99f1c562e4ff35c25675a1bd  tests/timing_run.py
 4ab5fd24ca1bb0910e3372c636868b5c  tests/tooltip_formulas_run.py
 13739960223aa277ea151196e46a1a19  tests/tooltips_run.py
