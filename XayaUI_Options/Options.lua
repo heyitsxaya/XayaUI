@@ -4033,9 +4033,16 @@ local function BuildFolder(k, f)
         if t == "display" and not isVisual() then t = "group" end
         return t
     end
+    -- #370: drawn as tabs by the skin (arg.xuiTab: the same flat box and colors as a real tab, the picked one in the selected
+    -- tab's colors). The gold label marks the picked tab only while the skin is off (a color code would override the theme's).
     local function Tab(key, label, order, hiddenFn)
+        local function sel() return cur() == key end
         return { type = "execute", order = order, width = 0.8, hidden = hiddenFn,
-            name = function() return cur() == key and ("|cffffd100" .. label .. "|r") or label end,
+            arg = { xuiTab = true, xuiTabSel = sel },
+            name = function()
+                local skinOff = CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.skinOff
+                return (sel() and skinOff) and ("|cffffd100" .. label .. "|r") or label
+            end,
             func = function() ns.folderTab[f] = key; Notify() end }
     end
     local function Page(key, args)

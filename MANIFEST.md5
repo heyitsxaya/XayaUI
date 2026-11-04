@@ -2,12 +2,12 @@ f973ac7536f8b9c99421ed3b3f1cad53  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-78145d66e8d5c00e8317cf55465ce7a7  QA-CHECKLIST.md
+9fb72bc013ddddedd5844ddefdcba078  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 36ef7ce2b70eb245827ec6d883c9425b  ROADMAP.md
 f283bc83a499e253705c4ac13c9b8d5b  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-cfe2adef74dadedfb802094ae59b7004  USER-GUIDE.md
+fbf7340c33f5aa5b8b46ceb37ecd04d8  USER-GUIDE.md
 033856b0b9fd96de5360c42ec1b523b6  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 4cc1b0cabaf7b9fbfcbcdcbc5d14a9b4  XayaUI/AuraSound.lua
@@ -204,12 +204,12 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-186882c3ebbf6d0604482184eb2bc864  XayaUI_Options/Options.lua
+6b04bb99e331df0a9b5fe6cdaa8dee98  XayaUI_Options/Options.lua
 8d2bfd2b7b768d7e9991276be979558b  XayaUI_Options/OutcomesEditor.lua
-6d7152146103bcfd1e18fcccaa390794  XayaUI_Options/Skin.lua
+3a2559c5547d5e75dbfde19adabee37e  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
-ddaee5ba2415e79a1c5fe4554ad0ca23  XayaUI_Options/XayaUI_Options.toc
+844774c9f626c71b84e84867be1e36b0  XayaUI_Options/XayaUI_Options.toc
 1b7f9c9a6a6f181cc44dce7f1838d2de  XayaUI_QoL/CharacterModel.lua
 5ec70e32afc652587088daab9b733588  XayaUI_QoL/CharacterToolkit.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
@@ -397,6 +397,7 @@ a3e685b4a822d5a0007936c8f69ea1d7  debug-log/2026-11-04-1523-content-data-pulls-o
 b6081ac7220230557d672c454f40d570  debug-log/2026-11-04-1550-terms-check-blizzard-wago.md
 73af9722ecfb7731786f5eac0722bea4  debug-log/2026-11-04-1624-action-glow-types-alpha-core-0.6.24.md
 aa36ea0e45fe22048f67fc5bb759e41d  debug-log/2026-11-04-1630-chat-history-button-tabs-gutter-0.6.8.md
+31b8add0951df007f1a8bb0a6c92bff5  debug-log/2026-11-04-1650-group-page-buttons-tabs-options-0.6.19.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 40cbf03f1bb153e7f09fb1fa7f51f9fa  docs/process/IN-GAME-DATA-2026-11-05.md
@@ -462,6 +463,7 @@ a48d4b3a546f29c2dbd4fdfb8bc661c4  tests/build_set_auras_run.py
 ffb253eb94301b31c413196ec237d13c  tests/chat_world.lua
 abe22a2816956a2c3babb802857cc524  tests/chatprobe_run.py
 c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
+77c4528b7a2dd2ec35f14acbb7abec18  tests/compact_button_width_run.py
 e78532613d70ebbdcc90fcfb23c97f0a  tests/cue_fire_run.py
 e72897e247fb535d4756722cd9f5aad7  tests/cue_volume_run.py
 468a208772bf47d9d5b03f5f786b7989  tests/debug_record_engine_run.py
@@ -471,7 +473,7 @@ bee02fd6123bf9edd4e6dd43f306e1e4  tests/devassist_catalogue_run.py
 be64f463355fcf093dd89352a1376b22  tests/devassist_probe_run.py
 60529a3cd775b922ed71b076ddd535cc  tests/devassist_rename_run.py
 35083b11f4eb421e42d452fce068a8ea  tests/disabled_tree_run.py
-af13635ce6b9b938ec17e6bf6b1d9a83  tests/display_tab_run.py
+5e6ddd8dd4d761478c8579201281e8e0  tests/display_tab_run.py
 79340b1faeb574b0dd0dd28d6f8915e4  tests/drafts_run.py
 c368c3d4a0e31da169d5370dec0c7c3a  tests/drag_drop_run.py
 1dc5b3e89ca41f69f7eaf662e76da132  tests/engine_bench.py
