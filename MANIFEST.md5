@@ -4,7 +4,7 @@ f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 d32239bcb673463ab874e80d47fae504  LICENSE
 7946d4c01e458a8ae3c2dcfca08560b4  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
-394bd8eae709aa7c0942ce98b06e4375  ROADMAP.md
+74acac5eb276995c47208b6d09b72a7d  ROADMAP.md
 64b887e4bffa11008f517a29c7d447a1  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 d27793943eed883afed4d664862907a4  USER-GUIDE.md
@@ -432,7 +432,7 @@ ef410223373a536ca804a0eb02288efb  debug-log/2026-11-04-2134-armor-chain-qol-0.7.
 831b2797f9b7bacf59d1e1277b24920f  debug-log/2026-11-04-2137-calculator-bonus-0.6.8.md
 cec2b7fa38d9fd84c8f399c9f79c556a  debug-log/2026-11-04-2137-exact-spell-id-b4-core-0.6.35-options-0.6.35.md
 280a97f86ae12564a9d67336750d02e8  debug-log/2026-11-04-2138-gear-icons-qol-0.7.9.md
-32b649365a51568fe495177bb64ea53c  debug-log/2026-11-04-2140-engine-session-handoff.md
+3662095f9372f08a07ab81241b6743d7  debug-log/2026-11-04-2140-engine-session-handoff.md
 322b4323d072a259dbfab3d2dd5125b6  debug-log/2026-11-04-2148-margins-phase2-core-0.6.36.md
 663928e7dee12b27156b85373a006b09  debug-log/2026-11-04-2150-margins-chat-history-chat-0.6.11.md
 6f6779a298411c5b2adf543bd2897a98  debug-log/2026-11-04-2156-margins-notepad-popups-bonus-0.6.9.md
@@ -448,6 +448,7 @@ cc9d1ed3dee5d80a51312a494fd7c128  debug-log/2026-11-04-2218-probe-findings-oh-fl
 c1d7d03ab3ff7630015402cd7d314428  debug-log/2026-11-04-2303-mover-right-click-core-0.6.42.md
 368776f26a56f31f0c9615d565ea41bd  debug-log/2026-11-04-2311-mover-click-slop-core-0.6.43.md
 a7820cd111f019a93a67a9a972cd12b6  debug-log/2026-11-04-2326-engine-kept-step-index-core-0.6.44.md
+dd5578186e7bd08a7a4d9ecadd75bf82  debug-log/2026-11-04-2338-engine-garbage-measured-on-her-rules.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
