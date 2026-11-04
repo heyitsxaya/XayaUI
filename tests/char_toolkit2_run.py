@@ -52,10 +52,15 @@ local d = render("stats")
 local hs = texts(d, "header")
 check("Stats tab: headers Character, Attributes, Secondary stats, Tertiary stats in order",
   hs[1] == "- Character" and hs[2] == "- Attributes" and hs[3] == "- Secondary stats" and hs[4] == "- Tertiary stats", table.concat(hs, " | "))
+-- QoL 0.7.7: Defense and Offense are the Spells tab's filters now (a saved "defense" / "offense" tab opens Spells with that filter);
+-- their sections follow the spells (tests/char_spells_run.py has the rest)
 d = render("defense"); hs = texts(d, "header")
-check("Defense tab: Health and armor, Avoidance, Damage taken", table.concat(hs, "|") == "- Health and armor|- Avoidance|- Damage taken", table.concat(hs, "|"))
+check("Spells, Defense filter: Defensive spells, then Health and armor, Avoidance, Damage taken", c.tab == "spells" and c.spellFilter == "defense"
+  and table.concat(hs, "|") == "- Defensive spells|- Health and armor|- Avoidance|- Damage taken", table.concat(hs, "|"))
 d = render("offense"); hs = texts(d, "header")
-check("Offense tab: Power, Weapons, Timing and resources", table.concat(hs, "|") == "- Power|- Weapons|- Timing and resources", table.concat(hs, "|"))
+check("Spells, Offense filter: Offensive spells, then Power, Weapons, Timing and resources", c.tab == "spells" and c.spellFilter == "offense"
+  and table.concat(hs, "|") == "- Offensive spells|- Power|- Weapons|- Timing and resources", table.concat(hs, "|"))
+c.spellFilter = "all"
 d = render("gear"); hs = texts(d, "header")
 check("Gear tab: Summary, Durability and repair, Slots", table.concat(hs, "|") == "- Summary|- Durability and repair|- Slots", table.concat(hs, "|"))
 d = render("whatif"); hs = texts(d, "header")

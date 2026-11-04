@@ -6,7 +6,9 @@
 --
 -- Every number comes from the one model in CharacterModel.lua (the game's own reads; what the game does not give is marked, never
 -- guessed; secret values show as "hidden in combat"). This file only draws it:
---   Tabs: Sheet (every stat in two compact columns, one hover each) | Stats | Defense | Offense | Gear | What If | Spells.
+--   Tabs: Sheet (every stat in two compact columns, one hover each) | Stats | Gear | What If | Spells. The Spells tab lists the
+--   spells added by hand and every spell of the spellbook with numbers in its description, under All / Offense / Defense filter
+--   buttons; Offense and Defense also draw the stat sections that were the Offense and Defense tabs before QoL 0.7.7.
 --   Each tab is made of sections with a header (click a header to fold it). Each stat line is label and value, with its detail
 --   pairs under it; hovering a line shows where the number comes from (the conversion hover: rating through the game's converter,
 --   base and buffs, linked conversions such as crit to parry where the game reports them, thresholds).
@@ -35,7 +37,9 @@ ns.CHARTOOLKIT_DEFAULTS = {
     fontSize = 11,
     opacity = 0.92,
     advanced = false,      -- spell math
-    spells = {},           -- { { id = spellID, coeff = number|nil, base = "ap"|"sp" } }
+    spells = {},           -- added by hand: { { id = spellID, coeff = number|nil, base = "ap"|"sp", kind = nil|"offense"|"defense"|"both" } }
+    spellFilter = "all",   -- the Spells tab's filter: all | offense | defense (QoL 0.7.7: these were the Defense and Offense tabs)
+    spellsAll = false,     -- list spellbook spells whose description has no numbers too
     free = { x = 0, y = 0 }, -- position when shown with /xui stats and the character window closed
     tab = "sheet",         -- the panel tab last shown
     whatIf = 0,            -- What If: rating added to every stat (0 = off)
@@ -76,11 +80,16 @@ local function Cfg()
         else
             if s.coeff ~= nil and not num(s.coeff) then s.coeff = nil end
             if s.base ~= "sp" then s.base = "ap" end
+            if s.kind ~= "offense" and s.kind ~= "defense" and s.kind ~= "both" then s.kind = nil end
         end
     end
     if type(c.free) ~= "table" then c.free = { x = 0, y = 0 } end
     c.tab = OLD_TABS[c.tab] or c.tab
+    -- QoL 0.7.7: the Defense and Offense tabs became the Spells tab's filters (Xaya 2026-11-04)
+    if c.tab == "defense" or c.tab == "offense" then c.spellFilter = c.tab; c.tab = "spells" end
     if not CM.TAB_OK[c.tab] then c.tab = "sheet" end
+    c.spellFilter = CM.FilterOf(c)
+    c.spellsAll = c.spellsAll == true
     c.whatIf = math.max(-100000, math.min(100000, math.floor(tonumber(c.whatIf) or 0)))
     for _, k in ipairs({ "whatIfStats", "lineModes", "collapsed", "enchantSlots" }) do
         if type(c[k]) ~= "table" then c[k] = {} end
@@ -286,6 +295,32 @@ local function Hdr()
     end
     h:Show()
     return h
+end
+
+-- the Spells tab's filter buttons (All / Offense / Defense): own buttons with their label on them, so the label draws above the fill
+local filterBtns = {}
+local function FilterBtn(i)
+    local b = filterBtns[i]
+    if not b then
+        b = CreateFrame("Button", nil, content)
+        b:EnableMouse(true)
+        if b.RegisterForClicks then b:RegisterForClicks("LeftButtonUp") end
+        b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(b)
+        local hl = b:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(b); hl:SetColorTexture(1, 1, 1, 0.08)
+        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); b.text:SetPoint("CENTER")
+        b:SetScript("OnEnter", function(self) ShowTooltip(self, self.item) end)
+        b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        b:SetScript("OnClick", function(self)
+            local c = Cfg(); if not (c and self.filter) then return end
+            c.spellFilter = self.filter
+            if scroll then scroll:SetVerticalScroll(0) end
+            ns.CharToolkit_Render()
+        end)
+        b:SetScript("OnMouseWheel", function(_, d) if panel and panel.Scroll then panel.Scroll(d) end end)
+        filterBtns[i] = b
+    end
+    b:Show()
+    return b
 end
 
 local function Box(key)
@@ -513,17 +548,17 @@ local function PlaceFS(f, x, y, w, size, text, col, justify, wrap, kind)
 end
 
 -- detail tabs: sections with headers; each line is label | value, its pairs under it
-local function RenderSections(c, m, tab)
+local function RenderSections(c, m, tab, y0)
     local size = c.fontSize
     local cText = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
     local cMuted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
     local cLabel = TC("xui-label", "text", { 1, 0.82, 0, 1 })
     local cLine = TC("xui-window", "border", { 0.3, 0.3, 0.3, 1 })
     local short = c.detail == "short"
-    local y = 0
+    local y = y0 or 0
     for _, sec in ipairs(m.sections) do
         if sec.tab == tab and #sec.items > 0 then
-            if y > 0 then y = y + 6 end
+            if y > (y0 or 0) then y = y + 6 end
             local folded = c.collapsed[sec.key]
             local h = Hdr()
             h.key = sec.key
@@ -660,6 +695,31 @@ local function RenderSheet(c, m)
     return y
 end
 
+-- the filter row at the top of the Spells tab; returns the height it took
+local function RenderFilters(c)
+    local size = c.fontSize
+    local n = #CM.SPELL_FILTERS
+    local fw = math.floor(W / n)
+    local h = size + 8
+    for i, f in ipairs(CM.SPELL_FILTERS) do
+        local on = c.spellFilter == f[1]
+        local cls = on and "xui-tab-selected" or "xui-tab"
+        local b = FilterBtn(i)
+        b.filter = f[1]
+        b.item = { kind = "filter", key = "filter:" .. f[1], label = f[2], value = on and "shown" or "", tip = { f[3] } }
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", content, "TOPLEFT", (i - 1) * fw, 0)
+        b:SetSize(fw - 2, h)
+        local tb = TC(cls, "bg", on and { 0.22, 0.1, 0.3, 0.9 } or { 0.03, 0.03, 0.03, 0.7 })
+        b.bg:SetColorTexture(tb[1], tb[2], tb[3], tb[4] or 1)
+        SetFont(b.text, size, "")
+        b.text:SetText(f[2])
+        Paint(b.text, TC(cls, "text", on and { 1, 1, 1, 1 } or { 1, 0.82, 0, 1 }))
+        Rec("filter", (i - 1) * fw, 0, fw - 2, h, f[2], size)
+    end
+    return h + 6
+end
+
 function ns.CharToolkit_Render()
     local c = Cfg(); if not c or not panel then return end
     local bgc = TC("xui-window", "bg", { 0.04, 0.04, 0.06, 1 })
@@ -689,7 +749,11 @@ function ns.CharToolkit_Render()
     local m = CM.Build(c, c.tab)
     panel.model = m
     local y
-    if c.tab == "sheet" then y = RenderSheet(c, m) else y = RenderSections(c, m, c.tab) end
+    local nFilters = 0
+    if c.tab == "sheet" then y = RenderSheet(c, m)
+    elseif c.tab == "spells" then nFilters = #CM.SPELL_FILTERS; y = RenderSections(c, m, c.tab, RenderFilters(c))
+    else y = RenderSections(c, m, c.tab) end
+    for i = nFilters + 1, #filterBtns do filterBtns[i]:Hide() end
     for i = nFS + 1, #fsPool do fsPool[i]:Hide() end
     for i = nBtn + 1, #btnPool do btnPool[i]:Hide(); btnPool[i].item = nil end
     for i = nHdr + 1, #hdrPool do hdrPool[i]:Hide() end
@@ -707,7 +771,7 @@ end
 function ns.CharToolkit_Drawn()
     if not panel then return nil end
     return { model = panel.model, layout = panel.layoutRecs, modeText = panel.modeText, buttons = btnPool, headers = hdrPool, boxes = boxes,
-        fonts = fsPool }
+        fonts = fsPool, filters = filterBtns }
 end
 
 -------------------------------------------------------------------------------
@@ -768,7 +832,8 @@ local ev, pending
 local STAT_EVENTS = { "COMBAT_RATING_UPDATE", "MASTERY_UPDATE", "PLAYER_EQUIPMENT_CHANGED", "PLAYER_SPECIALIZATION_CHANGED",
     "SPEED_UPDATE", "LIFESTEAL_UPDATE", "AVOIDANCE_UPDATE", "PLAYER_DAMAGE_DONE_MODS", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED",
     "PLAYER_LEVEL_UP", "UPDATE_INVENTORY_DURABILITY", "PLAYER_TARGET_CHANGED", "PLAYER_AVG_ITEM_LEVEL_UPDATE", "MERCHANT_SHOW",
-    "MERCHANT_CLOSED", "CHALLENGE_MODE_MAPS_UPDATE", "GET_ITEM_INFO_RECEIVED", "SOCKET_INFO_UPDATE", "ENCHANT_SPELL_COMPLETED" }
+    "MERCHANT_CLOSED", "CHALLENGE_MODE_MAPS_UPDATE", "GET_ITEM_INFO_RECEIVED", "SOCKET_INFO_UPDATE", "ENCHANT_SPELL_COMPLETED",
+    "SPELL_DATA_LOAD_RESULT", "SPELLS_CHANGED" }
 local UNIT_EVENTS = { "UNIT_STATS", "UNIT_ATTACK_POWER", "UNIT_RANGEDDAMAGE", "UNIT_RANGED_ATTACK_POWER", "UNIT_ATTACK_SPEED", "UNIT_DAMAGE",
     "UNIT_MAXHEALTH", "UNIT_RESISTANCES", "UNIT_SPELL_HASTE" }
 local OVERLAY_EVENTS = { PLAYER_EQUIPMENT_CHANGED = true, GET_ITEM_INFO_RECEIVED = true, SOCKET_INFO_UPDATE = true, ENCHANT_SPELL_COMPLETED = true,
@@ -805,6 +870,12 @@ end
 
 local function OnEvent(_, event, unit)
     if event == "SPELL_UPDATE_COOLDOWN" then ReadGCD(); return end
+    -- the Spells tab: a description it asked for arrived, or the spellbook changed (core resets its spell list on SPELLS_CHANGED)
+    if event == "SPELL_DATA_LOAD_RESULT" or event == "SPELLS_CHANGED" then
+        local c = Cfg()
+        if c and c.tab == "spells" and panel and panel:IsShown() and (event == "SPELLS_CHANGED" or CM.SpellRequested(unit)) then Refresh() end
+        return
+    end
     if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "PLAYER_LEVEL_UP" then CM.ClearCache() end
     if event == "PLAYER_REGEN_ENABLED" then CM.gcdHidden = false end   -- out of combat the last readable GCD shows again
     if OVERLAY_EVENTS[event] then RefreshOverlays() end
@@ -967,8 +1038,10 @@ function ns.BuildCharToolkitPage(Notify)
         type = "group", name = "Spell Math", order = 30, hidden = isOff,
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "For each spell you add: every number in its current description divided by your current attack power (or spell power), and what one point of your primary stat adds. This is the ratio right now, with talents and buffs already applied; it is not Blizzard's base coefficient. You can type a coefficient from a database such as Wowhead to compare." },
+                name = "The Spells tab lists every active spell of your current spec's spellbook that has numbers in its description, and the spells you add here first (any spell ID). For each: every number in its current description divided by your current attack power (or spell power), and what one point of your primary stat adds. This is the ratio right now, with talents and buffs already applied; it is not Blizzard's base coefficient. You can type a coefficient from a database such as Wowhead to compare." },
             advanced = Toggle("advanced", 1, "Spell Math", "Shows the Spells tab's spell math in the panel (advanced).", "full"),
+            spellsAll = Toggle("spellsAll", 1.5, "List spells without numbers",
+                "Also list spellbook spells whose description has no amount to measure (they show \"none in the description\").", "full"),
             add = { type = "input", order = 2, width = "double", name = "Add a spell",
                 desc = "A spell ID, a spell name you know, or a shift-clicked spell link.",
                 get = function() return addBuf end,
@@ -978,7 +1051,7 @@ function ns.BuildCharToolkitPage(Notify)
                     local c = Cfg(); if not c then return end
                     for _, s in ipairs(c.spells) do if s.id == id then return end end
                     if #c.spells >= 20 then ns.Print("Character Toolkit: up to 20 spells."); return end
-                    c.spells[#c.spells + 1] = { id = id, base = "ap" }
+                    c.spells[#c.spells + 1] = { id = id, base = (CM.PrimaryStatIndex() == 4) and "sp" or "ap" }
                     addBuf = ""
                     Changed()
                 end },
@@ -1004,6 +1077,12 @@ function ns.BuildCharToolkitPage(Notify)
                         s.coeff = (n and n > 0) and n or nil
                         Changed()
                     end },
+                kind = { type = "select", order = 2.5, name = "Filter",
+                    values = { auto = "From its description", offense = "Offense", defense = "Defense", both = "Offense and Defense" },
+                    sorting = { "auto", "offense", "defense", "both" },
+                    desc = "Which of the Spells tab's filters show this spell. \"From its description\" sorts by its words (damage, or absorb / heal / armor / damage taken).",
+                    get = function() local s = S(); return (s and s.kind) or "auto" end,
+                    set = function(_, v) local s = S(); if s then s.kind = (v ~= "auto") and v or nil; Changed() end end },
                 remove = { type = "execute", order = 3, width = "half", name = "Remove",
                     func = function() table.remove(C().spells, i); Changed() end },
             },
