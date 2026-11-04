@@ -663,7 +663,7 @@ A panel beside the character window (XayaUI QoL; its title reads **Stat Calculat
 **Tabs:**
 - **Sheet:** every stat of the Stats, Defense and Offense tabs in two compact columns, grouped under the same section headers. Each entry has its own hover with the same detail as the full line, and a click flips a rating between percent and rating.
 - **Stats:**
-  - **Character:** your spec and role, primary stat and mastery factor; item level (equipped, best in bags, PvP); your Mythic+ rating with each dungeon's best run (and whether it was over time) and your best rating this expansion; movement speeds (run, swim, flight, now) as a percent of base speed; your mastery spell in the game's own words, numbers filled in.
+  - **Character:** your spec and role, primary stat and mastery factor; item level (equipped, best in bags, PvP); movement speeds (run, swim, flight, now) as a percent of base speed; your mastery spell in the game's own words, numbers filled in.
   - **Attributes:** your primary stat and Stamina with base, buffs and debuffs, the attack power your primary stat gives, the dodge (Agility) or parry (Strength) it gives where the game reports it, and Stamina to health. Your other primary stats are listed in grey.
   - **Secondary and tertiary stats** (Critical Strike, Haste, Mastery, Versatility, Avoidance, Leech, Speed):
     - the total, your rating, and the percent it gives;
