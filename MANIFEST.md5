@@ -2,9 +2,9 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-b1c7e6be142db3a1a80fab0de33b21cb  QA-CHECKLIST.md
+1e79a79ded494e5137813a420b791c68  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
-5d4ed980f056a2509ba309fcade19e77  ROADMAP.md
+394bd8eae709aa7c0942ce98b06e4375  ROADMAP.md
 64b887e4bffa11008f517a29c7d447a1  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 d27793943eed883afed4d664862907a4  USER-GUIDE.md
@@ -20,7 +20,7 @@ d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 37fa5175736d02a8aa486c64e9e6c143  XayaUI/Combat/AuraTracker.lua
 656359f2c1fb76cd36f8250be558acfe  XayaUI/Combat/README.md
 90a7c4511e2a3988040393f1c413a9b3  XayaUI/Compat.lua
-d7806ce2cc9894ad8ca3f513cc33579c  XayaUI/Conditions.lua
+13a60b31b56a009cc309b9a5350f5605  XayaUI/Conditions.lua
 a19207588e676cc8d0945015b5d1f9bb  XayaUI/Console.lua
 703a8ce7d88deacb936e4c562a762455  XayaUI/Core.lua
 54cd777342d376237760b45e6c8c8358  XayaUI/Cues.lua
@@ -104,7 +104,7 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 7d0e35ac661d1db2569cdea98562ba17  XayaUI/TextureList.lua
 2bf4d9dac09dbaaeb00c82fab7753069  XayaUI/Theme.lua
 3948f17e4d4520c468e201eb110ed947  XayaUI/Timing.lua
-c3f703812134ef2760a13dc61e48b67e  XayaUI/Triggers.lua
+570c15831b621bb0f2b57518e60eed39  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
 b960051e71a9ecd030f9e9c39fb70cbd  XayaUI/Visual.lua
 83ca53f4534e6b6d011830c7af868c85  XayaUI/XayaUI.toc
@@ -443,6 +443,7 @@ c86d21b18c98b498d1b5649bac4c4819  debug-log/2026-11-04-2157-margins-mover-popups
 c7868956d5a9f13edcbebb5956300968  debug-log/2026-11-04-2210-character-width-probe-qol-0.7.12.md
 9ba11c446d815ab3accc6ac2d61ae7f3  debug-log/2026-11-04-2213-game-menu-grows-core-0.6.39.md
 cc9d1ed3dee5d80a51312a494fd7c128  debug-log/2026-11-04-2218-probe-findings-oh-flood-devassist-0.7.2.md
+6ec07a6c65fc35401dd86a77416cb82d  debug-log/2026-11-04-2257-engine-garbage-per-step-core-0.6.40.md
 8534575268d7d2d8a2111d3750efdd0e  debug-log/2026-11-04-2301-load-checks-no-garbage-core-0.6.41.md
 c1d7d03ab3ff7630015402cd7d314428  debug-log/2026-11-04-2303-mover-right-click-core-0.6.42.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
@@ -546,6 +547,7 @@ e4af24c9daf9138d5a5778143e43addf  tests/display_tab_run.py
 79340b1faeb574b0dd0dd28d6f8915e4  tests/drafts_run.py
 c368c3d4a0e31da169d5370dec0c7c3a  tests/drag_drop_run.py
 1dc5b3e89ca41f69f7eaf662e76da132  tests/engine_bench.py
+2a75de477373e5a6446fc9c416ca13a2  tests/engine_garbage_run.py
 aa4c3450af7227ef4494ae91106535fa  tests/engine_text_run.py
 91e69f1cabaacf58537aa37237ffb06c  tests/export_group_run.py
 ba76b8a4cede40d6a498477cb17fbd93  tests/flat_buttons_run.py

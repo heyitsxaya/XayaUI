@@ -46,11 +46,12 @@ function ns.ReadCooldown(rule)
     local memo = ns.StepMemo and ns.StepMemo("cooldown")
     if not memo then return ReadCooldownRaw(rule) end
     local id, mc = rule.spellID or 0, rule.maxCharges or 0
-    local byId = memo[id]
-    if not byId then byId = {}; memo[id] = byId end
-    local mk = rule.exactSpell and ("exact" .. mc) or mc   -- B4: an exact-ID rule reads another spell than a following one
-    local r = byId[mk]
-    if not r then r = ReadCooldownRaw(rule); byId[mk] = r end
+    -- #309: one flat memo; the plain case (no charge override, following the bar) is keyed by the spell ID itself, so no table
+    -- or string is made per spell per step. B4: an exact-ID rule reads another spell than a following one.
+    local key = id
+    if mc ~= 0 or rule.exactSpell then key = tostring(id) .. "/" .. tostring(mc) .. (rule.exactSpell and "x" or "") end
+    local r = memo[key]
+    if not r then r = ReadCooldownRaw(rule); memo[key] = r end
     return r
 end
 -------------------------------------------------------------------------------
@@ -547,6 +548,16 @@ local function MakeRef(aura, frame, unit)
     return ref
 end
 ns.MakeAuraRef = MakeRef
+-- diagnostic detail for /xui status: what a Cooldown Manager frame reports (secret-safe, no arithmetic). File level so no closure is made
+-- per read (#309).
+local function CDMDetail(fr)
+    local iid = fr.auraInstanceID
+    local u = fr.auraDataUnit
+    return ("iid=%s wasAura=%s shown=%s unit=%s"):format(
+        issecret(iid) and "secret" or tostring(iid),
+        tostring(fr.wasSetFromAura == true), tostring(fr:IsShown() and true or false),
+        issecret(u) and "secret" or tostring(u))
+end
 local function BuffPresentRaw(id)
     if not id or id == 0 then return nil, "no buff" end
     -- A real aura table proves presence, in any context.
@@ -561,14 +572,7 @@ local function BuffPresentRaw(id)
         local okA, active = pcall(FrameActive, fr)
         active = okA and active or false
         -- diagnostic detail for /xui status: what the frame actually reports (secret-safe, no arithmetic)
-        local okd, detail = pcall(function()
-            local iid = fr.auraInstanceID
-            local u = fr.auraDataUnit
-            return ("iid=%s wasAura=%s shown=%s unit=%s"):format(
-                issecret(iid) and "secret" or tostring(iid),
-                tostring(fr.wasSetFromAura == true), tostring(fr:IsShown() and true or false),
-                issecret(u) and "secret" or tostring(u))
-        end)
+        local okd, detail = pcall(CDMDetail, fr)
         return active and true or false, "CDM frame (" .. vname .. (okd and (": " .. detail) or "") .. ")", active and MakeRef(nil, fr) or nil
     end
     -- No proof of presence. "nil" only means MISSING if the read can be trusted.
@@ -910,18 +914,36 @@ local function SetBonusOff(id)
     return nil
 end
 ns.SetBonusOff = SetBonusOff
+-- #309: the set-bonus pre-check walks the IDs (mainID, then alts) without building a list each step. Returns the first reason when
+-- there is at least one ID and every one of them comes only from a set bonus that is off; nil otherwise.
+local function AllSetBonusOff(mainID, alts)
+    local n, why = 0, nil
+    local m = tonumber(mainID)
+    if m then
+        n = 1
+        local w = m > 0 and SetBonusOff(m)
+        if not w then return nil end
+        why = w
+    end
+    if type(alts) == "table" then
+        for _, a in ipairs(alts) do
+            local id = tonumber(a)
+            if id then
+                n = n + 1
+                local w = id > 0 and SetBonusOff(id)
+                if not w then return nil end
+                why = why or w
+            end
+        end
+    end
+    if n > 0 then return why end
+    return nil
+end
 function ns.AuraPresence(mainID, alts, spellID)
     -- 0. every listed aura comes only from a set bonus that is not active: missing, for sure (in combat too)
     do
-        local ids, why = { tonumber(mainID) }, nil
-        if type(alts) == "table" then for _, a in ipairs(alts) do ids[#ids + 1] = tonumber(a) end end
-        local all = #ids > 0
-        for _, id in ipairs(ids) do
-            local w = id and id > 0 and SetBonusOff(id)
-            if not w then all = false; break end
-            why = why or w
-        end
-        if all then return false, "set bonus: " .. why end
+        local why = AllSetBonusOff(mainID, alts)
+        if why then return false, "set bonus: " .. why end
     end
     local p, s, r, w = ns.AuraPresentList(mainID, alts)
     if p ~= nil then return p, s, r, w end
@@ -985,6 +1007,7 @@ local function RecordAura(id, present, src)
 end
 local BuffPresentOnce
 -- (one read per aura per engine step: several rules often watch the same aura, and the tracker's side effects should run once)
+local NOREAD = {}   -- memo marker: the presence read was done and came back unknown (nil)
 function ns.BuffPresent(id)
     local memo = id and ns.StepMemo and ns.StepMemo("buff")
     if not memo then
@@ -992,14 +1015,19 @@ function ns.BuffPresent(id)
         if id then RecordAura(id, p, s) end
         return p, s, r
     end
-    local m = memo[id]
-    if not m then
-        m = {}
-        m[1], m[2], m[3] = BuffPresentOnce(id)
-        memo[id] = m
-        if id then RecordAura(id, m[1], m[2]) end
+    -- #309: flat memos (presence, source, reference) instead of a new table per aura per step; NOREAD marks "unknown" (nil)
+    local memoS, memoR = ns.StepMemo("buffS"), ns.StepMemo("buffR")
+    local p = memo[id]
+    if p == nil then
+        local s, r
+        p, s, r = BuffPresentOnce(id)
+        memoS[id], memoR[id] = s, r
+        if id then RecordAura(id, p, s) end
+        memo[id] = (p == nil) and NOREAD or p
+        return p, s, r
     end
-    return m[1], m[2], m[3]
+    if p == NOREAD then p = nil end
+    return p, memoS[id], memoR[id]
 end
 function BuffPresentOnce(id)
     local present, src, ref = BuffPresentRaw(id)
@@ -1394,7 +1422,8 @@ end
 -- Passes when the value is not marked "not" and, if any true entries exist, is one of them.
 -- The key "*" is the explicit "All" choice of the Specialization / Role radios: it restricts nothing.
 function ns.SetActive(set)
-    for k in pairs(set or {}) do if k ~= "*" then return true end end
+    if not set then return false end   -- #309: no throwaway {} for a missing set (called for every load row of every rule)
+    for k in pairs(set) do if k ~= "*" then return true end end
     return false
 end
 function ns.SetMatch(set, value)
