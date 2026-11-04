@@ -70,6 +70,12 @@ Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.
        player's saved file, never in the repo.
      - Item -> aura confirmation through the existing cast recorder.
      - Spell scaling already exists: `/xuiformula`, kept per talent loadout, fitted by `tools/formula_fit.py`.
+   - **Design note (read before building `/xuidev instance`):** the event probe (`Probe.lua`) already logs nameplate adds and
+     enemy casts (codes NA, CS, CC, CL, CI, CT) and reads each mob's `UnitCreatureID`, scrubbed `UnitGUID` and
+     `UnitClassification` (Probe.lua:694-713), with its secrecy handling. Still missing: the per-unit Mythic+ count
+     (`GetUnitCriteriaProgressValues`), auras on enemies, and a per-creature summary (creature ID -> name, classification,
+     count, spells seen cast, auras seen). Building the capture on the probe's mob reads avoids a second recorder (INFERENCE
+     from reading the code, not yet designed in detail).
    - **They settle what the client data cannot:**
      - creature names: only 2 of the 391 enemy-forces rows have one;
      - which creatures cast what;
