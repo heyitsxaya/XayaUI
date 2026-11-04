@@ -1085,7 +1085,7 @@ local function PasteApply(key, dst, src)
     elseif key == "activation" then dst.trigMode, dst.trigOrder = src.trigMode, src.trigOrder and C(src.trigOrder) or nil
     elseif key == "actions" then dst.actions = src.actions and C(src.actions) or nil
     elseif key == "stCd" then
-        dst.cdState, dst.countGCD = src.cdState, src.countGCD
+        dst.cdState, dst.countGCD, dst.countLOC = src.cdState, src.countGCD, src.countLOC
         dst.cdTimeOp, dst.cdTimeSec, dst.cdChargeOp, dst.cdChargeVal = src.cdTimeOp, src.cdTimeSec, src.cdChargeOp, src.cdChargeVal
     elseif key == "stBuff" then dst.buffState, dst.buffTimeOp, dst.buffTimeSec = src.buffState, src.buffTimeOp, src.buffTimeSec
     elseif key == "talents" then dst.talents, dst.talentMode = C(src.talents or {}), src.talentMode
@@ -1345,6 +1345,8 @@ local function BuildRule(i, rule)
             cdState = ns.CdStateSelect(rule, on),
             countGCD = Tog(rule, "countGCD", "Count the global cooldown", 4.5, on,
                 { desc = "Ticked: while this spell is on the global cooldown it counts as on cooldown (not ready, no charge available). Unticked (default): the global cooldown is ignored." }),
+            countLOC = Tog(rule, "countLOC", "Count a lockout as cooldown", 4.55, on,
+                { desc = "Ticked: while a loss-of-control lockout (an interrupt or silence) blocks this spell, it counts as on cooldown. Unticked (default): only the spell's own cooldown counts." }),
             -- "Seconds left" / "Charges" comparisons on the trigger itself (B2): a dropdown with its number box beside it
             cdTimeOp = Sel(rule, "cdTimeOp", "Seconds left", 4.6, ns.CMP_OPS and ns.CMP_OPS.values or { any = "Any" }, ns.CMP_OPS and ns.CMP_OPS.order or { "any" },
                 function() Changed(rule); Notify() end,
@@ -1420,7 +1422,7 @@ local function BuildRule(i, rule)
 
     -- Triggers are added by hand: Cooldown and Buff / Aura only show once added (or while they hold data).
     -- Hiding never changes saved values; "Remove" resets that section.
-    for _, k in ipairs({ "cdHeader", "spellID", "spellName", "spellSearch", "spellPick", "cdState", "countGCD", "cdTimeOp", "cdChargeOp", "maxCharges", "detected" }) do
+    for _, k in ipairs({ "cdHeader", "spellID", "spellName", "spellSearch", "spellPick", "cdState", "countGCD", "countLOC", "cdTimeOp", "cdChargeOp", "maxCharges", "detected" }) do
         local o = trigger.args[k]
         if o then o.hidden = function() return not ns.CooldownUsed(rule) end end
     end
@@ -1433,7 +1435,7 @@ local function BuildRule(i, rule)
         hidden = function() return not ns.CooldownUsed(rule) end,
         func = function()
             rule.useCooldown = false; rule.spellID = 0; rule.maxCharges = 0; rule.cdState = nil
-            rule.countGCD, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil
+            rule.countGCD, rule.countLOC, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil, nil
             Changed(rule); Notify()
         end }
     trigger.args.buffRemove = { type = "execute", name = "Remove", order = 14, width = "half",
@@ -2134,7 +2136,14 @@ local function BuildRule(i, rule)
                 set = function(_, v) rule.gameSound.alsoXayaUI = v and true or nil; ns.MarkDirty() end },
             gameSoundStatus = { type = "description", order = 15, width = "full", fontSize = "small",
                 hidden = function() return not (type(rule.gameSound) == "table" and rule.gameSound.enabled) end,
-                name = function() local ok, s = pcall(ns.AuraSound.StatusLine, rule); return ok and s or "" end },
+                name = function()
+                    -- Insivius 2026-11-04: "attempt to index field 'AuraSound' (a nil value)" here broke the whole cue pane. AuraSound.lua
+                    -- is part of XayaUI core (0.6.13+); a core folder without it (older, or copied without a game restart) must not break this.
+                    if not (ns.AuraSound and ns.AuraSound.StatusLine) then
+                        return "|cffff6060The game-played sound needs XayaUI core 0.6.13 or newer. Copy every XayaUI folder again, then restart the game (a /reload does not load new files).|r"
+                    end
+                    local ok, s = pcall(ns.AuraSound.StatusLine, rule); return ok and s or ""
+                end },
         },
     }
 
@@ -6738,7 +6747,7 @@ function SX.Start(kind)
         SX.II.max = SX.II_MAX
         local ids = {}
         for _, sp in ipairs(ns.BuildSpellList() or {}) do if sp.id then ids[#ids + 1] = sp.id end end
-        pcall(ns.AuraSources.Start, SX.II, ids)
+        if ns.AuraSources and ns.AuraSources.Start then pcall(ns.AuraSources.Start, SX.II, ids) end   -- core module (AuraSources.lua)
     end
 end
 function SX.OwnedItems()

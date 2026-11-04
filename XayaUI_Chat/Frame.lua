@@ -211,10 +211,14 @@ function C.Anchor()
             -- shows its overflow arrow only when they do not fit (FCFDock_UpdateTabs / FCFDock_CalculateTabSize, FloatingChatFrame.lua,
             -- wow-ui-source live 12.1.5.70783). Moving the dock into the tab row does not lay them out again, so they kept the old,
             -- wider sizes and ran past the row's end. Lay them out again whenever the width they get changes (out of combat).
+            -- Whole pixels, at most once a second: a width that wobbles by a fraction (pixel snapping) must never make this run on every
+            -- re-anchor (Blizzard's lay-out also resets each tab's alpha, which would look like blinking tabs). INFERENCE: not seen in game.
             local w = dock.GetWidth and dock:GetWidth()
-            if s.tabsShow and type(w) == "number" and w > 0 and w ~= C.dockLaidOutW and type(_G.FCFDock_UpdateTabs) == "function"
-                and not (InCombatLockdown and InCombatLockdown()) then
-                C.dockLaidOutW = w
+            w = (type(w) == "number") and math.floor(w + 0.5) or nil
+            local now = GetTime and GetTime() or 0
+            if s.tabsShow and w and w > 0 and w ~= C.dockLaidOutW and type(_G.FCFDock_UpdateTabs) == "function"
+                and not (InCombatLockdown and InCombatLockdown()) and (now - (C.dockLaidOutAt or -10)) >= 1 then
+                C.dockLaidOutW, C.dockLaidOutAt = w, now
                 pcall(_G.FCFDock_UpdateTabs, dock, true)
             end
         end)

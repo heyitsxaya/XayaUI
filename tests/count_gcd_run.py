@@ -31,6 +31,7 @@ C_Spell.GetSpellCharges = function(id)
   return { currentCharges = COMBAT and SECRET or s.cur, maxCharges = s.max, isActive = s.recharging,
            cooldownStartTime = COMBAT and SECRET or 0, cooldownDuration = COMBAT and SECRET or 0, chargeModRate = 1 }
 end
+C_Spell.GetSpellLossOfControlCooldownInfo = function(id) local s = SP[id]; if not s then return nil end; return { startTime = 0, duration = 0, modRate = 1, isActive = s.loc and true or false, shouldReplaceNormalCooldown = s.loc and true or false } end
 C_Spell.GetSpellCooldown = function(id)
   local s = SP[id] or { cd = false, hold = false }
   return { startTime = COMBAT and SECRET or (s.start or 0), duration = COMBAT and SECRET or (s.dur or 0), isActive = s.cd or s.gcd, isOnGCD = s.gcd, isEnabled = not s.hold, modRate = 1 }
@@ -135,8 +136,23 @@ check("trigger row, 3 charges: true", ev("(select(1, NS.CheckTrigger(ROWT)))") i
 # the options: shown only with the Cooldown section, cleared by Remove, carried by 'copy section'
 opts = open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
 check("the Cooldown section hides countGCD / Seconds left / Charges with the section",
-      '"cdState", "countGCD", "cdTimeOp", "cdChargeOp", "maxCharges"' in opts)
-check("Remove clears countGCD and the comparisons", "rule.countGCD, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil" in opts)
+      '"cdState", "countGCD", "countLOC", "cdTimeOp", "cdChargeOp", "maxCharges"' in opts)
+check("Remove clears countGCD and the comparisons", "rule.countGCD, rule.countLOC, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil, nil" in opts)
 check("copying the Cooldown section carries them", "dst.cdTimeOp, dst.cdTimeSec, dst.cdChargeOp, dst.cdChargeVal = src.cdTimeOp, src.cdTimeSec, src.cdChargeOp, src.cdChargeVal" in opts
-      and "dst.cdState, dst.countGCD = src.cdState, src.countGCD" in opts)
+      and "dst.cdState, dst.countGCD, dst.countLOC = src.cdState, src.countGCD, src.countLOC" in opts)
+# ===== B3: a loss-of-control lockout counts as cooldown =====
+lua("SPELL(7005, 1); L1 = RULE(7005, 'ready'); L2 = RULE(7005, 'ready'); L2.countLOC = true; NS.rules = { L1, L2 }; SP[7005].loc = true")
+check("locked out (interrupt), countLOC off: ready (as before)", ev("READY(L1)") is True, ev("READY(L1)"))
+check("locked out, countLOC on: NOT ready", ev("READY(L2)") is False, ev("READY(L2)"))
+lua("COMBAT = true; T = T + 2")
+check("in combat (isActive is NeverSecret), locked out, countLOC on: NOT ready", ev("READY(L2)") is False)
+lua("SP[7005].loc = false")
+check("lockout over: ready again", ev("READY(L2)") is True)
+lua("COMBAT = false")
+lua("""ROWL = { type = 'cooldown', spellID = 7005, state = 'ready', countLOC = true }; SP[7005].loc = true""")
+check("trigger row, locked out, countLOC on: false", ev("(select(1, NS.CheckTrigger(ROWL)))") is False)
+lua("SP[7005].loc = false")
+check("Remove / copy / hide cover countLOC", '"countGCD", "countLOC", "cdTimeOp"' in open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
+      and "rule.countGCD, rule.countLOC, rule.cdTimeOp" in open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
+      and "dst.countLOC = src.cdState, src.countGCD, src.countLOC" in open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read())
 print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)
