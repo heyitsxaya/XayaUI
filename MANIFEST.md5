@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-a46ecb2e41dcbd9ec536f5264495b6b1  QA-CHECKLIST.md
+139da9d696f08fcd1f25cdc03cb18eae  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 74da2d4416f179dd457125711183fe00  ROADMAP.md
 b95c0745be131f3682cf075829840ea5  SESSION-START-SUMMARY.md
@@ -207,10 +207,10 @@ ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
 a75dfd0b35087749808116b1558defd6  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
-e70b6cd92ae9d0266c57cb36946d305d  XayaUI_Options/Skin.lua
+92628c13241f72388d8f61557be93b14  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
-0e18e2b7955e2a18dc6d011b38267b38  XayaUI_Options/XayaUI_Options.toc
+1aab319ff9e364351e9e2d208661fbdc  XayaUI_Options/XayaUI_Options.toc
 1b7f9c9a6a6f181cc44dce7f1838d2de  XayaUI_QoL/CharacterModel.lua
 4b2d82ea7578d98ddbfa2a6ee3cddd85  XayaUI_QoL/CharacterToolkit.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
@@ -414,6 +414,7 @@ c610b85f32168d187d9e212520ed1e0c  debug-log/2026-11-04-1933-icon-cue-text-option
 b9d6950ab4ecbb0bb4d53b35d331496f  debug-log/2026-11-04-1944-anchor-to-any-frame-core-0.6.31.md
 c48530e09acd09efc3325e729bd29e36  debug-log/2026-11-04-1948-rule-search-options-0.6.29.md
 72703131629ba8399e1f6ccdd1a75394  debug-log/2026-11-04-2014-window-footer-acknowledgements-options-0.6.30.md
+b229a279283a14f213c19687f9bbe64c  debug-log/2026-11-04-2017-sidebar-resize-on-tab-click-options-0.6.31.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
 9a907df3961024106bb6ae03b230abf3  docs/plans/REFERENCE-SCREENS-AND-FEASIBILITY-2026-11-04.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
@@ -530,7 +531,7 @@ b98b8b93e9068a136e462260a2aefcd1  tests/perf_run.py
 c41c52d02e5112eb8c21794ea85c0b18  tests/recycle_bin_run.py
 7122b20e5206f3b97c395d01daa7837a  tests/rule_search_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py
-c4cae211df26ee82daecdd8b7564a0ab  tests/sidebar_name_room_run.py
+033cc3815741ca63d85f3a67a2bd0409  tests/sidebar_name_room_run.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
 f886a09a99f1c562e4ff35c25675a1bd  tests/timing_run.py
 4ab5fd24ca1bb0910e3372c636868b5c  tests/tooltip_formulas_run.py
