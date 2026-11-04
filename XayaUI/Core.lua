@@ -314,7 +314,10 @@ local stepIdx   -- nil outside a step
 local EMPTY = setmetatable({}, { __newindex = function() error("XayaUI: the step index lists are read-only") end })
 ns.EMPTY_LIST = EMPTY
 
-function ns.BeginStepIndex() stepIdx = {} end
+-- #309: one step table, emptied at every step start (no new table per step); the folder and rule indexes below are kept between
+-- steps and reused only while the lists they were built from are unchanged (checked entry by entry, no edit signal needed).
+local stepTable = {}
+function ns.BeginStepIndex() for k in pairs(stepTable) do stepTable[k] = nil end; stepIdx = stepTable end
 function ns.EndStepIndex() stepIdx = nil end
 -- true while the engine runs a step: per-step caches may be used (and reused tables handed out)
 function ns.InStep() return stepIdx ~= nil end
@@ -334,32 +337,74 @@ end
 local BeginStepIndex0 = ns.BeginStepIndex
 function ns.BeginStepIndex() stepSerial = stepSerial + 1; BeginStepIndex0() end
 
+-- Kept-index check (#309): an index built from a list is reused while the list still holds the same entries, in the same order, with
+-- the same identifying fields. Any difference (an entry added, removed, moved, or a uid / parentUid / id / cue flag changed, whether or
+-- not the edit announced itself) rebuilds the index exactly as a fresh build would.
+local fiKept, fiN, fiF, fiId = nil, -1, {}, {}
+local function FolderIndexValid(list)
+    local n = #list
+    if not fiKept or n ~= fiN then return false end
+    for i = 1, n do local f = list[i]; if fiF[i] ~= f or fiId[i] ~= f.id then return false end end
+    return true
+end
 local function FolderIndex()
     local fi = stepIdx.folders
     if not fi then
-        fi = {}
-        for _, f in ipairs(ns.folders or {}) do if f.id ~= nil and fi[f.id] == nil then fi[f.id] = f end end
+        local list = ns.folders or EMPTY
+        if FolderIndexValid(list) then
+            fi = fiKept
+        else
+            fi = {}
+            local n = #list
+            for i = 1, n do
+                local f = list[i]
+                if f.id ~= nil and fi[f.id] == nil then fi[f.id] = f end
+                fiF[i], fiId[i] = f, f.id
+            end
+            for i = n + 1, fiN do fiF[i], fiId[i] = nil, nil end
+            fiKept, fiN = fi, n
+        end
         stepIdx.folders = fi
     end
     return fi
 end
 
 -- parents[uid] = first parent rule with that uid; kids[uid] = every rule whose parentUid is uid, in rule order
+local riKept, riN, riR, riU, riP, riC = nil, -1, {}, {}, {}, {}
+local function RuleIndexValid(list)
+    local n = #list
+    if not riKept or n ~= riN then return false end
+    for i = 1, n do
+        local r = list[i]
+        if riR[i] ~= r or riU[i] ~= r.uid or riP[i] ~= r.parentUid or riC[i] ~= (r.isCue and true or false) then return false end
+    end
+    return true
+end
 local function RuleIndex()
     local ri = stepIdx.rules
     if not ri then
-        local parents, kids = {}, {}
-        for _, r in ipairs(ns.rules or {}) do
-            local pu = r.parentUid
-            if pu ~= nil then
-                local l = kids[pu]
-                if not l then l = {}; kids[pu] = l end
-                l[#l + 1] = r
-            elseif type(r.uid) == "string" and parents[r.uid] == nil then
-                parents[r.uid] = r
+        local list = ns.rules or EMPTY
+        if RuleIndexValid(list) then
+            ri = riKept   -- same rules, same order, same uid / parentUid / cue flags: the kept index (and its cue / condition lists) still holds
+        else
+            local parents, kids = {}, {}
+            local n = #list
+            for i = 1, n do
+                local r = list[i]
+                local pu = r.parentUid
+                if pu ~= nil then
+                    local l = kids[pu]
+                    if not l then l = {}; kids[pu] = l end
+                    l[#l + 1] = r
+                elseif type(r.uid) == "string" and parents[r.uid] == nil then
+                    parents[r.uid] = r
+                end
+                riR[i], riU[i], riP[i], riC[i] = r, r.uid, pu, (r.isCue and true or false)
             end
+            for i = n + 1, riN do riR[i], riU[i], riP[i], riC[i] = nil, nil, nil, nil end
+            ri = { parents = parents, kids = kids, cues = {}, conds = {} }
+            riKept, riN = ri, n
         end
-        ri = { parents = parents, kids = kids, cues = {}, conds = {} }
         stepIdx.rules = ri
     end
     return ri
