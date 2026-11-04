@@ -10,6 +10,7 @@
 --   .rec      cast -> aura recorder: for each spell you cast, the auras that appeared within 1.5 s, the duration the game reported,
 --             the real lifetime observed (works in combat when the numbers are secret), tagged with the talent + gear loadout in force
 --   .catalogue / .catalogueCDM / .seen   the aura catalogue and the aura log (AuraCatalogue.lua)
+--   .probe     the event probe, /xuidump probe (Probe.lua)
 local ADDON = ...
 local GD = {}
 _G.XayaUIGameDump = GD
@@ -821,17 +822,21 @@ SlashCmdList["XAYAUIDUMP"] = function(msg)
     elseif cmd == "toolkit" then if GD.ProbeToolkit then GD.ProbeToolkit() end
     elseif cmd == "catalogue" or cmd == "catalog" then if GD.CaptureCatalogue then GD.CaptureCatalogue(arg ~= "" and arg or nil) end
     elseif cmd == "seen" then if GD.SeenToggle then GD.SeenToggle() end
+    elseif cmd == "probe" then if GD.Probe then GD.Probe(arg) end
     elseif cmd == "status" then
         local nc, na, nl = GD.RecorderSummary()
         local d = DB()
         local nSpec = 0
         for _ in pairs(d.catalogueCDM or {}) do nSpec = nSpec + 1 end
-        Say(("static: %s | char: %s | auras: %s | api: %s | toolkit checks: %s | recorder %s: %d spells, %d aura links, %d loadouts | catalogue: %s (Cooldown Manager of %d specs) | aura log: %s, %d auras"):format(
+        local probeOn, probeN = false, 0
+        if GD.ProbeSummary then probeOn, probeN = GD.ProbeSummary() end
+        Say(("static: %s | char: %s | auras: %s | api: %s | toolkit checks: %s | recorder %s: %d spells, %d aura links, %d loadouts | catalogue: %s (Cooldown Manager of %d specs) | aura log: %s, %d auras | probe: %s, %d entries"):format(
             d.static and (d.static.built or "yes") or "none", d.char and d.char.at or "none", d.auras and d.auras.at or "none",
             d.api and d.api.at or "none", d.toolkitProbe and d.toolkitProbe.at or "none", R.on and "ON" or "off", nc, na, nl,
-            d.catalogue and d.catalogue.at or "none", nSpec, (GD.Catalogue and GD.Catalogue.seenOn) and "ON" or "off", d.seen and d.seen.n or 0))
+            d.catalogue and d.catalogue.at or "none", nSpec, (GD.Catalogue and GD.Catalogue.seenOn) and "ON" or "off", d.seen and d.seen.n or 0,
+            probeOn and "ON" or "off", probeN or 0))
     else
-        print("|cffffd100XayaUI Game Dump|r: /xuidump (window) | static | char | auras | rec (toggle recorder) | clear | api (API inventory) | toolkit (Character Toolkit checks) | catalogue [fromID] (aura catalogue) | seen (toggle aura log) | save (reload) | status")
+        print("|cffffd100XayaUI Game Dump|r: /xuidump (window) | static | char | auras | rec (toggle recorder) | clear | api (API inventory) | toolkit (Character Toolkit checks) | catalogue [fromID] (aura catalogue) | seen (toggle aura log) | probe on|off|status|clear|spells <ids>|mark (event probe) | save (reload) | status")
     end
 end
 

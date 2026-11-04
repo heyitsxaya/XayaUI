@@ -16,7 +16,7 @@ XayaUI is a group of addons. Each one is its own entry in the game's AddOns list
 | **XayaUI QoL** | Cursor highlight, cursor trail, Character Toolkit (friends and bags later) | No cursor changes, no Character Toolkit |
 | **XayaUI Bonus Features** | Tooltip additions, Notepad, custom data panels | Plain tooltips, no notepad, no panels |
 | **XayaUI Blizzard Reskin** | XayaUI's look on Blizzard's frames without changing what they do (today: the Game Menu) | Blizzard's own look |
-| **XayaUI Media** | Your own pictures and sounds (a support folder, not a feature) | Your own files are not in the lists |
+| **XayaUI Media** | Your own pictures and sounds (a support folder, not a feature) | Your own files are not in the lists. The art picker (and the sound list) offer only the bundled pictures this computer actually has, checked once per session (pictures since 0.6.15, #333); your own XayaUI Media files are always listed |
 
 Each feature addon has its own tab in the settings window (**Chat**, **QoL**, **Bonus Features**); the Game Menu look stays under Settings > UI Options > Display. A tab, a minimap-button row, or a /xui command of an addon that is switched off is simply not there (a command says which addon to turn on). Your settings are kept either way: switching an addon off and on again loses nothing.
 
@@ -124,7 +124,7 @@ Load answers: *in what situations is this rule active?* A rule that is not loade
 | Mode | Meaning |
 |---|---|
 | **Never load** | The rule never runs. The rule list shows it as disabled. The load conditions below stay visible but are not used. |
-| **Always load** | Ignore every load condition below. The conditions stay visible and keep their settings; they just are not used until you tick Match ALL or Match ANY. |
+| **Always load** | Ignore every load condition below. The conditions stay visible and keep their settings; they just are not used until you tick Match ALL or Match ANY. One exception you choose (0.6.18, #319): while Always load is on, the **Class** and **Specialization** rows each show a tick box on the row itself, **"Always load: only this class"** / **"only this spec"**. Ticked, Always load still keeps to the classes or specs chosen in that row (a Death Knight rule set to Always load then stays off on a Paladin). Unticked (the default), Always load ignores the row as before. |
 | **Match ALL of the conditions below** | Every condition you set must be true. (A blank mode behaves like ALL.) |
 | **Match ANY of the conditions below** | At least one condition you set must be true. |
 
@@ -169,14 +169,14 @@ Tick **Talents** to require talents; the list appears below.
 Checked nearest group first, then its parents:
 
 1. A group set to **Never** blocks every rule inside it, whatever the rule says.
-2. A group set to **Always** makes the rule's own load mode and match conditions pass (talents still apply).
+2. A group set to **Always** makes the rule's own load mode and match conditions pass (talents still apply). On the group's Load tab, its Class and Specialization lists each get a tick box **"Always load: only this class / spec"** while the group is set to Always (its own setting or a parent's); ticked, that list still counts for every rule inside (0.6.18, #319).
 3. A group's own **specialization, role, and instance-type** sets apply *on top of* the rule's. A rule cannot loosen them, even when the rule is set to "Always load."
 
 ### 3.6 What the rule itself must pass, in order
 
 ```
 Enabled box ticked
- -> group Never? (blocks)  -> group Always? (skips to talents)
+ -> group Never? (blocks)  -> group Always? (skips to talents; a class / spec list ticked "Always load: only this ..." still counts)
  -> group spec / role / instance gates
  -> rule load mode (Never / Always / ALL / ANY)
  -> talents requirement
@@ -196,6 +196,8 @@ A trigger is a fact the rule watches. A rule can have several, numbered **Trigge
 
 Under each trigger a gray **In combat** line says whether the game lets XayaUI read it in combat: **readable** (the game never hides it), **through Blizzard's Cooldown Manager** (the spell or buff is tracked there, so present / missing still works and the time is exact when shown, else estimated), or **hidden** (add it to the Cooldown Manager, otherwise the trigger reads UNKNOWN in combat and the rule waits). The line comes from the game's own secrecy lookup and is shown before you test.
 
+At the top of the tab one line sums up the whole rule (0.6.13): **In combat: every trigger XayaUI can judge is readable**, or **In combat: N of M triggers may read UNKNOWN** with their names. A trigger with no In combat line (Spell Known, Class Resource ...) is not counted.
+
 ### 4.1 The two built-in triggers
 
 **Cooldown** (one spell ID). States:
@@ -212,9 +214,17 @@ For a spell **without charges**, the list shortens to **Cooldown ready (off cool
 
 An optional **Max charges override** exists for spells where the game does not report charges.
 
+A spell you do not have right now (a talent or specialization swapped it away) reads **unknown: spell not known**, never "ready" (0.6.13; the game reports such a spell as not on cooldown). In combat, the seconds left of a cooldown come from the game's own "on cooldown / on the global cooldown" flags first, so it is never shown as 0 while the spell is still cooling down.
+
 **Buff / Aura** (one buff spell ID, yours). States: **Buff is present**, **Buff is MISSING**, or none. Use the ID of the *buff*, not the ability. The buff is read from the aura API; in combat, when the aura API is blocked, it falls back to the Blizzard Cooldown Manager icon **if the buff is tracked there**. If neither works, the answer is unknown.
 
-**Seconds left** (with State = Buff is present): **Any time left** (default), **At least**, **At most**, **More than**, or **Less than** a number of seconds. The trigger is then true only while the buff has that much time left, for example "Buff is present, Less than 3 seconds left" for a refresh warning. In combat the time is exact when the game shows it; otherwise it is the duration engine's estimate (`/xui timing`). With no readable time and no estimate yet, the trigger is unknown and the rule waits. A buff without a duration counts as having unlimited time left.
+In combat XayaUI asks, in this order, and stops at the first answer (0.6.13; the built-in Buff / Aura and every Buff / Aura (another) row ask the same way):
+1. the aura API, or a **shown** Cooldown Manager icon carrying one of the aura IDs (a hidden Cooldown Manager window stops following auras, so its icons are no longer used);
+2. the Tracked Buffs icon of the rule's own spell, when the aura has that spell's name;
+3. a Tracked Buffs icon filed under the aura's name;
+4. a **proc glow**: a button that only this aura lights (Rime lights Howling Blast, Brain Freeze lights Flurry ...) is glowing. This one only ever says **present**, never missing, and only after XayaUI has seen that glow and that aura agree in game: twice, with no disagreement. XayaUI counts this by itself whenever the glow starts while the aura can be read (out of combat, or for an aura the game never hides). The list of such buttons comes from the game's own data (`docs/reference/procs.md`); how the game matches buttons is the community's reading of that data, which is why XayaUI checks it in game first. Not yet confirmed in game.
+
+**Seconds left** (with State = Buff is present): **Any time left** (default), **At least**, **At most**, **More than**, or **Less than** a number of seconds. The trigger is then true only while the buff has that much time left, for example "Buff is present, Less than 3 seconds left" for a refresh warning. In combat the time is exact when the game shows it; otherwise it is the duration engine's estimate (`/xui timing`). With no readable time and no estimate yet, the trigger is unknown and the rule waits. A buff without a duration counts as having unlimited time left. A buff that is **not up** has no time left at all: a seconds-left check on it, here or in a condition, is NOT met (decision D1, 0.6.13; before, an absent buff counted as 0 seconds left, so "less than 2 seconds left" fired while it was missing).
 
 ### 4.2 Additional triggers (Add a trigger menu)
 
@@ -223,10 +233,12 @@ An optional **Max charges override** exists for spells where the game does not r
 | Spell Known | Spell is in your spellbook or talents | |
 | Talent Known | Talent is picked in your current build | Separate from the Load tab's talent list |
 | Spell Usable | Game would let you cast it now | "Is usable" ignores cooldown. Choose **Usable AND off cooldown (ready to press)** to include it. |
+| Spell Glows (proc highlight) | The game highlights the spell's button (the glowing border a proc puts on it) | 0.6.13. Asks about the spell, the spell that replaces it on your bar and its base spell. The highlight carries no secrecy flag in the 12.1.5 API documentation, so it should work in combat (not yet confirmed in game). Use it when a proc's buff is hidden in combat. |
 | Cooldown (any spell) | One extra spell's cooldown | Add once per spell |
 | Spell Cast Succeeded (you) | You cast the spell within the last N seconds (0 = any spell) | Only your own casts |
 | Item Count | How many of an item you carry | Compare with a comparison operator; bank and charges optional |
 | Item Equipped | Item is worn | |
+| Tier Set Pieces Worn | How many pieces of an item set you wear | 0.6.13. Set ID 0 = the set you wear the most pieces of; the trigger pane lists the sets you wear now with their IDs. Unknown for a moment after login while the game loads item data. |
 | Item Usable | You carry it and could use it | Same "ready" choice as Spell Usable |
 | Stance / Form | A form, stance, or aura is active | List follows your spec |
 | Totem / Guardian Slot | A totem slot is occupied | Slot 1-4 or any |
@@ -267,7 +279,7 @@ A rule needs at least one trigger, or both cooldown and buff states set to "none
 
 ### 4.4 Target Debuff in combat (special case)
 
-Enemy aura data is hidden in combat. The trigger first tries the aura list. If that is blocked and the unit is your **target**, it falls back to the Cooldown Manager buff icon for the spell: an active icon means the debuff is up; an inactive icon means it is absent (switchable off with the "In combat: an INACTIVE icon means absent" option). With no icon, the answer is unknown. Use the **debuff's** ID, not the ability's. Focus never uses the icon fallback. A new target or focus is read at once (since 0.6.3; before, up to a fifth of a second later), and the combat engine's target / focus icon follows the new unit at once too. Out of combat, a display on this rule shows the debuff's own time and stacks.
+Enemy aura data is hidden in combat. The trigger first tries the aura list. If that is blocked and the unit is your **target**, it falls back to the Cooldown Manager buff icon for the spell: an active icon means the debuff is up; an inactive icon means it is absent (switchable off with the "Unlit icon in combat" option: "Stay unknown"). With no icon, the answer is unknown. Use the **debuff's** ID, not the ability's. Focus never uses the icon fallback. A new target or focus is read at once (since 0.6.3; before, up to a fifth of a second later), and the combat engine's target / focus icon follows the new unit at once too. Out of combat, a display on this rule shows the debuff's own time and stacks.
 
 ---
 
@@ -291,10 +303,14 @@ A cue is a named thing that happens. Create it with **Add a cue**, then choose *
 
 ### When does a cue fire?
 
-- **The rule has conditions:** a cue fires while **any enabled condition that lists it is true**.
-- **The rule has no conditions:** the cue simply follows the rule's own trigger side.
-- A cue that is listed by no condition never fires (when the rule has conditions).
+- **The rule has no conditions:** every cue simply follows the rule's own trigger side.
+- **A cue that no condition lists** follows the rule's trigger side too, even when the rule has conditions (0.6.14; before, such a cue never fired once the rule had any condition).
+- **A cue that a condition lists** fires while **any switched-on condition that lists it is true**. A switched-off condition still holds the cues it lists, and they stay silent ("An off condition never plays its cues"); take a cue out of the condition's THEN list to let it follow the trigger again.
+- **A switched-off rule** plays none of its cues (0.6.14; before, its cues kept playing from its triggers).
+- Each cue in the Cues tab says what decides it right now: "Fires with the rule's triggers", "Fires while Condition 1 is true", or "Silent" and why.
 - Sounds fire on the false-to-true edge and repeat only if "Repeat every" is above 0.
+- **This cue's volume** (Sound cues, 0.6.19, #334): the volume of this one cue, like Speech volume, without touching the game's channel volume. It works for the game's own sounds ([Game] in the list). The game has no per-sound volume for sound files (.ogg / .mp3 play only at their channel's volume), so for a file the slider is greyed out; pick a [Game] sound, or use the channel volume (shared with everything on that channel).
+- **Let the game play this sound on the aura itself** (Sound cues and rules with a sound, 0.6.13, off by default): the game plays the sound when the Buff / Aura trigger's aura (and its extra IDs) is gained, lost, or gains a stack, so it works in combat while XayaUI cannot see the aura. The game follows the aura ALONE: the rule's other triggers, conditions and Repeat are ignored for this sound. It plays on its own channel (default **Ambience**, so you can lower or mute it on its own), at most once every N seconds (default 1). Sound files only: a [Game] sound kit or speech cannot be handed over, and the pane says so. It is set up out of combat only; a change made in combat applies when combat ends. While the game plays it, XayaUI does not play its own copy (tick **Also play it from XayaUI** for both). The pane's last line says whether the game took it. Not yet confirmed in game for ordinary auras (QA B33).
 - Deleting a cue removes it from every condition's THEN list automatically.
 
 ---
@@ -554,7 +570,7 @@ XayaUI can draw its own look over the Game Menu (the ESC menu); Blizzard's own b
 
 **Time left in combat (sounds, speech, conditions).** The game hides an aura's and a cooldown's time from addons in combat, so a sound, a speech or a condition such as "2 seconds left" cannot read it there. XayaUI's duration engine fills that gap, best source first: the exact numbers whenever the game shows them; otherwise an estimate built from the exact moment Blizzard's Cooldown Manager reports the aura applied or the cooldown started (moved to your latest cast of it, so a refresh is followed), plus the length measured the last time the game showed it (re-measured every time, so talent and gear changes are picked up), ending the moment the Cooldown Manager reports it removed. Every "seconds left" check is scheduled for the exact frame its threshold is crossed, not the next engine tick. Two things it needs from you: the buff or spell must be tracked in Blizzard's Cooldown Manager (Tracked Buffs / Essential / Utility), and it must have been seen once out of combat so its length is known. `/xui timing` lists every rule whose cues depend on time or stacks, how each gets them in combat, and the one fix for anything not covered. Stack counts stay hidden in combat (the display still shows them; a condition on stacks cannot fire there). Estimates are on for every rule; they can be off by any duration change the game makes mid-aura (extensions) until the next readable look. Not yet tested in game.
 
-In combat the game hides aura details from addons, so XayaUI's own icons cannot always show an aura's time or stacks. The combat engine (part of XayaUI; it also ships as the separate XayaUI Combat Auras folder, which steps aside when XayaUI already loaded it) therefore draws every aura display through Blizzard's own aura container, which keeps working in combat. This is automatic: no tag and no switch. Buff rules in a dynamic group are drawn as one row laid out like the group (growth, spacing, wrap). Every other buff rule, with no group or in a static group, gets its own icon sitting exactly on XayaUI's icon, painted with that display's own art, background and opacity; a progress display (Opacity & Fill > progress drain) drains in combat too, driven by the game from the aura's own timer. "Target Debuff (yours)" rules outside dynamic groups are shown on your target or focus. The engine follows your groups' and displays' positions, scale and opacity, follows load and talent settings, and steps aside while visuals or a group are unlocked so you can move them. It takes a display only when it can show it faithfully. Displays that show while an aura is MISSING, or only when a cooldown state or another trigger also matches, stay with XayaUI. `/xuiengine` lists what the engine draws, every display XayaUI keeps and why, and what the engine cannot draw (fades, flash, wipe, glow, changes from conditions; icon order in a group follows the game's aura order). `/xuiengine off <group name>` keeps a group with XayaUI and `/xuiengine reset <group name>` undoes that; `/xuiengine auto off` / `auto on` turns the whole thing off or on. A performance guard watches the engine's CPU cost: if it stays high it first draws only the current spec's displays (lean mode, `/xuiengine full` to undo), then turns itself off, and says so in chat. The engine draws a rule's first display cue as the rule's icon. For a rule on its own (no group, or a static group) whose cues follow only the rule's trigger (no conditions), every other display cue that shows a time, stacks or a drain, such as a separate Text cue with the duration, gets its own engine slot at its own place, so it is exact in combat too (0.6.3). A rule with conditions switches its cues one by one, which the game's container cannot follow: those other cues stay with XayaUI and use its duration estimate. In a dynamic group the other cues are hidden while the game draws the group, and `/xuiengine` says so for that rule. A rule whose only trigger is one "Buff / Aura (another)" row is drawn like the built-in Buff / Aura. "Only while on an action bar" is followed by the engine too. This is display only: sounds and conditions still come from XayaUI's own readings. Not yet tested in game for single icons and target debuffs.
+In combat the game hides aura details from addons, so XayaUI's own icons cannot always show an aura's time or stacks. The combat engine (part of XayaUI; it also ships as the separate XayaUI Combat Auras folder, which steps aside when XayaUI already loaded it) therefore draws every aura display through Blizzard's own aura container, which keeps working in combat. This is automatic: no tag and no switch. Buff rules in a dynamic group are drawn as one row laid out like the group (growth, spacing, wrap). Every other buff rule, with no group or in a static group, gets its own icon sitting exactly on XayaUI's icon, painted with that display's own art, background and opacity; a progress display (Opacity & Fill > progress drain) drains in combat too, driven by the game from the aura's own timer. "Target Debuff (yours)" rules outside dynamic groups are shown on your target or focus. The engine follows your groups' and displays' positions, scale and opacity, follows load and talent settings, and steps aside while visuals or a group are unlocked so you can move them. It takes a display only when it can show it faithfully. Displays that show while an aura is MISSING, or only when a cooldown state or another trigger also matches, stay with XayaUI. **Conditions are enforced in and out of combat (0.6.19, #260):** a display that a switched-on condition lists shows only while that condition is true, also when the engine draws it. On a display drawn on its own, the condition's opacity, grey and tint changes are drawn too (glow and strata are not; inside a dynamic group the changes are not drawn, only the show / hide). A condition XayaUI cannot read in combat, such as stacks or an aura's time the game hides, is not met there, so its display stays hidden in combat until the condition can be read: unknown never shows. `/xuiengine` lists what the engine draws, every display XayaUI keeps and why, and what the engine cannot draw (fades, flash, wipe, glow, strata from conditions; icon order in a group follows the game's aura order). `/xuiengine off <group name>` keeps a group with XayaUI and `/xuiengine reset <group name>` undoes that; `/xuiengine auto off` / `auto on` turns the whole thing off or on. A performance guard watches the CPU cost of Blizzard's aura-container code, where the engine's work is counted: if it stays high it first draws only the current spec's displays (lean mode, `/xuiengine full` to undo), then turns itself off, and says so in chat. Since 0.6.13 both last until the next /reload or login only: the same container code also draws Blizzard's own target-frame auras, so the number is not XayaUI's alone. A trip saved by an older version is undone once, and `/xuiengine` says so. `/xuiengine` also shows XayaUI's own total (rules, sounds, settings), which never trips the guard. The engine draws a rule's first display cue as the rule's icon. For a rule on its own (no group, or a static group), every other display cue that shows a time, stacks or a drain, such as a separate Text cue with the duration, gets its own engine slot at its own place, so it is exact in combat too (0.6.3), as long as no condition lists that cue (0.6.14; before, any condition on the rule kept all of them with XayaUI). A cue a condition lists is switched by that condition, which the game's container cannot follow: it stays with XayaUI and uses its duration estimate. In a dynamic group the other cues are hidden while the game draws the group, and `/xuiengine` says so for that rule. A rule whose only trigger is one "Buff / Aura (another)" row is drawn like the built-in Buff / Aura. "Only while on an action bar" is followed by the engine too. This is display only: sounds and conditions still come from XayaUI's own readings. Not yet tested in game for single icons and target debuffs.
 
 **What the game lets a display show (12.1.5), and where each number comes from** (0.6.3):
 - **Time left.** Drawn by the game (exact, in combat too) on every display the engine draws, in XayaUI's own format (`12`, `1:05`, `2h`, tenths below your threshold) and in the display's own text style (font, size, colour, outline, inner / outer place). If the game does not accept XayaUI's format, its own format is used (`12s`, `2m`) and `/xuiengine` says so for that display. On a display XayaUI draws: exact out of combat; in combat only the duration engine's estimate (see above).
@@ -601,23 +617,73 @@ Two separate effects (XayaUI QoL) that make the mouse cursor easy to find. Both 
 
 ### 12.12 Character Toolkit
 
-A panel beside the character window (XayaUI QoL) that shows how every stat is built, where it comes from, and what the next point buys. It does not copy the character window: it adds what that window leaves out. Off by default. Every number is read from the game when the panel draws; anything the game does not give as a number is marked "not given by the game" and is never guessed. Values show two decimals.
+A panel beside the character window (XayaUI QoL) that shows every stat the game gives, how each number is built, where it comes from, and what the next point buys. It does not copy the character window: it adds what that window leaves out. Off by default. Every number is read from the game when the panel draws. Anything the game does not give as a number is marked "not given by the game" and is never guessed. A value the game hides in combat shows "hidden in combat" and fills in again afterwards. Colors and font follow the XayaUI theme.
+
+**How the panel reads:**
+- **Tabs** along the top. Each tab is made of sections with a header. Click a header to fold or unfold its section.
+- **Each stat line** has its name on the left and its value on the right. The detail lines under it (label and value) show how the value is built.
+- **Hover any line** to see where the number comes from:
+  - the total split into what your rating gives and what other sources give (talents, buffs, your spec's base);
+  - the rating turned into a percent through the game's own converter, and the rating per 1%;
+  - base against buffs and debuffs;
+  - linked conversions the game reports, such as crit rating that also gives parry, your primary stat to attack power and to dodge or parry, Stamina to health, and Versatility to damage taken;
+  - every diminishing-return threshold.
+- **Rating or percent:** the "Show: %" / "Show: rating" button in the title row switches every rating line between its percent and its rating. Clicking one rating line flips that line alone; the button resets every single-line flip.
 
 **Tabs:**
-- **Overview:** your spec, primary stat and mastery factor; your primary stat and Stamina with base, buffs and debuffs; item level (equipped, best in bags, PvP); movement speeds (run, swim, flight, now) as a percent of base speed; your mastery spell in the game's own words, numbers filled in. Under **At a glance**, one line for every stat on the other tabs.
-- **Ratings** (Critical Strike, Haste, Mastery, Versatility, Avoidance, Leech, Speed): the total; true rating and the percent it gives; rating lost to diminishing returns; the penalty on your next point; rating per 1%; the exact rating for your next 1% (accounts for thresholds); the next diminishing-return threshold and how far away it is; the part of the total that comes from other sources (talents, buffs, your spec's base). Hover for every threshold, crit or haste by kind (melee, ranged, spell), and the method. Mastery is counted in mastery percent (rating x your spec's mastery factor, read from the game). Haste from other sources assumes haste sources multiply, and says so.
-- **Defense:** Stamina to health (per point, and Stamina for +1% max health); armor to damage reduction against your level and your current target, armor for the next 1%, base armor against buffs and talents; dodge; parry, with crit to parry for specs that have it (before diminishing returns, as the character window words it); block chance and block amount; stagger for specs that have it; Versatility to damage taken.
-- **Offense:** attack power (base, buffs, debuffs; per point of Strength or Agility; amount for +1%; spell power to attack power for specs that convert it); spell power, healing bonus, attack power to spell power, spell haste; attack speed, with haste rating for 0.01 s faster; main and off hand damage and DPS, physical damage modifier, expertise; ranged weapon when you have one; resource regeneration; global cooldown, with the haste and haste rating for 0.01 s shorter (read from the game the last time one ran out of combat; the unhasted figures are labelled estimates).
-- **Gear:** each equipped item's item level, the secondary ratings its stat table lists, empty sockets, and durability below 100%. **Gear totals** compares the ratings your items list with your character's ratings; the difference is "from elsewhere" (gems, enchants, buffs, or effects the item stat tables leave out). This tab reads your items only while it is open.
+- **Sheet:** every stat of the Stats, Defense and Offense tabs in two compact columns, grouped under the same section headers. Each entry has its own hover with the same detail as the full line, and a click flips a rating between percent and rating.
+- **Stats:**
+  - **Character:** your spec and role, primary stat and mastery factor; item level (equipped, best in bags, PvP); your Mythic+ rating with each dungeon's best run (and whether it was over time) and your best rating this expansion; movement speeds (run, swim, flight, now) as a percent of base speed; your mastery spell in the game's own words, numbers filled in.
+  - **Attributes:** your primary stat and Stamina with base, buffs and debuffs, the attack power your primary stat gives, the dodge (Agility) or parry (Strength) it gives where the game reports it, and Stamina to health. Your other primary stats are listed in grey.
+  - **Secondary and tertiary stats** (Critical Strike, Haste, Mastery, Versatility, Avoidance, Leech, Speed):
+    - the total, your rating, and the percent it gives;
+    - the part of the total that comes from other sources;
+    - rating per 1%, and the exact rating for your next 1% (accounts for thresholds);
+    - rating lost to diminishing returns, the penalty on your next point, and the next threshold and how far away it is.
+    - Critical Strike also shows the parry it gives for specs that turn crit into parry (before diminishing returns, as the character window words it). Versatility also shows the damage taken reduction. Mastery is counted in mastery percent (rating x your spec's mastery factor, read from the game). Haste from other sources assumes haste sources multiply, and says so.
+- **Defense:** armor to damage reduction against your level and your current target, armor for the next 1%, base armor against buffs and talents; Stamina to health; dodge (with the share from Agility where the game gives it); parry (crit to parry for specs that have it, the share from Strength where the game gives it); block chance and how much a block reduces a hit (shown with a shield or any block chance); stagger for specs that have it; Versatility to damage taken.
+- **Offense:** attack power (base, buffs, debuffs; per point of Strength or Agility; the amount for +1%; the damage per second it adds, as the character window works it out); spell power, healing bonus, the attack power and spell power links some specs have, and spell haste; attack speed, with the haste rating for 0.01 s faster; main and off hand damage and DPS, physical damage modifier, expertise; a ranged weapon when you have one; the global cooldown, read live from the game each time one runs (in combat too, while the game shows it), with the haste and haste rating for 0.01 s shorter (the unhasted figures are labelled estimates); resource regeneration.
+- **Gear:**
+  - **Summary:** the secondary ratings your items' stat tables list, against your character's ratings; the difference is "from elsewhere" (gems, enchants, buffs, or effects the tables leave out).
+  - **Durability and repair:** overall durability, the lowest item, how many items are damaged; the repair cost the game gives in your items' data (shown as not given where the game gives none). At a repair vendor, the vendor's own "repair all" cost.
+  - **Slots:** each equipped item's item level, listed ratings, empty sockets, whether it has an enchant, durability below 100%, and its repair cost.
+  - This tab reads your items only while it is open.
+- **What If:**
+  - **Rating per stat:** type extra rating for any stat (a minus sign for less) and press Enter. The line shows the gain, the new percent from rating, the new rating, and any threshold it crosses. It is read through the game's own converter, so thresholds apply.
+  - **All ratings:** adds the same amount to every stat. Each stat's line on the Stats tab shows its own amount plus this one.
+  - **Compare an item:** shift-click an item into the box (or type an item ID) and press Enter. The panel shows the item's level and the equipped item of the same kind it replaces (for two rings or trinkets, the lower item level). Then:
+    - each rating change, through the converter;
+    - your primary stat change and the attack power it gives;
+    - Stamina to health, and armor to damage reduction.
+    - Both items' stats come from the game at the item level in the link. Gems, enchants and set bonuses are not in an item's stat table. On-use and proc effects, and the same item at another item level, are not given by the game and are not estimated.
 - **Spells (advanced, off by default):** for spells you add, each number in the spell's current description divided by your current attack power (or spell power), and what one point of your primary stat adds. This is the ratio as it stands now, with talents and buffs already in it; it is not Blizzard's base coefficient, and numbers that do not scale with attack or spell power (durations, charges) give meaningless ratios. You can type a coefficient from a database such as Wowhead next to each spell; the panel shows it beside the measured ratio and flags a large difference.
 
-**What if +N rating:** type a number in the box under the tabs and press Enter. Every rating shows what that much more (or less, with a minus sign) would give, read through the game's own converter so thresholds apply. 0 turns it off.
+**Slot overlays (off by default):** marks on the character window's item slots. The item level shows at the bottom of each slot, and the number of empty sockets at the top (for example 2S). The game does not say which slots take an enchant, so you tick the slots to check. A ticked slot with no enchant shows E? (orange), and an enchanted one shows E (green).
 
-**Character window tooltips:** hovering a stat in the character window adds the toolkit's lines under Blizzard's own text (can be switched off).
+**Character window tooltips:** hovering a stat in the character window adds the toolkit's lines under Blizzard's own text (can be switched off). The panel's own hover does not depend on it.
 
-**Where:** QoL > Character Toolkit. Tabs: Panel (show the panel, side, detail level, tooltip lines, what-if amount, text size, background opacity) | Spell Math (switch, add a spell by ID, name, or shift-clicked link; per spell: scales with attack or spell power, optional coefficient, remove). `/xui stats` shows or hides the panel (docked when the character window is open, otherwise free and draggable); `/xui stats on`, `off`, `options`, `status`.
+**Where:** QoL > Character Toolkit. Its own page has the on/off switch and quick switches for the panel, the slot overlays and the tooltip lines. Under it in the left pane:
+- **Panel**, with tabs:
+  - Layout: show the panel, side, detail level (every line or key lines), rating lines (percent or rating), text size, background.
+  - What If: the All ratings amount, Clear all, Reset line flips.
+  - Tooltips: the character window lines.
+- **Slot Overlays**, with tabs:
+  - Show: slot overlays, item level, empty sockets, enchant check, text size.
+  - Enchant Slots: the slots to check for an enchant.
+- **Spell Math:** the switch, and adding a spell by ID, name, or shift-clicked link. Per spell: scales with attack or spell power, an optional coefficient, remove.
 
-**Limits:** diminishing-return thresholds are found by scanning the game's own rating converter, not from a table. If the game's converter disagrees with its own current value, the stat says so; if the converter is missing, only current figures are shown. Thresholds are read out of combat. Stat reads that the game hides (secret values) show as unavailable. Not given by the game as numbers: primary stat to armor, dodge, or parry, stat to block, attack power to weapon damage, and a mastery's own percent modifiers (read those in the mastery text on Overview). The tooltip lines rely on matching the stat names in the character window, so another addon that renames them stops the lines (the panel is unaffected).
+`/xui stats` shows or hides the panel (docked when the character window is open, otherwise free and draggable); `/xui stats on`, `off`, `options`, `status`.
+
+**Limits:**
+- Diminishing-return thresholds are found by scanning the game's own rating converter, not from a table. If the converter disagrees with the game's own current value, the stat says so; if the converter is missing, only current figures are shown. Thresholds are read out of combat.
+- Not given by the game as numbers:
+  - primary stat to armor;
+  - dodge or parry per point of a primary stat (the game gives only the total from Agility or Strength);
+  - stat to block;
+  - attack power to weapon damage per hit (the damage per second the character window shows is given);
+  - a mastery's own percent modifiers (read those in the mastery text).
+- The enchant check reads the enchant field of the item link. Repair cost needs the game to put it in the item's data, which it may do only at a vendor.
+- The tooltip lines rely on matching the stat names in the character window, so another addon that renames them stops the lines (the panel is unaffected).
 
 **How the settings pages are laid out (all feature tabs, from 0.6.1 on):** a feature is an entry in the left pane, its parts are entries under it, and the sections of one part are tabs. The feature's own page holds its main switches.
 
@@ -637,6 +703,7 @@ A separate addon (XayaUI Game Data Capture, `XayaUI_GameDump`) that is not neede
 
   It then reads the name of every spell ID in the game, a few thousand per frame, and keeps the IDs whose names match. Every ID from about the start of this expansion upward is kept by name as well (the starting ID is worked out from the current raids' boss-ability IDs, assuming newer spells have higher IDs, which is how the IDs seen so far look but is not something the game states; the run says which ID it used); `/xuidump catalogue <spell ID>` sets that starting ID yourself, and `/xuidump catalogue 0` turns it off. For each spell kept it records whether the game hides it in combat, Blizzard's important, priority, defensive, and crowd-control flags, its icon, and its description. A shared name is a lead, not proof that an ID is the buff. Run it out of combat; it pauses if combat starts and carries on afterwards. It changes the Adventure Guide's selected tier, loot filter, and slot filter while it runs, then puts them back.
 - **8. Aura log** (`/xuidump seen`): turn it on and play. It logs every aura that appears on you, your target, focus, or party: ID, name, buff or debuff, who cast it (you, your group, or someone else), duration, and highest stack count. The game hides aura data in combat, in boss fights, and for a whole Mythic+ run, so the log reads out of combat, reads what is still up when combat ends, and counts what it could not read.
+- **Event probe** (`/xuidump probe on`, no button): records what the game lets an addon read while you play, in and out of combat. It covers proc glows and proc art, spell changes, your own casts, enemy casts (boss, target, focus, and nameplate units), nameplate mobs, Blizzard's boss timeline, boss warnings and emotes, and how much of each aura update is readable (counts only, never the aura data). Each entry holds the game time, the event, the unit, and each value, or "secret" where the game hides it. Clock anchors (game time plus your local time) are written at the start, at each boss pull, and at each zone change, so the entries line up with the combat log file. It also checks whether the game hides the casts and auras of a built-in spell list, of every spell in your XayaUI rules, and of IDs you add with `/xuidump probe spells <id> ...`. Nothing runs until you turn it on. It keeps running after a `/reload` until `/xuidump probe off`. It keeps the newest 6,000 entries; the counts in `/xuidump probe status` cover everything. `/xuidump probe mark` tries to put a skull on your target, once, only when you type it. `/xuidump probe clear` empties the log. It never stores another player's name or GUID, and it replaces player names in warning text. The run sheet is `docs/process/IN-GAME-DATA-2026-11-05.md`.
 - **Save to disk:** `/xuidump save` reloads the interface so the file is written. `/xuidump status` lists what has been captured.
 
 ## 13. Maintaining this document

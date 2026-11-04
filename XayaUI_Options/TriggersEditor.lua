@@ -126,6 +126,12 @@ function ns.DecorateBuiltinTriggers(rule, args)
         args.cdCombat = CombatLine("cd", 6.6, ns.CooldownUsed)
         args.buffCombat = CombatLine("buff", 13.6, ns.BuffUsed)
     end
+    -- the whole rule in one line, above every trigger (#21 part 1)
+    if ns.RuleCombatSummary then
+        args.ruleCombat = { type = "description", order = 0.05, width = "full", fontSize = "medium",
+            hidden = function() local ok, n = pcall(ns.RuleCombatSummary, rule); return not (ok and n) end,
+            name = function() local ok, n = pcall(ns.RuleCombatSummary, rule); return ok and n or "" end }
+    end
     setup("cd", "Cooldown", { "cdHeader", "spellID", "spellName", "spellSearch", "spellPick", "cdState", "maxCharges", "detected", "cdCombat", "cdRemove" }, "cdRemove", ns.CooldownUsed)
     setup("buff", "Buff / Aura", { "buffHeader", "buffState", "buffTimeOp", "buffTimeSec", "buffSearch", "buffID", "buffName", "buffAltSearch", "buffAlt", "buffAltNames", "buffCombat", "buffRemove" }, "buffRemove", ns.BuffUsed)
 end

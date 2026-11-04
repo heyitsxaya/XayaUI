@@ -4,6 +4,19 @@
 local addonName, ns = ...
 
 ns.name = addonName; XayaUI_NS = ns -- deliberate global: sibling addons (XayaUI_Chat, XayaUI_QoL, XayaUI_Bonus, XayaUI_Reskin, XayaUI_Options) share this namespace; they plug in through Modules.lua
+-- #286: a button built from Blizzard's red UIPanelButtonTemplate takes XayaUI's flat look now and every time it is shown, so it also
+-- follows the skin switch. The look comes from the "buttonSkin" service (Modules.lua ns.Service), which the settings addon provides;
+-- core never calls the settings addon by name. Without it (not loaded yet, or switched off) the button keeps Blizzard's look.
+function ns.FlatButton(b, primary)
+    if not b then return b end
+    local function apply(self)
+        local svc = ns.Service and ns.Service("buttonSkin")
+        if svc and type(svc.Apply) == "function" then pcall(svc.Apply, self, primary) end
+    end
+    apply(b)
+    if b.HookScript then b:HookScript("OnShow", apply) end
+    return b
+end
 ns.rules = nil -- set at ADDON_LOADED to CueRulesDB.rules
 
 -- "Not chosen / none" helpers. Dropdowns start blank (nil) so a choice is forced;

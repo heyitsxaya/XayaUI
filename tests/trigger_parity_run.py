@@ -37,7 +37,8 @@ check("row: stacks and seconds left come from the aura found", st == 3 and rem a
 auras = {}
 check("row: missing when none is on you (out of combat)", ns.CheckTrigger(row) == false)
 st, rem = ns.TriggerAuraNumbers(row)
-check("row: absent -> 0 stacks, 0 seconds", st == 0 and rem == 0)
+check("row: absent -> 0 stacks, no seconds (decision D1)", st == 0 and rem == nil, tostring(st) .. " " .. tostring(rem))
+check("row: a time condition on the absent row aura is NOT met (D1)", ns.AuraTimeRefAbsent and ns.AuraTimeRefAbsent("n:x1t", { extra = { list = { row } } }, nil) == true)
 row.state = "no"
 check("row: State MISSING inverts", ns.CheckTrigger(row) == true)
 row.state = "yes"

@@ -205,6 +205,7 @@ Add("actionUsable", {
     },
     check = function(t)
         local id = tonumber(t.spellID)
+        if id and ns.SpellOnBar then id = ns.SpellOnBar(id) end   -- a talent that replaces the spell: the one on the bar (gap 4)
         local usable, noPower
         if C_Spell and C_Spell.IsSpellUsable then usable, noPower = Call(C_Spell.IsSpellUsable, id) end
         if usable == nil then return nil, "usability unreadable" end
@@ -222,6 +223,27 @@ Add("actionUsable", {
             return noPower == true
         end
         return nil
+    end,
+})
+
+-- 2a. Spell Glows (retrospective gap 5): the game's own button highlight for a spell (ns.SpellGlowing, Conditions.lua). A fact about
+-- the button, not a guess about an aura, so it needs no learned pairing.
+Add("spellGlow", {
+    label = "Spell Glows (proc highlight)", group = "Spell",
+    note = "True while the game highlights the spell's button: the glowing border a proc puts on Howling Blast, Flurry, Blood Boil and the like. Asks the game about the spell, the spell that replaces it on your bar and its base spell. The highlight carries no secrecy flag in the 12.1.5 API documentation, so it should answer in combat (to be confirmed in game). Use it when a proc's buff is hidden in combat: the glow is the game's own signal for that proc.",
+    new = { state = "yes" },
+    combat = "glow",
+    fields = {
+        { key = "spellID", kind = "spell", label = "Spell ID (the button that glows)", required = true },
+        { key = "state", kind = "select", label = "State", required = true, vals = YN("Is glowing", "Is NOT glowing") },
+    },
+    check = function(t)
+        local id = tonumber(t.spellID)
+        if not id or id <= 0 then return nil, "no spell" end
+        local v, which = nil, nil
+        if ns.SpellGlowing then v, which = ns.SpellGlowing(id) end
+        if v == nil then return nil, "glow unreadable" end
+        return YesNo(t, v), (v and which and which ~= id) and ("glowing as " .. tostring(which)) or nil
     end,
 })
 
@@ -271,7 +293,10 @@ Add("castSucceeded", {
         if id == 0 then
             hit = (castLog.any ~= nil) and ((now - castLog.any) <= win)
         else
+            -- the spell, or the spell that replaces it on the bar (casts are also logged under their base spell: gap 4)
             local ts = castLog[id]
+            local ov = ns.SpellOnBar and ns.SpellOnBar(id)
+            if ov and ov ~= id and castLog[ov] and (not ts or castLog[ov] > ts) then ts = castLog[ov] end
             if ts and (now - ts) <= win then hit = true
             elseif castLog.unknown and (now - castLog.unknown) <= win then return nil, "a cast had an unreadable spell ID"
             else hit = false end
@@ -317,6 +342,82 @@ Add("itemEquipped", {
         return YesNo(t, v)
     end,
 })
+
+-- 5a. Tier Set Pieces Worn (retrospective gap 12). Counts equipped items by the item set they belong to: the setID that
+-- C_Item.GetItemInfo returns (16th value, "setID: number?", 12.1.5 docs). Item data the client has not loaded yet gives no setID, so
+-- an equipped item without info makes the answer unknown until GET_ITEM_INFO_RECEIVED. Recounted only after an equipment change.
+local setCount, setStale, setWhy = {}, true, nil
+local SET_SLOTS = { 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 }   -- every slot an item set can use (not shirt / tabard)
+local function CountSets()
+    local out, missing = {}, false
+    if not (GetInventoryItemID and C_Item and C_Item.GetItemInfo) then return nil, "item API missing" end
+    for _, slot in ipairs(SET_SLOTS) do
+        local okI, itemID = pcall(GetInventoryItemID, "player", slot)
+        if okI and type(itemID) == "number" and not issecret(itemID) then
+            local okG, info = pcall(function() return { C_Item.GetItemInfo(itemID) } end)
+            local nm, r = okG and info[1], okG and info[16]
+            if not okG or nm == nil or issecret(nm) then missing = true
+            elseif type(r) == "number" and not issecret(r) and r > 0 then out[r] = (out[r] or 0) + 1 end
+        end
+    end
+    if missing then return nil, "item data still loading" end
+    return out
+end
+function ns.EquippedSetCounts()
+    if setStale then
+        local c, why = CountSets()
+        if c then setCount, setStale, setWhy = c, false, nil else setCount, setWhy = {}, why end
+    end
+    if setWhy then return nil, setWhy end
+    return setCount
+end
+function ns.MarkSetsStale() setStale = true end
+if CreateFrame then
+    local sf = CreateFrame("Frame")
+    for _, e in ipairs({ "PLAYER_EQUIPMENT_CHANGED", "GET_ITEM_INFO_RECEIVED", "PLAYER_ENTERING_WORLD" }) do pcall(sf.RegisterEvent, sf, e) end
+    if sf.SetScript then
+        sf:SetScript("OnEvent", function(_, event)
+            -- (item info arrives for every item the client loads: it only matters while a count is waiting for it)
+            if event == "GET_ITEM_INFO_RECEIVED" and not setWhy then return end
+            setStale = true
+            if ns.MarkStateDirty then ns.MarkStateDirty() end
+        end)
+    end
+end
+Add("setPieces", {
+    label = "Tier Set Pieces Worn", group = "Item",
+    note = "Compares how many pieces of an item set (a tier set) you are wearing. Leave the set ID at 0 to use the set you wear the most pieces of. The pane below lists the sets you are wearing now with their IDs. Use it to load a rule only with your 2-piece or 4-piece bonus (for example a tier-set aura).",
+    new = { setID = 0, op = ">=", count = 4 },
+    combat = "sets",
+    fields = {
+        { key = "setID", kind = "number", label = "Item set ID (0 = most worn)", desc = "0 = the set you wear the most pieces of. The pane below lists the sets you wear now with their IDs.", required = false },
+        { key = "op", kind = "select", label = "Pieces worn", required = true, vals = { values = OPS, order = OPS_ORDER } },
+        { key = "count", kind = "number", label = "Pieces", required = true },
+    },
+    check = function(t)
+        local n = tonumber(t.count)
+        if n == nil then return nil, "no count" end
+        local counts, why = ns.EquippedSetCounts()
+        if not counts then return nil, why end
+        local want, have = tonumber(t.setID) or 0, 0
+        if want > 0 then have = counts[want] or 0
+        else for _, c in pairs(counts) do if c > have then have = c end end end
+        return Cmp(t.op, have, n)
+    end,
+})
+-- "set name (ID): N pieces" for every set worn now (the trigger pane's note)
+function ns.SetPiecesNote()
+    local counts, why = ns.EquippedSetCounts()
+    if not counts then return "|cffffd100Sets worn: unknown|r (" .. tostring(why) .. ")" end
+    local bits = {}
+    for id, c in pairs(counts) do
+        local okN, nm = pcall(C_Item.GetItemSetInfo or function() return nil end, id)
+        bits[#bits + 1] = string.format("%s (%d): %d", (okN and type(nm) == "string" and not issecret(nm)) and nm or "set", id, c)
+    end
+    table.sort(bits)
+    if #bits == 0 then return "Sets worn now: none" end
+    return "Sets worn now: " .. table.concat(bits, "; ")
+end
 
 -- 5b. Item Usable  (the item twin of "Spell Usable")
 Add("itemUsable", {
@@ -559,8 +660,8 @@ local rowAura = setmetatable({}, { __mode = "k" })   -- [row] = { tick, present,
 local function ReadRowAura(t)
     local id = tonumber(t.spellID) or 0
     if id == 0 then return nil, "not set: Buff spell ID" end
-    if not ns.AuraPresentList then return nil, "buff reader missing" end
-    local ok, present, src, ref, which = pcall(ns.AuraPresentList, id, t.alt)
+    if not ns.AuraPresence then return nil, "buff reader missing" end
+    local ok, present, src, ref, which = pcall(ns.AuraPresence, id, t.alt, nil)   -- the same reading as the built-in trigger (gap 8)
     if not ok then return nil, "error: " .. tostring(present) end
     if present == true and type(ref) == "table" and not ref.expiration and t.estimate ~= false and ns.AuraEstimateInto then
         local own, label = ns.AuraEstimateInto(t, which or id, ref)
@@ -604,13 +705,20 @@ function ns.TriggerAuraRef(t)
     if not c or ns.tickID == nil or c.tick ~= ns.tickID then return nil, nil end
     return c.present, c.ref
 end
+-- Is the row's aura present this step (true / false / nil)? Reads the row first when its cached answer is from an older step.
+function ns.TriggerAuraPresent(t)
+    if type(t) ~= "table" then return nil end
+    local c = rowAura[t]
+    if not c or ns.tickID == nil or c.tick ~= ns.tickID then ns.CheckTrigger(t); c = rowAura[t] end
+    return c and c.present
+end
 -- stacks and seconds left of an aura trigger row (Buff / Aura (another), Target Debuff) for condition numbers. nil = unknown.
 function ns.TriggerAuraNumbers(t)
     if type(t) ~= "table" then return nil, nil end
     local c = rowAura[t]
     if not c or ns.tickID == nil or c.tick ~= ns.tickID then ns.CheckTrigger(t); c = rowAura[t] end
     if not c then return nil, nil end
-    if c.present == false then return 0, 0 end
+    if c.present == false then return 0, nil end   -- absent: 0 stacks, no time left (decision D1; a time comparison on it is NOT met)
     if c.present ~= true then return nil, nil end
     local stacks
     local a = type(c.ref) == "table" and c.ref.applications
@@ -669,8 +777,11 @@ Add("targetDebuff", {
     combat = "debuff",
     fields = {
         { key = "spellID", kind = "spell", search = "aura", label = "Debuff spell ID", required = true },
-        { key = "cdmID", kind = "spell", label = "Cooldown Manager spell ID  (optional: usually the ability, e.g. 204596)", required = false },
-        { key = "cdmAbsent", kind = "select", label = "In combat: an INACTIVE Cooldown Manager icon means 'debuff absent'  (blank = yes)", required = false, vals = YN("Yes", "No - stay unknown in combat") },
+        -- #99: short labels (the long ones were cut off to "Cooldown M..."); the detail is in each field's tooltip
+        { key = "cdmID", kind = "spell", label = "Cooldown Manager ID", required = false,
+          desc = "Optional. The spell ID the Cooldown Manager files this debuff under: usually the ability you press (Sigil of Flame: 204596). Blank = the debuff's own ID." },
+        { key = "cdmAbsent", kind = "select", label = "Unlit icon in combat", required = false, vals = YN("Means: debuff absent", "Stay unknown"),
+          desc = "In combat: does an INACTIVE Cooldown Manager icon mean the debuff is absent? Blank = yes. 'Stay unknown' keeps the trigger unknown in combat instead." },
         { key = "unit", kind = "select", label = "On which unit", required = true, vals = { values = { target = "Target", focus = "Focus" }, order = { "target", "focus" } } },
         { key = "state", kind = "select", label = "State", required = true, vals = YN("Debuff is on the unit", "Debuff is NOT on the unit") },
         { key = "timeOp", kind = "select", label = "Seconds left", width = "normal", default = "any", required = false, showIf = function(t) return t.state ~= "no" end,
@@ -725,9 +836,9 @@ Add("targetDebuff", {
         -- (non-secret) fields, which stay readable in combat. Unverified for target debuffs; see /xui probe <id>.
         -- true = icon active, false = an icon exists and is inactive, nil = no icon / unreadable. Only icons count.
         local function CdmState(i)
-            if not i or i == 0 or not ns.BuffPresent then return nil end
-            local okp, pr, src = pcall(ns.BuffPresent, i)
-            if not okp or type(src) ~= "string" or not src:find("CDM frame", 1, true) then return nil end
+            if not i or i == 0 or not ns.CDMFrameState then return nil end
+            local okp, pr = pcall(ns.CDMFrameState, i)   -- read-only: the target's debuff is not the player's buff (gap 1)
+            if not okp then return nil end
             return pr
         end
         -- Only when the aura list could NOT be read cleanly (a complete readable list is trusted over the icon). The icon is the
@@ -1181,7 +1292,15 @@ ev:SetScript("OnEvent", function(_, event, _, _, spellID)
     if event == "UNIT_SPELLCAST_SUCCEEDED" then
         local now = GetTime()
         castLog.any = now
-        if issecret(spellID) or spellID == nil then castLog.unknown = now else castLog[spellID] = now end
+        if issecret(spellID) or spellID == nil then castLog.unknown = now
+        else
+            castLog[spellID] = now
+            -- also under its base spell, so a rule on the base spell sees a cast of its replacement (gap 4)
+            if C_Spell and C_Spell.GetBaseSpell then
+                local okB, base = pcall(C_Spell.GetBaseSpell, spellID)
+                if okB and type(base) == "number" and not issecret(base) and base ~= spellID then castLog[base] = now end
+            end
+        end
         if ns.NoteChargeCast and not issecret(spellID) then ns.NoteChargeCast(spellID, now) end
     end
     if ns.MarkStateDirty then ns.MarkStateDirty() end
@@ -1275,8 +1394,39 @@ function ns.TriggerCombatNote(rule, tok, row)
         return "|cffffd100In combat: usually hidden|r (your debuffs on enemies); on the target, a Cooldown Manager icon can still answer present / absent"
     elseif kind == "loc" then
         return "|cff55ff55In combat: readable|r (loss of control on you is not marked secret in the 12.1.5 docs; not yet confirmed in game)"
+    elseif kind == "glow" then
+        return "|cff55ff55In combat: readable|r (the game's button highlight carries no secrecy flag in the 12.1.5 docs; not yet confirmed in game)"
+    elseif kind == "sets" then
+        return ns.SetPiecesNote and ns.SetPiecesNote() or nil
     end
     return nil
+end
+-- One line for the whole rule (#21 part 1): which of its triggers may be unknown in combat, from the per-trigger notes above.
+-- A trigger with no note (Spell Known, Resource ...) is not judged; equipment (Tier Set Pieces) is readable.
+function ns.RuleCombatSummary(rule)
+    if type(rule) ~= "table" then return nil end
+    local judged, hidden = 0, {}
+    local function Count(label, note, readable)
+        if readable then judged = judged + 1; return end
+        if type(note) ~= "string" then return end
+        judged = judged + 1
+        if not note:find("^|cff55ff55") then hidden[#hidden + 1] = label end
+    end
+    if ns.CooldownUsed and ns.CooldownUsed(rule) then Count("Cooldown", ns.TriggerCombatNote(rule, "cd")) end
+    if ns.BuffUsed and ns.BuffUsed(rule) then Count("Buff / Aura", ns.TriggerCombatNote(rule, "buff")) end
+    local list = type(rule.extra) == "table" and type(rule.extra.list) == "table" and rule.extra.list or {}
+    for i, t in ipairs(list) do
+        if type(t) == "table" then
+            local d = TYPES[t.type]
+            Count((d and d.label or tostring(t.type)) .. " (row " .. i .. ")", ns.TriggerCombatNote(rule, "x", t), d and d.combat == "sets")
+        end
+    end
+    if judged == 0 then return nil end
+    if #hidden == 0 then
+        return "|cff55ff55In combat: every trigger XayaUI can judge is readable|r (" .. judged .. " of them; details under each trigger)."
+    end
+    return "|cffffd100In combat: " .. #hidden .. " of " .. judged .. " trigger" .. (judged == 1 and "" or "s") .. " may read UNKNOWN|r (" ..
+        table.concat(hidden, ", ") .. "). While a trigger is unknown the rule waits instead of firing. Details and fixes under each trigger."
 end
 
 -- shared with the settings window's editor (TriggersEditor.lua); read-only

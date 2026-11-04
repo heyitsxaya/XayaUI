@@ -180,9 +180,21 @@ ns._ChargeState = ChargeState
 local function WatchCharges()
     if not (ns.rules and C_Spell and C_Spell.GetSpellCharges) then return end
     local done = {}
+    -- the rule's own spell, and every "Cooldown (any spell)" row (retrospective gap 22: rows were not watched, so after a /reload
+    -- in combat a used charge read "full")
+    local ids = {}
     for _, r in ipairs(ns.rules) do
-        local id = tonumber(r.spellID)
-        if id and id > 0 and not done[id] and r.enabled ~= false then
+        if r.enabled ~= false then
+            ids[#ids + 1] = tonumber(r.spellID)
+            if type(r.extra) == "table" and type(r.extra.list) == "table" then
+                for _, row in ipairs(r.extra.list) do
+                    if type(row) == "table" and row.type == "cooldown" then ids[#ids + 1] = tonumber(row.spellID) end
+                end
+            end
+        end
+    end
+    for _, id in ipairs(ids) do
+        if id and id > 0 and not done[id] then
             done[id] = true
             local readID = ns.SpellOnBar(id)
             local okc, ch = pcall(C_Spell.GetSpellCharges, readID)
@@ -207,6 +219,22 @@ function ReadCooldownRaw(rule)
     local r = { known = false, max = 1 }
     if not id or id == 0 then r.why = "no spell"; return r end
     local readID = ns.SpellOnBar(id)   -- a talent that replaces the spell: the one on your bar
+    -- A spell you do not have now (talent or specialization swapped away) is "not known", never "ready" (retrospective gap 10;
+    -- the game reports isActive = false for it, which read as ready). C_SpellBook.IsSpellKnownOrInSpellBook(spellID, bank,
+    -- includeOverrides) has no secrecy flag (12.1.5); the player and the pet spellbook are both asked, and IsPlayerSpell too.
+    if C_SpellBook and C_SpellBook.IsSpellKnownOrInSpellBook then
+        local function Knows(x, bank)
+            local okK, v = pcall(C_SpellBook.IsSpellKnownOrInSpellBook, x, bank, true)
+            if okK and not issecret(v) and type(v) == "boolean" then return v end
+        end
+        local petBank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Pet
+        local known = Knows(id) or (readID ~= id and Knows(readID)) or (petBank and Knows(id, petBank))
+        if known == nil and IsPlayerSpell then local okP, v = pcall(IsPlayerSpell, id); if okP and v == true then known = true end end
+        if known == false then
+            local okP, v = pcall(IsPlayerSpell or function() return nil end, id)
+            if not (okP and v == true) then r.why = "spell not known (talent or specialization)"; return r end
+        end
+    end
 
     local ok, cd = pcall(C_Spell.GetSpellCooldown, readID)
     if not ok or type(cd) ~= "table" then r.why = "cooldown unreadable"; return r end
@@ -335,11 +363,21 @@ local function FrameIDs(fr)
     return ids
 end
 ns._FrameIDs = FrameIDs
+-- A viewer that is not visible has stopped listening for aura changes (Blizzard_CooldownViewer CooldownViewerMixin:OnHide
+-- unregisters UNIT_AURA, CooldownViewer.lua:1744-1754), so its icons are stale: an unlit icon there does NOT mean "absent".
+-- Such viewers are left out of the index, so every Cooldown Manager answer comes from live icons only (retrospective gap 1).
+local function ViewerLive(v)
+    if not (v and v.IsVisible) then return true end   -- (stand-ins without the method count as live)
+    local ok, vis = pcall(v.IsVisible, v)
+    if not ok or issecret(vis) then return true end
+    return vis == true
+end
+ns._ViewerLive = ViewerLive
 local function BuildCDMIndex()
     local idx = {}
     for _, vname in ipairs(VIEWERS) do
         local v = _G[vname]
-        if v and v.GetChildren then
+        if v and v.GetChildren and ViewerLive(v) then
             local kids = { v:GetChildren() }
             for i = 1, #kids do
                 local fr = kids[i]
@@ -354,6 +392,18 @@ local function BuildCDMIndex()
 end
 local FindCDMFrame
 function ns.FindCDMFrame(id) return FindCDMFrame(id) end
+-- Read-only: is a live Cooldown Manager icon for spell / aura `id` lit (true), present but unlit (false), or is there none (nil)?
+-- Unlike ns.BuffPresent it feeds nothing (no presence stamps, no tracker): the Target Debuff trigger asks about the TARGET's
+-- debuff, which must not be recorded as the player's buff (retrospective gap 1).
+function ns.CDMFrameState(id)
+    id = tonumber(id)
+    if not id or id == 0 then return nil end
+    local fr = FindCDMFrame(id)
+    if not fr then return nil end
+    local ok, act = pcall(FrameActive, fr)
+    if not ok then return nil end
+    return act and true or false
+end
 function FindCDMFrame(id)
     -- several viewers can hold a frame for the same spell (buff icon, buff bar, cooldown): an ACTIVE match wins,
     -- otherwise the first match is returned (so an inactive placeholder cannot hide a live aura)
@@ -454,6 +504,7 @@ local function MakeRef(aura, frame, unit)
         if okU and type(u) == "string" and not issecret(u) then unit = u end
     end
     ref.unit = unit or "player"
+    if frame then ref.cdmFrame = frame end   -- the Cooldown Manager icon that answered: its applied moment starts the time estimate (gap 7)
     local src = (type(aura) == "table") and aura or frame
     if src then
         local ok, iid = pcall(Field, src, "auraInstanceID")
@@ -496,7 +547,14 @@ local function BuffPresentRaw(id)
     if api == "nil" then
         if not AurasRestricted() then return false, "aura API (unrestricted)" end
         if AuraTrackable(id) then return false, "aura API (NeverSecret spell)" end
-        return nil, "unknown: restricted + spell not readable + not in CDM"
+        -- Gap 20: C_Secrets.ShouldSpellAuraBeSecret(id) (bool, 12.1.5) is NOT used to decide: what "false" promises about a nil read
+        -- is undocumented and Blizzard's UI never calls it. It is only reported, so the 2026-11-05 in-game data can settle it.
+        local note = ""
+        if C_Secrets and C_Secrets.ShouldSpellAuraBeSecret then
+            local okS, v = pcall(C_Secrets.ShouldSpellAuraBeSecret, id)
+            if okS and not issecret(v) and type(v) == "boolean" then note = v and " (game: aura secret now)" or " (game: aura NOT secret now)" end
+        end
+        return nil, "unknown: restricted + spell not readable + not in CDM" .. note
     end
     return nil, "unreadable (" .. api .. ")"
 end
@@ -568,8 +626,8 @@ local function SpellNameOf(id)
     end
     return n or nil
 end
-local function TrackedBuffOfSpell(rule)
-    local sid = tonumber(rule.spellID) or 0
+local function TrackedBuffOfSpell(spellID, mainID, alts)
+    local sid = tonumber(spellID) or 0
     if sid <= 0 then return nil end
     local sname = SpellNameOf(sid)
     local same = false
@@ -578,8 +636,8 @@ local function TrackedBuffOfSpell(rule)
         if not a or a <= 0 or same then return end
         if a == sid or (sname and SpellNameOf(a) == sname) then same = true end
     end
-    Test(rule.buffID)
-    if type(rule.buffAlt) == "table" then for _, a in ipairs(rule.buffAlt) do Test(a) end end
+    Test(mainID)
+    if type(alts) == "table" then for _, a in ipairs(alts) do Test(a) end end
     if not same then return nil end
     local fr, vname = FindTrackedBuffFrame(sid)
     if not fr then return nil end
@@ -617,19 +675,212 @@ function ns.TrackedBuffStateByName(id)
     local any = false
     for i = 1, #l do
         local okA, act = pcall(FrameActive, l[i])
-        if okA and act then return true end
+        if okA and act then return true, l[i] end
         any = true
     end
     if any then return false end   -- (not `any and false or nil`: that always yields nil)
     return nil
 end
-function ns.BuffPresentAny(rule)
-    local p, s, r, w = ns.AuraPresentList(rule and rule.buffID, rule and rule.buffAlt)
-    if p == nil and rule then
-        local ok, fp, fs, fr = pcall(TrackedBuffOfSpell, rule)
-        if ok and fp ~= nil then return fp, fs, fr, rule.buffID end
+function ns.FindTrackedBuffFrameByName(id)
+    local st, fr = ns.TrackedBuffStateByName(id)
+    if st == true then return fr end
+end
+
+-------------------------------------------------------------------------------
+-- Proc glows (retrospective gap 5). SPELL_ACTIVATION_OVERLAY_GLOW_SHOW / _HIDE (spellID) and
+-- C_SpellActivationOverlay.IsSpellOverlayed(spellID) -> bool carry no secrecy flag in the 12.1.5 docs, and Blizzard's own buttons
+-- use them in combat (ActionButton.lua compares the event's spellID with the action's spell; CooldownViewer.lua RefreshOverlayGlow
+-- asks IsSpellOverlayed(self:GetSpellID())). Which ID a glow names (the base spell or its replacement) depends on the caller, so
+-- the spell, its replacement on the bar and its base spell are all asked.
+-------------------------------------------------------------------------------
+local glowOn = {}   -- spellID -> true between GLOW_SHOW and GLOW_HIDE (used only when IsSpellOverlayed cannot be read)
+local function GlowIDs(id)
+    local ids = { id }
+    local ov = ns.SpellOnBar(id)
+    if ov ~= id then ids[#ids + 1] = ov end
+    if C_Spell and C_Spell.GetBaseSpell then
+        local ok, b = pcall(C_Spell.GetBaseSpell, id)
+        if ok and type(b) == "number" and not issecret(b) and b > 0 and b ~= id and b ~= ov then ids[#ids + 1] = b end
+    end
+    return ids
+end
+-- true (glowing) / false (read: not glowing) / nil (cannot tell); second value: the ID that glows
+function ns.SpellGlowing(id)
+    id = tonumber(id)
+    if not id or id <= 0 then return nil end
+    local fn = C_SpellActivationOverlay and C_SpellActivationOverlay.IsSpellOverlayed
+    local read = false
+    for _, x in ipairs(GlowIDs(id)) do
+        local v
+        if fn then
+            local ok, r = pcall(fn, x)
+            if ok and not issecret(r) and type(r) == "boolean" then v = r end
+        end
+        if v == true then return true, x end
+        if v == false then read = true
+        elseif glowOn[x] then return true, x end
+    end
+    if read then return false end
+    return nil
+end
+
+-- Glow -> aura. ns.PROC_GLOW_AURAS (ProcGlows.lua, generated from the game's SpellActivationOverlay table) lists, per proc aura, the
+-- buttons NO other aura in that table lights. Which buttons a row lights is the community's reading of the table
+-- (docs/reference/procs.md), not confirmed in game, so a pairing is trusted only after XayaUI has seen it hold: each time a listed
+-- button starts to glow while the aura can be read, the answer is counted (CueRulesDB.procGlowSeen). The glow then answers
+-- "present" only after GLOW_TRUST agreeing sightings and no disagreeing one. A button that is not glowing never answers "absent"
+-- (a highlight can also wait on a target, range, resources or the cooldown).
+local GLOW_TRUST = 2
+ns.GLOW_TRUST = GLOW_TRUST
+local glowButtons
+local function GlowButtons()
+    if glowButtons then return glowButtons end
+    glowButtons = {}
+    if type(ns.PROC_GLOW_AURAS) == "table" then
+        for aura, list in pairs(ns.PROC_GLOW_AURAS) do
+            for _, b in ipairs(list) do glowButtons[b] = aura end
+        end
+    end
+    return glowButtons
+end
+local function GlowSeenDB()
+    if type(CueRulesDB) ~= "table" then return nil end
+    local g = CueRulesDB.procGlowSeen
+    -- a new table build can pair buttons differently: start counting again
+    if type(g) ~= "table" or g.build ~= ns.PROC_GLOW_BUILD or type(g.auras) ~= "table" then
+        g = { build = ns.PROC_GLOW_BUILD, auras = {} }
+        CueRulesDB.procGlowSeen = g
+    end
+    return g.auras
+end
+-- The aura's state from a source that does not depend on the glow: the aura API, or a live Cooldown Manager icon. nil = unknown.
+local function AuraStateForGlow(aura)
+    local api = ReadAuraAPI(aura)
+    if api == "found" then return true end
+    local st = ns.CDMFrameState(aura)
+    if st ~= nil then return st end
+    if api == "nil" and (not AurasRestricted() or AuraTrackable(aura)) then return false end
+    return nil
+end
+function ns.ObserveGlowPairing(buttonID)
+    local aura = GlowButtons()[tonumber(buttonID) or 0]
+    if not aura then return nil end
+    local st = AuraStateForGlow(aura)
+    if st == nil then return nil end
+    local A = GlowSeenDB()
+    if not A then return nil end
+    local e = A[aura]
+    if type(e) ~= "table" then e = { yes = 0, no = 0 }; A[aura] = e end
+    if st then e.yes = (e.yes or 0) + 1 else e.no = (e.no or 0) + 1; e.lastNoButton = buttonID end
+    return st
+end
+-- Is aura `aura` up, judged by a glowing button only it lights? true or nil (never false).
+function ns.ProcGlowSaysPresent(aura)
+    aura = tonumber(aura)
+    local list = aura and type(ns.PROC_GLOW_AURAS) == "table" and ns.PROC_GLOW_AURAS[aura]
+    if not list then return nil end
+    local A = GlowSeenDB()
+    local e = A and A[aura]
+    if type(e) ~= "table" or (e.no or 0) > 0 or (e.yes or 0) < GLOW_TRUST then return nil end
+    for _, b in ipairs(list) do
+        if ns.SpellGlowing(b) == true then return true, b end
+    end
+    return nil
+end
+-- Gap 15: when Blizzard reassigns an icon's spell in combat (COOLDOWN_VIEWER_SPELL_OVERRIDE_UPDATED baseSpellID, overrideSpellID?;
+-- CooldownViewer.lua hands it to the item whose base spell it is), the icon's kept IDs learn the new replacement, so an icon whose
+-- IDs are hidden right now is still found under it; the frame index is rebuilt on the next read.
+function ns.OnSpellOverrideUpdated(base, override)
+    cdmAt = -1
+    if issecret(base) or issecret(override) or type(base) ~= "number" or type(override) ~= "number" or override <= 0 then return end
+    for _, vname in ipairs(VIEWERS) do
+        local v = _G[vname]
+        if v and v.GetChildren then
+            local kids = { v:GetChildren() }
+            for i = 1, #kids do
+                local last = kids[i] and kids[i].xuiLastIDs
+                if type(last) == "table" then
+                    local hasBase, hasNew = false, false
+                    for _, x in ipairs(last) do
+                        if x == base then hasBase = true end
+                        if x == override then hasNew = true end
+                    end
+                    if hasBase and not hasNew then last[#last + 1] = override end
+                end
+            end
+        end
+    end
+end
+if CreateFrame then
+    local gf = CreateFrame("Frame")
+    for _, e in ipairs({ "SPELL_ACTIVATION_OVERLAY_GLOW_SHOW", "SPELL_ACTIVATION_OVERLAY_GLOW_HIDE",
+        "COOLDOWN_VIEWER_SPELL_OVERRIDE_UPDATED", "PLAYER_ENTERING_WORLD" }) do pcall(gf.RegisterEvent, gf, e) end
+    if gf.SetScript then
+        gf:SetScript("OnEvent", function(_, event, a1, a2)
+            if event == "PLAYER_ENTERING_WORLD" then glowOn = {}; return end
+            if event == "COOLDOWN_VIEWER_SPELL_OVERRIDE_UPDATED" then pcall(ns.OnSpellOverrideUpdated, a1, a2)
+            elseif type(a1) == "number" and not issecret(a1) then
+                if event == "SPELL_ACTIVATION_OVERLAY_GLOW_SHOW" then
+                    glowOn[a1] = true
+                    -- the aura and the glow arrive in either order within a frame: look a moment later
+                    if GlowButtons()[a1] and C_Timer and C_Timer.After then
+                        C_Timer.After(0.15, function() pcall(ns.ObserveGlowPairing, a1) end)
+                    end
+                else
+                    glowOn[a1] = nil
+                end
+            end
+            if ns.MarkStateDirty then ns.MarkStateDirty() end   -- "Spell glows" rows answer on this frame
+        end)
+    end
+end
+-- The ONE presence reading for every aura trigger (the rule's built-in Buff / Aura and every "Buff / Aura (another)" row), so the
+-- two can never answer differently (retrospective gap 8):
+--   1. the aura API / a live Cooldown Manager icon carrying one of the IDs / the tracker (ns.AuraPresentList);
+--   2. when that is unknown: the Tracked Buffs icon of the rule's own spell, when an aura has that spell's name (0.6.8);
+--   3. then a Tracked Buffs icon filed under the aura's NAME (Blizzard often files a tracker under the ability: 0.6.11 did this
+--      for Target Debuff only).
+-- Returns present, source text, reference, and the ID it was found under.
+function ns.AuraPresence(mainID, alts, spellID)
+    local p, s, r, w = ns.AuraPresentList(mainID, alts)
+    if p ~= nil then return p, s, r, w end
+    if spellID then
+        local ok, fp, fs, fr = pcall(TrackedBuffOfSpell, spellID, mainID, alts)
+        if ok and fp ~= nil then return fp, fs, fr, mainID end
+    end
+    local ids = { tonumber(mainID) }
+    if type(alts) == "table" then for _, a in ipairs(alts) do ids[#ids + 1] = tonumber(a) end end
+    local anyIcon, allUnlit = false, true
+    for _, id in ipairs(ids) do
+        if id and id > 0 and ns.TrackedBuffStateByName then
+            local ok, st = pcall(ns.TrackedBuffStateByName, id)
+            if ok and st == true then
+                local fr = ns.FindTrackedBuffFrameByName and ns.FindTrackedBuffFrameByName(id)
+                return true, "CDM tracked buff with the aura's name (" .. tostring(SpellNameOf(id)) .. ")", MakeRef(nil, fr), id
+            end
+            if ok and st == false then anyIcon = true else allUnlit = false end
+        else
+            allUnlit = false
+        end
+    end
+    if anyIcon and allUnlit then return false, "CDM tracked buff with the aura's name, not lit" end
+    -- 4. a glowing button that only this aura lights, once the pairing has been seen to hold in game (ns.ProcGlowSaysPresent).
+    --    Only ever "present": no glow leaves the answer unknown.
+    if p == nil and ns.ProcGlowSaysPresent then
+        for _, id in ipairs(ids) do
+            if id and id > 0 then
+                local ok, g, b = pcall(ns.ProcGlowSaysPresent, id)
+                if ok and g == true then
+                    return true, "proc glow on " .. tostring(SpellNameOf(b) or b) .. " (" .. tostring(b) .. "; pairing seen in game)", MakeRef(nil, nil), id
+                end
+            end
+        end
     end
     return p, s, r, w
+end
+function ns.BuffPresentAny(rule)
+    if not rule then return nil, "no rule" end
+    return ns.AuraPresence(rule.buffID, rule.buffAlt, rule.spellID)
 end
 
 local BuffPresentOnce
@@ -694,7 +945,10 @@ function BuffPresentOnce(id)
     end
     if ref.expiration then
         ref.timeSource = ref.timeSource or "aura API"
-        if ref.duration and ref.duration > 0 and not ref.estimated then
+        -- learned only from a FRESH application (the aura just appeared after being seen absent): a refresh's total includes the
+        -- carried-over time (pandemic), which made the next estimate too long (retrospective gap 6)
+        local since = presentSince[id]
+        if ref.duration and ref.duration > 0 and not ref.estimated and since and now - since >= 0 and now - since < 1.5 then
             local L = LearnedTable()
             if L then L[id] = ref.duration end
         end
@@ -715,7 +969,7 @@ function ns.AuraEstimateInto(owner, id, ref)
     if type(ref) ~= "table" or ref.expiration then return nil end
     id = tonumber(id)
     local exp, dur, label
-    if ns.Timing and id then exp, dur, label = ns.Timing.AuraEstimate(id, presentSince[id]) end
+    if ns.Timing and id then exp, dur, label = ns.Timing.AuraEstimate(id, presentSince[id], ref.cdmFrame) end
     if not exp then return nil end
     local own = (ns.InStep and ns.InStep()) and estimatePool[owner]
     if own then for k in pairs(own) do own[k] = nil end
@@ -1103,11 +1357,35 @@ function ns.CheckContext(rule, ctx)
     m.sig, m.ver, m.sec, m.ok, m.fail = sig, ver, now, ok, fail
     return ok, fail
 end
+-- #319 (Xaya, 2026-11-04): "Always load" ignores every load condition, unless the Class or Specialization row has its own tick box
+-- "Always load: only this class / spec" ticked (rule: load.alwaysClass / load.alwaysSpec; group: f.alwaysClass / f.alwaysSpec). Then
+-- that row still counts. Unticked (the default) = the old behaviour, so no existing rule changes.
+local function AlwaysKeeps(classes, classOn, specs, specOn, ctx)
+    if classOn and ns.SetActive(classes) and not (ctx.class ~= nil and ns.SetMatch(classes, ctx.class)) then
+        return false, "class" .. (ctx.class == nil and " (unknown)" or "")
+    end
+    if specOn and ns.SetActive(specs) and not (ctx.specID ~= nil and ns.SetMatch(specs, tostring(ctx.specID))) then
+        return false, "spec" .. (ctx.specID == nil and " (unknown)" or "")
+    end
+    return true
+end
+ns._AlwaysKeeps = AlwaysKeeps
 function CheckContextRaw(rule, ctx)
     local load = rule.load or {}
     local ov, ovFolder = ns.FolderLoadOverride(rule)   -- a folder's Never / Always beats the rule's own load mode
     if ov == "never" then return false, "load: never (folder " .. tostring(ovFolder and ovFolder.name) .. ")" end
-    if ov == "always" then return true end
+    if ov == "always" then
+        -- a group set to Always still applies the class / spec rows it marked "Always load: only this ..." (this group and its parents)
+        local fid, guard = rule.folder, 0
+        while fid and guard < 32 do
+            local f = ns.FolderById(fid)
+            if not f then break end
+            local ok, why = AlwaysKeeps(f.loadClasses, f.alwaysClass, f.loadSpecs, f.alwaysSpec, ctx)
+            if not ok then return false, "group " .. tostring(f.name) .. " (Always load, only this " .. why .. ")" end
+            fid, guard = f.parent, guard + 1
+        end
+        return true
+    end
     do   -- a group's own spec / role / instance-type conditions apply on top of the rule's (nearest group first, then its parents)
         local fid, guard = rule.folder, 0
         while fid and guard < 32 do
@@ -1129,7 +1407,12 @@ function CheckContextRaw(rule, ctx)
         end
     end
     if load.mode == "never" then return false, "load: never" end
-    if load.mode == "always" then return true end
+    if load.mode == "always" then
+        local ok, why = AlwaysKeeps(load.classes, load.alwaysClass and load.classUse ~= false,
+            load.specs, load.alwaysSpec and load.specUse ~= false, ctx)
+        if not ok then return false, "Always load, only this " .. why end
+        return true
+    end
     local checks = {}
     for _, c in ipairs(ns.LOAD_TRI) do
         local s = load[c.key]

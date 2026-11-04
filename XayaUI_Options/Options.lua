@@ -222,20 +222,32 @@ end
 -- Preview size in the "Or pick art" lists (was 22 px): icon height, and the row is a little taller. Skin.lua lays the rows out.
 ns.TEX_PICK_ICON, ns.TEX_PICK_ROW = 56, 60
 local texValues, texSorting
+-- #336: every preview sits in one fixed-width column (two icons wide), centred, so every row's text starts at the same place. The
+-- padding is a transparent image (Media\UI\xui_blank.tga, 8 x 8, alpha 0) drawn at the width that is left over.
+ns.TEX_PICK_SPACER = "Interface\\AddOns\\XayaUI\\Media\\UI\\xui_blank.tga"
+local function PickRow(tex, w, label)
+    local box, h = ns.TEX_PICK_ICON * 2, ns.TEX_PICK_ICON
+    local left = math.floor((box - w) / 2)
+    local right = box - w - left
+    local function pad(n) return (n > 0) and ("|T%s:%d:%d|t"):format(ns.TEX_PICK_SPACER, h, n) or "" end
+    return pad(left) .. ("|T%s:%d:%d|t"):format(tostring(tex), h, w) .. pad(right) .. "  " .. tostring(label)
+end
+ns.TexPickRow = PickRow
 local function EnsureTextures()
     if texValues then return end
     texValues, texSorting = {}, {}
     for i, t in ipairs(ns.TextureList or {}) do
         local k = tostring(t[1])
-        texValues[k] = ("|T%d:%d:%d|t  %s"):format(t[1], ns.TEX_PICK_ICON, ns.TEX_PICK_ICON, t[2])
+        texValues[k] = PickRow(t[1], ns.TEX_PICK_ICON, t[2])
         texSorting[i] = k
     end
     texValues["0"] = "(none)"
     table.insert(texSorting, 1, "0")
-    -- local graphics (Media\\Graphics, from LocalGraphics.lua); the stored value is the file path
-    for _, g in ipairs(ns.LocalGraphics or {}) do
+    -- local graphics (Media\\Graphics, from LocalGraphics.lua); the stored value is the file path. Only folders the game can find
+    -- (UserMedia.lua ns.AvailableLocalGraphics, #333): a picture only Xaya has is not offered as a blank row to everyone else.
+    for _, g in ipairs((ns.AvailableLocalGraphics and ns.AvailableLocalGraphics()) or ns.LocalGraphics or {}) do
         local gw = math.min(ns.TEX_PICK_ICON * 2, math.max(8, math.floor(ns.TEX_PICK_ICON * (g[3] or 1) / math.max(1, g[4] or 1) + 0.5)))   -- keep the picture's proportions
-        texValues[g[2]] = ("|T%s:%d:%d|t  %s"):format(g[2], ns.TEX_PICK_ICON, gw, g[1])
+        texValues[g[2]] = PickRow(g[2], gw, g[1])
         texSorting[#texSorting + 1] = g[2]
     end
 end
@@ -364,7 +376,9 @@ end
 -- bannerOpen table and ns.ArrowToggle +/- button), and unticking "use" clears the choices below instead of only
 -- disabling them - so a rule that shows "All" really has nothing recorded, not a hidden leftover pick.
 local bannerOpen = setmetatable({}, { __mode = "k" })   -- hoisted: ns.RadioGroup below uses it
-function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, useKey, rule, bannerKey, multi)
+-- alwaysKey (Class / Specialization rows, #319): a tick box on the row itself, shown while the load mode is "Always load": ticked,
+-- Always load still keeps to this row (Conditions.lua AlwaysKeeps). Stored as ld()[alwaysKey] = true; unticked = nothing stored.
+function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, useKey, rule, bannerKey, multi, alwaysKey, alwaysWord)
     local function isOn()
         local u = ld()[useKey]
         if u == nil then return ns.SetActive(getSet()) end
@@ -399,11 +413,23 @@ function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, use
             end
             onChange()
         end }
+    local alwaysArg
+    if alwaysKey then
+        useArg.width = "normal"   -- the row's own tick box sits beside it
+        alwaysArg = { type = "toggle", order = 1.2, width = "normal",
+            name = "Always load: only this " .. (alwaysWord or name:lower()),
+            desc = "Always load ignores every load condition. Tick this to keep this one: the rule still loads only for the " ..
+                (alwaysWord or name:lower()) .. " ticked here. Unticked, Always load ignores it as well.",
+            hidden = function() return ld().mode ~= "always" or not isOn() end,
+            get = function() return ld()[alwaysKey] == true end,
+            set = function(_, v) ld()[alwaysKey] = v and true or nil; onChange() end }
+    end
     if rule and bannerKey then
         local arrow = ns.ArrowToggle(rule, bannerKey, 1.5)
         arrow.hidden = function() return not isOn() end
         return { type = "group", inline = true, name = "", order = order, hidden = hiddenFn, args = {
             use = useArg,
+            always = alwaysArg,
             open = arrow,
             pane = { type = "group", inline = true, name = "", order = 2,
                 hidden = function() return not (isOn() and ns.ArrowOpen(rule, bannerKey)) end, args = body },
@@ -1486,7 +1512,7 @@ local function BuildRule(i, rule)
         hidden = function() local m = rule.load.mode; return m ~= "never" and m ~= "always" end,
         name = function()
             return rule.load.mode == "always"
-                and "|cffffd100Always load is ticked:|r the options below are kept but not used. Tick Match ALL or Match ANY to make them count."
+                and "|cffffd100Always load is ticked:|r the options below are kept but not used, except a Class or Specialization row whose \"Always load: only this ...\" box is ticked. Tick Match ALL or Match ANY to make them all count."
                 or "|cffffd100Never load is ticked:|r this rule does not load, so the options below are kept but not used. Tick Match ALL or Match ANY to make them count."
         end }
     local loadModeKeys = AddSquareRadio(loadArgs, "loadMode", 0.5, LOAD_MODE, LOAD_MODE_ORDER,
@@ -1601,8 +1627,8 @@ local function BuildRule(i, rule)
             if rule.load.instance == "yes" then bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].instance = nil end
         end
     end
-    loadArgs.classes = ns.RadioGroup("Class", 0.57, noMatch, classSet, ns.ClassChoices(), onSpecRole, function() return rule.load end, "classUse", rule, "classes", true)
-    loadArgs.specs = ns.RadioGroup("Specialization", 0.6, noMatch, specSet, SpecChoices(), onSpecRole, function() return rule.load end, "specUse", rule, "specs", true)
+    loadArgs.classes = ns.RadioGroup("Class", 0.57, noMatch, classSet, ns.ClassChoices(), onSpecRole, function() return rule.load end, "classUse", rule, "classes", true, "alwaysClass", "class")
+    loadArgs.specs = ns.RadioGroup("Specialization", 0.6, noMatch, specSet, SpecChoices(), onSpecRole, function() return rule.load end, "specUse", rule, "specs", true, "alwaysSpec", "spec")
     loadArgs.roles = ns.RadioGroup("Role", 0.7, noMatch, roleSet, RoleChoices(), onSpecRole, function() return rule.load end, "roleUse", rule, "roles")
     -- A folder's Never / Always overrides this rule's load mode and match conditions (talents still apply). Values stay stored.
     local function folderLoadOv() return ns.FolderLoadOverride(rule) end
@@ -2029,6 +2055,16 @@ local function BuildRule(i, rule)
                 get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v end },
             channel = { type = "select", name = "Sound channel", order = 5, values = CHANNEL_VALUES, sorting = CHANNEL_ORDER,
                 get = function() return rule.sound.channel end, set = function(_, v) rule.sound.channel = v end },
+            -- #334 (Insivius): a volume on the cue's own sound, like Speech volume. The game allows it only for its own sound kits.
+            cueVolume = { type = "range", order = 5.5, width = "double", min = 0, max = 100, step = 5,
+                name = function()
+                    if rule.sound.source == "kit" then return "This cue's volume" end
+                    return "This cue's volume (only for [Game] sounds)"
+                end,
+                desc = "Volume of this cue only, without touching the game's channel volume. Works for the game's own sounds ([Game] in the list). The game has no per-sound volume for sound FILES (.ogg / .mp3: it plays them only at the channel's volume), so for a file this slider does nothing; pick a [Game] sound, or set the channel volume below (shared with everything on that channel).",
+                disabled = function() return rule.sound.source ~= "kit" end,
+                get = function() return tonumber(rule.sound.cueVolume) or 100 end,
+                set = function(_, v) rule.sound.cueVolume = (tonumber(v) and v < 100) and v or nil; ns.MarkDirty() end },
             volume = {
                 type = "range", name = function()
                     return "Volume of the '" .. (ns.Val(rule.sound.channel) or "Master") .. "' channel (game setting, shared)"
@@ -2040,6 +2076,40 @@ local function BuildRule(i, rule)
             },
             note = { type = "description", order = 9, fontSize = "small",
                 name = "Sounds you add to Media\\Audio need a full game restart before they can play. Use the headphone icon in the sidebar to loop this sound while you edit." },
+            -- Decision D2 (AuraSound.lua): the game plays the sound on the aura itself, so it works while the aura is hidden in combat
+            gameSoundOn = { type = "toggle", order = 10, width = "full",
+                name = "Let the game play this sound on the aura itself (works in combat while the aura is hidden)",
+                desc = "The game plays this sound when the Buff / Aura trigger's aura is gained (or lost), even in combat when XayaUI cannot see the aura. The game follows the aura ALONE: this rule's other triggers, conditions and Repeat are ignored for this sound. Sound files only (not [Game] sound kits or speech). Set up out of combat only. Not yet confirmed in game for ordinary auras.",
+                hidden = function() return not (ns.AuraSound and ns.AuraSound.Available()) end,
+                get = function() return type(rule.gameSound) == "table" and rule.gameSound.enabled == true end,
+                set = function(_, v)
+                    rule.gameSound = type(rule.gameSound) == "table" and rule.gameSound or { channel = "Ambience", throttle = 1, when = "auto" }
+                    rule.gameSound.enabled = v and true or false
+                    ns.MarkDirty(); Notify()
+                end },
+            gameSoundWhen = { type = "select", order = 11, name = "Game plays it", width = "double",
+                hidden = function() return not (type(rule.gameSound) == "table" and rule.gameSound.enabled) end,
+                values = function() return ns.AuraSound and ns.AuraSound.WHEN_VALUES or {} end,
+                sorting = function() return ns.AuraSound and ns.AuraSound.WHEN_ORDER or {} end,
+                get = function() return rule.gameSound.when or "auto" end,
+                set = function(_, v) rule.gameSound.when = v; ns.MarkDirty(); Notify() end },
+            gameSoundChannel = { type = "select", order = 12, name = "Channel for the game's copy", values = CHANNEL_VALUES, sorting = CHANNEL_ORDER,
+                desc = "Its own channel (default Ambience), so you can lower or mute it on its own in the game's sound settings.",
+                hidden = function() return not (type(rule.gameSound) == "table" and rule.gameSound.enabled) end,
+                get = function() return rule.gameSound.channel or "Ambience" end,
+                set = function(_, v) rule.gameSound.channel = v; ns.MarkDirty(); Notify() end },
+            gameSoundThrottle = { type = "range", order = 13, name = "At most once every (seconds)", min = 0, max = 10, step = 0.5,
+                hidden = function() return not (type(rule.gameSound) == "table" and rule.gameSound.enabled) end,
+                get = function() return tonumber(rule.gameSound.throttle) or 1 end,
+                set = function(_, v) rule.gameSound.throttle = v; ns.MarkDirty() end },
+            gameSoundAlso = { type = "toggle", order = 14, width = "full",
+                name = "Also play it from XayaUI when the rule fires (two sounds out of combat)",
+                hidden = function() return not (type(rule.gameSound) == "table" and rule.gameSound.enabled) end,
+                get = function() return rule.gameSound.alsoXayaUI == true end,
+                set = function(_, v) rule.gameSound.alsoXayaUI = v and true or nil; ns.MarkDirty() end },
+            gameSoundStatus = { type = "description", order = 15, width = "full", fontSize = "small",
+                hidden = function() return not (type(rule.gameSound) == "table" and rule.gameSound.enabled) end,
+                name = function() local ok, s = pcall(ns.AuraSound.StatusLine, rule); return ok and s or "" end },
         },
     }
 
@@ -3883,6 +3953,14 @@ function ns.FolderLoadConditions(f)
             get = function(_, k) return setOf(field)[k] and true or false end,
             set = function(_, k, v) setOf(field)[k] = v and true or nil; if next(f[field]) == nil then f[field] = nil end; ns.MarkDirty(); Notify() end }
     end
+    -- #319: while this group loads "Always" (its own setting or a parent's), a list can still count: "Always load: only this class / spec"
+    local function AlwaysRow(order, word, field, key)
+        return { type = "toggle", order = order, width = "full", name = "Always load: only this " .. word,
+            desc = "This group is set to Always, which ignores load conditions. Tick this to keep the " .. word .. " list above: the group's rules then load only for the " .. word .. " ticked there.",
+            hidden = function() return ns.FolderLoadOverrideFrom(f.id) ~= "always" or not (f[field] and next(f[field])) end,
+            get = function() return f[key] == true end,
+            set = function(_, v) f[key] = v and true or nil; ns.MarkDirty(); Notify() end }
+    end
     local classV, classO = {}, {}
     for _, c in ipairs(ns.ClassChoices()) do classV[c.id] = c.text; classO[#classO + 1] = c.id end
     local specV, specO = {}, {}
@@ -3896,7 +3974,9 @@ function ns.FolderLoadConditions(f)
             note = { type = "description", order = 0, width = "full", fontSize = "small",
                 name = "Checked before each rule's own Load tab, for every rule in this group and its nested groups: a rule only loads if it passes both. Leave a list with nothing ticked to allow anything. Nothing on the rules is changed." },
             classes = Multi(0.5, "Class", "loadClasses", classV, classO),
+            classAlways = AlwaysRow(0.55, "class", "loadClasses", "alwaysClass"),
             specs = Multi(1, "Specialization", "loadSpecs", specV, specO),
+            specAlways = AlwaysRow(1.05, "spec", "loadSpecs", "alwaysSpec"),
             roles = Multi(2, "Role", "loadRoles", roleV, roleO),
             inst = Multi(3, "Instance type", "loadInst", instV, ns.INSTANCE_TYPE_ORDER),
         } }
@@ -4592,12 +4672,14 @@ local function BuildTray()
     t.clear:SetPoint("TOPRIGHT", -6, -3)
     t.clear:SetText("Clear")
     t.clear:SetScript("OnClick", function() t.log:Clear(); if ns.logBuf then wipe(ns.logBuf) end end)
+    ns.FlatButton(t.clear)
 
     t.copy = CreateFrame("Button", nil, t, "UIPanelButtonTemplate")
     t.copy:SetSize(56, 18)
     t.copy:SetPoint("RIGHT", t.clear, "LEFT", -4, 0)
     t.copy:SetText("Copy")
     t.copy:SetScript("OnClick", function() if ns.CopyConsole then ns.CopyConsole() end end)
+    ns.FlatButton(t.copy)
 
     t.status = t:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     t.status:SetPoint("TOPLEFT", 10, -(HEADER_H + 4))
@@ -4775,6 +4857,7 @@ local function ConfirmAllSounds(count, cb)
         f.no = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
         f.no:SetSize(110, 24); f.no:SetPoint("BOTTOMLEFT", f, "BOTTOM", 8, 20); f.no:SetText(NO)
         f.no:SetScript("OnClick", function() f:Hide() end)
+        ns.FlatButton(f.yes, true); ns.FlatButton(f.no)
         f.yes:SetScript("OnClick", function()
             if f.check:GetChecked() and CueRulesDB and CueRulesDB.ui then CueRulesDB.ui.skipSoundAllPrompt = true end
             f:Hide()

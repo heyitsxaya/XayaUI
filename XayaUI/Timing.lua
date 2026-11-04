@@ -89,10 +89,10 @@ local function CastWindow(id)
 end
 
 -- Time left on a buff the game hides. Returns expiration, duration, label (nil when no estimate can be made).
-function T.AuraEstimate(id, detectedAt)
+function T.AuraEstimate(id, detectedAt, frame)
     id = tonumber(id)
     if not id then return nil end
-    local fr = ns.FindCDMFrame and ns.FindCDMFrame(id)
+    local fr = frame or (ns.FindCDMFrame and ns.FindCDMFrame(id))   -- frame: the icon that answered (a fallback icon filed under another ID)
     local start, label
     if fr and fr.xuiAppliedAt and not (fr.xuiRemovedAt and fr.xuiRemovedAt >= fr.xuiAppliedAt) then
         start, label = fr.xuiAppliedAt, "applied (Cooldown Manager)"

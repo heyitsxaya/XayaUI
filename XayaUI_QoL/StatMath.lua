@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- StatMath.lua : the arithmetic behind QoL > Character Stats (XayaUI QoL 0.6.2). No frames and no game calls here: every function
+-- StatMath.lua : the arithmetic behind QoL > Character Toolkit (XayaUI QoL 0.7.0). No frames and no game calls here: every function
 -- takes the game's own rating converter as an argument, f(rating) -> percent, so it can be tested offline with a stand-in.
 --
 -- Why a converter and not a table: XayaUI never ships stat tables from outside the game (#290). The game exposes
@@ -10,7 +10,8 @@
 --   lost rating      rating that buys nothing because of the penalty: rating - (percent now / base rate)
 --   next 1%          the exact extra rating for one more percent, found by bisection on the converter (crosses thresholds correctly)
 -- If the converter shows no penalty anywhere, no thresholds are reported. Whether the live converter applies diminishing returns is
--- NOT CONFIRMED IN GAME (#325); CharacterStats.lua compares it with the game's current value and says so when they disagree.
+-- NOT CONFIRMED IN GAME (#325); CharacterModel.lua compares it with the game's current value and says so when they disagree.
+-- 0.7.0 adds WhatIf (per-stat and item what-if through the converter), StatDelta (item compare) and Coins (repair cost).
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
@@ -163,6 +164,45 @@ function M.Analyze(f, rating, r0, thresholds, coeff, pctNow)
         if t.rating > rating then a.nextThreshold = t; a.toNext = t.rating - rating; break end
     end
     return a
+end
+
+-- What if this much more (or less) rating: read through the converter at both points, so thresholds apply. coeff as in Analyze.
+-- Returns nil when the converter gives nothing usable; otherwise { now, after, gain, rating, newRating, crossed = { thresholds } }.
+-- Rating never goes below 0 (a minus amount larger than the rating stops at 0).
+function M.WhatIf(f, rating, delta, coeff, thresholds)
+    if not num(rating) or not num(delta) then return nil end
+    coeff = (num(coeff) and coeff > 0) and coeff or 1
+    local function F(x) local ok, v = pcall(f, x); if ok and num(v) then return v end end
+    local nr = math.max(0, rating + delta)
+    local a, b = F(rating), F(nr)
+    if not a or not b then return nil end
+    local out = { rating = rating, newRating = nr, now = a * coeff, after = b * coeff, gain = (b - a) * coeff, crossed = {} }
+    local lo, hi = math.min(rating, nr), math.max(rating, nr)
+    for _, t in ipairs(thresholds or {}) do
+        if t.rating > lo and t.rating <= hi then out.crossed[#out.crossed + 1] = t end
+    end
+    return out
+end
+
+-- Rating changes between two item stat tables (the game's own tables, keyed by its ITEM_MOD_* names): new - old for each key
+-- either table lists. Non-number entries are skipped. Returns { key = delta } with zero deltas left out.
+function M.StatDelta(newStats, oldStats)
+    local out = {}
+    for k, v in pairs(newStats or {}) do
+        if num(v) then out[k] = v - ((oldStats and num(oldStats[k])) and oldStats[k] or 0) end
+    end
+    for k, v in pairs(oldStats or {}) do
+        if num(v) and out[k] == nil then out[k] = -v end
+    end
+    for k, v in pairs(out) do if v == 0 then out[k] = nil end end
+    return out
+end
+
+-- Copper -> gold, silver, copper (whole numbers). Nil for anything that is not a number of 0 or more.
+function M.Coins(copper)
+    if not num(copper) or copper < 0 then return nil end
+    copper = math.floor(copper + 0.5)
+    return math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
 end
 
 -- Inverse of a monotone function g on [lo, hi]: the x where g(x) = target (bisection, 40 steps). Used for armor and the GCD.

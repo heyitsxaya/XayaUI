@@ -1,7 +1,7 @@
 # XayaUI: session-start summary
 
 Read this first in any new chat about XayaUI. It is meant to be enough on its own; the full record is in the two trackers below.
-Last updated 2026-11-04 06:46 UTC by Claude Code session 014bN6tUvbkCv9Ha9VgNF4Xa (earlier the same day: 014bN6tVdvvFNcwwRRBHuqTv). Facts were checked in that session unless marked (unverified) or (inference).
+Last updated 2026-11-04 10:14 UTC by Claude Code session 014bN6tUvbkCv9Ha9VgNF4Xa (earlier the same day: 014bN6tVdvvFNcwwRRBHuqTv). Facts were checked in that session unless marked (unverified) or (inference).
 
 ## 1. How this project is tracked
 Every piece of addon work is multi-session (Xaya, 2026-11-04). New chat: read this file, then glob the repo root and `debug-log/` for `*SUMMARY*`, `*LOGIC*`, `*CONTEXT*`, `*SESSION*`, `*handoff*` files and read the newest.
@@ -26,38 +26,43 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 - **"Profile"** means only the whole addon as configured (#354 is asking whether that changes).
 - **Wording to Xaya:** truth first; flag inferences; no unearned compliments; state what is not verified in game.
 
-## 3. Addons (versions from the .toc files on `main`, 2026-11-04)
+## 3. Addons (versions from the .toc files, 2026-11-04 10:14; `main` gets them once the full suite passes, see section 5)
 | Folder | Version | Holds |
 |---|---|---|
-| `XayaUI` | 0.6.11 | core: rules, cues, conditions, actions, combat aura engine (`Combat/`), themes, console, minimap and ESC-menu buttons |
-| `XayaUI_Options` | 0.6.7 | the settings window (loads on first open; Ace3 libs) |
+| `XayaUI` | 0.6.17 | core: rules, cues, conditions, actions, combat aura engine (`Combat/`), themes, console, minimap and ESC-menu buttons |
+| `XayaUI_Options` | 0.6.13 | the settings window (loads on first open; Ace3 libs) |
 | `XayaUI_Chat` | 0.6.6 | Chat Panel, Chat Bar, filters, history, privacy cover |
-| `XayaUI_QoL` | 0.6.2 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit |
+| `XayaUI_QoL` | 0.7.0 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit (phase 2: one model, sheet, What If, slot overlays) |
 | `XayaUI_Bonus` | 0.6.4 | tooltips, Notepad, data panels |
 | `XayaUI_Reskin` | 0.6.0 | Game Menu skin |
-| `XayaUI_Media`, `XayaUI_GameDump` | 1.0, 0.5.0 | user media folder; game data capture (API, talents, Cooldown Manager catalogue, aura log) |
+| `XayaUI_Media`, `XayaUI_GameDump` | 1.0, 0.6.0 | user media folder; game data capture (API, talents, Cooldown Manager catalogue, aura log, `/xuidump probe`) |
 Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.cursorHighlight`, `.cursorTrail`, `.characterToolkit`). Nothing is saved per character yet.
 
 ## 4. Active items
 | Item | State | Next step |
 |---|---|---|
-| Code gaps from the retrospective (`docs/process/RETROSPECTIVE.md`, 22 rows) | all re-checked against the code | fix in this order: 2 (D1 time left), 1 (hidden Cooldown Manager viewer), 8 with 7, 11, 22, 13, 4, then 5 |
-| Proc glows as aura signals (task 28) | `docs/reference/procs.md` built (wago.tools, build 12.1.5.70783); Boiling Point 1265968 is the only aura that lights Blood Boil | GameDump probe in combat first, then a "Spell glows" trigger, Boiling Point (#315) first, Divine Arbiter (#332) needs talents / set bonus to rule out other auras |
-| Old-branch features not on `main` | an audit of 31 old commits is running (#125 strata / level conditions, #88 Recycle Bin, #247 Trade tab, and whatever else it finds) | port them, then the old branches can be deleted |
-| Character Toolkit (QoL 0.6.2): tabbed panel; goal is to surface everything the API gives, not copy the character window | merged, offline tests pass, **unverified in game** | in-game check (QA-CHECKLIST E1d to E1f); Xaya decides: fill the "not given by the game" rows (primary to armor or dodge, block, AP to damage) from a named database? keep the name "Character Toolkit"? |
-| #354 QoL element profiles (per character or global) | decision needed | what a profile holds; named profiles or one switch; the word "profile" |
-| #357 chat emotes as a QoL element | queued | not started |
-| #278 tester requests (7 items) | partly built | two in-game probes first (`/xui loc` under each effect; target / focus cast readability) |
-| #268 9-point anchors | open, **high priority** | |
-| M1 data model and migration | planned | blocks M2b, M3, M6d |
-| ROADMAP section 10 | decisions waiting | gated panes, backup, recycle bin, and others |
+| **Xaya's decisions** | written out in `docs/process/DECISIONS-2026-11-04.md` (27 questions from the 2026-11-04 issue triage) | most important: #260 conditions vs the combat engine, #343 which drag, #319 "Always load" vs Class, #334 cue volume |
+| **In-game data, 2026-11-05 morning** | `/xuidump probe` built (GameDump 0.6.0); run sheet `docs/process/IN-GAME-DATA-2026-11-05.md` | Xaya runs it; then: confirm the glow pairings, `ShouldSpellAuraBeSecret`, AddAuraSound for ordinary auras, override events |
+| Retrospective aura gaps | 1, 2, 4, 6-12, 15, 22 fixed in code (core 0.6.13); 5 and 21 partly; 20 reported only; 13 left on purpose; 16 waits on Xaya | in-game QA B33-B40; then gaps 3, 14, 17-19 |
+| Cues vs conditions (core 0.6.14) | a cue no condition lists follows the rule's triggers; a switched-off rule silences its cues | QA B41; Xaya may prefer that a switched-off condition frees its cues (decision 5) |
+| UI bugs in existing features (Xaya: before new features) | fixed in code: #333 art picker (0.6.15), #352 lone dropdowns, #286 red buttons, #99 cut-off labels (0.6.16), #336 art rows (0.6.17) | next without a decision: #351 one margin / gutter everywhere (large); the rest wait on decisions |
+| Character Toolkit (QoL 0.7.0) | phase 2 merged, offline tests pass (234 checks), **unverified in game** | QA E1d-E1n; Toolkit questions in the decisions file |
+| Old-branch features not on `main` | #88 Recycle Bin ported (0.6.12) | #125 strata / level and the old chat features wait on decisions |
+| #30 Recycle Bin for themes, notes, backups | **deferred** (Xaya, 2026-11-04) | |
+| #268 9-point anchors | open, high priority | decision on "anchor" vs "anchored to" first |
 Proposed order (not a commitment): ROADMAP section 12.
 
 ## 5. Pending actions for Xaya
-1. **Branches** (Xaya, 2026-11-04: branches with no functionality beyond `main` may be deleted). The cloud session's git proxy refuses branch deletions (HTTP 403), so Xaya deletes them on github.com/heyitsxaya/XayaUI/branches. Cleared and still there on 2026-11-04 06:46: `chat/history-footer-review`, `claude/code-review-2026-10-31`, `claude/confident-edison-pitusd`, `claude/determined-mayer-vm3md8`, `sidebar-spacing-2026-11-02`, `claude/custom-theme-0.5.40` (entirely inside `wip/notepad-icons`). `stable` is a protected branch: remove it from its protection rule first (Settings > Branches or Rules; do not delete a rule that also covers `main`). Keep `main`, `qa-installer-branch`, the session branch and `archive/2026-11-04` (it holds every old head).
-2. **#88 Recycle Bin decisions:** how long deleted items stay (the old version: weekly by default), and whether a group deleted with its contents goes to the bin as one item.
-3. In-game pass over everything marked Built but unverified (`unverified-in-game` label).
-4. The Character Toolkit decisions above; decisions in ROADMAP section 10 and AURA-PLAN section 3.
+1. **Decisions:** `docs/process/DECISIONS-2026-11-04.md`, the first five above all.
+2. **In-game:** the probe run sheet (`docs/process/IN-GAME-DATA-2026-11-05.md`); QA-CHECKLIST B33-B45, J7-J11, E1d-E1n.
+3. **Branches** (Xaya allows deleting branches with no functionality beyond `main`; the session's git proxy refuses deletions, so
+   she deletes them on github.com/heyitsxaya/XayaUI/branches). Standing on 2026-11-04 09:05:
+   - **deletable:** `claude/magical-cray-jmspwv` (its Recycle Bin is on `main` since 0.6.12);
+   - **keep for now:** `claude/frame-strata-conditions` (#125 strata / level, waits on a decision) and `wip/notepad-icons` (see
+     `debug-log/2026-11-04-0655-old-branch-audit.md`);
+   - **always keep:** `main`, `qa-installer-branch`, the session branch and `archive/2026-11-04`.
+4. **`main` status:** this session's work (core 0.6.13-0.6.17, Options 0.6.9-0.6.13, QoL 0.7.0, GameDump 0.6.0) lands on `main` only
+   after the full suite passes on it; the session's reply says when it did, with the commit.
 
 ## 6. How to work here (cloud session)
 - **Process:** follow `docs/process/VERIFICATION.md` (the project skill `.claude/skills/xayaui-change` sums it up). `python3 tools/precheck.py` must end with `FAILS: 0` before a commit (`--base origin/main` before pushing to main).
