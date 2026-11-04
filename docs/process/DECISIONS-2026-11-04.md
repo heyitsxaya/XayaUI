@@ -30,15 +30,10 @@ displays a condition only restyles. Weakest point: A loses exact time in combat 
 What happens when you try: nothing; a label follows but the drop does nothing; or the window locks up? The arrows and drag were
 hardened in 0.6.4, but there is still no reproduction, and #305 never captured an error.
 
-### 3. #319 / D6: does "Always load" ignore Class?
-**Today.** "Always load" skips Class and every other load condition, so a Death Knight rule set to "Always load" also loads on a
-Paladin.
-
-**Options:**
-- **A.** Keep it (the tab says so).
-- **B.** "Always load" skips everything except Class (and spec?).
-
-**Recommendation:** B. A rule written for one class rarely makes sense on another.
+### 3. #319 / D6: does "Always load" ignore Class? **Answered by Xaya 2026-11-04; built in core 0.6.18.**
+Xaya: "class or spec selection should have a tick box that appears next to the row itself - 'modify always show to this {}'
+(class or spec)". Built as a tick box on the Class and Specialization rows ("Always load: only this class / spec"), shown while
+Always load is on, on the rule's and the group's Load tab. Unticked (the default) keeps the old behaviour.
 
 ### 4. #334: cue volume
 **Today.** The volume slider in a cue changes the game's whole channel volume (WoW has no per-sound volume for sound files).

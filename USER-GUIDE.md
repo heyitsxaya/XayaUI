@@ -124,7 +124,7 @@ Load answers: *in what situations is this rule active?* A rule that is not loade
 | Mode | Meaning |
 |---|---|
 | **Never load** | The rule never runs. The rule list shows it as disabled. The load conditions below stay visible but are not used. |
-| **Always load** | Ignore every load condition below. The conditions stay visible and keep their settings; they just are not used until you tick Match ALL or Match ANY. |
+| **Always load** | Ignore every load condition below. The conditions stay visible and keep their settings; they just are not used until you tick Match ALL or Match ANY. One exception you choose (0.6.18, #319): while Always load is on, the **Class** and **Specialization** rows each show a tick box on the row itself, **"Always load: only this class"** / **"only this spec"**. Ticked, Always load still keeps to the classes or specs chosen in that row (a Death Knight rule set to Always load then stays off on a Paladin). Unticked (the default), Always load ignores the row as before. |
 | **Match ALL of the conditions below** | Every condition you set must be true. (A blank mode behaves like ALL.) |
 | **Match ANY of the conditions below** | At least one condition you set must be true. |
 
@@ -169,14 +169,14 @@ Tick **Talents** to require talents; the list appears below.
 Checked nearest group first, then its parents:
 
 1. A group set to **Never** blocks every rule inside it, whatever the rule says.
-2. A group set to **Always** makes the rule's own load mode and match conditions pass (talents still apply).
+2. A group set to **Always** makes the rule's own load mode and match conditions pass (talents still apply). On the group's Load tab, its Class and Specialization lists each get a tick box **"Always load: only this class / spec"** while the group is set to Always (its own setting or a parent's); ticked, that list still counts for every rule inside (0.6.18, #319).
 3. A group's own **specialization, role, and instance-type** sets apply *on top of* the rule's. A rule cannot loosen them, even when the rule is set to "Always load."
 
 ### 3.6 What the rule itself must pass, in order
 
 ```
 Enabled box ticked
- -> group Never? (blocks)  -> group Always? (skips to talents)
+ -> group Never? (blocks)  -> group Always? (skips to talents; a class / spec list ticked "Always load: only this ..." still counts)
  -> group spec / role / instance gates
  -> rule load mode (Never / Always / ALL / ANY)
  -> talents requirement
