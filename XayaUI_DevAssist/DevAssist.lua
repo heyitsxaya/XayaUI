@@ -825,6 +825,9 @@ SlashCmdList["XAYAUIDEV"] = function(msg)
     elseif cmd == "catalogue" or cmd == "catalog" then if GD.CaptureCatalogue then GD.CaptureCatalogue(arg ~= "" and arg or nil) end
     elseif cmd == "seen" then if GD.SeenToggle then GD.SeenToggle() end
     elseif cmd == "probe" then if GD.Probe then GD.Probe(arg) end
+    elseif cmd == "instance" then if GD.Instance then GD.Instance(arg) end
+    elseif cmd == "stats" then if GD.CaptureStats then GD.CaptureStats() end
+    elseif cmd == "tooltips" or cmd == "tooltip" then if GD.CaptureTooltips then GD.CaptureTooltips(arg) end
     elseif cmd == "status" then
         local nc, na, nl = GD.RecorderSummary()
         local d = DB()
@@ -832,13 +835,15 @@ SlashCmdList["XAYAUIDEV"] = function(msg)
         for _ in pairs(d.catalogueCDM or {}) do nSpec = nSpec + 1 end
         local probeOn, probeN = false, 0
         if GD.ProbeSummary then probeOn, probeN = GD.ProbeSummary() end
-        Say(("static: %s | char: %s | auras: %s | api: %s | toolkit checks: %s | recorder %s: %d spells, %d aura links, %d loadouts | catalogue: %s (Cooldown Manager of %d specs) | aura log: %s, %d auras | probe: %s, %d entries"):format(
+        local nCreatures = GD.InstanceSummary and GD.InstanceSummary() or 0
+        Say(("static: %s | char: %s | auras: %s | api: %s | toolkit checks: %s | recorder %s: %d spells, %d aura links, %d loadouts | catalogue: %s (Cooldown Manager of %d specs) | aura log: %s, %d auras | probe: %s, %d entries | instance: %d creatures | stats: %s | tooltips: %s"):format(
             d.static and (d.static.built or "yes") or "none", d.char and d.char.at or "none", d.auras and d.auras.at or "none",
             d.api and d.api.at or "none", d.toolkitProbe and d.toolkitProbe.at or "none", R.on and "ON" or "off", nc, na, nl,
             d.catalogue and d.catalogue.at or "none", nSpec, (GD.Catalogue and GD.Catalogue.seenOn) and "ON" or "off", d.seen and d.seen.n or 0,
-            probeOn and "ON" or "off", probeN or 0))
+            probeOn and "ON" or "off", probeN or 0, nCreatures,
+            type(d.stats) == "table" and tostring(d.stats.n or #d.stats) or "none", type(d.tooltips) == "table" and "yes" or "none"))
     else
-        print("|cffffd100XayaUI Dev Assist|r: /xuidev (window) | static | char | auras | rec (toggle recorder) | clear | api (API inventory) | toolkit (Character Toolkit checks) | catalogue [fromID] (aura catalogue) | seen (toggle aura log) | probe on|off|status|clear|spells <ids>|mark (event probe) | save (reload) | status")
+        print("|cffffd100XayaUI Dev Assist|r: /xuidev (window) | static | char | auras | rec (toggle recorder) | clear | api (API inventory) | toolkit (Character Toolkit checks) | catalogue [fromID] (aura catalogue) | seen (toggle aura log) | probe on|off|status|clear|spells <ids>|mark (event probe) | instance [status|clear] (creatures seen) | stats (ratings, out of combat) | tooltips [ids, i:itemID] (tooltip text) | save (reload) | status")
     end
 end
 
