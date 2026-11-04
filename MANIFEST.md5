@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-b04a6bbc0b68ad9e240afa647cee96e2  QA-CHECKLIST.md
+858534eb6e35980451ffcbfad4e0ad89  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 74da2d4416f179dd457125711183fe00  ROADMAP.md
 bd8f3a28c3f360e3b495c3d382fc9d8a  SESSION-START-SUMMARY.md
@@ -204,12 +204,12 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-9c1c28e17f6090376ba6871b11bc3492  XayaUI_Options/Options.lua
+2fcfd1a7d5e648c2c2d3a477e8fef91d  XayaUI_Options/Options.lua
 8d2bfd2b7b768d7e9991276be979558b  XayaUI_Options/OutcomesEditor.lua
 394ad27c1b151dff8a007fde6448f6ea  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
-7b15336daf31ee26601e88d38a621530  XayaUI_Options/XayaUI_Options.toc
+d38341a6e50915077a0d49d83423e502  XayaUI_Options/XayaUI_Options.toc
 1b7f9c9a6a6f181cc44dce7f1838d2de  XayaUI_QoL/CharacterModel.lua
 4b2d82ea7578d98ddbfa2a6ee3cddd85  XayaUI_QoL/CharacterToolkit.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
@@ -407,6 +407,7 @@ c2806612bff849d19f5d04f2d3319b5c  debug-log/2026-11-04-1851-cue-pane-aurasound-g
 cbf95dec053e0fd68b2bfd9db796a7a4  debug-log/2026-11-04-1903-load-id-lists-core-0.6.28-options-0.6.25.md
 77b1c8cbc5b1ef706c98e7f9be94705b  debug-log/2026-11-04-1924-mover-view-hover-and-edit-core-0.6.29-options-0.6.26.md
 bb99d24883a5e1ae6219c7e7aefc8d0e  debug-log/2026-11-04-1926-what-if-item-drop-shift-click-qol-0.7.2-core-0.6.30.md
+daf7c0db92c4b93762565959d5c7251d  debug-log/2026-11-04-1935-delete-keeps-rule-open-options-0.6.27.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
 9a907df3961024106bb6ae03b230abf3  docs/plans/REFERENCE-SCREENS-AND-FEASIBILITY-2026-11-04.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
@@ -480,6 +481,7 @@ dd665e9accfdaf1a4488086f855742a2  tests/cue_sound_guard_run.py
 e72897e247fb535d4756722cd9f5aad7  tests/cue_volume_run.py
 468a208772bf47d9d5b03f5f786b7989  tests/debug_record_engine_run.py
 e1638da5fc1a7cf666dbd4db06d717b4  tests/debug_record_run.py
+c135893b4f8ae3d58b00fd2be6d813af  tests/delete_keeps_rule_run.py
 427962a9d4b8a689538d0b4850436526  tests/devassist_api_run.py
 bee02fd6123bf9edd4e6dd43f306e1e4  tests/devassist_catalogue_run.py
 be64f463355fcf093dd89352a1376b22  tests/devassist_probe_run.py
