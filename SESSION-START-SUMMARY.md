@@ -1,7 +1,7 @@
 # XayaUI: session-start summary
 
 Read this first in any new chat about XayaUI. It is meant to be enough on its own; the full record is in the two trackers below.
-Last updated 2026-11-04 09:04 UTC by Claude Code session 014bN6tUvbkCv9Ha9VgNF4Xa (earlier the same day: 014bN6tVdvvFNcwwRRBHuqTv). Facts were checked in that session unless marked (unverified) or (inference).
+Last updated 2026-11-04 10:14 UTC by Claude Code session 014bN6tUvbkCv9Ha9VgNF4Xa (earlier the same day: 014bN6tVdvvFNcwwRRBHuqTv). Facts were checked in that session unless marked (unverified) or (inference).
 
 ## 1. How this project is tracked
 Every piece of addon work is multi-session (Xaya, 2026-11-04). New chat: read this file, then glob the repo root and `debug-log/` for `*SUMMARY*`, `*LOGIC*`, `*CONTEXT*`, `*SESSION*`, `*handoff*` files and read the newest.
@@ -26,11 +26,11 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 - **"Profile"** means only the whole addon as configured (#354 is asking whether that changes).
 - **Wording to Xaya:** truth first; flag inferences; no unearned compliments; state what is not verified in game.
 
-## 3. Addons (versions from the .toc files, 2026-11-04 09:04; `main` gets them once the full suite passes, see section 5)
+## 3. Addons (versions from the .toc files, 2026-11-04 10:14; `main` gets them once the full suite passes, see section 5)
 | Folder | Version | Holds |
 |---|---|---|
-| `XayaUI` | 0.6.16 | core: rules, cues, conditions, actions, combat aura engine (`Combat/`), themes, console, minimap and ESC-menu buttons |
-| `XayaUI_Options` | 0.6.12 | the settings window (loads on first open; Ace3 libs) |
+| `XayaUI` | 0.6.17 | core: rules, cues, conditions, actions, combat aura engine (`Combat/`), themes, console, minimap and ESC-menu buttons |
+| `XayaUI_Options` | 0.6.13 | the settings window (loads on first open; Ace3 libs) |
 | `XayaUI_Chat` | 0.6.6 | Chat Panel, Chat Bar, filters, history, privacy cover |
 | `XayaUI_QoL` | 0.7.0 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit (phase 2: one model, sheet, What If, slot overlays) |
 | `XayaUI_Bonus` | 0.6.4 | tooltips, Notepad, data panels |
@@ -45,7 +45,7 @@ Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.
 | **In-game data, 2026-11-05 morning** | `/xuidump probe` built (GameDump 0.6.0); run sheet `docs/process/IN-GAME-DATA-2026-11-05.md` | Xaya runs it; then: confirm the glow pairings, `ShouldSpellAuraBeSecret`, AddAuraSound for ordinary auras, override events |
 | Retrospective aura gaps | 1, 2, 4, 6-12, 15, 22 fixed in code (core 0.6.13); 5 and 21 partly; 20 reported only; 13 left on purpose; 16 waits on Xaya | in-game QA B33-B40; then gaps 3, 14, 17-19 |
 | Cues vs conditions (core 0.6.14) | a cue no condition lists follows the rule's triggers; a switched-off rule silences its cues | QA B41; Xaya may prefer that a switched-off condition frees its cues (decision 5) |
-| UI bugs in existing features (Xaya: before new features) | fixed in code: #333 art picker (0.6.15), #352 lone dropdowns, #286 red buttons, #99 cut-off labels (0.6.16) | next without a decision: #336 art rows, #351 margins; the rest wait on decisions |
+| UI bugs in existing features (Xaya: before new features) | fixed in code: #333 art picker (0.6.15), #352 lone dropdowns, #286 red buttons, #99 cut-off labels (0.6.16), #336 art rows (0.6.17) | next without a decision: #351 one margin / gutter everywhere (large); the rest wait on decisions |
 | Character Toolkit (QoL 0.7.0) | phase 2 merged, offline tests pass (234 checks), **unverified in game** | QA E1d-E1n; Toolkit questions in the decisions file |
 | Old-branch features not on `main` | #88 Recycle Bin ported (0.6.12) | #125 strata / level and the old chat features wait on decisions |
 | #30 Recycle Bin for themes, notes, backups | **deferred** (Xaya, 2026-11-04) | |
@@ -61,7 +61,7 @@ Proposed order (not a commitment): ROADMAP section 12.
    - **keep for now:** `claude/frame-strata-conditions` (#125 strata / level, waits on a decision) and `wip/notepad-icons` (see
      `debug-log/2026-11-04-0655-old-branch-audit.md`);
    - **always keep:** `main`, `qa-installer-branch`, the session branch and `archive/2026-11-04`.
-4. **`main` status:** this session's work (core 0.6.13-0.6.16, Options 0.6.9-0.6.12, QoL 0.7.0, GameDump 0.6.0) lands on `main` only
+4. **`main` status:** this session's work (core 0.6.13-0.6.17, Options 0.6.9-0.6.13, QoL 0.7.0, GameDump 0.6.0) lands on `main` only
    after the full suite passes on it; the session's reply says when it did, with the commit.
 
 ## 6. How to work here (cloud session)
