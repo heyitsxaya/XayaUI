@@ -180,7 +180,7 @@ is a text box of the game's IDs, separated by commas or spaces. An empty box res
 | **Items equipped (item IDs)** | any listed item being worn | A minus: only while that item is NOT worn. Use the item search next to it. |
 
 A value the game will not give (no map during a loading screen, for example) counts as unknown: a rule that needs it does not load.
-These lists are on rules only for now, not on a group's Load tab. `/xui status` prints the current values on its "place:" line.
+A group's Load tab (**Only Load This Group When**) has the same six lists (core 0.6.33): they apply to every rule in the group and its nested groups, before each rule's own, and every list set must match. A group set to **Always** ignores them, as it does its other load conditions. `/xui status` prints the current values on its "place:" line.
 
 ### 3.4 Talents (also on the Load tab)
 

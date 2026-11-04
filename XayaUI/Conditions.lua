@@ -1585,6 +1585,23 @@ end
 -- Returns ok(bool), name of the failing condition(s).
 local function known(v, result) if v == nil then return nil end return result end
 
+-- The ID-list checks of a load table (a rule's `load`, or a group's `loadIds`), appended to `checks` as { key, ok = true / false / nil }
+local function IdListChecks(load, ctx, checks)
+    if type(load) ~= "table" then return checks end
+    if ns.SetActive(load.mapIDs) then
+        checks[#checks + 1] = { key = "zone", ok = known(ctx.maps, ctx.maps and IdsMatch(load.mapIDs, ctx.maps)) }
+    end
+    for _, d in ipairs({ { "instanceIDs", "instanceID", "instance ID" }, { "difficulties", "difficultyID", "difficulty" },
+            { "sizes", "instSize", "instance size" }, { "encounterIDs", "encounterID", "encounter" } }) do
+        local set, v = load[d[1]], ctx[d[2]]
+        if ns.SetActive(set) then checks[#checks + 1] = { key = d[3], ok = known(v, v ~= nil and IdsMatch(set, { [v] = true })) } end
+    end
+    if ns.SetActive(load.equipped) then
+        checks[#checks + 1] = { key = "item equipped", ok = EquippedMatch(load.equipped) }
+    end
+    return checks
+end
+
 local CheckContextRaw
 local ctxMemo = setmetatable({}, { __mode = "k" })
 function ns.CheckContext(rule, ctx)
@@ -1645,6 +1662,10 @@ function CheckContextRaw(rule, ctx)
             if ns.SetActive(f.loadInst) and not (ctx.instanceType ~= nil and ns.SetMatch(f.loadInst, ctx.instanceType)) then
                 return false, "group " .. tostring(f.name) .. ": instance type" .. (ctx.instanceType == nil and " (unknown)" or "")
             end
+            -- the group's own zone / instance / difficulty / size / encounter / item lists (core 0.6.33; every list must match)
+            for _, c in ipairs(IdListChecks(f.loadIds, ctx, {})) do
+                if c.ok ~= true then return false, "group " .. tostring(f.name) .. ": " .. c.key .. (c.ok == nil and " (unknown)" or "") end
+            end
             fid, guard = f.parent, guard + 1
         end
     end
@@ -1684,17 +1705,7 @@ function CheckContextRaw(rule, ctx)
         checks[#checks + 1] = { key = "hero talents", ok = known(ctx.hero, ctx.hero ~= nil and ctx.hero > 0 and ns.SetMatch(load.heroes, tostring(ctx.hero))) }
     end
     -- ID lists (zone, instance, difficulty, size, encounter, equipped item); an empty or missing list restricts nothing
-    if ns.SetActive(load.mapIDs) then
-        checks[#checks + 1] = { key = "zone", ok = known(ctx.maps, ctx.maps and IdsMatch(load.mapIDs, ctx.maps)) }
-    end
-    for _, d in ipairs({ { "instanceIDs", "instanceID", "instance ID" }, { "difficulties", "difficultyID", "difficulty" },
-            { "sizes", "instSize", "instance size" }, { "encounterIDs", "encounterID", "encounter" } }) do
-        local set, v = load[d[1]], ctx[d[2]]
-        if ns.SetActive(set) then checks[#checks + 1] = { key = d[3], ok = known(v, v ~= nil and IdsMatch(set, { [v] = true })) } end
-    end
-    if ns.SetActive(load.equipped) then
-        checks[#checks + 1] = { key = "item equipped", ok = EquippedMatch(load.equipped) }
-    end
+    IdListChecks(load, ctx, checks)
     if #checks == 0 then return true end
     if load.mode == "any" then
         local unknown

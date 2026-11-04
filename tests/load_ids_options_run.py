@@ -104,6 +104,13 @@ local ok1 = ns.CheckContext(withIds, ns.ReadContext())
 withIds.load.mapIDs = { ["30"] = "not" }; ns.configVersion = (ns.configVersion or 0) + 1
 local ok2 = ns.CheckContext(withIds, ns.ReadContext())
 check("the core uses the list: city 30 loads in its room; '-30' does not", ok1 == true and ok2 == false, tostring(ok1) .. " " .. tostring(ok2))
+-- a group's Load tab has the same lists (core 0.6.33)
+local fG = { id = "fG", name = "Raid auras" }
+local gl = ns.FolderLoadConditions(fG)
+local gArgs = gl and gl.args and gl.args.loadIds and gl.args.loadIds.args
+check("a group's 'Only Load This Group When' has the same lists", gArgs and gArgs.ids_mapIDs and gArgs.ids_encounterIDs and gArgs.ids_equipped)
+if gArgs then gArgs.ids_difficulties.set(nil, "16, -17") end
+check("typing in the group's difficulty box stores the list on the group", fG.loadIds and fG.loadIds.difficulties and fG.loadIds.difficulties["16"] == true and fG.loadIds.difficulties["17"] == "not")
 -- a core without the new load code (older core folder): a note instead of an error
 local keep = ns.LoadPlaceNow; ns.LoadPlaceNow = nil; W.tick(0.1, 1)
 local okI, txt = pcall(body.intro.name)
