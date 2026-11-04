@@ -1,5 +1,5 @@
 # Layout since 0.6.0: one folder per addon (XayaUI, XayaUI_Chat, XayaUI_QoL, XayaUI_Bonus, XayaUI_Reskin, XayaUI_Options, plus the
-# support folders XayaUI_Media and XayaUI_GameDump). Each folder is copied as-is into Interface\AddOns.
+# support folders XayaUI_Media and XayaUI_DevAssist, called XayaUI_GameDump before 0.7.0). Each folder is copied as-is into Interface\AddOns.
 
 # Audio is NOT tracked: sounds from other sources carry their own terms and are kept out of the repository. Add your own files
 # locally; see XayaUI/Media/Audio/README.md.

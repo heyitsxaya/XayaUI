@@ -6,7 +6,7 @@
 # Only the game-data parts of the capture are read: .api and .static. The character, aura and recorder parts (.char, .auras,
 # .rec, .toolkitProbe) are personal and are never written out.
 #
-# Usage: python3 docs/reference/build_reference.py --saved <XayaUI_GameDump.lua> --docs <Blizzard_APIDocumentationGenerated dir> --out <dir>
+# Usage: python3 docs/reference/build_reference.py --saved <XayaUI_DevAssist.lua, or XayaUI_GameDump.lua from before 0.7.0> --docs <Blizzard_APIDocumentationGenerated dir> --out <dir>
 # Needs: pip install lupa. The SavedVariables file is run as DATA only (compiled, run with an empty environment).
 import argparse, json, os, re, glob, collections
 import lupa.lua51 as l51
@@ -38,7 +38,7 @@ load = L.eval('''function(src)
   setfenv(f, env)
   local ok, e = pcall(f)
   if not ok then return nil, e end
-  return env.XayaUIGameDumpDB
+  return env.XayaUIDevAssistDB or env.XayaUIGameDumpDB   -- (the name before the 0.7.0 rename)
 end''')
 r = load(open(args.saved, encoding="utf-8", errors="replace").read())
 db_lua = r[0] if isinstance(r, tuple) else r
@@ -257,7 +257,7 @@ if api:
         "",
         "How to read a line: `` `C_Item.GetItemStats(itemLink: cstring)` → `statTable: LuaValueVariant` · SecretArguments=AllowedWhenUntainted ``. `?` after a type means it may be nil; flags are Blizzard's own (for example `SecretReturns`, `RequiresNonSecretAura`, `MayReturnNothing`). A name with no signature exists in the client but is not in the generated documentation (older global functions, Blizzard UI code, addons).",
         "",
-        "Rebuild: `python3 docs/reference/build_reference.py --saved <XayaUI_GameDump.lua> --docs <Blizzard_APIDocumentationGenerated folder> --out docs/reference --public`.",
+        "Rebuild: `python3 docs/reference/build_reference.py --saved <XayaUI_DevAssist.lua> --docs <Blizzard_APIDocumentationGenerated folder> --out docs/reference --public`.",
         "",
         ("PUBLIC VERSION (this repository is public): Blizzard's written notes on functions, events and fields are left out, and so are the undocumented globals and numeric globals (they also hold the names of every addon loaded during the capture). The full version, with all of that, is in Xaya's private Google Drive folder \"Blizzard API Data\" (XayaUI-reference-full-*.zip)." if args.public else "FULL VERSION: private. Do not commit it to the public repository; the repository holds the --public build."),
     ]) + "\n")

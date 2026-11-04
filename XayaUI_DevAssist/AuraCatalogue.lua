@@ -1,9 +1,9 @@
--- XayaUI_GameDump: AuraCatalogue.lua (0.5.0). Written to XayaUIGameDumpDB on /reload or logout
--- (WTF\Account\<account>\SavedVariables\XayaUI_GameDump.lua). UNTESTED IN GAME (written 2026-11-04). Every game call is pcall'd;
+-- XayaUI_DevAssist ("XayaUI Dev Assist", formerly XayaUI_GameDump): AuraCatalogue.lua (0.5.0). Written to XayaUIDevAssistDB on /reload or logout
+-- (WTF\Account\<account>\SavedVariables\XayaUI_DevAssist.lua). UNTESTED IN GAME (written 2026-11-04). Every game call is pcall'd;
 -- secret values are skipped, never guessed. No character name or realm is stored.
 --
---   /xuidump catalogue [fromID]   .catalogue: every aura the game points to for the current season and expansion.
---   /xuidump seen                 .seen: switch the aura log on / off (every aura that appears on you, your target, focus or party).
+--   /xuidev catalogue [fromID]   .catalogue: every aura the game points to for the current season and expansion.
+--   /xuidev seen                 .seen: switch the aura log on / off (every aura that appears on you, your target, focus or party).
 --
 -- Why (Xaya 2026-11-04: "I need it to capture every aura possible in the current season and expansion"): the game cannot be asked
 -- "which spells are auras" or "which spells are from this season". So this capture collects every spell the game itself points to
@@ -16,14 +16,14 @@
 --   3. Mythic+: this season's dungeons (older ones in the rotation too) through the same journal walk, and this week's affixes.
 --   4. Item sets (Adventure Guide > Item Sets) for every class and spec, with each spec's set-bonus spells.
 --   5. The use / proc spell of every item from 2 and 4.
---   6. Every talent and spell of every class from the static scan (`/xuidump static`), when it has been run.
+--   6. Every talent and spell of every class from the static scan (`/xuidev static`), when it has been run.
 --   7. The whole spell ID range, read by name a few thousand IDs per frame: every ID whose name matches a spell from 1 to 6 is kept.
 --      IDs at or above `recentFrom` are kept by name as well (see RecentFrom).
 --   8. For every spell kept: the game's facts (aura secrecy, passive, Blizzard's important / priority / big defensive / external
 --      defensive / crowd control flags, icon) and its description.
 -- Only out of combat: the capture pauses when combat starts and carries on when it ends. It changes the Adventure Guide's selected
 -- tier, loot filter and slot filter while it runs and puts them back afterwards.
-local GD = _G.XayaUIGameDump
+local GD = _G.XayaUIDevAssist
 if not GD then return end
 local issecret = issecretvalue or function() return false end
 local Say, Progress, Plain, DB = GD.Say, GD.Progress, GD.Plain, GD.DB
@@ -335,7 +335,7 @@ end
 -- and boss abilities are above 1,200,000). So the cut-off is the 5th percentile of the boss-ability IDs of the raids in the two
 -- newest journal tiers (a percentile, so a few reused old spells do not pull it down; raids, because a Mythic+ rotation and the
 -- "current season" tier can hold older dungeons). With fewer than 20 raid abilities it uses the dungeons of those tiers too.
--- `/xuidump catalogue <fromID>` sets it by hand; `/xuidump catalogue 0` turns it off.
+-- `/xuidev catalogue <fromID>` sets it by hand; `/xuidev catalogue 0` turns it off.
 local function RecentFrom(arg)
     if arg ~= nil then return (arg > 0) and arg or nil, "set by hand" end
     local l, what = C.raidSpells, "raid"
@@ -563,5 +563,5 @@ function GD.SeenToggle()
     seenFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
     C.seenOn = true
     for u in pairs(LOG_UNITS) do if UnitExists(u) then pcall(FullRead, u) end end
-    Say("aura log ON: every aura that appears on you, your target, focus or party is logged with its ID. The game hides aura data in combat, in boss fights and for a whole Mythic+ run, so the log reads out of combat (what is still up when combat ends is read then) and counts what it could not read. Play normally; /xuidump seen again to stop.")
+    Say("aura log ON: every aura that appears on you, your target, focus or party is logged with its ID. The game hides aura data in combat, in boss fights and for a whole Mythic+ run, so the log reads out of combat (what is still up when combat ends is read then) and counts what it could not read. Play normally; /xuidev seen again to stop.")
 end

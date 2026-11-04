@@ -429,13 +429,13 @@ end
 
 -------------------------------------------------------------------------------
 -- 1c. Observed formulas (XayaUI_SpellData_<CLASS>, load on demand): fitted by tools/formula_fit.py from /xuiformula snapshots taken in
--- game (XayaUI_GameDump walkthrough). Only YOUR class's folder is ever loaded (Xaya: own characters only), out of combat, at login and
+-- game (XayaUI_DevAssist walkthrough, formerly XayaUI_GameDump). Only YOUR class's folder is ever loaded (Xaya: own characters only), out of combat, at login and
 -- on a spec change. Data: XayaUI_SpellData[CLASS] = { build =, specs = { [specID] = { [spellID] = { {i, x, a, b, vers, n, label, tal}, ... } } } }
 -------------------------------------------------------------------------------
 local X_LABEL = { ap = "attack power", sp = "spell power", heal = "healing power", primary = "primary stat", hp = "maximum health",
                   weapon = "weapon damage", mastery = "mastery %", haste = "haste %", crit = "crit %", vers = "versatility %" }
 
--- same djb2 hash as XayaUI_GameDump/FormulaCapture.lua (FC.Hash) over the sorted active talent spell IDs
+-- same djb2 hash as XayaUI_DevAssist/FormulaCapture.lua (FC.Hash) over the sorted active talent spell IDs
 function TT.TalentHash()
     local list = {}
     if ns.AuraModel and ns.AuraModel.ActiveTalentSpells then

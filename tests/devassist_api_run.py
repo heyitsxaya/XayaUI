@@ -1,4 +1,4 @@
-# Stub test for XayaUI_GameDump 0.4.0 ApiInventory.lua: /xuidump api (API inventory) and /xuidump toolkit (Character Toolkit checks)
+# Stub test for XayaUI_DevAssist 0.4.0 ApiInventory.lua: /xuidump api (API inventory) and /xuidump toolkit (Character Toolkit checks)
 # run against stand-in game calls. It checks that both captures run without errors, record what exists, skip secret values, and that
 # the item-level variant scan keeps only links the (stand-in) game produced. Nothing here is game data; the numbers are made up.
 # Run from the repo root: python3 tests/gamedump_api_run.py   Needs: pip install lupa.
@@ -62,16 +62,16 @@ C_Item = {
 }
 C_ChallengeMode = { GetOverallDungeonScore = function() return 3806 end }
 CharacterStatsPane = mk()
-XayaUIGameDumpDB = nil
-assert(loadfile(__GD__))("XayaUI_GameDump")
-assert(loadfile(__API__))("XayaUI_GameDump")
-local GD = XayaUIGameDump
+XayaUIDevAssistDB = nil
+assert(loadfile(__GD__))("XayaUI_DevAssist")
+assert(loadfile(__API__))("XayaUI_DevAssist")
+local GD = XayaUIDevAssist
 check("captures are wired into the addon", type(GD.CaptureAPI) == "function" and type(GD.ProbeToolkit) == "function")
-check("/xuidump api and toolkit are commands", SlashCmdList.XAYAUIDUMP ~= nil)
+check("/xuidump api and toolkit are commands", SlashCmdList.XAYAUIDEV ~= nil)
 
 -- API inventory
-SlashCmdList.XAYAUIDUMP("api")
-local api = XayaUIGameDumpDB.api
+SlashCmdList.XAYAUIDEV("api")
+local api = XayaUIDevAssistDB.api
 check("api: saved", type(api) == "table")
 local hasFn = {}
 for _, k in ipairs(api.globals) do hasFn[k] = true end
@@ -87,8 +87,8 @@ check("api: build recorded", api.build.build == "70688" and api.build.toc == 120
 check("api: counts said in chat", (function() for _, s in ipairs(said) do if s:find("API inventory:", 1, true) then return true end end end)())
 
 -- Character Toolkit checks
-SlashCmdList.XAYAUIDUMP("toolkit")
-local p = XayaUIGameDumpDB.toolkitProbe
+SlashCmdList.XAYAUIDEV("toolkit")
+local p = XayaUIDevAssistDB.toolkitProbe
 check("toolkit: saved", type(p) == "table")
 check("toolkit: base cooldowns read for the current spec's spells only (off-spec line skipped)", #p.baseCooldowns == 2 and p.baseCooldowns[1].gcdMS == 1500 and p.baseCooldowns[2].cdMS == 8000)
 check("toolkit: GCD spell fields, secret ones marked", p.gcdSpell.duration == 1.14 and p.gcdSpell.startTime == "SECRET" and p.gcdSpell.isActive == true)
@@ -102,8 +102,8 @@ check("toolkit: stats with and without gems/enchant compared", p.statsWithGems.I
 check("toolkit: bare link has enchant and gems emptied", p.statsBareLink:find("|Hitem:500::::::0:0:90|h", 1, true) ~= nil, p.statsBareLink)
 check("toolkit: stat pane, SetIgnoreParentAlpha, Mythic+ score", p.CharacterStatsPane == true and p.SetIgnoreParentAlpha == true and p.mplusScore == 3806)
 check("toolkit: rating constants", p.CR.CR_CRIT_MELEE == 9)
-SlashCmdList.XAYAUIDUMP("status")
+SlashCmdList.XAYAUIDEV("status")
 check("status mentions api and toolkit captures", said[#said]:find("api: 2026-11-04 03:00", 1, true) ~= nil and said[#said]:find("toolkit checks: 2026-11-04 03:00", 1, true) ~= nil, said[#said])
 io.write(("%d checks, %d failed\n"):format(n, fails))
-'''.replace("__GD__", P("XayaUI_GameDump/GameDump.lua")).replace("__API__", P("XayaUI_GameDump/ApiInventory.lua")))
+'''.replace("__GD__", P("XayaUI_DevAssist/DevAssist.lua")).replace("__API__", P("XayaUI_DevAssist/ApiInventory.lua")))
 sys.exit(1 if lua.eval("fails") else 0)

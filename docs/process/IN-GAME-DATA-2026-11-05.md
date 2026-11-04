@@ -4,14 +4,17 @@ For Xaya. The probe records what the game lets an addon read, in and out of comb
 need to read anything in game. Allow about 1 to 1.5 hours. Nothing here changes your rules or your settings.
 
 ## Before you start (5 minutes)
-1. Copy the `XayaUI_GameDump` folder (version 0.6.0, from `main` once this change is merged) into `AddOns`, next to `XayaUI`. At
-   the character screen, open **AddOns**. Turn on **XayaUI** and **XayaUI Game Data Capture**. Check that it shows version 0.6.0.
+1. Copy the `XayaUI_DevAssist` folder (version 0.7.0 or later, from `main`) into `AddOns`, next to `XayaUI`. The tool was called
+   **XayaUI Game Data Capture** (folder `XayaUI_GameDump`) until 2026-11-04: if that old folder is still in `AddOns`, delete it
+   (if you forget, Dev Assist switches it off at login and says so). At the character screen, open **AddOns**. Turn on **XayaUI**
+   and **XayaUI Dev Assist**. Check that it shows version 0.7.0 or later. Everything below uses `/xuidev`; the old `/xuidump` still
+   works and does the same.
 2. Log in. Type `/console scriptErrors 1` so any Lua error shows on screen.
 3. Type `/combatlog`. Chat should say combat logging is **on**. It is a switch: if chat says it turned **off**, type it again.
-4. Type `/xuidump probe on`. Chat says `probe: ON` and how many spells it checked.
-5. Type `/xuidump probe status`. On the line starting `1 context`, check that it says `combat log true`.
+4. Type `/xuidev probe on`. Chat says `probe: ON` and how many spells it checked.
+5. Type `/xuidev probe status`. On the line starting `1 context`, check that it says `combat log true`.
 
-From here, the probe runs by itself until you type `/xuidump probe off`. A `/reload` does not stop it: it starts again and says
+From here, the probe runs by itself until you type `/xuidev probe off`. A `/reload` does not stop it: it starts again and says
 "resumed after a reload".
 
 ## What to do
@@ -22,30 +25,32 @@ Do the steps in this order. Skip any you cannot do; say which ones you skipped.
    (Retribution Paladin). Let each proc light up at least 3 times.
 2. **The same procs out of combat.** Get a proc on the dummy, then walk away until combat ends while the button still glows. Do
    this twice. If a proc never lasts that long, say so.
-3. **Spells you want checked.** For any other spell or aura ID, type `/xuidump probe spells <id> <id> ...`, for example
-   `/xuidump probe spells 59052` (Rime's aura, from `docs/reference/procs.md`). Chat says, for each ID, whether the game hides
+3. **Spells you want checked.** For any other spell or aura ID, type `/xuidev probe spells <id> <id> ...`, for example
+   `/xuidev probe spells 59052` (Rime's aura, from `docs/reference/procs.md`). Chat says, for each ID, whether the game hides
    its casts and its aura in combat. These IDs are also watched on your own buffs from then on, so add the aura IDs of your procs
    before step 1 if you can. Boiling Point and Divine Arbiter are already on the built-in list.
 4. **A spell that changes into another.** Use an ability that turns into a different one while a buff is up, if your spec has
    one, a few times in and out of combat.
 5. **Raid marker test.** Solo, or tell your group first: the skull is visible to everyone.
-   - Out of combat, target a mob and type `/xuidump probe mark`. Chat says whether it ran.
-   - In combat, target a mob and type `/xuidump probe mark` again.
+   - Out of combat, target a mob and type `/xuidev probe mark`. Chat says whether it ran.
+   - In combat, target a mob and type `/xuidev probe mark` again.
    - If the game shows a box saying the addon was blocked, click **Ignore**, not Disable. That box is a result too.
 6. **Open world combat (10 minutes).** Make sure enemy nameplates are shown. Before pulling, target one mob and set another as
    focus (`/focus`). Pull a few mobs together. Let some of them cast. Interrupt one cast if you can.
 7. **One dungeon or Mythic+ run, Voidscar Arena if possible.** Keep combat logging on. Before each pull, look at the mobs so their
    nameplates show. Target and focus one mob before the first pull. Then play normally.
 8. **One boss pull.** A dungeon boss counts. A raid boss is a bonus. Let the boss cast its abilities and emotes.
-9. **Check.** Type `/xuidump probe status` and take a screenshot of the chat lines, if you like.
-10. **Stop.** Type `/xuidump probe off`. Then type `/combatlog` (chat should say logging is off).
-11. **Write the file.** Type `/xuidump save`. It reloads the interface and writes the file. Logging out also works.
+9. **Check.** Type `/xuidev probe status` and take a screenshot of the chat lines, if you like.
+10. **Stop.** Type `/xuidev probe off`. Then type `/combatlog` (chat should say logging is off).
+11. **Write the file.** Type `/xuidev save`. It reloads the interface and writes the file. Logging out also works.
 12. **Upload:**
-    - `World of Warcraft\_retail_\WTF\Account\<account>\SavedVariables\XayaUI_GameDump.lua`
+    - `World of Warcraft\_retail_\WTF\Account\<account>\SavedVariables\XayaUI_DevAssist.lua` (XayaUI's Settings > Debugging >
+      **What to send** shows this path in a box you can copy). If the old tool saved anything before, also send `XayaUI_GameDump.lua`
+      from the same folder.
     - `World of Warcraft\_retail_\Logs\WoWCombatLog.txt` (zip it first: it can be large)
     - Tell Claude which steps you did, your class and spec, and roughly when you did each step (your clock time).
 
-The probe keeps the newest 6,000 entries, so a long dungeon run can push out the dummy part. The counts in `/xuidump probe status`
+The probe keeps the newest 6,000 entries, so a long dungeon run can push out the dummy part. The counts in `/xuidev probe status`
 are kept in full. To keep the dummy part too, do step 11 and copy the file aside after step 5, then carry on.
 
 ## What each part answers
@@ -63,16 +68,16 @@ are kept in full. To keep the dummy part too, do step 11 and copy the file aside
 
 ## Other captures worth running the same morning (all optional)
 Each writes into the same file. Run them out of combat.
-- `/xuidump toolkit`: Character Toolkit checks. It records your spells' base global cooldown, the global cooldown now, each item's
+- `/xuidev toolkit`: Character Toolkit checks. It records your spells' base global cooldown, the global cooldown now, each item's
   durability and repair cost, the item levels the game builds for one of your items, an item's stats with and without gems, and
   whether the stat pane is there. Run it once away from a vendor and once while talking to a repair vendor.
 - `/xuiformula start`: tooltip formula capture. It takes a snapshot of your stats and spell numbers 2 seconds after each gear or
   talent change. Swap gear pieces to change your attack or spell power at least 3 times, and versatility once at the same power.
   `/xuiformula status` says what is still needed; `/xuiformula stop` ends it. The walkthrough is
-  `XayaUI_GameDump/FORMULA-CAPTURE-WALKTHROUGH.md`.
-- `/xuidump catalogue`: every aura current content points to. Run `/xuidump static` first (10 to 40 seconds). Run the catalogue once
+  `XayaUI_DevAssist/FORMULA-CAPTURE-WALKTHROUGH.md`.
+- `/xuidev catalogue`: every aura current content points to. Run `/xuidev static` first (10 to 40 seconds). Run the catalogue once
   on each spec you play. It pauses in combat. It changes the Adventure Guide's tier and filters while it runs and puts them back.
-- `/xuidump seen`: the aura log. Type it once to start and once to stop. It logs every aura on you, your target, focus and party,
+- `/xuidev seen`: the aura log. Type it once to start and once to stop. It logs every aura on you, your target, focus and party,
   read out of combat and when combat ends.
 
-Then do step 11 again (`/xuidump save`) so everything is in the file.
+Then do step 11 again (`/xuidev save`) so everything is in the file.

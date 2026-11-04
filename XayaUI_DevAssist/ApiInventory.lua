@@ -1,14 +1,14 @@
--- XayaUI_GameDump: ApiInventory.lua (0.4.0). Two developer captures, both written to XayaUIGameDumpDB on /reload or logout
--- (WTF\Account\<account>\SavedVariables\XayaUI_GameDump.lua). UNTESTED IN GAME (written 2026-11-04). Every game call is pcall'd;
+-- XayaUI_DevAssist ("XayaUI Dev Assist", formerly XayaUI_GameDump): ApiInventory.lua (0.4.0). Two developer captures, both written to XayaUIDevAssistDB on /reload or logout
+-- (WTF\Account\<account>\SavedVariables\XayaUI_DevAssist.lua). UNTESTED IN GAME (written 2026-11-04). Every game call is pcall'd;
 -- secret values are counted and skipped, never guessed. No character name or realm is stored.
 --
---   /xuidump api      .api: everything that exists in THIS client, documented or not: every global function name, every C_*
+--   /xuidev api      .api: everything that exists in THIS client, documented or not: every global function name, every C_*
 --                     namespace with its function names, every Enum with its values, every Constants table, every ALL-CAPS
 --                     numeric global (CR_CRIT_MELEE and friends), and the methods each widget type really has. The game's /api
 --                     browser only lists documented functions; older globals (GetInventoryItemDurability, GetSpellBaseCooldown...)
 --                     and some enums (Enum.ItemCreationContext) are missing there.
---   /xuidump toolkit  .toolkitProbe: live answers to the open questions of QoL > Character Toolkit (see the list in ProbeToolkit).
-local GD = _G.XayaUIGameDump
+--   /xuidev toolkit  .toolkitProbe: live answers to the open questions of QoL > Character Toolkit (see the list in ProbeToolkit).
+local GD = _G.XayaUIDevAssist
 if not GD then return end
 local issecret = issecretvalue or function() return false end
 
@@ -91,7 +91,7 @@ function GD.CaptureAPI()
     if okAG and ag then out.widgets.AnimationGroup = MethodsOf(ag) end
     out.counts = { globalFunctions = nFn, namespaces = nNs, namespaceFunctions = nNsFn, enums = nEnum, numbers = nNum, skippedTables = skipped }
     d.api = out
-    GD.Say(("API inventory: %d global functions, %d C_ namespaces (%d functions), %d enums, %d numeric constants, %d widget types. Type /xuidump save (or /reload) to write it to disk.")
+    GD.Say(("API inventory: %d global functions, %d C_ namespaces (%d functions), %d enums, %d numeric constants, %d widget types. Type /xuidev save (or /reload) to write it to disk.")
         :format(nFn, nNs, nNsFn, nEnum, nNum, GD.CountKeys(out.widgets)))
 end
 
@@ -251,5 +251,5 @@ function GD.ProbeToolkit()
     p.summary = lines
     d.toolkitProbe = p
     for _, l in ipairs(lines) do GD.Say(l) end
-    GD.Say("Character Toolkit checks saved. Best run once out of combat away from a vendor, once at a vendor; then /xuidump save (or /reload) and upload the file.")
+    GD.Say("Character Toolkit checks saved. Best run once out of combat away from a vendor, once at a vendor; then /xuidev save (or /reload) and upload the file.")
 end

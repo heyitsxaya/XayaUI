@@ -1,4 +1,4 @@
-# Stub test for XayaUI_GameDump 0.5.0 AuraCatalogue.lua: /xuidump catalogue (every aura the game points to for the current season and
+# Stub test for XayaUI_DevAssist 0.5.0 AuraCatalogue.lua: /xuidump catalogue (every aura the game points to for the current season and
 # expansion) and /xuidump seen (the aura log), run against stand-in game calls. Nothing here is game data: the spell IDs and names are
 # made up, except that the Boiling Point case uses the IDs Xaya gave (talent 1265790, auras 1265982 / 1265968) to show the name match.
 # Run from the repo root: python3 tests/gamedump_catalogue_run.py   Needs: pip install lupa.
@@ -11,7 +11,7 @@ lua = LuaRuntime()
 lua.execute(r'''
 fails, n = 0, 0
 function check(name, cond, extra) n = n + 1; if not cond then fails = fails + 1; io.write("FAIL: " .. name .. (extra ~= nil and ("  -> " .. tostring(extra)) or "") .. "\n") else io.write("ok:   " .. name .. "\n") end end
-function F(id) return (XayaUIGameDumpDB.catalogue.facts or {})[id] or {} end
+function F(id) return (XayaUIDevAssistDB.catalogue.facts or {})[id] or {} end
 local said = {}
 local realPrint = print
 print = function(...) local t = {} for i = 1, select("#", ...) do t[#t + 1] = tostring((select(i, ...))) end; said[#said + 1] = table.concat(t, " ") end
@@ -157,23 +157,23 @@ C_UnitAuras.GetAuraDataByIndex = function(unit, i, filter)
   if unit == "target" and filter == "HARMFUL" and i == 1 then return { spellId = 1300002, name = "Boss Smash", sourceUnit = "boss1", duration = 6, applications = 1 } end
 end
 CharacterStatsPane = mk()
-XayaUIGameDumpDB = nil
-assert(loadfile(__GD__))("XayaUI_GameDump")
-assert(loadfile(__API__))("XayaUI_GameDump")
-assert(loadfile(__CAT__))("XayaUI_GameDump")
-local GD = XayaUIGameDump
+XayaUIDevAssistDB = nil
+assert(loadfile(__GD__))("XayaUI_DevAssist")
+assert(loadfile(__API__))("XayaUI_DevAssist")
+assert(loadfile(__CAT__))("XayaUI_DevAssist")
+local GD = XayaUIDevAssist
 check("catalogue and aura log are wired in", type(GD.CaptureCatalogue) == "function" and type(GD.SeenToggle) == "function")
 -- the static scan's class spells (normally from /xuidump static)
 GD.DB().static = { spells = { [1265790] = { n = "Boiling Point", d = "talent text" }, [1296661] = { n = "Divine Arbiter" } } }
 
 -- refused in combat
 COMBAT = true
-SlashCmdList.XAYAUIDUMP("catalogue")
+SlashCmdList.XAYAUIDEV("catalogue")
 check("refuses to start in combat", SAID("runs out of combat") ~= nil and not GD.Catalogue.running)
 COMBAT = false
 
 GD.Catalogue.testUpper = 1310000
-SlashCmdList.XAYAUIDUMP("catalogue")
+SlashCmdList.XAYAUIDEV("catalogue")
 check("starts and says what it reads", SAID("reading the Cooldown Manager") ~= nil and GD.Catalogue.running)
 -- pause in combat halfway through the name scan, then carry on
 PUMP(100)
@@ -187,12 +187,12 @@ COMBAT = false
 for _, f in ipairs(FRAMES) do if f.events.PLAYER_REGEN_ENABLED and f.onOnEvent then f.onOnEvent(f, "PLAYER_REGEN_ENABLED") end end
 check("  ...and carries on when combat ends", GD.Catalogue.paused == nil)
 PUMP(100000, true)
-local c = XayaUIGameDumpDB.catalogue
+local c = XayaUIDevAssistDB.catalogue
 check("finished and saved", type(c) == "table" and not GD.Catalogue.running and SAID("aura catalogue done") ~= nil, SAID("aura catalogue done"))
 check("build recorded", c.build and c.build.build == "70783")
-check("no character name or realm stored", not (function() local function walk(t, d) if d > 6 then return false end for k, v in pairs(t) do if v == "Xaya" or v == "Realm" or k == "Xaya" then return true end; if type(v) == "table" and walk(v, d + 1) then return true end end end return walk(XayaUIGameDumpDB, 0) end)())
+check("no character name or realm stored", not (function() local function walk(t, d) if d > 6 then return false end for k, v in pairs(t) do if v == "Xaya" or v == "Realm" or k == "Xaya" then return true end; if type(v) == "table" and walk(v, d + 1) then return true end end end return walk(XayaUIDevAssistDB, 0) end)())
 -- 1) Cooldown Manager
-check("cdm: entries per category, kept per spec", c.cdm.categories.TrackedBuff[1].spellID == 258920 and XayaUIGameDumpDB.catalogueCDM[581] ~= nil)
+check("cdm: entries per category, kept per spec", c.cdm.categories.TrackedBuff[1].spellID == 258920 and XayaUIDevAssistDB.catalogueCDM[581] ~= nil)
 check("cdm: linked spell IDs are seeds", c.seeds[1300030] and c.seeds[1300030]:find("cdm-linked", 1, true))
 check("cdm: a secret spell ID is not stored", c.cdm.categories.Essential[1] and c.cdm.categories.Essential[1].spellID == nil)
 check("cdm: this spec recorded", c.spec.id == 581 and c.spec.class == "DEMONHUNTER")
@@ -232,19 +232,19 @@ check("facts: class spells keep their facts in .static (not repeated)", c.facts[
 check("summary counts", c.summary.matches >= 9 and c.summary.instances == 4 and c.summary.encounters == 3 and c.summary.scannedTo == 1310000, tostring(c.summary.matches) .. " " .. tostring(c.summary.instances) .. " " .. tostring(c.summary.encounters))
 -- a hand-set cut-off, and 0 turns it off
 GD.Catalogue.testUpper = 1310000
-SlashCmdList.XAYAUIDUMP("catalogue 0")
+SlashCmdList.XAYAUIDEV("catalogue 0")
 PUMP(100000, true)
-check("catalogue 0: no recent list", XayaUIGameDumpDB.catalogue.recent.from == nil and XayaUIGameDumpDB.catalogue.recent.text == "")
+check("catalogue 0: no recent list", XayaUIDevAssistDB.catalogue.recent.from == nil and XayaUIDevAssistDB.catalogue.recent.text == "")
 -- second spec: the first spec's Cooldown Manager entries still feed the seeds
 GetSpecializationInfo = function() return 577, "Havoc" end
 C_CooldownViewer.GetCooldownViewerCategorySet = function() return {} end
-SlashCmdList.XAYAUIDUMP("catalogue")
+SlashCmdList.XAYAUIDEV("catalogue")
 PUMP(100000, true)
-check("another spec: both specs kept, the first spec's links still seeds", XayaUIGameDumpDB.catalogueCDM[577] and XayaUIGameDumpDB.catalogueCDM[581] and XayaUIGameDumpDB.catalogue.seeds[1300030])
+check("another spec: both specs kept, the first spec's links still seeds", XayaUIDevAssistDB.catalogueCDM[577] and XayaUIDevAssistDB.catalogueCDM[581] and XayaUIDevAssistDB.catalogue.seeds[1300030])
 
 -- aura log
-SlashCmdList.XAYAUIDUMP("seen")
-local s = XayaUIGameDumpDB.seen
+SlashCmdList.XAYAUIDEV("seen")
+local s = XayaUIDevAssistDB.seen
 check("aura log: on, reads what is up now (your buff, the target's debuff)", s and s.auras[1306161] and s.auras[1306161].on.you and s.auras[1306161].maxStacks == 25 and s.auras[1306161].buff and s.auras[1300002].debuff and s.auras[1300002].from.other)
 local logf
 for _, f in ipairs(FRAMES) do if f.events.UNIT_AURA then logf = f end end
@@ -260,10 +260,10 @@ logf.onOnEvent(logf, "PLAYER_REGEN_ENABLED")
 check("aura log: what is still up is read when combat ends", s.auras[1306161].c >= 2)
 logf.onOnEvent(logf, "UNIT_AURA", "nameplate3", { addedAuras = { { spellId = 1300040, name = "x" } } })
 check("aura log: other units ignored", s.auras[1300040] == nil)
-SlashCmdList.XAYAUIDUMP("seen")
+SlashCmdList.XAYAUIDEV("seen")
 check("aura log: off says how many", SAID("aura log OFF") ~= nil)
-SlashCmdList.XAYAUIDUMP("status")
+SlashCmdList.XAYAUIDEV("status")
 check("status mentions the catalogue and the aura log", said[#said]:find("catalogue:", 1, true) ~= nil and said[#said]:find("aura log:", 1, true) ~= nil, said[#said])
 io.write(("%d checks, %d failed\n"):format(n, fails))
-'''.replace("__GD__", P("XayaUI_GameDump/GameDump.lua")).replace("__API__", P("XayaUI_GameDump/ApiInventory.lua")).replace("__CAT__", P("XayaUI_GameDump/AuraCatalogue.lua")))
+'''.replace("__GD__", P("XayaUI_DevAssist/DevAssist.lua")).replace("__API__", P("XayaUI_DevAssist/ApiInventory.lua")).replace("__CAT__", P("XayaUI_DevAssist/AuraCatalogue.lua")))
 sys.exit(1 if lua.eval("fails") else 0)

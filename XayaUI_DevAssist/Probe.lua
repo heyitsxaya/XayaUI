@@ -1,11 +1,11 @@
 -------------------------------------------------------------------------------
--- XayaUI_GameDump: Probe.lua (0.6.0). `/xuidump probe`: an event recorder that answers open questions about what the game lets an
+-- XayaUI_DevAssist ("XayaUI Dev Assist", formerly XayaUI_GameDump): Probe.lua (0.6.0). `/xuidev probe`: an event recorder that answers open questions about what the game lets an
 -- addon read in 12.1.5 ("Midnight"), so XayaUI's instance mapper (ROADMAP RM-INST) and proc-glow triggers (task 28) are built on
 -- observed behaviour, not guesses. Written 2026-11-04. UNTESTED IN GAME: tests/gamedump_probe_run.py drives it with stand-in game
 -- functions only. Run sheet: docs/process/IN-GAME-DATA-2026-11-05.md.
 --
--- Commands: /xuidump probe on | off | status | clear | spells <id> <id> ... | mark
--- Output: XayaUIGameDumpDB.probe (WTF\Account\<account>\SavedVariables\XayaUI_GameDump.lua, written on /reload or logout):
+-- Commands: /xuidev probe on | off | status | clear | spells <id> <id> ... | mark
+-- Output: XayaUIDevAssistDB.probe (WTF\Account\<account>\SavedVariables\XayaUI_DevAssist.lua, written on /reload or logout):
 --   .log[seq]      ring buffer: the newest CAP entries (.first .. .last; .dropped counts what fell out). Each entry: t = GetTime()
 --                  (3 decimals), e = event code (.legend lists them), u = unit token, c = in combat, then the event's fields.
 --   .anchors[seq]  clock anchors (GetTime, time(), GetServerTime, date, instance, context flags) at `on`, ENCOUNTER_START, zone
@@ -22,7 +22,7 @@
 -- API facts quoted below are from docs/reference/api/ (Blizzard's generated documentation 12.1.5.70688, live client 12.1.5.70783).
 -------------------------------------------------------------------------------
 local ADDON = ...
-local GD = _G.XayaUIGameDump
+local GD = _G.XayaUIDevAssist
 if not GD then return end
 
 local VERSION = "0.6.0"
@@ -59,7 +59,7 @@ local LEGEND = {
         ES = "ENCOUNTER_START", EE = "ENCOUNTER_END", EW = "ENCOUNTER_WARNING", BE = "RAID_BOSS_EMOTE",
         AU = "UNIT_AURA for player / target: payload readability and list lengths only (merged)",
         AW = "watched spells: w[id] = { s = ShouldSpellAuraBeSecret, a = GetPlayerAuraBySpellID found / none / secret }",
-        MK = "/xuidump probe mark", SL = "spell list secrecy checked", AB = "ADDON_ACTION_BLOCKED", AF = "ADDON_ACTION_FORBIDDEN",
+        MK = "/xuidev probe mark", SL = "spell list secrecy checked", AB = "ADDON_ACTION_BLOCKED", AF = "ADDON_ACTION_FORBIDDEN",
         ER = "a handler failed (first time for this kind)",
     },
     keys = {
@@ -74,7 +74,7 @@ local LEGEND = {
 }
 
 local P = { on = false }
-local D                        -- XayaUIGameDumpDB.probe while a handler or command runs
+local D                        -- XayaUIDevAssistDB.probe while a handler or command runs
 local CUR = {}                 -- t, c of the event being handled
 local open, mobCombat, lastWatch = {}, {}, {}
 local pairIndex, pairSource    -- reverse index of XayaUI_NS.PROC_GLOW_AURAS (rebuilt when that table changes)
@@ -86,7 +86,7 @@ local pairIndex, pairSource    -- reverse index of XayaUI_NS.PROC_GLOW_AURAS (re
 -- secret raises in addon code). If the check itself fails, the value is treated as secret and never touched.
 local function IsSecret(v)
     local fn = issecretvalue
-    if type(fn) ~= "function" then return false end   -- no secret system in this client (the other GameDump files do the same)
+    if type(fn) ~= "function" then return false end   -- no secret system in this client (the other Dev Assist files do the same)
     local ok, s = pcall(fn, v)
     if not ok then return true end
     return s == true
@@ -970,7 +970,7 @@ local function Say(msg) GD.Say("probe: " .. msg) end
 
 function P.On(resumed)
     Begin()
-    if P.on then Say("already on. /xuidump probe status shows what it has."); return end
+    if P.on then Say("already on. /xuidev probe status shows what it has."); return end
     P.on, D.on = true, true
     D.started = D.started or CUR.t
     if not D.build then
@@ -987,13 +987,13 @@ function P.On(resumed)
     local refused = 0
     for _ in pairs(D.notRegistered) do refused = refused + 1 end
     if resumed then
-        Say("ON (resumed after a reload). Type /xuidump probe off when you are done.")
+        Say("ON (resumed after a reload). Type /xuidev probe off when you are done.")
     else
-        Say("ON. Play normally; type /xuidump probe off when you are done, then /xuidump save (or /reload) to write the file.")
+        Say("ON. Play normally; type /xuidev probe off when you are done, then /xuidev save (or /reload) to write the file.")
     end
     local nRules = type(D.ruleSpells) == "number" and D.ruleSpells or 0
     Say(("spell list checked: %d built-in, %d from your XayaUI rules, your own IDs too%s."):format(#LIST, nRules,
-        refused > 0 and (" (" .. refused .. " event(s) refused by the game: see /xuidump probe status)") or ""))
+        refused > 0 and (" (" .. refused .. " event(s) refused by the game: see /xuidev probe status)") or ""))
 end
 
 function P.Off()
@@ -1003,7 +1003,7 @@ function P.Off()
     Unregister()
     P.on, D.on = false, false
     open, mobCombat, lastWatch = {}, {}, {}
-    Say(("OFF: %d entries recorded (%d kept). /xuidump save (or /reload) writes the file."):format(D.last, D.last - D.first + 1))
+    Say(("OFF: %d entries recorded (%d kept). /xuidev save (or /reload) writes the file."):format(D.last, D.last - D.first + 1))
 end
 
 function P.Clear()
@@ -1027,7 +1027,7 @@ function P.Spells(rest)
         local have = {}
         for id in pairs(D.userSpells) do have[#have + 1] = id end
         table.sort(have)
-        Say("usage: /xuidump probe spells 1233398 402772 ... Your IDs so far: " .. (#have > 0 and table.concat(have, " ") or "none") .. ".")
+        Say("usage: /xuidev probe spells 1233398 402772 ... Your IDs so far: " .. (#have > 0 and table.concat(have, " ") or "none") .. ".")
         return
     end
     local parts = {}
@@ -1042,7 +1042,7 @@ function P.Spells(rest)
         Count("SL")
         Push(e)
     end
-    Say("checked " .. table.concat(parts, "; ") .. ". They are re-checked at every /xuidump probe on and watched on your auras.")
+    Say("checked " .. table.concat(parts, "; ") .. ". They are re-checked at every /xuidev probe on and watched on your auras.")
 end
 
 -- 10) mark: ONLY from this command, never automatic (a raid marker is visible to the group).
@@ -1133,13 +1133,13 @@ function P.Status()
     for _, l in ipairs(P.StatusLines()) do Say(l) end
 end
 
--- summary for the main /xuidump status line
+-- summary for the main /xuidev status line
 function GD.ProbeSummary()
     local p = GD.DB().probe
     return P.on, type(p) == "table" and p.last or 0
 end
 
-local USAGE = "usage: /xuidump probe on | off | status | clear | spells <id> <id> ... | mark"
+local USAGE = "usage: /xuidev probe on | off | status | clear | spells <id> <id> ... | mark"
 function GD.Probe(arg)
     local sub, rest = (arg or ""):match("^(%S*)%s*(.-)%s*$")
     local fn
@@ -1173,7 +1173,7 @@ loader:SetScript("OnEvent", function(self, _, name)
 end)
 
 -- XayaUI's "Advanced Debugging" (Settings > Debugging, core DebugRecord.lua) can switch the probe on and off, so a tester does not have
--- to remember /xuidump probe on. Offered as the "gameDataProbe" service of XayaUI's feature contract (Modules.lua ns.Provide); this
+-- to remember /xuidev probe on. Offered as the "gameDataProbe" service of XayaUI's feature contract (Modules.lua ns.Provide); this
 -- addon loads after XayaUI (## OptionalDeps), so the core namespace exists here when XayaUI is installed. Without XayaUI: nothing.
 do
     local core = rawget(_G, "XayaUI_NS")
@@ -1182,8 +1182,10 @@ do
             On = function() if not P.on then P.On() end end,
             Off = function() if P.on then P.Off() end end,
             Active = function() return P.on and true or false end,
-            -- the file this addon's captures are saved in, for XayaUI's "What to send" (Settings > Debugging)
-            savedFile = "XayaUI_GameDump.lua",
+            -- for XayaUI's Settings > Debugging: this addon's name, its window, and the file its captures are saved in ("What to send")
+            name = "XayaUI Dev Assist",
+            Open = function() if GD and GD.Toggle then GD.Toggle() end end,
+            savedFile = "XayaUI_DevAssist.lua",
             savedWhat = "the probe and the other developer captures",
         })
     end

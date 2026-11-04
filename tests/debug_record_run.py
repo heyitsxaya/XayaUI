@@ -301,7 +301,7 @@ check("  ...a test client's own game folder", E("NS.SavedFilePath('XayaUI.lua'):
 L.execute("IsPublicTestClient = function() return false end")
 check("the steps: /reload first, the folder, the files", E("NS.SendText():find('/reload', 1, true) and NS.SendText():find('XayaUI.lua', 1, true) and NS.SendText():find('<YOUR ACCOUNT FOLDER>', 1, true)") is not None and E("NS.SendText():find('/reload', 1, true) ~= nil"))
 check("  ...the developer addon's file is listed only when it says which file it is (through its service)",
-      E("NS.SendText():find('XayaUI_GameDump.lua', 1, true) == nil"))
+      E("NS.SendText():find('XayaUI_DevAssist.lua', 1, true) == nil"))
 L.execute("NS.Provide('gameDataProbe', { On = function() end, Off = function() end, Active = function() return false end, savedFile = 'XayaUI_DevTest.lua', savedWhat = 'test captures' })")
 check("  ...and then it is", E("NS.SendText():find('XayaUI_DevTest.lua  (test captures)', 1, true) ~= nil"))
 L.execute("CueRulesDB.debugRecord = nil; NS.LogKind('rule', 'FIRED readable')")

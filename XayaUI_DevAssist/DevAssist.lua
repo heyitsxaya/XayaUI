@@ -1,19 +1,19 @@
--- XayaUI_GameDump: a SEPARATE debugging addon (its own folder, its own SavedVariable file) that pulls everything an addon is
+-- XayaUI_DevAssist ("XayaUI Dev Assist", formerly XayaUI_GameDump): a SEPARATE debugging addon (its own folder, its own SavedVariable file) that pulls everything an addon is
 -- allowed to read from the game, so the data can be handed to Claude without sending XayaUI's rules or profile.
 -- UNTESTED IN GAME (written 2026-11-01). Every game call is wrapped in pcall; anything the game hides ("secret" values)
 -- is counted and skipped, never guessed. No character name or realm is stored.
 --
--- Output: XayaUIGameDumpDB (WTF\Account\<account>\SavedVariables\XayaUI_GameDump.lua, written on /reload or logout)
+-- Output: XayaUIDevAssistDB (WTF\Account\<account>\SavedVariables\XayaUI_DevAssist.lua, written on /reload or logout)
 --   .static   all classes / specs / talent trees + spell data (description, icon, cast time, base cooldown, charges) + item sets (if the API answers)
 --   .char     this character: spellbook, current talents, hero tree, equipped gear with full tooltip lines (set bonus text), set piece counts
 --   .auras    snapshot of the buffs and debuffs on you (and your target) right now
 --   .rec      cast -> aura recorder: for each spell you cast, the auras that appeared within 1.5 s, the duration the game reported,
 --             the real lifetime observed (works in combat when the numbers are secret), tagged with the talent + gear loadout in force
 --   .catalogue / .catalogueCDM / .seen   the aura catalogue and the aura log (AuraCatalogue.lua)
---   .probe     the event probe, /xuidump probe (Probe.lua)
+--   .probe     the event probe, /xuidev probe (Probe.lua)
 local ADDON = ...
 local GD = {}
-_G.XayaUIGameDump = GD
+_G.XayaUIDevAssist = GD
 
 local issecret = issecretvalue or function() return false end
 local GetTime, date = GetTime, date
@@ -24,8 +24,8 @@ local function Clean(v)                          -- value, wasSecret
 end
 
 local function DB()
-    XayaUIGameDumpDB = XayaUIGameDumpDB or {}
-    local d = XayaUIGameDumpDB
+    XayaUIDevAssistDB = XayaUIDevAssistDB or {}
+    local d = XayaUIDevAssistDB
     d.rec = d.rec or { casts = {}, loadouts = {} }
     return d
 end
@@ -57,7 +57,7 @@ end
 -------------------------------------------------------------------------------
 local logLines, statusFS = {}, nil
 local function Say(msg)
-    print("|cffffd100XayaUI Game Dump|r: " .. tostring(msg))
+    print("|cffffd100XayaUI Dev Assist|r: " .. tostring(msg))
     logLines[#logLines + 1] = ("%s  %s"):format(date("%H:%M:%S"), tostring(msg))
     while #logLines > 9 do table.remove(logLines, 1) end
     if statusFS then statusFS:SetText(table.concat(logLines, "\n")) end
@@ -283,7 +283,7 @@ function GD.RunStatic()
                 if not ids then
                     ids = {}
                     local nExtra = 0
-                    for _, specs in pairs(XayaUIGameDump_SpellList or {}) do
+                    for _, specs in pairs(XayaUIDevAssist_SpellList or {}) do
                         for _, sp in pairs(specs) do
                             for _, e in ipairs(sp.ids) do
                                 if not out.spells[e[1]] then out.spells[e[1]] = {}; nExtra = nExtra + 1 end
@@ -733,7 +733,7 @@ function GD.Toggle()
         if win:IsShown() then win:Hide() else win:Show() end
         return
     end
-    win = CreateFrame("Frame", "XayaUIGameDumpWindow", UIParent, "BackdropTemplate")
+    win = CreateFrame("Frame", "XayaUIDevAssistWindow", UIParent, "BackdropTemplate")
     win:SetSize(460, 744)
     win:SetPoint("CENTER")
     win:SetFrameStrata("DIALOG")
@@ -746,13 +746,13 @@ function GD.Toggle()
         win:SetBackdropColor(0.07, 0.06, 0.1, 0.97)
         win:SetBackdropBorderColor(ACCENT[1], ACCENT[2], ACCENT[3], 1)
     end
-    tinsert(UISpecialFrames, "XayaUIGameDumpWindow")
+    tinsert(UISpecialFrames, "XayaUIDevAssistWindow")
 
     local head = win:CreateTexture(nil, "ARTWORK")
     head:SetPoint("TOPLEFT", 1, -1); head:SetPoint("TOPRIGHT", -1, -1); head:SetHeight(46)
     head:SetColorTexture(0.12, 0.09, 0.2, 1)
     local title = win:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", 14, -9); title:SetText("XayaUI Game Data Capture")
+    title:SetPoint("TOPLEFT", 14, -9); title:SetText("XayaUI Dev Assist")
     Style(title, 20, 0.85, 0.75, 1)
     local sub = win:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -2); Style(sub, 12, 0.62, 0.6, 0.74); sub:SetText("separate tool with its own saved-data file; nothing here touches your rules")
@@ -787,7 +787,7 @@ function GD.Toggle()
     infoFS:SetPoint("TOPLEFT", 18, -668); infoFS:SetWidth(424); infoFS:SetJustifyH("LEFT"); Style(infoFS, 13, 0.86, 0.86, 0.92)
     local path = win:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     path:SetPoint("TOPLEFT", 18, -690); path:SetWidth(424); path:SetJustifyH("LEFT"); Style(path, 11, 0.55, 0.53, 0.66)
-    path:SetText("File: WTF\\Account\\<account>\\SavedVariables\\XayaUI_GameDump.lua")
+    path:SetText("File: WTF\\Account\\<account>\\SavedVariables\\XayaUI_DevAssist.lua")
 
     local acc = 0
     win:SetScript("OnUpdate", function(_, el)
@@ -808,8 +808,10 @@ end
 -------------------------------------------------------------------------------
 -- Slash command + load
 -------------------------------------------------------------------------------
-SLASH_XAYAUIDUMP1 = "/xuidump"
-SlashCmdList["XAYAUIDUMP"] = function(msg)
+-- /xuidev; /xuidump still works (the addon's name before 0.7.0, and the command the run sheets use)
+SLASH_XAYAUIDEV1 = "/xuidev"
+SLASH_XAYAUIDEV2 = "/xuidump"
+SlashCmdList["XAYAUIDEV"] = function(msg)
     local cmd, arg = (msg or ""):lower():match("^(%S*)%s*(.-)%s*$")
     if cmd == "" then GD.Toggle()
     elseif cmd == "static" then GD.RunStatic()
@@ -836,13 +838,37 @@ SlashCmdList["XAYAUIDUMP"] = function(msg)
             d.catalogue and d.catalogue.at or "none", nSpec, (GD.Catalogue and GD.Catalogue.seenOn) and "ON" or "off", d.seen and d.seen.n or 0,
             probeOn and "ON" or "off", probeN or 0))
     else
-        print("|cffffd100XayaUI Game Dump|r: /xuidump (window) | static | char | auras | rec (toggle recorder) | clear | api (API inventory) | toolkit (Character Toolkit checks) | catalogue [fromID] (aura catalogue) | seen (toggle aura log) | probe on|off|status|clear|spells <ids>|mark (event probe) | save (reload) | status")
+        print("|cffffd100XayaUI Dev Assist|r: /xuidev (window) | static | char | auras | rec (toggle recorder) | clear | api (API inventory) | toolkit (Character Toolkit checks) | catalogue [fromID] (aura catalogue) | seen (toggle aura log) | probe on|off|status|clear|spells <ids>|mark (event probe) | save (reload) | status")
     end
+end
+
+-- Before 0.7.0 this addon was the folder XayaUI_GameDump ("XayaUI Game Data Capture"). Testers copy folders into AddOns, so an old
+-- copy can still be there and load beside this one, with its own commands, probe and saved file. Their saved data cannot mix (the old
+-- one saves XayaUIGameDumpDB in XayaUI_GameDump.lua, this one XayaUIDevAssistDB in XayaUI_DevAssist.lua). At login: if the old one is
+-- loaded, switch it off from the next /reload (C_AddOns.DisableAddOn, documented in docs/reference/api; called with its default
+-- "character" argument: which characters that covers is not documented) and say so once per session.
+local OLD = "XayaUI_GameDump"
+function GD.OldFolderCheck()
+    if not (C_AddOns and C_AddOns.IsAddOnLoaded) then return false end
+    local ok, loadedOrLoading, loaded = pcall(C_AddOns.IsAddOnLoaded, OLD)
+    if not (ok and (loaded == true or loadedOrLoading == true)) then return false end
+    local okD = C_AddOns.DisableAddOn and pcall(C_AddOns.DisableAddOn, OLD)
+    print("|cffffd100XayaUI Dev Assist|r: the old copy of this tool (folder XayaUI_GameDump, \"XayaUI Game Data Capture\") is also installed. "
+        .. (okD and "It is switched off from your next /reload. " or "Switch it off in the AddOns list. ")
+        .. "Delete the XayaUI_GameDump folder from Interface\\AddOns when you can. Captures it saved stay in its own file, "
+        .. "WTF\\Account\\<your account folder>\\SavedVariables\\XayaUI_GameDump.lua: send that file as it is if it holds captures not sent yet.")
+    return true
 end
 
 local init = CreateFrame("Frame")
 init:RegisterEvent("ADDON_LOADED")
-init:SetScript("OnEvent", function(self, _, name)
+init:RegisterEvent("PLAYER_LOGIN")
+init:SetScript("OnEvent", function(self, event, name)
+    if event == "PLAYER_LOGIN" then
+        self:UnregisterEvent("PLAYER_LOGIN")
+        pcall(GD.OldFolderCheck)
+        return
+    end
     if name ~= ADDON then return end
     self:UnregisterEvent("ADDON_LOADED")
     DB()
