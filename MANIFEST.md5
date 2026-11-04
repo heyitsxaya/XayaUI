@@ -5,7 +5,7 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-1ed331bca0bf14cc8bd2c3cda713c1b0  QA-CHECKLIST.md
+1ee23ac5f3b11642a4a92c2ab416b08f  QA-CHECKLIST.md
 ee42539002c7a831fd97da0c0d766f12  README.md
 b8830af74b74d3bd040661448e9ff565  ROADMAP.md
 795543b7edf9a1e47a284d967c0fc4bf  SESSION-START-SUMMARY.md
@@ -451,8 +451,8 @@ f1bae520db3fdef262ef708a60557571  tools/formula_fit.py
 5ea11cb0d56f3c473cd881158515069e  tools/manifest.py
 db4bc883dbe741a50417a8d183e9dc02  tools/qa-installer/.gitattributes
 eac7e9b69f7326ed1b0f0765391566ae  tools/qa-installer/Install-XayaUI.bat
-92274087d7c70de31f9d1b2beb1786f8  tools/qa-installer/Install-XayaUI.ps1
-463fa37bcf05948274f18eb58217dc90  tools/qa-installer/Link-XayaUI.bat
-53dc495866fab872332ac7f83dbb498e  tools/qa-installer/QA-INSTALL.md
+c942781ec512ebb1ae4da2d45bac58fb  tools/qa-installer/Install-XayaUI.ps1
+2424b5a16ed6ea3faa3beaa10ef3ede9  tools/qa-installer/Link-XayaUI.bat
+3001ac328998059d4f9e6b79362d51c5  tools/qa-installer/QA-INSTALL.md
 9809b22ec9eead883fa1c7e1e5d4e74c  tools/qa-installer/Uninstall-XayaUI.bat
 b6c641e44164b6a2af5331e572b9e1be  tools/sync-qa-branch.sh
