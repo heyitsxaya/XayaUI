@@ -14,6 +14,8 @@
 -- Saved data is plain tables of strings / numbers only: no code, so profile import stays data-only.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
+-- #309: the scratch rule each "Cooldown (any spell)" row reuses (weak keys: a deleted row takes its scratch table with it)
+local cdRowPseudo = setmetatable({}, { __mode = "k" })
 
 local issecret = issecretvalue or function() return false end
 local unpack = unpack or table.unpack
@@ -280,8 +282,12 @@ Add("cooldown", {
         { key = "cdChargeVal", kind = "number", label = "Charges", required = false, showIf = function(t) return t.cdChargeOp ~= nil and t.cdChargeOp ~= "any" end },
     },
     check = function(t)
-        local pseudo = { spellID = tonumber(t.spellID), maxCharges = tonumber(t.maxCharges) or 0, cdState = t.state, countGCD = t.countGCD and true or nil, countLOC = t.countLOC and true or nil,
-                         exactSpell = t.exactSpell and true or nil, cdTimeOp = t.cdTimeOp, cdTimeSec = t.cdTimeSec, cdChargeOp = t.cdChargeOp, cdChargeVal = t.cdChargeVal }
+        -- #309: one scratch rule per row, refilled every call (every field), instead of a new 11-field table per row per step
+        local pseudo = cdRowPseudo[t]
+        if not pseudo then pseudo = {}; cdRowPseudo[t] = pseudo end
+        pseudo.spellID, pseudo.maxCharges, pseudo.cdState = tonumber(t.spellID), tonumber(t.maxCharges) or 0, t.state
+        pseudo.countGCD, pseudo.countLOC, pseudo.exactSpell = t.countGCD and true or nil, t.countLOC and true or nil, t.exactSpell and true or nil
+        pseudo.cdTimeOp, pseudo.cdTimeSec, pseudo.cdChargeOp, pseudo.cdChargeVal = t.cdTimeOp, t.cdTimeSec, t.cdChargeOp, t.cdChargeVal
         if not (ns.ReadCooldown and ns.CheckCooldownState) then return nil, "cooldown reader missing" end
         local info = ns.ReadCooldown(pseudo)
         if not info or not info.known then return nil, info and info.why or "cooldown unreadable" end
@@ -1038,10 +1044,11 @@ end
 -- The additional triggers combined by rule.extra.mode (blank / all = every row must be true, any = one is enough).
 -- Three-valued like the talent check: ALL is false as soon as one row is definitely false; ANY is true as soon as
 -- one row is definitely true; otherwise unknown rows keep the answer unknown. No rows = no requirement (true).
+local NO_ROWS = {}   -- #309: shared, never written (readers only index it): a rule without additional triggers makes no table per step
 function ns.CheckExtraTriggers(rule)
     local X = rule.extra
     local list = type(X) == "table" and X.list or nil
-    if type(list) ~= "table" or #list == 0 then return true, "no additional triggers", {} end
+    if type(list) ~= "table" or #list == 0 then return true, "no additional triggers", NO_ROWS end
     local anyTrue, anyFalse, anyNil = false, false, false
     local firstWhy
     local rows = {}   -- rows[i] = true / false / nil (unknown) for additional trigger i; outcomes read this
