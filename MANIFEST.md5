@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-e51cdcf33640875846bf2b521500ec33  QA-CHECKLIST.md
+0c4db1bf20e634a5c6a0723291d17412  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 2a1997b3d7a4e7a11e58cf538b84191b  ROADMAP.md
 b95c0745be131f3682cf075829840ea5  SESSION-START-SUMMARY.md
@@ -207,10 +207,10 @@ ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
 80c33e92fba398b06e2fb921be7c9987  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
-92628c13241f72388d8f61557be93b14  XayaUI_Options/Skin.lua
+337078c82076d434db75eba87a2295fd  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
-9e95affc391e387b25f0bcedaf89a6e8  XayaUI_Options/XayaUI_Options.toc
+1fa7f7172aeb7019d6b0d6d9648de07a  XayaUI_Options/XayaUI_Options.toc
 732f4635d1a8a0bf465568de9a93d073  XayaUI_QoL/CharacterModel.lua
 03ca10b4b1fdeab54a4497c901679ae8  XayaUI_QoL/CharacterToolkit.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
@@ -419,6 +419,7 @@ ffa11fbba5d731310966d21dcec98c9e  debug-log/2026-11-04-2018-stat-calculator-titl
 03c6ed5c37643d163eb4c8ca93b0e9e5  debug-log/2026-11-04-2022-what-if-fill-slot-choice-primary-qol-0.7.4.md
 10048f7acf6bf52113df6becd3143d97  debug-log/2026-11-04-2030-game-menu-height-fit-core-0.6.32.md
 33f58b1d9ba05183498e265dcfdaffe4  debug-log/2026-11-04-2050-group-load-id-lists-core-0.6.33-options-0.6.32.md
+3799d76bd28cf0023e816bed7c325271  debug-log/2026-11-04-2052-ui-gutter-margin-351-phase1-options-0.6.33.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
 9a907df3961024106bb6ae03b230abf3  docs/plans/REFERENCE-SCREENS-AND-FEASIBILITY-2026-11-04.md
 0924ed5a5935ca6e4b89390a03647a57  docs/plans/STAT-CALCULATOR-REDESIGN-2026-11-04.md
@@ -545,6 +546,7 @@ f886a09a99f1c562e4ff35c25675a1bd  tests/timing_run.py
 1ebaefa53214e59997760360aa40c80f  tests/tracked_buff_run.py
 b8a468e591bd450e9d60af1c7ea2988c  tests/trigger_labels_run.py
 eccba8875a1faeb20465640570668d83  tests/trigger_parity_run.py
+778a8344f9af2f8d2cca0ea2156a4a57  tests/ui_gutter_run.py
 7bdbd8daaa8aaab8b1a64cdbc9a0b436  tests/usage_check.lua
 06abd3bc39893cbb62c55a168ba32788  tests/usage_run.py
 f9cff67f0a8f112ac867d11c09641835  tests/window_footer_run.py
