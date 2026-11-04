@@ -107,12 +107,28 @@ local function SpellNameOf(id)
     if ok and readable(nm) and type(nm) == "string" and nm ~= "" then return nm end
 end
 
+-- Spells whose aura has the spell's OWN ID (Immolation Aura 258920 is both). Remembered per game build, like AuraSources, because the
+-- live proof (the buff on you) is gone a few seconds later. Saved in CueRulesDB.tooltips.selfAura = { build =, ids = { [id] = true } }.
+local function SelfAuraIDs()
+    local db = TT.DB()
+    local okB, _, bn = pcall(GetBuildInfo)
+    local build = okB and bn or "?"
+    if type(db.selfAura) ~= "table" or db.selfAura.build ~= build or type(db.selfAura.ids) ~= "table" then
+        db.selfAura = { build = build, ids = {} }
+    end
+    return db.selfAura.ids
+end
+
 -- Every aura an item or spell is known to apply, with its own ID and name. Sources, in order (nothing is guessed; an empty list means
 -- "not known yet"): 1. the tooltip's own embedded effect block, 2. what this client has recorded before (AuraSources: tooltips seen and
 -- live matches), 3. what this character's own casts were seen to apply out of combat (AuraModel), 4. spells only: an aura on you right
 -- now whose NAME equals the spell's name (read through C_UnitAuras.GetAuraDataBySpellName; a match is remembered for next time).
+-- Second return (spells only): true when the spell's aura is known to have the spell's OWN ID. Proof is only: that aura is on you now
+-- (C_UnitAuras.GetPlayerAuraBySpellID, or the same-name read above returning the spell's ID), a cast of it was seen to apply it
+-- (AuraModel.CastAppliesSelf), or one of those was seen before. A self-referencing embedded block is NOT proof: it may describe damage.
+-- Before Bonus 0.6.1 every one of these was thrown away, so such spells said "not known yet" forever (Xaya, Immolation Aura).
 function TT.AurasFor(kind, id, data)
-    local out, seen = {}, {}
+    local out, seen, same = {}, {}, false
     local function add(aid, name)
         if type(aid) ~= "number" or seen[aid] or (kind == "spell" and aid == id) then return end
         seen[aid] = true
@@ -133,13 +149,27 @@ function TT.AurasFor(kind, id, data)
         if nm and C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName then
             local ok, ad = pcall(C_UnitAuras.GetAuraDataBySpellName, "player", nm, "HELPFUL")
             local sid = ok and type(ad) == "table" and ad.spellId
-            if sid and readable(sid) and type(sid) == "number" and sid ~= id and not seen[sid] then
+            if sid and readable(sid) and type(sid) == "number" and sid == id then
+                same = true
+            elseif sid and readable(sid) and type(sid) == "number" and not seen[sid] then
                 add(sid, nm)
                 if ns.AuraSources and ns.AuraSources.Note then pcall(ns.AuraSources.Note, "spell", id, { { id = sid } }) end
             end
         end
+        local known = SelfAuraIDs()
+        if not same and known[id] then same = true end
+        if not same and ns.AuraModel and ns.AuraModel.CastAppliesSelf then
+            local ok, yes = pcall(ns.AuraModel.CastAppliesSelf, id)
+            if ok and yes then same = true end
+        end
+        if not same and C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
+            -- a non-nil, readable answer means an aura with exactly this ID is on you; its fields are not read, so secret fields do not matter
+            local ok, ad = pcall(C_UnitAuras.GetPlayerAuraBySpellID, id)
+            if ok and ad ~= nil and readable(ad) then same = true end
+        end
+        if same then known[id] = true end
     end
-    return out
+    return out, same
 end
 
 -- A spell whose text names a duration ("Lasts 8 sec") very likely applies an aura; used only to decide whether to say "not known yet".
@@ -160,8 +190,9 @@ function TT.OnIDData(tooltip, data, kind)
     end
     -- items and spells: the aura / effect they apply, with its own name, ID (and icon ID when that option is on)
     if kind.key == "item" or kind.key == "spell" then
-        local auras = TT.AurasFor(kind.key, id, data)
+        local auras, same = TT.AurasFor(kind.key, id, data)
         if db.ids.aura then
+            if same then AddLine(tooltip, "Aura ID:", tostring(id) .. "  (same as the spell)") end
             for _, a in ipairs(auras) do
                 AddLine(tooltip, "Aura ID:", a.name and (tostring(a.id) .. "  (" .. a.name .. ")") or tostring(a.id))
                 if db.ids.icon then
@@ -169,7 +200,7 @@ function TT.OnIDData(tooltip, data, kind)
                     if icon then AddLine(tooltip, "Aura icon ID:", tostring(icon)) end
                 end
             end
-            if #auras == 0 and db.ids.auraHint and kind.key == "spell" and TextHasDuration(id) then
+            if #auras == 0 and not same and db.ids.auraHint and kind.key == "spell" and TextHasDuration(id) then
                 tooltip:AddDoubleLine("Aura ID:", "not known yet", 1, 0.82, 0, 0.6, 0.6, 0.6)
             end
         end

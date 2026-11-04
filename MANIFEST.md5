@@ -9,13 +9,13 @@ d32239bcb673463ab874e80d47fae504  LICENSE
 2484ce39c6b9186ecd85e331060aa43d  README.md
 3606bf8d93773c41ae781c9ea0b746e0  ROADMAP.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-db03e740f3574d118e51f5b9e9f8b214  USER-GUIDE.md
+31b295c4773a01f65c37bcf1805447cd  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
 40b7591dd5f7fe4f0c4b0f5a965155bb  XayaUI/ClassLearn.lua
 f81066a63ee4370bf80e41f8d92b7ef5  XayaUI/Combat/AuraDisplay.lua
 08fb3f5b7f03e228c97cbd1aaee422b7  XayaUI/Combat/AuraIDProbe.lua
-6decba2d729de18279ee9026b60966ad  XayaUI/Combat/AuraModel.lua
+5356ed0d27b490020bdc89c5b0d3b682  XayaUI/Combat/AuraModel.lua
 18fac644c546ff078dfd704d044070c0  XayaUI/Combat/AuraSetup.lua
 37fa5175736d02a8aa486c64e9e6c143  XayaUI/Combat/AuraTracker.lua
 d9d202afce65354b4aaf84ffcd8f67aa  XayaUI/Combat/README.md
@@ -102,7 +102,7 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 59ad08070a7f245195783e6c8ae8b348  XayaUI/Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  XayaUI/UserMedia.lua
 5dc90d0b9fcd4ea1fa1183e384e7c844  XayaUI/Visual.lua
-1d2387e9213615bbb251a7d9b1610b43  XayaUI/XayaUI.toc
+ed643601129386b760ce56fb5efffd47  XayaUI/XayaUI.toc
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -128,9 +128,9 @@ ded1de1be47477a60c0740ef7769629d  XayaUI_Bonus/Media/UI/Notepad/src/plus.svg
 2a22ac682397b06e682d4cc0a0cd7abc  XayaUI_Bonus/Media/UI/Notepad/trash.png
 bd5ad941d96408c9a0a6d431144f65b7  XayaUI_Bonus/Notepad.lua
 78aac0cd2914a50bc733b64bd2da93d2  XayaUI_Bonus/NotepadShare.lua
-7c39f7c23a198007716aa50ae7cc97bb  XayaUI_Bonus/Tooltips.lua
+db8cfbb4e4c6514135c48f7274b50309  XayaUI_Bonus/Tooltips.lua
 3bdbe04fec65f2518c41bfb5df7b6aa3  XayaUI_Bonus/TooltipsUI.lua
-5937ff4ea0d399362128fc40530fd2c6  XayaUI_Bonus/XayaUI_Bonus.toc
+a36e1be6c8e7c694365d7a4491b94099  XayaUI_Bonus/XayaUI_Bonus.toc
 83c87e8920a975caccb49149edab3556  XayaUI_Chat/Bar.lua
 b5ae82f4fdb8332fba9ddb299b8e9928  XayaUI_Chat/Core.lua
 691117347e0437f78c88e3734c54c438  XayaUI_Chat/Fade.lua
@@ -379,7 +379,7 @@ b98b8b93e9068a136e462260a2aefcd1  tests/perf_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
 f886a09a99f1c562e4ff35c25675a1bd  tests/timing_run.py
-94e2a3d86a87d66e4aa44e3f8d8ac64e  tests/tooltips_run.py
+ce3a5675548fdab11df2f0f9561cbe06  tests/tooltips_run.py
 7bdbd8daaa8aaab8b1a64cdbc9a0b436  tests/usage_check.lua
 06abd3bc39893cbb62c55a168ba32788  tests/usage_run.py
 5ea11cb0d56f3c473cd881158515069e  tools/manifest.py
