@@ -325,6 +325,40 @@ local function FilterBtn(i)
     return b
 end
 
+-- the Gear tab's icons of the equipped items: the game's item tooltip on hover, the game's modified click (link in chat, dressing room)
+local iconBtns, nIcon = {}, 0
+local ICON_SIZE, ICON_CELL = 30, 44
+local QUESTION_MARK = "Interface\\Icons\\INV_Misc_QuestionMark"
+local function IconBtn()
+    nIcon = nIcon + 1
+    local b = iconBtns[nIcon]
+    if not b then
+        b = CreateFrame("Button", nil, content)
+        b:EnableMouse(true)
+        if b.RegisterForClicks then b:RegisterForClicks("LeftButtonUp") end
+        b.border = b:CreateTexture(nil, "BACKGROUND"); b.border:SetAllPoints(b)
+        b.tex = b:CreateTexture(nil, "ARTWORK")
+        b.tex:SetPoint("TOPLEFT", b, "TOPLEFT", 1, -1); b.tex:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -1, 1)
+        if b.tex.SetTexCoord then b.tex:SetTexCoord(0.07, 0.93, 0.07, 0.93) end
+        local hl = b:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(b); hl:SetColorTexture(1, 1, 1, 0.15)
+        b:SetScript("OnEnter", function(self)
+            if not (GameTooltip and self.slot) then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            local ok = GameTooltip.SetInventoryItem and pcall(GameTooltip.SetInventoryItem, GameTooltip, "player", self.slot)
+            if not ok and type(self.link) == "string" and GameTooltip.SetHyperlink then pcall(GameTooltip.SetHyperlink, GameTooltip, self.link) end
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        b:SetScript("OnClick", function(self)
+            if type(self.link) == "string" and type(HandleModifiedItemClick) == "function" then pcall(HandleModifiedItemClick, self.link) end
+        end)
+        b:SetScript("OnMouseWheel", function(_, d) if panel and panel.Scroll then panel.Scroll(d) end end)
+        iconBtns[nIcon] = b
+    end
+    b:Show()
+    return b
+end
+
 local function Box(key)
     local b = boxes[key]
     if not b then
@@ -579,7 +613,28 @@ local function RenderSections(c, m, tab, y0)
                     local mode = it.kind == "rating" and ModeFor(c, it.key) or nil
                     local v, tone = CM.ValueFor(it, mode)
                     local rowH
-                    if it.kind == "wide" then
+                    if it.kind == "icons" then
+                        local cols = math.max(1, math.floor(W / ICON_CELL))
+                        local cw = W / cols
+                        local rowStep = ICON_SIZE + size + 4
+                        for i, ic in ipairs(it.icons or {}) do
+                            local col, row = (i - 1) % cols, math.floor((i - 1) / cols)
+                            local cx = math.floor(col * cw)
+                            local x, yy = math.floor(col * cw + (cw - ICON_SIZE) / 2), y + row * rowStep
+                            local b = IconBtn()
+                            b.slot, b.link, b.label = ic.slot, ic.link, ic.label
+                            b:ClearAllPoints()
+                            b:SetPoint("TOPLEFT", content, "TOPLEFT", x, -yy)
+                            b:SetSize(ICON_SIZE, ICON_SIZE)
+                            b.tex:SetTexture(ic.tex or QUESTION_MARK)
+                            local bc = ic.color or cLine
+                            b.border:SetColorTexture(bc[1], bc[2], bc[3], 1)
+                            Rec("icon", x, yy, ICON_SIZE, ICON_SIZE, ic.label)
+                            PlaceFS(FS(), cx, yy + ICON_SIZE + 1, math.floor(cw), size - 1, ic.ilvl and tostring(math.floor(ic.ilvl + 0.5)) or "",
+                                ic.color or cText, "CENTER", false, "iconText")
+                        end
+                        y = y + math.ceil(#(it.icons or {}) / cols) * rowStep
+                    elseif it.kind == "wide" then
                         rowH = PlaceFS(FS(), 0, y, W, size, it.label, cText, "LEFT", false, "label")
                         y = y + rowH + 1
                         rowH = PlaceFS(FS(), 6, y, W - 6, size - 1, v, ToneColor(tone, cMuted), "LEFT", true, "wide")
@@ -626,7 +681,7 @@ local function RenderSections(c, m, tab, y0)
                             y = y + math.max(lh, vh) + 1
                         end
                     end
-                    if it.kind ~= "input" then
+                    if it.kind ~= "input" and it.kind ~= "icons" then
                         local b = Btn()
                         b.item = it
                         b:ClearAllPoints()
@@ -746,7 +801,7 @@ function ns.CharToolkit_Render()
         b.text:SetText(b.label)
         Paint(b.text, TC(cls, "text", on and { 1, 1, 1, 1 } or { 1, 0.82, 0, 1 }))
     end
-    nFS, nBtn, nHdr = 0, 0, 0
+    nFS, nBtn, nHdr, nIcon = 0, 0, 0, 0
     for _, eb in pairs(boxes) do eb.xuiUsed = false end
     local m = CM.Build(c, c.tab)
     panel.model = m
@@ -756,6 +811,7 @@ function ns.CharToolkit_Render()
     elseif c.tab == "spells" then nFilters = #CM.SPELL_FILTERS; y = RenderSections(c, m, c.tab, RenderFilters(c))
     else y = RenderSections(c, m, c.tab) end
     for i = nFilters + 1, #filterBtns do filterBtns[i]:Hide() end
+    for i = nIcon + 1, #iconBtns do iconBtns[i]:Hide(); iconBtns[i].slot, iconBtns[i].link = nil, nil end
     for i = nFS + 1, #fsPool do fsPool[i]:Hide() end
     for i = nBtn + 1, #btnPool do btnPool[i]:Hide(); btnPool[i].item = nil end
     for i = nHdr + 1, #hdrPool do hdrPool[i]:Hide() end
@@ -773,7 +829,7 @@ end
 function ns.CharToolkit_Drawn()
     if not panel then return nil end
     return { model = panel.model, layout = panel.layoutRecs, modeText = panel.modeText, buttons = btnPool, headers = hdrPool, boxes = boxes,
-        fonts = fsPool, filters = filterBtns }
+        fonts = fsPool, filters = filterBtns, icons = iconBtns }
 end
 
 -------------------------------------------------------------------------------

@@ -62,7 +62,7 @@ check("Spells, Offense filter: Offensive spells, then Power, Weapons, Timing and
   and table.concat(hs, "|") == "- Offensive spells|- Power|- Weapons|- Timing and resources", table.concat(hs, "|"))
 c.spellFilter = "all"
 d = render("gear"); hs = texts(d, "header")
-check("Gear tab: Summary, Durability and repair, Slots", table.concat(hs, "|") == "- Summary|- Durability and repair|- Slots", table.concat(hs, "|"))
+check("Gear tab: Equipped (icons, QoL 0.7.9), Summary, Durability and repair, Slots", table.concat(hs, "|") == "- Equipped|- Summary|- Durability and repair|- Slots", table.concat(hs, "|"))
 d = render("whatif"); hs = texts(d, "header")
 check("What If tab: Rating per stat, All ratings, Compare an item", table.concat(hs, "|") == "- Rating per stat|- All ratings|- Compare an item", table.concat(hs, "|"))
 d = render("stats")

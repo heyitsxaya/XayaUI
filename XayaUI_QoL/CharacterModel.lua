@@ -1103,11 +1103,36 @@ local function SlotRepairCost(slot)
     if num(v) and v >= 0 then return v end
 end
 
+-- The equipped items as small icons in slot order (QoL 0.7.9; Xaya 2026-11-04: "gear pane should show small icons of the gear
+-- equipped"). Shirt and tabard are left out (no stats). Texture and quality come from the calls Blizzard's own slot buttons make
+-- (PaperDollItemSlotButton_Update: GetInventoryItemTexture, GetInventoryItemQuality; live 12.1.5 source), the border colour from
+-- C_Item.GetItemQualityColor (namespaces.md:2789). The panel's hover shows the game's item tooltip (GameTooltip:SetInventoryItem, as
+-- ItemUtil.DisplayEquipSlotTooltip does).
+local NO_ICON = { [4] = true, [19] = true }
+local function GearIcon(sl, s)
+    local slot = sl[1]
+    local ic = { slot = slot, label = L(sl[2], sl[3]), link = s.link, ilvl = s.ilvl }
+    local tex = R(GetInventoryItemTexture, "player", slot)
+    if tex ~= nil and tex ~= HIDDEN then ic.tex = tex end
+    local q = N(GetInventoryItemQuality, "player", slot)
+    if num(q) and C_Item and C_Item.GetItemQualityColor then
+        local r, g, b = R(C_Item.GetItemQualityColor, q)
+        if num(r) and num(g) and num(b) then ic.color = { r, g, b, 1 } end
+    end
+    ic.quality = num(q) and q or nil
+    return ic
+end
+
 local function GearSections(ctx, out)
     local totals, sockets, durCur, durMax, lowest = {}, 0, 0, 0, nil
     local slotItems, repair, repairKnown, damaged = {}, 0, false, 0
+    local icons = Item("gearIcons", "Equipped", "icons")
+    icons.icons = {}
+    Tip(icons, "Hover an icon for the game's item tooltip; shift-click links it in chat, as on the character window.")
+    out[#out + 1] = { key = "gearIcons", title = "Equipped", items = { icons } }
     for _, sl in ipairs(SLOTS) do
         local s = CM.SlotInfo(sl[1])
+        if s and not NO_ICON[sl[1]] then icons.icons[#icons.icons + 1] = GearIcon(sl, s) end
         if s then
             local it = Item("slot" .. sl[1], L(sl[2], sl[3]))
             it.value = s.ilvl and tostring(math.floor(s.ilvl + 0.5)) or ""
@@ -1130,6 +1155,7 @@ local function GearSections(ctx, out)
             slotItems[#slotItems + 1] = it
         end
     end
+    if #icons.icons == 0 then icons.kind, icons.value, icons.tone = "note", "nothing equipped", "mute" end
     local sum = Item("gearSum", "Gear totals")
     sum.value = ""
     for _, gs in ipairs(GEAR_STATS) do
