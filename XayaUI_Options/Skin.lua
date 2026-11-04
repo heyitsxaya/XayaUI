@@ -1416,6 +1416,39 @@ function ns.RuleListArt(r)
     c.zoom = 0
     return c
 end
+-- #369 (Xaya 2026-11-04, screenshot): nested sidebar rows kept 1-3 characters of their names ("VD...", "A...", "F..."): the indent
+-- (8 px a level), the reorder arrows, the open / close arrow and the 32 px type icon on the left, the lock / note icons on the right.
+-- After the sidebar is drawn, it is widened just enough that every visible row keeps NAME_ROOM px for its name, never beyond
+-- AceGUI's own limit (min(400, window width - 50), AceGUIContainer-TreeGroup.lua:561). It only widens; the full name also shows on
+-- mouse-over (AceGUI's tree tooltip). Rows record their text's left / right insets (Options.lua, DecorateButton) as xuiTextL / xuiTextR.
+local NAME_ROOM = 80
+ns.SIDEBAR_NAME_ROOM = NAME_ROOM
+function ns.EnsureNameRoom(tree)
+    if not tree or tree.xuiRoomBusy or not tree.SetTreeWidth then return end
+    local status = tree.status or tree.localstatus
+    if not status then return end
+    local cur = tonumber(status.treewidth) or 0
+    local worst
+    for _, b in ipairs(tree.buttons or {}) do
+        local txt = b.text and b.text.GetText and b.text:GetText()
+        if b:IsShown() and b.xuiTextL and type(txt) == "string" and txt ~= "" then
+            local w = b:GetWidth() or 0
+            if w > 0 then
+                local room = w - b.xuiTextL - (b.xuiTextR or 4)
+                if not worst or room < worst then worst = room end
+            end
+        end
+    end
+    if not worst or worst >= NAME_ROOM then return end
+    local fw = (tree.frame and tree.frame.GetWidth and tree.frame:GetWidth()) or 0
+    local cap = math.min(400, fw - 50)
+    local want = math.min(cap, math.ceil(cur + (NAME_ROOM - worst)))
+    if want <= cur + 1 then return end
+    tree.xuiRoomBusy = true
+    pcall(tree.SetTreeWidth, tree, want, status.treesizable ~= false)
+    tree.xuiRoomBusy = nil
+end
+
 -- left-of-text icon on sidebar rows of the rule trees; returns the width the row text must leave free
 function ns.PaintTypeIcon(button, x)
     local uv = tostring(button.uniquevalue or "")
