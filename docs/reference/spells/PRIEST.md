@@ -1,0 +1,571 @@
+# Priest talents and spells
+
+Class token `PRIEST`. Specs: Discipline (256), Holy (257), Shadow (258).
+
+
+## Class talents (all specs)
+
+- Node 82556
+  - **Power Infusion** (spell 10060, 1 rank, instant, base cooldown 120 s, aura secret in some situations)
+- Node 82672
+  - **Spiritual Guidance** (spell 1250818, 1 rank, passive, instant, aura secret in some situations)
+- Node 82673
+  - **Phantom Reach** (spell 459559, 1 rank, passive, instant, aura secret in some situations)
+- Node 82674
+  - **Phantasm** (spell 108942, 1 rank, passive, instant, aura secret in some situations)
+- Node 82675
+  - **Angelic Bulwark** (spell 108945, 1 rank, passive, instant, aura secret in some situations)
+- Node 82676 · choice
+  - **Benevolence** (spell 415416, 1 rank, passive, instant, aura secret in some situations)
+  - **Focused Power** (spell 1249230, 1 rank, passive, instant, aura secret in some situations)
+- Node 82677
+  - **Protective Light** (spell 193063, 1 rank, passive, instant, aura secret in some situations)
+- Node 82678
+  - **Binding Heals** (spell 368275, 1 rank, passive, instant, aura secret in some situations)
+- Node 82679
+  - **Light's Inspiration** (spell 373450, 1 rank, passive, instant, aura secret in some situations)
+- Node 82684
+  - **Twist of Fate** (spell 390972, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82685
+  - **Translucent Image** (spell 373446, 1 rank, passive, instant, aura secret in some situations)
+- Node 82686
+  - **Improved Fade** (spell 390670, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82687
+  - **Strength of Resolve** (spell 1250820, 1 rank, passive, instant, aura secret in some situations)
+- Node 82690
+  - **Twin Disciplines** (spell 1251077, 1 rank, passive, instant, aura secret in some situations)
+- Node 82693
+  - **Shackle Horror** (spell 9484, 1 rank, cast 1.1 s, aura secret in some situations)
+- Node 82695 · choice
+  - **Sheer Terror** (spell 390919, 1 rank, passive, instant, aura secret in some situations)
+  - **Petrifying Scream** (spell 55676, 1 rank, passive, instant, aura secret in some situations)
+- Node 82696
+  - **Inspiration** (spell 390676, 1 rank, passive, instant, aura secret in some situations)
+- Node 82697
+  - **Unwavering Will** (spell 373456, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82699
+  - **Move with Grace** (spell 390620, 1 rank, passive, instant, aura secret in some situations)
+- Node 82701
+  - **Psychic Scream** (spell 8122, 1 rank, instant, base cooldown 40 s, aura secret in some situations)
+- Node 82702
+  - **Everlasting Light** (spell 1249233, 1 rank, passive, instant, aura secret in some situations)
+- Node 82703
+  - **Angelic Feather** (spell 121536, 1 rank, instant, 3 charges, aura secret in some situations)
+- Node 82708 · choice
+  - **Psychic Voice** (spell 196704, 1 rank, passive, instant, aura secret in some situations)
+  - **Void Tendrils** (spell 1250691, 1 rank, passive, instant, aura secret in some situations)
+- Node 82710 · choice
+  - **Mind Control** (spell 605, 1 rank, cast 1.4 s, aura secret in some situations)
+  - **Dominate Mind** (spell 205364, 1 rank, cast 1.4 s, base cooldown 30 s, aura secret in some situations)
+- Node 82711
+  - **Tithe Evasion** (spell 373223, 1 rank, passive, instant, aura secret in some situations)
+- Node 82712
+  - **Shadow Word: Death** (spell 32379, 1 rank, instant, aura secret in some situations)
+- Node 82715
+  - **Leap of Faith** (spell 73325, 1 rank, instant, base cooldown 1 s, aura secret in some situations)
+- Node 82716
+  - **Surge of Light** (spell 109186, 1 rank, passive, instant, aura secret in some situations)
+- Node 82717
+  - **Improved Flash Heal** (spell 393870, 1 rank, passive, instant, aura secret in some situations)
+- Node 82718
+  - **Holy Nova** (spell 132157, 1 rank, instant, aura secret in some situations)
+- Node 82719
+  - **Lightburst** (spell 1246549, 1 rank, passive, instant, aura secret in some situations)
+- Node 108731
+  - **Twins of the Sun Priestess** (spell 373466, 1 rank, passive, instant, aura secret in some situations)
+- Node 109005
+  - **False Autonomy** (spell 1250806, 1 rank, passive, instant, aura secret in some situations)
+- Node 109006
+  - **Painful Invocation** (spell 1251030, 1 rank, passive, instant, aura secret in some situations)
+- Node 109009
+  - **Dispel Magic** (spell 528, 1 rank, instant, aura secret in some situations)
+- Node 109010
+  - **Spell Warding** (spell 390667, 2 ranks, passive, instant, aura secret in some situations)
+- Node 109011
+  - **Mindpierce** (spell 1251029, 1 rank, passive, instant, aura secret in some situations)
+- Node 109012
+  - **Desperate Prayer** (spell 19236, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+- Node 109014
+  - **Spectral Illusion** (spell 1250378, 1 rank, passive, instant, aura secret in some situations)
+- Node 109015
+  - **Fade** (spell 586, 1 rank, instant, base cooldown 30 s, aura secret in some situations)
+- Node 109019
+  - **Mental Agility** (spell 341167, 1 rank, passive, instant, aura secret in some situations)
+- Node 109020
+  - **Dark Enlightenment** (spell 1250835, 1 rank, passive, instant, aura secret in some situations)
+- Node 109021
+  - **Sanguine Teachings** (spell 373218, 1 rank, passive, instant, aura secret in some situations)
+- Node 109890
+  - **Mass Dispel** (spell 32375, 1 rank, cast 1.1 s, base cooldown 120 s, aura secret in some situations)
+- Node 109917
+  - **Body and Soul** (spell 64129, 1 rank, passive, instant, aura secret in some situations)
+
+## Discipline talents (spec 256)
+
+- Node 82564 · choice
+  - **Ultimate Penitence** (spell 421453, 1 rank, cast 1.1 s, base cooldown 240 s, aura secret in some situations)
+  - **Power Word: Barrier** (spell 62618, 1 rank, instant, base cooldown 180 s, aura secret in some situations)
+- Node 82566
+  - **Purge the Wicked** (spell 1250218, 1 rank, passive, instant, aura secret in some situations)
+- Node 82567
+  - **Shadow Mend** (spell 1252217, 1 rank, passive, instant, aura secret in some situations)
+- Node 82568
+  - **Blaze of Light** (spell 215768, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82569
+  - **Greater Smite** (spell 1253724, 1 rank, passive, instant, aura secret in some situations)
+- Node 82570
+  - **Shadowfiend** (spell 34433, 1 rank, passive, instant, aura secret in some situations)
+- Node 82571 · choice
+  - **Archangel** (spell 197862, 1 rank, passive, instant, aura secret in some situations)
+  - **Mindbender** (spell 1280137, 1 rank, passive, instant, aura secret in some situations)
+- Node 82572
+  - **Borrowed Time** (spell 390691, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82573
+  - **Weal and Woe** (spell 390786, 1 rank, passive, instant, aura secret in some situations)
+- Node 82575
+  - **Castigation** (spell 193134, 1 rank, passive, instant, aura secret in some situations)
+- Node 82576
+  - **Indemnity** (spell 373049, 1 rank, passive, instant, aura secret in some situations)
+- Node 82577
+  - **Evangelism** (spell 472433, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+- Node 82578
+  - **Pain and Suffering** (spell 390689, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82579
+  - **Encroaching Shadows** (spell 472568, 1 rank, passive, instant, aura secret in some situations)
+- Node 82580
+  - **Revel in Darkness** (spell 373003, 1 rank, passive, instant, aura secret in some situations)
+- Node 82581
+  - **Shadow Tap** (spell 1235211, 1 rank, passive, instant, aura secret in some situations)
+- Node 82582
+  - **Occultist** (spell 1250293, 1 rank, passive, instant, aura secret in some situations)
+- Node 82583
+  - **Abyssal Reverie** (spell 373054, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82585
+  - **Expiation** (spell 390832, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82586
+  - **Searing Light** (spell 1280131, 1 rank, passive, instant, aura secret in some situations)
+- Node 82587
+  - **Pain Suppression** (spell 33206, 1 rank, instant, base cooldown 1.5 s, aura secret in some situations)
+- Node 82588 · choice
+  - **Pain Transformation** (spell 372991, 1 rank, passive, instant, aura secret in some situations)
+  - **Protector of the Frail** (spell 373035, 1 rank, passive, instant, aura secret in some situations)
+- Node 82589
+  - **Shield Discipline** (spell 197045, 1 rank, passive, instant, aura secret in some situations)
+- Node 82590
+  - **Holy Ray** (spell 372969, 1 rank, passive, instant, aura secret in some situations)
+- Node 82591 · choice
+  - **Bright Pupil** (spell 390684, 1 rank, passive, instant, aura secret in some situations)
+  - **Enduring Luminescence** (spell 390685, 1 rank, passive, instant, aura secret in some situations)
+- Node 82592
+  - **Light's Promise** (spell 322115, 1 rank, passive, instant, aura secret in some situations)
+- Node 82593
+  - **Power Word: Radiance** (spell 194509, 1 rank, cast 1.5 s, aura secret in some situations)
+- Node 82594
+  - **Atonement** (spell 81749, 1 rank, passive, instant, aura secret in some situations)
+- Node 82595
+  - **Power of the Dark Side** (spell 198068, 1 rank, passive, instant, aura secret in some situations)
+- Node 82596
+  - **Dark Indulgence** (spell 372972, 1 rank, passive, instant, aura secret in some situations)
+- Node 82597
+  - **Painful Punishment** (spell 390686, 1 rank, passive, instant, aura secret in some situations)
+- Node 82598
+  - **Lenience** (spell 238063, 1 rank, passive, instant, aura secret in some situations)
+- Node 82599
+  - **Divine Procession** (spell 472361, 1 rank, passive, instant, aura secret in some situations)
+- Node 82600
+  - **Harsh Discipline** (spell 373180, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82601
+  - **Inner Focus** (spell 390693, 1 rank, passive, instant, aura secret in some situations)
+- Node 82602
+  - **Divine Aegis** (spell 47515, 1 rank, passive, instant, aura secret in some situations)
+- Node 82682 · also Holy
+  - **Angel's Mercy** (spell 238100, 1 rank, passive, instant, aura secret in some situations)
+- Node 82705 · also Holy
+  - **Improved Purify** (spell 390632, 1 rank, passive, instant, aura secret in some situations)
+- Node 82713 · also Shadow
+  - **Mind Blast** (spell 8092, 1 rank, cast 1.1 s, aura secret in some situations)
+- Node 86730
+  - **Eternal Barrier** (spell 238135, 1 rank, passive, instant, aura secret in some situations)
+- Node 92225
+  - **Sanctuary** (spell 231682, 1 rank, passive, instant, aura secret in some situations)
+- Node 99801 · choice
+  - **?** (1 rank, picks hero tree 20)
+  - **?** (1 rank, picks hero tree 18)
+- Node 110277
+  - **Death's Torment** (spell 1240364, 1 rank, passive, instant, aura secret in some situations)
+- Node 110278
+  - **Inescapable Torment** (spell 373427, 1 rank, passive, instant, aura secret in some situations)
+- Node 110410 · choice
+  - **Master the Darkness** (spell 1253590, 1 rank, passive, instant, aura secret in some situations)
+  - **Master the Darkness** (spell 1253845, 2 ranks, passive, instant, aura secret in some situations)
+  - **Master the Darkness** (spell 1253827, 1 rank, passive, instant, aura secret in some situations)
+- Node 110648
+  - **Grim Deliverance** (spell 1298779, 1 rank, passive, instant, aura secret in some situations)
+
+## Holy talents (spec 257)
+
+- Node 82554
+  - **Divine Image** (spell 392988, 1 rank, passive, instant, aura secret in some situations)
+- Node 82603
+  - **Lightweaver** (spell 390992, 1 rank, passive, instant, aura secret in some situations)
+- Node 82604 · choice
+  - **Dispersing Light** (spell 1215265, 1 rank, passive, instant, aura secret in some situations)
+  - **Trail of Light** (spell 200128, 1 rank, passive, instant, aura secret in some situations)
+- Node 82606
+  - **Radiant Plea** (spell 1250684, 1 rank, passive, instant, aura secret in some situations)
+- Node 82607
+  - **Burning Vehemence** (spell 372307, 1 rank, passive, instant, aura secret in some situations)
+- Node 82608
+  - **Epiphany** (spell 414553, 1 rank, passive, instant, aura secret in some situations)
+- Node 82609
+  - **Desperate Times** (spell 391381, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82610
+  - **Miracle Worker** (spell 235587, 1 rank, passive, instant, aura secret in some situations)
+- Node 82611
+  - **Prismatic Echoes** (spell 390967, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82612
+  - **Ultimate Serenity** (spell 1246517, 1 rank, passive, instant, aura secret in some situations)
+- Node 82613 · choice
+  - **Seraphic Crescendo** (spell 419110, 1 rank, passive, instant, aura secret in some situations)
+  - **Gales of Song** (spell 372370, 1 rank, passive, instant, aura secret in some situations)
+- Node 82614
+  - **Apotheosis** (spell 200183, 1 rank, instant, base cooldown 120 s, aura secret in some situations)
+- Node 82615
+  - **Say Your Prayers** (spell 391186, 1 rank, passive, instant, aura secret in some situations)
+- Node 82616
+  - **Prayers of the Virtuous** (spell 390977, 1 rank, passive, instant, aura secret in some situations)
+- Node 82617
+  - **Divine Service** (spell 391233, 1 rank, passive, instant, aura secret in some situations)
+- Node 82618
+  - **Enlightenment** (spell 193155, 1 rank, passive, instant, aura secret in some situations)
+- Node 82619
+  - **Censure** (spell 200199, 1 rank, passive, instant, aura secret in some situations)
+- Node 82620
+  - **Voice of Harmony** (spell 390994, 1 rank, passive, instant, aura secret in some situations)
+- Node 82621
+  - **Divine Hymn** (spell 64843, 1 rank, instant, base cooldown 180 s, aura secret in some situations)
+- Node 82622
+  - **Uplifting Words** (spell 1250562, 1 rank, passive, instant, aura secret in some situations)
+- Node 82623
+  - **Efficient Prayers** (spell 1247131, 1 rank, passive, instant, aura secret in some situations)
+- Node 82627
+  - **Angelic Touch** (spell 1250565, 1 rank, passive, instant, aura secret in some situations)
+- Node 82628
+  - **Crisis Management** (spell 390954, 1 rank, passive, instant, aura secret in some situations)
+- Node 82629
+  - **Light of the Naaru** (spell 196985, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82630
+  - **Cosmic Ripple** (spell 238136, 1 rank, passive, instant, aura secret in some situations)
+- Node 82631
+  - **Holy Word: Sanctify** (spell 34861, 1 rank, instant, aura secret in some situations)
+- Node 82632
+  - **Prayer of Healing** (spell 596, 1 rank, cast 1.9 s, aura secret in some situations)
+- Node 82633
+  - **Prayerful Litany** (spell 391209, 1 rank, passive, instant, aura secret in some situations)
+- Node 82634
+  - **Healing Focus** (spell 1247166, 1 rank, passive, instant, aura secret in some situations)
+- Node 82635
+  - **Afterlife** (spell 196707, 1 rank, passive, instant, aura secret in some situations)
+- Node 82636 · choice
+  - **Restitution** (spell 391124, 1 rank, passive, instant, aura secret in some situations)
+  - **Guardian Angel** (spell 200209, 1 rank, passive, instant, aura secret in some situations)
+- Node 82637
+  - **Guardian Spirit** (spell 47788, 1 rank, instant, base cooldown 180 s, aura secret in some situations)
+- Node 82638
+  - **Holy Word: Serenity** (spell 2050, 1 rank, instant, aura secret in some situations)
+- Node 82639
+  - **Holy Word: Chastise** (spell 88625, 1 rank, instant, base cooldown 60 s, aura secret in some situations)
+- Node 82640
+  - **Empyreal Blaze** (spell 372616, 1 rank, passive, instant, aura secret in some situations)
+- Node 82641
+  - **Light's Resurgence** (spell 193157, 1 rank, passive, instant, aura secret in some situations)
+- Node 82642
+  - **Renewed Faith** (spell 341997, 1 rank, passive, instant, aura secret in some situations)
+- Node 99802 · choice
+  - **?** (1 rank, picks hero tree 20)
+  - **?** (1 rank, picks hero tree 19)
+- Node 103900
+  - **Holy Celerity** (spell 1215275, 1 rank, passive, instant, aura secret in some situations)
+- Node 103901
+  - **Lasting Words** (spell 471504, 1 rank, passive, instant, aura secret in some situations)
+- Node 103914
+  - **Light in the Darkness** (spell 471668, 2 ranks, passive, instant, aura secret in some situations)
+- Node 103916
+  - **Cosmic Wave** (spell 1248418, 1 rank, passive, instant, aura secret in some situations)
+- Node 104097 · choice
+  - **Eternal Sanctity** (spell 1215245, 1 rank, passive, instant, aura secret in some situations)
+  - **Divinity** (spell 1215241, 1 rank, passive, instant, aura secret in some situations)
+- Node 108730
+  - **Holy Fire** (spell 14914, 1 rank, cast 1.1 s, base cooldown 10 s, aura secret in some situations)
+- Node 110409 · choice
+  - **Benediction** (spell 1262755, 1 rank, passive, instant, aura secret in some situations)
+  - **Benediction** (spell 1262758, 2 ranks, passive, instant, aura secret in some situations)
+  - **Benediction** (spell 1262760, 1 rank, passive, instant, aura secret in some situations)
+
+## Shadow talents (spec 258)
+
+- Node 82552
+  - **Idol of N'Zoth** (spell 373280, 1 rank, passive, instant, aura secret in some situations)
+- Node 82553
+  - **Idol of Y'Shaarj** (spell 373310, 1 rank, passive, instant, aura secret in some situations)
+- Node 82555
+  - **Idol of Yogg-Saron** (spell 373273, 1 rank, passive, instant, aura secret in some situations)
+- Node 82558 · choice
+  - **Deathspeaker** (spell 392507, 1 rank, passive, instant, aura secret in some situations)
+  - **Death and Madness** (spell 321291, 1 rank, passive, instant, aura secret in some situations)
+- Node 82559
+  - **Subservient Shadows** (spell 1228516, 1 rank, passive, instant, aura secret in some situations)
+- Node 82560
+  - **Insidious Ire** (spell 373212, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82563
+  - **Spectral Horrors** (spell 407469, 1 rank, passive, instant, aura secret in some situations)
+- Node 82643
+  - **Idol of C'Thun** (spell 377349, 1 rank, passive, instant, aura secret in some situations)
+- Node 82644
+  - **Inescapable Torment** (spell 373427, 1 rank, passive, instant, aura secret in some situations)
+- Node 82645
+  - **Mastermind** (spell 391151, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82646
+  - **Shadeburst** (spell 73510, 1 rank, passive, instant, aura secret in some situations)
+- Node 82647 · choice
+  - **Mind's Eye** (spell 407470, 1 rank, passive, instant, aura secret in some situations)
+  - **Distorted Reality** (spell 409044, 1 rank, passive, instant, aura secret in some situations)
+- Node 82648
+  - **Mindbender** (spell 1230339, 1 rank, passive, instant, aura secret in some situations)
+- Node 82649
+  - **Screams of the Void** (spell 375767, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82651
+  - **Shadowy Apparitions** (spell 341491, 1 rank, passive, instant, aura secret in some situations)
+- Node 82653
+  - **Thought Harvester** (spell 406788, 1 rank, passive, instant, aura secret in some situations)
+- Node 82654
+  - **Maddening Tentacles** (spell 1279353, 1 rank, passive, instant, aura secret in some situations)
+- Node 82655
+  - **Crushing Void** (spell 1279354, 1 rank, passive, instant, aura secret in some situations)
+- Node 82656 · choice
+  - **Improved Voidform** (spell 341240, 1 rank, passive, instant, aura secret in some situations)
+  - **Ancient Madness** (spell 1231346, 1 rank, passive, instant, aura secret in some situations)
+- Node 82657
+  - **Voidform** (spell 228260, 1 rank, cast 1.1 s, base cooldown 120 s, aura secret in some situations)
+- Node 82658
+  - **Haunting Shadows** (spell 1279355, 1 rank, passive, instant, aura secret in some situations)
+- Node 82659
+  - **Tormenting Whispers** (spell 1250492, 1 rank, passive, instant, aura secret in some situations)
+- Node 82660
+  - **Dark Thoughts** (spell 1240388, 1 rank, passive, instant, aura secret in some situations)
+- Node 82662
+  - **Maddening Touch** (spell 391228, 1 rank, passive, instant, aura secret in some situations)
+- Node 82663
+  - **Psychic Link** (spell 199484, 1 rank, passive, instant, aura secret in some situations)
+- Node 82665
+  - **Shadow Word: Madness** (spell 335467, 1 rank, instant, aura secret in some situations)
+- Node 82666 · choice
+  - **Misery** (spell 238558, 1 rank, passive, instant, aura secret in some situations)
+  - **Invoked Nightmare** (spell 1279350, 1 rank, passive, instant, aura secret in some situations)
+- Node 82667
+  - **Auspicious Spirits** (spell 155271, 1 rank, passive, instant, aura secret in some situations)
+- Node 82668
+  - **Surge of Insanity** (spell 391399, 1 rank, passive, instant, aura secret in some situations)
+- Node 82669
+  - **Shadowy Insight** (spell 375888, 1 rank, passive, instant, aura secret in some situations)
+- Node 82670
+  - **Descending Darkness** (spell 1242666, 1 rank, passive, instant, aura secret in some situations)
+- Node 82671
+  - **Madness Weaving** (spell 1240394, 2 ranks, passive, instant, aura secret in some situations)
+- Node 82680
+  - **Angel's Mercy** (spell 238100, 1 rank, passive, instant, aura secret in some situations)
+- Node 82704
+  - **Purify Disease** (spell 213634, 1 rank, instant, base cooldown 8 s, aura secret in some situations)
+- Node 93170
+  - **Tormented Spirits** (spell 391284, 1 rank, passive, instant, aura secret in some situations)
+- Node 93171
+  - **Tentacle Slam** (spell 1227280, 1 rank, instant, 2 charges, aura secret in some situations)
+- Node 99800 · choice
+  - **?** (1 rank, picks hero tree 19)
+  - **?** (1 rank, picks hero tree 18)
+- Node 108006
+  - **Death's Torment** (spell 1240364, 1 rank, passive, instant, aura secret in some situations)
+- Node 108007
+  - **Mental Decay** (spell 375994, 1 rank, passive, instant, aura secret in some situations)
+- Node 108029
+  - **Shattered Psyche** (spell 391090, 1 rank, passive, instant, aura secret in some situations)
+- Node 108031
+  - **Dark Evangelism** (spell 391099, 1 rank, passive, instant, aura secret in some situations)
+- Node 108147
+  - **Voidtouched** (spell 407430, 1 rank, passive, instant, aura secret in some situations)
+- Node 108152
+  - **Instilled Doubt** (spell 1242862, 2 ranks, passive, instant, aura secret in some situations)
+- Node 108153
+  - **Mind Devourer** (spell 373202, 1 rank, passive, instant, aura secret in some situations)
+- Node 109017 · choice
+  - **Intangibility** (spell 288733, 1 rank, passive, instant, aura secret in some situations)
+  - **Mental Fortitude** (spell 377065, 1 rank, passive, instant, aura secret in some situations)
+- Node 109018
+  - **Shadowfiend** (spell 34433, 1 rank, passive, instant, aura secret in some situations)
+- Node 110408 · choice
+  - **Void Apparitions** (spell 1264096, 1 rank, passive, instant, aura secret in some situations)
+  - **Void Apparitions** (spell 1264104, 2 ranks, passive, instant, aura secret in some situations)
+  - **Void Apparitions** (spell 1264107, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Voidweaver (18)
+
+- Node 94668 · specs Discipline, Shadow
+  - **Devour Matter** (spell 451840, 1 rank, passive, instant, aura secret in some situations)
+- Node 94669 · specs Discipline, Shadow
+  - **Void Infusion** (spell 450612, 1 rank, passive, instant, aura secret in some situations)
+- Node 94670 · specs Discipline, Shadow
+  - **Inner Quietus** (spell 448278, 1 rank, passive, instant, aura secret in some situations)
+- Node 94684 · specs Shadow
+  - **Void Torrent** (spell 263165, 1 rank, instant, base cooldown 30 s, aura secret in some situations)
+- Node 94692 · specs Discipline, Shadow
+  - **Quickened Pulse** (spell 1266845, 1 rank, passive, instant, aura secret in some situations)
+- Node 94693 · choice · specs Discipline, Shadow
+  - **No Escape** (spell 451204, 1 rank, passive, instant, aura secret in some situations)
+  - **Dark Energy** (spell 451018, 1 rank, passive, instant, aura secret in some situations)
+- Node 94694 · specs Discipline, Shadow
+  - **Collapsing Void** (spell 448403, 1 rank, passive, instant, aura secret in some situations)
+- Node 94695 · choice · specs Discipline, Shadow
+  - **Void Empowerment** (spell 450138, 1 rank, passive, instant, aura secret in some situations)
+  - **Darkening Horizon** (spell 449912, 1 rank, passive, instant, aura secret in some situations)
+- Node 94696 · choice · specs Discipline, Shadow
+  - **Void Leech** (spell 451311, 1 rank, passive, instant, aura secret in some situations)
+  - **Embrace the Shadow** (spell 451569, 1 rank, passive, instant, aura secret in some situations)
+- Node 94703 · specs Discipline, Shadow
+  - **Void Blast** (spell 450405, 1 rank, passive, instant, aura secret in some situations)
+- Node 100212 · specs Discipline, Shadow
+  - **Voidwraith** (spell 451234, 1 rank, passive, instant, aura secret in some situations)
+- Node 109778 · specs Discipline, Shadow
+  - **Overwhelming Shadows** (spell 1266883, 1 rank, passive, instant, aura secret in some situations)
+- Node 109779 · specs Discipline, Shadow
+  - **Touch of the Void** (spell 1266856, 1 rank, passive, instant, aura secret in some situations)
+- Node 109780 · specs Discipline, Shadow
+  - **Voidheart** (spell 449880, 1 rank, passive, instant, aura secret in some situations)
+- Node 110008 · specs Discipline
+  - **Entropic Rift** (spell 447444, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Archon (19)
+
+- Node 94676 · specs Holy, Shadow
+  - **Resonant Energy** (spell 453845, 1 rank, passive, instant, aura secret in some situations)
+- Node 94677 · specs Holy, Shadow
+  - **Perfected Form** (spell 453917, 1 rank, passive, instant, aura secret in some situations)
+- Node 94678 · choice · specs Holy, Shadow
+  - **Energy Compression** (spell 449874, 1 rank, passive, instant, aura secret in some situations)
+  - **Sustained Potency** (spell 454001, 1 rank, passive, instant, aura secret in some situations)
+- Node 94680 · specs Holy, Shadow
+  - **Energy Conservation** (spell 1272308, 1 rank, passive, instant, aura secret in some situations)
+- Node 94681 · specs Holy, Shadow
+  - **Power Surge** (spell 453109, 1 rank, passive, instant, aura secret in some situations)
+- Node 94685 · specs Holy, Shadow
+  - **Energy Cycle** (spell 453828, 1 rank, passive, instant, aura secret in some situations)
+- Node 94686 · choice · specs Holy, Shadow
+  - **Shock Pulse** (spell 453852, 1 rank, passive, instant, aura secret in some situations)
+  - **Incessant Screams** (spell 453918, 1 rank, passive, instant, aura secret in some situations)
+- Node 94688 · specs Holy, Shadow
+  - **Empowered Surges** (spell 453799, 1 rank, passive, instant, aura secret in some situations)
+- Node 94697 · specs Shadow
+  - **Halo** (spell 120644, 1 rank, cast 1.1 s, base cooldown 60 s, aura secret in some situations)
+- Node 94699 · specs Holy, Shadow
+  - **Manifested Power** (spell 453783, 1 rank, passive, instant, aura secret in some situations)
+- Node 94702 · specs Holy, Shadow
+  - **Divine Halo** (spell 449806, 1 rank, passive, instant, aura secret in some situations)
+- Node 108724 · specs Holy
+  - **Halo** (spell 120517, 1 rank, cast 1.1 s, base cooldown 60 s, aura secret in some situations)
+- Node 109775 · choice · specs Holy, Shadow
+  - **Realized Potential** (spell 1272326, 1 rank, passive, instant, aura secret in some situations)
+  - **Spiritwell** (spell 1247178, 1 rank, passive, instant, aura secret in some situations)
+- Node 109776 · choice · specs Holy, Shadow
+  - **Word of Supremacy** (spell 453726, 1 rank, passive, instant, aura secret in some situations)
+  - **Heightened Alteration** (spell 453729, 1 rank, passive, instant, aura secret in some situations)
+- Node 109777 · specs Holy, Shadow
+  - **Focused Outburst** (spell 1272320, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Oracle (20)
+
+- Node 94673 · specs Discipline, Holy
+  - **Prompt Prognosis** (spell 1246799, 1 rank, passive, instant, aura secret in some situations)
+- Node 94674 · specs Discipline, Holy
+  - **Preemptive Care** (spell 440671, 1 rank, passive, instant, aura secret in some situations)
+- Node 94675 · choice · specs Discipline, Holy
+  - **Divine Feathers** (spell 440670, 1 rank, passive, instant, aura secret in some situations)
+  - **Save the Day** (spell 440669, 1 rank, passive, instant, aura secret in some situations)
+- Node 94679 · specs Discipline, Holy
+  - **Waste No Time** (spell 440681, 1 rank, passive, instant, aura secret in some situations)
+- Node 94683 · specs Discipline, Holy
+  - **Guiding Light** (spell 1248423, 1 rank, passive, instant, aura secret in some situations)
+- Node 94687 · specs Discipline, Holy
+  - **Twinsight** (spell 440742, 1 rank, passive, instant, aura secret in some situations)
+- Node 94689 · specs Discipline, Holy
+  - **Foreseen Circumstances** (spell 440738, 1 rank, passive, instant, aura secret in some situations)
+- Node 94690 · choice · specs Discipline, Holy
+  - **Prophet's Will** (spell 433905, 1 rank, passive, instant, aura secret in some situations)
+  - **Desperate Measures** (spell 458718, 1 rank, passive, instant, aura secret in some situations)
+- Node 94691 · specs Discipline, Holy
+  - **Assured Safety** (spell 440766, 1 rank, passive, instant, aura secret in some situations)
+- Node 94698 · specs Discipline, Holy
+  - **Preventive Measures** (spell 440662, 1 rank, passive, instant, aura secret in some situations)
+- Node 94700 · specs Discipline, Holy
+  - **Piety** (spell 1246802, 1 rank, passive, instant, aura secret in some situations)
+- Node 109781 · specs Discipline, Holy
+  - **Unfolding Vision** (spell 1272363, 1 rank, passive, instant, aura secret in some situations)
+- Node 109782 · specs Discipline, Holy
+  - **Words of the Wise** (spell 1272352, 1 rank, passive, instant, aura secret in some situations)
+- Node 109783 · specs Discipline, Holy
+  - **Prophet's Insight** (spell 1272359, 1 rank, passive, instant, aura secret in some situations)
+
+## Tier sets (Encounter Journal)
+
+- Sunfire Silk Trappings (set 1957, item level 197, spec Discipline): items 239657, 239659, 239658
+  - Bonus **Sunfire Trappings** (spell 1270977, instant, aura secret in some situations)
+- Arcanoweave Trappings (set 1958, item level 197, spec Discipline): items 239660, 239662, 239661
+  - Bonus **Arcanoweave Trappings** (spell 1241262, instant, aura secret in some situations)
+- Voidlight Bindings (set 1971, item level 108, spec Discipline): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Vestments (set 1974, item level 197, spec Discipline): items 255882, 255883, 255884, 255885, 255886, 255887, 255888, 255889
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Blind Oath's Burden (set 1986, item level 197, spec Discipline): items 250052, 250051, 250050, 250054, 250049
+  - Bonus **Priest Discipline 12.0 Class Set 2pc** (spell 1264850, instant, aura secret in some situations)
+  - Bonus **Priest Discipline 12.0 Class Set 4pc** (spell 1264851, instant, aura secret in some situations)
+- Warmonger's Weave (set 2050, item level 259, spec Discipline): items 270353, 270351, 270352, 270354, 270355, 270356, 270357, 270358
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Cosmic Penitent's Raiment (set 2063, item level 219, spec Discipline): items 271556, 271555, 271554, 271558, 271553
+  - Bonus **Priest Discipline 12.1 Class Set 2pc** (spell 1296577, instant, aura secret in some situations)
+  - Bonus **Priest Discipline 12.1 Class Set 4pc** (spell 1296578, instant, aura secret in some situations)
+- Sunfire Silk Trappings (set 1957, item level 197, spec Holy): items 239657, 239659, 239658
+  - Bonus **Sunfire Trappings** (spell 1270977, instant, aura secret in some situations)
+- Arcanoweave Trappings (set 1958, item level 197, spec Holy): items 239660, 239662, 239661
+  - Bonus **Arcanoweave Trappings** (spell 1241262, instant, aura secret in some situations)
+- Voidlight Bindings (set 1971, item level 108, spec Holy): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Vestments (set 1974, item level 197, spec Holy): items 255882, 255883, 255884, 255885, 255886, 255887, 255888, 255889
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Blind Oath's Burden (set 1986, item level 197, spec Holy): items 250052, 250051, 250050, 250054, 250049
+  - Bonus **Priest Holy 12.0 Class Set 2pc** (spell 1264852, instant, aura secret in some situations)
+  - Bonus **Priest Holy 12.0 Class Set 4pc** (spell 1264853, instant, aura secret in some situations)
+- Warmonger's Weave (set 2050, item level 259, spec Holy): items 270353, 270351, 270352, 270354, 270355, 270356, 270357, 270358
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Cosmic Penitent's Raiment (set 2063, item level 219, spec Holy): items 271556, 271555, 271554, 271558, 271553
+  - Bonus **Priest Holy 12.1 Class Set 2pc** (spell 1296575, instant, aura secret in some situations)
+  - Bonus **Priest Holy 12.1 Class Set 4pc** (spell 1296576, instant, aura secret in some situations)
+- Sunfire Silk Trappings (set 1957, item level 197, spec Shadow): items 239657, 239659, 239658
+  - Bonus **Sunfire Trappings** (spell 1270977, instant, aura secret in some situations)
+- Arcanoweave Trappings (set 1958, item level 197, spec Shadow): items 239660, 239662, 239661
+  - Bonus **Arcanoweave Trappings** (spell 1241262, instant, aura secret in some situations)
+- Voidlight Bindings (set 1971, item level 108, spec Shadow): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Vestments (set 1974, item level 197, spec Shadow): items 255882, 255883, 255884, 255885, 255886, 255887, 255888, 255889
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Blind Oath's Burden (set 1986, item level 197, spec Shadow): items 250052, 250051, 250050, 250054, 250049
+  - Bonus **Priest Shadow 12.0 Class Set 2pc** (spell 1264854, instant, aura secret in some situations)
+  - Bonus **Priest Shadow 12.0 Class Set 4pc** (spell 1264855, instant, aura secret in some situations)
+- Warmonger's Weave (set 2050, item level 259, spec Shadow): items 270353, 270351, 270352, 270354, 270355, 270356, 270357, 270358
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Cosmic Penitent's Raiment (set 2063, item level 219, spec Shadow): items 271556, 271555, 271554, 271558, 271553
+  - Bonus **Priest Shadow 12.1 Class Set 2pc** (spell 1296579, instant, aura secret in some situations)
+  - Bonus **Priest Shadow 12.1 Class Set 4pc** (spell 1296580, instant, aura secret in some situations)

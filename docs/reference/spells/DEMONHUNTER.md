@@ -1,0 +1,573 @@
+# Demon Hunter talents and spells
+
+Class token `DEMONHUNTER`. Specs: Devourer (1480), Havoc (577), Vengeance (581).
+
+
+## Class talents (all specs)
+
+- Node 90912
+  - **?** ()
+- Node 90927 · choice
+  - **Burn It Out** (spell 1266316, 1 rank, passive, instant, aura secret in some situations)
+  - **Soul Cleanse** (spell 1266496, 1 rank, passive, instant, aura secret in some situations)
+- Node 90928
+  - **Demon Muzzle** (spell 1266329, 1 rank, passive, instant, aura secret in some situations)
+- Node 90929
+  - **Remorseless** (spell 1266328, 1 rank, passive, instant, aura secret in some situations)
+- Node 90930
+  - **Vengeful Bonds** (spell 320635, 1 rank, passive, instant, aura secret in some situations)
+- Node 90931
+  - **Bouncing Glaives** (spell 320386, 1 rank, passive, instant, aura secret in some situations)
+- Node 90933
+  - **Aura of Pain** (spell 207347, 1 rank, passive, instant, aura secret in some situations)
+- Node 90934
+  - **Internal Struggle** (spell 393822, 1 rank, passive, instant, aura secret in some situations)
+- Node 90935
+  - **Illidari Knowledge** (spell 389696, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90936
+  - **Soul Rending** (spell 204909, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90937
+  - **Disrupting Fury** (spell 183782, 1 rank, passive, instant, aura secret in some situations)
+- Node 90938
+  - **Improved Disrupt** (spell 320361, 1 rank, passive, instant, aura secret in some situations)
+- Node 90939
+  - **Felfire Haste** (spell 389846, 1 rank, passive, instant, aura secret in some situations)
+- Node 90940
+  - **Pursuit** (spell 320654, 1 rank, passive, instant, aura secret in some situations)
+- Node 90941
+  - **Unrestrained Fury** (spell 320770, 1 rank, passive, instant, aura secret in some situations)
+- Node 90942
+  - **Vengeful Retreat** (spell 198793, 1 rank, instant, base cooldown 0.75 s, aura secret in some situations)
+- Node 90945
+  - **Improved Sigil of Misery** (spell 320418, 1 rank, passive, instant, aura secret in some situations)
+- Node 90946
+  - **Sigil of Misery** (spell 207684, 1 rank, instant, aura secret in some situations)
+- Node 90947
+  - **Lost in Darkness** (spell 389849, 1 rank, passive, instant, aura secret in some situations)
+- Node 90948
+  - **Charred Warblades** (spell 213010, 1 rank, passive, instant, aura secret in some situations)
+- Node 90949
+  - **Soul Splitter** (spell 1266330, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90950
+  - **Shattered Restoration** (spell 389824, 1 rank, passive, instant, aura secret in some situations)
+- Node 90994 · choice
+  - **Master of the Glaive** (spell 389763, 1 rank, passive, instant, aura secret in some situations)
+  - **Champion of the Glaive** (spell 429211, 1 rank, passive, instant, aura secret in some situations)
+- Node 90996
+  - **Erratic Felheart** (spell 391397, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90997
+  - **Demonic Resilience** (spell 1266307, 1 rank, passive, instant, aura secret in some situations)
+- Node 90999
+  - **Aldrachi Design** (spell 391409, 1 rank, passive, instant, aura secret in some situations)
+- Node 91000
+  - **Will of the Illidari** (spell 389695, 2 ranks, passive, instant, aura secret in some situations)
+- Node 91001 · choice
+  - **Long Night** (spell 389781, 1 rank, passive, instant, aura secret in some situations)
+  - **Pitch Black** (spell 389783, 1 rank, passive, instant, aura secret in some situations)
+- Node 91002
+  - **Darkness** (spell 196718, 1 rank, instant, base cooldown 300 s, aura secret in some situations)
+- Node 91004
+  - **Infernal Armor** (spell 320331, 2 ranks, passive, instant, aura secret in some situations)
+- Node 91005
+  - **Swallowed Anger** (spell 320313, 1 rank, passive, instant, aura secret in some situations)
+- Node 91006
+  - **Consume Magic** (spell 278326, 1 rank, instant, base cooldown 10 s, aura secret in some situations)
+- Node 91007
+  - **Imprison** (spell 217832, 1 rank, instant, base cooldown 45 s, aura secret in some situations)
+- Node 95149
+  - **First In, Last Out** (spell 1266497, 1 rank, passive, instant, aura secret in some situations)
+- Node 95150
+  - **Blazing Path** (spell 320416, 1 rank, passive, instant, aura secret in some situations)
+- Node 95151
+  - **Live by the Glaive** (spell 428607, 1 rank, passive, instant, aura secret in some situations)
+- Node 95152
+  - **Furious** (spell 1266326, 1 rank, passive, instant, aura secret in some situations)
+- Node 95154
+  - **Focused Ire** (spell 1266296, 1 rank, passive, instant, aura secret in some situations)
+- Node 110010
+  - **Wings of Wrath** (spell 1266493, 1 rank, passive, instant, aura secret in some situations)
+- Node 110011
+  - **Final Breath** (spell 1266500, 1 rank, passive, instant, aura secret in some situations)
+
+## Havoc talents (spec 577)
+
+- Node 90914
+  - **Scars of Suffering** (spell 428232, 1 rank, passive, instant, aura secret in some situations)
+- Node 90915
+  - **Trail of Ruin** (spell 258881, 1 rank, passive, instant, aura secret in some situations)
+- Node 90916
+  - **Growing Inferno** (spell 390158, 1 rank, passive, instant, aura secret in some situations)
+- Node 90917
+  - **Burning Wound** (spell 391189, 1 rank, passive, instant, aura secret in some situations)
+- Node 90918
+  - **Ragefire** (spell 388107, 1 rank, passive, instant, aura secret in some situations)
+- Node 90919
+  - **Screaming Brutality** (spell 1220506, 1 rank, passive, instant, aura secret in some situations)
+- Node 90921
+  - **The Hunt** (spell 370965, 1 rank, cast 0.76 s, base cooldown 90 s, aura secret in some situations)
+- Node 90922
+  - **Demonic** (spell 213410, 1 rank, passive, instant, aura secret in some situations)
+- Node 90923
+  - **Burning Hatred** (spell 320374, 1 rank, passive, instant, aura secret in some situations)
+- Node 90925
+  - **First Blood** (spell 206416, 1 rank, passive, instant, aura secret in some situations)
+- Node 90993
+  - **Chaos Nova** (spell 179057, 1 rank, instant, base cooldown 45 s, aura secret in some situations)
+- Node 91003
+  - **Felbound** (spell 1266762, 1 rank, passive, instant, aura secret in some situations)
+- Node 91008
+  - **Felblade** (spell 232893, 1 rank, instant, base cooldown 12 s, aura secret in some situations)
+- Node 91011
+  - **Accelerated Blade** (spell 391275, 1 rank, passive, instant, aura secret in some situations)
+- Node 91012 · choice
+  - **Relentless Onslaught** (spell 389977, 1 rank, passive, instant, aura secret in some situations)
+  - **Soulscar** (spell 388106, 1 rank, passive, instant, aura secret in some situations)
+- Node 91013
+  - **Serrated Glaive** (spell 390154, 1 rank, passive, instant, aura secret in some situations)
+- Node 91015
+  - **Dancing with Fate** (spell 389978, 2 ranks, passive, instant, aura secret in some situations)
+- Node 91017
+  - **Demon Hide** (spell 428241, 1 rank, passive, instant, aura secret in some situations)
+- Node 91018
+  - **Eye Beam** (spell 198013, 1 rank, instant, base cooldown 30 s, aura secret in some situations)
+- Node 91020
+  - **Unbound Chaos** (spell 347461, 1 rank, passive, instant, aura secret in some situations)
+- Node 91021 · choice
+  - **Exergy** (spell 206476, 1 rank, passive, instant, aura secret in some situations)
+  - **Inertia** (spell 427640, 1 rank, passive, instant, aura secret in some situations)
+- Node 91022
+  - **Tactical Retreat** (spell 389688, 1 rank, passive, instant, aura secret in some situations)
+- Node 91024
+  - **Chaotic Transformation** (spell 388112, 1 rank, passive, instant, aura secret in some situations)
+- Node 91025
+  - **Furious Gaze** (spell 343311, 1 rank, passive, instant, aura secret in some situations)
+- Node 91026
+  - **Blind Fury** (spell 203550, 2 ranks, passive, instant, aura secret in some situations)
+- Node 91027
+  - **Initiative** (spell 388108, 1 rank, passive, instant, aura secret in some situations)
+- Node 91028
+  - **Critical Chaos** (spell 320413, 1 rank, passive, instant, aura secret in some situations)
+- Node 91030
+  - **Improved Chaos Strike** (spell 343206, 1 rank, passive, instant, aura secret in some situations)
+- Node 91031 · choice
+  - **Shattered Destiny** (spell 388116, 1 rank, passive, instant, aura secret in some situations)
+  - **Collective Anguish** (spell 390152, 1 rank, passive, instant, aura secret in some situations)
+- Node 91032
+  - **Cycle of Hatred** (spell 258887, 1 rank, passive, instant, aura secret in some situations)
+- Node 91033
+  - **Essence Break** (spell 258860, 1 rank, instant, base cooldown 40 s, aura secret in some situations)
+- Node 91034
+  - **Know Your Enemy** (spell 388118, 2 ranks, passive, instant, aura secret in some situations)
+- Node 91035 · choice
+  - **Chaos Theory** (spell 389687, 1 rank, passive, instant, aura secret in some situations)
+  - **Inner Demon** (spell 389693, 1 rank, passive, instant, aura secret in some situations)
+- Node 91036
+  - **Isolated Prey** (spell 388113, 1 rank, passive, instant, aura secret in some situations)
+- Node 93013
+  - **Furious Throws** (spell 393029, 1 rank, passive, instant, aura secret in some situations)
+- Node 93014
+  - **Never Say Die** (spell 427794, 1 rank, passive, instant, aura secret in some situations)
+- Node 93015 · choice
+  - **Deflecting Dance** (spell 427776, 1 rank, passive, instant, aura secret in some situations)
+  - **Mortal Dance** (spell 328725, 1 rank, passive, instant, aura secret in some situations)
+- Node 93016
+  - **Desperate Instincts** (spell 205411, 1 rank, passive, instant, aura secret in some situations)
+- Node 95143
+  - **A Fire Inside** (spell 427775, 1 rank, passive, instant, aura secret in some situations)
+- Node 95147
+  - **Chaotic Disposition** (spell 428492, 2 ranks, passive, instant, aura secret in some situations)
+- Node 99824 · choice
+  - **?** (1 rank, picks hero tree 35)
+  - **?** (1 rank, picks hero tree 34)
+- Node 108669
+  - **Glaive Tempest** (spell 1244557, 1 rank, passive, instant, aura secret in some situations)
+- Node 110427 · choice
+  - **Eternal Hunt** (spell 1270898, 1 rank, passive, instant, aura secret in some situations)
+  - **Eternal Hunt** (spell 1270900, 2 ranks, passive, instant, aura secret in some situations)
+  - **Eternal Hunt** (spell 1270901, 1 rank, passive, instant, aura secret in some situations)
+
+## Vengeance talents (spec 581)
+
+- Node 90951
+  - **Fiery Brand** (spell 204021, 1 rank, instant, 2 charges, aura secret in some situations)
+- Node 90952
+  - **Retaliation** (spell 389729, 1 rank, passive, instant, aura secret in some situations)
+- Node 90953
+  - **Felfire Fist** (spell 389724, 1 rank, passive, instant, aura secret in some situations)
+- Node 90954
+  - **Roaring Fire** (spell 391178, 1 rank, passive, instant, aura secret in some situations)
+- Node 90955
+  - **Fel Flame Fortification** (spell 389705, 1 rank, passive, instant, aura secret in some situations)
+- Node 90956 · choice
+  - **Soul Barrier** (spell 1265924, 1 rank, passive, instant, aura secret in some situations)
+  - **Soul Sigils** (spell 395446, 1 rank, passive, instant, aura secret in some situations)
+- Node 90957
+  - **Revel in Pain** (spell 343014, 1 rank, passive, instant, aura secret in some situations)
+- Node 90958
+  - **Fiery Demise** (spell 389220, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90959
+  - **Burning Alive** (spell 207739, 1 rank, passive, instant, aura secret in some situations)
+- Node 90960
+  - **Ascending Flame** (spell 428603, 1 rank, passive, instant, aura secret in some situations)
+- Node 90961
+  - **Down in Flames** (spell 389732, 1 rank, passive, instant, aura secret in some situations)
+- Node 90962
+  - **Charred Flesh** (spell 336639, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90963
+  - **Cycle of Binding** (spell 389718, 1 rank, passive, instant, aura secret in some situations)
+- Node 90964
+  - **Chains of Anger** (spell 389715, 1 rank, passive, instant, aura secret in some situations)
+- Node 90965
+  - **Ruinous Bulwark** (spell 326853, 1 rank, passive, instant, aura secret in some situations)
+- Node 90966
+  - **Sigil of Silence** (spell 202137, 1 rank, instant, aura secret in some situations)
+- Node 90967
+  - **Calcified Spikes** (spell 389720, 1 rank, passive, instant, aura secret in some situations)
+- Node 90968
+  - **Tempered Steel** (spell 1265800, 1 rank, passive, instant, aura secret in some situations)
+- Node 90969
+  - **Feast of Souls** (spell 207697, 1 rank, passive, instant, aura secret in some situations)
+- Node 90970
+  - **Perfectly Balanced Glaive** (spell 320387, 1 rank, passive, instant, aura secret in some situations)
+- Node 90971
+  - **Agonizing Flames** (spell 207548, 1 rank, passive, instant, aura secret in some situations)
+- Node 90972
+  - **Fallout** (spell 227174, 1 rank, passive, instant, aura secret in some situations)
+- Node 90973
+  - **Soulmonger** (spell 389711, 1 rank, passive, instant, aura secret in some situations)
+- Node 90974
+  - **Void Reaver** (spell 268175, 1 rank, passive, instant, aura secret in some situations)
+- Node 90975
+  - **Focused Cleave** (spell 343207, 1 rank, passive, instant, aura secret in some situations)
+- Node 90976
+  - **Painbringer** (spell 207387, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90977
+  - **Frailty** (spell 389958, 1 rank, passive, instant, aura secret in some situations)
+- Node 90978
+  - **Sigil of Spite** (spell 390163, 1 rank, instant, aura secret in some situations)
+- Node 90979
+  - **Last Resort** (spell 209258, 1 rank, passive, instant, aura secret in some situations)
+- Node 90980
+  - **Soulcrush** (spell 389985, 1 rank, passive, instant, aura secret in some situations)
+- Node 90981
+  - **Vulnerability** (spell 389976, 2 ranks, passive, instant, aura secret in some situations)
+- Node 90982
+  - **Soul Carver** (spell 207407, 1 rank, instant, base cooldown 60 s, aura secret in some situations)
+- Node 90983
+  - **Vengeful Beast** (spell 1265818, 1 rank, passive, instant, aura secret in some situations)
+- Node 90984
+  - **Stoke the Flames** (spell 393827, 1 rank, passive, instant, aura secret in some situations)
+- Node 90985
+  - **Darkglare Boon** (spell 389708, 1 rank, passive, instant, aura secret in some situations)
+- Node 90986
+  - **Volatile Flameblood** (spell 390808, 1 rank, passive, instant, aura secret in some situations)
+- Node 90987
+  - **Burning Blood** (spell 390213, 1 rank, passive, instant, aura secret in some situations)
+- Node 90988
+  - **Feed the Demon** (spell 218612, 1 rank, passive, instant, aura secret in some situations)
+- Node 90989
+  - **Quickened Sigils** (spell 209281, 1 rank, passive, instant, aura secret in some situations)
+- Node 90990
+  - **Spirit Bomb** (spell 247454, 1 rank, instant, base cooldown 25 s, aura secret in some situations)
+- Node 90991
+  - **Fel Devastation** (spell 212084, 1 rank, instant, base cooldown 40 s, aura secret in some situations)
+- Node 99823 · choice
+  - **?** (1 rank, picks hero tree 35)
+  - **?** (1 rank, picks hero tree 124)
+- Node 108722
+  - **Felblade** (spell 232893, 1 rank, instant, base cooldown 12 s, aura secret in some situations)
+- Node 108728
+  - **Felbound** (spell 1266762, 1 rank, passive, instant, aura secret in some situations)
+- Node 108729
+  - **Chaos Nova** (spell 179057, 1 rank, instant, base cooldown 45 s, aura secret in some situations)
+- Node 110425 · choice
+  - **Untethered Rage** (spell 1270444, 1 rank, passive, instant, aura secret in some situations)
+  - **Untethered Rage** (spell 1270448, 2 ranks, passive, instant, aura secret in some situations)
+  - **Untethered Rage** (spell 1270449, 1 rank, passive, instant, aura secret in some situations)
+
+## Devourer talents (spec 1480)
+
+- Node 107336
+  - **Void Ray** (spell 473728, 1 rank, instant, aura secret in some situations)
+- Node 107338
+  - **Sweet Suffering** (spell 1244295, 2 ranks, passive, instant, aura secret in some situations)
+- Node 107339
+  - **Collapsing Star** (spell 1221167, 1 rank, passive, instant, aura secret in some situations)
+- Node 107340
+  - **Void Metamorphosis** (spell 471306, 1 rank, passive, instant, aura secret in some situations)
+- Node 107341
+  - **Impending Apocalypse** (spell 1227707, 1 rank, passive, instant, aura secret in some situations)
+- Node 107342
+  - **Soulshaper** (spell 1238739, 1 rank, passive, instant, aura secret in some situations)
+- Node 107343
+  - **Feast of Souls** (spell 1237270, 1 rank, passive, instant, aura secret in some situations)
+- Node 107344
+  - **Soul Immolation** (spell 1241937, 1 rank, instant, aura secret in some situations)
+- Node 107345
+  - **Eradicate** (spell 1226033, 1 rank, passive, instant, aura secret in some situations)
+- Node 107346
+  - **Guile** (spell 1223171, 1 rank, passive, instant, aura secret in some situations)
+- Node 107347
+  - **Void Nova** (spell 1234195, 1 rank, instant, base cooldown 45 s, aura secret in some situations)
+- Node 107770
+  - **Moment of Craving** (spell 1238488, 1 rank, passive, instant, aura secret in some situations)
+- Node 107771
+  - **Predator's Thirst** (spell 1215617, 1 rank, passive, instant, aura secret in some situations)
+- Node 107774
+  - **Focused Ray** (spell 1240203, 1 rank, passive, instant, aura secret in some situations)
+- Node 107775
+  - **Gift of the Void** (spell 1272847, 1 rank, passive, instant, aura secret in some situations)
+- Node 107997
+  - **Umbral Blade** (spell 1272842, 1 rank, passive, instant, aura secret in some situations)
+- Node 107999
+  - **Waste Not** (spell 1223918, 1 rank, passive, instant, aura secret in some situations)
+- Node 108122
+  - **Entropy** (spell 1261684, 1 rank, passive, instant, aura secret in some situations)
+- Node 108123 · choice
+  - **Emptiness** (spell 1242492, 1 rank, passive, instant, aura secret in some situations)
+  - **Soul Glutton** (spell 1247534, 1 rank, passive, instant, aura secret in some situations)
+- Node 108136
+  - **Hungering Slash** (spell 1239519, 1 rank, passive, instant, aura secret in some situations)
+- Node 108143
+  - **Devourer's Edge** (spell 1244222, 2 ranks, passive, instant, aura secret in some situations)
+- Node 108144
+  - **Improved Consume** (spell 1272817, 1 rank, passive, instant, aura secret in some situations)
+- Node 108627
+  - **Singed Spirit** (spell 1272832, 1 rank, passive, instant, aura secret in some situations)
+- Node 108628
+  - **Sweet Release** (spell 1242768, 2 ranks, passive, instant, aura secret in some situations)
+- Node 108704 · choice
+  - **?** (1 rank, picks hero tree 124)
+  - **?** (1 rank, picks hero tree 126)
+- Node 108723
+  - **Voidblade** (spell 1245412, 1 rank, instant, aura secret in some situations)
+- Node 108726 · choice
+  - **Scythe's Embrace** (spell 1246558, 1 rank, passive, instant, aura secret in some situations)
+  - **Duty Eternal** (spell 1246562, 1 rank, passive, instant, aura secret in some situations)
+- Node 108727 · choice
+  - **Tempered Soul** (spell 1246555, 1 rank, passive, instant, aura secret in some situations)
+  - **Spontaneous Immolation** (spell 1246556, 1 rank, passive, instant, aura secret in some situations)
+- Node 109503
+  - **The Hunt** (spell 1246167, 1 rank, cast 0.76 s, base cooldown 90 s, aura secret in some situations)
+- Node 109871
+  - **Voidrage** (spell 1242956, 2 ranks, passive, instant, aura secret in some situations)
+- Node 110009
+  - **Second Helping** (spell 1239537, 1 rank, passive, instant, aura secret in some situations)
+- Node 110165
+  - **Demonic Instinct** (spell 1247538, 2 ranks, passive, instant, aura secret in some situations)
+- Node 110166
+  - **Calamitous** (spell 1242495, 1 rank, passive, instant, aura secret in some situations)
+- Node 110167
+  - **Devourer's Bite** (spell 1240201, 1 rank, passive, instant, aura secret in some situations)
+- Node 110168
+  - **Rolling Torment** (spell 1244237, 1 rank, passive, instant, aura secret in some situations)
+- Node 110169
+  - **Voidglare Boon** (spell 1240202, 1 rank, passive, instant, aura secret in some situations)
+- Node 110170
+  - **Singular Strikes** (spell 1272770, 1 rank, passive, instant, aura secret in some situations)
+- Node 110171
+  - **Soulforged Blades** (spell 1272432, 1 rank, passive, instant, aura secret in some situations)
+- Node 110172
+  - **Star Fragments** (spell 1240204, 1 rank, passive, instant, aura secret in some situations)
+- Node 110173
+  - **Voidrush** (spell 1272422, 1 rank, passive, instant, aura secret in some situations)
+- Node 110174
+  - **Voidpurge** (spell 1244220, 1 rank, passive, instant, aura secret in some situations)
+- Node 110416 · choice
+  - **Midnight** (spell 1242486, 1 rank, passive, instant, aura secret in some situations)
+  - **Midnight** (spell 1250088, 2 ranks, passive, instant, aura secret in some situations)
+  - **Midnight** (spell 1250094, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Fel-Scarred (34)
+
+- Node 94899 · choice · specs Havoc
+  - **Set Fire to the Pain** (spell 452406, 1 rank, passive, instant, aura secret in some situations)
+  - **Improved Soul Rending** (spell 452407, 1 rank, passive, instant, aura secret in some situations)
+- Node 94901 · specs Havoc
+  - **Demonic Intensity** (spell 452415, 1 rank, passive, instant, aura secret in some situations)
+- Node 94902 · choice · specs Havoc
+  - **Student of Suffering** (spell 452412, 1 rank, passive, instant, aura secret in some situations)
+  - **Flamebound** (spell 452413, 1 rank, passive, instant, aura secret in some situations)
+- Node 94904 · specs Havoc
+  - **Untethered Fury** (spell 452411, 1 rank, passive, instant, aura secret in some situations)
+- Node 94905 · specs Havoc
+  - **Burning Blades** (spell 452408, 1 rank, passive, instant, aura secret in some situations)
+- Node 94909 · specs Havoc
+  - **Monster Rising** (spell 452414, 1 rank, passive, instant, aura secret in some situations)
+- Node 94912 · specs Havoc
+  - **Violent Transformation** (spell 452409, 1 rank, passive, instant, aura secret in some situations)
+- Node 94913 · choice · specs Havoc
+  - **Wave of Debilitation** (spell 452403, 1 rank, passive, instant, aura secret in some situations)
+  - **Pursuit of Angriness** (spell 452404, 1 rank, passive, instant, aura secret in some situations)
+- Node 94916 · specs Havoc
+  - **Enduring Torment** (spell 452410, 1 rank, passive, instant, aura secret in some situations)
+- Node 94917 · specs Havoc
+  - **Demonsurge** (spell 452402, 1 rank, passive, instant, aura secret in some situations)
+- Node 94918 · specs Havoc
+  - **Focused Hatred** (spell 452405, 1 rank, passive, instant, aura secret in some situations)
+- Node 109772 · specs Havoc
+  - **Volatile Instinct** (spell 1272453, 1 rank, passive, instant, aura secret in some situations)
+- Node 109773 · specs Havoc
+  - **Blind Focus** (spell 1272364, 1 rank, passive, instant, aura secret in some situations)
+- Node 109774 · specs Havoc
+  - **Undying Embers** (spell 1272405, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Aldrachi Reaver (35)
+
+- Node 94895 · specs Havoc, Vengeance
+  - **Incisive Blade** (spell 442492, 1 rank, passive, instant, aura secret in some situations)
+- Node 94896 · choice · specs Havoc, Vengeance
+  - **Army Unto Oneself** (spell 442714, 1 rank, passive, instant, aura secret in some situations)
+  - **Incorruptible Spirit** (spell 442736, 1 rank, passive, instant, aura secret in some situations)
+- Node 94897 · specs Havoc, Vengeance
+  - **Wounded Quarry** (spell 442806, 1 rank, passive, instant, aura secret in some situations)
+- Node 94898 · specs Havoc, Vengeance
+  - **Fury of the Aldrachi** (spell 442718, 1 rank, passive, instant, aura secret in some situations)
+- Node 94903 · specs Havoc, Vengeance
+  - **Reaver's Mark** (spell 442679, 1 rank, passive, instant, aura secret in some situations)
+- Node 94906 · specs Havoc, Vengeance
+  - **Bladecraft** (spell 1272153, 1 rank, passive, instant, aura secret in some situations)
+- Node 94910 · choice · specs Havoc, Vengeance
+  - **Keen Engagement** (spell 442497, 1 rank, passive, instant, aura secret in some situations)
+  - **Preemptive Strike** (spell 444997, 1 rank, passive, instant, aura secret in some situations)
+- Node 94911 · choice · specs Havoc, Vengeance
+  - **Evasive Action** (spell 444926, 1 rank, passive, instant, aura secret in some situations)
+  - **Unhindered Assault** (spell 444931, 1 rank, passive, instant, aura secret in some situations)
+- Node 94914 · specs Havoc, Vengeance
+  - **Aldrachi Tactics** (spell 442683, 1 rank, passive, instant, aura secret in some situations)
+- Node 94915 · specs Havoc, Vengeance
+  - **Art of the Glaive** (spell 442290, 1 rank, passive, instant, aura secret in some situations)
+- Node 94919 · specs Havoc, Vengeance
+  - **Thrill of the Fight** (spell 442686, 1 rank, passive, instant, aura secret in some situations)
+- Node 109769 · specs Havoc, Vengeance
+  - **Warblade's Hunger** (spell 442502, 1 rank, passive, instant, aura secret in some situations)
+- Node 109770 · specs Havoc, Vengeance
+  - **Keen Edge** (spell 1272138, 1 rank, passive, instant, aura secret in some situations)
+- Node 109771 · specs Havoc, Vengeance
+  - **Broken Spirit** (spell 1272143, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Annihilator (124)
+
+- Node 109442 · specs Vengeance, Devourer
+  - **World Killer** (spell 1256353, 1 rank, passive, instant, aura secret in some situations)
+- Node 109443 · specs Vengeance, Devourer
+  - **Otherworldly Focus** (spell 1253817, 1 rank, passive, instant, aura secret in some situations)
+- Node 109444 · specs Vengeance, Devourer
+  - **Dark Matter** (spell 1256307, 1 rank, passive, instant, aura secret in some situations)
+- Node 109445 · specs Vengeance, Devourer
+  - **Final Hour** (spell 1253805, 1 rank, passive, instant, aura secret in some situations)
+- Node 109446 · specs Vengeance, Devourer
+  - **Meteoric Fall** (spell 1253391, 1 rank, passive, instant, aura secret in some situations)
+- Node 109447 · specs Vengeance, Devourer
+  - **Mass Acceleration** (spell 1256295, 1 rank, passive, instant, aura secret in some situations)
+- Node 109448 · choice · specs Vengeance, Devourer
+  - **Path to Oblivion** (spell 1253399, 1 rank, passive, instant, aura secret in some situations)
+  - **State of Matter** (spell 1253402, 1 rank, passive, instant, aura secret in some situations)
+- Node 109449 · specs Vengeance, Devourer
+  - **Voidfall** (spell 1253304, 1 rank, passive, instant, aura secret in some situations)
+- Node 109450 · choice · specs Vengeance, Devourer
+  - **Doomsayer** (spell 1253676, 1 rank, passive, instant, aura secret in some situations)
+  - **Harness the Cosmos** (spell 1279247, 1 rank, passive, instant, aura secret in some situations)
+- Node 109451 · specs Vengeance, Devourer
+  - **Celestial Echoes** (spell 1253415, 1 rank, passive, instant, aura secret in some situations)
+- Node 109452 · specs Vengeance, Devourer
+  - **Phase Shift** (spell 1256245, 1 rank, passive, instant, aura secret in some situations)
+- Node 109453 · specs Vengeance, Devourer
+  - **Catastrophe** (spell 1253769, 1 rank, passive, instant, aura secret in some situations)
+- Node 109454 · specs Vengeance, Devourer
+  - **Swift Erasure** (spell 1253668, 1 rank, passive, instant, aura secret in some situations)
+- Node 109455 · specs Vengeance, Devourer
+  - **Meteoric Rise** (spell 1253377, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Void-Scarred (126)
+
+- Node 110104 · specs Devourer
+  - **Monster Rising** (spell 452414, 1 rank, passive, instant, aura secret in some situations)
+- Node 110105 · specs Devourer
+  - **Blind Focus** (spell 1272364, 1 rank, passive, instant, aura secret in some situations)
+- Node 110106 · specs Devourer
+  - **Enduring Torment** (spell 452410, 1 rank, passive, instant, aura secret in some situations)
+- Node 110107 · choice · specs Devourer
+  - **Student of Suffering** (spell 452412, 1 rank, passive, instant, aura secret in some situations)
+  - **Flamebound** (spell 452413, 1 rank, passive, instant, aura secret in some situations)
+- Node 110108 · specs Devourer
+  - **Undying Embers** (spell 1272405, 1 rank, passive, instant, aura secret in some situations)
+- Node 110109 · specs Devourer
+  - **Untethered Fury** (spell 452411, 1 rank, passive, instant, aura secret in some situations)
+- Node 110110 · specs Devourer
+  - **Volatile Instinct** (spell 1272453, 1 rank, passive, instant, aura secret in some situations)
+- Node 110111 · specs Devourer
+  - **Burning Blades** (spell 452408, 1 rank, passive, instant, aura secret in some situations)
+- Node 110112 · specs Devourer
+  - **Demonsurge** (spell 452402, 1 rank, passive, instant, aura secret in some situations)
+- Node 110113 · specs Devourer
+  - **Focused Hatred** (spell 452405, 1 rank, passive, instant, aura secret in some situations)
+- Node 110114 · choice · specs Devourer
+  - **Wave of Debilitation** (spell 452403, 1 rank, passive, instant, aura secret in some situations)
+  - **Pursuit of Angriness** (spell 452404, 1 rank, passive, instant, aura secret in some situations)
+- Node 110115 · specs Devourer
+  - **Violent Transformation** (spell 452409, 1 rank, passive, instant, aura secret in some situations)
+- Node 110116 · specs Devourer
+  - **Demonic Intensity** (spell 452415, 1 rank, passive, instant, aura secret in some situations)
+- Node 110117 · choice · specs Devourer
+  - **Set Fire to the Pain** (spell 452406, 1 rank, passive, instant, aura secret in some situations)
+  - **Improved Soul Rending** (spell 452407, 1 rank, passive, instant, aura secret in some situations)
+
+## Tier sets (Encounter Journal)
+
+- Murder Row Materials (set 1966, item level 197, spec Havoc): items 244613, 244614, 244612
+  - Bonus **Murder Row Materials** (spell 1244005, instant, aura secret in some situations)
+- Torment's Duality (set 1970, item level 197, spec Havoc): items 251884, 251885
+  - Bonus **Torment's Duality** (spell 1253358, instant, aura secret in some situations)
+- Voidlight Bindings (set 1971, item level 108, spec Havoc): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Armor (set 1975, item level 197, spec Havoc): items 255890, 255891, 255892, 255893, 255894, 255895, 255896, 255897
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Devouring Reaver's Sheathe (set 1979, item level 197, spec Havoc): items 250036, 250034, 250033, 250032, 250031
+  - Bonus **Demon Hunter Havoc 12.0 Class Set 2pc** (spell 1264805, instant, aura secret in some situations)
+  - Bonus **Demon Hunter Havoc 12.0 Class Set 4pc** (spell 1264807, instant, aura secret in some situations)
+- Warmonger's Wraps (set 2051, item level 259, spec Havoc): items 270359, 270360, 270361, 270362, 270363, 270364, 270365, 270366
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Abyssal Doomhound's Pursuit (set 2056, item level 219, spec Havoc): items 271540, 271538, 271537, 271536, 271535
+  - Bonus **Demon Hunter Havoc 12.1 Class Set 2pc** (spell 1296611, instant, aura secret in some situations)
+  - Bonus **Demon Hunter Havoc 12.1 Class Set 4pc** (spell 1296612, instant, aura secret in some situations)
+- Bite of Zul'jan (set 2070, item level 219, spec Havoc): items 270173, 268209, 268213
+  - Bonus **Bite of Zul'jan** (spell 1291726, instant, aura secret in some situations)
+- Murder Row Materials (set 1966, item level 197, spec Vengeance): items 244613, 244614, 244612
+  - Bonus **Murder Row Materials** (spell 1244005, instant, aura secret in some situations)
+- Torment's Duality (set 1970, item level 197, spec Vengeance): items 251884, 251885
+  - Bonus **Torment's Duality** (spell 1253358, instant, aura secret in some situations)
+- Voidlight Bindings (set 1971, item level 108, spec Vengeance): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Armor (set 1975, item level 197, spec Vengeance): items 255890, 255891, 255892, 255893, 255894, 255895, 255896, 255897
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Devouring Reaver's Sheathe (set 1979, item level 197, spec Vengeance): items 250036, 250034, 250033, 250032, 250031
+  - Bonus **Demon Hunter Vengeance 12.0 Class Set 2pc** (spell 1264808, instant, aura secret in some situations)
+  - Bonus **Demon Hunter Vengeance 12.0 Class Set 4pc** (spell 1264809, instant, aura secret in some situations)
+- Warmonger's Wraps (set 2051, item level 259, spec Vengeance): items 270359, 270360, 270361, 270362, 270363, 270364, 270365, 270366
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Abyssal Doomhound's Pursuit (set 2056, item level 219, spec Vengeance): items 271540, 271538, 271537, 271536, 271535
+  - Bonus **Demon Hunter Vengeance 12.1 Class Set 2pc** (spell 1296613, instant, aura secret in some situations)
+  - Bonus **Demon Hunter Vengeance 12.1 Class Set 4pc** (spell 1296614, instant, aura secret in some situations)
+- Bite of Zul'jan (set 2070, item level 219, spec Vengeance): items 270173, 268209, 268213
+  - Bonus **Bite of Zul'jan** (spell 1291726, instant, aura secret in some situations)
+- Murder Row Materials (set 1966, item level 197, spec Devourer): items 244613, 244614, 244612
+  - Bonus **Murder Row Materials** (spell 1244005, instant, aura secret in some situations)
+- Voidlight Bindings (set 1971, item level 108, spec Devourer): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Armor (set 1975, item level 197, spec Devourer): items 255890, 255891, 255892, 255893, 255894, 255895, 255896, 255897
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Devouring Reaver's Sheathe (set 1979, item level 197, spec Devourer): items 250036, 250034, 250033, 250032, 250031
+  - Bonus **Demon Hunter Devourer 12.0 Class Set 2pc** (spell 1264881, instant, aura secret in some situations)
+  - Bonus **Demon Hunter Devourer 12.0 Class Set 4pc** (spell 1264882, instant, aura secret in some situations)
+- Warmonger's Wraps (set 2051, item level 259, spec Devourer): items 270359, 270360, 270361, 270362, 270363, 270364, 270365, 270366
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Abyssal Doomhound's Pursuit (set 2056, item level 219, spec Devourer): items 271540, 271538, 271537, 271536, 271535
+  - Bonus **Demon Hunter Devourer 12.1 Class Set 2pc** (spell 1296615, instant, aura secret in some situations)
+  - Bonus **Demon Hunter Devourer 12.1 Class Set 4pc** (spell 1296616, instant, aura secret in some situations)
