@@ -2136,7 +2136,14 @@ local function BuildRule(i, rule)
                 set = function(_, v) rule.gameSound.alsoXayaUI = v and true or nil; ns.MarkDirty() end },
             gameSoundStatus = { type = "description", order = 15, width = "full", fontSize = "small",
                 hidden = function() return not (type(rule.gameSound) == "table" and rule.gameSound.enabled) end,
-                name = function() local ok, s = pcall(ns.AuraSound.StatusLine, rule); return ok and s or "" end },
+                name = function()
+                    -- Insivius 2026-11-04: "attempt to index field 'AuraSound' (a nil value)" here broke the whole cue pane. AuraSound.lua
+                    -- is part of XayaUI core (0.6.13+); a core folder without it (older, or copied without a game restart) must not break this.
+                    if not (ns.AuraSound and ns.AuraSound.StatusLine) then
+                        return "|cffff6060The game-played sound needs XayaUI core 0.6.13 or newer. Copy every XayaUI folder again, then restart the game (a /reload does not load new files).|r"
+                    end
+                    local ok, s = pcall(ns.AuraSound.StatusLine, rule); return ok and s or ""
+                end },
         },
     }
 
@@ -6740,7 +6747,7 @@ function SX.Start(kind)
         SX.II.max = SX.II_MAX
         local ids = {}
         for _, sp in ipairs(ns.BuildSpellList() or {}) do if sp.id then ids[#ids + 1] = sp.id end end
-        pcall(ns.AuraSources.Start, SX.II, ids)
+        if ns.AuraSources and ns.AuraSources.Start then pcall(ns.AuraSources.Start, SX.II, ids) end   -- core module (AuraSources.lua)
     end
 end
 function SX.OwnedItems()

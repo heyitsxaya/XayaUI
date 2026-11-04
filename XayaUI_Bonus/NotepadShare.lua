@@ -233,7 +233,8 @@ function ns.NotepadShare_Send(text, channel, target, withText)
 
     if withText or true then   -- the header line always goes out (it tells everyone what is happening); the text lines are the option
         for _, line in ipairs(ns.NotepadShare_ChatLines(text, withText)) do
-            local ok, sent = pcall(ns.Compat.SendChatMessage, line, channel, nil, target)
+            local ok, sent = false, nil
+            if ns.Compat and ns.Compat.SendChatMessage then ok, sent = pcall(ns.Compat.SendChatMessage, line, channel, nil, target) end   -- core module (Compat.lua)
             if not (ok and sent) then Say("The chat line could not be posted (chat may be locked); the note itself is still being sent."); break end
         end
     end

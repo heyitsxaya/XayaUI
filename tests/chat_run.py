@@ -70,7 +70,7 @@ check("tab row back: history button back at the row's end", inside(hb, tabsA) an
 # ---- tabs laid out again for the width they get (Xaya 2026-11-04: "user-created chat tabs should not have their boxes overflow") --
 run("""W.layoutCalls = {}
 FCFDock_UpdateTabs = function(dock, force) W.layoutCalls[#W.layoutCalls + 1] = { w = dock:GetWidth(), force = force } end
-C.dockLaidOutW = nil; C.Layout()""")
+C.dockLaidOutW, C.dockLaidOutAt = nil, nil; W.now = (W.now or 0) + 5; C.Layout()""")
 calls = lua.eval("function(W) return W.layoutCalls end")(W)
 first = calls[1] if calls else None
 check("the game lays the tabs out again (forced) once the dock sits in the tab row, at the dock's new width",
@@ -78,15 +78,26 @@ check("the game lays the tabs out again (forced) once the dock sits in the tab r
 n0 = len(list(calls.keys()))
 run("C.Layout(); C.Anchor()")
 check("same width again: not laid out again", len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == n0)
-run("ns.chat2.width = 380; C.Layout()")
+run("W.now = W.now + 2; ns.chat2.width = 380; C.Layout()")
 calls = lua.eval("function(W) return W.layoutCalls end")(W)
 lastc = calls[len(list(calls.keys()))]
 check("pane narrower: the tabs are laid out again at the narrower width", len(list(calls.keys())) == n0 + 1 and abs(lastc.w - rect(L.GeneralDockManager)[2]) < 0.01,
       (len(list(calls.keys())), lastc.w, rect(L.GeneralDockManager)))
-run("W.combat = true; InCombatLockdown = function() return W.combat end; ns.chat2.width = 400; C.Layout()")
+run("W.now = W.now + 2; W.combat = true; InCombatLockdown = function() return W.combat end; ns.chat2.width = 400; C.Layout()")
 check("in combat: the tabs are not laid out (the next layout out of combat does it)", len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == n0 + 1)
 run("W.combat = false; C.Layout()")
 check("after combat: laid out at the new width", len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == n0 + 2)
+# never on every re-anchor (a re-run resets Blizzard's tab alpha: it would look like blinking tabs)
+run("W.now = W.now + 2; ns.chat2.width = 401; C.Layout()")
+nA = len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys()))
+run("ns.chat2.width = 402; C.Layout(); ns.chat2.width = 403; C.Layout(); ns.chat2.width = 404; C.Layout()")
+check("several width changes within one second: laid out at most once in that second",
+      len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == nA, (nA, len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys()))))
+run("W.now = W.now + 1.5; C.Layout()")
+check("a second later: laid out once for the latest width", len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == nA + 1)
+run("W.now = W.now + 2; GeneralDockManager._wobble = 0.3; C.Layout(); W.now = W.now + 2; GeneralDockManager._wobble = -0.2; C.Layout(); GeneralDockManager._wobble = nil")
+check("a width that wobbles by a fraction of a pixel never lays out again",
+      len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())) == nA + 1, len(list(lua.eval("function(W) return W.layoutCalls end")(W).keys())))
 run("ns.chat2.width = 440; C.Layout(); FCFDock_UpdateTabs = nil")
 # ---- text gutter (Xaya 2026-11-04: "create a small gutter of 2-3px for easier legibility") ---------------------------------------
 run("ns.chat2.textInset = 0; C.Layout()")

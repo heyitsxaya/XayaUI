@@ -4,6 +4,11 @@
   2026-11-04: Conditions.lua (a new Cooldown Manager lookup returned nil instead of false) and OutcomesEditor.lua (a
   condition's "Desaturate: off" / "Glow: off" stored nothing, so "off" could never be chosen; there since that editor was
   written). Write it out with if / else instead.
+- In a feature addon (any folder but XayaUI core): `pcall(ns.X.fn, ...)` where ns.X is a table XayaUI core defines. The lookup
+  ns.X.fn runs BEFORE pcall, so a core without that table (an older core folder, or new core files the game has not loaded yet
+  because it was not restarted) throws outside the pcall. Found 2026-11-04 by a tester: "XayaUI_Options/Options.lua:2112: attempt
+  to index field 'AuraSound' (a nil value)" broke the whole cue pane. A guard on the table (`ns.X and`, `ns.X then`, or the
+  table's own guard function listed in CORE_GUARDS) on the same line or the 3 lines above passes.
 Comments are ignored. Run: python3 tests/lua_pitfalls_run.py"""
 import os, re, sys
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
@@ -25,6 +30,32 @@ for top in sorted(os.listdir(ROOT)):
                 for rx, why in PATTERNS:
                     if rx.search(code):
                         bad.append("%s:%d: %s  [%s]" % (os.path.relpath(p, ROOT), i, line.strip()[:120], why))
+# ---- feature addons: pcall(ns.<core table>.<fn>) needs a guard on the table ----
+core_tables = set()
+for d, _, files in os.walk(os.path.join(ROOT, "XayaUI")):
+    if "Libs" in d.split(os.sep): continue
+    for f in files:
+        if f.endswith(".lua"):
+            for line in open(os.path.join(d, f), encoding="utf-8", errors="replace"):
+                m = re.match(r"^ns\.([A-Za-z_]\w*)\s*=\s*([A-Za-z_{]|\w)", line)
+                if m: core_tables.add(m.group(1))
+CORE_GUARDS = { "Theme": ("ThemeOn()",) }   # XayaUI_Chat C.ThemeOn() is true only when ns.Theme exists
+rx_pc = re.compile(r"pcall\(ns\.([A-Za-z_]\w*)\.[A-Za-z_]\w*")
+for top in sorted(os.listdir(ROOT)):
+    if not top.startswith("XayaUI_"): continue
+    for d, _, files in os.walk(os.path.join(ROOT, top)):
+        if "Libs" in d.split(os.sep): continue
+        for f in files:
+            if not f.endswith(".lua"): continue
+            p = os.path.join(d, f)
+            lines = [l.split("--", 1)[0] for l in open(p, encoding="utf-8", errors="replace")]
+            for i, code in enumerate(lines):
+                for m in rx_pc.finditer(code):
+                    t = m.group(1)
+                    if t not in core_tables: continue
+                    window = "".join(lines[max(0, i - 3):i + 1])
+                    if ("ns.%s and" % t) in window or ("ns.%s then" % t) in window or any(g in window for g in CORE_GUARDS.get(t, ())): continue
+                    bad.append("%s:%d: %s  [pcall(ns.%s.fn): guard ns.%s first, it belongs to XayaUI core]" % (os.path.relpath(p, ROOT), i + 1, code.strip()[:100], t, t))
 for b in bad: print("FAIL " + b)
 # (tests/run_all.py counts a group as passed only when its last line holds "FAILS: 0" or a similar marker)
 print("%d Lua files checked  FAILS: %d" % (n, len(bad)))
