@@ -103,9 +103,9 @@ Issue numbers refer to this repository. Small interface tweaks, wording changes,
 | #197, #230, #289, #295 | Save changes, Drafts page, save-as-copy, autosave by default with an option to prompt | Built | |
 | #91, #79 to #82 | Gated collapsible panes for dependent options | Epic, waiting on four decisions | Pane wrapper or plain hide; default open or closed; dropdown-dependent options; losing pre-set styling while an element is off. |
 | #101, #109 | Addon Info tab with version, last-updated date, credits, and attribution | Built | |
-| #223 | Manual override for the default pane height and width | Open | |
+| #223 | Manual override for the default pane height and width | Built, unverified in game | Settings > UI Options > Window Size (`ui.paneW` / `ui.paneH`), `XayaUI_Options/Options.lua:2602-2654`. Found by the 2026-11-04 old-branch audit. |
 | #259 | Condensed option panes: a checkbox with an inline dropdown that appears only when ticked | Open | |
-| #231 | Right-click empty space in the Rules sidebar for New Rule, New Group, New Dynamic Group | Open | |
+| #231 | Right-click empty space in the Rules sidebar for New Rule, New Group, New Dynamic Group | Built, unverified in game | `XayaUI_Options/Options.lua` (right-click on empty sidebar space). Found by the 2026-11-04 old-branch audit. |
 | #291 | Import opens its own window and goes into its own folder | Open | |
 
 ## 6. Quality of life
@@ -113,7 +113,7 @@ Issue numbers refer to this repository. Small interface tweaks, wording changes,
 | ID | Feature | Status | Notes |
 |---|---|---|---|
 | #87 | Backup: write a profile export to a chosen local path on click | Waiting on a decision | Scope, trigger, and file-write behavior to be pinned down. |
-| #88 | Recycle bin: deleted rules are held, disabled, and cleared on a schedule | Waiting on a decision | Retention and restore mechanics to be pinned down. A 2026-09-24 build (old layout, `RecycleBin.lua`) is kept on branch `archive/2026-11-04` (commit add39d0, see its ARCHIVE.md); to port once decided. |
+| #88 | Recycle bin: deleted rules and groups are held, then cleared on a schedule | Built (core 0.6.12, Options 0.6.8), unverified in game | Xaya, 2026-11-04: keep 7 days by default, 36 h / 3 days / 14 days allowed, Empty Recycle Bin with a confirmation. A group deleted with its contents is one item (Claude's suggested default; Xaya has not answered this point yet). New code on today's layout (`XayaUI/RecycleBin.lua`); the 2026-09-24 build (add39d0 on `archive/2026-11-04`) supplied the behaviour only. QA B30-B32. |
 | | Smart Categories above ALL RULES, collapsed by default, searchable by tracked spell or aura | Partly built | By-type sorting is meant to come from Smart Categories. |
 | #234, #245 | Custom data panels and bars (five strips, one to twenty data slots each) | Built | |
 | #233, #238, #279, #312 | Game menu button and skinned game menu | Built (0.5.96 fix pending in-game confirmation) | |
@@ -178,7 +178,7 @@ Open questions: 7, listed in the project document (section 6) and in the #278 co
 
 ## 10. Waiting on a decision
 
-These are logged and need an answer before work starts: #79, #80, #81, #82 (gated panes); #87 (backup); #88 (recycle bin); #90 (what happens when a Specialization or Role is unticked); #108 (skeleton rules); #115 and #117 (engine per-frame step, periodic snapshot); #123 (options refactor); #126 (gradient cursor trail); #151 (loaded-rule safeguard); #188 (rule build assistant); the five new candidates (#321 to #325); and the seven tester requests in #278 (meaning of item 2, scope and design of items 5 to 7, volume and texture approach).
+These are logged and need an answer before work starts: #79, #80, #81, #82 (gated panes); #87 (backup); #90 (what happens when a Specialization or Role is unticked); #108 (skeleton rules); #115 and #117 (engine per-frame step, periodic snapshot); #123 (options refactor); #126 (gradient cursor trail); #151 (loaded-rule safeguard); #188 (rule build assistant); the five new candidates (#321 to #325); and the seven tester requests in #278 (meaning of item 2, scope and design of items 5 to 7, volume and texture approach).
 
 ## 11. Parked or dropped
 
