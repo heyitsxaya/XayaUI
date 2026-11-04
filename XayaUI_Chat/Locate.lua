@@ -17,6 +17,7 @@ local PIECES = {
     { key = "strip",    label = "Blizzard button strip", get = function() local cf = Cf(); return cf and C.ButtonFrameOf(cf) end, color = { 1, 0.5, 0.3 } },
     { key = "social",   label = "Social button",        get = function() return _G.QuickJoinToastButton end, color = { 1, 0.5, 0.3 } },
     { key = "scroll",   label = "Scroll bar",           get = function() local cf = Cf(); return cf and cf.ScrollBar end, color = { 1, 0.5, 0.3 } },
+    { key = "ownscroll", label = "Chat Panel scroll bar", get = function() return C.ScrollBar and C.ScrollBar() end, color = { 0.5, 1, 0.5 } },
     { key = "tobottom", label = "Back-to-newest arrow", get = function() local cf = Cf(); return cf and cf.ScrollToBottomButton end, color = { 1, 0.5, 0.3 } },
     { key = "hist",     label = "History button",       get = function() return _G.XayaUIChatHistoryButton end, color = { 0.8, 0.8, 0.8 } },
     { key = "privacy",  label = "Privacy button",       get = function() return _G.XayaUIChatPrivacyButton end, color = { 0.8, 0.8, 0.8 } },

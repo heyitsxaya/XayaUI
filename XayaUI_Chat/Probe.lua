@@ -40,6 +40,7 @@ end
 local function Head(s) Add(""); Add("== " .. s) end
 
 local function Name(o)
+    if secret(o) then return "<secret>" end
     if o == nil then return "nil" end
     local n = type(o) == "table" and try(o.GetName, o) or nil
     if type(n) == "string" and not secret(n) and n ~= "" then return n end
@@ -65,9 +66,10 @@ local function Texts(o)                                 -- visible text on the f
     local regs = { try(o.GetRegions, o) }
     for _, r in ipairs(regs) do
         local ot = try(r.GetObjectType, r)
-        if ot == "FontString" then
+        if not secret(ot) and ot == "FontString" then
             local t = try(r.GetText, r)
-            if t ~= nil then out[#out + 1] = secret(t) and "<secret>" or ("'" .. S(t):sub(1, 24) .. "'") end
+            if secret(t) then out[#out + 1] = "<secret>"
+            elseif t ~= nil then out[#out + 1] = "'" .. S(t):sub(1, 24) .. "'" end
         end
         if #out >= 3 then break end
     end
@@ -223,10 +225,11 @@ local function Run()
             if type(nPts) == "number" and not secret(nPts) then
                 for i = 1, nPts do
                     local _, rel = try(f.GetPoint, f, i)
-                    if rel and frames[rel] and f ~= rel then anchored[#anchored + 1] = Name(f) .. " shown=" .. S(shown) .. " -> " .. Name(rel) end
+                    if not secret(rel) and rel and frames[rel] and f ~= rel then anchored[#anchored + 1] = Name(f) .. " shown=" .. S(shown) .. " -> " .. Name(rel) end
                 end
             end
-            if shown == true then
+            -- shown can come back secret (Midnight): comparing a secret raises, so it is checked first (the 0.6.4 error at Probe.lua:229)
+            if not secret(shown) and shown == true then
                 local l, t = try(f.GetLeft, f), try(f.GetTop, f)
                 if type(l) == "number" and type(t) == "number" and not secret(l) and not secret(t) and l < 420 and t > sh - 420 then
                     topLeft[#topLeft + 1] = Describe(f) .. Texts(f)

@@ -140,10 +140,11 @@ local function NumRef(ref, p, pi)
         return math.max(0, st + du - now)
     elseif ref == "n:buffStacks" then
         if pi.present == false then return 0 end
+        -- only a READ stack count counts: a reference without one (the aura was found through the Cooldown Manager or estimated
+        -- in combat, where the game hides stacks) is unknown, not 1 stack (that answer made "stacks >= 3" false in combat)
         if pi.present == true and pi.buffRef then
             local a = pi.buffRef.applications
             if type(a) == "number" and not issecret(a) then return math.max(a, 1) end
-            if a == nil then return 1 end
         end
         return nil
     elseif ref == "n:buffRemain" then
@@ -219,7 +220,7 @@ function ns.EvaluateOutcome(rule, ctx)
     end
     local pr, pi = ns.Evaluate(p, ctx)
     -- inherit what the parent read, so this outcome's own display (buff time, charges, absorb text) works
-    info.cd, info.present, info.buffSource, info.buffRef = pi.cd, pi.present, pi.buffSource, pi.buffRef
+    info.cd, info.present, info.buffSource, info.buffRef, info.auraRef = pi.cd, pi.present, pi.buffSource, pi.buffRef, pi.auraRef
     if rule.spellID ~= p.spellID then rule.spellID = p.spellID end
     if rule.buffID ~= p.buffID then rule.buffID = p.buffID end
     if rule.maxCharges ~= p.maxCharges then rule.maxCharges = p.maxCharges end

@@ -28,9 +28,9 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 ## 3. Addons (versions from the .toc files on `main` + PR #358)
 | Folder | Version | Holds |
 |---|---|---|
-| `XayaUI` | 0.6.2 | core: rules, cues, conditions, actions, combat aura engine (`Combat/`), themes, console, minimap and ESC-menu buttons |
+| `XayaUI` | 0.6.3 | core: rules, cues, conditions, actions, combat aura engine (`Combat/`), themes, console, minimap and ESC-menu buttons |
 | `XayaUI_Options` | 0.6.3 | the settings window (loads on first open; Ace3 libs) |
-| `XayaUI_Chat` | 0.6.4 | Chat Panel, Chat Bar, filters, history, privacy cover |
+| `XayaUI_Chat` | 0.6.5 | Chat Panel, Chat Bar, filters, history, privacy cover |
 | `XayaUI_QoL` | 0.6.2 (PR #358) | Cursor Highlight, Gradient Cursor Trail, Character Toolkit |
 | `XayaUI_Bonus` | 0.6.0 | tooltips, Notepad, data panels |
 | `XayaUI_Reskin` | 0.6.0 | Game Menu skin |

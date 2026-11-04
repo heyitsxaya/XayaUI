@@ -100,8 +100,11 @@ local function StepEnabled(rule, rt, ctx, now)
     rt.visualWanted = wanted
     local pv = perf.on and debugprofilestop()
     Guarded(rule, rt, ns.SetVisualShown, rule, wanted)
-    -- a display the combat engine draws is hidden here, so its text / fade work is skipped entirely
-    if wanted and not (ns.EngineOwns and ns.EngineOwns(rule)) then Guarded(rule, rt, ns.UpdateVisualText, rule, info) end
+    -- a display the combat engine draws is hidden here, so its text / fade work is skipped, except its companion texts (shield
+    -- amount, spell charges: the game's container cannot draw them; Visual.lua draws them over the engine's icon)
+    if wanted and (not (ns.EngineOwns and ns.EngineOwns(rule)) or (ns.EngineCompanion and ns.EngineCompanion(rule))) then
+        Guarded(rule, rt, ns.UpdateVisualText, rule, info)
+    end
     if pv then local d = debugprofilestop() - pv; perf.visMs = perf.visMs + d; perf.rule[rule] = (perf.rule[rule] or 0) + d end
 end
 
@@ -295,6 +298,8 @@ for _, e in ipairs({
     "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "GROUP_ROSTER_UPDATE",
     "ZONE_CHANGED_NEW_AREA", "PLAYER_SPECIALIZATION_CHANGED", "TRAIT_CONFIG_UPDATED", "SPELLS_CHANGED",
     "ACTIONBAR_SLOT_CHANGED", "UPDATE_BONUS_ACTIONBAR", "ACTIONBAR_PAGE_CHANGED", "UPDATE_SHAPESHIFT_FORM",
+    -- a new target / focus changes every "Target Debuff (yours)" answer at once: step now instead of at the next tick
+    "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED",
 }) do f:RegisterEvent(e) end
 f:RegisterUnitEvent("UNIT_AURA", "player")
 f:SetScript("OnEvent", function(_, event)

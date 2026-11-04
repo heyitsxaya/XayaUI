@@ -251,6 +251,18 @@ local function chatWindow(i, docked, x, y)
   cf.ScrollBar = new("Frame", nil, cf); cf.ScrollBar._w, cf.ScrollBar._h = 8, 100
   cf.ResizeButton = new("Button", "ChatFrame" .. i .. "ResizeButton", cf)
   cf.Background = new("Texture", "ChatFrame" .. i .. "Background", cf)
+  -- scrolling, as ScrollingMessageFrameMixin does it: offset 0 = newest at the bottom, clamped to [0, max]
+  cf._off, cf._max, cf._vis, cf._calls = 0, 50, 10, {}
+  function cf:GetScrollOffset() return self._off end
+  function cf:GetMaxScrollRange() return self._max end
+  function cf:GetNumVisibleLines() return self._vis end
+  function cf:SetScrollOffset(o) self._calls[#self._calls + 1] = "SetScrollOffset"; self._off = math.max(0, math.min(self._max, o)) end
+  function cf:ScrollByAmount(n) self._calls[#self._calls + 1] = "ScrollByAmount"; self._off = math.max(0, math.min(self._max, self._off + n)) end
+  function cf:PageUp() self._calls[#self._calls + 1] = "PageUp"; self._off = math.min(self._max, self._off + self._vis) end
+  function cf:PageDown() self._calls[#self._calls + 1] = "PageDown"; self._off = math.max(0, self._off - self._vis) end
+  cf._indent = true
+  function cf:GetIndentedWordWrap() return self._indent end
+  function cf:SetIndentedWordWrap(v) self._indentCalls = (self._indentCalls or 0) + 1; self._indent = v end
   return cf
 end
 W.cf1 = chatWindow(1, 1, 30, 40)
@@ -305,6 +317,10 @@ end
 function W.click(o, button) if o._scripts.OnClick then o._scripts.OnClick(o, button or "LeftButton") end end
 function W.run(f, ...) return f(...) end
 
+-- print(): the game's chat output; the history's Console tab hooks it
+W.rawPrinted = {}
+print = function(...) local t = {}; for i = 1, select("#", ...) do t[#t + 1] = tostring((select(i, ...))) end; W.rawPrinted[#W.rawPrinted + 1] = table.concat(t, " ") end
+
 -- loading the addon files in toc order -----------------------------------------------------------------------------------------
 CueRulesDB = {}
 local function load(rel)
@@ -316,7 +332,7 @@ load("XayaUI/Modules.lua")   -- the core contract the chat files register throug
 load("XayaUI/Compat.lua")    -- current game API with fallbacks (0.6.0)
 load("XayaUI/Libs/LibStub/LibStub.lua")
 load("XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua")
-for _, rel in ipairs({ "XayaUI_Chat/Core.lua", "XayaUI_Chat/Frame.lua", "XayaUI_Chat/Bar.lua", "XayaUI_Chat/Skin.lua", "XayaUI_Chat/Fade.lua", "XayaUI_Chat/Locate.lua", "XayaUI_Chat/Messages.lua", "XayaUI_Chat/History.lua",
+for _, rel in ipairs({ "XayaUI_Chat/Core.lua", "XayaUI_Chat/Frame.lua", "XayaUI_Chat/Scroll.lua", "XayaUI_Chat/Bar.lua", "XayaUI_Chat/Skin.lua", "XayaUI_Chat/Fade.lua", "XayaUI_Chat/Locate.lua", "XayaUI_Chat/Messages.lua", "XayaUI_Chat/History.lua",
   "XayaUI_Chat/Sounds.lua", "XayaUI_Chat/Options.lua", "XayaUI_Chat/Privacy.lua" }) do load(rel) end
 W.ns = ns
 function W.start()
