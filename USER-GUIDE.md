@@ -580,9 +580,11 @@ Adds information to game tooltips. **ID lines** show the ID of spells, items, au
 
 **Where:** Bonus Features > Tooltips (XayaUI Bonus Features).
 
-### 12.7b Spell search: where an aura comes from
+### 12.7b Spell search: what it looks through, and where an aura comes from
 
-When you search for an **aura** by name (the aura search boxes in a rule's trigger), many auras share one name, such as the dozens of "Well Fed" IDs. Each result now ends with **From item Name [id]** or **From spell Name [id]**, the item or spell whose tooltip applies that aura, with "+N more" when several do. The game has no direct lookup for this, so XayaUI learns it from tooltips: every item or spell tooltip you hover, the spells you know, and a background pass over the item index the search already builds (a percentage shows in the list's footer while it runs, never in combat). It is saved with your settings and rebuilt after a game patch. A result with no "From" part has no known source yet. Not yet tested in game.
+When you type a spell or aura name in a rule's search box, the list shows matches at once from what is relevant to you: your class's spells and talents, your spellbook, the spells your rules already use (marked "in your rules"), and the auras of the items you carry (marked "from" the item, so your food's "Well Fed" is there). To find anything else, such as another class's spell or a boss's debuff, click **Search all spells** at the bottom right of the list (**Search all items** in an item box). That reads every name in the game, which takes a few seconds and some memory; the list fills in as it goes. Everything it read is let go when you close the settings window, so the next time you need it, click it again.
+
+When you search for an **aura** by name (the aura search boxes in a rule's trigger), many auras share one name, such as the dozens of "Well Fed" IDs. Each result now ends with **From item Name [id]** or **From spell Name [id]**, the item or spell whose tooltip applies that aura, with "+N more" when several do. The game has no direct lookup for this, so XayaUI learns it from tooltips: every item or spell tooltip you hover, the items you carry, and, after **Search all spells** in an aura box, a background pass over every item the game knows (a percentage shows in the list's footer while it runs, never in combat; it stops when you close the settings window and goes on from the start the next time). It is saved with your settings and rebuilt after a game patch. A result with no "From" part has no known source yet. Not yet tested in game.
 
 ### 12.8b Import and export, backups
 
