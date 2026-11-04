@@ -48,6 +48,70 @@ function CenterAbs(f)
   return px - v[1] * f:GetWidth() * s, py - v[2] * f:GetHeight() * s
 end
 UIParent._w, UIParent._h = 1920, 1080
+-- Blizzard's enums the engine passes to its container (12.1.5 AnchorUtil.lua)
+AnchorUtil = { FlowLayoutAxis = { Horizontal = 0, Vertical = 1 }, FlowDirection = { Left = -1, Right = 1, Up = 1, Down = -1 } }
+-- the container's aura groups and flow settings, recorded so the flow model below can lay them out
+local function G(self) self._groups = self._groups or {}; self._ng = self._ng or 0; return self._groups end
+function M:AddAuraGroup(key, filter, o) local g = G(self); self._ng = self._ng + 1; g[key] = { layout = o.layout, enabled = true, order = self._ng } end
+function M:SetAuraGroupLayout(key, l) G(self)[key].layout = l end
+function M:SetAuraGroupEnabled(key, en) G(self)[key].enabled = en end
+function M:SetFlowLayoutAxis(a) self._flow = self._flow or {}; self._flow.axis = a end
+function M:SetFlowLayoutAnchorPoint(p) self._flow = self._flow or {}; self._flow.anchor = p end
+function M:SetFlowLayoutGrowthDirection(h, v) self._flow = self._flow or {}; self._flow.h, self._flow.v = h, v end
+function M:SetFlowLayoutMaximumLineSize(m) self._flow = self._flow or {}; self._flow.max = m end
+-- A model of Blizzard's flow layout (12.1.5 AnchorUtil.ApplyFlowLayout, CustomAuraContainer OnLayoutComplete), written for this test
+-- from reading the game's UI source (no code copied): enabled groups in layoutIndex order (then the order they were added); an empty
+-- group adds nothing; groupSpacing goes before a non-empty group that continues the line (and may wrap it); every element is
+-- followed by elementSpacing; an element that would make the line longer than the maximum starts a new line, lineSpacing below the
+-- thickest element of the line; each element sits by the flow's anchor corner at the cursor; the container then takes the size of
+-- what was placed. counts[key] = how many icons that group shows (default 1). Returns each icon's screen centre, in group order.
+function FlowModel(c, counts)
+  local f = c._flow
+  local list = {}
+  for key, g in pairs(c._groups or {}) do if g.enabled then list[#list + 1] = { key = key, g = g } end end
+  table.sort(list, function(a, b)
+    local la, lb = a.g.layout.layoutIndex or math.huge, b.g.layout.layoutIndex or math.huge
+    if la ~= lb then return la < lb end
+    return a.g.order < b.g.order
+  end)
+  local vertical = (f.axis == 1)
+  local pdir, cdir = vertical and f.v or f.h, vertical and f.h or f.v
+  local maxLine = f.max or math.huge
+  local cp, cc, lineP, lineC, layP, layC, placed = 0, 0, 0, 0, 0, 0, false
+  local out = {}
+  local function NewLine(gap) cp = 0; cc = cc + (lineC + gap) * cdir; lineP, lineC = 0, 0 end
+  for _, e in ipairs(list) do
+    local l = e.g.layout
+    local n = (counts and counts[e.key]) or 1
+    local es, ls, gs = l.elementSpacing or 0, l.lineSpacing or 0, l.groupSpacing or 0
+    local gls = l.groupLineSpacing or ls
+    if placed and n > 0 and gs > 0 then
+      if lineP > 0 and lineP + gs > maxLine then NewLine(gls) else cp = cp + gs * pdir; lineP = lineP + gs end
+    end
+    for _ = 1, n do
+      local w, h = l.elementWidth, l.elementHeight
+      local ep, ec = vertical and h or w, vertical and w or h
+      local nextP = (lineP > 0) and (lineP + ep) or ep
+      if lineP > 0 and nextP > maxLine then NewLine(ls); nextP = ep end
+      out[#out + 1] = { key = e.key, w = w, h = h, ox = vertical and cc or cp, oy = vertical and cp or cc }
+      cp = cp + (ep + es) * pdir
+      lineP = nextP + es
+      lineC = math.max(lineC, ec)
+      layP = math.max(layP, lineP - es)
+      layC = math.max(layC, math.abs(cc) + ec)
+      placed = true
+    end
+  end
+  c:SetSize(math.max(vertical and layC or layP, 1), math.max(vertical and layP or layC, 1))
+  local ax, ay = PointAbs(c, f.anchor)
+  local s = EffScale(c)
+  for _, o in ipairs(out) do   -- the element's anchor point -> its centre
+    local v = V[f.anchor]
+    o.x = ax + o.ox * s - v[1] * o.w * s
+    o.y = ay + o.oy * s - v[2] * o.h * s
+  end
+  return out
+end
 ''')
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
@@ -160,6 +224,136 @@ for k, (dir, n, rev) in enumerate(WRAPS):
         col, row = i % n, i // n
         want.append((round(35 * (col * along[0] + row * across[0]), 2), round(35 * (col * along[1] + row * across[1]), 2)))
     check("XayaUI wraps %s after %d%s: positions %s" % (dir, n, " (other side)" if rev else "", want), rel == want, "got %s" % rel)
+# Block growth (Centered row / column, From anchor point) and Manual order: EVERY icon of the engine's container (laid out by the flow
+# model above, the container pinned where the engine pins it) must land on XayaUI's own icon for the same rule, also when some auras
+# are down (the group closes up and the block grows / shrinks around its pin), with mixed icon sizes, wrapping, nested groups and scale.
+BLOCKS = [
+    # growth, group anchor point, sizes (w, h) per rule, shown (1-based rule numbers), extra group fields
+    ("HCENTER", "CENTER", [(30, 30)] * 4, [1, 2, 3, 4], {}),
+    ("HCENTER", "CENTER", [(30, 30)] * 5, [1, 2, 3, 4, 5], {"cWrapN": 2}),
+    ("HCENTER", "CENTER", [(30, 30)] * 5, [1, 2, 3, 4, 5], {"cWrapN": 2, "cWrapRev": True}),
+    ("VCENTER", "CENTER", [(30, 30)] * 4, [1, 3, 4], {}),
+    ("VCENTER", "CENTER", [(30, 30)] * 5, [1, 2, 3, 4, 5], {"cWrapN": 2, "cWrapRev": True}),
+    ("HCENTER", "TOPLEFT", [(40, 40), (24, 24), (32, 48)], [1, 2, 3], {"cX": 50, "cY": -20, "cScale": 1.25}),
+]
+for pt in ("TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT"):
+    BLOCKS.append(("ANCHOR_ROW", pt, [(36, 36), (24, 24), (30, 40), (36, 36)], [1, 2, 3, 4], {"cW": 120, "cH": 60, "cX": 15, "cY": -10}))
+    BLOCKS.append(("ANCHOR_COL", pt, [(36, 36), (24, 24), (40, 30), (36, 36)], [1, 2, 3, 4], {"cW": 60, "cH": 110, "cScale": 0.8}))
+    BLOCKS.append(("ANCHOR_ROW", pt, [(30, 30)] * 4, [2, 4], {"cW": 0, "cH": 0}))   # two auras down: the block closes up around the anchor
+BLOCKS += [
+    ("ANCHOR_ROW", "BOTTOMRIGHT", [(30, 30)] * 6, [1, 2, 3, 4, 5, 6], {"cWrapN": 4, "cParent": (-200, 100)}),
+    ("ANCHOR_COL", "TOPRIGHT", [(30, 30)] * 6, [1, 3, 4, 5, 6], {"cWrapN": 3}),
+    # edge growths in Manual order (rule order): every icon, equal sizes (the members' spacing, #17)
+    ("RIGHT", "CENTER", [(30, 30)] * 4, [1, 2, 3, 4], {}),
+    ("DOWN", "CENTER", [(30, 30)] * 4, [1, 2, 3, 4], {"cWrapN": 2}),
+    ("LEFT", "CENTER", [(30, 30)] * 4, [1, 3, 4], {}),
+]
+for k, (dir, pt, sizes, shown, extra) in enumerate(BLOCKS):
+    n = len(sizes)
+    L.execute(r'''
+    local ns, dir, pt, n, k, sp = NS, ...
+    ns.folders, ns.rules = {}, {}
+    CueRulesDB.folders, CueRulesDB.rules = ns.folders, ns.rules
+    BF = { id = "fb" .. k, name = "B" .. k, cType = "dynamic", cGrowth = dir, cPoint = pt, cSpacing = sp, cW = 0, cH = 0 }
+    ns.folders[1] = BF
+    BRULES = {}
+    ''', dir, pt, n, k, 6)
+    for key, val in extra.items():
+        if key == "cParent":
+            L.execute(r'''local ns, px, py, k = NS, ...; ns.folders[2] = { id = "fbp" .. k, name = "BP" .. k, cType = "static", cX = px, cY = py, cW = 0, cH = 0 }; BF.parent = "fbp" .. k''', val[0], val[1], k)
+        else:
+            L.globals().BF[key] = val
+    for i, (w, h) in enumerate(sizes, 1):
+        L.execute(r'''
+        local ns, i, w, h, k = NS, ...
+        local r = { uid = "b" .. k .. "_" .. i, name = "b" .. i, folder = "fb" .. k, useBuff = true, buffID = 6000 + i, enabled = true,
+          visual = { enabled = true, trigger = "buffActive", w = w, h = h } }
+        ns.rules[#ns.rules + 1] = r
+        if ns.NormalizeRule then pcall(ns.NormalizeRule, r) end
+        r.visual.enabled, r.visual.w, r.visual.h, r.visual.trigger = true, w, h, "buffActive"
+        BRULES[i] = r
+        ''', i, w, h, k)
+    shown_lua = L.table_from({i: True for i in shown})
+    L.execute(r'''
+    local ns, shown = NS, ...
+    for i, r in ipairs(BRULES) do ns.SetVisualShown(r, shown[i] == true) end
+    -- XayaUI's own spots first (once the engine draws a rule, XayaUI hides its own icon for it)
+    local xui, xsz = {}, {}
+    local l, b, r_, t
+    for i, r in ipairs(BRULES) do
+      if shown[i] then
+        local fr = ns.VisualFramesOf(r)[1]
+        xui[i] = { CenterAbs(fr) }
+        xsz[i] = fr:GetWidth() * EffScale(fr)
+        local hw, hh = xsz[i] / 2, fr:GetHeight() * EffScale(fr) / 2
+        local x, y = xui[i][1], xui[i][2]
+        l = l and math.min(l, x - hw) or (x - hw); r_ = r_ and math.max(r_, x + hw) or (x + hw)
+        b = b and math.min(b, y - hh) or (y - hh); t = t and math.max(t, y + hh) or (y + hh)
+      end
+    end
+    BBOX = { l, b, r_, t }
+    GPOINT = function(pt) return PointAbs(ns.GroupFrame(BF), pt) end
+    for k in pairs(ns.AuraDisplay._groups) do ns.AuraDisplay._groups[k] = nil end
+    ns.AuraDisplay.Build()
+    local g = ns.AuraDisplay._groups[BF.id]
+    assert(g and g.ok, "engine group not built: " .. tostring(g and g.err))
+    local counts = {}
+    for i, key in ipairs(g.memberKey) do counts[key] = shown[i] and 1 or 0 end
+    local placed = FlowModel(g.frame, counts)
+    local byKey = {}
+    for _, o in ipairs(placed) do byKey[o.key] = o end
+    BRES, BSIZE = {}, true
+    for i, r in ipairs(BRULES) do
+      if shown[i] then
+        local x, y = xui[i][1], xui[i][2]
+        local o = byKey[g.memberKey[i]]
+        if not o then BRES[#BRES + 1] = { i, x, y, -1, -1 }; BSIZE = false
+        else
+          BRES[#BRES + 1] = { i, x, y, o.x, o.y }
+          if math.abs(xsz[i] - o.w * EffScale(g.frame)) > 0.001 then BSIZE = false end
+        end
+      end
+    end
+    BKEYS = #g.memberKey
+    ''', shown_lua)
+    res = L.eval("BRES")
+    worst, detail = 0, []
+    for j in range(1, len(res) + 1):
+        i, xx, xy, ex, ey = (res[j][q] for q in range(1, 6))
+        d = max(abs(xx - ex), abs(xy - ey))
+        worst = max(worst, d)
+        if d >= 0.01: detail.append("rule %d: XayaUI %.2f,%.2f vs engine %.2f,%.2f" % (i, xx, xy, ex, ey))
+    label = "%s, anchor %s, sizes %s, shown %s%s" % (dir, pt, "mixed" if len(set(sizes)) > 1 else sizes[0], shown, (" " + str(extra)) if extra else "")
+    # what the growth means, stated here on its own (not read from either implementation): the block of shown icons has its
+    # `pin` point on the group frame's `pinTo` point
+    rev = bool(extra.get("cWrapRev"))
+    want = {"HCENTER": ("BOTTOM" if rev else "TOP", "CENTER"), "VCENTER": ("RIGHT" if rev else "LEFT", "CENTER"),
+            "ANCHOR_ROW": (pt, pt), "ANCHOR_COL": (pt, pt)}.get(dir)
+    if want:
+        bl, bb, br, bt = (L.eval("BBOX")[q] for q in range(1, 5))
+        VV = {"CENTER": (0, 0), "TOP": (0, .5), "BOTTOM": (0, -.5), "LEFT": (-.5, 0), "RIGHT": (.5, 0), "TOPLEFT": (-.5, .5), "TOPRIGHT": (.5, .5), "BOTTOMLEFT": (-.5, -.5), "BOTTOMRIGHT": (.5, -.5)}
+        v = VV[want[0]]
+        px, py = (bl + br) / 2 + v[0] * (br - bl), (bb + bt) / 2 + v[1] * (bt - bb)
+        gx, gy = L.eval("GPOINT")(want[1])
+        check("  ...the icons' %s sits on the group's %s" % want, max(abs(px - gx), abs(py - gy)) < 0.01, "icons %.2f,%.2f vs group %.2f,%.2f" % (px, py, gx, gy))
+    check("every icon on XayaUI's spot: " + label, worst < 0.01 and len(res) == len(shown), "; ".join(detail[:3]))
+    check("  ...and the same size on screen", L.eval("BSIZE"))
+# the engine's own copy of the block definition agrees with Visual.lua's for every growth, anchor point and wrap side
+L.execute(r'''
+BLOCK_SAME = true
+for _, dir in ipairs({ "RIGHT", "LEFT", "DOWN", "UP", "HCENTER", "VCENTER", "ANCHOR_ROW", "ANCHOR_COL" }) do
+  for _, pt in ipairs({ "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }) do
+    for _, rev in ipairs({ false, true }) do
+      local fo = { cGrowth = dir, cPoint = pt, cWrapRev = rev or nil }
+      local a, b = NS.DynamicBlock(fo), NS.AuraDisplay._BlockFallback(fo)
+      if (a == nil) ~= (b == nil) then BLOCK_SAME = false end
+      if a and b then for _, f in ipairs({ "horiz", "right", "down", "corner", "pin", "pinTo" }) do if a[f] ~= b[f] then BLOCK_SAME = false end end end
+    end
+  end
+end
+''')
+check("engine fallback block definition = Visual.lua's (8 growths x 9 anchor points x 2 wrap sides)", L.eval("BLOCK_SAME"))
+
 # Single slots (no group, or a static group): the engine icon must sit exactly on XayaUI's own icon
 SINGLES = [
     # group (None = no group), group offsets, group scale, display offsets, size

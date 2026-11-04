@@ -467,6 +467,41 @@ function ns.DynamicFirstOffset(df, w, h)
     return nil
 end
 
+-- Block growth: "Centered row", "Centered column", and "From anchor point" (rows or columns; Xaya 2026-11-04: "the growth should
+-- also be informed by anchor placement in the parent group container"). The shown items form one block, laid out the way Blizzard's
+-- flow layout does it (12.1.5 AnchorUtil.ApplyFlowLayout, read in the game's UI source; no code copied):
+--   every line starts at the block's `corner` edge; each item sits by that corner on its line (top-aligned in a row that grows
+--   down, and so on); lines are `spacing` apart; the block is as wide as its longest line and as tall as its lines.
+-- The block's `pin` point sits on the group frame's `pinTo` point. The combat engine uses the same numbers (Combat/AuraDisplay.lua
+-- FlowFor), and Blizzard sizes its container to the icons that are showing after every layout pass, in combat too
+-- (Blizzard_CustomAuraContainer.lua OnLayoutComplete -> container:SetSize), so the block grows and shrinks around the pin.
+-- From anchor point: the pin is the group's own anchor point ("This group's anchor point"), on the same point of the group's box,
+-- and the items grow away from it: right from a left-side anchor, left from a right-side one, down from a top one, up from a
+-- bottom one; a middle anchor (TOP, CENTER, BOTTOM for rows; LEFT, CENTER, RIGHT for columns) keeps the block centered on it.
+-- Returns nil for the edge growths (Right, Left, Down, Up), which keep their fixed first spot (ns.DynamicFirstOffset).
+local PT_V = {   -- a frame point, from the frame's centre, in widths / heights
+    CENTER = { 0, 0 }, TOP = { 0, .5 }, BOTTOM = { 0, -.5 }, LEFT = { -.5, 0 }, RIGHT = { .5, 0 },
+    TOPLEFT = { -.5, .5 }, TOPRIGHT = { .5, .5 }, BOTTOMLEFT = { -.5, -.5 }, BOTTOMRIGHT = { .5, -.5 },
+}
+function ns.DynamicBlock(df)
+    local dir = df and df.cGrowth or "RIGHT"
+    local rev = df and df.cWrapRev and true or false
+    if dir == "HCENTER" then   -- the first row's top edge on the group's centre (bottom edge when new rows go above)
+        if rev then return { horiz = true, right = true, down = false, corner = "BOTTOMLEFT", pin = "BOTTOM", pinTo = "CENTER" } end
+        return { horiz = true, right = true, down = true, corner = "TOPLEFT", pin = "TOP", pinTo = "CENTER" }
+    elseif dir == "VCENTER" then   -- the first column's left edge on the group's centre (right edge when new columns go left)
+        if rev then return { horiz = false, right = false, down = true, corner = "TOPRIGHT", pin = "RIGHT", pinTo = "CENTER" } end
+        return { horiz = false, right = true, down = true, corner = "TOPLEFT", pin = "LEFT", pinTo = "CENTER" }
+    elseif dir == "ANCHOR_ROW" or dir == "ANCHOR_COL" then
+        local pt = df.cPoint or "CENTER"
+        if not PT_V[pt] then pt = "CENTER" end
+        local onRight, onBottom = pt:find("RIGHT", 1, true) ~= nil, pt:find("BOTTOM", 1, true) ~= nil
+        return { horiz = (dir == "ANCHOR_ROW"), right = not onRight, down = not onBottom,
+            corner = (onBottom and "BOTTOM" or "TOP") .. (onRight and "RIGHT" or "LEFT"), pin = pt, pinTo = pt }
+    end
+    return nil
+end
+
 -- Sort of a dynamic group (Group tab "Sort"; Xaya 2026-11-04): Default, Expiration, Name, Important, Manual, plus Reverse.
 -- One definition for XayaUI's own layout (below) and the engine's containers (Combat/AuraDisplay.lua, Blizzard's own sorts there).
 -- Older saves: cSort nil / "none" = manual (rule order); "asc" = name; "desc" = name, reversed.
@@ -552,7 +587,9 @@ local function LayoutDynamic(df)
         end
     end
     local dir = df.cGrowth or "RIGHT"
-    local horiz = (dir == "RIGHT" or dir == "LEFT" or dir == "HCENTER")
+    local blk = ns.DynamicBlock(df)   -- Centered / From anchor point: one block, laid out like Blizzard's flow (see above)
+    local horiz
+    if blk then horiz = blk.horiz else horiz = (dir == "RIGHT" or dir == "LEFT") end
     local sp = df.cSpacing or 4
     local limit = horiz and (df.cW or 0) or (df.cH or 0)   -- 0 = no wrapping
     local wrapN = tonumber(df.cWrapN) or 0                  -- items per row / column (0 = no limit); the size limit above still applies
@@ -569,6 +606,48 @@ local function LayoutDynamic(df)
     end
     lines[#lines + 1] = line
     local container = Container(df)
+    local function Put(it, x, y)
+        it.fr:ClearAllPoints()
+        it.fr:SetPoint("CENTER", container, "CENTER", x, y)
+        if it.extra then   -- the rule's other display cues: on the same slot
+            for _, ef in ipairs(it.extra) do ef:ClearAllPoints(); ef:SetPoint("CENTER", container, "CENTER", x, y) end
+        end
+    end
+    if blk then
+        -- the block: each line's length along the main axis and its thickness across it
+        local thick, bMain, bCross = {}, 0, 0
+        for li, ln in ipairs(lines) do
+            local m, t = 0, 0
+            for i, it in ipairs(ln) do
+                m = m + (horiz and it.w or it.h) + ((i > 1) and sp or 0)
+                t = math.max(t, horiz and it.h or it.w)
+            end
+            thick[li] = t
+            if m > bMain then bMain = m end
+            bCross = bCross + t + ((li > 1) and sp or 0)
+        end
+        local bw, bh = bMain, bCross
+        if not horiz then bw, bh = bCross, bMain end
+        local hv, pv, cv = PT_V[blk.pinTo], PT_V[blk.pin], PT_V[blk.corner]
+        -- block centre (from the group frame's centre): the block's pin point on the group frame's pinTo point
+        local bx = hv[1] * container:GetWidth() - pv[1] * bw
+        local by = hv[2] * container:GetHeight() - pv[2] * bh
+        local ox, oy = bx + cv[1] * bw, by + cv[2] * bh   -- the corner every line starts from
+        local sx = blk.right and 1 or -1                   -- x grows right / left
+        local sy = blk.down and -1 or 1                    -- y grows down / up
+        local cross = 0
+        for li, ln in ipairs(lines) do
+            local main = 0
+            for _, it in ipairs(ln) do
+                local px, py   -- the item's own corner point
+                if horiz then px, py = ox + main * sx, oy + cross * sy else px, py = ox + cross * sx, oy + main * sy end
+                Put(it, px - cv[1] * it.w, py - cv[2] * it.h)
+                main = main + (horiz and it.w or it.h) + sp
+            end
+            cross = cross + thick[li] + sp
+        end
+        return
+    end
     local crossOff = 0
     for _, ln in ipairs(lines) do
         local pos, cur, prevLen, cross = {}, 0, 0, 0
@@ -578,26 +657,15 @@ local function LayoutDynamic(df)
             pos[i], prevLen = cur, len
             cross = math.max(cross, horiz and it.h or it.w)
         end
-        local shift = 0
-        if dir == "HCENTER" or dir == "VCENTER" then
-            local n = #ln
-            local lead = pos[1] - (horiz and ln[1].w or ln[1].h) / 2
-            local trail = pos[n] + (horiz and ln[n].w or ln[n].h) / 2
-            shift = (lead + trail) / 2
-        end
         local co = crossOff + cross / 2
         for i, it in ipairs(ln) do
-            local p = pos[i] - shift
+            local p = pos[i]
             local x, y = 0, 0
-            if dir == "RIGHT" or dir == "HCENTER" then x = p; y = -co * cs
+            if dir == "RIGHT" then x = p; y = -co * cs
             elseif dir == "LEFT" then x = -p; y = -co * cs
-            elseif dir == "DOWN" or dir == "VCENTER" then y = -p; x = co * cs
+            elseif dir == "DOWN" then y = -p; x = co * cs
             elseif dir == "UP" then y = p; x = co * cs end
-            it.fr:ClearAllPoints()
-            it.fr:SetPoint("CENTER", container, "CENTER", x, y)
-            if it.extra then   -- the rule's other display cues: on the same slot
-                for _, ef in ipairs(it.extra) do ef:ClearAllPoints(); ef:SetPoint("CENTER", container, "CENTER", x, y) end
-            end
+            Put(it, x, y)
         end
         crossOff = crossOff + cross + sp
     end

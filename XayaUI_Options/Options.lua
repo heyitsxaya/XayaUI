@@ -3573,12 +3573,17 @@ function ns.FolderContainerGroup(f)
     -- Dynamic layout (0.6.4): every dropdown shares its row (Grow + Sort, Spacing + Wrap, Per row + New rows go), and wrapping is an
     -- explicit tick box with its count beside it (Xaya: "dynamic groups should have row / column wrap options"; the old "Items per row /
     -- column (0 = no limit)" slider was easy to miss). Saved fields are unchanged: cGrowth, cSort, cSpacing, cWrapN (nil = no wrap), cWrapRev.
-    local function growsAcross() local d = f.cGrowth or "RIGHT"; return d == "RIGHT" or d == "LEFT" or d == "HCENTER" end
+    local function growsAcross() local d = f.cGrowth or "RIGHT"; return d == "RIGHT" or d == "LEFT" or d == "HCENTER" or d == "ANCHOR_ROW" end
+    local function fromAnchor() local d = f.cGrowth; return d == "ANCHOR_ROW" or d == "ANCHOR_COL" end
     local function wrapOn() return (tonumber(f.cWrapN) or 0) > 0 end
     g.args.growth = { type = "select", name = "Grow direction", order = 2, hidden = function() return not isDyn() end,
-        values = { RIGHT = "Right", LEFT = "Left", DOWN = "Down", UP = "Up", HCENTER = "Centered, across", VCENTER = "Centered, down" },
-        sorting = { "RIGHT", "LEFT", "DOWN", "UP", "HCENTER", "VCENTER" },
-        desc = "Which way the group adds its items. Centered keeps the line centered on the group's position.",
+        values = { RIGHT = "Right (left to right)", LEFT = "Left (right to left)", DOWN = "Down (top to bottom)", UP = "Up (bottom to top)",
+            HCENTER = "Centered row", VCENTER = "Centered column",
+            ANCHOR_ROW = "From anchor point, rows", ANCHOR_COL = "From anchor point, columns" },
+        sorting = { "RIGHT", "LEFT", "DOWN", "UP", "HCENTER", "VCENTER", "ANCHOR_ROW", "ANCHOR_COL" },
+        desc = "Which way the group adds its items. Down = top to bottom, Up = bottom to top.\n"
+            .. "Centered row / column: the items stay centered on the group's position and the row (column) grows and shrinks both ways as items appear and go, also in combat.\n"
+            .. "From anchor point: the items start at the group's anchor point (Group position > This group's anchor point) and grow away from it: right from a left anchor, left from a right one, down from a top one, up from a bottom one; a middle anchor keeps them centered on it. New rows / columns go the same way.",
         get = function() return f.cGrowth or "RIGHT" end, set = function(_, v) f.cGrowth = v; apply() end }
     -- Sort (0.6.6, Xaya: "default, expiration, name, important, manual"): one setting for XayaUI's own layout and the engine
     -- (ns.GroupSortOf in Visual.lua; saved as cSort = nil for Manual, plus cSortRev; old "asc" / "desc" read as Name / Name reversed)
@@ -3612,7 +3617,7 @@ function ns.FolderContainerGroup(f)
         hidden = function() return not (isDyn() and wrapOn()) end,
         get = function() return tonumber(f.cWrapN) or 6 end, set = function(_, v) f.cWrapN = (v > 0) and v or nil; apply() end }
     g.args.wrapDir = { type = "select", order = 2.12,
-        hidden = function() return not (isDyn() and (wrapOn() or (tonumber(f.cW) or 0) > 0 or (tonumber(f.cH) or 0) > 0)) end,
+        hidden = function() return fromAnchor() or not (isDyn() and (wrapOn() or (tonumber(f.cW) or 0) > 0 or (tonumber(f.cH) or 0) > 0)) end,
         name = function() return growsAcross() and "New rows go" or "New columns go" end,
         desc = "Which side of the first row / column the extra ones are added on.",
         values = function()
