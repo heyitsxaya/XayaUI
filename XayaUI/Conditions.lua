@@ -1357,11 +1357,35 @@ function ns.CheckContext(rule, ctx)
     m.sig, m.ver, m.sec, m.ok, m.fail = sig, ver, now, ok, fail
     return ok, fail
 end
+-- #319 (Xaya, 2026-11-04): "Always load" ignores every load condition, unless the Class or Specialization row has its own tick box
+-- "Always load: only this class / spec" ticked (rule: load.alwaysClass / load.alwaysSpec; group: f.alwaysClass / f.alwaysSpec). Then
+-- that row still counts. Unticked (the default) = the old behaviour, so no existing rule changes.
+local function AlwaysKeeps(classes, classOn, specs, specOn, ctx)
+    if classOn and ns.SetActive(classes) and not (ctx.class ~= nil and ns.SetMatch(classes, ctx.class)) then
+        return false, "class" .. (ctx.class == nil and " (unknown)" or "")
+    end
+    if specOn and ns.SetActive(specs) and not (ctx.specID ~= nil and ns.SetMatch(specs, tostring(ctx.specID))) then
+        return false, "spec" .. (ctx.specID == nil and " (unknown)" or "")
+    end
+    return true
+end
+ns._AlwaysKeeps = AlwaysKeeps
 function CheckContextRaw(rule, ctx)
     local load = rule.load or {}
     local ov, ovFolder = ns.FolderLoadOverride(rule)   -- a folder's Never / Always beats the rule's own load mode
     if ov == "never" then return false, "load: never (folder " .. tostring(ovFolder and ovFolder.name) .. ")" end
-    if ov == "always" then return true end
+    if ov == "always" then
+        -- a group set to Always still applies the class / spec rows it marked "Always load: only this ..." (this group and its parents)
+        local fid, guard = rule.folder, 0
+        while fid and guard < 32 do
+            local f = ns.FolderById(fid)
+            if not f then break end
+            local ok, why = AlwaysKeeps(f.loadClasses, f.alwaysClass, f.loadSpecs, f.alwaysSpec, ctx)
+            if not ok then return false, "group " .. tostring(f.name) .. " (Always load, only this " .. why .. ")" end
+            fid, guard = f.parent, guard + 1
+        end
+        return true
+    end
     do   -- a group's own spec / role / instance-type conditions apply on top of the rule's (nearest group first, then its parents)
         local fid, guard = rule.folder, 0
         while fid and guard < 32 do
@@ -1383,7 +1407,12 @@ function CheckContextRaw(rule, ctx)
         end
     end
     if load.mode == "never" then return false, "load: never" end
-    if load.mode == "always" then return true end
+    if load.mode == "always" then
+        local ok, why = AlwaysKeeps(load.classes, load.alwaysClass and load.classUse ~= false,
+            load.specs, load.alwaysSpec and load.specUse ~= false, ctx)
+        if not ok then return false, "Always load, only this " .. why end
+        return true
+    end
     local checks = {}
     for _, c in ipairs(ns.LOAD_TRI) do
         local s = load[c.key]

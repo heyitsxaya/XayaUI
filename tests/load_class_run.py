@@ -38,6 +38,34 @@ check("Death Knight only: does NOT load on a Paladin", lua("local ok = loads(R({
 check("Death Knight only: says why (class)", lua("local _, why = loads(R({ mode = 'all', classes = { DEATHKNIGHT = true } })); return why == 'class'"), lua("local _, why = loads(R({ mode = 'all', classes = { DEATHKNIGHT = true } })); return tostring(why)"))
 check("Death Knight or Paladin: loads on a Paladin", lua("return (loads(R({ mode = 'all', classes = { DEATHKNIGHT = true, PALADIN = true } })))"))
 check("class box switched off keeps the choice but ignores it", lua("return (loads(R({ mode = 'all', classUse = false, classes = { DEATHKNIGHT = true } })))"))
+# #319 (core 0.6.18): "Always load" plus the row's own tick box "Always load: only this class / spec"
+check("Always load, Death Knight class, box NOT ticked: loads on a Paladin (unchanged default)",
+      lua("return (loads(R({ mode = 'always', classes = { DEATHKNIGHT = true } })))"))
+check("Always load, Death Knight class, box ticked: does NOT load on a Paladin",
+      lua("return (loads(R({ mode = 'always', alwaysClass = true, classes = { DEATHKNIGHT = true } }))) == false"))
+check("  ...and says why", lua("local _, why = loads(R({ mode = 'always', alwaysClass = true, classes = { DEATHKNIGHT = true } })); return tostring(why):find('Always load, only this class') ~= nil"))
+check("Always load, Paladin class, box ticked: loads on a Paladin",
+      lua("return (loads(R({ mode = 'always', alwaysClass = true, classes = { PALADIN = true } })))"))
+check("Always load, box ticked but the Class row switched off: the row is not used",
+      lua("return (loads(R({ mode = 'always', alwaysClass = true, classUse = false, classes = { DEATHKNIGHT = true } })))"))
+check("Always load ignores the other rows even with the box ticked (role, instance)",
+      lua("return (loads(R({ mode = 'always', alwaysClass = true, classes = { PALADIN = true }, roles = { HEALER = true }, combat = 'yes' })))"))
+SPEC = L.eval("ns.ReadContext and tostring(NS.ReadContext().specID)")
+check("Always load, another spec ticked with its box: does NOT load",
+      lua("return (loads(R({ mode = 'always', alwaysSpec = true, specs = { ['999999'] = true } }))) == false"))
+check("Always load, another spec ticked, box NOT ticked: loads (unchanged default)",
+      lua("return (loads(R({ mode = 'always', specs = { ['999999'] = true } })))"))
+# a group set to Always
+lua("ns = NS; ns.folders[#ns.folders + 1] = { id = 'gA', name = 'DK auras', loadOverride = 'always', loadClasses = { DEATHKNIGHT = true } }")
+check("group Always with a Death Knight class list, box NOT ticked: its rule loads on a Paladin (unchanged)",
+      lua("local r = R({ mode = 'all', classes = { PALADIN = true } }); r.folder = 'gA'; return (loads(r))"))
+lua("ns.folders[#ns.folders].alwaysClass = true")
+check("group Always, box ticked: its rules do NOT load on a Paladin, whatever their own Load tab says",
+      lua("local r = R({ mode = 'always' }); r.folder = 'gA'; return (loads(r)) == false"))
+lua("table.insert(ns.folders, { id = 'gB', name = 'inner', parent = 'gA' })")
+check("  ...also for a rule in a nested group", lua("local r = R({ mode = 'all' }); r.folder = 'gB'; return (loads(r)) == false"))
+lua("ns.folders[1].loadClasses = { PALADIN = true }")
+check("group Always, box ticked, Paladin listed: loads", lua("local r = R({ mode = 'all' }); r.folder = 'gA'; return (loads(r))"))
 check("Always load still wins over the class", lua("return (loads(R({ mode = 'always', classes = { DEATHKNIGHT = true } })))"))
 check("Match ANY: a matching class is enough", lua("return (loads(R({ mode = 'any', classes = { PALADIN = true }, specs = { ['999'] = true } })))"))
 check("a DK spec set on a Paladin character does not load", lua("return (loads(R({ mode = 'all', specs = { ['250'] = true } }))) == false"))

@@ -6,12 +6,12 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-514cd8c0731ed856c8943258d6e59440  QA-CHECKLIST.md
+4af090f8b99fc3fc454510c4e33ba0fd  QA-CHECKLIST.md
 a54d403da833eefe5b3661b57270da58  README.md
 63e39d9eff15e0037d26d3d7d39f51d9  ROADMAP.md
 37f2f57fb01432cf22585be2545c5f89  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-ab5e23cf1cc5aa61f10d74fb0acf9e9e  USER-GUIDE.md
+aede8a2ea903aaf78a5b831acfe8585c  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 211408557d038b0efe04360be77be057  XayaUI/AuraSound.lua
@@ -24,7 +24,7 @@ db555fdf511638ebd6e050861ebc3549  XayaUI/Combat/AuraDisplay.lua
 37fa5175736d02a8aa486c64e9e6c143  XayaUI/Combat/AuraTracker.lua
 d9d202afce65354b4aaf84ffcd8f67aa  XayaUI/Combat/README.md
 30e5f32b2444eb29c1fb0060f1ef9758  XayaUI/Compat.lua
-ea19c5f500f9fdd74d4bb087b0642098  XayaUI/Conditions.lua
+9501a27170c1e93ecdf26c3405f5f39f  XayaUI/Conditions.lua
 8d7c1a04d1c16731679e7d3ca0115bec  XayaUI/Console.lua
 484949ec23b68875fff04927f9dd2152  XayaUI/Core.lua
 54cd777342d376237760b45e6c8c8358  XayaUI/Cues.lua
@@ -109,7 +109,7 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 0983b201a6d18b252601b5bdb7c34a28  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
 d78b277a69c869a56c306f0477181d04  XayaUI/Visual.lua
-566f6eed0b298f6b95a9e021b3964d12  XayaUI/XayaUI.toc
+3d8bd74480cba3dd92a30a3f4d58eaf8  XayaUI/XayaUI.toc
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -206,12 +206,12 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-bb931f68ea5cf9f1b43fae60ef54eec3  XayaUI_Options/Options.lua
+aa97846dcf7387bd3107029d619e8c0b  XayaUI_Options/Options.lua
 8d2bfd2b7b768d7e9991276be979558b  XayaUI_Options/OutcomesEditor.lua
 6d7152146103bcfd1e18fcccaa390794  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
-6414ee72b3f0eb492ebc6d1788851a64  XayaUI_Options/XayaUI_Options.toc
+dcd806c08bbcdef463b41c33fc6cac74  XayaUI_Options/XayaUI_Options.toc
 1b7f9c9a6a6f181cc44dce7f1838d2de  XayaUI_QoL/CharacterModel.lua
 668b940e86f1dcc76e791618f370ae4c  XayaUI_QoL/CharacterToolkit.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
@@ -388,8 +388,9 @@ bed4e456089978e1da702f671342f0dd  debug-log/2026-11-04-0824-ingame-probe-gamedum
 c4b1cf2b9db971da28d0bb93cbb449ae  debug-log/2026-11-04-0857-art-picker-missing-files-core-0.6.15.md
 99d0e2ac83dbd30ba8b9d6aa296b7bfe  debug-log/2026-11-04-0902-ui-bugs-dropdown-buttons-labels-core-0.6.16.md
 952a08fee80cfde442a09a8d0bb77538  debug-log/2026-11-04-1012-art-rows-aligned-button-contract-core-0.6.17.md
+95750770463dfabc1d99aef32b3c3d4d  debug-log/2026-11-04-1348-always-load-class-spec-tick-core-0.6.18.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
-7dcf713a41e746dbd49bf9bb50f5b72d  docs/process/DECISIONS-2026-11-04.md
+e5fea4d4b14a16e8f14e928ec8766f8e  docs/process/DECISIONS-2026-11-04.md
 f54b8f5064294401abd280cf2c464599  docs/process/IN-GAME-DATA-2026-11-05.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 18f99347734ff71d918aaa8c7bf8420f  docs/process/VERIFICATION.md
@@ -469,7 +470,7 @@ a86f56d3d0f0e1ed426ca5decffcbdbf  tests/harness/run.py
 54ac3f5374107845cd76a8303a1e4a90  tests/header_chevron_run.py
 4957fdc7190a0ee9fb2a985e1cbf982a  tests/import_run.py
 9ee3a5ef6e001570cc4e59cc2b0864d2  tests/layout_parity_run.py
-a355daa7ba9fd11eb5737ffe110e4b57  tests/load_class_run.py
+29531928447b66a93dc7fed6ddbf0d36  tests/load_class_run.py
 77132f082006e60b78f5bbdc7cc3c57f  tests/lua51.py
 55c5aa8a97168b5abfd78a60ca40b5aa  tests/lua_pitfalls_run.py
 f19616c7613194a3b65115c2c4405087  tests/minimap_run.py

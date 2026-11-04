@@ -376,7 +376,9 @@ end
 -- bannerOpen table and ns.ArrowToggle +/- button), and unticking "use" clears the choices below instead of only
 -- disabling them - so a rule that shows "All" really has nothing recorded, not a hidden leftover pick.
 local bannerOpen = setmetatable({}, { __mode = "k" })   -- hoisted: ns.RadioGroup below uses it
-function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, useKey, rule, bannerKey, multi)
+-- alwaysKey (Class / Specialization rows, #319): a tick box on the row itself, shown while the load mode is "Always load": ticked,
+-- Always load still keeps to this row (Conditions.lua AlwaysKeeps). Stored as ld()[alwaysKey] = true; unticked = nothing stored.
+function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, useKey, rule, bannerKey, multi, alwaysKey, alwaysWord)
     local function isOn()
         local u = ld()[useKey]
         if u == nil then return ns.SetActive(getSet()) end
@@ -411,11 +413,23 @@ function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, use
             end
             onChange()
         end }
+    local alwaysArg
+    if alwaysKey then
+        useArg.width = "normal"   -- the row's own tick box sits beside it
+        alwaysArg = { type = "toggle", order = 1.2, width = "normal",
+            name = "Always load: only this " .. (alwaysWord or name:lower()),
+            desc = "Always load ignores every load condition. Tick this to keep this one: the rule still loads only for the " ..
+                (alwaysWord or name:lower()) .. " ticked here. Unticked, Always load ignores it as well.",
+            hidden = function() return ld().mode ~= "always" or not isOn() end,
+            get = function() return ld()[alwaysKey] == true end,
+            set = function(_, v) ld()[alwaysKey] = v and true or nil; onChange() end }
+    end
     if rule and bannerKey then
         local arrow = ns.ArrowToggle(rule, bannerKey, 1.5)
         arrow.hidden = function() return not isOn() end
         return { type = "group", inline = true, name = "", order = order, hidden = hiddenFn, args = {
             use = useArg,
+            always = alwaysArg,
             open = arrow,
             pane = { type = "group", inline = true, name = "", order = 2,
                 hidden = function() return not (isOn() and ns.ArrowOpen(rule, bannerKey)) end, args = body },
@@ -1498,7 +1512,7 @@ local function BuildRule(i, rule)
         hidden = function() local m = rule.load.mode; return m ~= "never" and m ~= "always" end,
         name = function()
             return rule.load.mode == "always"
-                and "|cffffd100Always load is ticked:|r the options below are kept but not used. Tick Match ALL or Match ANY to make them count."
+                and "|cffffd100Always load is ticked:|r the options below are kept but not used, except a Class or Specialization row whose \"Always load: only this ...\" box is ticked. Tick Match ALL or Match ANY to make them all count."
                 or "|cffffd100Never load is ticked:|r this rule does not load, so the options below are kept but not used. Tick Match ALL or Match ANY to make them count."
         end }
     local loadModeKeys = AddSquareRadio(loadArgs, "loadMode", 0.5, LOAD_MODE, LOAD_MODE_ORDER,
@@ -1613,8 +1627,8 @@ local function BuildRule(i, rule)
             if rule.load.instance == "yes" then bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].instance = nil end
         end
     end
-    loadArgs.classes = ns.RadioGroup("Class", 0.57, noMatch, classSet, ns.ClassChoices(), onSpecRole, function() return rule.load end, "classUse", rule, "classes", true)
-    loadArgs.specs = ns.RadioGroup("Specialization", 0.6, noMatch, specSet, SpecChoices(), onSpecRole, function() return rule.load end, "specUse", rule, "specs", true)
+    loadArgs.classes = ns.RadioGroup("Class", 0.57, noMatch, classSet, ns.ClassChoices(), onSpecRole, function() return rule.load end, "classUse", rule, "classes", true, "alwaysClass", "class")
+    loadArgs.specs = ns.RadioGroup("Specialization", 0.6, noMatch, specSet, SpecChoices(), onSpecRole, function() return rule.load end, "specUse", rule, "specs", true, "alwaysSpec", "spec")
     loadArgs.roles = ns.RadioGroup("Role", 0.7, noMatch, roleSet, RoleChoices(), onSpecRole, function() return rule.load end, "roleUse", rule, "roles")
     -- A folder's Never / Always overrides this rule's load mode and match conditions (talents still apply). Values stay stored.
     local function folderLoadOv() return ns.FolderLoadOverride(rule) end
@@ -3929,6 +3943,14 @@ function ns.FolderLoadConditions(f)
             get = function(_, k) return setOf(field)[k] and true or false end,
             set = function(_, k, v) setOf(field)[k] = v and true or nil; if next(f[field]) == nil then f[field] = nil end; ns.MarkDirty(); Notify() end }
     end
+    -- #319: while this group loads "Always" (its own setting or a parent's), a list can still count: "Always load: only this class / spec"
+    local function AlwaysRow(order, word, field, key)
+        return { type = "toggle", order = order, width = "full", name = "Always load: only this " .. word,
+            desc = "This group is set to Always, which ignores load conditions. Tick this to keep the " .. word .. " list above: the group's rules then load only for the " .. word .. " ticked there.",
+            hidden = function() return ns.FolderLoadOverrideFrom(f.id) ~= "always" or not (f[field] and next(f[field])) end,
+            get = function() return f[key] == true end,
+            set = function(_, v) f[key] = v and true or nil; ns.MarkDirty(); Notify() end }
+    end
     local classV, classO = {}, {}
     for _, c in ipairs(ns.ClassChoices()) do classV[c.id] = c.text; classO[#classO + 1] = c.id end
     local specV, specO = {}, {}
@@ -3942,7 +3964,9 @@ function ns.FolderLoadConditions(f)
             note = { type = "description", order = 0, width = "full", fontSize = "small",
                 name = "Checked before each rule's own Load tab, for every rule in this group and its nested groups: a rule only loads if it passes both. Leave a list with nothing ticked to allow anything. Nothing on the rules is changed." },
             classes = Multi(0.5, "Class", "loadClasses", classV, classO),
+            classAlways = AlwaysRow(0.55, "class", "loadClasses", "alwaysClass"),
             specs = Multi(1, "Specialization", "loadSpecs", specV, specO),
+            specAlways = AlwaysRow(1.05, "spec", "loadSpecs", "alwaysSpec"),
             roles = Multi(2, "Role", "loadRoles", roleV, roleO),
             inst = Multi(3, "Instance type", "loadInst", instV, ns.INSTANCE_TYPE_ORDER),
         } }
