@@ -148,6 +148,8 @@ GetInventoryItemDurability = function(slot) local d = DUR[slot]; if d then retur
 ITEMS = {
   Helm = { ilvl = 336, loc = "INVTYPE_HEAD", stats = { ITEM_MOD_CRIT_RATING_SHORT = 300, ITEM_MOD_HASTE_RATING_SHORT = 200, ITEM_MOD_AGILITY_SHORT = 500 } },
   Ring = { ilvl = 330, loc = "INVTYPE_FINGER", stats = { ITEM_MOD_CRIT_RATING_SHORT = 100, ITEM_MOD_MASTERY_RATING_SHORT = 400, EMPTY_SOCKET_PRISMATIC = 1 } },
+  Glaive = { ilvl = 330, loc = "INVTYPE_WEAPON", class = 2, stats = {} },      -- an off-hand weapon (Enum.ItemClass.Weapon = 2)
+  Frill = { ilvl = 330, loc = "INVTYPE_HOLDABLE", class = 4, stats = {} },      -- held in off hand (Armor = 4)
   ["Better Helm"] = { ilvl = 346, loc = "INVTYPE_HEAD", stats = { ITEM_MOD_CRIT_RATING_SHORT = 400, ITEM_MOD_MASTERY_RATING_SHORT = 100,
     ITEM_MOD_AGILITY_SHORT = 600, ITEM_MOD_STAMINA_SHORT = 900, RESISTANCE0_NAME = 500 } },
 }
@@ -156,7 +158,7 @@ loadRequests = {}
 C_Item = {
   GetDetailedItemLevelInfo = function(link) local it = itemOf(link); return it and it.ilvl end,
   GetItemStats = function(link) local it = itemOf(link); if it then local t = {}; for k, v in pairs(it.stats) do t[k] = v end; return t end end,
-  GetItemInfoInstant = function(link) local it = itemOf(link); if it then return 1, "Armor", "Leather", it.loc end end,
+  GetItemInfoInstant = function(link) local it = itemOf(link); if it then return 1, "Armor", "Leather", it.loc, 0, it.class or 4, 0 end end,
   GetItemInfo = function(id) if id == 3 then return "Better Helm", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r" end end,
   RequestLoadItemDataByID = function(id) table.insert(loadRequests, id) end,
 }
@@ -174,7 +176,7 @@ C_MythicPlus = { RequestMapInfo = function() mythicRequested = true end, GetSeas
 LARGE_NUMBER_SEPERATOR, DECIMAL_SEPERATOR = ",", "."
 
 -- the character window's item slot buttons (names from Blizzard's PaperDollFrame.xml; IDs as the game sets them)
-for _, s in ipairs({ { "HeadSlot", 1 }, { "NeckSlot", 2 }, { "Finger0Slot", 11 }, { "Finger1Slot", 12 } }) do
+for _, s in ipairs({ { "HeadSlot", 1 }, { "NeckSlot", 2 }, { "Finger0Slot", 11 }, { "Finger1Slot", 12 }, { "SecondaryHandSlot", 17 } }) do
   local b = mk("ItemButton"); b.id = s[2]; _G["Character" .. s[1]] = b
 end
 function PaperDollItemSlotButton_Update(btn) end

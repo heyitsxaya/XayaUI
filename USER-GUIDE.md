@@ -688,7 +688,7 @@ A panel beside the character window (XayaUI QoL; its title reads **Stat Calculat
     - Both items' stats come from the game at the item level in the link. Gems, enchants and set bonuses are not in an item's stat table. On-use and proc effects, and the same item at another item level, are not given by the game and are not estimated.
 - **Spells (advanced, off by default):** for spells you add, each number in the spell's current description divided by your current attack power (or spell power), and what one point of your primary stat adds. This is the ratio as it stands now, with talents and buffs already in it; it is not Blizzard's base coefficient, and numbers that do not scale with attack or spell power (durations, charges) give meaningless ratios. You can type a coefficient from a database such as Wowhead next to each spell; the panel shows it beside the measured ratio and flags a large difference.
 
-**Slot overlays (off by default):** marks on the character window's item slots. The item level shows at the bottom of each slot, and the number of empty sockets at the top (for example 2S). The game does not say which slots take an enchant, so you tick the slots to check. A ticked slot with no enchant shows E? (orange), and an enchanted one shows E (green).
+**Slot overlays (off by default):** marks on the character window's item slots. The item level shows at the bottom of each slot, and the number of empty sockets at the top (for example 2S). The slots this expansion's enchants cover are checked to start with: head, shoulders, chest, legs (spellthread or armor kit), feet, both rings, main hand, and off hand when it holds a weapon. The game has no call that says which slots take an enchant, so this list comes from the expansion's enchant items in Blizzard's game data. Change any tick on the Enchant Slots tab and your own choice is kept; **This expansion's slots** puts the list back. A checked slot with no enchant shows E? (orange), and an enchanted one shows E (green).
 
 **Character window tooltips:** hovering a stat in the character window adds the toolkit's lines under Blizzard's own text (can be switched off). The panel's own hover does not depend on it.
 
@@ -699,7 +699,7 @@ A panel beside the character window (XayaUI QoL; its title reads **Stat Calculat
   - Tooltips: the character window lines.
 - **Slot Overlays**, with tabs:
   - Show: slot overlays, item level, empty sockets, enchant check, text size.
-  - Enchant Slots: the slots to check for an enchant.
+  - Enchant Slots: the slots to check for an enchant (this expansion's enchantable slots until you change them).
 - **Spell Math:** the switch, and adding a spell by ID, name, or shift-clicked link. Per spell: scales with attack or spell power, an optional coefficient, remove.
 
 `/xui stats` shows or hides the panel (docked when the character window is open, otherwise free and draggable); `/xui stats on`, `off`, `options`, `status`.
