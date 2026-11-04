@@ -18,7 +18,15 @@ This repository is public, so it holds the `--public` build:
   - The undocumented global functions and the numeric globals. Those lists also hold the names of every addon loaded during the capture.
 - **The full version** has all of it and is private: Xaya's Google Drive folder "Blizzard API Data", file `XayaUI-reference-full-<date>.zip`. Read it through the Drive connector when a description or an undocumented global is needed. Never commit the full version here.
 
-Why the split: Blizzard owns its written game text. Publishing it is a copyright question, and the current EULA wording could not be read from the cloud session (`www.blizzard.com` is outside its network allowance). Names, IDs and signatures are factual. They are widely published already, for example on warcraft.wiki.gg and in the public wow-ui-source mirror.
+Why the split: Blizzard owns its written game text. Names, IDs and signatures are factual. US federal rules list "Words and short phrases such as names, titles, and slogans" as not subject to copyright (37 CFR 202.1(a)). They are widely published already, for example on warcraft.wiki.gg and in the public wow-ui-source mirror.
+
+Terms (read 2026-11-04; details in `debug-log/2026-11-04-1550-terms-check-blizzard-wago.md`; not legal advice):
+- **Blizzard EULA**, last revised March 21, 2024:
+  - §1.C.6 forbids "any unauthorized process or software that intercepts, collects, reads, or 'mines' information". It adds that Blizzard "may, at its sole and absolute discretion, allow the use of certain third-party user interfaces" (add-ons).
+  - §2.A.1.i: "you will not create any work based on the Platform, except as expressly set forth in this Agreement."
+  - No express permission was found for building files from client data tables (this folder's `build_*.py` outputs, and the shipped `XayaUI/ProcGlows.lua` and `XayaUI/SetBonusAuras.lua`). This is common practice that Blizzard tolerates, not something it permits in writing. That is the weakest point of the data sources here.
+  - The EULA is a contract: it can restrict use of material that copyright does not protect.
+- **wago.tools** publishes no terms of use, privacy policy, API rules or rate limits; its only notice is "© 2021 - <year> Wago Tools. All rights reserved." Downloads are cached per build (each table once) and every generated file names the site.
 
 ## How to use it
 - Does a function exist, what does it take and return, and is it secret-restricted? Look in `api/namespaces.md` or `api/globals.md` (search the name), or `api/api.json` from a script.

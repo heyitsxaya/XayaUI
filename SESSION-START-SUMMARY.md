@@ -76,6 +76,10 @@ Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.
      (`GetUnitCriteriaProgressValues`), auras on enemies, and a per-creature summary (creature ID -> name, classification,
      count, spells seen cast, auras seen). Building the capture on the probe's mob reads avoids a second recorder (INFERENCE
      from reading the code, not yet designed in detail).
+   - **Which season is live** (Xaya, 2026-11-04: "the adventure journal in game will tell you what dungeons are in the current
+     season rotation"): `C_ChallengeMode.GetMapTable()` gives the rotation's challenge-mode IDs, and `/xuidev catalogue` already
+     saves it (`AuraCatalogue.lua:201`). Add `C_MythicPlus.GetCurrentSeasonValues()` (displaySeasonID; INFERENCE: the same number
+     as the client table's DisplaySeasonID), then mark the live season in `instances.json`. Keep both seasons listed.
    - **They settle what the client data cannot:**
      - creature names: only 2 of the 391 enemy-forces rows have one;
      - which creatures cast what;
@@ -100,6 +104,13 @@ Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.
    - everything.
 
    Until she answers, keep writing debug-log entries as the process requires.
+3b. **Open with Xaya: the terms question** (asked 2026-11-04; `debug-log/2026-11-04-1550-terms-check-blizzard-wago.md`). No written
+   permission exists for files built from client data. Options, her call:
+   - keep the shipped addon free of such data (`ProcGlows.lua`, `SetBonusAuras.lua` built from in-game reads instead);
+   - keep `docs/reference/` as it is;
+   - ask Blizzard;
+   - ask the wago.tools operator.
+   Until she answers, do not add new client-table data to shipped addon files.
 4. **Waiting on the game:** Advanced Debugging QA B50-B57; Character Toolkit QA E1d-E1o (E1o: shift-click with the deprecation
    fallbacks off).
 5. "Task #38" in the previous handoff was that session's own task number. GitHub issue #38 is an unrelated, closed sound-preview
