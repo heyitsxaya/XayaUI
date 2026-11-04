@@ -156,7 +156,7 @@ d1214a6ecb251789fe882787dce5d8ef  XayaUI_DevAssist/ApiInventory.lua
 77ebd715ce270ac10a0e2bc07954ca57  XayaUI_DevAssist/DevAssist.lua
 4f406e5f61d664082acd91fcb9dcafdd  XayaUI_DevAssist/FORMULA-CAPTURE-WALKTHROUGH.md
 540e759425acffdcd2e04155ed259ae3  XayaUI_DevAssist/FormulaCapture.lua
-cdc3915e3f650058d32ac7e0d9d6d9d2  XayaUI_DevAssist/Probe.lua
+50975f2160677ed5ffc60d400355b03b  XayaUI_DevAssist/Probe.lua
 1bde616c2ffddb5d49c5320bbbedfca4  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
@@ -428,6 +428,7 @@ d219067bc85426f02913fb1b3eece809  docs/issue-screenshots/toolkit-spells-id-place
 2edfd954de3e0f9b0ecffe4974a91398  docs/issue-screenshots/toolkit-what-if-tab.png
 a2e49515e283e72fc94f220e8148b746  docs/issue-screenshots/toolkit-window-resize.png
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
+f79f3cebbabbaf806ad401112c73f3f5  docs/plans/INSTANCE-CAPTURE-2026-11-04.md
 9a907df3961024106bb6ae03b230abf3  docs/plans/REFERENCE-SCREENS-AND-FEASIBILITY-2026-11-04.md
 0924ed5a5935ca6e4b89390a03647a57  docs/plans/STAT-CALCULATOR-REDESIGN-2026-11-04.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
