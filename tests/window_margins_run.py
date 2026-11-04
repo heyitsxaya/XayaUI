@@ -9,8 +9,8 @@ game (tests/harness places frames from their anchors) and measures them:
   - exempt, as in Blizzard's windows: title-bar close buttons and corner resize grips (they sit at the edge), full-window
     backgrounds and borders, segmented rows (the toolkit's tabs and filter buttons keep their 2 px seams), single-line titles and
     hints (typography, only their margin is checked).
-Windows: the console window and the copy box (core), the import window (Options), the Stat Calculator panel (QoL).
-Batch 2 (chat history, notepad windows, the mover popups) comes in a later change.
+Windows: the console window and the copy box (core), the import window (Options), the Stat Calculator panel (QoL), the chat history
+window (Chat). Still to come: the notepad windows (Bonus) and the mover popups (Visual.lua).
 Run: python3 tests/window_margins_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -140,6 +140,19 @@ if tp then
   measure("Stat Calculator panel", tp, { segment = function(k) return tabSet[k] and "tabs" or nil end })
   local lay = ns.CHARTOOLKIT_LAYOUT
   check("Stat Calculator panel: its content inset is the core margin", lay and lay.pad == M and lay.content == lay.width - 2 * M, lay and lay.pad)
+end
+-- 5. The chat history window (Chat) --------------------------------------------------------------------------------------------
+local okH, errH = pcall(function() ns.Chat.History_Toggle() end)
+local hw = rawget(_G, "XayaUIChatHistory")
+check("the chat history window opens", okH and hw ~= nil, errH)
+if hw then
+  hw.status:SetText("1000 newer messages. Click Refresh.")
+  local kb = {}
+  for _, b in ipairs(hw.kb or {}) do kb[b] = true end
+  measure("chat history window", hw, { segment = function(k) return kb[k] and "tabs" or nil end })
+  hw:SetSize(440, 300)   -- the smallest it can be made
+  local okS = pcall(function() hw:GetScript("OnSizeChanged")(hw) end)
+  measure("chat history window at its smallest (440 x 300)", hw, { segment = function(k) return kb[k] and "tabs" or nil end })
 end
 return R
 end
