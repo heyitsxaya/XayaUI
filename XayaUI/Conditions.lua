@@ -128,8 +128,13 @@ local function ChargeState(readID, baseID, ch, maxC, cd)
     if recharging ~= nil then st.recharging = recharging end
     local cdActive, onGCD, enabled = CleanBool(cd, "isActive"), CleanBool(cd, "isOnGCD"), CleanBool(cd, "isEnabled")
     if cdActive == true and onGCD ~= true then
-        st.anchorN, st.anchorT = 0, now
-        return 0, false, "0: the spell's own cooldown runs (no charge left)"
+        -- 0 charges only when a charge is also recharging: some spells lock out for a moment while charges remain (a known
+        -- exception, noted in EllesmereUI's comments as "not universal"; API facts only), which reads as not ready, count unknown
+        if recharging == true then
+            st.anchorN, st.anchorT = 0, now
+            return 0, false, "0: the spell's own cooldown runs while a charge recharges (no charge left)"
+        end
+        return nil, false, "the spell's own cooldown runs but no charge recharges (a lockout): not ready, count unknown"
     end
     if enabled == false then return nil, false, "the spell's cooldown is on hold: not usable, count unknown" end
     if recharging == nil then return nil, nil, "charges unreadable" end
@@ -297,6 +302,39 @@ local function IndexID(idx, v, fr, vname)
         if n == 0 or l[n][1] ~= fr then l[n + 1] = { fr, vname } end   -- one entry per frame per ID
     end
 end
+-- A Cooldown Manager icon's spell IDs. The game can hide them (secret) while the icon's aura is active, which is exactly when a
+-- rule needs the icon (EllesmereUI's notes say the same of GetSpellID and the cooldownInfo fields; API facts only). So the IDs
+-- an icon showed when they were readable are kept on it (xuiLastIDs) and used while they are hidden. Blizzard reuses icons
+-- for other spells: Timing.lua clears the kept IDs when an icon is given another spell (OnCooldownIDSet).
+local function FrameIDs(fr)
+    local ids, hidden = {}, false
+    local function Add(v)
+        if v == nil then return end
+        if issecret(v) then hidden = true; return end
+        if type(v) == "number" then ids[#ids + 1] = v end
+    end
+    local ok, sid = pcall(GetSpellIDOf, fr)
+    if ok then Add(sid) else hidden = true end
+    local okI, info = pcall(Field, fr, "cooldownInfo")
+    if okI and issecret(info) then hidden = true
+    elseif okI and type(info) == "table" then
+        for _, k in ipairs({ "spellID", "overrideSpellID", "overrideTooltipSpellID" }) do
+            local okF, v = pcall(Field, info, k)
+            if okF then Add(v) else hidden = true end
+        end
+        local okL, l = pcall(Field, info, "linkedSpellIDs")
+        if okL and issecret(l) then hidden = true
+        elseif okL and type(l) == "table" then for _, x in ipairs(l) do Add(x) end end
+    end
+    if hidden then
+        local last = fr.xuiLastIDs
+        if type(last) == "table" then for _, x in ipairs(last) do ids[#ids + 1] = x end end
+    elseif #ids > 0 then
+        fr.xuiLastIDs = ids
+    end
+    return ids
+end
+ns._FrameIDs = FrameIDs
 local function BuildCDMIndex()
     local idx = {}
     for _, vname in ipairs(VIEWERS) do
@@ -307,17 +345,7 @@ local function BuildCDMIndex()
                 local fr = kids[i]
                 if fr then
                     if ns.Timing then ns.Timing.HookFrame(fr) end   -- exact applied / removed / cooldown moments (Timing.lua)
-                    local ok, sid = pcall(GetSpellIDOf, fr)
-                    if ok then IndexID(idx, sid, fr, vname) end
-                    local info = fr.cooldownInfo
-                    if type(info) == "table" then
-                        IndexID(idx, info.spellID, fr, vname)
-                        IndexID(idx, info.overrideSpellID, fr, vname)
-                        IndexID(idx, info.overrideTooltipSpellID, fr, vname)
-                        if type(info.linkedSpellIDs) == "table" then
-                            for _, l in ipairs(info.linkedSpellIDs) do IndexID(idx, l, fr, vname) end
-                        end
-                    end
+                    for _, x in ipairs(FrameIDs(fr)) do IndexID(idx, x, fr, vname) end
                 end
             end
         end
