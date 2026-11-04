@@ -232,8 +232,9 @@ local function EnsureTextures()
     end
     texValues["0"] = "(none)"
     table.insert(texSorting, 1, "0")
-    -- local graphics (Media\\Graphics, from LocalGraphics.lua); the stored value is the file path
-    for _, g in ipairs(ns.LocalGraphics or {}) do
+    -- local graphics (Media\\Graphics, from LocalGraphics.lua); the stored value is the file path. Only folders the game can find
+    -- (UserMedia.lua ns.AvailableLocalGraphics, #333): a picture only Xaya has is not offered as a blank row to everyone else.
+    for _, g in ipairs((ns.AvailableLocalGraphics and ns.AvailableLocalGraphics()) or ns.LocalGraphics or {}) do
         local gw = math.min(ns.TEX_PICK_ICON * 2, math.max(8, math.floor(ns.TEX_PICK_ICON * (g[3] or 1) / math.max(1, g[4] or 1) + 0.5)))   -- keep the picture's proportions
         texValues[g[2]] = ("|T%s:%d:%d|t  %s"):format(g[2], ns.TEX_PICK_ICON, gw, g[1])
         texSorting[#texSorting + 1] = g[2]

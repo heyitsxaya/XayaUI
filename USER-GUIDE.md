@@ -16,7 +16,7 @@ XayaUI is a group of addons. Each one is its own entry in the game's AddOns list
 | **XayaUI QoL** | Cursor highlight, cursor trail, Character Toolkit (friends and bags later) | No cursor changes, no Character Toolkit |
 | **XayaUI Bonus Features** | Tooltip additions, Notepad, custom data panels | Plain tooltips, no notepad, no panels |
 | **XayaUI Blizzard Reskin** | XayaUI's look on Blizzard's frames without changing what they do (today: the Game Menu) | Blizzard's own look |
-| **XayaUI Media** | Your own pictures and sounds (a support folder, not a feature) | Your own files are not in the lists |
+| **XayaUI Media** | Your own pictures and sounds (a support folder, not a feature) | Your own files are not in the lists. The art picker (and the sound list) offer only the bundled pictures this computer actually has, checked once per session (pictures since 0.6.15, #333); your own XayaUI Media files are always listed |
 
 Each feature addon has its own tab in the settings window (**Chat**, **QoL**, **Bonus Features**); the Game Menu look stays under Settings > UI Options > Display. A tab, a minimap-button row, or a /xui command of an addon that is switched off is simply not there (a command says which addon to turn on). Your settings are kept either way: switching an addon off and on again loses nothing.
 
