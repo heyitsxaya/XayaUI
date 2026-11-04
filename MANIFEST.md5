@@ -421,6 +421,7 @@ ffa11fbba5d731310966d21dcec98c9e  debug-log/2026-11-04-2018-stat-calculator-titl
 10048f7acf6bf52113df6becd3143d97  debug-log/2026-11-04-2030-game-menu-height-fit-core-0.6.32.md
 33f58b1d9ba05183498e265dcfdaffe4  debug-log/2026-11-04-2050-group-load-id-lists-core-0.6.33-options-0.6.32.md
 3799d76bd28cf0023e816bed7c325271  debug-log/2026-11-04-2052-ui-gutter-margin-351-phase1-options-0.6.33.md
+361f6c441da1aa516d068eba5e4289c5  debug-log/2026-11-04-2116-v11-layout-probe-test.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -542,6 +543,7 @@ f19616c7613194a3b65115c2c4405087  tests/minimap_run.py
 adb52b5f86b97b5ac549353e59d97f36  tests/modules_run.py
 4cc2faca4a8d474ac1a5aae6273d30fa  tests/mover_view_run.py
 1b83e47e74181dd789ddcafe4b0d937e  tests/notepad_run.py
+664a982d1241e03b0d01cda02de8c258  tests/options_layout_v11_run.py
 b98b8b93e9068a136e462260a2aefcd1  tests/perf_run.py
 9c3206bd42a7e043987917327cc16e27  tests/precheck_run.py
 69c610cd804812db130140e9e506c453  tests/preview_layout_run.py
