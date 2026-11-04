@@ -132,5 +132,18 @@ check("/xui status prints the place values (map, instance, difficulty, size, enc
         pcall(NS.PrintStatus); NS.Print = keep
         for _, t in ipairs(out) do if t:find('place: map=31 instanceID=2552 difficulty=0 size=0 encounterID=0', 1, true) then return true end end
         return false"""))
+# a group's own lists (core 0.6.33): checked for every rule in the group and its nested groups, before the rule's own
+lua("""NS.folders = { { id = "gA", name = "Raid auras", loadIds = { mapIDs = { ['40'] = true } } }, { id = "gB", name = "Inner", parent = "gA" },
+                      { id = "gC", name = "Always group", loadOverride = "always", loadIds = { mapIDs = { ['40'] = true } } } }""")
+check("a group's zone list that does not match: its rule does not load, and the reason names the group",
+      lua("local r = R({ mode = 'all' }); r.folder = 'gA'; local ok, why = loads(r); return ok == false and why == 'group Raid auras: zone'"),
+      lua("local r = R({ mode = 'all' }); r.folder = 'gA'; local ok, why = loads(r); return tostring(why)"))
+check("a rule in a nested group gets its parent group's list too",
+      lua("local r = R({ mode = 'all' }); r.folder = 'gB'; return (loads(r)) == false"))
+check("the group's list that matches (zone 20, the room's zone): the rule loads",
+      lua("NS.folders[1].loadIds.mapIDs = { ['20'] = true }; local r = R({ mode = 'all' }); r.folder = 'gB'; return (loads(r))"))
+check("a group set to Always ignores its lists (as it does its other load conditions)",
+      lua("local r = R({ mode = 'all' }); r.folder = 'gC'; return (loads(r))"))
+lua("NS.folders = {}")
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)
