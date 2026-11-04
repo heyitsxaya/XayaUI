@@ -2360,6 +2360,30 @@ CM.StatMapSections = StatMapSections
 -------------------------------------------------------------------------------
 -- The whole model
 -------------------------------------------------------------------------------
+-- The panel's header (B2; Xaya 2026-11-04, #383: "Name and spec go at the top as a decorative header above the tabs"; "item level is
+-- fine up top"; role and movement left out): name, spec and class in the class colour, item level equipped and overall. UnitName,
+-- UnitClass (globals.md:668, 573), the spec from the same read as the rest of the model, GetAverageItemLevel (as PaperDollFrame.lua),
+-- the colour from C_ClassColor.GetClassColor (namespaces.md:860), else RAID_CLASS_COLORS. Secret values are left out.
+function CM.HeaderInfo()
+    local h = {}
+    local name = R(UnitName, "player")
+    if type(name) == "string" then h.name = name end
+    local className, classFile = R(UnitClass, "player")
+    if type(className) == "string" then h.className = className end
+    local sp = SpecIndex()
+    local info = sp and SpecInfo(sp) or {}
+    if type(info[2]) == "string" and not IsSecret(info[2]) then h.spec = info[2] end
+    if type(classFile) == "string" then
+        local col = C_ClassColor and R(C_ClassColor.GetClassColor, classFile)
+        if type(col) ~= "table" then col = _G.RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile] end
+        if type(col) == "table" and num(col.r) and num(col.g) and num(col.b) then h.color = { col.r, col.g, col.b, 1 } end
+    end
+    local overall, equipped = R(GetAverageItemLevel)
+    if num(overall) then h.ilvlOverall = overall end
+    if num(equipped) then h.ilvlEquipped = equipped end
+    return h
+end
+
 -- Tabs and which sections each one draws. The Sheet draws every section of Stats, Defense and Offense in compact form. Defense and
 -- Offense are no longer tabs (QoL 0.7.7; Xaya 2026-11-04: "remove defense and offense tabs from stat calculator, they should be filters
 -- for 'Spells'"): their sections are drawn under the Spells tab's Offense and Defense filters, and CM.Build still takes "defense" and

@@ -56,6 +56,8 @@ ns.CHARTOOLKIT_DEFAULTS = {
     enchantSlots = {},     -- slot IDs the player ticked to flag when they have no enchant; empty = this expansion's slots (CM.EnchantSlots)
     -- enchantSlotsSet: true once the player has changed a tick (then enchantSlots is used even when empty)
 }
+-- the size limits of the panel's corner grip (#381, Xaya: "resize from the bottom right"; QoL 0.7.14)
+local MIN_W, MAX_W, MIN_H, MAX_H = 340, 760, 300, 1100
 local OLD_TABS = { overview = "stats", ratings = "stats", sheet = "stats", whatif = "stats" }   -- (Sheet: removed in QoL 0.7.13; What If: 0.7.14)
 
 local function CopyVal(v)
@@ -88,6 +90,10 @@ local function Cfg()
         end
     end
     if type(c.free) ~= "table" then c.free = { x = 0, y = 0 } end
+    if type(c.size) == "table" and num(c.size.w) and num(c.size.h) then
+        c.size.w = math.floor(math.max(MIN_W, math.min(MAX_W, c.size.w)) + 0.5)
+        c.size.h = math.floor(math.max(MIN_H, math.min(MAX_H, c.size.h)) + 0.5)
+    else c.size = nil end
     c.tab = OLD_TABS[c.tab] or c.tab
     -- QoL 0.7.7: the Defense and Offense tabs became the Spells tab's filters (Xaya 2026-11-04)
     if c.tab == "defense" or c.tab == "offense" then c.spellFilter = c.tab; c.tab = "spells" end
@@ -202,9 +208,10 @@ local panel, scroll, content
 -- spacing from core (#351 phase 2, XayaUI/Modules.lua): PAD = the margin inside the panel, GUT = the gutter between two controls
 local PANEL_W, PAD, GUT = 380, ns.UI_MARGIN, ns.UI_GUTTER
 local TITLE_H = 18            -- the title row (the mode button is 18 tall)
-local HEADER = TITLE_H + GUT + 20 + GUT  -- title row, a gutter, the tab row (20 tall), a gutter before the content
-local W = PANEL_W - 2 * PAD   -- content width
-ns.CHARTOOLKIT_LAYOUT = { width = PANEL_W, pad = PAD, header = HEADER, content = W }
+local NAME_H = 32             -- the header: name and item level (15), spec and class (11) under them (B2)
+local HEADER = TITLE_H + GUT + NAME_H + GUT + 20 + GUT  -- title row, header, the tab row (20 tall), a gutter before the content
+local W = PANEL_W - 2 * PAD   -- content width (changes when the panel is resized: B10, #381)
+ns.CHARTOOLKIT_LAYOUT = { width = PANEL_W, pad = PAD, header = HEADER, content = W, minW = MIN_W, maxW = MAX_W, minH = MIN_H, maxH = MAX_H }
 
 local function Owner() return _G.PaperDollFrame or _G.CharacterFrame end
 local function Docked() local cf = _G.CharacterFrame; return cf and cf.IsShown and cf:IsShown() end
@@ -518,6 +525,54 @@ local function Build()
     panel.title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     panel.title:SetPoint("TOPLEFT", PAD, -PAD)
     panel.title:SetText("Stat Calculator")   -- Xaya 2026-11-04: the panel's title (the feature is still Character Toolkit in the settings)
+    -- the header (B2): name and item level on one line, spec and class in the class colour under the name, "equipped (overall)" under
+    -- the item level; a thin rule under it
+    local hy = PAD + TITLE_H + GUT
+    panel.hName = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    panel.hName:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, -hy); panel.hName:SetJustifyH("LEFT")
+    panel.hSpec = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    panel.hSpec:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, -(hy + 17)); panel.hSpec:SetJustifyH("LEFT")
+    panel.hIlvl = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    panel.hIlvl:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PAD, -hy); panel.hIlvl:SetJustifyH("RIGHT")
+    panel.hIlvlSub = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    panel.hIlvlSub:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PAD, -(hy + 17)); panel.hIlvlSub:SetJustifyH("RIGHT")
+    panel.hRule = panel:CreateTexture(nil, "BORDER")
+    panel.hRule:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, -(hy + NAME_H + math.floor(GUT / 2)))
+    panel.hRule:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PAD, -(hy + NAME_H + math.floor(GUT / 2)))
+    panel.hRule:SetHeight(1)
+    -- the corner grip (B10, #381): drag to resize; the size is remembered and the content reflows to the new width
+    panel:SetResizable(true)
+    if panel.SetResizeBounds then pcall(panel.SetResizeBounds, panel, MIN_W, MIN_H, MAX_W, MAX_H) end
+    local grip = CreateFrame("Button", nil, panel)
+    grip:SetSize(16, 16); grip:SetPoint("BOTTOMRIGHT", -2, 2)
+    grip:SetFrameLevel((panel:GetFrameLevel() or 1) + 10)
+    grip.xuiEdge = true   -- a corner resize grip sits at the edge on purpose (#351)
+    grip.lines = {}   -- six small squares in a corner triangle
+    for _, xy in ipairs({ { 2, 2 }, { 6, 2 }, { 10, 2 }, { 2, 6 }, { 6, 6 }, { 2, 10 } }) do
+        local d = grip:CreateTexture(nil, "OVERLAY")
+        d:SetSize(2, 2)
+        d:SetPoint("BOTTOMRIGHT", grip, "BOTTOMRIGHT", -xy[1], xy[2])
+        grip.lines[#grip.lines + 1] = d
+    end
+    grip:SetScript("OnMouseDown", function() panel:StartSizing("BOTTOMRIGHT"); panel.sizing = true end)
+    grip:SetScript("OnMouseUp", function()
+        panel:StopMovingOrSizing(); panel.sizing = nil
+        local c = Cfg(); if not c then return end
+        local w, h = panel:GetWidth(), panel:GetHeight()
+        if num(w) and num(h) then
+            c.size = { w = math.floor(math.max(MIN_W, math.min(MAX_W, w)) + 0.5), h = math.floor(math.max(MIN_H, math.min(MAX_H, h)) + 0.5) }
+        end
+        ns.CharToolkit_Render()
+    end)
+    grip:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Drag to resize", 1, 0.82, 0)
+        GameTooltip:AddLine("The size is kept. QoL > Character Toolkit > Panel: Reset size goes back to the default.", 0.9, 0.9, 0.9, true)
+        GameTooltip:Show()
+    end)
+    grip:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    panel.grip = grip
     local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
     close:SetSize(24, 24)   -- the template's own size (UIPanelCloseButtonNoScripts, SharedUIPanelTemplates.xml:135, live 12.1.5)
     close:SetPoint("TOPRIGHT", 2, 2)
@@ -548,7 +603,7 @@ local function Build()
     for i, t in ipairs(CM.TABS) do
         local b = CreateFrame("Button", nil, panel)
         b:SetSize(tw - 2, 20)
-        b:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + (i - 1) * tw, -(PAD + TITLE_H + GUT))
+        b:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + (i - 1) * tw, -(PAD + TITLE_H + GUT + NAME_H + GUT))
         b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(b)
         b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); b.text:SetPoint("CENTER")
         b.key, b.label = t[1], t[2]
@@ -881,8 +936,49 @@ local function RenderFilters(c)
     return h + 6
 end
 
+-- the panel's width from the saved size (B10): the content width and the tab row follow
+local function ApplyWidth(c)
+    local pw = (type(c.size) == "table" and num(c.size.w)) and c.size.w or PANEL_W
+    W = pw - 2 * PAD
+    ns.CHARTOOLKIT_LAYOUT.width, ns.CHARTOOLKIT_LAYOUT.content = pw, W
+    if not panel.sizing then panel:SetWidth(pw) end
+    content:SetWidth(W)
+    local tw = W / #CM.TABS
+    for i, b in ipairs(panel.tabs or {}) do
+        b:SetSize(tw - 2, 20)
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + (i - 1) * tw, -(PAD + TITLE_H + GUT + NAME_H + GUT))
+    end
+end
+
+-- the header's text (B2)
+local function RenderHeader(c)
+    local h = CM.HeaderInfo()
+    local text = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
+    local muted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
+    SetFont(panel.hName, 15, ""); panel.hName:SetText(h.name or ""); Paint(panel.hName, text)
+    local spec = table.concat({ h.spec or "", h.className or "" }, " "):gsub("^%s+", ""):gsub("%s+$", "")
+    SetFont(panel.hSpec, 11, ""); panel.hSpec:SetText(spec); Paint(panel.hSpec, h.color or text)
+    SetFont(panel.hIlvl, 15, "")
+    panel.hIlvl:SetText(h.ilvlEquipped and ("%.1f"):format(h.ilvlEquipped) or "")
+    Paint(panel.hIlvl, TC("xui-label", "text", { 1, 0.82, 0, 1 }))
+    SetFont(panel.hIlvlSub, 10, "")
+    panel.hIlvlSub:SetText(h.ilvlEquipped and ("item level" .. (h.ilvlOverall and (" (overall %.1f)"):format(h.ilvlOverall) or "")) or "")
+    Paint(panel.hIlvlSub, muted)
+    -- the name and spec stop short of the item level column
+    local right = 120
+    panel.hName:SetWidth(math.max(40, W - right - GUT)); panel.hSpec:SetWidth(math.max(40, W - right - GUT))
+    panel.hIlvl:SetWidth(right); panel.hIlvlSub:SetWidth(right)
+    local rc = TC("xui-window", "border", { 0.35, 0.35, 0.4, 1 })
+    panel.hRule:SetColorTexture(rc[1], rc[2], rc[3], 0.6)
+    for _, l in ipairs(panel.grip and panel.grip.lines or {}) do l:SetColorTexture(muted[1], muted[2], muted[3], 0.9) end
+    panel.headerInfo = h
+end
+
 function ns.CharToolkit_Render()
     local c = Cfg(); if not c or not panel then return end
+    ApplyWidth(c)
+    RenderHeader(c)
     local bgc = TC("xui-window", "bg", { 0.04, 0.04, 0.06, 1 })
     panel.bg:SetColorTexture(bgc[1], bgc[2], bgc[3], 1)
     panel.bg:SetAlpha(c.opacity)
@@ -927,7 +1023,11 @@ function ns.CharToolkit_Render()
     local cf = _G.CharacterFrame
     local maxH = (Docked() and cf.GetHeight and cf:GetHeight()) or 560
     if not num(maxH) or maxH < 300 then maxH = 560 end
-    panel:SetHeight(math.min(maxH, y + PAD * 2 + HEADER))
+    if type(c.size) == "table" and num(c.size.h) then
+        if not panel.sizing then panel:SetHeight(c.size.h) end   -- the size you dragged it to (B10)
+    else
+        panel:SetHeight(math.min(maxH, y + PAD * 2 + HEADER))
+    end
     Place()
 end
 
@@ -1271,6 +1371,9 @@ function ns.BuildCharToolkitPage(Notify)
                     set = function(_, v) ns.CharToolkit_SetValueMode(v); Changed() end },
                 fontSize = { type = "range", order = 5, name = "Text size", min = 8, max = 16, step = 1,
                     get = function() return C().fontSize end, set = function(_, v) C().fontSize = v; Changed() end },
+                resetSize = { type = "execute", order = 5.5, name = "Reset size",
+                    desc = "The panel goes back to its default width, and its height follows its content again (drag its bottom-right corner to resize it).",
+                    func = function() C().size = nil; Changed() end },
                 opacity = { type = "range", order = 6, name = "Background", min = 0, max = 1, step = 0.05, isPercent = true,
                     desc = "Opacity of the panel's background. Colors and font follow the XayaUI theme.",
                     get = function() return C().opacity end, set = function(_, v) C().opacity = v; Changed() end },

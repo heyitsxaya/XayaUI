@@ -94,10 +94,10 @@ d = render()
 c.spellFilter = "defense"
 local sm = CM.Build(c, "spells")
 local st = {}; for _, sec in ipairs(sm.sections) do st[#st + 1] = sec.title end
-check("Spells > Defense filter draws only the spells (the stat sections are on the map)", table.concat(st, "|") == "Defensive spells", table.concat(st, "|"))
+check("Spells > Defense filter draws only the spells (the stat sections are on the map)", table.concat(st, "|") == "Active defensive spells", table.concat(st, "|"))
 c.spellFilter = "offense"
 sm = CM.Build(c, "spells"); st = {}; for _, sec in ipairs(sm.sections) do st[#st + 1] = sec.title end
-check("Spells > Offense filter draws only the spells", table.concat(st, "|") == "Offensive spells", table.concat(st, "|"))
+check("Spells > Offense filter draws only the spells", table.concat(st, "|") == "Active offensive spells", table.concat(st, "|"))
 c.spellFilter = "all"
 -- colours (#379)
 local critLabel
@@ -142,8 +142,8 @@ check("the map and What If share the amounts (What If's crit box)", (function() 
 
 -- 3. Layout (V11) and secrets ----------------------------------------------------------------------------------------------
 ns.CharToolkit_SetInput("sv:crit", "700"); ns.CharToolkit_SetInput("sv:primary", "2737")
-local W = ns.CHARTOOLKIT_LAYOUT.content
 local function layoutOK(dd)
+  local W = ns.CHARTOOLKIT_LAYOUT.content   -- (read each time: the grip changes it)
   for _, r in ipairs(dd.layout) do
     if r.x < 0 or r.x + r.w > W + 0.01 or r.w <= 0 then return false, r.kind .. " " .. tostring(r.text) end
   end
@@ -165,6 +165,49 @@ issecretvalue = function(v) return v == "SECRET_R" end
 local okS = pcall(render)
 check("secret ratings in combat: the map draws, crit shows hidden in combat", okS and card("map_crit").value == "hidden in combat", card("map_crit") and card("map_crit").value)
 GetCombatRating = realRating; issecretvalue = function() return false end
+
+-- 4. The panel's header (B2, #383) and corner grip (B10, #381) ---------------------------------------------------------------
+UnitName = function(u) if u == "player" then return "Xaya", nil end end
+UnitClass = function(u) if u == "player" then return "Demon Hunter", "DEMONHUNTER", 12 end end
+C_ClassColor = { GetClassColor = function(f) if f == "DEMONHUNTER" then return { r = 0.64, g = 0.19, b = 0.79 } end end }
+local P = XayaUICharacterToolkit
+render()
+check("header: the name above the tabs", P.hName.text == "Xaya", P.hName.text)
+check("  ...spec and class under it, in the class colour (C_ClassColor)", P.hSpec.text == "Vengeance Demon Hunter" and P.hSpec.color
+  and math.abs(P.hSpec.color[1] - 0.64) < 0.001 and math.abs(P.hSpec.color[3] - 0.79) < 0.001, P.hSpec.text)
+check("  ...the equipped item level on the right, overall beside its label (GetAverageItemLevel 335.5 / 334.25)", P.hIlvl.text == ("%.1f"):format(334.25)
+  and P.hIlvlSub.text == "item level (overall 335.5)", tostring(P.hIlvl.text) .. " | " .. tostring(P.hIlvlSub.text))
+check("  ...no role, no movement in it (#383)", not tostring(P.hSpec.text):find("TANK", 1, true) and not tostring(P.hIlvlSub.text):lower():find("speed", 1, true))
+local L0 = ns.CHARTOOLKIT_LAYOUT
+check("  ...the name stops short of the item level column", P.hName.w + 120 + L0.pad * 2 <= L0.width, P.hName.w)
+check("  ...the tabs sit under the header", (function() local pt = P.tabs[1].pts[#P.tabs[1].pts]; return pt and pt[5] == -(L0.pad + L0.header - 20 - ns.UI_GUTTER) end)(),
+  (function() local pt = P.tabs[1].pts[#P.tabs[1].pts]; return pt and pt[5] end)())
+local okH = pcall(function() local u = UnitName; UnitName = function() return "SECRET_N" end; issecretvalue = function(v) return v == "SECRET_N" end
+  render(); UnitName = u; issecretvalue = function() return false end end)
+check("  ...a secret name is left out, not shown or compared", okH and P.hName.text == "", P.hName.text)
+render()
+-- the grip: drag to 500 x 450, the size is kept, the content reflows to 480
+check("grip: a corner grip at the bottom right", P.grip and P.grip.pts and P.grip.pts[1] and P.grip.pts[1][1] == "BOTTOMRIGHT")
+P:SetSize(500, 450)
+P.grip.scripts.OnMouseUp(P.grip)
+check("  ...the dragged size is kept (500 x 450)", c.size and c.size.w == 500 and c.size.h == 450, c.size and (c.size.w .. "x" .. c.size.h))
+local d4 = drawn()
+check("  ...the content reflows to the new width (480) and the panel keeps the height", L0.content == 480 and P.w == 500 and P.h == 450, L0.content)
+local okW, whyW = layoutOK(d4)
+check("  ...everything still inside the width, no overlaps", okW, whyW)
+check("  ...the tab row spans the new width (3 tabs of 160)", math.abs(P.tabs[1].w - 158) < 0.01, P.tabs[1].w)
+P:SetSize(2000, 50)
+P.grip.scripts.OnMouseUp(P.grip)
+check("  ...kept within its limits (760 x 300)", c.size.w == L0.maxW and c.size.h == L0.minH, c.size.w .. "x" .. c.size.h)
+P:SetSize(300, 2000)
+P.grip.scripts.OnMouseUp(P.grip)
+check("  ...and the smallest / tallest it may be (340 x 1100)", c.size.w == L0.minW and c.size.h == L0.maxH, c.size.w .. "x" .. c.size.h)
+local page = ns.BuildCharToolkitPage(function() end)
+page.args.panelPart.args.layout.args.resetSize.func()
+render()
+check("settings: Reset size goes back to the default width (360 of content) and the height follows the content again", c.size == nil and L0.content == 360, L0.content)
+c.size = { w = "wide" }
+check("a broken saved size is dropped", ns.CharToolkit_Cfg().size == nil)
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
    .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
