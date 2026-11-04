@@ -138,6 +138,7 @@ local curPath = SHAPES.star[2]   -- the texture of the current shape (the typed 
 -- put one dot's texture into the state the current shape needs
 local function ConfigDot(d)
     SetGameTex(d.tex, curPath)
+    d.tex:SetBlendMode(curSh[3])   -- the shape's blend mode, set here once per shape change instead of on every dot laid (QoL 0.7.13)
     local want = (curSh[4] == "circle") and d.mask ~= nil
     if want and not d.masked then pcall(d.tex.AddMaskTexture, d.tex, d.mask); d.masked = true
     elseif not want and d.masked then pcall(d.tex.RemoveMaskTexture, d.tex, d.mask); d.masked = false end
@@ -154,11 +155,21 @@ local function NewDot(i)
     end
     local ln
     if frame.CreateLine then ln = frame:CreateLine(nil, "ARTWORK"); ln:Hide() end
-    local d = { tex = t, mask = m, line = ln, masked = false, on = false, born = 0, x = 0, y = 0 }
+    local d = { tex = t, mask = m, line = ln, masked = false, on = false, born = 0, x = 0, y = 0, shown = false, lineShown = false }
     dots[i] = d
     nDots = i
     ConfigDot(d)
     return d
+end
+
+-- A dot's shown state and size are kept here, so the per-frame loop never asks the game (IsShown) and never re-hides a line the shape
+-- does not use. Every hide goes through Off, so the flags cannot drift from what is on screen. (QoL 0.7.13: with Xaya's smooth line
+-- the loop made about 1,600 texture calls a frame at speed, four per live dot; tests/cursor_trail_cost_run.py measures it.)
+local function Off(d)
+    d.on = false
+    if d.shown then d.tex:Hide(); d.shown = false end
+    if d.line and d.lineShown then d.line:Hide(); d.lineShown = false end
+    d.sz = nil
 end
 
 local function Build()
@@ -174,7 +185,7 @@ end
 
 local function ClearAll()
     if not dots then return end
-    for i = 1, nDots do local d = dots[i]; d.on = false; d.tex:Hide(); if d.line then d.line:Hide() end end
+    for i = 1, nDots do Off(dots[i]) end
     if cap then cap:Hide() end
     ringN, lastX, lastY, lastDropX, lastDropY, midX, midY = 0, nil, nil, nil, nil, nil, nil
     capT = 0
@@ -188,7 +199,6 @@ local function Drop(x, y, limit, blend)
     local t = d.tex
     t:ClearAllPoints()
     t:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
-    if blend then t:SetBlendMode(blend) end
     d.placed = true
     d.px, d.py = lastDropX, lastDropY
     lastDropX, lastDropY = x, y
@@ -204,8 +214,10 @@ local function OnUpdate()
     local blend, kind = sh[3], sh[4]
     local ribbon = (kind == "ribbon")
     local limit = ribbon and NRIB or NPT
-    -- how far apart the dots are laid. The ribbon lays them close (a fraction of their width) so they merge into one smooth band.
-    local step = ribbon and math.max(1.5, size * 0.15) or math.max(2, size * 0.35)
+    -- how far apart the dots are laid. The ribbon lays them close (a quarter of their width, so about four overlap at any point and
+    -- they merge into one smooth band; the alpha below is shared out by that overlap). It was 0.15 of the width (about seven overlapping):
+    -- the same look at roughly 60% of the dots (QoL 0.7.13).
+    local step = ribbon and math.max(1.5, size * 0.25) or math.max(2, size * 0.35)
 
     -- add dots along the path the cursor traveled since the last frame
     local x, y = GetCursorPosition()
@@ -255,37 +267,38 @@ local function OnUpdate()
         if d.on then
             local f = (now - d.born) / life
             if f >= 1 then
-                d.on = false; d.tex:Hide(); if d.line then d.line:Hide() end
+                Off(d)
             else
                 local r, g, b = Grad(stops, rev and (1 - f) or f)
                 local a = op * (1 - f)
                 local sz = size * (1 - 0.45 * f)
                 local ln = d.line
                 if kind == "diamond" and ln then
-                    d.tex:Hide()
+                    if d.shown then d.tex:Hide(); d.shown = false end
                     local h = sz * 0.5 * 0.70710678
                     ln:SetStartPoint("BOTTOMLEFT", UIParent, d.x - h, d.y - h)
                     ln:SetEndPoint("BOTTOMLEFT", UIParent, d.x + h, d.y + h)
                     ln:SetThickness(sz)
                     ln:SetColorTexture(r, g, b, a)
                     ln:SetBlendMode(blend)
-                    ln:Show()
+                    if not d.lineShown then ln:Show(); d.lineShown = true end
                 else
-                    if ln then ln:Hide() end
+                    if ln and d.lineShown then ln:Hide(); d.lineShown = false end
                     if ribbon then
                         -- about sz/step dots overlap at any point of the band; give each a share of the alpha so they add up to the intended opacity
                         a = 1 - (1 - a) ^ (1 / math.max(1, sz / step))
                     end
                     local t = d.tex
                     t:SetVertexColor(r, g, b, a)
-                    t:SetSize(sz, sz)
+                    local q = math.floor(sz * 2 + 0.5) / 2   -- half-pixel steps: the size is set only when it changes by that much
+                    if d.sz ~= q then t:SetSize(q, q); d.sz = q end
                     if not d.placed then   -- (a dot placed by Drop keeps its anchor; this only covers one that was not)
                         t:SetBlendMode(blend)
                         t:ClearAllPoints()
                         t:SetPoint("CENTER", UIParent, "BOTTOMLEFT", d.x, d.y)
                         d.placed = true
                     end
-                    if not t:IsShown() then t:Show() end
+                    if not d.shown then t:Show(); d.shown = true end
                 end
             end
         end
@@ -326,7 +339,7 @@ function ns.CursorTrail_Apply()
     for i = 1, nDots do
         local d = dots[i]
         ConfigDot(d)
-        d.on = false; d.tex:Hide(); if d.line then d.line:Hide() end
+        Off(d)
     end
     cap:Hide()
     ringN, lastX, lastY, lastDropX, lastDropY, midX, midY = 0, nil, nil, nil, nil, nil, nil
