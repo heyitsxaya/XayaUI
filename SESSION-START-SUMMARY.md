@@ -1,7 +1,7 @@
 # XayaUI: session-start summary
 
 Read this first in any new chat about XayaUI. It is meant to be enough on its own; the full record is in the two trackers below.
-Last updated 2026-11-04 15:06 UTC by Claude Code session 014bN6tUvbkCv9Ha9VgNF4Xa (earlier the same day: 014bN6tVdvvFNcwwRRBHuqTv). Facts were checked in that session unless marked (unverified) or (inference).
+Last updated 2026-11-04 15:30 UTC by Claude Code session 014bN6tStyDJVemzE9tX7F38 (earlier the same day: 014bN6tUvbkCv9Ha9VgNF4Xa, 014bN6tVdvvFNcwwRRBHuqTv). Facts were checked in that session unless marked (unverified) or (inference).
 
 ## 1. How this project is tracked
 Every piece of addon work is multi-session (Xaya, 2026-11-04). New chat: read this file, then glob the repo root and `debug-log/` for `*SUMMARY*`, `*LOGIC*`, `*CONTEXT*`, `*SESSION*`, `*handoff*` files and read the newest.
@@ -42,50 +42,43 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 - **"Profile"** means only the whole addon as configured (#354 is asking whether that changes).
 - **Wording to Xaya:** truth first; flag inferences; no unearned compliments; state what is not verified in game.
 
-## 3. Addons (versions from the .toc files, 2026-11-04 14:46; `main` gets them once the full suite passes, see section 5)
+## 3. Addons (versions from the .toc files, 2026-11-04 15:30; `main` gets them once the full suite passes, see section 5)
 | Folder | Version | Holds |
 |---|---|---|
-| `XayaUI` | 0.6.22 | core: rules, cues, conditions, actions, combat aura engine (`Combat/`), themes, console and debug record, minimap and ESC-menu buttons |
-| `XayaUI_Options` | 0.6.17 | the settings window (loads on first open; Ace3 libs) |
+| `XayaUI` | 0.6.23 | core: rules, cues, conditions, actions, combat aura engine (`Combat/`), themes, console and debug record, minimap and ESC-menu buttons |
+| `XayaUI_Options` | 0.6.18 | the settings window (loads on first open; Ace3 libs) |
 | `XayaUI_Chat` | 0.6.7 | Chat Panel, Chat Bar, filters, history, privacy cover |
-| `XayaUI_QoL` | 0.7.0 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit (phase 2: one model, sheet, What If, slot overlays) |
-| `XayaUI_Bonus` | 0.6.5 | tooltips, Notepad, data panels |
+| `XayaUI_QoL` | 0.7.1 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit (phase 2: one model, sheet, What If, slot overlays) |
+| `XayaUI_Bonus` | 0.6.6 | tooltips, Notepad, data panels |
 | `XayaUI_Reskin` | 0.6.0 | Game Menu skin |
 | `XayaUI_Media`, `XayaUI_DevAssist` | 1.0, 0.7.0 | user media folder; XayaUI Dev Assist, the developer tool (was `XayaUI_GameDump` before 0.7.0): API, talents, Cooldown Manager catalogue, aura log, `/xuidev probe` (`/xuidump` still works) |
 Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.cursorHighlight`, `.cursorTrail`, `.characterToolkit`). Nothing is saved per character yet.
 
 ## 4. Active items
 
-**NEXT SESSION: START HERE (handoff written 2026-11-04 15:06 UTC)**
-1. **Land the branch on `main`.** `main` is at `483703a` (core 0.6.22). The branch `claude/eloquent-rubin-n9zb99` has these commits
-   after it, not yet on `main`:
-   - `26ffd09`: Dev Assist 0.7.0 rename, Options 0.6.18, Bonus 0.6.6;
-   - `c672029` and `fbcd76f`: working memory;
-   - `640031d`: the `build_content.py` draft;
-   - `4af5571`: `Claude outputs/` removed;
-   - and this handoff.
-   
-   Run the full suite in a snapshot worktree of the branch head (copy `tests/harness/api_index.json` in). If it passes,
-   cherry-pick onto `origin/main`, check the tree equals the tested commit, run `tools/precheck.py --base origin/main`, push, and
-   tell Xaya the commit.
-2. **Data pulls (task #38, Xaya's list):** expansion items; item -> buff / debuff IDs; instances (zone, encounter, instance IDs,
-   every creature with its spells, buffs and debuffs, Mythic+ count / percent per unit); auras; class / spec IDs; stats; targeted
-   tooltip data; spell scaling observed in game and kept per profile.
-   - **Offline: `docs/reference/build_content.py`.** It is a DRAFT: it has never been run, has no test, and its output is not
-     generated.
-     - Write `tests/build_content_run.py` on made-up tables (model: `tests/build_set_auras_run.py`).
-     - Then run it with `--build 12.1.5.70783 --cache <dir>` (downloads from wago.tools; run with `python3 -I`).
-     - Check the output against the facts below, then commit `docs/reference/content/`: names and numbers only, no descriptions
-       (public repo).
-   - **Verified by hand on 2026-11-04 (wago.tools, build 12.1.5.70783):**
-     - Windrunner Spire's challenge criteria tree 216371 has the child "Enemy Forces" (216376), Amount 591, Operator 9.
-     - It has 26 children: 23 have Criteria Type 0, with Asset = a creature ID (232xxx) and Amount 1-20 per kill; 3 have Type 92
-       (amounts 7, 70 and 9999) and are NOT creature counts. Type 92 is unexplained, and the builder leaves those rows out.
-     - ItemSparse with ExpansionID=11 (Midnight) has 7,928 rows.
-     - The client's Creature table is a subset: many current trash creatures have no row, so no name.
-     - No client table maps trash creatures to an instance or to their spells.
-   - **In game (Dev Assist):**
-     - `C_ScenarioInfo.GetUnitCriteriaProgressValues(unit)` gives the count per unit (flag `SecretWhenUnitIdentityRestricted`);
+**NEXT SESSION: START HERE (handoff written 2026-11-04 15:30 UTC)**
+1. **Build the two harness indexes before any full-suite run** (both gitignored; section 6 has the steps). Without
+   `framexml_index.json` the harness skips its deprecated-name check. That is how `CharacterToolkit.lua` (QoL 0.7.0) named the
+   fallback-only global `ChatEdit_InsertLink` unnoticed; fixed in QoL 0.7.1 / core 0.6.23 through `Compat.lua`.
+2. **In-game captures for the data pulls** (Xaya's list, 2026-11-04). The offline part is done: `docs/reference/content/` (see
+   `debug-log/2026-11-04-1523-content-data-pulls-offline.md`).
+   - **Build in Dev Assist,** each capture marking every read the game hides:
+     - `/xuidev instance`: per creature seen on nameplates, target or boss units: ID, name, classification, Mythic+ count; the
+       spells it casts and the auras on it when readable; the encounter and instance IDs.
+     - `/xuidev stats`: ratings and their percent conversion, out of combat.
+     - `/xuidev tooltips`: tooltip lines for the spells, auras and items XayaUI's rules use. This is Blizzard text: it stays in the
+       player's saved file, never in the repo.
+     - Item -> aura confirmation through the existing cast recorder.
+     - Spell scaling already exists: `/xuiformula`, kept per talent loadout, fitted by `tools/formula_fit.py`.
+   - **They settle what the client data cannot:**
+     - creature names: only 2 of the 391 enemy-forces rows have one;
+     - which creatures cast what;
+     - which of a dungeon's two enemy-forces trees the game uses (Kings' Rest 608 / 286, Temple of Sethraliss 687 / 264, Seat of
+       the Triumvirate 568 / 329): the one whose total `C_ScenarioInfo.GetCriteriaInfo` shows;
+     - where an item's aura really lands;
+     - whether `ENCOUNTER_START`'s encounterID is `DungeonEncounter.ID`.
+   - **API facts already looked up** (`docs/reference/api`, by session 014bN6tUvbkCv9Ha9VgNF4Xa):
+     - `C_ScenarioInfo.GetUnitCriteriaProgressValues(unit)` gives the count per unit (SecretWhenUnitIdentityRestricted);
        `GetCriteriaInfo` gives the total.
      - `UnitCreatureID` and `UnitGUID`: SecretWhenUnitIdentityRestricted.
      - `UNIT_SPELLCAST_*`: SecretWhenUnitSpellCastRestricted.
@@ -93,21 +86,18 @@ Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.
      - Stats: `GetCombatRating` / `GetCombatRatingBonus` are SecretWhenUnitStatsRestricted; `GetCombatRatingBonusForCombatRatingValue`
        has no stats flag.
      - `C_TooltipInfo.*`: MayReturnNothing; the aura variants are SecretWhenUnitAuraRestricted.
-   - **Plan for the in-game captures** (to build, each marking every read the game hides):
-     - `/xuidev instance`: per creature seen on nameplates, target or boss units: ID, name, classification, Mythic+ count; the
-       spells it casts and the auras on it when readable; the encounter and instance IDs.
-     - `/xuidev stats`: ratings and their percent conversion, out of combat.
-     - `/xuidev tooltips`: tooltip lines for the spells, auras and items XayaUI's rules use. Blizzard text: it stays in the player's
-       saved file, never in the repo.
-     - Item -> aura confirmation through the existing cast recorder.
-     - Spell scaling already exists: `/xuiformula`, kept per talent loadout, fitted by `tools/formula_fit.py`.
-   - Then: tests that fail on the old code, docs (USER-GUIDE 12.13), QA steps, a debug-log entry, versions, the full suite, `main`.
+   - **Then:** tests that fail on the old code, USER-GUIDE 12.13, QA steps, a debug-log entry, versions, the full suite, `main`.
 3. **Open with Xaya** (asked 2026-11-04, not answered yet): which Claude-written documents should leave the repo. The options were:
    - narrative out, core stays (recommended): debug-log/, docs/process and docs/plans go to Drive's process analysis folder;
      summary, change skill and VERIFICATION stay;
-   - only `Claude outputs/` (done in `4af5571`);
-   - everything. Until she answers, keep writing debug-log entries as the process requires.
-4. **Advanced Debugging (#36)** is finished and on `main` (core 0.6.22); only QA B50-B57 remain.
+   - only `Claude outputs/` (done in `4af5571`, on `main` as `89409b4`);
+   - everything.
+
+   Until she answers, keep writing debug-log entries as the process requires.
+4. **Waiting on the game:** Advanced Debugging QA B50-B57; Character Toolkit QA E1d-E1o (E1o: shift-click with the deprecation
+   fallbacks off).
+5. "Task #38" in the previous handoff was that session's own task number. GitHub issue #38 is an unrelated, closed sound-preview
+   issue.
 
 | Item | State | Next step |
 |---|---|---|
@@ -118,7 +108,8 @@ Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.
 | Retrospective aura gaps | 1, 2, 4, 6-12, 15, 22 fixed in code (core 0.6.13); 5 and 21 partly; 20 reported only; 13 left on purpose; 16 waits on Xaya | in-game QA B33-B40; then gaps 3, 14, 17-19 |
 | Cues vs conditions (core 0.6.14) | a cue no condition lists follows the rule's triggers; a switched-off rule silences its cues | QA B41; Xaya may prefer that a switched-off condition frees its cues (decision 5) |
 | UI bugs in existing features (Xaya: before new features) | fixed in code: #333 art picker (0.6.15), #352 lone dropdowns, #286 red buttons, #99 cut-off labels (0.6.16), #336 art rows (0.6.17) | next without a decision: #351 one margin / gutter everywhere (large); the rest wait on decisions |
-| Character Toolkit (QoL 0.7.0) | phase 2 merged, offline tests pass (234 checks), **unverified in game** | QA E1d-E1n; Toolkit questions in the decisions file |
+| Character Toolkit (QoL 0.7.0-0.7.1) | phase 2 merged; 0.7.1 hooks shift-click through `Compat.lua`; offline tests pass, **unverified in game** | QA E1d-E1o; Toolkit questions in the decisions file |
+| Content data pulls | offline part built (`docs/reference/content/`, build 12.1.5.70783): items, item spells and auras, instances with Mythic+ enemy forces, class / spec IDs | in-game captures (item 2 above) |
 | Old-branch features not on `main` | #88 Recycle Bin ported (0.6.12) | #125 strata / level and the old chat features wait on decisions |
 | #30 Recycle Bin for themes, notes, backups | **deferred** (Xaya, 2026-11-04) | |
 | #268 9-point anchors | open, high priority | decision on "anchor" vs "anchored to" first |
@@ -130,15 +121,26 @@ Proposed order (not a commitment): ROADMAP section 12.
    Debugging on, the debug record collects what is needed; send the bug report or the SavedVariables file.
 3. **Branches** (Xaya allows deleting branches with no functionality beyond `main`; the session's git proxy refuses deletions, so
    she deletes them on github.com/heyitsxaya/XayaUI/branches). Standing on 2026-11-04 09:05:
-   - **deletable:** `claude/magical-cray-jmspwv` (its Recycle Bin is on `main` since 0.6.12);
+   - **deletable:** `claude/magical-cray-jmspwv` (its Recycle Bin is on `main` since 0.6.12); `claude/eloquent-rubin-n9zb99`
+     (all its commits are on `main` since 2026-11-04, cherry-picked with the same tree: `84aea1f` = `5b4db27`);
    - **keep for now:** `claude/frame-strata-conditions` (#125 strata / level, waits on a decision) and `wip/notepad-icons` (see
      `debug-log/2026-11-04-0655-old-branch-audit.md`);
    - **always keep:** `main`, `qa-installer-branch`, the session branch and `archive/2026-11-04`.
-4. **`main` status:** core up to 0.6.22, Options 0.6.17, Chat 0.6.7, QoL 0.7.0, GameDump 0.6.2, Bonus 0.6.5 are on `main` (483703a).
+4. **`main` status:** core up to 0.6.23, Options 0.6.18, Chat 0.6.7, QoL 0.7.1, Dev Assist 0.7.0, Bonus 0.6.6, Reskin 0.6.0 and
+   `docs/reference/content/` are on `main` (the commit that carries this line; the session reply names it).
    Later versions land on `main` only after the full suite passes on them; the session's reply says when, with the commit.
 
 ## 6. How to work here (cloud session)
 - **Process:** follow `docs/process/VERIFICATION.md` (the project skill `.claude/skills/xayaui-change` sums it up). `python3 tools/precheck.py` must end with `FAILS: 0` before a commit (`--base origin/main` before pushing to main).
+- **Harness indexes** (gitignored; a new container has neither, and the harness then skips its widget, event and deprecated-name
+  checks). Build both from the public mirror of Blizzard's UI code, in the scratchpad:
+  1. `git init`, `git remote add origin https://github.com/Gethe/wow-ui-source.git`, `git fetch --depth=30 --filter=blob:none origin live`,
+     `git checkout d07eb00` ("12.1.5 (70688)", the build of Drive's `WOW-API-FULL-12.1.5.70688-*`; `297d7aa` is 70783).
+  2. Concatenate `Interface/AddOns/Blizzard_APIDocumentationGenerated/*.lua` (sorted) into one `WOW-API-FULL-<anything>.txt` in its
+     own folder, with a line `-- ===== FILE: <file name>` before each file.
+  3. `python3 tests/harness/build_api_index.py <that folder> tests/harness/api_index.json` (expect 622 files, 0 unparsed) and
+     `python3 tests/harness/build_framexml_index.py <checkout> tests/harness/framexml_index.json` (18235 names, 232 deprecated-only).
+  A full suite run then takes about 26 minutes; run it in the background on a snapshot worktree of the exact commit.
 - **Tests:** `pip install lupa`, then `XUI_API_INDEX=tests/harness/api_index.json python3 tests/run_all.py` (full) or `--quick`. On 2026-11-04 (core 0.6.11) the full suite passed: 68 groups and the whole-addon harness. Anything red is new. New feature: add `tests/<name>_run.py` (Lua 5.1 via `tests/lua51.py`); its last line must carry `FAILS: 0` or another marker `run_all.py` accepts.
 - **Every change:** bump the addon's `## Version` and `## X-Date` in its .toc; add a debug-log entry; update `USER-GUIDE.md` (its section 13 has the rules: describe behavior, not history); add QA-CHECKLIST lines for in-game checks; `git add` first, then `python3 tools/manifest.py` (it lists only tracked files), then commit.
 - **Git:** one branch per session as assigned; push with `git push -u origin <branch>`; open a draft PR. Tag pushes and branch deletions are refused by the session's git proxy (403): do not retry; list them for Xaya. GitHub actions go through the GitHub MCP tools; `gh` only for search (`gh api -X GET search/issues -f q='repo:heyitsxaya/XayaUI is:issue ...'`).
