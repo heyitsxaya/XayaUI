@@ -2341,13 +2341,9 @@ local function BuildRule(i, rule)
             status = { type = "description", order = 10, width = "full", fontSize = "medium", name = function() return StatusText(rule) end },   -- last on the page
             delete = {
                 type = "execute", name = "Delete this rule", order = 9,
-                confirm = true, confirmText = "Delete this rule?",
+                confirm = function() return "Delete this rule? " .. ns.RecycleBinNote() end,
                 func = function()
-                    if ns.DeleteOutcomesOf then ns.DeleteOutcomesOf(rule) end
-                    for idx, r in ipairs(ns.rules) do
-                        if r == rule then table.remove(ns.rules, idx); break end
-                    end
-                    ns.DropVisual(rule)
+                    ns.RecycleRule(rule)   -- with its cues and conditions (XayaUI/RecycleBin.lua)
                     ns.MarkDirty()
                     local tab = ns.CurrentTab()
                     Notify()
@@ -3789,11 +3785,11 @@ local function BuildFolder(k, f)
                 get = function() return f.name end, set = function(_, v) if v ~= "" then f.name = v end; Notify() end },
             deleteTop = { type = "execute", name = "|cffff6060Delete group|r", order = 1.5,
                 desc = "Deletes this group only. Its rules and nested groups are kept and move up one level. Keyboard: press Delete while this group is open.",
-                confirm = true, confirmText = "Delete this group? The rules and nested groups inside are kept and move up one level.",
+                confirm = function() return "Delete this group? The rules and nested groups inside are kept and move up one level. " .. ns.RecycleBinNote() end,
                 func = function() ns.DeleteFolderById(f.id) end },
             deleteAllTop = { type = "execute", name = "|cffff6060Delete with contents|r", order = 1.6,
-                desc = "Deletes this group, every nested group, and every rule inside them. This cannot be undone.",
-                confirm = true, confirmText = "Delete this group AND all rules and nested groups inside it? This cannot be undone.",
+                desc = "Deletes this group, every nested group, and every rule inside them. They go to the Recycle Bin together as one item.",
+                confirm = function() return "Delete this group AND all rules and nested groups inside it? They go to the Recycle Bin together as one item, for " .. ns.RecycleKeepLabel() .. "." end,
                 func = function() ns.DeleteFolderAllById(f.id) end },
             newRule = { type = "execute", name = "+ New rule", order = 2, desc = "Adds a new rule to this group.",
                 func = function()
@@ -4167,10 +4163,51 @@ local function BuildOptions()
         disabled = { type = "group", order = 1, childGroups = "tree",
             name = function() return "DISABLED (" .. nDisabled .. ")" end, args = disabledArgs },
         } }
-    local binTab = { type = "group", name = "Recycle Bin", order = 6, hidden = ns.PageHidden("recyclebin"), args = {
-        info = { type = "description", order = 1, width = "full", fontSize = "medium",
-            name = "Recycle Bin: not built yet (GitHub issue #88). Deleted rules and groups are still removed for good when you confirm the delete." },
+    -- Recycle Bin (#88; XayaUI/RecycleBin.lua): deleted rules and groups wait here for the chosen time, then go for good.
+    local binArgs = {
+        keep = { type = "select", order = 1, width = "normal", name = "Keep deleted items for",
+            desc = "How long a deleted rule or group stays here before it is removed for good. Checked at login and every 30 minutes.",
+            values = function() local v = {}; for _, k in ipairs(ns.RECYCLE_KEEP) do v[k[1]] = k[2] end; return v end,
+            sorting = function() local o = {}; for _, k in ipairs(ns.RECYCLE_KEEP) do o[#o + 1] = k[1] end; return o end,
+            get = function() return ns.RecycleKeepHours() end,
+            set = function(_, v) ns.SetRecycleKeepHours(v); Notify() end },
+        empty = { type = "execute", order = 2, width = "normal", name = "Empty Recycle Bin",
+            desc = "Removes everything in the Recycle Bin for good.",
+            disabled = function() return #ns.RecycleItems() == 0 end,
+            confirm = function() return ("Remove all %d item(s) in the Recycle Bin for good? This cannot be undone."):format(#ns.RecycleItems()) end,
+            func = function() local n = ns.RecycleEmpty(); ns.Print("Recycle Bin emptied (" .. n .. " item(s) removed for good)."); Notify() end },
+    }
+    local function binLeft(h)
+        if h >= 48 then return ("%d days"):format(math.floor(h / 24)) end
+        if h >= 1 then return ("%d hours"):format(math.floor(h)) end
+        return "less than an hour"
+    end
+    local binItems = ns.RecycleItems and ns.RecycleItems() or {}
+    binArgs.summary = { type = "description", order = 3, width = "full", fontSize = "medium",
+        name = (#binItems == 0) and "\nThe Recycle Bin is empty. Deleted rules and groups wait here so they can be restored."
+            or ("\n%d item(s). Each is removed for good %s after it was deleted."):format(#binItems, ns.RecycleKeepLabel()) }
+    for i, it in ipairs(binItems) do
+        local what = (it.kind == "rule") and "Rule"
+            or (it.kind == "groupAll") and ("Group with its contents: %d rule(s), %d group(s)"):format(it.rules, it.groups)
+            or "Group (its contents had moved up one level)"
+        binArgs["item" .. i] = { type = "group", inline = true, order = 10 + i, name = tostring(it.name), args = {
+            info = { type = "description", order = 1, width = "relative", relWidth = 0.7, fontSize = "medium",
+                name = ("%s. Deleted %s; removed for good in %s."):format(what, date("%Y-%m-%d %H:%M", it.deletedAt or 0), binLeft(it.hoursLeft or 0)) },
+            restore = { type = "execute", order = 2, width = "relative", relWidth = 0.14, name = "Restore",
+                desc = "Puts it back where it was. If its group is gone, it comes back at the top level.",
+                func = function()
+                    local ok, note = ns.RecycleRestore(it.id)
+                    ns.Print(ok and ("Restored '" .. tostring(it.name) .. "'." .. ((note and note ~= "") and (" " .. note .. ".") or "")) or ("Not restored: " .. tostring(note)))
+                    if ns.MarkDirty then ns.MarkDirty() end
+                    Notify()
+                end },
+            delete = { type = "execute", order = 3, width = "relative", relWidth = 0.14, name = "Delete now",
+                desc = "Removes this item for good.",
+                confirm = function() return "Remove '" .. tostring(it.name) .. "' for good? This cannot be undone." end,
+                func = function() ns.RecycleDeleteNow(it.id); Notify() end },
         } }
+    end
+    local binTab = { type = "group", name = "Recycle Bin", order = 6, hidden = ns.PageHidden("recyclebin"), args = binArgs }
     -- Class/Spec Rule Creator is the last sub-tab; Skin.lua pins it to the far right of the tab row (2026-11-01)
     local creatorTab = BuildClassCreator()
     creatorTab.order = 9; creatorTab.hidden = nil; creatorTab.name = "Class/Spec Rule Creator"
@@ -5309,9 +5346,8 @@ end
 local function SelectRoot() ns.GoHome() end
 
 local function DeleteRule(rule)
-    if ns.DeleteOutcomesOf then ns.DeleteOutcomesOf(rule) end
-    for idx, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, idx); break end end
-    ns.DropVisual(rule); ns.MarkDirty(); Notify(); SelectRoot()
+    ns.RecycleRule(rule)   -- to the Recycle Bin, with its cues and conditions (XayaUI/RecycleBin.lua)
+    ns.MarkDirty(); Notify(); SelectRoot()
 end
 local function DuplicateRule(rule)
     local c = ns.Copy(rule)
@@ -5340,33 +5376,16 @@ local function DuplicateFolder(f, parentId, top)
     return nf
 end
 local function DeleteFolder(f)
-    for _, r in ipairs(ns.rules) do if r.folder == f.id then r.folder = f.parent end end
-    for _, ff in ipairs(ns.folders) do if ff.parent == f.id then ff.parent = f.parent end end
-    for idx, ff in ipairs(ns.folders) do if ff == f then table.remove(ns.folders, idx); break end end
+    ns.RecycleFolder(f)   -- contents move up one level; the group goes to the Recycle Bin (XayaUI/RecycleBin.lua)
     ns.MarkDirty(); Notify(); SelectRoot()
 end
 
 function ns.DeleteFolderById(id) local f = FolderById(id); if f then DeleteFolder(f) end end
 -- Deletes the group, every group nested in it and every rule inside them (and those rules' cues / conditions).
 function ns.DeleteFolderAll(f)
-    local ids, stack = { [f.id] = true }, { f.id }
-    while #stack > 0 do
-        local cur = table.remove(stack)
-        for _, ff in ipairs(ns.folders) do
-            if ff.parent == cur and not ids[ff.id] then ids[ff.id] = true; stack[#stack + 1] = ff.id end
-        end
-    end
-    local doomed = {}
-    for _, r in ipairs(ns.rules) do if r.folder and ids[r.folder] and not r.parentUid then doomed[#doomed + 1] = r end end
-    for _, r in ipairs(doomed) do
-        if ns.DeleteOutcomesOf then pcall(ns.DeleteOutcomesOf, r) end
-        for idx, x in ipairs(ns.rules) do if x == r then table.remove(ns.rules, idx); break end end
-        pcall(ns.DropVisual, r)
-    end
-    for _, r in ipairs(ns.rules) do if r.folder and ids[r.folder] then r.folder = nil end end   -- stray cue rows, if any
-    for idx = #ns.folders, 1, -1 do if ids[ns.folders[idx].id] then table.remove(ns.folders, idx) end end
+    local _, n = ns.RecycleFolderAll(f)   -- the group, its nested groups and their rules: ONE Recycle Bin item (XayaUI/RecycleBin.lua)
     ns.MarkDirty(); Notify(); SelectRoot()
-    return #doomed
+    return n or 0
 end
 function ns.DeleteFolderAllById(id) local f = FolderById(id); if f then return ns.DeleteFolderAll(f) end end
 
@@ -5491,7 +5510,7 @@ local function RowMenu(button, root)
         end)
         AddMoveMenu(root, rule, "rule")
         root:CreateDivider()
-        root:CreateButton("Delete", function() AskConfirm("Delete the rule '" .. tostring(rule.name) .. "'?", function() DeleteRule(rule) end) end)
+        root:CreateButton("Delete", function() AskConfirm("Delete the rule '" .. tostring(rule.name) .. "'? " .. ns.RecycleBinNote(), function() DeleteRule(rule) end) end)
         return true
     end
     local fold = last:match("^f%d") and FolderById(last)
@@ -5531,11 +5550,11 @@ local function RowMenu(button, root)
         AddMoveMenu(root, fold, "folder")
         root:CreateDivider()
         root:CreateButton("Delete Group (Contents Move Up)", function()
-            AskConfirm("Delete the group '" .. fold.name .. "'? Its rules and nested groups are kept and move up one level.", function() DeleteFolder(fold) end)
+            AskConfirm("Delete the group '" .. fold.name .. "'? Its rules and nested groups are kept and move up one level. " .. ns.RecycleBinNote(), function() DeleteFolder(fold) end)
         end)
         root:CreateButton("|cffff6060Delete Group and All Contents|r", function()
             local n = #FolderRules(fold.id)
-            AskConfirm("Delete the group '" .. fold.name .. "' AND everything inside it: " .. n .. " rule(s) and all nested groups? This cannot be undone.", function() ns.DeleteFolderAll(fold) end)
+            AskConfirm("Delete the group '" .. fold.name .. "' AND everything inside it: " .. n .. " rule(s) and all nested groups? They go to the Recycle Bin together as one item, for " .. ns.RecycleKeepLabel() .. ".", function() ns.DeleteFolderAll(fold) end)
         end)
         return true
     end
@@ -6108,12 +6127,8 @@ do
         local list = {}
         for r in pairs(sel) do list[#list + 1] = r end
         if #list == 0 then return end
-        StaticPopup_Show("XAYAUI_CONFIRM", ("Delete %d selected rule(s)? This cannot be undone."):format(#list), nil, { cb = function()
-            for _, rule in ipairs(list) do
-                if ns.DeleteOutcomesOf then pcall(ns.DeleteOutcomesOf, rule) end
-                for idx, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, idx); break end end
-                pcall(ns.DropVisual, rule)
-            end
+        StaticPopup_Show("XAYAUI_CONFIRM", ("Delete %d selected rule(s)? Each goes to the Recycle Bin for %s and can be restored on its own."):format(#list, ns.RecycleKeepLabel()), nil, { cb = function()
+            ns.RecycleRules(list)
             ns.MultiReset()
             ns.MarkDirty(); Notify(); SelectRoot()
         end })
@@ -7032,17 +7047,15 @@ function ns.DeleteKey()
     if ns.MultiCount() > 0 then ns.MultiDelete(); return true end
     local rule = SelectedRule()
     if rule then
-        AskConfirm("Delete the rule '" .. tostring(rule.name) .. "'? This cannot be undone.", function()
-            if ns.DeleteOutcomesOf then pcall(ns.DeleteOutcomesOf, rule) end
-            for idx, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, idx); break end end
-            pcall(ns.DropVisual, rule)
+        AskConfirm("Delete the rule '" .. tostring(rule.name) .. "'? " .. ns.RecycleBinNote(), function()
+            ns.RecycleRule(rule)
             ns.MarkDirty(); Notify(); SelectRoot()
         end)
         return true
     end
     local g = ns.SelectedGroup()
     if g then
-        AskConfirm("Delete the group '" .. tostring(g.name) .. "'? Its rules and nested groups are kept and move up one level.", function() ns.DeleteFolderById(g.id) end)
+        AskConfirm("Delete the group '" .. tostring(g.name) .. "'? Its rules and nested groups are kept and move up one level. " .. ns.RecycleBinNote(), function() ns.DeleteFolderById(g.id) end)
         return true
     end
     return false
