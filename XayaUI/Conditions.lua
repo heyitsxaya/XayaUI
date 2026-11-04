@@ -243,6 +243,15 @@ function ReadCooldownRaw(rule)
     -- the raw global-cooldown fact, for rules that count it (rule.countGCD, ns.CheckCooldownState). SpellCooldownInfo.isOnGCD: bool?
     -- · NeverSecret, Nilable (docs/reference/api/structures.md:6549): readable in combat; nil (not given) counts as "not on the GCD"
     r.onGCD = (onGCD == true)
+    -- a loss-of-control lockout (interrupt, silence) on this spell, for rules that count it (rule.countLOC, B3).
+    -- C_Spell.GetSpellLossOfControlCooldownInfo -> SpellLossOfControlInfo · MayReturnNothing, SecretWhenCooldownsRestricted
+    -- (docs/reference/api/namespaces.md:4411); its isActive is NeverSecret (structures.md:6597), so it reads in combat. Not given = no lockout.
+    do
+        local fn = C_Spell.GetSpellLossOfControlCooldownInfo
+        local okL, loc = false, nil
+        if fn then okL, loc = pcall(fn, readID) end
+        r.locked = (okL and type(loc) == "table" and CleanBool(loc, "isActive") == true) or false
+    end
     local okc, ch = pcall(C_Spell.GetSpellCharges, readID)
     local maxC = okc and CleanNumber(ch, "maxCharges") or nil
     if (not maxC or maxC < 2) and (rule.maxCharges or 0) > 1 then
@@ -296,7 +305,7 @@ function ns.CheckCooldownState(rule, cdInfo)
     local s = rule.cdState
     if ns.Ignored(s) then return true end
     if not cdInfo or not cdInfo.known then return nil end
-    if rule.countGCD and cdInfo.onGCD then
+    if (rule.countGCD and cdInfo.onGCD) or (rule.countLOC and cdInfo.locked) then
         if s == "ready" or s == "hasCharge" then return false end
         if s == "notReady" or s == "empty" then return true end
     end

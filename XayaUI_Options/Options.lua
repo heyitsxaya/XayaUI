@@ -1085,7 +1085,7 @@ local function PasteApply(key, dst, src)
     elseif key == "activation" then dst.trigMode, dst.trigOrder = src.trigMode, src.trigOrder and C(src.trigOrder) or nil
     elseif key == "actions" then dst.actions = src.actions and C(src.actions) or nil
     elseif key == "stCd" then
-        dst.cdState, dst.countGCD = src.cdState, src.countGCD
+        dst.cdState, dst.countGCD, dst.countLOC = src.cdState, src.countGCD, src.countLOC
         dst.cdTimeOp, dst.cdTimeSec, dst.cdChargeOp, dst.cdChargeVal = src.cdTimeOp, src.cdTimeSec, src.cdChargeOp, src.cdChargeVal
     elseif key == "stBuff" then dst.buffState, dst.buffTimeOp, dst.buffTimeSec = src.buffState, src.buffTimeOp, src.buffTimeSec
     elseif key == "talents" then dst.talents, dst.talentMode = C(src.talents or {}), src.talentMode
@@ -1345,6 +1345,8 @@ local function BuildRule(i, rule)
             cdState = ns.CdStateSelect(rule, on),
             countGCD = Tog(rule, "countGCD", "Count the global cooldown", 4.5, on,
                 { desc = "Ticked: while this spell is on the global cooldown it counts as on cooldown (not ready, no charge available). Unticked (default): the global cooldown is ignored." }),
+            countLOC = Tog(rule, "countLOC", "Count a lockout as cooldown", 4.55, on,
+                { desc = "Ticked: while a loss-of-control lockout (an interrupt or silence) blocks this spell, it counts as on cooldown. Unticked (default): only the spell's own cooldown counts." }),
             -- "Seconds left" / "Charges" comparisons on the trigger itself (B2): a dropdown with its number box beside it
             cdTimeOp = Sel(rule, "cdTimeOp", "Seconds left", 4.6, ns.CMP_OPS and ns.CMP_OPS.values or { any = "Any" }, ns.CMP_OPS and ns.CMP_OPS.order or { "any" },
                 function() Changed(rule); Notify() end,
@@ -1420,7 +1422,7 @@ local function BuildRule(i, rule)
 
     -- Triggers are added by hand: Cooldown and Buff / Aura only show once added (or while they hold data).
     -- Hiding never changes saved values; "Remove" resets that section.
-    for _, k in ipairs({ "cdHeader", "spellID", "spellName", "spellSearch", "spellPick", "cdState", "countGCD", "cdTimeOp", "cdChargeOp", "maxCharges", "detected" }) do
+    for _, k in ipairs({ "cdHeader", "spellID", "spellName", "spellSearch", "spellPick", "cdState", "countGCD", "countLOC", "cdTimeOp", "cdChargeOp", "maxCharges", "detected" }) do
         local o = trigger.args[k]
         if o then o.hidden = function() return not ns.CooldownUsed(rule) end end
     end
@@ -1433,7 +1435,7 @@ local function BuildRule(i, rule)
         hidden = function() return not ns.CooldownUsed(rule) end,
         func = function()
             rule.useCooldown = false; rule.spellID = 0; rule.maxCharges = 0; rule.cdState = nil
-            rule.countGCD, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil
+            rule.countGCD, rule.countLOC, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil, nil
             Changed(rule); Notify()
         end }
     trigger.args.buffRemove = { type = "execute", name = "Remove", order = 14, width = "half",

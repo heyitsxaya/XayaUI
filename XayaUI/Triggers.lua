@@ -264,6 +264,8 @@ Add("cooldown", {
         { key = "maxCharges", kind = "range", label = "Max charges override (0 = auto-detect)", min = 0, max = 6, step = 1 },
         { key = "countGCD", kind = "toggle", label = "Count the global cooldown",
           desc = "Ticked: while the spell is on the global cooldown it counts as on cooldown (not ready, no charge available). Unticked (default): the global cooldown is ignored." },
+        { key = "countLOC", kind = "toggle", label = "Count a lockout as cooldown",
+          desc = "Ticked: while a loss-of-control lockout (an interrupt or silence) blocks this spell, it counts as on cooldown. Unticked (default): only the spell's own cooldown counts." },
         { key = "cdTimeOp", kind = "select", label = "Seconds left", width = "normal", default = "any", required = false,
           vals = { values = { any = "Any", [">="] = "At least", ["<="] = "At most", ["="] = "Exactly", [">"] = "More than", ["<"] = "Less than" },
                    order = { "any", ">=", "<=", "=", ">", "<" } },
@@ -276,7 +278,7 @@ Add("cooldown", {
         { key = "cdChargeVal", kind = "number", label = "Charges", required = false, showIf = function(t) return t.cdChargeOp ~= nil and t.cdChargeOp ~= "any" end },
     },
     check = function(t)
-        local pseudo = { spellID = tonumber(t.spellID), maxCharges = tonumber(t.maxCharges) or 0, cdState = t.state, countGCD = t.countGCD and true or nil,
+        local pseudo = { spellID = tonumber(t.spellID), maxCharges = tonumber(t.maxCharges) or 0, cdState = t.state, countGCD = t.countGCD and true or nil, countLOC = t.countLOC and true or nil,
                          cdTimeOp = t.cdTimeOp, cdTimeSec = t.cdTimeSec, cdChargeOp = t.cdChargeOp, cdChargeVal = t.cdChargeVal }
         if not (ns.ReadCooldown and ns.CheckCooldownState) then return nil, "cooldown reader missing" end
         local info = ns.ReadCooldown(pseudo)
