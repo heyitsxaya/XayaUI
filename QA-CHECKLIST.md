@@ -109,6 +109,9 @@ For testers. Tick each box in order; when something does not match the **Expect*
 - [ ] J1. `/xuidump api`: chat reports the counts (global functions, C_ namespaces, enums, numeric constants, widget types) with no Lua error. `/xuidump save`, then the file `XayaUI_GameDump.lua` has an `api` table.
 - [ ] J2. `/xuidump toolkit` out of combat, away from a vendor: chat prints the GetSpellBaseCooldown, repair, preview-link and stat-pane lines with no Lua error.
 - [ ] J3. `/xuidump toolkit` again while talking to a repair vendor; then `/xuidump save` and upload the file.
+- [ ] J4. (GameDump 0.5.0) Out of combat, after button 1 (`/xuidump static`): `/xuidump catalogue`. **Expect:** progress lines in the window, then "aura catalogue done" with the counts and no Lua error, in under a minute. `/xuidump status` names the catalogue. Run it once on each spec you play, then `/xuidump save` and upload the file.
+- [ ] J5. (GameDump 0.5.0) Start `/xuidump catalogue` and pull a training dummy while it runs. **Expect:** it pauses in combat and finishes after combat ends. Open the Adventure Guide afterwards: the tier and loot filter you had are still selected.
+- [ ] J6. (GameDump 0.5.0) `/xuidump seen`, then play out of combat and in combat for a while, and `/xuidump seen` again. **Expect:** "aura log OFF" with a count; button 8 shows ON while it runs.
 
 ## Reporting a problem
 

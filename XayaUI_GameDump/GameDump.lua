@@ -9,6 +9,7 @@
 --   .auras    snapshot of the buffs and debuffs on you (and your target) right now
 --   .rec      cast -> aura recorder: for each spell you cast, the auras that appeared within 1.5 s, the duration the game reported,
 --             the real lifetime observed (works in combat when the numbers are secret), tagged with the talent + gear loadout in force
+--   .catalogue / .catalogueCDM / .seen   the aura catalogue and the aura log (AuraCatalogue.lua)
 local ADDON = ...
 local GD = {}
 _G.XayaUIGameDump = GD
@@ -690,7 +691,7 @@ end
 -------------------------------------------------------------------------------
 -- Window
 -------------------------------------------------------------------------------
-local win, recBtn, infoFS
+local win, recBtn, seenBtn, infoFS
 local ACCENT = { 0.55, 0.35, 0.85 }
 local BTN_BG, BTN_BG_DOWN = { 0.13, 0.11, 0.19, 1 }, { 0.21, 0.16, 0.31, 1 }
 
@@ -732,7 +733,7 @@ function GD.Toggle()
         return
     end
     win = CreateFrame("Frame", "XayaUIGameDumpWindow", UIParent, "BackdropTemplate")
-    win:SetSize(460, 652)
+    win:SetSize(460, 744)
     win:SetPoint("CENTER")
     win:SetFrameStrata("DIALOG")
     win:SetMovable(true); win:EnableMouse(true); win:RegisterForDrag("LeftButton")
@@ -765,11 +766,13 @@ function GD.Toggle()
     FlatButton(win, -242, "Clear recorder data",                        "Forget what the recorder has caught so far.", function() GD.RecorderClear() end)
     FlatButton(win, -288, "5.  API inventory (developer)",              "Every function, namespace, enum and widget method in this client.", function() if GD.CaptureAPI then GD.CaptureAPI() end end)
     FlatButton(win, -334, "6.  Character Toolkit checks (developer)",   "GCD, repair cost, item levels the game gives, gems, stat pane.", function() if GD.ProbeToolkit then GD.ProbeToolkit() end end)
-    local save = FlatButton(win, -380, "Save to disk now",              "Reloads the UI so the data reaches the disk.", function() ReloadUI() end)
+    FlatButton(win, -380, "7.  Aura catalogue (this season)",           "Every aura current content points to, every class. Out of combat; a few seconds.", function() if GD.CaptureCatalogue then GD.CaptureCatalogue() end end)
+    seenBtn = FlatButton(win, -426, "8.  Aura log: auras you see while playing", "Turn on, play, turn off. Logs every aura on you, your target, focus and party.", function() if GD.SeenToggle then GD.SeenToggle() end end)
+    local save = FlatButton(win, -472, "Save to disk now",              "Reloads the UI so the data reaches the disk.", function() ReloadUI() end)
     save.bar:SetColorTexture(0.35, 0.75, 0.45, 1)
 
     local box = CreateFrame("Frame", nil, win, "BackdropTemplate")
-    box:SetPoint("TOP", win, "TOP", 0, -432); box:SetSize(424, 134)
+    box:SetPoint("TOP", win, "TOP", 0, -524); box:SetSize(424, 134)
     if box.SetBackdrop then
         box:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
         box:SetBackdropColor(0, 0, 0, 0.4); box:SetBackdropBorderColor(0.25, 0.2, 0.35, 1)
@@ -780,9 +783,9 @@ function GD.Toggle()
     statusFS:SetText(#logLines > 0 and table.concat(logLines, "\n") or "|cff9a98b0Nothing captured yet. Start with button 1 (out of combat, talent window closed).|r")
 
     infoFS = win:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    infoFS:SetPoint("TOPLEFT", 18, -576); infoFS:SetWidth(424); infoFS:SetJustifyH("LEFT"); Style(infoFS, 13, 0.86, 0.86, 0.92)
+    infoFS:SetPoint("TOPLEFT", 18, -668); infoFS:SetWidth(424); infoFS:SetJustifyH("LEFT"); Style(infoFS, 13, 0.86, 0.86, 0.92)
     local path = win:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    path:SetPoint("TOPLEFT", 18, -598); path:SetWidth(424); path:SetJustifyH("LEFT"); Style(path, 11, 0.55, 0.53, 0.66)
+    path:SetPoint("TOPLEFT", 18, -690); path:SetWidth(424); path:SetJustifyH("LEFT"); Style(path, 11, 0.55, 0.53, 0.66)
     path:SetText("File: WTF\\Account\\<account>\\SavedVariables\\XayaUI_GameDump.lua")
 
     local acc = 0
@@ -794,6 +797,10 @@ function GD.Toggle()
         recBtn.label:SetText(R.on and "4.  Recorder: ON (click to stop)" or "4.  Recorder: cast -> aura durations")
         if R.on then recBtn.bar:SetColorTexture(0.35, 0.75, 0.45, 1) else recBtn.bar:SetColorTexture(ACCENT[1], ACCENT[2], ACCENT[3], 1) end
         infoFS:SetText(("Recorder has caught %d spells, %d aura links, %d talent/gear loadouts."):format(nc, na, nl))
+        local on = GD.Catalogue and GD.Catalogue.seenOn
+        local seen = DB().seen
+        seenBtn.label:SetText(on and ("8.  Aura log: ON, " .. (seen and seen.n or 0) .. " auras (click to stop)") or "8.  Aura log: auras you see while playing")
+        if on then seenBtn.bar:SetColorTexture(0.35, 0.75, 0.45, 1) else seenBtn.bar:SetColorTexture(ACCENT[1], ACCENT[2], ACCENT[3], 1) end
     end)
 end
 
@@ -802,7 +809,7 @@ end
 -------------------------------------------------------------------------------
 SLASH_XAYAUIDUMP1 = "/xuidump"
 SlashCmdList["XAYAUIDUMP"] = function(msg)
-    local cmd = (msg or ""):lower():match("^(%S*)")
+    local cmd, arg = (msg or ""):lower():match("^(%S*)%s*(.-)%s*$")
     if cmd == "" then GD.Toggle()
     elseif cmd == "static" then GD.RunStatic()
     elseif cmd == "char" then GD.CaptureCharacter()
@@ -812,14 +819,19 @@ SlashCmdList["XAYAUIDUMP"] = function(msg)
     elseif cmd == "save" then ReloadUI()
     elseif cmd == "api" then if GD.CaptureAPI then GD.CaptureAPI() end
     elseif cmd == "toolkit" then if GD.ProbeToolkit then GD.ProbeToolkit() end
+    elseif cmd == "catalogue" or cmd == "catalog" then if GD.CaptureCatalogue then GD.CaptureCatalogue(arg ~= "" and arg or nil) end
+    elseif cmd == "seen" then if GD.SeenToggle then GD.SeenToggle() end
     elseif cmd == "status" then
         local nc, na, nl = GD.RecorderSummary()
         local d = DB()
-        Say(("static: %s | char: %s | auras: %s | api: %s | toolkit checks: %s | recorder %s: %d spells, %d aura links, %d loadouts"):format(
+        local nSpec = 0
+        for _ in pairs(d.catalogueCDM or {}) do nSpec = nSpec + 1 end
+        Say(("static: %s | char: %s | auras: %s | api: %s | toolkit checks: %s | recorder %s: %d spells, %d aura links, %d loadouts | catalogue: %s (Cooldown Manager of %d specs) | aura log: %s, %d auras"):format(
             d.static and (d.static.built or "yes") or "none", d.char and d.char.at or "none", d.auras and d.auras.at or "none",
-            d.api and d.api.at or "none", d.toolkitProbe and d.toolkitProbe.at or "none", R.on and "ON" or "off", nc, na, nl))
+            d.api and d.api.at or "none", d.toolkitProbe and d.toolkitProbe.at or "none", R.on and "ON" or "off", nc, na, nl,
+            d.catalogue and d.catalogue.at or "none", nSpec, (GD.Catalogue and GD.Catalogue.seenOn) and "ON" or "off", d.seen and d.seen.n or 0))
     else
-        print("|cffffd100XayaUI Game Dump|r: /xuidump (window) | static | char | auras | rec (toggle recorder) | clear | api (API inventory) | toolkit (Character Toolkit checks) | save (reload) | status")
+        print("|cffffd100XayaUI Game Dump|r: /xuidump (window) | static | char | auras | rec (toggle recorder) | clear | api (API inventory) | toolkit (Character Toolkit checks) | catalogue [fromID] (aura catalogue) | seen (toggle aura log) | save (reload) | status")
     end
 end
 

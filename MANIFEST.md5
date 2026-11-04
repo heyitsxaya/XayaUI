@@ -5,12 +5,12 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-94d54e9e83205a94548d51565add3c7c  QA-CHECKLIST.md
+f726fe1d33be1c51d84febfc6fb1033f  QA-CHECKLIST.md
 ee42539002c7a831fd97da0c0d766f12  README.md
 b8830af74b74d3bd040661448e9ff565  ROADMAP.md
 795543b7edf9a1e47a284d967c0fc4bf  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-3ae334994d44c0b828c3a3104ec8d796  USER-GUIDE.md
+3880f31eb8c666df24e5a9e99ef589cc  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
@@ -149,10 +149,11 @@ c60c6bfa477e38b0ef452b5d482ad934  XayaUI_Chat/Skin.lua
 924ed63c29e3249e9052308753382184  XayaUI_Chat/Sounds.lua
 ac2f578eb04f04abaf092dfebc6c9447  XayaUI_Chat/XayaUI_Chat.toc
 d573b9f472f6dbc2b0cf0f175de15f89  XayaUI_GameDump/ApiInventory.lua
+ce86bad1dfcf9771b21626d41ed3c6f8  XayaUI_GameDump/AuraCatalogue.lua
 857e41250c987f3251a9c8ae1a21ae97  XayaUI_GameDump/FORMULA-CAPTURE-WALKTHROUGH.md
 4e650b1654b192b5f3048f03425dbacf  XayaUI_GameDump/FormulaCapture.lua
-cb6efdef3c15b57e01d7feede17c28b9  XayaUI_GameDump/GameDump.lua
-28748ee061d93a13fb5915d067e5f7f5  XayaUI_GameDump/XayaUI_GameDump.toc
+ff72a073b5a71b8b558d44e6f9981357  XayaUI_GameDump/GameDump.lua
+71c627fd47fe41e325f4c396495144cd  XayaUI_GameDump/XayaUI_GameDump.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
@@ -364,6 +365,7 @@ efb9f8c57f9d4495ff8785b5cc7a82b5  debug-log/2026-11-04-0340-xui-auras-restored-c
 bf4d7a3942a39d4c4ca50caf6ff07b05  debug-log/2026-11-04-0350-group-sort-manual-order-core-0.6.6.md
 412c61450d02965726c5517c79b9737d  debug-log/2026-11-04-0400-aura-id-cooldown-manager-in-combat-bonus-0.6.4.md
 e45749c532c7952440c7dbbb773254b5  debug-log/2026-11-04-0425-growth-from-anchor-centered-engine-core-0.6.7.md
+0919c15104022714609369325d583f95  debug-log/2026-11-04-0435-aura-catalogue-and-aura-log-gamedump-0.5.0.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
 b9300eaabf88d4ed02373618e27e444b  docs/reference/README.md
 1b7a634712b11938763d44b6dcead0c7  docs/reference/api/README.md
@@ -416,6 +418,7 @@ b0b1d35b0f9d3cf146b0ce4228dfd464  tests/engine_text_run.py
 91e69f1cabaacf58537aa37237ffb06c  tests/export_group_run.py
 c7f384823034727d484a12ba5c38e48f  tests/formula_capture_run.py
 905c837653744a6299b8a926478c26a6  tests/gamedump_api_run.py
+9bb0aa7ed95d4bff77c80acf8674a64d  tests/gamedump_catalogue_run.py
 e30b244c96ba84721bed4b5eb211b7d2  tests/gamemenu_run.py
 2432f77932fc7e94d63c1f8c3f453c37  tests/harness/.gitignore
 a36a03ecc872c2cf4b1b410e1aeba87e  tests/harness/build_api_index.py
