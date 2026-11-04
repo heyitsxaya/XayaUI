@@ -26,5 +26,6 @@ for top in sorted(os.listdir(ROOT)):
                     if rx.search(code):
                         bad.append("%s:%d: %s  [%s]" % (os.path.relpath(p, ROOT), i, line.strip()[:120], why))
 for b in bad: print("FAIL " + b)
-print("%d Lua files checked, %d problems" % (n, len(bad)))
+# (tests/run_all.py counts a group as passed only when its last line holds "FAILS: 0" or a similar marker)
+print("%d Lua files checked  FAILS: %d" % (n, len(bad)))
 sys.exit(1 if bad else 0)
