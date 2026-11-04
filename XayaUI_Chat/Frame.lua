@@ -25,6 +25,7 @@ end
 local function S() return ns.chat2 end
 
 function C.Container() return container end
+C.HIST_RESERVE = 22   -- the history button (16 px) and its 3 px margins at the right end of the tab row
 function C.Pane() return pane end
 function C.TextArea() return textA end
 function C.TabsArea() return tabsA end
@@ -126,7 +127,7 @@ function C.Layout()
     inputA:ClearAllPoints()
     inputA:SetPoint("BOTTOMLEFT", pane, "BOTTOMLEFT", 2, 2); inputA:SetPoint("BOTTOMRIGHT", pane, "BOTTOMRIGHT", -2, 2)
     inputA:SetHeight(ih)
-    local inset = Clamp(s.textInset, 0, 30, 6)
+    local inset = Clamp(s.textInset, 2, 30, 6)   -- never closer than 2 px to the pane's edge (Xaya 2026-11-04: a 2-3 px gutter)
     local own = s.scrollOwn and true or false      -- the Chat Panel's scroll bar (Scroll.lua) sits in the space right of the text
     local right = inset + ((own and (Clamp(s.scrollW, 6, 20, 10) + 2)) or ((s.scrollBar == "SHOW") and 14 or 0))
     textA:ClearAllPoints()
@@ -202,8 +203,20 @@ function C.Anchor()
             if not dock then return end
             dock:ClearAllPoints()
             dock:SetPoint("TOPLEFT", tabsA, "TOPLEFT", 0, 0)
-            dock:SetPoint("BOTTOMRIGHT", tabsA, "BOTTOMRIGHT", 0, 0)
+            -- the history button sits at the right end of the tab row (History.lua): the tabs stop short of it
+            local reserve = (s.tabsShow and s.histButton) and C.HIST_RESERVE or 0
+            dock:SetPoint("BOTTOMRIGHT", tabsA, "BOTTOMRIGHT", -reserve, 0)
             if s.tabsShow then C.Unsuppress(dock) else C.Suppress(dock) end
+            -- Blizzard sizes the tabs of user-made windows (60-90 px each) for the dock's width at the moment it lays them out, and
+            -- shows its overflow arrow only when they do not fit (FCFDock_UpdateTabs / FCFDock_CalculateTabSize, FloatingChatFrame.lua,
+            -- wow-ui-source live 12.1.5.70783). Moving the dock into the tab row does not lay them out again, so they kept the old,
+            -- wider sizes and ran past the row's end. Lay them out again whenever the width they get changes (out of combat).
+            local w = dock.GetWidth and dock:GetWidth()
+            if s.tabsShow and type(w) == "number" and w > 0 and w ~= C.dockLaidOutW and type(_G.FCFDock_UpdateTabs) == "function"
+                and not (InCombatLockdown and InCombatLockdown()) then
+                C.dockLaidOutW = w
+                pcall(_G.FCFDock_UpdateTabs, dock, true)
+            end
         end)
     end
     -- the input line sits inside the pane: every docked window's edit box takes the strip's rectangle
