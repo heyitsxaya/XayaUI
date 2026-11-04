@@ -579,6 +579,15 @@ A panel beside the character window (XayaUI QoL) that shows how every stat is bu
 
 **How the settings pages are laid out (all feature tabs, from 0.6.1 on):** a feature is an entry in the left pane, its parts are entries under it, and the sections of one part are tabs. The feature's own page holds its main switches.
 
+### 12.13 Game Data Capture (developer tool)
+
+A separate addon (XayaUI Game Data Capture, `XayaUI_GameDump`) that is not needed to play. It writes what the game tells an addon into its own saved-data file, `WTF\Account\<account>\SavedVariables\XayaUI_GameDump.lua`, so the file can be uploaded for development. It never stores your rules, your character's name, or your realm. Open it with `/xuidump`.
+
+- **Buttons 1 to 4:** every class's talents and spell text; your character (spellbook, talents, gear); your buffs and debuffs right now; a recorder that notes which auras each of your casts causes.
+- **5. API inventory** (`/xuidump api`): everything that exists in your game client, including what the game's own `/api` browser leaves out. That is every global function name, every `C_` namespace with its functions, every `Enum` with its values, the `Constants` tables, the numeric constants (such as `CR_CRIT_MELEE`), and the methods each kind of frame has. It lists what exists; it does not show how a call behaves.
+- **6. Character Toolkit checks** (`/xuidump toolkit`): what the game really answers for the calls the Character Toolkit depends on. That covers your spells' base global cooldown, the global cooldown right now, the repair cost in each equipped item's data, the item levels the game builds for one of your items in each item creation context, an item's stats with and without its gems and enchant, and whether the character window's stat pane is there. Run it once away from a vendor and, if you can, once at a vendor.
+- **Save to disk:** `/xuidump save` reloads the interface so the file is written. `/xuidump status` lists what has been captured.
+
 ## 13. Maintaining this document
 
 1. **Describe behavior, not history.** Write what a feature does today. No "added in", "now supports", "previously", dates, or version notes in the body.
