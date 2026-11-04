@@ -57,7 +57,7 @@ Issue numbers refer to this repository. Small interface tweaks, wording changes,
 | ID | Feature | Status | Notes |
 |---|---|---|---|
 | M5 | Glow styles, icon zoom, border, shape and mask, manual width and height, aspect-ratio lock | Partly overlapping | Aspect ratio shipped in 0.5.99 (#313); outline and glow are tracked in #64. Remaining parity gaps need an audit. |
-| #125 | Frame strata and level conditions for texture and text | Open | A pre-0.6.0 build of it (old layout) is kept as tag `archive/claude/frame-strata-conditions` (2026-11-04 branch cleanup); to port, not merge. |
+| #125 | Frame strata and level conditions for texture and text | Open | A pre-0.6.0 build of it (old layout) is kept on branch `archive/2026-11-04` (commit 6736aaa, see its ARCHIVE.md); to port, not merge. |
 | #195, #260 | Per-cue modifiers per condition (tint, desaturate, glow, opacity, strata) | Built, with an open defect | #260 reports that modifiers do not apply. |
 | #270, #271 | Icon shapes (cropped, diamond, circle, square); icon size separate from display size | Candidate | |
 | M6c, #283 | Hover tooltip on every cue | Built per #283, issue open | Default OFF; hover-enabled frames block mouseover casting beneath them. |
@@ -113,7 +113,7 @@ Issue numbers refer to this repository. Small interface tweaks, wording changes,
 | ID | Feature | Status | Notes |
 |---|---|---|---|
 | #87 | Backup: write a profile export to a chosen local path on click | Waiting on a decision | Scope, trigger, and file-write behavior to be pinned down. |
-| #88 | Recycle bin: deleted rules are held, disabled, and cleared on a schedule | Waiting on a decision | Retention and restore mechanics to be pinned down. A 2026-09-24 build (old layout, `RecycleBin.lua`) is kept as tag `archive/claude/magical-cray-jmspwv`; to port once decided. |
+| #88 | Recycle bin: deleted rules are held, disabled, and cleared on a schedule | Waiting on a decision | Retention and restore mechanics to be pinned down. A 2026-09-24 build (old layout, `RecycleBin.lua`) is kept on branch `archive/2026-11-04` (commit add39d0, see its ARCHIVE.md); to port once decided. |
 | | Smart Categories above ALL RULES, collapsed by default, searchable by tracked spell or aura | Partly built | By-type sorting is meant to come from Smart Categories. |
 | #234, #245 | Custom data panels and bars (five strips, one to twenty data slots each) | Built | |
 | #233, #238, #279, #312 | Game menu button and skinned game menu | Built (0.5.96 fix pending in-game confirmation) | |
@@ -134,7 +134,7 @@ Built in 0.5.90 and revised in 0.5.94, awaiting in-game feedback: the input fiel
 
 | ID | Feature | Status | Notes |
 |---|---|---|---|
-| #247 | Trade tab (auto-create, take Trade out of other tabs, revert) | Dropped in the rebuild | Restorable from git history (tags `archive/wip/notepad-icons`, `archive/claude/custom-theme-0.5.40` since the 2026-11-04 branch cleanup); Xaya has not yet said whether to restore it. |
+| #247 | Trade tab (auto-create, take Trade out of other tabs, revert) | Dropped in the rebuild | Restorable from git history (branch `archive/2026-11-04`, old heads bb7a1c6 and d1eb6f2, see its ARCHIVE.md); Xaya has not yet said whether to restore it. |
 | | Emotion icons, role / mentorship / timerunning icons, Battle.net tag names, Quick Join messages | Not built | From a 2026-11-01 parity review; needs a full message-formatting rebuild. Emotion icons are covered by a separate addon. |
 
 ## 8. Diagnostics and tooling

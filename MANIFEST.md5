@@ -7,7 +7,7 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 d32239bcb673463ab874e80d47fae504  LICENSE
 14020c2d88d9773cda1386efdf702a7c  QA-CHECKLIST.md
 ee42539002c7a831fd97da0c0d766f12  README.md
-1e216c17d92f5ce2c533c8bb3b3c021e  ROADMAP.md
+b8830af74b74d3bd040661448e9ff565  ROADMAP.md
 8ba84aa305c5e0b669fe8832edac21d3  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 1426ea7cc3d92df0d2b5a78d1ffd9261  USER-GUIDE.md
@@ -354,7 +354,7 @@ f177b0c30f652b97af27717f4434a7d3  debug-log/2026-11-04-0011-tooltip-self-id-aura
 eba2360845f99d52521c5efa305657c1  debug-log/2026-11-04-0100-chat-indent-scrollbar-console-0.6.5.md
 5578cf7edacb5c2d9f3b37ab9f856154  debug-log/2026-11-04-0100-tooltip-formula-lines-bonus-0.6.2.md
 f4517b1b53b2f437c1a5cd5f859a21bc  debug-log/2026-11-04-0200-formula-capture-walkthrough-gamedump-0.3.0.md
-39c3cf15b7cbc1613158b1df7259d7de  debug-log/2026-11-04-0220-integrate-branches-core-0.6.5.md
+3a44deb6b6646a79790a393549095fcd  debug-log/2026-11-04-0220-integrate-branches-core-0.6.5.md
 46c82c2716e940f5749f3f9da50fdd94  debug-log/2026-11-04-0300-chat-left-gap-clamp-0.6.6.md
 412c61450d02965726c5517c79b9737d  debug-log/2026-11-04-0400-aura-id-cooldown-manager-in-combat-bonus-0.6.4.md
 7f9f4549410ba8da5e6fb9e9cb573be0  shelved/Bars.lua
