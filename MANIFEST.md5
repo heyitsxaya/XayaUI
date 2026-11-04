@@ -6,7 +6,7 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-ae3f2f027a93b42635799657f6e7f6a7  QA-CHECKLIST.md
+514cd8c0731ed856c8943258d6e59440  QA-CHECKLIST.md
 a54d403da833eefe5b3661b57270da58  README.md
 63e39d9eff15e0037d26d3d7d39f51d9  ROADMAP.md
 c3270604aafd3cfd29f7f29425abb6c4  SESSION-START-SUMMARY.md
@@ -26,7 +26,7 @@ d9d202afce65354b4aaf84ffcd8f67aa  XayaUI/Combat/README.md
 30e5f32b2444eb29c1fb0060f1ef9758  XayaUI/Compat.lua
 ea19c5f500f9fdd74d4bb087b0642098  XayaUI/Conditions.lua
 8d7c1a04d1c16731679e7d3ca0115bec  XayaUI/Console.lua
-f3526150a48efb6b6622676c6e90ca2c  XayaUI/Core.lua
+484949ec23b68875fff04927f9dd2152  XayaUI/Core.lua
 54cd777342d376237760b45e6c8c8358  XayaUI/Cues.lua
 5338663b62255ed8834da9ced579b6af  XayaUI/Engine.lua
 62d0858038c6fa488bf5c43f4896ee6f  XayaUI/GameMenu.lua
@@ -86,6 +86,7 @@ de28deb2f8c1f23fd4d6918113ac3ddd  XayaUI/Media/Fonts/OFL-firasans.txt
 3bcbea1434eb6ca2d4e75c5631950dab  XayaUI/Media/Fonts/OFL-ptsans.txt
 f2eadd43911fbf66f2bf5c8b32f69724  XayaUI/Media/Fonts/PT_Sans-Web-Regular.ttf
 8820ae874a9d06708ec25bb27f5d1cd7  XayaUI/Media/Graphics/README.md
+25cc3023212b61014ac58a42ffb40ba9  XayaUI/Media/UI/xui_blank.tga
 cf63255b77a76de894d667b8bfcbd48f  XayaUI/Media/UI/xui_dyngroup.tga
 c467db2dce3ccf50136f7d4297b4293c  XayaUI/Media/UI/xui_icon.tga
 37e1eff2aed7f39a2ddeff5ecbacc797  XayaUI/Media/UI/xui_import.tga
@@ -95,7 +96,7 @@ e94cfc0c3fc54c4e5188a7aadaf41d90  XayaUI/Media/UI/xui_progresstex.tga
 66226a0137e47566a0fd0ce9c41e6bcc  XayaUI/Media/UI/xui_sttexture.tga
 30d50e1964ffdb6d81b4e902ecb5accd  XayaUI/Media/UI/xui_text.tga
 97e47b6ce28ec4d1218ae800136c1e97  XayaUI/MinimapButton.lua
-4f50e1ee7a3e7349880d5c8d3fcf1570  XayaUI/Modules.lua
+c5b202df842bb06ffa57add25ae9cfee  XayaUI/Modules.lua
 94cff7427b7f118d1d022b6ad46f6783  XayaUI/Outcomes.lua
 ac819cb3c0f1c6bd28bdcd33566a74f8  XayaUI/ProcGlows.lua
 b76823560a93ae68a07689af413b01ec  XayaUI/RecycleBin.lua
@@ -108,7 +109,7 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 0983b201a6d18b252601b5bdb7c34a28  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
 d78b277a69c869a56c306f0477181d04  XayaUI/Visual.lua
-ece74af77d7ef8972e46acd6fe88e1d8  XayaUI/XayaUI.toc
+566f6eed0b298f6b95a9e021b3964d12  XayaUI/XayaUI.toc
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -205,12 +206,12 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-e71b19780ce95d5169af586f00c53559  XayaUI_Options/Options.lua
+bb931f68ea5cf9f1b43fae60ef54eec3  XayaUI_Options/Options.lua
 8d2bfd2b7b768d7e9991276be979558b  XayaUI_Options/OutcomesEditor.lua
-4b9f41a39653af9864aafd3df55a0412  XayaUI_Options/Skin.lua
+6d7152146103bcfd1e18fcccaa390794  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
-f36b2fecbbeb356cd2eaba1839c28c0c  XayaUI_Options/XayaUI_Options.toc
+6414ee72b3f0eb492ebc6d1788851a64  XayaUI_Options/XayaUI_Options.toc
 1b7f9c9a6a6f181cc44dce7f1838d2de  XayaUI_QoL/CharacterModel.lua
 668b940e86f1dcc76e791618f370ae4c  XayaUI_QoL/CharacterToolkit.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
@@ -386,6 +387,7 @@ bed4e456089978e1da702f671342f0dd  debug-log/2026-11-04-0824-ingame-probe-gamedum
 0979992d59e84689377547c10375edc0  debug-log/2026-11-04-0844-cues-follow-triggers-core-0.6.14.md
 c4b1cf2b9db971da28d0bb93cbb449ae  debug-log/2026-11-04-0857-art-picker-missing-files-core-0.6.15.md
 99d0e2ac83dbd30ba8b9d6aa296b7bfe  debug-log/2026-11-04-0902-ui-bugs-dropdown-buttons-labels-core-0.6.16.md
+952a08fee80cfde442a09a8d0bb77538  debug-log/2026-11-04-1012-art-rows-aligned-button-contract-core-0.6.17.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
 7dcf713a41e746dbd49bf9bb50f5b72d  docs/process/DECISIONS-2026-11-04.md
 f54b8f5064294401abd280cf2c464599  docs/process/IN-GAME-DATA-2026-11-05.md
@@ -428,6 +430,7 @@ e710f0b422a995cc05581745bca74d4b  shelved/CursorTracker.lua
 895e4335214e9e08d4909d4a1ea8d0cc  shelved/QoL.lua
 a354cbbb54ff4fb130af0063a401df9b  tests/Conditions.pre-0.5.83.lua
 99488fe8ce8e8e889669e5c3f5e21fe9  tests/art_picker_run.py
+f3dca8a8e18dd9682701196827a9cb2c  tests/art_rows_run.py
 1bc56b22adb5f1e1aa4a345d9fa19b8b  tests/aspect_run.py
 47e748de586466ad7f2d915da1fec923  tests/aura_display_run.py
 dcd8ab6a5e0f2f31498ee7a5e9995945  tests/aura_gaps_run.py
@@ -449,7 +452,7 @@ c368c3d4a0e31da169d5370dec0c7c3a  tests/drag_drop_run.py
 1dc5b3e89ca41f69f7eaf662e76da132  tests/engine_bench.py
 aa4c3450af7227ef4494ae91106535fa  tests/engine_text_run.py
 91e69f1cabaacf58537aa37237ffb06c  tests/export_group_run.py
-c216220480ac0ce00d5cd1a62d3c5e85  tests/flat_buttons_run.py
+ba76b8a4cede40d6a498477cb17fbd93  tests/flat_buttons_run.py
 73996db55adfc87161e59f4458dc4a2e  tests/flex_dropdown_run.py
 c7f384823034727d484a12ba5c38e48f  tests/formula_capture_run.py
 905c837653744a6299b8a926478c26a6  tests/gamedump_api_run.py

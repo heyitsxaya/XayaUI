@@ -222,12 +222,23 @@ end
 -- Preview size in the "Or pick art" lists (was 22 px): icon height, and the row is a little taller. Skin.lua lays the rows out.
 ns.TEX_PICK_ICON, ns.TEX_PICK_ROW = 56, 60
 local texValues, texSorting
+-- #336: every preview sits in one fixed-width column (two icons wide), centred, so every row's text starts at the same place. The
+-- padding is a transparent image (Media\UI\xui_blank.tga, 8 x 8, alpha 0) drawn at the width that is left over.
+ns.TEX_PICK_SPACER = "Interface\\AddOns\\XayaUI\\Media\\UI\\xui_blank.tga"
+local function PickRow(tex, w, label)
+    local box, h = ns.TEX_PICK_ICON * 2, ns.TEX_PICK_ICON
+    local left = math.floor((box - w) / 2)
+    local right = box - w - left
+    local function pad(n) return (n > 0) and ("|T%s:%d:%d|t"):format(ns.TEX_PICK_SPACER, h, n) or "" end
+    return pad(left) .. ("|T%s:%d:%d|t"):format(tostring(tex), h, w) .. pad(right) .. "  " .. tostring(label)
+end
+ns.TexPickRow = PickRow
 local function EnsureTextures()
     if texValues then return end
     texValues, texSorting = {}, {}
     for i, t in ipairs(ns.TextureList or {}) do
         local k = tostring(t[1])
-        texValues[k] = ("|T%d:%d:%d|t  %s"):format(t[1], ns.TEX_PICK_ICON, ns.TEX_PICK_ICON, t[2])
+        texValues[k] = PickRow(t[1], ns.TEX_PICK_ICON, t[2])
         texSorting[i] = k
     end
     texValues["0"] = "(none)"
@@ -236,7 +247,7 @@ local function EnsureTextures()
     -- (UserMedia.lua ns.AvailableLocalGraphics, #333): a picture only Xaya has is not offered as a blank row to everyone else.
     for _, g in ipairs((ns.AvailableLocalGraphics and ns.AvailableLocalGraphics()) or ns.LocalGraphics or {}) do
         local gw = math.min(ns.TEX_PICK_ICON * 2, math.max(8, math.floor(ns.TEX_PICK_ICON * (g[3] or 1) / math.max(1, g[4] or 1) + 0.5)))   -- keep the picture's proportions
-        texValues[g[2]] = ("|T%s:%d:%d|t  %s"):format(g[2], ns.TEX_PICK_ICON, gw, g[1])
+        texValues[g[2]] = PickRow(g[2], gw, g[1])
         texSorting[#texSorting + 1] = g[2]
     end
 end
