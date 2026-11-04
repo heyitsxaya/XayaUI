@@ -647,7 +647,7 @@ Two separate effects (XayaUI QoL) that make the mouse cursor easy to find. Both 
 
 ### 12.12 Character Toolkit
 
-A panel beside the character window (XayaUI QoL) that shows every stat the game gives, how each number is built, where it comes from, and what the next point buys. It does not copy the character window: it adds what that window leaves out. Off by default. Every number is read from the game when the panel draws. Anything the game does not give as a number is marked "not given by the game" and is never guessed. A value the game hides in combat shows "hidden in combat" and fills in again afterwards. Colors and font follow the XayaUI theme.
+A panel beside the character window (XayaUI QoL; its title reads **Stat Calculator** from QoL 0.7.3) that shows every stat the game gives, how each number is built, where it comes from, and what the next point buys. It does not copy the character window: it adds what that window leaves out. Off by default. Every number is read from the game when the panel draws. Anything the game does not give as a number is marked "not given by the game" and is never guessed. A value the game hides in combat shows "hidden in combat" and fills in again afterwards. Colors and font follow the XayaUI theme.
 
 **How the panel reads:**
 - **Tabs** along the top. Each tab is made of sections with a header. Click a header to fold or unfold its section.

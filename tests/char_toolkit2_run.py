@@ -535,5 +535,8 @@ GetCursorInfo = function() return "spell", 1, 8936 end
 if ib.scripts.OnReceiveDrag then ib.scripts.OnReceiveDrag(ib) end
 check("a dropped spell is ignored and stays on the cursor", ib.text == "" and not cleared, ib.text)''')
 total_n += r[0]; total_fails += r[1]
+r = toolkit_world("", '''local panel = _G.XayaUICharacterToolkit
+check("the panel's title reads Stat Calculator (Xaya 2026-11-04)", panel and panel.title and panel.title.text == "Stat Calculator", panel and panel.title and panel.title.text)''')
+total_n += r[0]; total_fails += r[1]
 print("%d checks, %d failed" % (total_n, total_fails))
 sys.exit(1 if total_fails else 0)
