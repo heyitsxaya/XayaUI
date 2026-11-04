@@ -27,10 +27,7 @@ if not exist "%ADDONS%\" (
 )
 for %%I in ("%ADDONS%\..") do set "IFACE=%%~fI"
 
-tasklist /FI "IMAGENAME eq Wow.exe" 2>nul | find /I "Wow.exe" >nul && (
-    echo STOPPED: World of Warcraft is running. Close the game, then run this again.
-    goto :end
-)
+rem The game may stay open: a /reload in game picks up the new folders, as with any addon install.
 
 echo.
 echo Checkout : %REPO%
