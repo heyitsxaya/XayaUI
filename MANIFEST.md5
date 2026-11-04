@@ -438,7 +438,7 @@ a86f56d3d0f0e1ed426ca5decffcbdbf  tests/harness/run.py
 9ee3a5ef6e001570cc4e59cc2b0864d2  tests/layout_parity_run.py
 a355daa7ba9fd11eb5737ffe110e4b57  tests/load_class_run.py
 77132f082006e60b78f5bbdc7cc3c57f  tests/lua51.py
-eeb86c7379295b415b9007b8ca1c6a5f  tests/lua_pitfalls_run.py
+55c5aa8a97168b5abfd78a60ca40b5aa  tests/lua_pitfalls_run.py
 f19616c7613194a3b65115c2c4405087  tests/minimap_run.py
 adb52b5f86b97b5ac549353e59d97f36  tests/modules_run.py
 1b83e47e74181dd789ddcafe4b0d937e  tests/notepad_run.py
