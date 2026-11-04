@@ -1,5 +1,5 @@
 # Cooldown triggers: "Seconds left" and "Charges" comparisons on the trigger itself (XayaUI core 0.6.26, XayaUI_Options 0.6.22; fork: main)
-Logged 2026-11-04 18:10 UTC. Session branch `claude/cool-ramanujan-ewx8e5`. Backlog item B, step 2 (Xaya's cooldown-trigger options:
+Logged 2026-11-04 18:01 UTC. Session branch `claude/cool-ramanujan-ewx8e5`. Backlog item B, step 2 (Xaya's cooldown-trigger options:
 "Remaining Time" and "Charges", each with an operator and a value). Nothing here has run in the game.
 
 ## What changed
