@@ -1,0 +1,540 @@
+# Hunter talents and spells
+
+Class token `HUNTER`. Specs: Beast Mastery (253), Marksmanship (254), Survival (255).
+
+
+## Class talents (all specs)
+
+- Node 102380
+  - **Precision Strikes** (spell 1267003, 1 rank, passive, instant, aura secret in some situations)
+- Node 102381
+  - **Rejuvenating Wind** (spell 385539, 1 rank, passive, instant, aura secret in some situations)
+- Node 102383
+  - **Wilderness Medicine** (spell 343242, 1 rank, passive, instant, aura secret in some situations)
+- Node 102384
+  - **Serrated Tips** (spell 459502, 2 ranks, passive, instant, aura secret in some situations)
+- Node 102387
+  - **Unnatural Causes** (spell 459527, 1 rank, passive, instant, aura secret in some situations)
+- Node 102389
+  - **Emergency Salve** (spell 459517, 1 rank, passive, instant, aura secret in some situations)
+- Node 102390
+  - **Specialized Arsenal** (spell 459542, 1 rank, passive, instant, aura secret in some situations)
+- Node 102391
+  - **Lone Survivor** (spell 388039, 1 rank, passive, instant, aura secret in some situations)
+- Node 102393 · choice
+  - **Tar Trap** (spell 187698, 1 rank, instant, base cooldown 30 s, aura secret in some situations)
+  - **Scare Beast** (spell 1513, 1 rank, cast 1.1 s, aura secret in some situations)
+- Node 102394 · choice
+  - **Territorial Instincts** (spell 459507, 1 rank, passive, instant, aura secret in some situations)
+  - **Guttural Roar** (spell 1258509, 1 rank, passive, instant, aura secret in some situations)
+- Node 102395
+  - **Disruptive Rounds** (spell 343244, 1 rank, passive, instant, aura secret in some situations)
+- Node 102396
+  - **Trigger Finger** (spell 459534, 2 ranks, passive, instant, aura secret in some situations)
+- Node 102401
+  - **Natural Mending** (spell 270581, 2 ranks, passive, instant, aura secret in some situations)
+- Node 102404
+  - **Pathfinding** (spell 378002, 1 rank, passive, instant, aura secret in some situations)
+- Node 102406
+  - **Padded Armor** (spell 459450, 1 rank, passive, instant, aura secret in some situations)
+- Node 102407
+  - **Concussive Shot** (spell 5116, 1 rank, instant, base cooldown 5 s, aura secret in some situations)
+- Node 102409
+  - **Keen Eyesight** (spell 378004, 2 ranks, passive, instant, aura secret in some situations)
+- Node 102411
+  - **Posthaste** (spell 109215, 1 rank, passive, instant, aura secret in some situations)
+- Node 102412
+  - **No Hard Feelings** (spell 459546, 1 rank, passive, instant, aura secret in some situations)
+- Node 102414
+  - **Improved Snaring** (spell 1268868, 1 rank, passive, instant, aura secret in some situations)
+- Node 102415 · choice
+  - **Kodo Tranquilizer** (spell 459983, 1 rank, passive, instant, aura secret in some situations)
+  - **Devilsaur Tranquilizer** (spell 459991, 1 rank, passive, instant, aura secret in some situations)
+- Node 102416
+  - **Born To Be Wild** (spell 266921, 2 ranks, passive, instant, aura secret in some situations)
+- Node 102418
+  - **Improved Traps** (spell 343247, 1 rank, passive, instant, aura secret in some situations)
+- Node 102419
+  - **Misdirection** (spell 34477, 1 rank, instant, base cooldown 30 s, aura secret in some situations)
+- Node 102422
+  - **Survival of the Fittest** (spell 264735, 1 rank, instant, aura secret in some situations)
+- Node 102423
+  - **Hunter's Avoidance** (spell 384799, 1 rank, passive, instant, aura secret in some situations)
+- Node 102424
+  - **Improved Aspect of the Turtle** (spell 1258485, 1 rank, passive, instant, aura secret in some situations)
+- Node 102425
+  - **Kindling Flare** (spell 459506, 1 rank, passive, instant, aura secret in some situations)
+- Node 109483
+  - **Scout's Instincts** (spell 459455, 1 rank, passive, instant, aura secret in some situations)
+- Node 109484
+  - **Improved Feign Death** (spell 1258486, 2 ranks, passive, instant, aura secret in some situations)
+- Node 109485
+  - **Improved Aspect of the Cheetah** (spell 1258407, 1 rank, passive, instant, aura secret in some situations)
+- Node 109486
+  - **Catlike Reflexes** (spell 1258404, 1 rank, passive, instant, aura secret in some situations)
+- Node 109487
+  - **Touch of Grass** (spell 1258402, 2 ranks, passive, instant, aura secret in some situations)
+- Node 109488
+  - **Binding Shot** (spell 109248, 1 rank, instant, base cooldown 45 s, aura secret in some situations)
+- Node 109489
+  - **Tranquilizing Shot** (spell 19801, 1 rank, instant, base cooldown 10 s, aura secret in some situations)
+- Node 110152 · choice
+  - **Tar-Coated Bindings** (spell 459460, 1 rank, passive, instant, aura secret in some situations)
+  - **Horsehair Tether** (spell 472729, 1 rank, passive, instant, aura secret in some situations)
+- Node 110153
+  - **Cold Feet** (spell 1268671, 1 rank, passive, instant, aura secret in some situations)
+- Node 110154
+  - **Shell Wall** (spell 1267218, 1 rank, passive, instant, aura secret in some situations)
+- Node 110155 · choice
+  - **Trailblazer** (spell 199921, 1 rank, passive, instant, aura secret in some situations)
+  - **Moment of Opportunity** (spell 459488, 1 rank, passive, instant, aura secret in some situations)
+- Node 110156
+  - **Camouflage** (spell 199483, 1 rank, instant, base cooldown 60 s, aura secret in some situations)
+- Node 110157
+  - **Combat Experience** (spell 1268871, 1 rank, passive, instant, aura secret in some situations)
+- Node 110164 · choice
+  - **Roar of Sacrifice** (spell 53480, 1 rank, instant, base cooldown 120 s, aura secret in some situations)
+  - **Guardian's Hide** (spell 1272094, 1 rank, passive, instant, aura secret in some situations)
+
+## Beast Mastery talents (spec 253)
+
+- Node 99832 · choice
+  - **?** (1 rank, picks hero tree 44)
+  - **?** (1 rank, picks hero tree 43)
+- Node 102292
+  - **Counter Shot** (spell 147362, 1 rank, instant, base cooldown 24 s, aura secret in some situations)
+- Node 102336
+  - **Frenzy** (spell 1264934, 2 ranks, passive, instant, aura secret in some situations)
+- Node 102337
+  - **Dire Cleave** (spell 1217524, 1 rank, passive, instant, aura secret in some situations)
+- Node 102338
+  - **Training Expert** (spell 378209, 2 ranks, passive, instant, aura secret in some situations)
+- Node 102340
+  - **Bestial Wrath** (spell 19574, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+- Node 102341
+  - **Beast Cleave** (spell 115939, 1 rank, passive, instant, aura secret in some situations)
+- Node 102342
+  - **Scent of Blood** (spell 193532, 1 rank, passive, instant, aura secret in some situations)
+- Node 102343
+  - **War Orders** (spell 393933, 1 rank, passive, instant, aura secret in some situations)
+- Node 102344 · choice
+  - **Snakeskin Quiver** (spell 468695, 1 rank, passive, instant, aura secret in some situations)
+  - **Cobra Senses** (spell 378244, 1 rank, passive, instant, aura secret in some situations)
+- Node 102345
+  - **Thrill of the Hunt** (spell 1265051, 2 ranks, passive, instant, aura secret in some situations)
+- Node 102346
+  - **Kill Command** (spell 34026, 1 rank, instant, base cooldown 0.5 s, aura secret in some situations)
+- Node 102347
+  - **Stomp** (spell 199530, 1 rank, passive, instant, aura secret in some situations)
+- Node 102350
+  - **Brutal Companion** (spell 386870, 1 rank, passive, instant, aura secret in some situations)
+- Node 102351
+  - **Aspect of the Beast** (spell 191384, 1 rank, passive, instant, aura secret in some situations)
+- Node 102353
+  - **Barbed Scales** (spell 469880, 1 rank, passive, instant, aura secret in some situations)
+- Node 102354
+  - **Cobra Shot** (spell 193455, 1 rank, instant, aura secret in some situations)
+- Node 102355
+  - **Kill Cleave** (spell 378207, 1 rank, passive, instant, aura secret in some situations)
+- Node 102356
+  - **Savagery** (spell 424557, 1 rank, passive, instant, aura secret in some situations)
+- Node 102357
+  - **Go for the Throat** (spell 459550, 1 rank, passive, instant, aura secret in some situations)
+- Node 102358
+  - **Jagged Wounds** (spell 1265044, 1 rank, passive, instant, aura secret in some situations)
+- Node 102359
+  - **Master Handler** (spell 424558, 1 rank, passive, instant, aura secret in some situations)
+- Node 102360
+  - **Razor Sharp** (spell 1265052, 1 rank, passive, instant, aura secret in some situations)
+- Node 102362
+  - **Bloodshed** (spell 1272099, 1 rank, passive, instant, aura secret in some situations)
+- Node 102363
+  - **Wild Thrash** (spell 1264359, 1 rank, instant, base cooldown 8 s, aura secret in some situations)
+- Node 102364
+  - **Killer Instinct** (spell 273887, 2 ranks, passive, instant, aura secret in some situations)
+- Node 102365
+  - **Dire Command** (spell 378743, 1 rank, passive, instant, aura secret in some situations)
+- Node 102367
+  - **Dire Frenzy** (spell 385810, 2 ranks, passive, instant, aura secret in some situations)
+- Node 102368
+  - **Alpha Predator** (spell 269737, 1 rank, passive, instant, aura secret in some situations)
+- Node 102369
+  - **Laceration** (spell 459552, 1 rank, passive, instant, aura secret in some situations)
+- Node 102370
+  - **Thundering Hooves** (spell 459693, 1 rank, passive, instant, aura secret in some situations)
+- Node 102371
+  - **Piercing Fangs** (spell 392053, 1 rank, passive, instant, aura secret in some situations)
+- Node 102372
+  - **Serpentine Strikes** (spell 468701, 1 rank, passive, instant, aura secret in some situations)
+- Node 102373
+  - **The Beast Within** (spell 231548, 1 rank, passive, instant, aura secret in some situations)
+- Node 102374
+  - **Pack Tactics** (spell 321014, 1 rank, passive, instant, aura secret in some situations)
+- Node 102375
+  - **Killer Cobra** (spell 199532, 1 rank, passive, instant, aura secret in some situations)
+- Node 102376
+  - **Dire Beast** (spell 120679, 1 rank, passive, instant, aura secret in some situations)
+- Node 102377
+  - **Barbed Shot** (spell 217200, 1 rank, instant, 2 charges, aura secret in some situations)
+- Node 102397
+  - **Intimidation** (spell 19577, 1 rank, instant, base cooldown 60 s, aura secret in some situations)
+- Node 107285
+  - **Wildspeaker** (spell 1232739, 1 rank, passive, instant, aura secret in some situations)
+- Node 107286
+  - **Huntmaster's Call** (spell 459730, 1 rank, passive, instant, aura secret in some situations)
+- Node 110158 · choice
+  - **Animal Companion** (spell 267116, 1 rank, passive, instant, aura secret in some situations)
+  - **Solitary Companion** (spell 474746, 1 rank, passive, instant, aura secret in some situations)
+- Node 110428 · choice
+  - **Nature's Ally** (spell 1273043, 1 rank, passive, instant, aura secret in some situations)
+  - **Nature's Ally** (spell 1273065, 2 ranks, passive, instant, aura secret in some situations)
+  - **Nature's Ally** (spell 1273126, 1 rank, passive, instant, aura secret in some situations)
+- Node 110692
+  - **Bloody Frenzy** (spell 407412, 1 rank, passive, instant, aura secret in some situations)
+
+## Marksmanship talents (spec 254)
+
+- Node 99831 · choice
+  - **?** (1 rank, picks hero tree 44)
+  - **?** (1 rank, picks hero tree 42)
+- Node 102402
+  - **Counter Shot** (spell 147362, 1 rank, instant, base cooldown 24 s, aura secret in some situations)
+- Node 103947
+  - **Trueshot** (spell 288613, 1 rank, instant, base cooldown 120 s, aura secret in some situations)
+- Node 103950
+  - **Unmatched Precision** (spell 1232955, 2 ranks, passive, instant, aura secret in some situations)
+- Node 103952
+  - **Windrunner Quiver** (spell 473523, 1 rank, passive, instant, aura secret in some situations)
+- Node 103955
+  - **Critical Precision** (spell 1277572, 1 rank, passive, instant, aura secret in some situations)
+- Node 103956
+  - **Volley** (spell 260243, 1 rank, instant, base cooldown 45 s, aura secret in some situations)
+- Node 103957 · choice
+  - **Trick Shots** (spell 257621, 1 rank, passive, instant, aura secret in some situations)
+  - **Aspect of the Hydra** (spell 470945, 1 rank, passive, instant, aura secret in some situations)
+- Node 103958 · choice
+  - **Calling the Shots** (spell 260404, 1 rank, passive, instant, aura secret in some situations)
+  - **Unerring Vision** (spell 474738, 1 rank, passive, instant, aura secret in some situations)
+- Node 103959 · choice
+  - **Obsidian Arrowhead** (spell 471350, 1 rank, passive, instant, aura secret in some situations)
+  - **On Target** (spell 471348, 1 rank, passive, instant, aura secret in some situations)
+- Node 103960
+  - **Salvo** (spell 400456, 1 rank, passive, instant, aura secret in some situations)
+- Node 103961
+  - **Rapid Fire** (spell 257044, 1 rank, instant, base cooldown 16 s, aura secret in some situations)
+- Node 103962
+  - **Bulletstorm** (spell 389019, 1 rank, passive, instant, aura secret in some situations)
+- Node 103964
+  - **Penetrating Shots** (spell 459783, 1 rank, passive, instant, aura secret in some situations)
+- Node 103966
+  - **Tensile Bowstring** (spell 471366, 1 rank, passive, instant, aura secret in some situations)
+- Node 103974
+  - **Master Marksman** (spell 260309, 1 rank, passive, instant, aura secret in some situations)
+- Node 103975
+  - **Quick Draw** (spell 459794, 1 rank, passive, instant, aura secret in some situations)
+- Node 103977
+  - **Precise Shots** (spell 260240, 1 rank, passive, instant, aura secret in some situations)
+- Node 103978
+  - **Small Game Hunter** (spell 459802, 2 ranks, passive, instant, aura secret in some situations)
+- Node 103979
+  - **Focus Fire** (spell 1277546, 1 rank, passive, instant, aura secret in some situations)
+- Node 103982
+  - **Aimed Shot** (spell 19434, 1 rank, cast 1.9 s, 2 charges, aura secret in some situations)
+- Node 103984
+  - **Feathered Frenzy** (spell 470943, 1 rank, passive, instant, aura secret in some situations)
+- Node 103985
+  - **Bullseye** (spell 204089, 1 rank, passive, instant, aura secret in some situations)
+- Node 103986 · choice
+  - **Tenacious** (spell 474456, 1 rank, passive, instant, aura secret in some situations)
+  - **Cunning** (spell 474440, 1 rank, passive, instant, aura secret in some situations)
+- Node 103987
+  - **Focused Aim** (spell 378767, 1 rank, passive, instant, aura secret in some situations)
+- Node 103990
+  - **Intimidation** (spell 474421, 1 rank, instant, base cooldown 60 s, aura secret in some situations)
+- Node 104095
+  - **Blood Fletching** (spell 1319011, 1 rank, passive, instant, aura secret in some situations)
+- Node 104127 · choice
+  - **Avian Specialization** (spell 466867, 1 rank, passive, instant, aura secret in some situations)
+  - **Unbreakable Bond** (spell 1223323, 1 rank, passive, instant, aura secret in some situations)
+- Node 104130
+  - **Surging Shots** (spell 391559, 1 rank, passive, instant, aura secret in some situations)
+- Node 107288
+  - **Light Ammo** (spell 378913, 1 rank, passive, instant, aura secret in some situations)
+- Node 107289
+  - **Lock and Load** (spell 194595, 1 rank, passive, instant, aura secret in some situations)
+- Node 107290
+  - **Accuracy By Volume** (spell 471428, 1 rank, passive, instant, aura secret in some situations)
+- Node 109490
+  - **Kill Shot** (spell 53351, 1 rank, instant, aura secret in some situations)
+- Node 109491
+  - **Deathblow** (spell 343248, 1 rank, passive, instant, aura secret in some situations)
+- Node 110430 · choice
+  - **Take Aim** (spell 1273132, 1 rank, passive, instant, aura secret in some situations)
+  - **Take Aim** (spell 1273129, 2 ranks, passive, instant, aura secret in some situations)
+  - **Take Aim** (spell 1273128, 1 rank, passive, instant, aura secret in some situations)
+- Node 110572
+  - **No Scope** (spell 473385, 1 rank, passive, instant, aura secret in some situations)
+- Node 110573 · choice
+  - **Tactical Reload** (spell 1301406, 1 rank, passive, instant, aura secret in some situations)
+  - **Unstable Trigger** (spell 473520, 1 rank, passive, instant, aura secret in some situations)
+- Node 110574
+  - **Precision Detonation** (spell 471369, 1 rank, passive, instant, aura secret in some situations)
+- Node 110575
+  - **Explosive Shot** (spell 212431, 1 rank, instant, base cooldown 30 s, aura secret in some situations)
+- Node 110688
+  - **Deadeye** (spell 321460, 1 rank, passive, instant, aura secret in some situations)
+- Node 110691
+  - **Eagle's Accuracy** (spell 473369, 1 rank, passive, instant, aura secret in some situations)
+
+## Survival talents (spec 255)
+
+- Node 79837
+  - **Muzzle** (spell 187707, 1 rank, instant, base cooldown 15 s, aura secret in some situations)
+- Node 99833 · choice
+  - **?** (1 rank, picks hero tree 43)
+  - **?** (1 rank, picks hero tree 42)
+- Node 102252
+  - **Bombardier** (spell 1311963, 1 rank, passive, instant, aura secret in some situations)
+- Node 102255
+  - **Kill Command** (spell 259489, 1 rank, instant, 2 charges, aura secret in some situations)
+- Node 102257
+  - **Lethal Calibration** (spell 1262409, 1 rank, passive, instant, aura secret in some situations)
+- Node 102262
+  - **Raptor Strike** (spell 186270, 1 rank, instant, aura secret in some situations)
+- Node 102263
+  - **Tip of the Spear** (spell 260285, 1 rank, passive, instant, aura secret in some situations)
+- Node 102264
+  - **Wildfire Bomb** (spell 259495, 1 rank, instant, aura secret in some situations)
+- Node 102268
+  - **Wildfire Infusion** (spell 460198, 1 rank, passive, instant, aura secret in some situations)
+- Node 102270
+  - **Bloodseeker** (spell 260248, 1 rank, passive, instant, aura secret in some situations)
+- Node 102272
+  - **Lunge** (spell 378934, 1 rank, passive, instant, aura secret in some situations)
+- Node 102279
+  - **Flanker's Advantage** (spell 459964, 1 rank, passive, instant, aura secret in some situations)
+- Node 102281
+  - **Explosives Expert** (spell 378937, 2 ranks, passive, instant, aura secret in some situations)
+- Node 102282 · choice
+  - **Vulnerability** (spell 1257011, 1 rank, passive, instant, aura secret in some situations)
+  - **Blackrock Munitions** (spell 462036, 1 rank, passive, instant, aura secret in some situations)
+- Node 102285
+  - **Guerrilla Tactics** (spell 264332, 1 rank, passive, instant, aura secret in some situations)
+- Node 102289
+  - **Improved Wildfire Bomb** (spell 321290, 2 ranks, passive, instant, aura secret in some situations)
+- Node 103989
+  - **Intimidation** (spell 19577, 1 rank, instant, base cooldown 60 s, aura secret in some situations)
+- Node 109304
+  - **Razor Edge** (spell 1253053, 2 ranks, passive, instant, aura secret in some situations)
+- Node 109305
+  - **Sic 'Em** (spell 1253137, 1 rank, passive, instant, aura secret in some situations)
+- Node 109306
+  - **Outland Venom** (spell 459939, 1 rank, passive, instant, aura secret in some situations)
+- Node 109307 · choice
+  - **Bloody Claws** (spell 385737, 1 rank, passive, instant, aura secret in some situations)
+  - **Wallop** (spell 1252738, 1 rank, passive, instant, aura secret in some situations)
+- Node 109309 · choice
+  - **Shrapnel Bomb** (spell 1253172, 1 rank, passive, instant, aura secret in some situations)
+  - **Flamebreak** (spell 1253176, 1 rank, passive, instant, aura secret in some situations)
+- Node 109310
+  - **Mongoose Fury** (spell 1252708, 1 rank, passive, instant, aura secret in some situations)
+- Node 109311
+  - **Bonding** (spell 1262442, 1 rank, passive, instant, aura secret in some situations)
+- Node 109312
+  - **Killer Companion** (spell 378955, 2 ranks, passive, instant, aura secret in some situations)
+- Node 109313
+  - **Sweeping Spear** (spell 378950, 2 ranks, passive, instant, aura secret in some situations)
+- Node 109316 · choice
+  - **Mongoose Rounds** (spell 1253945, 1 rank, passive, instant, aura secret in some situations)
+  - **Wildfire Shells** (spell 1261229, 1 rank, passive, instant, aura secret in some situations)
+- Node 109317
+  - **Grenade Juggler** (spell 459843, 1 rank, passive, instant, aura secret in some situations)
+- Node 109319
+  - **Shellshock** (spell 1252931, 1 rank, passive, instant, aura secret in some situations)
+- Node 109320
+  - **Savagery** (spell 1251790, 2 ranks, passive, instant, aura secret in some situations)
+- Node 109321
+  - **Strike as One** (spell 1251717, 1 rank, passive, instant, aura secret in some situations)
+- Node 109323
+  - **Takedown** (spell 1250646, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+- Node 109324
+  - **Boomstick** (spell 1261193, 1 rank, instant, base cooldown 60 s, aura secret in some situations)
+- Node 109470
+  - **Twin Fangs** (spell 1272139, 1 rank, passive, instant, aura secret in some situations)
+- Node 110159
+  - **Primal Surge** (spell 1272154, 1 rank, passive, instant, aura secret in some situations)
+- Node 110160
+  - **Wildfire Imbuement** (spell 1252943, 1 rank, passive, instant, aura secret in some situations)
+- Node 110161
+  - **Flanked** (spell 1256938, 1 rank, passive, instant, aura secret in some situations)
+- Node 110162
+  - **Quick Reload** (spell 1272136, 1 rank, passive, instant, aura secret in some situations)
+- Node 110163
+  - **Two Against Many** (spell 1251718, 1 rank, passive, instant, aura secret in some situations)
+- Node 110429 · choice
+  - **Raptor Swipe** (spell 1259003, 1 rank, passive, instant, aura secret in some situations)
+  - **Raptor Swipe** (spell 1259017, 2 ranks, passive, instant, aura secret in some situations)
+  - **Raptor Swipe** (spell 1259019, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Sentinel (42)
+
+- Node 94958 · choice · specs Marksmanship, Survival
+  - **Stargazer** (spell 1253751, 1 rank, passive, instant, aura secret in some situations)
+  - **Open Fire** (spell 1253807, 1 rank, passive, instant, aura secret in some situations)
+- Node 94965 · specs Marksmanship, Survival
+  - **Lunar Calling** (spell 1253852, 1 rank, passive, instant, aura secret in some situations)
+- Node 94970 · specs Marksmanship, Survival
+  - **Arcane Talons** (spell 1253846, 1 rank, passive, instant, aura secret in some situations)
+- Node 94971 · specs Marksmanship, Survival
+  - **Invigorating Pulse** (spell 450379, 1 rank, passive, instant, aura secret in some situations)
+- Node 94973 · specs Marksmanship, Survival
+  - **Moon's Blessing** (spell 1253825, 1 rank, passive, instant, aura secret in some situations)
+- Node 94976 · specs Marksmanship, Survival
+  - **Sentinel** (spell 1253599, 1 rank, passive, instant, aura secret in some situations)
+- Node 94978 · specs Marksmanship, Survival
+  - **Lunar Storm** (spell 1253732, 1 rank, passive, instant, aura secret in some situations)
+- Node 94980 · choice · specs Marksmanship, Survival
+  - **Conditioning** (spell 1253887, 1 rank, passive, instant, aura secret in some situations)
+  - **Scout's Vigil** (spell 1253892, 1 rank, passive, instant, aura secret in some situations)
+- Node 94981 · specs Marksmanship, Survival
+  - **Sanctified Armaments** (spell 1253831, 1 rank, passive, instant, aura secret in some situations)
+- Node 94989 · specs Marksmanship, Survival
+  - **Don't Look Back** (spell 450373, 1 rank, passive, instant, aura secret in some situations)
+- Node 94990 · specs Marksmanship, Survival
+  - **Can't Miss, Won't Miss** (spell 1253830, 1 rank, passive, instant, aura secret in some situations)
+- Node 109805 · specs Marksmanship, Survival
+  - **Radiant Edge** (spell 1264903, 1 rank, passive, instant, aura secret in some situations)
+- Node 109807 · specs Marksmanship, Survival
+  - **Moonlight Chakram** (spell 1264902, 1 rank, passive, instant, aura secret in some situations)
+- Node 110028 · choice · specs Marksmanship, Survival
+  - **Twilight Requiem** (spell 1264904, 1 rank, passive, instant, aura secret in some situations)
+  - **Stalk and Strike** (spell 1266069, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Pack Leader (43)
+
+- Node 94962 · specs Beast Mastery, Survival
+  - **Better Together** (spell 472357, 1 rank, passive, instant, aura secret in some situations)
+- Node 94966 · specs Beast Mastery, Survival
+  - **Stampede!** (spell 472741, 1 rank, passive, instant, aura secret in some situations)
+- Node 94967 · specs Beast Mastery, Survival
+  - **Shell Cover** (spell 472707, 1 rank, passive, instant, aura secret in some situations)
+- Node 94969 · specs Beast Mastery, Survival
+  - **No Mercy** (spell 472660, 1 rank, passive, instant, aura secret in some situations)
+- Node 94972 · choice · specs Beast Mastery, Survival
+  - **Ursine Fury** (spell 472476, 1 rank, passive, instant, aura secret in some situations)
+  - **Sharpened Claws** (spell 472524, 1 rank, passive, instant, aura secret in some situations)
+- Node 94979 · choice · specs Beast Mastery, Survival
+  - **Slicked Shoes** (spell 472719, 1 rank, passive, instant, aura secret in some situations)
+  - **Masterful Call** (spell 1268705, 1 rank, passive, instant, aura secret in some situations)
+- Node 94984 · specs Beast Mastery, Survival
+  - **Fury of the Wyvern** (spell 472550, 1 rank, passive, instant, aura secret in some situations)
+- Node 94985 · specs Beast Mastery, Survival
+  - **Pack Mentality** (spell 472358, 1 rank, passive, instant, aura secret in some situations)
+- Node 94988 · specs Beast Mastery, Survival
+  - **Hogstrider** (spell 472639, 1 rank, passive, instant, aura secret in some situations)
+- Node 94991 · specs Beast Mastery, Survival
+  - **Howl of the Pack Leader** (spell 471876, 1 rank, passive, instant, aura secret in some situations)
+- Node 94992 · specs Beast Mastery, Survival
+  - **Dire Summons** (spell 472352, 1 rank, passive, instant, aura secret in some situations)
+- Node 109802 · specs Beast Mastery, Survival
+  - **Sharpened Fangs** (spell 1264775, 1 rank, passive, instant, aura secret in some situations)
+- Node 109803 · specs Beast Mastery, Survival
+  - **Lethal Barbs** (spell 1264781, 1 rank, passive, instant, aura secret in some situations)
+- Node 109804 · choice · specs Beast Mastery, Survival
+  - **Hoof and Blade** (spell 1264797, 1 rank, passive, instant, aura secret in some situations)
+  - **Wyvern's Gaze** (spell 1264792, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Dark Ranger (44)
+
+- Node 94957 · choice · specs Beast Mastery, Marksmanship
+  - **Banshee's Mark** (spell 467902, 1 rank, passive, instant, aura secret in some situations)
+  - **The Bell Tolls** (spell 467644, 1 rank, passive, instant, aura secret in some situations)
+- Node 94959 · specs Beast Mastery, Marksmanship
+  - **Smoke Screen** (spell 430709, 1 rank, passive, instant, aura secret in some situations)
+- Node 94960 · choice · specs Beast Mastery, Marksmanship
+  - **Dark Chains** (spell 430712, 1 rank, passive, instant, aura secret in some situations)
+  - **Shadow Dagger** (spell 467741, 1 rank, passive, instant, aura secret in some situations)
+- Node 94961 · specs Beast Mastery, Marksmanship
+  - **Bleak Arrows** (spell 467749, 1 rank, passive, instant, aura secret in some situations)
+- Node 94968 · specs Beast Mastery, Marksmanship
+  - **Soul Drinker** (spell 469638, 1 rank, passive, instant, aura secret in some situations)
+- Node 94974 · specs Beast Mastery, Marksmanship
+  - **Bleak Powder** (spell 467911, 1 rank, passive, instant, aura secret in some situations)
+- Node 94982 · specs Beast Mastery, Marksmanship
+  - **Umbral Reach** (spell 1235397, 1 rank, passive, instant, aura secret in some situations)
+- Node 94983 · specs Beast Mastery, Marksmanship
+  - **Blighted Quiver** (spell 1264291, 1 rank, passive, instant, aura secret in some situations)
+- Node 94986 · choice · specs Beast Mastery, Marksmanship
+  - **Ebon Bowstring** (spell 467897, 1 rank, passive, instant, aura secret in some situations)
+  - **Through the Eyes** (spell 1277565, 1 rank, passive, instant, aura secret in some situations)
+- Node 94987 · specs Marksmanship
+  - **Black Arrow** (spell 466932, 1 rank, passive, instant, aura secret in some situations)
+- Node 94993 · specs Beast Mastery, Marksmanship
+  - **Withering Fire** (spell 466990, 1 rank, passive, instant, aura secret in some situations)
+- Node 109799 · specs Beast Mastery, Marksmanship
+  - **Pact of the Hollow** (spell 1264690, 1 rank, passive, instant, aura secret in some situations)
+- Node 109800 · specs Beast Mastery, Marksmanship
+  - **Wailing Dead** (spell 1264290, 1 rank, passive, instant, aura secret in some situations)
+- Node 109801 · specs Beast Mastery, Marksmanship
+  - **Corpsecaller** (spell 1264289, 1 rank, passive, instant, aura secret in some situations)
+- Node 109961 · specs Beast Mastery
+  - **Black Arrow** (spell 466930, 1 rank, instant, aura secret in some situations)
+
+## Tier sets (Encounter Journal)
+
+- Root Warden's Regalia (set 1967, item level 197, spec Beast Mastery): items 244609, 244610, 244611
+  - Bonus **Root Warden's Regalia** (spell 1244021, instant, aura secret in some situations)
+- Voidlight Bindings (set 1971, item level 108, spec Beast Mastery): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Chainmail (set 1976, item level 197, spec Beast Mastery): items 255906, 255907, 255908, 255909, 255910, 255911, 255912, 255913
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Primal Sentry's Camouflage (set 1982, item level 197, spec Beast Mastery): items 249991, 249989, 249988, 249987, 249986
+  - Bonus **Hunter Beast Mastery 12.0 Class Set 2pc** (spell 1264825, instant, aura secret in some situations)
+  - Bonus **Hunter Beast Mastery 12.0 Class Set 4pc** (spell 1264826, instant, aura secret in some situations)
+- Warmonger's Links (set 2052, item level 259, spec Beast Mastery): items 270367, 270368, 270369, 270370, 270371, 270372, 270373, 270374
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Skulking Viper's Ambush (set 2059, item level 219, spec Beast Mastery): items 271495, 271493, 271492, 271491, 271490
+  - Bonus **Hunter Beast Mastery 12.1 Class Set 2pc** (spell 1296631, instant, aura secret in some situations)
+  - Bonus **Hunter Beast Mastery 12.1 Class Set 4pc** (spell 1296632, instant, aura secret in some situations)
+- Bite of Zul'jan (set 2070, item level 219, spec Beast Mastery): items 270173, 268209, 268213
+  - Bonus **Bite of Zul'jan** (spell 1291726, instant, aura secret in some situations)
+- Root Warden's Regalia (set 1967, item level 197, spec Marksmanship): items 244609, 244610, 244611
+  - Bonus **Root Warden's Regalia** (spell 1244021, instant, aura secret in some situations)
+- Voidlight Bindings (set 1971, item level 108, spec Marksmanship): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Chainmail (set 1976, item level 197, spec Marksmanship): items 255906, 255907, 255908, 255909, 255910, 255911, 255912, 255913
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Primal Sentry's Camouflage (set 1982, item level 197, spec Marksmanship): items 249991, 249989, 249988, 249987, 249986
+  - Bonus **Hunter Marksmanship 12.0 Class Set 2pc** (spell 1264828, instant, aura secret in some situations)
+  - Bonus **Hunter Marksmanship 12.0 Class Set 4pc** (spell 1264829, instant, aura secret in some situations)
+- Warmonger's Links (set 2052, item level 259, spec Marksmanship): items 270367, 270368, 270369, 270370, 270371, 270372, 270373, 270374
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Skulking Viper's Ambush (set 2059, item level 219, spec Marksmanship): items 271495, 271493, 271492, 271491, 271490
+  - Bonus **Hunter Marksmanship 12.1 Class Set 2pc** (spell 1296633, instant, aura secret in some situations)
+  - Bonus **Hunter Marksmanship 12.1 Class Set 4pc** (spell 1296634, instant, aura secret in some situations)
+- Bite of Zul'jan (set 2070, item level 219, spec Marksmanship): items 270173, 268209, 268213
+  - Bonus **Bite of Zul'jan** (spell 1291726, instant, aura secret in some situations)
+- Root Warden's Regalia (set 1967, item level 197, spec Survival): items 244609, 244610, 244611
+  - Bonus **Root Warden's Regalia** (spell 1244021, instant, aura secret in some situations)
+- Torment's Duality (set 1970, item level 197, spec Survival): items 251884, 251885
+  - Bonus **Torment's Duality** (spell 1253358, instant, aura secret in some situations)
+- Voidlight Bindings (set 1971, item level 108, spec Survival): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Chainmail (set 1976, item level 197, spec Survival): items 255906, 255907, 255908, 255909, 255910, 255911, 255912, 255913
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Primal Sentry's Camouflage (set 1982, item level 197, spec Survival): items 249991, 249989, 249988, 249987, 249986
+  - Bonus **Hunter Beast Survival 12.0 Class Set 2pc** (spell 1264830, instant, aura secret in some situations)
+  - Bonus **Hunter Beast Survival 12.0 Class Set 4pc** (spell 1264831, instant, aura secret in some situations)
+- Warmonger's Links (set 2052, item level 259, spec Survival): items 270367, 270368, 270369, 270370, 270371, 270372, 270373, 270374
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Skulking Viper's Ambush (set 2059, item level 219, spec Survival): items 271495, 271493, 271492, 271491, 271490
+  - Bonus **Hunter Survival 12.1 Class Set 4pc** (spell 1296636, instant, aura secret in some situations)
+  - Bonus **Hunter Survival 12.1 Class Set 4pc** (spell 1296635, instant, aura secret in some situations)
+- Bite of Zul'jan (set 2070, item level 219, spec Survival): items 270173, 268209, 268213
+  - Bonus **Bite of Zul'jan** (spell 1291726, instant, aura secret in some situations)

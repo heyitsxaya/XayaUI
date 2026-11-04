@@ -1,0 +1,4523 @@
+# Widget methods in the live client
+
+Captured in the live client by XayaUI Game Data Capture (`/xuidump api`): build 12.1.5 (70783), interface 120105, captured 2026-11-03 21:49 (local time).
+Signatures, flags and notes come from Blizzard's generated API documentation (12.1.5.70688). Where the client is newer than the documentation, a name can exist without a documented signature.
+
+
+Each list is read from one real object of that type. Where Blizzard documents a method (ScriptObject documentation), its signature is shown.
+
+
+## AnimationGroup (54 methods)
+
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `CreateAnimation(animationType: cstring?, name: cstring?, templateName: cstring?)` → `anim: SimpleAnim` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=NotAllowed · SimpleAnimGroupAPI
+- `Finish()` · SimpleAnimGroupAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAnimationSpeedMultiplier()` → `animationSpeedMultiplier: number` · SimpleAnimGroupAPI
+- `GetAnimations()` → `anims: SimpleAnim` · SimpleAnimGroupAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDuration()` → `duration: LuaDurationObject?` · DurationTextBindingObjectAPI
+- `GetElapsed()` → `elapsedSec: number` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleAnimAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetLoopState()` → `loopState: cstring` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleAnimGroupAPI
+- `GetLooping()` → `loopType: LoopType` · SimpleAnimGroupAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetProgress()` → `progress: number` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `IsDone()` → `isDone: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleAnimAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPaused()` → `isPaused: bool` · FrameAPICooldown
+- `IsPendingFinish()` → `isPendingFinish: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleAnimGroupAPI
+- `IsPlaying()` → `isPlaying: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleAnimAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsReverse()` → `isReverse: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleAnimGroupAPI
+- `IsSetToFinalAlpha()` → `isSetToFinalAlpha: bool` · SimpleAnimGroupAPI
+- `Pause()` · FrameAPICooldown
+- `Play()` · SimpleAnimAPI
+- `RemoveAnimations()` · SimpleAnimGroupAPI
+- `Restart()` · SimpleAnimAPI
+- `SetAnimationSpeedMultiplier(animationSpeedMultiplier: number)` · SecretArguments=AllowedWhenUntainted · SimpleAnimGroupAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetLooping(loopType: LoopType)` · SecretArguments=NotAllowed · SimpleAnimGroupAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPlaying(play: bool)` · SecretArguments=NotAllowed · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToFinalAlpha(setToFinalAlpha: bool)` · SecretArguments=AllowedWhenUntainted · SimpleAnimGroupAPI
+- `Stop()` · SimpleAnimAPI
+
+## Button (256 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearDisabledTexture()` · SimpleButtonAPI
+- `ClearHighlightTexture()` · SimpleButtonAPI
+- `ClearNormalTexture()` · SimpleButtonAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearPushedTexture()` · SimpleButtonAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `Click(button: cstring = "LeftButton", isDown: bool = false)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=NotAllowed · SimpleButtonAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `Disable()` · DurationTextBindingObjectAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `Enable()` · DurationTextBindingObjectAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetButtonState()` → `buttonState: SimpleButtonStateToken` · SecretReturnsForAspect=[0] · SimpleButtonAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDisabledFontObject()` → `font: SimpleFont` · SimpleButtonAPI
+- `GetDisabledTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFontString()` → `fontString: SimpleFontString?` · DurationTextBindingObjectAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHighlightFontObject()` → `font: SimpleFont` · SimpleButtonAPI
+- `GetHighlightTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetMotionScriptsWhileDisabled()` → `motionScriptsWhileDisabled: bool` · SimpleButtonAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNormalFontObject()` → `font: SimpleFont` · SimpleButtonAPI
+- `GetNormalTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetPushedTextOffset()` → `offsetX: uiUnit, offsetY: uiUnit` · SimpleButtonAPI
+- `GetPushedTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetText()` → `text: cstring` · SecretReturnsForAspect=[0] · SimpleButtonAPI
+- `GetTextHeight()` → `height: uiUnit` · SimpleButtonAPI
+- `GetTextWidth()` → `width: uiUnit` · SimpleButtonAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEnabled()` → `enabled: bool` · DurationTextBindingObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForClicks(buttons: ClickButton)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleButtonAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForMouse(buttons: ClickButton)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleButtonAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetButtonState(buttonState: SimpleButtonStateToken, lock: bool = false)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleButtonAPI
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetDisabledAtlas(atlas: textureAtlas)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetDisabledFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetDisabledTexture(asset: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetEnabled(enabled: bool)` · SecretArguments=AllowedWhenUntainted · DurationTextBindingObjectAPI
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFontString(fontString: SimpleFontString)` · SecretArguments=AllowedWhenUntainted · DurationTextBindingObjectAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFormattedText(text: cstring)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleButtonAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHighlightAtlas(atlas: textureAtlas, blendMode: BlendMode?)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetHighlightFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHighlightTexture(asset: TextureAsset, blendMode: BlendMode?)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetMotionScriptsWhileDisabled(motionScriptsWhileDisabled: bool)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetNormalAtlas(atlas: textureAtlas)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetNormalFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetNormalTexture(asset: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPushedAtlas(atlas: textureAtlas)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetPushedTextOffset(offsetX: uiUnit, offsetY: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetPushedTexture(asset: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+
+## CheckButton (262 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearDisabledTexture()` · SimpleButtonAPI
+- `ClearHighlightTexture()` · SimpleButtonAPI
+- `ClearNormalTexture()` · SimpleButtonAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearPushedTexture()` · SimpleButtonAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `Click(button: cstring = "LeftButton", isDown: bool = false)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=NotAllowed · SimpleButtonAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `Disable()` · DurationTextBindingObjectAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `Enable()` · DurationTextBindingObjectAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetButtonState()` → `buttonState: SimpleButtonStateToken` · SecretReturnsForAspect=[0] · SimpleButtonAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChecked()` → `checked: bool` · SimpleCheckboxAPI
+- `GetCheckedTexture()` → `texture: SimpleTexture` · SimpleCheckboxAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDisabledCheckedTexture()` → `texture: SimpleTexture` · SimpleCheckboxAPI
+- `GetDisabledFontObject()` → `font: SimpleFont` · SimpleButtonAPI
+- `GetDisabledTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFontString()` → `fontString: SimpleFontString?` · DurationTextBindingObjectAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHighlightFontObject()` → `font: SimpleFont` · SimpleButtonAPI
+- `GetHighlightTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetMotionScriptsWhileDisabled()` → `motionScriptsWhileDisabled: bool` · SimpleButtonAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNormalFontObject()` → `font: SimpleFont` · SimpleButtonAPI
+- `GetNormalTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetPushedTextOffset()` → `offsetX: uiUnit, offsetY: uiUnit` · SimpleButtonAPI
+- `GetPushedTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetText()` → `text: cstring` · SecretReturnsForAspect=[0] · SimpleButtonAPI
+- `GetTextHeight()` → `height: uiUnit` · SimpleButtonAPI
+- `GetTextWidth()` → `width: uiUnit` · SimpleButtonAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEnabled()` → `enabled: bool` · DurationTextBindingObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForClicks(buttons: ClickButton)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleButtonAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForMouse(buttons: ClickButton)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleButtonAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetButtonState(buttonState: SimpleButtonStateToken, lock: bool = false)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleButtonAPI
+- `SetChecked(checked: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleCheckboxAPI
+- `SetCheckedTexture(asset: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleCheckboxAPI
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetDisabledAtlas(atlas: textureAtlas)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetDisabledCheckedTexture(asset: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleCheckboxAPI
+- `SetDisabledFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetDisabledTexture(asset: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetEnabled(enabled: bool)` · SecretArguments=AllowedWhenUntainted · DurationTextBindingObjectAPI
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFontString(fontString: SimpleFontString)` · SecretArguments=AllowedWhenUntainted · DurationTextBindingObjectAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFormattedText(text: cstring)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleButtonAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHighlightAtlas(atlas: textureAtlas, blendMode: BlendMode?)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetHighlightFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHighlightTexture(asset: TextureAsset, blendMode: BlendMode?)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetMotionScriptsWhileDisabled(motionScriptsWhileDisabled: bool)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetNormalAtlas(atlas: textureAtlas)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetNormalFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetNormalTexture(asset: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPushedAtlas(atlas: textureAtlas)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetPushedTextOffset(offsetX: uiUnit, offsetY: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetPushedTexture(asset: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+
+## ColorSelect (233 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearColorWheelTexture()` · SimpleColorSelectAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetColorAlpha()` → `alpha: number` · SimpleColorSelectAPI
+- `GetColorAlphaTexture()` → `texture: SimpleTexture` · SimpleColorSelectAPI
+- `GetColorAlphaThumbTexture()` → `texture: SimpleTexture` · SimpleColorSelectAPI
+- `GetColorHSV()` → `hsvX: number, hsvY: number, hsvZ: number` · SimpleColorSelectAPI
+- `GetColorRGB()` → `rgbR: number, rgbG: number, rgbB: number` · SimpleColorSelectAPI
+- `GetColorValueTexture()` → `texture: SimpleTexture` · SimpleColorSelectAPI
+- `GetColorValueThumbTexture()` → `texture: SimpleTexture` · SimpleColorSelectAPI
+- `GetColorWheelTexture()` → `texture: SimpleTexture` · SimpleColorSelectAPI
+- `GetColorWheelThumbTexture()` → `texture: SimpleTexture` · SimpleColorSelectAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetColorAlpha(alpha: number)` · SecretArguments=NotAllowed · SimpleColorSelectAPI
+- `SetColorAlphaTexture(texture: SimpleTexture)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleColorSelectAPI
+- `SetColorAlphaThumbTexture(texture: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleColorSelectAPI
+- `SetColorHSV(hsvX: number, hsvY: number, hsvZ: number)` · SecretArguments=NotAllowed · SimpleColorSelectAPI
+- `SetColorRGB(rgbR: number, rgbG: number, rgbB: number)` · SecretArguments=NotAllowed · SimpleColorSelectAPI
+- `SetColorValueTexture(texture: SimpleTexture)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleColorSelectAPI
+- `SetColorValueThumbTexture(texture: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleColorSelectAPI
+- `SetColorWheelTexture(texture: SimpleTexture)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleColorSelectAPI
+- `SetColorWheelThumbTexture(texture: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleColorSelectAPI
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+
+## Cooldown (260 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `Clear()` · IsProtectedFunction · FrameAPICooldown
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetCooldownDisplayDuration()` → `duration: number` · SecretReturnsForAspect=[0] · FrameAPICooldown
+- `GetCooldownDuration()` → `duration: number` · SecretReturnsForAspect=[0] · FrameAPICooldown
+- `GetCooldownTimes()` → `start: number, duration: number` · SecretReturnsForAspect=[0] · FrameAPICooldown
+- `GetCountdownAbbrevThreshold()` → `seconds: Seconds` · FrameAPICooldown
+- `GetCountdownFontString()` → `countdownString: SimpleFontString` · FrameAPICooldown
+- `GetCountdownFormatter()` → `formatter: NumericFormatter?` · FrameAPICooldown
+- `GetCountdownMillisecondsThreshold()` → `seconds: Seconds` · FrameAPICooldown
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetDrawBling()` → `drawBling: bool` · SecretReturnsForAspect=[0] · FrameAPICooldown
+- `GetDrawEdge()` → `drawEdge: bool` · SecretReturnsForAspect=[0] · FrameAPICooldown
+- `GetDrawSwipe()` → `drawSwipe: bool` · SecretReturnsForAspect=[0] · FrameAPICooldown
+- `GetEdgeScale()` → `edgeScale: number` · FrameAPICooldown
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHideCountdownNumbers()` → `hideNumbers: bool` · FrameAPICooldown
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetMinimumCountdownDuration()` → `milliseconds: Milliseconds` · FrameAPICooldown
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetReverse()` → `reverse: bool` · FrameAPICooldown
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRotation()` → `rotationRadians: number` · FrameAPICooldown
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetUseAuraDisplayTime()` → `useAuraDisplayTime: bool` · FrameAPICooldown
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPaused()` → `isPaused: bool` · FrameAPICooldown
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `Pause()` · FrameAPICooldown
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `Resume()` · FrameAPICooldown
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetBlingTexture(texture: FileAsset, colorR: number, colorG: number, colorB: number, colorA: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetCooldown(start: Seconds, duration: Seconds, modRate: number = 1)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
+- `SetCooldownDuration(duration: Seconds, modRate: number = 1)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
+- `SetCooldownFromDurationObject(duration: LuaDurationObject, clearIfZero: bool = true)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetCooldownFromExpirationTime(expirationTime: Seconds, duration: Seconds, modRate: number = 1)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
+- `SetCooldownUNIX(start: number, duration: number, modRate: number = 1)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
+- `SetCountdownAbbrevThreshold(seconds: Seconds)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetCountdownFont(fontName: cstring)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetCountdownFormatter(formatter: NumericFormatter?)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetCountdownMillisecondsThreshold(seconds: Seconds)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawBling(drawBling: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
+- `SetDrawEdge(drawEdge: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawSwipe(drawSwipe: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
+- `SetEdgeColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
+- `SetEdgeScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetEdgeTexture(texture: FileAsset, colorR: number, colorG: number, colorB: number, colorA: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHideCountdownNumbers(hideNumbers: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetMinimumCountdownDuration(milliseconds: Milliseconds)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPaused(paused: bool)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetReverse(reverse: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRotation(radians: number, animate: bool = true)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetSwipeColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
+- `SetSwipeTexture(texture: FileAsset, colorR: number, colorG: number, colorB: number, colorA: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetTexCoordRange(low: vector2 (Vector2DMixin), high: vector2 (Vector2DMixin)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetUseAuraDisplayTime(useAuraDisplayTime: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetUseCircularEdge(useCircularEdge: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+
+## EditBox (293 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddHistoryLine(text: cstring)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearFocus()` · FrameAPISimpleCheckout
+- `ClearHighlightText()` · SimpleEditBoxAPI
+- `ClearHistory()` · SimpleEditBoxAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `Disable()` · DurationTextBindingObjectAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `Enable()` · DurationTextBindingObjectAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAltArrowKeyMode()` → `altMode: bool` · SimpleEditBoxAPI
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBlinkSpeed()` → `cursorBlinkSpeedSec: number` · SimpleEditBoxAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetCursorPosition()` → `cursorPosition: number` · SecretReturnsForAspect=[0, 0] · SimpleEditBoxAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDisplayText()` → `displayText: string` · MayReturnNothing, SecretReturnsForAspect=[0] · SimpleEditBoxAPI
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFont()` → `name: cstring, fontHeight: uiUnit, flags: TBFFlags` · SimpleEditBoxAPI
+- `GetFontObject()` → `font: SimpleFont` · SimpleEditBoxAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHighlightColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
+- `GetHistoryLines()` → `numHistoryLines: number` · SimpleEditBoxAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetIndentedWordWrap()` → `isIndented: bool` · SimpleEditBoxAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetInputLanguage()` → `language: cstring` · SimpleEditBoxAPI
+- `GetJustifyH()` → `justifyH: JustifyHorizontal` · SimpleEditBoxAPI
+- `GetJustifyV()` → `justifyV: JustifyVertical` · SimpleEditBoxAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetMaxBytes()` → `maxBytes: number` · SimpleEditBoxAPI
+- `GetMaxLetters()` → `maxLetters: number` · SimpleEditBoxAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumLetters()` → `numLetters: number` · MayReturnNothing · SimpleEditBoxAPI
+- `GetNumLines()` → `lines: number` · SimpleEditBoxAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumber()` → `number: number?` · SecretReturnsForAspect=[0] · SimpleEditBoxAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetShadowColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
+- `GetShadowOffset()` → `offsetX: number, offsetY: number` · SimpleEditBoxAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSpacing()` → `fontHeight: uiUnit` · SimpleEditBoxAPI
+- `GetText()` → `text: cstring` · SecretReturnsForAspect=[0] · SimpleButtonAPI
+- `GetTextColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
+- `GetTextInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleEditBoxAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetUTF8CursorPosition()` → `cursorPosition: number` · SecretReturnsForAspect=[0, 0] · SimpleEditBoxAPI
+- `GetVisibleTextByteLimit()` → `maxVisibleBytes: number` · SimpleEditBoxAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFocus()` → `hasFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleEditBoxAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `HasText()` → `hasText: bool` · SimpleEditBoxAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HighlightText(start: number = 0, stop: number = -1)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `Insert(text: cstring)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleEditBoxAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAlphabeticOnly()` → `enabled: bool` · SimpleEditBoxAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAutoFocus()` → `autoFocus: bool` · SimpleEditBoxAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsCountInvisibleLetters()` → `countInvisibleLetters: bool` · SimpleEditBoxAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEnabled()` → `enabled: bool` · DurationTextBindingObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsInIMECompositionMode()` → `isInIMECompositionMode: bool` · SimpleEditBoxAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsMultiLine()` → `multiline: bool` · SimpleEditBoxAPI
+- `IsNumeric()` → `isNumeric: bool` · SimpleEditBoxAPI
+- `IsNumericFullRange()` → `isNumeric: bool` · SimpleEditBoxAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPassword()` → `isPassword: bool` · SimpleEditBoxAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsSecureText()` → `isSecure: bool` · SecretReturnsForAspect=[0] · SimpleEditBoxAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ResetInputMode()` · SimpleEditBoxAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAlphabeticOnly(enabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetAltArrowKeyMode(altMode: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAutoFocus(autoFocus: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetBlinkSpeed(cursorBlinkSpeedSec: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetCountInvisibleLetters(countInvisibleLetters: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetCursorPosition(cursorPosition: number)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleEditBoxAPI
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetEnabled(enabled: bool)` · SecretArguments=AllowedWhenUntainted · DurationTextBindingObjectAPI
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFocus()` · FrameAPISimpleCheckout
+- `SetFont(fontFile: cstring, height: uiFontHeight, flags: TBFFlags)` → `success: bool` · RequiresValidFontAsset, RequiresValidFontHeight, SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHighlightColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHistoryLines(numHistoryLines: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIndentedWordWrap(isIndented: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetJustifyH(justifyH: JustifyHorizontal)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetJustifyV(justifyV: JustifyVertical)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetMaxBytes(maxBytes: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetMaxLetters(maxLetters: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetMultiLine(multiline: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetNumber(number: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleEditBoxAPI
+- `SetNumeric(isNumeric: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetNumericFullRange(isNumeric: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPassword(isPassword: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetSecureText(isSecure: bool = false)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleEditBoxAPI
+- `SetSecurityDisablePaste()` · SimpleEditBoxAPI
+- `SetSecurityDisableSetText()` · SimpleEditBoxAPI
+- `SetShadowColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetShadowOffset(offsetX: number, offsetY: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetSpacing(fontHeight: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetTextColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetTextInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetVisibleTextByteLimit(maxVisibleBytes: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `ToggleInputLanguage()` · SimpleEditBoxAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+
+## FontString (166 methods)
+
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CalculateScreenAreaFromCharacterSpan(leftIndex: luaIndex, rightIndex: luaIndex)` → `areas: table<uiBoundsRect>?` · RequiresFontStringTextAccess, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0], SecretWhenAnchoringSecret · SimpleFontStringAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanNonSpaceWrap()` → `wrap: bool` · SimpleFontStringAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanWordWrap()` → `wrap: bool` · SimpleFontStringAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearText()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFontStringAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `FindCharacterIndexAtCoordinate(x: uiUnit, y: uiUnit)` → `characterIndex: luaIndex, inside: bool` · MayReturnNothing, RequiresFontStringTextAccess, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0], SecretWhenAnchoringSecret · SimpleFontStringAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAlphaGradient()` → `start: number, length: number` · SimpleFontStringAPI
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDrawLayer()` → `layer: DrawLayer, sublevel: number` · FrameAPIModelSceneFrame
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFieldSize()` → `fieldSize: number` · SimpleFontStringAPI
+- `GetFont()` → `name: cstring, fontHeight: uiUnit, flags: TBFFlags` · SimpleEditBoxAPI
+- `GetFontHeight()` → `height: number` · SimpleFontAPI
+- `GetFontObject()` → `font: SimpleFont` · SimpleEditBoxAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetIndentedWordWrap()` → `isIndented: bool` · SimpleEditBoxAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetJustifyH()` → `justifyH: JustifyHorizontal` · SimpleEditBoxAPI
+- `GetJustifyV()` → `justifyV: JustifyVertical` · SimpleEditBoxAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetLineHeight()` → `lineHeight: uiUnit` · SimpleFontStringAPI
+- `GetMaxLines()` → `maxLines: number` · SimpleFontStringAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumLines()` → `lines: number` · SimpleEditBoxAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRotation()` → `rotationRadians: number` · FrameAPICooldown
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaleAnimationMode()` → `scaleAnimationMode: FontStringScaleAnimationMode` · SimpleFontStringAPI
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetShadowColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
+- `GetShadowOffset()` → `offsetX: number, offsetY: number` · SimpleEditBoxAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSmoothScaling()` → `smoothScaling: bool` · SimpleFontStringAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSpacing()` → `fontHeight: uiUnit` · SimpleEditBoxAPI
+- `GetStringHeight()` → `height: uiUnit` · SecretWhenAnchoringSecret · SimpleFontStringAPI
+- `GetStringWidth()` → `width: uiUnit` · SecretWhenAnchoringSecret · SimpleFontStringAPI
+- `GetText()` → `text: cstring` · SecretReturnsForAspect=[0] · SimpleButtonAPI
+- `GetTextColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
+- `GetTextScale()` → `textScale: number` · SimpleFontStringAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetUnboundedStringWidth()` → `width: uiUnit` · SecretWhenAnchoringSecret · SimpleFontStringAPI
+- `GetUnboundedStringWidthForText(text: cstring)` → `width: uiUnit` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleFontStringAPI
+- `GetVertexColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · MayReturnNothing, SecretReturnsForAspect=[0, 0] · SimpleRegionAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWrappedWidth()` → `width: uiUnit` · SecretWhenAnchoringSecret · SimpleFontStringAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsTruncated()` → `isTruncated: bool` · SecretWhenAnchoringSecret · SimpleFontStringAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `OnColorsUpdated()` · SimpleFontStringAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetDesaturateEmbeddedTextures(desaturate: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
+- `SetFixedColor(fixedColor: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetFont(fontFile: cstring, height: uiFontHeight, flags: TBFFlags)` → `success: bool` · RequiresValidFontAsset, RequiresValidFontHeight, SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetFontHeight(height: number)` · SecretArguments=AllowedWhenUntainted · SimpleFontAPI
+- `SetFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFormattedText(text: cstring)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleButtonAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIndentedWordWrap(isIndented: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetJustifyH(justifyH: JustifyHorizontal)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetJustifyV(justifyV: JustifyVertical)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetMaxLines(maxLines: number)` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetNonSpaceWrap(wrap: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetRotation(radians: number, animate: bool = true)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScaleAnimationMode(scaleAnimationMode: FontStringScaleAnimationMode)` · SecretArguments=NotAllowed · SimpleFontStringAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShadowColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetShadowOffset(offsetX: number, offsetY: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetSmoothScaling(smoothScaling: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetSpacing(fontHeight: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetTextColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetTextHeight(height: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetTextScale(textScale: number)` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetTextToFit(text: cstring = "")` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFontStringAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetVertexColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
+- `SetVertexColorFromBoolean(value: bool, colorIfTrue: colorRGBA (ColorMixin), colorIfFalse: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWordWrap(wrap: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+
+## Frame (214 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+
+## GameTooltip (244 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddAtlas`
+- `AddDoubleLine`
+- `AddFontStrings(leftFontString: SimpleFontString, rightFontString: SimpleFontString)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'leftFontString', 'Aspect': 0}, {'Argument': 'rightFontString', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · FrameAPITooltip
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddLine`
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AddTexture`
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `AppendText`
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearLines`
+- `ClearPadding()` · FrameAPITooltip
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CopyTooltip`
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `FadeOut`
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnchorType`
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetCustomLineSpacing`
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetLeftLine(line: luaIndex)` → `leftFontString: SimpleFontString` · SecretArguments=AllowedWhenUntainted · FrameAPITooltip
+- `GetMinimumWidth()` → `width: number, forced: bool` · SecretReturnsForAspect=[0] · FrameAPITooltip
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetOwner`
+- `GetPadding()` → `right: number, bottom: number, left: number, top: number` · SecretReturnsForAspect=[0] · FrameAPITooltip
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRightLine(line: luaIndex)` → `rightFontString: SimpleFontString` · SecretArguments=AllowedWhenUntainted · FrameAPITooltip
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsOwned`
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `NumLines`
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAllowShowWithNoLines`
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAnchorType`
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetCustomLineSpacing`
+- `SetCustomWordWrapMinWidth`
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStack`
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetMinimumWidth(width: number, force: bool = false)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetObjectTooltipPosition`
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetOwner`
+- `SetPadding(right: number, bottom: number, left: number?, top: number?)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetShrinkToFitWrapped`
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+
+## Line (169 methods)
+
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearRadialProgressBar()` · SimpleTextureBaseAPI
+- `ClearSVG()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleTextureBaseAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearTextureSlice()` · SimpleTextureBaseAPI
+- `ClearVertexOffsets()` · SimpleTextureBaseAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAtlas()` → `atlas: textureAtlas` · SimpleTextureBaseAPI
+- `GetBlendMode()` → `blendMode: BlendMode` · SimpleTextureBaseAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDesaturation()` → `strength: number` · FrameAPIModelSceneFrameActorBase
+- `GetDrawLayer()` → `layer: DrawLayer, sublevel: number` · FrameAPIModelSceneFrame
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEndPoint()` → `relativePoint: FramePoint, relativeTo: ScriptRegion, offsetX: uiUnit, offsetY: uiUnit` · SimpleLineAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHitRectThickness()` → `thickness: uiUnit` · SimpleLineAPI
+- `GetHorizTile()` → `tiling: bool` · SimpleTextureBaseAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetRadialProgressBarEndOffset()` → `offset: normalizedValue` · SimpleTextureBaseAPI
+- `GetRadialProgressBarFeather()` → `feather: normalizedValue` · SimpleTextureBaseAPI
+- `GetRadialProgressBarPercent()` → `percent: normalizedValue` · SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `GetRadialProgressBarReverse()` → `reverse: bool` · SimpleTextureBaseAPI
+- `GetRadialProgressBarStartOffset()` → `offset: normalizedValue` · SimpleTextureBaseAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRotation()` → `rotationRadians: number` · FrameAPICooldown
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetStartPoint()` → `relativePoint: FramePoint, relativeTo: ScriptRegion, offsetX: uiUnit, offsetY: uiUnit` · SimpleLineAPI
+- `GetTexCoord()` → `ulX: number, ulY: number, llX: number, llY: number, urX: number, urY: number, lrX: number, lrY: number` · SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `GetTexelSnappingBias()` → `bias: normalizedValue` · SimpleTextureBaseAPI
+- `GetTexture()` → `textureFile: cstring?` · SimpleTextureBaseAPI
+- `GetTextureFileID()` → `textureFile: fileID` · SimpleTextureBaseAPI
+- `GetTextureFilePath()` → `textureFile: cstring?` · SimpleTextureBaseAPI
+- `GetTextureSliceMargins()` → `left: number, top: number, right: number, bottom: number` · MayReturnNothing · SimpleTextureBaseAPI
+- `GetTextureSliceMode()` → `sliceMode: UITextureSliceMode` · MayReturnNothing · SimpleTextureBaseAPI
+- `GetThickness()` → `thickness: uiUnit` · SimpleLineAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetVertTile()` → `tiling: bool` · SimpleTextureBaseAPI
+- `GetVertexColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · MayReturnNothing, SecretReturnsForAspect=[0, 0] · SimpleRegionAPI
+- `GetVertexOffset(vertexIndex: luaIndex)` → `offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsBlockingLoadRequested()` → `blocking: bool` · SimpleTextureBaseAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDesaturated()` → `desaturated: bool` · RequiresScriptObjectDesaturationAccess, SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsSnappingToPixelGrid()` → `snap: bool` · SimpleTextureBaseAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `ResetTexCoord()` · SimpleTextureBaseAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAtlas(atlas: textureAtlas, useAtlasSize: bool = false, filterMode: FilterMode?, resetTexCoords: bool?, wrapModeHorizontal: cstring?, wrapModeVertical: cstring?)` · SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetBlendMode(blendMode: BlendMode)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetBlockingLoadsRequested(blocking: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetColorTexture(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetDesaturated(desaturated: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetDesaturation(strength: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
+- `SetEndPoint(relativePoint: FramePoint, relativeTo: ScriptRegion, offsetX: uiUnit = 0, offsetY: uiUnit = 0)` · SecretArguments=AllowedWhenUntainted · SimpleLineAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetGradient(orientation: Orientation, minColor: colorRGBA (ColorMixin), maxColor: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHitRectThickness(thickness: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleLineAPI
+- `SetHorizTile(tiling: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetMask(file: cstring)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetRadialProgressBarEndOffset(offset: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetRadialProgressBarFeather(feather: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetRadialProgressBarPercent(percent: normalizedValue)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetRadialProgressBarReverse(reverse: bool)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetRadialProgressBarStartOffset(offset: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetRotation(radians: number, animate: bool = true)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetSVG(svgAsset: FileAsset)` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetSnapToPixelGrid(snap: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetSpriteSheetCell(cell: luaIndex, numRows: number, numColumns: number, cellWidth: number?, cellHeight: number?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetStartPoint(relativePoint: FramePoint, relativeTo: ScriptRegion, offsetX: uiUnit = 0, offsetY: uiUnit = 0)` · SecretArguments=AllowedWhenUntainted · SimpleLineAPI
+- `SetTexCoord(left: number, right: number, bottom: number, top: number)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetTexelSnappingBias(bias: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetTexture(textureAsset: cstring?, wrapModeHorizontal: cstring?, wrapModeVertical: cstring?, filterMode: cstring?)` → `success: bool` · SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetTextureSliceMargins(left: number, top: number, right: number, bottom: number)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetTextureSliceMode(sliceMode: UITextureSliceMode)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetThickness(thickness: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleLineAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetVertTile(tiling: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetVertexColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
+- `SetVertexColorFromBoolean(value: bool, colorIfTrue: colorRGBA (ColorMixin), colorIfFalse: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
+- `SetVertexOffset(vertexIndex: luaIndex, offsetX: uiUnit, offsetY: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+
+## MaskTexture (161 methods)
+
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearRadialProgressBar()` · SimpleTextureBaseAPI
+- `ClearSVG()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleTextureBaseAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearTextureSlice()` · SimpleTextureBaseAPI
+- `ClearVertexOffsets()` · SimpleTextureBaseAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAtlas()` → `atlas: textureAtlas` · SimpleTextureBaseAPI
+- `GetBlendMode()` → `blendMode: BlendMode` · SimpleTextureBaseAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDesaturation()` → `strength: number` · FrameAPIModelSceneFrameActorBase
+- `GetDrawLayer()` → `layer: DrawLayer, sublevel: number` · FrameAPIModelSceneFrame
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHorizTile()` → `tiling: bool` · SimpleTextureBaseAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetRadialProgressBarEndOffset()` → `offset: normalizedValue` · SimpleTextureBaseAPI
+- `GetRadialProgressBarFeather()` → `feather: normalizedValue` · SimpleTextureBaseAPI
+- `GetRadialProgressBarPercent()` → `percent: normalizedValue` · SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `GetRadialProgressBarReverse()` → `reverse: bool` · SimpleTextureBaseAPI
+- `GetRadialProgressBarStartOffset()` → `offset: normalizedValue` · SimpleTextureBaseAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRotation()` → `rotationRadians: number` · FrameAPICooldown
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetTexCoord()` → `ulX: number, ulY: number, llX: number, llY: number, urX: number, urY: number, lrX: number, lrY: number` · SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `GetTexelSnappingBias()` → `bias: normalizedValue` · SimpleTextureBaseAPI
+- `GetTexture()` → `textureFile: cstring?` · SimpleTextureBaseAPI
+- `GetTextureFileID()` → `textureFile: fileID` · SimpleTextureBaseAPI
+- `GetTextureFilePath()` → `textureFile: cstring?` · SimpleTextureBaseAPI
+- `GetTextureSliceMargins()` → `left: number, top: number, right: number, bottom: number` · MayReturnNothing · SimpleTextureBaseAPI
+- `GetTextureSliceMode()` → `sliceMode: UITextureSliceMode` · MayReturnNothing · SimpleTextureBaseAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetVertTile()` → `tiling: bool` · SimpleTextureBaseAPI
+- `GetVertexColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · MayReturnNothing, SecretReturnsForAspect=[0, 0] · SimpleRegionAPI
+- `GetVertexOffset(vertexIndex: luaIndex)` → `offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsBlockingLoadRequested()` → `blocking: bool` · SimpleTextureBaseAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDesaturated()` → `desaturated: bool` · RequiresScriptObjectDesaturationAccess, SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsSnappingToPixelGrid()` → `snap: bool` · SimpleTextureBaseAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `ResetTexCoord()` · SimpleTextureBaseAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAtlas(atlas: textureAtlas, useAtlasSize: bool = false, filterMode: FilterMode?, resetTexCoords: bool?, wrapModeHorizontal: cstring?, wrapModeVertical: cstring?)` · SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetBlendMode(blendMode: BlendMode)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetBlockingLoadsRequested(blocking: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetColorTexture(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetDesaturated(desaturated: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetDesaturation(strength: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetGradient(orientation: Orientation, minColor: colorRGBA (ColorMixin), maxColor: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHorizTile(tiling: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetMask(file: cstring)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetRadialProgressBarEndOffset(offset: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetRadialProgressBarFeather(feather: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetRadialProgressBarPercent(percent: normalizedValue)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetRadialProgressBarReverse(reverse: bool)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetRadialProgressBarStartOffset(offset: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetRotation(radians: number, animate: bool = true)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetSVG(svgAsset: FileAsset)` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetSnapToPixelGrid(snap: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetSpriteSheetCell(cell: luaIndex, numRows: number, numColumns: number, cellWidth: number?, cellHeight: number?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetTexCoord(left: number, right: number, bottom: number, top: number)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetTexelSnappingBias(bias: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetTexture(textureAsset: cstring?, wrapModeHorizontal: cstring?, wrapModeVertical: cstring?, filterMode: cstring?)` → `success: bool` · SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetTextureSliceMargins(left: number, top: number, right: number, bottom: number)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetTextureSliceMode(sliceMode: UITextureSliceMode)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetVertTile(tiling: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetVertexColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
+- `SetVertexColorFromBoolean(value: bool, colorIfTrue: colorRGBA (ColorMixin), colorIfFalse: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
+- `SetVertexOffset(vertexIndex: luaIndex, offsetX: uiUnit, offsetY: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+
+## MessageFrame (247 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddMessage(text: cstring, colorR: number, colorG: number, colorB: number, a: SingleColorValue?, messageID: number?)` · SecretArguments=AllowedWhenUntainted · SimpleMessageFrameAPI
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `Clear()` · IsProtectedFunction · FrameAPICooldown
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFadeDuration()` → `fadeDurationSeconds: number` · SimpleMessageFrameAPI
+- `GetFadePower()` → `fadePower: number` · SimpleMessageFrameAPI
+- `GetFading()` → `isFading: bool` · SimpleMessageFrameAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFont()` → `name: cstring, fontHeight: uiUnit, flags: TBFFlags` · SimpleEditBoxAPI
+- `GetFontObject()` → `font: SimpleFont` · SimpleEditBoxAPI
+- `GetFontStringByID(messageID: number)` → `fontString: SimpleFontString` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleMessageFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetIndentedWordWrap()` → `isIndented: bool` · SimpleEditBoxAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetInsertMode()` → `mode: InsertMode` · SimpleMessageFrameAPI
+- `GetJustifyH()` → `justifyH: JustifyHorizontal` · SimpleEditBoxAPI
+- `GetJustifyV()` → `justifyV: JustifyVertical` · SimpleEditBoxAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetShadowColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
+- `GetShadowOffset()` → `offsetX: number, offsetY: number` · SimpleEditBoxAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSpacing()` → `fontHeight: uiUnit` · SimpleEditBoxAPI
+- `GetTextColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
+- `GetTimeVisible()` → `timeVisibleSeconds: number` · SimpleMessageFrameAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasMessageByID(messageID: number)` → `hasMessage: bool` · SecretArguments=AllowedWhenUntainted · SimpleMessageFrameAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ResetMessageFadeByID(messageID: number)` · SecretArguments=AllowedWhenUntainted · SimpleMessageFrameAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFadeDuration(fadeDurationSeconds: number)` · SecretArguments=AllowedWhenUntainted · SimpleMessageFrameAPI
+- `SetFadePower(fadePower: number)` · SecretArguments=AllowedWhenUntainted · SimpleMessageFrameAPI
+- `SetFading(fading: bool)` · SecretArguments=AllowedWhenUntainted · SimpleMessageFrameAPI
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFont(fontFile: cstring, height: uiFontHeight, flags: TBFFlags)` → `success: bool` · RequiresValidFontAsset, RequiresValidFontHeight, SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIndentedWordWrap(isIndented: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetInsertMode(mode: InsertMode)` · SecretArguments=AllowedWhenUntainted · SimpleMessageFrameAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetJustifyH(justifyH: JustifyHorizontal)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetJustifyV(justifyV: JustifyVertical)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShadowColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetShadowOffset(offsetX: number, offsetY: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetSpacing(fontHeight: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetTextColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetTimeVisible(timeVisibleSeconds: number)` · SecretArguments=AllowedWhenUntainted · SimpleMessageFrameAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+
+## Model (279 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `AdvanceTime(delta: Seconds)` · SecretArguments=AllowedWhenUntainted · LuaDurationManualClockAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearFog()` · FrameAPIModelSceneFrame
+- `ClearModel()` · FrameAPIModelSceneFrameActorBase
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearTransform()` · SimpleModelAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetCameraDistance()` → `distance: number` · SimpleModelAPI
+- `GetCameraFacing()` → `radians: number` · SimpleModelAPI
+- `GetCameraPosition()` → `positionX: number, positionY: number, positionZ: number` · FrameAPIModelSceneFrame
+- `GetCameraRoll()` → `radians: number` · SimpleModelAPI
+- `GetCameraTarget()` → `targetX: number, targetY: number, targetZ: number` · SimpleModelAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDesaturation()` → `strength: number` · FrameAPIModelSceneFrameActorBase
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFacing()` → `facing: number` · SimpleModelAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFogColor()` → `colorR: number, colorG: number, colorB: number` · FrameAPIModelSceneFrame
+- `GetFogFar()` → `far: number` · FrameAPIModelSceneFrame
+- `GetFogNear()` → `near: number` · FrameAPIModelSceneFrame
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetLight()` → `enabled: bool, light: ModelLight` · SimpleModelAPI
+- `GetModelAlpha()` → `alpha: number` · SimpleModelAPI
+- `GetModelDrawLayer()` → `layer: DrawLayer, sublayer: number` · SimpleMapSceneAPI
+- `GetModelFileID()` → `file: fileID` · FrameAPIModelSceneFrameActorBase
+- `GetModelScale()` → `scale: number` · SimpleModelAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPaused()` → `paused: bool, globalPaused: bool` · FrameAPIModelSceneFrameActor
+- `GetPitch()` → `pitch: number` · FrameAPIModelSceneFrameActorBase
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPosition()` → `positionX: number, positionY: number, positionZ: number` · FrameAPIModelSceneFrameActorBase
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRoll()` → `roll: number` · FrameAPIModelSceneFrameActorBase
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetShadowEffect()` → `strength: number` · SimpleModelAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetViewInsets()` → `insets: uiRect` · FrameAPIModelSceneFrame
+- `GetViewTranslation()` → `translationX: number, translationY: number` · FrameAPIModelSceneFrame
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `GetWorldScale()` → `worldScale: number` · SimpleModelAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAttachmentPoints()` → `hasAttachmentPoints: bool` · SimpleModelAPI
+- `HasCustomCamera()` → `hasCustomCamera: bool` · SimpleModelAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingModelCenterToTransform()` → `useCenter: bool` · SimpleModelAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `MakeCurrentCameraCustom()` · SimpleModelAPI
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ReplaceIconTexture(asset: FileAsset)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetCamera(cameraIndex: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetCameraDistance(distance: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetCameraFacing(radians: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetCameraPosition(positionX: number, positionY: number, positionZ: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICinematicModel
+- `SetCameraRoll(radians: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetCameraTarget(positionX: number, positionY: number, positionZ: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICinematicModel
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetCustomCamera(cameraIndex: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetDesaturation(strength: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFacing(facing: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFogColor(colorR: number, colorG: number, colorB: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
+- `SetFogFar(far: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
+- `SetFogNear(near: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetGlow(glow: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetGradientMask(gradientIndex0: number, gradientIndex1: number, gradientIndex2: number, gradientIndex3: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetLight(enabled: bool, light: ModelLight)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetModel(asset: ModelAsset, noMip: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetModelAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetModelDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleMapSceneAPI
+- `SetModelScale(scale: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetParticlesEnabled(enabled: bool)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPaused(paused: bool)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetPitch(pitch: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPosition(positionX: number, positionY: number, positionZ: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRoll(roll: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetSequence(sequence: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetSequenceTime(sequence: number, timeOffset: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetShadowEffect(strength: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetTransform(translation: vector3 (Vector3DMixin)?, rotation: vector3 (Vector3DMixin)?, scale: number?)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetUseGBuffer(useGBuffer: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetViewInsets(insets: uiRect)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
+- `SetViewTranslation(translationX: number, translationY: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `TransformCameraSpaceToModelSpace(cameraPosition: vector3 (Vector3DMixin)` → `modelPosition: vector3 (Vector3DMixin)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UseModelCenterToTransform(useCenter: bool)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+
+## PlayerModel (303 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `AdvanceTime(delta: Seconds)` · SecretArguments=AllowedWhenUntainted · LuaDurationManualClockAPI
+- `ApplySpellVisualKit(spellVisualKitID: number, oneShot: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanSetUnit(unit: UnitToken)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearFog()` · FrameAPIModelSceneFrame
+- `ClearModel()` · FrameAPIModelSceneFrameActorBase
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearTransform()` · SimpleModelAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `FreezeAnimation(anim: AnimationDataEnum, variation: number, frame: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetCameraDistance()` → `distance: number` · SimpleModelAPI
+- `GetCameraFacing()` → `radians: number` · SimpleModelAPI
+- `GetCameraPosition()` → `positionX: number, positionY: number, positionZ: number` · FrameAPIModelSceneFrame
+- `GetCameraRoll()` → `radians: number` · SimpleModelAPI
+- `GetCameraTarget()` → `targetX: number, targetY: number, targetZ: number` · SimpleModelAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDesaturation()` → `strength: number` · FrameAPIModelSceneFrameActorBase
+- `GetDisplayInfo()` → `displayID: number` · FrameAPICharacterModelBase
+- `GetDoBlend()` → `doBlend: bool` · FrameAPICharacterModelBase
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFacing()` → `facing: number` · SimpleModelAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFogColor()` → `colorR: number, colorG: number, colorB: number` · FrameAPIModelSceneFrame
+- `GetFogFar()` → `far: number` · FrameAPIModelSceneFrame
+- `GetFogNear()` → `near: number` · FrameAPIModelSceneFrame
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetKeepModelOnHide()` → `keepModelOnHide: bool` · FrameAPICharacterModelBase
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetLight()` → `enabled: bool, light: ModelLight` · SimpleModelAPI
+- `GetModelAlpha()` → `alpha: number` · SimpleModelAPI
+- `GetModelDrawLayer()` → `layer: DrawLayer, sublayer: number` · SimpleMapSceneAPI
+- `GetModelFileID()` → `file: fileID` · FrameAPIModelSceneFrameActorBase
+- `GetModelScale()` → `scale: number` · SimpleModelAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPaused()` → `paused: bool, globalPaused: bool` · FrameAPIModelSceneFrameActor
+- `GetPitch()` → `pitch: number` · FrameAPIModelSceneFrameActorBase
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPosition()` → `positionX: number, positionY: number, positionZ: number` · FrameAPIModelSceneFrameActorBase
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRoll()` → `roll: number` · FrameAPIModelSceneFrameActorBase
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetShadowEffect()` → `strength: number` · SimpleModelAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetViewInsets()` → `insets: uiRect` · FrameAPIModelSceneFrame
+- `GetViewTranslation()` → `translationX: number, translationY: number` · FrameAPIModelSceneFrame
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `GetWorldScale()` → `worldScale: number` · SimpleModelAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnimation(anim: AnimationDataEnum)` → `hasAnimation: bool` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAttachmentPoints()` → `hasAttachmentPoints: bool` · SimpleModelAPI
+- `HasCustomCamera()` → `hasCustomCamera: bool` · SimpleModelAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingModelCenterToTransform()` → `useCenter: bool` · SimpleModelAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `MakeCurrentCameraCustom()` · SimpleModelAPI
+- `PlayAnimKit(animKit: number, loop: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RefreshCamera()` · FrameAPICharacterModelBase
+- `RefreshUnit()` · FrameAPICharacterModelBase
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ReplaceIconTexture(asset: FileAsset)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAnimation(anim: AnimationDataEnum, variation: number?)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetBarberShopAlternateForm()` · FrameAPICharacterModelBase
+- `SetCamDistanceScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetCamera(cameraIndex: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetCameraDistance(distance: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetCameraFacing(radians: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetCameraPosition(positionX: number, positionY: number, positionZ: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICinematicModel
+- `SetCameraRoll(radians: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetCameraTarget(positionX: number, positionY: number, positionZ: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICinematicModel
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetCreature(creatureID: number, displayID: number = 0)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetCustomCamera(cameraIndex: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetDesaturation(strength: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetDisplayInfo(displayID: number, mountDisplayID: number?)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetDoBlend(doBlend: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFacing(facing: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFogColor(colorR: number, colorG: number, colorB: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
+- `SetFogFar(far: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
+- `SetFogNear(near: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetGlow(glow: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetGradientMask(gradientIndex0: number, gradientIndex1: number, gradientIndex2: number, gradientIndex3: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetItem(itemID: number, appearanceModID: number?, itemVisualID: number?)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetItemAppearance(itemAppearanceID: number, itemVisualID: number?, itemSubclass: ItemWeaponSubclass?)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetKeepModelOnHide(keepModelOnHide: bool)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetLight(enabled: bool, light: ModelLight)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetModel(asset: ModelAsset, noMip: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetModelAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetModelDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleMapSceneAPI
+- `SetModelScale(scale: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetParticlesEnabled(enabled: bool)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPaused(paused: bool)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
+- `SetPitch(pitch: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPortraitZoom(zoom: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetPosition(positionX: number, positionY: number, positionZ: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRoll(roll: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetRotation(radians: number, animate: bool = true)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetSequence(sequence: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetSequenceTime(sequence: number, timeOffset: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetShadowEffect(strength: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetTransform(translation: vector3 (Vector3DMixin)?, rotation: vector3 (Vector3DMixin)?, scale: number?)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetUnit(unit: UnitToken, blend: bool = true, useNativeForm: bool?)` → `success: bool` · RequiresDeclassifiedUnitIdentity, SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetUseGBuffer(useGBuffer: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetViewInsets(insets: uiRect)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
+- `SetViewTranslation(translationX: number, translationY: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimKit()` · FrameAPICharacterModelBase
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `TransformCameraSpaceToModelSpace(cameraPosition: vector3 (Vector3DMixin)` → `modelPosition: vector3 (Vector3DMixin)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UseModelCenterToTransform(useCenter: bool)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
+- `ZeroCachedCenterXY()` · FrameAPICharacterModelBase
+
+## ScrollFrame (223 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHorizontalScroll()` → `offset: uiUnit` · SecretReturnsForAspect=[0] · SimpleScrollFrameAPI
+- `GetHorizontalScrollRange()` → `range: uiUnit` · SecretReturnsForAspect=[0] · SimpleScrollFrameAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScrollChild()` → `scrollChild: SimpleFrame` · SimpleScrollFrameAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetVerticalScroll()` → `offset: uiUnit` · SecretReturnsForAspect=[0] · SimpleScrollFrameAPI
+- `GetVerticalScrollRange()` → `range: uiUnit` · SecretReturnsForAspect=[0] · SimpleScrollFrameAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHorizontalScroll(offset: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleScrollFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScrollChild(scrollChild: SimpleFrame)` · CheckAllowChangeParent, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScrollFrameAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetVerticalScroll(offset: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleScrollFrameAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UpdateScrollChildRect()` · SimpleScrollFrameAPI
+
+## ScrollingMessageFrame (214 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+
+## SimpleHTML (237 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetContentHeight()` → `height: uiUnit` · SimpleHTMLAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFont()` → `name: cstring, fontHeight: uiUnit, flags: TBFFlags` · SimpleEditBoxAPI
+- `GetFontObject()` → `font: SimpleFont` · SimpleEditBoxAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHyperlinkFormat()` → `format: cstring` · SimpleHTMLAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetIndentedWordWrap()` → `isIndented: bool` · SimpleEditBoxAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetJustifyH()` → `justifyH: JustifyHorizontal` · SimpleEditBoxAPI
+- `GetJustifyV()` → `justifyV: JustifyVertical` · SimpleEditBoxAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetShadowColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
+- `GetShadowOffset()` → `offsetX: number, offsetY: number` · SimpleEditBoxAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSpacing()` → `fontHeight: uiUnit` · SimpleEditBoxAPI
+- `GetTextColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
+- `GetTextData()` → `content: table<HTMLContentNode>` · SecretReturnsForAspect=[0] · SimpleHTMLAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFont(fontFile: cstring, height: uiFontHeight, flags: TBFFlags)` → `success: bool` · RequiresValidFontAsset, RequiresValidFontHeight, SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHyperlinkFormat(format: cstring)` · SecretArguments=AllowedWhenUntainted · SimpleHTMLAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIndentedWordWrap(isIndented: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetJustifyH(justifyH: JustifyHorizontal)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetJustifyV(justifyV: JustifyVertical)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShadowColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetShadowOffset(offsetX: number, offsetY: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetSpacing(fontHeight: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetTextColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+
+## Slider (233 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `Disable()` · DurationTextBindingObjectAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `Enable()` · DurationTextBindingObjectAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetMinMaxValues()` → `minValue: number, maxValue: number` · SimpleSliderAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetObeyStepOnDrag()` → `isObeyStepOnDrag: bool` · SimpleSliderAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetOrientation()` → `orientation: Orientation` · SimpleSliderAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetStepsPerPage()` → `stepsPerPage: number` · SimpleSliderAPI
+- `GetThumbTexture()` → `texture: SimpleTexture` · SimpleSliderAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetValue()` → `value: number` · SimpleSliderAPI
+- `GetValueStep()` → `valueStep: number` · SimpleSliderAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDraggingThumb()` → `isDraggingThumb: bool` · SimpleSliderAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEnabled()` → `enabled: bool` · DurationTextBindingObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetEnabled(enabled: bool)` · SecretArguments=AllowedWhenUntainted · DurationTextBindingObjectAPI
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetMinMaxValues(minValue: number, maxValue: number)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetObeyStepOnDrag(obeyStepOnDrag: bool)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetOrientation(orientation: Orientation)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetStepsPerPage(stepsPerPage: number)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
+- `SetThumbTexture(asset: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetValue(value: number, treatAsMouseEvent: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
+- `SetValueStep(valueStep: number)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+
+## StatusBar (242 methods)
+
+- `AbortDrag()` · SimpleFrameAPI
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearAlphaGradient()` · SimpleFontStringAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateLine(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `line: SimpleLine` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateMaskTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `maskTexture: SimpleMaskTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateTexture(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `texture: SimpleTexture` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `CreateVectorGraphics(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?, subLevel: number?)` → `vectorGraphics: SimpleVectorGraphics` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DesaturateHierarchy(desaturation: number, excludeRoot: bool = false)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `DisableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `DoesClipChildren()` → `clipsChildren: bool` · SimpleFrameAPI
+- `DoesHyperlinkPropagateToParent()` → `canPropagate: bool` · SimpleFrameAPI
+- `EnableDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `EnableGamePadButton(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableGamePadStick(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableKeyboard(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetFillStyle()` → `fillStyle: StatusBarFillStyle` · SimpleStatusBarAPI
+- `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
+- `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetInterpolatedValue()` → `value: number` · SecretReturnsForAspect=[0] · SimpleStatusBarAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetMinMaxValues()` → `minValue: number, maxValue: number` · SimpleSliderAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
+- `GetOrientation()` → `orientation: Orientation` · SimpleSliderAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
+- `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRenderMode()` → `renderMode: StatusBarRenderMode` · SimpleStatusBarAPI
+- `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
+- `GetReverseFill()` → `isReverseFill: bool` · SimpleStatusBarAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
+- `GetRotatesTexture()` → `rotatesTexture: bool` · SimpleStatusBarAPI
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetStatusBarColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SecretReturnsForAspect=[0, 0] · SimpleStatusBarAPI
+- `GetStatusBarDesaturation()` → `desaturation: normalizedValue` · SecretReturnsForAspect=[0] · SimpleStatusBarAPI
+- `GetStatusBarTexture()` → `texture: SimpleTexture` · SimpleStatusBarAPI
+- `GetTimerDuration()` → `duration: LuaDurationObject` · SimpleStatusBarAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetValue()` → `value: number` · SimpleSliderAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
+- `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
+- `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsHighlightLocked()` → `locked: bool` · SimpleFrameAPI
+- `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsInterpolating()` → `isInterpolating: bool` · SecretReturnsForAspect=[0] · SimpleStatusBarAPI
+- `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsResizable()` → `resizable: bool` · SimpleFrameAPI
+- `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsStatusBarDesaturated()` → `desaturated: bool` · RequiresStatusBarDesaturationAccess, SecretReturnsForAspect=[0] · SimpleStatusBarAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
+- `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `LockHighlight()` · SimpleFrameAPI
+- `Lower()` · IsProtectedFunction · SimpleFrameAPI
+- `Raise()` · IsProtectedFunction · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
+- `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetColorFill(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleStatusBarAPI
+- `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFillStyle(fillStyle: StatusBarFillStyle)` · SecretArguments=AllowedWhenUntainted · SimpleStatusBarAPI
+- `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetMinMaxValues(minValue: number, maxValue: number)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetOrientation(orientation: Orientation)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateKeyboardInput(propagate: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetRenderMode(renderMode: StatusBarRenderMode)` · SecretArguments=AllowedWhenUntainted · SimpleStatusBarAPI
+- `SetResizable(resizable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetResizeBounds(minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit?, maxHeight: uiUnit?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetReverseFill(isReverseFill: bool)` · SecretArguments=AllowedWhenUntainted · SimpleStatusBarAPI
+- `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetRotatesTexture(rotatesTexture: bool)` · SecretArguments=AllowedWhenUntainted · SimpleStatusBarAPI
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetStatusBarColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleStatusBarAPI
+- `SetStatusBarDesaturated(desaturated: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleStatusBarAPI
+- `SetStatusBarDesaturation(desaturation: normalizedValue)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleStatusBarAPI
+- `SetStatusBarTexture(asset: TextureAsset)` → `success: bool` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleStatusBarAPI
+- `SetTimerDuration(duration: LuaDurationObject, interpolation: StatusBarInterpolation = "Immediate", direction: StatusBarTimerDirection = "ElapsedTime")` · SecretArguments=AllowedWhenUntainted · SimpleStatusBarAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetToTargetValue()` · SimpleStatusBarAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetValue(value: number, treatAsMouseEvent: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StartMoving(alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StartSizing(resizePoint: FramePoint?, alwaysStartFromMouse: bool = false)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `StopAnimating()` · SimpleAnimatableObjectAPI
+- `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
+- `UnlockHighlight()` · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+
+## Texture (165 methods)
+
+- `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
+- `AddMaskTexture(mask: SimpleMaskTexture)` · SecretArguments=AllowedWhenUntainted · SimpleTextureAPI
+- `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
+- `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
+- `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
+- `ClearParentKey()` · SimpleObjectAPI
+- `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
+- `ClearRadialProgressBar()` · SimpleTextureBaseAPI
+- `ClearSVG()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleTextureBaseAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearTextureSlice()` · SimpleTextureBaseAPI
+- `ClearVertexOffsets()` · SimpleTextureBaseAPI
+- `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
+- `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
+- `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
+- `GetAtlas()` → `atlas: textureAtlas` · SimpleTextureBaseAPI
+- `GetBlendMode()` → `blendMode: BlendMode` · SimpleTextureBaseAPI
+- `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `GetDesaturation()` → `strength: number` · FrameAPIModelSceneFrameActorBase
+- `GetDrawLayer()` → `layer: DrawLayer, sublevel: number` · FrameAPIModelSceneFrame
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetHorizTile()` → `tiling: bool` · SimpleTextureBaseAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetMaskTexture(index: luaIndex)` → `mask: SimpleMaskTexture` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleTextureAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetNumMaskTextures()` → `count: size` · SecretReturnsForAspect=[0] · SimpleTextureAPI
+- `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
+- `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
+- `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
+- `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
+- `GetRadialProgressBarEndOffset()` → `offset: normalizedValue` · SimpleTextureBaseAPI
+- `GetRadialProgressBarFeather()` → `feather: normalizedValue` · SimpleTextureBaseAPI
+- `GetRadialProgressBarPercent()` → `percent: normalizedValue` · SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `GetRadialProgressBarReverse()` → `reverse: bool` · SimpleTextureBaseAPI
+- `GetRadialProgressBarStartOffset()` → `offset: normalizedValue` · SimpleTextureBaseAPI
+- `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetRotation()` → `rotationRadians: number` · FrameAPICooldown
+- `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
+- `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
+- `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetTexCoord()` → `ulX: number, ulY: number, llX: number, llY: number, urX: number, urY: number, lrX: number, lrY: number` · SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `GetTexelSnappingBias()` → `bias: normalizedValue` · SimpleTextureBaseAPI
+- `GetTexture()` → `textureFile: cstring?` · SimpleTextureBaseAPI
+- `GetTextureFileID()` → `textureFile: fileID` · SimpleTextureBaseAPI
+- `GetTextureFilePath()` → `textureFile: cstring?` · SimpleTextureBaseAPI
+- `GetTextureSliceMargins()` → `left: number, top: number, right: number, bottom: number` · MayReturnNothing · SimpleTextureBaseAPI
+- `GetTextureSliceMode()` → `sliceMode: UITextureSliceMode` · MayReturnNothing · SimpleTextureBaseAPI
+- `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `GetVertTile()` → `tiling: bool` · SimpleTextureBaseAPI
+- `GetVertexColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · MayReturnNothing, SecretReturnsForAspect=[0, 0] · SimpleRegionAPI
+- `GetVertexOffset(vertexIndex: luaIndex)` → `offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
+- `Hide()` · FrameAPIModelSceneFrameActorBase
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsBlockingLoadRequested()` → `blocking: bool` · SimpleTextureBaseAPI
+- `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
+- `IsDesaturated()` → `desaturated: bool` · RequiresScriptObjectDesaturationAccess, SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
+- `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
+- `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
+- `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
+- `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
+- `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
+- `IsSnappingToPixelGrid()` → `snap: bool` · SimpleTextureBaseAPI
+- `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
+- `RemoveMaskTexture(mask: SimpleMaskTexture)` · SecretArguments=AllowedWhenUntainted · SimpleTextureAPI
+- `ResetTexCoord()` · SimpleTextureBaseAPI
+- `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAtlas(atlas: textureAtlas, useAtlasSize: bool = false, filterMode: FilterMode?, resetTexCoords: bool?, wrapModeHorizontal: cstring?, wrapModeVertical: cstring?)` · SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetBlendMode(blendMode: BlendMode)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetBlockingLoadsRequested(blocking: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetColorTexture(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetDesaturated(desaturated: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetDesaturation(strength: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
+- `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
+- `SetGradient(orientation: Orientation, minColor: colorRGBA (ColorMixin), maxColor: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetHorizTile(tiling: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
+- `SetMask(file: cstring)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
+- `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetPropagateMouseClicks(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetRadialProgressBarEndOffset(offset: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetRadialProgressBarFeather(feather: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetRadialProgressBarPercent(percent: normalizedValue)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetRadialProgressBarReverse(reverse: bool)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetRadialProgressBarStartOffset(offset: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetRotation(radians: number, animate: bool = true)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
+- `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
+- `SetSVG(svgAsset: FileAsset)` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
+- `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `SetSnapToPixelGrid(snap: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetSpriteSheetCell(cell: luaIndex, numRows: number, numColumns: number, cellWidth: number?, cellHeight: number?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetTexCoord(left: number, right: number, bottom: number, top: number)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetTexelSnappingBias(bias: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetTexture(textureAsset: cstring?, wrapModeHorizontal: cstring?, wrapModeVertical: cstring?, filterMode: cstring?)` → `success: bool` · SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetTextureSliceMargins(left: number, top: number, right: number, bottom: number)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetTextureSliceMode(sliceMode: UITextureSliceMode)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetToDefaults()` · DurationTextBindingObjectAPI
+- `SetVertTile(tiling: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetVertexColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
+- `SetVertexColorFromBoolean(value: bool, colorIfTrue: colorRGBA (ColorMixin), colorIfFalse: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
+- `SetVertexOffset(vertexIndex: luaIndex, offsetX: uiUnit, offsetY: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+- `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
+- `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
+- `Show()` · FrameAPIModelSceneFrameActorBase
+- `StopAnimating()` · SimpleAnimatableObjectAPI

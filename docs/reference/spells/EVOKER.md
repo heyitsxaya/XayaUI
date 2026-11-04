@@ -1,0 +1,544 @@
+# Evoker talents and spells
+
+Class token `EVOKER`. Specs: Devastation (1467), Preservation (1468), Augmentation (1473).
+
+
+## Class talents (all specs)
+
+- Node 93196
+  - **?** ()
+- Node 93270
+  - **Forger of Mountains** (spell 375528, 1 rank, passive, instant, aura secret in some situations)
+- Node 93271
+  - **Ancient Flame** (spell 369990, 1 rank, passive, instant, aura secret in some situations)
+- Node 93286
+  - **Walloping Blow** (spell 387341, 1 rank, passive, instant, aura secret in some situations)
+- Node 93287
+  - **Twin Guardian** (spell 370888, 1 rank, passive, instant, aura secret in some situations)
+- Node 93288
+  - **Rescue** (spell 370665, 1 rank, instant, base cooldown 60 s, aura secret in some situations)
+- Node 93289
+  - **Obsidian Bulwark** (spell 375406, 1 rank, passive, instant, aura secret in some situations)
+- Node 93290
+  - **Tailwind** (spell 375556, 1 rank, passive, instant, aura secret in some situations)
+- Node 93291
+  - **Bountiful Bloom** (spell 370886, 1 rank, passive, instant, aura secret in some situations)
+- Node 93292
+  - **Attuned to the Dream** (spell 376930, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93293
+  - **Sleep Walk** (spell 360806, 1 rank, cast 1.3 s, aura secret in some situations)
+- Node 93294
+  - **Cauterizing Flame** (spell 374251, 1 rank, instant, base cooldown 60 s, aura secret in some situations)
+- Node 93295
+  - **Enkindled** (spell 375554, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93297
+  - **Overawe** (spell 374346, 1 rank, passive, instant, aura secret in some situations)
+- Node 93298
+  - **Oppressing Roar** (spell 372048, 1 rank, instant, base cooldown 120 s, aura secret in some situations)
+- Node 93299
+  - **Exuberance** (spell 375542, 1 rank, passive, instant, aura secret in some situations)
+- Node 93300
+  - **Draconic Legacy** (spell 376166, 1 rank, passive, instant, aura secret in some situations)
+- Node 93301
+  - **Recall** (spell 371806, 1 rank, passive, instant, aura secret in some situations)
+- Node 93302
+  - **Innate Magic** (spell 375520, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93304
+  - **Obsidian Scales** (spell 363916, 1 rank, instant, base cooldown 1 s, aura secret in some situations)
+- Node 93305
+  - **Landslide** (spell 358385, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+- Node 93306
+  - **Expunge** (spell 365585, 1 rank, instant, base cooldown 8 s, aura secret in some situations)
+- Node 93307
+  - **Unravel** (spell 1264378, 1 rank, passive, instant, aura secret in some situations)
+- Node 93308
+  - **Stretch Time** (spell 410352, 1 rank, passive, instant, aura secret in some situations)
+- Node 93309
+  - **Blast Furnace** (spell 375510, 1 rank, passive, instant, aura secret in some situations)
+- Node 93310
+  - **Instinctive Arcana** (spell 376164, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93311
+  - **Inner Radiance** (spell 386405, 1 rank, passive, instant, aura secret in some situations)
+- Node 93312
+  - **Natural Convergence** (spell 369913, 1 rank, passive, instant, aura secret in some situations)
+- Node 93340
+  - **Scarlet Adaptation** (spell 372469, 1 rank, passive, instant, aura secret in some situations)
+- Node 93341
+  - **Verdant Embrace** (spell 360995, 1 rank, instant, base cooldown 0.5 s, aura secret in some situations)
+- Node 93342
+  - **Terror of the Skies** (spell 371032, 1 rank, passive, instant, aura secret in some situations)
+- Node 93343
+  - **Leaping Flames** (spell 369939, 1 rank, passive, instant, aura secret in some situations)
+- Node 93344
+  - **Source of Magic** (spell 369459, 1 rank, instant, aura never secret)
+- Node 93345
+  - **Foci of Life** (spell 375574, 1 rank, passive, instant, aura secret in some situations)
+- Node 93346
+  - **Zephyr** (spell 374227, 1 rank, instant, base cooldown 120 s, aura secret in some situations)
+- Node 93347
+  - **Lush Growth** (spell 375561, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93348
+  - **Panacea** (spell 387761, 1 rank, passive, instant, aura secret in some situations)
+- Node 93349
+  - **Extended Flight** (spell 375517, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93350
+  - **Tip the Scales** (spell 370553, 1 rank, instant, base cooldown 120 s, aura secret in some situations)
+- Node 93351 · choice
+  - **Time Spiral** (spell 374968, 1 rank, instant, base cooldown 120 s, aura secret in some situations)
+  - **Spatial Paradox** (spell 406732, 1 rank, instant, base cooldown 180 s, aura secret in some situations)
+- Node 93352
+  - **Aerial Mastery** (spell 365933, 1 rank, passive, instant, aura secret in some situations)
+- Node 93353
+  - **Regenerative Magic** (spell 387787, 1 rank, passive, instant, aura secret in some situations)
+- Node 93354
+  - **Renewing Blaze** (spell 374348, 1 rank, passive, instant, aura secret in some situations)
+- Node 93355
+  - **Inherent Resistance** (spell 375544, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93715
+  - **Potent Mana** (spell 418101, 1 rank, passive, instant, aura secret in some situations)
+- Node 103843
+  - **Heavy Wingbeats** (spell 368838, 1 rank, passive, instant, aura secret in some situations)
+- Node 103844
+  - **Clobbering Sweep** (spell 375443, 1 rank, passive, instant, aura secret in some situations)
+- Node 110064
+  - **Protracted Talons** (spell 369909, 1 rank, passive, instant, aura secret in some situations)
+- Node 110065
+  - **Strike from Above** (spell 1267206, 1 rank, passive, instant, aura secret in some situations)
+
+## Devastation talents (spec 1467)
+
+- Node 93272
+  - **Titanic Wrath** (spell 386272, 1 rank, passive, instant, aura secret in some situations)
+- Node 93273
+  - **Azure Sweep** (spell 1265867, 1 rank, passive, instant, aura secret in some situations)
+- Node 93274
+  - **Arcane Intensity** (spell 375618, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93275
+  - **Eternity Surge** (spell 359073, 1 rank, instant, base cooldown 30 s, aura secret in some situations)
+- Node 93276
+  - **Power Nexus** (spell 369908, 1 rank, passive, instant, aura secret in some situations)
+- Node 93277
+  - **Feed the Flames** (spell 369846, 1 rank, passive, instant, aura secret in some situations)
+- Node 93278
+  - **Engulfing Blaze** (spell 370837, 1 rank, passive, instant, aura secret in some situations)
+- Node 93279
+  - **Font of Magic** (spell 411212, 1 rank, passive, instant, aura secret in some situations)
+- Node 93280
+  - **Catalyze** (spell 386283, 1 rank, passive, instant, aura secret in some situations)
+- Node 93281
+  - **Heat Wave** (spell 375725, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93282
+  - **Ruby Embers** (spell 365937, 1 rank, passive, instant, aura secret in some situations)
+- Node 93283
+  - **Volatility** (spell 369089, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93284
+  - **Lay Waste** (spell 371034, 1 rank, passive, instant, aura secret in some situations)
+- Node 93285
+  - **Ruby Essence Burst** (spell 376872, 1 rank, passive, instant, aura secret in some situations)
+- Node 93313
+  - **Strafing Run** (spell 1266151, 1 rank, passive, instant, aura secret in some situations)
+- Node 93314
+  - **Burnout** (spell 375801, 1 rank, passive, instant, aura secret in some situations)
+- Node 93315
+  - **Star Salvo** (spell 1265826, 1 rank, passive, instant, aura secret in some situations)
+- Node 93316
+  - **Shattering Stars** (spell 1265802, 1 rank, passive, instant, aura secret in some situations)
+- Node 93317
+  - **Charged Blast** (spell 370455, 1 rank, passive, instant, aura secret in some situations)
+- Node 93318 · choice
+  - **Eye of Infinity** (spell 411165, 1 rank, passive, instant, aura secret in some situations)
+  - **Event Horizon** (spell 411164, 1 rank, passive, instant, aura secret in some situations)
+- Node 93319
+  - **Essence Attunement** (spell 375722, 1 rank, passive, instant, aura secret in some situations)
+- Node 93320
+  - **Eternity's Span** (spell 375757, 1 rank, passive, instant, aura secret in some situations)
+- Node 93321
+  - **Iridescence** (spell 370867, 1 rank, passive, instant, aura secret in some situations)
+- Node 93322
+  - **Power Swell** (spell 370839, 1 rank, passive, instant, aura secret in some situations)
+- Node 93323
+  - **Spellweaver's Dominance** (spell 370845, 1 rank, passive, instant, aura secret in some situations)
+- Node 93324
+  - **Scintillation** (spell 370821, 1 rank, passive, instant, aura secret in some situations)
+- Node 93325
+  - **Azure Celerity** (spell 1219723, 1 rank, passive, instant, aura secret in some situations)
+- Node 93326
+  - **Imminent Destruction** (spell 370781, 1 rank, passive, instant, aura secret in some situations)
+- Node 93327
+  - **Onyx Legacy** (spell 386348, 1 rank, passive, instant, aura secret in some situations)
+- Node 93328
+  - **Tyranny** (spell 376888, 1 rank, passive, instant, aura secret in some situations)
+- Node 93329
+  - **Honed Aggression** (spell 371038, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93330
+  - **Animosity** (spell 375797, 1 rank, passive, instant, aura secret in some situations)
+- Node 93331
+  - **Dragonrage** (spell 375087, 1 rank, instant, base cooldown 120 s, aura secret in some situations)
+- Node 93332
+  - **Quell** (spell 351338, 1 rank, instant, base cooldown 20 s, aura secret in some situations)
+- Node 93333
+  - **Azure Essence Burst** (spell 375721, 1 rank, passive, instant, aura secret in some situations)
+- Node 93334
+  - **Pyre** (spell 357211, 1 rank, instant, aura secret in some situations)
+- Node 93365
+  - **Scorching Embers** (spell 370819, 1 rank, passive, instant, aura secret in some situations)
+- Node 93366
+  - **Causality** (spell 375777, 1 rank, passive, instant, aura secret in some situations)
+- Node 99827 · choice
+  - **?** (1 rank, picks hero tree 37)
+  - **?** (1 rank, picks hero tree 36)
+- Node 110414 · choice
+  - **Rising Fury** (spell 1271687, 1 rank, passive, instant, aura secret in some situations)
+  - **Rising Fury** (spell 1271796, 2 ranks, passive, instant, aura secret in some situations)
+  - **Rising Fury** (spell 1271788, 1 rank, passive, instant, aura secret in some situations)
+
+## Preservation talents (spec 1468)
+
+- Node 93236
+  - **Lifeforce Mender** (spell 376179, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93237
+  - **Life-Giver's Flame** (spell 371426, 1 rank, passive, instant, aura secret in some situations)
+- Node 93238
+  - **Essence Attunement** (spell 375722, 1 rank, passive, instant, aura secret in some situations)
+- Node 93239
+  - **Essence Burst** (spell 369297, 1 rank, passive, instant, aura secret in some situations)
+- Node 93240
+  - **Dream Breath** (spell 355936, 1 rank, instant, base cooldown 1 s, aura secret in some situations)
+- Node 93241
+  - **Temporal Compression** (spell 362874, 1 rank, passive, instant, aura secret in some situations)
+- Node 93242 · choice
+  - **Empath** (spell 376138, 1 rank, passive, instant, aura secret in some situations)
+  - **Spiritual Clarity** (spell 376150, 1 rank, passive, instant, aura secret in some situations)
+- Node 93243 · choice
+  - **Dream Simulacrum** (spell 1241669, 1 rank, passive, instant, aura secret in some situations)
+  - **Wings of Liberty** (spell 1241704, 1 rank, passive, instant, aura secret in some situations)
+- Node 93245
+  - **Unshakable** (spell 1239581, 1 rank, passive, instant, aura secret in some situations)
+- Node 93246
+  - **Exhilarating Burst** (spell 377100, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93247
+  - **Fluttering Seedlings** (spell 359793, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93248
+  - **Field of Dreams** (spell 370062, 1 rank, passive, instant, aura secret in some situations)
+- Node 93249
+  - **Power Nexus** (spell 369908, 1 rank, passive, instant, aura secret in some situations)
+- Node 93250
+  - **Call of Ysera** (spell 373834, 1 rank, passive, instant, aura secret in some situations)
+- Node 93251
+  - **Ouroboros** (spell 381921, 1 rank, passive, instant, aura secret in some situations)
+- Node 93252
+  - **Font of Magic** (spell 375783, 1 rank, passive, instant, aura secret in some situations)
+- Node 93253
+  - **Lifebind** (spell 373270, 1 rank, passive, instant, aura secret in some situations)
+- Node 93254
+  - **Time Lord** (spell 372527, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93255
+  - **Golden Hour** (spell 378196, 1 rank, passive, instant, aura secret in some situations)
+- Node 93256
+  - **Flow State** (spell 385696, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93257
+  - **Temporal Anomaly** (spell 373861, 1 rank, cast 1.1 s, base cooldown 15 s, aura secret in some situations)
+- Node 93258 · choice
+  - **Temporal Barrier** (spell 1291636, 1 rank, cast 1.1 s, base cooldown 15 s, aura secret in some situations)
+  - **Nozdormu's Teachings** (spell 376237, 1 rank, passive, instant, aura secret in some situations)
+- Node 93259
+  - **Time of Need** (spell 368412, 1 rank, passive, instant, base cooldown 120 s, aura secret in some situations)
+- Node 93260
+  - **Grace Period** (spell 376239, 1 rank, passive, instant, aura secret in some situations)
+- Node 93261
+  - **Energy Loop** (spell 372233, 1 rank, passive, instant, aura secret in some situations)
+- Node 93262
+  - **Tempo Charged** (spell 1237978, 1 rank, passive, instant, aura secret in some situations)
+- Node 93263
+  - **Timeless Magic** (spell 376240, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93264
+  - **Temporal Artificer** (spell 381922, 1 rank, passive, instant, aura secret in some situations)
+- Node 93265
+  - **Twin Echoes** (spell 1242031, 1 rank, passive, instant, aura secret in some situations)
+- Node 93266
+  - **Inner Flame** (spell 1242745, 1 rank, passive, instant, aura secret in some situations)
+- Node 93267 · choice
+  - **Dream Flight** (spell 359816, 1 rank, instant, base cooldown 120 s, aura secret in some situations)
+  - **Stasis** (spell 370537, 1 rank, instant, base cooldown 90 s, aura secret in some situations)
+- Node 93268
+  - **Renewing Breath** (spell 371257, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93269
+  - **Spark of Insight** (spell 377099, 1 rank, passive, instant, aura secret in some situations)
+- Node 93335 · choice
+  - **Delay Harm** (spell 376207, 1 rank, passive, instant, aura secret in some situations)
+  - **Just in Time** (spell 376204, 1 rank, passive, instant, aura secret in some situations)
+- Node 93336
+  - **Time Dilation** (spell 357170, 1 rank, instant, base cooldown 1 s, aura secret in some situations)
+- Node 93337
+  - **Rewind** (spell 363534, 1 rank, instant, aura secret in some situations)
+- Node 93338
+  - **Reversion** (spell 366155, 1 rank, instant, 2 charges, aura secret in some situations)
+- Node 93339
+  - **Echo** (spell 364343, 1 rank, instant, aura secret in some situations)
+- Node 99803
+  - **Titan's Gift** (spell 443264, 1 rank, passive, instant, aura secret in some situations)
+- Node 99804
+  - **Lifespark** (spell 443177, 1 rank, passive, instant, aura secret in some situations)
+- Node 99826 · choice
+  - **?** (1 rank, picks hero tree 38)
+  - **?** (1 rank, picks hero tree 37)
+- Node 110413 · choice
+  - **Merithra's Blessing** (spell 1256577, 1 rank, passive, instant, aura secret in some situations)
+  - **Merithra's Blessing** (spell 1256682, 2 ranks, passive, instant, aura secret in some situations)
+  - **Merithra's Blessing** (spell 1256689, 1 rank, passive, instant, aura secret in some situations)
+
+## Augmentation talents (spec 1473)
+
+- Node 93195
+  - **Improved Defy Fate** (spell 1268881, 1 rank, passive, instant, aura secret in some situations)
+- Node 93197
+  - **Inferno's Blessing** (spell 410261, 1 rank, passive, instant, aura secret in some situations)
+- Node 93198
+  - **Ebon Might** (spell 395152, 1 rank, cast 1.1 s, base cooldown 30 s, aura secret in some situations)
+- Node 93199
+  - **Quell** (spell 351338, 1 rank, instant, base cooldown 20 s, aura secret in some situations)
+- Node 93200
+  - **Eruption** (spell 395160, 1 rank, cast 1.9 s, aura secret in some situations)
+- Node 93201
+  - **Power Nexus** (spell 369908, 1 rank, passive, instant, aura secret in some situations)
+- Node 93202 · choice
+  - **Unyielding Domain** (spell 412733, 1 rank, passive, instant, aura secret in some situations)
+  - **Tectonic Locus** (spell 408002, 1 rank, passive, instant, aura secret in some situations)
+- Node 93203
+  - **Upheaval** (spell 396286, 1 rank, instant, base cooldown 40 s, aura secret in some situations)
+- Node 93205
+  - **Rumbling Earth** (spell 459120, 1 rank, passive, instant, aura secret in some situations)
+- Node 93206
+  - **Volcanism** (spell 406904, 1 rank, passive, instant, aura secret in some situations)
+- Node 93207
+  - **Momentum Shift** (spell 408004, 1 rank, passive, instant, aura secret in some situations)
+- Node 93208
+  - **Ricocheting Pyroclast** (spell 406659, 1 rank, passive, instant, aura secret in some situations)
+- Node 93209
+  - **Blistering Scales** (spell 360827, 1 rank, instant, base cooldown 30 s, aura secret in some situations)
+- Node 93210
+  - **Reactive Hide** (spell 409329, 1 rank, passive, instant, aura secret in some situations)
+- Node 93211 · choice
+  - **Regenerative Chitin** (spell 406907, 1 rank, passive, instant, aura secret in some situations)
+  - **Molten Blood** (spell 410643, 1 rank, passive, instant, aura secret in some situations)
+- Node 93212
+  - **Hoarded Power** (spell 375796, 1 rank, passive, instant, aura secret in some situations)
+- Node 93213
+  - **Overlord** (spell 410260, 1 rank, passive, instant, aura secret in some situations)
+- Node 93215
+  - **Symbiotic Bloom** (spell 410685, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93217
+  - **Aspects' Favor** (spell 407243, 2 ranks, passive, instant, aura secret in some situations)
+- Node 93218
+  - **Draconic Attunements** (spell 403208, 1 rank, passive, instant, aura secret in some situations)
+- Node 93219
+  - **Essence Attunement** (spell 375722, 1 rank, passive, instant, aura secret in some situations)
+- Node 93220
+  - **Essence Burst** (spell 396187, 1 rank, passive, instant, aura secret in some situations)
+- Node 93221 · choice
+  - **Pupil of Alexstrasza** (spell 407814, 1 rank, passive, instant, aura secret in some situations)
+  - **Echoing Strike** (spell 410784, 1 rank, passive, instant, aura secret in some situations)
+- Node 93222
+  - **Defy Fate** (spell 404195, 1 rank, passive, instant, aura secret in some situations)
+- Node 93223
+  - **Anachronism** (spell 407869, 1 rank, passive, instant, aura secret in some situations)
+- Node 93225
+  - **Arcane Reach** (spell 454983, 1 rank, passive, instant, aura secret in some situations)
+- Node 93226
+  - **Plot the Future** (spell 407866, 1 rank, passive, instant, aura secret in some situations)
+- Node 93227
+  - **Clairvoyant** (spell 1250914, 1 rank, passive, instant, aura secret in some situations)
+- Node 93229
+  - **Accretion** (spell 407876, 1 rank, passive, instant, aura secret in some situations)
+- Node 93230
+  - **Motes of Possibility** (spell 409267, 1 rank, passive, instant, aura secret in some situations)
+- Node 93231
+  - **Font of Magic** (spell 408083, 1 rank, passive, instant, aura secret in some situations)
+- Node 93232
+  - **Time Skip** (spell 404977, 1 rank, instant, base cooldown 180 s, aura secret in some situations)
+- Node 93234
+  - **Breath of Eons** (spell 403631, 1 rank, instant, base cooldown 120 s, aura secret in some situations)
+- Node 93235 · choice
+  - **Perilous Fate** (spell 410253, 1 rank, passive, instant, aura secret in some situations)
+  - **Chrono Ward** (spell 409676, 1 rank, passive, instant, aura secret in some situations)
+- Node 93358
+  - **Prescience** (spell 409311, 1 rank, instant, 2 charges, aura secret in some situations)
+- Node 93359 · choice
+  - **Prolong Life** (spell 410687, 1 rank, passive, instant, aura secret in some situations)
+  - **Dream of Spring** (spell 414969, 1 rank, passive, instant, aura secret in some situations)
+- Node 93360
+  - **Timelessness** (spell 412710, 1 rank, instant, aura secret in some situations)
+- Node 93367
+  - **Fate Mirror** (spell 412774, 1 rank, passive, instant, aura secret in some situations)
+- Node 93368
+  - **Ignition Rush** (spell 408775, 1 rank, passive, instant, aura secret in some situations)
+- Node 93369 · choice
+  - **Tomorrow, Today** (spell 412723, 1 rank, passive, instant, aura secret in some situations)
+  - **Interwoven Threads** (spell 412713, 1 rank, passive, instant, aura secret in some situations)
+- Node 93382
+  - **Bestow Weyrnstone** (spell 408233, 1 rank, cast 3 s, base cooldown 60 s, aura secret in some situations)
+- Node 99825 · choice
+  - **?** (1 rank, picks hero tree 38)
+  - **?** (1 rank, picks hero tree 36)
+- Node 102248
+  - **Imminent Destruction** (spell 459537, 1 rank, passive, instant, aura secret in some situations)
+- Node 102249
+  - **Mighty Inferno** (spell 1291457, 1 rank, passive, instant, aura secret in some situations)
+- Node 110415 · choice
+  - **Duplicate** (spell 1259173, 1 rank, passive, instant, base cooldown 120 s, aura secret in some situations)
+  - **Duplicate** (spell 1259174, 2 ranks, passive, instant, base cooldown 120 s, aura secret in some situations)
+  - **Duplicate** (spell 1259175, 1 rank, passive, instant, base cooldown 120 s, aura secret in some situations)
+
+## Hero tree: Scalecommander (36)
+
+- Node 94921 · specs Devastation, Augmentation
+  - **Melt Armor** (spell 441176, 1 rank, passive, instant, aura secret in some situations)
+- Node 94928 · choice · specs Devastation, Augmentation
+  - **Extended Battle** (spell 441212, 1 rank, passive, instant, aura secret in some situations)
+  - **Diverted Power** (spell 441219, 1 rank, passive, instant, aura secret in some situations)
+- Node 94933 · choice · specs Devastation, Augmentation
+  - **Hardened Scales** (spell 441180, 1 rank, passive, instant, aura secret in some situations)
+  - **Menacing Presence** (spell 441181, 1 rank, passive, instant, aura secret in some situations)
+- Node 94934 · specs Devastation, Augmentation
+  - **Unrelenting Siege** (spell 441246, 1 rank, passive, instant, aura secret in some situations)
+- Node 94936 · specs Devastation, Augmentation
+  - **Bombardments** (spell 434300, 1 rank, passive, instant, aura secret in some situations)
+- Node 94939 · specs Devastation
+  - **Mass Disintegrate** (spell 436335, 1 rank, passive, instant, aura secret in some situations)
+- Node 94941 · specs Devastation, Augmentation
+  - **Maneuverability** (spell 433871, 1 rank, passive, instant, aura secret in some situations)
+- Node 94943 · choice · specs Devastation, Augmentation
+  - **Nimble Flyer** (spell 441253, 1 rank, passive, instant, aura secret in some situations)
+  - **Slipstream** (spell 441257, 1 rank, passive, instant, aura secret in some situations)
+- Node 94944 · specs Devastation, Augmentation
+  - **Onslaught** (spell 441245, 1 rank, passive, instant, aura secret in some situations)
+- Node 94952 · specs Devastation, Augmentation
+  - **Might of the Black Dragonflight** (spell 441705, 1 rank, passive, instant, aura secret in some situations)
+- Node 94953 · specs Devastation, Augmentation
+  - **Wingleader** (spell 441206, 1 rank, passive, instant, aura secret in some situations)
+- Node 98931 · specs Augmentation
+  - **Mass Eruption** (spell 438587, 1 rank, passive, instant, aura secret in some situations)
+- Node 109793 · specs Devastation, Augmentation
+  - **Refined Essence** (spell 1261452, 1 rank, passive, instant, aura secret in some situations)
+- Node 109794 · specs Devastation, Augmentation
+  - **Concentrated Power** (spell 1261448, 1 rank, passive, instant, aura secret in some situations)
+- Node 109795 · specs Devastation, Augmentation
+  - **Command Squadron** (spell 1260745, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Flameshaper (37)
+
+- Node 94920 · specs Devastation, Preservation
+  - **Titanic Precision** (spell 445625, 1 rank, passive, instant, aura secret in some situations)
+- Node 94922 · specs Devastation, Preservation
+  - **Consume Flame** (spell 444088, 1 rank, passive, instant, aura secret in some situations)
+- Node 94923 · specs Devastation, Preservation
+  - **Fulminous Roar** (spell 1218447, 1 rank, passive, instant, aura secret in some situations)
+- Node 94931 · choice · specs Devastation, Preservation
+  - **Lifecinders** (spell 444322, 1 rank, passive, instant, aura secret in some situations)
+  - **Draconic Instincts** (spell 445958, 1 rank, passive, instant, aura secret in some situations)
+- Node 94937 · choice · specs Devastation, Preservation
+  - **Trailblazer** (spell 444849, 1 rank, passive, instant, aura secret in some situations)
+  - **Shape of Flame** (spell 445074, 1 rank, passive, instant, aura secret in some situations)
+- Node 94945 · specs Devastation, Preservation
+  - **Deep Exhalation** (spell 1264321, 1 rank, passive, instant, aura secret in some situations)
+- Node 94946 · specs Devastation, Preservation
+  - **Burning Adrenaline** (spell 444020, 1 rank, passive, instant, aura secret in some situations)
+- Node 94949 · specs Devastation, Preservation
+  - **Conduit of Flame** (spell 444843, 1 rank, passive, instant, aura secret in some situations)
+- Node 94950 · specs Devastation, Preservation
+  - **Legacy of the Lifebinder** (spell 1264269, 1 rank, passive, instant, aura secret in some situations)
+- Node 94956 · choice · specs Devastation, Preservation
+  - **Enkindle** (spell 444016, 1 rank, passive, instant, aura secret in some situations)
+  - **Expanded Lungs** (spell 444845, 1 rank, passive, instant, aura secret in some situations)
+- Node 99857 · specs Devastation, Preservation
+  - **Ashes in Motion** (spell 1264365, 1 rank, passive, instant, aura secret in some situations)
+- Node 109796 · specs Devastation, Preservation
+  - **Fire Torrent** (spell 1265992, 1 rank, passive, instant, aura secret in some situations)
+- Node 109797 · specs Devastation, Preservation
+  - **Essence Well** (spell 1265993, 1 rank, passive, instant, aura secret in some situations)
+- Node 109798 · specs Devastation, Preservation
+  - **Twin Flame** (spell 1265979, 1 rank, passive, instant, aura secret in some situations)
+
+## Hero tree: Chronowarden (38)
+
+- Node 94925 · specs Preservation, Augmentation
+  - **Reverberations** (spell 431615, 1 rank, passive, instant, aura secret in some situations)
+- Node 94929 · specs Preservation, Augmentation
+  - **Afterimage** (spell 431875, 1 rank, passive, instant, aura secret in some situations)
+- Node 94930 · specs Preservation, Augmentation
+  - **Instability Matrix** (spell 431484, 1 rank, passive, instant, aura secret in some situations)
+- Node 94932 · choice · specs Preservation, Augmentation
+  - **Double-time** (spell 431874, 1 rank, passive, instant, aura secret in some situations)
+  - **Time Convergence** (spell 431984, 1 rank, passive, instant, aura secret in some situations)
+- Node 94935 · choice · specs Preservation, Augmentation
+  - **Temporality** (spell 431873, 1 rank, passive, instant, aura secret in some situations)
+  - **Motes of Acceleration** (spell 432008, 1 rank, passive, instant, aura secret in some situations)
+- Node 94942 · specs Preservation, Augmentation
+  - **Golden Opportunity** (spell 432004, 1 rank, passive, instant, aura secret in some situations)
+- Node 94947 · specs Preservation, Augmentation
+  - **Nozdormu Adept** (spell 431715, 1 rank, passive, instant, aura secret in some situations)
+- Node 94948 · specs Preservation, Augmentation
+  - **Warp** (spell 429483, 1 rank, passive, instant, aura secret in some situations)
+- Node 94951 · specs Preservation, Augmentation
+  - **Primacy** (spell 431657, 1 rank, passive, instant, aura secret in some situations)
+- Node 94954 · specs Preservation, Augmentation
+  - **Chrono Flame** (spell 431442, 1 rank, passive, instant, aura secret in some situations)
+- Node 94955 · specs Preservation, Augmentation
+  - **Temporal Burst** (spell 431695, 1 rank, passive, instant, aura secret in some situations)
+- Node 109508 · specs Preservation, Augmentation
+  - **Overclock** (spell 1260647, 1 rank, passive, instant, aura secret in some situations)
+- Node 109509 · specs Preservation, Augmentation
+  - **Chronal Dynamo** (spell 1291522, 1 rank, passive, instant, aura secret in some situations)
+- Node 109510 · specs Preservation, Augmentation
+  - **Chronoboon** (spell 1260484, 1 rank, passive, instant, aura secret in some situations)
+
+## Tier sets (Encounter Journal)
+
+- Root Warden's Regalia (set 1967, item level 197, spec Devastation): items 244609, 244610, 244611
+  - Bonus **Root Warden's Regalia** (spell 1244021, instant, aura secret in some situations)
+- Voidlight Bindings (set 1971, item level 108, spec Devastation): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Chainmail (set 1976, item level 197, spec Devastation): items 255906, 255907, 255908, 255909, 255910, 255911, 255912, 255913
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Livery of the Black Talon (set 1981, item level 197, spec Devastation): items 250000, 249998, 249997, 249996, 249995
+  - Bonus **Evoker Devastation 12.0 Class Set 2pc** (spell 1264821, instant, aura secret in some situations)
+  - Bonus **Evoker Devastation 12.0 Class Set 4pc** (spell 1264822, instant, aura secret in some situations)
+- Warmonger's Links (set 2052, item level 259, spec Devastation): items 270367, 270368, 270369, 270370, 270371, 270372, 270373, 270374
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Echo of Calamity (set 2058, item level 219, spec Devastation): items 271504, 271502, 271501, 271500, 271499
+  - Bonus **Evoker Devastation 12.1 Class Set 2pc** (spell 1296639, instant, aura secret in some situations)
+  - Bonus **Evoker Devastation 12.1 Class Set 4pc** (spell 1296640, instant, aura secret in some situations)
+- Root Warden's Regalia (set 1967, item level 197, spec Preservation): items 244609, 244610, 244611
+  - Bonus **Root Warden's Regalia** (spell 1244021, instant, aura secret in some situations)
+- Voidlight Bindings (set 1971, item level 108, spec Preservation): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Chainmail (set 1976, item level 197, spec Preservation): items 255906, 255907, 255908, 255909, 255910, 255911, 255912, 255913
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Livery of the Black Talon (set 1981, item level 197, spec Preservation): items 250000, 249998, 249997, 249996, 249995
+  - Bonus **Evoker Preservation 12.0 Class Set 2pc** (spell 1264823, instant, aura secret in some situations)
+  - Bonus **Evoker Preservation 12.0 Class Set 4pc** (spell 1264824, instant, aura secret in some situations)
+- Warmonger's Links (set 2052, item level 259, spec Preservation): items 270367, 270368, 270369, 270370, 270371, 270372, 270373, 270374
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Echo of Calamity (set 2058, item level 219, spec Preservation): items 271504, 271502, 271501, 271500, 271499
+  - Bonus **Evoker Preservation 12.1 Class Set 2pc** (spell 1296641, instant, aura secret in some situations)
+  - Bonus **Evoker Preservation 12.1 Class Set 4pc** (spell 1296642, instant, aura secret in some situations)
+- Root Warden's Regalia (set 1967, item level 197, spec Augmentation): items 244609, 244610, 244611
+  - Bonus **Root Warden's Regalia** (spell 1244021, instant, aura secret in some situations)
+- Voidlight Bindings (set 1971, item level 108, spec Augmentation): items 251093, 251217
+  - Bonus **Voidlight Bindings** (spell 1281574, instant, aura secret in some situations)
+- Warmonger's Chainmail (set 1976, item level 197, spec Augmentation): items 255906, 255907, 255908, 255909, 255910, 255911, 255912, 255913
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Livery of the Black Talon (set 1981, item level 197, spec Augmentation): items 250000, 249998, 249997, 249996, 249995
+  - Bonus **Evoker Augmentation 12.0 Class Set 2pc** (spell 1264819, instant, aura secret in some situations)
+  - Bonus **Evoker Augmentation 12.0 Class Set 4pc** (spell 1264820, instant, aura secret in some situations)
+- Warmonger's Links (set 2052, item level 259, spec Augmentation): items 270367, 270368, 270369, 270370, 270371, 270372, 270373, 270374
+  - Bonus **Warmonger's Versatility** (spell 1260237, instant, aura secret in some situations)
+  - Bonus **Warmonger's Distinction** (spell 1260249, instant, aura secret in some situations)
+- Echo of Calamity (set 2058, item level 219, spec Augmentation): items 271504, 271502, 271501, 271500, 271499
+  - Bonus **Evoker Augmentation 12.1 Class Set 2pc** (spell 1296637, instant, aura secret in some situations)
+  - Bonus **Evoker Augmentation 12.1 Class Set 4pc** (spell 1296638, instant, aura secret in some situations)
