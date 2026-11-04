@@ -401,6 +401,12 @@ check("Advanced Debugging: an aura's answer is recorded when it changes (missing
       L.eval("NREC('(8801): missing')") == 1 and L.eval("NREC('(8801): present')") == 1, (L.eval("NREC('(8801)')"),))
 L.execute("CueRulesDB.ui.advancedDebug = false; AURAS[8801] = nil; BP2(8801)")
 check("Advanced Debugging off: nothing more is recorded", L.eval("NREC('(8801)')") == 2)
+L.execute("CueRulesDB.ui.advancedDebug = true")
+okBad = L.eval("function() return pcall(function() return NS.AuraPresentList('not-a-number', { 'also bad' }) end) end")()
+check("Advanced Debugging on: a rule holding a non-numeric aura ID (an import, a typo) still reads without an error",
+      okBad[0] is True if isinstance(okBad, tuple) else okBad is True, okBad)
+check("  ...and the record says which ID it was", L.eval("NREC('(not-a-number)')") == 1)
+L.execute("CueRulesDB.ui.advancedDebug = false")
 
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)

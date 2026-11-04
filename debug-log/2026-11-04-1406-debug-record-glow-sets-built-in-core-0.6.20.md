@@ -1,4 +1,4 @@
-# Advanced Debugging records automatically, messages get their own frame; glows and tier sets built into aura tracking (XayaUI core 0.6.20, XayaUI_Options 0.6.16, XayaUI_Chat 0.6.7, XayaUI_GameDump 0.6.1, XayaUI_Bonus 0.6.5; fork: main)
+# Advanced Debugging records automatically, messages get their own frame; glows and tier sets built into aura tracking (XayaUI core 0.6.20 and 0.6.21, XayaUI_Options 0.6.16, XayaUI_Chat 0.6.7, XayaUI_GameDump 0.6.1, XayaUI_Bonus 0.6.5; fork: main)
 Logged 2026-11-04 14:06 UTC. Branch `claude/eloquent-rubin-n9zb99`. Nothing here has run in the game yet.
 
 ## Requests (Xaya, 2026-11-04)
@@ -91,6 +91,11 @@ New `XayaUI/DebugRecord.lua`, after Console.lua in the toc.
   difficulties share one item ID per slot is an INFERENCE from this (a separate per-difficulty piece would show as a sixth item or a
   same-named set; there is none).
 - `SetBonusOff` itself fails safe: item data still loading, or an unknown spec, gives "unknown", never "missing".
+- **The aura record could break the aura read it watches (14:20 UTC, second commit).** `RecordAura` wrote the ID with `%d`. A rule
+  whose aura ID is not a number (an import, a typo; `rule.buffID` and `buffAlt` are not converted first) made `string.format` raise
+  inside `ns.BuffPresent`, but only with Advanced Debugging on. Now `%s` with `tostring(id)`; core 0.6.21, because 0.6.20 was
+  already pushed on the branch. The full suite run on the first commit
+  was stopped (18 groups had passed) and rerun on the second.
 - **A privacy leak in the first version.** `ns.PrintPrivate` kept the message out of the record, but with messages going to the console
   window it still went into `ns.logBuf`, and the bug report copies the last 60 lines of that buffer. Fixed with a private flag that
   `ns.ConsoleMessage` honours (live window and tray only). The same sweep found the three other name-bearing messages listed above.
@@ -124,7 +129,8 @@ New `XayaUI/DebugRecord.lua`, after Console.lua in the toc.
   - glow line before / after confirmation;
   - aura answer changes recorded once and not when off.
   
-  The committed code fails 7; the 2 controls pass on both.
+  The committed code fails 7; the 2 controls pass on both. Two more: a non-numeric aura ID reads without an error with recording on,
+  and the record names it; the `%d` line fails both.
 - **`tests/build_set_auras_run.py`** (new, 5 checks) runs the builder on made-up tables (new `--sets` option):
   - the two-bonus merge;
   - an aura something else applies is left out;

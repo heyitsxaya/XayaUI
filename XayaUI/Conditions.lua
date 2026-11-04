@@ -946,7 +946,8 @@ local function RecordAura(id, present, src)
     local key = tostring(present) .. "|" .. kind
     if recLast[id] == key then return end
     recLast[id] = key
-    ns.RecordLine("aura", ("%s (%d): %s, %s"):format(tostring(SpellNameOf and SpellNameOf(id) or "?"), id,
+    -- (%s, not %d: an imported rule can hold a non-numeric ID, and the record must never break the aura read it watches)
+    ns.RecordLine("aura", ("%s (%s): %s, %s"):format(tostring(SpellNameOf and SpellNameOf(id) or "?"), tostring(id),
         present == true and "present" or (present == false and "missing" or "unknown"), tostring(src)))
 end
 local BuffPresentOnce
