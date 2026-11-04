@@ -86,14 +86,17 @@ def tables(d):
            [9401, "Code Rat", "", "", 0]])
     # ---- classes and specs. ChrClasses: the ID column is not the first one (as in the real table).
     write(d, "ChrClasses.csv", ["Name_lang", "Filename", "Description_lang", "ID"],
-          [["Test Warrior", "TWARRIOR", TEXT, 1], ["Test Mage", "TMAGE", TEXT, 8]])
+          [["Test Warrior", "TWARRIOR", TEXT, 1], ["Test Mage", "TMAGE", TEXT, 8], ["Test Adventurer", "TADVENTURER", TEXT, 14]])
+    # the game's own class list, as Dev Assist captures it in game (docs/reference/spells/spells.json): the playable classes only
+    with open(os.path.join(d, "spells.json"), "w", encoding="utf-8") as f:
+        json.dump({"classes": [{"token": "TWARRIOR", "name": "Test Warrior"}, {"token": "TMAGE", "name": "Test Mage"}]}, f)
     write(d, "ChrSpecialization.csv", ["Name_lang", "Description_lang", "ID", "ClassID", "OrderIndex", "Role"],
           [["Fire", TEXT, 63, 8, 1, 2], ["Arcane", TEXT, 62, 8, 0, 2], ["Frost", TEXT, 64, 8, 2, 2], ["Arms", TEXT, 71, 1, 0, 2],
            ["Ferocity", TEXT, 74, 0, 0, 0]])
 
-def run(d, out, extra_env=None, isolated=True):
+def run(d, out, extra_env=None, isolated=True, playable="spells.json"):
     cmd = [sys.executable] + (["-I"] if isolated else []) + [BUILDER, "--build", "0.0.0.1", "--cache", d, "--out", out,
-                                                              "--date", "2026-01-01"]
+                                                              "--date", "2026-01-01", "--playable-from", os.path.join(d, playable)]
     env = dict(os.environ); env.update(extra_env or {})
     return subprocess.run(cmd, capture_output=True, text=True, env=env)
 
@@ -177,6 +180,17 @@ with tempfile.TemporaryDirectory() as d:
           [s["specID"] for s in classes.get(8, {}).get("specs", [])] == [62, 63, 64] and classes.get(1, {}).get("file") == "TWARRIOR",
           classes.get(8))
     check("pet specializations are listed under class 0", [s["specID"] for s in classes.get(0, {}).get("specs", [])] == [74], classes.get(0))
+    cabout = load(out, "classes.json")["about"]
+    check("playable classes come from the game's own class list: the two it lists are playable, a class row it does not list"
+          " (like Adventurer) and the pet row are not, and the file counts 2 playable of 3 rows",
+          [(c, classes.get(c, {}).get("playable")) for c in (1, 8, 14, 0)] == [(1, True), (8, True), (14, False), (0, False)]
+          and cabout.get("playable") == 2 and cabout.get("rows") == 3, ([(c, classes.get(c, {}).get("playable")) for c in (1, 8, 14, 0)], cabout))
+    o2 = os.path.join(d, "noplayable")
+    r2 = run(d, o2, playable="missing.json")
+    c2 = {c["classID"]: c for c in load(o2, "classes.json")["data"]}
+    check("without the game's class list, playable is unknown (null) for every class row, never guessed",
+          r2.returncode == 0 and [c2.get(c, {}).get("playable", "absent") for c in (1, 8, 14)] == [None, None, None]
+          and load(o2, "classes.json")["about"].get("playable", "absent") is None, (r2.stderr[-200:], [c2.get(c, {}).get("playable", "absent") for c in (1, 8, 14)]))
 
     alltext = "".join(open(os.path.join(out, f), encoding="utf-8").read() for f in sorted(os.listdir(out))) if os.path.isdir(out) else ""
     check("no written text reaches the output (descriptions, titles, journal text): the repository is public", TEXT not in alltext)

@@ -15,6 +15,8 @@ Tables and the columns read:
   MaxPlayers), JournalInstance, JournalEncounter, JournalEncounterSection (SpellID only), DungeonEncounter, EncounterEvent
   (SpellID, Severity), MapChallengeMode (CriteriaCount_0..2), MythicPlusSeasonTrackedMap, CriteriaTree, Criteria (Type, Asset),
   Creature (Name_lang, Classification), ChrClasses, ChrSpecialization.
+Which classes are playable comes from the game's own class list, captured in game (docs/reference/spells/spells.json), never
+from ChrClasses: that table also has rows that are not playable classes (14 Adventurer and 15 Traveler in 12.1.5).
 
 INFERENCES (the community's reading of these columns; each output file says which of its fields rest on them):
   - Who an item's aura lands on: ImplicitTarget_0 of the aura-applying effect. 1 = the caster ("self", a buff on you),
@@ -82,7 +84,7 @@ def num(v, default=0):
         return default
 
 
-def build(cache, expansion):
+def build(cache, expansion, playableTokens=None):
     names = {num(r["ID"]): r["Name_lang"] for r in rows(cache, "SpellName.csv")}
 
     # ---- spells: what each spell triggers and which of its effects apply an aura, with the target of that effect
@@ -277,7 +279,10 @@ def build(cache, expansion):
     classes = []
     for r in rows(cache, "ChrClasses.csv"):
         cid = num(r["ID"])
+        # playable: from the game's own class list (playableTokens), never from this table (it also has non-playable rows,
+        # e.g. 14 Adventurer and 15 Traveler in 12.1.5); None when that list is not available (unknown, never guessed)
         classes.append({"classID": cid, "file": r["Filename"], "name": r["Name_lang"],
+                        "playable": (r["Filename"] in playableTokens) if playableTokens is not None else None,
                         "specs": sorted(specs.get(cid, []), key=lambda s: (s["order"], s["specID"]))})
     classes.sort(key=lambda x: x["classID"])
     pet = sorted(specs.get(0, []), key=lambda s: s["specID"])
@@ -300,9 +305,15 @@ def main():
     ap.add_argument("--expansion", type=int, default=11, help="Enum.ExpansionLevel (11 = Midnight)")
     ap.add_argument("--out", default=os.path.join(ROOT, "docs", "reference", "content"))
     ap.add_argument("--date", default=None)
+    ap.add_argument("--playable-from", default=os.path.join(ROOT, "docs", "reference", "spells", "spells.json"),
+                    help="the game's own class list, captured in game (classes[].token); marks which ChrClasses rows are playable")
     a = ap.parse_args()
     fetch(a.build, a.cache, a.expansion)
-    items, itemSpells, instances, classes, pet = build(a.cache, a.expansion)
+    playableTokens = None
+    if os.path.isfile(a.playable_from):
+        with open(a.playable_from, encoding="utf-8") as f:
+            playableTokens = {c["token"] for c in json.load(f).get("classes", []) if isinstance(c, dict) and c.get("token")}
+    items, itemSpells, instances, classes, pet = build(a.cache, a.expansion, playableTokens)
     date = a.date
     if not date:
         import datetime
@@ -319,12 +330,15 @@ def main():
     write_lines(os.path.join(a.out, "instances.json"), {"source": src, "instances": len(instances),
         "fields": "journalInstanceID, name, mapID, instanceType (Map.InstanceType as stored), maxPlayers, expansionID, listedBecause (expansion, or mythic+ season: an older dungeon one of the expansion's Mythic+ seasons tracks; INFERENCE); encounters: journalEncounterID, dungeonEncounterID (INFERENCE: = ENCOUNTER_START's encounterID), uiMapID, abilities (Adventure Guide section spells), events (EncounterEvent spells, severity); challenge: mapChallengeModeID, timersSeconds (INFERENCE), trackedInSeasons, enemyForces (INFERENCE): every challenge tree linked to the dungeon (linkedBy: encounters = its boss criteria are on this map; name = its name), each with total, creatures (creatureID, count per kill, percent, name when the client lists it), notCreature; when several trees are listed (older dungeons have a '(More Trash)' one), the one the game uses is the one whose total C_ScenarioInfo.GetCriteriaInfo shows in game",
         "note": "Trash creatures' spells and an instance's full creature list are not in the client data; Dev Assist's /xuidev instance capture records them in game."}, instances)
-    write_lines(os.path.join(a.out, "classes.json"), {"source": src, "classes": len(classes),
-        "fields": "classID, file, name, specs (specID, name, order, role as stored); petSpecs listed under classID 0"},
-        classes + [{"classID": 0, "file": "PET", "name": "(pet specializations)", "specs": pet}])
+    nPlayable = sum(1 for c in classes if c["playable"])
+    write_lines(os.path.join(a.out, "classes.json"), {"source": src, "rows": len(classes),
+        "playable": nPlayable if playableTokens is not None else None,
+        "fields": "classID, file, name, playable, specs (specID, name, order, role as stored); pet specializations listed under classID 0 (not a class)",
+        "note": "ChrClasses also holds rows that are not playable classes. playable = the class is in the game's own class list, captured in game (docs/reference/spells/spells.json); null when that list was not available. Each playable class also has an 'Initial' spec row (before a spec is chosen)."},
+        classes + [{"classID": 0, "file": "PET", "name": "(pet specializations)", "playable": False, "specs": pet}])
     nf = sum(len(f["creatures"]) for i in instances for c in i["challenge"] for f in c["enemyForces"])
-    print("wrote %s: items %d, items with spells %d, instances %d, enemy-forces creatures %d, classes %d" % (
-        a.out, len(items), len(itemSpells), len(instances), nf, len(classes)))
+    print("wrote %s: items %d, items with spells %d, instances %d, enemy-forces creatures %d, class rows %d (playable %s)" % (
+        a.out, len(items), len(itemSpells), len(instances), nf, len(classes), nPlayable if playableTokens is not None else "unknown"))
 
 
 if __name__ == "__main__":
