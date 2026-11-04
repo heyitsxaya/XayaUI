@@ -98,6 +98,14 @@ L.execute("DND.wasSetFromAura = false; DND.auraInstanceID = nil; CHG = 1")
 check("one charge left: the rule (ready = full charges) is FALSE and the condition's charges == 2 is FALSE, not unknown",
       L.eval("select(3, TRIG())") is False and L.eval("WHEN()") is False, (L.eval("TRIG()"), L.eval("WHEN()")))
 
+# the game hides an icon's spell IDs while its aura is active: the IDs it showed before are kept
+L.execute("COMBAT = true; DND.wasSetFromAura = false; DND.auraInstanceID = nil; GetTime = function() return 30000 end")
+p, s = L.eval("BUFF()")
+L.execute("DND.GetSpellID = function() return SECRET end; DND.cooldownInfo = { spellID = SECRET }; DND.wasSetFromAura = true; DND.auraInstanceID = SECRET; GetTime = function() return 30001 end")
+p2, s2 = L.eval("BUFF()")
+check("icon IDs hidden while its aura is active: still found from the IDs it showed before -> PRESENT", p is False and p2 is True, (p, s, p2, s2))
+L.execute("DND.GetSpellID = function() return 43265 end; DND.cooldownInfo = { spellID = 43265 }; DND.wasSetFromAura = false; DND.auraInstanceID = nil; GetTime = function() return 30002 end")
+
 # guards
 L.execute("CHG = 2; RULE.buffID = 999; RULE.buffAlt = nil")
 p, s = L.eval("BUFF()")
