@@ -98,6 +98,11 @@ For testers. Tick each box in order; when something does not match the **Expect*
 
 ---
 
+## J. Game Data Capture (developer tool, XayaUI_GameDump 0.4.0)
+- [ ] J1. `/xuidump api`: chat reports the counts (global functions, C_ namespaces, enums, numeric constants, widget types) with no Lua error. `/xuidump save`, then the file `XayaUI_GameDump.lua` has an `api` table.
+- [ ] J2. `/xuidump toolkit` out of combat, away from a vendor: chat prints the GetSpellBaseCooldown, repair, preview-link and stat-pane lines with no Lua error.
+- [ ] J3. `/xuidump toolkit` again while talking to a repair vendor; then `/xuidump save` and upload the file.
+
 ## Reporting a problem
 
 Send, for each problem:

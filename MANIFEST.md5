@@ -5,12 +5,12 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-14020c2d88d9773cda1386efdf702a7c  QA-CHECKLIST.md
+83d747f715fd8029278cae50a3e3415b  QA-CHECKLIST.md
 ee42539002c7a831fd97da0c0d766f12  README.md
 b8830af74b74d3bd040661448e9ff565  ROADMAP.md
 8ba84aa305c5e0b669fe8832edac21d3  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-1426ea7cc3d92df0d2b5a78d1ffd9261  USER-GUIDE.md
+3744eedfc9ee1cc079b4fef6a8f82e23  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
 40b7591dd5f7fe4f0c4b0f5a965155bb  XayaUI/ClassLearn.lua
@@ -147,10 +147,11 @@ be9610bdcced17c795922423eb46c687  XayaUI_Chat/Scroll.lua
 c60c6bfa477e38b0ef452b5d482ad934  XayaUI_Chat/Skin.lua
 924ed63c29e3249e9052308753382184  XayaUI_Chat/Sounds.lua
 ac2f578eb04f04abaf092dfebc6c9447  XayaUI_Chat/XayaUI_Chat.toc
+d573b9f472f6dbc2b0cf0f175de15f89  XayaUI_GameDump/ApiInventory.lua
 857e41250c987f3251a9c8ae1a21ae97  XayaUI_GameDump/FORMULA-CAPTURE-WALKTHROUGH.md
 4e650b1654b192b5f3048f03425dbacf  XayaUI_GameDump/FormulaCapture.lua
-96a62368d1a1215dd73fc9fdf4e71716  XayaUI_GameDump/GameDump.lua
-94961ba57a3ce0a125ba79b0d2e42811  XayaUI_GameDump/XayaUI_GameDump.toc
+cb6efdef3c15b57e01d7feede17c28b9  XayaUI_GameDump/GameDump.lua
+28748ee061d93a13fb5915d067e5f7f5  XayaUI_GameDump/XayaUI_GameDump.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
@@ -355,6 +356,7 @@ eba2360845f99d52521c5efa305657c1  debug-log/2026-11-04-0100-chat-indent-scrollba
 5578cf7edacb5c2d9f3b37ab9f856154  debug-log/2026-11-04-0100-tooltip-formula-lines-bonus-0.6.2.md
 f4517b1b53b2f437c1a5cd5f859a21bc  debug-log/2026-11-04-0200-formula-capture-walkthrough-gamedump-0.3.0.md
 3a44deb6b6646a79790a393549095fcd  debug-log/2026-11-04-0220-integrate-branches-core-0.6.5.md
+ba0f33a3757102945e58ab4c5d3e9e4c  debug-log/2026-11-04-0250-api-inventory-toolkit-checks-gamedump-0.4.0.md
 46c82c2716e940f5749f3f9da50fdd94  debug-log/2026-11-04-0300-chat-left-gap-clamp-0.6.6.md
 412c61450d02965726c5517c79b9737d  debug-log/2026-11-04-0400-aura-id-cooldown-manager-in-combat-bonus-0.6.4.md
 7f9f4549410ba8da5e6fb9e9cb573be0  shelved/Bars.lua
@@ -379,6 +381,7 @@ c368c3d4a0e31da169d5370dec0c7c3a  tests/drag_drop_run.py
 b0b1d35b0f9d3cf146b0ce4228dfd464  tests/engine_text_run.py
 91e69f1cabaacf58537aa37237ffb06c  tests/export_group_run.py
 c7f384823034727d484a12ba5c38e48f  tests/formula_capture_run.py
+905c837653744a6299b8a926478c26a6  tests/gamedump_api_run.py
 e30b244c96ba84721bed4b5eb211b7d2  tests/gamemenu_run.py
 2432f77932fc7e94d63c1f8c3f453c37  tests/harness/.gitignore
 a36a03ecc872c2cf4b1b410e1aeba87e  tests/harness/build_api_index.py
