@@ -39,6 +39,8 @@ Do the steps in this order. Skip any you cannot do; say which ones you skipped.
    focus (`/focus`). Pull a few mobs together. Let some of them cast. Interrupt one cast if you can.
 7. **One dungeon or Mythic+ run, Voidscar Arena if possible.** Keep combat logging on. Before each pull, look at the mobs so their
    nameplates show. Target and focus one mob before the first pull. Then play normally.
+   With Dev Assist 0.7.1 or later: inside the dungeon, before the first pull, type `/xuidev instance` once (it reads the dungeon's
+   objectives and the mobs you can see); type it again after the last boss. The probe files every mob it sees in between.
 8. **One boss pull.** A dungeon boss counts. A raid boss is a bonus. Let the boss cast its abilities and emotes.
 9. **Check.** Type `/xuidev probe status` and take a screenshot of the chat lines, if you like.
 10. **Stop.** Type `/xuidev probe off`. Then type `/combatlog` (chat should say logging is off).
@@ -64,6 +66,7 @@ are kept in full. To keep the dummy part too, do step 11 and copy the file aside
 | 5 | mark (MK), blocked-action entries (AB, AF) | Can an addon put a raid marker on a mob, in and out of combat? |
 | 6, 7 | nameplates (NA, NR, UF), enemy casts (CS, CC, CL, CI, CT) | Is a mob's identity (creature ID, GUID, name) readable out of combat and hidden in combat? Does a nameplate keep its token through a pull? Are enemy cast spell IDs readable, and on which units? Who interrupted? |
 | 7, 8 | boss timeline (TA, TR, TS), warnings (EW), emotes (BE), encounter start / end | Which boss timeline fields can an addon read in a pull? Are boss warnings and emotes readable? |
+| 6, 7 (0.7.1) | `instance` table: one entry per creature | Creature names, Mythic+ count per mob, which mobs cast what and carry which auras; which enemy-forces total the dungeon uses; the live Mythic+ season. |
 | all | anchors, combat start / end (RD, RE), your casts (PC) | Lines every entry up with the combat log file: the anchors hold the game's timer and your clock; your own casts appear in both. Also: are restrictions, hidden auras and hidden cooldowns switched on, and does the old `LoggingCombat` function still exist for addons? |
 
 ## Other captures worth running the same morning (all optional)

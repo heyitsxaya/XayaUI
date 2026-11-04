@@ -91,7 +91,9 @@ check("core names neither the old nor the new folder (it uses the service)", "Xa
 toc = open(os.path.join(DA, "XayaUI_DevAssist.toc"), encoding="utf-8").read()
 listed = [l.strip() for l in toc.splitlines() if l.strip() and not l.startswith("#")]
 on_disk = sorted(f for f in os.listdir(DA) if f.endswith(".lua"))
-check("toc: title, version 0.7.0, saved table XayaUIDevAssistDB", "## Title: XayaUI Dev Assist" in toc and "## Version: 0.7.0" in toc and "## SavedVariables: XayaUIDevAssistDB" in toc)
+_ver = re.search(r"^## Version: (\d+)\.(\d+)\.(\d+)\s*$", toc, re.M)   # 0.7.0 or later (0.7.1: instance, stats, tooltips)
+check("toc: title, version 0.7.0 or later, saved table XayaUIDevAssistDB", "## Title: XayaUI Dev Assist" in toc and _ver is not None
+      and tuple(int(x) for x in _ver.groups()) >= (0, 7, 0) and "## SavedVariables: XayaUIDevAssistDB" in toc)
 check("toc: lists exactly the folder's Lua files, DevAssist.lua first", sorted(listed) == on_disk and listed[0] == "DevAssist.lua", (listed, on_disk))
 check("the old folder is gone from the repository", not os.path.exists(os.path.join(ROOT, "XayaUI_GameDump")))
 
