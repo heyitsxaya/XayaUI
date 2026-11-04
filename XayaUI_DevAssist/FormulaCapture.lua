@@ -1,14 +1,14 @@
 -------------------------------------------------------------------------------
--- FormulaCapture.lua (XayaUI_GameDump 0.3.0): observe how spell numbers move when your gear (and so your stats) changes.
+-- FormulaCapture.lua (XayaUI_DevAssist, formerly XayaUI_GameDump; written for 0.3.0): observe how spell numbers move when your gear (and so your stats) changes.
 -- Xaya 2026-11-04: "capture data from individual specs and talents based on gear (therefore number) changes. With enough data, make
 -- calculations and ship a spell data table that is not mined but directly observed from the game."
 --
 -- Each SNAPSHOT stores your stats and, for every spell in your spellbook plus your active talents, the numbers in its description and
 -- its cooldown / charge values, exactly as the addon API reports them. Snapshots are grouped by LOADOUT (class + spec + talent set):
 -- a number that depends on talents is only comparable inside one loadout. tools/formula_fit.py fits the numbers against the stats.
--- Walkthrough: XayaUI_GameDump/FORMULA-CAPTURE-WALKTHROUGH.md. Out of combat only (stats are secret in combat). No names or realms are
--- stored. Own file and own slash command (/xuiformula) so GameDump.lua is not touched (#339: the local copy of that file has diverged).
--- Output: XayaUIGameDumpDB.formula (written on /reload or logout). UNTESTED IN GAME.
+-- Walkthrough: XayaUI_DevAssist/FORMULA-CAPTURE-WALKTHROUGH.md. Out of combat only (stats are secret in combat). No names or realms are
+-- stored. Own file and own slash command (/xuiformula) so DevAssist.lua (then GameDump.lua) is not touched (#339: the local copy of that file has diverged).
+-- Output: XayaUIDevAssistDB.formula (written on /reload or logout). UNTESTED IN GAME.
 -------------------------------------------------------------------------------
 local FC = {}
 _G.XayaUIFormulaCapture = FC
@@ -17,14 +17,14 @@ local issecret = issecretvalue or function() return false end
 local function Num(v) if v ~= nil and not issecret(v) and type(v) == "number" then return v end end
 local function Call(fn, ...) if type(fn) ~= "function" then return nil end local ok, a, b, c, d = pcall(fn, ...) if ok then return a, b, c, d end end
 local function Field(t, k) if type(t) ~= "table" then return nil end local ok, v = pcall(function() return t[k] end) if ok then return Num(v) end end
-local function Say(msg) print("|cffffd100XayaUI Formula Capture|r: " .. tostring(msg)) end
+local function Say(msg) print("|cffffd100XayaUI Dev Assist (formulas)|r: " .. tostring(msg)) end
 
 FC.VERSION = 1
 local CR_VERS = _G.CR_VERSATILITY_DAMAGE_DONE or 29
 
 local function DB()
-    XayaUIGameDumpDB = XayaUIGameDumpDB or {}
-    local d = XayaUIGameDumpDB
+    XayaUIDevAssistDB = XayaUIDevAssistDB or {}
+    local d = XayaUIDevAssistDB
     if type(d.formula) ~= "table" or d.formula.v ~= FC.VERSION then d.formula = { v = FC.VERSION, loadouts = {} } end
     return d.formula
 end
@@ -308,5 +308,5 @@ SlashCmdList["XAYAUIFORMULA"] = function(msg)
     elseif cmd == "now" then FC.Capture("manual", true)
     elseif cmd == "status" or cmd == "" then FC.Status()
     elseif cmd == "clear" then FC.Clear(arg == "all")
-    else Say("/xuiformula start | stop | now | status | clear | clear all   (walkthrough: XayaUI_GameDump/FORMULA-CAPTURE-WALKTHROUGH.md)") end
+    else Say("/xuiformula start | stop | now | status | clear | clear all   (walkthrough: XayaUI_DevAssist/FORMULA-CAPTURE-WALKTHROUGH.md)") end
 end

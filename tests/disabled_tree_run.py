@@ -128,7 +128,7 @@ end
 
 def main():
     folders = H.find_addons()
-    enabled = [n for n in folders if n != "XayaUI_GameDump"]
+    enabled = [n for n in folders if n != "XayaUI_DevAssist"]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)

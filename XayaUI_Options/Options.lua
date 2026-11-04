@@ -2837,8 +2837,8 @@ local function BuildAddonSettings()
                     end
                     return a
                 end)() },
-            debugProbe = { type = "toggle", name = "Also run the game-data probe (XayaUI Game Data Capture)", order = 11.5, width = "full",
-                desc = "The separate Game Data Capture addon is installed: switch its event probe on together with Advanced Debugging (it records what the game lets addons read, for the run sheet in docs/process). It goes off again with Advanced Debugging if this switched it on.",
+            debugProbe = { type = "toggle", name = "Also run the game-data probe (XayaUI Dev Assist)", order = 11.5, width = "full",
+                desc = "The separate XayaUI Dev Assist addon is installed: switch its event probe on together with Advanced Debugging (it records what the game lets addons read, for the run sheet in docs/process). It goes off again with Advanced Debugging if this switched it on.",
                 hidden = function() return not (Ui().advancedDebug and ns.ProbeInstalled and ns.ProbeInstalled()) end,
                 get = function() return Ui().debugProbe ~= false end,
                 set = function(_, v) if v then Ui().debugProbe = nil else Ui().debugProbe = false end; if ns.SyncDebugProbe then ns.SyncDebugProbe() end end },
@@ -2918,15 +2918,16 @@ local function BuildAddonSettings()
                     get = function() return ns.AuraModel and ns.AuraModel.PresenceEnabled() end,
                     set = function(_, v) if ns.AuraModel then ns.AuraModel.SetSetting("presence", v and true or false) end end },
             } },
-            gameDump = { type = "group", inline = true, name = "Game Data Capture (separate tool)", order = 30,
-                hidden = function() return not _G.XayaUIGameDump end, args = {
+            -- the separate developer addon (XayaUI Dev Assist), reached through its "gameDataProbe" service (Modules.lua contract)
+            gameDump = { type = "group", inline = true, name = "Dev Assist (separate tool)", order = 30,
+                hidden = function() local svc = ns.Service and ns.Service("gameDataProbe"); return not (svc and type(svc.Open) == "function") end, args = {
                 gdText = { type = "description", order = 1, fontSize = "medium",
-                    name = "Pulls every class, spec, talent, spell description, spellbook entry, piece of gear, and set-bonus line the game will give an addon, and records which auras each ability you press causes and for how long. It is a separate addon (XayaUI_GameDump) with its own saved-data file, so nothing here touches your rules or profile." },
-                gdOpen = { type = "execute", name = "Open Game Data Capture", order = 2, width = "double",
+                    name = "Pulls every class, spec, talent, spell description, spellbook entry, piece of gear, and set-bonus line the game will give an addon, and records which auras each ability you press causes and for how long. It is a separate addon (XayaUI Dev Assist, folder XayaUI_DevAssist) with its own saved-data file, so nothing here touches your rules or profile. Also /xuidev." },
+                gdOpen = { type = "execute", name = "Open Dev Assist", order = 2, width = "double",
                     func = function()
-                        local g = _G.XayaUIGameDump
-                        if g and g.Toggle then g.Toggle()
-                        else ns.Print("XayaUI_GameDump is not loaded. Enable the XayaUI_GameDump addon, then /reload.") end
+                        local svc = ns.Service and ns.Service("gameDataProbe")
+                        if svc and type(svc.Open) == "function" then svc.Open()
+                        else ns.Print("XayaUI Dev Assist is not loaded. Enable it in the AddOns list, then /reload.") end
                     end },
             } },
         } },

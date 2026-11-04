@@ -38,7 +38,7 @@ XayaUI is a group of addons; every folder at the top of this repository is one o
 | `XayaUI_Bonus` | XayaUI Bonus Features | Tooltip additions, Notepad, custom data panels. |
 | `XayaUI_Reskin` | XayaUI Blizzard Reskin | XayaUI's look on Blizzard frames (today: the Game Menu). |
 | `XayaUI_Media` | XayaUI Media | Your own pictures and sounds (a support folder; see its README). |
-| `XayaUI_GameDump` | XayaUI Game Data Capture | A debugging tool; not needed to play. |
+| `XayaUI_DevAssist` | XayaUI Dev Assist | A developer and debugging tool; not needed to play (was `XayaUI_GameDump`, "Game Data Capture", before 0.7.0: delete that old folder). |
 
 Everything else in the repository (`tests/`, `debug-log/`, `shelved/`, the documents) stays out of the game folder.
 
