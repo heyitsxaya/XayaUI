@@ -1,7 +1,7 @@
 # XayaUI: session-start summary
 
 Read this first in any new chat about XayaUI. It is meant to be enough on its own; the full record is in the two trackers below.
-Last updated 2026-11-04 15:00 UTC by Claude Code session 014bN6tUvbkCv9Ha9VgNF4Xa (earlier the same day: 014bN6tVdvvFNcwwRRBHuqTv). Facts were checked in that session unless marked (unverified) or (inference).
+Last updated 2026-11-04 15:06 UTC by Claude Code session 014bN6tUvbkCv9Ha9VgNF4Xa (earlier the same day: 014bN6tVdvvFNcwwRRBHuqTv). Facts were checked in that session unless marked (unverified) or (inference).
 
 ## 1. How this project is tracked
 Every piece of addon work is multi-session (Xaya, 2026-11-04). New chat: read this file, then glob the repo root and `debug-log/` for `*SUMMARY*`, `*LOGIC*`, `*CONTEXT*`, `*SESSION*`, `*handoff*` files and read the newest.
@@ -55,6 +55,60 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.cursorHighlight`, `.cursorTrail`, `.characterToolkit`). Nothing is saved per character yet.
 
 ## 4. Active items
+
+**NEXT SESSION: START HERE (handoff written 2026-11-04 15:06 UTC)**
+1. **Land the branch on `main`.** `main` is at `483703a` (core 0.6.22). The branch `claude/eloquent-rubin-n9zb99` has these commits
+   after it, not yet on `main`:
+   - `26ffd09`: Dev Assist 0.7.0 rename, Options 0.6.18, Bonus 0.6.6;
+   - `c672029` and `fbcd76f`: working memory;
+   - `640031d`: the `build_content.py` draft;
+   - `4af5571`: `Claude outputs/` removed;
+   - and this handoff.
+   
+   Run the full suite in a snapshot worktree of the branch head (copy `tests/harness/api_index.json` in). If it passes,
+   cherry-pick onto `origin/main`, check the tree equals the tested commit, run `tools/precheck.py --base origin/main`, push, and
+   tell Xaya the commit.
+2. **Data pulls (task #38, Xaya's list):** expansion items; item -> buff / debuff IDs; instances (zone, encounter, instance IDs,
+   every creature with its spells, buffs and debuffs, Mythic+ count / percent per unit); auras; class / spec IDs; stats; targeted
+   tooltip data; spell scaling observed in game and kept per profile.
+   - **Offline: `docs/reference/build_content.py`.** It is a DRAFT: it has never been run, has no test, and its output is not
+     generated.
+     - Write `tests/build_content_run.py` on made-up tables (model: `tests/build_set_auras_run.py`).
+     - Then run it with `--build 12.1.5.70783 --cache <dir>` (downloads from wago.tools; run with `python3 -I`).
+     - Check the output against the facts below, then commit `docs/reference/content/`: names and numbers only, no descriptions
+       (public repo).
+   - **Verified by hand on 2026-11-04 (wago.tools, build 12.1.5.70783):**
+     - Windrunner Spire's challenge criteria tree 216371 has the child "Enemy Forces" (216376), Amount 591, Operator 9.
+     - It has 26 children: 23 have Criteria Type 0, with Asset = a creature ID (232xxx) and Amount 1-20 per kill; 3 have Type 92
+       (amounts 7, 70 and 9999) and are NOT creature counts. Type 92 is unexplained, and the builder leaves those rows out.
+     - ItemSparse with ExpansionID=11 (Midnight) has 7,928 rows.
+     - The client's Creature table is a subset: many current trash creatures have no row, so no name.
+     - No client table maps trash creatures to an instance or to their spells.
+   - **In game (Dev Assist):**
+     - `C_ScenarioInfo.GetUnitCriteriaProgressValues(unit)` gives the count per unit (flag `SecretWhenUnitIdentityRestricted`);
+       `GetCriteriaInfo` gives the total.
+     - `UnitCreatureID` and `UnitGUID`: SecretWhenUnitIdentityRestricted.
+     - `UNIT_SPELLCAST_*`: SecretWhenUnitSpellCastRestricted.
+     - `COMBAT_LOG_EVENT_UNFILTERED`: HasRestrictions; `CombatLogGetCurrentEventInfo` is not in the reference.
+     - Stats: `GetCombatRating` / `GetCombatRatingBonus` are SecretWhenUnitStatsRestricted; `GetCombatRatingBonusForCombatRatingValue`
+       has no stats flag.
+     - `C_TooltipInfo.*`: MayReturnNothing; the aura variants are SecretWhenUnitAuraRestricted.
+   - **Plan for the in-game captures** (to build, each marking every read the game hides):
+     - `/xuidev instance`: per creature seen on nameplates, target or boss units: ID, name, classification, Mythic+ count; the
+       spells it casts and the auras on it when readable; the encounter and instance IDs.
+     - `/xuidev stats`: ratings and their percent conversion, out of combat.
+     - `/xuidev tooltips`: tooltip lines for the spells, auras and items XayaUI's rules use. Blizzard text: it stays in the player's
+       saved file, never in the repo.
+     - Item -> aura confirmation through the existing cast recorder.
+     - Spell scaling already exists: `/xuiformula`, kept per talent loadout, fitted by `tools/formula_fit.py`.
+   - Then: tests that fail on the old code, docs (USER-GUIDE 12.13), QA steps, a debug-log entry, versions, the full suite, `main`.
+3. **Open with Xaya** (asked 2026-11-04, not answered yet): which Claude-written documents should leave the repo. The options were:
+   - narrative out, core stays (recommended): debug-log/, docs/process and docs/plans go to Drive's process analysis folder;
+     summary, change skill and VERIFICATION stay;
+   - only `Claude outputs/` (done in `4af5571`);
+   - everything. Until she answers, keep writing debug-log entries as the process requires.
+4. **Advanced Debugging (#36)** is finished and on `main` (core 0.6.22); only QA B50-B57 remain.
+
 | Item | State | Next step |
 |---|---|---|
 | **Xaya's decisions** | written out in `docs/process/DECISIONS-2026-11-04.md` (27 questions from the 2026-11-04 issue triage); #260, #319 and part of #334 answered and built (0.6.18, 0.6.19) | still open: #343 which drag, #334 for sound files, decision 5 (switched-off condition and its cues), the WA-layout questions |
