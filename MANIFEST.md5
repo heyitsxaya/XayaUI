@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-62feeed06093e508f0f96946a31d27ef  QA-CHECKLIST.md
+b1c7e6be142db3a1a80fab0de33b21cb  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 5d4ed980f056a2509ba309fcade19e77  ROADMAP.md
 64b887e4bffa11008f517a29c7d447a1  SESSION-START-SUMMARY.md
@@ -106,8 +106,8 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 3948f17e4d4520c468e201eb110ed947  XayaUI/Timing.lua
 c3f703812134ef2760a13dc61e48b67e  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
-e709333c38c04f468d672d1ca3a6f4fc  XayaUI/Visual.lua
-94f0e9ff2cf5ecab908a1cf536cb5cee  XayaUI/XayaUI.toc
+b960051e71a9ecd030f9e9c39fb70cbd  XayaUI/Visual.lua
+83ca53f4534e6b6d011830c7af868c85  XayaUI/XayaUI.toc
 5d8ef2b3d9cd4855e81ae79e59a247ba  XayaUI_Bonus/Calculator.lua
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
@@ -444,6 +444,7 @@ c7868956d5a9f13edcbebb5956300968  debug-log/2026-11-04-2210-character-width-prob
 9ba11c446d815ab3accc6ac2d61ae7f3  debug-log/2026-11-04-2213-game-menu-grows-core-0.6.39.md
 cc9d1ed3dee5d80a51312a494fd7c128  debug-log/2026-11-04-2218-probe-findings-oh-flood-devassist-0.7.2.md
 8534575268d7d2d8a2111d3750efdd0e  debug-log/2026-11-04-2301-load-checks-no-garbage-core-0.6.41.md
+c1d7d03ab3ff7630015402cd7d314428  debug-log/2026-11-04-2303-mover-right-click-core-0.6.42.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -573,6 +574,7 @@ ca199b0e0b162ed0929162c975174830  tests/load_ids_run.py
 fb351c854fb47dee0e181ce1c3821350  tests/lua_pitfalls_run.py
 f19616c7613194a3b65115c2c4405087  tests/minimap_run.py
 adb52b5f86b97b5ac549353e59d97f36  tests/modules_run.py
+76d7c6c9a0b327c0ba8ca53af2e1169e  tests/mover_click_run.py
 4cc2faca4a8d474ac1a5aae6273d30fa  tests/mover_view_run.py
 1b83e47e74181dd789ddcafe4b0d937e  tests/notepad_run.py
 664a982d1241e03b0d01cda02de8c258  tests/options_layout_v11_run.py

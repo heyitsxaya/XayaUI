@@ -1476,6 +1476,7 @@ function ns.UnlinkAura(rule)
     if ns.MarkDirty then ns.MarkDirty() end
 end
 
+local DRAG_UP_WINDOW = 0.3   -- seconds after OnDragStop in which a left release still belongs to the drag (the mover view)
 function ns.ShowVisualMenu(rule, anchor)
     if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the menu API is not available in this client.") return end
     MenuUtil.CreateContextMenu(anchor, function(_, root)
@@ -1659,7 +1660,7 @@ local function GetFrame(rule)
     end)
     fr:SetScript("OnDragStart", function(self)
         if not Unl(rule) then return end
-        self.wasDragged = true
+        self.wasDragged, self.dragStoppedAt = true, nil
         -- a paired aura rides along: anchor it to this one at its current offset for the length of the drag
         local o = pairOf[rule]
         local of = o and frames[o]
@@ -1704,9 +1705,17 @@ local function GetFrame(rule)
         self:StartMoving()
     end)
     -- left click (without dragging) selects the aura and opens it in the editor; right click opens the move / snap / edit menu
+    -- (core 0.6.42; Xaya 2026-11-04: "right mouse click mover is unreliable") Drags are left-button only, so a right click is never
+    -- swallowed. A left release is ignored only when it ends a drag: while the drag runs (wasDragged) or within DRAG_UP_WINDOW after
+    -- OnDragStop. Before, OnMouseUp alone cleared wasDragged and swallowed whatever came next; a drag released off the display (the
+    -- game sends OnDragStop to the dragging frame but OnMouseUp only to the frame under the cursor) left it set, and the next right
+    -- click was lost.
     fr:SetScript("OnMouseUp", function(self, button)
         if not Unl(rule) then return end
-        if self.wasDragged then self.wasDragged = false; return end
+        if button == "LeftButton" and (self.wasDragged or (self.dragStoppedAt and (GetTime() - self.dragStoppedAt) <= DRAG_UP_WINDOW)) then
+            self.dragStoppedAt = nil
+            return
+        end
         if button == "LeftButton" then
             ns.SelectVisual(rule)
             if ns.EditRule then ns.EditRule(rule) end
@@ -1716,6 +1725,7 @@ local function GetFrame(rule)
         end
     end)
     fr:SetScript("OnDragStop", function(self)
+        self.wasDragged, self.dragStoppedAt = false, GetTime()
         self:StopMovingOrSizing()
         CommitDrag(rule, self, true)
         if self.linkRides then
