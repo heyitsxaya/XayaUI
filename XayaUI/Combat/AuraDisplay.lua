@@ -289,8 +289,31 @@ end
 -------------------------------------------------------------------------------
 -- Containers
 -------------------------------------------------------------------------------
--- Blizzard's flow layout settings for a XayaUI growth direction (nil = unsupported).
-local function FlowFor(dir, rev)
+-- The same definition as Visual.lua ns.DynamicBlock (which wins when it is loaded), so the engine never ignores a growth setting;
+-- tests/layout_parity_run.py checks the two agree for every growth, anchor point and wrap side.
+function D._BlockFallback(fo)
+    local dir = fo and fo.cGrowth or "RIGHT"
+    local rev = fo and fo.cWrapRev and true or false
+    if dir == "HCENTER" then
+        if rev then return { horiz = true, right = true, down = false, corner = "BOTTOMLEFT", pin = "BOTTOM", pinTo = "CENTER" } end
+        return { horiz = true, right = true, down = true, corner = "TOPLEFT", pin = "TOP", pinTo = "CENTER" }
+    elseif dir == "VCENTER" then
+        if rev then return { horiz = false, right = false, down = true, corner = "TOPRIGHT", pin = "RIGHT", pinTo = "CENTER" } end
+        return { horiz = false, right = true, down = true, corner = "TOPLEFT", pin = "LEFT", pinTo = "CENTER" }
+    elseif dir == "ANCHOR_ROW" or dir == "ANCHOR_COL" then
+        local pt = fo.cPoint or "CENTER"
+        if not TO_CENTER[pt] then pt = "CENTER" end
+        local onRight, onBottom = pt:find("RIGHT", 1, true) ~= nil, pt:find("BOTTOM", 1, true) ~= nil
+        return { horiz = (dir == "ANCHOR_ROW"), right = not onRight, down = not onBottom,
+            corner = (onBottom and "BOTTOM" or "TOP") .. (onRight and "RIGHT" or "LEFT"), pin = pt, pinTo = pt }
+    end
+    return nil
+end
+
+-- Blizzard's flow layout settings for a XayaUI growth direction (nil = unsupported). Edge growths (Right, Left, Down, Up) return
+-- axis, start corner and directions; block growths (Centered row / column, From anchor point) also return the container point
+-- that is pinned (`pin`) and the point of XayaUI's group frame it is pinned on (`pinTo`).
+local function FlowFor(dir, rev, fo)
     local A, F = AnchorUtil.FlowLayoutAxis, AnchorUtil.FlowDirection
     if dir == "RIGHT" then
         if rev then return A.Horizontal, "BOTTOMLEFT", F.Right, F.Up end                -- extra rows go up
@@ -304,6 +327,16 @@ local function FlowFor(dir, rev)
     if dir == "UP" then
         if rev then return A.Vertical, "BOTTOMRIGHT", F.Left, F.Up end
         return A.Vertical, "BOTTOMLEFT", F.Right, F.Up end
+    -- Block growth (Xaya 2026-11-04: "the trick would be getting the dynamic group to expand and contract based on the aura windows
+    -- actually appearing"; "the growth should also be informed by anchor placement in the parent group container"). Visual.lua
+    -- ns.DynamicBlock is the one definition, for XayaUI's own layout and this container. After every layout pass Blizzard sets the
+    -- container's size to the icons that are showing, in combat too (Blizzard_CustomAuraContainer.lua
+    -- CustomAuraContainerFlowLayoutMixin:OnLayoutComplete -> container:SetSize), so a container pinned by the block's `pin` point
+    -- grows and shrinks around it as auras come and go.
+    local b = fo and (ns.DynamicBlock or D._BlockFallback)(fo)
+    if b then
+        return b.horiz and A.Horizontal or A.Vertical, b.corner, b.right and F.Right or F.Left, b.down and F.Down or F.Up, b.pin, b.pinTo
+    end
 end
 
 -- The longest a line may be before it wraps: the container's width / height and / or "items per row / column" (same rule as XayaUI's
@@ -489,7 +522,7 @@ local function EnsureGroup(g, key, kind, w, h, sp, display, rec, sortKey, rev)
         sortMethod = method,
         sortDirection = dir,
         maxFrameCount = (kind == "main") and math.huge or 1,
-        layout = { elementSpacing = sp, lineSpacing = sp, groupSpacing = sp, groupLineSpacing = sp, elementWidth = w, elementHeight = h },
+        layout = { elementSpacing = sp, lineSpacing = sp, groupSpacing = 0, groupLineSpacing = sp, elementWidth = w, elementHeight = h },
         initializeFrame = ButtonInit(w, h, display, false, rec),
     })
     g.keyOf[key] = name
@@ -512,7 +545,35 @@ end
 
 -- Place a group container so its first icon lands exactly where XayaUI would draw the group's first icon. It hangs from
 -- XayaUI's own frame for the group, so the group's position, its parent groups, scale, opacity and moves all carry over.
-local function PlaceGroup(c, fo, anchor, iw, ih)
+local function PlaceGroup(c, fo, anchor, iw, ih, pin, pinTo)
+    if pin then   -- block growth: the self-sizing container hangs from XayaUI's group frame by its pin point
+        pinTo = pinTo or pin
+        local host = ns.GroupFrame and ns.GroupFrame(fo)
+        if host then
+            if c:GetParent() ~= host then c:SetParent(host) end
+            c:SetScale(1); c:SetAlpha(1)
+            c:SetFrameStrata(StrataFor(fo))
+            c:ClearAllPoints()
+            c:SetPoint(pin, host, pinTo, 0, 0)
+            return
+        end
+        -- fallback: the group frame's pinTo point from the group's own settings (same numbers as Visual.lua Container)
+        local sc = math.max(0.1, fo.cScale or 1)
+        local target = UIParent
+        local gname = (fo.cRel == "custom") and fo.cFrame or REL_FRAMES[fo.cRel]
+        local g = gname and gname ~= "" and _G[gname]
+        if g and g.GetCenter then target = g end
+        local pt = fo.cPoint or "CENTER"
+        local tc = TO_CENTER[pt] or TO_CENTER.CENTER
+        local W, H = math.max(1, fo.cW or 1), math.max(1, fo.cH or 1)
+        local pc = TO_CENTER[pinTo] or TO_CENTER.CENTER
+        local cx = (fo.cX or 0) / sc + tc[1] * W - pc[1] * W
+        local cy = (fo.cY or 0) / sc + tc[2] * H - pc[2] * H
+        c:SetScale(sc); c:SetAlpha(fo.cAlpha or 1); c:SetFrameStrata(StrataFor(fo))
+        c:ClearAllPoints()
+        c:SetPoint(pin, target, fo.cRelPoint or pt, cx, cy)
+        return
+    end
     local fx, fy
     if ns.DynamicFirstOffset then fx, fy = ns.DynamicFirstOffset(fo, iw, ih) end
     if not fx then local f = FIRST_ICON[fo.cGrowth or "RIGHT"] or { 0, 0 }; fx, fy = f[1] * iw, f[2] * ih end
@@ -607,9 +668,9 @@ local function BuildGroup(fo, members)
     groups[fo.id] = g
     g.members, g.ids, g.n, g.serial, g.allowed = members, {}, #members, serial, {}
     local dir = fo.cGrowth or "RIGHT"
-    local axis, anchor, hdir, vdir = FlowFor(dir, fo.cWrapRev and true or false)
+    local axis, anchor, hdir, vdir, pin, pinTo = FlowFor(dir, fo.cWrapRev and true or false, fo)
     if not axis then
-        Fail(g, "growth " .. tostring(dir) .. " not supported (Blizzard's layout has no centred growth)")
+        Fail(g, "growth " .. tostring(dir) .. " not supported")
         return g
     end
     for _, m in ipairs(members) do for id in pairs(m.spec.ids) do g.ids[id] = true end end
@@ -634,7 +695,10 @@ local function BuildGroup(fo, members)
                 local id = tostring(m.rule.uid or m.rule.name or i)
                 local name = EnsureGroup(g, id .. "\n" .. LookKey(m.spec.display) .. "#" .. w .. "x" .. h, "member", w, h, sp, m.spec.display, g)
                 c:SetAuraGroupCandidateFilters(name, { includeSpellIDs = m.spec.ids })
-                c:SetAuraGroupLayout(name, { elementSpacing = sp, lineSpacing = sp, groupSpacing = sp, groupLineSpacing = sp,
+                -- groupSpacing 0: Blizzard's flow already adds elementSpacing after every icon, and adds groupSpacing on top of it
+                -- before the next group on the same line (AnchorUtil.ApplyFlowLayout), so sp here would put 2 x sp between members
+                -- (the 0.6.6 build did; fixed in 0.6.7)
+                c:SetAuraGroupLayout(name, { elementSpacing = sp, lineSpacing = sp, groupSpacing = 0, groupLineSpacing = sp,
                     elementWidth = w, elementHeight = h, layoutIndex = rev and (n - i + 1) or i })
                 g.memberKey[i] = name
                 active[name] = true
@@ -653,7 +717,7 @@ local function BuildGroup(fo, members)
         c:SetFlowLayoutAnchorPoint(anchor)
         c:SetFlowLayoutGrowthDirection(hdir, vdir)
         c:SetFlowLayoutMaximumLineSize(limit)
-        PlaceGroup(c, fo, anchor, iw, ih)
+        PlaceGroup(c, fo, anchor, iw, ih, pin, pinTo)
         c:SetShown(not FolderUnlocked(fo.id))
     end)
     g.dirty = true   -- the live filter (load) is set by D.SyncLive
