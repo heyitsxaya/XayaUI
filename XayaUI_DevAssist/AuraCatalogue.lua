@@ -212,6 +212,10 @@ local function StepJournal(out)
     end
     local okSe, season = Call(C_MythicPlus and C_MythicPlus.GetCurrentSeason)
     if okSe and Num(season) then out.mplus.season = season end
+    -- C_MythicPlus.GetCurrentSeasonValues() -> displaySeasonID, milestoneSeasonID, rewardSeasonID (no flags; Dev Assist 0.7.1): marks
+    -- the live season in docs/reference/content/instances.json (INFERENCE: displaySeasonID is the client table's DisplaySeasonID)
+    local okSV, dsp, mil, rew = Call(C_MythicPlus and C_MythicPlus.GetCurrentSeasonValues)
+    if okSV then out.mplus.seasonValues = { display = Num(dsp) and dsp or nil, milestone = Num(mil) and mil or nil, reward = Num(rew) and rew or nil } end
     local okA, affixes = Call(C_MythicPlus and C_MythicPlus.GetCurrentAffixes)
     if okA and type(affixes) == "table" then
         for _, a in ipairs(affixes) do
