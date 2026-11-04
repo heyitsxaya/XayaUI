@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-72562a2d15ab1531eb68290d1e3a53d4  QA-CHECKLIST.md
+bc065210871739932617fc5e3e4f6e63  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 dd2eebcda02cac4b5495a998eee8dd79  ROADMAP.md
 a9ecf6c885b6b66457bd824a9193d62c  SESSION-START-SUMMARY.md
@@ -131,11 +131,11 @@ ded1de1be47477a60c0740ef7769629d  XayaUI_Bonus/Media/UI/Notepad/src/plus.svg
 0805ba82ac517f199eb9e04257af40f0  XayaUI_Bonus/Media/UI/Notepad/src/right.svg
 3bf002e271f0dd81925d669349f6fc48  XayaUI_Bonus/Media/UI/Notepad/src/trash.svg
 2a22ac682397b06e682d4cc0a0cd7abc  XayaUI_Bonus/Media/UI/Notepad/trash.png
-9c878a6de8d90c70b5f03225cb9f02b2  XayaUI_Bonus/Notepad.lua
+a71ac7b866221b1be83fedd9e8ef7d40  XayaUI_Bonus/Notepad.lua
 3bc3beb9eb5d5db244a4e646bd9b6062  XayaUI_Bonus/NotepadShare.lua
 21d279804aa0ab7530e6ae5755176903  XayaUI_Bonus/Tooltips.lua
 7964bb7d450bb9f0c26fed89749d5536  XayaUI_Bonus/TooltipsUI.lua
-f5a0b2345432b6ef4cdbfb3c444fe72c  XayaUI_Bonus/XayaUI_Bonus.toc
+13de3840f6ccfb2f5129811fa2fb6871  XayaUI_Bonus/XayaUI_Bonus.toc
 83c87e8920a975caccb49149edab3556  XayaUI_Chat/Bar.lua
 b484c9d047a69769000f756fd0c00175  XayaUI_Chat/Core.lua
 691117347e0437f78c88e3734c54c438  XayaUI_Chat/Fade.lua
@@ -434,6 +434,7 @@ cec2b7fa38d9fd84c8f399c9f79c556a  debug-log/2026-11-04-2137-exact-spell-id-b4-co
 663928e7dee12b27156b85373a006b09  debug-log/2026-11-04-2150-margins-chat-history-chat-0.6.11.md
 6f6779a298411c5b2adf543bd2897a98  debug-log/2026-11-04-2156-margins-notepad-popups-bonus-0.6.9.md
 c86d21b18c98b498d1b5649bac4c4819  debug-log/2026-11-04-2157-margins-mover-popups-core-0.6.37.md
+67ce57c08cb306ea171e8afe055f5245  debug-log/2026-11-04-2159-margins-notepad-bonus-0.6.10.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -579,7 +580,7 @@ eccba8875a1faeb20465640570668d83  tests/trigger_parity_run.py
 7bdbd8daaa8aaab8b1a64cdbc9a0b436  tests/usage_check.lua
 06abd3bc39893cbb62c55a168ba32788  tests/usage_run.py
 f9cff67f0a8f112ac867d11c09641835  tests/window_footer_run.py
-48c1d29954efc6ea393a46db6abbb775  tests/window_margins_run.py
+480b49a29f06991788f1bff461d947fd  tests/window_margins_run.py
 9cf2dbe8870484cac06007449100805c  tools/formula_fit.py
 5ea11cb0d56f3c473cd881158515069e  tools/manifest.py
 f7da6506c18b451dcf535c9484dbcbb1  tools/precheck.py

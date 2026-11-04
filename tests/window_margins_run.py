@@ -6,12 +6,12 @@ game (tests/harness places frames from their anchors) and measures them:
   - every control and every text with a box (two anchors, or a set width) sits at least UI_MARGIN inside the window's edges;
   - any two controls side by side (their heights overlap) are at least UI_GUTTER apart; any two controls stacked (their widths
     overlap) are at least UI_GUTTER apart;
-  - exempt, as in Blizzard's windows: title-bar close buttons and corner resize grips (they sit at the edge), full-window
-    backgrounds and borders, segmented rows (the toolkit's tabs and filter buttons keep their 2 px seams), single-line titles and
+  - exempt, as in Blizzard's windows: title-bar close buttons, corner resize grips and bands across the window (a title bar, the
+    notepad's name row and toolbar) sit at the edge and may touch each other; full-window backgrounds and borders, segmented rows (the toolkit's tabs and filter buttons keep their 2 px seams), single-line titles and
     hints (typography, only their margin is checked).
 Windows: the console window and the copy box (core), the import window (Options), the Stat Calculator panel (QoL), the chat history
 window (Chat), the notepad's shared-note offer, share, export / import and restore windows (Bonus), the mover view's group X / Y
-popup and the frame picker (core). Still to come: the notepad window itself.
+popup and the frame picker (core), the notepad window and its name row (Bonus).
 Run: python3 tests/window_margins_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -81,7 +81,7 @@ local function measure(label, win, opts)
     it.r = rect(it.f)
     if not it.edge and it.r.w > 0 and it.r.h > 0 then
       local l, r, t, b = it.r.l - wr.l, wr.r - it.r.r, wr.t - it.r.t, it.r.b - wr.b
-      if l < M - 0.01 or r < M - 0.01 or t < M - 0.01 or (b < M - 0.01 and not it.text) then
+      if l < M - 0.01 or r < M - 0.01 or (not opts.sidesOnly and (t < M - 0.01 or (b < M - 0.01 and not it.text))) then
         bad[#bad + 1] = ("%s: left %g right %g top %g bottom %g"):format(it.name, l, r, t, b)
       end
     end
@@ -90,7 +90,8 @@ local function measure(label, win, opts)
   local gaps = {}
   for i = 1, #list do for j = i + 1, #list do
     local a, c = list[i], list[j]
-    if a.r.w > 0 and c.r.w > 0 and not (a.seg and c.seg and a.seg == c.seg) and not (a.text and c.text) then
+    -- (two edge parts, such as a title bar and the band under it, may touch: together they are the window's header)
+    if a.r.w > 0 and c.r.w > 0 and not (a.seg and c.seg and a.seg == c.seg) and not (a.text and c.text) and not (a.edge and c.edge) then
       local yOver = a.r.b < c.r.t and c.r.b < a.r.t
       local xOver = a.r.l < c.r.r and c.r.l < a.r.r
       if yOver and not xOver then
@@ -201,6 +202,17 @@ local okF, errF = pcall(ns.PickFrame, "Anchor the group 'Active Mitigation' to a
 local pk = rawget(_G, "XayaUIFramePicker")
 check("the frame picker opens", okF and pk ~= nil and pk:IsShown(), errF)
 if pk then measure("frame picker", pk) end
+-- 8. The notepad window (Bonus) -------------------------------------------------------------------------------------------------
+local okN, errN = pcall(ns.Notepad_Toggle)
+local np = rawget(_G, "XayaUINotepad")
+check("the notepad opens", okN and np ~= nil and np:IsShown(), errN)
+if np then
+  measure("notepad (toolbar on top)", np)
+  local nrow
+  for _, k in ipairs({ np:GetChildren() }) do if rawget(k, "xuiEdge") and k._h == 22 then nrow = k end end
+  check("the notepad's name row is found", nrow ~= nil)
+  if nrow then measure("notepad name row (its sides)", nrow, { sidesOnly = true }) end
+end
 return R
 end
 '''
