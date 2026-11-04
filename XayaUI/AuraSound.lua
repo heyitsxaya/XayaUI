@@ -125,6 +125,10 @@ function A.Sync()
             end
             if #got > 0 then registered[r] = { ids = got, sig = p.sig, partial = err }; lastWhy[r] = nil
             else lastWhy[r] = "the game refused it: " .. tostring(err) end
+            if ns.RecordLine then
+                ns.RecordLine("sound", ("game-played sound for rule '%s' (auras %s, %s): %s"):format(tostring(r.name), table.concat(p.ids, ","), p.when,
+                    #got > 0 and ("set up, " .. #got .. " ID(s)" .. (err and ("; some refused: " .. tostring(err)) or "")) or ("refused: " .. tostring(err))))
+            end
         end
     end
     return true

@@ -1352,21 +1352,52 @@ local function InCDM(id)
     local ok, fr = pcall(ns.FindCDMFrame, id)
     return ok and fr ~= nil
 end
+-- Built into every aura trigger (0.6.20, Xaya: glows and tier sets "should be baked into the aura tracking functionality itself"):
+-- the line also says when a proc glow stands in for a hidden aura (Conditions.lua ns.ProcGlowInfo) and when the aura comes only from a
+-- tier-set bonus (SetBonusAuras.lua), so the player sees what XayaUI will use without adding a separate trigger.
+local function Extras(ids)
+    local out = {}
+    for _, id in ipairs(ids) do
+        id = tonumber(id) or 0
+        local e = id > 0 and type(ns.SET_BONUS_AURAS) == "table" and ns.SET_BONUS_AURAS[id]
+        if type(e) == "table" then
+            local off = ns.SetBonusOff and ns.SetBonusOff(id)
+            out[#out + 1] = ("comes only from a %d-piece set bonus (set %d)%s"):format(e.pieces, e.set,
+                off and (": " .. off .. ", so it reads missing, in combat too") or ": active now")
+            break
+        end
+    end
+    return out
+end
 local function AuraLine(ids)
-    local open, cdm, hidden = 0, 0, {}
+    local open, cdm, hidden, glow, glowWait = 0, 0, {}, nil, nil
     for _, id in ipairs(ids) do
         id = tonumber(id) or 0
         if id > 0 then
             if Secrecy("GetSpellAuraSecrecy", id) == "never" then open = open + 1
             elseif InCDM(id) then cdm = cdm + 1
-            else hidden[#hidden + 1] = id end
+            else
+                local gi = ns.ProcGlowInfo and ns.ProcGlowInfo(id)
+                if gi and gi.trusted then glow = gi
+                else hidden[#hidden + 1] = id; if gi then glowWait = gi end end
+            end
         end
     end
-    if open + cdm + #hidden == 0 then return nil end
-    if #hidden == 0 and cdm == 0 then return "|cff55ff55In combat: readable|r (the game never hides this aura)" end
-    if #hidden == 0 then return "|cff55ff55In combat: through Blizzard's Cooldown Manager|r (present / missing; the time is exact when shown, else estimated)" end
+    if open + cdm + #hidden + (glow and 1 or 0) == 0 then return nil end
+    local extra = Extras(ids)
+    local tail = (#extra > 0) and (". It " .. table.concat(extra, "; ")) or ""
+    if #hidden == 0 and glow then
+        return "|cff55ff55In combat: present from its proc glow|r (" .. table.concat(glow.names, ", ") .. " glowing; seen to agree " .. glow.yes .. " times in game). Missing stays unknown: no glow is not proof" .. tail
+    end
+    if #hidden == 0 and cdm == 0 then return "|cff55ff55In combat: readable|r (the game never hides this aura)" .. tail end
+    if #hidden == 0 then return "|cff55ff55In combat: through Blizzard's Cooldown Manager|r (present / missing; the time is exact when shown, else estimated)" .. tail end
     local which = (#ids > 1) and (" (" .. table.concat(hidden, ", ") .. ")") or ""
-    return "|cffffd100In combat: hidden|r" .. which .. ": add it to Blizzard's Cooldown Manager (Tracked Buffs), or the trigger reads UNKNOWN in combat and the rule waits"
+    local g = ""
+    if glowWait then
+        g = glowWait.no > 0 and (" Its proc glow (" .. table.concat(glowWait.names, ", ") .. ") was seen to disagree once, so it is not used.")
+            or (" Its proc glow (" .. table.concat(glowWait.names, ", ") .. ") will stand in once XayaUI has seen them agree " .. glowWait.need .. " times (" .. glowWait.yes .. " so far; Advanced Debugging records each sighting).")
+    end
+    return "|cffffd100In combat: hidden|r" .. which .. ": add it to Blizzard's Cooldown Manager (Tracked Buffs), or the trigger reads UNKNOWN in combat and the rule waits." .. g .. tail
 end
 function ns.TriggerCombatNote(rule, tok, row)
     if tok == "buff" then

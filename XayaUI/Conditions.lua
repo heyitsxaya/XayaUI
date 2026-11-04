@@ -772,7 +772,24 @@ function ns.ObserveGlowPairing(buttonID)
     local e = A[aura]
     if type(e) ~= "table" then e = { yes = 0, no = 0 }; A[aura] = e end
     if st then e.yes = (e.yes or 0) + 1 else e.no = (e.no or 0) + 1; e.lastNoButton = buttonID end
+    if ns.RecordLine then
+        ns.RecordLine("glow", ("button %s glowed; aura %s (%s) was %s: pairing seen %d agree / %d disagree"):format(tostring(buttonID), tostring(aura),
+            tostring(SpellNameOf(aura)), st and "on you" or "NOT on you", e.yes or 0, e.no or 0))
+    end
     return st
+end
+-- What the glow fallback knows about aura `aura`: its buttons, the in-game sightings so far, and whether it is trusted (for the trigger's
+-- "In combat" line). nil when no button is listed for it.
+function ns.ProcGlowInfo(aura)
+    aura = tonumber(aura)
+    local list = aura and type(ns.PROC_GLOW_AURAS) == "table" and ns.PROC_GLOW_AURAS[aura]
+    if not list then return nil end
+    local A = GlowSeenDB()
+    local e = A and A[aura]
+    local yes, no = (type(e) == "table" and e.yes) or 0, (type(e) == "table" and e.no) or 0
+    local names = {}
+    for i, b in ipairs(list) do names[i] = tostring(SpellNameOf(b) or b) end
+    return { buttons = list, names = names, yes = yes, no = no, trusted = (no == 0 and yes >= GLOW_TRUST), need = GLOW_TRUST }
 end
 -- Is aura `aura` up, judged by a glowing button only it lights? true or nil (never false).
 function ns.ProcGlowSaysPresent(aura)
@@ -841,7 +858,43 @@ end
 --   3. then a Tracked Buffs icon filed under the aura's NAME (Blizzard often files a tracker under the ability: 0.6.11 did this
 --      for Target Debuff only).
 -- Returns present, source text, reference, and the ID it was found under.
+-- Tier-set auras (SetBonusAuras.lua, generated from the game's own data): an aura only a set bonus can apply is certainly not on you
+-- while that bonus is not active (too few pieces of the set worn, or the bonus is for another specialization). Equipment and spec are
+-- readable in combat, so this answers "missing" where the aura itself is hidden. Returns the reason, or nil (no such aura, the bonus
+-- is active, or the gear is not known yet).
+local function SetBonusOff(id)
+    local e = type(ns.SET_BONUS_AURAS) == "table" and ns.SET_BONUS_AURAS[id]
+    if type(e) ~= "table" then return nil end
+    local counts = ns.EquippedSetCounts and ns.EquippedSetCounts()
+    if type(counts) ~= "table" then return nil end
+    local have = counts[e.set] or 0
+    if have < (e.pieces or 0) then
+        return ("its %d-piece set bonus is not active (you wear %d of set %d)"):format(e.pieces, have, e.set)
+    end
+    local any, specs = false, e.specs or { 0 }
+    for _, sp in ipairs(specs) do if sp == 0 then any = true end end
+    if not any then
+        local cur = ns.CurrentSpecID and ns.CurrentSpecID()
+        if cur == nil then return nil end
+        for _, sp in ipairs(specs) do if sp == cur then return nil end end
+        return "its set bonus is for another specialization"
+    end
+    return nil
+end
+ns.SetBonusOff = SetBonusOff
 function ns.AuraPresence(mainID, alts, spellID)
+    -- 0. every listed aura comes only from a set bonus that is not active: missing, for sure (in combat too)
+    do
+        local ids, why = { tonumber(mainID) }, nil
+        if type(alts) == "table" then for _, a in ipairs(alts) do ids[#ids + 1] = tonumber(a) end end
+        local all = #ids > 0
+        for _, id in ipairs(ids) do
+            local w = id and id > 0 and SetBonusOff(id)
+            if not w then all = false; break end
+            why = why or w
+        end
+        if all then return false, "set bonus: " .. why end
+    end
     local p, s, r, w = ns.AuraPresentList(mainID, alts)
     if p ~= nil then return p, s, r, w end
     if spellID then
@@ -883,16 +936,34 @@ function ns.BuffPresentAny(rule)
     return ns.AuraPresence(rule.buffID, rule.buffAlt, rule.spellID)
 end
 
+-- Advanced Debugging record (DebugRecord.lua): each aura's answer is written down when it changes (present / missing / unknown, and
+-- which source gave it), so a combat can be followed afterwards without typing /xui status. Off: nothing is built or kept.
+local recLast = {}
+local function RecordAura(id, present, src)
+    if not (ns.RecordOn and ns.RecordOn()) then return end
+    local kind = tostring(src or ""):match("^([^%(:|]+)") or tostring(src)
+    kind = kind:gsub("%s+$", "")
+    local key = tostring(present) .. "|" .. kind
+    if recLast[id] == key then return end
+    recLast[id] = key
+    ns.RecordLine("aura", ("%s (%d): %s, %s"):format(tostring(SpellNameOf and SpellNameOf(id) or "?"), id,
+        present == true and "present" or (present == false and "missing" or "unknown"), tostring(src)))
+end
 local BuffPresentOnce
 -- (one read per aura per engine step: several rules often watch the same aura, and the tracker's side effects should run once)
 function ns.BuffPresent(id)
     local memo = id and ns.StepMemo and ns.StepMemo("buff")
-    if not memo then return BuffPresentOnce(id) end
+    if not memo then
+        local p, s, r = BuffPresentOnce(id)
+        if id then RecordAura(id, p, s) end
+        return p, s, r
+    end
     local m = memo[id]
     if not m then
         m = {}
         m[1], m[2], m[3] = BuffPresentOnce(id)
         memo[id] = m
+        if id then RecordAura(id, m[1], m[2]) end
     end
     return m[1], m[2], m[3]
 end
