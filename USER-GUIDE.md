@@ -616,23 +616,73 @@ Two separate effects (XayaUI QoL) that make the mouse cursor easy to find. Both 
 
 ### 12.12 Character Toolkit
 
-A panel beside the character window (XayaUI QoL) that shows how every stat is built, where it comes from, and what the next point buys. It does not copy the character window: it adds what that window leaves out. Off by default. Every number is read from the game when the panel draws; anything the game does not give as a number is marked "not given by the game" and is never guessed. Values show two decimals.
+A panel beside the character window (XayaUI QoL) that shows every stat the game gives, how each number is built, where it comes from, and what the next point buys. It does not copy the character window: it adds what that window leaves out. Off by default. Every number is read from the game when the panel draws. Anything the game does not give as a number is marked "not given by the game" and is never guessed. A value the game hides in combat shows "hidden in combat" and fills in again afterwards. Colors and font follow the XayaUI theme.
+
+**How the panel reads:**
+- **Tabs** along the top. Each tab is made of sections with a header. Click a header to fold or unfold its section.
+- **Each stat line** has its name on the left and its value on the right. The detail lines under it (label and value) show how the value is built.
+- **Hover any line** to see where the number comes from:
+  - the total split into what your rating gives and what other sources give (talents, buffs, your spec's base);
+  - the rating turned into a percent through the game's own converter, and the rating per 1%;
+  - base against buffs and debuffs;
+  - linked conversions the game reports, such as crit rating that also gives parry, your primary stat to attack power and to dodge or parry, Stamina to health, and Versatility to damage taken;
+  - every diminishing-return threshold.
+- **Rating or percent:** the "Show: %" / "Show: rating" button in the title row switches every rating line between its percent and its rating. Clicking one rating line flips that line alone; the button resets every single-line flip.
 
 **Tabs:**
-- **Overview:** your spec, primary stat and mastery factor; your primary stat and Stamina with base, buffs and debuffs; item level (equipped, best in bags, PvP); movement speeds (run, swim, flight, now) as a percent of base speed; your mastery spell in the game's own words, numbers filled in. Under **At a glance**, one line for every stat on the other tabs.
-- **Ratings** (Critical Strike, Haste, Mastery, Versatility, Avoidance, Leech, Speed): the total; true rating and the percent it gives; rating lost to diminishing returns; the penalty on your next point; rating per 1%; the exact rating for your next 1% (accounts for thresholds); the next diminishing-return threshold and how far away it is; the part of the total that comes from other sources (talents, buffs, your spec's base). Hover for every threshold, crit or haste by kind (melee, ranged, spell), and the method. Mastery is counted in mastery percent (rating x your spec's mastery factor, read from the game). Haste from other sources assumes haste sources multiply, and says so.
-- **Defense:** Stamina to health (per point, and Stamina for +1% max health); armor to damage reduction against your level and your current target, armor for the next 1%, base armor against buffs and talents; dodge; parry, with crit to parry for specs that have it (before diminishing returns, as the character window words it); block chance and block amount; stagger for specs that have it; Versatility to damage taken.
-- **Offense:** attack power (base, buffs, debuffs; per point of Strength or Agility; amount for +1%; spell power to attack power for specs that convert it); spell power, healing bonus, attack power to spell power, spell haste; attack speed, with haste rating for 0.01 s faster; main and off hand damage and DPS, physical damage modifier, expertise; ranged weapon when you have one; resource regeneration; global cooldown, with the haste and haste rating for 0.01 s shorter (read from the game the last time one ran out of combat; the unhasted figures are labelled estimates).
-- **Gear:** each equipped item's item level, the secondary ratings its stat table lists, empty sockets, and durability below 100%. **Gear totals** compares the ratings your items list with your character's ratings; the difference is "from elsewhere" (gems, enchants, buffs, or effects the item stat tables leave out). This tab reads your items only while it is open.
+- **Sheet:** every stat of the Stats, Defense and Offense tabs in two compact columns, grouped under the same section headers. Each entry has its own hover with the same detail as the full line, and a click flips a rating between percent and rating.
+- **Stats:**
+  - **Character:** your spec and role, primary stat and mastery factor; item level (equipped, best in bags, PvP); your Mythic+ rating with each dungeon's best run (and whether it was over time) and your best rating this expansion; movement speeds (run, swim, flight, now) as a percent of base speed; your mastery spell in the game's own words, numbers filled in.
+  - **Attributes:** your primary stat and Stamina with base, buffs and debuffs, the attack power your primary stat gives, the dodge (Agility) or parry (Strength) it gives where the game reports it, and Stamina to health. Your other primary stats are listed in grey.
+  - **Secondary and tertiary stats** (Critical Strike, Haste, Mastery, Versatility, Avoidance, Leech, Speed):
+    - the total, your rating, and the percent it gives;
+    - the part of the total that comes from other sources;
+    - rating per 1%, and the exact rating for your next 1% (accounts for thresholds);
+    - rating lost to diminishing returns, the penalty on your next point, and the next threshold and how far away it is.
+    - Critical Strike also shows the parry it gives for specs that turn crit into parry (before diminishing returns, as the character window words it). Versatility also shows the damage taken reduction. Mastery is counted in mastery percent (rating x your spec's mastery factor, read from the game). Haste from other sources assumes haste sources multiply, and says so.
+- **Defense:** armor to damage reduction against your level and your current target, armor for the next 1%, base armor against buffs and talents; Stamina to health; dodge (with the share from Agility where the game gives it); parry (crit to parry for specs that have it, the share from Strength where the game gives it); block chance and how much a block reduces a hit (shown with a shield or any block chance); stagger for specs that have it; Versatility to damage taken.
+- **Offense:** attack power (base, buffs, debuffs; per point of Strength or Agility; the amount for +1%; the damage per second it adds, as the character window works it out); spell power, healing bonus, the attack power and spell power links some specs have, and spell haste; attack speed, with the haste rating for 0.01 s faster; main and off hand damage and DPS, physical damage modifier, expertise; a ranged weapon when you have one; the global cooldown, read live from the game each time one runs (in combat too, while the game shows it), with the haste and haste rating for 0.01 s shorter (the unhasted figures are labelled estimates); resource regeneration.
+- **Gear:**
+  - **Summary:** the secondary ratings your items' stat tables list, against your character's ratings; the difference is "from elsewhere" (gems, enchants, buffs, or effects the tables leave out).
+  - **Durability and repair:** overall durability, the lowest item, how many items are damaged; the repair cost the game gives in your items' data (shown as not given where the game gives none). At a repair vendor, the vendor's own "repair all" cost.
+  - **Slots:** each equipped item's item level, listed ratings, empty sockets, whether it has an enchant, durability below 100%, and its repair cost.
+  - This tab reads your items only while it is open.
+- **What If:**
+  - **Rating per stat:** type extra rating for any stat (a minus sign for less) and press Enter. The line shows the gain, the new percent from rating, the new rating, and any threshold it crosses. It is read through the game's own converter, so thresholds apply.
+  - **All ratings:** adds the same amount to every stat. Each stat's line on the Stats tab shows its own amount plus this one.
+  - **Compare an item:** shift-click an item into the box (or type an item ID) and press Enter. The panel shows the item's level and the equipped item of the same kind it replaces (for two rings or trinkets, the lower item level). Then:
+    - each rating change, through the converter;
+    - your primary stat change and the attack power it gives;
+    - Stamina to health, and armor to damage reduction.
+    - Both items' stats come from the game at the item level in the link. Gems, enchants and set bonuses are not in an item's stat table. On-use and proc effects, and the same item at another item level, are not given by the game and are not estimated.
 - **Spells (advanced, off by default):** for spells you add, each number in the spell's current description divided by your current attack power (or spell power), and what one point of your primary stat adds. This is the ratio as it stands now, with talents and buffs already in it; it is not Blizzard's base coefficient, and numbers that do not scale with attack or spell power (durations, charges) give meaningless ratios. You can type a coefficient from a database such as Wowhead next to each spell; the panel shows it beside the measured ratio and flags a large difference.
 
-**What if +N rating:** type a number in the box under the tabs and press Enter. Every rating shows what that much more (or less, with a minus sign) would give, read through the game's own converter so thresholds apply. 0 turns it off.
+**Slot overlays (off by default):** marks on the character window's item slots. The item level shows at the bottom of each slot, and the number of empty sockets at the top (for example 2S). The game does not say which slots take an enchant, so you tick the slots to check. A ticked slot with no enchant shows E? (orange), and an enchanted one shows E (green).
 
-**Character window tooltips:** hovering a stat in the character window adds the toolkit's lines under Blizzard's own text (can be switched off).
+**Character window tooltips:** hovering a stat in the character window adds the toolkit's lines under Blizzard's own text (can be switched off). The panel's own hover does not depend on it.
 
-**Where:** QoL > Character Toolkit. Tabs: Panel (show the panel, side, detail level, tooltip lines, what-if amount, text size, background opacity) | Spell Math (switch, add a spell by ID, name, or shift-clicked link; per spell: scales with attack or spell power, optional coefficient, remove). `/xui stats` shows or hides the panel (docked when the character window is open, otherwise free and draggable); `/xui stats on`, `off`, `options`, `status`.
+**Where:** QoL > Character Toolkit. Its own page has the on/off switch and quick switches for the panel, the slot overlays and the tooltip lines. Under it in the left pane:
+- **Panel**, with tabs:
+  - Layout: show the panel, side, detail level (every line or key lines), rating lines (percent or rating), text size, background.
+  - What If: the All ratings amount, Clear all, Reset line flips.
+  - Tooltips: the character window lines.
+- **Slot Overlays**, with tabs:
+  - Show: slot overlays, item level, empty sockets, enchant check, text size.
+  - Enchant Slots: the slots to check for an enchant.
+- **Spell Math:** the switch, and adding a spell by ID, name, or shift-clicked link. Per spell: scales with attack or spell power, an optional coefficient, remove.
 
-**Limits:** diminishing-return thresholds are found by scanning the game's own rating converter, not from a table. If the game's converter disagrees with its own current value, the stat says so; if the converter is missing, only current figures are shown. Thresholds are read out of combat. Stat reads that the game hides (secret values) show as unavailable. Not given by the game as numbers: primary stat to armor, dodge, or parry, stat to block, attack power to weapon damage, and a mastery's own percent modifiers (read those in the mastery text on Overview). The tooltip lines rely on matching the stat names in the character window, so another addon that renames them stops the lines (the panel is unaffected).
+`/xui stats` shows or hides the panel (docked when the character window is open, otherwise free and draggable); `/xui stats on`, `off`, `options`, `status`.
+
+**Limits:**
+- Diminishing-return thresholds are found by scanning the game's own rating converter, not from a table. If the converter disagrees with the game's own current value, the stat says so; if the converter is missing, only current figures are shown. Thresholds are read out of combat.
+- Not given by the game as numbers:
+  - primary stat to armor;
+  - dodge or parry per point of a primary stat (the game gives only the total from Agility or Strength);
+  - stat to block;
+  - attack power to weapon damage per hit (the damage per second the character window shows is given);
+  - a mastery's own percent modifiers (read those in the mastery text).
+- The enchant check reads the enchant field of the item link. Repair cost needs the game to put it in the item's data, which it may do only at a vendor.
+- The tooltip lines rely on matching the stat names in the character window, so another addon that renames them stops the lines (the panel is unaffected).
 
 **How the settings pages are laid out (all feature tabs, from 0.6.1 on):** a feature is an entry in the left pane, its parts are entries under it, and the sections of one part are tabs. The feature's own page holds its main switches.
 

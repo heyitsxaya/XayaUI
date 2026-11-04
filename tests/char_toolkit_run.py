@@ -1,5 +1,7 @@
-# Stub test for QoL > Character Toolkit (XayaUI_QoL 0.6.2): StatMath.lua (thresholds, lost rating, rating per 1%, next 1%) and
-# CharacterToolkit.lua (model rows, secret values, linked stats, spell-number parsing, tooltip label matching, settings page, command).
+# Stub test for QoL > Character Toolkit (XayaUI_QoL 0.7.0): StatMath.lua (thresholds, lost rating, rating per 1%, next 1%, what-if,
+# item stat deltas, coins) and the phase-1 checks of the model (CharacterModel.lua) and panel (CharacterToolkit.lua), kept through the
+# 0.7.0 rebuild (V9). The phase-2 checks (sections, value toggle, hover, sheet, What If, overlays, secrets, settings) are in
+# tests/char_toolkit2_run.py. Stand-in game world: tests/char_toolkit_world.lua.
 # Run from the repo root: python3 tests/char_toolkit_run.py   Needs: pip install lupa.
 # The converter below is a TEST STAND-IN with a made-up bracket shape (rate 1/46 per point, penalties from 30%); it is not game data
 # and nothing from it ships. What it checks is that the scan FINDS whatever brackets the converter has, and finds none when there are none.
@@ -77,189 +79,101 @@ check("rounded converter: penalties are whole percents", thr[3] and math.abs(thr
 local x = SM.Solve(function(v) return v / (v + 10000) * 100 end, 40, 0, 1e6, true)
 check("Solve inverts armor-like curves", x and math.abs(x - 6666.67) < 0.1, x)
 check("Solve: unreachable target is nil", SM.Solve(function(v) return v / (v + 10000) * 100 end, 120, 0, 1e6, true) == nil)
+
+-- 5. What if, item stat deltas, coins (0.7.0)
+local w = SM.WhatIf(dr, 528, 852, 1, th)
+check("WhatIf +852 from 528: exactly to the 30% threshold (+18.52%)", w and math.abs(w.gain - (30 - 528 / 46)) < 1e-9 and w.newRating == 1380, w and w.gain)
+check("WhatIf +852 lands on the threshold, so it counts as crossed", w and #w.crossed == 1 and w.crossed[1].rating == 1380, w and #w.crossed)
+w = SM.WhatIf(dr, 528, 1000, 1, th)
+check("WhatIf +1000: the 148 points past 1380 count 90% (thresholds apply)", w and math.abs(w.gain - ((30 - 528 / 46) + 148 / 46 * 0.9)) < 1e-9, w and w.gain)
+w = SM.WhatIf(dr, 528, -1000, 1, th)
+check("WhatIf -1000 stops at 0 rating (-11.48%)", w and w.newRating == 0 and math.abs(w.gain + 528 / 46) < 1e-9, w and w.newRating)
+w = SM.WhatIf(dr, 997, 100, 2.8, th)
+check("WhatIf with the mastery factor: +100 = +6.09% mastery", w and math.abs(w.gain - 100 / 46 * 2.8) < 1e-9, w and w.gain)
+check("WhatIf: a converter that gives nothing -> nil", SM.WhatIf(function() return nil end, 10, 10) == nil)
+local d = SM.StatDelta({ A = 400, B = 100, C = "x" }, { A = 300, D = 200, B = 100 })
+check("StatDelta: new - old per key, keys only in old go negative, equal and non-numbers left out", d.A == 100 and d.D == -200 and d.B == nil and d.C == nil)
+local g, sv, cp = SM.Coins(1234567)
+check("Coins: 1,234,567 copper = 123g 45s 67c", g == 123 and sv == 45 and cp == 67, tostring(g) .. " " .. tostring(sv) .. " " .. tostring(cp))
+check("Coins: negative or not a number -> nil", SM.Coins(-1) == nil and SM.Coins("5") == nil)
 ''' .replace("__SM__", P("XayaUI_QoL/StatMath.lua")))
 
-# --- CharacterToolkit.lua with stand-in game calls ----------------------------------------------------------------------------
-lua.execute(r'''
-local function mk(kind)
-  local o = { kind = kind, shown = false, pts = {}, scripts = {}, hooks = {}, events = {} }
-  return setmetatable(o, { __index = function(t, k)
-    if type(k) ~= "string" or not k:match("^%u") then return nil end
-    local F = {
-      Show = function(self) self.shown = true; if self.hooks.OnShow then for _, f in ipairs(self.hooks.OnShow) do f(self) end end end,
-      Hide = function(self) self.shown = false; if self.hooks.OnHide then for _, f in ipairs(self.hooks.OnHide) do f(self) end end end,
-      IsShown = function(self) return self.shown end,
-      SetScript = function(self, s, f) self.scripts[s] = f end,
-      HookScript = function(self, s, f) self.hooks[s] = self.hooks[s] or {}; table.insert(self.hooks[s], f) end,
-      RegisterEvent = function(self, e) self.events[e] = true end, RegisterUnitEvent = function(self, e) self.events[e] = true end,
-      UnregisterAllEvents = function(self) self.events = {} end,
-      CreateTexture = function() return mk("Texture") end, CreateFontString = function() local f = mk("FS"); f.text = ""; return f end,
-      SetText = function(self, s) self.text = s end, GetText = function(self) return self.text end,
-      GetStringHeight = function() return 12 end, GetFont = function() return "Fonts\\FRIZQT__.TTF", 12, "" end,
-      GetHeight = function(self) return self.h or 0 end, SetHeight = function(self, h) self.h = h end,
-      SetSize = function(self, w, h) self.w, self.h = w, h end, GetCenter = function() return 0, 0 end,
-      GetVerticalScroll = function() return 0 end, GetChildren = function(self) return unpack(self.children or {}) end,
-      IsOwned = function(self, f) return self.owner == f end, SetOwner = function(self, f) self.owner = f; self.lines = {} end,
-      AddLine = function(self, s) self.lines = self.lines or {}; table.insert(self.lines, s) end,
-    }
-    return F[k] or function() end
-  end })
-end
-CreateFrame = function(kind, name) local f = mk(kind); if name then _G[name] = f end; return f end
-UIParent = mk("Frame")
-GameTooltip = mk("GameTooltip")
-C_Timer = { After = function(_, fn) fn() end }
-InCombatLockdown = function() return false end
-hooksecurefunc = function(name, fn) local old = _G[name]; _G[name] = function(...) local r = { old(...) }; fn(...); return unpack(r) end end
-STAT_CRITICAL_STRIKE, STAT_MASTERY, STAT_PARRY, SPELL_STAT3_NAME = "Critical Strike", "Mastery", "Parry", "Stamina"
 
--- game reads (VDH-like numbers from Xaya's screenshot: 528 crit = 11.48%, 997 mastery, 69,647 stamina)
-local RATE = 1 / 46
-local function dr(x) local lin = x * RATE; if lin <= 30 then return lin end; return 30 + (lin - 30) * 0.9 end
-local ratings = { [9] = 528, [18] = 1200, [26] = 997, [29] = 120, [31] = 120, [21] = 0, [17] = 0, [14] = 0, [4] = 0, [3] = 0 }
-GetCombatRating = function(i) return ratings[i] or 0 end
-GetCombatRatingBonus = function(i) if i == 4 then return 0 end; if i == 31 then return dr(ratings[i]) / 2 end; return dr(ratings[i] or 0) end
-GetCombatRatingBonusForCombatRatingValue = function(i, v) if i == 31 then return dr(v) / 2 end; if i == 4 then return v / 52 end; return dr(v) end
-GetCritChance = function() return 22.48 end
-GetRangedCritChance = function() return 5 end
-GetSpellCritChance = function() return 5 end
-GetHaste = function() return 29.25 end
-GetMeleeHaste = function() return 29.25 end
-GetMasteryEffect = function() return 88.69, 2.8 end
-GetVersatilityBonus = function() return 0 end
-GetAvoidance = function() return 0 end
-GetLifesteal = function() return 13.61 end
-GetSpeed = function() return 0 end
-GetDodgeChance = function() return 16.52 end
-GetParryChance = function() return 14.01 end
-GetBlockChance = function() return 0 end
-GetCritChanceProvidesParryEffect = function() return true end
-UnitStat = function(_, i) local v = ({ 1000, 2637, 69647, 900 })[i]; return v, v end
-UnitHPPerStamina = function() return 20 end
-GetUnitMaxHealthModifier = function() return 1.06 end
-UnitHealthMax = function() return 1476516 end
-UnitArmor = function() return 5685, 5685 end
-UnitEffectiveLevel = function() return 90 end
-C_PaperDollInfo = { GetArmorEffectiveness = function(a, lvl) return a / (a + 12000) end }
-UnitAttackPower = function() return 3472, 0, 0 end
-GetAttackPowerForStat = function(i, v) return v end
-UnitAttackSpeed = function() return 2.0, 2.01 end
-UnitDamage = function() return 8138.2, 8944.6 end
-GetSpecialization = function() return 2 end
-GetSpecializationInfo = function() return 581, "Vengeance", "", 0, "TANK", 2 end
-GetSpellBonusDamage = function() return 500 end
-C_Spell = {
-  GetSpellName = function(id) return id == 263642 and "Fracture" or nil end,
-  GetSpellInfo = function(x) if x == "Fracture" then return { spellID = 263642, name = "Fracture" } end end,
-  GetSpellDescription = function(id) return "Rapidly slash your target for 6,944 Physical damage, and shatter 2 Lesser Soul Fragments. Generates 25 Fury. 15% more." end,
-  GetSpellCooldown = function() return { startTime = 1, duration = 1.16 } end,
-}
-GetSpecializationMasterySpells = function() return 203747 end
-GetAverageItemLevel = function() return 335.5, 334.25, 330 end
-GetUnitSpeed = function() return 0, 7, 21, 4.9 end
-BASE_MOVEMENT_SPEED = 7
-UnitSpellHaste = function() return 29.25 end
-GetRangedHaste = function() return 29.25 end
-GetPowerRegen = function() return 0, 0 end
-UnitPowerType = function() return 17, "FURY" end
-GetOverrideAPBySpellPower = function() return nil end
-GetShieldBlock = function() return 0 end
-UnitRangedDamage = function() return 0, 0, 0 end
-local GEAR = { [1] = "|Hitem:1::::|h[Helm]|h", [11] = "|Hitem:2::::|h[Ring]|h" }
-GetInventoryItemLink = function(_, slot) return GEAR[slot] end
-GetInventoryItemDurability = function(slot) if slot == 1 then return 78, 100 end end
-C_Item = {
-  GetDetailedItemLevelInfo = function(link) return link:find("Helm") and 336 or 330 end,
-  GetItemStats = function(link)
-    if link:find("Helm") then return { ITEM_MOD_CRIT_RATING_SHORT = 300, ITEM_MOD_HASTE_RATING_SHORT = 200, ITEM_MOD_AGILITY_SHORT = 500 } end
-    return { ITEM_MOD_CRIT_RATING_SHORT = 100, ITEM_MOD_MASTERY_RATING_SHORT = 400, EMPTY_SOCKET_PRISMATIC = 1 }
-  end,
-}
-issecretvalue = function(v) return v == "SECRET" end
-LARGE_NUMBER_SEPERATOR, DECIMAL_SEPERATOR = ",", "."
-printed = {}
-ns = { Print = function(...) table.insert(printed, table.concat({ ... }, " ")) end }
-CueRulesDB = {}
+# --- The phase-1 checks of the model and panel, on the 0.7.0 model (CharacterModel.lua) --------------------------------------------
+# Each check keeps the number or outcome the 0.6.2 test asserted; the wording moved from one-line strings to label / value pairs.
+lua.execute(r'''
+SM_n, SM_fails = n, fails
+assert(loadfile(__WORLD__))()
+n, fails = SM_n, SM_fails
 assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
+assert(loadfile(__CM__))("XayaUI_QoL", ns)
 assert(loadfile(__CT__))("XayaUI_QoL", ns)
 ns.FireReady()
 
 local c = ns.CharToolkit_Cfg()
 check("off by default", c.enabled == false)
-check("defaults filled", c.panel == true and c.side == "right" and c.tooltips == true and type(c.spells) == "table")
+check("defaults filled", c.panel == true and c.side == "right" and c.tooltips == true and type(c.spells) == "table" and c.overlays == false)
 
-local function row(model, key) for _, r in ipairs(model) do if r.key == key then return r end end end
-local function has(r, pat) for _, l in ipairs(r and r.lines or {}) do if l:find(pat, 1, true) then return true end end; return false end
 local m = ns.CharToolkit_Model()
 local crit = row(m, "crit")
-check("crit row: total 22.48%", crit and crit.value == "22.48%", crit and crit.value)
-check("crit row: true rating, lost 0, penalty 0%", has(crit, "528 rating = +11.48%  |  lost 0  |  penalty 0%"), crit and crit.lines[1])
-check("crit row: 46.0 per 1%, next 1% 46", has(crit, "46.0 rating per 1%  |  next 1%: 46"), crit and crit.lines[2])
-check("crit row: next threshold 1,380 (30.00%), 852 away", has(crit, "Next threshold: 1,380 rating (30.00%), 852 away"), crit and crit.lines[3])
+check("crit: total 22.48%", crit and crit.value == "22.48%", crit and crit.value)
+check("crit: true rating 528, +11.48% from rating, lost 0, penalty 0%", pair(crit, "Rating") == "528" and pair(crit, "From rating") == "+11.48%"
+  and pair(crit, "Lost to diminishing returns") == "0" and pair(crit, "Penalty on the next point") == "0%")
+check("crit: 46.0 per 1%, next 1% costs 46", pair(crit, "Rating per 1%") == "46.0" and pair(crit, "Next 1% costs") == "46 rating", pair(crit, "Rating per 1%"))
+check("crit: next threshold 1,380 (30.00%), 852 away", pair(crit, "Next threshold") == "1,380 (30.00%), 852 away", pair(crit, "Next threshold"))
 local mas = row(m, "mastery")
-check("mastery row: 16.4 rating per 1% mastery", has(mas, "16.4 rating per 1% mastery"), mas and mas.lines[2])
-check("mastery row: mastery factor on the hover", (function() for _, t in ipairs(mas.tip) do if t:find("2.800", 1, true) then return true end end end)())
+check("mastery: 16.4 rating per 1% mastery", pair(mas, "Rating per 1%") == "16.4 mastery", pair(mas, "Rating per 1%"))
+check("mastery: mastery factor on the hover", tipHas(mas, "2.800"))
 local sta = row(m, "stamina")
-check("stamina: 1 Stamina = 21.20 health", has(sta, "1 Stamina = 21.20 health"), sta and sta.lines[1])
-check("stamina: stamina for +1% max health", has(sta, "Stamina for +1% max health"), sta and sta.lines[2])
+check("stamina: 1 Stamina = 21.20 health", pair(sta, "Health per point") == "21.20", pair(sta, "Health per point"))
+check("stamina: Stamina for +1% max health", (pair(sta, "For +1% max health") or ""):find("14,765 health", 1, true) ~= nil, pair(sta, "For +1% max health"))
 local parry = row(m, "parry")
-check("parry from crit: 528 crit rating = 10.15% parry", has(parry, "528 crit rating = 10.15% parry"), parry and parry.lines[1])
-check("parry from crit: says before diminishing returns, as the character window does", has(parry, "(before diminishing returns)"), parry and parry.lines[1])
-check("parry from crit: 52.0 crit rating per 1%", has(parry, "52.0 crit rating per 1%"), parry and parry.lines[2])
+check("parry from crit: 528 crit rating = 10.15% parry, before diminishing returns", pair(parry, "From crit rating") == "528 rating = 10.15% (before DR)", pair(parry, "From crit rating"))
+check("parry from crit: 52.0 crit rating per 1%", pair(parry, "Crit rating per 1%") == "52.0", pair(parry, "Crit rating per 1%"))
 local armor = row(m, "armor")
-check("armor: reduction and armor for next 1%", has(armor, "Damage reduction vs your level") and has(armor, "Armor for the next 1%"))
-check("armor: primary -> armor marked not given", has(armor, "not given by the game"))
+check("armor: reduction and armor for next 1%", pair(armor, "Damage reduction") ~= nil and pair(armor, "Armor for the next 1%") ~= nil)
+check("armor: primary -> armor marked not given", pair(armor, "Agility -> armor") == "not given by the game")
 local ap = row(m, "ap")
-check("attack power: 1 Agility = 1.00 attack power", has(ap, "1 Agility = 1.00 attack power"), ap and ap.lines[1])
-check("dodge: primary -> dodge marked not given", has(row(m, "dodge"), "Agility -> dodge"))
-check("gcd: unavailable before one is seen", row(m, "gcd").value:find("unavailable", 1, true) ~= nil)
+check("attack power: 1 Agility = 1.00 attack power", pair(ap, "1 Agility =") == "1.00 attack power", pair(ap, "1 Agility ="))
+check("dodge: primary -> dodge per point marked not given", pair(row(m, "dodge"), "Agility -> dodge per point") == "not given by the game")
+check("gcd: unavailable before one is seen", row(m, "gcd").value == "unavailable", row(m, "gcd").value)
 ns.CharToolkit_ReadGCD()
 local g = row(ns.CharToolkit_Model(), "gcd")
 check("gcd: read from the game's global cooldown", g.value == "1.16 s", g.value)
-check("gcd: unhasted estimate 1.50 s", has(g, "unhasted (estimate) 1.50 s"), g.lines[1])
-check("gcd: haste rating for -0.01 s", has(g, "Haste for -0.01 s"), g.lines[2])
-check("attack speed: unhasted estimate and haste for -0.01 s", has(row(m, "speed"), "Unhasted (estimate)") and has(row(m, "speed"), "Haste rating for -0.01 s"))
+check("gcd: unhasted estimate 1.50 s", pair(g, "Unhasted (estimate)") == "1.50 s", pair(g, "Unhasted (estimate)"))
+check("gcd: haste rating for -0.01 s", (pair(g, "For -0.01 s") or ""):find("haste = ", 1, true) ~= nil, pair(g, "For -0.01 s"))
+local spd = row(m, "speed")
+check("attack speed: unhasted estimate and haste for -0.01 s", pair(spd, "Unhasted (estimate)") == "2.58 s" and pair(spd, "Haste rating for -0.01 s") ~= nil)
 
--- sources, what-if, attributes, overview, gear
 local leech = row(m, "leech")
-check("leech: all 13.61% from other sources (rating 0)", has(leech, "Other sources: +13.61%"), leech and leech.lines[4])
+check("leech: all 13.61% from other sources (rating 0)", pair(leech, "Other sources") == "+13.61%", pair(leech, "Other sources"))
 local haste = row(m, "haste")
-check("haste: other sources multiplied in, labelled (1.2925 / (1 + 1200/46/100) - 1 = 2.51%)",
-  has(haste, ("Other sources: +%.2f%%"):format((1.2925 / (1 + 1200 / 46 / 100) - 1) * 100)) and has(haste, "(multiplied in; estimate)"), haste and haste.lines[4])
-mas = row(m, "mastery")
-check("mastery: other sources = spec base (88.69 - 997/46*2.8)", has(mas, ("Other sources: +%.2f%%"):format(88.69 - 997 / 46 * 2.8)), mas and mas.lines[4])
-check("overview: compact crit line", (function() for _, r in ipairs(m) do if r.compact and r.key == "crit" then return r.lines[1]:find("528 rtg  46.0/1%  DR in 852", 1, true) ~= nil end end end)())
-check("overview: attribute rows (spec, agility base and buffs, item level, movement, mastery text)",
-  row(m, "spec") and row(m, "stat2") and has(row(m, "ilvl"), "Equipped 334.25") and has(row(m, "move"), "Run 100%  |  swim 70%  |  flight 300%") and row(m, "masteryText"))
-check("rows carry their tab", row(m, "crit").tab == "ratings" and row(m, "armor").tab == "defense" and row(m, "ap").tab == "offense" and row(m, "spec").tab == "overview")
+check("haste: other sources multiplied in, labelled (1.2925 / (1 + 1200/46/100) - 1)",
+  pair(haste, "Other sources") == ("+%.2f%% (estimate)"):format((1.2925 / (1 + 1200 / 46 / 100) - 1) * 100), pair(haste, "Other sources"))
+check("mastery: other sources = spec base (88.69 - 997/46*2.8)", pair(mas, "Other sources") == ("+%.2f%%"):format(88.69 - 997 / 46 * 2.8), pair(mas, "Other sources"))
+check("character section: spec, Agility, item level, movement, mastery text",
+  row(m, "spec") and row(m, "stat2") and pair(row(m, "ilvl"), "Equipped") == "334.25" and pair(row(m, "move"), "Swim") == "70%"
+  and pair(row(m, "move"), "Flight") == "300%" and row(m, "masteryText") and row(m, "masteryText").value:find("101.8%", 1, true))
+check("items carry their tab", row(m, "crit").tab == "stats" and row(m, "armor").tab == "defense" and row(m, "ap").tab == "offense")
 check("gear is not built unless its tab is asked for", row(m, "gearSum") == nil)
 c.whatIf = 852
-local wcrit = row(ns.CharToolkit_Model("ratings"), "crit")
-check("what if +852 crit: +18.52% (exactly to the 30% threshold)", has(wcrit, "What if +852 rating: +18.52% (total 41.00%)"), wcrit and wcrit.lines[5])
+local wcrit = row(ns.CharToolkit_Model("stats"), "crit")
+check("what if +852 crit: +18.52% (exactly to the 30% threshold)", pair(wcrit, "What if +852 rating") == "+18.52% (total 41.00%)", pair(wcrit, "What if +852 rating"))
 c.whatIf = 0
 local gm = ns.CharToolkit_Model("gear")
 local gs = row(gm, "gearSum")
-check("gear: per-slot rows with item level and ratings", has(row(gm, "slot1"), "crit 300, haste 200") and row(gm, "slot1").value == "336")
-check("gear: durability under 100% shown", has(row(gm, "slot1"), "Durability 78%"))
-check("gear: empty socket flagged", has(row(gm, "slot11"), "1 empty socket"))
-check("gear totals vs character: crit gear 400, character 528, +128 elsewhere", has(gs, "crit: gear 400, character 528  (+128 from elsewhere)"), gs and gs.lines[1])
-check("gear totals: sockets and durability summary", has(gs, "1 empty socket in total") and has(gs, "Durability 78% overall"))
-
--- secret values: shown as unavailable, never compared
-GetCombatRating = function(i) if i == 9 then return "SECRET" end; return ratings[i] or 0 end
-GetCritChance = function() return "SECRET" end
-ns.CharToolkit_ClearCache()
-crit = row(ns.CharToolkit_Model(), "crit")
-check("secret crit: value unavailable, no error", crit and crit.value:find("unavailable", 1, true) ~= nil, crit and crit.value)
-GetCombatRating = function(i) return ratings[i] or 0 end
-GetCritChance = function() return 22.48 end
+check("gear: per-slot rows with item level and ratings", pair(row(gm, "slot1"), "Ratings") == "crit 300, haste 200" and row(gm, "slot1").value == "336")
+check("gear: durability under 100% shown", pair(row(gm, "slot1"), "Durability") == "78%")
+check("gear: empty socket flagged", pair(row(gm, "slot11"), "Empty sockets") == "1")
+check("gear totals vs character: crit gear 400, character 528, +128 elsewhere", pair(gs, "crit") == "gear 400, character 528 (+128 from elsewhere)", pair(gs, "crit"))
+check("gear totals: sockets", pair(gs, "Empty sockets") == "1")
 
 -- no converter: current figures only, said plainly
 local saved = GetCombatRatingBonusForCombatRatingValue
 GetCombatRatingBonusForCombatRatingValue = nil
 crit = row(ns.CharToolkit_Model(), "crit")
-check("no converter: average per 1% and a note", has(crit, "average, no threshold data") and crit.tip[1]:find("not available", 1, true) ~= nil)
+check("no converter: average per 1% and a note", (pair(crit, "Rating per 1%") or ""):find("(average)", 1, true) and tipHas(crit, "not available"))
 GetCombatRatingBonusForCombatRatingValue = saved
 
 -- spell math
@@ -270,20 +184,19 @@ check("resolve: name", ns.CharToolkit_ResolveSpell("Fracture") == 263642)
 check("resolve: id", ns.CharToolkit_ResolveSpell(" 263642 ") == 263642)
 c.advanced = true
 c.spells = { { id = 263642, base = "ap", coeff = 200 } }
-local sm = ns.CharToolkit_Model()
-local fr
-for _, r in ipairs(sm) do if r.label == "Fracture" then fr = r end end
-check("spell math: Fracture row", fr ~= nil)
-check("spell math: 6,944 = 200.0% of attack power, 1 Agility = +2.00", fr and has(fr, "6,944 = 200.0% of attack power  |  1 Agility = +2.00"), fr and fr.lines[1])
-check("spell math: entered coefficient matches, no warning", fr and has(fr, "Entered: 200.0% of attack power; measured first number: 200.0%") and not has(fr, "differs"))
+local fr = row(ns.CharToolkit_Model("spells"), "spell263642")
+check("spell math: Fracture row", fr ~= nil and fr.label == "Fracture")
+check("spell math: 6,944 = 200.0% of attack power, 1 Agility = +2.00", pair(fr, "6,944") == "200.0% of attack power; 1 Agility = +2.00", pair(fr, "6,944"))
+check("spell math: entered coefficient matches, no warning", pair(fr, "Entered") == "200.0% of attack power; measured 200.0%")
 c.spells[1].coeff = 150
-for _, r in ipairs(ns.CharToolkit_Model()) do if r.label == "Fracture" then fr = r end end
-check("spell math: a different entered coefficient is flagged", has(fr, "differs"))
+fr = row(ns.CharToolkit_Model("spells"), "spell263642")
+check("spell math: a different entered coefficient is flagged", (pair(fr, "Entered") or ""):find("differs", 1, true) ~= nil)
 
 -- tooltip label matching
 check("label: 'Critical Strike:' -> crit", ns.CharToolkit_KeyForLabel("Critical Strike:") == "crit")
 check("label: colored 'Mastery:' -> mastery", ns.CharToolkit_KeyForLabel("|cffffffffMastery:|r") == "mastery")
 check("label: 'Global Cooldown:' -> gcd", ns.CharToolkit_KeyForLabel("Global Cooldown:") == "gcd")
+check("label: 'Agility:' -> the Agility line", ns.CharToolkit_KeyForLabel("Agility:") == "stat2")
 check("label: unknown -> nil", ns.CharToolkit_KeyForLabel("Durability:") == nil)
 
 -- turning on: events registered, panel docks when the character window opens, tooltip lines appended
@@ -298,22 +211,23 @@ check("stat row hooked", statRow.hooks.OnEnter and #statRow.hooks.OnEnter == 1)
 GameTooltip:SetOwner(statRow)
 statRow.hooks.OnEnter[1](statRow)
 local found = false
-for _, l in ipairs(GameTooltip.lines or {}) do if tostring(l):find("lost 0", 1, true) then found = true end end
+for _, l in ipairs(GameTooltip.lines or {}) do if tostring(l):find("Lost to diminishing returns: 0", 1, true) then found = true end end
 check("tooltip: toolkit lines added to the crit tooltip", found)
 PaperDollFrame:Hide()
 check("panel hides with the character window", not XayaUICharacterToolkit:IsShown())
-for _, t in ipairs({ "overview", "ratings", "defense", "offense", "gear", "spells" }) do
+for _, t in ipairs({ "sheet", "stats", "defense", "offense", "gear", "whatif", "spells" }) do
   c.tab = t
   local ok, err = pcall(ns.CharToolkit_Render)
   check("panel renders the " .. t .. " tab", ok, err)
 end
-c.tab = "overview"
+c.tab = "sheet"
 c.enabled = false; ns.CharToolkit_Apply()
 check("off: panel hidden", not XayaUICharacterToolkit:IsShown())
 
 -- settings page and command
 local page = ns.BuildCharToolkitPage(function() end)
-check("settings page builds with Panel and Spell Math tabs", page.args.panelTab and page.args.spells and page.childGroups == "tab")
+check("settings page builds: feature node with Panel, Slot Overlays and Spell Math under it", page.childGroups == "tree" and page.args.panelPart
+  and page.args.overlayPart and page.args.spells)
 page.args.spells.args.add.set(nil, "Fracture")
 check("add spell via settings (duplicate ignored)", #c.spells == 1)
 check("/xui stats status runs", ns.RunCommand("stats", "status") and printed[#printed]:find("Character Toolkit", 1, true) ~= nil)
@@ -323,6 +237,8 @@ ns.RunCommand("stats", "on")
 check("/xui stats on turns it on", c.enabled == true)
 ns.RunCommand("stats", "")
 check("/xui stats shows the panel on its own", XayaUICharacterToolkit:IsShown())
+check("an old saved tab name (0.6.2 'ratings') maps to Stats", (function() c.tab = "ratings"; return ns.CharToolkit_Cfg().tab == "stats" end)())
 print(("%d checks, %d failed"):format(n, fails))
-'''.replace("__MOD__", P("XayaUI/Modules.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
+'''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua"))
+   .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
 sys.exit(1 if lua.eval("fails") else 0)
