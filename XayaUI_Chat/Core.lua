@@ -174,7 +174,7 @@ function C.Flags(mode)
     return ""
 end
 -- SetFont that always ends with a working font (a missing file makes SetFont return false)
-C.fonts, C.remembered, C.suppressed, C.alphaEls = {}, {}, {}, {}
+C.fonts, C.remembered, C.suppressed, C.alphaEls, C.raised = {}, {}, {}, {}, {}
 function C.SetFont(fs, path, size, flags)
     if not (fs and fs.SetFont) then return end
     if not C.fonts[fs] and fs.GetFont then
@@ -244,6 +244,19 @@ function C.Remember(o)
     C.remembered[#C.remembered + 1] = o
 end
 
+-- a frame the Chat Panel no longer places (the window it belongs to was undocked): the game's own anchors back, and off the list that
+-- C.Teardown puts back
+function C.Forget(o)
+    if not (o and o._xuiPts) then return end
+    local pts = o._xuiPts
+    o._xuiPts = nil
+    pcall(function()
+        o:ClearAllPoints()
+        for _, p in ipairs(pts) do o:SetPoint(p[1], p[2], p[3], p[4], p[5]) end
+    end)
+    for i = #C.remembered, 1, -1 do if C.remembered[i] == o then table.remove(C.remembered, i) end end
+end
+
 -- everything we changed on the game's chat goes back: shown / hidden pieces, alpha, mouse, anchors, fonts, tab heights.
 -- The game's own functions then lay the windows out again.
 function C.Teardown()
@@ -251,6 +264,14 @@ function C.Teardown()
     C.active = false
     for o in pairs(C.suppressed) do pcall(C.Unsuppress, o) end
     C.suppressed = {}
+    for _, f in ipairs(C.Frames()) do   -- the back-to-newest arrows: the game's own alpha and shown state (Frame.lua C.ToBottomUpdate)
+        if C.ToBottomRelease then pcall(C.ToBottomRelease, f.ScrollToBottomButton) end
+    end
+    for _, o in ipairs(C.raised) do     -- the tab row's window list back in its own layer (Frame.lua C.RaiseTabList)
+        if o._xuiStrata then pcall(o.SetFrameStrata, o, o._xuiStrata) end
+        o._xuiStrata = nil
+    end
+    C.raised = {}
     C.master, C.fade = 1, 1
     for _, el in ipairs(C.alphaEls) do
         pcall(function()
@@ -372,7 +393,77 @@ function C.IndentReport()   -- never raises: a game value that cannot be read en
     if not ok then ns.Print(("Chat Panel indent: could not finish (%s)"):format((tostring(err):gsub("|", "||")))) end
 end
 
--- /xui chat [on|off|reset|move|history|status]
+-- /xui chat whispers : READ ONLY. Why a whisper does or does not get a tab of its own (Xaya, 2026-11-04: "whispers are not shown as
+-- their own tabs even though the option is enabled"). The tab is the game's: its whisper manager (FloatingChatFrameManager_OnEvent,
+-- FloatingChatFrame.lua, wow-ui-source live 12.1.5.70783) opens one with FCF_OpenTemporaryWindow when a whisper arrives and the game's
+-- setting Options > Social > New Whispers (CVar whisperMode) is "popout" (New Tab) or "popout_and_inline" (Both), and only when no tab
+-- for that sender exists yet. The Chat Panel never opens, closes or hides those windows (no reason for a missing tab was found in its
+-- code). The report counts, since the last /reload, the whispers that arrived and the whisper tabs the game opened, and the whisper
+-- windows there are now. No name is read or printed.
+local WHISPER_IN = { CHAT_MSG_WHISPER = true, CHAT_MSG_BN_WHISPER = true }
+local WHISPER_OUT = { CHAT_MSG_WHISPER_INFORM = true, CHAT_MSG_BN_WHISPER_INFORM = true }
+C.whispers = { got = 0, sent = 0, opened = 0 }
+local wdrv = CreateFrame("Frame")
+for ev in pairs(WHISPER_IN) do pcall(wdrv.RegisterEvent, wdrv, ev) end
+for ev in pairs(WHISPER_OUT) do pcall(wdrv.RegisterEvent, wdrv, ev) end
+wdrv:SetScript("OnEvent", function(_, event)
+    if WHISPER_IN[event] then C.whispers.got = C.whispers.got + 1
+    elseif WHISPER_OUT[event] then C.whispers.sent = C.whispers.sent + 1 end
+end)
+local function IsWhisperType(t) return type(t) == "string" and not issecret(t) and (t == "WHISPER" or t == "BN_WHISPER") end
+C.HookOnce("whispers:open", "FCF_OpenTemporaryWindow", nil, function(chatType)
+    if IsWhisperType(chatType) then C.whispers.opened = C.whispers.opened + 1 end
+end)
+
+local WHISPER_MODES = { popout = "New Tab", inline = "In-line", popout_and_inline = "Both" }
+function C.WhisperFacts()
+    local out = { got = C.whispers.got, sent = C.whispers.sent, opened = C.whispers.opened, docked = 0, floating = 0 }
+    local get = (_G.C_CVar and _G.C_CVar.GetCVar) or _G.GetCVar
+    if get then
+        local ok, v = pcall(get, "whisperMode")
+        if ok and type(v) == "string" and not issecret(v) then out.mode = v end
+    end
+    local mgr = _G.FloatingChatFrameManager
+    local function listens(ev)
+        if not (mgr and mgr.IsEventRegistered) then return nil end
+        local ok, v = pcall(mgr.IsEventRegistered, mgr, ev)
+        if not ok or issecret(v) then return nil end
+        return v and true or false
+    end
+    out.listens, out.listensBN = listens("CHAT_MSG_WHISPER"), listens("CHAT_MSG_BN_WHISPER")
+    for _, f in ipairs(C.Frames()) do
+        if f.isTemporary and f.inUse and IsWhisperType(f.chatType) then
+            if f.isDocked then out.docked = out.docked + 1 else out.floating = out.floating + 1 end
+        end
+    end
+    local dock = _G.GENERAL_CHAT_DOCK
+    out.inRow = (type(dock) == "table" and type(dock.DOCKED_CHAT_FRAMES) == "table") and #dock.DOCKED_CHAT_FRAMES or nil
+    return out
+end
+
+local function WhisperReport()
+    local w = C.WhisperFacts()
+    local function yn(v) if v == nil then return "unreadable" end return v and "yes" or "no" end
+    ns.Print(("Chat whispers: the game's setting Options > Social > New Whispers is %s"):format(
+        w.mode and ("\"" .. (WHISPER_MODES[w.mode] or w.mode) .. "\" (whisperMode " .. w.mode .. ")") or "unreadable"))
+    ns.Print(("  the game's whisper-tab manager listens for whispers: %s; for Battle.net whispers: %s"):format(yn(w.listens), yn(w.listensBN)))
+    ns.Print(("  since the last /reload: %d whispers received, %d sent, %d whisper tabs opened by the game"):format(w.got, w.sent, w.opened))
+    ns.Print(("  whisper windows now: %d in the tab row, %d floating; windows in the tab row: %s"):format(w.docked, w.floating, tostring(w.inRow or "unreadable")))
+    if w.mode == "inline" then
+        ns.Print("  -> the game puts whispers into the chat window itself. For a tab per conversation: Options > Social > New Whispers > New Tab (or Both).")
+    elseif w.got == 0 and w.sent == 0 then
+        ns.Print("  -> no whisper since the last /reload. Whisper someone (or have them whisper you), then run /xui chat whispers again.")
+    elseif (w.mode == "popout" or w.mode == "popout_and_inline") and w.opened == 0 and w.docked + w.floating == 0 then
+        ns.Print("  -> whispers arrived but the game opened no tab. Please send this report and any Lua error (turn errors on with /console scriptErrors 1).")
+    end
+end
+
+function C.WhisperReport()   -- never raises
+    local ok, err = pcall(WhisperReport)
+    if not ok then ns.Print(("Chat whispers: could not finish (%s)"):format((tostring(err):gsub("|", "||")))) end
+end
+
+-- /xui chat [on|off|reset|move|history|wrap|indent|whispers|settings|status]
 function C.Command(arg)
     arg = (arg or ""):lower():match("^%s*(%S*)") or ""
     local s = ns.chat2
@@ -397,9 +488,10 @@ function C.Command(arg)
         C.Rewrap(true)
         ns.Print("  the window lays its lines out again on its next frame; run /xui chat wrap again to see the result")
     elseif arg == "indent" then C.IndentReport()
+    elseif arg == "whispers" then C.WhisperReport()
     else
         local why = C.BlockedReason()
-        ns.Print((("Chat Panel: " .. (s.enabled and (why and ("blocked: " .. why) or "ON") or "OFF") .. ". /xui chat on|off|reset|move|history|wrap|indent|settings"):gsub("|", "||")))
+        ns.Print((("Chat Panel: " .. (s.enabled and (why and ("blocked: " .. why) or "ON") or "OFF") .. ". /xui chat on|off|reset|move|history|wrap|indent|whispers|settings"):gsub("|", "||")))
         local names = {}
         for k in pairs(C.applied) do names[#names + 1] = k end
         table.sort(names)
@@ -414,5 +506,5 @@ end
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
 ns.WhenReady(ns.Chat_OnDBReady)
-ns.RegisterCommand("chat", function(arg) C.Command(arg) end, "/xui chat (Chat Panel: on, off, reset, move, history, wrap, indent, settings)")
+ns.RegisterCommand("chat", function(arg) C.Command(arg) end, "/xui chat (Chat Panel: on, off, reset, move, history, wrap, indent, whispers, settings)")
 ns.RegisterCommand("panel", function() if C.OpenSettings then C.OpenSettings("bar") end end, "/xui panel (Chat Bar settings)")
