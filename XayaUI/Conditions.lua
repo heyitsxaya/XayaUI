@@ -193,6 +193,26 @@ function FindCDMFrame(id)
     return firstFr, firstName
 end
 
+-- The Cooldown Manager frame that tracks spell `id` as a BUFF (Tracked Buffs icons or bars), never a cooldown icon. An active
+-- match wins, as in FindCDMFrame.
+local BUFF_VIEWERS = { BuffIconCooldownViewer = true, BuffBarCooldownViewer = true }
+local function FindTrackedBuffFrame(id)
+    FindCDMFrame(id)   -- (rebuilds the index when it is stale)
+    local list = cdmIndex[id]
+    if not list then return nil end
+    local firstFr, firstName
+    for i = 1, #list do
+        local fr, vname = list[i][1], list[i][2]
+        if BUFF_VIEWERS[vname] then
+            local okA, act = pcall(FrameActive, fr)
+            if okA and act then return fr, vname end
+            if not firstFr then firstFr, firstName = fr, vname end
+        end
+    end
+    return firstFr, firstName
+end
+ns.FindTrackedBuffFrame = FindTrackedBuffFrame
+
 -- Are aura reads restricted (secret) right now?
 local function AurasRestricted()
     if not (C_Secrets and C_Secrets.ShouldAurasBeSecret) then return false end
@@ -350,8 +370,50 @@ function ns.AuraPresentList(mainID, alts)
     if unknown then return nil, unkSrc or "unreadable" end
     return false, s1
 end
+-- When the game hides the aura (combat) and no Cooldown Manager frame carries any of the rule's aura IDs, the rule's OWN spell may
+-- still be in the Cooldown Manager's Tracked Buffs: that icon is lit exactly while the spell's buff is up (it is what the Cooldown
+-- Manager shows, and what other addons that skin it read). Insivius, 2026-11-04: Death and Decay (spell 43265) tracked in his
+-- Cooldown Manager, rule watching auras 188290 / 434034: the aura IDs matched no frame, and 434034 could never be read, so
+-- "missing" stayed unknown in combat and the rule never fired. Used only when the answer is otherwise unknown, only for a Tracked
+-- Buffs frame (not a cooldown icon), and only when one of the rule's aura IDs has the spell's own name (or is the spell), so a rule
+-- whose cooldown spell and aura are unrelated is never answered from the wrong icon.
+local nameCache = {}
+local function SpellNameOf(id)
+    local n = nameCache[id]
+    if n == nil then
+        local ok, v = pcall(C_Spell.GetSpellName, id)
+        n = (ok and type(v) == "string" and not issecret(v) and v ~= "") and v or false
+        nameCache[id] = n
+    end
+    return n or nil
+end
+local function TrackedBuffOfSpell(rule)
+    local sid = tonumber(rule.spellID) or 0
+    if sid <= 0 then return nil end
+    local sname = SpellNameOf(sid)
+    local same = false
+    local function Test(a)
+        a = tonumber(a)
+        if not a or a <= 0 or same then return end
+        if a == sid or (sname and SpellNameOf(a) == sname) then same = true end
+    end
+    Test(rule.buffID)
+    if type(rule.buffAlt) == "table" then for _, a in ipairs(rule.buffAlt) do Test(a) end end
+    if not same then return nil end
+    local fr, vname = FindTrackedBuffFrame(sid)
+    if not fr then return nil end
+    local okA, active = pcall(FrameActive, fr)
+    active = okA and active or false
+    return active and true or false, "CDM tracked buff of the rule's spell " .. sid .. " (" .. tostring(vname) .. "; same name as the aura)",
+        active and MakeRef(nil, fr) or nil
+end
 function ns.BuffPresentAny(rule)
-    return ns.AuraPresentList(rule and rule.buffID, rule and rule.buffAlt)
+    local p, s, r, w = ns.AuraPresentList(rule and rule.buffID, rule and rule.buffAlt)
+    if p == nil and rule then
+        local ok, fp, fs, fr = pcall(TrackedBuffOfSpell, rule)
+        if ok and fp ~= nil then return fp, fs, fr, rule.buffID end
+    end
+    return p, s, r, w
 end
 
 local BuffPresentOnce

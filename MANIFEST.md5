@@ -5,12 +5,12 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-f726fe1d33be1c51d84febfc6fb1033f  QA-CHECKLIST.md
+1ed331bca0bf14cc8bd2c3cda713c1b0  QA-CHECKLIST.md
 ee42539002c7a831fd97da0c0d766f12  README.md
 b8830af74b74d3bd040661448e9ff565  ROADMAP.md
 795543b7edf9a1e47a284d967c0fc4bf  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-3880f31eb8c666df24e5a9e99ef589cc  USER-GUIDE.md
+c7e71a660496b05cda95302a62b6d5ea  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
@@ -22,7 +22,7 @@ eb3d3f5b6edd7c7791b48e2e8f6a62c1  XayaUI/Combat/AuraDisplay.lua
 37fa5175736d02a8aa486c64e9e6c143  XayaUI/Combat/AuraTracker.lua
 d9d202afce65354b4aaf84ffcd8f67aa  XayaUI/Combat/README.md
 30e5f32b2444eb29c1fb0060f1ef9758  XayaUI/Compat.lua
-6457a864641a2d9bc60b7cc177442b29  XayaUI/Conditions.lua
+a82c9aecc5005490226c88cdadcb99ce  XayaUI/Conditions.lua
 96f92f64997a08afd03007f16642ad86  XayaUI/Console.lua
 e5f8763a88bd587ce8cdcdb77317794e  XayaUI/Core.lua
 31ca10718b57a4b0c5b1d5d91646454d  XayaUI/Cues.lua
@@ -94,17 +94,17 @@ e94cfc0c3fc54c4e5188a7aadaf41d90  XayaUI/Media/UI/xui_progresstex.tga
 30d50e1964ffdb6d81b4e902ecb5accd  XayaUI/Media/UI/xui_text.tga
 97e47b6ce28ec4d1218ae800136c1e97  XayaUI/MinimapButton.lua
 4f50e1ee7a3e7349880d5c8d3fcf1570  XayaUI/Modules.lua
-f3a75f746a951f947e2477bbca50d961  XayaUI/Outcomes.lua
+fbbd157c8fff91318ac28c4dbed71850  XayaUI/Outcomes.lua
 b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 454d9c7477395f84a1f31950034b8c75  XayaUI/Sound.lua
 46f77b8a678f39da1db320a4883ae59f  XayaUI/TalentDump.lua
 7d0e35ac661d1db2569cdea98562ba17  XayaUI/TextureList.lua
 2bf4d9dac09dbaaeb00c82fab7753069  XayaUI/Theme.lua
-85718c92f52d4b4033d40fa86bc7fc8d  XayaUI/Timing.lua
+078ed15ea152c03a8a8f55311aac20eb  XayaUI/Timing.lua
 581f0a3c7660c2170992a099662de173  XayaUI/Triggers.lua
 016e3c3cd548b76d489b55e1d9531c2f  XayaUI/UserMedia.lua
 834e5e4d38c5d202148cf8f740319e25  XayaUI/Visual.lua
-7f618c8df3213d5981b24d79b542aecb  XayaUI/XayaUI.toc
+01e9b43794ec741985ec64332d9c4c67  XayaUI/XayaUI.toc
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -366,6 +366,7 @@ bf4d7a3942a39d4c4ca50caf6ff07b05  debug-log/2026-11-04-0350-group-sort-manual-or
 412c61450d02965726c5517c79b9737d  debug-log/2026-11-04-0400-aura-id-cooldown-manager-in-combat-bonus-0.6.4.md
 e45749c532c7952440c7dbbb773254b5  debug-log/2026-11-04-0425-growth-from-anchor-centered-engine-core-0.6.7.md
 0919c15104022714609369325d583f95  debug-log/2026-11-04-0435-aura-catalogue-and-aura-log-gamedump-0.5.0.md
+d0bf301c612540e4b1f817199444a747  debug-log/2026-11-04-0455-death-and-decay-combat-core-0.6.8.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
 b9300eaabf88d4ed02373618e27e444b  docs/reference/README.md
 1b7a634712b11938763d44b6dcead0c7  docs/reference/api/README.md
@@ -414,7 +415,7 @@ c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
 79340b1faeb574b0dd0dd28d6f8915e4  tests/drafts_run.py
 c368c3d4a0e31da169d5370dec0c7c3a  tests/drag_drop_run.py
 1dc5b3e89ca41f69f7eaf662e76da132  tests/engine_bench.py
-b0b1d35b0f9d3cf146b0ce4228dfd464  tests/engine_text_run.py
+aa4c3450af7227ef4494ae91106535fa  tests/engine_text_run.py
 91e69f1cabaacf58537aa37237ffb06c  tests/export_group_run.py
 c7f384823034727d484a12ba5c38e48f  tests/formula_capture_run.py
 905c837653744a6299b8a926478c26a6  tests/gamedump_api_run.py
@@ -442,6 +443,7 @@ d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
 f886a09a99f1c562e4ff35c25675a1bd  tests/timing_run.py
 4ab5fd24ca1bb0910e3372c636868b5c  tests/tooltip_formulas_run.py
 13739960223aa277ea151196e46a1a19  tests/tooltips_run.py
+dceb45c263380afa3805655dac92221e  tests/tracked_buff_run.py
 509fa839346e4053085977c395ac85cd  tests/trigger_parity_run.py
 7bdbd8daaa8aaab8b1a64cdbc9a0b436  tests/usage_check.lua
 06abd3bc39893cbb62c55a168ba32788  tests/usage_run.py

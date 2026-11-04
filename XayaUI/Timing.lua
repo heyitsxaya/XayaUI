@@ -197,7 +197,7 @@ function T.Report()
                     else parts[#parts + 1] = string.format("cooldown time: exact when shown, else estimate (measured %.1fs)", Lc[spell]) end
                 end
                 if needs["n:buffStacks"] then bad = true; parts[#parts + 1] = "aura stacks: the game hides stack counts in combat, so a condition on stacks cannot fire there (the display still shows them)" end
-                if needs["n:cdCharges"] then parts[#parts + 1] = "charges: exact when shown" end
+                if needs["n:cdCharges"] then parts[#parts + 1] = "charges: exact out of combat; in combat exact at full charges, and for 2-charge spells also at 1 and 0" end
                 if needs.absorbZero then parts[#parts + 1] = "shield amount: a zero shows as '0' (the game hides the amount and cannot both abbreviate and hide a zero; switch Abbreviate off to hide zeros)" end
                 if bad then warn = warn + 1 else ok = ok + 1 end
                 rows[#rows + 1] = { bad, tostring(p.name) .. ": " .. table.concat(parts, "; ") }
