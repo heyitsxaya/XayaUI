@@ -778,13 +778,14 @@ local function BuildSingle(p, spec, store, key)
 end
 
 -- A rule's OTHER display cues that show time or stacks (a separate Text cue with the duration, a second icon with a drain) get a slot
--- of their own, so they are exact in combat too (#347). Only when nothing but the rule's trigger decides them: a rule with conditions
--- switches its cues one by one, which the container cannot follow, so those stay with XayaUI (its duration estimate).
+-- of their own, so they are exact in combat too (#347). Only when nothing but the rule's trigger decides them: a cue that a
+-- condition lists is switched by that condition, which the container cannot follow, so it stays with XayaUI (its duration estimate).
+-- A cue no condition lists follows the trigger (Cues.lua ns.CueGated, 0.6.14), so it gets a slot.
 local function ExtraDisplays(p, spec)
     local out = {}
-    if ns.ConditionsOf and #ns.ConditionsOf(p) > 0 then return out end
     for _, c in ipairs(ns.CuesOf and ns.CuesOf(p) or {}) do
-        if c ~= spec.display and IsDisplay(c) then
+        local gated = ns.CueGated(p, c)
+        if c ~= spec.display and IsDisplay(c) and not gated then
             local v = c.visual
             if (v.text and v.text.enabled) or (v.fill and v.fill.enabled) or (v.count and v.count.enabled and not (ns.Val and ns.Val(v.count.source) == "charges")) then
                 out[#out + 1] = c

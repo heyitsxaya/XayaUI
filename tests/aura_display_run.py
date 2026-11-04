@@ -12,6 +12,11 @@ from lupa.lua51 import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 L = LuaRuntime(unpack_returned_tuples=True)
 
+import re as _re
+_cues = open(os.path.join(ROOT, "XayaUI", "Cues.lua"), encoding="utf-8").read()
+_m = _re.search(r"^function ns\.CueGated\(p, cue\)\n.*?^end\n", _cues, _re.S | _re.M)
+assert _m, "ns.CueGated not found in Cues.lua"
+CUE_GATED_LUA = "[==[" + "local ns = NS\n" + _m.group(0) + "]==]"
 L.execute(r'''
 -- ---- generic frame stand-in ----
 local function proxyFrame(kind)
@@ -172,9 +177,10 @@ profilerMs = 0.2
 -- the game's meter knows only addons that exist: since 0.6.0 the engine is part of XayaUI, so "XayaUI_CombatEngine" reads nothing
 C_AddOnProfiler = { GetAddOnMetric = function(name, metric) assert(metric == 1); if name == "XayaUI" then return profilerMs end if name == "Blizzard_AuraContainer" then return blizzMs or 0 end end }
 _G.NS = ns
+assert(loadstring(CUE_GATED_SRC))()   -- the real ns.CueGated from Cues.lua (which cues a condition decides), not a copy
 local f = assert(loadfile(AURA_DISPLAY_PATH))
 f("XayaUI_CombatEngine", ns)
-'''.replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI", "Combat", "AuraDisplay.lua")).replace("'", '"')))
+'''.replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI", "Combat", "AuraDisplay.lua")).replace("'", '"')).replace("CUE_GATED_SRC", CUE_GATED_LUA))
 
 
 fails = []
@@ -542,11 +548,16 @@ lua(r"""
 CX = { uid = "cx", name = "with condition", useBuff = true, buffID = 9811, buffState = "present", enabled = true, visual = { enabled = false } }
 CXi = { uid = "cxi", name = "cx icon", isCue = true, parentUid = "cx", cueKey = "q1", cueKind = "icon", enabled = true, visual = { enabled = true, trigger = "condition", w = 30, h = 30, text = {}, count = {} } }
 CXt = { uid = "cxt", name = "cx text", isCue = true, parentUid = "cx", cueKey = "q2", cueKind = "text", enabled = true, visual = { enabled = true, trigger = "condition", w = 30, h = 30, text = { enabled = true }, count = {} } }
+CXu = { uid = "cxu", name = "cx unlisted text", isCue = true, parentUid = "cx", cueKey = "q3", cueKind = "text", enabled = true, visual = { enabled = true, trigger = "condition", w = 30, h = 30, text = { enabled = true }, count = {} } }
 CXc = { uid = "cxc", name = "cx condition", parentUid = "cx", enabled = true, when = { list = {} }, thenCues = { "q2" } }
-NS.rules[#NS.rules + 1] = CX; NS.rules[#NS.rules + 1] = CXi; NS.rules[#NS.rules + 1] = CXt; NS.rules[#NS.rules + 1] = CXc
+NS.rules[#NS.rules + 1] = CX; NS.rules[#NS.rules + 1] = CXi; NS.rules[#NS.rules + 1] = CXt; NS.rules[#NS.rules + 1] = CXu; NS.rules[#NS.rules + 1] = CXc
 NS.AuraDisplay.Build()
 """)
 check("rule with conditions: icon drawn by the engine, the condition-switched Text cue stays with XayaUI", own("CXi") and not own("CXt") and lua("return NS.AuraDisplay._extras[CXt] == nil or NS.AuraDisplay._extras[CXt].ok == false"))
+check("rule with conditions: a Text cue no condition lists follows the trigger, so it gets its own exact slot (0.6.14)", own("CXu") and lua("return NS.AuraDisplay._extras[CXu] ~= nil and NS.AuraDisplay._extras[CXu].ok == true"))
+lua('CXc.enabled = false; NS.AuraDisplay.Build()')
+check("its condition switched off: the Text cue it lists stays with XayaUI (silent, as the condition's On switch says)", not own("CXt"))
+lua('CXc.enabled = true; NS.AuraDisplay.Build()')
 lua('printed = {}; SlashCmdList["XUIENGINE"]("")')
 check("/xuiengine counts the separate time / stack displays it draws", lua("for _, l in ipairs(printed) do if l:find('^Engine draws:') and l:find('separate time / stack display', 1, true) then return true end end return false"))
 

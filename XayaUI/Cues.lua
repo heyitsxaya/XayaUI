@@ -126,22 +126,72 @@ function ns.DeleteCue(cue)
     ns.MarkDirty()
 end
 
+-- Which conditions of rule p name cue key `key` in their THEN list. A cue that NO condition names is decided by the rule's own triggers
+-- alone (0.6.14, Xaya 2026-11-04: "the cues tab fires based on triggers if no additional conditions are specified"); before 0.6.14
+-- such a cue never fired once the rule had any condition. A condition that is switched off still names its cues and keeps them
+-- silent (the condition's On switch: "An off condition never plays its cues"), so switching off a condition never turns its cue into
+-- one that plays on every trigger. Returns the switched-on ones and the switched-off ones.
+function ns.CueConditions(p, key)
+    local on, off = {}, {}
+    if not (p and key) then return on, off end
+    for _, c in ipairs(ns.ConditionsOf(p)) do
+        if type(c.thenCues) == "table" then
+            for _, k in ipairs(c.thenCues) do
+                if k == key then
+                    if c.enabled ~= false then on[#on + 1] = c else off[#off + 1] = c end
+                    break
+                end
+            end
+        end
+    end
+    return on, off
+end
+-- Does any condition (on or off) decide this cue? false: the cue follows the rule's triggers.
+function ns.CueGated(p, cue)
+    if not (p and cue and cue.cueKey) then return false end
+    for _, c in ipairs(ns.ConditionsOf(p)) do
+        if type(c.thenCues) == "table" then
+            for _, k in ipairs(c.thenCues) do if k == cue.cueKey then return true end end
+        end
+    end
+    return false
+end
+-- "Fires ..." for the Cues tab: what decides this cue now.
+function ns.CueFiresNote(cue)
+    local p = cue and ns.FindParentRule and ns.FindParentRule(cue)
+    if not p then return nil end
+    local on, off = ns.CueConditions(p, cue.cueKey)
+    local function names(list) local t = {}; for i, c in ipairs(list) do t[i] = tostring(c.name or ("Condition " .. i)) end; return table.concat(t, " or ") end
+    if #on == 0 and #off == 0 then
+        local any = #ns.ConditionsOf(p) > 0
+        return "Fires with the rule's triggers" .. (any and " (no condition lists this cue; list it in a condition's THEN to make it wait for that condition)." or ".")
+    end
+    if #on == 0 then
+        return "|cffffd100Silent:|r only " .. names(off) .. " list" .. (#off == 1 and "s" or "") .. " this cue, and " .. (#off == 1 and "it is" or "they are") ..
+            " switched off. Switch it on, or take the cue out of its THEN list to let the cue follow the rule's triggers."
+    end
+    return "Fires while " .. names(on) .. " is true (" .. (#on == 1 and "that condition lists" or "those conditions list") .. " this cue)."
+end
+
 local modsPool = setmetatable({}, { __mode = "k" })
--- A cue is "on" while any enabled condition that lists it is true.
+-- A cue is "on" while any switched-on condition that lists it is true; a cue no condition lists follows the rule's triggers.
 function ns.EvaluateCue(rule, ctx)
     local info = ns.InfoFor and ns.InfoFor(rule) or { missing = {} }
     info.ctx, info.outcome, info.cue = ctx, true, true
     local p = ns.FindParentRule(rule)
     if not p then info.missing[1] = "parent rule not found"; info.result = false; return false, info end
+    -- a switched-off rule switches off its cues too (before 0.6.14 they kept playing from the rule's triggers)
+    if not p.enabled then info.missing[1] = "the rule is switched off"; info.result = false; return false, info end
     local pr, pi = ns.Evaluate(p, ctx)
     info.cd, info.present, info.buffSource, info.buffRef, info.auraRef = pi.cd, pi.present, pi.buffSource, pi.buffRef, pi.auraRef
     if rule.spellID ~= p.spellID then rule.spellID = p.spellID end
     if rule.buffID ~= p.buffID then rule.buffID = p.buffID end
     if rule.maxCharges ~= p.maxCharges then rule.maxCharges = p.maxCharges end
     local key = rule.cueKey
-    -- a rule with no conditions at all: its cues simply follow the rule's own trigger
-    if #ns.ConditionsOf(p) == 0 then
+    -- no condition lists this cue (or the rule has no conditions at all): it simply follows the rule's own triggers
+    if not ns.CueGated(p, rule) then
         info.result = pr and true or false
+        info.by = "the rule's triggers"
         return info.result, info
     end
     -- Every true condition that lists this cue switches it on. Their modifiers (glow / desaturate / opacity) are merged in the
