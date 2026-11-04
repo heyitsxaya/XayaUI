@@ -237,7 +237,8 @@ local function ConditionBody(rule, H)
         return { type = "select", order = o, width = "relative", relWidth = rw, name = "", arg = { xuiTextLeft = true }, hidden = function() return noOpts(i) end,
             values = { keep = label .. ": no change", on = onWord, off = offWord }, sorting = { "keep", "on", "off" },
             get = function() local m = mget(i); local v = m and m[field]; if v == true then return "on" elseif v == false then return "off" end return "keep" end,
-            set = function(_, v) mset(i, field, (v == "on") and true or (v == "off") and false or nil) end, disabled = locked }
+            -- (spelled out: `(v == "on") and true or (v == "off") and false or nil` stores nil for "off", so "off" could never be set)
+            set = function(_, v) local val; if v == "on" then val = true elseif v == "off" then val = false end; mset(i, field, val) end, disabled = locked }
     end
     for i = 1, math.min(40, #(rule.thenCues or {}) + 1) do
         local o = 70 + i / 100 + 0.003

@@ -118,4 +118,26 @@ L.execute("BUFF_KIDS = { DND }; GetTime = function() return 20000 end; RULE.spel
 p, s = L.eval("BUFF()")
 check("a COOLDOWN icon of the spell is never used as the buff (Essential viewer)", p is None, (p, s))
 
+# "missing debuff" rules (Target Debuff (yours), state: NOT on the target), in combat: Blizzard files the tracker under the
+# ability (Sigil of Flame 204596), the rule watches the debuff (204598): the icon is found by the debuff's NAME
+L.execute(r'''
+NAMES[204596], NAMES[204598] = "Sigil of Flame", "Sigil of Flame"
+SIGIL = (function() local f = CreateFrame("Frame"); f.cooldownInfo = { spellID = 204596 }; function f:GetSpellID() return 204596 end; return f end)()
+BUFF_KIDS = { DND, SIGIL }
+UnitExists = function(u) return u == "player" or u == "target" end
+UnitAffectingCombat = function() return COMBAT end
+C_UnitAuras.GetUnitAuras = function() if COMBAT then return SECRET end return {} end
+COMBAT = true; GetTime = function() return 40000 end
+TD = { type = "targetDebuff", spellID = 204598, unit = "target", state = "no" }
+function TDCHECK() return NS.TRIGGER_TYPES.targetDebuff.check(TD) end
+''')
+v, why = L.eval("TDCHECK()")
+check("missing debuff in combat, tracker filed under the ability: found by name, icon not lit -> 'not on the target' TRUE", v is True, (v, why))
+L.execute("SIGIL.wasSetFromAura = true; SIGIL.auraInstanceID = SECRET; GetTime = function() return 40001 end")
+v, why = L.eval("TDCHECK()")
+check("  ...icon lit -> FALSE", v is False, (v, why))
+L.execute("NAMES[204599] = 'Some Other Debuff'; TD.spellID = 204599; SIGIL.wasSetFromAura = false; SIGIL.auraInstanceID = nil; GetTime = function() return 40002 end")
+v, why = L.eval("TDCHECK()")
+check("  ...a debuff with another name than any tracked icon stays unknown in combat (no guess)", v is None, (v, why))
+
 print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)

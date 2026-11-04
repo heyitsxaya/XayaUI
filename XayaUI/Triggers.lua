@@ -735,6 +735,11 @@ Add("targetDebuff", {
         -- Seen in game 2026-10-30: debuff up -> iid=secret unit=target; debuff gone -> iid=nil unit=nil (one sample each).
         if (found ~= false or sawHidden) and unit == "target" then
             local ca, cb = CdmState(id), CdmState(tonumber(t.cdmID))
+            -- neither ID on an icon: a Tracked Buffs icon with the debuff's NAME (Blizzard often files it under the ability)
+            if ca == nil and cb == nil and ns.TrackedBuffStateByName then
+                local okN, cn = pcall(ns.TrackedBuffStateByName, id)
+                if okN then ca = cn end
+            end
             if ca == true or cb == true then return Found("seen in the Cooldown Manager") end
             if (ca == false or cb == false) and t.cdmAbsent ~= "no" then
                 return Absent("Cooldown Manager icon inactive (in combat)")

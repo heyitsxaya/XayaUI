@@ -588,6 +588,41 @@ local function TrackedBuffOfSpell(rule)
     return active and true or false, "CDM tracked buff of the rule's spell " .. sid .. " (" .. tostring(vname) .. "; same name as the aura)",
         active and MakeRef(nil, fr) or nil
 end
+-- A Tracked Buffs icon or bar (never a cooldown icon) carrying any spell ID with this NAME: Blizzard often files a tracker
+-- under the ability rather than the aura it applies (Sigil of Flame: ability 204596, debuff 204598; Death and Decay: 43265 /
+-- 188290). Used by the Target Debuff trigger when neither of its IDs matches an icon. true = lit, false = present and not lit,
+-- nil = no such icon. The name list is rebuilt with the icon index (at most every 0.25 s).
+local byName, byNameAt = {}, -1
+function ns.TrackedBuffStateByName(id)
+    local name = SpellNameOf(tonumber(id) or 0)
+    if not name then return nil end
+    FindCDMFrame(tonumber(id) or 0)   -- (refreshes the index when stale)
+    if byNameAt ~= cdmAt then
+        byName, byNameAt = {}, cdmAt
+        for sid, list in pairs(cdmIndex) do
+            local n = SpellNameOf(sid)
+            if n then
+                for i = 1, #list do
+                    if BUFF_VIEWERS[list[i][2]] then
+                        local l = byName[n]
+                        if not l then l = {}; byName[n] = l end
+                        l[#l + 1] = list[i][1]
+                    end
+                end
+            end
+        end
+    end
+    local l = byName[name]
+    if not l then return nil end
+    local any = false
+    for i = 1, #l do
+        local okA, act = pcall(FrameActive, l[i])
+        if okA and act then return true end
+        any = true
+    end
+    if any then return false end   -- (not `any and false or nil`: that always yields nil)
+    return nil
+end
 function ns.BuffPresentAny(rule)
     local p, s, r, w = ns.AuraPresentList(rule and rule.buffID, rule and rule.buffAlt)
     if p == nil and rule then
