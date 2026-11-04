@@ -22,6 +22,8 @@ L = l51.LuaRuntime(unpack_returned_tuples=True)
 
 def to_py(v):
     if l51.lua_type(v) == "table":
+        if v["__enumname"] is not None:   # a named Enum value (see the documentation loader below)
+            return str(v["__enumname"])
         keys = list(v.keys())
         if keys and all(isinstance(k, int) for k in keys) and sorted(keys) == list(range(1, len(keys) + 1)):
             return [to_py(v[k]) for k in sorted(keys)]
@@ -46,7 +48,24 @@ api = to_py(db_lua["api"]) if db_lua["api"] else None
 static = to_py(db_lua["static"]) if db_lua["static"] else None
 
 # ---- 2. Blizzard's generated documentation ----------------------------------------------------------------------------------
-L.execute("local function auto() return setmetatable({}, {__index = function(t, k) local v = setmetatable({}, {__index = function() return 0 end}); rawset(t, k, v); return v end}) end; Enum = auto(); Constants = auto(); DOCS = {}; APIDocumentation = { AddDocumentationTable = function(self, t) DOCS[#DOCS+1] = t end }")
+# Enum values the documentation names (SecretReturnsForAspect = { Enum.SecretAspect.Cooldown }) keep their names: a value read from
+# Enum is a marker holding "SecretAspect.Cooldown", and arithmetic on markers keeps the names ("A + B"); to_py turns a marker into
+# its text. Before, every Enum value read 0 and the reference printed "[0]". Constants stay numbers.
+L.execute(r"""
+local EV = {}
+local function mk(name) return setmetatable({ __enumname = name }, EV) end
+local function nm(x) if type(x) == "table" and x.__enumname then return x.__enumname end return tostring(x) end
+EV.__tostring = function(t) return t.__enumname end
+for op, sym in pairs({ __add = " + ", __sub = " - ", __mul = " * ", __div = " / ", __mod = " % ", __pow = " ^ " }) do
+  EV[op] = function(a, b) return mk(nm(a) .. sym .. nm(b)) end
+end
+EV.__unm = function(a) return mk("-" .. nm(a)) end
+local function auto(named) return setmetatable({}, {__index = function(t, k)
+  local v = setmetatable({}, {__index = function(_, f) if named then return mk(k .. "." .. tostring(f)) end return 0 end})
+  rawset(t, k, v); return v end}) end
+Enum = auto(true); Constants = auto(false); DOCS = {}
+APIDocumentation = { AddDocumentationTable = function(self, t) DOCS[#DOCS+1] = t end }
+""")
 bad = []
 docfiles = sorted(glob.glob(os.path.join(args.docs, "*.lua")))
 for p in docfiles:
@@ -77,6 +96,7 @@ def flags(d):
     for k in sorted(d):
         if k in BASIC: continue
         v = d[k]
+        if isinstance(v, list): v = "[" + ", ".join(str(x) for x in v) + "]"
         out.append(k if v is True else "%s=%s" % (k, v))
     return out
 def docline(d):

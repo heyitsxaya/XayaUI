@@ -2040,6 +2040,40 @@ local function BuildRule(i, rule)
             },
             note = { type = "description", order = 9, fontSize = "small",
                 name = "Sounds you add to Media\\Audio need a full game restart before they can play. Use the headphone icon in the sidebar to loop this sound while you edit." },
+            -- Decision D2 (AuraSound.lua): the game plays the sound on the aura itself, so it works while the aura is hidden in combat
+            gameSoundOn = { type = "toggle", order = 10, width = "full",
+                name = "Let the game play this sound on the aura itself (works in combat while the aura is hidden)",
+                desc = "The game plays this sound when the Buff / Aura trigger's aura is gained (or lost), even in combat when XayaUI cannot see the aura. The game follows the aura ALONE: this rule's other triggers, conditions and Repeat are ignored for this sound. Sound files only (not [Game] sound kits or speech). Set up out of combat only. Not yet confirmed in game for ordinary auras.",
+                hidden = function() return not (ns.AuraSound and ns.AuraSound.Available()) end,
+                get = function() return type(rule.gameSound) == "table" and rule.gameSound.enabled == true end,
+                set = function(_, v)
+                    rule.gameSound = type(rule.gameSound) == "table" and rule.gameSound or { channel = "Ambience", throttle = 1, when = "auto" }
+                    rule.gameSound.enabled = v and true or false
+                    ns.MarkDirty(); Notify()
+                end },
+            gameSoundWhen = { type = "select", order = 11, name = "Game plays it", width = "double",
+                hidden = function() return not (type(rule.gameSound) == "table" and rule.gameSound.enabled) end,
+                values = function() return ns.AuraSound and ns.AuraSound.WHEN_VALUES or {} end,
+                sorting = function() return ns.AuraSound and ns.AuraSound.WHEN_ORDER or {} end,
+                get = function() return rule.gameSound.when or "auto" end,
+                set = function(_, v) rule.gameSound.when = v; ns.MarkDirty(); Notify() end },
+            gameSoundChannel = { type = "select", order = 12, name = "Channel for the game's copy", values = CHANNEL_VALUES, sorting = CHANNEL_ORDER,
+                desc = "Its own channel (default Ambience), so you can lower or mute it on its own in the game's sound settings.",
+                hidden = function() return not (type(rule.gameSound) == "table" and rule.gameSound.enabled) end,
+                get = function() return rule.gameSound.channel or "Ambience" end,
+                set = function(_, v) rule.gameSound.channel = v; ns.MarkDirty(); Notify() end },
+            gameSoundThrottle = { type = "range", order = 13, name = "At most once every (seconds)", min = 0, max = 10, step = 0.5,
+                hidden = function() return not (type(rule.gameSound) == "table" and rule.gameSound.enabled) end,
+                get = function() return tonumber(rule.gameSound.throttle) or 1 end,
+                set = function(_, v) rule.gameSound.throttle = v; ns.MarkDirty() end },
+            gameSoundAlso = { type = "toggle", order = 14, width = "full",
+                name = "Also play it from XayaUI when the rule fires (two sounds out of combat)",
+                hidden = function() return not (type(rule.gameSound) == "table" and rule.gameSound.enabled) end,
+                get = function() return rule.gameSound.alsoXayaUI == true end,
+                set = function(_, v) rule.gameSound.alsoXayaUI = v and true or nil; ns.MarkDirty() end },
+            gameSoundStatus = { type = "description", order = 15, width = "full", fontSize = "small",
+                hidden = function() return not (type(rule.gameSound) == "table" and rule.gameSound.enabled) end,
+                name = function() local ok, s = pcall(ns.AuraSound.StatusLine, rule); return ok and s or "" end },
         },
     }
 

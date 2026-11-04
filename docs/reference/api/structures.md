@@ -915,7 +915,7 @@ Fields of the tables the API returns or takes. `NeverSecret` on a field means it
 
 ## CalendarGetEventTypeConstants (Constants, None)
 
-- `DEFAULT_CALENDAR_GET_EVENT_TYPE: CalendarGetEventType` · Value=0
+- `DEFAULT_CALENDAR_GET_EVENT_TYPE: CalendarGetEventType` · Value=CalendarGetEventType.Get
 
 ## CalendarGuildEventInfo (Structure, Calendar)
 
@@ -2285,7 +2285,7 @@ Fields of the tables the API returns or takes. `NeverSecret` on a field means it
 
 ## CurrencyConsts (Constants, None)
 
-- `PLAYER_CURRENCY_CLIENT_FLAGS: PlayerCurrencyFlagsDbFlags` · Value=0
+- `PLAYER_CURRENCY_CLIENT_FLAGS: PlayerCurrencyFlagsDbFlags` · Value=PlayerCurrencyFlagsDbFlags.InBackpack + PlayerCurrencyFlagsDbFlags.UnusedInUI
 - `MAX_CURRENCY_QUANTITY: number` · Value=100000000
 - `CONQUEST_ARENA_AND_BG_META_CURRENCY_ID: number` · Value=483
 - `CONQUEST_RATED_BG_META_CURRENCY_ID: number` · Value=484
@@ -2736,7 +2736,7 @@ Fields of the tables the API returns or takes. `NeverSecret` on a field means it
 
 ## EditModeLayoutConsts (Constants, None)
 
-- `EditModeDefaultLayout: EditModePresetLayouts` · Value=0
+- `EditModeDefaultLayout: EditModePresetLayouts` · Value=EditModePresetLayouts.Modern
 
 ## EditModeLayoutInfo (Structure, EditModeManager)
 
@@ -4364,7 +4364,7 @@ Fields of the tables the API returns or takes. `NeverSecret` on a field means it
 ## LFG_ROLEConstants (Constants, None)
 
 - `LFG_ROLE_NO_ROLE: LFGRole` · Value=-1
-- `LFG_ROLE_ANY: LFGRole` · Value=0
+- `LFG_ROLE_ANY: LFGRole` · Value=LFGRoleMeta.NumValues
 
 ## LevelConstsExposed (Constants, None)
 

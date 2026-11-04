@@ -195,6 +195,16 @@ partly wrong and the row says what is true.
 **Fix order** (each through VERIFICATION.md): 2 (D1 is already decided), 1, 8 with 7, 11, 22, 13, 4, then 5 with task #28, then 6, 9, 10,
 12, 14-21.
 
+**Status at core 0.6.13** (2026-11-04, `debug-log/2026-11-04-0824-aura-gaps-core-0.6.13.md`; in code with outcome tests, none confirmed in game yet):
+- **Fixed in code:** 1, 2, 4, 6, 7, 8, 9, 10, 11, 12 (Tier Set Pieces Worn trigger), 15, 22.
+- **Partly done:**
+  - 5: Spell Glows trigger, and the glow fallback, which needs a pairing seen in game first;
+  - 21: AddAuraSound opt-in and the per-rule combat line done; PandemicTime and `xuiUpdatedAt` not yet;
+  - 20: reported only, by design, until the in-game data settles what "false" promises.
+- **Left as is, on purpose:** 13 (would risk a false "missing").
+- **Waiting on Xaya:** 16.
+- **Not started:** 3, 14, 17, 18, 19.
+
 ## Missed aura data, and where it can come from
 | Source | What it gives | State |
 |---|---|---|
@@ -202,4 +212,4 @@ partly wrong and the row says what is true.
 | Glow, proc-art, override, icon and "now usable" events | Spell-state changes with no secrecy flag (12.1.5 docs) | Planned: task #28; an in-game probe first |
 | Combat log file / Warcraft Logs | Exact aura apply / remove times, joined offline with XayaUI's own signal log | Planned: task #28 |
 | Cooldown Manager catalogue (`/xuidump catalogue`) | Spell → linked aura IDs per spec | Captured by GameDump; unused by core (gap 14, 15) |
-| Our API reference | Secrecy rules per widget aspect | **Gap found:** `docs/reference/api/widgets.md` shows `SecretReturnsForAspect=[0]` where Blizzard names the aspect (`BarValue`, `Alpha` ...); `build_reference.py` loses it |
+| Our API reference | Secrecy rules per widget aspect | **Fixed 2026-11-04 (core 0.6.13 batch):** `build_reference.py` now keeps Enum names, so `widgets.md` reads `SecretReturnsForAspect=[SecretAspect.BarValue]` (was `[0]`); rebuilt from the same capture and documentation, names were the only change |

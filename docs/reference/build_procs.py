@@ -43,6 +43,7 @@ def main():
     ap.add_argument("--cache", required=True)
     ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "procs.md"))
     ap.add_argument("--date", default=None, help="date written in the header (default: today, UTC)")
+    ap.add_argument("--lua", default=None, help="also write the Lua table XayaUI reads (aura -> buttons only it lights)")
     a = ap.parse_args()
     fetch(a.build, a.cache)
 
@@ -91,7 +92,7 @@ def main():
     lit_by = defaultdict(list)
     for e in entries:
         for s in e["lit"]:
-            if s in player:
+            if s in player and e["aura"] not in lit_by[s]:   # distinct auras: one aura with two overlay rows is still one aura
                 lit_by[s].append(e["aura"])
 
     def nm(s):
@@ -205,6 +206,30 @@ def main():
     with open(a.out, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(out))
     print("wrote", a.out, "rows", total)
+    if a.lua:
+        # aura -> the player spells it lights that NO other aura in the table lights (so the glow names this aura alone)
+        uniq = {}
+        for e in entries:
+            if e["set"] not in classes:
+                continue
+            btn = [s for s in e["lit"] if s in player and len(lit_by[s]) == 1]
+            if btn:   # (an aura with several overlay rows: the union of their buttons)
+                have = uniq.setdefault(e["aura"], [])
+                have.extend(s for s in btn if s not in have)
+        lines = ["-- XayaUI: which buttons a proc aura lights when NO other aura lights them (generated; do not edit by hand).",
+                 "-- Source: Blizzard's client data tables for build %s as published by wago.tools (SpellActivationOverlay," % a.build,
+                 "-- SpellClassOptions, ChrClasses, SkillLineAbility, TraitDefinition), built by docs/reference/build_procs.py --lua on %s." % date,
+                 "-- Facts only (spell IDs). How the buttons are matched is the community's reading of these columns; see docs/reference/procs.md.",
+                 "local _, ns = ...",
+                 "ns.PROC_GLOW_BUILD = \"%s\"" % a.build,
+                 "ns.PROC_GLOW_AURAS = {"]
+        for aura in sorted(uniq, key=int):
+            b = sorted(uniq[aura], key=int)
+            lines.append("    [%s] = { %s },   -- %s -> %s" % (aura, ", ".join(b), nm(aura), "; ".join(nm(x) for x in b)))
+        lines.append("}")
+        with open(a.lua, "w", encoding="utf-8", newline="\n") as f:
+            f.write("\n".join(lines) + "\n")
+        print("wrote", a.lua, "auras", len(uniq))
 
 
 if __name__ == "__main__":

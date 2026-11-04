@@ -124,13 +124,19 @@ local function NumRef(ref, p, pi)
         return cdi.count
     elseif ref == "n:cdRemain" then
         local id = SpellID(); if not id then return nil end
-        local ok, cd = pcall(C_Spell.GetSpellCooldown, id)
+        local readID = ns.SpellOnBar and ns.SpellOnBar(id) or id   -- a talent that replaces the spell: the one on the bar (gap 4)
+        local ok, cd = pcall(C_Spell.GetSpellCooldown, readID)
         if not ok or type(cd) ~= "table" then return nil end
         local st, du, act, gcd = cd.startTime, cd.duration, cd.isActive, cd.isOnGCD
+        -- SpellCooldownInfo.isActive and .isOnGCD are NeverSecret (12.1.5): they decide "ready" even when the times are hidden
+        -- (retrospective gap 11; before, a hidden time always went to the estimate)
+        if act == false and not issecret(act) then return 0 end
+        if gcd == true and not issecret(gcd) then return 0 end   -- only the global cooldown: the spell itself is ready
         if issecret(st) or issecret(du) or issecret(act) or issecret(gcd) then
-            -- hidden (combat): the duration engine's estimate (Timing.lua)
+            -- hidden (combat), still on cooldown: the duration engine's estimate (Timing.lua). An estimate that has already run
+            -- out while the game still says "on cooldown" is unknown, not 0 (gap 11).
             local ready = ns.Timing and ns.Timing.CooldownEstimate(id)
-            if ready then return math.max(0, ready - now) end
+            if ready and ready > now then return ready - now end
             return nil
         end
         if not act or gcd or type(du) ~= "number" or du <= 0 or type(st) ~= "number" then return 0 end
@@ -145,7 +151,8 @@ local function NumRef(ref, p, pi)
         end
         return nil
     elseif ref == "n:buffRemain" then
-        if pi.present == false then return 0 end
+        -- an absent aura has no time left to show (decision D1, Xaya 2026-11-04); CheckValue makes any comparison on it NOT met
+        if pi.present == false then return nil end
         if pi.present == true and pi.buffRef and type(pi.buffRef.expiration) == "number" and pi.buffRef.expiration > 0 then
             return math.max(0, pi.buffRef.expiration - now)
         end
@@ -170,7 +177,20 @@ end
 -- One check: true / false / nil (unknown).
 -- time-left checks register the moments they will change (the threshold, and zero) so the engine steps on that exact frame
 local TIME_LEFT = { ["n:buffRemain"] = true, ["n:cdRemain"] = true }
+-- Decision D1 (Xaya, 2026-11-04): "an absent buff shows no icon and no number, and any time condition on it is NOT met". So a
+-- seconds-left comparison on an aura that is known to be absent is false (before 0.6.13 it read 0, and "seconds left <= 2" fired
+-- while the buff was missing, #173). Unknown stays unknown.
+local function AuraTimeRefAbsent(ref, p, pi)
+    if ref == "n:buffRemain" then return pi ~= nil and pi.present == false end
+    local n = tonumber(ref:match("^n:x(%d+)t$"))
+    if n and type(p) == "table" and type(p.extra) == "table" and type(p.extra.list) == "table" and ns.TriggerAuraPresent then
+        return ns.TriggerAuraPresent(p.extra.list[n]) == false
+    end
+    return false
+end
+ns.AuraTimeRefAbsent = AuraTimeRefAbsent
 local function CheckValue(t, p, pr, pi)
+    if IsNumRef(t.ref) and AuraTimeRefAbsent(t.ref, p, pi) then return false end
     if IsNumRef(t.ref) then
         local v, num = NumRef(t.ref, p, pi), tonumber(t.num) or 0
         if (TIME_LEFT[t.ref] or t.ref:match("^n:x%d+t$")) and type(v) == "number" and ns.Timing then

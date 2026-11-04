@@ -116,7 +116,10 @@ p, s = L.eval("BUFF()")
 check("the spell not in Tracked Buffs: unknown, as before (no guess)", p is None, (p, s))
 L.execute("BUFF_KIDS = { DND }; GetTime = function() return 20000 end; RULE.spellID = 55090; NAMES[55090] = 'Death and Decay'")
 p, s = L.eval("BUFF()")
-check("a COOLDOWN icon of the spell is never used as the buff (Essential viewer)", p is None, (p, s))
+check("a COOLDOWN icon of the spell is never used as the buff (Essential viewer)", p is None or ("Essential" not in str(s)), (p, s))
+# 0.6.13 (gap 8): with no icon under the aura's IDs and none of the rule's spell in Tracked Buffs, a Tracked Buffs icon filed
+# under the aura's NAME answers (here DND, "Death and Decay", the same name as aura 188290), never the Essential cooldown icon
+check("the aura's name finds the Tracked Buffs icon (not lit -> absent), and says so", p is False and "name" in str(s), (p, s))
 
 # "missing debuff" rules (Target Debuff (yours), state: NOT on the target), in combat: Blizzard files the tracker under the
 # ability (Sigil of Flame 204596), the rule watches the debuff (204598): the icon is found by the debuff's NAME
