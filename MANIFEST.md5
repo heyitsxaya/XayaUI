@@ -1,4 +1,4 @@
-9ed45ce3e319d0d6f487b1c6b4f66332  .claude/skills/xayaui-change/SKILL.md
+aa930a3c0bfa24b0f00ee50b39afa873  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 5c5ac14c568c8773d3259349300399e3  .gitignore
 0e754eb408e6fe9daf27d12660842ba6  Claude outputs/Plater_NpcColors_S2_block.lua
@@ -6,12 +6,12 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-ac6bbb795c9be5aa6b230603e7c83965  QA-CHECKLIST.md
+55daec29787482f349823d5cc7487ab2  QA-CHECKLIST.md
 a54d403da833eefe5b3661b57270da58  README.md
 63e39d9eff15e0037d26d3d7d39f51d9  ROADMAP.md
-d48ffc5ae354da80454b39acffe310b9  SESSION-START-SUMMARY.md
+e476fc414acf7c96ea8581bf6bb22e25  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-731b3a4874c6574541270881346ee45d  USER-GUIDE.md
+9246c3d09acdf3274ac7b03bdeb618c9  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 4cc1b0cabaf7b9fbfcbcdcbc5d14a9b4  XayaUI/AuraSound.lua
@@ -24,12 +24,12 @@ d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 37fa5175736d02a8aa486c64e9e6c143  XayaUI/Combat/AuraTracker.lua
 d9d202afce65354b4aaf84ffcd8f67aa  XayaUI/Combat/README.md
 30e5f32b2444eb29c1fb0060f1ef9758  XayaUI/Compat.lua
-52733e149de2cdd142314009776187e8  XayaUI/Conditions.lua
-f1800b457012380b15ae84f2177ca7db  XayaUI/Console.lua
-18995016d7afae9b304e1b987471448a  XayaUI/Core.lua
+0b74e523cf899cc8d1a40fe901914485  XayaUI/Conditions.lua
+321ec7d4e9b2bc9de08e702dbbfb02a6  XayaUI/Console.lua
+ffd7d82ee0bbf0593afce0e29e20d031  XayaUI/Core.lua
 54cd777342d376237760b45e6c8c8358  XayaUI/Cues.lua
-19ea0b490326c9c4d2bc0d91a5a5b27f  XayaUI/DebugRecord.lua
-5338663b62255ed8834da9ced579b6af  XayaUI/Engine.lua
+2a0f2a633dae957c132cc16968ab9edf  XayaUI/DebugRecord.lua
+d817c5a68e5d3e797559c40b2571de8c  XayaUI/Engine.lua
 62d0858038c6fa488bf5c43f4896ee6f  XayaUI/GameMenu.lua
 453fb0aae7a7f04befc588dd6046a438  XayaUI/Libs/LibStub/LibStub.lua
 15f96f4257c78c0e1bb0ed30e72c0103  XayaUI/Libs/LibStub/LibStub.toc
@@ -103,7 +103,7 @@ ac819cb3c0f1c6bd28bdcd33566a74f8  XayaUI/ProcGlows.lua
 b76823560a93ae68a07689af413b01ec  XayaUI/RecycleBin.lua
 b228da60bb797fd046561b1594b799ca  XayaUI/SetBonusAuras.lua
 b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
-08600085f19f46a27d969190c037f9d0  XayaUI/Sound.lua
+9966ecc7520f3978efc33a1e1af4efe2  XayaUI/Sound.lua
 46f77b8a678f39da1db320a4883ae59f  XayaUI/TalentDump.lua
 7d0e35ac661d1db2569cdea98562ba17  XayaUI/TextureList.lua
 2bf4d9dac09dbaaeb00c82fab7753069  XayaUI/Theme.lua
@@ -111,7 +111,7 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 5a43c10ca2f4822464b3aadef5f98578  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
 d78b277a69c869a56c306f0477181d04  XayaUI/Visual.lua
-8780c3449b50746446cbe8076d6d5c3f  XayaUI/XayaUI.toc
+61d1b6691cf64ab46a4de03fd39e8bf8  XayaUI/XayaUI.toc
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -160,8 +160,8 @@ ce86bad1dfcf9771b21626d41ed3c6f8  XayaUI_GameDump/AuraCatalogue.lua
 857e41250c987f3251a9c8ae1a21ae97  XayaUI_GameDump/FORMULA-CAPTURE-WALKTHROUGH.md
 4e650b1654b192b5f3048f03425dbacf  XayaUI_GameDump/FormulaCapture.lua
 78ee60ef7cffdde01800b3671a60c2c2  XayaUI_GameDump/GameDump.lua
-5f11f7865a8fe3c0d17f0c2258fa2865  XayaUI_GameDump/Probe.lua
-c9efd8e06bd7ed27fe76a3b9e67358ea  XayaUI_GameDump/XayaUI_GameDump.toc
+48f4404ace19ec649b1c45b880178ab1  XayaUI_GameDump/Probe.lua
+eef8425f92e5d5778fe615278f630843  XayaUI_GameDump/XayaUI_GameDump.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
@@ -170,7 +170,7 @@ efec3fcde487dd92bc91fc15f730a5b2  XayaUI_Media/Update-UserMedia.py
 04f439ec9494222ba90b878bd119dd63  XayaUI_Media/UserMedia.lua
 2529f9852549e926a22e6f2f403678e0  XayaUI_Media/XayaUI_Media.toc
 e998bd489f4bedd23f7fa9b61505041b  XayaUI_Options/AddonInfo.lua
-cb89ced5c206290978115e2d5971b78a  XayaUI_Options/DisplayTab.lua
+ea8ddcd1ab23566b8e4271f5d1c13317  XayaUI_Options/DisplayTab.lua
 446f93d8075ea4e38bc62b0e7dcb20a6  XayaUI_Options/Drafts.lua
 85490d6e6ec49d94810dbceea898bf5a  XayaUI_Options/ImportWindow.lua
 5f8b46e28f1aed575cec1896b7b15682  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.lua
@@ -208,12 +208,12 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-5d33fde9284a0747280d69a21aa280c1  XayaUI_Options/Options.lua
+a502af06e078328c99081fa12abd91a6  XayaUI_Options/Options.lua
 8d2bfd2b7b768d7e9991276be979558b  XayaUI_Options/OutcomesEditor.lua
 6d7152146103bcfd1e18fcccaa390794  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
-c886995281598bed95d87c8edfd29447  XayaUI_Options/XayaUI_Options.toc
+e1543adf49406b97b2e71d7f99be15a9  XayaUI_Options/XayaUI_Options.toc
 1b7f9c9a6a6f181cc44dce7f1838d2de  XayaUI_QoL/CharacterModel.lua
 668b940e86f1dcc76e791618f370ae4c  XayaUI_QoL/CharacterToolkit.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
@@ -393,6 +393,7 @@ c4b1cf2b9db971da28d0bb93cbb449ae  debug-log/2026-11-04-0857-art-picker-missing-f
 95750770463dfabc1d99aef32b3c3d4d  debug-log/2026-11-04-1348-always-load-class-spec-tick-core-0.6.18.md
 64b41941e74b57988437fd8f581ecbeb  debug-log/2026-11-04-1354-conditions-enforced-engine-cue-volume-core-0.6.19.md
 9b1691f9ce41d1a3ccd2c8741035d97a  debug-log/2026-11-04-1406-debug-record-glow-sets-built-in-core-0.6.20.md
+18efaf779c7e9eccb5fe43d2ccc3e482  debug-log/2026-11-04-1443-advanced-debugging-categories-core-0.6.22.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 f54b8f5064294401abd280cf2c464599  docs/process/IN-GAME-DATA-2026-11-05.md
@@ -453,7 +454,8 @@ abe22a2816956a2c3babb802857cc524  tests/chatprobe_run.py
 c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
 e78532613d70ebbdcc90fcfb23c97f0a  tests/cue_fire_run.py
 e72897e247fb535d4756722cd9f5aad7  tests/cue_volume_run.py
-0a0e3ccd9d220df650e14b28fc583e35  tests/debug_record_run.py
+468a208772bf47d9d5b03f5f786b7989  tests/debug_record_engine_run.py
+715d4b127b6a3e46f8c36037913b89bb  tests/debug_record_run.py
 5d20324637578a787b84cbdf299ded74  tests/disabled_tree_run.py
 24c416cc7618a484a11143f4c7810d7e  tests/display_tab_run.py
 79340b1faeb574b0dd0dd28d6f8915e4  tests/drafts_run.py

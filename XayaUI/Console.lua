@@ -150,7 +150,7 @@ function ns.BuildBugReport(description, includeAddons)
     if rn > 0 then
         local lines = CueRulesDB.debugRecord.lines
         add("")
-        add(("Debug record: %d lines since %s%s (newest %d below; all of them are in WTF\\Account\\<account>\\SavedVariables\\XayaUI.lua after a /reload or logout):"):format(
+        add(("Debug record: %d lines since %s%s (newest %d below; all of them are in XayaUI.lua, see WHAT TO SEND at the end):"):format(
             rn, tostring(rstart), rdrop > 0 and (", " .. rdrop .. " older lines dropped") or "", math.min(rn, 1500)))
         for i = math.max(1, rn - 1499), rn do add("  " .. tostring(lines[i])) end
     end
@@ -164,6 +164,7 @@ function ns.BuildBugReport(description, includeAddons)
         end
         add("Loaded addons (" .. #names .. "): " .. table.concat(names, ", "))
     end
+    if ns.SendText then add(""); add(ns.SendText()) end   -- the files to send and where they are (DebugRecord.lua)
     return table.concat(L, "\n")
 end
 function ns.ShowBugReport()
@@ -189,7 +190,8 @@ local function BuildWindow()
     if win then return win end
     local f = CreateFrame("Frame", "XayaUIConsoleWindow", UIParent, "BackdropTemplate")
     local c = Ui().console or {}
-    f:SetSize(tonumber(c.w) or 460, tonumber(c.h) or 300)
+    -- (390 px at least: the title and the four buttons share the top row)
+    f:SetSize(math.max(390, tonumber(c.w) or 460), tonumber(c.h) or 300)
     f:SetPoint(c.point or "RIGHT", UIParent, c.rel or "RIGHT", tonumber(c.x) or -20, tonumber(c.y) or 0)
     f:SetFrameStrata("MEDIUM")
     f:SetClampedToScreen(true)
@@ -197,7 +199,7 @@ local function BuildWindow()
     f:SetBackdropColor(0.05, 0.05, 0.06, 0.92)
     f:SetBackdropBorderColor(0.3, 0.3, 0.35, 1)
     f:SetMovable(true); f:SetResizable(true); f:EnableMouse(true); f:RegisterForDrag("LeftButton")
-    pcall(f.SetResizeBounds, f, 280, 120, 900, 900)
+    pcall(f.SetResizeBounds, f, 390, 120, 900, 900)
     f:SetScript("OnDragStart", f.StartMoving)
     f:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); SavePos() end)
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -218,6 +220,9 @@ local function BuildWindow()
     clr:SetPoint("RIGHT", bug, "LEFT", -4, 0)
     local cp = Btn("Copy", 44, function() ns.CopyConsole() end)
     cp:SetPoint("RIGHT", clr, "LEFT", -4, 0)
+    -- the files to send and the folder they are in, as copyable text (DebugRecord.lua ns.SendText)
+    local send = Btn("What to send", 84, function() if ns.SendText then ns.ShowCopyBox("XayaUI: what to send", ns.SendText()) end end)
+    send:SetPoint("RIGHT", cp, "LEFT", -4, 0)
     f.log = CreateFrame("ScrollingMessageFrame", nil, f)
     f.log:SetPoint("TOPLEFT", 8, -28); f.log:SetPoint("BOTTOMRIGHT", -8, 8)
     f.log:SetFontObject(GameFontHighlightSmall)

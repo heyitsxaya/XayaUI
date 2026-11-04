@@ -938,9 +938,14 @@ end
 
 -- Advanced Debugging record (DebugRecord.lua): each aura's answer is written down when it changes (present / missing / unknown, and
 -- which source gave it), so a combat can be followed afterwards without typing /xui status. Off: nothing is built or kept.
-local recLast = {}
+local recLast, recP, recS = {}, {}, {}
+-- forget what was written, so every aura's current answer is written again (after Clear, or when recording starts)
+function ns.ResetRecordedAuras() wipe(recLast); wipe(recP); wipe(recS) end
 local function RecordAura(id, present, src)
-    if not (ns.RecordOn and ns.RecordOn()) then return end
+    -- fast path (core 0.6.22, "cpu friendly"): the same answer from the same source as last time does no string work at all
+    if recP[id] == present and recS[id] == src and recLast[id] ~= nil then return end
+    if not (ns.RecordOn and ns.RecordOn("aura")) then return end
+    recP[id], recS[id] = present, src
     local kind = tostring(src or ""):match("^([^%(:|]+)") or tostring(src)
     kind = kind:gsub("%s+$", "")
     local key = tostring(present) .. "|" .. kind
@@ -1686,7 +1691,7 @@ function ns.LogStatusSnapshot(tag)
     if not ns.rules or #ns.rules == 0 then return end
     local ctx = ns.ReadContext()
     local changesOnly = tag == "combat tick"
-    ns.Log("-- status snapshot (%s) -- spec=%s role=%s combat=%s%s", tostring(tag or "?"),
+    ns.LogKind("snapshot", "-- status snapshot (%s) -- spec=%s role=%s combat=%s%s", tostring(tag or "?"),
         tostring(ctx.specID), tostring(ctx.role), tostring(ctx.combat), changesOnly and " (changes only)" or "")
     for i, r in ipairs(ns.rules) do
         if r.enabled then
@@ -1700,12 +1705,12 @@ function ns.LogStatusSnapshot(tag)
             if changesOnly and same then
                 -- unchanged: not logged
             elseif ok then
-                ns.Log("#%d %s result=%s | cd:%s(%s) buff:%s(%s via %s) ctx:%s talent:%s extra:%s",
+                ns.LogKind("snapshot", "#%d %s result=%s | cd:%s(%s) buff:%s(%s via %s) ctx:%s talent:%s extra:%s",
                     i, r.name, tostring(res), tostring(r.cdState), tostring(info.cdOK),
                     tostring(r.buffState), tostring(info.buffOK), tostring(info.buffSource),
                     tostring(info.ctxOK), tostring(info.talentOK), tostring(info.extraOK))
             else
-                ns.Log("#%d %s ERROR: %s", i, r.name, tostring(res))
+                ns.LogKind("snapshot", "#%d %s ERROR: %s", i, r.name, tostring(res))
             end
         end
     end

@@ -40,8 +40,14 @@ end
 local function RunActionsSafe(rule, rt, phase) if ns.RunActions then Guarded(rule, rt, ns.RunActions, rule, phase) end end
 local function PlaySoundSafe(rule, rt)
     -- the game already plays this rule's sound on the aura itself (AuraSound.lua, opt-in): no second copy
-    if ns.AuraSound and ns.AuraSound.Owns(rule) then return end
-    Guarded(rule, rt, function() ns.PlaySound(ns.EffectiveSound(rule)) end)
+    if ns.AuraSound and ns.AuraSound.Owns(rule) then
+        if ns.RecSound then ns.RecSound(rule, "left to the game (it plays this sound on the aura itself)") end
+        return
+    end
+    Guarded(rule, rt, function()
+        local how, res = ns.PlaySound(ns.EffectiveSound(rule))
+        if ns.RecSound then ns.RecSound(rule, how or "no sound picked", res) end   -- (DebugRecord.lua: nothing when its category is off)
+    end)
 end
 local function HasSound(rule) return ns.KindHas(rule, "sound") end
 local function SoundNote(rule)
@@ -75,6 +81,7 @@ local function StepEnabled(rule, rt, ctx, now)
         if not rt.errored then rt.errored = true; ns.Print("rule '" .. tostring(rule.name) .. "' error: " .. tostring(err)) end
     end
     rt.info = info
+    if ns.RecTrigger then ns.RecTrigger(rule, result, info) end   -- trigger detail for chosen rules (DebugRecord.lua; one test when off)
     -- Actions tab: On Initialization (the rule's load conditions hold), During start, After It Ends
     if not rule.parentUid and ns.RunActions and info then
         if info.ctxOK then
@@ -85,23 +92,28 @@ local function StepEnabled(rule, rt, ctx, now)
         rt.active, rt.lastPlay = true, now
         if not rule.parentUid then RunActionsSafe(rule, rt, "start") end
         if HasSound(rule) then PlaySoundSafe(rule, rt) end
-        ns.Log("|cff55ff55FIRED|r %s%s", tostring(rule.name), SoundNote(rule))
+        ns.LogKind("rule", "|cff55ff55FIRED|r %s%s", tostring(rule.name), SoundNote(rule))
     elseif result then
         local rep = rule.repeatSec or 0
         if rep > 0 and (now - rt.lastPlay) >= rep then
             rt.lastPlay = now
             if HasSound(rule) then PlaySoundSafe(rule, rt) end
-            ns.Log("repeat  %s", tostring(rule.name))
+            ns.LogKind("rule", "repeat  %s", tostring(rule.name))
         end
     else
         if rt.active then
-            ns.Log("cleared %s: %s", tostring(rule.name), info and ns.WhyNot(info) or "error")
+            ns.LogKind("rule", "cleared %s: %s", tostring(rule.name), info and ns.WhyNot(info) or "error")
             if not rule.parentUid then RunActionsSafe(rule, rt, "finish") end
         end
         rt.active = false
     end
     local wanted = DisplayWanted(rule, info, result)
+    local was = rt.visualWanted
     rt.visualWanted = wanted
+    -- the debug record's "Displays" category: only a change is reported (the first step of a hidden display is not a change)
+    if was ~= wanted and (was ~= nil or wanted) and ns.RecDisplay then
+        ns.RecDisplay(rule, wanted, ns.EngineOwns and ns.EngineOwns(rule) and true or false)
+    end
     local pv = perf.on and debugprofilestop()
     Guarded(rule, rt, ns.SetVisualShown, rule, wanted)
     -- a display the combat engine draws is hidden here, so its text / fade work is skipped, except its companion texts (shield
