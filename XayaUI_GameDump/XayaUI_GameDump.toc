@@ -1,13 +1,14 @@
 ## Interface: 120100, 120105
 ## Title: XayaUI Game Data Capture
-## Notes: Separate debugging tool for XayaUI. Pulls every class, spec, talent, spell description, spellbook entry, gear and set-bonus line the game will give an addon, and records which auras each cast causes (with observed durations). Developer captures: a full inventory of the game's API in this client, and live checks for the Character Toolkit. Opens from XayaUI > Settings > Debugging or with /xuidump.
+## Notes: Separate debugging tool for XayaUI. Pulls every class, spec, talent, spell description, spellbook entry, gear and set-bonus line the game will give an addon, and records which auras each cast causes (with observed durations). Developer captures: a full inventory of the game's API in this client, live checks for the Character Toolkit, a catalogue of every aura current content points to, and an aura log. Opens from XayaUI > Settings > Debugging or with /xuidump.
 ## Author: Xaya
 ## Group: XayaUI
-## Version: 0.4.0
+## Version: 0.5.0
 ## X-Date: 2026-11-04
 ## SavedVariables: XayaUIGameDumpDB
 ## OptionalDeps: XayaUI
 
 GameDump.lua
 ApiInventory.lua
+AuraCatalogue.lua
 FormulaCapture.lua

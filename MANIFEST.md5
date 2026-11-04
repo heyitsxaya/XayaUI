@@ -5,12 +5,12 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-94d54e9e83205a94548d51565add3c7c  QA-CHECKLIST.md
+f726fe1d33be1c51d84febfc6fb1033f  QA-CHECKLIST.md
 ee42539002c7a831fd97da0c0d766f12  README.md
 b8830af74b74d3bd040661448e9ff565  ROADMAP.md
 795543b7edf9a1e47a284d967c0fc4bf  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-3ae334994d44c0b828c3a3104ec8d796  USER-GUIDE.md
+3880f31eb8c666df24e5a9e99ef589cc  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
@@ -151,8 +151,8 @@ ac2f578eb04f04abaf092dfebc6c9447  XayaUI_Chat/XayaUI_Chat.toc
 d573b9f472f6dbc2b0cf0f175de15f89  XayaUI_GameDump/ApiInventory.lua
 857e41250c987f3251a9c8ae1a21ae97  XayaUI_GameDump/FORMULA-CAPTURE-WALKTHROUGH.md
 4e650b1654b192b5f3048f03425dbacf  XayaUI_GameDump/FormulaCapture.lua
-cb6efdef3c15b57e01d7feede17c28b9  XayaUI_GameDump/GameDump.lua
-28748ee061d93a13fb5915d067e5f7f5  XayaUI_GameDump/XayaUI_GameDump.toc
+ff72a073b5a71b8b558d44e6f9981357  XayaUI_GameDump/GameDump.lua
+71c627fd47fe41e325f4c396495144cd  XayaUI_GameDump/XayaUI_GameDump.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
