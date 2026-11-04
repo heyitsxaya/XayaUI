@@ -196,8 +196,10 @@ local function Paint(fs, col) if fs and col then fs:SetTextColor(col[1], col[2],
 -- Panel
 -------------------------------------------------------------------------------
 local panel, scroll, content
-local PANEL_W, PAD = 380, 8
-local HEADER = 22 + 24        -- title row, tab row
+-- spacing from core (#351 phase 2, XayaUI/Modules.lua): PAD = the margin inside the panel, GUT = the gutter between two controls
+local PANEL_W, PAD, GUT = 380, ns.UI_MARGIN, ns.UI_GUTTER
+local TITLE_H = 18            -- the title row (the mode button is 18 tall)
+local HEADER = TITLE_H + GUT + 20 + GUT  -- title row, a gutter, the tab row (20 tall), a gutter before the content
 local W = PANEL_W - 2 * PAD   -- content width
 ns.CHARTOOLKIT_LAYOUT = { width = PANEL_W, pad = PAD, header = HEADER, content = W }
 
@@ -468,12 +470,13 @@ local function Build()
     panel.title:SetPoint("TOPLEFT", PAD, -PAD)
     panel.title:SetText("Stat Calculator")   -- Xaya 2026-11-04: the panel's title (the feature is still Character Toolkit in the settings)
     local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
+    close:SetSize(24, 24)   -- the template's own size (UIPanelCloseButtonNoScripts, SharedUIPanelTemplates.xml:135, live 12.1.5)
     close:SetPoint("TOPRIGHT", 2, 2)
     close:SetScript("OnClick", function() panel.userHidden = true; panel:Hide() end)
     -- the value mode button: every rating line shows its percent or its rating
     local mb = CreateFrame("Button", nil, panel)
     mb:SetSize(74, 18)
-    mb:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -30, -(PAD - 2))
+    mb:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -(22 + GUT), -PAD)   -- a gutter left of the close button (24 wide, 2 px out: 22 px in)
     mb.bg = mb:CreateTexture(nil, "BACKGROUND"); mb.bg:SetAllPoints(mb)
     mb.text = mb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); mb.text:SetPoint("CENTER")
     mb:SetScript("OnClick", function()
@@ -496,7 +499,7 @@ local function Build()
     for i, t in ipairs(CM.TABS) do
         local b = CreateFrame("Button", nil, panel)
         b:SetSize(tw - 2, 20)
-        b:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + (i - 1) * tw, -(PAD + 22))
+        b:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + (i - 1) * tw, -(PAD + TITLE_H + GUT))
         b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(b)
         b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); b.text:SetPoint("CENTER")
         b.key, b.label = t[1], t[2]
@@ -557,8 +560,8 @@ local function Place()
     panel:ClearAllPoints()
     local cf = _G.CharacterFrame
     if Docked() then
-        if c.side == "left" then panel:SetPoint("TOPRIGHT", cf, "TOPLEFT", -4, 0)
-        else panel:SetPoint("TOPLEFT", cf, "TOPRIGHT", 4, 0) end
+        if c.side == "left" then panel:SetPoint("TOPRIGHT", cf, "TOPLEFT", -GUT, 0)
+        else panel:SetPoint("TOPLEFT", cf, "TOPRIGHT", GUT, 0) end
     else
         panel:SetPoint("CENTER", UIParent, "CENTER", c.free.x or 0, c.free.y or 0)
     end
@@ -644,8 +647,8 @@ local function RenderSections(c, m, tab, y0)
                         rowH = PlaceFS(FS(), 0, y, lw, size, it.label, cText, "LEFT", false, "label")
                         local eb = Box(it.input)
                         eb:ClearAllPoints()
-                        eb:SetPoint("TOPLEFT", content, "TOPLEFT", lw + 6, -y + 2)
-                        local ew = it.input == "item" and (W - lw - 6) or bw
+                        eb:SetPoint("TOPLEFT", content, "TOPLEFT", lw + GUT, -y + 2)
+                        local ew = it.input == "item" and (W - lw - GUT) or bw
                         eb:SetSize(ew, size + 6)
                         if not (eb.HasFocus and eb:HasFocus()) then
                             if it.input == "item" then eb:SetText(it.text or "")
@@ -653,9 +656,9 @@ local function RenderSections(c, m, tab, y0)
                         end
                         eb:Show()
                         eb.xuiUsed = true
-                        Rec("input", lw + 6, y, ew, size + 6, it.input, size)
+                        Rec("input", lw + GUT, y, ew, size + 6, it.input, size)
                         if it.input ~= "item" then
-                            local vx = lw + 6 + bw + 6
+                            local vx = lw + GUT + bw + GUT
                             local vh = PlaceFS(FS(), vx, y, W - vx, size, v, ToneColor(tone, cText), "RIGHT", true, "value")
                             rowH = math.max(rowH, vh)
                         end
@@ -705,7 +708,7 @@ local function RenderSheet(c, m)
     local cLabel = TC("xui-label", "text", { 1, 0.82, 0, 1 })
     local cMuted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
     local cLine = TC("xui-window", "border", { 0.3, 0.3, 0.3, 1 })
-    local colW = math.floor((W - 8) / 2)
+    local colW = math.floor((W - GUT) / 2)   -- two columns of cells, a gutter between them (a cell's label and value are one control)
     local cellH = size + 5
     local lw = math.floor(colW * 0.5)
     local y = 0
@@ -733,7 +736,7 @@ local function RenderSheet(c, m)
             if not folded then
                 for i, it in ipairs(cells) do
                     local col = (i - 1) % 2
-                    local x = col * (colW + 8)
+                    local x = col * (colW + GUT)
                     local mode = it.kind == "rating" and ModeFor(c, it.key) or nil
                     local v, tone = CM.ValueFor(it, mode)
                     PlaceFS(FS(), x, y, lw - 2, size - 1, it.sheetLabel or it.label, it.minor and cMuted or cText, "LEFT", false, "cellLabel")

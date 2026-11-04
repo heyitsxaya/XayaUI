@@ -30,6 +30,13 @@ local function Call(fn, ...)
     return ok
 end
 
+-- 0. Spacing every XayaUI window and pane uses (#351; Xaya, 2026-11-03: "set a standard gutter and margin so that all elements are
+-- not smushed directly into their container bounds"). UI_MARGIN: the least space between a container's edge (below its title row)
+-- and what is inside it. UI_GUTTER: the least space between two controls side by side. Defined here once, in core, so every addon
+-- has them (each one depends on XayaUI). Windows that already leave more room keep it; segmented rows (tabs, filter buttons, icon
+-- toolbars) keep their 2 px seams; title-bar close buttons and corner resize grips sit at the edge, as in Blizzard's windows.
+ns.UI_MARGIN, ns.UI_GUTTER = 10, 10
+
 -------------------------------------------------------------------------------
 -- 1. Saved settings ready. Core.lua calls ns.FireReady() once, at XayaUI's own ADDON_LOADED, right after the saved settings are set
 -- up. Anything registered before that waits in the queue (in load order); anything registered after (a sibling addon loads later

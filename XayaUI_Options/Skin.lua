@@ -149,10 +149,10 @@ end
 
 -- several independent restore functions per widget (the helper above keeps only one, and SkinInline re-registers it every pass)
 -- #351 (Xaya, 2026-11-03: "set a standard gutter and margin so that all elements are not smushed directly into their container bounds"):
--- the space inside every container XayaUI insets (margin) and between two controls on a row (gutter), defined once.
+-- the space inside every container XayaUI insets (margin) and between two controls on a row (gutter). Defined once, in core
+-- (XayaUI/Modules.lua, since #351 phase 2); the 10s here are only for the stand-in tests that load this file without core.
 -- AceGUI's own default inset is the same 10 px; release handlers that give a widget back to AceGUI restore AceGUI's literal 10.
-local UI_MARGIN, UI_GUTTER = 10, 10
-ns.UI_MARGIN, ns.UI_GUTTER = UI_MARGIN, UI_GUTTER
+local UI_MARGIN, UI_GUTTER = ns.UI_MARGIN or 10, ns.UI_GUTTER or 10
 
 local function AddRest(w, key, fn)
     w.xuiRest = w.xuiRest or {}
