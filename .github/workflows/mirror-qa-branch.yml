@@ -1,6 +1,7 @@
 name: Mirror main to qa-installer-branch
 
-# Every push to main refreshes qa-installer-branch (main's files plus the tester installer). See tools/sync-qa-branch.sh.
+# Every push to main refreshes qa-installer-branch: an exact copy of main's files (the tester installer was removed on
+# 2026-11-04). See tools/sync-qa-branch.sh.
 on:
   push:
     branches: [main]

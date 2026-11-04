@@ -46,9 +46,9 @@ Everything else in the repository (`tests/`, `debug-log/`, `shelved/`, the docum
 
 1. Copy each `XayaUI*` folder above into `World of Warcraft\_retail_\Interface\AddOns\`, so that you have `AddOns\XayaUI`, `AddOns\XayaUI_Options`, `AddOns\XayaUI_Chat`, and so on, side by side. Only `XayaUI` is required; leave out (or switch off in the AddOns list) any feature you do not want.
 2. Coming from 0.5.x: an old `AddOns\XayaUI_CombatEngine` folder is no longer used (the combat tracking is inside XayaUI now); switch it off or delete it. Old files left inside `AddOns\XayaUI` from the one-folder layout (`Chat\`, `Notepad.lua`, `Options.lua` ...) are ignored by the game, but replacing the whole `XayaUI` folder is cleaner.
-3. Restart the game (new folders need a restart, not just /reload). Your settings carry over unchanged.
+3. In the game, type `/reload` (the game can stay open while you copy). Your settings carry over unchanged.
 
-Using GitHub Desktop? Do not clone into `AddOns` (the game cannot load addons nested inside another folder). Clone anywhere else, switch to the `qa-installer-branch` branch (an automatic copy of `main` that adds an installer), and double-click `Install-XayaUI.bat` once; it links each folder into `AddOns`, and from then on a plain "Pull origin" updates the game files. Details are in `QA-INSTALL.md` on that branch.
+Using GitHub Desktop? Do not clone into `AddOns` (the game cannot load addons nested inside another folder). Clone anywhere else (a plain local folder, not a cloud-synced one), then copy the `XayaUI*` folders from the clone into `AddOns` as in step 1. After each "Pull origin", copy them again (replace the old ones) and `/reload`. The `qa-installer-branch` branch is an automatic copy of `main`.
 
 ## Sounds
 

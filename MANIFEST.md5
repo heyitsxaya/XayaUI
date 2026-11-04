@@ -1,12 +1,12 @@
-a6de13ded2fd9031edf33c24e7f73e3f  .github/workflows/mirror-qa-branch.yml
+f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 841bf9e56f8489facf3c983d48ba2e73  .gitignore
 0e754eb408e6fe9daf27d12660842ba6  Claude outputs/Plater_NpcColors_S2_block.lua
 ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-1ee23ac5f3b11642a4a92c2ab416b08f  QA-CHECKLIST.md
-ee42539002c7a831fd97da0c0d766f12  README.md
+260099393f1fad74785972e5e61b1af7  QA-CHECKLIST.md
+a54d403da833eefe5b3661b57270da58  README.md
 b8830af74b74d3bd040661448e9ff565  ROADMAP.md
 795543b7edf9a1e47a284d967c0fc4bf  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
@@ -449,10 +449,4 @@ dceb45c263380afa3805655dac92221e  tests/tracked_buff_run.py
 06abd3bc39893cbb62c55a168ba32788  tests/usage_run.py
 f1bae520db3fdef262ef708a60557571  tools/formula_fit.py
 5ea11cb0d56f3c473cd881158515069e  tools/manifest.py
-db4bc883dbe741a50417a8d183e9dc02  tools/qa-installer/.gitattributes
-eac7e9b69f7326ed1b0f0765391566ae  tools/qa-installer/Install-XayaUI.bat
-c942781ec512ebb1ae4da2d45bac58fb  tools/qa-installer/Install-XayaUI.ps1
-2424b5a16ed6ea3faa3beaa10ef3ede9  tools/qa-installer/Link-XayaUI.bat
-3001ac328998059d4f9e6b79362d51c5  tools/qa-installer/QA-INSTALL.md
-9809b22ec9eead883fa1c7e1e5d4e74c  tools/qa-installer/Uninstall-XayaUI.bat
-b6c641e44164b6a2af5331e572b9e1be  tools/sync-qa-branch.sh
+00d767360289b467ac011d61b76f43da  tools/sync-qa-branch.sh
