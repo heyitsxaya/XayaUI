@@ -418,13 +418,15 @@ local function BuildPopup()
     p:SetSize(300, 300); p:SetFrameStrata("DIALOG"); p:SetClampedToScreen(true); p:EnableMouse(true); p:Hide()
     p:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     p:SetBackdropColor(0.04, 0.04, 0.04, 0.96); p:SetBackdropBorderColor(0.2, 0.7, 1, 1)
-    local t = p:CreateFontString(nil, "OVERLAY"); t:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE"); t:SetPoint("TOPLEFT", 8, -6); t:SetTextColor(1, 0.82, 0)
+    local M, G = ns.UI_MARGIN, ns.UI_GUTTER   -- spacing from core (#351 phase 2, XayaUI/Modules.lua)
+    local t = p:CreateFontString(nil, "OVERLAY"); t:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE"); t:SetPoint("TOPLEFT", M, -M); t:SetTextColor(1, 0.82, 0)
     t:SetText("Notepad - Restore")
     local x = CreateFrame("Button", nil, p); x:SetSize(20, 20); x:SetPoint("TOPRIGHT", -2, -2)
+    x.xuiEdge = true   -- a title-bar close sits at the edge on purpose (#351)
     x.t = x:CreateFontString(nil, "OVERLAY"); x.t:SetFont(STANDARD_TEXT_FONT, 13, "OUTLINE"); x.t:SetPoint("CENTER"); x.t:SetText("x")
     x:SetScript("OnClick", function() p:Hide() end)
     local sf = CreateFrame("ScrollFrame", nil, p)
-    sf:SetPoint("TOPLEFT", 6, -26); sf:SetPoint("BOTTOMRIGHT", -6, 6); sf:EnableMouseWheel(true)
+    sf:SetPoint("TOPLEFT", M, -(2 + 20 + G)); sf:SetPoint("BOTTOMRIGHT", -M, M); sf:EnableMouseWheel(true)   -- G under the close x
     local child = CreateFrame("Frame", nil, sf); child:SetSize(260, 1); sf:SetScrollChild(child)
     sf:SetScript("OnMouseWheel", function(self, d)
         self:SetVerticalScroll(math.max(0, math.min(self:GetVerticalScrollRange(), self:GetVerticalScroll() - d * ROW_H * 3)))
@@ -438,7 +440,7 @@ function ns.Notepad_ToggleRestore()
     local p = BuildPopup()
     if p:IsShown() then p:Hide(); return end
     p:ClearAllPoints()
-    if frame and frame:IsShown() then p:SetPoint("TOPLEFT", frame, "TOPRIGHT", 6, 0) else p:SetPoint("CENTER") end
+    if frame and frame:IsShown() then p:SetPoint("TOPLEFT", frame, "TOPRIGHT", ns.UI_GUTTER, 0) else p:SetPoint("CENTER") end
     p:Show()
     Populate()
 end

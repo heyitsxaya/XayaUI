@@ -10,7 +10,8 @@ game (tests/harness places frames from their anchors) and measures them:
     backgrounds and borders, segmented rows (the toolkit's tabs and filter buttons keep their 2 px seams), single-line titles and
     hints (typography, only their margin is checked).
 Windows: the console window and the copy box (core), the import window (Options), the Stat Calculator panel (QoL), the chat history
-window (Chat). Still to come: the notepad windows (Bonus) and the mover popups (Visual.lua).
+window (Chat), the notepad's shared-note offer, share, export / import and restore windows (Bonus). Still to come: the notepad
+window itself and the mover popups (Visual.lua).
 Run: python3 tests/window_margins_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -154,6 +155,28 @@ if hw then
   local okS = pcall(function() hw:GetScript("OnSizeChanged")(hw) end)
   measure("chat history window at its smallest (440 x 300)", hw, { segment = function(k) return kb[k] and "tabs" or nil end })
 end
+-- 6. The notepad's popups (Bonus) -------------------------------------------------------------------------------------------------
+if type(ns.notepadDB) == "table" then ns.notepadDB.acceptShares = true end
+local okO, errO = pcall(ns.NotepadShare_Handle, "XUINOTE", "D|abcd|1|1|A shared note with a few words in it.", "PARTY", "Friend-Realm")
+local of = rawget(_G, "XayaUINoteOffer")
+check("a shared-note offer opens its window", okO and of ~= nil and of:IsShown(), errO or tostring(ns.notepadDB))
+if of then measure("shared-note offer", of) end
+local okSh, errSh = pcall(ns.NotepadShare_OpenShare)
+local sh = rawget(_G, "XayaUINoteShare")
+check("the share window opens", okSh and sh ~= nil, errSh)
+if sh then sh.status:SetText("A status line about the last send."); measure("share window", sh) end
+local okIO, errIO = pcall(ns.NotepadShare_OpenIO, "one")
+local io = rawget(_G, "XayaUINoteIO")
+check("the export / import window opens", okIO and io ~= nil, errIO)
+if io then
+  io.status:SetText("Press Ctrl+C to copy.")
+  local modes = { [io.m1 or 0] = true, [io.m2 or 0] = true, [io.m3 or 0] = true }
+  measure("export / import window", io, { segment = function(k) return modes[k] and "modes" or nil end })
+end
+local okRs, errRs = pcall(ns.Notepad_ToggleRestore)
+local rs = rawget(_G, "XayaUINotepadRestore")
+check("the notepad's restore list opens", okRs and rs ~= nil, errRs)
+if rs then measure("notepad restore list", rs) end
 return R
 end
 '''
