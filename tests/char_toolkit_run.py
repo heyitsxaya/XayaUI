@@ -170,7 +170,7 @@ check("character section: spec, Agility, item level, movement, mastery text",
 check("items carry their tab", row(m, "crit").tab == "stats" and row(m, "armor").tab == "defense" and row(m, "ap").tab == "offense")
 check("gear is not built unless its tab is asked for", row(m, "gearSum") == nil)
 c.whatIf = 852
-local wcrit = row(ns.CharToolkit_Model("stats"), "crit")
+local wcrit = row(ns.CharToolkit_Model(), "crit")   -- (the full model; the Stats tab is the stat map since QoL 0.7.14)
 check("what if +852 crit: +18.52% (exactly to the 30% threshold)", pair(wcrit, "What if +852 rating") == "+18.52% (total 41.00%)", pair(wcrit, "What if +852 rating"))
 c.whatIf = 0
 local gm = ns.CharToolkit_Model("gear")

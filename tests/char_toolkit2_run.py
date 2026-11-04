@@ -48,10 +48,12 @@ local function tipLines(b) GameTooltip.lines = {}; b.scripts.OnEnter(b); return 
 local function linesHave(lines, s) for _, l in ipairs(lines) do if tostring(l):find(s, 1, true) then return true end end; return false end
 
 -- 1. Sections with headers -------------------------------------------------------------------------------------------------
+-- QoL 0.7.14: the Stats tab is the stat map (tests/char_stat_map_run.py has the rest); the full model (CM.Build(c, nil)) still feeds the
+-- character window's own tooltips, so its lines and hovers are checked through the model below
 local d = render("stats")
 local hs = texts(d, "header")
-check("Stats tab: headers Character, Attributes, Secondary stats, Tertiary stats in order",
-  hs[1] == "- Character" and hs[2] == "- Attributes" and hs[3] == "- Secondary stats" and hs[4] == "- Tertiary stats", table.concat(hs, " | "))
+check("Stats tab (the stat map): headers Primary stats, Secondary stats, Tertiary stats, Defense (what feeds it)",
+  table.concat(hs, "|") == "- Primary stats|- Secondary stats|- Tertiary stats|- Defense (what feeds it)", table.concat(hs, " | "))
 -- QoL 0.7.7: Defense and Offense are the Spells tab's filters now (a saved "defense" / "offense" tab opens Spells with that filter);
 -- their sections follow the spells (tests/char_spells_run.py has the rest)
 d = render("defense"); hs = texts(d, "header")
@@ -67,43 +69,36 @@ d = render("whatif"); hs = texts(d, "header")
 check("What If tab: Rating per stat, All ratings, Compare an item", table.concat(hs, "|") == "- Rating per stat|- All ratings|- Compare an item", table.concat(hs, "|"))
 d = render("stats")
 check("a stat line: label on the left, its value on the right of the same row", valueOf(d, "Critical Strike") == "22.48%", valueOf(d, "Critical Strike"))
-local h = headerFor(d, "secondary")
+local h = headerFor(d, "map_secondary")
 h.scripts.OnClick(h)
 d = drawn()
 check("clicking a header folds its section: the header shows +, its lines are gone", hasText(d, "header", "+ Secondary stats") and not hasText(d, "label", "Critical Strike")
   and hasText(d, "label", "Avoidance"))
-headerFor(d, "secondary").scripts.OnClick(headerFor(d, "secondary"))
+headerFor(d, "map_secondary").scripts.OnClick(headerFor(d, "map_secondary"))
 d = drawn()
 check("clicking it again unfolds it", hasText(d, "header", "- Secondary stats") and valueOf(d, "Critical Strike") == "22.48%")
 check("theme: the panel background and the header text use the XayaUI theme's colors",
   XayaUICharacterToolkit.bg.color[1] == 0.11 and d.headers[1].text.color[1] == 0.91, tostring(XayaUICharacterToolkit.bg.color[1]))
 check("theme: the theme's font is used", d.fonts[1].font[1] == "Fonts\\THEME.TTF", d.fonts[1].font[1])
 
--- 2. Rating / percent toggle ------------------------------------------------------------------------------------------------
-check("value button starts on percent", d.modeText == "Show: %", d.modeText)
-XayaUICharacterToolkit.modeBtn.scripts.OnClick(XayaUICharacterToolkit.modeBtn)
-d = drawn()
-check("value button: every rating line shows its rating (crit 528, haste 1,200, mastery 997, vers 120)", d.modeText == "Show: rating"
-  and valueOf(d, "Critical Strike") == "528" and valueOf(d, "Haste") == "1,200" and valueOf(d, "Mastery") == "997" and valueOf(d, "Versatility") == "120",
-  tostring(valueOf(d, "Critical Strike")) .. " " .. tostring(valueOf(d, "Haste")))
-check("value button: lines that are not ratings keep their value (Agility 2,637)", valueOf(d, "Agility") == "2,637", valueOf(d, "Agility"))
-XayaUICharacterToolkit.modeBtn.scripts.OnClick(XayaUICharacterToolkit.modeBtn)
-d = drawn()
-local b = buttonFor(d, "crit")
-b.scripts.OnClick(b)
-d = drawn()
-check("clicking one rating line flips that line alone (crit 528, haste stays 29.25%)", valueOf(d, "Critical Strike") == "528" and valueOf(d, "Haste") == "29.25%",
-  tostring(valueOf(d, "Critical Strike")) .. " " .. tostring(valueOf(d, "Haste")))
-b = buttonFor(d, "crit"); b.scripts.OnClick(b); d = drawn()
-check("clicking it again flips it back", valueOf(d, "Critical Strike") == "22.48%" and c.lineModes.crit == nil)
-b = buttonFor(d, "haste"); b.scripts.OnClick(b)
-XayaUICharacterToolkit.modeBtn.scripts.OnClick(XayaUICharacterToolkit.modeBtn)
-d = drawn()
-check("the value button clears single-line flips (haste follows it to the rating)", valueOf(d, "Haste") == "1,200" and next(c.lineModes) == nil)
+-- 2. Rating / percent: the "Show: %" button is hidden (QoL 0.7.14, #382 "the toggle does nothing"): no tab draws rating lines; the
+-- stat map shows the percent and the rating together. The model's value modes still serve the character window's tooltips.
+check("the Show: % button is hidden", not XayaUICharacterToolkit.modeBtn.shown)
+local full = CM.Build(c, nil)
+check("the model's rating mode still gives the rating (crit 528) and percent mode the percent (22.48%)",
+  (CM.ValueFor(full.byKey.crit, "rating")) == "528" and (CM.ValueFor(full.byKey.crit, "percent")) == "22.48%")
 ns.CharToolkit_SetValueMode("percent"); d = render("stats")
 
--- 3. Conversion hover and detail pairs -------------------------------------------------------------------------------------
-local tl = tipLines(buttonFor(d, "crit"))
+-- 3. Conversion hover and detail pairs (the model's hover, which the character window's stat tooltips show) ---------------------
+local function modelTip(key, mode)
+  local it = CM.Build(c, nil).byKey[key]
+  local out = {}
+  for _, l in ipairs(ns.CharToolkit_TooltipLines(it, mode or (it.kind == "rating" and "percent" or nil))) do
+    out[#out + 1] = (l[2] ~= nil) and (tostring(l[1]) .. " | " .. tostring(l[2])) or tostring(l[1])
+  end
+  return out
+end
+local tl = modelTip("crit")
 check("crit hover: headline and value", linesHave(tl, "Critical Strike | 22.48%"))
 check("crit hover: total = rating share + other sources", linesHave(tl, "Critical Strike 22.48% = +11.48% from 528 rating +11.00% from other sources"))
 check("crit hover: rating to percent through the game's converter, 46.0 per 1%", linesHave(tl, "the game's own converter (GetCombatRatingBonusForCombatRatingValue), 46.0 rating per 1%"))
@@ -111,22 +106,21 @@ check("crit hover: linked conversion crit -> parry where the game reports it", l
 check("crit hover: every threshold", linesHave(tl, "1,380 rating (30.00%): each further point counts 10% less"))
 check("crit hover: detail pairs", linesHave(tl, "Rating | 528") and linesHave(tl, "Next 1% costs | 46 rating") and linesHave(tl, "Parry from this rating | +10.15% (before DR)"))
 check("crit hover: says what a click does", linesHave(tl, "Click: show the rating on this line."))
-tl = tipLines(buttonFor(d, "mastery"))
+tl = modelTip("mastery")
 check("mastery hover: factor and the spec's mastery text from the game", linesHave(tl, "mastery factor 2.800") and linesHave(tl, "Fel Blood: Increases Armor by 101.8% of your Agility."))
-tl = tipLines(buttonFor(d, "haste"))
+tl = modelTip("haste")
 check("haste hover: combined by multiplying, labelled an estimate", linesHave(tl, "combined by multiplying (other sources worked back; an estimate)"))
 UnitStat = function(_, i) if i == 2 then return 2737, 2737, 100, 0 end; local v = ({ 1000, 2637, 69647, 900 })[i]; return v, v, 0, 0 end
-d = render("stats")
-local agi = d.model.byKey.stat2
+local agi = CM.Build(c, nil).byKey.stat2
 check("Agility: base = stat - buffs - debuffs (2,737 - 100 = 2,637), buffs +100", pair(agi, "Base") == "2,637" and pair(agi, "Buffs") == "+100", pair(agi, "Base"))
-tl = tipLines(buttonFor(d, "stat2"))
+tl = modelTip("stat2")
 check("Agility hover: base vs buffs and the attack power link", linesHave(tl, "Agility 2,737 = base 2,637 +100 from buffs +0 from debuffs") and linesHave(tl, "2,737 Agility gives 2,737 attack power"))
 check("Agility: dodge from Agility is the game's figure; per point stays not given", pair(agi, "Dodge from it") == "+5.00%" and pair(agi, "Agility -> dodge per point") == "not given by the game")
 UnitStat = function(_, i) local v = ({ 1000, 2637, 69647, 900 })[i]; return v, v, 0, 0 end
-c.detail = "short"; d = render("stats")
-local pl = texts(d, "pairLabel")
-check("short detail: only the key pairs under crit (Rating, From rating, Rating per 1%)", hasText(d, "pairLabel", "Rating per 1%") and not hasText(d, "pairLabel", "Lost to diminishing returns"))
-tl = tipLines(buttonFor(d, "crit"))
+c.detail = "short"
+local shortLines = table.concat(CM.PairLines(CM.Build(c, nil).byKey.crit, true), "\n")
+check("short detail: only the key pairs under crit (Rating, From rating, Rating per 1%)", shortLines:find("Rating per 1%", 1, true) ~= nil and shortLines:find("Lost to diminishing returns", 1, true) == nil, shortLines)
+tl = modelTip("crit")
 check("short detail: the hover still shows every pair", linesHave(tl, "Lost to diminishing returns | 0"))
 c.detail = "all"
 
@@ -145,7 +139,7 @@ local _, ctot, kinds = CM.CritRead()
 check("crit as the character window picks it: spell crit is the lowest school (5%), so melee 22.48% is shown", ctot == 22.48 and table.concat(kinds, ", ") == "melee 22.48%, ranged 5.00%, spell 5.00%", table.concat(kinds, ", "))
 GetSpellCritChance = function() return 5 end
 GetSpecialization, GetSpecializationInfo = nil, nil
-m = CM.Build(c, "stats")
+m = CM.Build(c, nil)
 check("spec read through C_SpecializationInfo (no old globals): Vengeance, Agility", m.byKey.spec.label == "Vengeance" and pair(m.byKey.spec, "Primary stat") == "Agility")
 combat = true
 C_Spell.GetSpellCooldown = function() return { startTime = 1, duration = 1.05, isActive = true } end
@@ -161,7 +155,7 @@ combat = false
 ns.CharToolkit_ReadGCD()
 -- QoL 0.7.2: the Mythic+ rating was stashed in shelved/MythicPlusRating.lua. The test world still serves every Mythic+ call
 -- (char_toolkit_world.lua), so these fail on 0.7.1, where the line was built from them.
-check("Mythic+ rating is not a line on the Stats tab (the game gives it; the toolkit leaves it out)", CM.Build(c, "stats").byKey.mplus == nil)
+check("Mythic+ rating is not a line anywhere (the game gives it; the toolkit leaves it out)", CM.Build(c, nil).byKey.mplus == nil and CM.Build(c, "stats").byKey.mplus == nil)
 check("the panel did not ask the server for Mythic+ details", mythicRequested == nil or mythicRequested == false)
 m = CM.Build(c, "gear")
 check("durability: 89% overall (178 / 200), lowest item 78%", m.byKey.durability.value == "89%" and pair(m.byKey.durability, "Lowest item") == "78%", m.byKey.durability.value)
@@ -262,8 +256,9 @@ ns.CharToolkit_SetInput("crit", "-1000"); d = render("whatif")
 check("What If crit -1000: stops at 0 rating (-11.48%)", (valueOf(d, "Critical Strike") or ""):find("-11.48%", 1, true) == 1, valueOf(d, "Critical Strike"))
 ns.CharToolkit_SetInput("crit", "752"); ns.CharToolkit_SetInput("all", "100")
 d = render("stats")
-check("Stats tab: the crit line adds its own amount to All ratings (+852 = +18.52%)", hasText(d, "pairLabel", "What if +852 rating"))
-check("Stats tab: haste gets the All ratings amount only (+100)", hasText(d, "pairLabel", "What if +100 rating"))
+-- (QoL 0.7.14: the Stats tab is the stat map; its cards show "now -> with your numbers")
+check("Stats tab: crit adds its own amount to All ratings (+852 = +18.52%: 22.48% -> 41.00%)", valueOf(d, "Critical Strike") == "22.48% -> 41.00%", valueOf(d, "Critical Strike"))
+check("Stats tab: haste gets the All ratings amount only (+100)", (valueOf(d, "Haste") or ""):find("29.25% -> ", 1, true) == 1, valueOf(d, "Haste"))
 ns.CharToolkit_SetInput("all", "0"); ns.CharToolkit_SetInput("crit", "0"); ns.CharToolkit_SetInput("mastery", "0")
 check("What If: 0 clears a stat", c.whatIfStats.crit == nil and c.whatIf == 0)
 ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
@@ -375,7 +370,7 @@ local okS = pcall(render, "stats")
 d = drawn()
 check("secret values: the Stats tab shows hidden in combat", okS and valueOf(d, "Critical Strike") == "hidden in combat", valueOf(d, "Critical Strike"))
 check("secret values: \"hidden in combat\" fits its value column", (fits("value", "hidden")))
-local bcrit = buttonFor(d, "crit")
+local bcrit = buttonFor(d, "map_crit")
 local okT, tlS = pcall(function() return tipLines(bcrit) end)
 check("secret values: the hover says why", okT and linesHave(tlS, "hides ratings while unit stats are restricted"))
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Critical Strike:"
@@ -430,7 +425,8 @@ check("settings: no dropdown takes a row alone", selectsShareRows(page))
 local lay = page.args.panelPart.args.layout.args
 lay.valueMode.set(nil, "rating")
 d = render("stats")
-check("settings: Rating lines = Rating changes what the panel shows (crit 528)", valueOf(d, "Critical Strike") == "528" and d.modeText == "Show: rating")
+-- (QoL 0.7.14: no tab draws rating lines; the setting still picks what the character window's stat tooltips lead with)
+check("settings: Rating lines = Rating: the tooltips' rating lines lead with the rating (crit 528)", (CM.ValueFor(CM.Build(c, nil).byKey.crit, ns.CharToolkit_ModeFor(c, "crit"))) == "528" and d.modeText == "Show: rating")
 lay.valueMode.set(nil, "percent")
 lay.detail.set(nil, "short"); d = render("stats")
 check("settings: Detail = Key lines hides the other pairs", not hasText(d, "pairLabel", "Lost to diminishing returns"))
@@ -451,7 +447,7 @@ end
 page.args.overlaysOn.set(nil, false)
 page.args.panelPart.args.values.args.whatIf.set(nil, "200")
 d = render("stats")
-check("settings: All ratings + 200 shows on every rating line", hasText(d, "pairLabel", "What if +200 rating"))
+check("settings: All ratings + 200 shows on every stat card (now -> then)", (valueOf(d, "Haste") or ""):find(" -> ", 1, true) ~= nil and (valueOf(d, "Mastery") or ""):find(" -> ", 1, true) ~= nil, valueOf(d, "Haste"))
 page.args.panelPart.args.values.args.clear.func()
 check("settings: Clear all sets every What If amount back to 0", c.whatIf == 0 and next(c.whatIfStats) == nil)
 check("theme changes repaint the open panel", type(themeListener) == "function" and pcall(themeListener))

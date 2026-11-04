@@ -427,6 +427,13 @@ function ns.CharToolkit_SetInput(key, text)
     elseif key == "primary" then
         local n = math.max(-100000, math.min(100000, math.floor(tonumber(text) or 0)))
         c.whatIfPrimary = (n ~= 0) and n or nil
+    elseif key:sub(1, 3) == "sv:" then
+        -- the stat map's boxes (QoL 0.7.14): the number itself; what it differs from yours is the What If amount (empty = yours)
+        local k = key:sub(4)
+        local base, n = CM.svBase and CM.svBase[k], tonumber((tostring(text or ""):gsub(",", "")))
+        local d = (num(base) and n) and math.max(-100000, math.min(100000, math.floor(n - base + 0.5))) or 0
+        if k == "primary" then c.whatIfPrimary = (d ~= 0) and d or nil
+        else c.whatIfStats[k] = (d ~= 0) and d or nil end
     else
         local n = math.max(-100000, math.min(100000, math.floor(tonumber(text) or 0)))
         if key == "all" then c.whatIf = n else c.whatIfStats[key] = (n ~= 0) and n or nil end
@@ -587,6 +594,15 @@ local function PlaceFS(f, x, y, w, size, text, col, justify, wrap, kind)
     return h
 end
 
+-- the stat map's columns (QoL 0.7.14): name | rating box | percent | rating per 1% (#382: side by side, no toggle)
+local function MapCols()
+    local lw, bw, pw = math.floor(W * 0.30), 56, 64
+    local bx = lw + GUT
+    local vx = bx + bw + GUT
+    local px = W - pw
+    return lw, bw, bx, vx, px - GUT - vx, px, pw
+end
+
 -- detail tabs: sections with headers; each line is label | value, its pairs under it
 local function RenderSections(c, m, tab, y0)
     local size = c.fontSize
@@ -643,6 +659,35 @@ local function RenderSections(c, m, tab, y0)
                         y = y + rowH + 1
                         rowH = PlaceFS(FS(), 6, y, W - 6, size - 1, v, ToneColor(tone, cMuted), "LEFT", true, "wide")
                         y = y + rowH + 1
+                    elseif it.kind == "colhead" then
+                        local lw, bw, bx, vx, vw, px, pw = MapCols()
+                        local cs = it.cols or {}
+                        PlaceFS(FS(), bx, y, bw, size - 1, cs[1] or "", cMuted, "LEFT", false, "colhead")
+                        PlaceFS(FS(), vx, y, vw, size - 1, cs[2] or "", cMuted, "RIGHT", false, "colhead")
+                        PlaceFS(FS(), px, y, pw, size - 1, cs[3] or "", cMuted, "RIGHT", false, "colhead")
+                        y = y + size + 1
+                    elseif it.kind == "input" and it.mapCard then
+                        local lw, bw, bx, vx, vw, px, pw = MapCols()
+                        rowH = PlaceFS(FS(), 0, y, lw - 4, size, it.label, it.labelColor or cText, "LEFT", false, "label")
+                        local eb = Box(it.input)
+                        eb:ClearAllPoints()
+                        eb:SetPoint("TOPLEFT", content, "TOPLEFT", bx, -y + 2)
+                        eb:SetSize(bw, size + 6)
+                        if not (eb.HasFocus and eb:HasFocus()) then
+                            eb:SetText(it.absolute and tostring(math.floor(it.absolute + (num(it.amount) and it.amount or 0) + 0.5)) or "")
+                        end
+                        eb:Show()
+                        eb.xuiUsed = true
+                        Rec("input", bx, y, bw, size + 6, it.input, size)
+                        local vh = PlaceFS(FS(), vx, y, vw, size, v, ToneColor(tone, cText), "RIGHT", true, "value")
+                        if it.per and it.per ~= "" then PlaceFS(FS(), px, y, pw, size - 1, it.per, cMuted, "RIGHT", false, "per") end
+                        local lb = Btn()   -- hover on the name: where the numbers come from
+                        lb.item = it
+                        lb:ClearAllPoints()
+                        lb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+                        lb:SetSize(lw, size + 6)
+                        Rec("hit", 0, y, lw, size + 6, it.key)
+                        y = y + math.max(rowH, vh, size + 6) + 2
                     elseif it.kind == "input" then
                         local lw, bw = math.floor(W * 0.36), 64
                         rowH = PlaceFS(FS(), 0, y, lw, size, it.label, cText, "LEFT", false, "label")
@@ -653,6 +698,8 @@ local function RenderSections(c, m, tab, y0)
                         eb:SetSize(ew, size + 6)
                         if not (eb.HasFocus and eb:HasFocus()) then
                             if it.input == "item" then eb:SetText(it.text or "")
+                            elseif it.absolute then   -- the stat map's boxes hold the number itself (yours, or the one typed)
+                                eb:SetText(tostring(math.floor(it.absolute + (num(it.amount) and it.amount or 0) + 0.5)))
                             else eb:SetText((num(it.amount) and it.amount ~= 0) and tostring(it.amount) or "") end
                         end
                         eb:Show()
@@ -676,7 +723,7 @@ local function RenderSections(c, m, tab, y0)
                         y = y + lh + 1
                     else
                         local lw = math.floor(W * 0.5)
-                        local lh = PlaceFS(FS(), 0, y, lw - 4, size, it.label, it.minor and cMuted or cText, "LEFT", true, "label")
+                        local lh = PlaceFS(FS(), 0, y, lw - 4, size, it.label, it.labelColor or (it.minor and cMuted or cText), "LEFT", true, "label")
                         local vh = PlaceFS(FS(), lw, y, W - lw, size, v, ToneColor(tone, cText), "RIGHT", true, "value")
                         y = y + math.max(lh, vh) + 1
                     end
@@ -689,12 +736,12 @@ local function RenderSections(c, m, tab, y0)
                         if not short or p.short then
                             local x0 = 12
                             local lw = math.floor((W - x0) * frac)
-                            local lh = PlaceFS(FS(), x0, y, lw - 4, psz, p.label, pcol, "LEFT", true, "pairLabel")
+                            local lh = PlaceFS(FS(), x0, y, lw - 4, psz, p.label, p.labelColor or pcol, "LEFT", true, "pairLabel")
                             local vh = PlaceFS(FS(), x0 + lw, y, W - x0 - lw, psz, tostring(p.value), ToneColor(p.tone, cText), "RIGHT", true, "pairValue")
                             y = y + math.max(lh, vh) + 1
                         end
                     end
-                    if it.kind ~= "input" and it.kind ~= "icons" then
+                    if it.kind ~= "input" and it.kind ~= "icons" and it.kind ~= "colhead" then
                         local b = Btn()
                         b.item = it
                         b:ClearAllPoints()
@@ -751,6 +798,9 @@ function ns.CharToolkit_Render()
     mb.text:SetText(c.valueMode == "rating" and "Show: rating" or "Show: %")
     Paint(mb.text, mbb)
     panel.modeText = mb.text:GetText()
+    -- (QoL 0.7.14) no tab draws rating lines any more (the stat map shows the percent and the rating together), so the "Show: %"
+    -- button would do nothing (#382: "the Show: % toggle doesn't do anything"): it is hidden
+    mb:Hide()
     for _, b in ipairs(panel.tabs or {}) do
         local on = b.key == c.tab
         local cls = on and "xui-tab-selected" or "xui-tab"

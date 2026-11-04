@@ -245,7 +245,7 @@ local pv
 for _, r in ipairs(recs(d, "pairValue")) do if tostring(r.text):find("of attack power", 1, true) then pv = r end end
 local Wc = ns.CHARTOOLKIT_LAYOUT.content
 check("  ...their value gets 70% of the line, so \"N% of attack power; 1 Agility = +N\" fits one line more often", pv ~= nil and pv.w == Wc - 12 - math.floor((Wc - 12) * 0.3), pv and pv.w)
-d = render("stats")
+d = render("gear")
 local sm = 0
 for _, r in ipairs(recs(d, "pairValue")) do if r.size == c.fontSize - 1 then sm = sm + 1 end end
 check("  ...other tabs keep their smaller detail lines", sm > 0, sm)

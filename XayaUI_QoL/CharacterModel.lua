@@ -259,6 +259,7 @@ local function RatingItem(ctx, key, label, idx, total, coeff, unit, opts)
     local rating = N(GetCombatRating, idx)
     local pctNow = N(GetCombatRatingBonus, idx)
     SetValue(it, total, P)
+    it.total, it.mult = total, opts.mult   -- (the stat map reads them, QoL 0.7.14)
     it.rvalue, it.rtone = Show(rating, Big)
     if rating == HIDDEN or pctNow == HIDDEN then it.hidden = true end
     if not num(rating) then
@@ -316,6 +317,7 @@ local function RatingItem(ctx, key, label, idx, total, coeff, unit, opts)
                 if opts.mult then after = ((1 + total / 100) / (1 + fromRating / 100) * (1 + (fromRating + w.gain) / 100) - 1) * 100
                 else after = total + w.gain end
             end
+            it.totalAfter = after
             Pair(it, ("What if %s rating"):format(SB(delta)), SP(w.gain) .. (after and (" (total " .. P(after) .. ")") or ""), "good")
         end
     end
@@ -1672,6 +1674,332 @@ local function SpellSection(ctx, out)
 end
 
 -------------------------------------------------------------------------------
+-- The stat map: the Stats tab (QoL 0.7.14). Xaya, 2026-11-04: "the whole point of this sheet is to show me what influences what";
+-- "why is parry not listed anywhere on my stats? why do I not see how many points of crit add to an additional 1% parry chance? why do
+-- I not see how much armor mastery gives me?"; "give me this in a sheet with the option to change the numbers" / "so I can see what
+-- the other numbers will look like in relation to each other"; "the window to the right needs to surface all interconnected data in a
+-- clean, digestible way"; "I don't want a bar next to the threshold".
+-- One card per stat: its value; a box with the number itself (type another number and press Enter to see what it would do; empty or
+-- your own number = back to yours); then a "»" line for everything it feeds, each through the game's own conversion, "now -> with
+-- your numbers" side by side. The boxes are the What If amounts, so both tabs agree. Defense cards show what armor, dodge and parry
+-- are made of. Every number is read from the game; the few estimates are labelled.
+-------------------------------------------------------------------------------
+CM.svBase = {}   -- the number each box showed as "yours", by box key: the panel turns a typed number into a What If amount
+
+-- One colour per stat, used for its name wherever it appears in the panel (#379, Xaya: "all secondaries in the toolkit should be
+-- colorized"). The colours are XayaUI's choice (she named none); she can change them.
+CM.STAT_COLORS = {
+    crit = { 1.00, 0.45, 0.35, 1 }, haste = { 1.00, 0.82, 0.30, 1 }, mastery = { 0.72, 0.55, 1.00, 1 }, vers = { 0.40, 0.85, 0.45, 1 },
+    avoidance = { 0.35, 0.80, 0.85, 1 }, leech = { 1.00, 0.45, 0.70, 1 }, speed2 = { 0.55, 0.75, 1.00, 1 },
+    primary = { 1.00, 0.95, 0.75, 1 }, stamina = { 0.95, 0.55, 0.45, 1 },
+}
+
+local function Was(now, after, fmt)   -- "now" or "now -> after" (after only when it differs)
+    if after == nil or not num(now) or not num(after) or math.abs(after - now) < 0.0005 then return fmt(now) end
+    return fmt(now) .. " -> " .. fmt(after)
+end
+local function MapNote(it, label, value, tone, colorKey)   -- every map line shows in the short view too
+    Pair(it, label, value, tone, true)
+    if colorKey then it.pairs[#it.pairs].labelColor = CM.STAT_COLORS[colorKey] end
+end
+
+-- the percents in the mastery's own text ("Increases Armor by 89.7% of your Agility", "attack power by 32.0%"), by what they modify
+local function MasteryNumbers(ctx)
+    local out = {}
+    local ap = Esc(L("STAT_ATTACK_POWER", "Attack Power"):lower())
+    for _, mid in ipairs(MasterySpells(ctx.spec)) do
+        local d = SpellDesc(mid)
+        if type(d) == "string" and d ~= "" then
+            local t = d:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):lower()
+            local v = t:match(ap .. " by ([%d%.,]+)%%")
+            if v then out.ap = tonumber((v:gsub(",", "."))) end
+            out.name = out.name or SpellName(mid)
+        end
+    end
+    return out
+end
+
+local function MapRating(ctx, src, key, kit)
+    local it = Item("map_" .. key, src.label, "input")
+    it.input, it.bigPairs, it.mapCard, it.labelColor = "sv:" .. key, true, true, CM.STAT_COLORS[key]
+    it.amount = num(ctx.whatIfStat[key]) and ctx.whatIfStat[key] or 0
+    if src.hidden or not num(src.rating) then
+        it.value, it.tone = HID, "mute"
+        if not src.hidden then it.value = UNAV end
+        it.tip = src.tip
+        return it
+    end
+    it.absolute, CM.svBase[key] = src.rating, src.rating
+    local a, w = src.analysis or {}, src.whatIf
+    it.value = num(src.total) and Was(src.total, src.totalAfter, P) or UNAV
+    if src.totalAfter and num(src.total) then it.tone = (src.totalAfter >= src.total) and "good" or "warn" end
+    local per = a.perPctNow or a.perPctBase
+    local quiet = src.rating < 1 and not w   -- a stat you have no rating in: only what it does (clean; Xaya: "clean, digestible")
+    it.per = per and (F(per) .. " / 1%") or ""   -- the head row's last column: rating for 1% (#382: rating, percent and per 1% side by side)
+    if not quiet then
+        MapNote(it, "From rating", Was(src.fromRating or 0, w and ((src.fromRating or 0) + w.gain), SP))
+    end
+    local dr
+    if (a.lost or 0) > 0 then dr = ("%s rating lost; next point counts %s less"):format(Big(a.lost), P((a.penalty or 0) * 100, 0))
+    else dr = "none yet" end
+    if a.nextThreshold then dr = dr .. ("; next at %s rating (%s away)"):format(Big(a.nextThreshold.rating), Big(a.toNext)) end
+    if w and #w.crossed > 0 then dr = dr .. "; your numbers cross " .. #w.crossed end
+    if not quiet then MapNote(it, "Diminishing returns", dr, (a.lost or 0) > 0 and "warn" or nil) end
+    if kit then kit(it, src, w) end
+    -- the hover: where the numbers come from (short)
+    it.tip = {}
+    Tip(it, ("%s rating %s gives %s through the game's converter (GetCombatRatingBonusForCombatRatingValue): %s rating per 1%% now, %s with no penalty."):format(
+        src.label, Big(src.rating), SP(src.fromRating or 0), F(per), F(a.perPctBase)))
+    if num(src.total) then Tip(it, ("The total %s also counts your spec, talents and buffs."):format(P(src.total))) end
+    if src.thresholds and #src.thresholds > 0 then
+        local t = {}
+        for i, th in ipairs(src.thresholds) do if i <= 4 then t[#t + 1] = Big(th.rating) .. " (" .. P(th.pct * (a.coeff or 1), 0) .. ")" end end
+        Tip(it, "Diminishing-return thresholds: " .. table.concat(t, ", ") .. ".")
+    end
+    Tip(it, "Type another rating in the box and press Enter to see what it would do; clear it to go back to yours.")
+    return it
+end
+
+local function StatMapSections(ctx, out)
+    CM.svBase = {}
+    local tmp = {}
+    RatingSections(ctx, tmp)
+    local byKey = {}
+    for _, sec in ipairs(tmp) do for _, it in ipairs(sec.items) do byKey[it.key] = it end end
+    local p = ctx.primary
+    local _, eff = R(UnitStat, "player", p)
+    local dP = ctx.whatIfPrimary or 0
+    local apct = ArmorPerPrimary(ctx)
+    local mst = byKey.mastery
+    -- the armor percent with your numbers: the mastery text's percent moves with your mastery (INFERENCE: mastery effects are linear in
+    -- mastery percent; the game fills the text in with the current value)
+    local apctAfter = apct
+    if apct and mst and num(mst.total) and mst.total > 0 and num(mst.totalAfter) then apctAfter = apct * mst.totalAfter / mst.total end
+    local eff2 = num(eff) and math.max(0, eff + dP) or nil
+    local armorFromP = (apct and num(eff)) and eff * apct / 100 or nil
+    local armorFromPAfter = (apctAfter and num(eff2)) and eff2 * apctAfter / 100 or nil
+
+    -- 1. Primary stat and Stamina
+    local prim = { key = "map_primary", title = "Primary stats", items = {} }
+    do
+        local it = Item("map_primary", StatName(p), "input")
+        it.input, it.bigPairs, it.mapCard, it.labelColor = "sv:primary", true, true, CM.STAT_COLORS.primary
+        it.amount = dP
+        if eff == HIDDEN then it.value, it.tone = HID, "mute"
+        elseif num(eff) then
+            it.absolute, CM.svBase.primary = eff, eff
+            it.value = Was(eff, dP ~= 0 and eff2 or nil, Big)
+            if p == 1 or p == 2 then
+                local a0, a1 = N(GetAttackPowerForStat, p, eff), N(GetAttackPowerForStat, p, eff2)
+                if num(a0) then MapNote(it, "» Attack power", Was(a0, dP ~= 0 and a1 or nil, SB) .. (eff > 0 and ("  (1 = " .. F(a0 / eff, 2) .. ")") or "")) end
+            end
+            if p == 2 then
+                local d = N(GetDodgeChanceFromAttribute)
+                if num(d) then MapNote(it, "» Dodge", SP(d) .. (dP ~= 0 and "  (with your numbers: not given by the game)" or "")) end
+            elseif p == 1 then
+                local d = N(GetParryChanceFromAttribute)
+                if num(d) then MapNote(it, "» Parry", SP(d) .. (dP ~= 0 and "  (with your numbers: not given by the game)" or "")) end
+            end
+            if armorFromP then
+                MapNote(it, "» Armor", Was(armorFromP, (armorFromPAfter ~= armorFromP) and armorFromPAfter or nil, SB) .. ("  (%s%% of %s, mastery)"):format(F(apct, 1), StatName(p)))
+            end
+            -- abilities: what 100 more of the primary stat adds to each damage / healing number, measured from their text the way the
+            -- Spells tab does (first number / attack power x attack power per point; Strength and Agility specs)
+            if (p == 1 or p == 2) and eff > 0 then
+                local base, pos, neg = R(UnitAttackPower, "player")
+                local apNow = num(base) and (base + (num(pos) and pos or 0) + (num(neg) and neg or 0)) or nil
+                local a0 = N(GetAttackPowerForStat, p, eff)
+                local apPer = num(a0) and a0 / eff or nil
+                local okL, list = false, nil
+                if type(ns.BuildSpellList) == "function" then okL, list = pcall(ns.BuildSpellList) end
+                local rows = {}
+                if num(apNow) and apNow > 0 and apPer then
+                    for _, sp in ipairs((okL and type(list) == "table") and list or {}) do
+                        local d = num(sp.id) and SpellDesc(sp.id)
+                        local kind = d and CM.SpellKind(d)
+                        local nums = d and CM.Numbers(d)
+                        if nums and nums[1] and (kind == "offense" or kind == "both") then
+                            rows[#rows + 1] = { SpellName(sp.id), nums[1] / apNow * apPer * 100 }
+                        end
+                    end
+                end
+                table.sort(rows, function(x, y) return x[2] > y[2] end)
+                local parts = {}
+                for i = 1, math.min(4, #rows) do parts[#parts + 1] = rows[i][1] .. " +" .. Big(rows[i][2]) end
+                if #parts > 0 then MapNote(it, "» Abilities (per 100)", table.concat(parts, ", ")) end
+                Tip(it, "Abilities: each one's first number in its own description divided by your attack power, times the attack power 100 more gives (as on the Spells tab; talents and buffs already in the text).")
+            end
+            Tip(it, ("Attack power per point from GetAttackPowerForStat; dodge or parry from %s as the character window reads it; armor from the percent in your mastery's own text."):format(StatName(p)))
+            Tip(it, "Type another number in the box and press Enter; clear it to go back to yours.")
+        else it.value, it.tone = UNAV, "mute" end
+        prim.items[#prim.items + 1] = it
+        local st = Item("map_stamina", StatName(3))
+        st.bigPairs, st.labelColor = true, CM.STAT_COLORS.stamina
+        local _, sta = R(UnitStat, "player", 3)
+        SetValue(st, sta, Big)
+        local hp, per, mod = N(UnitHealthMax, "player"), N(UnitHPPerStamina, "player"), N(GetUnitMaxHealthModifier, "player")
+        if num(hp) then MapNote(st, "» Health", Big(hp) .. (num(per) and ("  (1 = " .. F(per * (num(mod) and mod or 1), 2) .. ")") or "")) end
+        prim.items[#prim.items + 1] = st
+    end
+    out[#out + 1] = prim
+
+    -- 2. Secondary stats and what they feed (a column head over the cards: rating, percent, rating per 1%)
+    local function ColHead(k) local h = Item(k, "", "colhead"); h.cols = { "Rating", "Percent", "Per 1%" }; return h end
+    local sec = { key = "map_secondary", title = "Secondary stats", items = { ColHead("map_cols2") } }
+    if byKey.crit then
+        sec.items[#sec.items + 1] = MapRating(ctx, byKey.crit, "crit", function(it, src, w)
+            if R(GetCritChanceProvidesParryEffect) == true then
+                local fp = Converter(IDX.parry)
+                local now = fp and fp(src.rating)
+                if num(now) then
+                    local after = (w and fp) and fp(w.newRating) or nil
+                    local ap = SM.Analyze(fp, src.rating, SM.BaseRate(fp), nil, 1, nil)
+                    local per = ap and (ap.perPctNow or ap.perPctBase)
+                    MapNote(it, "» Parry", Was(now, after, SP) .. (per and ("  (" .. F(per) .. " crit rating = 1% parry)") or "") .. ", before DR")
+                    it.parryPer = per
+                end
+            end
+        end)
+    end
+    if byKey.haste then
+        sec.items[#sec.items + 1] = MapRating(ctx, byKey.haste, "haste", function(it, src, w)
+            local h0, h1 = src.total, src.totalAfter
+            local g = CM.gcd
+            if g and num(g.dur) then
+                local est = (num(h0) and num(h1)) and g.dur * (1 + h0 / 100) / (1 + h1 / 100) or nil
+                MapNote(it, "» Global cooldown", F(g.dur, 2) .. " s" .. (est and math.abs(est - g.dur) > 0.0005 and (" -> about " .. F(est, 2) .. " s") or ""))
+            elseif CM.gcdHidden then MapNote(it, "» Global cooldown", HID, "mute")
+            else MapNote(it, "» Global cooldown", "cast any spell to read it", "mute") end
+            local mh = N(UnitAttackSpeed, "player")
+            if num(mh) then
+                local est = (num(h0) and num(h1)) and mh * (1 + h0 / 100) / (1 + h1 / 100) or nil
+                MapNote(it, "» Attack speed", F(mh, 2) .. " s" .. (est and math.abs(est - mh) > 0.0005 and (" -> about " .. F(est, 2) .. " s") or ""))
+            end
+            -- abilities whose own text mentions Haste (English word match; the game has no list of what haste shortens), with their
+            -- recharge now where they have charges (C_Spell.GetSpellCharges; secret while cooldowns are restricted)
+            local okL, list = false, nil
+            if type(ns.BuildSpellList) == "function" then okL, list = pcall(ns.BuildSpellList) end
+            local names = {}
+            for _, sp in ipairs((okL and type(list) == "table") and list or {}) do
+                local d = num(sp.id) and SpellDesc(sp.id)
+                if type(d) == "string" and d:lower():find("haste", 1, true) then
+                    local ch = C_Spell and C_Spell.GetSpellCharges and R(C_Spell.GetSpellCharges, sp.id)
+                    local dur = (type(ch) == "table") and Field(ch, "cooldownDuration") or nil
+                    names[#names + 1] = SpellName(sp.id) .. ((num(dur) and dur > 0) and (" (" .. F(dur, 1) .. " s recharge)") or "")
+                    if #names >= 5 then break end
+                end
+            end
+            if #names > 0 then MapNote(it, "» Abilities (their text names Haste)", table.concat(names, ", ")) end
+            Tip(it, "The global cooldown and attack speed with your numbers are estimates: the game's figure now, times (1 + haste now) / (1 + haste then).")
+            Tip(it, "Abilities: those whose own description mentions Haste (a word match on English text; the game does not list what haste shortens).")
+        end)
+    end
+    if mst then
+        sec.items[#sec.items + 1] = MapRating(ctx, mst, "mastery", function(it, src, w)
+            if apct and num(eff) then
+                local per1 = (num(src.total) and src.total > 0) and eff * (apct / src.total) / 100 or nil
+                MapNote(it, "» Armor", Was(armorFromP, (armorFromPAfter ~= armorFromP) and armorFromPAfter or nil, SB)
+                    .. ("  (%s%% of %s)"):format(F(apct, 1), StatName(p)))
+                if per1 then
+                    local a = src.analysis or {}
+                    local per = a.perPctNow or a.perPctBase
+                    MapNote(it, "» Armor per 1% mastery", SB(per1) .. (per and ("  (" .. F(per) .. " mastery rating)") or ""))
+                end
+            end
+            local mn = MasteryNumbers(ctx)
+            if mn.ap then
+                local after = (num(src.total) and src.total > 0 and num(src.totalAfter)) and mn.ap * src.totalAfter / src.total or nil
+                MapNote(it, "» Attack power", Was(mn.ap, after, SP))
+            end
+            if apct or mn.ap then
+                Tip(it, "Armor and attack power from mastery: the percents in your mastery's own text, which the game fills in; with your numbers they move in step with mastery (an estimate).")
+            end
+        end)
+    end
+    if byKey.vers then
+        sec.items[#sec.items + 1] = MapRating(ctx, byKey.vers, "vers", function(it, src, w)
+            MapNote(it, "» Damage and healing done", Was(src.total or 0, src.totalAfter, SP))
+            local ft = Converter(IDX.versTaken)
+            local tNow = N(GetCombatRatingBonus, IDX.versTaken)
+            local tBonus = N(GetVersatilityBonus, IDX.versTaken)
+            if num(tNow) then
+                local base = num(tBonus) and tBonus or 0
+                local after = (w and ft) and ft(w.newRating) or nil
+                local at = ft and SM.Analyze(ft, src.rating, SM.BaseRate(ft), nil, 1, nil)
+                local per = at and (at.perPctNow or at.perPctBase)
+                MapNote(it, "» Damage taken", Was(-(tNow + base), num(after) and -(after + base) or nil, function(v) return P(v) end)
+                    .. (per and ("  (" .. F(per) .. " rating = 1%)") or ""))
+            elseif tNow == HIDDEN then MapNote(it, "» Damage taken", HID, "mute") end
+        end)
+    end
+    out[#out + 1] = sec
+
+    -- 3. Tertiary stats
+    local ter = { key = "map_tertiary", title = "Tertiary stats", items = { ColHead("map_cols3") } }
+    local function Simple(key, what)
+        if byKey[key] then
+            ter.items[#ter.items + 1] = MapRating(ctx, byKey[key], key, function(it, src)
+                MapNote(it, what, Was(src.total or 0, src.totalAfter, SP))
+            end)
+        end
+    end
+    Simple("avoidance", "» Area damage taken (less)")
+    Simple("leech", "» Healed for (of damage done)")
+    Simple("speed2", "» Movement speed")
+    out[#out + 1] = ter
+
+    -- 4. What armor, dodge and parry are made of
+    local def = { key = "map_defense", title = "Defense (what feeds it)", items = {} }
+    do
+        local _, armor = R(UnitArmor, "player")
+        local it = Item("map_armor", L("STAT_ARMOR", "Armor"))
+        it.bigPairs = true
+        SetValue(it, armor, Big)
+        if num(armor) then
+            local delta = (armorFromPAfter and armorFromP) and (armorFromPAfter - armorFromP) or 0
+            if delta ~= 0 then it.value = Was(armor, armor + delta, Big) end
+            local fx = ArmorEff()
+            if num(ctx.level) and type(fx) == "function" then
+                local r0, r1 = N(fx, armor, ctx.level), N(fx, armor + delta, ctx.level)
+                if num(r0) then MapNote(it, "» Damage reduction", Was(r0 * 100, (delta ~= 0 and num(r1)) and r1 * 100 or nil, P) .. "  (vs your level)") end
+            end
+            if armorFromP then MapNote(it, "From " .. StatName(p) .. " (mastery)", Was(armorFromP, delta ~= 0 and armorFromPAfter or nil, SB), nil, "mastery") end
+        end
+        def.items[#def.items + 1] = it
+        local dg = Item("map_dodge", L("STAT_DODGE", "Dodge"))
+        dg.bigPairs = true
+        local dTot = N(GetDodgeChance)
+        SetValue(dg, dTot, P)
+        local dAgi = N(GetDodgeChanceFromAttribute)
+        if num(dTot) and num(dAgi) and dAgi > 0 then
+            MapNote(dg, "From " .. StatName(2), SP(dAgi), nil, "primary")
+            MapNote(dg, "Other (base, talents, rating)", SP(dTot - dAgi))
+        end
+        def.items[#def.items + 1] = dg
+        local pr = Item("map_parry", L("STAT_PARRY", "Parry"))
+        pr.bigPairs = true
+        local pTot = N(GetParryChance)
+        SetValue(pr, pTot, P)
+        if num(pTot) then
+            local crit = byKey.crit
+            local fromCrit
+            if crit and num(crit.rating) and R(GetCritChanceProvidesParryEffect) == true then
+                local fp = Converter(IDX.parry)
+                fromCrit = fp and fp(crit.rating)
+                local after = (fp and crit.whatIf) and fp(crit.whatIf.newRating) or nil
+                if num(fromCrit) then MapNote(pr, "From Critical Strike", Was(fromCrit, after, SP) .. ", before DR", nil, "crit") end
+            end
+            local pStr = N(GetParryChanceFromAttribute)
+            if num(pStr) and pStr > 0 then MapNote(pr, "From " .. StatName(1), SP(pStr)) end
+            Tip(pr, "Parry total from GetParryChance (after diminishing returns); the parts are read before them, so they need not add up exactly.")
+        end
+        def.items[#def.items + 1] = pr
+    end
+    out[#out + 1] = def
+end
+CM.StatMapSections = StatMapSections
+
+-------------------------------------------------------------------------------
 -- The whole model
 -------------------------------------------------------------------------------
 -- Tabs and which sections each one draws. The Sheet draws every section of Stats, Defense and Offense in compact form. Defense and
@@ -1703,9 +2031,11 @@ function CM.Build(cfg, tab)
         end
         return list
     end
-    local core = (tab == nil or tab == "sheet" or tab == "stats" or tab == "defense" or tab == "offense" or tab == "whatif")
+    local core = (tab == nil or tab == "sheet" or tab == "defense" or tab == "offense" or tab == "whatif")
     local ratingSecs
-    if core then
+    if tab == "stats" then
+        add("stats", StatMapSections)   -- the stat map (QoL 0.7.14): the Stats tab
+    elseif core then
         add("stats", CharacterSection)
         ratingSecs = add("stats", RatingSections)
         add("defense", DefenseSections)
