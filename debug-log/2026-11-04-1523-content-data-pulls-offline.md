@@ -21,7 +21,7 @@ Blizzard's client data tables, build 12.1.5.70783, as CSVs from `https://wago.to
    Fix: a season counts as the expansion's when it tracks at least one of its dungeons (INFERENCE: the table has no expansion
    column). Every dungeon those seasons track is listed, with `expansionID` and `listedBecause` ("expansion" / "mythic+ season").
    Which season is live is not in this data and is not claimed.
-2. **Four Midnight dungeons got no enemy forces.** Their challenge trees use Blizzard's internal names, so the name link missed them:
+2. **Four dungeons got no enemy forces** (three Midnight ones and Kings' Rest). Their challenge trees use Blizzard's internal names, so the name link missed them:
    - "Lightbloom" = The Blinding Vale (tree 219305 "Lightbloom Dungeon - Blinding Vale" ties the two);
    - "Prove Your Worth" = Den of Nalorakk;
    - "Nexus Point" = Nexus-Point Xenas;
@@ -62,7 +62,7 @@ Details:
 - **Aura targets** (ImplicitTarget_0; INFERENCE): self 1,383, enemy 23, ally 7. Others are kept as numbers: 25 (19), 0 (15),
   22 (4), 18 (2), 16 (2).
 - **Instances:** 16 dungeons and 7 with Map.InstanceType 2; 77 encounters, 1,118 ability spells, 548 encounter events.
-- **Mythic+ enemy forces:** all 15 dungeons of seasons 34 and 37 have them, 391 creature rows across 297 distinct creatures.
+- **Mythic+ enemy forces:** all 16 dungeons of seasons 34 and 37 (8 each) have them, 391 creature rows across 297 distinct creatures. The name link alone reached 12 of the 16.
 - **Classes:** the 13 playable classes plus Adventurer (14) and Traveler (15), which the client data also lists. Each playable class
   has an "Initial" spec row (before a spec is chosen). The pet specializations appear twice under different IDs. All as stored.
 

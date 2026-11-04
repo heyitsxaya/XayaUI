@@ -4,7 +4,7 @@ f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 d32239bcb673463ab874e80d47fae504  LICENSE
 91417b5d518fbf709b2c99130594cf82  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
-7e2f598f949654c0d793faa1df39add8  ROADMAP.md
+b91d2b3933ed896a61244f17dbae4689  ROADMAP.md
 19f7f6e26b14351ee4a351775c64c4da  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 74202b4cf2bc76a092b08235928bc1c9  USER-GUIDE.md
@@ -392,7 +392,7 @@ c4b1cf2b9db971da28d0bb93cbb449ae  debug-log/2026-11-04-0857-art-picker-missing-f
 18efaf779c7e9eccb5fe43d2ccc3e482  debug-log/2026-11-04-1443-advanced-debugging-categories-core-0.6.22.md
 f48e2672c267fbb66eb61799a51f478f  debug-log/2026-11-04-1453-rename-game-dump-to-dev-assist-0.7.0.md
 9663057fb276d8840f58b00ee8ed47c7  debug-log/2026-11-04-1520-toolkit-link-insert-through-compat-core-0.6.23-qol-0.7.1.md
-c1bccfe83d3d71ef7d953caff761c616  debug-log/2026-11-04-1523-content-data-pulls-offline.md
+a3e685b4a822d5a0007936c8f69ea1d7  debug-log/2026-11-04-1523-content-data-pulls-offline.md
 f8cd5a4b80b13709a510cf1b6c6fbe46  docs/plans/AURA-PLAN.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 40cbf03f1bb153e7f09fb1fa7f51f9fa  docs/process/IN-GAME-DATA-2026-11-05.md
