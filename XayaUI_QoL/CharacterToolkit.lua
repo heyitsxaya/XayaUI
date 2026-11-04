@@ -786,17 +786,12 @@ local function ReadGCD()
 end
 ns.CharToolkit_ReadGCD = ReadGCD
 
-local askedMythic = false
 local function ShowIfDocked()
     local c = Cfg()
     if not (c and c.enabled and c.panel) then return end
     Build()
     panel.userHidden = nil
     panel:Show()
-    if not askedMythic and C_MythicPlus and type(C_MythicPlus.RequestMapInfo) == "function" then
-        askedMythic = true
-        pcall(C_MythicPlus.RequestMapInfo)   -- documented, no flags: asks the server for the Mythic+ details the rating line lists
-    end
     ns.CharToolkit_Render()
 end
 
