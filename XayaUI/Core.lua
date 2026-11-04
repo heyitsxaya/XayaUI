@@ -134,7 +134,7 @@ ns.RULE_DEFAULTS = {
 
     -- Talent requirements: a list of { id = spellID, state = "known" | "notKnown" } combined by talentMode
     talents = {},
-    talentMode = nil,       -- (blank) | none | all | any   [required]  (all = every talent must match, any = at least one)
+    talentMode = nil,       -- (blank) | none | all | any   blank and none = no talent requirement (Conditions.lua CheckTalents); all = every talent must match, any = at least one
     -- Additional triggers (Triggers.lua): typed rows combined by extra.mode (blank / all = every row, any = one is enough),
     -- then ANDed with the cooldown, buff, talent and load settings. Plain data only: no code is ever stored here.
     extra = { list = {} },

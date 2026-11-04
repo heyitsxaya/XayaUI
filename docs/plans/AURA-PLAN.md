@@ -7,7 +7,7 @@ API facts and Xaya's captures; the triage reports themselves stay with the sessi
 |---|---|
 | Phase 0.1 `/xui auras` (#335) | Built in core 0.6.6, on main (a91f73a). Not run in game yet (QA B18, B19). |
 | Phase 0.2 readability per rule (editor, `/xui timing`) | Not started. |
-| Phase 0.3 perf guard fixes | Not started. |
+| Phase 0.3 perf guard fixes | Done in core 0.6.13 (guard reads `Blizzard_AuraContainer`, a trip lasts one session); unverified in game (QA B38). |
 | Phase 0.4 `/xuiengine` lists every display | Not started. |
 | Phase 0.5 doc drift | Not started. |
 | Phase 0.6 GameDump capture of the Cooldown Manager catalogue | Widened (Xaya 2026-11-04: "capture every aura possible in the current season and expansion"): `/xuidump auras` = Cooldown Manager catalogue per spec + Encounter Journal (current tier: raid and dungeon boss abilities, loot spells, tier-set bonus spells) + the M+ season's dungeons and affixes + a same-name scan of the whole spell ID range + an out-of-combat aura recorder. Not started. |

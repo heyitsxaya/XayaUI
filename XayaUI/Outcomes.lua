@@ -124,7 +124,8 @@ local function NumRef(ref, p, pi)
         return cdi.count
     elseif ref == "n:cdRemain" then
         local id = SpellID(); if not id then return nil end
-        local readID = ns.SpellOnBar and ns.SpellOnBar(id) or id   -- a talent that replaces the spell: the one on the bar (gap 4)
+        -- a talent that replaces the spell: the one on the bar (gap 4), unless the trigger reads the exact ID (B4)
+        local readID = ns.CooldownReadID and ns.CooldownReadID(p, id) or (ns.SpellOnBar and ns.SpellOnBar(id)) or id
         local ok, cd = pcall(C_Spell.GetSpellCooldown, readID)
         if not ok or type(cd) ~= "table" then return nil end
         local st, du, act, gcd = cd.startTime, cd.duration, cd.isActive, cd.isOnGCD
