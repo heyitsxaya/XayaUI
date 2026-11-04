@@ -38,7 +38,11 @@ local function Guarded(rule, rt, fn, ...)
     if not ok then ReportRuleError(rule, rt, err) end
 end
 local function RunActionsSafe(rule, rt, phase) if ns.RunActions then Guarded(rule, rt, ns.RunActions, rule, phase) end end
-local function PlaySoundSafe(rule, rt) Guarded(rule, rt, function() ns.PlaySound(ns.EffectiveSound(rule)) end) end
+local function PlaySoundSafe(rule, rt)
+    -- the game already plays this rule's sound on the aura itself (AuraSound.lua, opt-in): no second copy
+    if ns.AuraSound and ns.AuraSound.Owns(rule) then return end
+    Guarded(rule, rt, function() ns.PlaySound(ns.EffectiveSound(rule)) end)
+end
 local function HasSound(rule) return ns.KindHas(rule, "sound") end
 local function SoundNote(rule)
     local s = rule.sound

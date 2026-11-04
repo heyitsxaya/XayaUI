@@ -169,7 +169,8 @@ Enum = { AddOnProfilerMetric = { RecentAverageTime = 1 }, StatusBarTimerDirectio
 PAINTED = {}
 function NS_PAINT(tex, rule) PAINTED[#PAINTED + 1] = { tex = tex, rule = rule } end
 profilerMs = 0.2
-C_AddOnProfiler = { GetAddOnMetric = function(name, metric) assert(metric == 1); if name == "XayaUI_CombatEngine" then return profilerMs end if name == "Blizzard_AuraContainer" then return blizzMs or 0 end end }
+-- the game's meter knows only addons that exist: since 0.6.0 the engine is part of XayaUI, so "XayaUI_CombatEngine" reads nothing
+C_AddOnProfiler = { GetAddOnMetric = function(name, metric) assert(metric == 1); if name == "XayaUI" then return profilerMs end if name == "Blizzard_AuraContainer" then return blizzMs or 0 end end }
 _G.NS = ns
 local f = assert(loadfile(AURA_DISPLAY_PATH))
 f("XayaUI_CombatEngine", ns)
@@ -366,17 +367,26 @@ check("status: what the engine draws", lua("for _, l in ipairs(printed) do if l:
 check("status: what XayaUI keeps, with reasons", lua("local a, b = false, false; for _, l in ipairs(printed) do if l:find('XayaUI keeps') then a = true end if l:find('MISSING') then b = true end end return a and b"))
 check("help text has no '|r' colour-code sequence", lua("for _, l in ipairs(printed) do if l:find('|r', 1, true) then return false end end return true"))
 
-# 8. guard: lean first, then off
-lua('profilerMs = 0.2; blizzMs = 0.1; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
-check("guard: cheap engine never trips", lua("return CueRulesDB.engineDisplay.lean == nil and CueRulesDB.engineDisplay.auto == true"))
-lua('profilerMs = 0.5; blizzMs = 0.7; NS.AuraDisplay.GuardCheck(); NS.AuraDisplay.GuardCheck(); profilerMs = 0.1; NS.AuraDisplay.GuardCheck()')
-check("guard: counts Blizzard's container cost too, and a low reading resets it", lua("return CueRulesDB.engineDisplay.lean == nil"))
-lua('profilerMs = 0.6; blizzMs = 0.6; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
-check("guard stage 1: lean mode (spec being played only)", lua("return CueRulesDB.engineDisplay.lean == true and CueRulesDB.engineDisplay.auto == true") and not own("SPEC") and own("U1"))
+# 8. guard: lean first, then off; both for this session only (0.6.13)
+G = "local g = NS.AuraDisplay._guard; local e = CueRulesDB.engineDisplay; "
+lua('profilerMs = 5.0; blizzMs = 0.1; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
+check("guard: XayaUI's own total (rules, sounds, settings) is shown, never trips the engine", lua(G + "return not g.lean and not g.off and g.own == 5.0 and e.auto == true"))
+lua('blizzMs = 1.2; NS.AuraDisplay.GuardCheck(); NS.AuraDisplay.GuardCheck(); blizzMs = 0.1; NS.AuraDisplay.GuardCheck()')
+check("guard: reads Blizzard's container cost (where the containers' work is counted), and a low reading resets it", lua(G + "return not g.lean and g.last == 0.1"))
+lua('profilerMs = 0.1; blizzMs = 1.2; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
+check("guard stage 1: lean mode (spec being played only)", lua(G + "return g.lean == true and e.auto == true") and not own("SPEC") and own("U1"))
+check("guard stage 1 is not saved (a /reload starts clean)", lua(G + "return e.lean == nil"))
 lua('printed = {}; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
-check("guard stage 2: automatic mode off, all back to XayaUI, said in chat", lua("return CueRulesDB.engineDisplay.auto == false and #CueRulesDB.engineDisplay.guardTrips == 2 and printed[1]:find('performance guard') ~= nil") and not own("U1") and not own("A1"))
+check("guard stage 2: automatic mode off, all back to XayaUI, said in chat", lua(G + "return g.off == true and #e.guardTrips == 2 and printed[1]:find('performance guard') ~= nil") and not own("U1") and not own("A1"))
+check("guard stage 2 is not saved: the saved setting stays on", lua(G + "return e.auto == true and e.guardTrips[2].session == true"))
 lua('profilerMs = 0.1; blizzMs = 0; SlashCmdList["XUIENGINE"]("auto on")')
-check("auto on: everything back, lean mode cleared", lua("return CueRulesDB.engineDisplay.auto == true and CueRulesDB.engineDisplay.lean == nil") and own("U1") and own("SPEC"))
+check("auto on: everything back, lean mode cleared", lua(G + "return e.auto == true and not g.lean and not g.off") and own("U1") and own("SPEC"))
+# a trip saved by an older version is undone once; a player's own "auto off" (no guard trip behind it) is kept
+lua('SAVED = CueRulesDB.engineDisplay; CueRulesDB.engineDisplay = { auto = false, lean = true, groups = {}, guardTrips = { { at = "t1", step = "lean" }, { at = "t2", step = "off" } } }; NS.AuraDisplay.Build()')
+check("old saved guard trip (lean + off) is undone and noted", lua("local e = CueRulesDB.engineDisplay; return e.auto == true and e.lean == nil and e.guardV == 2 and e.guardUndone and e.guardUndone.trip == 't2'") and own("U1"))
+lua('CueRulesDB.engineDisplay = { auto = false, groups = {}, guardTrips = { { at = "t1", step = "lean" } } }; NS.AuraDisplay.Build()')
+check("a player's own auto off is kept", lua("local e = CueRulesDB.engineDisplay; return e.auto == false and e.guardUndone == nil") and not own("U1"))
+lua('CueRulesDB.engineDisplay = SAVED; NS.AuraDisplay.Build()')
 
 # 9. a container that fails hands its displays back
 lua('failAdd = true; for k, s in pairs(NS.AuraDisplay._singles) do s.frame = nil end; for k, g in pairs(NS.AuraDisplay._groups) do g.frame = nil end; NS.AuraDisplay.Build()')
@@ -518,12 +528,13 @@ check("a sound cue's leftover display switch is ignored: the icon cue is drawn",
 
 # 17. a rule whose only trigger is one "Buff / Aura (another)" row: drawn like the built-in Buff / Aura
 lua(r"""
-ROW = { uid = "row", name = "aura row only", enabled = true, extra = { list = { { type = "buffAura", spellID = 9777, state = "yes" } } }, visual = { enabled = true, trigger = "condition", w = 30, h = 30, text = {}, count = {} } }
+ROW = { uid = "row", name = "aura row only", enabled = true, extra = { list = { { type = "buffAura", spellID = 9777, alt = { 9779 }, state = "yes" } } }, visual = { enabled = true, trigger = "condition", w = 30, h = 30, text = {}, count = {} } }
 ROWM = { uid = "rowm", name = "aura row missing", enabled = true, extra = { list = { { type = "buffAura", spellID = 9778, state = "no" } } }, visual = { enabled = true, trigger = "condition", w = 30, h = 30 } }
 NS.rules[#NS.rules + 1] = ROW; NS.rules[#NS.rules + 1] = ROWM
 NS.AuraDisplay.Build()
 """)
 check("lone aura row: its own slot on the player's buffs", lua("local s = NS.AuraDisplay._singles[ROW]; return s and s.ok and s.frame.unit == 'player' and s.frame.groups.main.filter == 'HELPFUL' and s.frame.groups.main.filters.includeSpellIDs[9777] == true"))
+check("lone aura row: its extra aura IDs are shown too (0.6.13, gap 9: the icon stayed empty for a variant)", lua("local s = NS.AuraDisplay._singles[ROW]; return s and s.frame.groups.main.filters.includeSpellIDs[9779] == true"))
 check("lone aura row set to MISSING stays with XayaUI, with its reason", not own("ROWM") and lua("for _, e in ipairs(NS.AuraDisplay._Left()) do if e[1] == ROWM and e[2]:find('MISSING') then return true end end return false"))
 
 # 18. a rule WITH conditions switches its cues one by one: its separate Text cue stays with XayaUI (no extra slot)

@@ -12,43 +12,43 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
 - `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `ClearParentKey()` · SimpleObjectAPI
-- `CreateAnimation(animationType: cstring?, name: cstring?, templateName: cstring?)` → `anim: SimpleAnim` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=NotAllowed · SimpleAnimGroupAPI
+- `CreateAnimation(animationType: cstring?, name: cstring?, templateName: cstring?)` → `anim: SimpleAnim` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=NotAllowed · SimpleAnimGroupAPI
 - `Finish()` · SimpleAnimGroupAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetAnimationSpeedMultiplier()` → `animationSpeedMultiplier: number` · SimpleAnimGroupAPI
 - `GetAnimations()` → `anims: SimpleAnim` · SimpleAnimGroupAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDuration()` → `duration: LuaDurationObject?` · DurationTextBindingObjectAPI
-- `GetElapsed()` → `elapsedSec: number` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleAnimAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetLoopState()` → `loopState: cstring` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleAnimGroupAPI
+- `GetElapsed()` → `elapsedSec: number` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryAnimationProgress'}] · SimpleAnimAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetLoopState()` → `loopState: cstring` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryAnimationProgress'}] · SimpleAnimGroupAPI
 - `GetLooping()` → `loopType: LoopType` · SimpleAnimGroupAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
-- `GetProgress()` → `progress: number` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleAnimAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetProgress()` → `progress: number` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryAnimationProgress'}] · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
-- `IsDone()` → `isDone: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleAnimAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `IsDone()` → `isDone: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryAnimationProgress'}] · SimpleAnimAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `IsPaused()` → `isPaused: bool` · FrameAPICooldown
-- `IsPendingFinish()` → `isPendingFinish: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleAnimGroupAPI
-- `IsPlaying()` → `isPlaying: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleAnimAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsReverse()` → `isReverse: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleAnimGroupAPI
+- `IsPendingFinish()` → `isPendingFinish: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryAnimationProgress'}] · SimpleAnimGroupAPI
+- `IsPlaying()` → `isPlaying: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryAnimationProgress'}] · SimpleAnimAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsReverse()` → `isReverse: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryAnimationProgress'}] · SimpleAnimGroupAPI
 - `IsSetToFinalAlpha()` → `isSetToFinalAlpha: bool` · SimpleAnimGroupAPI
 - `Pause()` · FrameAPICooldown
 - `Play()` · SimpleAnimAPI
@@ -59,7 +59,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetLooping(loopType: LoopType)` · SecretArguments=NotAllowed · SimpleAnimGroupAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPlaying(play: bool)` · SecretArguments=NotAllowed · SimpleAnimAPI
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
 - `SetToFinalAlpha(setToFinalAlpha: bool)` · SecretArguments=AllowedWhenUntainted · SimpleAnimGroupAPI
 - `Stop()` · SimpleAnimAPI
@@ -72,14 +72,14 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearDisabledTexture()` · SimpleButtonAPI
 - `ClearHighlightTexture()` · SimpleButtonAPI
@@ -88,8 +88,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
 - `ClearPushedTexture()` · SimpleButtonAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
-- `Click(button: cstring = "LeftButton", isDown: bool = false)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=NotAllowed · SimpleButtonAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
+- `Click(button: cstring = "LeftButton", isDown: bool = false)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptedInput'}], SecretArguments=NotAllowed · SimpleButtonAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
 - `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
@@ -110,28 +110,28 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
-- `GetButtonState()` → `buttonState: SimpleButtonStateToken` · SecretReturnsForAspect=[0] · SimpleButtonAPI
+- `GetButtonState()` → `buttonState: SimpleButtonStateToken` · SecretReturnsForAspect=[SecretAspect.ButtonState] · SimpleButtonAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDisabledFontObject()` → `font: SimpleFont` · SimpleButtonAPI
 - `GetDisabledTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFontString()` → `fontString: SimpleFontString?` · DurationTextBindingObjectAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -139,20 +139,20 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetHighlightTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetMotionScriptsWhileDisabled()` → `motionScriptsWhileDisabled: bool` · SimpleButtonAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
 - `GetNormalFontObject()` → `font: SimpleFont` · SimpleButtonAPI
 - `GetNormalTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
@@ -161,45 +161,45 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetPushedTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `GetText()` → `text: cstring` · SecretReturnsForAspect=[0] · SimpleButtonAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
+- `GetText()` → `text: cstring` · SecretReturnsForAspect=[SecretAspect.Text] · SimpleButtonAPI
 - `GetTextHeight()` → `height: uiUnit` · SimpleButtonAPI
 - `GetTextWidth()` → `width: uiUnit` · SimpleButtonAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `IsEnabled()` → `enabled: bool` · DurationTextBindingObjectAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -211,43 +211,43 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
 - `LockHighlight()` · SimpleFrameAPI
 - `Lower()` · IsProtectedFunction · SimpleFrameAPI
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForClicks(buttons: ClickButton)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleButtonAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForMouse(buttons: ClickButton)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleButtonAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetButtonState(buttonState: SimpleButtonStateToken, lock: bool = false)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleButtonAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetButtonState(buttonState: SimpleButtonStateToken, lock: bool = false)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.ButtonState] · SimpleButtonAPI
 - `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -263,8 +263,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetFontString(fontString: SimpleFontString)` · SecretArguments=AllowedWhenUntainted · DurationTextBindingObjectAPI
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFormattedText(text: cstring)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleButtonAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFormattedText(text: cstring)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Text] · SimpleButtonAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHighlightAtlas(atlas: textureAtlas, blendMode: BlendMode?)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
@@ -272,9 +272,9 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHighlightTexture(asset: TextureAsset, blendMode: BlendMode?)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -287,7 +287,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetNormalFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
 - `SetNormalTexture(asset: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -303,12 +303,12 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Text] · FrameAPITooltip
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -320,8 +320,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopAnimating()` · SimpleAnimatableObjectAPI
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 
 ## CheckButton (262 methods)
 
@@ -331,14 +331,14 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearDisabledTexture()` · SimpleButtonAPI
 - `ClearHighlightTexture()` · SimpleButtonAPI
@@ -347,8 +347,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
 - `ClearPushedTexture()` · SimpleButtonAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
-- `Click(button: cstring = "LeftButton", isDown: bool = false)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=NotAllowed · SimpleButtonAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
+- `Click(button: cstring = "LeftButton", isDown: bool = false)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptedInput'}], SecretArguments=NotAllowed · SimpleButtonAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
 - `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
@@ -369,31 +369,31 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
-- `GetButtonState()` → `buttonState: SimpleButtonStateToken` · SecretReturnsForAspect=[0] · SimpleButtonAPI
+- `GetButtonState()` → `buttonState: SimpleButtonStateToken` · SecretReturnsForAspect=[SecretAspect.ButtonState] · SimpleButtonAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetChecked()` → `checked: bool` · SimpleCheckboxAPI
 - `GetCheckedTexture()` → `texture: SimpleTexture` · SimpleCheckboxAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDisabledCheckedTexture()` → `texture: SimpleTexture` · SimpleCheckboxAPI
 - `GetDisabledFontObject()` → `font: SimpleFont` · SimpleButtonAPI
 - `GetDisabledTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFontString()` → `fontString: SimpleFontString?` · DurationTextBindingObjectAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -401,20 +401,20 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetHighlightTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetMotionScriptsWhileDisabled()` → `motionScriptsWhileDisabled: bool` · SimpleButtonAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
 - `GetNormalFontObject()` → `font: SimpleFont` · SimpleButtonAPI
 - `GetNormalTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
@@ -423,45 +423,45 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetPushedTexture()` → `texture: SimpleTexture` · SimpleButtonAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `GetText()` → `text: cstring` · SecretReturnsForAspect=[0] · SimpleButtonAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
+- `GetText()` → `text: cstring` · SecretReturnsForAspect=[SecretAspect.Text] · SimpleButtonAPI
 - `GetTextHeight()` → `height: uiUnit` · SimpleButtonAPI
 - `GetTextWidth()` → `width: uiUnit` · SimpleButtonAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `IsEnabled()` → `enabled: bool` · DurationTextBindingObjectAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -473,43 +473,43 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
 - `LockHighlight()` · SimpleFrameAPI
 - `Lower()` · IsProtectedFunction · SimpleFrameAPI
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForClicks(buttons: ClickButton)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleButtonAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForMouse(buttons: ClickButton)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleButtonAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetButtonState(buttonState: SimpleButtonStateToken, lock: bool = false)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleButtonAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetButtonState(buttonState: SimpleButtonStateToken, lock: bool = false)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.ButtonState] · SimpleButtonAPI
 - `SetChecked(checked: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleCheckboxAPI
 - `SetCheckedTexture(asset: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleCheckboxAPI
 - `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -528,8 +528,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetFontString(fontString: SimpleFontString)` · SecretArguments=AllowedWhenUntainted · DurationTextBindingObjectAPI
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFormattedText(text: cstring)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleButtonAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFormattedText(text: cstring)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Text] · SimpleButtonAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHighlightAtlas(atlas: textureAtlas, blendMode: BlendMode?)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
@@ -537,9 +537,9 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHighlightTexture(asset: TextureAsset, blendMode: BlendMode?)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -552,7 +552,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetNormalFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
 - `SetNormalTexture(asset: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleButtonAPI
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -568,12 +568,12 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Text] · FrameAPITooltip
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -585,8 +585,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopAnimating()` · SimpleAnimatableObjectAPI
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 
 ## ColorSelect (233 methods)
 
@@ -596,20 +596,20 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearColorWheelTexture()` · SimpleColorSelectAPI
 - `ClearParentKey()` · SimpleObjectAPI
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
 - `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
@@ -628,15 +628,15 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetColorAlpha()` → `alpha: number` · SimpleColorSelectAPI
 - `GetColorAlphaTexture()` → `texture: SimpleTexture` · SimpleColorSelectAPI
@@ -649,69 +649,69 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetColorWheelThumbTexture()` → `texture: SimpleTexture` · SimpleColorSelectAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
 - `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -723,40 +723,40 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
 - `LockHighlight()` · SimpleFrameAPI
 - `Lower()` · IsProtectedFunction · SimpleFrameAPI
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -776,14 +776,14 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -792,7 +792,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -805,11 +805,11 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -821,8 +821,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopAnimating()` · SimpleAnimatableObjectAPI
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 
 ## Cooldown (260 methods)
 
@@ -832,20 +832,20 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `Clear()` · IsProtectedFunction · FrameAPICooldown
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearParentKey()` · SimpleObjectAPI
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
 - `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
@@ -864,60 +864,60 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
-- `GetCooldownDisplayDuration()` → `duration: number` · SecretReturnsForAspect=[0] · FrameAPICooldown
-- `GetCooldownDuration()` → `duration: number` · SecretReturnsForAspect=[0] · FrameAPICooldown
-- `GetCooldownTimes()` → `start: number, duration: number` · SecretReturnsForAspect=[0] · FrameAPICooldown
+- `GetCooldownDisplayDuration()` → `duration: number` · SecretReturnsForAspect=[SecretAspect.Cooldown] · FrameAPICooldown
+- `GetCooldownDuration()` → `duration: number` · SecretReturnsForAspect=[SecretAspect.Cooldown] · FrameAPICooldown
+- `GetCooldownTimes()` → `start: number, duration: number` · SecretReturnsForAspect=[SecretAspect.Cooldown] · FrameAPICooldown
 - `GetCountdownAbbrevThreshold()` → `seconds: Seconds` · FrameAPICooldown
 - `GetCountdownFontString()` → `countdownString: SimpleFontString` · FrameAPICooldown
 - `GetCountdownFormatter()` → `formatter: NumericFormatter?` · FrameAPICooldown
 - `GetCountdownMillisecondsThreshold()` → `seconds: Seconds` · FrameAPICooldown
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetDrawBling()` → `drawBling: bool` · SecretReturnsForAspect=[0] · FrameAPICooldown
-- `GetDrawEdge()` → `drawEdge: bool` · SecretReturnsForAspect=[0] · FrameAPICooldown
-- `GetDrawSwipe()` → `drawSwipe: bool` · SecretReturnsForAspect=[0] · FrameAPICooldown
+- `GetDrawBling()` → `drawBling: bool` · SecretReturnsForAspect=[SecretAspect.CooldownStyle] · FrameAPICooldown
+- `GetDrawEdge()` → `drawEdge: bool` · SecretReturnsForAspect=[SecretAspect.CooldownStyle] · FrameAPICooldown
+- `GetDrawSwipe()` → `drawSwipe: bool` · SecretReturnsForAspect=[SecretAspect.CooldownStyle] · FrameAPICooldown
 - `GetEdgeScale()` → `edgeScale: number` · FrameAPICooldown
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHideCountdownNumbers()` → `hideNumbers: bool` · FrameAPICooldown
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetMinimumCountdownDuration()` → `milliseconds: Milliseconds` · FrameAPICooldown
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
 - `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetReverse()` → `reverse: bool` · FrameAPICooldown
 - `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
@@ -926,35 +926,35 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetUseAuraDisplayTime()` → `useAuraDisplayTime: bool` · FrameAPICooldown
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -966,20 +966,20 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `IsPaused()` → `isPaused: bool` · FrameAPICooldown
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
@@ -987,57 +987,57 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `Lower()` · IsProtectedFunction · SimpleFrameAPI
 - `Pause()` · FrameAPICooldown
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `Resume()` · FrameAPICooldown
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `SetBlingTexture(texture: FileAsset, colorR: number, colorG: number, colorB: number, colorA: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
 - `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `SetCooldown(start: Seconds, duration: Seconds, modRate: number = 1)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
-- `SetCooldownDuration(duration: Seconds, modRate: number = 1)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
+- `SetCooldown(start: Seconds, duration: Seconds, modRate: number = 1)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Cooldown] · FrameAPICooldown
+- `SetCooldownDuration(duration: Seconds, modRate: number = 1)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Cooldown] · FrameAPICooldown
 - `SetCooldownFromDurationObject(duration: LuaDurationObject, clearIfZero: bool = true)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · FrameAPICooldown
-- `SetCooldownFromExpirationTime(expirationTime: Seconds, duration: Seconds, modRate: number = 1)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
-- `SetCooldownUNIX(start: number, duration: number, modRate: number = 1)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
+- `SetCooldownFromExpirationTime(expirationTime: Seconds, duration: Seconds, modRate: number = 1)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Cooldown] · FrameAPICooldown
+- `SetCooldownUNIX(start: number, duration: number, modRate: number = 1)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Cooldown] · FrameAPICooldown
 - `SetCountdownAbbrevThreshold(seconds: Seconds)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
 - `SetCountdownFont(fontName: cstring)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
 - `SetCountdownFormatter(formatter: NumericFormatter?)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
 - `SetCountdownMillisecondsThreshold(seconds: Seconds)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
 - `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetDrawBling(drawBling: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
-- `SetDrawEdge(drawEdge: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
+- `SetDrawBling(drawBling: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.CooldownStyle] · FrameAPICooldown
+- `SetDrawEdge(drawEdge: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.CooldownStyle] · FrameAPICooldown
 - `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetDrawSwipe(drawSwipe: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
-- `SetEdgeColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
+- `SetDrawSwipe(drawSwipe: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.CooldownStyle] · FrameAPICooldown
+- `SetEdgeColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.CooldownStyle] · FrameAPICooldown
 - `SetEdgeScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
 - `SetEdgeTexture(texture: FileAsset, colorR: number, colorG: number, colorB: number, colorA: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
 - `SetFixedFrameLevel(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHideCountdownNumbers(hideNumbers: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -1047,7 +1047,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPaused(paused: bool)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
@@ -1063,14 +1063,14 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRotation(radians: number, animate: bool = true)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetSwipeColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPICooldown
+- `SetSwipeColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.CooldownStyle] · FrameAPICooldown
 - `SetSwipeTexture(texture: FileAsset, colorR: number, colorG: number, colorB: number, colorA: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
 - `SetTexCoordRange(low: vector2 (Vector2DMixin), high: vector2 (Vector2DMixin)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetUseAuraDisplayTime(useAuraDisplayTime: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
 - `SetUseCircularEdge(useCircularEdge: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPICooldown
 - `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -1084,8 +1084,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopAnimating()` · SimpleAnimatableObjectAPI
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 
 ## EditBox (293 methods)
 
@@ -1096,14 +1096,14 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearFocus()` · FrameAPISimpleCheckout
 - `ClearHighlightText()` · SimpleEditBoxAPI
@@ -1111,7 +1111,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `ClearParentKey()` · SimpleObjectAPI
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
 - `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
@@ -1132,30 +1132,30 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAltArrowKeyMode()` → `altMode: bool` · SimpleEditBoxAPI
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBlinkSpeed()` → `cursorBlinkSpeedSec: number` · SimpleEditBoxAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
-- `GetCursorPosition()` → `cursorPosition: number` · SecretReturnsForAspect=[0, 0] · SimpleEditBoxAPI
+- `GetCursorPosition()` → `cursorPosition: number` · SecretReturnsForAspect=[SecretAspect.Cursor, SecretAspect.Text] · SimpleEditBoxAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
-- `GetDisplayText()` → `displayText: string` · MayReturnNothing, SecretReturnsForAspect=[0] · SimpleEditBoxAPI
+- `GetDisplayText()` → `displayText: string` · MayReturnNothing, SecretReturnsForAspect=[SecretAspect.Text] · SimpleEditBoxAPI
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFont()` → `name: cstring, fontHeight: uiUnit, flags: TBFFlags` · SimpleEditBoxAPI
 - `GetFontObject()` → `font: SimpleFont` · SimpleEditBoxAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -1163,74 +1163,74 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetHistoryLines()` → `numHistoryLines: number` · SimpleEditBoxAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `GetIndentedWordWrap()` → `isIndented: bool` · SimpleEditBoxAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetInputLanguage()` → `language: cstring` · SimpleEditBoxAPI
 - `GetJustifyH()` → `justifyH: JustifyHorizontal` · SimpleEditBoxAPI
 - `GetJustifyV()` → `justifyV: JustifyVertical` · SimpleEditBoxAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetMaxBytes()` → `maxBytes: number` · SimpleEditBoxAPI
 - `GetMaxLetters()` → `maxLetters: number` · SimpleEditBoxAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumLetters()` → `numLetters: number` · MayReturnNothing · SimpleEditBoxAPI
 - `GetNumLines()` → `lines: number` · SimpleEditBoxAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetNumber()` → `number: number?` · SecretReturnsForAspect=[0] · SimpleEditBoxAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
+- `GetNumber()` → `number: number?` · SecretReturnsForAspect=[SecretAspect.Text] · SimpleEditBoxAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
 - `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetShadowColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
 - `GetShadowOffset()` → `offsetX: number, offsetY: number` · SimpleEditBoxAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
 - `GetSpacing()` → `fontHeight: uiUnit` · SimpleEditBoxAPI
-- `GetText()` → `text: cstring` · SecretReturnsForAspect=[0] · SimpleButtonAPI
+- `GetText()` → `text: cstring` · SecretReturnsForAspect=[SecretAspect.Text] · SimpleButtonAPI
 - `GetTextColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
 - `GetTextInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleEditBoxAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetUTF8CursorPosition()` → `cursorPosition: number` · SecretReturnsForAspect=[0, 0] · SimpleEditBoxAPI
+- `GetUTF8CursorPosition()` → `cursorPosition: number` · SecretReturnsForAspect=[SecretAspect.Cursor, SecretAspect.Text] · SimpleEditBoxAPI
 - `GetVisibleTextByteLimit()` → `maxVisibleBytes: number` · SimpleEditBoxAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
-- `HasFocus()` → `hasFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleEditBoxAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasFocus()` → `hasFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleEditBoxAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `HasText()` → `hasText: bool` · SimpleEditBoxAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
 - `HighlightText(start: number = 0, stop: number = -1)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
-- `Insert(text: cstring)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleEditBoxAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `Insert(text: cstring)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Text] · SimpleEditBoxAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsAlphabeticOnly()` → `enabled: bool` · SimpleEditBoxAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsAutoFocus()` → `autoFocus: bool` · SimpleEditBoxAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
@@ -1238,8 +1238,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `IsEnabled()` → `enabled: bool` · DurationTextBindingObjectAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -1252,7 +1252,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
@@ -1260,40 +1260,40 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsNumeric()` → `isNumeric: bool` · SimpleEditBoxAPI
 - `IsNumericFullRange()` → `isNumeric: bool` · SimpleEditBoxAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `IsPassword()` → `isPassword: bool` · SimpleEditBoxAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
-- `IsSecureText()` → `isSecure: bool` · SecretReturnsForAspect=[0] · SimpleEditBoxAPI
+- `IsSecureText()` → `isSecure: bool` · SecretReturnsForAspect=[SecretAspect.SecureText] · SimpleEditBoxAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
 - `LockHighlight()` · SimpleFrameAPI
 - `Lower()` · IsProtectedFunction · SimpleFrameAPI
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ResetInputMode()` · SimpleEditBoxAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
 - `SetAlphabeticOnly(enabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetAltArrowKeyMode(altMode: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `SetAutoFocus(autoFocus: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetBlinkSpeed(cursorBlinkSpeedSec: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -1301,7 +1301,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetCountInvisibleLetters(countInvisibleLetters: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
-- `SetCursorPosition(cursorPosition: number)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleEditBoxAPI
+- `SetCursorPosition(cursorPosition: number)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptedInput'}], SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Cursor] · SimpleEditBoxAPI
 - `SetDontSavePosition(dontSave: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetDrawLayerEnabled(layer: DrawLayer, isEnabled: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetEnabled(enabled: bool)` · SecretArguments=AllowedWhenUntainted · DurationTextBindingObjectAPI
@@ -1312,16 +1312,16 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFont(fontFile: cstring, height: uiFontHeight, flags: TBFFlags)` → `success: bool` · RequiresValidFontAsset, RequiresValidFontHeight, SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHighlightColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHistoryLines(numHistoryLines: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -1335,11 +1335,11 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetMultiLine(multiline: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
-- `SetNumber(number: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleEditBoxAPI
+- `SetNumber(number: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Text] · SimpleEditBoxAPI
 - `SetNumeric(isNumeric: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetNumericFullRange(isNumeric: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPassword(isPassword: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
@@ -1353,8 +1353,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
-- `SetSecureText(isSecure: bool = false)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleEditBoxAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetSecureText(isSecure: bool = false)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.SecureText] · SimpleEditBoxAPI
 - `SetSecurityDisablePaste()` · SimpleEditBoxAPI
 - `SetSecurityDisableSetText()` · SimpleEditBoxAPI
 - `SetShadowColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
@@ -1362,11 +1362,11 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetSpacing(fontHeight: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
-- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Text] · FrameAPITooltip
 - `SetTextColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetTextInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetVisibleTextByteLimit(maxVisibleBytes: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
@@ -1380,8 +1380,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `ToggleInputLanguage()` · SimpleEditBoxAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 
 ## FontString (166 methods)
 
@@ -1389,9 +1389,9 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CalculateScreenAreaFromCharacterSpan(leftIndex: luaIndex, rightIndex: luaIndex)` → `areas: table<uiBoundsRect>?` · RequiresFontStringTextAccess, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0], SecretWhenAnchoringSecret · SimpleFontStringAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CalculateScreenAreaFromCharacterSpan(leftIndex: luaIndex, rightIndex: luaIndex)` → `areas: table<uiBoundsRect>?` · RequiresFontStringTextAccess, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Text], SecretWhenAnchoringSecret · SimpleFontStringAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanNonSpaceWrap()` → `wrap: bool` · SimpleFontStringAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
@@ -1401,42 +1401,42 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `ClearParentKey()` · SimpleObjectAPI
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
-- `ClearText()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFontStringAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
+- `ClearText()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.RemoveSecretAspects'}] · SimpleFontStringAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `FindCharacterIndexAtCoordinate(x: uiUnit, y: uiUnit)` → `characterIndex: luaIndex, inside: bool` · MayReturnNothing, RequiresFontStringTextAccess, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0], SecretWhenAnchoringSecret · SimpleFontStringAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `FindCharacterIndexAtCoordinate(x: uiUnit, y: uiUnit)` → `characterIndex: luaIndex, inside: bool` · MayReturnNothing, RequiresFontStringTextAccess, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Text], SecretWhenAnchoringSecret · SimpleFontStringAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAlphaGradient()` → `start: number, length: number` · SimpleFontStringAPI
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDrawLayer()` → `layer: DrawLayer, sublevel: number` · FrameAPIModelSceneFrame
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetFieldSize()` → `fieldSize: number` · SimpleFontStringAPI
 - `GetFont()` → `name: cstring, fontHeight: uiUnit, flags: TBFFlags` · SimpleEditBoxAPI
 - `GetFontHeight()` → `height: number` · SimpleFontAPI
 - `GetFontObject()` → `font: SimpleFont` · SimpleEditBoxAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetIndentedWordWrap()` → `isIndented: bool` · SimpleEditBoxAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetJustifyH()` → `justifyH: JustifyHorizontal` · SimpleEditBoxAPI
 - `GetJustifyV()` → `justifyV: JustifyVertical` · SimpleEditBoxAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetLineHeight()` → `lineHeight: uiUnit` · SimpleFontStringAPI
 - `GetMaxLines()` → `maxLines: number` · SimpleFontStringAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
 - `GetNumLines()` → `lines: number` · SimpleEditBoxAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
@@ -1447,59 +1447,59 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaleAnimationMode()` → `scaleAnimationMode: FontStringScaleAnimationMode` · SimpleFontStringAPI
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetShadowColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
 - `GetShadowOffset()` → `offsetX: number, offsetY: number` · SimpleEditBoxAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetSmoothScaling()` → `smoothScaling: bool` · SimpleFontStringAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
 - `GetSpacing()` → `fontHeight: uiUnit` · SimpleEditBoxAPI
 - `GetStringHeight()` → `height: uiUnit` · SecretWhenAnchoringSecret · SimpleFontStringAPI
 - `GetStringWidth()` → `width: uiUnit` · SecretWhenAnchoringSecret · SimpleFontStringAPI
-- `GetText()` → `text: cstring` · SecretReturnsForAspect=[0] · SimpleButtonAPI
+- `GetText()` → `text: cstring` · SecretReturnsForAspect=[SecretAspect.Text] · SimpleButtonAPI
 - `GetTextColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
 - `GetTextScale()` → `textScale: number` · SimpleFontStringAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetUnboundedStringWidth()` → `width: uiUnit` · SecretWhenAnchoringSecret · SimpleFontStringAPI
 - `GetUnboundedStringWidthForText(text: cstring)` → `width: uiUnit` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleFontStringAPI
-- `GetVertexColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · MayReturnNothing, SecretReturnsForAspect=[0, 0] · SimpleRegionAPI
+- `GetVertexColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · MayReturnNothing, SecretReturnsForAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleRegionAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWrappedWidth()` → `width: uiUnit` · SecretWhenAnchoringSecret · SimpleFontStringAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
 - `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
 - `IsTruncated()` → `isTruncated: bool` · SecretWhenAnchoringSecret · SimpleFontStringAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
 - `OnColorsUpdated()` · SimpleFontStringAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
 - `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetDesaturateEmbeddedTextures(desaturate: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
@@ -1509,7 +1509,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFontHeight(height: number)` · SecretArguments=AllowedWhenUntainted · SimpleFontAPI
 - `SetFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFormattedText(text: cstring)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleButtonAPI
+- `SetFormattedText(text: cstring)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Text] · SimpleButtonAPI
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
@@ -1520,7 +1520,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetNonSpaceWrap(wrap: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -1531,21 +1531,21 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetScaleAnimationMode(scaleAnimationMode: FontStringScaleAnimationMode)` · SecretArguments=NotAllowed · SimpleFontStringAPI
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShadowColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetShadowOffset(offsetX: number, offsetY: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetSmoothScaling(smoothScaling: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
 - `SetSpacing(fontHeight: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
-- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Text] · FrameAPITooltip
 - `SetTextColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetTextHeight(height: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
 - `SetTextScale(textScale: number)` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
-- `SetTextToFit(text: cstring = "")` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFontStringAPI
+- `SetTextToFit(text: cstring = "")` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Text] · SimpleFontStringAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetVertexColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
-- `SetVertexColorFromBoolean(value: bool, colorIfTrue: colorRGBA (ColorMixin), colorIfFalse: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
+- `SetVertexColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleRegionAPI
+- `SetVertexColorFromBoolean(value: bool, colorIfTrue: colorRGBA (ColorMixin), colorIfFalse: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleRegionAPI
 - `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetWordWrap(wrap: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
 - `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
@@ -1560,19 +1560,19 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearParentKey()` · SimpleObjectAPI
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
 - `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
@@ -1591,81 +1591,81 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
 - `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -1677,40 +1677,40 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
 - `LockHighlight()` · SimpleFrameAPI
 - `Lower()` · IsProtectedFunction · SimpleFrameAPI
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -1721,14 +1721,14 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -1737,7 +1737,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -1750,11 +1750,11 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -1766,8 +1766,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopAnimating()` · SimpleAnimatableObjectAPI
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 
 ## GameTooltip (244 methods)
 
@@ -1775,7 +1775,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddAccessRestrictions(restrictions: ScriptObjectAccessRestriction)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
 - `AddAtlas`
 - `AddDoubleLine`
-- `AddFontStrings(leftFontString: SimpleFontString, rightFontString: SimpleFontString)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'leftFontString', 'Aspect': 0}, {'Argument': 'rightFontString', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · FrameAPITooltip
+- `AddFontStrings(leftFontString: SimpleFontString, rightFontString: SimpleFontString)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'leftFontString', 'Aspect': 'ForbiddenAspect.RemoveSecretAspects'}, {'Argument': 'rightFontString', 'Aspect': 'ForbiddenAspect.RemoveSecretAspects'}], SecretArguments=AllowedWhenUntainted · FrameAPITooltip
 - `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
 - `AddLine`
 - `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -1783,21 +1783,21 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddTexture`
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `AppendText`
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearLines`
 - `ClearPadding()` · FrameAPITooltip
 - `ClearParentKey()` · SimpleObjectAPI
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CopyTooltip`
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
@@ -1817,54 +1817,54 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `FadeOut`
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnchorType`
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetCustomLineSpacing`
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetLeftLine(line: luaIndex)` → `leftFontString: SimpleFontString` · SecretArguments=AllowedWhenUntainted · FrameAPITooltip
-- `GetMinimumWidth()` → `width: number, forced: bool` · SecretReturnsForAspect=[0] · FrameAPITooltip
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetMinimumWidth()` → `width: number, forced: bool` · SecretReturnsForAspect=[SecretAspect.MinimumWidth] · FrameAPITooltip
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
 - `GetOwner`
-- `GetPadding()` → `right: number, bottom: number, left: number, top: number` · SecretReturnsForAspect=[0] · FrameAPITooltip
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetPadding()` → `right: number, bottom: number, left: number, top: number` · SecretReturnsForAspect=[SecretAspect.Padding] · FrameAPITooltip
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
 - `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetRightLine(line: luaIndex)` → `rightFontString: SimpleFontString` · SecretArguments=AllowedWhenUntainted · FrameAPITooltip
@@ -1872,34 +1872,34 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -1911,20 +1911,20 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `IsOwned`
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
@@ -1932,23 +1932,23 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `Lower()` · IsProtectedFunction · SimpleFrameAPI
 - `NumLines`
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetAllowShowWithNoLines`
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
 - `SetAnchorType`
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -1961,28 +1961,28 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStack`
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIsFrameBuffer(isFrameBuffer: bool)` · SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetMinimumWidth(width: number, force: bool = false)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetMinimumWidth(width: number, force: bool = false)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.MinimumWidth] · FrameAPITooltip
 - `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetObjectTooltipPosition`
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetOwner`
-- `SetPadding(right: number, bottom: number, left: number?, top: number?)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetPadding(right: number, bottom: number, left: number?, top: number?)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Padding] · FrameAPITooltip
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -1995,13 +1995,13 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetShrinkToFitWrapped`
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Text] · FrameAPITooltip
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -2013,8 +2013,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopAnimating()` · SimpleAnimatableObjectAPI
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 
 ## Line (169 methods)
 
@@ -2022,8 +2022,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
@@ -2031,8 +2031,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
 - `ClearRadialProgressBar()` · SimpleTextureBaseAPI
-- `ClearSVG()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleTextureBaseAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearSVG()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.SetTexture'}] · SimpleTextureBaseAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `ClearTextureSlice()` · SimpleTextureBaseAPI
 - `ClearVertexOffsets()` · SimpleTextureBaseAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
@@ -2040,8 +2040,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
 - `GetAtlas()` → `atlas: textureAtlas` · SimpleTextureBaseAPI
 - `GetBlendMode()` → `blendMode: BlendMode` · SimpleTextureBaseAPI
@@ -2050,25 +2050,25 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDesaturation()` → `strength: number` · FrameAPIModelSceneFrameActorBase
 - `GetDrawLayer()` → `layer: DrawLayer, sublevel: number` · FrameAPIModelSceneFrame
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEndPoint()` → `relativePoint: FramePoint, relativeTo: ScriptRegion, offsetX: uiUnit, offsetY: uiUnit` · SimpleLineAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHitRectThickness()` → `thickness: uiUnit` · SimpleLineAPI
 - `GetHorizTile()` → `tiling: bool` · SimpleTextureBaseAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
 - `GetRadialProgressBarEndOffset()` → `offset: normalizedValue` · SimpleTextureBaseAPI
 - `GetRadialProgressBarFeather()` → `feather: normalizedValue` · SimpleTextureBaseAPI
-- `GetRadialProgressBarPercent()` → `percent: normalizedValue` · SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `GetRadialProgressBarPercent()` → `percent: normalizedValue` · SecretReturnsForAspect=[SecretAspect.RadialProgress] · SimpleTextureBaseAPI
 - `GetRadialProgressBarReverse()` → `reverse: bool` · SimpleTextureBaseAPI
 - `GetRadialProgressBarStartOffset()` → `offset: normalizedValue` · SimpleTextureBaseAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
@@ -2077,11 +2077,11 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
 - `GetStartPoint()` → `relativePoint: FramePoint, relativeTo: ScriptRegion, offsetX: uiUnit, offsetY: uiUnit` · SimpleLineAPI
-- `GetTexCoord()` → `ulX: number, ulY: number, llX: number, llY: number, urX: number, urY: number, lrX: number, lrY: number` · SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `GetTexCoord()` → `ulX: number, ulY: number, llX: number, llY: number, urX: number, urY: number, lrX: number, lrY: number` · SecretReturnsForAspect=[SecretAspect.TexCoords] · SimpleTextureBaseAPI
 - `GetTexelSnappingBias()` → `bias: normalizedValue` · SimpleTextureBaseAPI
 - `GetTexture()` → `textureFile: cstring?` · SimpleTextureBaseAPI
 - `GetTextureFileID()` → `textureFile: fileID` · SimpleTextureBaseAPI
@@ -2091,52 +2091,52 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetThickness()` → `thickness: uiUnit` · SimpleLineAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetVertTile()` → `tiling: bool` · SimpleTextureBaseAPI
-- `GetVertexColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · MayReturnNothing, SecretReturnsForAspect=[0, 0] · SimpleRegionAPI
+- `GetVertexColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · MayReturnNothing, SecretReturnsForAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleRegionAPI
 - `GetVertexOffset(vertexIndex: luaIndex)` → `offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsBlockingLoadRequested()` → `blocking: bool` · SimpleTextureBaseAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
-- `IsDesaturated()` → `desaturated: bool` · RequiresScriptObjectDesaturationAccess, SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `IsDesaturated()` → `desaturated: bool` · RequiresScriptObjectDesaturationAccess, SecretReturnsForAspect=[SecretAspect.Desaturation] · SimpleTextureBaseAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
 - `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
 - `IsSnappingToPixelGrid()` → `snap: bool` · SimpleTextureBaseAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
 - `ResetTexCoord()` · SimpleTextureBaseAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAtlas(atlas: textureAtlas, useAtlasSize: bool = false, filterMode: FilterMode?, resetTexCoords: bool?, wrapModeHorizontal: cstring?, wrapModeVertical: cstring?)` · SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
 - `SetBlendMode(blendMode: BlendMode)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetBlockingLoadsRequested(blocking: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `SetColorTexture(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
-- `SetDesaturated(desaturated: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetColorTexture(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.SetTexture'}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetDesaturated(desaturated: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Desaturation] · SimpleTextureBaseAPI
 - `SetDesaturation(strength: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
 - `SetEndPoint(relativePoint: FramePoint, relativeTo: ScriptRegion, offsetX: uiUnit = 0, offsetY: uiUnit = 0)` · SecretArguments=AllowedWhenUntainted · SimpleLineAPI
@@ -2150,7 +2150,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMask(file: cstring)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -2159,20 +2159,20 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetRadialProgressBarEndOffset(offset: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetRadialProgressBarFeather(feather: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
-- `SetRadialProgressBarPercent(percent: normalizedValue)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetRadialProgressBarPercent(percent: normalizedValue)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.RadialProgress] · SimpleTextureBaseAPI
 - `SetRadialProgressBarReverse(reverse: bool)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetRadialProgressBarStartOffset(offset: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetRotation(radians: number, animate: bool = true)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `SetSVG(svgAsset: FileAsset)` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetSVG(svgAsset: FileAsset)` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.SetTexture'}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetSnapToPixelGrid(snap: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
-- `SetSpriteSheetCell(cell: luaIndex, numRows: number, numColumns: number, cellWidth: number?, cellHeight: number?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetSpriteSheetCell(cell: luaIndex, numRows: number, numColumns: number, cellWidth: number?, cellHeight: number?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.TexCoords] · SimpleTextureBaseAPI
 - `SetStartPoint(relativePoint: FramePoint, relativeTo: ScriptRegion, offsetX: uiUnit = 0, offsetY: uiUnit = 0)` · SecretArguments=AllowedWhenUntainted · SimpleLineAPI
-- `SetTexCoord(left: number, right: number, bottom: number, top: number)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetTexCoord(left: number, right: number, bottom: number, top: number)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.TexCoords] · SimpleTextureBaseAPI
 - `SetTexelSnappingBias(bias: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetTexture(textureAsset: cstring?, wrapModeHorizontal: cstring?, wrapModeVertical: cstring?, filterMode: cstring?)` → `success: bool` · SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
 - `SetTextureSliceMargins(left: number, top: number, right: number, bottom: number)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
@@ -2180,8 +2180,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetThickness(thickness: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleLineAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
 - `SetVertTile(tiling: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
-- `SetVertexColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
-- `SetVertexColorFromBoolean(value: bool, colorIfTrue: colorRGBA (ColorMixin), colorIfFalse: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
+- `SetVertexColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleRegionAPI
+- `SetVertexColorFromBoolean(value: bool, colorIfTrue: colorRGBA (ColorMixin), colorIfFalse: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleRegionAPI
 - `SetVertexOffset(vertexIndex: luaIndex, offsetX: uiUnit, offsetY: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
@@ -2194,8 +2194,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddForbiddenAspects(aspects: ForbiddenAspect)` · HasRestrictions, SecretArguments=NotAllowed · SimpleFrameScriptObjectAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
@@ -2203,8 +2203,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
 - `ClearRadialProgressBar()` · SimpleTextureBaseAPI
-- `ClearSVG()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleTextureBaseAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearSVG()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.SetTexture'}] · SimpleTextureBaseAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `ClearTextureSlice()` · SimpleTextureBaseAPI
 - `ClearVertexOffsets()` · SimpleTextureBaseAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
@@ -2212,8 +2212,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
 - `GetAtlas()` → `atlas: textureAtlas` · SimpleTextureBaseAPI
 - `GetBlendMode()` → `blendMode: BlendMode` · SimpleTextureBaseAPI
@@ -2222,23 +2222,23 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDesaturation()` → `strength: number` · FrameAPIModelSceneFrameActorBase
 - `GetDrawLayer()` → `layer: DrawLayer, sublevel: number` · FrameAPIModelSceneFrame
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHorizTile()` → `tiling: bool` · SimpleTextureBaseAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
 - `GetRadialProgressBarEndOffset()` → `offset: normalizedValue` · SimpleTextureBaseAPI
 - `GetRadialProgressBarFeather()` → `feather: normalizedValue` · SimpleTextureBaseAPI
-- `GetRadialProgressBarPercent()` → `percent: normalizedValue` · SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `GetRadialProgressBarPercent()` → `percent: normalizedValue` · SecretReturnsForAspect=[SecretAspect.RadialProgress] · SimpleTextureBaseAPI
 - `GetRadialProgressBarReverse()` → `reverse: bool` · SimpleTextureBaseAPI
 - `GetRadialProgressBarStartOffset()` → `offset: normalizedValue` · SimpleTextureBaseAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
@@ -2247,10 +2247,10 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `GetTexCoord()` → `ulX: number, ulY: number, llX: number, llY: number, urX: number, urY: number, lrX: number, lrY: number` · SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
+- `GetTexCoord()` → `ulX: number, ulY: number, llX: number, llY: number, urX: number, urY: number, lrX: number, lrY: number` · SecretReturnsForAspect=[SecretAspect.TexCoords] · SimpleTextureBaseAPI
 - `GetTexelSnappingBias()` → `bias: normalizedValue` · SimpleTextureBaseAPI
 - `GetTexture()` → `textureFile: cstring?` · SimpleTextureBaseAPI
 - `GetTextureFileID()` → `textureFile: fileID` · SimpleTextureBaseAPI
@@ -2259,52 +2259,52 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetTextureSliceMode()` → `sliceMode: UITextureSliceMode` · MayReturnNothing · SimpleTextureBaseAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetVertTile()` → `tiling: bool` · SimpleTextureBaseAPI
-- `GetVertexColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · MayReturnNothing, SecretReturnsForAspect=[0, 0] · SimpleRegionAPI
+- `GetVertexColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · MayReturnNothing, SecretReturnsForAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleRegionAPI
 - `GetVertexOffset(vertexIndex: luaIndex)` → `offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsBlockingLoadRequested()` → `blocking: bool` · SimpleTextureBaseAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
-- `IsDesaturated()` → `desaturated: bool` · RequiresScriptObjectDesaturationAccess, SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `IsDesaturated()` → `desaturated: bool` · RequiresScriptObjectDesaturationAccess, SecretReturnsForAspect=[SecretAspect.Desaturation] · SimpleTextureBaseAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
 - `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
 - `IsSnappingToPixelGrid()` → `snap: bool` · SimpleTextureBaseAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
 - `ResetTexCoord()` · SimpleTextureBaseAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAtlas(atlas: textureAtlas, useAtlasSize: bool = false, filterMode: FilterMode?, resetTexCoords: bool?, wrapModeHorizontal: cstring?, wrapModeVertical: cstring?)` · SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
 - `SetBlendMode(blendMode: BlendMode)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetBlockingLoadsRequested(blocking: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `SetColorTexture(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
-- `SetDesaturated(desaturated: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetColorTexture(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.SetTexture'}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetDesaturated(desaturated: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Desaturation] · SimpleTextureBaseAPI
 - `SetDesaturation(strength: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
@@ -2316,7 +2316,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMask(file: cstring)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -2325,27 +2325,27 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetRadialProgressBarEndOffset(offset: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetRadialProgressBarFeather(feather: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
-- `SetRadialProgressBarPercent(percent: normalizedValue)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetRadialProgressBarPercent(percent: normalizedValue)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.RadialProgress] · SimpleTextureBaseAPI
 - `SetRadialProgressBarReverse(reverse: bool)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetRadialProgressBarStartOffset(offset: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetRotation(radians: number, animate: bool = true)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `SetSVG(svgAsset: FileAsset)` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetSVG(svgAsset: FileAsset)` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.SetTexture'}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetSnapToPixelGrid(snap: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
-- `SetSpriteSheetCell(cell: luaIndex, numRows: number, numColumns: number, cellWidth: number?, cellHeight: number?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
-- `SetTexCoord(left: number, right: number, bottom: number, top: number)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetSpriteSheetCell(cell: luaIndex, numRows: number, numColumns: number, cellWidth: number?, cellHeight: number?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.TexCoords] · SimpleTextureBaseAPI
+- `SetTexCoord(left: number, right: number, bottom: number, top: number)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.TexCoords] · SimpleTextureBaseAPI
 - `SetTexelSnappingBias(bias: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetTexture(textureAsset: cstring?, wrapModeHorizontal: cstring?, wrapModeVertical: cstring?, filterMode: cstring?)` → `success: bool` · SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
 - `SetTextureSliceMargins(left: number, top: number, right: number, bottom: number)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetTextureSliceMode(sliceMode: UITextureSliceMode)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
 - `SetVertTile(tiling: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
-- `SetVertexColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
-- `SetVertexColorFromBoolean(value: bool, colorIfTrue: colorRGBA (ColorMixin), colorIfFalse: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
+- `SetVertexColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleRegionAPI
+- `SetVertexColorFromBoolean(value: bool, colorIfTrue: colorRGBA (ColorMixin), colorIfFalse: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleRegionAPI
 - `SetVertexOffset(vertexIndex: luaIndex, offsetX: uiUnit, offsetY: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
@@ -2361,20 +2361,20 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `Clear()` · IsProtectedFunction · FrameAPICooldown
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearParentKey()` · SimpleObjectAPI
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
 - `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
@@ -2393,20 +2393,20 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFadeDuration()` → `fadeDurationSeconds: number` · SimpleMessageFrameAPI
 - `GetFadePower()` → `fadePower: number` · SimpleMessageFrameAPI
@@ -2415,75 +2415,75 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetFont()` → `name: cstring, fontHeight: uiUnit, flags: TBFFlags` · SimpleEditBoxAPI
 - `GetFontObject()` → `font: SimpleFont` · SimpleEditBoxAPI
 - `GetFontStringByID(messageID: number)` → `fontString: SimpleFontString` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleMessageFrameAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `GetIndentedWordWrap()` → `isIndented: bool` · SimpleEditBoxAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetInsertMode()` → `mode: InsertMode` · SimpleMessageFrameAPI
 - `GetJustifyH()` → `justifyH: JustifyHorizontal` · SimpleEditBoxAPI
 - `GetJustifyV()` → `justifyV: JustifyVertical` · SimpleEditBoxAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
 - `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetShadowColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
 - `GetShadowOffset()` → `offsetX: number, offsetY: number` · SimpleEditBoxAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
 - `GetSpacing()` → `fontHeight: uiUnit` · SimpleEditBoxAPI
 - `GetTextColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
 - `GetTimeVisible()` → `timeVisibleSeconds: number` · SimpleMessageFrameAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
 - `HasMessageByID(messageID: number)` → `hasMessage: bool` · SecretArguments=AllowedWhenUntainted · SimpleMessageFrameAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -2495,41 +2495,41 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
 - `LockHighlight()` · SimpleFrameAPI
 - `Lower()` · IsProtectedFunction · SimpleFrameAPI
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ResetMessageFadeByID(messageID: number)` · SecretArguments=AllowedWhenUntainted · SimpleMessageFrameAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -2545,14 +2545,14 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFont(fontFile: cstring, height: uiFontHeight, flags: TBFFlags)` → `success: bool` · RequiresValidFontAsset, RequiresValidFontHeight, SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -2565,7 +2565,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -2578,7 +2578,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShadowColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetShadowOffset(offsetX: number, offsetY: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
@@ -2587,7 +2587,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetTextColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetTimeVisible(timeVisibleSeconds: number)` · SecretArguments=AllowedWhenUntainted · SimpleMessageFrameAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -2599,8 +2599,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopAnimating()` · SimpleAnimatableObjectAPI
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 
 ## Model (279 methods)
 
@@ -2611,21 +2611,21 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `AdvanceTime(delta: Seconds)` · SecretArguments=AllowedWhenUntainted · LuaDurationManualClockAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearFog()` · FrameAPIModelSceneFrame
 - `ClearModel()` · FrameAPIModelSceneFrameActorBase
 - `ClearParentKey()` · SimpleObjectAPI
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `ClearTransform()` · SimpleModelAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
@@ -2645,11 +2645,11 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
 - `GetCameraDistance()` → `distance: number` · SimpleModelAPI
@@ -2658,42 +2658,42 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetCameraRoll()` → `radians: number` · SimpleModelAPI
 - `GetCameraTarget()` → `targetX: number, targetY: number, targetZ: number` · SimpleModelAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDesaturation()` → `strength: number` · FrameAPIModelSceneFrameActorBase
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFacing()` → `facing: number` · SimpleModelAPI
 - `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFogColor()` → `colorR: number, colorG: number, colorB: number` · FrameAPIModelSceneFrame
 - `GetFogFar()` → `far: number` · FrameAPIModelSceneFrame
 - `GetFogNear()` → `near: number` · FrameAPIModelSceneFrame
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetLight()` → `enabled: bool, light: ModelLight` · SimpleModelAPI
 - `GetModelAlpha()` → `alpha: number` · SimpleModelAPI
 - `GetModelDrawLayer()` → `layer: DrawLayer, sublayer: number` · SimpleMapSceneAPI
 - `GetModelFileID()` → `file: fileID` · FrameAPIModelSceneFrameActorBase
 - `GetModelScale()` → `scale: number` · SimpleModelAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPaused()` → `paused: bool, globalPaused: bool` · FrameAPIModelSceneFrameActor
 - `GetPitch()` → `pitch: number` · FrameAPIModelSceneFrameActorBase
@@ -2703,7 +2703,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
@@ -2711,40 +2711,40 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetShadowEffect()` → `strength: number` · SimpleModelAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetViewInsets()` → `insets: uiRect` · FrameAPIModelSceneFrame
 - `GetViewTranslation()` → `translationX: number, translationY: number` · FrameAPIModelSceneFrame
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
 - `GetWorldScale()` → `worldScale: number` · SimpleModelAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasAttachmentPoints()` → `hasAttachmentPoints: bool` · SimpleModelAPI
 - `HasCustomCamera()` → `hasCustomCamera: bool` · SimpleModelAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -2756,19 +2756,19 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingModelCenterToTransform()` → `useCenter: bool` · SimpleModelAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
@@ -2777,22 +2777,22 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `Lower()` · IsProtectedFunction · SimpleFrameAPI
 - `MakeCurrentCameraCustom()` · SimpleModelAPI
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ReplaceIconTexture(asset: FileAsset)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `SetCamera(cameraIndex: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetCameraDistance(distance: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetCameraFacing(radians: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
@@ -2815,16 +2815,16 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFogFar(far: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
 - `SetFogNear(near: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetGlow(glow: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetGradientMask(gradientIndex0: number, gradientIndex1: number, gradientIndex2: number, gradientIndex3: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -2838,7 +2838,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetParticlesEnabled(enabled: bool)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
@@ -2856,14 +2856,14 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRoll(roll: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetSequence(sequence: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetSequenceTime(sequence: number, timeOffset: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetShadowEffect(strength: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetTransform(translation: vector3 (Vector3DMixin)?, rotation: vector3 (Vector3DMixin)?, scale: number?)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetUseGBuffer(useGBuffer: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -2880,8 +2880,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `TransformCameraSpaceToModelSpace(cameraPosition: vector3 (Vector3DMixin)` → `modelPosition: vector3 (Vector3DMixin)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `UseModelCenterToTransform(useCenter: bool)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 
 ## PlayerModel (303 methods)
@@ -2894,22 +2894,22 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `AdvanceTime(delta: Seconds)` · SecretArguments=AllowedWhenUntainted · LuaDurationManualClockAPI
 - `ApplySpellVisualKit(spellVisualKitID: number, oneShot: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanSetUnit(unit: UnitToken)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearFog()` · FrameAPIModelSceneFrame
 - `ClearModel()` · FrameAPIModelSceneFrameActorBase
 - `ClearParentKey()` · SimpleObjectAPI
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `ClearTransform()` · SimpleModelAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
@@ -2929,12 +2929,12 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `FreezeAnimation(anim: AnimationDataEnum, variation: number, frame: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
 - `GetCameraDistance()` → `distance: number` · SimpleModelAPI
@@ -2943,30 +2943,30 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetCameraRoll()` → `radians: number` · SimpleModelAPI
 - `GetCameraTarget()` → `targetX: number, targetY: number, targetZ: number` · SimpleModelAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDesaturation()` → `strength: number` · FrameAPIModelSceneFrameActorBase
 - `GetDisplayInfo()` → `displayID: number` · FrameAPICharacterModelBase
 - `GetDoBlend()` → `doBlend: bool` · FrameAPICharacterModelBase
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFacing()` → `facing: number` · SimpleModelAPI
 - `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFogColor()` → `colorR: number, colorG: number, colorB: number` · FrameAPIModelSceneFrame
 - `GetFogFar()` → `far: number` · FrameAPIModelSceneFrame
 - `GetFogNear()` → `near: number` · FrameAPIModelSceneFrame
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetKeepModelOnHide()` → `keepModelOnHide: bool` · FrameAPICharacterModelBase
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetLight()` → `enabled: bool, light: ModelLight` · SimpleModelAPI
@@ -2974,14 +2974,14 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetModelDrawLayer()` → `layer: DrawLayer, sublayer: number` · SimpleMapSceneAPI
 - `GetModelFileID()` → `file: fileID` · FrameAPIModelSceneFrameActorBase
 - `GetModelScale()` → `scale: number` · SimpleModelAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPaused()` → `paused: bool, globalPaused: bool` · FrameAPIModelSceneFrameActor
 - `GetPitch()` → `pitch: number` · FrameAPIModelSceneFrameActorBase
@@ -2991,7 +2991,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
@@ -2999,41 +2999,41 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetShadowEffect()` → `strength: number` · SimpleModelAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetViewInsets()` → `insets: uiRect` · FrameAPIModelSceneFrame
 - `GetViewTranslation()` → `translationX: number, translationY: number` · FrameAPIModelSceneFrame
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
 - `GetWorldScale()` → `worldScale: number` · SimpleModelAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
 - `HasAnimation(anim: AnimationDataEnum)` → `hasAnimation: bool` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasAttachmentPoints()` → `hasAttachmentPoints: bool` · SimpleModelAPI
 - `HasCustomCamera()` → `hasCustomCamera: bool` · SimpleModelAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -3045,19 +3045,19 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingModelCenterToTransform()` → `useCenter: bool` · SimpleModelAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
@@ -3069,23 +3069,23 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
 - `RefreshCamera()` · FrameAPICharacterModelBase
 - `RefreshUnit()` · FrameAPICharacterModelBase
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ReplaceIconTexture(asset: FileAsset)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
 - `SetAnimation(anim: AnimationDataEnum, variation: number?)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `SetBarberShopAlternateForm()` · FrameAPICharacterModelBase
 - `SetCamDistanceScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
 - `SetCamera(cameraIndex: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
@@ -3113,16 +3113,16 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFogFar(far: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
 - `SetFogNear(near: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetGlow(glow: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetGradientMask(gradientIndex0: number, gradientIndex1: number, gradientIndex2: number, gradientIndex3: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -3139,7 +3139,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetParticlesEnabled(enabled: bool)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
@@ -3159,14 +3159,14 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRotation(radians: number, animate: bool = true)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetSequence(sequence: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetSequenceTime(sequence: number, timeOffset: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetShadowEffect(strength: number)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetTransform(translation: vector3 (Vector3DMixin)?, rotation: vector3 (Vector3DMixin)?, scale: number?)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `SetUnit(unit: UnitToken, blend: bool = true, useNativeForm: bool?)` → `success: bool` · RequiresDeclassifiedUnitIdentity, SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
 - `SetUseGBuffer(useGBuffer: bool)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleModelAPI
@@ -3185,8 +3185,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `TransformCameraSpaceToModelSpace(cameraPosition: vector3 (Vector3DMixin)` → `modelPosition: vector3 (Vector3DMixin)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `UseModelCenterToTransform(useCenter: bool)` · SecretArguments=AllowedWhenUntainted · SimpleModelAPI
 - `ZeroCachedCenterXY()` · FrameAPICharacterModelBase
 
@@ -3198,19 +3198,19 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearParentKey()` · SimpleObjectAPI
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
 - `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
@@ -3229,86 +3229,86 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
-- `GetHorizontalScroll()` → `offset: uiUnit` · SecretReturnsForAspect=[0] · SimpleScrollFrameAPI
-- `GetHorizontalScrollRange()` → `range: uiUnit` · SecretReturnsForAspect=[0] · SimpleScrollFrameAPI
+- `GetHorizontalScroll()` → `offset: uiUnit` · SecretReturnsForAspect=[SecretAspect.ScrollOffset] · SimpleScrollFrameAPI
+- `GetHorizontalScrollRange()` → `range: uiUnit` · SecretReturnsForAspect=[SecretAspect.ScrollRange] · SimpleScrollFrameAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
 - `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetScrollChild()` → `scrollChild: SimpleFrame` · SimpleScrollFrameAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetVerticalScroll()` → `offset: uiUnit` · SecretReturnsForAspect=[0] · SimpleScrollFrameAPI
-- `GetVerticalScrollRange()` → `range: uiUnit` · SecretReturnsForAspect=[0] · SimpleScrollFrameAPI
+- `GetVerticalScroll()` → `offset: uiUnit` · SecretReturnsForAspect=[SecretAspect.ScrollOffset] · SimpleScrollFrameAPI
+- `GetVerticalScrollRange()` → `range: uiUnit` · SecretReturnsForAspect=[SecretAspect.ScrollRange] · SimpleScrollFrameAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -3320,40 +3320,40 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
 - `LockHighlight()` · SimpleFrameAPI
 - `Lower()` · IsProtectedFunction · SimpleFrameAPI
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -3364,15 +3364,15 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetHorizontalScroll(offset: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleScrollFrameAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHorizontalScroll(offset: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.ScrollOffset] · SimpleScrollFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -3381,7 +3381,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -3394,15 +3394,15 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetScrollChild(scrollChild: SimpleFrame)` · CheckAllowChangeParent, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScrollFrameAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetVerticalScroll(offset: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleScrollFrameAPI
+- `SetVerticalScroll(offset: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.ScrollOffset] · SimpleScrollFrameAPI
 - `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetWindow(window: SimpleWindow?)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
@@ -3412,8 +3412,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopAnimating()` · SimpleAnimatableObjectAPI
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `UpdateScrollChildRect()` · SimpleScrollFrameAPI
 
 ## ScrollingMessageFrame (214 methods)
@@ -3424,19 +3424,19 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearParentKey()` · SimpleObjectAPI
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
 - `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
@@ -3455,81 +3455,81 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
 - `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -3541,40 +3541,40 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
 - `LockHighlight()` · SimpleFrameAPI
 - `Lower()` · IsProtectedFunction · SimpleFrameAPI
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -3585,14 +3585,14 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -3601,7 +3601,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -3614,11 +3614,11 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -3630,8 +3630,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopAnimating()` · SimpleAnimatableObjectAPI
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 
 ## SimpleHTML (237 methods)
 
@@ -3641,19 +3641,19 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearParentKey()` · SimpleObjectAPI
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
 - `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
@@ -3672,93 +3672,93 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetContentHeight()` → `height: uiUnit` · SimpleHTMLAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFont()` → `name: cstring, fontHeight: uiUnit, flags: TBFFlags` · SimpleEditBoxAPI
 - `GetFontObject()` → `font: SimpleFont` · SimpleEditBoxAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetHyperlinkFormat()` → `format: cstring` · SimpleHTMLAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `GetIndentedWordWrap()` → `isIndented: bool` · SimpleEditBoxAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetJustifyH()` → `justifyH: JustifyHorizontal` · SimpleEditBoxAPI
 - `GetJustifyV()` → `justifyV: JustifyVertical` · SimpleEditBoxAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
 - `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetShadowColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
 - `GetShadowOffset()` → `offsetX: number, offsetY: number` · SimpleEditBoxAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
 - `GetSpacing()` → `fontHeight: uiUnit` · SimpleEditBoxAPI
 - `GetTextColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SimpleEditBoxAPI
-- `GetTextData()` → `content: table<HTMLContentNode>` · SecretReturnsForAspect=[0] · SimpleHTMLAPI
+- `GetTextData()` → `content: table<HTMLContentNode>` · SecretReturnsForAspect=[SecretAspect.Text] · SimpleHTMLAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -3770,40 +3770,40 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
 - `LockHighlight()` · SimpleFrameAPI
 - `Lower()` · IsProtectedFunction · SimpleFrameAPI
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -3816,15 +3816,15 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFont(fontFile: cstring, height: uiFontHeight, flags: TBFFlags)` → `success: bool` · RequiresValidFontAsset, RequiresValidFontHeight, SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetFontObject(font: SimpleFont)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetHyperlinkFormat(format: cstring)` · SecretArguments=AllowedWhenUntainted · SimpleHTMLAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -3836,7 +3836,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -3849,16 +3849,16 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShadowColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetShadowOffset(offsetX: number, offsetY: number)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetSpacing(fontHeight: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
-- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · FrameAPITooltip
+- `SetText(text: cstring, colorR: number, colorG: number, colorB: number, alpha: number = 1, wrap: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Text] · FrameAPITooltip
 - `SetTextColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -3870,8 +3870,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopAnimating()` · SimpleAnimatableObjectAPI
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 
 ## Slider (233 methods)
 
@@ -3881,19 +3881,19 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearParentKey()` · SimpleObjectAPI
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
 - `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
@@ -3914,59 +3914,59 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetMinMaxValues()` → `minValue: number, maxValue: number` · SimpleSliderAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetObeyStepOnDrag()` → `isObeyStepOnDrag: bool` · SimpleSliderAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
 - `GetOrientation()` → `orientation: Orientation` · SimpleSliderAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
 - `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetRight()` → `right: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetRolesetNames()` → `rolesets: table<string>` · SimpleFrameAPI
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
 - `GetStepsPerPage()` → `stepsPerPage: number` · SimpleSliderAPI
 - `GetThumbTexture()` → `texture: SimpleTexture` · SimpleSliderAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
@@ -3974,30 +3974,30 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetValueStep()` → `valueStep: number` · SimpleSliderAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDraggingThumb()` → `isDraggingThumb: bool` · SimpleSliderAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `IsEnabled()` → `enabled: bool` · DurationTextBindingObjectAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -4009,40 +4009,40 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
 - `LockHighlight()` · SimpleFrameAPI
 - `Lower()` · IsProtectedFunction · SimpleFrameAPI
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -4054,14 +4054,14 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -4073,7 +4073,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetObeyStepOnDrag(obeyStepOnDrag: bool)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetOrientation(orientation: Orientation)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -4086,13 +4086,13 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRolesets(rolesetsString: cstring?)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetStepsPerPage(stepsPerPage: number)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
 - `SetThumbTexture(asset: TextureAsset)` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetValue(value: number, treatAsMouseEvent: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
@@ -4106,8 +4106,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopAnimating()` · SimpleAnimatableObjectAPI
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 
 ## StatusBar (242 methods)
 
@@ -4117,19 +4117,19 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeAttribute()` → `canChangeAttributes: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
 - `ClearAlphaGradient()` · SimpleFontStringAPI
-- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `ClearAttribute(attributeName: cstring)` → `cleared: bool` · IsProtectedFunction, SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `ClearAttributes()` · IsProtectedFunction · SimpleFrameAPI
 - `ClearParentKey()` · SimpleObjectAPI
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
 - `CreateAnimationGroup(name: cstring?, templateName: cstring?)` → `group: SimpleAnimGroup` · SecretArguments=NotAllowed · SimpleAnimatableObjectAPI
 - `CreateFontString(name: cstring?, drawLayer: DrawLayer?, templateName: cstring?)` → `line: SimpleFontString` · SecretArguments=NotAllowed · SimpleFrameAPI
@@ -4148,51 +4148,51 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `ExecuteAttribute(attributeName: cstring, arguments: cstring?)` → `success: bool, returns: cstring?` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
-- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetAttribute(attributeName: cstring)` → `value: cstring` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `GetBottom()` → `bottom: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetBoundsRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · SimpleFrameAPI
 - `GetCenter()` → `x: uiUnit, y: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetChildren()` → `children: SimpleFrame` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetClampRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDontSavePosition()` → `dontSave: bool` · SimpleFrameAPI
-- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetEffectiveAlpha()` → `effectiveAlpha: SingleColorValue` · RequiresScriptObjectAlphaAccess, SecretReturnsForAspect=[SecretAspect.Alpha] · SimpleFrameAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
 - `GetEffectivelyFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
 - `GetFillStyle()` → `fillStyle: StatusBarFillStyle` · SimpleStatusBarAPI
 - `GetFlattensRenderLayers()` → `flatten: bool` · SimpleFrameAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetFrameLevel()` → `frameLevel: number` · SecretReturnsForAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `GetFrameStrata()` → `strata: FrameStrata` · SimpleFrameAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHighestFrameLevel(iterateAllChildren: bool = false)` → `frameLevel: number` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `GetHitRectInsets()` → `left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit` · SimpleFrameAPI
 - `GetHyperlinksEnabled()` → `enabled: bool` · SimpleFrameAPI
-- `GetID()` → `id: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetInterpolatedValue()` → `value: number` · SecretReturnsForAspect=[0] · SimpleStatusBarAPI
+- `GetID()` → `id: number` · SecretReturnsForAspect=[SecretAspect.ID] · SimpleFrameAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetInterpolatedValue()` → `value: number` · SecretReturnsForAspect=[SecretAspect.BarValue] · SimpleStatusBarAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetMinMaxValues()` → `minValue: number, maxValue: number` · SimpleSliderAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
+- `GetNumChildren()` → `numChildren: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
-- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetNumRegions()` → `numRegions: number` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
 - `GetOnUpdateMode()` → `onUpdateMode: OnUpdateMode` · SimpleFrameAPI
 - `GetOrientation()` → `orientation: Orientation` · SimpleSliderAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
 - `GetPropagateKeyboardInput()` → `propagate: bool` · SimpleFrameAPI
 - `GetRaisedFrameLevel()` → `frameLevel: number` · SimpleFrameAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `GetRegions()` → `regions: SimpleRegion` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleFrameAPI
 - `GetRenderMode()` → `renderMode: StatusBarRenderMode` · SimpleStatusBarAPI
 - `GetResizeBounds()` → `minWidth: uiUnit, minHeight: uiUnit, maxWidth: uiUnit, maxHeight: uiUnit` · SimpleFrameAPI
 - `GetReverseFill()` → `isReverseFill: bool` · SimpleStatusBarAPI
@@ -4202,39 +4202,39 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `GetStatusBarColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SecretReturnsForAspect=[0, 0] · SimpleStatusBarAPI
-- `GetStatusBarDesaturation()` → `desaturation: normalizedValue` · SecretReturnsForAspect=[0] · SimpleStatusBarAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
+- `GetStatusBarColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · SecretReturnsForAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleStatusBarAPI
+- `GetStatusBarDesaturation()` → `desaturation: normalizedValue` · SecretReturnsForAspect=[SecretAspect.Desaturation] · SimpleStatusBarAPI
 - `GetStatusBarTexture()` → `texture: SimpleTexture` · SimpleStatusBarAPI
 - `GetTimerDuration()` → `duration: LuaDurationObject` · SimpleStatusBarAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetValue()` → `value: number` · SimpleSliderAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetWindow()` → `window: SimpleWindow` · SimpleFrameAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `HasAlphaGradient()` → `hasAlphaGradient: bool` · SimpleFrameAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasFixedFrameLevel()` → `isFixed: bool` · SimpleFrameAPI
 - `HasFixedFrameStrata()` → `isFixed: bool` · SimpleFrameAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `InterceptStartDrag(delegate: SimpleFrame)` → `success: bool` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsClampedToScreen()` → `clampedToScreen: bool` · SimpleFrameAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
 - `IsDrawLayerEnabled(layer: DrawLayer)` → `isEnabled: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsEventRegistered(eventName: cstring)` → `isRegistered: bool, units: UnitTokenType?` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsFrameBuffer()` → `isFrameBuffer: bool` · SimpleFrameAPI
 - `IsGamePadButtonEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsGamePadStickEnabled()` → `enabled: bool` · SimpleFrameAPI
@@ -4242,46 +4242,46 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `IsIgnoringChildrenForBounds()` → `ignore: bool` · SimpleFrameAPI
 - `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
 - `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
-- `IsInterpolating()` → `isInterpolating: bool` · SecretReturnsForAspect=[0] · SimpleStatusBarAPI
+- `IsInterpolating()` → `isInterpolating: bool` · SecretReturnsForAspect=[SecretAspect.BarValue] · SimpleStatusBarAPI
 - `IsKeyboardEnabled()` → `enabled: bool` · SimpleFrameAPI
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMovable()` → `isMovable: bool` · SimpleFrameAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsResizable()` → `resizable: bool` · SimpleFrameAPI
 - `IsRolesetFiltered()` → `isRolesetFiltered: bool` · SimpleFrameAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
-- `IsStatusBarDesaturated()` → `desaturated: bool` · RequiresStatusBarDesaturationAccess, SecretReturnsForAspect=[0] · SimpleStatusBarAPI
-- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `IsStatusBarDesaturated()` → `desaturated: bool` · RequiresStatusBarDesaturationAccess, SecretReturnsForAspect=[SecretAspect.Desaturation] · SimpleStatusBarAPI
+- `IsToplevel()` → `isTopLevel: bool` · SecretReturnsForAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `IsUserPlaced()` → `isUserPlaced: bool` · SimpleFrameAPI
 - `IsUsingParentLevel()` → `usingParentLevel: bool` · SimpleFrameAPI
 - `IsVisible()` → `isVisible: bool` · FrameAPIModelSceneFrameActorBase
 - `LockHighlight()` · SimpleFrameAPI
 - `Lower()` · IsProtectedFunction · SimpleFrameAPI
 - `Raise()` · IsProtectedFunction · SimpleFrameAPI
-- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `RegisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterEventCallback(eventName: cstring, cb: FrameEventCallbackType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RegisterForDrag(buttons: MouseButton)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
-- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEvent(eventName: cstring, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `RegisterUnitEventCallback(eventName: cstring, cb: FrameEventCallbackType, units: UnitTokenType)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `RemoveRoleset(roleset: string)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `ResizeToBoundsRect()` · IsProtectedFunction · SimpleFrameAPI
 - `RotateTextures(radians: number, x: number = 0.5, y: number = 0.5)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAlphaGradient(start: number, length: number)` → `isWithinText: bool` · SecretArguments=AllowedWhenUntainted · SimpleFontStringAPI
-- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameAPI
+- `SetAttribute(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
+- `SetAttributeNoHandler(attributeName: cstring, value: cstring)` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Attributes] · SimpleFrameAPI
 - `SetClampRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetClampedToScreen(clampedToScreen: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetClipsChildren(clipsChildren: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -4294,14 +4294,14 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetFixedFrameStrata(isFixed: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetFlattensRenderLayers(flatten: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
-- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetFrameLevel(frameLevel: number)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.FrameLevel] · SimpleFrameAPI
 - `SetFrameStrata(strata: FrameStrata)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetHeight(height: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetHighlightLocked(locked: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHitRectInsets(left: uiUnit, right: uiUnit, top: uiUnit, bottom: uiUnit)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `SetHyperlinkPropagateToParent(canPropagate: bool)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.UntrustedScriptExecution'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetHyperlinksEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
-- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetID(id: number)` · IsProtectedFunction, SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.ID] · SimpleFrameAPI
 - `SetIgnoreParentAlpha(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetIgnoreParentScale(ignore: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleFrameAPI
 - `SetIgnoringChildrenForBounds(ignore: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
@@ -4312,7 +4312,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMovable(movable: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetOnUpdateMode(onUpdateMode: OnUpdateMode)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetOrientation(orientation: Orientation)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -4328,17 +4328,17 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetRotatesTexture(rotatesTexture: bool)` · SecretArguments=AllowedWhenUntainted · SimpleStatusBarAPI
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetStatusBarColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleStatusBarAPI
-- `SetStatusBarDesaturated(desaturated: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleStatusBarAPI
-- `SetStatusBarDesaturation(desaturation: normalizedValue)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleStatusBarAPI
+- `SetStatusBarColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleStatusBarAPI
+- `SetStatusBarDesaturated(desaturated: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Desaturation] · SimpleStatusBarAPI
+- `SetStatusBarDesaturation(desaturation: normalizedValue)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Desaturation] · SimpleStatusBarAPI
 - `SetStatusBarTexture(asset: TextureAsset)` → `success: bool` · CheckAllowChangeParent, SecretArguments=AllowedWhenUntainted · SimpleStatusBarAPI
 - `SetTimerDuration(duration: LuaDurationObject, interpolation: StatusBarInterpolation = "Immediate", direction: StatusBarTimerDirection = "ElapsedTime")` · SecretArguments=AllowedWhenUntainted · SimpleStatusBarAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
 - `SetToTargetValue()` · SimpleStatusBarAPI
-- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetToplevel(topLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Toplevel] · SimpleFrameAPI
 - `SetUserPlaced(userPlaced: bool)` · SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetUsingParentLevel(usingParentLevel: bool)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 - `SetValue(value: number, treatAsMouseEvent: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleSliderAPI
@@ -4351,8 +4351,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `StopAnimating()` · SimpleAnimatableObjectAPI
 - `StopMovingOrSizing()` · IsProtectedFunction · SimpleFrameAPI
 - `UnlockHighlight()` · SimpleFrameAPI
-- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleFrameAPI
-- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
+- `UnregisterAllEvents()` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}] · SimpleFrameAPI
+- `UnregisterEvent(eventName: cstring)` → `registered: bool` · AddsForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.EventRegistrations'}], SecretArguments=AllowedWhenUntainted · SimpleFrameAPI
 
 ## Texture (165 methods)
 
@@ -4361,8 +4361,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `AddMaskTexture(mask: SimpleMaskTexture)` · SecretArguments=AllowedWhenUntainted · SimpleTextureAPI
 - `AddSecretAspect(aspect: SecretAspect)` · HasRestrictions, SecretArguments=AllowedWhenUntainted · SimpleFrameScriptObjectAPI
 - `AdjustPointsOffset(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `CanBeAccessedInContext()` → `canAccess: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `CanChangeProtectedState()` → `canChange: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `CanPropagateMouseClicks()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `CanPropagateMouseMotion()` → `canPropagate: bool` · SimpleScriptRegionAPI
 - `ClearAllPoints()` · IsProtectedFunction · SimpleLineAPI
@@ -4370,8 +4370,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `ClearPoint(point: FramePoint)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ClearPointsOffset()` · IsProtectedFunction · SimpleScriptRegionResizingAPI
 - `ClearRadialProgressBar()` · SimpleTextureBaseAPI
-- `ClearSVG()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleTextureBaseAPI
-- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `ClearSVG()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.SetTexture'}] · SimpleTextureBaseAPI
+- `ClearScripts()` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}] · SimpleScriptRegionAPI
 - `ClearTextureSlice()` · SimpleTextureBaseAPI
 - `ClearVertexOffsets()` · SimpleTextureBaseAPI
 - `CollapsesLayout()` → `collapsesLayout: bool` · SimpleScriptRegionAPI
@@ -4379,8 +4379,8 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `EnableMouse(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseMotion(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `EnableMouseWheel(enable: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[0] · FrameAPIModelSceneFrameActorBase
+- `GetAccessRestrictions()` → `restrictions: ScriptObjectAccessRestriction` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `GetAlpha()` → `alpha: number` · SecretReturnsForAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
 - `GetAnimationGroups()` → `groups: SimpleAnimGroup` · SimpleAnimatableObjectAPI
 - `GetAtlas()` → `atlas: textureAtlas` · SimpleTextureBaseAPI
 - `GetBlendMode()` → `blendMode: BlendMode` · SimpleTextureBaseAPI
@@ -4389,25 +4389,25 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetDebugName(preferParentKey: bool = false)` → `debugName: string` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `GetDesaturation()` → `strength: number` · FrameAPIModelSceneFrameActorBase
 - `GetDrawLayer()` → `layer: DrawLayer, sublevel: number` · FrameAPIModelSceneFrame
-- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[0] · SimpleFrameAPI
-- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetEffectiveScale()` → `effectiveScale: number` · SecretReturnsForAspect=[SecretAspect.Scale] · SimpleFrameAPI
+- `GetForbiddenAspects()` → `aspects: ForbiddenAspect` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetHeight(ignoreRect: bool = false)` → `height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetHorizTile()` → `tiling: bool` · SimpleTextureBaseAPI
-- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `GetInheritableForbiddenAspects(path: ScriptObjectPropagationPath)` → `aspects: ForbiddenAspect` · SecretArguments=NotAllowed, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `GetLeft()` → `left: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetMaskTexture(index: luaIndex)` → `mask: SimpleMaskTexture` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleTextureAPI
-- `GetName()` → `name: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetNumMaskTextures()` → `count: size` · SecretReturnsForAspect=[0] · SimpleTextureAPI
+- `GetMaskTexture(index: luaIndex)` → `mask: SimpleMaskTexture` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleTextureAPI
+- `GetName()` → `name: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectName] · SimpleFrameScriptObjectAPI
+- `GetNumMaskTextures()` → `count: size` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleTextureAPI
 - `GetNumPoints()` → `numPoints: number` · SimpleScriptRegionResizingAPI
 - `GetObjectTable()` → `objectTable: FrameScriptObject` · SimpleFrameScriptObjectAPI
-- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[0] · SimpleObjectAPI
+- `GetObjectType()` → `objectType: cstring` · SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `GetParent()` → `parent: CScriptObject` · SecretReturnsForAspect=[SecretAspect.Hierarchy] · SimpleObjectAPI
 - `GetParentKey()` → `parentKey: cstring` · SimpleObjectAPI
 - `GetPoint(index: luaIndex)` → `point: LuaColorCurvePoint?` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · LuaColorCurveObjectAPI
 - `GetPointByName(point: FramePoint, resolveCollapsed: bool = false)` → `point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, MayReturnNothing, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionResizingAPI
 - `GetRadialProgressBarEndOffset()` → `offset: normalizedValue` · SimpleTextureBaseAPI
 - `GetRadialProgressBarFeather()` → `feather: normalizedValue` · SimpleTextureBaseAPI
-- `GetRadialProgressBarPercent()` → `percent: normalizedValue` · SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `GetRadialProgressBarPercent()` → `percent: normalizedValue` · SecretReturnsForAspect=[SecretAspect.RadialProgress] · SimpleTextureBaseAPI
 - `GetRadialProgressBarReverse()` → `reverse: bool` · SimpleTextureBaseAPI
 - `GetRadialProgressBarStartOffset()` → `offset: normalizedValue` · SimpleTextureBaseAPI
 - `GetRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
@@ -4416,10 +4416,10 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetRoundLayoutToNearestPixel()` → `enabled: bool` · SimpleScriptRegionAPI
 - `GetScale()` → `scale: number` · FrameAPIModelSceneFrameActorBase
 - `GetScaledRect()` → `left: uiUnit, bottom: uiUnit, width: uiUnit, height: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `GetScript(scriptTypeName: ScriptTypeName, bindingType: ScriptBindingType = "Extrinsic")` → `script: LuaFunctionReference` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], ConstSecretAccessor, RequiresSupportedScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `GetSize(ignoreRect: bool = false)` → `width: uiUnit, height: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `GetTexCoord()` → `ulX: number, ulY: number, llX: number, llY: number, urX: number, urY: number, lrX: number, lrY: number` · SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `GetSourceLocation()` → `location: string` · SecretReturnsForAspect=[SecretAspect.ObjectDebug] · SimpleScriptRegionAPI
+- `GetTexCoord()` → `ulX: number, ulY: number, llX: number, llY: number, urX: number, urY: number, lrX: number, lrY: number` · SecretReturnsForAspect=[SecretAspect.TexCoords] · SimpleTextureBaseAPI
 - `GetTexelSnappingBias()` → `bias: normalizedValue` · SimpleTextureBaseAPI
 - `GetTexture()` → `textureFile: cstring?` · SimpleTextureBaseAPI
 - `GetTextureFileID()` → `textureFile: fileID` · SimpleTextureBaseAPI
@@ -4428,38 +4428,38 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `GetTextureSliceMode()` → `sliceMode: UITextureSliceMode` · MayReturnNothing · SimpleTextureBaseAPI
 - `GetTop()` → `top: uiUnit` · MayReturnNothing, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `GetVertTile()` → `tiling: bool` · SimpleTextureBaseAPI
-- `GetVertexColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · MayReturnNothing, SecretReturnsForAspect=[0, 0] · SimpleRegionAPI
+- `GetVertexColor()` → `colorR: number, colorG: number, colorB: number, colorA: number` · MayReturnNothing, SecretReturnsForAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleRegionAPI
 - `GetVertexOffset(vertexIndex: luaIndex)` → `offsetX: uiUnit, offsetY: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `GetWidth(ignoreRect: bool = false)` → `width: uiUnit` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleAnimAPI
-- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `HasAccessConstraints()` → `hasAccessConstraints: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyAccessRestrictions(restrictions: ScriptObjectAccessRestriction?)` → `hasAnyAccessRestriction: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnyForbiddenAspects(aspects: ForbiddenAspect?)` → `hasAnyForbiddenAspect: bool` · SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
+- `HasAnySecretAspect()` → `hasSecretAspect: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `HasScript(scriptName: cstring)` → `hasScript: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleAnimAPI
+- `HasSecretAspect(aspect: SecretAspect)` → `hasSecretAspect: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
 - `HasSecretValues()` → `hasSecretValues: bool` · ReturnsNeverSecret · DurationTextBindingObjectAPI
 - `Hide()` · FrameAPIModelSceneFrameActorBase
-- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `HookScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference, bindingType: ScriptBindingType = "Extrinsic")` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `Intersects(region: ScriptRegion)` → `intersects: bool` · SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
-- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
-- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsAnchoringRestricted()` → `isRestricted: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
+- `IsAnchoringSecret()` → `isSecret: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleScriptRegionAPI
 - `IsBlockingLoadRequested()` → `blocking: bool` · SimpleTextureBaseAPI
 - `IsCollapsed()` → `isCollapsed: bool` · SimpleScriptRegionAPI
-- `IsDesaturated()` → `desaturated: bool` · RequiresScriptObjectDesaturationAccess, SecretReturnsForAspect=[0] · SimpleTextureBaseAPI
+- `IsDesaturated()` → `desaturated: bool` · RequiresScriptObjectDesaturationAccess, SecretReturnsForAspect=[SecretAspect.Desaturation] · SimpleTextureBaseAPI
 - `IsDragging()` → `isDragging: bool` · SimpleScriptRegionAPI
-- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
+- `IsForbidden()` → `isForbidden: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleFrameScriptObjectAPI
 - `IsIgnoringParentAlpha()` → `ignore: bool` · SimpleFrameAPI
 - `IsIgnoringParentScale()` → `ignore: bool` · SimpleFrameAPI
 - `IsMouseClickEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsMouseMotionEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
-- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}] · SimpleScriptRegionAPI
+- `IsMouseMotionFocus()` → `isMouseMotionFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleScriptRegionAPI
 - `IsMouseOver(offsetTop: uiUnit = 0, offsetBottom: uiUnit = 0, offsetLeft: uiUnit = 0, offsetRight: uiUnit = 0)` → `isMouseOver: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretWhenAnchoringSecret · SimpleScriptRegionAPI
 - `IsMouseWheelEnabled()` → `enabled: bool` · SimpleScriptRegionAPI
 - `IsObjectLoaded()` → `isLoaded: bool` · SimpleFrameAPI
-- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[0] · SimpleFrameScriptObjectAPI
-- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[0] · SimpleScriptRegionAPI
+- `IsObjectType(objectType: cstring)` → `isType: bool` · ConstSecretAccessor, SecretArguments=AllowedWhenUntainted, SecretReturnsForAspect=[SecretAspect.ObjectType] · SimpleFrameScriptObjectAPI
+- `IsPreventingSecretValues()` → `isPreventingSecretValues: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecrets] · SimpleFrameScriptObjectAPI
+- `IsProtected()` → `isProtected: bool, isProtectedExplicitly: bool` · SecretReturnsForAspect=[SecretAspect.ObjectSecurity] · SimpleScriptRegionAPI
 - `IsRectValid()` → `isValid: bool` · SimpleScriptRegionAPI
 - `IsShown()` → `isShown: bool` · FrameAPIModelSceneFrameActorBase
 - `IsSnappingToPixelGrid()` → `snap: bool` · SimpleTextureBaseAPI
@@ -4467,14 +4467,14 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `RemoveMaskTexture(mask: SimpleMaskTexture)` · SecretArguments=AllowedWhenUntainted · SimpleTextureAPI
 - `ResetTexCoord()` · SimpleTextureBaseAPI
 - `SetAllPoints(relativeTo: ScriptRegion, doResize: bool = true)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
-- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[0] · FrameAPIModelSceneFrameActorBase
-- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleFrameAPI
+- `SetAlpha(alpha: number)` · SecretArguments=AllowedWhenUntainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · FrameAPIModelSceneFrameActorBase
+- `SetAlphaFromBoolean(value: bool, alphaIfTrue: SingleColorValue = 255, alphaIfFalse: SingleColorValue = 0)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Alpha] · SimpleFrameAPI
 - `SetAtlas(atlas: textureAtlas, useAtlasSize: bool = false, filterMode: FilterMode?, resetTexCoords: bool?, wrapModeHorizontal: cstring?, wrapModeVertical: cstring?)` · SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
 - `SetBlendMode(blendMode: BlendMode)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetBlockingLoadsRequested(blocking: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetCollapsesLayout(collapsesLayout: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `SetColorTexture(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
-- `SetDesaturated(desaturated: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetColorTexture(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.SetTexture'}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetDesaturated(desaturated: bool = false)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.Desaturation] · SimpleTextureBaseAPI
 - `SetDesaturation(strength: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetDrawLayer(layer: DrawLayer)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrame
 - `SetForbidden()` · HasRestrictions · SimpleFrameScriptObjectAPI
@@ -4486,7 +4486,7 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetMask(file: cstring)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetMouseClickEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetMouseMotionEnabled(enabled: bool = false)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 0}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetParent(parent: SimpleAnimGroup, order: number?)` · CheckAllowChangeParent, ChecksForbiddenAspects=[{'Argument': 'parent', 'Aspect': 'ForbiddenAspect.AddAnimations'}], SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetParentKey(parentKey: cstring, clearOtherKeys: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleObjectAPI
 - `SetPassThroughButtons(buttons: MouseButton)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetPoint(point: FramePoint, relativeTo: ScriptRegion, relativePoint: FramePoint, offsetX: uiUnit, offsetY: uiUnit)` · CheckAllowInheritForbiddenLayoutAspects, IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
@@ -4495,27 +4495,27 @@ Each list is read from one real object of that type. Where Blizzard documents a 
 - `SetPropagateMouseMotion(propagate: bool)` · HasRestrictions, IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
 - `SetRadialProgressBarEndOffset(offset: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetRadialProgressBarFeather(feather: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
-- `SetRadialProgressBarPercent(percent: normalizedValue)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetRadialProgressBarPercent(percent: normalizedValue)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.RadialProgress] · SimpleTextureBaseAPI
 - `SetRadialProgressBarReverse(reverse: bool)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetRadialProgressBarStartOffset(offset: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetRotation(radians: number, animate: bool = true)` · SecretArguments=AllowedWhenUntainted · FrameAPICharacterModelBase
 - `SetRoundLayoutToNearestPixel(enabled: bool)` · IsProtectedFunction, SecretArguments=NotAllowed · SimpleScriptRegionAPI
-- `SetSVG(svgAsset: FileAsset)` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+- `SetSVG(svgAsset: FileAsset)` → `success: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.SetTexture'}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
 - `SetScale(scale: number)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
-- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 0}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
+- `SetScript(scriptTypeName: ScriptTypeName, script: LuaFunctionReference?)` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.ScriptBindings'}], RequiresAssignableScript, SecretArguments=AllowedWhenUntainted · SimpleAnimAPI
 - `SetShown(show: bool = false)` · SecretArguments=AllowedWhenUntainted · FrameAPIModelSceneFrameActorBase
 - `SetSize(x: uiUnit, y: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `SetSnapToPixelGrid(snap: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
-- `SetSpriteSheetCell(cell: luaIndex, numRows: number, numColumns: number, cellWidth: number?, cellHeight: number?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
-- `SetTexCoord(left: number, right: number, bottom: number, top: number)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0] · SimpleTextureBaseAPI
+- `SetSpriteSheetCell(cell: luaIndex, numRows: number, numColumns: number, cellWidth: number?, cellHeight: number?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.TexCoords] · SimpleTextureBaseAPI
+- `SetTexCoord(left: number, right: number, bottom: number, top: number)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.TexCoords] · SimpleTextureBaseAPI
 - `SetTexelSnappingBias(bias: normalizedValue)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetTexture(textureAsset: cstring?, wrapModeHorizontal: cstring?, wrapModeVertical: cstring?, filterMode: cstring?)` → `success: bool` · SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
 - `SetTextureSliceMargins(left: number, top: number, right: number, bottom: number)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetTextureSliceMode(sliceMode: UITextureSliceMode)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetToDefaults()` · DurationTextBindingObjectAPI
 - `SetVertTile(tiling: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
-- `SetVertexColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
-- `SetVertexColorFromBoolean(value: bool, colorIfTrue: colorRGBA (ColorMixin), colorIfFalse: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[0, 0] · SimpleRegionAPI
+- `SetVertexColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleRegionAPI
+- `SetVertexColorFromBoolean(value: bool, colorIfTrue: colorRGBA (ColorMixin), colorIfFalse: colorRGBA (ColorMixin)` · SecretArguments=AllowedWhenTainted, SecretArgumentsAddAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleRegionAPI
 - `SetVertexOffset(vertexIndex: luaIndex, offsetX: uiUnit, offsetY: uiUnit)` · SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
 - `SetWidth(width: uiUnit)` · IsProtectedFunction, SecretArguments=AllowedWhenUntainted · SimpleScriptRegionResizingAPI
 - `ShouldButtonPassThrough(button: MouseButton)` → `shouldPassThrough: bool` · SecretArguments=AllowedWhenUntainted · SimpleScriptRegionAPI
