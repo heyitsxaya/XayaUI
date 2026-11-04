@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""DRAFT (2026-11-04): written but NOT YET RUN OR TESTED; docs/reference/content/ has not been generated. Do not rely on it until
-a test (tests/build_content_run.py, to be written) passes and the debug log says so.
-
-Builds docs/reference/content/: the current expansion's items, what each item's spells apply, its instances (dungeons and raids)
-with their encounters, boss abilities and Mythic+ "enemy forces" counts per creature, and every class and spec ID
+"""Builds docs/reference/content/: the current expansion's items, what each item's spells apply, its instances (dungeons and raids,
+plus the older dungeons its Mythic+ seasons bring back) with their encounters, boss abilities and Mythic+ "enemy forces" counts per
+creature, and every class and spec ID. Tested on made-up tables by tests/build_content_run.py; first run on real data 2026-11-04
+(debug-log/2026-11-04-*-content-data-pulls-*.md)
 (Xaya 2026-11-04: "Build out everything you need wrt functionalities to pull: item ids for current expansion (not just season),
 item >> buff ids, item >> debuff ids, instanced content data ... ct/% per unit in challenge mode ... class + spec ids").
 
@@ -21,13 +20,24 @@ INFERENCES (the community's reading of these columns; each output file says whic
   - Who an item's aura lands on: ImplicitTarget_0 of the aura-applying effect. 1 = the caster ("self", a buff on you),
     6 = an enemy target ("enemy", a debuff), 21 = an ally ("ally"); any other number is kept as is ("target type N").
   - ItemEffect.TriggerType: 0 = on use, 1 = on equip, 2 = chance on hit; other numbers kept as is.
-  - Mythic+ enemy forces: a dungeon's challenge criteria tree ("<n> Dungeon - <name> (Challenge)") has a child "Enemy Forces" whose
+  - Mythic+ enemy forces: a dungeon's challenge criteria tree (its root's name says "Challenge") has a child "Enemy Forces" whose
     Amount is the total needed; each of ITS children whose criteria has Type 0 counts kills of the creature in Criteria.Asset, and
     that child's Amount is the count one kill gives (percent = Amount / total * 100). Children of other criteria types are listed
     separately as "notCreature" and never counted. Checked by hand for Windrunner Spire on 2026-11-04 (23 creature rows, amounts
     1-20, total 591); to be confirmed in game against C_ScenarioInfo.GetUnitCriteriaProgressValues (Dev Assist /xuidev instance).
   - MapChallengeMode.CriteriaCount_0..2: the timer limits in seconds (1, 2 and 3 chests).
-  - The dungeon behind a challenge tree is found by NAME (no key column links them; marked "linkedBy": "name").
+  - No key column links a challenge tree to its dungeon. Two links are used, and each tree says which ("linkedBy"):
+      "encounters": the tree's boss rows are Criteria Type 165 whose Asset is a DungeonEncounter ID, and DungeonEncounter.MapID is
+                    the dungeon (all of the tree's bosses on one map). This finds trees named with Blizzard's internal names
+                    ("Lightbloom" = The Blinding Vale, "Prove Your Worth" = Den of Nalorakk, "Nexus Point" = Nexus-Point Xenas).
+      "name":       the root is "<n> Dungeon - <name> (Challenge)" and <name> is the challenge mode's or the Adventure Guide's name.
+    Older dungeons have a second tree, "... (More Trash)", with other counts. Every linked tree is listed; which one the game uses
+    is NOT in the client data: compare "total" with C_ScenarioInfo.GetCriteriaInfo in game.
+  - The expansion's Mythic+ seasons: MythicPlusSeasonTrackedMap has no expansion column, so a season counts as the expansion's when
+    it tracks at least one dungeon on one of the expansion's maps. Every dungeon those seasons track is listed, older ones included
+    ("listedBecause": "mythic+ season"); in 12.1.5.70783 seasons 34 and 37 bring back seven older dungeons this way.
+  - JournalEncounter.DungeonEncounterID is the encounterID ENCOUNTER_START sends (the documentation only says "encounterID:
+    number"); to be confirmed against Dev Assist's probe anchors.
 What the client data does not hold, and so is not here: trash creatures' spells, which creatures are in an instance other than through
 the enemy-forces list, and many current creatures' names (the client's Creature table lists a subset; missing names stay null).
 
@@ -165,6 +175,15 @@ def build(cache, expansion):
     seasons = defaultdict(set)
     for r in rows(cache, "MythicPlusSeasonTrackedMap.csv"):
         seasons[num(r["MapChallengeModeID"])].add(num(r["DisplaySeasonID"]))
+    # the expansion's Mythic+ seasons (INFERENCE, see the header) and every map they track, older expansions' included
+    cmMap = {num(c["ID"]): num(c["MapID"]) for lst in challenge.values() for c in lst}
+    def mapExpansion(mid):
+        return num(maps[mid]["ExpansionID"], -1) if mid in maps else -1
+    expSeasons = set()
+    for cmID, ss in seasons.items():
+        if mapExpansion(cmMap.get(cmID, 0)) == expansion:
+            expSeasons |= ss
+    rotationMaps = {cmMap[cmID] for cmID, ss in seasons.items() if cmID in cmMap and ss & expSeasons}
 
     # Mythic+ enemy forces, found through the criteria trees
     tree = {}
@@ -175,12 +194,20 @@ def build(cache, expansion):
     crit = {num(r["ID"]): r for r in rows(cache, "Criteria.csv")}
     creatures = {num(r["ID"]): r for r in rows(cache, "Creature.csv")}
     forcesByName = defaultdict(list)
+    forcesByMap = defaultdict(list)
     for node in tree.values():
         if node["Description_lang"] != "Enemy Forces":
             continue
         root = tree.get(num(node["Parent"]))
-        m = re.match(r"^.*? - (.+) \(Challenge\)\s*$", root["Description_lang"]) if root else None
-        if not m:
+        if not root or "challenge" not in root["Description_lang"].lower():
+            continue   # an "Enemy Forces" outside a challenge tree (a scenario, a delve) is not Mythic+
+        m = re.match(r"^.*? - (.+) \(Challenge\)\s*$", root["Description_lang"])
+        bossMaps = set()
+        for sib in children.get(num(root["ID"]), []):
+            c = crit.get(num(sib["CriteriaID"]))
+            if c is not None and num(c["Type"]) == 165 and num(c["Asset"]) in dungeonEnc:   # INFERENCE: 165 = defeat this encounter
+                bossMaps.add(num(dungeonEnc[num(c["Asset"])]["MapID"]))
+        if not m and len(bossMaps) != 1:
             continue
         counted, other = [], []
         for ch in sorted(children.get(num(node["ID"]), []), key=lambda r: (num(r["OrderIndex"]), num(r["ID"]))):
@@ -197,17 +224,28 @@ def build(cache, expansion):
         total = num(node["Amount"])
         for x in counted:
             x["percent"] = round(x["count"] * 100.0 / total, 2) if total else None
-        forcesByName[m.group(1).strip().lower()].append({"criteriaTree": num(root["ID"]), "tree": root["Description_lang"],
-                                                         "total": total, "creatures": counted, "notCreature": other})
+        entry = {"criteriaTree": num(root["ID"]), "tree": root["Description_lang"], "total": total, "creatures": counted,
+                 "notCreature": other}
+        if m:
+            forcesByName[m.group(1).strip().lower()].append(entry)
+        if len(bossMaps) == 1:
+            forcesByMap[bossMaps.pop()].append(entry)
 
     instances = []
     for r in rows(cache, "JournalInstance.csv"):
         mid = num(r["MapID"])
         mp = maps.get(mid)
-        if not mp or num(mp["ExpansionID"], -1) != expansion:
+        if not mp:
+            continue
+        if num(mp["ExpansionID"], -1) == expansion:
+            why = "expansion"
+        elif mid in rotationMaps:
+            why = "mythic+ season"
+        else:
             continue
         inst = {"journalInstanceID": num(r["ID"]), "name": r["Name_lang"], "mapID": mid, "instanceType": num(mp["InstanceType"]),
-                "maxPlayers": num(mp["MaxPlayers"]), "encounters": [], "challenge": []}
+                "maxPlayers": num(mp["MaxPlayers"]), "expansionID": num(mp["ExpansionID"], -1), "listedBecause": why,
+                "encounters": [], "challenge": []}
         for e in sorted(encByInst.get(inst["journalInstanceID"], []), key=lambda e: num(e["OrderIndex"])):
             de = num(e["DungeonEncounterID"])
             inst["encounters"].append({"journalEncounterID": num(e["ID"]), "name": e["Name_lang"], "dungeonEncounterID": de,
@@ -218,11 +256,16 @@ def build(cache, expansion):
             cm = {"mapChallengeModeID": num(c["ID"]), "name": c["Name_lang"],
                   "timersSeconds": [num(c["CriteriaCount_%d" % k]) for k in range(3)],
                   "trackedInSeasons": sorted(seasons.get(num(c["ID"]), [])), "enemyForces": []}
-            for key in {c["Name_lang"].strip().lower(), r["Name_lang"].strip().lower()}:
+            found = {}   # criteria tree -> (entry, how it was linked)
+            for key in (c["Name_lang"].strip().lower(), r["Name_lang"].strip().lower()):
                 for f in forcesByName.get(key, []):
-                    f = dict(f); f["linkedBy"] = "name"
-                    if f not in cm["enemyForces"]:
-                        cm["enemyForces"].append(f)
+                    found.setdefault(f["criteriaTree"], (f, set()))[1].add("name")
+            for f in forcesByMap.get(mid, []):
+                found.setdefault(f["criteriaTree"], (f, set()))[1].add("encounters")
+            for t in sorted(found):   # by tree ID: the same file every build
+                f, how = found[t]
+                f = dict(f); f["linkedBy"] = ", ".join(sorted(how))
+                cm["enemyForces"].append(f)
             inst["challenge"].append(cm)
         instances.append(inst)
     instances.sort(key=lambda x: x["journalInstanceID"])
@@ -274,7 +317,7 @@ def main():
         "note": "Many item effects are scripted on the server: the data then shows no aura, or a dummy one. Confirm in game with the Dev Assist cast recorder / aura log."},
         [{"itemID": int(k), "spells": v} for k, v in sorted(itemSpells.items(), key=lambda kv: int(kv[0]))])
     write_lines(os.path.join(a.out, "instances.json"), {"source": src, "instances": len(instances),
-        "fields": "journalInstanceID, name, mapID, instanceType (Map.InstanceType as stored), maxPlayers; encounters: journalEncounterID, dungeonEncounterID (= ENCOUNTER_START's encounterID), uiMapID, abilities (Adventure Guide section spells), events (EncounterEvent spells, severity); challenge: mapChallengeModeID, timersSeconds (INFERENCE), trackedInSeasons, enemyForces (INFERENCE, linked by name): total, creatures (creatureID, count per kill, percent, name when the client lists it), notCreature",
+        "fields": "journalInstanceID, name, mapID, instanceType (Map.InstanceType as stored), maxPlayers, expansionID, listedBecause (expansion, or mythic+ season: an older dungeon one of the expansion's Mythic+ seasons tracks; INFERENCE); encounters: journalEncounterID, dungeonEncounterID (INFERENCE: = ENCOUNTER_START's encounterID), uiMapID, abilities (Adventure Guide section spells), events (EncounterEvent spells, severity); challenge: mapChallengeModeID, timersSeconds (INFERENCE), trackedInSeasons, enemyForces (INFERENCE): every challenge tree linked to the dungeon (linkedBy: encounters = its boss criteria are on this map; name = its name), each with total, creatures (creatureID, count per kill, percent, name when the client lists it), notCreature; when several trees are listed (older dungeons have a '(More Trash)' one), the one the game uses is the one whose total C_ScenarioInfo.GetCriteriaInfo shows in game",
         "note": "Trash creatures' spells and an instance's full creature list are not in the client data; Dev Assist's /xuidev instance capture records them in game."}, instances)
     write_lines(os.path.join(a.out, "classes.json"), {"source": src, "classes": len(classes),
         "fields": "classID, file, name, specs (specID, name, order, role as stored); petSpecs listed under classID 0"},
