@@ -203,7 +203,7 @@ local function RatingRow(key, label, idx, total, coeff, unit, short)
         row.lines[3] = ("Next threshold: %s rating (%s), %s away"):format(Big(a.nextThreshold.rating),
             P(a.nextThreshold.pct * a.coeff), Big(a.toNext))
     elseif #th == 0 then
-        row.lines[3] = "Thresholds: " .. DIM .. "none found up to 200%|r"
+        row.lines[3] = "Thresholds: " .. DIM .. "the game's converter shows none (it may not apply them; unconfirmed)|r"
     else
         row.lines[3] = "Thresholds: past the last one"
     end
@@ -234,7 +234,7 @@ end
 -------------------------------------------------------------------------------
 -- Linked conversions
 -------------------------------------------------------------------------------
-local function LinkedRating(label, value, sourceIdx, targetIdx, sourceName, targetName)
+local function LinkedRating(label, value, sourceIdx, targetIdx, sourceName, targetName, note)
     -- rating of one stat read through another stat's converter (crit -> parry, versatility -> damage taken)
     local row = { label = label, value = value, lines = {}, tip = {} }
     local rating = NumR(GetCombatRating, sourceIdx)
@@ -243,7 +243,7 @@ local function LinkedRating(label, value, sourceIdx, targetIdx, sourceName, targ
     local pct = f(rating)
     local r0 = SM.BaseRate(f)
     local nextOne = SM.RatingForGain(f, rating, 1)
-    row.lines[1] = ("%s %s rating = %s %s"):format(Big(rating), sourceName, P(pct), targetName)
+    row.lines[1] = ("%s %s rating = %s %s%s"):format(Big(rating), sourceName, P(pct), targetName, note and (" " .. DIM .. note .. "|r") or "")
     row.lines[2] = ("%s %s rating per 1%%  |  next 1%%: %s"):format(r0 and F(1 / r0) or "?", sourceName, nextOne and Big(nextOne) or (WARN .. "capped|r"))
     row.tip[1] = ("Read with the game's %s converter, the way the character window words it."):format(targetName)
     return row
@@ -299,8 +299,10 @@ local function DefenseRows(out, short)
     local critGivesParry = R(GetCritChanceProvidesParryEffect)
     if critGivesParry then
         local critIdx = CritIndex()
-        local link = LinkedRating(row.label, row.value, critIdx, IDX.parry, "crit", "parry")
+        local link = LinkedRating(row.label, row.value, critIdx, IDX.parry, "crit", "parry", "(before diminishing returns)")
         row.lines, row.tip = link.lines, link.tip
+        -- the character window's parry tooltip words it the same way: "Parry of 528 adds 10.15% Parry (Before diminishing returns)"
+        row.tip[#row.tip + 1] = "The parry total above is after diminishing returns; the crit share is before them, as the character window shows it."
     else
         row.lines[1] = ("Crit -> parry: %s"):format(DIM .. "not for this spec|r")
     end

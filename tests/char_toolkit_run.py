@@ -184,6 +184,7 @@ check("stamina: 1 Stamina = 21.20 health", has(sta, "1 Stamina = 21.20 health"),
 check("stamina: stamina for +1% max health", has(sta, "Stamina for +1% max health"), sta and sta.lines[2])
 local parry = row(m, "parry")
 check("parry from crit: 528 crit rating = 10.15% parry", has(parry, "528 crit rating = 10.15% parry"), parry and parry.lines[1])
+check("parry from crit: says before diminishing returns, as the character window does", has(parry, "(before diminishing returns)"), parry and parry.lines[1])
 check("parry from crit: 52.0 crit rating per 1%", has(parry, "52.0 crit rating per 1%"), parry and parry.lines[2])
 local armor = row(m, "armor")
 check("armor: reduction and armor for next 1%", has(armor, "Damage reduction vs your level") and has(armor, "Armor for the next 1%"))

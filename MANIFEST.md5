@@ -5,7 +5,7 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-f57dc945f1acd394ef4ba77464139211  QA-CHECKLIST.md
+a15baca2d56fe4464ac22bb420b2dbbb  QA-CHECKLIST.md
 ee42539002c7a831fd97da0c0d766f12  README.md
 9df5987f806b67f25ab603cbb04fb25f  ROADMAP.md
 4cf4fae4818495ff6ee96cddaafb6125  SESSION-START-SUMMARY.md
@@ -200,7 +200,7 @@ ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 1c348c85528f60b3ba78a0ff610061a0  XayaUI_Options/TriggersEditor.lua
 4923e0588ebae600d6f58b4b7e6f1c1b  XayaUI_Options/XayaUI_Options.toc
-9929820a14e1784f3615cf33d9ea7dd1  XayaUI_QoL/CharacterToolkit.lua
+126925b93c79efe2ab3496322a733523  XayaUI_QoL/CharacterToolkit.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
 e961de31e54ee41494bbd60ea3a2f996  XayaUI_QoL/CursorTrail.lua
 deef89f1ad9818ceb2f2d16c7e57ecaf  XayaUI_QoL/Media/Cursor/Arrow.tga
@@ -344,7 +344,7 @@ c772617313f2c4b7965ad8301258e669  debug-log/2026-11-03-2135-tester-requests-278-
 689a517f20b92cb9d1081455b4656034  debug-log/2026-11-03-2252-chat-footer-status-anchor-review-0.6.4.md
 ce45fc465bdd3ab3e215e3abd189e3ea  debug-log/2026-11-03-2254-tester-requests-278-sleep-snare-clarification.md
 fd3ccecccb27afb01262111787083ed9  debug-log/2026-11-03-2330-display-tab-chevrons-engine-text-cue-0.6.3.md
-47114e7247e8641b0bfd2848117f8ba7  debug-log/2026-11-04-0030-character-toolkit-qol-0.6.2.md
+ffa0296b25683c475f0a6030d2f8a678  debug-log/2026-11-04-0030-character-toolkit-qol-0.6.2.md
 7f9f4549410ba8da5e6fb9e9cb573be0  shelved/Bars.lua
 5857b882061b2df7a8d4fb33945efc80  shelved/CountSupport.lua
 ba241e46458e8e4296563689c7708a51  shelved/CursorReminders.lua
@@ -354,7 +354,7 @@ a354cbbb54ff4fb130af0063a401df9b  tests/Conditions.pre-0.5.83.lua
 1bc56b22adb5f1e1aa4a345d9fa19b8b  tests/aspect_run.py
 14eb69096fa0abacf4409052259da83b  tests/aura_display_run.py
 80c84f1f7ef017e7f04a6c3be28a3910  tests/aura_sources_run.py
-a70f34d90ac11ea3addf255ec64f68c5  tests/char_toolkit_run.py
+e292bbbd3740d1bc057ede1d81ba895f  tests/char_toolkit_run.py
 a77e110f43e02105c2f78ea1121dd48f  tests/chat_run.py
 011ed4393337e4f3ffbc1a619ba02f1a  tests/chat_world.lua
 abe22a2816956a2c3babb802857cc524  tests/chatprobe_run.py

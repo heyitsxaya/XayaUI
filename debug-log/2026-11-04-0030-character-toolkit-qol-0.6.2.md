@@ -21,3 +21,9 @@ Decisions and why:
 Tests: tests/char_toolkit_run.py, 71 checks, 0 failed (stand-in converter with a made-up bracket shape, exact and rounded to 0.01%: thresholds exact, and within 5 rating when rounded; Xaya's screenshot figures as stand-in reads: 528 crit gives 46.0 per 1%, next threshold 1,380, 852 away; 997 mastery at factor 2.8 gives 16.4 per 1% mastery; crit to parry 10.15%). tests/run_all.py --quick: every unit suite passes; the whole-addon harness has one FAIL that was already there before this change (Options.lua:4596, C_Texture nil in the harness world, slash command icon report).
 
 Her "about 16.1" mastery figure: her screenshot gives 997 rating = +60.69%, which is 16.43 rating per 1% (997 / 60.69). Where 16.1 came from is not known.
+
+Follow-up 2026-11-04 (Xaya's screenshots of the plain Blizzard character window, Vengeance, level 90):
+- The parry tooltip reads "Parry of 528 adds 10.15% Parry (Before diminishing returns)" and the crit tooltip "Increases parry chance by 10.15%": the crit-to-parry link exists as built; the panel's parry line now says "(before diminishing returns)" too.
+- Haste 1,287 = +29.25% gives 44.0 rating per 1% (1287 / 29.25); crit 528 = +11.48% gives 46.0 (528 / 11.48). Rates differ per stat, as the code assumes.
+- The GCD estimate formula matches her earlier screenshot: 1.5 / (1 + 0.2925) = 1.1605 s against 1.16 s shown.
+- "No thresholds found" now reads "the game's converter shows none (it may not apply them; unconfirmed)", so it is not taken as "this stat has no diminishing returns". QA-CHECKLIST E1d2: her haste (about 33 rating under the 30% point if thresholds apply) is the in-game test.
