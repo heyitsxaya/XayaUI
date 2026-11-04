@@ -58,10 +58,10 @@ check("Stats tab (the stat map): headers Primary stats, Secondary stats, Tertiar
 -- QoL 0.7.14: the filters filter spells only; the stat sections they drew are on the stat map (Offense / Defense, what feeds it)
 d = render("defense"); hs = texts(d, "header")
 check("Spells, Defense filter: Defensive spells only (QoL 0.7.14)", c.tab == "spells" and c.spellFilter == "defense"
-  and table.concat(hs, "|") == "- Defensive spells", table.concat(hs, "|"))
+  and table.concat(hs, "|") == "- Active defensive spells", table.concat(hs, "|"))
 d = render("offense"); hs = texts(d, "header")
 check("Spells, Offense filter: Offensive spells only (QoL 0.7.14)", c.tab == "spells" and c.spellFilter == "offense"
-  and table.concat(hs, "|") == "- Offensive spells", table.concat(hs, "|"))
+  and table.concat(hs, "|") == "- Active offensive spells", table.concat(hs, "|"))
 c.spellFilter = "all"
 d = render("gear"); hs = texts(d, "header")
 check("Gear tab: Equipped (icons), Compare, Summary, Durability and repair (QoL 0.7.14: the comparison replaces the per-slot list)",

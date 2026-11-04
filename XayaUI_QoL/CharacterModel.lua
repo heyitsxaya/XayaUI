@@ -1594,7 +1594,7 @@ CM.SPELL_FILTERS = {
     { "offense", "Offense", "Spells whose description deals damage. Your offensive stats are on the Stats tab (Offense)." },
     { "defense", "Defense", "Spells that absorb, heal, reduce damage taken or add armor, avoidance or leech. Your defensive stats are on the Stats tab (Defense)." },
 }
-local FILTER_TITLE = { all = "Spells", offense = "Offensive spells", defense = "Defensive spells" }
+local FILTER_TITLE = { all = "Active spells", offense = "Active offensive spells", defense = "Active defensive spells" }
 local KIND_TEXT = { offense = "offense", defense = "defense", both = "offense and defense" }
 function CM.FilterOf(c)
     local f = type(c) == "table" and c.spellFilter
@@ -1604,6 +1604,7 @@ end
 -- Descriptions the game has not sent yet are asked for once (C_Spell.RequestLoadSpellData); SPELL_DATA_LOAD_RESULT then redraws.
 local requested = {}
 function CM.SpellRequested(id) return id ~= nil and not IsSecret(id) and requested[id] == true end
+function CM.ResetSpellRequests() requested = {} end
 local function RequestDesc(id)
     if requested[id] then return end
     requested[id] = true
@@ -1679,6 +1680,8 @@ local function SpellItem(s, desc, nums, kind, refs, primary)
     Tip(it, "Durations, distances and target counts are skipped; other numbers that do not scale with " .. refName .. " (flat amounts) give meaningless ratios.")
     if s.hand then
         Tip(it, "Added by hand in QoL > Character Toolkit > Spell Math.")
+    elseif s.talent then
+        Tip(it, ("A talent of your current trees that you have not picked. Measured against %s, like your other spells."):format(refName))
     else
         Tip(it, ("From your spellbook. Measured against %s because your primary stat is %s (Intellect specs' spells usually scale with spell power, the others' with attack power). Add the spell by hand to choose."):format(refName, StatName(primary)))
     end
@@ -1689,15 +1692,81 @@ local function SpellItem(s, desc, nums, kind, refs, primary)
     return it
 end
 
+-- Your talent trees (the active loadout): each talent's spell, whether it is picked, and whether it is passive. The same C_Traits
+-- walk as core's ns.BuildTalentList, plus the node's activeEntry (structures.md TraitNodeInfo: activeEntry = { entryID, rank }) and
+-- C_Spell.IsSpellPassive (namespaces.md:4439). Kept until core's talent list is rebuilt (spec, talent or spellbook change).
+local talentScan, talentFor
+function CM.Talents()
+    local ok, key = false, nil
+    if type(ns.BuildTalentList) == "function" then ok, key = pcall(ns.BuildTalentList) end
+    if not ok then key = nil end
+    if talentScan and key ~= nil and talentFor == key then return talentScan end
+    local out, seen = {}, {}
+    local configID = C_ClassTalents and R(C_ClassTalents.GetActiveConfigID)
+    if num(configID) and C_Traits then
+        local cfg = R(C_Traits.GetConfigInfo, configID)
+        for _, treeID in ipairs(type(cfg) == "table" and type(cfg.treeIDs) == "table" and cfg.treeIDs or {}) do
+            local nodes = R(C_Traits.GetTreeNodes, treeID)
+            for _, nodeID in ipairs(type(nodes) == "table" and nodes or {}) do
+                local node = R(C_Traits.GetNodeInfo, configID, nodeID)
+                if type(node) == "table" and node.isVisible and type(node.entryIDs) == "table" then
+                    local ae = node.activeEntry
+                    for _, entryID in ipairs(node.entryIDs) do
+                        local e = R(C_Traits.GetEntryInfo, configID, entryID)
+                        local defID = type(e) == "table" and e.definitionID or nil
+                        local d = num(defID) and R(C_Traits.GetDefinitionInfo, defID) or nil
+                        local sid = type(d) == "table" and d.spellID or nil
+                        if num(sid) and not IsSecret(sid) and not seen[sid] then
+                            seen[sid] = true
+                            local picked = type(ae) == "table" and ae.entryID == entryID and num(ae.rank) and ae.rank > 0
+                            out[#out + 1] = { id = sid, name = SpellName(sid), picked = picked and true or false,
+                                passive = C_Spell and R(C_Spell.IsSpellPassive, sid) == true or false }
+                        end
+                    end
+                end
+            end
+        end
+    end
+    talentScan, talentFor = out, key
+    return out
+end
+function CM.ClearTalents() talentScan, talentFor = nil, nil end
+
+-- The picked talents whose own description names a spell: how the game words "this talent changes that spell" (#377: "talent
+-- modifiers"). A word match on the spell's name in the talent's text; the game has no list of which talents change a spell.
+local function TalentModifiers(spellID, name, talents)
+    local outT = {}
+    if type(name) ~= "string" or #name < 4 then return outT end
+    for _, t in ipairs(talents) do
+        if t.picked and t.id ~= spellID and t.name ~= name then
+            local d = SpellDesc(t.id)
+            if type(d) == "string" and d ~= "" then
+                if d:find(name, 1, true) then outT[#outT + 1] = t.name end
+            else RequestDesc(t.id) end
+        end
+    end
+    table.sort(outT)
+    return outT
+end
+
 local function SpellSection(ctx, out)
     local c = ctx.cfg
     local filter = CM.FilterOf(c)
     local sec = { key = "spellmath", title = FILTER_TITLE[filter], items = {} }
     out[#out + 1] = sec
     if not (c and c.advanced) then
-        sec.items[1] = Note("spellsOff", "Spell Math is off", "turn it on in QoL > Character Toolkit > Spell Math")
+        -- #377 (Xaya): "first time the tab is opened, show a button labelled 'configure spell data'" that pulls every spell and its
+        -- talent modifiers. The button turns Spell Math on and reads them (it is also in QoL > Character Toolkit > Spell Math).
+        local b = Item("spellsConfigure", "Configure spell data", "action")
+        b.action, b.value = "configureSpells", ""
+        Tip(b, "Reads your spellbook and talents, measures each spell's numbers against your attack power or spell power, and lists them Active / Inactive with the talents that change them.")
+        sec.items[1] = b
         return
     end
+    local rb = Item("spellsRefresh", "Refresh spell data", "action")
+    rb.action, rb.value = "refreshSpells", ""
+    Tip(rb, "Reads your spellbook and talents again (after a talent or spec change the panel also does this by itself) and asks the game again for any spell text it has not sent.")
+    sec.items[1] = rb
     local base, pos, neg = R(UnitAttackPower, "player")
     local ap = num(base) and (base + (num(pos) and pos or 0) + (num(neg) and neg or 0)) or nil
     if base == HIDDEN then ap = HIDDEN end
@@ -1708,26 +1777,45 @@ local function SpellSection(ctx, out)
         local a = N(GetAttackPowerForStat, p, eff)
         if num(a) then refs.apPerPrimary = a / eff end
     end
+    local talents = CM.Talents()
+    -- Active: the spells you have (your spellbook and the ones added by hand). Inactive: the castable talents of your trees you have
+    -- not picked (#377: "sorted into active and inactive"; known and usable vs not available to you now).
+    local inact = { key = "spellsInactive", title = "Inactive: talents not picked", items = {}, defaultFolded = true }
     local list = CM.SpellList(c, p)
+    local known = {}
+    for _, s in ipairs(list) do known[s.id] = true end
     local loading, noNumbers = 0, 0
-    for _, s in ipairs(list) do
+    local function Add(s, target, inactive)
         local desc = SpellDesc(s.id)
         if not desc or desc == "" then RequestDesc(s.id) end
-        if not s.hand and (not desc or desc == "") then
-            loading = loading + 1
+        if not s.hand and (not desc or desc == "") then loading = loading + 1; return end
+        local nums = CM.Numbers(desc)
+        local kind = CM.SpellKind(desc)
+        local k = s.kind or kind
+        if not (filter == "all" or k == filter or k == "both") then return end
+        if not s.hand and #nums == 0 and not c.spellsAll then noNumbers = noNumbers + 1; return end
+        local it = SpellItem(s, desc, nums, kind, refs, p)
+        if inactive then
+            Pair(it, "Not picked", "a talent in your trees; pick it to use it", "mute", true)
         else
-            local nums = CM.Numbers(desc)
-            local kind = CM.SpellKind(desc)
-            local k = s.kind or kind
-            if filter == "all" or k == filter or k == "both" then
-                if not s.hand and #nums == 0 and not c.spellsAll then noNumbers = noNumbers + 1
-                else sec.items[#sec.items + 1] = SpellItem(s, desc, nums, kind, refs, p) end
+            local usable, noPower = R(C_Spell and C_Spell.IsSpellUsable, s.id)
+            if usable == false and noPower ~= true then Pair(it, "Usable now", "no (the game says so: form, stance or a requirement)", "warn", true) end
+            local mods = TalentModifiers(s.id, SpellName(s.id), talents)
+            if #mods > 0 then
+                Pair(it, "Changed by talents", table.concat(mods, ", "), "good", true)
+                Tip(it, "Changed by talents: the talents you picked whose own text names this spell (a word match; the game does not list which talents change a spell). Their effect is already in the numbers above when the game puts it in the spell's text.")
             end
         end
+        target.items[#target.items + 1] = it
     end
-    if #sec.items == 0 then
-        if #list == 0 then sec.items[1] = Note("noSpells", "No spells found", "add spells in QoL > Character Toolkit > Spell Math")
-        elseif loading == 0 then sec.items[1] = Note("noSpells", "No spells in this filter", "") end
+    for _, s in ipairs(list) do Add(s, sec, false) end
+    local primaryBase = (p == 4) and "sp" or "ap"
+    for _, t in ipairs(talents) do
+        if not t.picked and not t.passive and not known[t.id] then Add({ id = t.id, base = primaryBase, talent = true }, inact, true) end
+    end
+    if #sec.items == 1 then
+        if #list == 0 then sec.items[2] = Note("noSpells", "No spells found", "add spells in QoL > Character Toolkit > Spell Math")
+        elseif loading == 0 then sec.items[2] = Note("noSpells", "No spells in this filter", "") end
     end
     if noNumbers > 0 then
         local it = Note("spellsNoNumbers", ("%d without numbers"):format(noNumbers), "not listed")
@@ -1739,6 +1827,7 @@ local function SpellSection(ctx, out)
         Tip(it, "The game sends spell descriptions on request (C_Spell.RequestLoadSpellData); the panel redraws when they arrive.")
         sec.items[#sec.items + 1] = it
     end
+    if #inact.items > 0 then out[#out + 1] = inact end
 end
 
 -------------------------------------------------------------------------------

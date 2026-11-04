@@ -228,6 +228,14 @@ local function ShowTooltip(owner, it)
     local c = Cfg()
     local mode = it.kind == "rating" and ModeFor(c, it.key) or nil
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    -- a spell: the game's own spell tooltip first (#377, Xaya: "hovering a spell name shows the spell's tooltip"), then our lines.
+    -- GameTooltip:SetSpellByID is the tooltip's own method (not in the generated widget docs; INFERENCE until seen in game), with the
+    -- spell link as the fallback.
+    if it.spellID then
+        local ok = GameTooltip.SetSpellByID and pcall(GameTooltip.SetSpellByID, GameTooltip, it.spellID)
+        if not ok and GameTooltip.SetHyperlink then ok = pcall(GameTooltip.SetHyperlink, GameTooltip, "spell:" .. tostring(it.spellID)) end
+        if ok then GameTooltip:AddLine(" ") end
+    end
     local text = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
     local muted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
     local label = TC("xui-label", "text", { 1, 0.82, 0, 1 })
@@ -267,6 +275,8 @@ local function Btn()
                 ns.CharToolkit_FlipLine(it.key)
                 ns.CharToolkit_Render()
                 if self.IsMouseOver and self:IsMouseOver() then ShowTooltip(self, self.item) end
+            elseif it and it.kind == "action" and it.action then
+                ns.CharToolkit_Action(it.action)
             elseif it and it.kind == "choice" and it.pick then
                 ns.CharToolkit_PickItem(it.pick, it.slot)
             elseif it and it.kind == "choice" and it.slot then
@@ -276,6 +286,7 @@ local function Btn()
         b:SetScript("OnMouseWheel", function(_, d) if panel and panel.Scroll then panel.Scroll(d) end end)
         btnPool[nBtn] = b
     end
+    if b.bg then b.bg:Hide() end   -- (only an action row shows its background)
     b:Show()
     return b
 end
@@ -296,7 +307,9 @@ local function Hdr()
         h.text:SetJustifyH("LEFT")
         h:SetScript("OnClick", function(self)
             local c = Cfg(); if not (c and self.key) then return end
-            c.collapsed[self.key] = (not c.collapsed[self.key]) and true or nil
+            -- (a section folded by default, the Inactive spells, keeps an explicit false once opened)
+            if self.defaultFolded then c.collapsed[self.key] = not self.folded
+            else c.collapsed[self.key] = (not c.collapsed[self.key]) and true or nil end
             ns.CharToolkit_Render()
         end)
         h:SetScript("OnMouseWheel", function(_, d) if panel and panel.Scroll then panel.Scroll(d) end end)
@@ -446,6 +459,16 @@ end
 function ns.CharToolkit_SetCompareSlot(slot)
     local c = Cfg(); if not c then return end
     CM.compareSlot, CM.gearSlot = slot, slot
+    ns.CharToolkit_Render()
+end
+-- the Spells tab's buttons: Configure spell data (turns Spell Math on and reads everything, #377) and Refresh spell data
+function ns.CharToolkit_Action(action)
+    local c = Cfg(); if not c then return end
+    if action == "configureSpells" then c.advanced = true end
+    if action == "configureSpells" or action == "refreshSpells" then
+        ns.spellList, ns.talentList = nil, nil   -- core's cached spellbook and talent lists (Conditions.lua) are read again
+        CM.ClearTalents(); CM.ResetSpellRequests()
+    end
     ns.CharToolkit_Render()
 end
 -- Gear: a clicked equipped item picks its slot; an item compared before that does not fit the slot is let go
@@ -642,8 +665,9 @@ local function RenderSections(c, m, tab, y0)
         if sec.tab == tab and #sec.items > 0 then
             if y > (y0 or 0) then y = y + 6 end
             local folded = c.collapsed[sec.key]
+            if folded == nil then folded = sec.defaultFolded == true end
             local h = Hdr()
-            h.key = sec.key
+            h.key, h.folded, h.defaultFolded = sec.key, folded, sec.defaultFolded == true
             h:ClearAllPoints()
             h:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
             h:SetSize(W, size + 7)
@@ -710,6 +734,22 @@ local function RenderSections(c, m, tab, y0)
                         hb:SetSize(W, size + 1)
                         Rec("hit", 0, y, W, size + 1, it.key)
                         y = y + size + 1
+                    elseif it.kind == "action" then
+                        -- a button (Spells: Configure / Refresh spell data): the theme's button colours, its label centred
+                        local bw = math.min(W, math.floor(W * 0.6))
+                        local bh = size + 10
+                        local b = Btn()
+                        b.item = it
+                        b:ClearAllPoints()
+                        b:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+                        b:SetSize(bw, bh)
+                        if not b.bg then b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(b) end
+                        local bg = TC("xui-button", "bg", { 0.04, 0.04, 0.04, 0.7 })
+                        b.bg:SetColorTexture(bg[1], bg[2], bg[3], bg[4] or 1)
+                        b.bg:Show()
+                        PlaceFS(FS(), 0, y + 5, bw, size, it.label, TC("xui-button", "text", { 1, 0.82, 0, 1 }), "CENTER", false, "action")
+                        Rec("hit", 0, y, bw, bh, it.key)
+                        y = y + bh + 2
                     elseif it.kind == "cmprow" then
                         local lw, cw, x1, x2, x3 = CmpCols()
                         local cs = it.cells or {}
@@ -800,7 +840,7 @@ local function RenderSections(c, m, tab, y0)
                             y = y + math.max(lh, vh) + 1
                         end
                     end
-                    if it.kind ~= "input" and it.kind ~= "icons" and it.kind ~= "colhead" and it.kind ~= "cmprow" then
+                    if it.kind ~= "input" and it.kind ~= "icons" and it.kind ~= "colhead" and it.kind ~= "cmprow" and it.kind ~= "action" then
                         local b = Btn()
                         b.item = it
                         b:ClearAllPoints()

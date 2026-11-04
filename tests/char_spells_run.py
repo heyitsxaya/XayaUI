@@ -100,16 +100,16 @@ check("kind: no words -> nil (All only)", CM.SpellKind(DESC[9004]) == nil)
 c.advanced = false
 c.spellFilter = "all"
 local m = CM.Build(c, "spells")
-check("Spell Math off: one note, no spells", keys(spellSec(m)) == "spellsOff", keys(spellSec(m)))
-check("Spell Math off: All draws only the Spells section", secTitles(m) == "Spells", secTitles(m))
+check("Spell Math off: the Configure spell data button (#377), no spells", keys(spellSec(m)) == "spellsConfigure", keys(spellSec(m)))
+check("Spell Math off: All draws only the Active spells section", secTitles(m) == "Active spells", secTitles(m))
 c.spellFilter = "defense"
 m = CM.Build(c, "spells")
 check("Defense filter: spells only (QoL 0.7.14: the defensive stats are on the Stats tab's map)",
-  secTitles(m) == "Defensive spells", secTitles(m))
+  secTitles(m) == "Active defensive spells", secTitles(m))
 c.spellFilter = "offense"
 m = CM.Build(c, "spells")
 check("Offense filter: spells only (QoL 0.7.14: the offensive stats are on the Stats tab's map)",
-  secTitles(m) == "Offensive spells", secTitles(m))
+  secTitles(m) == "Active offensive spells", secTitles(m))
 
 -- 5. Auto-populate -----------------------------------------------------------------------------------------------------------
 c.advanced = true
@@ -119,7 +119,7 @@ loadAsked = {}
 m = CM.Build(c, "spells")
 local sec = spellSec(m)
 check("All: the hand-added spell first, then every spellbook spell with numbers; Fracture once",
-  keys(sec) == "spell263642,spell9001,spell9002,spell9005,spellsNoNumbers,spellsLoading", keys(sec))
+  keys(sec) == "spellsRefresh,spell263642,spell9001,spell9002,spell9005,spellsNoNumbers,spellsLoading", keys(sec))
 check("  ...spells without numbers are counted, not listed (Spike Guard 20% only, Glide, Shout)", m.byKey.spellsNoNumbers.label == "3 without numbers", m.byKey.spellsNoNumbers.label)
 check("  ...a description the game has not sent is asked for once", #loadAsked == 1 and loadAsked[1] == 9006, table.concat(loadAsked, ","))
 CM.Build(c, "spells")
@@ -139,10 +139,10 @@ c.spellsAll = false
 -- 6. Filters -----------------------------------------------------------------------------------------------------------------
 c.spellFilter = "offense"
 m = CM.Build(c, "spells")
-check("Offense: Fracture, Flame Ring, Fel Breath (both); not Ward", keys(spellSec(m)) == "spell263642,spell9001,spell9002,spellsLoading", keys(spellSec(m)))
+check("Offense: Fracture, Flame Ring, Fel Breath (both); not Ward", keys(spellSec(m)) == "spellsRefresh,spell263642,spell9001,spell9002,spellsLoading", keys(spellSec(m)))
 c.spellFilter = "defense"
 m = CM.Build(c, "spells")
-check("Defense: Fel Breath (both), Ward; Spike Guard counted (no numbers); not Fracture", keys(spellSec(m)) == "spell9002,spell9005,spellsNoNumbers,spellsLoading", keys(spellSec(m)))
+check("Defense: Fel Breath (both), Ward; Spike Guard counted (no numbers); not Fracture", keys(spellSec(m)) == "spellsRefresh,spell9002,spell9005,spellsNoNumbers,spellsLoading", keys(spellSec(m)))
 c.spells[1].kind = "defense"
 m = CM.Build(c, "spells")
 check("a hand-added spell set to Defense shows under Defense", m.byKey.spell263642 ~= nil and tipHas(m.byKey.spell263642, "set by hand"))
@@ -163,7 +163,7 @@ local savedList = ns.BuildSpellList
 ns.BuildSpellList = nil
 c.spells = {}
 m = CM.Build(c, "spells")
-check("no spellbook list and nothing added: one note", keys(spellSec(m)) == "noSpells", keys(spellSec(m)))
+check("no spellbook list and nothing added: the refresh button and one note", keys(spellSec(m)) == "spellsRefresh,noSpells", keys(spellSec(m)))
 ns.BuildSpellList = function() error("boom") end
 local okE = pcall(CM.Build, c, "spells")
 check("a failing spellbook list does not break the tab", okE)
@@ -185,7 +185,7 @@ for _, l in ipairs(GameTooltip.lines or {}) do if tostring(l):find("defensive st
 check("  ...hovering one says what it shows", tipOK)
 def.scripts.OnClick(def)
 d = drawn()
-check("  ...clicking Defense switches the filter and redraws (Defensive spells header)", c.spellFilter == "defense" and texts(d, "header")[1] == "- Defensive spells",
+check("  ...clicking Defense switches the filter and redraws (Active defensive spells header)", c.spellFilter == "defense" and texts(d, "header")[1] == "- Active defensive spells",
   tostring(c.spellFilter) .. " " .. tostring(texts(d, "header")[1]))
 d = render("stats")
 local anyShown = false
@@ -270,6 +270,73 @@ c.spells = {}
 sp.add.set(nil, "Fracture")
 check("adding a spell by hand on an Intellect spec starts it on spell power", c.spells[1] and c.spells[1].base == "sp", c.spells[1] and c.spells[1].base)
 C_SpecializationInfo.GetSpecializationInfo = savedSpec
+
+-- 12. #377: Configure / Refresh spell data, Active / Inactive, talent modifiers, the game's spell tooltip (QoL 0.7.14) -----------
+-- stand-in talent tree (made-up IDs 9101-9103): a picked passive talent whose text names Fracture and Flame Ring, an unpicked castable
+-- talent (Inactive), and an unpicked passive one (not listed)
+TALENTS = { [9101] = { "Burning Fracture", "Fracture and Flame Ring deal 10% more damage.", true, true },
+            [9102] = { "Fel Lance", "Hurl a lance for 22,000 Fire damage.", false, false },
+            [9103] = { "Thick Hide", "Increases your Armor by 5%.", false, true } }
+for id, t in pairs(TALENTS) do DESC[id] = t[2] end
+local baseName = C_Spell.GetSpellName
+C_Spell.GetSpellName = function(id) if TALENTS[id] then return TALENTS[id][1] end; return baseName(id) end
+C_Spell.IsSpellPassive = function(id) return TALENTS[id] ~= nil and TALENTS[id][4] end
+C_ClassTalents = { GetActiveConfigID = function() return 1 end }
+C_Traits = {
+  GetConfigInfo = function() return { treeIDs = { 1 } } end,
+  GetTreeNodes = function() return { 9101, 9102, 9103 } end,
+  GetNodeInfo = function(_, nodeID) return { isVisible = true, entryIDs = { nodeID + 50000 },
+    activeEntry = TALENTS[nodeID][3] and { entryID = nodeID + 50000, rank = 1 } or nil } end,
+  GetEntryInfo = function(_, entryID) return { definitionID = entryID + 1000 } end,
+  GetDefinitionInfo = function(defID) return { spellID = defID - 51000 } end,
+}
+C_Spell.IsSpellUsable = function(id) if id == 9001 then return false, false elseif id == 9002 then return false, true end; return true, false end
+c.advanced, c.spellFilter, c.spells = true, "all", { { id = 263642, base = "ap" } }
+CM.ClearTalents()
+m = CM.Build(c, "spells")
+local function pr(it, label) for _, pp in ipairs(it and it.pairs or {}) do if pp.label == label then return pp.value end end end
+check("talent modifiers: Fracture lists the picked talent whose text names it (Burning Fracture)", pr(m.byKey.spell263642, "Changed by talents") == "Burning Fracture",
+  pr(m.byKey.spell263642, "Changed by talents"))
+check("  ...Flame Ring too; Ward has none", pr(m.byKey.spell9001, "Changed by talents") == "Burning Fracture" and pr(m.byKey.spell9005, "Changed by talents") == nil)
+check("usable now: the game says no for Flame Ring (form / requirement) -> said; Fel Breath only lacks power -> nothing said",
+  (pr(m.byKey.spell9001, "Usable now") or ""):find("^no") ~= nil and pr(m.byKey.spell9002, "Usable now") == nil)
+local inSec
+for _, s2 in ipairs(m.sections) do if s2.key == "spellsInactive" then inSec = s2 end end
+check("Inactive: the castable talent you have not picked (Fel Lance), measured like the rest; the passive one and the picked one are not listed",
+  inSec and keys(inSec) == "spell9102" and pr(m.byKey.spell9102, "Not picked") ~= nil and tostring(m.byKey.spell9102.pairs[1].value):find("of attack power", 1, true) ~= nil, keys(inSec))
+check("  ...its section is titled and folded by default", inSec and inSec.title == "Inactive: talents not picked" and inSec.defaultFolded == true)
+c.collapsed = {}
+d = render("spells")
+local hdrs = texts(d, "header")
+check("  ...drawn folded (+) with nothing under it", hdrs[#hdrs] == "+ Inactive: talents not picked", hdrs[#hdrs])
+local ih
+for _, h in ipairs(d.headers) do if h.key == "spellsInactive" and h.shown then ih = h end end
+if ih then ih.scripts.OnClick(ih) end
+d = drawn(); hdrs = texts(d, "header")
+check("  ...a click opens it and remembers that", c.collapsed.spellsInactive == false and hdrs[#hdrs] == "- Inactive: talents not picked", tostring(c.collapsed.spellsInactive))
+-- the game's spell tooltip on hover (#377)
+local spellTip
+GameTooltip.SetSpellByID = function(self, id) spellTip = id end
+local fb
+for _, b in ipairs(d.buttons) do if b.shown and b.item and b.item.key == "spell263642" then fb = b end end
+if fb then fb.scripts.OnEnter(fb) end
+check("hovering a spell shows the game's own spell tooltip (SetSpellByID 263642), then the panel's lines", spellTip == 263642, tostring(spellTip))
+-- the buttons
+local function actionBtn(dd, key) for _, b in ipairs(dd.buttons) do if b.shown and b.item and b.item.key == key then return b end end end
+local rbt = actionBtn(d, "spellsRefresh")
+check("Refresh spell data: a button at the top of the list", rbt ~= nil and recs(d, "action")[1] and recs(d, "action")[1].text == "Refresh spell data")
+ns.spellList, ns.talentList = "cached", "cached"
+if rbt then rbt.scripts.OnClick(rbt) end
+check("  ...a click reads the spellbook and talents again", ns.spellList == nil and ns.talentList == nil)
+c.advanced = false
+d = render("spells")
+local cbt = actionBtn(d, "spellsConfigure")
+check("Configure spell data (#377, her label): shown while Spell Math is off", cbt ~= nil and recs(d, "action")[1] and recs(d, "action")[1].text == "Configure spell data")
+if cbt then cbt.scripts.OnClick(cbt) end
+d = drawn()
+check("  ...a click turns Spell Math on and lists the spells", c.advanced == true and drawn().model.byKey.spell263642 ~= nil)
+local okL, whyL = layoutOK(d)
+check("layout with the button and both sections: inside the width, no overlaps", okL, whyL)
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
    .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
