@@ -362,5 +362,45 @@ NS._WatchCharges()
 ''')
 check("a Cooldown (any spell) row's charges are read with the rule's own spell", L.eval("WATCHED[22001]") is True)
 
+# ---------------------------------------------------------------- built into aura tracking (core 0.6.20): tier-set auras and the glow line
+# 1241227 "Arcanoweave Audacity": in XayaUI/SetBonusAuras.lua, from set 1958's 2-piece bonus, any specialization (game data)
+check("SetBonusAuras.lua is loaded and lists 1241227 (set 1958, 2 pieces)", L.eval("NS.SET_BONUS_AURAS and NS.SET_BONUS_AURAS[1241227] and NS.SET_BONUS_AURAS[1241227].set == 1958 and NS.SET_BONUS_AURAS[1241227].pieces == 2") is True)
+L.execute(r'''
+COMBAT = true; NIL_IN_COMBAT = {}
+EQUIP = { [1] = 701, [3] = 703 }; ITEMSET = { [701] = 1958, [703] = 4242 }; ITEM_LOADED = { [701] = true, [703] = true }
+FIRE("PLAYER_EQUIPMENT_CHANGED")
+''')
+p, s2 = L.eval("PRES(1241227)")
+check("in combat, 1 piece of its set worn: the set-only aura reads MISSING (not unknown), with the reason", p is False and "set bonus" in str(s2), (p, s2))
+L.execute("EQUIP[3] = 702; ITEMSET[702] = 1958; ITEM_LOADED[702] = true; FIRE('PLAYER_EQUIPMENT_CHANGED')")
+p, s2 = L.eval("PRES(1241227)")
+check("2 pieces worn: the bonus is active, so XayaUI reads the aura as usual (hidden in combat: unknown)", p is None, (p, s2))
+p, s2 = L.eval("PRES(1241227, { 777777 })")
+check("an extra aura ID that is not set-only keeps the normal reading", p is not False, (p, s2))
+L.execute("COMBAT = false; EQUIP = {}; FIRE('PLAYER_EQUIPMENT_CHANGED')")
+note = str(L.eval("NS.TriggerCombatNote({}, 'x', { type = 'buffAura', spellID = 1241227, state = 'yes' })"))
+check("the aura trigger's In combat line says it comes from a set bonus", "set bonus" in note and "set 1958" in note, note)
+# the glow line: Rime 59052 (Howling Blast). (An earlier section made 59052 "never hidden": back to hidden in combat, as in the game.)
+L.execute("C_Secrets.GetSpellAuraSecrecy = function() return 2 end; NS.ClearSecrecyCache()")
+L.execute("CueRulesDB.procGlowSeen = { build = NS.PROC_GLOW_BUILD, auras = { [59052] = { yes = 1, no = 0 } } }")
+note = str(L.eval("NS.TriggerCombatNote({}, 'x', { type = 'buffAura', spellID = 59052, state = 'yes' })"))
+check("glow not yet confirmed: the line says it will stand in after 2 agreeing sightings (1 so far)", "will stand in" in note and "1 so far" in note, note)
+L.execute("CueRulesDB.procGlowSeen.auras[59052].yes = 2")
+note = str(L.eval("NS.TriggerCombatNote({}, 'x', { type = 'buffAura', spellID = 59052, state = 'yes' })"))
+check("glow confirmed: the line says the aura is read from its proc glow in combat", "present from its proc glow" in note, note)
+
+# ---------------------------------------------------------------- Advanced Debugging record (core 0.6.20): aura answers as they change
+L.execute(r'''
+COMBAT = false; CueRulesDB.debugRecord = nil
+CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.advancedDebug = true
+AURAS[8801] = nil; BP2(8801); BP2(8801)
+AURAS[8801] = { spellId = 8801, auraInstanceID = 881, applications = 0, expirationTime = 0, duration = 0 }; BP2(8801); BP2(8801)
+function NREC(pat) local n = 0; for _, l in ipairs((CueRulesDB.debugRecord or { lines = {} }).lines) do if l:find(pat, 1, true) then n = n + 1 end end; return n end
+''')
+check("Advanced Debugging: an aura's answer is recorded when it changes (missing, then present), not on every read",
+      L.eval("NREC('(8801): missing')") == 1 and L.eval("NREC('(8801): present')") == 1, (L.eval("NREC('(8801)')"),))
+L.execute("CueRulesDB.ui.advancedDebug = false; AURAS[8801] = nil; BP2(8801)")
+check("Advanced Debugging off: nothing more is recorded", L.eval("NREC('(8801)')") == 2)
+
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)

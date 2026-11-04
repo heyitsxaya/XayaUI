@@ -354,7 +354,9 @@ local function IndentReport()
         local txt = fs and fs.IsShown and fs:IsShown() and fs.GetText and fs:GetText() or nil
         if type(txt) == "string" and not C.IsSecret(txt) and txt ~= "" then
             local pre = txt:sub(1, 40):gsub("|", "||"):gsub("[%c]", "?")
-            ns.Print(("  line %d: box left %s px from the window edge, text starts \"%s\""):format(i, (cl and left(fs)) and f(left(fs) - cl) or "?", pre))
+            -- the start of a chat line can name another player: shown, never recorded or put in a report (Core.lua ns.PrintPrivate)
+            local say = ns.PrintPrivate or ns.Print
+            say(("  line %d: box left %s px from the window edge, text starts \"%s\""):format(i, (cl and left(fs)) and f(left(fs) - cl) or "?", pre))
             shown = shown + 1
             if shown >= 4 then break end
         end
