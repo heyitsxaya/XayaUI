@@ -4,7 +4,10 @@
 -- /xui chat history. The lines are kept in memory only (never saved to disk). A message the game marks secret is listed as
 -- "[protected message]" because its text cannot be read. Combat log lines are not chat messages and are not recorded.
 -- The list is a SNAPSHOT: it stays still while you select text, and "Refresh" (or turning on Live) brings in newer lines.
--- The window can be moved and resized; its size is remembered. Own code. UNTESTED in game.
+-- The window can be moved and resized; its size is remembered.
+-- Console tab (0.6.5): lines printed with print() (XayaUI's /xui output and other addons' messages) and the game's system messages
+-- (CHAT_MSG_SYSTEM) are kept in a list of their own and shown only under "Console", so they do not crowd the chat tabs. Lines an addon
+-- writes straight into a chat window without print() (DEFAULT_CHAT_FRAME:AddMessage) are not seen. Own code. UNTESTED in game.
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
@@ -17,10 +20,11 @@ local TAG = { CHAT_MSG_SAY = "Say", CHAT_MSG_YELL = "Yell", CHAT_MSG_EMOTE = "Em
     CHAT_MSG_INSTANCE_CHAT = "Instance", CHAT_MSG_INSTANCE_CHAT_LEADER = "Instance", CHAT_MSG_GUILD = "Guild", CHAT_MSG_OFFICER = "Officer",
     CHAT_MSG_WHISPER = "From", CHAT_MSG_WHISPER_INFORM = "To", CHAT_MSG_BN_WHISPER = "From", CHAT_MSG_BN_WHISPER_INFORM = "To", CHAT_MSG_CHANNEL = "Channel" }
 
-local hist = {}
-local tabKey, query = "ALL", ""          -- tabKey: "ALL" or a chat window number
-local shownCount = 0                      -- how many entries the snapshot in the window already holds
+local hist, con = {}, {}                  -- chat messages; console lines (print output and system messages)
+local tabKey, query = "ALL", ""          -- tabKey: "ALL", "CONSOLE" or a chat window number
+local shown = { [hist] = 0, [con] = 0 }  -- per list: how many entries the snapshot in the window already holds
 local frame
+local function List() return tabKey == "CONSOLE" and con or hist end
 
 -- text without colors, textures, links and name codes (what you would want to paste). Named colors (|cnNAME:) and the colored
 -- |K...|k name codes are part of the newer game's text; an unremoved color code would tint everything after it.
@@ -66,8 +70,8 @@ C.History_Windows = Windows
 
 function C.History_Lines()
     local out, q = {}, query:lower()
-    for _, e in ipairs(hist) do
-        if tabKey == "ALL" or (e.frames and e.frames[tabKey]) then
+    for _, e in ipairs(List()) do
+        if tabKey == "ALL" or tabKey == "CONSOLE" or (e.frames and e.frames[tabKey]) then
             local body = e.text and C.Plain(e.text) or "[protected message]"
             local line = ("[%s] %s%s%s"):format(date("%H:%M:%S", e.t), e.tag and (e.tag .. " ") or "", e.who and (e.who .. ": ") or "", body)
             if q == "" or line:lower():find(q, 1, true) then out[#out + 1] = line end
@@ -76,8 +80,21 @@ function C.History_Lines()
     return out
 end
 
-local function NewCount() return #hist - shownCount end
+local function NewCount() local l = List(); return #l - shown[l] end
 local UpdateStatus
+
+-- one entry into a list, keeping it at the size limit; the open window refreshes (Live) or counts it (snapshot) when it shows that list
+local function Keep(list, e)
+    local s = S()
+    list[#list + 1] = e
+    local cap = math.max(20, math.min(2000, tonumber(s and s.histSize) or 300))
+    local drop = 0
+    while #list > cap do table.remove(list, 1); drop = drop + 1 end
+    shown[list] = math.max(0, shown[list] - drop)
+    if frame and frame:IsShown() and list == List() then
+        if s and s.histLive and not (frame.edit and frame.edit:HasFocus()) then C.History_Update() else UpdateStatus() end
+    end
+end
 
 C.OnMessage(function(event, text, author, _, _, _, _, _, _, channelBase)
     local s = S()
@@ -95,15 +112,32 @@ C.OnMessage(function(event, text, author, _, _, _, _, _, _, channelBase)
     end
     if type(author) == "string" and not issecret(author) then e.who = (author:gsub("%-.+$", "")) end
     if type(text) == "string" and not issecret(text) then e.text = text else C.stats.protected = C.stats.protected + 1 end
-    hist[#hist + 1] = e
-    local cap = math.max(20, math.min(2000, tonumber(s.histSize) or 300))
-    local drop = 0
-    while #hist > cap do table.remove(hist, 1); drop = drop + 1 end
-    shownCount = math.max(0, shownCount - drop)
-    if frame and frame:IsShown() then
-        if s.histLive and not (frame.edit and frame.edit:HasFocus()) then C.History_Update() else UpdateStatus() end
-    end
+    Keep(hist, e)
 end)
+
+-- console lines ---------------------------------------------------------------------------------------------------------------
+local function ConsoleOn() local s = S(); return s and s.histOn and s.histConsole ~= false and C.On() end
+function C.History_Console(tag, ...)            -- tag: "Print" or "System"; the rest are the printed values
+    if not ConsoleOn() then return end
+    local parts, protected = {}, false
+    for i = 1, select("#", ...) do
+        local v = select(i, ...)
+        if issecret(v) then protected = true; break end
+        local ok, str = pcall(tostring, v)
+        parts[#parts + 1] = ok and str or "?"
+    end
+    local e = { t = time(), tag = (tag == "System") and "System" or nil, console = true }
+    if protected then C.stats.protected = C.stats.protected + 1 else e.text = table.concat(parts, " ") end
+    Keep(con, e)
+end
+-- print(): a post-hook, so the line is shown by the game first and our copy can never stop it. Only calls that look up the global
+-- print when they run are seen (XayaUI's ns.Print does; an addon that saved print in a local before this loaded is not).
+if type(_G.print) == "function" then
+    pcall(hooksecurefunc, "print", function(...) pcall(C.History_Console, "Print", ...) end)
+end
+local sys = CreateFrame("Frame")
+pcall(sys.RegisterEvent, sys, "CHAT_MSG_SYSTEM")
+sys:SetScript("OnEvent", function(_, _, text) pcall(C.History_Console, "System", text) end)
 
 -------------------------------------------------------------------------------
 -- The window
@@ -153,6 +187,8 @@ local function RebuildTabButtons()
     for _, b in ipairs(frame.kb) do b:Hide() end
     local list = { { id = "ALL", name = "All" } }
     for _, w in ipairs(Windows()) do list[#list + 1] = w end
+    local s = S()
+    if s and s.histConsole ~= false then list[#list + 1] = { id = "CONSOLE", name = "Console" } end
     for i, w in ipairs(list) do
         local b = frame.kb[i]
         if not b then
@@ -175,7 +211,8 @@ end
 UpdateStatus = function()
     if not frame then return end
     local n = NewCount()
-    if n > 0 then frame.status:SetText(n .. " newer message" .. (n == 1 and "" or "s") .. ". Click Refresh.")
+    local what = (tabKey == "CONSOLE") and " console line" or " newer message"
+    if n > 0 then frame.status:SetText(n .. what .. (n == 1 and "" or "s") .. ". Click Refresh.")
     else frame.status:SetText("Up to date.") end
     frame.refresh.bg:SetColorTexture(n > 0 and 0.2 or 1, n > 0 and 0.45 or 1, n > 0 and 0.8 or 1, n > 0 and 0.85 or 0.08)
 end
@@ -250,7 +287,7 @@ local function Build()
     note:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 12, FOOT_NOTE); note:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -24, FOOT_NOTE)   -- stops short of the resize grip
     note:SetHeight(NOTE_H); note:SetJustifyH("LEFT"); note:SetJustifyV("BOTTOM"); note:SetWordWrap(true)
     note:SetTextColor(0.55, 0.55, 0.55, 1)
-    note:SetText("Select text, Ctrl+C. Kept in memory only. Combat log and protected lines are not recorded.")
+    note:SetText("Select text, Ctrl+C. Kept in memory only. Combat log and protected lines are not recorded. Console: printed lines and system messages.")
     frame.note = note
 
     -- resize grip
@@ -281,7 +318,7 @@ function C.History_Update()
     frame.search.hint:SetShown((frame.search:GetText() or "") == "")
     frame.text = table.concat(C.History_Lines(), "\n")
     frame.edit:SetText(frame.text)
-    shownCount = #hist
+    shown[List()] = #List()
     UpdateStatus()
     C_Timer.After(0, function() if frame.scroll.GetVerticalScrollRange then frame.scroll:SetVerticalScroll(frame.scroll:GetVerticalScrollRange() or 0) end end)
 end
@@ -291,6 +328,7 @@ function C.History_Toggle()
     if frame:IsShown() then frame:Hide() else frame:Show() end
 end
 function C.History_Count() return #hist end
+function C.History_ConsoleCount() return #con end
 function C.History_Select(key) tabKey = key or "ALL" end   -- a Chat Bar block can open the pane on a given tab
 
 -- the small button in the pane's corner
