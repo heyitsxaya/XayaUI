@@ -54,8 +54,8 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 ## 3. Addons (versions from the .toc files, 2026-11-04 19:38 on branch `claude/cool-ramanujan-ewx8e5`; `main` gets them once the full suite passes, see section 5)
 | Folder | Version | Holds |
 |---|---|---|
-| `XayaUI` | 0.6.30 | core: rules, cues, conditions (incl. load by zone / instance / difficulty / size / encounter / item), actions, combat aura engine (`Combat/`), themes, mover view, console and debug record, minimap and ESC-menu buttons |
-| `XayaUI_Options` | 0.6.28 | the settings window (loads on first open; Ace3 libs) |
+| `XayaUI` | 0.6.31 | core: rules, cues, conditions (incl. load by zone / instance / difficulty / size / encounter / item), actions, combat aura engine (`Combat/`), themes, mover view, console and debug record, minimap and ESC-menu buttons |
+| `XayaUI_Options` | 0.6.29 | the settings window (loads on first open; Ace3 libs) |
 | `XayaUI_Chat` | 0.6.10 | Chat Panel, Chat Bar, filters, history, tab sounds and whisper sound overrides, privacy cover |
 | `XayaUI_QoL` | 0.7.2 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit (phase 2: one model, sheet, What If, slot overlays) |
 | `XayaUI_Bonus` | 0.6.7 | tooltips, Notepad, data panels |
@@ -85,16 +85,14 @@ Backlog in Xaya's priority order (work the first one not blocked; see the rule i
   charge-watcher design first), track auto / charges / cooldown, track if not known. Not blocked.
 - C. **Load conditions:** done on rules (core 0.6.28). Open: the same lists on a group's Load tab; raid role (MT / MA) needs an
   in-game probe of `GetPartyAssignment` (not in the API reference).
-- New 2026-11-04 evening (Xaya's messages, in arrival order):
-  - **Mover view: anchor / snap to other UI frames** (task 27). Groups already have "Relative to" (screen, player, target, focus,
-    minimap, chat, any frame by name) on the Group tab, and displays a Snap Target menu (preset Blizzard frames, 12 sides). Missing:
-    anchoring from the mover's X / Y popup, and picking any frame on screen. Plan: "Pick a frame" mode reading `GetMouseFoci()`
-    (globals.md:214, no flags) and walking up to the first named parent; confirm with a modifier key (no click: a click would hit
-    the frame); keep the group where it is by measuring before / after; a "snap flush" button. `EnumerateFrames` is not in the
-    reference.
-  - **Search inside a rule's settings** with smart keywords and regular expressions (task 28). Placement depends on the right-hand
-    panel decision (task 23). Lua has patterns, not full regex: decide a supported subset and say so. `SX.Norm` / `SX.Dist`
-    (Options.lua) already give typo-tolerant word matching.
+- Done 2026-11-04 evening on the branch, after this list was first written:
+  - **anchor to any frame** (core 0.6.31): group X / Y popup "Anchor to a frame on screen..." (picker: point, press Shift), Snap
+    flush, Anchor to the screen; displays: Snap Target > Pick a frame on screen. QA B69.
+  - **search in a rule's settings** (Options 0.6.29, `RuleSearch.lua`): above the rule's tabs (move it into the right-hand panel
+    if task 23 is decided that way). QA B70.
+- B4 (exact spell ID) needs a design first: the cooldown memo key (spellID, maxCharges), the charge watcher and the cast tracker
+  all key by the replacement spell. B6 (track if not known) would read an unknown spell as "ready" (the game reports it inactive):
+  ask Xaya whether she wants that at all before building it.
 - D. **#372 group tabs** (Config tab; Group tab gets the reference screens' container properties and a background; "Group Display"
   rename reverted). BLOCKED on #372's open questions.
 - E. **#351:** one margin / gutter everywhere (large, not blocked).
