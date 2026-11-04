@@ -1,15 +1,17 @@
 -------------------------------------------------------------------------------
 -- CharacterToolkit.lua : QoL > Character Toolkit (XayaUI QoL 0.7.0). The panel docked to the character window, its compact stat sheet,
--- the What If pane, the item level / socket / enchant overlays on the character window's slots, extra lines on the character
+-- (the Stat Calculator: a stat map, a gear comparison, spells), the item level / socket / enchant overlays on the character window's slots, extra lines on the character
 -- window's own stat tooltips, and the settings page. OFF by default; while off nothing is created, registered or read.
 -- Saved settings: CueRulesDB.characterToolkit. NOT RUN IN GAME when written (2026-11-04): every number needs an in-game check.
 --
 -- Every number comes from the one model in CharacterModel.lua (the game's own reads; what the game does not give is marked, never
 -- guessed; secret values show as "hidden in combat"). This file only draws it:
---   Tabs: Stats | Gear | What If | Spells (the Sheet tab was removed in QoL 0.7.13: the character window itself is restyled instead,
---   QoL Character Reskin). The Spells tab lists the
---   spells added by hand and every spell of the spellbook with numbers in its description, under All / Offense / Defense filter
---   buttons; Offense and Defense also draw the stat sections that were the Offense and Defense tabs before QoL 0.7.7.
+--   Tabs: Stats | Gear | Spells (the Sheet tab was removed in QoL 0.7.13: the character window itself is restyled instead,
+--   QoL Character Reskin; the What If tab in 0.7.14: its numbers are the stat map's boxes, its item compare the Gear comparison).
+--   Stats is the stat map: one card per stat with a box holding the number itself and what it feeds, "now -> with your number".
+--   Gear: the equipped items as icons; click one to list what you own for that slot, pick one, and see the two side by side and
+--   everything the change does through the stat map. The Spells tab lists the spells added by hand and every spell of the
+--   spellbook with numbers in its description, under All / Offense / Defense filter buttons (spells only since 0.7.14).
 --   Each tab is made of sections with a header (click a header to fold it). Each stat line is label and value, with its detail
 --   pairs under it; hovering a line shows where the number comes from (the conversion hover: rating through the game's converter,
 --   base and buffs, linked conversions such as crit to parry where the game reports them, thresholds).
@@ -54,7 +56,7 @@ ns.CHARTOOLKIT_DEFAULTS = {
     enchantSlots = {},     -- slot IDs the player ticked to flag when they have no enchant; empty = this expansion's slots (CM.EnchantSlots)
     -- enchantSlotsSet: true once the player has changed a tick (then enchantSlots is used even when empty)
 }
-local OLD_TABS = { overview = "stats", ratings = "stats", sheet = "stats" }   -- (the Sheet tab: removed in QoL 0.7.13)
+local OLD_TABS = { overview = "stats", ratings = "stats", sheet = "stats", whatif = "stats" }   -- (Sheet: removed in QoL 0.7.13; What If: 0.7.14)
 
 local function CopyVal(v)
     if type(v) ~= "table" then return v end
@@ -265,6 +267,8 @@ local function Btn()
                 ns.CharToolkit_FlipLine(it.key)
                 ns.CharToolkit_Render()
                 if self.IsMouseOver and self:IsMouseOver() then ShowTooltip(self, self.item) end
+            elseif it and it.kind == "choice" and it.pick then
+                ns.CharToolkit_PickItem(it.pick, it.slot)
             elseif it and it.kind == "choice" and it.slot then
                 ns.CharToolkit_SetCompareSlot(it.slot)
             end
@@ -352,8 +356,24 @@ local function IconBtn()
             GameTooltip:Show()
         end)
         b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        -- a plain click picks the slot for the comparison (QoL 0.7.14; Xaya: "click-select gear options"); shift or ctrl keeps the
+        -- game's own modified click (link in chat, dressing room). IsShiftKeyDown / IsControlKeyDown: globals.md:394, 340.
         b:SetScript("OnClick", function(self)
-            if type(self.link) == "string" and type(HandleModifiedItemClick) == "function" then pcall(HandleModifiedItemClick, self.link) end
+            local mod = (IsShiftKeyDown and IsShiftKeyDown()) or (IsControlKeyDown and IsControlKeyDown())
+            if mod then
+                if type(self.link) == "string" and type(HandleModifiedItemClick) == "function" then pcall(HandleModifiedItemClick, self.link) end
+            elseif self.slot then
+                ns.CharToolkit_SelectGearSlot(self.slot)
+            end
+        end)
+        -- an item dropped on an equipped icon is compared with that slot (plan item 6: "drag and drop")
+        b:SetScript("OnReceiveDrag", function(self)
+            local ok, kind, id, link = pcall(GetCursorInfo)
+            if not ok or kind ~= "item" or not self.slot then return end
+            local text = (type(link) == "string" and not isSecret(link)) and link or ((type(id) == "number" and not isSecret(id)) and tostring(id) or nil)
+            if not text then return end
+            if ClearCursor then pcall(ClearCursor) end
+            ns.CharToolkit_PickItem(text, self.slot)
         end)
         b:SetScript("OnMouseWheel", function(_, d) if panel and panel.Scroll then panel.Scroll(d) end end)
         iconBtns[nIcon] = b
@@ -398,32 +418,14 @@ local function Box(key)
     return b
 end
 
--- What If input: a stat key, "all", or "item" (an item link or ID)
--- Xaya 2026-11-04: "adding the item does not auto-fill in information". A compared item fills the What If boxes (each rating and
--- the primary stat) with what it changes against the item it replaces; a new item, another slot choice or an empty box takes back
--- only the amounts the previous item filled in and the user has not changed since.
-local function AutoFill(c)
-    local prev = CM.compareFill
-    if prev then
-        for k, v in pairs(prev.ratings or {}) do if c.whatIfStats[k] == v then c.whatIfStats[k] = nil end end
-        if prev.primary and prev.primary ~= 0 and c.whatIfPrimary == prev.primary then c.whatIfPrimary = nil end
-        CM.compareFill = nil
-    end
-    local p = CM.PrimaryStatIndex and CM.PrimaryStatIndex() or nil
-    local d = (CM.compareText or "") ~= "" and CM.CompareDeltas and CM.CompareDeltas(CM.compareText, p) or nil
-    if not d then return end
-    for k, v in pairs(d.ratings) do c.whatIfStats[k] = math.max(-100000, math.min(100000, math.floor(v + 0.5))) end
-    if d.primary ~= 0 then c.whatIfPrimary = math.floor(d.primary + 0.5) end
-    CM.compareFill = { ratings = {}, primary = c.whatIfPrimary }
-    for k in pairs(d.ratings) do CM.compareFill.ratings[k] = c.whatIfStats[k] end
-end
+-- Panel input: a stat map box ("sv:" + stat key), "all" (every rating), a What If stat key, "primary", or "item" (the Gear comparison's
+-- item: a link or an ID). (QoL 0.7.14: a compared item no longer fills the map's boxes; the Gear tab shows what it changes itself.)
 function ns.CharToolkit_SetInput(key, text)
     local c = Cfg(); if not c then return end
     if key == "item" then
         local t = tostring(text or "")
         CM.compareText = (t:gsub("^%s+", ""):gsub("%s+$", ""))
-        CM.compareSlot = nil   -- a new item: the lower item level again until a slot is chosen
-        AutoFill(c)
+        CM.compareSlot = CM.gearSlot   -- the slot you picked, when the item fits it; else the lower item level of two
     elseif key == "primary" then
         local n = math.max(-100000, math.min(100000, math.floor(tonumber(text) or 0)))
         c.whatIfPrimary = (n ~= 0) and n or nil
@@ -440,11 +442,27 @@ function ns.CharToolkit_SetInput(key, text)
     end
     ns.CharToolkit_Render()
 end
--- the equipped item to compare against when two could be replaced (What If > Compare an item, "Replace instead")
+-- the equipped item to compare against when two could be replaced (Gear > "Replace instead")
 function ns.CharToolkit_SetCompareSlot(slot)
     local c = Cfg(); if not c then return end
-    CM.compareSlot = slot
-    AutoFill(c)
+    CM.compareSlot, CM.gearSlot = slot, slot
+    ns.CharToolkit_Render()
+end
+-- Gear: a clicked equipped item picks its slot; an item compared before that does not fit the slot is let go
+function ns.CharToolkit_SelectGearSlot(slot)
+    local c = Cfg(); if not c then return end
+    CM.gearSlot, CM.compareSlot = slot, slot
+    local link = (CM.compareText or "") ~= "" and CM.ResolveItemLink(CM.compareText) or nil
+    if link and not CM.FitsSlot(link, slot) then CM.compareText = nil end
+    if boxes.item and CM.compareText == nil then boxes.item:SetText("") end
+    ns.CharToolkit_Render()
+end
+-- Gear: compare this item (a link or an ID) with the given slot (a bag item clicked in the list, or an item dropped on an icon)
+function ns.CharToolkit_PickItem(text, slot)
+    local c = Cfg(); if not c then return end
+    CM.compareText = tostring(text or "")
+    if slot then CM.gearSlot, CM.compareSlot = slot, slot end
+    if boxes.item then boxes.item:SetText(CM.compareText) end
     ns.CharToolkit_Render()
 end
 
@@ -533,11 +551,11 @@ local function Build()
         scroll:SetVerticalScroll(v)
     end
     scroll:SetScript("OnMouseWheel", function(_, d) panel.Scroll(d) end)
-    -- a shift-clicked item goes into the What If item box and is compared at once (post-hook on the game's own link insert, where
+    -- a shift-clicked item goes into the Gear tab's item box and is compared at once (post-hook on the game's own link insert, where
     -- Compat.lua says it lives: ChatFrameUtil.InsertLink in 12.x, and the old global ChatEdit_InsertLink, which is a separate copy
     -- that other addons' bags still call; Compat is the only file that may name it). Xaya 2026-11-04: "I can't drop or shift+click
     -- an item into the item comparison". The box takes the link while it has focus, or while the What If tab is shown and no chat
-    -- box is open to take it. INFERENCE: not run in game yet.
+    -- box is open to take it (the Gear tab since QoL 0.7.14; What If before). INFERENCE: not run in game yet.
     local lastLink, lastAt
     local function InsertLink(link)
         if type(link) ~= "string" or isSecret(link) or not link:find("|Hitem:", 1, true) then return end
@@ -546,7 +564,7 @@ local function Build()
         local c = Cfg()
         local focused = eb.HasFocus and eb:HasFocus()
         if not focused then
-            if not (c and c.tab == "whatif") then return end
+            if not (c and c.tab == "gear") then return end
             local active = ns.Compat and ns.Compat.ActiveChatEditBox and ns.Compat.ActiveChatEditBox()
             if active and active.IsShown and active:IsShown() then return end   -- an open chat box takes the link, as usual
         end
@@ -603,6 +621,14 @@ local function MapCols()
     return lw, bw, bx, vx, px - GUT - vx, px, pw
 end
 
+-- the Gear comparison's columns (QoL 0.7.14): name | equipped | this item | change
+local function CmpCols()
+    local lw = math.floor(W * 0.30)
+    local cw = math.floor((W - lw - 3 * 4) / 3)
+    local x1 = lw + 4
+    return lw, cw, x1, x1 + cw + 4, x1 + 2 * (cw + 4)
+end
+
 -- detail tabs: sections with headers; each line is label | value, its pairs under it
 local function RenderSections(c, m, tab, y0)
     local size = c.fontSize
@@ -649,6 +675,18 @@ local function RenderSections(c, m, tab, y0)
                             b.tex:SetTexture(ic.tex or QUESTION_MARK)
                             local bc = ic.color or cLine
                             b.border:SetColorTexture(bc[1], bc[2], bc[3], 1)
+                            -- the slot being compared: a theme-coloured mark under its item level (the quality border stays)
+                            if ic.selected then
+                                local acc = TC("xui-tab-selected", "bg", { 0.55, 0.3, 0.8, 1 })
+                                if not b.sel then b.sel = b:CreateTexture(nil, "OVERLAY") end
+                                b.sel:ClearAllPoints()
+                                b.sel:SetPoint("TOPLEFT", b, "BOTTOMLEFT", -2, -(size + 2))
+                                b.sel:SetPoint("TOPRIGHT", b, "BOTTOMRIGHT", 2, -(size + 2))
+                                b.sel:SetHeight(2)
+                                b.sel:SetColorTexture(acc[1], acc[2], acc[3], 1)
+                                b.sel:Show()
+                            elseif b.sel then b.sel:Hide() end
+                            b.selected = ic.selected
                             Rec("icon", x, yy, ICON_SIZE, ICON_SIZE, ic.label)
                             PlaceFS(FS(), cx, yy + ICON_SIZE + 1, math.floor(cw), size - 1, ic.ilvl and tostring(math.floor(ic.ilvl + 0.5)) or "",
                                 ic.color or cText, "CENTER", false, "iconText")
@@ -658,6 +696,27 @@ local function RenderSections(c, m, tab, y0)
                         rowH = PlaceFS(FS(), 0, y, W, size, it.label, cText, "LEFT", false, "label")
                         y = y + rowH + 1
                         rowH = PlaceFS(FS(), 6, y, W - 6, size - 1, v, ToneColor(tone, cMuted), "LEFT", true, "wide")
+                        y = y + rowH + 1
+                    elseif it.kind == "colhead" and it.cmp then
+                        local lw, cw, x1, x2, x3 = CmpCols()
+                        local cs = it.cols or {}
+                        PlaceFS(FS(), x1, y, cw, size - 1, cs[1] or "", cMuted, "RIGHT", false, "colhead")
+                        PlaceFS(FS(), x2, y, cw, size - 1, cs[2] or "", cMuted, "RIGHT", false, "colhead")
+                        PlaceFS(FS(), x3, y, cw, size - 1, cs[3] or "", cMuted, "RIGHT", false, "colhead")
+                        local hb = Btn()   -- hover: where the numbers come from
+                        hb.item = it
+                        hb:ClearAllPoints()
+                        hb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+                        hb:SetSize(W, size + 1)
+                        Rec("hit", 0, y, W, size + 1, it.key)
+                        y = y + size + 1
+                    elseif it.kind == "cmprow" then
+                        local lw, cw, x1, x2, x3 = CmpCols()
+                        local cs = it.cells or {}
+                        rowH = PlaceFS(FS(), 0, y, lw - 4, size, it.label, it.labelColor or cText, "LEFT", false, "label")
+                        PlaceFS(FS(), x1, y, cw, size, cs[1] or "", cText, "RIGHT", false, "cmpcell")
+                        PlaceFS(FS(), x2, y, cw, size, cs[2] or "", cText, "RIGHT", false, "cmpcell")
+                        PlaceFS(FS(), x3, y, cw, size, cs[3] or "", ToneColor(it.cellTone, cText), "RIGHT", false, "cmpcell")
                         y = y + rowH + 1
                     elseif it.kind == "colhead" then
                         local lw, bw, bx, vx, vw, px, pw = MapCols()
@@ -741,7 +800,7 @@ local function RenderSections(c, m, tab, y0)
                             y = y + math.max(lh, vh) + 1
                         end
                     end
-                    if it.kind ~= "input" and it.kind ~= "icons" and it.kind ~= "colhead" then
+                    if it.kind ~= "input" and it.kind ~= "icons" and it.kind ~= "colhead" and it.kind ~= "cmprow" then
                         local b = Btn()
                         b.item = it
                         b:ClearAllPoints()
@@ -1176,13 +1235,13 @@ function ns.BuildCharToolkitPage(Notify)
                     desc = "Opacity of the panel's background. Colors and font follow the XayaUI theme.",
                     get = function() return C().opacity end, set = function(_, v) C().opacity = v; Changed() end },
             } },
-            values = { type = "group", name = "What If", order = 2, args = {
+            values = { type = "group", name = "Your numbers", order = 2, args = {
                 whatIf = { type = "input", order = 1, name = "All ratings +",
-                    desc = "Adds this much rating to every stat and shows what each would gain, thresholds included (the game's own converter). 0 turns it off. The What If tab has the same box and one per stat.",
+                    desc = "Adds this much rating to every stat and shows what each would gain, thresholds included (the game's own converter). 0 turns it off. The Stats tab has the same box (All ratings) and a box per stat holding the number itself.",
                     get = function() return tostring(C().whatIf or 0) end,
                     set = function(_, v) C().whatIf = math.max(-100000, math.min(100000, math.floor(tonumber(v) or 0))); Changed() end },
                 clear = { type = "execute", order = 2, name = "Clear all",
-                    desc = "Sets the All ratings amount and every per-stat amount back to 0.",
+                    desc = "Every number on the Stats tab goes back to yours, and the All ratings amount to 0.",
                     func = function() local c = C(); c.whatIf = 0; c.whatIfStats = {}; c.whatIfPrimary = nil; Changed() end },
                 resetLines = { type = "execute", order = 3, name = "Reset line flips",
                     desc = "Every rating line goes back to the Rating lines setting.",
@@ -1237,7 +1296,7 @@ function ns.BuildCharToolkitPage(Notify)
         type = "group", name = "Character Toolkit", order = 3, childGroups = "tree",
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "A panel beside the character window: every stat the game gives, where each number comes from, what the next point buys, and a What If pane. What the game does not give is marked, never guessed. Turn it on here, then pick a part on the left. Off by default." },
+                name = "A panel beside the character window: every stat the game gives, where each number comes from, what the next point buys, what each stat feeds (type your own numbers to see the change), and a gear comparison. What the game does not give is marked, never guessed. Turn it on here, then pick a part on the left. Off by default." },
             enabled = Toggle("enabled", 1, "Character Toolkit", "Turns the toolkit on. While it is off nothing is created, registered or read.", "full"),
             panelOn = Toggle("panel", 2, "Panel", "The stat panel beside the character window.", nil, isOff),
             overlaysOn = Toggle("overlays", 3, "Slot overlays", "Item level, empty sockets and enchant marks on the character window's slots.", nil, isOff),

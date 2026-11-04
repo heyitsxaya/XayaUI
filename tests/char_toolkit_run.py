@@ -175,9 +175,19 @@ check("what if +852 crit: +18.52% (exactly to the 30% threshold)", pair(wcrit, "
 c.whatIf = 0
 local gm = ns.CharToolkit_Model("gear")
 local gs = row(gm, "gearSum")
-check("gear: per-slot rows with item level and ratings", pair(row(gm, "slot1"), "Ratings") == "crit 300, haste 200" and row(gm, "slot1").value == "336")
-check("gear: durability under 100% shown", pair(row(gm, "slot1"), "Durability") == "78%")
-check("gear: empty socket flagged", pair(row(gm, "slot11"), "Empty sockets") == "1")
+-- QoL 0.7.14: no per-slot list; a clicked slot shows its item level, ratings, sockets and durability in the comparison
+check("gear: no per-slot list any more (the comparison shows a clicked slot)", row(gm, "slot1") == nil)
+ns.CharModel.gearSlot = 1
+gm = ns.CharToolkit_Model("gear")
+local function cell(key, i) local r = row(gm, key); return r and r.cells and r.cells[i] end
+check("gear: a clicked slot's item level and ratings (Head: 336, crit 300, haste 200)", cell("gc_ilvl", 1) == "336" and cell("gc_crit", 1) == "300" and cell("gc_haste", 1) == "200",
+  tostring(cell("gc_ilvl", 1)) .. " " .. tostring(cell("gc_crit", 1)))
+check("gear: its durability under 100% (78%)", cell("gc_dur", 1) == "78%", cell("gc_dur", 1))
+ns.CharModel.gearSlot = 11
+gm = ns.CharToolkit_Model("gear")
+check("gear: its empty socket (Ring: 1)", cell("gc_sockets", 1) == "1", cell("gc_sockets", 1))
+ns.CharModel.gearSlot = nil
+gm = ns.CharToolkit_Model("gear")
 check("gear totals vs character: crit gear 400, character 528, +128 elsewhere", pair(gs, "crit") == "gear 400, character 528 (+128 from elsewhere)", pair(gs, "crit"))
 check("gear totals: sockets", pair(gs, "Empty sockets") == "1")
 

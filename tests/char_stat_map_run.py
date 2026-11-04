@@ -44,8 +44,8 @@ local function line(key, label) local it = card(key); for _, p in ipairs(it and 
 
 -- 1. The tab and its cards ---------------------------------------------------------------------------------------------------
 local d = render()
-check("Stats tab = the stat map: Primary stats, Secondary stats, Tertiary stats, Defense (what feeds it)",
-  table.concat(texts(d, "header"), "|") == "- Primary stats|- Secondary stats|- Tertiary stats|- Defense (what feeds it)", table.concat(texts(d, "header"), "|"))
+check("Stats tab = the stat map: Primary stats, Secondary stats, Tertiary stats, Offense (what feeds it), Defense (what feeds it)",
+  table.concat(texts(d, "header"), "|") == "- Primary stats|- Secondary stats|- Tertiary stats|- Offense (what feeds it)|- Defense (what feeds it)", table.concat(texts(d, "header"), "|"))
 check("no Show: % button (#382: it did nothing)", not XayaUICharacterToolkit.modeBtn.shown)
 check("the Agility card: 2,637, its box holds the number itself", card("map_primary").value == "2,637" and d.boxes["sv:primary"] and d.boxes["sv:primary"].text == "2637", d.boxes["sv:primary"] and d.boxes["sv:primary"].text)
 check("  » Attack power +2,637 (1 = 1.00)", line("map_primary", "» Attack power") == "+2,637  (1 = 1.00)", line("map_primary", "» Attack power"))
@@ -63,12 +63,42 @@ check("Mastery card: » Armor +2,684 (101.8% of Agility)", line("map_mastery", "
 check("  » Armor per 1% mastery: +30 (2,637 x 101.8 / 88.69 / 100), 16.4 mastery rating", line("map_mastery", "» Armor per 1% mastery") == "+30  (16.4 mastery rating)", line("map_mastery", "» Armor per 1% mastery"))
 check("Haste card: » Global cooldown 1.16 s, » Attack speed 2.00 s", line("map_haste", "» Global cooldown") == "1.16 s" and line("map_haste", "» Attack speed") == "2.00 s")
 check("  » Abilities whose text names Haste, with their recharge now", line("map_haste", "» Abilities (their text names Haste)") == "Infernal Strike (9.6 s recharge)", line("map_haste", "» Abilities (their text names Haste)"))
-check("Versatility card: » Damage and healing done +2.61%, » Damage taken -1.30% (92.0 rating = 1%)",
-  line("map_vers", "» Damage and healing done") == "+2.61%" and line("map_vers", "» Damage taken") == "-1.30%  (92.0 rating = 1%)", line("map_vers", "» Damage taken"))
+check("Versatility card: » Damage and healing done (every ability) +2.61%, » Damage taken -1.30% (92.0 rating = 1%)",
+  line("map_vers", "» Damage and healing done (every ability)") == "+2.61%" and line("map_vers", "» Damage taken") == "-1.30%  (92.0 rating = 1%)", line("map_vers", "» Damage taken"))
 check("a stat you have no rating in shows only what it does (Avoidance: one line)", #card("map_avoidance").pairs == 1, #card("map_avoidance").pairs)
 check("Defense: Parry 14.01%, from Critical Strike +10.15%; Armor from Agility +2,684; Dodge from Agility +5.00%",
   card("map_parry").value == "14.01%" and line("map_parry", "From Critical Strike") == "+10.15%, before DR" and line("map_armor", "From Agility (mastery)") == "+2,684"
   and line("map_dodge", "From Agility") == "+5.00%")
+-- Offense and Defense details that used to sit under the Spells filters (B12: they move here, nothing is dropped)
+check("Offense: Attack Power 3,472, from Agility +2,637, » Damage per second +992.0 (3,472 / 3.5)", card("map_ap").value == "3,472"
+  and line("map_ap", "From Agility") == "+2,637" and line("map_ap", "» Damage per second") == "+992.0", tostring(card("map_ap") and card("map_ap").value) .. " " .. tostring(line("map_ap", "» Damage per second")))
+check("  Spell Power 500 (GetSpellBonusDamage, lowest school)", card("map_sp") and card("map_sp").value == "500")
+check("  Main hand 8,138 - 8,945, speed 2.00 s from Haste, » Damage per second 4,270.7 ((8,138.2 + 8,944.6) / 2 / 2.00)", card("map_weapon").value == "8,138 - 8,945"
+  and line("map_weapon", "Speed, from Haste") == "2.00 s" and line("map_weapon", "» Damage per second") == "4,270.7", tostring(line("map_weapon", "» Damage per second")))
+check("  Global cooldown 1.16 s, from Haste 29.25% when read, unhasted 1.50 s (estimate)", card("map_gcd").value == "1.16 s"
+  and (line("map_gcd", "From Haste") or ""):find("29.25% haste when read", 1, true) == 1 and (line("map_gcd", "Unhasted (estimate)") or ""):find("1.50 s", 1, true) == 1, line("map_gcd", "Unhasted (estimate)"))
+check("  #379: 'Speed, from Haste' and the GCD's 'From Haste' use haste's colour", select(2, line("map_weapon", "Speed, from Haste")).labelColor == CM.STAT_COLORS.haste
+  and select(2, line("map_gcd", "From Haste")).labelColor == CM.STAT_COLORS.haste)
+check("  no ranged weapon, no regen (Fury 0/s): no cards for them", card("map_ranged") == nil and card("map_regen") == nil)
+check("Defense > Armor: armor for the next 1% and base, buffs and talents", (line("map_armor", "Armor for the next 1%") or ""):match("^%d") ~= nil
+  and line("map_armor", "Base, buffs and talents") == "5,685", tostring(line("map_armor", "Armor for the next 1%")) .. " / " .. tostring(line("map_armor", "Base, buffs and talents")))
+check("  no shield, no block: no Block card; no stagger", card("map_block") == nil and card("map_stagger") == nil)
+local gb, gs, sh = GetBlockChance, GetShieldBlock, C_PaperDollInfo.OffhandHasShield
+GetBlockChance = function() return 25 end; GetShieldBlock = function() return 3000 end; C_PaperDollInfo.OffhandHasShield = function() return true end
+d = render()
+check("with a shield: Block 25.00%, » a block reduces the hit by 20.00% (3,000 through armor effectiveness)", card("map_block") and card("map_block").value == "25.00%"
+  and line("map_block", "» A block reduces the hit by") == "20.00%", card("map_block") and line("map_block", "» A block reduces the hit by"))
+GetBlockChance, GetShieldBlock, C_PaperDollInfo.OffhandHasShield = gb, gs, sh
+d = render()
+-- the Spells filters only filter spells now (B12)
+c.spellFilter = "defense"
+local sm = CM.Build(c, "spells")
+local st = {}; for _, sec in ipairs(sm.sections) do st[#st + 1] = sec.title end
+check("Spells > Defense filter draws only the spells (the stat sections are on the map)", table.concat(st, "|") == "Defensive spells", table.concat(st, "|"))
+c.spellFilter = "offense"
+sm = CM.Build(c, "spells"); st = {}; for _, sec in ipairs(sm.sections) do st[#st + 1] = sec.title end
+check("Spells > Offense filter draws only the spells", table.concat(st, "|") == "Offensive spells", table.concat(st, "|"))
+c.spellFilter = "all"
 -- colours (#379)
 local critLabel
 for _, r in ipairs(d.fonts) do if r.shown and r.text == "Critical Strike" then critLabel = r end end
@@ -90,8 +120,21 @@ ns.CharToolkit_SetInput("sv:primary", "2737")
 d = render()
 check("type 2,737 Agility: attack power +2,637 -> +2,737, armor +2,684 -> +3,174 (both changes)", (line("map_primary", "» Attack power") or ""):find("+2,637 -> +2,737", 1, true) == 1
   and (line("map_primary", "» Armor") or ""):find("+2,684 -> +3,174", 1, true) == 1, line("map_primary", "» Armor"))
+check("  » Abilities with your number: Fracture 6,944 -> 7,144, Infernal Strike 3,472 -> 3,572 (x 3,572 / 3,472 attack power)",
+  line("map_primary", "» Abilities with your number") == "Fracture 6,944 -> 7,144, Infernal Strike 3,472 -> 3,572", line("map_primary", "» Abilities with your number"))
+check("  without a changed number there is no such line", (function() ns.CharToolkit_SetInput("sv:primary", ""); local v = CM.Build(c, "stats").byKey.map_primary; ns.CharToolkit_SetInput("sv:primary", "2737")
+  for _, pp in ipairs(v.pairs) do if pp.label == "» Abilities with your number" then return false end end; return true end)())
 check("  dodge per Agility is not given by the game: said, not guessed", (line("map_primary", "» Dodge") or ""):find("not given by the game", 1, true) ~= nil)
 check("  Defense > Armor shows the new total and damage reduction", (card("map_armor").value or ""):find(" -> ", 1, true) ~= nil and (line("map_armor", "» Damage reduction") or ""):find(" -> ", 1, true) ~= nil)
+check("  Offense > Attack Power 3,472 -> 3,572, from Agility +2,637 -> +2,737, DPS +992.0 -> +1,020.6", card("map_ap").value == "3,472 -> 3,572"
+  and line("map_ap", "From Agility") == "+2,637 -> +2,737" and line("map_ap", "» Damage per second") == "+992.0 -> +1,020.6", tostring(card("map_ap").value) .. " " .. tostring(line("map_ap", "» Damage per second")))
+ns.CharToolkit_SetInput("sv:haste", tostring(CM.svBase.haste + 300))
+d = render()
+check("type 300 more haste: Infernal Strike's recharge 9.6 s -> less (estimate, its text names Haste)",
+  (line("map_haste", "» Abilities (their text names Haste)") or ""):find("^Infernal Strike %(9%.6 s %-> %d%.%d s recharge%)$") ~= nil, line("map_haste", "» Abilities (their text names Haste)"))
+check("type 300 more haste: weapon speed 2.00 s -> about faster (estimate), GCD 1.16 s -> less", (line("map_weapon", "Speed, from Haste") or ""):find("^2%.00 s %-> 1%.%d%d s %(estimate%)") ~= nil
+  and (card("map_gcd").value or ""):find("^1%.16 s %-> 1%.%d%d s") ~= nil, tostring(line("map_weapon", "Speed, from Haste")) .. " / " .. tostring(card("map_gcd").value))
+ns.CharToolkit_SetInput("sv:haste", "")
 ns.CharToolkit_SetInput("sv:crit", ""); ns.CharToolkit_SetInput("sv:mastery", "997"); ns.CharToolkit_SetInput("sv:primary", "")
 d = render()
 check("an empty box, or your own number, goes back to yours", c.whatIfStats.crit == nil and c.whatIfStats.mastery == nil and c.whatIfPrimary == nil and card("map_crit").value == "22.48%")

@@ -64,7 +64,7 @@ local function secTitles(m) local t = {}; for _, s in ipairs(m.sections) do t[#t
 -- 1. The tab row --------------------------------------------------------------------------------------------------------------
 local tabKeys = {}
 for _, t in ipairs(CM.TABS) do tabKeys[#tabKeys + 1] = t[1] end
-check("tabs: Stats, Gear, What If, Spells (Defense and Offense are filters now; no Sheet since QoL 0.7.13)", table.concat(tabKeys, ",") == "stats,gear,whatif,spells", table.concat(tabKeys, ","))
+check("tabs: Stats, Gear, Spells (Defense and Offense are filters now; no Sheet since QoL 0.7.13; What If folded into Stats and Gear in 0.7.14)", table.concat(tabKeys, ",") == "stats,gear,spells", table.concat(tabKeys, ","))
 c.tab = "defense"; c = ns.CharToolkit_Cfg()
 check("a saved Defense tab opens Spells with the Defense filter", c.tab == "spells" and c.spellFilter == "defense", tostring(c.tab) .. " " .. tostring(c.spellFilter))
 c.tab = "offense"; c = ns.CharToolkit_Cfg()
@@ -104,12 +104,12 @@ check("Spell Math off: one note, no spells", keys(spellSec(m)) == "spellsOff", k
 check("Spell Math off: All draws only the Spells section", secTitles(m) == "Spells", secTitles(m))
 c.spellFilter = "defense"
 m = CM.Build(c, "spells")
-check("Defense filter: the defensive stat sections follow (Health and armor, Avoidance, Damage taken)",
-  secTitles(m) == "Defensive spells|Health and armor|Avoidance|Damage taken", secTitles(m))
+check("Defense filter: spells only (QoL 0.7.14: the defensive stats are on the Stats tab's map)",
+  secTitles(m) == "Defensive spells", secTitles(m))
 c.spellFilter = "offense"
 m = CM.Build(c, "spells")
-check("Offense filter: the offensive stat sections follow (Power, Weapons, Timing and resources)",
-  secTitles(m) == "Offensive spells|Power|Weapons|Timing and resources", secTitles(m))
+check("Offense filter: spells only (QoL 0.7.14: the offensive stats are on the Stats tab's map)",
+  secTitles(m) == "Offensive spells", secTitles(m))
 
 -- 5. Auto-populate -----------------------------------------------------------------------------------------------------------
 c.advanced = true
