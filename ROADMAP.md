@@ -15,7 +15,9 @@ Compiled 2026-11-03 against build 0.5.107; section 9 and the #155 row updated th
 **Reliability.** Statuses come from issue titles, labels, and project notes. They are not a fresh audit of the code. Items from the original milestone list (M0 to M12) carry statuses from a 2026-11-01 review, and several have been overtaken by later UI work. Where I could not tell, the note says so. Effort sizes (S, M, L) are estimates, not commitments.
 
 **Standing rules every item follows**
-- No third-party data (issue #290). Scope, per Xaya 2026-11-04: the rule applies ONLY to information officially marked as belonging to an addon or another third party, or obtained against Blizzard's terms. It does not forbid shipping game information. Strong preference: learn from the game directly at runtime; data observed in game through the addon API (for example a capture walkthrough in the developer plugin) may be shipped as a table.
+- No third-party data (issue #290). Two clarifications from Xaya, both dated 2026-11-04 and recorded by different sessions; both kept verbatim in substance:
+  - Scope, per Xaya 2026-11-04: the rule applies ONLY to information officially marked as belonging to an addon or another third party, or obtained against Blizzard's terms. It does not forbid shipping game information. Strong preference: learn from the game directly at runtime; data observed in game through the addon API (for example a capture walkthrough in the developer plugin) may be shipped as a table.
+  - No code or data copied from another addon goes into XayaUI (issue #290). Class, spell, and item data is learned from the game client at runtime where the game gives it. #290 does not forbid numbers from a credible public database such as Wowhead: they may be used when the source is named next to them (Xaya, 2026-11-04; an earlier wording of this line said "game API only", which was broader than #290).
 - Personal data stays local. Personal rules, buff lists, and anything about other players live only in the user's own saved settings and are excluded from profile export unless the user opts in.
 - Midnight secret values. Any read that can come back secret is wrapped, checked, and treated as unknown. A value that cannot be read is shown as unavailable, never guessed.
 - Options style: a dropdown never takes a whole row alone, labels stay short, and the explanation goes in the tooltip.
@@ -124,6 +126,7 @@ Issue numbers refer to this repository. Small interface tweaks, wording changes,
 | #273 | Cursor trail gradients as theme options | Open | |
 | #126 | Gradient cursor trail with presets and up to six custom colors | Candidate | Extends the switched-off cursor tracker. |
 | #320 | FPS and latency tooltips show addon CPU and memory use | Built (0.5.107) | |
+| RM-CHAR | Character Toolkit: a tabbed stat panel beside the character window (Overview, Ratings, Defense, Offense, Gear, Spells) and extra lines on its stat tooltips. Goal (Xaya, 2026-11-04): surface everything the API gives, improve on the character window rather than copy it. True rating, lost rating, penalty, rating per 1%, exact rating for the next 1%, diminishing-return thresholds (scanned from the game's converter), rating vs other sources, what-if +N rating, base vs buffs, linked conversions, item level, movement, mastery text, spell power, regen, ranged, stagger, per-slot gear ratings, sockets and durability, and an advanced Spell Math tab | Built (QoL 0.6.2), unverified in game | Not given by the game, so shown as such: primary to armor, primary to dodge, Strength to parry, stat to block, attack power to weapon damage, mastery's percent modifiers. Attack speed and GCD figures are labelled estimates. Open: whether the live converter applies diminishing returns (the panel flags a disagreement); whether to fill the "not given" rows from a named database source now that #290 allows it. |
 
 ## 7. Chat Panel (rebuilt cleanly as one feature, #297)
 
@@ -153,7 +156,7 @@ Each has a drafted spec with the API facts checked against the 12.1.5 documentat
 | #322 | **Friends list: class colors by current character.** Color each online friend's name by the class of the character they are on now. | "The friends list" is undecided: Blizzard's window (hook, taint risk), a new XayaUI window, or the Chat Bar Friends block. | Where it shows; offline friends use the last-known character. |
 | #323 | **Friends list: search.** | Blizzard's window may already have a search box; a local filter avoids Blizzard's own restricted search call. | Does the current window have search? |
 | #324 | **Friends list: preserve a list of friends' alts.** | The game shows only characters that are online now, so the list starts empty and only grows by observation. Third-party character names are stored: local only, minimum data, forget and clear controls, out of export by default. | Friends' alts or the user's own; empty history acceptable; export policy. |
-| #325 | **Stat calculator and spell info panel.** What-if input (add N rating of a stat, or equip an item), current versus projected derived stats, two-item side-by-side compare, spell book view. | No API recomputes spell numbers for hypothetical stats, and any coefficient table from a third party breaks the data rule. Proposed v1 is derived stats only, then item compare, then a spell list with current text. Stat reads are secret under restrictions, so out of combat only. Item stat tables may omit gems, enchants, set bonuses, and trinket effects. | Is a derived-stats v1 acceptable; are recomputed spell numbers required and from what licensable source; input order; gem and enchant note. |
+| #325 | **Stat calculator and spell info panel.** What-if input (add N rating of a stat, or equip an item), current versus projected derived stats, two-item side-by-side compare, spell book view. | No API recomputes spell numbers for hypothetical stats; a coefficient table would have to come from a named database (allowed, see the standing rules) and be kept current each patch. The derived-stats layer and a measured spell ratio now exist in the Character Toolkit (RM-CHAR). Proposed v1 is derived stats only, then item compare, then a spell list with current text. Stat reads are secret under restrictions, so out of combat only. Item stat tables may omit gems, enchants, set bonuses, and trinket effects. | Is a derived-stats v1 acceptable; are recomputed spell numbers required and from what licensable source; input order; gem and enchant note. |
 
 Earlier ideas folded into these: "report anticipated stat values" and "item level on tooltips" (stat panel, tooltip modifiers) and "friends list colors, sorted by who can provide what" (the second half needs a class-utility data source and is not part of this request).
 
@@ -186,7 +189,7 @@ These are logged and need an answer before work starts: #79, #80, #81, #82 (gate
 | A free-form node canvas for the combinations builder | The options library has no canvas widget; a row-based AND / OR builder comes first. |
 | A global tooltip toggle | Replaced by a per-rule (now per-cue) option; default OFF. |
 | Numeric charge or stack thresholds in combat | Those values are secret in restricted content; compares are hard errors in addon code. |
-| Recomputed spell numbers for hypothetical stats | No API; would need third-party coefficient data. |
+| Recomputed spell numbers for hypothetical stats | No API. Would need a coefficient table from a named database (allowed since 2026-11-04) kept current each patch; the Character Toolkit shows today's measured ratio and a typed-in coefficient instead. |
 | Auto-changing the loot specialization without a prompt | Changes a real setting silently; combat and instance behavior of the call is unverified. |
 | Theme class overrides redesign (#215) | Parked. |
 | Third-party-derived data and wording | Removed (#290). |
@@ -202,5 +205,7 @@ This is my suggestion, not a commitment.
 6. **New candidates**, each starting with a short in-game probe of the API behavior it depends on (loot-specialization and item-spec calls, friend account fields, the rating converter and item stat tables).
 
 ## 13. Where the detail lives
+
+New chats start from `SESSION-START-SUMMARY.md` (rules, active items, pending actions, how to work here). This file stays the full tracker; `debug-log/` is the history.
 
 This file is the summary. Detailed specs, stress tests, and decision graphs for individual items are kept in the project's Claude documents and the shared Drive `Feature sketches` folder, which are outside this repository. Each item's issue (or, for the 2026-11-03 candidates, its drafted issue text) carries the open questions.

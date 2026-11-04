@@ -5,11 +5,14 @@ ab58ee8e8acc777c94abf65e8ab48fb4  Claude outputs/XayaUI_NpcColors_S2_block.lua
 0371d2b604d3999b8f5fe13d909a32fe  Claude outputs/discard-fix-drafts.patch
 39e7c96113222b5ecac4c5be33e72b8b  Claude outputs/preview-fix-options.patch
 d32239bcb673463ab874e80d47fae504  LICENSE
-f9120a37d5ef9856404784d0a9996499  QA-CHECKLIST.md
-2484ce39c6b9186ecd85e331060aa43d  README.md
-47e53875b76ac2d538c6e0f92e95ff01  ROADMAP.md
+14020c2d88d9773cda1386efdf702a7c  QA-CHECKLIST.md
+ee42539002c7a831fd97da0c0d766f12  README.md
+721e22cca33500036add2b7c6c8b9ac7  ROADMAP.md
+721e22cca33500036add2b7c6c8b9ac7  ROADMAP.md
+721e22cca33500036add2b7c6c8b9ac7  ROADMAP.md
+8ba84aa305c5e0b669fe8832edac21d3  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-37168bedf7fc5ccc504cba1fa2d84709  USER-GUIDE.md
+114d9f7aa627047ea75e688c00dd5bde  USER-GUIDE.md
 e62565e5ddf51aadea23d505abed7d98  XayaUI/Actions.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
 40b7591dd5f7fe4f0c4b0f5a965155bb  XayaUI/ClassLearn.lua
@@ -202,6 +205,7 @@ ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 1c348c85528f60b3ba78a0ff610061a0  XayaUI_Options/TriggersEditor.lua
 4923e0588ebae600d6f58b4b7e6f1c1b  XayaUI_Options/XayaUI_Options.toc
+2256567dc7d851dde6106a6d10dbca09  XayaUI_QoL/CharacterToolkit.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
 e961de31e54ee41494bbd60ea3a2f996  XayaUI_QoL/CursorTrail.lua
 deef89f1ad9818ceb2f2d16c7e57ecaf  XayaUI_QoL/Media/Cursor/Arrow.tga
@@ -239,7 +243,8 @@ adf8cff0618432b3e10ee3d3091c09c1  XayaUI_QoL/Media/Cursor/HLRing_19.tga
 f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 08343552c22eb2676c663b0576e218c3  XayaUI_QoL/Media/Cursor/RingThick.tga
 054aa82635cfab8851fded7704d8f102  XayaUI_QoL/Media/Cursor/Sparkle.tga
-a8b117384f8a3392f2bb49719a78b982  XayaUI_QoL/XayaUI_QoL.toc
+1ab161b02409b17527f0a0ccb8239971  XayaUI_QoL/StatMath.lua
+cc712b3468eebdc7c832f24b0efbe75f  XayaUI_QoL/XayaUI_QoL.toc
 6c204c615c32aeec49965a86f9649ccb  XayaUI_Reskin/GameMenuSkin.lua
 920bbd6d916017df661baf257a16b7d2  XayaUI_Reskin/XayaUI_Reskin.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
@@ -346,6 +351,7 @@ ce45fc465bdd3ab3e215e3abd189e3ea  debug-log/2026-11-03-2254-tester-requests-278-
 fd3ccecccb27afb01262111787083ed9  debug-log/2026-11-03-2330-display-tab-chevrons-engine-text-cue-0.6.3.md
 1468935b0edcc87af4f3d4c48014d962  debug-log/2026-11-04-0010-combat-engine-api-review-0.6.3.md
 f177b0c30f652b97af27717f4434a7d3  debug-log/2026-11-04-0011-tooltip-self-id-aura-bonus-0.6.1.md
+020c18557764916645361af14b0e62a0  debug-log/2026-11-04-0030-character-toolkit-qol-0.6.2.md
 eba2360845f99d52521c5efa305657c1  debug-log/2026-11-04-0100-chat-indent-scrollbar-console-0.6.5.md
 5578cf7edacb5c2d9f3b37ab9f856154  debug-log/2026-11-04-0100-tooltip-formula-lines-bonus-0.6.2.md
 f4517b1b53b2f437c1a5cd5f859a21bc  debug-log/2026-11-04-0200-formula-capture-walkthrough-gamedump-0.3.0.md
@@ -360,6 +366,7 @@ a354cbbb54ff4fb130af0063a401df9b  tests/Conditions.pre-0.5.83.lua
 1bc56b22adb5f1e1aa4a345d9fa19b8b  tests/aspect_run.py
 521a8355c5bc29487d4b76a17db58d00  tests/aura_display_run.py
 80c84f1f7ef017e7f04a6c3be28a3910  tests/aura_sources_run.py
+60a044079eaf5d5b722b73e63e5a90d0  tests/char_toolkit_run.py
 e6d5c9536965efd1498363c032f66116  tests/chat_run.py
 ffb253eb94301b31c413196ec237d13c  tests/chat_world.lua
 abe22a2816956a2c3babb802857cc524  tests/chatprobe_run.py
@@ -400,7 +407,7 @@ f1bae520db3fdef262ef708a60557571  tools/formula_fit.py
 db4bc883dbe741a50417a8d183e9dc02  tools/qa-installer/.gitattributes
 eac7e9b69f7326ed1b0f0765391566ae  tools/qa-installer/Install-XayaUI.bat
 92274087d7c70de31f9d1b2beb1786f8  tools/qa-installer/Install-XayaUI.ps1
-1c8581c00a6a6aff3d1579a3a453dad1  tools/qa-installer/Link-XayaUI.bat
+463fa37bcf05948274f18eb58217dc90  tools/qa-installer/Link-XayaUI.bat
 057b701a88ab2e214fd2f0012dcff3cd  tools/qa-installer/QA-INSTALL.md
 9809b22ec9eead883fa1c7e1e5d4e74c  tools/qa-installer/Uninstall-XayaUI.bat
 b6c641e44164b6a2af5331e572b9e1be  tools/sync-qa-branch.sh
