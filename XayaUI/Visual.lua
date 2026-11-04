@@ -712,10 +712,184 @@ local function CenterGroup(fo, onX, onY)
     if onY then fo.cY = math.floor((fo.cY or 0) + (sy - (b + t) / 2) * us / ts + 0.5) end
     GroupPosChanged(fo)
 end
+-------------------------------------------------------------------------------
+-- Anchor to any frame on screen (Xaya 2026-11-04, on the group X / Y popup: "allow anchoring/snapping to other frames in the UI").
+-- Picking: a banner asks to point at a frame and press Shift (a click would also hit the frame: target a unit, cast a spell). The
+-- frame under the cursor is read with GetMouseFoci() (docs/reference/api/globals.md:214, no flags) and walked up to its first NAMED
+-- parent that the name finds again (_G[name] == frame): only a name survives a /reload. Forbidden frames, UIParent / WorldFrame and
+-- XayaUI's own picker frames are skipped. The candidate is outlined with its name; Cancel (or 30 s) stops.
+-------------------------------------------------------------------------------
+local picker
+local function NamedTarget(r)
+    local guard = 0
+    while r and guard < 40 do
+        guard = guard + 1
+        local okF, forb = pcall(function() return r.IsForbidden and r:IsForbidden() end)
+        if not okF or forb then return nil end
+        if r == UIParent or r == WorldFrame or r.xuiPickerOwn then return nil end
+        local okN, name = pcall(function() return r.GetName and r:GetName() end)
+        if okN and type(name) == "string" and name ~= "" and not ns.IsSecret(name) and _G[name] == r and r.GetRect then return r, name end
+        local okP, par = pcall(function() return r.GetParent and r:GetParent() end)
+        r = okP and par or nil
+    end
+end
+function ns.FrameUnderCursor()
+    if type(GetMouseFoci) ~= "function" then return nil end
+    local ok, foci = pcall(GetMouseFoci)
+    if not (ok and type(foci) == "table") then return nil end
+    for _, r in ipairs(foci) do
+        local f, name = NamedTarget(r)
+        if f then return f, name end
+    end
+end
+local function ScreenRect(f)
+    local ok, l, b, w, h = pcall(f.GetRect, f)
+    if not (ok and l and w) then return nil end
+    local s = f:GetEffectiveScale()
+    return l * s, b * s, (l + w) * s, (b + h) * s
+end
+function ns.PickFrame(title, onPick)
+    local P = picker
+    if not P then
+        P = CreateFrame("Frame", "XayaUIFramePicker", UIParent, "BackdropTemplate")
+        P.xuiPickerOwn = true
+        P:SetSize(420, 58); P:SetPoint("TOP", UIParent, "TOP", 0, -60); P:SetFrameStrata("TOOLTIP"); P:EnableMouse(true)
+        P:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+        P:SetBackdropColor(0.05, 0.05, 0.05, 0.95); P:SetBackdropBorderColor(1, 0.6, 0.1, 1)
+        P.text = P:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); P.text:SetPoint("TOPLEFT", 10, -8); P.text:SetPoint("RIGHT", -90, 0)
+        P.text:SetJustifyH("LEFT")
+        P.cancel = CreateFrame("Button", nil, P, "UIPanelButtonTemplate"); P.cancel:SetSize(70, 22); P.cancel:SetPoint("RIGHT", -10, 0)
+        P.cancel:SetText("Cancel"); P.cancel.xuiPickerOwn = true
+        P.cancel:SetScript("OnClick", function() P:Hide() end)
+        if ns.FlatButton then ns.FlatButton(P.cancel) end
+        P.hi = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+        P.hi.xuiPickerOwn = true
+        P.hi:SetFrameStrata("TOOLTIP"); P.hi:EnableMouse(false)
+        P.hi:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 2 }); P.hi:SetBackdropBorderColor(0.3, 1, 0.3, 1)
+        P.hi.label = P.hi:CreateFontString(nil, "OVERLAY", "GameFontNormal"); P.hi.label:SetPoint("BOTTOMLEFT", P.hi, "TOPLEFT", 0, 2)
+        P.hi:Hide()
+        P:SetScript("OnHide", function(self) self.hi:Hide(); self.onPick = nil end)
+        P:SetScript("OnUpdate", function(self)
+            if GetTime() - (self.startedAt or 0) > 30 then self:Hide(); return end
+            local f, name = ns.FrameUnderCursor()
+            self.cand, self.candName = f, name
+            local us = UIParent:GetEffectiveScale()
+            local l, b, r, t
+            if f then l, b, r, t = ScreenRect(f) end
+            if l then
+                self.hi:ClearAllPoints()
+                self.hi:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l / us, b / us)
+                self.hi:SetSize(math.max(4, (r - l) / us), math.max(4, (t - b) / us))
+                self.hi.label:SetText(name)
+                self.hi:Show()
+            else
+                self.hi:Hide()
+            end
+            local down = IsShiftKeyDown and IsShiftKeyDown() or false
+            if down and not self.shiftWas and f then
+                local fn = self.onPick
+                self:Hide()
+                if fn then fn(f, name) end
+                return
+            end
+            self.shiftWas = down
+        end)
+        picker = P
+    end
+    P.text:SetText((title or "Anchor to a frame") .. "\n|cffaaaaaaPoint at a frame and press Shift. Cancel stops.|r")
+    P.onPick, P.startedAt, P.shiftWas = onPick, GetTime(), (IsShiftKeyDown and IsShiftKeyDown()) or false
+    P:Show()
+    return P
+end
+function ns.FramePicker() return picker end   -- (tests)
+
+-- Which side of the target a box is on: h = "LEFT" / "RIGHT" / "" (overlapping), v = "TOP" / "BOTTOM" / "" (screen pixels)
+local function SideOf(gl, gb, gr, gt, tl, tb, tr, tt)
+    local gx, gy = (gl + gr) / 2, (gb + gt) / 2
+    local h = (gx < tl) and "LEFT" or ((gx > tr) and "RIGHT" or "")
+    local v = (gy > tt) and "TOP" or ((gy < tb) and "BOTTOM" or "")
+    return h, v
+end
+local OPP = { LEFT = "RIGHT", RIGHT = "LEFT", TOP = "BOTTOM", BOTTOM = "TOP", [""] = "" }
+local function PointXY(fr, pt)   -- a frame's point, in screen pixels
+    local l, b, r, t = ScreenRect(fr)
+    if not l then return nil end
+    local x = pt:find("LEFT") and l or (pt:find("RIGHT") and r or (l + r) / 2)
+    local y = pt:find("TOP") and t or (pt:find("BOTTOM") and b or (b + t) / 2)
+    return x, y
+end
+local function GroupScreenBounds(fo)
+    local l, b, r, t = GroupBounds(fo)
+    if not l then return nil end
+    local us = UIParent:GetEffectiveScale()
+    return l * us, b * us, r * us, t * us
+end
+-- move the group's container by (dx, dy) screen pixels through its X / Y offset
+local function ShiftGroup(fo, dx, dy)
+    local c = Container(fo)
+    local ce = c:GetEffectiveScale()
+    local sc = math.max(0.1, fo.cScale or 1)
+    if not ce or ce <= 0 then return end
+    fo.cX = math.floor((fo.cX or 0) + dx * sc / ce + 0.5)
+    fo.cY = math.floor((fo.cY or 0) + dy * sc / ce + 0.5)
+    Container(fo)
+end
+-- re-anchor a group without moving it on screen: the container's own point is measured before and after, and X / Y make up the difference
+local function Reanchor(fo, set, point)
+    local c = Container(fo)
+    local x0, y0 = PointXY(c, point)
+    set()
+    fo.cX, fo.cY = 0, 0
+    c = Container(fo)
+    local x1, y1 = PointXY(c, point)
+    if x0 and x1 then ShiftGroup(fo, x0 - x1, y0 - y1) end
+    GroupPosChanged(fo)
+end
+function ns.AnchorGroupToFrame(fo, target, name)
+    if not (fo and target and name) then return false end
+    local gl, gb, gr, gt = GroupScreenBounds(fo)
+    if not gl then local c = Container(fo); gl, gb, gr, gt = ScreenRect(c) end
+    local tl, tb, tr, tt = ScreenRect(target)
+    if not (gl and tl) then return false end
+    local h, v = SideOf(gl, gb, gr, gt, tl, tb, tr, tt)
+    local rel = (v .. h ~= "") and (v .. h) or "CENTER"
+    local own = (OPP[v] .. OPP[h] ~= "") and (OPP[v] .. OPP[h]) or "CENTER"
+    Reanchor(fo, function() fo.cRel, fo.cFrame, fo.cPoint, fo.cRelPoint = "custom", name, own, rel end, own)
+    return true, own, rel
+end
+-- close the gap to the anchored frame on the side(s) the group is on
+function ns.SnapGroupFlush(fo)
+    local target = fo and fo.cRel == "custom" and fo.cFrame and _G[fo.cFrame]
+    if not (target and target.GetRect) then return false end
+    local gl, gb, gr, gt = GroupScreenBounds(fo)
+    local tl, tb, tr, tt = ScreenRect(target)
+    if not (gl and tl) then return false end
+    local h, v = SideOf(gl, gb, gr, gt, tl, tb, tr, tt)
+    local dx = (h == "LEFT" and (tl - gr)) or (h == "RIGHT" and (tr - gl)) or 0
+    local dy = (v == "TOP" and (tt - gb)) or (v == "BOTTOM" and (tb - gt)) or 0
+    ShiftGroup(fo, dx, dy)
+    GroupPosChanged(fo)
+    return true
+end
+function ns.UnanchorGroup(fo)
+    if not fo then return end
+    Reanchor(fo, function() fo.cRel, fo.cFrame, fo.cPoint, fo.cRelPoint = nil, nil, nil, nil end, "CENTER")
+end
+local function AnchorText(fo)
+    if fo.cRel == "custom" and fo.cFrame then
+        local g = _G[fo.cFrame]
+        return "Anchored to |cffffd100" .. fo.cFrame .. "|r" .. ((g and g.GetRect) and "" or " |cffff6060(not found now: the screen)|r")
+    end
+    if fo.cRel then return "Anchored to |cffffd100" .. tostring(fo.cRel) .. "|r" end
+    return "Anchored to the screen" .. (fo.parent and " (its parent group)" or "")
+end
+
 local function FillPosPopup(p)
     local fo = ns.FolderById(p.fid)
     if not fo then p:Hide() return end
     p.title:SetText(tostring(fo.name))
+    if p.anchorText then p.anchorText:SetText(AnchorText(fo)) end
+    if p.flush then p.flush:SetEnabled(fo.cRel == "custom" and fo.cFrame ~= nil) end
     p.x:SetText(tostring(fo.cX or 0)); p.y:SetText(tostring(fo.cY or 0))
     p.x:SetCursorPosition(0); p.y:SetCursorPosition(0)
 end
@@ -723,7 +897,7 @@ local function ShowGroupPosPopup(fo)
     local p = posPopup
     if not p then
         p = CreateFrame("Frame", "XayaUIGroupPosPopup", UIParent, "BackdropTemplate")
-        p:SetSize(260, 232); p:SetFrameStrata("FULLSCREEN_DIALOG"); p:SetClampedToScreen(true); p:EnableMouse(true)
+        p:SetSize(260, 336); p:SetFrameStrata("FULLSCREEN_DIALOG"); p:SetClampedToScreen(true); p:EnableMouse(true)
         p:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
         p:SetBackdropColor(0.05, 0.05, 0.05, 0.96); p:SetBackdropBorderColor(1, 0.6, 0.1, 1)
         p.title = p:CreateFontString(nil, "OVERLAY", "GameFontNormal"); p.title:SetPoint("TOP", 0, -10)
@@ -756,7 +930,19 @@ local function ShowGroupPosPopup(fo)
         Btn("Center on screen (X)", -122, function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, true, false); FillPosPopup(p) end end)
         Btn("Center on screen (Y)", -148, function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, false, true); FillPosPopup(p) end end)
         Btn("Center on screen (X, Y)", -174, function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, true, true); FillPosPopup(p) end end)
-        Btn("Close", -202, function() p:Hide() end)
+        p.anchorText = p:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        p.anchorText:SetPoint("TOPLEFT", 16, -206); p.anchorText:SetPoint("RIGHT", -16, 0); p.anchorText:SetJustifyH("LEFT")
+        Btn("Anchor to a frame on screen...", -224, function()
+            local f2 = ns.FolderById(p.fid); if not f2 then return end
+            ns.PickFrame("Anchor the group '" .. tostring(f2.name) .. "' to a frame", function(target, name)
+                local f3 = ns.FolderById(p.fid); if not f3 then return end
+                if ns.AnchorGroupToFrame(f3, target, name) then ns.Print("group '" .. tostring(f3.name) .. "' anchored to " .. name .. " (it stays where it is; Snap flush closes the gap)") end
+                if p:IsShown() then FillPosPopup(p) end
+            end)
+        end)
+        p.flush = Btn("Snap flush to that frame", -250, function() local f2 = ns.FolderById(p.fid); if f2 then ns.SnapGroupFlush(f2); FillPosPopup(p) end end)
+        Btn("Anchor to the screen (stays in place)", -276, function() local f2 = ns.FolderById(p.fid); if f2 then ns.UnanchorGroup(f2); FillPosPopup(p) end end)
+        Btn("Close", -306, function() p:Hide() end)
         if UISpecialFrames then table.insert(UISpecialFrames, "XayaUIGroupPosPopup") end
         posPopup = p
     end
@@ -1092,6 +1278,11 @@ local SNAP_ANCHOR = {
 local function SnapFrame(v)
     local sn = v and v.snap
     if not (sn and sn.target) then return nil end
+    if sn.target == "custom" then   -- a frame picked on screen (ns.PickFrame), kept by its name
+        local g = type(sn.frame) == "string" and _G[sn.frame]
+        if g and g.GetCenter then return g end
+        return nil
+    end
     for _, t in ipairs(SNAP_TARGETS) do
         if t.key == sn.target then
             for _, n in ipairs(t.frames) do
@@ -1171,6 +1362,34 @@ local function CommitDrag(rule, fr, useSnap)
     Place(fr, rule, parent)
     if dyn then LayoutDynamic(dyn) end
     ns.Fire("CONFIG_CHANGED")
+end
+-- a display snapped to a frame picked on screen: the side and alignment nearest to where the display is now (SNAP_POS keys)
+local function SnapPosFor(dl, db, dr, dt, tl, tb, tr, tt)
+    local h, v = SideOf(dl, db, dr, dt, tl, tb, tr, tt)
+    local dx, dy = (dl + dr) / 2, (db + dt) / 2
+    if h ~= "" and v == "" then
+        local third = (tt - tb) / 3
+        return h .. "_" .. ((dy > tt - third) and "TOP" or ((dy < tb + third) and "BOTTOM" or "CENTER"))
+    elseif v ~= "" then
+        local third = (tr - tl) / 3
+        return v .. "_" .. ((dx < tl + third) and "LEFT" or ((dx > tr - third) and "RIGHT" or "CENTER"))
+    end
+    return "TOP_CENTER"
+end
+function ns.SnapToPicked(rule, target, name)
+    if not (rule and rule.visual and target and name) then return false end
+    local v = rule.visual
+    local fr = frames[rule]
+    local pos = "TOP_CENTER"
+    local tl, tb, tr, tt = ScreenRect(target)
+    local dl, db, dr, dt
+    if fr then dl, db, dr, dt = ScreenRect(fr) end
+    if tl and dl then pos = SnapPosFor(dl, db, dr, dt, tl, tb, tr, tt) end
+    v.snap = { target = "custom", frame = name, pos = pos }
+    v.x, v.y = 0, 0
+    ns.RefreshVisual(rule)
+    ns.Fire("CONFIG_CHANGED")
+    return true, pos
 end
 function ns.SnapToTarget(rule, key, pos)
     local v = rule.visual
@@ -1255,6 +1474,15 @@ function ns.ShowVisualMenu(rule, anchor)
         local v = rule.visual
         local st = root:CreateButton("Snap Target")
         st:CreateRadio("None (free position)", function() return not (v.snap and v.snap.target) end, function() ns.SnapToTarget(rule, nil) end)
+        st:CreateButton("Pick a frame on screen...", function()
+            ns.PickFrame("Snap '" .. tostring(rule.name) .. "' to a frame", function(target, name)
+                local ok, pos = ns.SnapToPicked(rule, target, name)
+                if ok then ns.Print("'" .. tostring(rule.name) .. "' snapped to " .. name .. " (" .. tostring(pos):lower():gsub("_", " ") .. ")") end
+            end)
+        end)
+        if v.snap and v.snap.target == "custom" and v.snap.frame then
+            st:CreateRadio("Picked: " .. tostring(v.snap.frame), function() return v.snap and v.snap.target == "custom" end, function() end)
+        end
         for _, t in ipairs(SNAP_TARGETS) do
             local sub = st:CreateButton(t.label)
             for _, p in ipairs(SNAP_POS) do
