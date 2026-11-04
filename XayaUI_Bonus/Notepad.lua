@@ -418,13 +418,15 @@ local function BuildPopup()
     p:SetSize(300, 300); p:SetFrameStrata("DIALOG"); p:SetClampedToScreen(true); p:EnableMouse(true); p:Hide()
     p:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     p:SetBackdropColor(0.04, 0.04, 0.04, 0.96); p:SetBackdropBorderColor(0.2, 0.7, 1, 1)
-    local t = p:CreateFontString(nil, "OVERLAY"); t:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE"); t:SetPoint("TOPLEFT", 8, -6); t:SetTextColor(1, 0.82, 0)
+    local M, G = ns.UI_MARGIN, ns.UI_GUTTER   -- spacing from core (#351 phase 2, XayaUI/Modules.lua)
+    local t = p:CreateFontString(nil, "OVERLAY"); t:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE"); t:SetPoint("TOPLEFT", M, -M); t:SetTextColor(1, 0.82, 0)
     t:SetText("Notepad - Restore")
     local x = CreateFrame("Button", nil, p); x:SetSize(20, 20); x:SetPoint("TOPRIGHT", -2, -2)
+    x.xuiEdge = true   -- a title-bar close sits at the edge on purpose (#351)
     x.t = x:CreateFontString(nil, "OVERLAY"); x.t:SetFont(STANDARD_TEXT_FONT, 13, "OUTLINE"); x.t:SetPoint("CENTER"); x.t:SetText("x")
     x:SetScript("OnClick", function() p:Hide() end)
     local sf = CreateFrame("ScrollFrame", nil, p)
-    sf:SetPoint("TOPLEFT", 6, -26); sf:SetPoint("BOTTOMRIGHT", -6, 6); sf:EnableMouseWheel(true)
+    sf:SetPoint("TOPLEFT", M, -(2 + 20 + G)); sf:SetPoint("BOTTOMRIGHT", -M, M); sf:EnableMouseWheel(true)   -- G under the close x
     local child = CreateFrame("Frame", nil, sf); child:SetSize(260, 1); sf:SetScrollChild(child)
     sf:SetScript("OnMouseWheel", function(self, d)
         self:SetVerticalScroll(math.max(0, math.min(self:GetVerticalScrollRange(), self:GetVerticalScroll() - d * ROW_H * 3)))
@@ -438,7 +440,7 @@ function ns.Notepad_ToggleRestore()
     local p = BuildPopup()
     if p:IsShown() then p:Hide(); return end
     p:ClearAllPoints()
-    if frame and frame:IsShown() then p:SetPoint("TOPLEFT", frame, "TOPRIGHT", 6, 0) else p:SetPoint("CENTER") end
+    if frame and frame:IsShown() then p:SetPoint("TOPLEFT", frame, "TOPRIGHT", ns.UI_GUTTER, 0) else p:SetPoint("CENTER") end
     p:Show()
     Populate()
 end
@@ -522,6 +524,7 @@ end
 
 local function BuildToolbar(f)
     local tb = CreateFrame("Frame", nil, f)
+    tb.xuiEdge = true   -- the toolbar is a band along one side; its icons are a segmented row (2 px seams; #351)
     tb.bg = tb:CreateTexture(nil, "BACKGROUND"); tb.bg:SetAllPoints(); tb.bg:SetColorTexture(0.1, 0.1, 0.1, 0.9)
     tb.btns = {}; tb.byName = {}
     for i, def in ipairs(BUTTONS) do
@@ -568,7 +571,10 @@ local function Layout()
     local u = math.max(1, math.min(2, vert and fh / REF_H or fw / REF_W))
     f.nr:ClearAllPoints(); f.nr:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -TITLE_H); f.nr:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -TITLE_H)
     tb:ClearAllPoints()
-    local L, T, R, B = 6, HDR + 4, 6, 14
+    -- #351 phase 2: the text area M from the sides (it was 6), G under the name row, the toolbar and the format bar (they were 2-4);
+    -- 14 at the bottom (the resize grip's corner)
+    local M, G = ns.UI_MARGIN, ns.UI_GUTTER
+    local L, T, R, B = M, HDR + G, M, math.max(14, M)
     -- A top or bottom toolbar also wraps: when the box is too narrow for one row, the icons flow onto more rows and the text area gives up the room.
     local cols, tbH, tbW = #BUTTONS, TB_H, TB_W
     local bw, gap, pad, step = BTN_W * u, 2 * u, 2 * u, (TB_H - 2) * u
@@ -579,13 +585,13 @@ local function Layout()
             tbH = math.ceil(#BUTTONS / cols) * step + pad
         end
         if pos == "TOP" then
-            tb:SetPoint("TOPLEFT", 0, -HDR); tb:SetPoint("TOPRIGHT", 0, -HDR); tb:SetHeight(tbH); T = HDR + tbH + 3
+            tb:SetPoint("TOPLEFT", 0, -HDR); tb:SetPoint("TOPRIGHT", 0, -HDR); tb:SetHeight(tbH); T = HDR + tbH + G
         elseif pos == "BOTTOM" then
-            tb:SetPoint("BOTTOMLEFT", 0, 0); tb:SetPoint("BOTTOMRIGHT", -16, 0); tb:SetHeight(tbH); B = tbH + 3
+            tb:SetPoint("BOTTOMLEFT", 0, 0); tb:SetPoint("BOTTOMRIGHT", -16, 0); tb:SetHeight(tbH); B = tbH + G
         elseif pos == "LEFT" then
-            tb:SetPoint("TOPLEFT", 0, -HDR); tb:SetPoint("BOTTOMLEFT", 0, 0); tb:SetWidth(tbW); L = tbW + 4
+            tb:SetPoint("TOPLEFT", 0, -HDR); tb:SetPoint("BOTTOMLEFT", 0, 0); tb:SetWidth(tbW); L = tbW + G
         else
-            tb:SetPoint("TOPRIGHT", 0, -HDR); tb:SetPoint("BOTTOMRIGHT", 0, 0); tb:SetWidth(tbW); R = tbW + 4
+            tb:SetPoint("TOPRIGHT", 0, -HDR); tb:SetPoint("BOTTOMRIGHT", 0, 0); tb:SetWidth(tbW); R = tbW + G
         end
         if tb.u ~= u then tb.u = u; for _, b in ipairs(tb.btns) do ApplyIconScale(b, u) end end
         for i, b in ipairs(tb.btns) do
@@ -604,7 +610,7 @@ local function Layout()
         fb:ClearAllPoints()
         if db.format and not mode.list then
             fb:SetPoint("TOPLEFT", f, "TOPLEFT", L, -T); fb:SetPoint("TOPRIGHT", f, "TOPRIGHT", -R, -T); fb:SetHeight(FB_H)
-            T = T + FB_H + 2
+            T = T + FB_H + G
         end
     end
     for _, area in ipairs({ sf, f.vf, f.lf }) do   -- typing area, formatted view, and note list share one spot
@@ -782,6 +788,7 @@ local function Build()
 
     local bar = CreateFrame("Frame", nil, f)
     bar:SetPoint("TOPLEFT"); bar:SetPoint("TOPRIGHT"); bar:SetHeight(TITLE_H)
+    bar.xuiEdge = true   -- the title bar spans the window (#351)
     bar:EnableMouse(true); bar:RegisterForDrag("LeftButton")
     bar.bg = bar:CreateTexture(nil, "BACKGROUND"); bar.bg:SetAllPoints(); bar.bg:SetColorTexture(0.13, 0.13, 0.13, 0.95)
     bar:SetScript("OnDragStart", function() local db = DB(); if db and not db.locked then f:StartMoving(); f.moving = true end end)
@@ -812,9 +819,10 @@ local function Build()
     -- Name row under the bar: the note's title. It reads as an input box (pencil icon, border, grey default name) so it is clear it can be renamed.
     local nr = CreateFrame("Frame", nil, f); nr:SetHeight(NAME_H)
     nr.bg = nr:CreateTexture(nil, "BACKGROUND"); nr.bg:SetAllPoints(); nr.bg:SetColorTexture(0.09, 0.09, 0.09, 0.95)
-    nr.count = nr:CreateFontString(nil, "OVERLAY"); nr.count:SetFont(STANDARD_TEXT_FONT, 10, ""); nr.count:SetPoint("RIGHT", -6, 0); nr.count:SetTextColor(0.55, 0.55, 0.55)
+    nr.xuiEdge = true   -- a band across the window, like the title bar (#351: its contents keep M from its sides)
+    nr.count = nr:CreateFontString(nil, "OVERLAY"); nr.count:SetFont(STANDARD_TEXT_FONT, 10, ""); nr.count:SetPoint("RIGHT", -ns.UI_MARGIN, 0); nr.count:SetTextColor(0.55, 0.55, 0.55)
     local box = CreateFrame("Frame", nil, nr, "BackdropTemplate")
-    box:SetPoint("LEFT", 4, 0); box:SetPoint("RIGHT", nr.count, "LEFT", -6, 0); box:SetHeight(NAME_H - 6)
+    box:SetPoint("LEFT", ns.UI_MARGIN, 0); box:SetPoint("RIGHT", nr.count, "LEFT", -ns.UI_GUTTER, 0); box:SetHeight(NAME_H - 6)
     box:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     box:SetBackdropColor(0.02, 0.02, 0.02, 0.9); box:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
     local pen = box:CreateTexture(nil, "OVERLAY"); pen:SetTexture(ICON_DIR .. "pencil.png"); pen:SetSize(12, 12); pen:SetPoint("LEFT", 4, 0); pen:SetVertexColor(0.7, 0.7, 0.7)
@@ -924,6 +932,7 @@ local function Build()
 
     local grip = CreateFrame("Button", nil, f)
     grip:SetSize(14, 14); grip:SetPoint("BOTTOMRIGHT", -1, 1)
+    grip.xuiEdge = true   -- a corner resize grip (#351)
     grip.t = grip:CreateTexture(nil, "OVERLAY"); grip.t:SetAllPoints(); grip.t:SetColorTexture(0.2, 0.7, 1, 0.7)
     grip:SetScript("OnMouseDown", function() local db = DB(); if db and not db.locked then f:StartSizing("BOTTOMRIGHT"); f.sizing = true end end)
     grip:SetScript("OnMouseUp", function() if f.sizing then f.sizing = false; f:StopMovingOrSizing(); SavePosition(f) end end)

@@ -756,7 +756,7 @@ function ns.PickFrame(title, onPick)
         P:SetSize(420, 58); P:SetPoint("TOP", UIParent, "TOP", 0, -60); P:SetFrameStrata("TOOLTIP"); P:EnableMouse(true)
         P:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
         P:SetBackdropColor(0.05, 0.05, 0.05, 0.95); P:SetBackdropBorderColor(1, 0.6, 0.1, 1)
-        P.text = P:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); P.text:SetPoint("TOPLEFT", 10, -8); P.text:SetPoint("RIGHT", -90, 0)
+        P.text = P:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); P.text:SetPoint("TOPLEFT", ns.UI_MARGIN, -ns.UI_MARGIN); P.text:SetPoint("RIGHT", -90, 0)
         P.text:SetJustifyH("LEFT")
         P.cancel = CreateFrame("Button", nil, P, "UIPanelButtonTemplate"); P.cancel:SetSize(70, 22); P.cancel:SetPoint("RIGHT", -10, 0)
         P.cancel:SetText("Cancel"); P.cancel.xuiPickerOwn = true
@@ -897,10 +897,14 @@ local function ShowGroupPosPopup(fo)
     local p = posPopup
     if not p then
         p = CreateFrame("Frame", "XayaUIGroupPosPopup", UIParent, "BackdropTemplate")
-        p:SetSize(260, 336); p:SetFrameStrata("FULLSCREEN_DIALOG"); p:SetClampedToScreen(true); p:EnableMouse(true)
+        -- rows from the top, G apart (#351 phase 2; they were 4-8 px apart and the last one 8 px from the bottom); the height is set
+        -- after the last row
+        local M, G = ns.UI_MARGIN, ns.UI_GUTTER
+        p:SetSize(260, 384); p:SetFrameStrata("FULLSCREEN_DIALOG"); p:SetClampedToScreen(true); p:EnableMouse(true)
         p:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
         p:SetBackdropColor(0.05, 0.05, 0.05, 0.96); p:SetBackdropBorderColor(1, 0.6, 0.1, 1)
-        p.title = p:CreateFontString(nil, "OVERLAY", "GameFontNormal"); p.title:SetPoint("TOP", 0, -10)
+        p.title = p:CreateFontString(nil, "OVERLAY", "GameFontNormal"); p.title:SetPoint("TOP", 0, -M)
+        local y = M + 14 + G   -- the next row's top, from the popup's top (under the 14 px title)
         local function Box(label, y)
             local fsl = p:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); fsl:SetPoint("TOPLEFT", 16, y); fsl:SetText(label)
             local eb = CreateFrame("EditBox", nil, p, "InputBoxTemplate")
@@ -916,23 +920,27 @@ local function ShowGroupPosPopup(fo)
             if y then fo2.cY = math.floor(y + 0.5) end
             GroupPosChanged(fo2); FillPosPopup(p)
         end
-        p.x, p.y = Box("X offset", -38), Box("Y offset", -64)
+        p.x = Box("X offset", -(y + 4)); y = y + 20 + G   -- Box puts the 20 px edit box 4 px above its label
+        p.y = Box("Y offset", -(y + 4)); y = y + 20 + G
         p.x:SetScript("OnEnterPressed", function(self) self:ClearFocus(); Apply() end)
         p.y:SetScript("OnEnterPressed", function(self) self:ClearFocus(); Apply() end)
-        local function Btn(text, y, fn)
+        local function Btn(text, fn)
             local b = CreateFrame("Button", nil, p, "UIPanelButtonTemplate")
-            b:SetSize(228, 22); b:SetPoint("TOP", 0, y); b:SetText(text)
+            b:SetSize(228, 22); b:SetPoint("TOP", 0, -y); b:SetText(text)
+            y = y + 22 + G
             b:SetScript("OnClick", function() fn() end)
             if ns.FlatButton then ns.FlatButton(b) end
             return b
         end
-        Btn("Apply X / Y", -94, Apply)
-        Btn("Center on screen (X)", -122, function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, true, false); FillPosPopup(p) end end)
-        Btn("Center on screen (Y)", -148, function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, false, true); FillPosPopup(p) end end)
-        Btn("Center on screen (X, Y)", -174, function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, true, true); FillPosPopup(p) end end)
+        Btn("Apply X / Y", Apply)
+        Btn("Center on screen (X)", function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, true, false); FillPosPopup(p) end end)
+        Btn("Center on screen (Y)", function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, false, true); FillPosPopup(p) end end)
+        Btn("Center on screen (X, Y)", function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, true, true); FillPosPopup(p) end end)
         p.anchorText = p:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        p.anchorText:SetPoint("TOPLEFT", 16, -206); p.anchorText:SetPoint("RIGHT", -16, 0); p.anchorText:SetJustifyH("LEFT")
-        Btn("Anchor to a frame on screen...", -224, function()
+        p.anchorText:SetPoint("TOPLEFT", 16, -y); p.anchorText:SetPoint("RIGHT", -16, 0); p.anchorText:SetJustifyH("LEFT")
+        p.anchorText:SetHeight(24); p.anchorText:SetJustifyV("TOP")   -- room for two lines (a long frame name)
+        y = y + 24 + G
+        Btn("Anchor to a frame on screen...", function()
             local f2 = ns.FolderById(p.fid); if not f2 then return end
             ns.PickFrame("Anchor the group '" .. tostring(f2.name) .. "' to a frame", function(target, name)
                 local f3 = ns.FolderById(p.fid); if not f3 then return end
@@ -940,9 +948,10 @@ local function ShowGroupPosPopup(fo)
                 if p:IsShown() then FillPosPopup(p) end
             end)
         end)
-        p.flush = Btn("Snap flush to that frame", -250, function() local f2 = ns.FolderById(p.fid); if f2 then ns.SnapGroupFlush(f2); FillPosPopup(p) end end)
-        Btn("Anchor to the screen (stays in place)", -276, function() local f2 = ns.FolderById(p.fid); if f2 then ns.UnanchorGroup(f2); FillPosPopup(p) end end)
-        Btn("Close", -306, function() p:Hide() end)
+        p.flush = Btn("Snap flush to that frame", function() local f2 = ns.FolderById(p.fid); if f2 then ns.SnapGroupFlush(f2); FillPosPopup(p) end end)
+        Btn("Anchor to the screen (stays in place)", function() local f2 = ns.FolderById(p.fid); if f2 then ns.UnanchorGroup(f2); FillPosPopup(p) end end)
+        Btn("Close", function() p:Hide() end)
+        p:SetHeight(y - G + M)   -- 384: M under the Close button
         if UISpecialFrames then table.insert(UISpecialFrames, "XayaUIGroupPosPopup") end
         posPopup = p
     end

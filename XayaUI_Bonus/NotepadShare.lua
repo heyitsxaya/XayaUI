@@ -15,6 +15,8 @@
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+-- spacing from core (#351 phase 2, XayaUI/Modules.lua): M inside every window's edge, G between two controls
+local M, G = ns.UI_MARGIN, ns.UI_GUTTER
 
 local PREFIX = "XUINOTE"
 local CHUNK = 200            -- encoded characters per addon message (limit is 255 including the small header)
@@ -299,9 +301,10 @@ local function BuildOffer()
     f:RegisterForDrag("LeftButton"); f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
     f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     f:SetBackdropColor(0.06, 0.06, 0.06, 0.95); f:SetBackdropBorderColor(0.2, 0.7, 1, 1)
-    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal"); f.title:SetPoint("TOPLEFT", 8, -8); f.title:SetPoint("TOPRIGHT", -8, -8); f.title:SetJustifyH("LEFT")
+    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal"); f.title:SetPoint("TOPLEFT", M, -M); f.title:SetPoint("TOPRIGHT", -M, -M); f.title:SetJustifyH("LEFT")
     f.sub = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); f.sub:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3); f.sub:SetTextColor(0.6, 0.6, 0.6)
-    local sf = CreateFrame("ScrollFrame", nil, f); sf:SetPoint("TOPLEFT", 8, -44); sf:SetPoint("BOTTOMRIGHT", -8, 34); sf:EnableMouseWheel(true)
+    -- the text: under the title and its subtitle (about 40 px), G above the 22 px button row
+    local sf = CreateFrame("ScrollFrame", nil, f); sf:SetPoint("TOPLEFT", M, -(M + 40)); sf:SetPoint("BOTTOMRIGHT", -M, M + 22 + G); sf:EnableMouseWheel(true)
     local c = CreateFrame("Frame", nil, sf); c:SetSize(290, 10); sf:SetScrollChild(c)
     f.body = c:CreateFontString(nil, "OVERLAY"); f.body:SetFontObject(ChatFontNormal or GameFontHighlight)
     f.body:SetPoint("TOPLEFT"); f.body:SetPoint("TOPRIGHT"); f.body:SetJustifyH("LEFT"); f.body:SetJustifyV("TOP")
@@ -309,7 +312,7 @@ local function BuildOffer()
     f.sf, f.c = sf, c
     local function Btn(label, w, x, fn)
         local b = CreateFrame("Button", nil, f)
-        b:SetSize(w, 22); b:SetPoint("BOTTOMLEFT", x, 8)
+        b:SetSize(w, 22); b:SetPoint("BOTTOMLEFT", x, M)
         b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(); b.bg:SetColorTexture(0.18, 0.18, 0.18, 0.95)
         b.hl = b:CreateTexture(nil, "HIGHLIGHT"); b.hl:SetAllPoints(); b.hl:SetColorTexture(0.2, 0.7, 1, 0.35)
         b.fs = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); b.fs:SetPoint("CENTER"); b.fs:SetText(label)
@@ -317,7 +320,7 @@ local function BuildOffer()
         return b
     end
     local function Next() table.remove(pending, 1); if #pending > 0 then ShowOffer() else f:Hide() end end
-    f.save = Btn("Save as new note", 120, 8, function()
+    f.save = Btn("Save as new note", 120, M, function()
         local o = pending[1]
         if o then
             local pos = ns.Notepad_AddNote and ns.Notepad_AddNote(o.text)
@@ -325,8 +328,8 @@ local function BuildOffer()
         end
         Next()
     end)
-    f.dismiss = Btn("Dismiss", 70, 134, Next)
-    f.block = Btn("Block sender", 90, 210, function()
+    f.dismiss = Btn("Dismiss", 70, M + 120 + G, Next)
+    f.block = Btn("Block sender", 90, M + 120 + G + 70 + G, function()   -- ends M from the right edge (320 wide)
         local o = pending[1]
         if o then
             blocked[o.sender] = true
@@ -371,14 +374,16 @@ end
 local function BuildShare()
     if shareFrame then return shareFrame end
     local f = CreateFrame("Frame", "XayaUINoteShare", UIParent, "BackdropTemplate")
-    f:SetSize(300, 176); f:SetPoint("CENTER", UIParent, "CENTER", 0, 80)
+    f:SetSize(300, 210); f:SetPoint("CENTER", UIParent, "CENTER", 0, 80)   -- (176 before #351 phase 2: the status ran into the buttons)
     f:SetFrameStrata("DIALOG"); f:SetClampedToScreen(true); f:SetMovable(true); f:EnableMouse(true)
     f:RegisterForDrag("LeftButton"); f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
     f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     f:SetBackdropColor(0.06, 0.06, 0.06, 0.95); f:SetBackdropBorderColor(0.2, 0.7, 1, 1)
     local function Text(parent, size, ...) local fs = parent:CreateFontString(nil, "OVERLAY", size or "GameFontHighlightSmall"); fs:SetPoint(...); return fs end
-    f.title = Text(f, "GameFontNormal", "TOPLEFT", 8, -8); f.title:SetText("Share this note")
-    f.what = Text(f, "GameFontHighlightSmall", "TOPLEFT", 8, -26); f.what:SetPoint("TOPRIGHT", -8, -26); f.what:SetJustifyH("LEFT"); f.what:SetWordWrap(false)
+    -- rows, top to bottom (#351 phase 2): title M from the top; the note's name G under the close x (it spans the width); then the
+    -- channel row, the player row, the "post text" button and the status, G apart; the buttons M from the bottom
+    f.title = Text(f, "GameFontNormal", "TOPLEFT", M, -M); f.title:SetText("Share this note")
+    f.what = Text(f, "GameFontHighlightSmall", "TOPLEFT", M, -30); f.what:SetPoint("TOPRIGHT", -M, -30); f.what:SetJustifyH("LEFT"); f.what:SetWordWrap(false)
     local function Btn(label, w, h, fn)
         local b = CreateFrame("Button", nil, f)
         b:SetSize(w, h)
@@ -388,7 +393,7 @@ local function BuildShare()
         b:SetScript("OnClick", fn)
         return b
     end
-    f.chLabel = Text(f, "GameFontHighlightSmall", "TOPLEFT", 8, -50); f.chLabel:SetText("Send to")
+    f.chLabel = Text(f, "GameFontHighlightSmall", "TOPLEFT", M, -56); f.chLabel:SetText("Send to")
     f.ch = Btn("", 150, 20, function()
         local av = Available(); if #av == 0 then return end
         local cur = 1
@@ -396,20 +401,21 @@ local function BuildShare()
         f.channel = av[(cur % #av) + 1][1]
         f:Sync()
     end)
-    f.ch:SetPoint("TOPLEFT", 70, -47)
-    f.nameLabel = Text(f, "GameFontHighlightSmall", "TOPLEFT", 8, -76); f.nameLabel:SetText("Player")
-    f.name = CreateFrame("EditBox", nil, f, "InputBoxTemplate"); f.name:SetSize(140, 20); f.name:SetPoint("TOPLEFT", 74, -72); f.name:SetAutoFocus(false); f.name:SetMaxLetters(64)
+    f.ch:SetPoint("TOPLEFT", 70, -52)
+    f.nameLabel = Text(f, "GameFontHighlightSmall", "TOPLEFT", M, -86); f.nameLabel:SetText("Player")
+    f.name = CreateFrame("EditBox", nil, f, "InputBoxTemplate"); f.name:SetSize(140, 20); f.name:SetPoint("TOPLEFT", 74, -82); f.name:SetAutoFocus(false); f.name:SetMaxLetters(64)
     f.name:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-    f.postBtn = Btn("", 284, 20, function() f.withText = not f.withText; f:Sync() end)
-    f.postBtn:SetPoint("TOPLEFT", 8, -98)
-    f.status = Text(f, "GameFontHighlightSmall", "TOPLEFT", 8, -122); f.status:SetPoint("TOPRIGHT", -8, -122); f.status:SetJustifyH("LEFT"); f.status:SetHeight(26); f.status:SetWordWrap(true); f.status:SetJustifyV("TOP")
+    f.postBtn = Btn("", 300 - 2 * M, 20, function() f.withText = not f.withText; f:Sync() end)
+    f.postBtn:SetPoint("TOPLEFT", M, -112)
+    f.status = Text(f, "GameFontHighlightSmall", "TOPLEFT", M, -142); f.status:SetPoint("TOPRIGHT", -M, -142); f.status:SetJustifyH("LEFT"); f.status:SetHeight(26); f.status:SetWordWrap(true); f.status:SetJustifyV("TOP")
     f.send = Btn("Send", 80, 22, function()
         local ok, info = ns.NotepadShare_Send(ns.Notepad_CurrentText and ns.Notepad_CurrentText() or "", f.channel, (f.name:GetText() or ""):gsub("%s+", ""), f.withText)
         if ok then f:Hide() else f.status:SetText("|cffff6060" .. tostring(info) .. "|r") end
     end)
-    f.send:SetPoint("BOTTOMLEFT", 8, 8)
-    f.cancel = Btn("Cancel", 80, 22, function() f:Hide() end); f.cancel:SetPoint("LEFT", f.send, "RIGHT", 6, 0)
+    f.send:SetPoint("BOTTOMLEFT", M, M)
+    f.cancel = Btn("Cancel", 80, 22, function() f:Hide() end); f.cancel:SetPoint("LEFT", f.send, "RIGHT", G, 0)
     local x = CreateFrame("Button", nil, f); x:SetSize(16, 16); x:SetPoint("TOPRIGHT", -4, -4)
+    x.xuiEdge = true   -- a title-bar close sits at the edge on purpose (#351)
     x.fs = x:CreateFontString(nil, "OVERLAY", "GameFontNormal"); x.fs:SetPoint("CENTER"); x.fs:SetText("x"); x:SetScript("OnClick", function() f:Hide() end)
     f.channel, f.withText = "PARTY", true
     function f:Sync()
@@ -449,7 +455,7 @@ local function BuildIO()
     f:RegisterForDrag("LeftButton"); f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
     f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     f:SetBackdropColor(0.06, 0.06, 0.06, 0.95); f:SetBackdropBorderColor(0.2, 0.7, 1, 1)
-    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal"); f.title:SetPoint("TOPLEFT", 8, -8); f.title:SetText("Export / import notes")
+    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal"); f.title:SetPoint("TOPLEFT", M, -M); f.title:SetText("Export / import notes")
     local function Btn(label, w, fn)
         local b = CreateFrame("Button", nil, f)
         b:SetSize(w, 20)
@@ -459,20 +465,21 @@ local function BuildIO()
         b:SetScript("OnClick", fn)
         return b
     end
-    f.m1 = Btn("This note", 90, function() f:SetMode("one") end); f.m1:SetPoint("TOPLEFT", 8, -28)
+    -- (the three mode buttons are one segmented row: 4 px seams; #351 phase 2 moved the rows to M / G)
+    f.m1 = Btn("This note", 90, function() f:SetMode("one") end); f.m1:SetPoint("TOPLEFT", M, -34)
     f.m2 = Btn("All notes", 90, function() f:SetMode("all") end); f.m2:SetPoint("LEFT", f.m1, "RIGHT", 4, 0)
     f.m3 = Btn("Import", 90, function() f:SetMode("import") end); f.m3:SetPoint("LEFT", f.m2, "RIGHT", 4, 0)
-    f.help = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); f.help:SetPoint("TOPLEFT", 8, -54); f.help:SetPoint("TOPRIGHT", -8, -54)
+    f.help = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); f.help:SetPoint("TOPLEFT", M, -(54 + G)); f.help:SetPoint("TOPRIGHT", -M, -(54 + G))
     f.help:SetJustifyH("LEFT"); f.help:SetTextColor(0.7, 0.7, 0.7); f.help:SetHeight(28); f.help:SetWordWrap(true); f.help:SetJustifyV("TOP")
     local sf = CreateFrame("ScrollFrame", "XayaUINoteIOScroll", f, "UIPanelScrollFrameTemplate")
-    sf:SetPoint("TOPLEFT", 8, -86); sf:SetPoint("BOTTOMRIGHT", -28, 36)
+    sf:SetPoint("TOPLEFT", M, -(54 + G + 28 + G)); sf:SetPoint("BOTTOMRIGHT", -28, M + 20 + G)   -- G under the help, G above the button
     local eb = CreateFrame("EditBox", nil, sf)
     eb:SetMultiLine(true); eb:SetAutoFocus(false); eb:SetMaxLetters(0); eb:SetFontObject(ChatFontNormal or GameFontHighlight); eb:SetWidth(370)
     eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     eb:SetScript("OnTextChanged", function(self) if sf.UpdateScrollChildRect then sf:UpdateScrollChildRect() end end)
     sf:SetScrollChild(eb)
     f.eb, f.sf = eb, sf
-    f.status = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); f.status:SetPoint("BOTTOMLEFT", 8, 12); f.status:SetPoint("BOTTOMRIGHT", -140, 12); f.status:SetJustifyH("LEFT"); f.status:SetWordWrap(false)
+    f.status = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); f.status:SetPoint("BOTTOMLEFT", M, M + 4); f.status:SetPoint("BOTTOMRIGHT", -140, M + 4); f.status:SetJustifyH("LEFT"); f.status:SetWordWrap(false)
     f.act = Btn("Select all", 90, function()
         if f.mode == "import" then
             local texts = ns.NotepadShare_Parse(f.eb:GetText())
@@ -490,8 +497,9 @@ local function BuildIO()
             f.status:SetText("Press Ctrl+C to copy.")
         end
     end)
-    f.act:SetPoint("BOTTOMRIGHT", -30, 8)
+    f.act:SetPoint("BOTTOMRIGHT", -30, M)
     local x = CreateFrame("Button", nil, f); x:SetSize(16, 16); x:SetPoint("TOPRIGHT", -4, -4)
+    x.xuiEdge = true   -- a title-bar close sits at the edge on purpose (#351)
     x.fs = x:CreateFontString(nil, "OVERLAY", "GameFontNormal"); x.fs:SetPoint("CENTER"); x.fs:SetText("x"); x:SetScript("OnClick", function() f:Hide() end)
     function f:SetMode(mode)
         self.mode = mode

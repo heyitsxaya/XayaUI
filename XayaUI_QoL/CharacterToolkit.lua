@@ -669,18 +669,27 @@ local function RenderSections(c, m, tab, y0)
                         lb:SetSize(lw, size + 6)
                         Rec("hit", 0, y, lw, size + 6, it.key)
                         y = y + math.max(rowH, size + 6) + 2
+                    elseif v == nil or v == "" then
+                        -- a line with no value (a spell: its name and ID, #380) uses the whole width
+                        local lh = PlaceFS(FS(), 0, y, W, size, it.label, it.minor and cMuted or cText, "LEFT", true, "label")
+                        y = y + lh + 1
                     else
                         local lw = math.floor(W * 0.5)
                         local lh = PlaceFS(FS(), 0, y, lw - 4, size, it.label, it.minor and cMuted or cText, "LEFT", true, "label")
                         local vh = PlaceFS(FS(), lw, y, W - lw, size, v, ToneColor(tone, cText), "RIGHT", true, "value")
                         y = y + math.max(lh, vh) + 1
                     end
+                    -- detail lines: one size smaller and muted, except an item that asks for full-size ones (spell math, #378: Xaya
+                    -- found them "way too tiny"); those also give the value 70% of the width so "83.1% of attack power; 1 Agility = +0.83"
+                    -- stays on one line
+                    local big = it.bigPairs == true
+                    local psz, pcol, frac = big and size or size - 1, big and cText or cMuted, big and 0.3 or 0.5
                     for _, p in ipairs(it.pairs or {}) do
                         if not short or p.short then
                             local x0 = 12
-                            local lw = math.floor((W - x0) * 0.5)
-                            local lh = PlaceFS(FS(), x0, y, lw - 4, size - 1, p.label, cMuted, "LEFT", true, "pairLabel")
-                            local vh = PlaceFS(FS(), x0 + lw, y, W - x0 - lw, size - 1, tostring(p.value), ToneColor(p.tone, cText), "RIGHT", true, "pairValue")
+                            local lw = math.floor((W - x0) * frac)
+                            local lh = PlaceFS(FS(), x0, y, lw - 4, psz, p.label, pcol, "LEFT", true, "pairLabel")
+                            local vh = PlaceFS(FS(), x0 + lw, y, W - x0 - lw, psz, tostring(p.value), ToneColor(p.tone, cText), "RIGHT", true, "pairValue")
                             y = y + math.max(lh, vh) + 1
                         end
                     end
@@ -1253,6 +1262,9 @@ ns.RegisterCommand("stats", function(arg)
     arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     local c = Cfg()
     if arg == "options" or arg == "settings" then ns.OpenSettingsPage("qol", "chartoolkit"); return end
+    -- the in-game test for the planned wider character window (CharacterWidthProbe.lua); runs only when typed
+    local probeArg = arg:match("^widthprobe%s*(.*)$")
+    if probeArg and ns.CharWidthProbe_Run then ns.CharWidthProbe_Run(probeArg); return end
     if arg == "help" then
         ns.Print("/xui stats: show or hide the Character Toolkit panel. /xui stats on | off | options | status")
         return
@@ -1269,4 +1281,4 @@ ns.RegisterCommand("stats", function(arg)
     if arg == "on" then c.enabled = true; ns.CharToolkit_Apply(); ns.Print("Character Toolkit on."); return end
     if arg == "off" then c.enabled = false; ns.CharToolkit_Apply(); ns.Print("Character Toolkit off."); return end
     ns.CharToolkit_Toggle()
-end, "/xui stats [on|off|options|status] (Character Toolkit stat panel)")
+end, "/xui stats [on|off|options|status|widthprobe [px|off]] (Character Toolkit stat panel)")
