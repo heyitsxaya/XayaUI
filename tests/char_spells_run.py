@@ -64,7 +64,7 @@ local function secTitles(m) local t = {}; for _, s in ipairs(m.sections) do t[#t
 -- 1. The tab row --------------------------------------------------------------------------------------------------------------
 local tabKeys = {}
 for _, t in ipairs(CM.TABS) do tabKeys[#tabKeys + 1] = t[1] end
-check("tabs: Stats, Gear, Spells (Defense and Offense are filters now; no Sheet since QoL 0.7.13; What If folded into Stats and Gear in 0.7.14)", table.concat(tabKeys, ",") == "stats,gear,spells", table.concat(tabKeys, ","))
+check("tabs: Stats, Gear, Spells (Defense and Offense are filters now; no Sheet, and What If folded into Stats and Gear, since QoL 0.7.14)", table.concat(tabKeys, ",") == "stats,gear,spells", table.concat(tabKeys, ","))
 c.tab = "defense"; c = ns.CharToolkit_Cfg()
 check("a saved Defense tab opens Spells with the Defense filter", c.tab == "spells" and c.spellFilter == "defense", tostring(c.tab) .. " " .. tostring(c.spellFilter))
 c.tab = "offense"; c = ns.CharToolkit_Cfg()

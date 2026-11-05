@@ -6,7 +6,7 @@
 --
 -- Every number comes from the one model in CharacterModel.lua (the game's own reads; what the game does not give is marked, never
 -- guessed; secret values show as "hidden in combat"). This file only draws it:
---   Tabs: Stats | Gear | Spells (the Sheet tab was removed in QoL 0.7.13: the character window itself is restyled instead,
+--   Tabs: Stats | Gear | Spells (the Sheet tab was removed in QoL 0.7.14: the character window itself is restyled instead,
 --   QoL Character Reskin; the What If tab in 0.7.14: its numbers are the stat map's boxes, its item compare the Gear comparison).
 --   Stats is the stat map: one card per stat with a box holding the number itself and what it feeds, "now -> with your number".
 --   Gear: the equipped items as icons; click one to list what you own for that slot, pick one, and see the two side by side and
@@ -58,7 +58,7 @@ ns.CHARTOOLKIT_DEFAULTS = {
 }
 -- the size limits of the panel's corner grip (#381, Xaya: "resize from the bottom right"; QoL 0.7.14)
 local MIN_W, MAX_W, MIN_H, MAX_H = 340, 760, 300, 1100
-local OLD_TABS = { overview = "stats", ratings = "stats", sheet = "stats", whatif = "stats" }   -- (Sheet: removed in QoL 0.7.13; What If: 0.7.14)
+local OLD_TABS = { overview = "stats", ratings = "stats", sheet = "stats", whatif = "stats" }   -- (Sheet and What If: removed in QoL 0.7.14)
 
 local function CopyVal(v)
     if type(v) ~= "table" then return v end

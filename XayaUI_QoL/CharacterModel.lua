@@ -2388,7 +2388,7 @@ end
 -- Offense are no longer tabs (QoL 0.7.7; Xaya 2026-11-04: "remove defense and offense tabs from stat calculator, they should be filters
 -- for 'Spells'"): their sections are drawn under the Spells tab's Offense and Defense filters, and CM.Build still takes "defense" and
 -- "offense" for the tooltips and the tests.
--- The Sheet tab is gone (QoL 0.7.13; Xaya 2026-11-04: "I don't care about this sheet at all. I want a reskin OF THE CHARACTER MENU AND
+-- The Sheet tab is gone (QoL 0.7.14; Xaya 2026-11-04: "I don't care about this sheet at all. I want a reskin OF THE CHARACTER MENU AND
 -- NOTHING ELSE"): a saved "sheet" tab opens Stats; the stats go into the restyled character window (QoL Character Reskin).
 -- The What If tab is gone too (QoL 0.7.14): its numbers are the stat map's boxes (and its All ratings box), its item compare is the
 -- Gear tab's comparison (requirements B9); a saved "whatif" tab opens Stats.

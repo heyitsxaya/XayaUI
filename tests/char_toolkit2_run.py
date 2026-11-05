@@ -1,5 +1,5 @@
 # Stub test for QoL > Character Toolkit phase 2 (XayaUI_QoL 0.7.0): what the panel shows. Sections with headers (and folding them),
-# the rating / percent toggle (every line and one line), the conversion hover, detail pairs, no Sheet tab (QoL 0.7.13), the
+# the rating / percent toggle (every line and one line), the conversion hover, detail pairs, no Sheet tab (QoL 0.7.14), the
 # What If pane (per-stat inputs and an item compare through the stand-in converter), the slot overlays, secret values shown as
 # "hidden in combat" and never compared, the settings page layout, layout bounds (V11), and the new game reads (dodge from Agility,
 # block reduction, attack power to DPS, base = stat - buffs, live GCD in combat, Mythic+ rating, durability and repair cost).
@@ -205,7 +205,7 @@ C_PaperDollInfo.GetStaggerPercentage = nil
 UnitDamage = function() return 8138.2, 8944.6, 0, 0, 0, 0, 1 end
 GetExpertise = nil; GetOverrideSpellPowerByAP = nil; GetSpellBonusHealing = nil
 
--- 5. No Sheet tab (QoL 0.7.13; Xaya 2026-11-04: "I don't care about this sheet at all. I want a reskin OF THE CHARACTER MENU AND
+-- 5. No Sheet tab (QoL 0.7.14; Xaya 2026-11-04: "I don't care about this sheet at all. I want a reskin OF THE CHARACTER MENU AND
 -- NOTHING ELSE") ------------------------------------------------------------------------------------------------------------
 local tabKeys = {}
 for _, t in ipairs(CM.TABS) do tabKeys[#tabKeys + 1] = t[1] end

@@ -1,4 +1,4 @@
-# Stat Calculator: the Sheet tab removed (XayaUI_QoL 0.7.13; fork: main)
+# Stat Calculator: the Sheet tab removed (XayaUI_QoL 0.7.14; fork: main)
 Logged 2026-11-04 23:20 UTC. Session branch `claude/cool-ramanujan-ewx8e5`. Nothing here has run in the game.
 
 ## Request (Xaya, 2026-11-04, with screenshots of the Sheet tab and of her character window)
@@ -10,7 +10,7 @@ built (build order step 4); she does not want it in the meantime.
 - `XayaUI_QoL/CharacterModel.lua`: `CM.TABS` = Stats | Gear | What If | Spells.
 - `XayaUI_QoL/CharacterToolkit.lua`: the Sheet renderer removed; a saved "sheet" tab (and the old "overview") opens Stats; a new
   profile starts on Stats. `CM.Build` still takes nil / "defense" / "offense" (the character window's tooltips use them).
-- `USER-GUIDE.md`, QA E1d / E1e2 / E1i / E1l2 / E1t updated, E1y new; `XayaUI_QoL.toc` 0.7.13.
+- `USER-GUIDE.md`, QA E1d / E1e2 / E1i / E1l2 / E1t updated, E1z new; `XayaUI_QoL.toc` 0.7.14.
 - Next: the QoL Character Reskin (the character window itself), task 40.
 
 ## Tests
