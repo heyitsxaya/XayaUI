@@ -151,18 +151,21 @@ local function BuildCover()
     cover.label:SetPoint("CENTER")
     cover.label:SetTextColor(1, 1, 1, 0.8)
     cover:Hide()
-    local acc = 0
-    cover:SetScript("OnUpdate", function(self, dt)
-        acc = acc + dt
-        if acc < 0.1 then return end
-        acc = 0
-        local s = Store(); if not s then return end
-        if Target() ~= self.anchoredTo then Anchor(s) end
-        local a = (s.privAlpha or 100) / 100
-        if s.privReveal and Over(self) then a = 0 end
-        if self:GetAlpha() ~= a then self:SetAlpha(a) end
-    end)
     return cover
+end
+
+-- "Cover fades away while the mouse is over it": the only thing that needs a look at the pointer every frame. V14: this OnUpdate is set
+-- only while the cover is shown with that switch on (up to Chat 0.6.13 it ran whenever the cover was shown).
+local revealAcc = 0
+local function RevealTick(self, dt)
+    revealAcc = revealAcc + dt
+    if revealAcc < 0.1 then return end
+    revealAcc = 0
+    local s = Store(); if not s then return end
+    if Target() ~= self.anchoredTo then Anchor(s) end
+    local a = (s.privAlpha or 100) / 100
+    if s.privReveal and Over(self) then a = 0 end
+    if self:GetAlpha() ~= a then self:SetAlpha(a) end
 end
 
 -- button (an eye drawn with lines: open = chat visible, slashed = chat covered) ------------------------------------------------
@@ -221,22 +224,31 @@ local function BuildButton()
     return btn
 end
 
+-- Called by the Chat Panel's layout (every refresh, collapse and move: Frame.lua C.Layout), by C.Teardown and by the settings below.
+-- V14: the button is built only when it can show (Chat Panel on, not collapsed, "Show the toggle button" on), the cover only when it is
+-- on and can show. Up to Chat 0.6.13 the button was built at the first loading screen whatever the switches said, and a frame of this
+-- file kept both in step on every frame (every 0.25 s it read the collapse state and C.On()); the layout calls above do that now.
 function ns.ChatPrivacy_Refresh()
     local s = Store()
     if not s then return end
-    BuildButton()
-    local size = math.max(16, math.min(64, tonumber(s.privBtnSize) or 28))
-    btn:SetSize(size, size)
-    if not (btn.IsMouseOver and btn:IsMouseOver()) then btn:SetAlpha((tonumber(s.privBtnAlpha) or 90) / 100) end
     local collapsed = ns.Chat and ns.Chat.IsCollapsed and ns.Chat.IsCollapsed()
-    local canShow = Target() and ns.Chat.On() and not collapsed
-    btn:SetShown(canShow and s.privBtn ~= false)
-    PlaceButton()
-    DrawEye(btn, s.privOn)
+    local canShow = (Target() and ns.Chat.On() and not collapsed) and true or false
+    local wantBtn = canShow and s.privBtn ~= false
+    if wantBtn then BuildButton() end
+    if btn then
+        local size = math.max(16, math.min(64, tonumber(s.privBtnSize) or 28))
+        btn:SetSize(size, size)
+        if not (btn.IsMouseOver and btn:IsMouseOver()) then btn:SetAlpha((tonumber(s.privBtnAlpha) or 90) / 100) end
+        btn:SetShown(wantBtn)
+        PlaceButton()
+        DrawEye(btn, s.privOn)
+    end
     if s.privOn and canShow then
         BuildCover(); Style(s); Anchor(s); cover:Show()
+        cover:SetScript("OnUpdate", s.privReveal and RevealTick or nil)
     elseif cover then
         cover:Hide()
+        cover:SetScript("OnUpdate", nil)
     end
 end
 
@@ -246,33 +258,8 @@ function ns.ChatPrivacy_Set(v)
     ns.ChatPrivacy_Refresh()
 end
 
--- keep the button / cover in step with collapse, tab changes and the collapse button moving
-local drv = CreateFrame("Frame")
-drv:RegisterEvent("PLAYER_ENTERING_WORLD")
-drv:RegisterEvent("UPDATE_CHAT_WINDOWS")
-local started
-drv:SetScript("OnEvent", function()
-    C_Timer.After(0.5, function()
-        local s = Store()
-        if s and not started then started = true; if s.privStartHidden then s.privOn = true end end
-        ns.ChatPrivacy_Refresh()
-    end)
-end)
-local acc = 0
-drv:SetScript("OnUpdate", function(_, dt)
-    acc = acc + dt
-    if acc < 0.25 then return end
-    acc = 0
-    local s = Store()
-    if not (s and btn) then return end
-    local collapsed = ns.Chat and ns.Chat.IsCollapsed and ns.Chat.IsCollapsed()
-    local want = (not collapsed) and s.privBtn ~= false and Target() ~= nil and ns.Chat.On()
-    if btn:IsShown() ~= want then btn:SetShown(want); PlaceButton() end
-    if s.privOn and cover then
-        local should = not collapsed
-        if cover:IsShown() ~= should then cover:SetShown(should) end
-    end
-end)
+-- "Cover the chat at every login" is applied when the settings are ready (Core.lua ns.Chat_OnDBReady); the button and the cover follow
+-- the Chat Panel's own refreshes (above), so this file registers no event and runs nothing per frame.
 
 -- options (a group on the chat page) ----------------------------------------------------------------------------------------
 function ns.ChatPrivacy_Options(Notify)
