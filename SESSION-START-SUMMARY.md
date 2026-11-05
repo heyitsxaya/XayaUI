@@ -1,7 +1,7 @@
 # XayaUI: session-start summary
 
 Read this first in any new chat about XayaUI. It is meant to be enough on its own; the full record is in the two trackers below.
-Last updated 2026-11-04 17:15 UTC by Claude Code session 014bN6tStyDJVemzE9tX7F38 (earlier the same day: 014bN6tUvbkCv9Ha9VgNF4Xa, 014bN6tVdvvFNcwwRRBHuqTv). Facts were checked in that session unless marked (unverified) or (inference).
+Last updated 2026-11-05 16:45 UTC by Claude Code session 014bN6tWZxqCW85vMEyHdfnt (before that: 2026-11-04 17:15 UTC, session 014bN6tStyDJVemzE9tX7F38 (earlier the same day: 014bN6tUvbkCv9Ha9VgNF4Xa, 014bN6tVdvvFNcwwRRBHuqTv). Facts were checked in that session unless marked (unverified) or (inference).
 
 ## 1. How this project is tracked
 Every piece of addon work is multi-session (Xaya, 2026-11-04). New chat: read this file, then glob the repo root and `debug-log/` for `*SUMMARY*`, `*LOGIC*`, `*CONTEXT*`, `*SESSION*`, `*handoff*` files and read the newest.
@@ -62,21 +62,42 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
   First one: `roadmap-features/games` (RM-GAMES).
   Its detail is read only when that feature's work starts; it is not repeated here.
 
-## 3. Addons (versions from the .toc files on `main` 8d81e3f, 2026-11-04 22:45 UTC)
+## 3. Addons (versions from the .toc files on `main` a859028, 2026-11-05 16:45 UTC)
 | Folder | Version | Holds |
 |---|---|---|
-| `XayaUI` | 0.6.39 | core: rules, cues, conditions (incl. load by zone / instance / difficulty / size / encounter / item), actions, combat aura engine (`Combat/`), themes, mover view, console and debug record, minimap and ESC-menu buttons |
-| `XayaUI_Options` | 0.6.36 | the settings window (loads on first open; Ace3 libs) |
-| `XayaUI_Chat` | 0.6.12 | Chat Panel, Chat Bar, filters, history, tab sounds and whisper sound overrides, privacy cover |
-| `XayaUI_QoL` | 0.7.12 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit / Stat Calculator panel (one model; Sheet, Stats, Gear with icons, What If with the armor chain, Spells with All / Offense / Defense filters; slot overlays with this expansion's enchant slots by default) |
-| `XayaUI_Bonus` | 0.6.10 | tooltips, Notepad, data panels, calculator (`/xui calc`) |
-| `XayaUI_Reskin` | 0.6.0 | Game Menu skin |
+| `XayaUI` | 0.6.46 | core: rules, cues, conditions (incl. load by zone / instance / difficulty / size / encounter / item), actions, combat aura engine (`Combat/`), themes, mover view, console and debug record, minimap and ESC-menu buttons |
+| `XayaUI_Options` | 0.6.40 | the settings window (loads on first open; Ace3 libs) |
+| `XayaUI_Chat` | 0.6.14 | Chat Panel, Chat Bar, filters, history, tab sounds and whisper sound overrides, privacy cover |
+| `XayaUI_QoL` | 0.7.18 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit / Stat Calculator panel (one model; Sheet, Stats, Gear with icons, What If with the armor chain, Spells with All / Offense / Defense filters; slot overlays with this expansion's enchant slots by default) |
+| `XayaUI_Bonus` | 0.6.11 | tooltips, data panels, Utilities (Notepad, Calculator `/xui calc`) |
+| `XayaUI_Reskin` | 0.6.1 | Game Menu skin |
 | `XayaUI_Media`, `XayaUI_DevAssist` | 1.0, 0.7.2 | user media folder; XayaUI Dev Assist, the developer tool (was `XayaUI_GameDump` before 0.7.0): API, talents, Cooldown Manager catalogue, aura log, `/xuidev probe` (`/xuidump` still works) |
 Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.cursorHighlight`, `.cursorTrail`, `.characterToolkit`). Nothing is saved per character yet.
 
 ## 4. Active items
 
-**NEXT SESSION: START HERE (updated 2026-11-04 22:46 UTC)**
+**NEXT SESSION: START HERE (updated 2026-11-05 16:45 UTC, session 014bN6tWZxqCW85vMEyHdfnt)**
+`main` = `a859028` or later. Landed today (all full-suite green WITH the API index; none run in game yet):
+- core 0.6.45-0.6.46 / Options 0.6.39: console switches without the full options-tree rebuild (B115), version text = Addon Info link in
+  theme colors (B116), compact Rules sub-tabs (B117), `/xui help` one command per line (B130), `C_Texture` guard (harness was red on main).
+- QoL 0.7.15 Stat Calculator columns (E1z8); core 0.6.46 / QoL 0.7.17 cursor trail presets as UI themes + "Match the UI theme" (B118,
+  B119, E1z9, E1z10); Chat 0.6.14 off costs nothing (D6-D10); Options 0.6.40 / QoL 0.7.18 / Bonus 0.6.11 on/off tick boxes in the
+  QoL and Bonus left panes, Bonus > Utilities (Calculator, Notepad), talent scan in Settings > UI Options > Rule Creation (B131, E3, F7, F8).
+- New standing rule V14 (off costs nothing, section 2). Cloud sessions: build the API index first (section 6).
+Running when this was written (worktree agents; results land as merges on the session branch, then `main` after the full suite):
+core / Reskin V14 fixes (core 0.6.47, Reskin 0.6.2, QA B140+); character pane fix (QoL 0.7.19, E1z11+: one item level per slot,
+enchant lines wrapped, XayaUI's own gem sockets / socketed gems). V14 audit of every feature: scratchpad report summarised in the
+debug log of the Chat 0.6.14 entry; still to fix: Options driver after the window closes, Bonus (Notepad share pump, Data Panels
+driver, hidden Notepad, tooltip post-calls), QoL Character Reskin / Toolkit off in a session, Drafts copy with drafts off.
+Decisions waiting on Xaya (asked 2026-11-05): disabled rules cost nothing?; "DO NOT RELEASE" (QoL click-blocking cover recommended,
+or a warning rule template, or both); chat history "should not show except for on the last tab" (3 readings offered); Stat Calculator
+(Spells tab columns, rating Pt value form, #382 controls, note column width); cursor themes (Frost / Gold label colors; label and Add
+button tinting); tick boxes (Tooltips' four switches, Tooltip lines row, Notepad's box meaning, Utilities order, Reskin tab);
+`/xui chat whispers` counters always on with the panel?. Known defect: chat privacy cover defaults never merged on a fresh install.
+Next free numbers after the running agents: core 0.6.48, Options 0.6.41, QoL 0.7.20, Bonus 0.6.12, Chat 0.6.15, Reskin 0.6.3;
+QA B132-B139 (B140+ for the core V14 agent), E1z12+, D11, F9.
+
+(Previous handoff:) **NEXT SESSION: START HERE (updated 2026-11-04 22:46 UTC)**
 `main` = `8d81e3f` or later (check `git log origin/main`). Everything this session built is on it, nothing is pending on the branch:
 - Stat Calculator: Spells auto-fill + Offense / Defense filters (QoL 0.7.7, QA E1t), armor chain (0.7.8, E1u), Gear icons (0.7.9,
   E1v), "Spell ID: N" and readable spell lines (0.7.11, #378 #380, E1w), `/xui stats widthprobe` (0.7.12, E1x: the in-game test

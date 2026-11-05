@@ -115,6 +115,7 @@ function ns.SetRecCat(key, on)
     u.recCats = type(u.recCats) == "table" and u.recCats or {}
     if (on and true or false) == CAT[key].default then u.recCats[key] = nil else u.recCats[key] = on and true or false end
     if next(u.recCats) == nil then u.recCats = nil end
+    if DR.SyncEvents then DR.SyncEvents() end   -- (V14: a category's events are registered only while it is on)
 end
 -- presets: "light" (rules, game state, messages: the cheapest useful set), "all", "default"
 function ns.SetRecPreset(which)
@@ -252,13 +253,16 @@ function ns.ConsoleMessage(text, isError, private)
     local b = (not private) and ns.logBuf or nil
     if b then
         b[#b + 1] = line
+        ns.logSerial = (ns.logSerial or 0) + 1   -- (Console.lua: which lines a closed console window has not drawn yet)
         local n = #b
         if n > 350 then for i = 1, 300 do b[i] = b[n - 300 + i] end; for i = 301, n do b[i] = nil end end
     end
     if ns.Fire then ns.Fire("LOG", line) end
-    if ns.ConsoleSink then ns.ConsoleSink(line) end
+    if ns.ConsoleSink then ns.ConsoleSink(line, private) end
     if ns.MessageDest() == "console" and Ui().consoleAutoOpen ~= false and ns.ConsoleWindowOn and not ns.ConsoleWindowOn() then
-        if InCombatLockdown and InCombatLockdown() then pendingOpen = true
+        if InCombatLockdown and InCombatLockdown() then
+            pendingOpen = true
+            if DR.SyncEvents then DR.SyncEvents() end   -- (the end of combat opens it: PLAYER_REGEN_ENABLED, registered for that only)
         elseif ns.ConsoleWindow then pcall(ns.ConsoleWindow, true) end
     end
 end
@@ -357,6 +361,7 @@ end
 -- Settings > Debugging calls this after a change
 function ns.DebugSettingsChanged()
     DR.Refresh()
+    if DR.SyncEvents then DR.SyncEvents() end
     SyncProbe()
     if ns.ResetRecordedAuras then ns.ResetRecordedAuras() end
     if ns.RecordOn() then
@@ -433,35 +438,47 @@ DR.SessionLines = SessionLines
 local combatN, combatT0, perfByDebug, lastGroup = 0, nil, false, nil
 local function Game(text) if ns.RecCatOn("game") then ns.RecordLine("game", text) end end
 
+-- (V14: every handler checks its switch before it reads the game or builds text; the events themselves are registered only while
+-- their category is on, DR.SyncEvents below)
 local handlers = {}
+-- at login (not an event of this file since core 0.6.47: core's start-up frame runs it, Modules.lua ns.AtLogin, and only when Advanced
+-- Debugging is on or a probe it started has to be stopped)
 function handlers.PLAYER_LOGIN()
     DR.Refresh()
     SyncProbe()
 end
 function handlers.PLAYER_ENTERING_WORLD(isLogin, isReload)
     if not ns.RecordOn() then return end
+    if not ns.RecCatOn("game") then return end
     if isLogin or isReload then
-        if ns.RecCatOn("game") then
-            for _, l in ipairs(SessionLines(isLogin and "login" or "/reload")) do ns.RecordLine("session", l) end
-        end
+        for _, l in ipairs(SessionLines(isLogin and "login" or "/reload")) do ns.RecordLine("session", l) end
     end
     Game("now in: " .. Where())
 end
-function handlers.ZONE_CHANGED_NEW_AREA() Game("zone: " .. Where()) end
+function handlers.ZONE_CHANGED_NEW_AREA()
+    if not ns.RecCatOn("game") then return end
+    Game("zone: " .. Where())
+end
 function handlers.PLAYER_SPECIALIZATION_CHANGED(unit)
     if unit ~= nil and unit ~= "player" then return end
+    if not ns.RecCatOn("game") then return end
     Game("specialization now " .. S(ns.CurrentSpecID and ns.CurrentSpecID()))
 end
-function handlers.TRAIT_CONFIG_UPDATED(configID) Game("talents changed (talent loadout " .. S(configID) .. ")") end
+function handlers.TRAIT_CONFIG_UPDATED(configID)
+    if not ns.RecCatOn("game") then return end
+    Game("talents changed (talent loadout " .. S(configID) .. ")")
+end
 function handlers.PLAYER_EQUIPMENT_CHANGED(slot, hasCurrent)
     if not ns.RecCatOn("game") then return end
     local okI, item = pcall(function() return GetInventoryItemID and GetInventoryItemID("player", slot) end)
     Game(("gear: slot %s now %s"):format(S(slot), (hasCurrent and okI and item) and ("item " .. S(item)) or "empty"))
 end
 function handlers.ENCOUNTER_START(id, name, diff, size)
+    if not ns.RecCatOn("game") then return end
     Game(("boss encounter %s '%s' starts (difficulty %s, %s players)"):format(S(id), S(name), S(diff), S(size)))
 end
 function handlers.ENCOUNTER_END(id, name, diff, size, success)
+    if not ns.RecCatOn("game") then return end
     local res = (success == 1) and "kill" or ((success == 0) and "wipe" or S(success))
     Game(("boss encounter %s '%s' ends: %s (difficulty %s, %s players)"):format(S(id), S(name), res, S(diff), S(size)))
 end
@@ -510,24 +527,75 @@ function handlers.PLAYER_REGEN_ENABLED()
             for _, l in ipairs(ns.CaptureOutput(ns.PerfCommand, "")) do ns.RecordLine("perf", l) end
         end
     end
+    local extra = perfByDebug or pendingOpen   -- (this event was registered for them too: let it go now if nothing else needs it)
     if perfByDebug and ns.PerfCommand then ns.CaptureOutput(ns.PerfCommand, "off"); perfByDebug = false end
     if pendingOpen then
         pendingOpen = false
         if ns.ConsoleWindow then pcall(ns.ConsoleWindow, true) end
     end
+    if extra then DR.SyncEvents() end
 end
 DR.handlers = handlers
 
-if CreateFrame then
-    local f = CreateFrame("Frame")
-    for e in pairs(handlers) do pcall(f.RegisterEvent, f, e) end
-    if f.SetScript then
-        f:SetScript("OnEvent", function(_, event, ...)
-            local h = handlers[event]
-            if h then
-                local ok, err = pcall(h, ...)
-                if not ok and ns.RecordLine then pcall(ns.RecordLine, "error", "debug record: " .. tostring(err)) end
-            end
-        end)
+-------------------------------------------------------------------------------
+-- The record's events (core 0.6.47, rule V14; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should
+-- NEVER LOAD or contribute to performance cost / demand in any way"). One frame, made the first time something needs an event, holding
+-- only what is switched on now:
+--   blocked actions, combat start and end  while the record is kept (Advanced Debugging on and "Keep the debug record" ticked)
+--   the game-state events                  while the record is kept and its "Game state" category is on
+--   PLAYER_REGEN_ENABLED                   also while a performance timer started by the record, or a console window waiting for the
+--                                          end of combat (message routing, ns.ConsoleMessage above), needs the end of combat
+-- Advanced Debugging off: no frame and no event (the frame, once made, stays without events: the game cannot delete a frame).
+-- Called at login (settings ready), after every Settings > Debugging change (ns.DebugSettingsChanged, ns.SetRecCat) and from the
+-- handlers above. Game API (docs/reference/api/widgets.md, Frame): RegisterEvent(eventName) -> registered: bool;
+-- UnregisterEvent(eventName) -> registered: bool.
+-------------------------------------------------------------------------------
+local GAME_EVENTS = { "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_SPECIALIZATION_CHANGED", "TRAIT_CONFIG_UPDATED",
+    "PLAYER_EQUIPMENT_CHANGED", "ENCOUNTER_START", "ENCOUNTER_END", "CHALLENGE_MODE_START", "CHALLENGE_MODE_COMPLETED",
+    "GROUP_ROSTER_UPDATE" }
+local RECORD_EVENTS = { "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }
+DR.GAME_EVENTS, DR.RECORD_EVENTS = GAME_EVENTS, RECORD_EVENTS
+local evFrame
+local evOn = {}   -- [event] = true while registered on evFrame
+local function OnEvent(_, event, ...)
+    local h = handlers[event]
+    if h then
+        local ok, err = pcall(h, ...)
+        if not ok and ns.RecordLine then pcall(ns.RecordLine, "error", "debug record: " .. tostring(err)) end
     end
+end
+local function Wanted()
+    local want = {}
+    if ns.RecordOn() then
+        for _, e in ipairs(RECORD_EVENTS) do want[e] = true end
+        if ns.RecCatOn("game") then for _, e in ipairs(GAME_EVENTS) do want[e] = true end end
+    end
+    if perfByDebug or pendingOpen then want.PLAYER_REGEN_ENABLED = true end
+    return want
+end
+function DR.SyncEvents()
+    local want = Wanted()
+    if not evFrame then
+        if next(want) == nil or not CreateFrame then return end
+        evFrame = CreateFrame("Frame")
+        if evFrame.SetScript then evFrame:SetScript("OnEvent", OnEvent) end
+    end
+    for e in pairs(evOn) do
+        if not want[e] then pcall(evFrame.UnregisterEvent, evFrame, e); evOn[e] = nil end
+    end
+    for e in pairs(want) do
+        if not evOn[e] then pcall(evFrame.RegisterEvent, evFrame, e); evOn[e] = true end
+    end
+end
+-- (tests) the events registered now, as a set
+function DR.EventsOn() local t = {}; for e in pairs(evOn) do t[e] = true end; return t end
+-- at login the saved settings decide (ns.WhenReady runs at XayaUI's ADDON_LOADED, after Core.lua set the defaults); the login itself
+-- (the game-data probe follows Advanced Debugging: its addon is loaded by then) only when Advanced Debugging is on, or when a probe it
+-- started is still to be stopped
+if ns.WhenReady then
+    ns.WhenReady(function()
+        DR.Refresh(); DR.SyncEvents()
+        local u = Ui()
+        if (u.advancedDebug or u.probeByDebug) and ns.AtLogin then ns.AtLogin(handlers.PLAYER_LOGIN) end
+    end)
 end
