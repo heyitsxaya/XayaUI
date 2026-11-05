@@ -9,6 +9,8 @@ ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends 
 local C = ns.Chat
 
 local function Cf() return C.Main() end
+-- the window the pane shows (the selected tab): its own scroll bar and back-to-newest arrow are the ones you see
+local function Shown() return (C.ScrollTarget and C.ScrollTarget()) or C.Main() end
 local PIECES = {
     { key = "tabs",     label = "Tab row",              get = function() return C.TabsArea() end,  color = { 0.4, 0.8, 1 } },
     { key = "text",     label = "Chat text",            get = function() return C.TextArea() end,  color = { 0.5, 1, 0.5 } },
@@ -16,9 +18,9 @@ local PIECES = {
     { key = "bar",      label = "Chat Bar",             get = function() return C.Bar() end,       color = { 1, 0.5, 1 } },
     { key = "strip",    label = "Blizzard button strip", get = function() local cf = Cf(); return cf and C.ButtonFrameOf(cf) end, color = { 1, 0.5, 0.3 } },
     { key = "social",   label = "Social button",        get = function() return _G.QuickJoinToastButton end, color = { 1, 0.5, 0.3 } },
-    { key = "scroll",   label = "Scroll bar",           get = function() local cf = Cf(); return cf and cf.ScrollBar end, color = { 1, 0.5, 0.3 } },
+    { key = "scroll",   label = "Scroll bar",           get = function() local cf = Shown(); return cf and cf.ScrollBar end, color = { 1, 0.5, 0.3 } },
     { key = "ownscroll", label = "Chat Panel scroll bar", get = function() return C.ScrollBar and C.ScrollBar() end, color = { 0.5, 1, 0.5 } },
-    { key = "tobottom", label = "Back-to-newest arrow", get = function() local cf = Cf(); return cf and cf.ScrollToBottomButton end, color = { 1, 0.5, 0.3 } },
+    { key = "tobottom", label = "Back-to-newest arrow", get = function() local cf = Shown(); return cf and cf.ScrollToBottomButton end, color = { 1, 0.5, 0.3 } },
     { key = "hist",     label = "History button",       get = function() return _G.XayaUIChatHistoryButton end, color = { 0.8, 0.8, 0.8 } },
     { key = "privacy",  label = "Privacy button",       get = function() return _G.XayaUIChatPrivacyButton end, color = { 0.8, 0.8, 0.8 } },
 }

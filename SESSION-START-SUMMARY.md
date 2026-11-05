@@ -56,7 +56,7 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 |---|---|---|
 | `XayaUI` | 0.6.39 | core: rules, cues, conditions (incl. load by zone / instance / difficulty / size / encounter / item), actions, combat aura engine (`Combat/`), themes, mover view, console and debug record, minimap and ESC-menu buttons |
 | `XayaUI_Options` | 0.6.36 | the settings window (loads on first open; Ace3 libs) |
-| `XayaUI_Chat` | 0.6.11 | Chat Panel, Chat Bar, filters, history, tab sounds and whisper sound overrides, privacy cover |
+| `XayaUI_Chat` | 0.6.12 | Chat Panel, Chat Bar, filters, history, tab sounds and whisper sound overrides, privacy cover |
 | `XayaUI_QoL` | 0.7.12 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit / Stat Calculator panel (one model; Sheet, Stats, Gear with icons, What If with the armor chain, Spells with All / Offense / Defense filters; slot overlays with this expansion's enchant slots by default) |
 | `XayaUI_Bonus` | 0.6.10 | tooltips, Notepad, data panels, calculator (`/xui calc`) |
 | `XayaUI_Reskin` | 0.6.0 | Game Menu skin |
@@ -75,9 +75,12 @@ Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.
 - Core 0.6.38: Actions > "Speak it" was silent (B81). Core 0.6.39: the Game Menu grew on every open (Xaya's live report; B82).
 - Other sessions: engine core / Options 0.6.34-0.6.35; Dev Assist session: Bonus 0.6.8 (calculator, `e3cf896`), Dev Assist
   0.7.1-0.7.2 (`/xuidev instance`; the probe-log flood fix, `8d81e3f`).
-Next free numbers: core 0.6.40, Options 0.6.37, QoL 0.7.13, Bonus 0.6.11, Chat 0.6.12, Dev Assist 0.7.3; QA B83, E1y, F7, J16
+Next free numbers: core 0.6.40, Options 0.6.37, QoL 0.7.13, Bonus 0.6.11, Chat 0.6.13, Dev Assist 0.7.3; QA B83, E1y, F7, J16
 (engine session: B100+).
-Waiting on Xaya: task 43 (Stat Calculator questions and issues #377 #379 #381 #382 #383 #387), task 46 (the width probe in game),
+Chat 0.6.12 (session 014bN6tUJ5JTttjgNR2yaUnU, 2026-11-04 23:44 UTC): every docked tab's scroll pieces handled, the back-to-newest arrow
+shown while scrolled up, the tab row's window list above the privacy button (QA D4k); whisper tabs: no cause in the code, `/xui chat
+whispers` built to collect the facts (QA D4l; `debug-log/2026-11-04-2344-chat-pieces-every-tab-whispers-chat-0.6.12.md`).
+Waiting on Xaya: the `/xui chat whispers` output after a whisper (D4l); task 43 (Stat Calculator questions and issues #377 #379 #381 #382 #383 #387), task 46 (the width probe in game),
 the QA steps above in game.
 
 **Open with Xaya from session 014bN6tSy3HbUDWYQsk69naX (PR #386), asked 2026-11-04 evening, unanswered:**

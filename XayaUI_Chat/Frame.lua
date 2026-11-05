@@ -259,13 +259,35 @@ function C.Unsuppress(o)
     if o.Show and o._xuiWasShown ~= false then pcall(o.Show, o) end
 end
 
+-- The list of chat windows that the arrow at the tab row's end opens ("7 Chat Windows"). The game gives it no layer of its own, so it is
+-- drawn in its dock's (DockManagerTemplate frameStrata="LOW"; DockManagerOverflowListTemplate sets none; FloatingChatFrame.xml,
+-- wow-ui-source live 12.1.5.70783). It hangs out to the right of the chat, and the privacy button (MEDIUM), the Chat Panel's scroll bar
+-- (MEDIUM) and the history button (MEDIUM) were drawn over it (Xaya, 2026-11-04: "the selector gets hidden by the privacy icon"). It is
+-- raised to the layer the game's own drop-down menus use (Blizzard_Menu/Menu.lua: local strata = "FULLSCREEN_DIALOG"), out of combat
+-- only, and goes back to its own layer when the Chat Panel is turned off (Core.lua C.Teardown).
+C.TAB_LIST_STRATA = "FULLSCREEN_DIALOG"
+function C.RaiseTabList(dock)
+    local ob = dock and dock.overflowButton
+    local list = ob and ob.list
+    if not (list and list.SetFrameStrata and list.GetFrameStrata) then return false end
+    if InCombatLockdown and InCombatLockdown() then return false end
+    local cur = list:GetFrameStrata()
+    if cur == C.TAB_LIST_STRATA then return false end
+    if list._xuiStrata == nil then
+        list._xuiStrata = (type(cur) == "string" and not C.IsSecret(cur)) and cur or false
+        C.raised[#C.raised + 1] = list
+    end
+    list:SetFrameStrata(C.TAB_LIST_STRATA)
+    return true
+end
+
 local BORDER_PIECES = { "TopLeftTexture", "BottomLeftTexture", "TopRightTexture", "BottomRightTexture", "LeftTexture", "RightTexture", "BottomTexture", "TopTexture" }
 
 function C.Parts()
     local s = S()
     local cf = C.Main()
     if not (s and cf) then return end
-    local name = C.NameOf(cf)
+    C.Try("tablist", function() C.RaiseTabList(_G.GeneralDockManager) end)
     -- Blizzard's button strip
     local bf = C.ButtonFrameOf(cf)
     if bf then
@@ -296,34 +318,92 @@ function C.Parts()
             end
         end)
     end
-    -- scroll bar, resize grip, Blizzard's own background
-    local sbar = cf.ScrollBar or _G[name .. "ScrollBar"]
-    if sbar then C.Try("scrollbar", function() if s.scrollBar == "SHOW" and not s.scrollOwn then C.Unsuppress(sbar) else C.Suppress(sbar) end end) end
-    -- the "back to the newest message" arrow: the game anchors it beside the (hidden) resize grip, outside the text; keep it inside the text area
-    local tb = cf.ScrollToBottomButton
-    if tb then
-        C.Remember(tb)
-        C.Try("tobottom", function()
-            if s.toBottom == "HIDE" then C.Suppress(tb)
-            else
-                C.Unsuppress(tb)
-                tb:ClearAllPoints()
-                tb:SetPoint("BOTTOMRIGHT", textA, "BOTTOMRIGHT", 0, 2)
-            end
-        end)
-    end
-    local rz = cf.ResizeButton or _G[name .. "ResizeButton"]
-    if rz then C.Try("resize", function() C.Suppress(rz) end) end
+    -- Every docked window has its own scroll bar, back-to-newest arrow, resize grip, background and border, and the pane shows whichever
+    -- tab is selected. Up to Chat 0.6.11 the first three were handled on ChatFrame1 only: with another tab selected (Xaya's Party tab,
+    -- 2026-11-04) the game's scroll bar and arrow sat right of the text, in the column of the Chat Panel's scroll bar, and the arrow was
+    -- drawn under it. A window the player undocks gets the game's own pieces back (Release).
+    local blizzBar = (s.scrollBar == "SHOW" and not s.scrollOwn)
     for _, f in ipairs(C.Frames()) do
+        local n = C.NameOf(f)
+        local sbar = f.ScrollBar or _G[n .. "ScrollBar"]
+        local tb = f.ScrollToBottomButton
+        local rz = f.ResizeButton or _G[n .. "ResizeButton"]
+        local bg = f.Background or _G[n .. "Background"]
         if Docked(f) then
-            local n = C.NameOf(f)
-            local bg = f.Background or _G[n .. "Background"]
+            if sbar then C.Try("scrollbar", function() if blizzBar then C.Unsuppress(sbar) else C.Suppress(sbar) end end) end
+            -- the "back to the newest message" arrow: the game anchors it beside the resize grip, right of the text, where the Chat Panel's
+            -- scroll bar is; keep it inside the text area (C.ToBottomUpdate shows it while the window is scrolled up)
+            if tb then
+                C.Remember(tb)
+                C.Try("tobottom", function()
+                    if s.toBottom == "HIDE" then C.Suppress(tb)
+                    else
+                        C.Unsuppress(tb)
+                        tb:ClearAllPoints()
+                        tb:SetPoint("BOTTOMRIGHT", textA, "BOTTOMRIGHT", 0, 2)
+                    end
+                end)
+            end
+            if rz then C.Try("resize", function() C.Suppress(rz) end) end
             if bg then C.Try("background", function() C.Suppress(bg) end) end
             -- the game's own frame border: four corners and four edges drawn around the window (FloatingBorderedFrame). Without this
             -- they stay on screen, offset from the pane, and look like a second chat under ours.
             C.Try("border", function()
                 for _, suf in ipairs(BORDER_PIECES) do local t = _G[n .. suf]; if t then C.Suppress(t) end end
             end)
+        else
+            C.Try("undocked", function()
+                for _, o in ipairs({ sbar, rz, bg }) do C.Unsuppress(o) end
+                for _, suf in ipairs(BORDER_PIECES) do C.Unsuppress(_G[n .. suf]) end
+                if tb then C.ToBottomRelease(tb); C.Unsuppress(tb); C.Forget(tb) end
+            end)
+        end
+    end
+    C.ToBottomUpdate()
+end
+
+-------------------------------------------------------------------------------
+-- The back-to-newest arrow. The game fades it in only together with its own scroll bar (FCF_FadeInScrollbar: "if chatFrame.ScrollBar
+-- and chatFrame.ScrollBar:IsShown()", FloatingChatFrame.lua, wow-ui-source live 12.1.5.70783), and its art starts at alpha 0
+-- (FloatingChatFrame.xml: <Button parentKey="ScrollToBottomButton" alpha="0">). With the game's scroll bar hidden by the Chat Panel it
+-- would never be seen (INFERENCE from that code, not seen in game). So, while the game's scroll bar is hidden, the Chat Panel shows the
+-- arrow itself while that window is scrolled up (GetScrollOffset() > 0, ScrollingMessageFrameMixin) and hides it at the newest line, so it
+-- never sits over the last line for nothing. A position that cannot be read keeps the arrow shown: the way back is never taken away.
+-------------------------------------------------------------------------------
+function C.ToBottomRelease(tb)
+    if not (tb and tb._xuiTb) then return end
+    tb._xuiTb = nil
+    C.Try("tobottom-release", function()
+        tb:SetAlpha(tb._xuiTbAlpha or 0)
+        if tb._xuiTbShown ~= false and not tb._xuiSuppressed then tb:Show() end
+    end)
+end
+
+function C.ToBottomUpdate()
+    local s = S()
+    local manage = s and C.On() and s.toBottom ~= "HIDE" and not (s.scrollBar == "SHOW" and not s.scrollOwn)
+    for _, f in ipairs(C.Frames()) do
+        local tb = f.ScrollToBottomButton
+        if tb then
+            if manage and Docked(f) then
+                C.Try("tobottom-show", function()
+                    if not tb._xuiTb then
+                        tb._xuiTb = true
+                        tb._xuiTbAlpha = tb:GetAlpha()
+                        tb._xuiTbShown = tb:IsShown() and true or false
+                    end
+                    local off = C.ScrollPos and C.ScrollPos(f)
+                    local want = (off == nil) or off > 0
+                    if want then
+                        if tb:GetAlpha() < 0.999 then tb:SetAlpha(1) end
+                        if not tb:IsShown() then tb:Show() end
+                    elseif tb:IsShown() then
+                        tb:Hide()
+                    end
+                end)
+            else
+                C.ToBottomRelease(tb)
+            end
         end
     end
 end
@@ -562,6 +642,7 @@ up:SetScript("OnUpdate", function(_, dt)
     if not (s and container and C.On()) then return end
     local cf = C.Main()
     if not C.Glued() then C.Anchor() end
+    C.ToBottomUpdate()   -- the back-to-newest arrow follows the window's scroll position (shown while scrolled up)
     if cf and cf.IsShown and cf:IsShown() and C.WrapOff() then C.Rewrap() end
     local eb = C.EditBoxOf(cf or {})
     local typing = eb and eb.IsShown and eb:IsShown()
