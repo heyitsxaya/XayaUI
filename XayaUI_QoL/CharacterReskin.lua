@@ -22,7 +22,7 @@
 --   * Stat list: the row and header art goes; theme-coloured headers with a thin rule, labels, values and a faint stripe on every other
 --     row (where Blizzard shows its own).
 --   * Safety (as the Game Menu skin): any error while applying turns the reskin off for the session and gives Blizzard's look back.
--- NOT RUN IN GAME when written: QA E2a-E2c.
+-- NOT RUN IN GAME when written: QA E1z6 (and E1z7 for the tooltips).
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns

@@ -2,12 +2,12 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-e26f71310875b83128c58dac1a3f8cc5  QA-CHECKLIST.md
+109463b1df3a4959194370aeb7f607c6  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 74acac5eb276995c47208b6d09b72a7d  ROADMAP.md
 64b887e4bffa11008f517a29c7d447a1  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-b43ea1a0738039e315ffecd27f027afd  USER-GUIDE.md
+57a1ceb59df4060c06367a1fa098e07b  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 4cc1b0cabaf7b9fbfcbcdcbc5d14a9b4  XayaUI/AuraSound.lua
@@ -213,7 +213,7 @@ a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
 ecc5e8ae419e2290f06640eb7f8a48b6  XayaUI_Options/XayaUI_Options.toc
 3c560ecddcdc871ee027132eb7bc55e0  XayaUI_QoL/CharacterModel.lua
-8ef12ffa818be2ca5556a8bbe45621af  XayaUI_QoL/CharacterReskin.lua
+a5c744ac4ffa17ea12f4069733ecd734  XayaUI_QoL/CharacterReskin.lua
 ab5299b205d71475e97c52060d0e3dce  XayaUI_QoL/CharacterToolkit.lua
 51995f01e31136f0c68b4db7ef5f7fe1  XayaUI_QoL/CharacterWidthProbe.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
@@ -453,6 +453,7 @@ a7820cd111f019a93a67a9a972cd12b6  debug-log/2026-11-04-2326-engine-kept-step-ind
 dd5578186e7bd08a7a4d9ecadd75bf82  debug-log/2026-11-04-2338-engine-garbage-measured-on-her-rules.md
 69ffe23eb4ff195f29d0c1f718564a03  debug-log/2026-11-04-2341-cursor-trail-cost-qol-0.7.13.md
 842f92774a782b67439718e1e9414090  debug-log/2026-11-04-2345-spell-search-scope-options-0.6.37.md
+fa0ce99ac539fc76181c79ccdc075462  debug-log/2026-11-05-0411-stat-calculator-and-character-reskin-qol-0.7.14.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -466,7 +467,7 @@ a2e49515e283e72fc94f220e8148b746  docs/issue-screenshots/toolkit-window-resize.p
 633d429f2013d7a9d9bf59092db3bb6d  docs/plans/INSTANCE-CAPTURE-2026-11-04.md
 9a907df3961024106bb6ae03b230abf3  docs/plans/REFERENCE-SCREENS-AND-FEASIBILITY-2026-11-04.md
 0d9591958c2388041894092b0921d397  docs/plans/STAT-CALCULATOR-REDESIGN-2026-11-04.md
-71a13c8ab38c1577c2903de004d4a792  docs/plans/STAT-CALCULATOR-REQUIREMENTS-2026-11-04.md
+e9625dbb5763d519a694166d4591a0a7  docs/plans/STAT-CALCULATOR-REQUIREMENTS-2026-11-04.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
