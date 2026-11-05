@@ -170,14 +170,24 @@ check("character section: spec, Agility, item level, movement, mastery text",
 check("items carry their tab", row(m, "crit").tab == "stats" and row(m, "armor").tab == "defense" and row(m, "ap").tab == "offense")
 check("gear is not built unless its tab is asked for", row(m, "gearSum") == nil)
 c.whatIf = 852
-local wcrit = row(ns.CharToolkit_Model("stats"), "crit")
+local wcrit = row(ns.CharToolkit_Model(), "crit")   -- (the full model; the Stats tab is the stat map since QoL 0.7.14)
 check("what if +852 crit: +18.52% (exactly to the 30% threshold)", pair(wcrit, "What if +852 rating") == "+18.52% (total 41.00%)", pair(wcrit, "What if +852 rating"))
 c.whatIf = 0
 local gm = ns.CharToolkit_Model("gear")
 local gs = row(gm, "gearSum")
-check("gear: per-slot rows with item level and ratings", pair(row(gm, "slot1"), "Ratings") == "crit 300, haste 200" and row(gm, "slot1").value == "336")
-check("gear: durability under 100% shown", pair(row(gm, "slot1"), "Durability") == "78%")
-check("gear: empty socket flagged", pair(row(gm, "slot11"), "Empty sockets") == "1")
+-- QoL 0.7.14: no per-slot list; a clicked slot shows its item level, ratings, sockets and durability in the comparison
+check("gear: no per-slot list any more (the comparison shows a clicked slot)", row(gm, "slot1") == nil)
+ns.CharModel.gearSlot = 1
+gm = ns.CharToolkit_Model("gear")
+local function cell(key, i) local r = row(gm, key); return r and r.cells and r.cells[i] end
+check("gear: a clicked slot's item level and ratings (Head: 336, crit 300, haste 200)", cell("gc_ilvl", 1) == "336" and cell("gc_crit", 1) == "300" and cell("gc_haste", 1) == "200",
+  tostring(cell("gc_ilvl", 1)) .. " " .. tostring(cell("gc_crit", 1)))
+check("gear: its durability under 100% (78%)", cell("gc_dur", 1) == "78%", cell("gc_dur", 1))
+ns.CharModel.gearSlot = 11
+gm = ns.CharToolkit_Model("gear")
+check("gear: its empty socket (Ring: 1)", cell("gc_sockets", 1) == "1", cell("gc_sockets", 1))
+ns.CharModel.gearSlot = nil
+gm = ns.CharToolkit_Model("gear")
 check("gear totals vs character: crit gear 400, character 528, +128 elsewhere", pair(gs, "crit") == "gear 400, character 528 (+128 from elsewhere)", pair(gs, "crit"))
 check("gear totals: sockets", pair(gs, "Empty sockets") == "1")
 
@@ -222,9 +232,16 @@ check("panel shown docked with the character window", XayaUICharacterToolkit and
 check("stat row hooked", statRow.hooks.OnEnter and #statRow.hooks.OnEnter == 1)
 GameTooltip:SetOwner(statRow)
 statRow.hooks.OnEnter[1](statRow)
-local found = false
-for _, l in ipairs(GameTooltip.lines or {}) do if tostring(l):find("Lost to diminishing returns: 0", 1, true) then found = true end end
-check("tooltip: toolkit lines added to the crit tooltip", found)
+-- (QoL 0.7.14, A8) a compact block: the stat map's lines for crit at the real numbers, two columns, no bars
+local function tl(pat) for _, l in ipairs(GameTooltip.lines or {}) do if tostring(l):find(pat, 1, true) then return tostring(l) end end end
+check("tooltip: a compact block under the crit tooltip: Rating | 528 = +11.48%", tl("Rating | 528 = +11.48%") ~= nil, table.concat(GameTooltip.lines or {}, " / "))
+check("  ...rating per 1% and the diminishing returns in words (next threshold)", tl("Rating per 1% | 46.0") ~= nil and (tl("Diminishing returns | ") or ""):find("next at", 1, true) ~= nil,
+  tl("Diminishing returns"))
+check("  ...no long detail list (no 'Penalty on the next point', no 'Other sources')", tl("Penalty on the next point") == nil and tl("Other sources") == nil)
+c.whatIfStats = { crit = 852 }
+GameTooltip:SetOwner(statRow); statRow.hooks.OnEnter[1](statRow)
+check("  ...your typed numbers on the Stats tab are left out of it (real numbers only)", tl("Rating | 528 = +11.48%") ~= nil and tl(" -> ") == nil, table.concat(GameTooltip.lines or {}, " / "))
+c.whatIfStats = {}
 PaperDollFrame:Hide()
 check("panel hides with the character window", not XayaUICharacterToolkit:IsShown())
 for _, t in ipairs({ "sheet", "stats", "defense", "offense", "gear", "whatif", "spells" }) do

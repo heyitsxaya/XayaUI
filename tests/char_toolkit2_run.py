@@ -1,5 +1,5 @@
 # Stub test for QoL > Character Toolkit phase 2 (XayaUI_QoL 0.7.0): what the panel shows. Sections with headers (and folding them),
-# the rating / percent toggle (every line and one line), the conversion hover, detail pairs, the compact sheet and its own hover, the
+# the rating / percent toggle (every line and one line), the conversion hover, detail pairs, no Sheet tab (QoL 0.7.14), the
 # What If pane (per-stat inputs and an item compare through the stand-in converter), the slot overlays, secret values shown as
 # "hidden in combat" and never compared, the settings page layout, layout bounds (V11), and the new game reads (dodge from Agility,
 # block reduction, attack power to DPS, base = stat - buffs, live GCD in combat, Mythic+ rating, durability and repair cost).
@@ -48,62 +48,59 @@ local function tipLines(b) GameTooltip.lines = {}; b.scripts.OnEnter(b); return 
 local function linesHave(lines, s) for _, l in ipairs(lines) do if tostring(l):find(s, 1, true) then return true end end; return false end
 
 -- 1. Sections with headers -------------------------------------------------------------------------------------------------
+-- QoL 0.7.14: the Stats tab is the stat map (tests/char_stat_map_run.py has the rest); the full model (CM.Build(c, nil)) still feeds the
+-- character window's own tooltips, so its lines and hovers are checked through the model below
 local d = render("stats")
 local hs = texts(d, "header")
-check("Stats tab: headers Character, Attributes, Secondary stats, Tertiary stats in order",
-  hs[1] == "- Character" and hs[2] == "- Attributes" and hs[3] == "- Secondary stats" and hs[4] == "- Tertiary stats", table.concat(hs, " | "))
+check("Stats tab (the stat map): headers Primary stats, Secondary stats, Tertiary stats, Offense (what feeds it), Defense (what feeds it)",
+  table.concat(hs, "|") == "- Primary stats|- Secondary stats|- Tertiary stats|- Offense (what feeds it)|- Defense (what feeds it)", table.concat(hs, " | "))
 -- QoL 0.7.7: Defense and Offense are the Spells tab's filters now (a saved "defense" / "offense" tab opens Spells with that filter);
--- their sections follow the spells (tests/char_spells_run.py has the rest)
+-- QoL 0.7.14: the filters filter spells only; the stat sections they drew are on the stat map (Offense / Defense, what feeds it)
 d = render("defense"); hs = texts(d, "header")
-check("Spells, Defense filter: Defensive spells, then Health and armor, Avoidance, Damage taken", c.tab == "spells" and c.spellFilter == "defense"
-  and table.concat(hs, "|") == "- Defensive spells|- Health and armor|- Avoidance|- Damage taken", table.concat(hs, "|"))
+check("Spells, Defense filter: Defensive spells only (QoL 0.7.14)", c.tab == "spells" and c.spellFilter == "defense"
+  and table.concat(hs, "|") == "- Active defensive spells", table.concat(hs, "|"))
 d = render("offense"); hs = texts(d, "header")
-check("Spells, Offense filter: Offensive spells, then Power, Weapons, Timing and resources", c.tab == "spells" and c.spellFilter == "offense"
-  and table.concat(hs, "|") == "- Offensive spells|- Power|- Weapons|- Timing and resources", table.concat(hs, "|"))
+check("Spells, Offense filter: Offensive spells only (QoL 0.7.14)", c.tab == "spells" and c.spellFilter == "offense"
+  and table.concat(hs, "|") == "- Active offensive spells", table.concat(hs, "|"))
 c.spellFilter = "all"
 d = render("gear"); hs = texts(d, "header")
-check("Gear tab: Equipped (icons, QoL 0.7.9), Summary, Durability and repair, Slots", table.concat(hs, "|") == "- Equipped|- Summary|- Durability and repair|- Slots", table.concat(hs, "|"))
+check("Gear tab: Equipped (icons), Compare, Summary, Durability and repair (QoL 0.7.14: the comparison replaces the per-slot list)",
+  table.concat(hs, "|") == "- Equipped|- Compare|- Summary|- Durability and repair", table.concat(hs, "|"))
 d = render("whatif"); hs = texts(d, "header")
-check("What If tab: Rating per stat, All ratings, Compare an item", table.concat(hs, "|") == "- Rating per stat|- All ratings|- Compare an item", table.concat(hs, "|"))
+check("a saved What If tab opens Stats (QoL 0.7.14: its numbers are the map's boxes, its item compare is on Gear)", c.tab == "stats"
+  and hs[1] == "- Primary stats", c.tab .. " " .. tostring(hs[1]))
 d = render("stats")
 check("a stat line: label on the left, its value on the right of the same row", valueOf(d, "Critical Strike") == "22.48%", valueOf(d, "Critical Strike"))
-local h = headerFor(d, "secondary")
+local h = headerFor(d, "map_secondary")
 h.scripts.OnClick(h)
 d = drawn()
 check("clicking a header folds its section: the header shows +, its lines are gone", hasText(d, "header", "+ Secondary stats") and not hasText(d, "label", "Critical Strike")
   and hasText(d, "label", "Avoidance"))
-headerFor(d, "secondary").scripts.OnClick(headerFor(d, "secondary"))
+headerFor(d, "map_secondary").scripts.OnClick(headerFor(d, "map_secondary"))
 d = drawn()
 check("clicking it again unfolds it", hasText(d, "header", "- Secondary stats") and valueOf(d, "Critical Strike") == "22.48%")
 check("theme: the panel background and the header text use the XayaUI theme's colors",
   XayaUICharacterToolkit.bg.color[1] == 0.11 and d.headers[1].text.color[1] == 0.91, tostring(XayaUICharacterToolkit.bg.color[1]))
 check("theme: the theme's font is used", d.fonts[1].font[1] == "Fonts\\THEME.TTF", d.fonts[1].font[1])
 
--- 2. Rating / percent toggle ------------------------------------------------------------------------------------------------
-check("value button starts on percent", d.modeText == "Show: %", d.modeText)
-XayaUICharacterToolkit.modeBtn.scripts.OnClick(XayaUICharacterToolkit.modeBtn)
-d = drawn()
-check("value button: every rating line shows its rating (crit 528, haste 1,200, mastery 997, vers 120)", d.modeText == "Show: rating"
-  and valueOf(d, "Critical Strike") == "528" and valueOf(d, "Haste") == "1,200" and valueOf(d, "Mastery") == "997" and valueOf(d, "Versatility") == "120",
-  tostring(valueOf(d, "Critical Strike")) .. " " .. tostring(valueOf(d, "Haste")))
-check("value button: lines that are not ratings keep their value (Agility 2,637)", valueOf(d, "Agility") == "2,637", valueOf(d, "Agility"))
-XayaUICharacterToolkit.modeBtn.scripts.OnClick(XayaUICharacterToolkit.modeBtn)
-d = drawn()
-local b = buttonFor(d, "crit")
-b.scripts.OnClick(b)
-d = drawn()
-check("clicking one rating line flips that line alone (crit 528, haste stays 29.25%)", valueOf(d, "Critical Strike") == "528" and valueOf(d, "Haste") == "29.25%",
-  tostring(valueOf(d, "Critical Strike")) .. " " .. tostring(valueOf(d, "Haste")))
-b = buttonFor(d, "crit"); b.scripts.OnClick(b); d = drawn()
-check("clicking it again flips it back", valueOf(d, "Critical Strike") == "22.48%" and c.lineModes.crit == nil)
-b = buttonFor(d, "haste"); b.scripts.OnClick(b)
-XayaUICharacterToolkit.modeBtn.scripts.OnClick(XayaUICharacterToolkit.modeBtn)
-d = drawn()
-check("the value button clears single-line flips (haste follows it to the rating)", valueOf(d, "Haste") == "1,200" and next(c.lineModes) == nil)
+-- 2. Rating / percent: the "Show: %" button is hidden (QoL 0.7.14, #382 "the toggle does nothing"): no tab draws rating lines; the
+-- stat map shows the percent and the rating together. The model's value modes still serve the character window's tooltips.
+check("the Show: % button is hidden", not XayaUICharacterToolkit.modeBtn.shown)
+local full = CM.Build(c, nil)
+check("the model's rating mode still gives the rating (crit 528) and percent mode the percent (22.48%)",
+  (CM.ValueFor(full.byKey.crit, "rating")) == "528" and (CM.ValueFor(full.byKey.crit, "percent")) == "22.48%")
 ns.CharToolkit_SetValueMode("percent"); d = render("stats")
 
--- 3. Conversion hover and detail pairs -------------------------------------------------------------------------------------
-local tl = tipLines(buttonFor(d, "crit"))
+-- 3. Conversion hover and detail pairs (the model's hover, which the character window's stat tooltips show) ---------------------
+local function modelTip(key, mode)
+  local it = CM.Build(c, nil).byKey[key]
+  local out = {}
+  for _, l in ipairs(ns.CharToolkit_TooltipLines(it, mode or (it.kind == "rating" and "percent" or nil))) do
+    out[#out + 1] = (l[2] ~= nil) and (tostring(l[1]) .. " | " .. tostring(l[2])) or tostring(l[1])
+  end
+  return out
+end
+local tl = modelTip("crit")
 check("crit hover: headline and value", linesHave(tl, "Critical Strike | 22.48%"))
 check("crit hover: total = rating share + other sources", linesHave(tl, "Critical Strike 22.48% = +11.48% from 528 rating +11.00% from other sources"))
 check("crit hover: rating to percent through the game's converter, 46.0 per 1%", linesHave(tl, "the game's own converter (GetCombatRatingBonusForCombatRatingValue), 46.0 rating per 1%"))
@@ -111,22 +108,21 @@ check("crit hover: linked conversion crit -> parry where the game reports it", l
 check("crit hover: every threshold", linesHave(tl, "1,380 rating (30.00%): each further point counts 10% less"))
 check("crit hover: detail pairs", linesHave(tl, "Rating | 528") and linesHave(tl, "Next 1% costs | 46 rating") and linesHave(tl, "Parry from this rating | +10.15% (before DR)"))
 check("crit hover: says what a click does", linesHave(tl, "Click: show the rating on this line."))
-tl = tipLines(buttonFor(d, "mastery"))
+tl = modelTip("mastery")
 check("mastery hover: factor and the spec's mastery text from the game", linesHave(tl, "mastery factor 2.800") and linesHave(tl, "Fel Blood: Increases Armor by 101.8% of your Agility."))
-tl = tipLines(buttonFor(d, "haste"))
+tl = modelTip("haste")
 check("haste hover: combined by multiplying, labelled an estimate", linesHave(tl, "combined by multiplying (other sources worked back; an estimate)"))
 UnitStat = function(_, i) if i == 2 then return 2737, 2737, 100, 0 end; local v = ({ 1000, 2637, 69647, 900 })[i]; return v, v, 0, 0 end
-d = render("stats")
-local agi = d.model.byKey.stat2
+local agi = CM.Build(c, nil).byKey.stat2
 check("Agility: base = stat - buffs - debuffs (2,737 - 100 = 2,637), buffs +100", pair(agi, "Base") == "2,637" and pair(agi, "Buffs") == "+100", pair(agi, "Base"))
-tl = tipLines(buttonFor(d, "stat2"))
+tl = modelTip("stat2")
 check("Agility hover: base vs buffs and the attack power link", linesHave(tl, "Agility 2,737 = base 2,637 +100 from buffs +0 from debuffs") and linesHave(tl, "2,737 Agility gives 2,737 attack power"))
 check("Agility: dodge from Agility is the game's figure; per point stays not given", pair(agi, "Dodge from it") == "+5.00%" and pair(agi, "Agility -> dodge per point") == "not given by the game")
 UnitStat = function(_, i) local v = ({ 1000, 2637, 69647, 900 })[i]; return v, v, 0, 0 end
-c.detail = "short"; d = render("stats")
-local pl = texts(d, "pairLabel")
-check("short detail: only the key pairs under crit (Rating, From rating, Rating per 1%)", hasText(d, "pairLabel", "Rating per 1%") and not hasText(d, "pairLabel", "Lost to diminishing returns"))
-tl = tipLines(buttonFor(d, "crit"))
+c.detail = "short"
+local shortLines = table.concat(CM.PairLines(CM.Build(c, nil).byKey.crit, true), "\n")
+check("short detail: only the key pairs under crit (Rating, From rating, Rating per 1%)", shortLines:find("Rating per 1%", 1, true) ~= nil and shortLines:find("Lost to diminishing returns", 1, true) == nil, shortLines)
+tl = modelTip("crit")
 check("short detail: the hover still shows every pair", linesHave(tl, "Lost to diminishing returns | 0"))
 c.detail = "all"
 
@@ -145,7 +141,7 @@ local _, ctot, kinds = CM.CritRead()
 check("crit as the character window picks it: spell crit is the lowest school (5%), so melee 22.48% is shown", ctot == 22.48 and table.concat(kinds, ", ") == "melee 22.48%, ranged 5.00%, spell 5.00%", table.concat(kinds, ", "))
 GetSpellCritChance = function() return 5 end
 GetSpecialization, GetSpecializationInfo = nil, nil
-m = CM.Build(c, "stats")
+m = CM.Build(c, nil)
 check("spec read through C_SpecializationInfo (no old globals): Vengeance, Agility", m.byKey.spec.label == "Vengeance" and pair(m.byKey.spec, "Primary stat") == "Agility")
 combat = true
 C_Spell.GetSpellCooldown = function() return { startTime = 1, duration = 1.05, isActive = true } end
@@ -161,18 +157,24 @@ combat = false
 ns.CharToolkit_ReadGCD()
 -- QoL 0.7.2: the Mythic+ rating was stashed in shelved/MythicPlusRating.lua. The test world still serves every Mythic+ call
 -- (char_toolkit_world.lua), so these fail on 0.7.1, where the line was built from them.
-check("Mythic+ rating is not a line on the Stats tab (the game gives it; the toolkit leaves it out)", CM.Build(c, "stats").byKey.mplus == nil)
+check("Mythic+ rating is not a line anywhere (the game gives it; the toolkit leaves it out)", CM.Build(c, nil).byKey.mplus == nil and CM.Build(c, "stats").byKey.mplus == nil)
 check("the panel did not ask the server for Mythic+ details", mythicRequested == nil or mythicRequested == false)
 m = CM.Build(c, "gear")
 check("durability: 89% overall (178 / 200), lowest item 78%", m.byKey.durability.value == "89%" and pair(m.byKey.durability, "Lowest item") == "78%", m.byKey.durability.value)
 check("repair cost: the sum of the items' repair cost (12,345 copper = 1g 23s 45c)", m.byKey.repair.value == "1g 23s 45c", m.byKey.repair.value)
-check("repair cost per slot", pair(m.byKey.slot1, "Repair") == "1g 23s 45c")
+CM.gearSlot = 1
+local m1 = CM.Build(c, "gear")
+check("repair cost per slot (a clicked slot, Gear > Side by side)", m1.byKey.gc_repair and m1.byKey.gc_repair.cells[1] == "1g 23s 45c", m1.byKey.gc_repair and m1.byKey.gc_repair.cells[1])
+CM.gearSlot = nil
 REPAIR = {}
 check("repair cost the game does not give: shown as not given", CM.Build(c, "gear").byKey.repair.value == "not given by the game here")
 MerchantFrame = mk("Frame"); MerchantFrame.shown = true
 check("at a vendor: the vendor's own repair-all figure", pair(CM.Build(c, "gear").byKey.repair, "Repair all at this vendor") == "1g 23s 45c")
 MerchantFrame.shown = false; REPAIR = { [1] = 12345 }
-check("enchant read from the item link: ring has one, helm has none", pair(m.byKey.slot11, "Enchant") == "yes" and pair(m.byKey.slot1, "Enchant") == "none")
+CM.gearSlot = 11; local e11 = CM.Build(c, "gear").byKey.gc_enchant
+CM.gearSlot = 1; local e1 = CM.Build(c, "gear").byKey.gc_enchant
+CM.gearSlot = nil
+check("enchant read from the item link: ring has one, helm has none", e11 and e11.cells[1] == "yes" and e1 and e1.cells[1] == "none")
 
 -- 4b. Lines only some characters have: ranged weapon, mana regen, stagger, off hand, expertise, spell power links
 UnitRangedDamage = function() return 2.8, 1000, 1200, 0, 0, 1 end
@@ -203,30 +205,14 @@ C_PaperDollInfo.GetStaggerPercentage = nil
 UnitDamage = function() return 8138.2, 8944.6, 0, 0, 0, 0, 1 end
 GetExpertise = nil; GetOverrideSpellPowerByAP = nil; GetSpellBonusHealing = nil
 
--- 5. The sheet ------------------------------------------------------------------------------------------------------------
+-- 5. No Sheet tab (QoL 0.7.14; Xaya 2026-11-04: "I don't care about this sheet at all. I want a reskin OF THE CHARACTER MENU AND
+-- NOTHING ELSE") ------------------------------------------------------------------------------------------------------------
+local tabKeys = {}
+for _, t in ipairs(CM.TABS) do tabKeys[#tabKeys + 1] = t[1] end
+check("no Sheet tab, no What If tab: Stats, Gear, Spells", table.concat(tabKeys, ",") == "stats,gear,spells", table.concat(tabKeys, ","))
 d = render("sheet")
-local cells = recs(d, "cell")
-local function cellVal(label)
-  local L
-  for _, r in ipairs(recs(d, "cellLabel")) do if r.text == label then L = r end end
-  if not L then return nil end
-  for _, r in ipairs(recs(d, "cellValue")) do if r.y == L.y and r.x > L.x and r.x < L.x + 190 then return r.text end end
-end
-check("sheet: every stat as a compact cell (crit 22.48%, armor 5,685, attack power 3,472), and no Mythic+ cell",
-  cellVal("Critical Strike") == "22.48%" and cellVal("Armor") == "5,685" and cellVal("Attack Power") == "3,472" and cellVal("Mythic+ rating") == nil,
-  tostring(cellVal("Critical Strike")) .. " " .. tostring(cellVal("Armor")))
-check("sheet: section headers", hasText(d, "header", "- Secondary stats") and hasText(d, "header", "- Avoidance") and hasText(d, "header", "- Power"))
-check("sheet: no mastery text row and no duplicate Stamina", not hasText(d, "cellLabel", "Mastery: Fel Blood") and #(function() local t = {}; for _, r in ipairs(recs(d, "cellLabel")) do if r.text == "Stamina" then t[#t + 1] = r end end; return t end)() == 1)
-ns.CharToolkit_SetValueMode("rating"); d = render("sheet")
-check("sheet follows the value mode (crit 528)", cellVal("Critical Strike") == "528", cellVal("Critical Strike"))
-ns.CharToolkit_SetValueMode("percent"); d = render("sheet")
-local sheetTip = tipLines(buttonFor(d, "crit"))
-d = render("stats")
-local rowTip = tipLines(buttonFor(d, "crit"))
-check("sheet hover = the stat line's hover (one model, its own tooltip)", #sheetTip > 10 and table.concat(sheetTip, "\n") == table.concat(rowTip, "\n"), #sheetTip)
-d = render("sheet")
-b = buttonFor(d, "crit"); b.scripts.OnClick(b); d = drawn()
-check("clicking a sheet cell flips that rating", cellVal("Critical Strike") == "528" and cellVal("Haste") == "29.25%")
+check("a saved Sheet tab opens Stats", c.tab == "stats" and hasText(d, "header", "- Secondary stats") and #recs(d, "cell") == 0, c.tab)
+check("a fresh profile starts on Stats", ns.CHARTOOLKIT_DEFAULTS.tab == "stats", ns.CHARTOOLKIT_DEFAULTS.tab)
 c.lineModes = {}
 
 -- 6. Layout (V11) ----------------------------------------------------------------------------------------------------------
@@ -247,86 +233,113 @@ local function layoutOK(d)
   end end
   return true
 end
-for _, t in ipairs({ "sheet", "stats", "defense", "offense", "gear", "whatif", "spells" }) do
+for _, t in ipairs({ "stats", "defense", "offense", "gear", "spells" }) do
   local ok, why = layoutOK(render(t))
   check("layout " .. t .. ": every element inside the content width, no overlaps", ok, why)
 end
-d = render("sheet")
-local cellsOK = true
-for _, r in ipairs(recs(d, "cell")) do if r.w > (LAY.content - 8) / 2 + 0.01 then cellsOK = false end end
-check("sheet: two columns of cells, each at most half the width", cellsOK and #recs(d, "cell") >= 20, #recs(d, "cell"))
+-- the Gear comparison with an item picked: the side-by-side columns and the "what it changes" cards
+CM.gearSlot = 1; ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
+for _, fs in ipairs({ 11, 8, 16 }) do
+  c.fontSize = fs
+  local ok, why = layoutOK(render("gear"))
+  check("layout gear with a comparison at text size " .. fs .. ": inside the width, no overlaps", ok, why)
+end
+c.fontSize = 11; ns.CharToolkit_SetInput("item", ""); CM.gearSlot = nil
 local function fits(kind, state)
   for _, r in ipairs(recs(d, kind)) do if #tostring(r.text) * 0.55 * r.size > r.w + 0.01 then return false, tostring(r.text) .. " (" .. state .. ")" end end
   return true
 end
-local okF, whyF = fits("cellLabel", "labels")
-check("sheet: every label fits its cell (estimated 0.55 x size per character)", okF, whyF)
-okF, whyF = fits("cellValue", "values")
-check("sheet: every value fits its cell", okF, whyF)
 local tw = LAY.content / #CM.TABS
 local fit = true
 for _, t in ipairs(CM.TABS) do if #t[2] * 0.55 * 10 > tw - 4 then fit = false end end
 check("tab labels fit their tabs (estimated 0.55 x size per character at size 10)", fit)
 check("panel height stays within the character window", XayaUICharacterToolkit.h <= 600, XayaUICharacterToolkit.h)
 
--- 7. What If ---------------------------------------------------------------------------------------------------------------
+-- 7. Your numbers (the stat map's boxes; the What If tab before QoL 0.7.14) and the Gear comparison ------------------------------
+local function card(key) return CM.Build(c, "stats").byKey[key] end
+local function mline(key, label) local it = card(key); for _, pp in ipairs(it and it.pairs or {}) do if pp.label == label then return pp.value end end end
 ns.CharToolkit_SetInput("crit", "852")
-d = render("whatif")
-check("What If crit +852: +18.52%, to 30.00% from rating (the stand-in threshold)", valueOf(d, "Critical Strike") == "+18.52% (30.00%)", valueOf(d, "Critical Strike"))
-local wi = d.model.byKey.wi_crit
-check("What If crit: rating 528 -> 1,380 and the threshold it reaches", pair(wi, "Rating") == "528 -> 1,380" and pair(wi, "Crosses") == "1,380 rating (30.00%)")
-check("What If: other stats untouched (haste shows its value now)", valueOf(d, "Haste") == "29.25% now", valueOf(d, "Haste"))
-check("What If: the crit amount shows in its box", d.boxes.crit and d.boxes.crit.text == "852" and d.boxes.crit:IsShown())
-check("What If: its boxes hide on other tabs", (function() local d2 = render("stats"); local hidden = not d2.boxes.crit:IsShown(); render("whatif"); return hidden end)())
-ns.CharToolkit_SetInput("crit", "1000"); d = render("whatif")
-check("What If crit +1000: thresholds apply (148 points past 1,380 count 90%)", valueOf(d, "Critical Strike") == ("+%.2f%% (%.2f%%)"):format((30 - 528 / 46) + 148 / 46 * 0.9, 30 + 148 / 46 * 0.9), valueOf(d, "Critical Strike"))
-ns.CharToolkit_SetInput("mastery", "100"); d = render("whatif")
-check("What If mastery +100: through the mastery factor (+6.09%)", (valueOf(d, "Mastery") or ""):find("+6.09%", 1, true) ~= nil, valueOf(d, "Mastery"))
-ns.CharToolkit_SetInput("crit", "-1000"); d = render("whatif")
-check("What If crit -1000: stops at 0 rating (-11.48%)", (valueOf(d, "Critical Strike") or ""):find("-11.48%", 1, true) == 1, valueOf(d, "Critical Strike"))
+check("crit +852: 22.48% -> 41.00%, from rating +11.48% -> +30.00% (the stand-in threshold)", card("map_crit").value == "22.48% -> 41.00%"
+  and mline("map_crit", "From rating") == "+11.48% -> +30.00%", mline("map_crit", "From rating"))
+check("  ...the threshold it reaches is named", (mline("map_crit", "Diminishing returns") or ""):find("your numbers cross 1", 1, true) ~= nil, mline("map_crit", "Diminishing returns"))
+check("  ...other stats untouched (haste shows its value now)", card("map_haste").value == "29.25%", card("map_haste").value)
+d = render("stats")
+check("  ...the crit box holds the number itself (528 + 852 = 1380)", d.boxes["sv:crit"] and d.boxes["sv:crit"].text == "1380" and d.boxes["sv:crit"]:IsShown())
+check("  ...its box hides on other tabs", (function() local d2 = render("gear"); local hidden = not d2.boxes["sv:crit"]:IsShown(); render("stats"); return hidden end)())
+ns.CharToolkit_SetInput("crit", "1000")
+check("crit +1000: thresholds apply (148 points past 1,380 count 90%)", mline("map_crit", "From rating") == ("+11.48%% -> +%.2f%%"):format(30 + 148 / 46 * 0.9), mline("map_crit", "From rating"))
+ns.CharToolkit_SetInput("mastery", "100")
+local mFrom = mline("map_mastery", "From rating") or ""
+local m0, m1 = mFrom:match("^%+([%d%.]+)%% %-> %+([%d%.]+)%%$")
+check("mastery +100: through the mastery factor (+6.09%, shown values rounded)", m0 and math.abs((tonumber(m1) - tonumber(m0)) - 6.09) < 0.011, mFrom)
+ns.CharToolkit_SetInput("crit", "-1000")
+check("crit -1000: stops at 0 rating (+11.48% -> +0.00%)", mline("map_crit", "From rating") == "+11.48% -> +0.00%", mline("map_crit", "From rating"))
 ns.CharToolkit_SetInput("crit", "752"); ns.CharToolkit_SetInput("all", "100")
 d = render("stats")
-check("Stats tab: the crit line adds its own amount to All ratings (+852 = +18.52%)", hasText(d, "pairLabel", "What if +852 rating"))
-check("Stats tab: haste gets the All ratings amount only (+100)", hasText(d, "pairLabel", "What if +100 rating"))
+check("Stats tab: crit adds its own amount to All ratings (+852 = +18.52%: 22.48% -> 41.00%)", valueOf(d, "Critical Strike") == "22.48% -> 41.00%", valueOf(d, "Critical Strike"))
+check("Stats tab: haste gets the All ratings amount only (+100)", (valueOf(d, "Haste") or ""):find("29.25% -> ", 1, true) == 1, valueOf(d, "Haste"))
+check("Stats tab: the All ratings box is on the map (it was on the What If tab)", d.boxes.all and d.boxes.all:IsShown() and d.boxes.all.text == "100", d.boxes.all and d.boxes.all.text)
 ns.CharToolkit_SetInput("all", "0"); ns.CharToolkit_SetInput("crit", "0"); ns.CharToolkit_SetInput("mastery", "0")
-check("What If: 0 clears a stat", c.whatIfStats.crit == nil and c.whatIf == 0)
+check("0 clears a stat", c.whatIfStats.crit == nil and c.whatIf == 0)
+-- the Gear comparison (QoL 0.7.14; Xaya: "a gear COMPARISON sheet to see how different item slots will affect stats and therefore my
+-- ABILITIES"): Better Helm (346: crit 400, mastery 100, Agility 600, Stamina 900, armor 500) against Helm (336: crit 300, haste 200,
+-- Agility 500)
 ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
-local cm = CM.Build(c, "whatif").byKey.compare
-check("item compare: the game's item level and what it replaces", cm.value == "item level 346" and pair(cm, "Replaces") == "Head (item level 336)" and pair(cm, "Item level change") == "+10")
-check("item compare: crit +100 rating through the converter (+2.17%)", pair(cm, "crit") == "+100 rating = +2.17%", pair(cm, "crit"))
-check("item compare: haste -200 rating (the old helm had it)", (pair(cm, "haste") or ""):find("-200 rating = -4.35%", 1, true) == 1, pair(cm, "haste"))
-check("item compare: mastery +100 rating with the factor (+6.09%)", pair(cm, "mastery") == "+100 rating = +6.09%", pair(cm, "mastery"))
-check("item compare: +100 Agility = +100 attack power (GetAttackPowerForStat)", pair(cm, "Agility") == "+100 Agility = +100 attack power", pair(cm, "Agility"))
-check("item compare: +900 Stamina = +19,080 health", pair(cm, "Stamina") == "+900 = +19,080 health", pair(cm, "Stamina"))
--- QoL 0.7.8 armor chain (Xaya 2026-11-04: "armor from armor + armor_from_item + armor_from_agi"): the item's +500 armor plus +100
--- Agility x 101.8% (the world's mastery text) = +601.8; 5,685 -> 6,286.8 armor through a/(a+12000) = +2.23% damage reduction
-check("item compare: armor = the item's +500 and +102 from its +100 Agility (mastery text), +2.23% damage reduction",
-  pair(cm, "Armor") == "+602 (item +500, Agility +102) = +2.23% damage reduction", pair(cm, "Armor"))
+local gm = CM.Build(c, "gear")
+local function cells(key) local it = gm.byKey[key]; return it and table.concat(it.cells, "|"), it end
+local function eff(key) return gm.byKey["gc_" .. key] end
+local function effLine(key, label) for _, pp in ipairs(eff(key) and eff(key).pairs or {}) do if pp.label == label then return pp.value, pp.tone end end end
+check("compare: it finds the slot it replaces (Head) and names it", gm.sections[2] and gm.sections[2].title == "Compare: Head", gm.sections[2] and gm.sections[2].title)
+check("compare: side by side item level 336 | 346 | +10", cells("gc_ilvl") == "336|346|+10", cells("gc_ilvl"))
+check("compare: crit 300 | 400 | +100 (green), haste 200 | 0 | -200 (orange)", cells("gc_crit") == "300|400|+100" and gm.byKey.gc_crit.cellTone == "good"
+  and cells("gc_haste") == "200|0|-200" and gm.byKey.gc_haste.cellTone == "warn", cells("gc_haste"))
+check("compare: Agility 500 | 600 | +100, Stamina 0 | 900 | +900, armor 0 | 500 | +500", cells("gc_primary") == "500|600|+100"
+  and cells("gc_stamina") == "0|900|+900" and cells("gc_armor") == "0|500|+500", cells("gc_armor"))
+check("compare: the column head names the item", gm.byKey.gearCols.cols[2] == "Better Helm", gm.byKey.gearCols.cols[2])
+check("what it changes: crit through the converter 22.48% -> 24.65% (+100 = +2.17%)", eff("map_crit") and eff("map_crit").value == "22.48% -> 24.65%", eff("map_crit") and eff("map_crit").value)
+check("  ...and parry from crit with it (the crit -> parry link)", (effLine("map_crit", "» Parry") or ""):find(" -> ", 1, true) ~= nil, effLine("map_crit", "» Parry"))
+check("  ...haste down (orange), and the global cooldown with it", eff("map_haste") and eff("map_haste").tone == "warn" and (select(1, effLine("map_haste", "» Global cooldown")) or ""):find("about", 1, true) ~= nil,
+  effLine("map_haste", "» Global cooldown"))
+check("  ...mastery +100 through the factor (+6.09%)", eff("map_mastery") and (eff("map_mastery").value or ""):find(" -> ", 1, true) ~= nil)
+check("  ...+100 Agility: attack power from it +2,637 -> +2,737", (effLine("map_primary", "» Attack power") or ""):find("+2,637 -> +2,737", 1, true) == 1,
+  effLine("map_primary", "» Attack power"))
+check("  ...+900 Stamina: health 1,476,516 -> 1,495,596 (+900 x 21.20)", (effLine("map_stamina", "» Health") or ""):find("1,476,516 -> 1,495,596", 1, true) == 1, effLine("map_stamina", "» Health"))
+check("  ...armor: the item's own +500 and more from Agility through the mastery text, damage reduction up (green)",
+  effLine("map_armor", "From the item itself") == "+500" and (effLine("map_armor", "From Agility (mastery)") or ""):find(" -> ", 1, true) ~= nil
+  and select(2, effLine("map_armor", "» Damage reduction")) == "good", effLine("map_armor", "From Agility (mastery)"))
+check("  ...lines that do not change are left out (no Diminishing returns line on Haste unless it changed)", (function()
+  for _, pp in ipairs(eff("map_haste").pairs) do if not tostring(pp.value):find(" -> ", 1, true) then return false end end; return true end)())
+check("  ...cards that do not change are left out (Versatility, Avoidance)", eff("map_vers") == nil and eff("map_avoidance") == nil)
+check("compare: what the item tables leave out is said (gems, enchants, set bonuses, on-use and procs)", tipHas(gm.byKey.gearCols, "on-use or proc effects are not in them"))
 local savedDesc = C_Spell.GetSpellDescription
 C_Spell.GetSpellDescription = function(id) if id == 203747 then return "Increases your damage done by 12.0%." end; return savedDesc(id) end
-local cmNo = CM.Build(c, "whatif").byKey.compare
-check("item compare: no armor link in the mastery text -> the item's armor only (+500 = +1.87%)", pair(cmNo, "Armor") == "+500 = +1.87% damage reduction", pair(cmNo, "Armor"))
+gm = CM.Build(c, "gear")
+check("compare: no armor link in the mastery text -> the item's armor only (5,685 -> 6,185; 32.15% -> 34.01% reduction)",
+  eff("map_armor") and eff("map_armor").value == "5,685 -> 6,185" and (effLine("map_armor", "» Damage reduction") or ""):find("32.15% -> 34.01%", 1, true) == 1,
+  eff("map_armor") and eff("map_armor").value)
 C_Spell.GetSpellDescription = savedDesc
-check("item compare: what the game does not give is shown as such", pair(cm, "This item at another item level") == "not given by the game"
-  and pair(cm, "On-use and proc effects") == "not given by the game")
+check("compare: the map's own boxes are untouched by a comparison", next(c.whatIfStats) == nil and c.whatIfPrimary == nil)
 ns.CharToolkit_SetInput("item", "999")
-cm = CM.Build(c, "whatif").byKey.compare
-check("item compare by ID not loaded yet: says so and asks the game to load it", cm.value:find("loading", 1, true) ~= nil and loadRequests[#loadRequests] == 999)
+gm = CM.Build(c, "gear")
+check("compare by ID not loaded yet: says so and asks the game to load it", gm.byKey.gearLoading and gm.byKey.gearLoading.label:find("loading", 1, true) ~= nil and loadRequests[#loadRequests] == 999)
 ns.CharToolkit_SetInput("item", "3")
-check("item compare by ID once loaded", CM.Build(c, "whatif").byKey.compare.value == "item level 346")
+gm = CM.Build(c, "gear")
+check("compare by ID once loaded", cells("gc_ilvl") == "336|346|+10", cells("gc_ilvl"))
 ns.CharToolkit_SetInput("item", "")
-d = render("whatif")
+d = render("gear")
 local ib = d.boxes.item
 ib.text, ib.focus = "", true
 ChatFrameUtil.InsertLink("|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
 ib.focus = false
 check("a shift-clicked item goes into the item box while it has focus", ib.text == "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r", ib.text)
 ib.scripts.OnEnterPressed(ib)
-check("Enter in the item box compares that item", CM.Build(c, "whatif").byKey.compare.value == "item level 346")
-ns.CharToolkit_SetInput("item", "")
-local cb = d.boxes.crit
-cb.text = "120"; cb.scripts.OnEnterPressed(cb)
-check("Enter in a stat box sets that stat's amount", c.whatIfStats.crit == 120)
+gm = CM.Build(c, "gear")
+check("Enter in the item box compares that item", cells("gc_ilvl") == "336|346|+10", cells("gc_ilvl"))
+ns.CharToolkit_SetInput("item", ""); CM.gearSlot = nil
+d = render("stats")
+local cb = d.boxes["sv:crit"]
+cb.text = "648"; cb.scripts.OnEnterPressed(cb)
+check("Enter in a map box sets that stat's amount (648 - 528 = +120)", c.whatIfStats.crit == 120, c.whatIfStats.crit)
 ns.CharToolkit_SetInput("crit", "0")
 
 -- 8. Slot overlays -----------------------------------------------------------------------------------------------------------
@@ -383,7 +396,8 @@ misuse = 0
 local okGCD, errGCD = pcall(ns.CharToolkit_ReadGCD)
 check("secret values: reading a secret GCD runs without an error", okGCD, errGCD)
 c.whatIf = 50; c.whatIfStats = { crit = 10 }
-for _, t in ipairs({ "sheet", "stats", "defense", "offense", "gear", "whatif", "spells" }) do
+CM.gearSlot = 1
+for _, t in ipairs({ "stats", "defense", "offense", "gear", "spells" }) do
   local ok, err = pcall(render, t)
   check("secret values: the " .. t .. " tab draws without an error", ok, err)
 end
@@ -395,11 +409,11 @@ check("secret values: crit shows hidden in combat (percent and rating)", v("crit
 check("secret values: Agility, armor, attack power and dodge show hidden in combat", v("stat2") == "hidden in combat"
   and v("armor") == "hidden in combat" and v("ap") == "hidden in combat" and v("dodge") == "hidden in combat")
 check("secret values: the GCD shows hidden in combat", v("gcd") == "hidden in combat")
-local okS = pcall(render, "sheet")
+local okS = pcall(render, "stats")
 d = drawn()
-check("secret values: the sheet shows hidden in combat", okS and cellVal("Critical Strike") == "hidden in combat", cellVal("Critical Strike"))
-check("secret values: \"hidden in combat\" fits a sheet cell", (fits("cellValue", "hidden")))
-local bcrit = buttonFor(d, "crit")
+check("secret values: the Stats tab shows hidden in combat", okS and valueOf(d, "Critical Strike") == "hidden in combat", valueOf(d, "Critical Strike"))
+check("secret values: \"hidden in combat\" fits its value column", (fits("value", "hidden")))
+local bcrit = buttonFor(d, "map_crit")
 local okT, tlS = pcall(function() return tipLines(bcrit) end)
 check("secret values: the hover says why", okT and linesHave(tlS, "hides ratings while unit stats are restricted"))
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Critical Strike:"
@@ -408,9 +422,10 @@ GameTooltip:SetOwner(statRow)
 local ok, err = pcall(statRow.hooks.OnEnter[1], statRow)
 check("secret values: the character window tooltip lines run without an error", ok and misuse == 0, err)
 ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
-ok, err = pcall(CM.Build, c, "whatif")
-check("secret values: the item compare runs and says hidden", ok and misuse == 0 and (pair(CM.Build(c, "whatif").byKey.compare, "crit") or ""):find("hidden in combat", 1, true) ~= nil, err)
-ns.CharToolkit_SetInput("item", "")
+local okG, gmS = pcall(CM.Build, c, "gear")
+check("secret values: the gear comparison runs and says crit is hidden in combat (not left out)", okG and misuse == 0 and gmS.byKey.gc_map_crit
+  and gmS.byKey.gc_map_crit.value == "hidden in combat", okG and "" or gmS)
+ns.CharToolkit_SetInput("item", ""); CM.gearSlot = nil
 c.advanced = true; c.spells = { { id = 263642, base = "ap" } }
 local fr = CM.Build(c, "spells").byKey.spell263642
 check("secret values: Spell Math says attack power is hidden in combat", fr and pair(fr, "attack power") == "hidden in combat", fr and fr.pairs[1] and fr.pairs[1].value)
@@ -454,7 +469,8 @@ check("settings: no dropdown takes a row alone", selectsShareRows(page))
 local lay = page.args.panelPart.args.layout.args
 lay.valueMode.set(nil, "rating")
 d = render("stats")
-check("settings: Rating lines = Rating changes what the panel shows (crit 528)", valueOf(d, "Critical Strike") == "528" and d.modeText == "Show: rating")
+-- (QoL 0.7.14: no tab draws rating lines; the setting still picks what the character window's stat tooltips lead with)
+check("settings: Rating lines = Rating: the tooltips' rating lines lead with the rating (crit 528)", (CM.ValueFor(CM.Build(c, nil).byKey.crit, ns.CharToolkit_ModeFor(c, "crit"))) == "528" and d.modeText == "Show: rating")
 lay.valueMode.set(nil, "percent")
 lay.detail.set(nil, "short"); d = render("stats")
 check("settings: Detail = Key lines hides the other pairs", not hasText(d, "pairLabel", "Lost to diminishing returns"))
@@ -475,7 +491,7 @@ end
 page.args.overlaysOn.set(nil, false)
 page.args.panelPart.args.values.args.whatIf.set(nil, "200")
 d = render("stats")
-check("settings: All ratings + 200 shows on every rating line", hasText(d, "pairLabel", "What if +200 rating"))
+check("settings: All ratings + 200 shows on every stat card (now -> then)", (valueOf(d, "Haste") or ""):find(" -> ", 1, true) ~= nil and (valueOf(d, "Mastery") or ""):find(" -> ", 1, true) ~= nil, valueOf(d, "Haste"))
 page.args.panelPart.args.values.args.clear.func()
 check("settings: Clear all sets every What If amount back to 0", c.whatIf == 0 and next(c.whatIfStats) == nil)
 check("theme changes repaint the open panel", type(themeListener) == "function" and pcall(themeListener))
@@ -507,9 +523,9 @@ local ok, err = pcall(function()
   c.enabled = true
   ns.CharToolkit_Apply()
   CharacterFrame.shown = true; PaperDollFrame:Show()
-  c.tab = "whatif"; ns.CharToolkit_Render()
+  c.tab = "gear"; ns.CharToolkit_Render()
 end)
-check("the panel builds and opens on What If", ok, err)
+check("the panel builds and opens on Gear (the item box lives there since QoL 0.7.14)", ok, err)
 local ib = ok and ns.CharToolkit_Drawn().boxes.item
 LINK = "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r"
 __BODY__
@@ -539,7 +555,7 @@ check("12.x: an item shift-clicked through the old name (other addons' bags) goe
 total_n += r[0]; total_fails += r[1]
 r = toolkit_world(COPY, '''ib.text, ib.focus = "", false
 ChatFrameUtil.InsertLink(LINK)
-check("no focus, What If shown, no chat box open: the shift-clicked item goes in and is compared at once",
+check("no focus, Gear shown, no chat box open: the shift-clicked item goes in and is compared at once",
   ib.text == LINK and ns.CharModel.compareText == LINK, ib.text)
 ib.text = ""
 ChatFrameUtil.GetActiveWindow = function() return { IsShown = function() return true end } end
@@ -549,7 +565,7 @@ check("no focus but a chat box open: the link goes to chat, not into the box", i
 ns.CharToolkit_Cfg().tab = "stats"; ns.CharToolkit_Render()
 ChatFrameUtil.InsertLink(LINK)
 check("no focus on another tab: the box does not take it", ib.text == "", ib.text)
-ns.CharToolkit_Cfg().tab = "whatif"; ns.CharToolkit_SetInput("item", ""); ib.text = ""
+ns.CharToolkit_Cfg().tab = "gear"; ns.CharToolkit_Render(); ns.CharToolkit_SetInput("item", ""); ib.text = ""
 ChatFrameUtil.InsertLink("|cff71d5ff|Hspell:8936|h[Regrowth]|h|r")
 check("a spell link is not taken", ib.text == "", ib.text)''')
 total_n += r[0]; total_fails += r[1]
@@ -578,47 +594,56 @@ ITEMS["New Ring"] = { ilvl = 345, loc = "INVTYPE_FINGER", stats = { ITEM_MOD_CRI
 GEAR[12] = "|cffa335ee|Hitem:4::::::::90:::::|h[Ring2]|h|r"
 NEWRING = "|cffa335ee|Hitem:5::::::::90:::::|h[New Ring]|h|r"
 """
-r = toolkit_world(RINGS, '''local c = ns.CharToolkit_Cfg()
+r = toolkit_world(RINGS + """C_Container = { GetContainerNumSlots = function(bag) return bag == 0 and 3 or 0 end,
+  GetContainerItemInfo = function(bag, i) local l = ({ NEWRING, "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r", nil })[i]
+    if l then return { hyperlink = l, quality = 4, iconFileID = 1 } end end }
+""", '''local c = ns.CharToolkit_Cfg()
 local CM = ns.CharModel
-ns.CharToolkit_SetInput("item", NEWRING)
-check("auto-fill: the item's rating changes against the lower ring (Ring, 330) fill the What If boxes",
-  c.whatIfStats.crit == 200 and c.whatIfStats.mastery == -400 and c.whatIfStats.haste == 150,
-  tostring(c.whatIfStats.crit) .. " " .. tostring(c.whatIfStats.mastery) .. " " .. tostring(c.whatIfStats.haste))
-local sec
-for _, s2 in ipairs(CM.Build(c, "whatif").sections or {}) do if s2.key == "whatifItem" then sec = s2 end end
+-- Gear (QoL 0.7.14): click the first ring: the bags' rings are listed (the helm is not); pick one: compared with that ring
+c.tab = "gear"; ns.CharToolkit_SelectGearSlot(11)
+local gm = CM.Build(c, "gear")
+local owned = {}
+for _, it in ipairs(gm.sections[2].items) do if it.kind == "choice" and it.pick then owned[#owned + 1] = it.label end end
+check("a clicked ring lists the rings in your bags, not the helm", table.concat(owned, ",") == "New Ring", table.concat(owned, ","))
+check("  ...the item level beside each", gm.byKey.gearOwn1 and gm.byKey.gearOwn1.value == "item level 345", gm.byKey.gearOwn1 and gm.byKey.gearOwn1.value)
+ns.CharToolkit_PickItem(NEWRING, 11)
+gm = CM.Build(c, "gear")
 local choices = {}
-for _, it in ipairs(sec and sec.items or {}) do if it.kind == "choice" then choices[#choices + 1] = it end end
-check("two rings equipped: both are offered to replace, the lower one marked as replaced", #choices == 2
+for _, it in ipairs(gm.sections[2].items) do if it.kind == "choice" and not it.pick then choices[#choices + 1] = it end end
+check("two rings equipped: both are offered to replace, the clicked one (Finger 1) marked as replaced", #choices == 2
   and ((choices[1].slot == 11 and choices[1].label == "Replacing") or (choices[2].slot == 11 and choices[2].label == "Replacing")), #choices)
+check("  ...side by side against Ring (crit 100 | 300 | +200, mastery 400 | 0 | -400)", table.concat(gm.byKey.gc_crit.cells, "|") == "100|300|+200"
+  and table.concat(gm.byKey.gc_mastery.cells, "|") == "400|0|-400", table.concat(gm.byKey.gc_crit.cells, "|"))
 ns.CharToolkit_SetCompareSlot(12)
-check("choosing the other ring compares against it, and the boxes follow (crit 300 - 50, haste 150 - 300, no mastery)",
-  c.whatIfStats.crit == 250 and c.whatIfStats.haste == -150 and c.whatIfStats.mastery == nil,
-  tostring(c.whatIfStats.crit) .. " " .. tostring(c.whatIfStats.haste) .. " " .. tostring(c.whatIfStats.mastery))
-c.detail = "short"
-local cmp = CM.Build(c, "whatif").byKey.compare
-local shortCrit = false
-for _, p in ipairs(cmp and cmp.pairs or {}) do if p.short and tostring(p.label):lower():find("crit") then shortCrit = true end end
-check("the short view shows the item's stat changes (they were detail-only)", shortCrit)
-c.whatIfStats.haste = 999   -- the user changes one box by hand
-ns.CharToolkit_SetInput("item", "")
-check("emptying the item box takes back the amounts it filled, keeps the one changed by hand", c.whatIfStats.crit == nil and c.whatIfStats.haste == 999,
-  tostring(c.whatIfStats.crit) .. " " .. tostring(c.whatIfStats.haste))''')
+gm = CM.Build(c, "gear")
+check("choosing the other ring compares against it (crit 50 | 300 | +250, haste 300 | 150 | -150)", table.concat(gm.byKey.gc_crit.cells, "|") == "50|300|+250"
+  and table.concat(gm.byKey.gc_haste.cells, "|") == "300|150|-150" and gm.sections[2].title == "Compare: Finger 2", table.concat(gm.byKey.gc_crit.cells, "|"))
+check("  ...the picked bag item is marked", gm.byKey.gearOwn1 and gm.byKey.gearOwn1.value == "comparing, item level 345" and gm.byKey.gearOwn1.tone == "good", gm.byKey.gearOwn1 and gm.byKey.gearOwn1.value)
+check("  ...and the map's boxes are not filled by it (the comparison shows its own changes)", next(c.whatIfStats) == nil)
+ns.CharToolkit_SelectGearSlot(1)
+check("clicking the helm lets go of the ring (it does not fit)", (CM.compareText or "") == "" and CM.gearSlot == 1, CM.compareText)
+local function dropOn(slot)
+  for _, b in ipairs(ns.CharToolkit_Drawn().icons) do if b.slot == slot and b:IsShown() then return b end end
+end
+ns.CharToolkit_Render()
+local hb = dropOn(1)
+GetCursorInfo = function() return "item", 3, "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r" end
+local clearedC = false; ClearCursor = function() clearedC = true end
+if hb and hb.scripts.OnReceiveDrag then hb.scripts.OnReceiveDrag(hb) end
+check("an item dropped on the helm's icon is compared with the helm, and the cursor emptied", hb ~= nil and CM.gearSlot == 1 and (CM.compareText or ""):find("Better Helm", 1, true) ~= nil and clearedC,
+  CM.compareText)''')
 total_n += r[0]; total_fails += r[1]
 r = toolkit_world("", '''local c = ns.CharToolkit_Cfg()
 local CM = ns.CharModel
-local prim
-for _, s2 in ipairs(CM.Build(c, "whatif").sections or {}) do for _, it in ipairs(s2.items or {}) do if it.key == "wi_primary" then prim = it end end end
-check("What If has the primary stat (Agility for this spec) as its own box", prim ~= nil and prim.label == "Agility" and prim.input == "primary", prim and prim.label)
-ns.CharToolkit_SetInput("primary", "100")
-for _, s2 in ipairs(CM.Build(c, "whatif").sections or {}) do for _, it in ipairs(s2.items or {}) do if it.key == "wi_primary" then prim = it end end end
-check("  ...+100 Agility shows its attack power through the game's GetAttackPowerForStat", c.whatIfPrimary == 100 and tostring(prim.value):find("+100 attack power", 1, true) ~= nil, prim and prim.value)
-local armorPair
-for _, pp in ipairs(prim.pairs or {}) do if pp.label == "Armor from it" then armorPair = pp end end
-check("  ...and the armor it gives through the mastery text (+100 x 101.8% = +102, +0.39% damage reduction), in the short view too",
-  armorPair ~= nil and armorPair.value == "+102 (101.8%, mastery) = +0.39% damage reduction" and armorPair.short == true, armorPair and armorPair.value)
-ns.CharToolkit_SetInput("primary", "0")
-ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
-check("a compared item fills the primary stat box too (Better Helm 600 Agility - Helm 500)", c.whatIfPrimary == 100, c.whatIfPrimary)''')
+local prim = CM.Build(c, "stats").byKey.map_primary
+check("the primary stat (Agility for this spec) has its own box on the map (it was on What If)", prim ~= nil and prim.label == "Agility" and prim.input == "sv:primary", prim and prim.label)
+ns.CharToolkit_SetInput("sv:primary", tostring(CM.svBase.primary + 100))
+prim = CM.Build(c, "stats").byKey.map_primary
+local apLine, armorLine
+for _, pp in ipairs(prim.pairs or {}) do if pp.label == "» Attack power" then apLine = pp end; if pp.label == "» Armor" then armorLine = pp end end
+check("  ...+100 Agility shows its attack power through the game's GetAttackPowerForStat", c.whatIfPrimary == 100 and apLine and tostring(apLine.value):find(" -> ", 1, true) ~= nil, apLine and apLine.value)
+check("  ...and the armor it gives through the mastery text, in the short view too", armorLine ~= nil and tostring(armorLine.value):find(" -> ", 1, true) ~= nil and armorLine.short == true, armorLine and armorLine.value)
+ns.CharToolkit_SetInput("sv:primary", "")''')
 total_n += r[0]; total_fails += r[1]
 print("%d checks, %d failed" % (total_n, total_fails))
 sys.exit(1 if total_fails else 0)

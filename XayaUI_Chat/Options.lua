@@ -13,10 +13,11 @@ local TAB_OUTLINE = { none = "None", outline = "Outline", thick = "Thick outline
 local TAB_OUTLINE_ORDER = { "none", "outline", "thick", "shadow" }
 
 -- part = a part under Chat Panel ("layout", "look", "bar", ...); section = a tab inside it ("tab_<header key>", e.g. "tab_blocksHdr")
+-- (Chat 0.6.13: the Chat Panel's page is in the settings window's Blizzard UI Reskin tab, module "reskin"; Xaya 2026-11-05)
 function C.OpenSettings(part, section)
-    if part and section then ns.OpenSettingsPage("chat", "chatpanel", part, section)
-    elseif part then ns.OpenSettingsPage("chat", "chatpanel", part)
-    else ns.OpenSettingsPage("chat", "chatpanel") end
+    if part and section then ns.OpenSettingsPage("reskin", "chatpanel", part, section)
+    elseif part then ns.OpenSettingsPage("reskin", "chatpanel", part)
+    else ns.OpenSettingsPage("reskin", "chatpanel") end
 end
 
 local soundCache
@@ -416,5 +417,7 @@ end
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
-ns.RegisterSettingsPage("chat", "chatpanel", ns.BuildChatTab)
+-- module "reskin": the page is drawn in the Blizzard UI Reskin tab (Chat 0.6.13; Xaya 2026-11-05: "Take all reskins and put them into a
+-- new tab: Blizzard UI Reskin"; the Chat Panel restyles Blizzard's chat)
+ns.RegisterSettingsPage("reskin", "chatpanel", ns.BuildChatTab)
 ns.RegisterLauncher({ "chat", "Chat Panel", "Open the Chat Panel settings (also /xui chat settings)", function() C.OpenSettings() end, order = 40 })
