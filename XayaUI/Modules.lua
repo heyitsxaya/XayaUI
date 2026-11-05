@@ -59,6 +59,23 @@ end
 
 function ns.IsReady() return isReady end
 
+-- 1b. Logged in (core 0.6.47). Core.lua's own start-up frame calls ns.FireLogin() once, at PLAYER_LOGIN. ns.AtLogin(fn) runs fn then, or
+-- at once when it already fired. For features that must wait for the login (the game menu, other addons' services) but are switched
+-- on only now and then: they ask for it only when they are on, so a feature that is off needs no frame or event of its own (V14).
+local loginQueue, loggedIn = {}, false
+function ns.AtLogin(fn)
+    if type(fn) ~= "function" then return end
+    if loggedIn then Call(fn) else loginQueue[#loginQueue + 1] = fn end
+end
+function ns.FireLogin()
+    if loggedIn then return end
+    loggedIn = true
+    local queue = loginQueue
+    loginQueue = {}
+    for _, fn in ipairs(queue) do Call(fn) end
+end
+function ns.LoggedIn() return loggedIn end
+
 -------------------------------------------------------------------------------
 -- 2. /xui commands. Core's own commands stay in Core.lua; a feature adds its own here.
 -------------------------------------------------------------------------------

@@ -89,6 +89,7 @@ function ns.Log(fmt, ...)
     local line = ("|cff888888%.1f|r %s"):format(GetTime() % 10000, msg)
     local b = ns.logBuf
     b[#b + 1] = line
+    ns.logSerial = (ns.logSerial or 0) + 1   -- (Console.lua: which lines a closed console window has not drawn yet)
     local n = #b
     if n > 350 then   -- trim in one pass (down to 300) instead of shifting the whole array on every line
         for i = 1, 300 do b[i] = b[n - 300 + i] end
@@ -747,7 +748,13 @@ end
 
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
-f:SetScript("OnEvent", function(_, _, name)
+f:RegisterEvent("PLAYER_LOGIN")   -- (Modules.lua ns.AtLogin: one frame for every feature that waits for the login; let go once fired)
+f:SetScript("OnEvent", function(_, event, name)
+    if event == "PLAYER_LOGIN" then
+        f:UnregisterEvent("PLAYER_LOGIN")
+        if ns.FireLogin then ns.FireLogin() end
+        return
+    end
     if name ~= addonName then return end
     InitDB()
     f:UnregisterEvent("ADDON_LOADED")
