@@ -2,7 +2,8 @@
 -- CharacterModel.lua : the one stat model behind QoL > Character Toolkit (XayaUI QoL 0.7.0). No frames here: it reads the game and
 -- returns plain data (sections of items, each item a label, a value, label/value detail pairs and hover lines; since QoL 0.7.15 a stat
 -- map line also carries its Pt value and note apart from its value, per / note, and CM.PairText joins them for one-column readers;
--- a section with grid = true is drawn as a table, Stat | Current value | Pt value | Note). The panel's tabs, its
+-- a section with grid = true is drawn as a table, Stat | Rating | Current value | Pt value | Note | Change since QoL 0.7.20, a rating
+-- card's rating text in ratingText, and a pair with nested = true is one ability under the "»" line above it). The panel's tabs, its
 -- compact sheet, the What If pane, the gear slot overlays and the extra lines on the character window's tooltips all draw from it.
 -- Arithmetic lives in StatMath.lua. NOT RUN IN GAME when written (2026-11-04): every number needs the in-game pass (QA-CHECKLIST E1).
 --
@@ -1581,13 +1582,18 @@ function GearCompareSections(ctx, out)
         for _, it in ipairs(sec.items) do
             if it.kind ~= "colhead" then
                 local keep = {}
+                local head, headKept   -- the last line that is not nested: the "»" line the nested ones sit under
                 for _, pr in ipairs(it.pairs or {}) do
-                    -- a change can sit in the value or, for a list (abilities and their recharges), in the note
+                    if not pr.nested then head, headKept = pr, false end
+                    -- a change sits in the value (one ability under "» Ability Scaling" or haste's abilities is a nested line of its
+                    -- own since QoL 0.7.20) or in the note
                     local whole = CM.PairText(pr)
                     if pr.change or whole:find(" -> ", 1, true) then
                         local v = (type(pr.value) == "string" and pr.value:find(" -> ", 1, true)) and pr.value or whole
                         pr.tone = pr.tone or Dir(pr.label, v)
+                        if pr.nested and head and not headKept then keep[#keep + 1] = head; headKept = true end   -- (its "»" line first)
                         keep[#keep + 1] = pr
+                        if not pr.nested then headKept = true end
                     end
                 end
                 local changed = type(it.value) == "string" and it.value:find(" -> ", 1, true) ~= nil
@@ -1951,6 +1957,14 @@ local function MapNote(it, label, value, tone, colorKey, cols)
     end
     return p
 end
+-- One line nested under the map line above it (QoL 0.7.20; Xaya 2026-11-05: "ability names should be nested under abilities"): one
+-- ability of a list ("» Abilities (per 100)", "» Ability Scaling", haste's abilities), its number in the value cell. The panel draws it
+-- one indent deeper than the "»" lines; the one-column readers indent its name (CM.PairLabel).
+local function MapSub(it, label, value, tone)
+    local p = MapNote(it, label, value, tone)
+    p.nested = true
+    return p
+end
 local function PerPoint(v) if num(v) then return { per = F(v, 2), perPoint = true } end end   -- a Pt value: one point gives v
 local function PerPct(v, words)   -- a Pt value: v of the card's rating makes 1% of the line
     if num(v) then return { per = F(v) .. " / 1%", perText = F(v) .. " " .. words .. " = 1%" } end
@@ -1973,14 +1987,24 @@ function CM.PairText(p)
     if p.note and p.note ~= "" then v = v .. (v ~= "" and "; " or "") .. p.note end
     return v
 end
+-- A detail line's name for the one-column readers: a nested line (one ability under "» Abilities (per 100)", QoL 0.7.20) is indented.
+-- INFERENCE: the game's tooltip keeps leading spaces (not documented; without the indent the names still read as a list).
+function CM.PairLabel(p)
+    if type(p) ~= "table" then return "" end
+    return (p.nested and "    " or "") .. tostring(p.label or "")
+end
 
--- The column head over a grid section: Stat | (the box: "Rating" over a rating card's box) | Current value | Pt value | Note.
-local function GridHead(key, boxHead)
+-- The column head over a grid section: Stat | Rating | Current value | Pt value | Note | Change. QoL 0.7.20 (Xaya 2026-11-05: "put the
+-- input box on the far right under a new column "Change""): the box moved from under Rating to the far right; Rating shows a rating
+-- card's rating as text. ratingHead / changeHead: only a section whose lines have a rating / a box names that column.
+local function GridHead(key, ratingHead, changeHead)
     local h = Item(key, "Columns", "colhead")   -- (the label is its hover's title; the head draws its cols)
-    h.grid, h.cols = true, { "Stat", boxHead or "", "Current value", "Pt value", "Note" }
+    h.grid, h.cols = true, { "Stat", ratingHead or "", "Current value", "Pt value", "Note", changeHead or "" }
+    if ratingHead then Tip(h, "Rating: your rating now. A number you type stays in its Change box; Current value shows what it changes.") end
     Tip(h, "Current value: the game's figure now; \"now -> then\" when your numbers (or a compared item) change it.")
     Tip(h, "Pt value: what one point of the card's stat gives (1 Agility = 1.00 attack power), or \"N / 1%\": how much of the card's rating makes 1% of that line.")
-    Tip(h, "Note: where a number comes from, what it leaves out, and lists (abilities). On a narrow panel the note goes under its line; drag the corner wider and it gets its own column.")
+    Tip(h, "Note: where a number comes from and what it leaves out. On a narrow panel the note goes under its line; drag the corner wider and it gets its own column.")
+    if changeHead then Tip(h, "Change: type a number in the box (the number itself, not an amount) and press Enter; every line it feeds shows \"now -> then\". Clear it to go back to yours.") end
     return h
 end
 CM.GridHead = GridHead   -- (the Gear comparison, defined above this, uses it)
@@ -2012,6 +2036,7 @@ local function MapRating(ctx, src, key, kit)
         return it
     end
     it.absolute, CM.svBase[key] = src.rating, src.rating
+    it.ratingText = Big(src.rating)   -- the Rating column: your rating now, as text (QoL 0.7.20; the box moved to the Change column)
     local a, w = src.analysis or {}, src.whatIf
     it.value = num(src.total) and Was(src.total, src.totalAfter, P) or UNAV
     if src.totalAfter and num(src.total) then it.tone = (src.totalAfter >= src.total) and "good" or "warn" end
@@ -2065,7 +2090,7 @@ local function StatMapSections(ctx, out)
     local armorFromPAfter = (apctAfter and num(eff2)) and eff2 * apctAfter / 100 or nil
 
     -- 1. Primary stat and Stamina
-    local prim = { key = "map_primary", title = "Primary stats", grid = true, items = { GridHead("map_cols1") } }
+    local prim = { key = "map_primary", title = "Primary stats", grid = true, items = { GridHead("map_cols1", nil, "Change") } }
     do
         local it = Item("map_primary", StatName(p), "input")
         it.input, it.bigPairs, it.mapCard, it.labelColor = "sv:primary", true, true, CM.STAT_COLORS.primary
@@ -2112,19 +2137,22 @@ local function StatMapSections(ctx, out)
                     end
                 end
                 table.sort(rows, function(x, y) return x[2] > y[2] end)
-                local parts = {}
-                for i = 1, math.min(4, #rows) do parts[#parts + 1] = rows[i][1] .. " +" .. Big(rows[i][2]) end
-                -- (a list: the Note cell, which wraps, so every ability stays readable; QoL 0.7.15)
-                if #parts > 0 then MapNote(it, "» Abilities (per 100)", "", nil, nil, { note = table.concat(parts, ", ") }) end
-                -- with your number: each ability's own number now -> then (its first number moves with attack power: B7, #325
-                -- "what happens to your other stats and abilities")
+                -- each ability on its own line nested under the "»" line, its number in the value cell, in the same order as before
+                -- (QoL 0.7.20; Xaya 2026-11-05: "ability names should be nested under abilities"; before, one list in the note)
+                if #rows > 0 then
+                    MapNote(it, "» Abilities (per 100)", "")
+                    for i = 1, math.min(4, #rows) do MapSub(it, rows[i][1], "+" .. Big(rows[i][2])) end
+                end
+                -- Ability Scaling (this line was "Abilities with your number" until QoL 0.7.20; Xaya 2026-11-05: "should be renamed to
+                -- "Ability Scaling""): each ability's own number now -> then (its first number moves with attack power: B7, #325 "what
+                -- happens to your other stats and abilities")
                 local a1 = num(eff2) and N(GetAttackPowerForStat, p, eff2) or nil
                 if dP ~= 0 and #rows > 0 and num(a1) and num(a0) then
                     local ratio = (apNow + a1 - a0) / apNow
-                    local ch = {}
-                    for i = 1, math.min(4, #rows) do ch[#ch + 1] = rows[i][1] .. " " .. Big(rows[i][3]) .. " -> " .. Big(rows[i][3] * ratio) end
-                    MapNote(it, "» Abilities with your number", "", ratio >= 1 and "good" or "warn", nil, { note = table.concat(ch, ", ") })
-                    Tip(it, "Abilities with your number: each one's first number x (attack power then / attack power now); talents and buffs stay as they are.")
+                    local tone = ratio >= 1 and "good" or "warn"
+                    MapNote(it, "» Ability Scaling", "", tone)
+                    for i = 1, math.min(4, #rows) do MapSub(it, rows[i][1], Big(rows[i][3]) .. " -> " .. Big(rows[i][3] * ratio), tone) end
+                    Tip(it, "Ability Scaling: each ability's first number x (attack power then / attack power now); talents and buffs stay as they are.")
                 end
                 Tip(it, "Abilities: each one's first number in its own description divided by your attack power, times the attack power 100 more gives (as on the Spells tab; talents and buffs already in the text).")
             end
@@ -2147,9 +2175,9 @@ local function StatMapSections(ctx, out)
     end
     out[#out + 1] = prim
 
-    -- 2. Secondary stats and what they feed (a column head over the cards: Stat | Rating (the box) | Current value | Pt value (the
-    -- rating per 1%, #382) | Note)
-    local function ColHead(k) return GridHead(k, "Rating") end
+    -- 2. Secondary stats and what they feed (a column head over the cards: Stat | Rating | Current value | Pt value (the rating per
+    -- 1%, #382) | Note | Change (the box))
+    local function ColHead(k) return GridHead(k, "Rating", "Change") end
     local sec = { key = "map_secondary", title = "Secondary stats", grid = true, items = { ColHead("map_cols2") } }
     if byKey.crit then
         sec.items[#sec.items + 1] = MapRating(ctx, byKey.crit, "crit", function(it, src, w)
@@ -2192,11 +2220,16 @@ local function StatMapSections(ctx, out)
                     local ch = C_Spell and C_Spell.GetSpellCharges and R(C_Spell.GetSpellCharges, sp.id)
                     local dur = (type(ch) == "table") and Field(ch, "cooldownDuration") or nil
                     local dur2 = (num(dur) and dur > 0 and num(h0) and num(h1) and math.abs(h1 - h0) > 0.0005) and dur * (1 + h0 / 100) / (1 + h1 / 100) or nil
-                    names[#names + 1] = SpellName(sp.id) .. ((num(dur) and dur > 0) and (" (" .. Was(dur, dur2, function(v) return F(v, 1) .. " s" end) .. " recharge)") or "")
+                    names[#names + 1] = { SpellName(sp.id), (num(dur) and dur > 0) and (Was(dur, dur2, function(v) return F(v, 1) .. " s" end) .. " recharge") or "" }
                     if #names >= 5 then break end
                 end
             end
-            if #names > 0 then MapNote(it, "» Abilities (their text names Haste)", "", nil, nil, { note = table.concat(names, ", ") }) end
+            -- each ability on its own nested line, its recharge in the value cell (QoL 0.7.20: "ability names should be nested under
+            -- abilities"; before, one list in the note)
+            if #names > 0 then
+                MapNote(it, "» Abilities (their text names Haste)", "")
+                for _, nm in ipairs(names) do MapSub(it, nm[1], nm[2]) end
+            end
             Tip(it, "The global cooldown and attack speed with your numbers are estimates: the game's figure now, times (1 + haste now) / (1 + haste then).")
             Tip(it, "Abilities: those whose own description mentions Haste (a word match on English text; the game does not list what haste shortens). Their recharge is the game's figure now (C_Spell.GetSpellCharges); with your numbers it is an estimate, like the global cooldown.")
         end)
