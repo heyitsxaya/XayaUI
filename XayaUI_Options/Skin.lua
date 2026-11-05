@@ -424,6 +424,39 @@ local function TraceGroupFire(w, what)
     AddRest(w, "firetrace", function(self) rawset(self, "Fire", nil); self.xuiFireTraced = nil end)
 end
 
+-- The Rules sub-tab row (Smart Categories | Enabled | Disabled | Drafts ... Class/Spec Rule Creator) in one compact layout whichever
+-- sub-tab is selected (Options 0.6.39; Xaya 2026-11-05, screenshots: the tabs were compact with Smart Categories selected and stretched
+-- across the row with Enabled, Disabled or Drafts selected). AceGUI's TabGroup (BuildTabs) pads every tab to fill the row once the
+-- tabs take 75 % of it, measured from the text widths at that moment, so the same row came out compact or stretched. INFERENCE:
+-- which sub-tab is selected moves those widths over the line (not seen in game). Here each tab gets its text width plus AceGUI's
+-- own unpadded spacing (4 px, the padding it gives a row it does not stretch) and Class/Spec Rule Creator stays pinned to the far
+-- right corner, away from the others (2026-11-01). Rows AceGUI wrapped stay wrapped. Other tab rows are left to AceGUI.
+local function CompactRulesTabs(w)
+    if not (w and w.tabs and w.frame) then return end
+    local creator
+    for _, tab in ipairs(w.tabs) do if tab:IsShown() and tab.value == "creatorTab" then creator = tab end end
+    if not creator then return end
+    for _, tab in ipairs(w.tabs) do
+        local fs = tab:IsShown() and tab:GetFontString()
+        if fs then
+            local name = tab.GetName and tab:GetName()
+            local left = tab.Left or tab.leftTexture or (name and _G[name .. "Left"])
+            local side = (left and left.GetWidth and 2 * (left:GetWidth() or 0)) or 0
+            local inner = (fs:GetStringWidth() or 0) + 4
+            if tab.Middle then tab.Middle:SetWidth(inner) end
+            if tab.MiddleDisabled then tab.MiddleDisabled:SetWidth(inner) end
+            local text = tab.Text or fs
+            if text.SetWidth then text:SetWidth(0) end
+            tab:SetWidth(inner + side)
+        end
+    end
+    local top, ftop = creator:GetTop(), w.frame:GetTop()
+    if top and ftop then
+        creator:ClearAllPoints()
+        creator:SetPoint("TOPRIGHT", w.frame, "TOPRIGHT", 0, top - ftop)
+    end
+end
+
 local function SkinTabGroup(w)
     TraceGroupFire(w, "tab")
     do local pb, pd = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 }), TC("xui-pane", "border", { 0.3, 0.3, 0.3, 1 }); PaneColors(w.border, { pb[1], pb[2], pb[3], A() * 0.6 }, pd) end
@@ -441,16 +474,20 @@ local function SkinTabGroup(w)
             if fs then local c = TC(tcl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]); TF(fs); LightFont(tab, fs, c) end
         end
     end
-    -- Rules > Class/Spec Rule Creator: pinned to the far right corner of the tab row, away from Enabled | Drafts | Smart Categories | Disabled
-    for _, tab in ipairs(w.tabs or {}) do
-        if tab:IsShown() and tab.value == "creatorTab" and w.frame then
-            local top, ftop = tab:GetTop(), w.frame:GetTop()
-            if top and ftop then
-                tab:ClearAllPoints()
-                tab:SetPoint("TOPRIGHT", w.frame, "TOPRIGHT", 0, top - ftop)
-            end
+    -- the Rules sub-tab row keeps one compact layout, laid out again right after every AceGUI layout of it (CompactRulesTabs)
+    if w.BuildTabs and not w.xuiCompactOrig then
+        local orig = w.BuildTabs
+        w.xuiCompactOrig = orig
+        w.BuildTabs = function(self, ...)
+            local r = orig(self, ...)
+            pcall(CompactRulesTabs, self)
+            return r
         end
+        AddRest(w, "compacttabs", function(self)
+            if self.xuiCompactOrig then self.BuildTabs = self.xuiCompactOrig; self.xuiCompactOrig = nil end
+        end)
     end
+    CompactRulesTabs(w)
     OnRelease(w, function(self)
         PaneColors(self.border, { 0.1, 0.1, 0.1, 0.5 }, { 0.4, 0.4, 0.4 })
         for _, tab in ipairs(self.tabs or {}) do

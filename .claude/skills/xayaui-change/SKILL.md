@@ -28,6 +28,8 @@ Read `SESSION-START-SUMMARY.md` first in a new session.
    then they carry `unverified-in-game`.
 
 ## Standing rules (from Xaya)
+- **Off costs nothing** (Xaya, 2026-11-05, her words): "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a standing rule for all current and future feature / element builds". Rule V14 in `docs/process/VERIFICATION.md` says how it is
+  applied and checked, and the two limits the game sets (files of an enabled addon are always read; hooks stay until /reload).
 - **Work the backlog, never idle** (Xaya, 2026-11-04): "for the time being, as long as there are features or overt bugs in any of the core
   addon functionality, you should just aim to solve for the backlog and avoid idling in all cases". When an item waits on her, move
   to the next unblocked one (list the blocked ones once; never guess her decisions into code). Order: SESSION-START-SUMMARY.md section 4.

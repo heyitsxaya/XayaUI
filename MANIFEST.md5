@@ -1,11 +1,11 @@
-73a58e2749a51b9ec9fcfa3bbe20a6bc  .claude/skills/xayaui-change/SKILL.md
+fdb080a203260bb4a48e5a7933ec857d  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-c67c0e15a76222494d9c1bec354f6fa4  QA-CHECKLIST.md
+2362c228a815496cc28782d1e6ebddf7  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 63b2e4f690ac314d8965977aa66a75b4  ROADMAP.md
-bfa2f931d3c882cb4253b6e633d8f140  SESSION-START-SUMMARY.md
+aabaeee51048f87a0cfe3c4544841c56  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 4c413a4a2ac705ec23e0cc435ed78760  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
@@ -21,7 +21,7 @@ d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 656359f2c1fb76cd36f8250be558acfe  XayaUI/Combat/README.md
 90a7c4511e2a3988040393f1c413a9b3  XayaUI/Compat.lua
 13a60b31b56a009cc309b9a5350f5605  XayaUI/Conditions.lua
-a19207588e676cc8d0945015b5d1f9bb  XayaUI/Console.lua
+b2559ab57462004655898c8bca0ab18a  XayaUI/Console.lua
 cfe938d591b43d3e4ad3d89afdf1e93d  XayaUI/Core.lua
 54cd777342d376237760b45e6c8c8358  XayaUI/Cues.lua
 2a0f2a633dae957c132cc16968ab9edf  XayaUI/DebugRecord.lua
@@ -93,7 +93,7 @@ e94cfc0c3fc54c4e5188a7aadaf41d90  XayaUI/Media/UI/xui_progresstex.tga
 66226a0137e47566a0fd0ce9c41e6bcc  XayaUI/Media/UI/xui_sttexture.tga
 30d50e1964ffdb6d81b4e902ecb5accd  XayaUI/Media/UI/xui_text.tga
 97e47b6ce28ec4d1218ae800136c1e97  XayaUI/MinimapButton.lua
-b5cb7138f6900f3c34e52ef5a3425287  XayaUI/Modules.lua
+34f1ff3864d29504932333d9a9417f9b  XayaUI/Modules.lua
 8a7e3eacecc07b76ff48bb9e8ef21d5b  XayaUI/Outcomes.lua
 ac819cb3c0f1c6bd28bdcd33566a74f8  XayaUI/ProcGlows.lua
 b76823560a93ae68a07689af413b01ec  XayaUI/RecycleBin.lua
@@ -107,7 +107,7 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 570c15831b621bb0f2b57518e60eed39  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
 0089ea922613cac75be4b9b79d837709  XayaUI/Visual.lua
-b97868230bc40fdc5171d665855408ee  XayaUI/XayaUI.toc
+55f452b338bc052da40b127948d6bb59  XayaUI/XayaUI.toc
 5d8ef2b3d9cd4855e81ae79e59a247ba  XayaUI_Bonus/Calculator.lua
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
@@ -205,13 +205,13 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-764477a7f80a7ac0bd9c88981d861a25  XayaUI_Options/Options.lua
+7b485e51bbba8c80752e9d4561401ff1  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
-9efe560f68aac4b020938000ee2c7d6b  XayaUI_Options/Skin.lua
+b2c1cb89c4059e3f328552f4253f4abc  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
-9d22b0cf700c8720ec99f104a14ff52e  XayaUI_Options/XayaUI_Options.toc
+ef3fcda47655dcdd3d54fd428d24844b  XayaUI_Options/XayaUI_Options.toc
 3c560ecddcdc871ee027132eb7bc55e0  XayaUI_QoL/CharacterModel.lua
 721cd197c5cb8dbea86bd6b9220c52cd  XayaUI_QoL/CharacterReskin.lua
 ab5299b205d71475e97c52060d0e3dce  XayaUI_QoL/CharacterToolkit.lua
@@ -458,6 +458,7 @@ fa0ce99ac539fc76181c79ccdc075462  debug-log/2026-11-05-0411-stat-calculator-and-
 8e795e343c27555c3c211e58b767e556  debug-log/2026-11-05-1354-roadmap-games-module.md
 7a8661fabc23d908b08c8d5651a7dd52  debug-log/2026-11-05-1402-blizzard-ui-reskin-tab-options-0.6.38.md
 bbd35f726b2fefe160f53ab3b43ddbf8  debug-log/2026-11-05-1405-roadmap-rppm-tooltip-gear-compare.md
+fb8adb26267a6d81fdc60e5acfa50831  debug-log/2026-11-05-1512-console-toggle-footer-subtabs-core-0.6.45-options-0.6.39.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -476,7 +477,7 @@ ebf99fcef23a11e71d73501e0d12646e  docs/plans/STAT-CALCULATOR-REQUIREMENTS-2026-1
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
-18f99347734ff71d918aaa8c7bf8420f  docs/process/VERIFICATION.md
+7476ad0b5929794c14094f0d00272108  docs/process/VERIFICATION.md
 7af233aeafadc9bade62ce5da4b21189  docs/reference/README.md
 1b7a634712b11938763d44b6dcead0c7  docs/reference/api/README.md
 deccd066a381b7db1228942cce2d659a  docs/reference/api/api.json
@@ -547,6 +548,7 @@ a2883d9a62625ef8f612be273f54bb38  tests/chat_run.py
 abe22a2816956a2c3babb802857cc524  tests/chatprobe_run.py
 c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
 77c4528b7a2dd2ec35f14acbb7abec18  tests/compact_button_width_run.py
+5a5034513603092a5062a0bb8ef84779  tests/console_toggle_cost_run.py
 385efab273152e93a25d127204b06e1e  tests/count_gcd_run.py
 e78532613d70ebbdcc90fcfb23c97f0a  tests/cue_fire_run.py
 dd665e9accfdaf1a4488086f855742a2  tests/cue_sound_guard_run.py
@@ -604,6 +606,7 @@ b98b8b93e9068a136e462260a2aefcd1  tests/perf_run.py
 c41c52d02e5112eb8c21794ea85c0b18  tests/recycle_bin_run.py
 f8047cf03744511b898b5efd78065b53  tests/reskin_tab_run.py
 7122b20e5206f3b97c395d01daa7837a  tests/rule_search_run.py
+04c191fed34aa1a531e52ce2d67d48a7  tests/rules_subtabs_compact_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py
 033cc3815741ca63d85f3a67a2bd0409  tests/sidebar_name_room_run.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
@@ -617,7 +620,7 @@ eccba8875a1faeb20465640570668d83  tests/trigger_parity_run.py
 1d9a893748bfbec2053c7e00594bcd58  tests/ui_gutter_run.py
 7bdbd8daaa8aaab8b1a64cdbc9a0b436  tests/usage_check.lua
 06abd3bc39893cbb62c55a168ba32788  tests/usage_run.py
-f9cff67f0a8f112ac867d11c09641835  tests/window_footer_run.py
+e7cdd7a30b073750bf9d255839ce19a3  tests/window_footer_run.py
 480b49a29f06991788f1bff461d947fd  tests/window_margins_run.py
 9cf2dbe8870484cac06007449100805c  tools/formula_fit.py
 5ea11cb0d56f3c473cd881158515069e  tools/manifest.py

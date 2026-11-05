@@ -227,7 +227,8 @@ end
 -------------------------------------------------------------------------------
 -- 6. Messages between XayaUI's own parts (not game events). The sender never needs the receiver to exist: the settings window
 -- is in a load-on-demand addon and may never be loaded in a session.
---   CONFIG_CHANGED   settings or rules changed outside the window (a drag on screen, a command, an import): redraw if open
+--   CONFIG_CHANGED (what)  settings or rules changed outside the window (a drag on screen, a command, an import): redraw if open.
+--                    what = "view": only a switch's state changed (nothing in the options tree), so the redraw may reuse the tree
 --   LOG (line)       a line for the debug console
 --   THEME_CHANGED    the theme changed: re-skin open windows
 --   EDITED           ns.MarkDirty ran (the window's undo journal listens)

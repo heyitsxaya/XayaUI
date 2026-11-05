@@ -246,7 +246,11 @@ end
 function ns.ConsoleSink(line)
     if win and win.log then win.log:AddMessage(line) end
 end
-function ns.ConsoleWindow(show)
+-- fromSettings: the settings window's own switch made the change; that window redraws itself after the click, so no redraw is
+-- asked for here. Any other caller (the close X, /xui console, a message opening it) asks for a "view" redraw: only the switch's
+-- tick changes, so the settings window reuses its options tree instead of building it again (core 0.6.45; Xaya 2026-11-05:
+-- "console toggle has a still long time"; a full build is 0.44-0.64 s of Lua with 229 rules in the test harness).
+function ns.ConsoleWindow(show, fromSettings)
     local u = Ui()
     if show == nil then show = not (win and win:IsShown()) end
     u.consoleOpen = show and true or nil
@@ -256,7 +260,7 @@ function ns.ConsoleWindow(show)
     elseif win then
         win:Hide()
     end
-    ns.Fire("CONFIG_CHANGED")
+    if not fromSettings then ns.Fire("CONFIG_CHANGED", "view") end
 end
 function ns.ConsoleWindowOn() return (win and win:IsShown()) and true or false end
 
