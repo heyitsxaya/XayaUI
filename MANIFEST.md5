@@ -5,7 +5,7 @@ d32239bcb673463ab874e80d47fae504  LICENSE
 eee8500d6c46e5cd81565084488513ad  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 af70051b991ea3877b4fb5f1a2002ba5  ROADMAP.md
-a6c8563ae6634980667f161e253e2470  SESSION-START-SUMMARY.md
+8e26fa7260dfdd487f86249f75b6c9d2  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 8c488ca7d7ae4728dad562ae6d7268c5  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
@@ -468,7 +468,7 @@ d27f8382f0cf14a88b89d448efa972d5  debug-log/2026-11-05-1612-sidebar-switches-uti
 4716f7733cf83de9d6efbc85943772df  debug-log/2026-11-05-1643-core-off-costs-nothing-core-0.6.47.md
 2cd9e04bca8c3a3b47d1b0c197fcd29e  debug-log/2026-11-05-1714-character-pane-overlays-qol-0.7.19.md
 8c7ceaa8ff08bbbb847a6cfc1acf0f64  debug-log/2026-11-05-1716-stat-calculator-change-column-qol-0.7.20.md
-cb6bc1c05e9d53be747ebd894280764b  debug-log/2026-11-05-2018-xaya-decisions-bars-v14-terms-372-templates-history.md
+30b20fa3b60da0d2165c8777cbdbad69  debug-log/2026-11-05-2018-xaya-decisions-bars-v14-terms-372-templates-history.md
 3ee6f39bd0e39c58907869842586fdd0  debug-log/2026-11-05-2022-stat-calculator-450-rating-change-qol-0.7.21.md
 7ae093ebf5e4a1cf11c934f652ae112e  debug-log/2026-11-05-2024-roadmap-friends-short-commands.md
 4b067d8c979d3a235a6a21cd5b3c5d82  debug-log/2026-11-05-2027-history-active-tab-whisper-tabs-chat-0.6.15.md
