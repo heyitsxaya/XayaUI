@@ -1180,13 +1180,16 @@ local function UpdateOverlay(button)
         o.ilvl:SetPoint("BOTTOM", o, "BOTTOM", 0, 2)
         o.marks = o:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         o.marks:SetPoint("TOP", o, "TOP", 0, -2)
+        o.ilvl.xuiOwn, o.marks.xuiOwn = true, true   -- (the reskin's /xui reskin status lists only other addons' text)
         overlays[button] = o
     end
     local eSlots, eDefault = CM.EnchantSlots(c)
     -- (QoL 0.7.14) while the Character Reskin draws its own item level / enchant on the slot, these leave theirs out: one of each per slot
+    -- (QoL 0.7.19) and the empty-socket mark while it draws the sockets
     local rIlvl = ns.CharReskin_DrawsIlvl and ns.CharReskin_DrawsIlvl()
     local rEnch = ns.CharReskin_DrawsEnchants and ns.CharReskin_DrawsEnchants()
-    local data = CM.SlotOverlay(slot, { ilvl = c.ovIlvl and not rIlvl, sockets = c.ovSockets, enchants = c.ovEnchants and not rEnch,
+    local rSock = ns.CharReskin_DrawsSockets and ns.CharReskin_DrawsSockets()
+    local data = CM.SlotOverlay(slot, { ilvl = c.ovIlvl and not rIlvl, sockets = c.ovSockets and not rSock, enchants = c.ovEnchants and not rEnch,
         enchantSlots = eSlots, enchantDefault = eDefault })
     SetFont(o.ilvl, c.ovSize, "OUTLINE")
     SetFont(o.marks, math.max(8, c.ovSize - 2), "OUTLINE")
@@ -1201,6 +1204,8 @@ local function UpdateOverlay(button)
     o:Show()
 end
 function ns.CharToolkit_UpdateOverlays()
+    local c = Cfg()
+    if not (c and c.enabled and c.overlays) and next(overlays) == nil then return end   -- off and never drawn: nothing to do (V14)
     for _, s in ipairs(CM.SLOTS) do
         local b = SlotButton(s[4])
         if b then UpdateOverlay(b) end
@@ -1266,7 +1271,7 @@ local function OnEvent(_, event, unit)
     end
     if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "PLAYER_LEVEL_UP" then CM.ClearCache() end
     if event == "PLAYER_REGEN_ENABLED" then CM.gcdHidden = false end   -- out of combat the last readable GCD shows again
-    if OVERLAY_EVENTS[event] then RefreshOverlays() end
+    if OVERLAY_EVENTS[event] then local c = Cfg(); if c and c.overlays then RefreshOverlays() end end
     if unit and unit ~= "player" and event:find("^UNIT_") then return end
     if panel and panel:IsShown() then Refresh() end
 end
@@ -1364,7 +1369,7 @@ ns.CharToolkit_HookStatFrames = HookStatFrames
 -------------------------------------------------------------------------------
 -- On / off
 -------------------------------------------------------------------------------
-local ownerHooked, themeHooked = false, false
+local ownerHooked, themeHooked, slotHooked = false, false, false
 function ns.CharToolkit_Apply()
     local c = Cfg(); if not c then return end
     if not c.enabled then
@@ -1392,9 +1397,13 @@ function ns.CharToolkit_Apply()
         end
         if type(hooksecurefunc) == "function" then
             if type(_G.PaperDollFrame_UpdateStats) == "function" then hooksecurefunc("PaperDollFrame_UpdateStats", HookStatFrames) end
-            -- Blizzard redraws one slot button at a time; the overlay follows (post-hook, Blizzard's code runs unchanged first)
-            if type(_G.PaperDollItemSlotButton_Update) == "function" then hooksecurefunc("PaperDollItemSlotButton_Update", UpdateOverlay) end
         end
+    end
+    -- Blizzard redraws one slot button at a time; the overlay follows (post-hook, Blizzard's code runs unchanged first). Placed only once
+    -- the overlays are on (QoL 0.7.19, V14: before, it was placed with the toolkit even while the overlays were off).
+    if c.overlays and not slotHooked and type(hooksecurefunc) == "function" and type(_G.PaperDollItemSlotButton_Update) == "function" then
+        slotHooked = true
+        hooksecurefunc("PaperDollItemSlotButton_Update", UpdateOverlay)
     end
     if not themeHooked and ns.Theme and ns.Theme.OnResolve then
         themeHooked = true
@@ -1582,7 +1591,7 @@ function ns.BuildCharToolkitPage(Notify)
         args = {
             show = { type = "group", name = "Show", order = 1, args = {
                 ovIlvl = Toggle("ovIlvl", 2, "Item level", "The item's level, at the bottom of the slot."),
-                ovSockets = Toggle("ovSockets", 3, "Empty sockets", "How many empty sockets the item's stat table lists (for example 2S), at the top."),
+                ovSockets = Toggle("ovSockets", 3, "Empty sockets", "How many of the item's sockets have no gem in them (for example 2S), at the top. Left out while the Character Reskin draws the sockets."),
                 ovEnchants = Toggle("ovEnchants", 4, "Enchant check", "E? on a ticked slot with no enchant, E when it has one. This expansion's enchantable slots are ticked until you pick your own on the Enchant Slots tab."),
                 ovSize = { type = "range", order = 5, name = "Text size", min = 8, max = 16, step = 1,
                     get = function() return C().ovSize end, set = function(_, v) C().ovSize = v; Changed() end },
