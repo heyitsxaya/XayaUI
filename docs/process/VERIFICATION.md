@@ -46,7 +46,7 @@ another addon.
   - an addon whose code changed has a new `## Version` in its `.toc`;
   - QA-CHECKLIST step IDs are unique;
   - every `tests/*_run.py` ends with a pass marker `tests/run_all.py` recognises.
-- Run the targeted tests, then the full suite: `XUI_API_INDEX=tests/harness/api_index.json python3 tests/run_all.py`. If something
+- Run the targeted tests, then the full suite: `XUI_API_INDEX=tests/harness/api_index.json python3 tests/run_all.py` (no `tests/harness/api_index.json` in a cloud session: build it first with `python3 tests/harness/api_index_from_docs.py`, from the repo's own docs/reference/api/api.json; without it the harness prints "API documentation: NOT LOADED" and checks no widget method or event, so that run does not count as the full suite). If something
   must reach `main` before the full suite finishes (Xaya asks for it), say so in the commit and the reply, and report the full result
   afterwards.
 
