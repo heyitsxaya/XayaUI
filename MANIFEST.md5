@@ -452,6 +452,7 @@ dd5578186e7bd08a7a4d9ecadd75bf82  debug-log/2026-11-04-2338-engine-garbage-measu
 69ffe23eb4ff195f29d0c1f718564a03  debug-log/2026-11-04-2341-cursor-trail-cost-qol-0.7.13.md
 3c9a6dacd74999b270dbe3dadeb5aa40  debug-log/2026-11-04-2344-chat-pieces-every-tab-whispers-chat-0.6.12.md
 842f92774a782b67439718e1e9414090  debug-log/2026-11-04-2345-spell-search-scope-options-0.6.37.md
+c2f7fc26cefdb201d136aef199baee47  debug-log/2026-11-05-1407-roadmap-feature-branch-rppm-scaffold.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -505,6 +506,13 @@ f2392efc4795cf87f14f959076d53174  docs/reference/spells/PRIEST.md
 53f985e580da756189083057adc801a6  docs/reference/spells/WARRIOR.md
 698743cb103884e952cacf7c8b11adeb  docs/reference/spells/other-spells.md
 eaa8da10b5a8d76dce1fdfeeef149d63  docs/reference/spells/spells.json
+2d326db92bd2614c37f3f7bf037ef35d  roadmap-features/rppm/README.md
+804589cf09e970462b249c3a67e0dd3f  roadmap-features/rppm/XayaUI/ProcMath.lua
+23ca250e2be76a6fef678f7a65357123  roadmap-features/rppm/XayaUI/ProcRates.lua
+bb3e252bb66139ccfcdce6b3b3859f3b  roadmap-features/rppm/XayaUI_Bonus/TooltipsRPPM.lua
+b8cc2c180d547fdb235ca994b45af82e  roadmap-features/rppm/XayaUI_DevAssist/ProcCount.lua
+371273f4461ec99f4229cb7bc5519221  roadmap-features/rppm/XayaUI_QoL/ToolkitRPPM.lua
+88721372bedb17460a3fdb610c8cdec6  roadmap-features/rppm/tests/README.md
 7f9f4549410ba8da5e6fb9e9cb573be0  shelved/Bars.lua
 5857b882061b2df7a8d4fb33945efc80  shelved/CountSupport.lua
 ba241e46458e8e4296563689c7708a51  shelved/CursorReminders.lua

@@ -1,0 +1,18 @@
+-------------------------------------------------------------------------------
+-- ProcMath.lua : OUTLINE ONLY (RM-RPPM, 2026-11-05). No code. Proposed, not decided.
+-- The arithmetic behind the RPPM lines. No frames and no game calls (the XayaUI_QoL/StatMath.lua pattern), so it is tested
+-- offline. Its home follows question 1: Bonus (tooltip only), QoL (gear compare only), or core (both).
+-------------------------------------------------------------------------------
+-- PM.Rate(entry, haste)          procs per minute at this haste: entry.base x (1 + haste/100) when entry.hasteScaled, else entry.base.
+--                                haste is a number the caller read out of combat. A secret or missing value gives "unavailable".
+-- PM.Gap(rate)                   average seconds between procs: 60 / rate
+-- PM.ChanceExample(rate, secondsSinceLastChance)
+--                                rate x min(seconds, 10) / 60: the wiki's worked example and its 10 s cap
+--                                (https://warcraft.wiki.gg/wiki/Real_PPM). Shown in the "where this comes from" hover only.
+-- PM.Uptime(rate, buffSeconds)   ESTIMATE, formula open (question 3); refresh and stacking rules differ per buff. Not shown
+--                                until a sourced formula is chosen.
+--
+-- Not modelled unless Xaya accepts a source (question 3): bad-luck protection, crit scaling, per-spec changes. These are
+-- community claims, not on the wiki page.
+-- Every result carries its kind (sourced / estimate) so the display labels it.
+-------------------------------------------------------------------------------

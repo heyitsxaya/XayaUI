@@ -1,0 +1,13 @@
+-------------------------------------------------------------------------------
+-- ToolkitRPPM.lua : OUTLINE ONLY (RM-RPPM, 2026-11-05). No code. Proposed, not decided (used if question 1 = gear compare).
+-- A "Procs" row in the Character Toolkit's item compare.
+-------------------------------------------------------------------------------
+-- Where: the What If tab's item compare. CharacterModel.lua already finds the item being replaced (CM.CompareCandidates, :1249)
+-- and builds the stat differences (CM.CompareDeltas, :1267). This adds one row to that result instead of a new window.
+--
+-- Row: equipped item's proc rate | candidate's proc rate | difference, all at the player's haste (out of combat), each with its
+-- kind (sourced / estimate) and source in the hover. An item without a proc shows "none"; a proc with no entry shows
+-- "not given by the game".
+-- This fills part of what the toolkit lists today as "not given by the game: on-use and proc effects" (ROADMAP RM-CHAR).
+-- Also on the Gear tab? Open (question 1).
+-------------------------------------------------------------------------------
