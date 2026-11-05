@@ -1,6 +1,7 @@
 -------------------------------------------------------------------------------
--- CharacterReskin.lua : QoL > Character Reskin (XayaUI QoL 0.7.14). Blizzard's character window in XayaUI's look. Own code, Blizzard's
--- frames only. Off by default; while off nothing is created, hooked or changed.
+-- CharacterReskin.lua : Character Reskin (XayaUI QoL 0.7.14). Blizzard's character window in XayaUI's look. Own code, Blizzard's frames
+-- only. Off by default; while off nothing is created, hooked or changed. Its settings page is the settings window's Blizzard UI Reskin
+-- tab > Character Pane (module "reskin"; Xaya 2026-11-05: every reskin in one tab).
 --
 -- Xaya, 2026-11-04: "also create a QoL Character Reskin option to toggle on or off"; "I want a reskin OF THE CHARACTER MENU AND NOTHING
 -- ELSE"; "GIVE ME A PRETTY VERSION OF THE CHARACTER SHEET"; "THIS window needs to look beautiful and CLEAN"; "prettify the character
@@ -352,7 +353,7 @@ end
 ns.WhenReady(function() local c = Cfg(); if c and c.enabled then ns.CharReskin_Apply() end end)
 
 -------------------------------------------------------------------------------
--- Settings page: QoL > Character Reskin
+-- Settings page: Blizzard UI Reskin > Character Pane (the switch is still called Character Reskin)
 -------------------------------------------------------------------------------
 function ns.BuildCharReskinPage(Notify)
     local function C() return Cfg() or DEFAULTS end
@@ -363,7 +364,7 @@ function ns.BuildCharReskinPage(Notify)
             get = function() return C()[key] end, set = function(_, v) C()[key] = v and true or false; Changed() end }
     end
     return {
-        type = "group", name = "Character Reskin", order = 4,
+        type = "group", name = "Character Pane", order = 4,
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "Blizzard's character window in XayaUI's look: a clean flat window, one item level per slot coloured by its upgrade track, the enchant beside each slot, and a tidy stat list. Only the look changes; the window works as before, in and out of combat. Off by default." },
@@ -377,7 +378,9 @@ function ns.BuildCharReskinPage(Notify)
         },
     }
 end
-ns.RegisterSettingsPage("qol", "charreskin", ns.BuildCharReskinPage)
+-- module "reskin": the page is the Blizzard UI Reskin tab's Character Pane (Xaya 2026-11-05: "Take all reskins and put them into a new
+-- tab: Blizzard UI Reskin. Currently applies to: chat, character pane, Esc menu")
+ns.RegisterSettingsPage("reskin", "charreskin", ns.BuildCharReskinPage)
 ns.RegisterCommand("reskin", function(arg)
     arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     local c = Cfg()
@@ -389,5 +392,5 @@ ns.RegisterCommand("reskin", function(arg)
             diag.failed and " (stopped after an error)" or "", diag.faded, diag.slots, diag.lastError and (", last error: " .. diag.lastError) or ""))
         return
     end
-    if arg == "options" or arg == "settings" then ns.OpenSettingsPage("qol", "charreskin"); return end
+    if arg == "options" or arg == "settings" then ns.OpenSettingsPage("reskin", "charreskin"); return end
 end, "/xui reskin [on|off|status|options] (QoL Character Reskin)")

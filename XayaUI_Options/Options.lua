@@ -20,8 +20,13 @@ end
 ns.OptionsApi = {}
 -- The feature tabs: module -> top tab key, name and position. Pages inside a tab sort alphabetically by their shown name (Xaya,
 -- 2026-11-02, #274); the older QoL Elements entries (shelved; qolExtra) come last.
+-- Blizzard UI Reskin (Options 0.6.38; Xaya 2026-11-05: "Take all reskins and put them into a new tab: Blizzard UI Reskin. Currently
+-- applies to: chat, character pane, Esc menu. Will apply in the future to: shopping list"): every page registered under module
+-- "reskin": the Chat Panel (XayaUI_Chat), the Character Pane (XayaUI_QoL) and the Esc Menu (XayaUI_Reskin). The Chat tab is gone with
+-- it (the Chat Panel was its only page); a tab with no pages is not drawn.
 ns.OptionsApi.TABS = { chat = { key = "chat", name = "Chat", order = 5 }, qol = { key = "qol", name = "QoL", order = 5.1 },
-    bonus = { key = "bonus", name = "Bonus Features", order = 5.2 } }
+    bonus = { key = "bonus", name = "Bonus Features", order = 5.2 }, reskin = { key = "reskin", name = "Blizzard UI Reskin", order = 5.3 } }
+ns.OptionsApi.pageTab = {}   -- page key -> the top tab it is drawn in (filled by ModuleTabs), so a page that moved still opens
 ns.OptionsApi.featureParents = {}   -- module -> { [page key] = true } for pages whose parts are left-pane nodes (filled by ModuleTabs)
 -- Feature tabs: a feature's node starts open, so its parts show in the left pane right away (Xaya, 2026-11-03). Only the first
 -- time per session: a node the user closed with its arrow stays closed.
@@ -71,7 +76,7 @@ function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
             if a.name ~= b.name then return a.name < b.name end
             return a.key < b.key
         end)
-        for i, e in ipairs(list) do args[e.key].order = i end
+        for i, e in ipairs(list) do args[e.key].order = i; ns.OptionsApi.pageTab[e.key] = tab.key end
         -- a feature node with parts under it (childGroups = "tree", Modules.lua ns.SectionTabs note) starts open: ns.FeatureTreesOpen
         local parents = {}
         for key, ent in pairs(args) do
@@ -3893,7 +3898,9 @@ function ns.OptionsApi.OpenPage(module, key, ...)
     if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then pcall(ns.OptionsApi.Toggle) end
     ns.pageOpen = nil; ns.infoOpen = false
     Notify()
-    local tab = ns.SettingsTabOf and ns.SettingsTabOf(module) or "qol"
+    -- the tab the page is drawn in (a page that moved to another tab, e.g. the Chat Panel to Blizzard UI Reskin, still opens from an
+    -- old ("chat", "chatpanel") call); else the module's own tab
+    local tab = ns.OptionsApi.pageTab[key] or (ns.SettingsTabOf and ns.SettingsTabOf(module)) or "qol"
     -- ... = deeper path (a part under the page, then a tab inside it); a path that no longer exists falls back to the page itself
     if not (select("#", ...) > 0 and pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, tab, key, ...)) then
         pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, tab, key)
@@ -4890,22 +4897,15 @@ local function BuildOptions()
     settings.hidden = function() return ns.SkinRows and ns.SkinRows() and true or false end   -- skin off: the old single Settings tab
     track.hidden = function() return SettingsOn() and true or false end
     for _, t in pairs(modTabs) do t.hidden = function() return SettingsOn() and true or false end end   -- Settings open: feature tabs go away (Xaya, 2026-11-01)
-    -- Game Menu look settings live on the Display page (UI Options > Display), under the ESC-menu button toggles. A separate "Game Menu"
-    -- top tab closed the Settings pages when clicked (0.5.67 fix, Xaya). The group's children are copied in flat, not nested, so each
-    -- keeps its own inline box.
-    -- The Blizzard Reskin addon (XayaUI_Reskin) registers its pages under module "reskin" (today: the Game Menu look).
-    local setGm = ns.BuildSettingsPages("reskin", Notify).gamemenu
-    if setGm then
-        dispArgs.gm_header = { type = "header", name = "Game Menu look (ESC menu)", order = 26, hidden = function() return not SettingsOn() end }
-        for k, v in pairs(setGm.args) do
-            v.order = 26.001 + (tonumber(v.order) or 0) / 1000
-            dispArgs["gm_" .. k] = v
-        end
+    -- The Game Menu look (XayaUI_Reskin) was on this Display page until Options 0.6.38; it is the Esc Menu page of the Blizzard UI
+    -- Reskin tab now (module "reskin", with the Chat Panel and the Character Pane). The XayaUI button in that menu stays here (it adds
+    -- a button, it does not restyle the menu); one line says where the look went.
+    if modTabs.reskin and modTabs.reskin.args and modTabs.reskin.args.gamemenu then
+        dispArgs.gm_moved = { type = "description", order = 24.2, width = "full", arg = { xuiKeep = true },   -- shown, not folded into an (i)
+            name = "The Esc menu's own look (the XayaUI skin) is under the Blizzard UI Reskin tab > Esc Menu." }
     end
-    local oldGm = ns.BuildSettingsPages("reskin", Notify).gamemenu   -- same group inside the old single Settings tab (skin rows off)
-    if oldGm then oldGm.order = 1.7; settings.args.gamemenu = oldGm end
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, recyclebin = binTab, chat = modTabs.chat, qol = modTabs.qol, bonus = modTabs.bonus, profiles = BuildProfiles(), info = infoGroup, settings = settings, set = setPage } }
+        args = { cooldowns = track, recyclebin = binTab, chat = modTabs.chat, qol = modTabs.qol, bonus = modTabs.bonus, reskin = modTabs.reskin, profiles = BuildProfiles(), info = infoGroup, settings = settings, set = setPage } }
     pcall(ns.SmartOpen)
     pcall(ns.FeatureTreesOpen)
     pcall(ns.ApplyTreeFilter, out)

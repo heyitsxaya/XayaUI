@@ -186,7 +186,7 @@ check("  ...after it the reskin no longer claims the slots: the toolkit's overla
 
 -- 10. Settings page and /xui reskin --------------------------------------------------------------------------------------------
 local page = ns.BuildCharReskinPage(function() end)
-check("settings: QoL > Character Reskin with its switch and one per part", page.name == "Character Reskin" and page.args.enabled and page.args.chrome
+check("settings: Blizzard UI Reskin > Character Pane with its switch and one per part", page.name == "Character Pane" and page.args.enabled and page.args.chrome
   and page.args.ilvl and page.args.enchants and page.args.stats)
 check("  ...the parts are greyed out while it is off", (function() rc.enabled = false; local d = page.args.ilvl.disabled(); rc.enabled = true; return d end)() == true)
 check("  ...it says the wider window comes after the in-game test", tostring(page.args.width.name):find("widthprobe", 1, true) ~= nil)
