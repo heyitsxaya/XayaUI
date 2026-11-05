@@ -139,7 +139,34 @@ function ns.DraftIsNew(rule)
     return b and b.isNew and true or false
 end
 
--- called when the options window opens: remember the saved version of every rule
+-- V14 (Options 0.6.41; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to
+-- performance cost / demand in any way"). With "Use drafts" off (the default) nothing is copied when the window opens: up to 0.6.40
+-- every rule was deep-copied at every opening and the copies thrown away at the close. The undo journal (Ctrl+Z, below) also starts
+-- from a rule's saved version; with drafts off it gets one copy of just the rule being edited, taken when the rule is shown in the
+-- window (ns.UndoFirstState: the window shows a rule before anything in it can be edited). The logout watch that moves unsaved rules
+-- to Drafts is registered only while the window is open with drafts on.
+local logoutWatch
+local function WatchLogout(on)
+    if on then
+        if not logoutWatch then
+            logoutWatch = CreateFrame("Frame")
+            logoutWatch:SetScript("OnEvent", function() pcall(ns.DraftsOnClose) end)
+        end
+        logoutWatch:RegisterEvent("PLAYER_LOGOUT")
+    elseif logoutWatch then
+        logoutWatch:UnregisterEvent("PLAYER_LOGOUT")
+    end
+end
+local function TakeAllBaselines()
+    for _, r in ipairs(ns.rules) do
+        if not r.parentUid and r.isCue ~= true and type(r.uid) == "string" then
+            local group = GroupOf(r.uid)
+            baseline[r.uid] = { sig = Sig(group), rules = Copies(group) }
+        end
+    end
+end
+
+-- called when the options window opens: remember the saved version of every rule (drafts on)
 function ns.DraftsOnOpen()
     if windowOpen or not ns.rules then return end
     windowOpen = true
@@ -156,11 +183,11 @@ function ns.DraftsOnOpen()
             r.uid = u
         end
     end
-    for _, r in ipairs(ns.rules) do
-        if not r.parentUid and r.isCue ~= true then
-            local group = GroupOf(r.uid)
-            baseline[r.uid] = { sig = Sig(group), rules = Copies(group) }
-        end
+    if ns.DraftsEnabled() then
+        TakeAllBaselines()
+        WatchLogout(true)
+    elseif ns.UndoFirstState then
+        ns.UndoFirstState()
     end
 end
 
@@ -169,14 +196,10 @@ end
 function ns.DraftsApplySetting()
     cache = { t = -1 }
     wipe(baseline)
-    if windowOpen and ns.rules then
-        for _, r in ipairs(ns.rules) do
-            if not r.parentUid and r.isCue ~= true and type(r.uid) == "string" then
-                local group = GroupOf(r.uid)
-                baseline[r.uid] = { sig = Sig(group), rules = Copies(group) }
-            end
-        end
-    end
+    local on = ns.DraftsEnabled()
+    if windowOpen and ns.rules and on then TakeAllBaselines() end
+    WatchLogout(windowOpen and on)
+    if windowOpen and not on and ns.UndoFirstState then ns.UndoFirstState() end
     if ns.UI and ns.UI.Notify then pcall(ns.UI.Notify) end
 end
 
@@ -262,6 +285,7 @@ end
 function ns.DraftsOnClose()
     if not windowOpen then return end
     windowOpen = false
+    WatchLogout(false)
     if ns.UndoReset then ns.UndoReset() end
     cache = { t = -1 }
     if not ns.DraftsEnabled() then wipe(baseline); return end   -- autosave mode: everything stays as edited
@@ -355,9 +379,6 @@ function ns.DraftAddCopyToDrafts(rule)
     if ns.UI and ns.UI.Notify then ns.UI.Notify() end
 end
 
-local lf = CreateFrame("Frame")
-lf:RegisterEvent("PLAYER_LOGOUT")
-lf:SetScript("OnEvent", function() pcall(ns.DraftsOnClose) end)
 
 -------------------------------------------------------------------------------
 -- Drafts page actions
@@ -725,3 +746,13 @@ function ns.UndoKey(redo)
     return true
 end
 function ns.UndoReset() wipe(undo); pendingUid = nil end
+-- "Use drafts" off: the rule the window shows gets its first undo state now, a copy of it as it is (V14 note above). Run after the window
+-- opens and after every pane the window builds (Options.lua hooks AceConfigDialog.FeedGroup), so before anything in it can be edited.
+function ns.UndoFirstState()
+    if not windowOpen or ns.DraftsEnabled() or not ns.SelectedRuleForUndo then return end
+    local root = RootOf(ns.SelectedRuleForUndo())
+    local uid = root and root.uid
+    if type(uid) ~= "string" or baseline[uid] or undo[uid] then return end
+    local group = GroupOf(uid)
+    if #group > 0 then baseline[uid] = { rules = Copies(group) } end
+end

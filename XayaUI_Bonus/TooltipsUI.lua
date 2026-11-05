@@ -12,6 +12,7 @@ function ns.BuildTooltipsTab(Notify)
         return function(_, v)
             local t = TT.DB(); for i = 1, #path - 1 do t = t[path[i]] end
             t[path[#path]] = v
+            TT.Sync()   -- installs, or lets go of, what the switches now need (Tooltips.lua, V14)
             if Notify then Notify() end
         end
     end
@@ -19,9 +20,11 @@ function ns.BuildTooltipsTab(Notify)
         return { type = "toggle", order = order, name = name, desc = desc, width = "full",
                  get = get(path), set = set(path), disabled = disabled }
     end
+    -- (V14, Bonus 0.6.12) said under each of the four main switches
+    local OFF = " With IDs, Item level, Enemy forces and Formulas all off, nothing of the tooltip features is installed or runs. Once one was on, its tooltip hooks stay until you /reload but do nothing."
     local idsOff = function() return not TT.DB().ids.enabled end
     local ids = {
-        enabled = toggle(1, "Show IDs on tooltips", "Master switch for the ID lines below.", { "ids", "enabled" }),
+        enabled = toggle(1, "Show IDs on tooltips", "Master switch for the ID lines below." .. OFF, { "ids", "enabled" }),
         npc = toggle(2, "NPC IDs", "Read from the unit's GUID. Skipped when the game hides the GUID.", { "ids", "npc" }, idsOff),
         auraHint = toggle(4, "Say \"not known yet\" when a spell's aura is not known", "Under a spell that lasts for some seconds. The aura's name and ID appear after you cast the spell once out of combat, or hover it while the aura is on you.", { "ids", "auraHint" }, idsOff),
         icon = toggle(3, "Icon IDs (under spell, aura and item lines)", nil, { "ids", "icon" }, idsOff),
@@ -34,7 +37,7 @@ function ns.BuildTooltipsTab(Notify)
         args = {
             ids = { type = "group", name = "IDs", order = 1, args = ids },
             ilvl = { type = "group", name = "Item level", order = 2, args = {
-                enabled = toggle(1, "Show player item level on hover", "Yourself: equipped average. Others: via Inspect, cached.", { "ilvl", "enabled" }),
+                enabled = toggle(1, "Show player item level on hover", "Yourself: equipped average. Others: via Inspect, cached." .. OFF, { "ilvl", "enabled" }),
                 inspect = toggle(2, "Inspect other players", "Sends one inspect request at a time. Not in combat.", { "ilvl", "inspect" },
                     function() return not TT.DB().ilvl.enabled end),
                 cacheSecs = { type = "range", order = 3, name = "Cache seconds", min = 30, max = 600, step = 10, width = "full",
@@ -42,7 +45,7 @@ function ns.BuildTooltipsTab(Notify)
                     disabled = function() return not TT.DB().ilvl.enabled end },
             } },
             forces = { type = "group", name = "Enemy forces", order = 3, args = {
-                enabled = toggle(1, "Show count and % on hostile units", "Read live from the game; shown only when the game returns it.", { "forces", "enabled" }),
+                enabled = toggle(1, "Show count and % on hostile units", "Read live from the game; shown only when the game returns it." .. OFF, { "forces", "enabled" }),
                 onlyInDungeon = toggle(2, "Only inside dungeons and raids", nil, { "forces", "onlyInDungeon" },
                     function() return not TT.DB().forces.enabled end),
                 onlyMythicPlus = toggle(3, "Only in an active Mythic+ run", nil, { "forces", "onlyMythicPlus" },
@@ -50,7 +53,7 @@ function ns.BuildTooltipsTab(Notify)
                 note = { type = "description", order = 9, name = "Crowd control, true sight and casts are not included: they need an enemy database that does not exist yet." },
             } },
             formulas = { type = "group", name = "Formulas", order = 4, args = {
-                enabled = toggle(1, "Show formula lines on spell tooltips", "Out of combat only: the game hides stats and cooldown details in combat.", { "formulas", "enabled" }),
+                enabled = toggle(1, "Show formula lines on spell tooltips", "Out of combat only: the game hides stats and cooldown details in combat." .. OFF, { "formulas", "enabled" }),
                 cooldown = toggle(2, "Cooldown and recharge", "The game's cooldown or recharge time divided by its rate (haste, when the rate matches your haste), checked against the time the tooltip prints. A spell that is not on cooldown shows only its base time: the game reports the rate only while it runs.", { "formulas", "cooldown" },
                     function() return not TT.DB().formulas.enabled end),
                 damage = toggle(3, "Damage ratio", "Each damage number in the spell's text divided by your attack power (strength and agility characters) or spell power (intellect). The ratio already holds every bonus in that number (versatility, talents, auras), so it is not Blizzard's own coefficient. English game text only.", { "formulas", "damage" },
@@ -61,22 +64,14 @@ function ns.BuildTooltipsTab(Notify)
     }
 end
 
-local boot = CreateFrame("Frame")
-boot:RegisterEvent("PLAYER_LOGIN")
-boot:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED")
-boot:RegisterEvent("TRAIT_CONFIG_UPDATED")
-boot:RegisterEvent("PLAYER_REGEN_ENABLED")
-boot:RegisterEvent("COOLDOWN_VIEWER_DATA_LOADED")
-boot:RegisterEvent("COOLDOWN_VIEWER_TABLE_HOTFIXED")
-boot:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_LOGIN" then TT.DB(); TT.Init() end
-    if event ~= "PLAYER_REGEN_ENABLED" then
-        TT.talentHash = nil                                     -- talents or spec changed: match observed data again
-        if TT.ResetCooldownLinks then TT.ResetCooldownLinks() end   -- and read the Cooldown Manager's aura links again
-    end
-    -- observed formulas: your own class's data folder only, loaded out of combat; talent changes reset the talent match
-    if TT.LoadClassData then pcall(TT.LoadClassData) end
-end)
+-- At login: what the saved switches need, and nothing for the ones that are off (Bonus 0.6.12, V14; Tooltips.lua TT.Sync). The
+-- spec / talent / combat-end / Cooldown Manager events are TT.Sync's, registered only while IDs or Formulas are on.
+if ns.AtLogin then ns.AtLogin(TT.Sync)   -- (core Modules.lua: at PLAYER_LOGIN, or at once after it)
+else
+    local boot = CreateFrame("Frame")
+    boot:RegisterEvent("PLAYER_LOGIN")
+    boot:SetScript("OnEvent", function(self) self:UnregisterAllEvents(); TT.Sync() end)
+end
 
 SLASH_XUITT1 = "/xuitt"
 SlashCmdList.XUITT = function(msg)

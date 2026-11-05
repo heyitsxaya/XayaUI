@@ -39,6 +39,9 @@ check("AceGUI's Frame has its status bar (the text's parent), shown by default",
 ACD.OpenFrames = ACD.OpenFrames or {}
 ACD.OpenFrames["CueRules"] = of
 of.frame:Show()
+-- fed through AceConfigDialog:Open, as the game opens the window: its hook starts the window driver (Options 0.6.41: the driver runs
+-- only while the window is open, started by that hook; before, it ran on every frame and found a frame registered by hand like this)
+ACD:Open("CueRules", of)
 W.tick(0.3, 3)
 local c = of.xuiChrome
 check("the window is dressed by XayaUI", c ~= nil)

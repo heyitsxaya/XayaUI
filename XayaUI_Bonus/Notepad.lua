@@ -181,7 +181,7 @@ end
 ns.Notepad_CharBefore = CharBefore
 
 local mode = { list = false, view = false }   -- this session only: list of all notes / formatted view
-local RefreshView, ApplyMode, PopulateList     -- assigned below
+local RefreshView, ApplyMode, PopulateList, BuildFormatBar     -- assigned below
 
 -- Undo and redo (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z in the typing box). One stack per note, this session only: quick typing is one step, a pause
 -- or a big paste / delete is its own step, clearing a note or restoring an older version is a step too (so Ctrl+Z brings it back).
@@ -561,6 +561,7 @@ end
 
 local function Layout()
     local db = DB(); if not (db and frame) then return end
+    if db.toolbar and not frame.tb then frame.tb = BuildToolbar(frame) end   -- built the first time it is shown (V14, Bonus 0.6.12)
     local f, tb, sf = frame, frame.tb, frame.sf
     local pos = db.toolbarPos or "TOP"
     local vert = (pos == "LEFT" or pos == "RIGHT")
@@ -570,7 +571,7 @@ local function Layout()
     -- The toolbar grows with the box: its buttons and icons scale from 1x (the default size, or any smaller box) up to 2x.
     local u = math.max(1, math.min(2, vert and fh / REF_H or fw / REF_W))
     f.nr:ClearAllPoints(); f.nr:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -TITLE_H); f.nr:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -TITLE_H)
-    tb:ClearAllPoints()
+    if tb then tb:ClearAllPoints() end
     -- #351 phase 2: the text area M from the sides (it was 6), G under the name row, the toolbar and the format bar (they were 2-4);
     -- 14 at the bottom (the resize grip's corner)
     local M, G = ns.UI_MARGIN, ns.UI_GUTTER
@@ -604,7 +605,7 @@ local function Layout()
         end
         ApplyIconStyle(tb, db.iconLines)
     end
-    tb:SetShown(db.toolbar and true or false)
+    if tb then tb:SetShown(db.toolbar and true or false) end
     local fb = f.fb
     if fb then
         fb:ClearAllPoints()
@@ -694,17 +695,19 @@ ApplyMode = function()
     if not db.format then mode.view = false end
     local list = mode.list and true or false
     local view = (db.format and mode.view and not list) and true or false
+    if db.format and not f.fb then f.fb = BuildFormatBar(f) end   -- built the first time "Formatting tools" is on (V14, Bonus 0.6.12)
     Layout()
     f.sf:SetShown(not list and not view)
     f.vf:SetShown(view)
     f.lf:SetShown(list)
-    f.fb:SetShown(db.format and not list and true or false)
+    if f.fb then f.fb:SetShown(db.format and not list and true or false) end
     if list or view then f.eb:ClearFocus() end
     if list then PopulateList() end
     if view then RefreshView() end
-    f.fb.btns[1].fs:SetText(view and "Edit" or "View")
+    if f.fb then f.fb.btns[1].fs:SetText(view and "Edit" or "View") end
     local function Tint(b, on) if b then b.bg:SetColorTexture(on and 0.1 or 0.18, on and 0.45 or 0.18, on and 0.7 or 0.18, 0.9) end end
-    Tint(f.tb.byName.List, list); Tint(f.tb.byName.Fmt, db.format); Tint(f.fb.btns[1], view)
+    if f.tb then Tint(f.tb.byName.List, list); Tint(f.tb.byName.Fmt, db.format) end
+    if f.fb then Tint(f.fb.btns[1], view) end
 end
 
 function ns.Notepad_ToggleList()
@@ -760,7 +763,7 @@ local FMT = {
     { w = 34, label = "Spell", tip = "Inserts {spell:} - type a spell ID, a spell name, or paste a spell link between the braces; the formatted view shows its icon and name.", act = function() Ins("{spell:}", 1) end },
 }
 
-local function BuildFormatBar(f)
+BuildFormatBar = function(f)
     local fb = CreateFrame("Frame", nil, f)
     fb.bg = fb:CreateTexture(nil, "BACKGROUND"); fb.bg:SetAllPoints(); fb.bg:SetColorTexture(0.1, 0.1, 0.1, 0.9)
     fb.btns = {}
@@ -859,7 +862,7 @@ local function Build()
     nr.edit, nr.ph, nr.box = ne, ph, box
     f.nr = nr
 
-    f.tb = BuildToolbar(f)
+    -- the toolbar (f.tb) and the format bar (f.fb) are built the first time they are shown (Layout, ApplyMode; V14, Bonus 0.6.12)
 
     local sf = CreateFrame("ScrollFrame", nil, f)
     sf:EnableMouseWheel(true)
@@ -928,8 +931,6 @@ local function Build()
     end)
     f.lf, f.lc = lf, lc
 
-    f.fb = BuildFormatBar(f)
-
     local grip = CreateFrame("Button", nil, f)
     grip:SetSize(14, 14); grip:SetPoint("BOTTOMRIGHT", -1, 1)
     grip.xuiEdge = true   -- a corner resize grip (#351)
@@ -949,7 +950,7 @@ local function Build()
         acc = 0
         if pendingAt and GetTime() - pendingAt >= IDLE_SECS then Flush(); Populate() end
         local db = DB()
-        if db and db.toolbar then
+        if db and db.toolbar and f.tb then
             local show = (not db.toolbarHover) or f:IsMouseOver() or f.eb:HasFocus() or f.nr.edit:HasFocus() or (popup and popup:IsShown() and popup:IsMouseOver())
             f.tb:SetAlpha(show and 1 or 0)
         end
@@ -960,8 +961,32 @@ end
 -------------------------------------------------------------------------------
 -- refresh
 -------------------------------------------------------------------------------
+-- V14 "off costs nothing" (Bonus 0.6.12; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD
+-- or contribute to performance cost / demand in any way"). "Show Notepad" off: the box is not built (it is built the first time it is
+-- shown) and its combat / logout events are not registered; closed after it was open, it is hidden and the events are let go. Up to
+-- 0.6.11 the whole box (about 34 frames) was built at login while hidden, and every combat start and end restyled it.
+local ev
+local function OnEvent(_, e)
+    local db = DB(); if not db or not frame then return end
+    if e == "PLAYER_LOGOUT" then Flush(); return end
+    if e == "PLAYER_REGEN_DISABLED" and db.dropFocusInCombat and (frame.eb:HasFocus() or frame.nr.edit:HasFocus()) then frame.eb:ClearFocus(); frame.nr.edit:ClearFocus() end
+    ns.Notepad_Refresh()
+end
+local function WatchEvents(on)
+    if on then
+        if not ev then ev = CreateFrame("Frame"); ev:SetScript("OnEvent", OnEvent) end
+        ev:RegisterEvent("PLAYER_REGEN_DISABLED")
+        ev:RegisterEvent("PLAYER_REGEN_ENABLED")
+        ev:RegisterEvent("PLAYER_LOGOUT")
+    elseif ev then
+        ev:UnregisterAllEvents()
+    end
+end
+
 function ns.Notepad_Refresh()
     local db = DB(); if not db then return end
+    WatchEvents(db.shown)
+    if not db.shown then if frame then frame:Hide() end return end
     local f = Build()
     f:SetFrameStrata(db.strata or "MEDIUM")
     f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
@@ -985,7 +1010,7 @@ function ns.Notepad_Refresh()
     if n and f.eb:GetText() ~= (n.text or "") then SetEditText(n.text) end
     UpdateTitle()
     ApplyMode()
-    if not db.toolbarHover then f.tb:SetAlpha(1) end
+    if not db.toolbarHover and f.tb then f.tb:SetAlpha(1) end
 
     local hide = db.hideInCombat and InCombat()
     f:SetShown((db.shown and not hide) and true or false)
@@ -1004,17 +1029,6 @@ function ns.Notepad_Toggle()
     ns.Notepad_SetShown(not db.shown)
     if db.shown and frame and not mode.list and not mode.view then frame.eb:SetFocus() end
 end
-
-local ev = CreateFrame("Frame")
-ev:RegisterEvent("PLAYER_REGEN_DISABLED")
-ev:RegisterEvent("PLAYER_REGEN_ENABLED")
-ev:RegisterEvent("PLAYER_LOGOUT")
-ev:SetScript("OnEvent", function(_, e)
-    local db = DB(); if not db or not frame then return end
-    if e == "PLAYER_LOGOUT" then Flush(); return end
-    if e == "PLAYER_REGEN_DISABLED" and db.dropFocusInCombat and (frame.eb:HasFocus() or frame.nr.edit:HasFocus()) then frame.eb:ClearFocus(); frame.nr.edit:ClearFocus() end
-    ns.Notepad_Refresh()
-end)
 
 -------------------------------------------------------------------------------
 -- options page: Bonus Features > Utilities > "Notepad" (a part of the Utilities node since Bonus 0.6.11: Utilities.lua)
@@ -1041,8 +1055,8 @@ function ns.BuildNotepadTab(Notify)
         share = { type = "group", name = "Share, export, and import", order = 3.5, inline = true, args = {
             note = { type = "description", order = 0, width = "full", name = "The menu (three lines) button on the toolbar shares the current note to chat for other XayaUI users, or exports and imports notes as text you can copy and paste." },
             accept = { type = "toggle", order = 1, name = "Accept notes shared by other XayaUI users", width = "double",
-                desc = "A shared note never saves by itself: a small window offers it and you choose Save or Dismiss. Off: shared notes are ignored.",
-                get = g("acceptShares"), set = s("acceptShares") },
+                desc = "A shared note never saves by itself: a small window offers it and you choose Save or Dismiss. Off: nothing listens for shared notes. Once it was on, the game keeps XayaUI's message name registered until you /reload; nothing of it runs.",
+                get = g("acceptShares"), set = function(_, v) db.acceptShares = v; if ns.NotepadShare_Sync then ns.NotepadShare_Sync() end end },
             share = { type = "execute", order = 2, name = "Share this note...", func = function() if ns.NotepadShare_OpenShare then ns.NotepadShare_OpenShare() end end },
             exp = { type = "execute", order = 3, name = "Export notes...", func = function() if ns.NotepadShare_OpenIO then ns.NotepadShare_OpenIO("all") end end },
             imp = { type = "execute", order = 4, name = "Import notes...", func = function() if ns.NotepadShare_OpenIO then ns.NotepadShare_OpenIO("import") end end },
