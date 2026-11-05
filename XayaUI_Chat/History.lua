@@ -113,7 +113,7 @@ C.OnMessage(function(event, text, author, _, _, _, _, _, _, channelBase)
     if type(author) == "string" and not issecret(author) then e.who = (author:gsub("%-.+$", "")) end
     if type(text) == "string" and not issecret(text) then e.text = text else C.stats.protected = C.stats.protected + 1 end
     Keep(hist, e)
-end)
+end, function(s) return s.histOn and C.MSG_ALL or nil end)   -- V14: no chat message reaches the history while "Keep recent messages" is off
 
 -- console lines ---------------------------------------------------------------------------------------------------------------
 local function ConsoleOn() local s = S(); return s and s.histOn and s.histConsole ~= false and C.On() end
@@ -131,13 +131,24 @@ function C.History_Console(tag, ...)            -- tag: "Print" or "System"; the
     Keep(con, e)
 end
 -- print(): a post-hook, so the line is shown by the game first and our copy can never stop it. Only calls that look up the global
--- print when they run are seen (XayaUI's ns.Print does; an addon that saved print in a local before this loaded is not).
-if type(_G.print) == "function" then
-    pcall(hooksecurefunc, "print", function(...) pcall(C.History_Console, "Print", ...) end)
-end
-local sys = CreateFrame("Frame")
-pcall(sys.RegisterEvent, sys, "CHAT_MSG_SYSTEM")
-sys:SetScript("OnEvent", function(_, _, text) pcall(C.History_Console, "System", text) end)
+-- print when they run are seen (XayaUI's ns.Print does; an addon that saved print after the hook was placed is not).
+-- V14, the "console" part: the hook and the system-message frame are made the first time "Keep recent messages" and "Keep console
+-- lines" are both on (with the Chat Panel on). Turned off, the system messages are unregistered; the print hook cannot be taken back and
+-- returns at once until /reload. Up to Chat 0.6.13 both were placed at login: every print() by any addon ran this file's code.
+local sys
+C.Part("console", function(s) return s.histOn and s.histConsole ~= false end,
+    function()
+        C.HookOnce("history:print", "print", nil, function(...)
+            if not C.on.console then return end
+            pcall(C.History_Console, "Print", ...)
+        end)
+        if not sys then
+            sys = CreateFrame("Frame")
+            sys:SetScript("OnEvent", function(_, _, text) pcall(C.History_Console, "System", text) end)
+        end
+        pcall(sys.RegisterEvent, sys, "CHAT_MSG_SYSTEM")
+    end,
+    function() if sys then pcall(sys.UnregisterEvent, sys, "CHAT_MSG_SYSTEM") end end)
 
 -------------------------------------------------------------------------------
 -- The window
@@ -344,6 +355,7 @@ local btn
 local function Refresh(s)
     if not C.On() or not C.Pane() then return end
     if not btn then
+        if not s.histButton then return end   -- V14: built the first time "Show the small history button" is on
         btn = CreateFrame("Button", "XayaUIChatHistoryButton", C.Pane())
         btn:SetSize(16, 16); btn:SetFrameStrata("MEDIUM")
         btn.lines = {}

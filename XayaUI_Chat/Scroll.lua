@@ -98,6 +98,21 @@ local function DragTo()
     Call("SetScrollOffset", math.floor(frac * max + 0.5))
 end
 
+-- held arrows, a dragged thumb, and the thumb following the window (10 times a second). V14: set while the bar is shown, cleared when
+-- "Chat Panel scroll bar" or the Chat Panel is turned off (C.ScrollBar_Layout).
+local function Tick(_, dt)
+    local s = S()
+    if held then
+        local every = 1 / Clamp(s and s.scrollSpeed, 1, 30, 6)
+        heldT = heldT + dt
+        local n = 0
+        while heldT >= every and n < 30 do heldT = heldT - every; C.ScrollLines(held); n = n + 1 end
+    end
+    if dragging then DragTo() end
+    tick = tick + dt
+    if held or dragging or tick >= 0.1 then tick = 0; Update() end
+end
+
 local function Build()
     if bar then return end
     bar = CreateFrame("Frame", "XayaUIChatScrollBar", C.Pane())
@@ -122,18 +137,6 @@ local function Build()
     thumb:SetScript("OnEnter", function(self) self.t:SetColorTexture(0.85, 0.85, 0.85, 0.8) end)
     thumb:SetScript("OnLeave", function(self) self.t:SetColorTexture(0.85, 0.85, 0.85, 0.45) end)
     bar:SetScript("OnHide", function() held = nil; dragging = false end)
-    bar:SetScript("OnUpdate", function(_, dt)
-        local s = S()
-        if held then
-            local every = 1 / Clamp(s and s.scrollSpeed, 1, 30, 6)
-            heldT = heldT + dt
-            local n = 0
-            while heldT >= every and n < 30 do heldT = heldT - every; C.ScrollLines(held); n = n + 1 end
-        end
-        if dragging then DragTo() end
-        tick = tick + dt
-        if held or dragging or tick >= 0.1 then tick = 0; Update() end
-    end)
 end
 
 -- the thumb: its size is the share of the history the window shows; its place is how far up you have scrolled
@@ -161,7 +164,10 @@ function C.ScrollBar() return bar end
 function C.ScrollBar_Layout()
     local s, textA = S(), C.TextArea()
     if not (s and textA) then return end
-    if not (s.scrollOwn and C.On()) then if bar then bar:Hide() end; return end
+    if not (s.scrollOwn and C.On()) then
+        if bar then bar:Hide(); bar:SetScript("OnUpdate", nil) end
+        return
+    end
     Build()
     local w = Clamp(s.scrollW, 6, 20, 10)
     bar:ClearAllPoints()
@@ -174,7 +180,12 @@ function C.ScrollBar_Layout()
     track:SetPoint("TOPLEFT", up, "BOTTOMLEFT", 0, -2)
     track:SetPoint("BOTTOMRIGHT", down, "TOPRIGHT", 0, 2)
     bar:Show()
+    bar:SetScript("OnUpdate", Tick)
     Update()
 end
 
 C.Register("scroll", function() C.ScrollBar_Layout() end)
+-- the "scroll" part: C.ScrollBar_Layout above starts the bar's OnUpdate; this stops it when the switch or the whole Chat Panel goes off
+-- (C.Teardown does not lay the bar out)
+C.Part("scroll", function(s) return s.scrollOwn end, nil,
+    function() if bar then bar:Hide(); bar:SetScript("OnUpdate", nil) end end)

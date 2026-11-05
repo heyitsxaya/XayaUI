@@ -66,17 +66,20 @@ local function Place(p, seconds)
     b:Show()
 end
 
-local function Drive()
-    if driver then return end
-    driver = CreateFrame("Frame")
-    driver:SetScript("OnUpdate", function()
-        local now, any = GetTime(), false
-        for _, b in pairs(boxes) do
-            if b:IsShown() then
-                if now >= (b.expire or 0) then b:Hide() else any = true end
-            end
+-- hides each outline when its time is up; runs only while an outline is shown (up to Chat 0.6.13 it kept running on every frame from
+-- the first "Show me where" until /reload)
+local function Tick()
+    local now, any = GetTime(), false
+    for _, b in pairs(boxes) do
+        if b:IsShown() then
+            if now >= (b.expire or 0) then b:Hide() else any = true end
         end
-    end)
+    end
+    if not any then driver:SetScript("OnUpdate", nil) end
+end
+local function Drive()
+    if not driver then driver = CreateFrame("Frame") end
+    driver:SetScript("OnUpdate", Tick)
 end
 
 -- keys: a list of piece keys, or nil for every piece
@@ -88,4 +91,7 @@ function C.Locate(keys, seconds)
         for _, p in ipairs(PIECES) do Place(p, seconds) end
     end
 end
-function C.LocateClear() for _, b in pairs(boxes) do b:Hide() end end
+function C.LocateClear()
+    for _, b in pairs(boxes) do b:Hide() end
+    if driver then driver:SetScript("OnUpdate", nil) end
+end

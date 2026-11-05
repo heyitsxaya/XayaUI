@@ -804,7 +804,8 @@ function ns.ObserveGlowPairing(buttonID)
     local e = A[aura]
     if type(e) ~= "table" then e = { yes = 0, no = 0 }; A[aura] = e end
     if st then e.yes = (e.yes or 0) + 1 else e.no = (e.no or 0) + 1; e.lastNoButton = buttonID end
-    if ns.RecordLine then
+    -- (V14: the line, and the spell-name lookup in it, only while the record keeps "Proc glows"; DebugRecord.lua)
+    if ns.RecordOn and ns.RecordOn("glow") then
         ns.RecordLine("glow", ("button %s glowed; aura %s (%s) was %s: pairing seen %d agree / %d disagree"):format(tostring(buttonID), tostring(aura),
             tostring(SpellNameOf(aura)), st and "on you" or "NOT on you", e.yes or 0, e.no or 0))
     end
