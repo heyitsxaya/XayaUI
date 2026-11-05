@@ -25,10 +25,14 @@ local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- Blizz
 local DEFAULT_ICON = 1390944   -- the icon of Xaya's 'xayaui' macro (macros-cache.txt, 2026-11-02)
 
 local function DB() return ns.minimapDB end
+local Watch   -- (below: the loading-screen event, only while the button is shown)
+-- (the saved table and its defaults are made at login whatever the switch: "Show the minimap button" itself lives in it, and the
+-- settings page reads it; after the first login the merge adds nothing)
 function ns.Minimap_OnDBReady()
     CueRulesDB.minimap = CueRulesDB.minimap or {}
     ns.Merge(CueRulesDB.minimap, DEFAULTS)
     ns.minimapDB = CueRulesDB.minimap
+    if not ns.minimapDB.hide then Watch(true) end
 end
 ns.WhenReady(ns.Minimap_OnDBReady)
 
@@ -219,14 +223,26 @@ end
 
 function ns.Minimap_Refresh()
     local db = DB(); if not db then return end
-    if db.hide then if button then button:Hide() end; ClosePopup() return end
+    if db.hide then if button then button:Hide() end; ClosePopup(); Watch(false) return end
     BuildButton(); ApplySize(); Place(); ApplyIcon(); button:Show()
     if popup and popup:IsShown() then Rebuild() end
+    Watch(true)
 end
 
-local ev = CreateFrame("Frame")
-ev:RegisterEvent("PLAYER_ENTERING_WORLD")
-ev:SetScript("OnEvent", function() C_Timer.After(0.2, ns.Minimap_Refresh) end)
+-- V14 (core 0.6.47; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to
+-- performance cost / demand in any way"). The button is placed again after every loading screen (PLAYER_ENTERING_WORLD, 0.2 s later,
+-- as before), but that event is registered only while "Show the minimap button" is on: saved off, no frame of this file exists;
+-- switched off, the event is let go. (docs/reference/api/widgets.md, Frame: RegisterEvent / UnregisterEvent(eventName) -> registered: bool)
+local ev, watching = nil, false
+Watch = function(on)
+    if on == watching then return end
+    if on and not ev then
+        ev = CreateFrame("Frame")
+        ev:SetScript("OnEvent", function() C_Timer.After(0.2, ns.Minimap_Refresh) end)
+    end
+    watching = on and true or false
+    if on then ev:RegisterEvent("PLAYER_ENTERING_WORLD") else ev:UnregisterEvent("PLAYER_ENTERING_WORLD") end
+end
 
 -------------------------------------------------------------------------------
 -- options: Settings > Minimap Button

@@ -16,6 +16,7 @@ def P(rel): return "'" + os.path.join(ROOT, rel).replace("\\", "/") + "'"
 lua = LuaRuntime()
 lua.execute(r'''
 assert(loadfile(__WORLD__))()
+assert(loadfile(__GEOM__))()   -- (QoL 0.7.19) Blizzard's window with rectangles: the enchant labels are laid out from them
 -- regions that remember their alpha; font strings that remember their colour
 function reg(kind) local r = mk(kind or "Texture"); r.alpha = 1; r.SetAlpha = function(self, a) self.alpha = a end; r.GetAlpha = function(self) return self.alpha end; return r end
 function fstr(r, g, b) local f = mk("FS"); f.color = { r, g, b, 1 }; f.GetTextColor = function(self) return self.color[1], self.color[2], self.color[3], self.color[4] end; return f end
@@ -55,6 +56,7 @@ for _, s in ipairs(CM.SLOTS) do
   local b = mk("ItemButton"); b.id = s[1]; local nt = reg(); b.GetNormalTexture = function() return nt end; b.normal = nt
   _G["Character" .. s[4]] = b; _G["Character" .. s[4] .. "Frame"] = reg()
 end
+placePane()
 -- items: Helm (336, Hero 4/6), Ring (330, Veteran 1/8, enchanted: "Radiant Mastery")
 QCOL = { [0] = { 0.6, 0.6, 0.6 }, [2] = { 0.1, 1.0, 0.0 }, [3] = { 0.0, 0.4, 1.0 }, [4] = { 0.6, 0.2, 0.9 }, [5] = { 1.0, 0.5, 0.0 } }
 C_Item.GetItemQualityColor = function(q) local c = QCOL[q]; if c then return c[1], c[2], c[3], "x" end end
@@ -109,10 +111,10 @@ check("the toolkit's slot overlay leaves out its item level while the reskin dra
 local re, he = CharacterFinger0Slot.xuiEnchant, CharacterHeadSlot.xuiEnchant
 check("the ring's enchant by name, from its tooltip line, without 'Enchanted: ' (green)", re and re.text == "Radiant Mastery" and col(re.color, 0.5, 1, 0.5), re and re.text)
 check("  ...the helm: 'No enchant' in orange (the head takes one this expansion)", he and he.text == "No enchant" and col(he.color, 1, 0.56, 0.25), he and he.text)
-check("  ...left-column slots: to the right of the slot, past the game's sockets (18 px)", he.pts[1] and he.pts[1][1] == "LEFT" and he.pts[1][3] == "RIGHT" and he.pts[1][4] == 18)
-check("  ...right-column slots: to the left of the slot", re.pts[1] and re.pts[1][1] == "RIGHT" and re.pts[1][3] == "LEFT" and re.pts[1][4] == -18)
-check("  ...the weapons beside them, narrower", CharacterMainHandSlot.xuiEnchant.pts[1][1] == "RIGHT" and CharacterMainHandSlot.xuiEnchant.w == 76
-  and CharacterSecondaryHandSlot.xuiEnchant.pts[1][1] == "LEFT")
+-- (QoL 0.7.19) placed past the socket column, 22 px from the slot; every position check is in tests/char_pane_overlays_run.py
+local hr, rr, hs, rs = RECT(he), RECT(re), RECT(CharacterHeadSlot), RECT(CharacterFinger0Slot)
+check("  ...left-column slots: to the right of the slot, past the socket column (22 px)", hr and math.abs(hr.l - (hs.r + 22)) < 0.01, rstr(hr))
+check("  ...right-column slots: to the left of the slot (22 px)", rr and math.abs(rr.r - (rs.l - 22)) < 0.01, rstr(rr))
 check("  ...the toolkit's overlay leaves its enchant mark out too (one per slot)", not tostring(ns.CharToolkit_OverlayText("HeadSlot") or ""):find("E%?"),
   tostring(ns.CharToolkit_OverlayText("HeadSlot")))
 local savedLine = ENCHANTED_TOOLTIP_LINE; ENCHANTED_TOOLTIP_LINE = nil
@@ -190,7 +192,7 @@ check("settings: Blizzard UI Reskin > Character Pane with its switch and one per
   and page.args.ilvl and page.args.enchants and page.args.stats)
 check("  ...the parts are greyed out while it is off", (function() rc.enabled = false; local d = page.args.ilvl.disabled(); rc.enabled = true; return d end)() == true)
 check("  ...it says the wider window comes after the in-game test", tostring(page.args.width.name):find("widthprobe", 1, true) ~= nil)
-'''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
+'''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__GEOM__", P("tests/char_pane_geometry.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
    .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua"))
    .replace("__RS__", P("XayaUI_QoL/CharacterReskin.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")

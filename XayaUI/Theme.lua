@@ -9,7 +9,8 @@
 -- Plus a font and a size (S / M / L). A theme is plain data (numbers and strings), so import / export never runs code.
 --
 -- Base themes:  "default" (XUI purple)  |  "class" (follows the character's class color, or a class picked by hand)  |  a built-in preset  |  "custom" (your own: starts from
--- th.under, with your color changes on top)  |  a saved theme.
+-- th.under, with your color changes on top)  |  a saved theme. Since core 0.6.46 the built-ins include one theme per Gradient Cursor Trail
+-- gradient ("cursor_<preset key>"; the gradients live here, see "Cursor trail colors <-> UI themes" below).
 -- Saved in CueRulesDB.theme (the active one) and CueRulesDB.themes[name] (saved ones).
 -------------------------------------------------------------------------------
 local addonName, ns = ...
@@ -169,6 +170,103 @@ T.BUILTIN.tritan = { name = "Colorblind: blue-yellow (tritanopia / tritanomaly)"
     danger = { 1.00, 0.25, 0.25, 1 } } }
 T.BUILTIN.colorblind.name = "Colorblind: green-weak / green-blind (deuteranopia / deuteranomaly)"
 T.BUILTIN_ORDER = { "light", "colorblind", "protan", "tritan" }
+
+-------------------------------------------------------------------------------
+-- Cursor trail colors <-> UI themes (core 0.6.46; Xaya, 2026-11-05: "map cursor theme colors to UI themes and provide them as theming
+-- options as well")
+-------------------------------------------------------------------------------
+-- The Gradient Cursor Trail's ready-made gradients, head of the trail (next to the cursor) first, 3 to 6 colors each. Moved here from
+-- XayaUI_QoL/CursorTrail.lua with the same keys, names and colors, so the themes below work with XayaUI_QoL switched off; the trail
+-- reads this same table (ns.Theme.CURSOR_PRESETS), it keeps no copy. The colors were chosen for XayaUI when the trail was written
+-- (CursorTrail.lua, 2026-11-01: "Claude's choices, not taken from any other addon").
+T.CURSOR_PRESETS = {
+    fel      = { "Fel",        { {0.35,1.00,0.25}, {0.15,0.80,0.45}, {0.55,0.20,0.85} } },
+    fire     = { "Fire",       { {1.00,0.95,0.40}, {1.00,0.55,0.10}, {0.85,0.15,0.05}, {0.25,0.05,0.05} } },
+    ocean    = { "Ocean",      { {0.70,1.00,1.00}, {0.15,0.75,0.95}, {0.10,0.35,0.85}, {0.05,0.10,0.45} } },
+    aurora   = { "Aurora",     { {0.30,1.00,0.60}, {0.20,0.85,0.95}, {0.45,0.45,1.00}, {0.75,0.30,0.95} } },
+    sunset   = { "Sunset",     { {1.00,0.90,0.45}, {1.00,0.55,0.30}, {0.95,0.30,0.50}, {0.55,0.25,0.75}, {0.20,0.15,0.50} } },
+    vapor    = { "Vaporwave",  { {1.00,0.45,0.85}, {0.75,0.50,1.00}, {0.35,0.75,1.00}, {0.30,1.00,0.90} } },
+    rainbow  = { "Rainbow",    { {1.00,0.20,0.20}, {1.00,0.70,0.10}, {0.95,1.00,0.20}, {0.25,0.90,0.35}, {0.25,0.55,1.00}, {0.65,0.30,0.95} } },
+    gold     = { "Gold",       { {1.00,0.98,0.75}, {1.00,0.82,0.25}, {0.80,0.50,0.10} } },
+    ice      = { "Frost",      { {1.00,1.00,1.00}, {0.65,0.90,1.00}, {0.30,0.55,1.00} } },
+}
+T.CURSOR_PRESET_ORDER = { "fel", "fire", "ocean", "aurora", "sunset", "vapor", "rainbow", "gold", "ice" }
+
+-- WCAG 2.x contrast ratio (www.w3.org/TR/WCAG22, "contrast ratio" and "relative luminance"): (L1 + 0.05) / (L2 + 0.05), L1 the lighter;
+-- L = 0.2126 R + 0.7152 G + 0.0722 B of the linear values, each sRGB value v -> v / 12.92 when v <= 0.04045, else ((v + 0.055) / 1.055) ^ 2.4.
+local function Lin(v) v = Clamp01(v); if v <= 0.04045 then return v / 12.92 end return ((v + 0.055) / 1.055) ^ 2.4 end
+function T.Luminance(c) return 0.2126 * Lin(c[1]) + 0.7152 * Lin(c[2]) + 0.0722 * Lin(c[3]) end
+function T.Contrast(a, b)
+    local la, lb = T.Luminance(a), T.Luminance(b)
+    if la < lb then la, lb = lb, la end
+    return (la + 0.05) / (lb + 0.05)
+end
+T.MIN_TEXT_CONTRAST = 4.5   -- WCAG 2.x level AA for normal-size text
+local WHITE = { 1, 1, 1, 1 }
+local function Over(c, bg) local a = c[4] or 1; return { c[1] * a + bg[1] * (1 - a), c[2] * a + bg[2] * (1 - a), c[3] * a + bg[3] * (1 - a), 1 } end
+-- c mixed toward white in 5 % steps until it reads at MIN_TEXT_CONTRAST on bg (unchanged when it already does)
+local function Lighten(c, bg)
+    for i = 0, 20 do
+        local m = Mix(c, WHITE, i * 0.05)
+        if T.Contrast(m, bg) >= T.MIN_TEXT_CONTRAST then return m end
+    end
+    return Copy4(WHITE)
+end
+-- c scaled so its brightest channel is `top`, then darkened in 5 % steps until every color in `texts` reads at MIN_TEXT_CONTRAST on
+-- it, drawn at alpha `a` over bg (the color the eye gets: Over)
+local function DarkFor(c, top, a, bg, texts)
+    local k0 = top / max(c[1], c[2], c[3], 0.001)
+    for i = 0, 20 do
+        local k = k0 * (1 - i * 0.05)
+        local d = { c[1] * k, c[2] * k, c[3] * k, a }
+        local seen, ok = Over(d, bg), true
+        for _, t in ipairs(texts) do if T.Contrast(t, seen) < T.MIN_TEXT_CONTRAST then ok = false; break end end
+        if ok then return d end
+    end
+    return { 0, 0, 0, a }
+end
+
+-- A UI palette from a trail gradient (stops: head first). The derivation rule:
+--   * Only the highlight tokens come from the gradient: accent, accentText, gradStart, tabSelBg, tabSelBorder, and the accent-like
+--     label, buttonText, primaryBg, primaryBorder (the tokens every other colored built-in, Class colors included, also tints).
+--     Surfaces (window, panes, title bar, borders, buttons, tabs), body and muted text, tree bars and Danger keep the XUI default, so
+--     every theme made this way is dark with near-white body text.
+--   * "main" = the gradient's second color (the first step away from the head; in seven of the nine presets the head is the pale end
+--     and the second color is the gradient's own hue: Fire orange, Ocean blue, Gold gold).
+--     accent and tabSelBorder = main; accentText = main mixed 35 % toward white (the same lighter tint Class colors uses).
+--   * label and buttonText = the gradient's lightest color (highest relative luminance): the most readable color goes to the most
+--     read text (headings, field labels, button text).
+--   * gradStart (the parent-group glow) = the gradient's last color (the trail's tail), scaled so its brightest channel is 0.45 (the
+--     XUI default glow's); tabSelBg = main scaled to 0.30 (the default selected tab's), alpha 0.9; primaryBg = main scaled to 0.45,
+--     alpha 0.95; primaryBorder = main x 0.85 (as Class colors).
+--   * Readability: accent, accentText, label and buttonText (all drawn as text somewhere: accent is the footer's version text) are
+--     mixed toward white until they read at 4.5:1 or better on the window background (windowBg); gradStart and tabSelBg are darkened
+--     until body text and accentText read at 4.5:1 on them, primaryBg until buttonText does (alpha blended over windowBg).
+--     The ratios for the nine presets are in debug-log/2026-11-05-1532-cursor-ui-themes-core-0.6.46-qol-0.7.17.md.
+function T.CursorPalette(stops)
+    local win, body = T.TOKEN.windowBg[4], T.TOKEN.text[4]
+    local main = stops[2] or stops[1]
+    local lightest = stops[1]
+    for i = 2, #stops do if T.Luminance(stops[i]) > T.Luminance(lightest) then lightest = stops[i] end end
+    local pal = {}
+    pal.accent = Lighten(main, win)
+    pal.tabSelBorder = Copy4(pal.accent)
+    pal.accentText = Lighten(Mix(main, WHITE, 0.35), win)
+    pal.label = Lighten(lightest, win)
+    pal.buttonText = Copy4(pal.label)
+    pal.gradStart = DarkFor(stops[#stops], 0.45, 1, win, { body, pal.accentText })
+    pal.tabSelBg = DarkFor(main, 0.30, 0.90, win, { body, pal.accentText })
+    pal.primaryBg = DarkFor(main, 0.45, 0.95, win, { pal.buttonText })
+    pal.primaryBorder = { main[1] * 0.85, main[2] * 0.85, main[3] * 0.85, 1 }
+    return pal
+end
+-- one built-in theme per gradient, offered after the color blind ones (the Theme page lists T.BUILTIN_ORDER)
+for _, key in ipairs(T.CURSOR_PRESET_ORDER) do
+    local p = T.CURSOR_PRESETS[key]
+    T.BUILTIN["cursor_" .. key] = { name = "Cursor trail: " .. p[1], pal = T.CursorPalette(p[2]), cursorPreset = key }
+    T.BUILTIN_ORDER[#T.BUILTIN_ORDER + 1] = "cursor_" .. key
+end
+
 function T.IsLight()
     local th = CueRulesDB and CueRulesDB.theme
     if not th then return false end
@@ -192,6 +290,26 @@ function T.BasePalette(base, classPick)
     return {}
 end
 
+-- UI theme -> cursor trail: the gradient of the trail's "Match the UI theme" choice (XayaUI_QoL), head of the trail first, fresh tables.
+--   * A theme made from a trail gradient (picked as the theme, or the "Start from" of a Custom theme that keeps that theme's accent,
+--     accentText and gradStart): exactly that gradient's colors.
+--   * Any other theme: accentText -> accent -> gradStart as resolved now (T.cur): light at the cursor, the accent in the middle, the
+--     dark glow color at the tail, the same light-to-dark order the presets run in.
+local TRAIL_TOKENS = { "accentText", "accent", "gradStart" }
+function T.TrailStops()
+    local th = CueRulesDB and CueRulesDB.theme
+    local own = th and type(th.tokens) == "table" and th.tokens or {}
+    local b = T.BUILTIN[T.EffBase()]
+    local p = b and b.cursorPreset and T.CURSOR_PRESETS[b.cursorPreset]
+    local out = {}
+    if p and not (own.accent or own.accentText or own.gradStart) then
+        for i, s in ipairs(p[2]) do out[i] = { s[1], s[2], s[3] } end
+        return out
+    end
+    for i, k in ipairs(TRAIL_TOKENS) do local c = T.cur[k] or T.TOKEN[k][4]; out[i] = { c[1], c[2], c[3] } end
+    return out
+end
+
 function T.SavedPalette(saved)
     local pal = {}
     local sb = (saved.base == "custom") and CleanUnder(saved.under) or saved.base
@@ -209,6 +327,13 @@ for _, t in ipairs(T.TOKENS) do T.cur[t[1]] = Copy4(t[4]) end
 T.binds = {}
 T.listeners = {}
 function T.OnResolve(fn) T.listeners[#T.listeners + 1] = fn end
+-- (core 0.6.46) take a listener out again, so a feature that is switched off leaves nothing to run on a theme change (rule V14).
+-- Builds a new list: a Resolve that is calling the listeners at this moment finishes over the old one.
+function T.OffResolve(fn)
+    local keep = {}
+    for _, f in ipairs(T.listeners) do if f ~= fn then keep[#keep + 1] = f end end
+    T.listeners = keep
+end
 
 function T.Bind(key, tbl)
     T.binds[#T.binds + 1] = { key, tbl }

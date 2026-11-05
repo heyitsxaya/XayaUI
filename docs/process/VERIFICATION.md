@@ -16,6 +16,15 @@ another addon.
   or a defect issue. When Xaya answers, check the code against the answer (D1 was answered but the code still returns 0).
 - **V9 Rebuild carry-over.** Before rewriting a file or feature from scratch, list its earlier fixes (`git log --follow`, the debug log,
   issue numbers in comments) and keep a test for each.
+- **V14 Off costs nothing** (Xaya, 2026-11-05, her words: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a standing rule for all current and future feature / element builds"). For every feature or element with an on/off tick box: while
+  it is off, nothing of it is created or runs: no frame, event registration, OnUpdate, ticker or timer, hook, secure hook or
+  per-frame / per-event work, and no data built for it. Create those only when it is turned on (or at login when it is saved on),
+  and on turning off, hide, unregister and stop them. Two limits the game sets (state them, never hide them): (1) every Lua file of an
+  ENABLED addon is read at login, so code in an always-loaded addon still costs its parse and function definitions; "never loads" in
+  the strict sense needs a separate LoadOnDemand addon (as XayaUI_Options is) — say which level a feature reaches; (2) the game has
+  no way to remove a hooksecurefunc / HookScript hook, so a hook placed while the feature was on stays until /reload: it must return
+  at once when the feature is off, and the switch's text says a /reload removes it fully. Test it (V1): with the switch off at login,
+  assert no frame of the feature exists, no event of it is registered, no OnUpdate / timer of it runs.
 
 ## While writing tests
 - **V1 Outcome, not input.** Assert what the player sees or hears: drawn positions, text, which sound fires, the final list order. A
@@ -37,7 +46,7 @@ another addon.
   - an addon whose code changed has a new `## Version` in its `.toc`;
   - QA-CHECKLIST step IDs are unique;
   - every `tests/*_run.py` ends with a pass marker `tests/run_all.py` recognises.
-- Run the targeted tests, then the full suite: `XUI_API_INDEX=tests/harness/api_index.json python3 tests/run_all.py`. If something
+- Run the targeted tests, then the full suite: `XUI_API_INDEX=tests/harness/api_index.json python3 tests/run_all.py` (no `tests/harness/api_index.json` in a cloud session: build it first with `python3 tests/harness/api_index_from_docs.py`, from the repo's own docs/reference/api/api.json; without it the harness prints "API documentation: NOT LOADED" and checks no widget method or event, so that run does not count as the full suite). If something
   must reach `main` before the full suite finishes (Xaya asks for it), say so in the commit and the reply, and report the full result
   afterwards.
 
