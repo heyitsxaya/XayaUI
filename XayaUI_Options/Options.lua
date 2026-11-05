@@ -4979,7 +4979,10 @@ do
             local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
             if of and of.frame and not of.frame.xuiDraftHook then   -- window closed (button, Esc, toggle): unsaved rules go to Drafts
                 of.frame.xuiDraftHook = true
-                of.frame:HookScript("OnHide", function() if ns.DraftsOnClose then pcall(ns.DraftsOnClose) end end)
+                of.frame:HookScript("OnHide", function()
+                    if ns.DraftsOnClose then pcall(ns.DraftsOnClose) end
+                    if ns.SearchOnClose then pcall(ns.SearchOnClose) end   -- free the search indexes, stop their scans (Options 0.6.37)
+                end)
             end
         end)
     end
@@ -6912,9 +6915,14 @@ end
 -- Full Blizzard spell tooltip on the talent icon (an AceGUI Icon whose option carries arg.xuiSpell = the talent row).
 -- AceGUI clears callbacks when a widget is recycled, so this re-checks on every pass instead of flagging the widget.
 -------------------------------------------------------------------------------
--- Spell-name search: the game has no "search spells by name" call, so the first time a search box is used the addon
--- walks spell IDs 1..SI_MAX in small time slices (about 4 ms per frame) and remembers every ID that has a name.
--- The list stays in memory until /reload. Spellbook spells are listed first.
+-- Spell-name search. By default a search box looks only through what is relevant to the player, all of it at once: this class's
+-- spells and talents, the spellbook, the spells the rules use, and the auras the carried items apply (SX.Near). The game has no
+-- "search spells by name" call, so finding any spell in the game means walking spell IDs 1..SI_MAX (about 4 ms per frame) and keeping
+-- every name; that whole-game index is built only after the player clicks "Search all spells" (SX.full), and it is freed, with the
+-- item index and the aura-source pass, when the settings window closes (ns.SearchOnClose).
+-- Xaya, 2026-11-04, choosing this ("go with b"): before Options 0.6.37 the first focus of any search box built the whole-game spell
+-- and item indexes and kept them until /reload, and an aura search also started a tooltip pass over every indexed item that kept
+-- running after the window closed; her addon-usage tooltip showed XayaUI_Options at 521.4 MB after /xui.
 -------------------------------------------------------------------------------
 local AttachSearch
 do
@@ -6944,11 +6952,13 @@ end
 -- holds those; the items you carry / wear are added fresh on every search (OwnedItems).
 SX.II = { names = {}, ids = {}, n = 0, nextId = 1, running = false }
 SX.II_MAX = 300000
+SX.full = false   -- true after "Search all spells / items", until the settings window closes
 function SX.Start(kind)
     if kind == "talent" and not XayaUITalentDB and not SX.scanTried and ns.ScanAllTalents then
         SX.scanTried = true   -- once per session: lists every spec and hero tree of the class, not only the current build
         pcall(ns.ScanAllTalents)
     end
+    if not SX.full then return end
     if kind == "item" then StartScan(SX.II, SX.II_MAX, C_Item and C_Item.GetItemNameByID)
     else StartScan(SI, SI_MAX, C_Spell.GetSpellName) end
     if kind == "aura" and ns.AuraSources then   -- the "source" column needs the item index and a tooltip pass over it (AuraSources.lua)
@@ -6958,6 +6968,63 @@ function SX.Start(kind)
         for _, sp in ipairs(ns.BuildSpellList() or {}) do if sp.id then ids[#ids + 1] = sp.id end end
         if ns.AuraSources and ns.AuraSources.Start then pcall(ns.AuraSources.Start, SX.II, ids) end   -- core module (AuraSources.lua)
     end
+end
+function SX.SearchAll(kind)
+    SX.full = true
+    SX.Start(kind)
+end
+
+-- The spells the rules use and the auras the carried items apply, in the class-set format so SX.ClassMatches ranks them the same way.
+-- Built once per search box focus (SX.near is cleared on focus and on close). The items' auras come from their tooltips' embedded
+-- effect blocks, read the same way AuraSources.lua reads them, and are noted there too, so the "From" column knows them.
+-- C_TooltipInfo.GetItemByID(itemID) -> TooltipData · MayReturnNothing (docs/reference/api); TooltipUtil.SurfaceArgs as AuraSources.lua.
+SX.NEAR_ID_KEYS, SX.NEAR_LIST_KEYS = { spellID = true, buffID = true }, { buffAlt = true, alt = true }   -- (in SX: this file is near the 200-locals limit)
+function SX.Near()
+    if SX.near then return SX.near end
+    local list, have = {}, {}
+    local function nameOf(id)
+        local ok, n = pcall(C_Spell.GetSpellName, id)
+        if ok and type(n) == "string" and n ~= "" then return n end
+    end
+    local function add(id, name, tag)
+        if type(id) ~= "number" or have[id] or type(name) ~= "string" or name == "" then return end
+        have[id] = true
+        local nn = SX.Norm(name)
+        local words = {}
+        for w in nn:gmatch("%S+") do words[#words + 1] = w end
+        list[#list + 1] = { id = id, name = name, tag = tag, norm = nn, words = words, cond = (nn:gsub(" ", "")) }
+    end
+    local visited, n = {}, 0
+    local function walk(t, depth)
+        if depth > 6 or visited[t] or n > 600 then return end
+        visited[t] = true
+        for k, v in pairs(t) do
+            if SX.NEAR_ID_KEYS[k] and type(v) == "number" then n = n + 1; add(v, nameOf(v), "in your rules")
+            elseif SX.NEAR_LIST_KEYS[k] and type(v) == "table" then
+                for _, x in ipairs(v) do if type(x) == "number" then n = n + 1; add(x, nameOf(x), "in your rules") end end
+            elseif type(v) == "table" then walk(v, depth + 1) end
+        end
+    end
+    if type(ns.rules) == "table" then walk(ns.rules, 1) end
+    local AS = ns.AuraSources
+    if AS and AS.EmbeddedAuras and C_TooltipInfo and C_TooltipInfo.GetItemByID then
+        for _, it in ipairs(SX.OwnedItems()) do
+            local ok, data = pcall(C_TooltipInfo.GetItemByID, it.id)
+            if ok and type(data) == "table" then
+                if TooltipUtil and TooltipUtil.SurfaceArgs then
+                    pcall(TooltipUtil.SurfaceArgs, data)
+                    if type(data.lines) == "table" then for _, ln in ipairs(data.lines) do pcall(TooltipUtil.SurfaceArgs, ln) end end
+                end
+                local okA, auras = pcall(AS.EmbeddedAuras, data)
+                if okA and type(auras) == "table" and #auras > 0 then
+                    if AS.Note then pcall(AS.Note, "item", it.id, auras) end
+                    for _, a in ipairs(auras) do add(a.id, a.name or nameOf(a.id), "from " .. tostring(it.name)) end
+                end
+            end
+        end
+    end
+    SX.near = list
+    return list
 end
 function SX.OwnedItems()
     local out, seen = {}, {}
@@ -7150,6 +7217,14 @@ local function SearchSpells(q, kind)
             end
             if kind == "talent" then return res end   -- a talent search lists this class's talents only
         end
+        local okN, near = pcall(SX.Near)
+        if okN and near and #near > 0 then
+            local okM2, hits2 = pcall(SX.ClassMatches, near, q)
+            for _, h in ipairs(okM2 and hits2 or {}) do
+                if #res >= 80 then break end
+                if not seen[h.id] then seen[h.id] = true; res[#res + 1] = h.id; SX.tags[h.id] = h.tag end
+            end
+        end
     end
     -- No syntax to remember: every word must appear in the name, in any order; "*" matches anything. Exact names rank first,
     -- then names that start with the search, then the rest.
@@ -7220,11 +7295,36 @@ local function SP_Render()
         local pr = ns.AuraSources.Progress()
         if pr then msg = msg .. ("Finding what applies each aura... %d%%  "):format(math.floor(pr * 100)) end
     end
-    if total == 0 then msg = msg .. "No match yet"
+    local canAll = SP.kind ~= "talent" and not SX.full
+    if total == 0 then msg = msg .. (canAll and (SP.kind == "item" and "No match in your bags" or "No match in your spells, rules or bags") or "No match yet")
     elseif total > SP_ROWS then msg = msg .. total .. " results - scroll for more" end
     SP.footer:SetText(msg)
+    if canAll then
+        SP.all.t:SetText(SP.kind == "item" and "Search all items" or "Search all spells")
+        SP.all:SetWidth((SP.all.t:GetStringWidth() or 100) + 8)
+        SP.all:Show()
+    else
+        SP.all:Hide()
+    end
 end
 local function SP_Hide() if SP then SP:Hide(); SP.owner = nil end end
+-- The settings window closed: stop the scans and the aura-source pass, and free both whole-game indexes and the near set. What the
+-- pass already learned stays (CueRulesDB.auraSources, small); a later "Search all" starts the indexes again from the first ID.
+function ns.SearchOnClose()
+    SP_Hide()
+    for _, S in ipairs({ SI, SX.II }) do
+        if S.frame then S.frame:SetScript("OnUpdate", nil) end
+        S.running = false
+        S.names, S.ids, S.n, S.nextId = {}, {}, 0, 1
+    end
+    SX.full, SX.near, SX.cs, SX.tags = false, nil, nil, {}
+    local st = ns.AuraSources and ns.AuraSources.state   -- AuraSources.lua's pass state (its item positions point into SX.II)
+    if st then
+        if st.frame then st.frame:SetScript("OnUpdate", nil) end
+        st.running, st.stage, st.pos, st.idx, st.spells, st.finished = false, 1, 1, nil, nil, nil
+    end
+end
+ns.SpellSearchTest = { SX = SX, SI = SI, Search = function(q, k) return SearchSpells(q, k) end }   -- (tests)
 local function SP_Pick(id)
     local eb = SP and SP.owner
     if not (eb and eb.xuiSearchFn and id) then return end
@@ -7284,6 +7384,22 @@ local function SP_Build()
     end
     SP.footer = SP:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     SP.footer:SetPoint("BOTTOMLEFT", 6, 5); SP.footer:SetJustifyH("LEFT")
+    -- "Search all spells / items": builds the whole-game index for this window session (freed when the window closes)
+    SP.all = CreateFrame("Button", nil, SP)
+    SP.all:SetHeight(16); SP.all:SetPoint("BOTTOMRIGHT", -6, 2)
+    SP.all.t = SP.all:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    SP.all.t:SetPoint("RIGHT", 0, 0); SP.all.t:SetJustifyH("RIGHT")
+    SP.all:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(SP.kind == "item" and "Search every item the game knows" or "Search every spell in the game")
+        GameTooltip:AddLine("Takes a few seconds and memory while the settings window is open; it is freed when you close the window.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    SP.all:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    SP.all:SetScript("OnMouseDown", function()   -- mouse DOWN, before the edit box loses focus (as the result rows)
+        SX.SearchAll(SP.kind)
+        if SP.owner then SP.results, SP.offset = SearchSpells(SP.owner:GetText(), SP.kind), 0; SP_Render() end
+    end)
     SP:SetScript("OnMouseWheel", function(self, d)
         local maxOff = math.max(0, #self.results - SP_ROWS)
         self.offset = math.max(0, math.min(maxOff, self.offset - d * 2))
@@ -7322,7 +7438,7 @@ AttachSearch = function(w)
     eb.xuiSearchKind = opt and type(opt.arg) == "table" and opt.arg.xuiSearchKind or nil
     if eb.xuiSearchFn and not eb.xuiSearchHooked then
         eb.xuiSearchHooked = true
-        eb:HookScript("OnEditFocusGained", function(self) if self.xuiSearchFn then SX.Start(self.xuiSearchKind) end end)
+        eb:HookScript("OnEditFocusGained", function(self) if self.xuiSearchFn then SX.near = nil; SX.Start(self.xuiSearchKind) end end)
         eb:HookScript("OnTextChanged", function(self, user)
             if not (self.xuiSearchFn and user) then return end
             SX.Start(self.xuiSearchKind)
