@@ -8,13 +8,17 @@
 -- guessed; secret values show as "hidden in combat"). This file only draws it:
 --   Tabs: Stats | Gear | Spells (the Sheet tab was removed in QoL 0.7.14: the character window itself is restyled instead,
 --   QoL Character Reskin; the What If tab in 0.7.14: its numbers are the stat map's boxes, its item compare the Gear comparison).
---   Stats is the stat map: one card per stat with a box holding the number itself and what it feeds, "now -> with your number".
+--   Stats is the stat map: one card per stat with a box holding the number itself (the Change column, far right, QoL 0.7.20) and
+--   what it feeds, "now -> with your number"; an ability list is one nested line per ability.
 --   Gear: the equipped items as icons; click one to list what you own for that slot, pick one, and see the two side by side and
 --   everything the change does through the stat map. The Spells tab lists the spells added by hand and every spell of the
 --   spellbook with numbers in its description, under All / Offense / Defense filter buttons (spells only since 0.7.14).
---   Each tab is made of sections with a header (click a header to fold it). Each stat line is label and value, with its detail
---   pairs under it; hovering a line shows where the number comes from (the conversion hover: rating through the game's converter,
---   base and buffs, linked conversions such as crit to parry where the game reports them, thresholds).
+--   Each tab is made of sections with a header (click a header to fold it). The stat sections (every Stats section, the Gear
+--   comparison's "What it changes") are tables since QoL 0.7.15: Stat | Rating | Current value | Pt value | Note | Change (the box,
+--   since 0.7.20) under a column head, each card's "»" lines in the same columns (RenderGrid); the Gear Summary and Side by side
+--   are Gear | Character | Elsewhere and Equipped | this item | Change. Other lines are label and value, with their detail pairs
+--   under them. Hovering a line shows where the number comes from (the conversion hover: rating through the game's converter, base
+--   and buffs, linked conversions such as crit to parry where the game reports them, thresholds).
 --   Rating lines show a percent or a rating: the "%" / "rating" button in the title row sets it for every line, and clicking a
 --   rating line flips that line alone.
 --   Look: the XayaUI theme's colors and font (ns.Theme): window, border, tab, button and text classes; nothing from another addon.
@@ -156,12 +160,13 @@ ns.CharToolkit_Numbers = function(text) return CM.Numbers(text) end
 ns.CharToolkit_SpellName = function(id) return CM.SpellName(id) end
 ns.CharToolkit_ItemStats = function(link) return CM.ItemStats(link) end
 
--- The hover of one line: { { left, right, tone } or { text } }. Used by the panel, the sheet and the tests.
+-- The hover of one line: { { left, right, tone } or { text } }. Used by the panel, the sheet and the tests. A tooltip has one text
+-- column, so each line's Pt value and note follow its value (CM.PairText; the panel draws them in their own columns, QoL 0.7.15).
 function ns.CharToolkit_TooltipLines(it, mode)
     local out = {}
     local v, tone = CM.ValueFor(it, mode)
-    out[#out + 1] = { it.label or "", v or "", tone, title = true }
-    for _, p in ipairs(it.pairs or {}) do out[#out + 1] = { p.label, tostring(p.value), p.tone } end
+    out[#out + 1] = { it.label or "", CM.PairText({ value = v or "", per = it.per, note = it.note }), tone, title = true }
+    for _, p in ipairs(it.pairs or {}) do out[#out + 1] = { CM.PairLabel(p), CM.PairText(p), p.tone } end   -- (nested: indented)
     if #(it.tip or {}) > 0 then
         out[#out + 1] = { " " }
         for _, l in ipairs(it.tip) do out[#out + 1] = { l } end
@@ -690,14 +695,39 @@ local function PlaceFS(f, x, y, w, size, text, col, justify, wrap, kind)
     return h
 end
 
--- the stat map's columns (QoL 0.7.14): name | rating box | percent | rating per 1% (#382: side by side, no toggle)
-local function MapCols()
-    local lw, bw, pw = math.floor(W * 0.30), 56, 64
-    local bx = lw + GUT
-    local vx = bx + bw + GUT
-    local px = W - pw
-    return lw, bw, bx, vx, px - GUT - vx, px, pw
+-- The stat grid (QoL 0.7.15; Xaya 2026-11-05: "do multiple columns: for cleaner presentation * Stat | Current Value | Pt Value | etc";
+-- before, each line was label | value with the Pt value and the note glued into the value, "+2,671  (1 = 1.00)"). Every Stats-tab
+-- section and the Gear comparison's "What it changes" draw their cells at one set of x positions, worked out from the panel's width
+-- (the #351 gutter between columns). QoL 0.7.20 (Xaya 2026-11-05: "put the input box on the far right under a new column "Change""):
+-- Stat | Rating | Current value | Pt value | (Note) | Change. The box is the last cell of its row, at the content's right edge; Rating
+-- shows a rating card's rating as text where the box sat before. The note is a column of its own (between Pt value and Change) once
+-- the panel is wide enough for it (drag the corner: content 520 or wider, as before), else it goes under its line, from the Current
+-- value column to the right edge; a line that has only a note puts it on the line itself. A line with no rating lets its name run on
+-- over the Rating column. Every cell wraps inside its own column, so nothing overlaps at any width or text size, and nothing is cut.
+-- (Replaces the stat map's MapCols of QoL 0.7.14: name | rating box | percent | rating per 1%, #382.)
+-- Widths (by the estimate the layout test uses, 0.55 x text size per character, at text size 11): Rating holds "1,287"; Current
+-- value "22.63% -> 26.22%" and "hidden in combat" (16 characters); Pt value "46.0 / 1%"; the box five digits in its own font. On the
+-- default panel (content 360) that leaves Stat 86 and a "»" line's name 120 ("Diminishing returns" fits on one line).
+local GRID_RAT, GRID_VAL, GRID_PER, GRID_BOX = 36, 98, 56, 44
+local GRID_STAT_MIN, GRID_NOTE_MIN = 96, 140
+-- hasBox false: no line of the tab has a box (the Gear tab), so it has no Rating and no Change column: Current value takes the
+-- Rating column's room ("now -> then" fits on one line); Stat and Pt value keep their x, the note runs to the right edge
+local function GridCols(hasBox)
+    local fixed = GRID_RAT + GRID_VAL + GRID_PER + GRID_BOX + 4 * GUT
+    local g = { rat = GRID_RAT, val = GRID_VAL, per = GRID_PER, box = GRID_BOX }
+    local slack = W - fixed - GUT
+    g.wide = slack - GRID_STAT_MIN >= GRID_NOTE_MIN
+    g.stat = g.wide and math.max(GRID_STAT_MIN, math.floor(slack * 0.4)) or math.max(40, W - fixed)
+    g.rx = g.stat + GUT
+    g.vx = g.rx + GRID_RAT + GUT
+    if hasBox == false then g.rat, g.box, g.vx, g.val = 0, 0, g.rx, GRID_VAL + GRID_RAT + GUT end
+    g.px = g.vx + g.val + GUT
+    g.label = g.vx - GUT
+    g.cx = W - g.box   -- Change: the box, the last cell of its row
+    if g.wide then g.nx = g.px + GRID_PER + GUT; g.note = (g.box > 0 and (g.cx - GUT) or W) - g.nx end
+    return g
 end
+ns.CharToolkit_GridCols = GridCols   -- (tests: the x positions the cells must sit at)
 
 -- the Gear comparison's columns (QoL 0.7.14): name | equipped | this item | change
 local function CmpCols()
@@ -707,7 +737,131 @@ local function CmpCols()
     return lw, cw, x1, x1 + cw + 4, x1 + 2 * (cw + 4)
 end
 
--- detail tabs: sections with headers; each line is label | value, its pairs under it
+-- one line of the grid: its cells at the grid's x positions; returns the line's height (its note under it included)
+-- o: x0 (indent), label, labelCol, size, rating (a rating card's rating text), value, valueCol, per, perCol, note, noteCol, box (the
+-- line has a box), boxH, kind (the layout records' prefix: "" for a card's own line, "pair" for a line under it)
+local function GridLine(g, y, o)
+    local k = o.kind or ""
+    local function K(s) return (k == "") and s or (k .. s:sub(1, 1):upper() .. s:sub(2)) end
+    local hasR = (o.rating or "") ~= "" and g.rat > 0
+    local h = PlaceFS(FS(), o.x0, y, (hasR and g.stat or g.label) - o.x0, o.size, o.label, o.labelCol, "LEFT", true, K("label"))
+    local hasV, hasP, hasN = (o.value or "") ~= "", (o.per or "") ~= "", (o.note or "") ~= ""
+    if o.boxH then h = math.max(h, o.boxH) end
+    if hasR then h = math.max(h, PlaceFS(FS(), g.rx, y, g.rat, o.size, o.rating, o.ratingCol, "RIGHT", true, K("rating"))) end
+    if hasV then h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, o.size, o.value, o.valueCol, "RIGHT", true, K("value"))) end
+    if hasP then h = math.max(h, PlaceFS(FS(), g.px, y, g.per, o.size, o.per, o.perCol, "RIGHT", true, K("per"))) end
+    if hasN and g.wide then
+        h = math.max(h, PlaceFS(FS(), g.nx, y, g.note, o.size, o.note, o.noteCol, "LEFT", true, K("note")))
+    elseif hasN and not hasV and not hasP then
+        -- (on the line itself: up to the box when the line has one)
+        local right = (o.box and g.box > 0) and (g.cx - GUT) or W
+        h = math.max(h, PlaceFS(FS(), g.vx, y, right - g.vx, o.size, o.note, o.noteCol, "LEFT", true, K("note")))
+    elseif hasN then
+        h = h + 1 + PlaceFS(FS(), g.vx, y + h + 1, W - g.vx, o.size, o.note, o.noteCol, "LEFT", true, K("note"))
+    end
+    return h
+end
+
+-- a grid section's lines (sec.grid: the stat map's sections, the Gear comparison's "What it changes"); returns the y under them
+local function RenderGrid(c, items, y, hasBox)
+    local size = c.fontSize
+    local cText = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
+    local cMuted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
+    local short = c.detail == "short"
+    local g = GridCols(hasBox)
+    for _, it in ipairs(items) do
+        local top = y
+        if it.kind == "colhead" then
+            local cs, hs = it.cols or {}, size - 1
+            local h = PlaceFS(FS(), 0, y, g.stat, hs, cs[1] or "", cMuted, "LEFT", true, "colhead")
+            if (cs[2] or "") ~= "" and g.rat > 0 then h = math.max(h, PlaceFS(FS(), g.rx, y, g.rat, hs, cs[2], cMuted, "RIGHT", true, "colhead")) end
+            h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, hs, cs[3] or "", cMuted, "RIGHT", true, "colhead"))
+            h = math.max(h, PlaceFS(FS(), g.px, y, g.per, hs, cs[4] or "", cMuted, "RIGHT", true, "colhead"))
+            if g.wide then h = math.max(h, PlaceFS(FS(), g.nx, y, g.note, hs, cs[5] or "", cMuted, "LEFT", true, "colhead")) end
+            if (cs[6] or "") ~= "" and g.box > 0 then h = math.max(h, PlaceFS(FS(), g.cx, y, g.box, hs, cs[6], cMuted, "LEFT", true, "colhead")) end
+            local hb = Btn()   -- hover: what each column holds
+            hb.item = it
+            hb:ClearAllPoints()
+            hb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+            hb:SetSize(W, h + 1)
+            Rec("hit", 0, y, W, h + 1, it.key)
+            y = y + h + 3
+        elseif it.kind == "note" then
+            local h = PlaceFS(FS(), 0, y, W, size, it.label, it.minor and cMuted or cText, "LEFT", true, "label")
+            y = y + h + 5
+        else
+            local v, tone = CM.ValueFor(it, nil)
+            local boxed = it.kind == "input" and it.input ~= nil
+            local boxH = boxed and (size + 6) or nil
+            if boxed then
+                -- the box: the Change column, the last cell of its row (QoL 0.7.20; it sat under Rating before)
+                local eb = Box(it.input)
+                eb:ClearAllPoints()
+                eb:SetPoint("TOPLEFT", content, "TOPLEFT", g.cx, -y + 2)
+                eb:SetSize(g.box, size + 6)
+                if not (eb.HasFocus and eb:HasFocus()) then
+                    local amt = num(it.amount) and it.amount or 0
+                    -- a stat map box holds the number itself (yours, or the one typed); All ratings holds its amount
+                    eb:SetText(it.absolute and tostring(math.floor(it.absolute + amt + 0.5)) or (amt ~= 0 and tostring(amt) or ""))
+                end
+                eb:Show()
+                eb.xuiUsed = true
+                Rec("input", g.cx, y, g.box, size + 6, it.input, size)
+            end
+            local hasV = (v or "") ~= ""
+            local h = GridLine(g, y, { x0 = 0, label = it.label, labelCol = it.labelColor or (it.minor and cMuted or cText), size = size,
+                rating = it.ratingText, ratingCol = cText,
+                value = v, valueCol = ToneColor(tone, cText), per = it.per, perCol = cText, note = it.note,
+                noteCol = (hasV or (it.per or "") ~= "") and cMuted or ToneColor(tone, cText), box = boxed, boxH = boxH })
+            y = y + h + 2
+            local headEnd = y
+            -- the lines under it: one size smaller and muted, except a card that asks for full-size ones (#378: "way too tiny")
+            local big = it.bigPairs == true
+            local psz, pcol = big and size or size - 1, big and cText or cMuted
+            for _, p in ipairs(it.pairs or {}) do
+                if not short or p.short then
+                    local pv = (p.value ~= nil) and tostring(p.value) or ""
+                    local lone = pv == "" and (p.per or "") == ""
+                    -- a nested line (one ability under its "»" line, QoL 0.7.20) sits one indent deeper than the "»" lines
+                    local ph = GridLine(g, y, { x0 = p.nested and 24 or 12, label = p.label, labelCol = p.labelColor or pcol, size = psz, value = pv,
+                        valueCol = ToneColor(p.tone, cText), per = p.per, perCol = pcol, note = p.note,
+                        noteCol = lone and ToneColor(p.tone, pcol) or cMuted, kind = "pair" })
+                    y = y + ph + 1
+                end
+            end
+            -- the hover (where the numbers come from): a card with a box keeps its box clickable, so its hover is its line up to the
+            -- box (name, rating, value, Pt value) and the lines under it; any other card hovers as a whole
+            if boxed then
+                local lb = Btn()
+                lb.item = it
+                lb:ClearAllPoints()
+                lb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top)
+                lb:SetSize(g.cx - GUT, size + 6)
+                Rec("hit", 0, top, g.cx - GUT, size + 6, it.key)
+                if y > headEnd then
+                    local pb = Btn()
+                    pb.item = it
+                    pb:ClearAllPoints()
+                    pb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -headEnd)
+                    pb:SetSize(W, y - headEnd)
+                    Rec("hit", 0, headEnd, W, y - headEnd, it.key)
+                end
+            else
+                local b = Btn()
+                b.item = it
+                b:ClearAllPoints()
+                b:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top)
+                b:SetSize(W, math.max(1, y - top))
+                Rec("hit", 0, top, W, y - top, it.key)
+            end
+            y = y + 4
+        end
+    end
+    return y
+end
+
+-- detail tabs: sections with headers; a grid section draws its lines in columns (RenderGrid), any other each line as label | value
+-- with its pairs under it
 local function RenderSections(c, m, tab, y0)
     local size = c.fontSize
     local cText = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
@@ -716,6 +870,13 @@ local function RenderSections(c, m, tab, y0)
     local cLine = TC("xui-window", "border", { 0.3, 0.3, 0.3, 1 })
     local short = c.detail == "short"
     local y = y0 or 0
+    -- the grid's Rating and Change (box) columns exist when a grid line of this tab has a box (one set of columns per tab)
+    local gridBox = false
+    for _, sec in ipairs(m.sections) do
+        if sec.tab == tab and sec.grid then
+            for _, it in ipairs(sec.items) do if it.kind == "input" then gridBox = true end end
+        end
+    end
     for _, sec in ipairs(m.sections) do
         if sec.tab == tab and #sec.items > 0 then
             if y > (y0 or 0) then y = y + 6 end
@@ -732,7 +893,9 @@ local function RenderSections(c, m, tab, y0)
             h.line:SetColorTexture(cLine[1], cLine[2], cLine[3], 0.8)
             Rec("header", 0, y, W, size + 7, (folded and "+ " or "- ") .. sec.title, size + 1)
             y = y + size + 9
-            if not folded then
+            if not folded and sec.grid then
+                y = RenderGrid(c, sec.items, y, gridBox)
+            elseif not folded then
                 for _, it in ipairs(sec.items) do
                     local top = y
                     local mode = it.kind == "rating" and ModeFor(c, it.key) or nil
@@ -806,42 +969,14 @@ local function RenderSections(c, m, tab, y0)
                         Rec("hit", 0, y, bw, bh, it.key)
                         y = y + bh + 2
                     elseif it.kind == "cmprow" then
+                        -- (QoL 0.7.15: cells wrap inside their column rather than being cut, and each may carry its own tone)
                         local lw, cw, x1, x2, x3 = CmpCols()
-                        local cs = it.cells or {}
+                        local cs, ct = it.cells or {}, it.cellTones or {}
                         rowH = PlaceFS(FS(), 0, y, lw - 4, size, it.label, it.labelColor or cText, "LEFT", false, "label")
-                        PlaceFS(FS(), x1, y, cw, size, cs[1] or "", cText, "RIGHT", false, "cmpcell")
-                        PlaceFS(FS(), x2, y, cw, size, cs[2] or "", cText, "RIGHT", false, "cmpcell")
-                        PlaceFS(FS(), x3, y, cw, size, cs[3] or "", ToneColor(it.cellTone, cText), "RIGHT", false, "cmpcell")
+                        rowH = math.max(rowH, PlaceFS(FS(), x1, y, cw, size, cs[1] or "", ToneColor(ct[1], cText), "RIGHT", true, "cmpcell"))
+                        rowH = math.max(rowH, PlaceFS(FS(), x2, y, cw, size, cs[2] or "", ToneColor(ct[2], cText), "RIGHT", true, "cmpcell"))
+                        rowH = math.max(rowH, PlaceFS(FS(), x3, y, cw, size, cs[3] or "", ToneColor(ct[3] or it.cellTone, cText), "RIGHT", true, "cmpcell"))
                         y = y + rowH + 1
-                    elseif it.kind == "colhead" then
-                        local lw, bw, bx, vx, vw, px, pw = MapCols()
-                        local cs = it.cols or {}
-                        PlaceFS(FS(), bx, y, bw, size - 1, cs[1] or "", cMuted, "LEFT", false, "colhead")
-                        PlaceFS(FS(), vx, y, vw, size - 1, cs[2] or "", cMuted, "RIGHT", false, "colhead")
-                        PlaceFS(FS(), px, y, pw, size - 1, cs[3] or "", cMuted, "RIGHT", false, "colhead")
-                        y = y + size + 1
-                    elseif it.kind == "input" and it.mapCard then
-                        local lw, bw, bx, vx, vw, px, pw = MapCols()
-                        rowH = PlaceFS(FS(), 0, y, lw - 4, size, it.label, it.labelColor or cText, "LEFT", false, "label")
-                        local eb = Box(it.input)
-                        eb:ClearAllPoints()
-                        eb:SetPoint("TOPLEFT", content, "TOPLEFT", bx, -y + 2)
-                        eb:SetSize(bw, size + 6)
-                        if not (eb.HasFocus and eb:HasFocus()) then
-                            eb:SetText(it.absolute and tostring(math.floor(it.absolute + (num(it.amount) and it.amount or 0) + 0.5)) or "")
-                        end
-                        eb:Show()
-                        eb.xuiUsed = true
-                        Rec("input", bx, y, bw, size + 6, it.input, size)
-                        local vh = PlaceFS(FS(), vx, y, vw, size, v, ToneColor(tone, cText), "RIGHT", true, "value")
-                        if it.per and it.per ~= "" then PlaceFS(FS(), px, y, pw, size - 1, it.per, cMuted, "RIGHT", false, "per") end
-                        local lb = Btn()   -- hover on the name: where the numbers come from
-                        lb.item = it
-                        lb:ClearAllPoints()
-                        lb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-                        lb:SetSize(lw, size + 6)
-                        Rec("hit", 0, y, lw, size + 6, it.key)
-                        y = y + math.max(rowH, vh, size + 6) + 2
                     elseif it.kind == "input" then
                         local lw, bw = math.floor(W * 0.36), 64
                         rowH = PlaceFS(FS(), 0, y, lw, size, it.label, cText, "LEFT", false, "label")
@@ -1061,13 +1196,16 @@ local function UpdateOverlay(button)
         o.ilvl:SetPoint("BOTTOM", o, "BOTTOM", 0, 2)
         o.marks = o:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         o.marks:SetPoint("TOP", o, "TOP", 0, -2)
+        o.ilvl.xuiOwn, o.marks.xuiOwn = true, true   -- (the reskin's /xui reskin status lists only other addons' text)
         overlays[button] = o
     end
     local eSlots, eDefault = CM.EnchantSlots(c)
     -- (QoL 0.7.14) while the Character Reskin draws its own item level / enchant on the slot, these leave theirs out: one of each per slot
+    -- (QoL 0.7.19) and the empty-socket mark while it draws the sockets
     local rIlvl = ns.CharReskin_DrawsIlvl and ns.CharReskin_DrawsIlvl()
     local rEnch = ns.CharReskin_DrawsEnchants and ns.CharReskin_DrawsEnchants()
-    local data = CM.SlotOverlay(slot, { ilvl = c.ovIlvl and not rIlvl, sockets = c.ovSockets, enchants = c.ovEnchants and not rEnch,
+    local rSock = ns.CharReskin_DrawsSockets and ns.CharReskin_DrawsSockets()
+    local data = CM.SlotOverlay(slot, { ilvl = c.ovIlvl and not rIlvl, sockets = c.ovSockets and not rSock, enchants = c.ovEnchants and not rEnch,
         enchantSlots = eSlots, enchantDefault = eDefault })
     SetFont(o.ilvl, c.ovSize, "OUTLINE")
     SetFont(o.marks, math.max(8, c.ovSize - 2), "OUTLINE")
@@ -1082,6 +1220,8 @@ local function UpdateOverlay(button)
     o:Show()
 end
 function ns.CharToolkit_UpdateOverlays()
+    local c = Cfg()
+    if not (c and c.enabled and c.overlays) and next(overlays) == nil then return end   -- off and never drawn: nothing to do (V14)
     for _, s in ipairs(CM.SLOTS) do
         local b = SlotButton(s[4])
         if b then UpdateOverlay(b) end
@@ -1147,7 +1287,7 @@ local function OnEvent(_, event, unit)
     end
     if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "PLAYER_LEVEL_UP" then CM.ClearCache() end
     if event == "PLAYER_REGEN_ENABLED" then CM.gcdHidden = false end   -- out of combat the last readable GCD shows again
-    if OVERLAY_EVENTS[event] then RefreshOverlays() end
+    if OVERLAY_EVENTS[event] then local c = Cfg(); if c and c.overlays then RefreshOverlays() end end
     if unit and unit ~= "player" and event:find("^UNIT_") then return end
     if panel and panel:IsShown() then Refresh() end
 end
@@ -1211,7 +1351,8 @@ local function AppendTooltip(frame)
             if card.per and card.per ~= "" then lines[#lines + 1] = { "Rating per 1%", (card.per:gsub(" / 1%%$", "")) } end
         end
         for _, p in ipairs(card.pairs or {}) do
-            if p.label ~= "From rating" then lines[#lines + 1] = { p.label, tostring(p.value) } end
+            -- (one text column: the Pt value and the note follow the value, QoL 0.7.15; a nested ability line is indented, 0.7.20)
+            if p.label ~= "From rating" then lines[#lines + 1] = { CM.PairLabel(p), CM.PairText(p) } end
         end
     else
         local it = CM.Build(c, nil).byKey[key]
@@ -1244,7 +1385,7 @@ ns.CharToolkit_HookStatFrames = HookStatFrames
 -------------------------------------------------------------------------------
 -- On / off
 -------------------------------------------------------------------------------
-local ownerHooked, themeHooked = false, false
+local ownerHooked, themeHooked, slotHooked = false, false, false
 function ns.CharToolkit_Apply()
     local c = Cfg(); if not c then return end
     if not c.enabled then
@@ -1272,9 +1413,13 @@ function ns.CharToolkit_Apply()
         end
         if type(hooksecurefunc) == "function" then
             if type(_G.PaperDollFrame_UpdateStats) == "function" then hooksecurefunc("PaperDollFrame_UpdateStats", HookStatFrames) end
-            -- Blizzard redraws one slot button at a time; the overlay follows (post-hook, Blizzard's code runs unchanged first)
-            if type(_G.PaperDollItemSlotButton_Update) == "function" then hooksecurefunc("PaperDollItemSlotButton_Update", UpdateOverlay) end
         end
+    end
+    -- Blizzard redraws one slot button at a time; the overlay follows (post-hook, Blizzard's code runs unchanged first). Placed only once
+    -- the overlays are on (QoL 0.7.19, V14: before, it was placed with the toolkit even while the overlays were off).
+    if c.overlays and not slotHooked and type(hooksecurefunc) == "function" and type(_G.PaperDollItemSlotButton_Update) == "function" then
+        slotHooked = true
+        hooksecurefunc("PaperDollItemSlotButton_Update", UpdateOverlay)
     end
     if not themeHooked and ns.Theme and ns.Theme.OnResolve then
         themeHooked = true
@@ -1333,12 +1478,14 @@ function ns.BuildCharToolkitPage(Notify)
             set = function(_, v) C()[key] = v and true or false; Changed() end }
     end
 
+    -- each part's on/off (and the toolkit's own) is the tick box on its row in the left pane: xuiSwitch (QoL 0.7.18; Xaya 2026-11-05:
+    -- "move all enable/disable toggles onto the sidebar instead"), the same Toggle as the switch the page had
     local spells = {
         type = "group", name = "Spell Math", order = 30, hidden = isOff,
+        xuiSwitch = Toggle("advanced", 1, "Spell Math", "Shows the Spells tab's spell math in the panel (advanced)."),
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "The Spells tab lists every active spell of your current spec's spellbook that has numbers in its description, and the spells you add here first (any spell ID). For each: every number in its current description divided by your current attack power (or spell power), and what one point of your primary stat adds. This is the ratio right now, with talents and buffs already applied; it is not Blizzard's base coefficient. You can type a coefficient from a database such as Wowhead to compare." },
-            advanced = Toggle("advanced", 1, "Spell Math", "Shows the Spells tab's spell math in the panel (advanced).", "full"),
             spellsAll = Toggle("spellsAll", 1.5, "List spells without numbers",
                 "Also list spellbook spells whose description has no amount to measure (they show \"none in the description\").", "full"),
             add = { type = "input", order = 2, width = "double", name = "Add a spell",
@@ -1390,9 +1537,9 @@ function ns.BuildCharToolkitPage(Notify)
 
     local panelPart = {
         type = "group", name = "Panel", order = 10, childGroups = "tab", hidden = isOff,
+        xuiSwitch = Toggle("panel", 1, "Show the panel", "Beside the character window whenever it opens. /xui stats shows it on its own."),
         args = {
             layout = { type = "group", name = "Layout", order = 1, args = {
-                panel = Toggle("panel", 1, "Show the panel", "Beside the character window whenever it opens. /xui stats shows it on its own."),
                 side = { type = "select", order = 2, name = "Side", values = { right = "Right", left = "Left" },
                     desc = "Which side of the character window the panel docks to.",
                     get = function() return C().side end, set = function(_, v) C().side = v; Changed() end },
@@ -1456,11 +1603,11 @@ function ns.BuildCharToolkitPage(Notify)
     end
     local overlayPart = {
         type = "group", name = "Slot Overlays", order = 20, childGroups = "tab", hidden = isOff,
+        xuiSwitch = Toggle("overlays", 1, "Slot overlays", "Marks on the character window's item slots. Off by default."),
         args = {
             show = { type = "group", name = "Show", order = 1, args = {
-                overlays = Toggle("overlays", 1, "Slot overlays", "Marks on the character window's item slots. Off by default.", "full"),
                 ovIlvl = Toggle("ovIlvl", 2, "Item level", "The item's level, at the bottom of the slot."),
-                ovSockets = Toggle("ovSockets", 3, "Empty sockets", "How many empty sockets the item's stat table lists (for example 2S), at the top."),
+                ovSockets = Toggle("ovSockets", 3, "Empty sockets", "How many of the item's sockets have no gem in them (for example 2S), at the top. Left out while the Character Reskin draws the sockets."),
                 ovEnchants = Toggle("ovEnchants", 4, "Enchant check", "E? on a ticked slot with no enchant, E when it has one. This expansion's enchantable slots are ticked until you pick your own on the Enchant Slots tab."),
                 ovSize = { type = "range", order = 5, name = "Text size", min = 8, max = 16, step = 1,
                     get = function() return C().ovSize end, set = function(_, v) C().ovSize = v; Changed() end },
@@ -1471,13 +1618,10 @@ function ns.BuildCharToolkitPage(Notify)
 
     return {
         type = "group", name = "Character Toolkit", order = 3, childGroups = "tree",
+        xuiSwitch = Toggle("enabled", 1, "Character Toolkit", "Turns the toolkit on. While it is off nothing is created, registered or read."),
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "A panel beside the character window: every stat the game gives, where each number comes from, what the next point buys, what each stat feeds (type your own numbers to see the change), and a gear comparison. What the game does not give is marked, never guessed. Turn it on here, then pick a part on the left. Off by default." },
-            enabled = Toggle("enabled", 1, "Character Toolkit", "Turns the toolkit on. While it is off nothing is created, registered or read.", "full"),
-            panelOn = Toggle("panel", 2, "Panel", "The stat panel beside the character window.", nil, isOff),
-            overlaysOn = Toggle("overlays", 3, "Slot overlays", "Item level, empty sockets and enchant marks on the character window's slots.", nil, isOff),
-            tooltipsOn = Toggle("tooltips", 4, "Tooltip lines", "The toolkit's lines under the character window's own stat tooltips.", nil, isOff),
+                name = "A panel beside the character window: every stat the game gives, where each number comes from, what the next point buys, what each stat feeds (type your own numbers to see the change), and a gear comparison. What the game does not give is marked, never guessed. Turn it on with the tick box on its row on the left; its parts (Panel, Slot Overlays, Spell Math) then show under it, each with its own tick box. The tooltip lines are on Panel > Tooltips. Off by default." },
             panelPart = panelPart,
             overlayPart = overlayPart,
             spells = spells,

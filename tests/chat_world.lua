@@ -2,7 +2,8 @@
 -- ended up), Blizzard's chat windows, hooksecurefunc, timers, events, scripts. NOT the game: it checks logic and placement, not looks.
 -- Usage (from lupa): local W = dofile(path)(rootDir)  -> returns the world table; globals are installed.
 return function(ROOT)
-local W = { now = 100, timers = {}, mouseX = -1, mouseY = -1, printed = {}, played = {}, ignored = {}, filters = {}, itemRefHooks = {} }
+local W = { now = 100, timers = {}, mouseX = -1, mouseY = -1, printed = {}, played = {}, ignored = {}, filters = {}, itemRefHooks = {},
+  hookLog = {} }   -- hookLog: every hooksecurefunc / HookScript placed, in order ({ kind, name }), so a test can see who hooked what
 local screenW, screenH = 1920, 1080
 
 local function pointXY(r, p)
@@ -124,11 +125,13 @@ end
 function proto:SetScript(n, f) self._scripts[n] = f end
 function proto:GetScript(n) return self._scripts[n] end
 function proto:HookScript(n, f)
+  W.hookLog[#W.hookLog + 1] = { "HookScript", tostring(self._name or self._kind) .. ":" .. tostring(n) }
   local old = self._scripts[n]
   self._scripts[n] = function(...) if old then old(...) end; f(...) end
 end
 function proto:RegisterEvent(e) self._events[e] = true end
 function proto:UnregisterEvent(e) self._events[e] = nil end
+function proto:UnregisterAllEvents() self._events = {} end
 function proto:RegisterForClicks() end
 function proto:CreateTexture(n, layer) return new("Texture", n, self) end
 function proto:CreateFontString(n) return new("FontString", n, self) end
@@ -168,6 +171,7 @@ hooksecurefunc = function(a, b, c)
   if type(a) == "string" then tbl, name, fn = _G, a, b else tbl, name, fn = a, b, c end
   local orig = tbl[name]
   assert(type(orig) == "function", "hooksecurefunc: no function " .. tostring(name))
+  W.hookLog[#W.hookLog + 1] = { "hooksecurefunc", (tbl == _G and "" or (tostring(rawget(tbl, "_name") or "table") .. ".")) .. tostring(name) }
   rawset(tbl, name, function(...)
     local r = table.pack(orig(...))
     fn(...)
@@ -336,6 +340,9 @@ load("XayaUI/Modules.lua")   -- the core contract the chat files register throug
 load("XayaUI/Compat.lua")    -- current game API with fallbacks (0.6.0)
 load("XayaUI/Libs/LibStub/LibStub.lua")
 load("XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua")
+-- what exists before the Chat Panel's own files run: frames from here on (W.objects() index > W.coreObjects) and hooks after
+-- W.coreHooks are XayaUI_Chat's (tests/chat_off_costs_nothing_run.py)
+W.coreObjects, W.coreHooks, W.coreThemeListeners = #objects, #W.hookLog, #ns.Theme._listeners
 for _, rel in ipairs({ "XayaUI_Chat/Core.lua", "XayaUI_Chat/Frame.lua", "XayaUI_Chat/Scroll.lua", "XayaUI_Chat/Bar.lua", "XayaUI_Chat/Skin.lua", "XayaUI_Chat/Fade.lua", "XayaUI_Chat/Locate.lua", "XayaUI_Chat/Messages.lua", "XayaUI_Chat/History.lua",
   "XayaUI_Chat/Sounds.lua", "XayaUI_Chat/Options.lua", "XayaUI_Chat/Privacy.lua" }) do load(rel) end
 W.ns = ns
