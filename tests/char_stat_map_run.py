@@ -232,7 +232,7 @@ check("  ...and the smallest / tallest it may be (340 x 1100)", c.size.w == L0.m
 local page = ns.BuildCharToolkitPage(function() end)
 page.args.panelPart.args.layout.args.resetSize.func()
 render()
-check("settings: Reset size goes back to the default width (360 of content) and the height follows the content again", c.size == nil and L0.content == 360, L0.content)
+check("settings: Reset size goes back to the default width (430 of content since QoL 0.7.21) and the height follows the content again", c.size == nil and L0.content == 430, L0.content)
 c.size = { w = "wide" }
 check("a broken saved size is dropped", ns.CharToolkit_Cfg().size == nil)
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))

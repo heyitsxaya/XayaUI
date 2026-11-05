@@ -1,4 +1,5 @@
-# Character pane: wider window, solid background, one item level, bigger gems with names, hover texts (XayaUI_QoL 0.7.21)
+# Character pane: wider window, solid background, one item level, bigger gems with names, hover texts (XayaUI_QoL 0.7.22)
+(Relabelled at the merge with main efab00a: written as QoL 0.7.21, which another session used for the Stat Calculator width; QA E1z21-E1z25 renumbered E1z40-E1z44.)
 Logged 2026-11-05 19:47 UTC. Worktree branch on top of 19321e7 (QoL 0.7.20). Nothing here has run in the game.
 
 ## Reports (Xaya, 2026-11-05, after QoL 0.7.19)
@@ -15,7 +16,7 @@ Logged 2026-11-05 19:47 UTC. Worktree branch on top of 19321e7 (QoL 0.7.20). Not
 - "embellished items should be hoverable so you can read what the embellishment does".
 - Her width probe (in game, 2026-11-05 12:35 local): "width probe: on, 120 px wider (540 -> 660). window width ok, inset edge ok, model
   width ok, main hand slot ok, panel placement ok." No ADDON_ACTION / "Interface action failed" line in the chat she sent. She did not
-  say whether the spellbook / talents sat beside it (INFERENCE: not a blocker; QA E1z21 asks again).
+  say whether the spellbook / talents sat beside it (INFERENCE: not a blocker; QA E1z40 asks again).
 
 ## Root causes
 1. **Labels over the model.** At Blizzard's width the slot columns are 7-8 px from the 231 px model scene (0.7.19 log): nothing beside a
@@ -59,7 +60,7 @@ Logged 2026-11-05 19:47 UTC. Worktree branch on top of 19321e7 (QoL 0.7.20). Not
   decides when it is not a string). Blizzard's sizing (CharacterFrame.lua UpdateSize, 0.7.19 log): 540 with the stats pane on the
   Character tab, else PANEL_DEFAULT_WIDTH; the paper doll's Inset pinned at PANEL_DEFAULT_WIDTH + PANEL_INSET_RIGHT_OFFSET.
 
-## Fix (XayaUI_QoL 0.7.21)
+## Fix (XayaUI_QoL 0.7.22)
 - **Wider window** (`CharacterReskin.lua`, "The wider window"): the probe's calls (window width + px; the Inset's BOTTOMRIGHT + px, so the
   right column and the stats pane move out; the main hand + px / 2; `UpdateUIPanelPositions` when the width changed), except that the
   model scene keeps its 231 px and moves right by px / 2 (whole and centred; the room is between each column and the model). Out of
@@ -94,7 +95,7 @@ Logged 2026-11-05 19:47 UTC. Worktree branch on top of 19321e7 (QoL 0.7.20). Not
   twelve slot blocks had to be cut at a word ("Shaladrassil's" alone needs 62 px at 8 pt); at 240 none is cut (her blocks at 8-10 pt;
   the rings at 8 pt with 12 px icons), every enchant name of this expansion fits whole; at 300 nearly all at 10 pt. The slider keeps 120
   (her tested value) to 300 (the probe's upper limit). INFERENCE: the width does not change what the probe found (the same calls); QA
-  E1z21 asks again about the spellbook / talents beside it.
+  E1z40 asks again about the spellbook / talents beside it.
 - DECISION: the wider window is on by default (with the reskin, which stays off by default): her probe found the calls safe, and without
   it the lines lie over the model.
 - DECISION: the model keeps its size and is centred (the probe widened it; a wider model scene would put the room inside the model again).

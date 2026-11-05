@@ -111,7 +111,7 @@ check("the toolkit's slot overlay leaves out its item level while the reskin dra
 local re, he = CharacterFinger0Slot.xuiEnchant, CharacterHeadSlot.xuiEnchant
 check("the ring's enchant by name, from its tooltip line, without 'Enchanted: ' (green)", re and re.text == "Radiant Mastery" and col(re.color, 0.5, 1, 0.5), re and re.text)
 check("  ...the helm: 'No enchant' in orange (the head takes one this expansion)", he and he.text == "No enchant" and col(he.color, 1, 0.56, 0.25), he and he.text)
--- (QoL 0.7.21) the first row of the slot's block, 6 px from the slot (the sockets are rows of the block now); every position check is
+-- (QoL 0.7.22) the first row of the slot's block, 6 px from the slot (the sockets are rows of the block now); every position check is
 -- in tests/char_pane_overlays_run.py
 local hr, rr, hs, rs = RECT(he), RECT(re), RECT(CharacterHeadSlot), RECT(CharacterFinger0Slot)
 check("  ...left-column slots: to the right of the slot (6 px)", hr and math.abs(hr.l - (hs.r + 6)) < 0.01, rstr(hr))
@@ -192,7 +192,7 @@ local page = ns.BuildCharReskinPage(function() end)
 check("settings: Blizzard UI Reskin > Character Pane with its switch and one per part", page.name == "Character Pane" and page.args.enabled and page.args.chrome
   and page.args.ilvl and page.args.enchants and page.args.stats)
 check("  ...the parts are greyed out while it is off", (function() rc.enabled = false; local d = page.args.ilvl.disabled(); rc.enabled = true; return d end)() == true)
--- (QoL 0.7.21) the wider window is built: its switch, its extra width (120 - 300, greyed out while it is off) and the background opacity
+-- (QoL 0.7.22) the wider window is built: its switch, its extra width (120 - 300, greyed out while it is off) and the background opacity
 check("  ...the wider window has its switch (on by default), its extra width (120-300 px, default 240) and the background opacity (50-100%, default 95%)",
   page.args.wide and page.args.wide.name:find("Wider window", 1, true) and page.args.widePx.min == 120 and page.args.widePx.max == 300
   and ns.CHARRESKIN_DEFAULTS.wide == true and ns.CHARRESKIN_DEFAULTS.widePx == 240 and page.args.bgAlpha.min == 0.5 and ns.CHARRESKIN_DEFAULTS.bgAlpha == 0.95

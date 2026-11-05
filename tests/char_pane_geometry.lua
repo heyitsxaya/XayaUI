@@ -69,7 +69,7 @@ function geom(o)
   rawset(o, "CreateFontString", function(self) local f = mk("FS"); f.text = ""; f.font = { "Fonts\\FRIZQT__.TTF", 12, "" }; f.parent = self
     regionsOf[self] = regionsOf[self] or {}; table.insert(regionsOf[self], f); return f end)
   rawset(o, "CreateTexture", function(self) local t = mk("Texture"); t.parent = self; regionsOf[self] = regionsOf[self] or {}; table.insert(regionsOf[self], t); return t end)
-  -- (QoL 0.7.21) anchors as the game reports them: one per point name, the last one set wins
+  -- (QoL 0.7.22) anchors as the game reports them: one per point name, the last one set wins
   rawset(o, "GetNumPoints", function(self) local seen, k = {}, 0; for _, pt in ipairs(self.pts or {}) do if not seen[pt[1]] then seen[pt[1]] = true; k = k + 1 end end; return k end)
   rawset(o, "GetPointByName", function(self, name) local hit; for _, pt in ipairs(self.pts or {}) do if pt[1] == name then hit = pt end end
     if hit then return hit[1], hit[2], hit[3], hit[4], hit[5] end end)
@@ -186,7 +186,7 @@ function placePane(width)
   return cf
 end
 
--- (QoL 0.7.21) Blizzard's own sizing, as the 0.7.19 debug log read it in CharacterFrame.lua UpdateSize(): the window 540 wide with the
+-- (QoL 0.7.22) Blizzard's own sizing, as the 0.7.19 debug log read it in CharacterFrame.lua UpdateSize(): the window 540 wide with the
 -- stats pane open on the Character tab (CHARACTERFRAME_EXPANDED_WIDTH), else PANEL_DEFAULT_WIDTH; on the Character tab the Inset's
 -- BOTTOMRIGHT at the window's BOTTOMLEFT + (PANEL_DEFAULT_WIDTH + PANEL_INSET_RIGHT_OFFSET, PANEL_INSET_BOTTOM_OFFSET); then, when the
 -- width changed, UpdateUIPanelPositions(self). STAND-IN: the real function does more (other tabs' insets), none of which the reskin reads.
