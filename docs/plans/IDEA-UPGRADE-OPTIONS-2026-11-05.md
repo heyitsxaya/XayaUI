@@ -1,8 +1,8 @@
-# Idea: upgrade options from a stat priority and the diminishing-returns calculator (IDEA-UPGRADES), logged 2026-11-05, nothing built
+# Upgrade options from a stat priority and the diminishing-returns calculator (RM-UPGRADES; was IDEA-UPGRADES), logged 2026-11-05, nothing built
 
-Xaya, 2026-11-05 (her words): "potential upgrade options based on stat priority wishlist and evolving diminishing return calculator".
+Xaya, 2026-11-05 (her words): "potential upgrade options based on stat priority wishlist and evolving diminishing return calculator". Later the same day: "Move this to a roadmap enhancement consideration with the note that it might require 3rd party plugin support from things like Warcraft log analysis, raidbot sims, bloodmallet/archon.gg style projected value, etc".
 
-Status: **Idea**. She did not call it a roadmap feature. It came straight after the chat word game, which she called "only an idea", so I filed it the same way. Promoting it is her call (question 1). Do not build, scaffold or branch it until then.
+Status: **Candidate** (a roadmap enhancement to RM-CHAR, the Character Toolkit). Nothing built. The file keeps its `IDEA-` name so the history links still work. No `roadmap-features/upgrades` scaffold branch has been made yet: this session may push only to its own branch, so the scaffold waits for her go-ahead. Read this file only when the work starts.
 
 ## 1. How it was read
 - **Upgrade options:** a list of items that would improve her character, ranked by how much.
@@ -46,7 +46,7 @@ So the new parts are a **ranking layer** (her priority turned into a score), **w
 **About two thirds of the maths is built:** the converter, thresholds, lost rating, what-if, and one-item compare. The new work is a score, a source of items and a list. That is smaller and less risky than a new engine. It would also join RM-CHAR (stats) and #321 (item wishlist) into one answer to "what should I chase next". The size is an estimate (M), not a measurement.
 
 ## 6. Questions for Xaya
-1. **Idea or roadmap candidate?** If a candidate, it gets an RM ID and a `roadmap-features/<feature>` branch.
+1. ~~Idea or roadmap candidate?~~ Answered 2026-11-05: a roadmap enhancement consideration (RM-UPGRADES).
 2. **"Stat priority wishlist":**
    - (a) her ranking of stats only;
    - (b) that ranking plus the #321 item wishlist;
@@ -55,3 +55,30 @@ So the new parts are a **ranking layer** (her priority turned into a score), **w
 4. **Where candidates come from:** bags, dungeon and raid loot, the Great Vault, or the #321 list? (Crest upgrades are blocked; see section 3.)
 5. **Items with effects the stat tables don't show** (trinkets, set pieces, sockets): leave them out, list them unranked, or rank them on bare stats with a warning?
 6. **Where it shows:** the Character Toolkit's Gear tab, its own list, item tooltips ("for you: +N"), or a mix?
+7. **Which third-party sources (section 7), and how their data gets in:**
+   - pasted strings only;
+   - data shipped in releases (each site's terms checked first);
+   - a separate desktop program.
+8. **A personal sim already counts diminishing returns, procs and set bonuses.** When sim results are available, should the addon only show them and mark them out of date (section 7.3)? Or should it still rank items itself?
+
+## 7. Third-party sources (Xaya's note, 2026-11-05)
+
+### 7.1 What each one is (checked 2026-11-05)
+| Source | What it gives | About her character? | Source |
+|---|---|---|---|
+| **Warcraft Logs** | Analysis of uploaded combat logs. Public GraphQL API at `warcraftlogs.com/api/v2/client`, reached with an OAuth client ID and secret (client credentials). Public reports only. Rate-limited in points. | Yes, if she uploads her own logs. Other players in the same logs are data about other players (standing rule: stays local). | [API docs](https://www.warcraftlogs.com/api/docs) (seen through a regional copy of the page) |
+| **Raidbots** | Runs SimulationCraft on the string the SimulationCraft addon exports. **Top Gear** sims her bags and their upgrades. **Droptimizer** sims the drops of a raid or dungeon at a chosen difficulty. **Stat Weights** can be turned into a Pawn string. | Yes | [Maxroll guide](https://maxroll.gg/wow/resources/simulationcraft-and-raidbots-guide); [Raidbots support, "Beware of Stat Weights"](https://support.raidbots.com/article/66-beware-of-stat-weights) (updated 30 Aug 2024) |
+| **bloodmallet.com** | SimulationCraft charts per spec: secondary-stat splits and trinkets. Its FAQ says the data is free to use, and asks for links rather than screenshots. No API or licence is stated. Its terms page was not read. | **No.** The charts use a standard profile; its FAQ: "the exact context of your character is missing". Custom charts are for patrons. | [bloodmallet FAQ](https://bloodmallet.com/faq) |
+| **Archon.gg** | What top players use: gear, talents, enchants, gems, trinkets, ranked by popularity across Warcraft Logs parses. Stat priority comes from stats read at fight start, grouped into 250-rating bins and compared with 95% confidence intervals. For retail it recommends simming with Raidbots. | **No**: an aggregate of other players | [Archon FAQ](https://www.archon.gg/wow/articles/help/archon-disclaimers-and-faq) |
+
+### 7.2 How data from them could get in
+Addons have no internet access (ROADMAP section 11), so "plugin support" cannot be a live link. Three routes remain:
+1. **Pasted string.** The player copies text from a site or tool into an XayaUI box. It is data only, never code (the same rule as the profile import). It works with no new program, so it is the first route.
+2. **Data shipped in a release.** A table kept by hand each patch, with its source named (#290). Each site's terms have to be read first. bloodmallet's terms were not read, and no site was found that allows reuse. The data would be generic, not about her character.
+3. **A desktop program** outside the game that writes a data file into the addon folder while the game is closed. The addon reads the file at the next login (inference: addon files load when the game starts). That is a separate program to build, and every player would have to install it. Biggest scope.
+
+### 7.3 How this fits the diminishing-returns half (the weakest point of the note)
+- **Personal direct sims** (Top Gear, Droptimizer) already count diminishing returns, procs, set bonuses and enchants. Raidbots says so: direct sims "will evaluate trinket procs, set bonuses, enchants, weapons". Where those results exist, they beat anything the addon computes. Then the addon's job is to show them in game and **mark them out of date when her gear changes**, not to re-rank.
+- **Stat weights** are where the calculator has real work to do. They are per rating point, at the gear she had when she ran the sim. Converting them to "per 1%" at that point, then re-projecting through the converter as her gear changes, could keep them usable between sims (proposal, untested). Raidbots warns that stat weights are "a simple, coarse approximation at one very specific moment", that they "**only** evaluate the raw primary and secondary stats", and that they can send a player round in a loop of gear swaps. So anything ranked from weights is labelled as an estimate.
+- **Generic sources** (bloodmallet, Archon) could set a starting priority per spec. The calculator then values items at her own stats. They are the least about her character.
+- **What the addon adds over the websites:** the answer in game, at the moment it matters (a drop in a dungeon, an item in her bags), without leaving the game. That is the case for building it at all (inference). Droptimizer already answers "what are my upgrades" outside the game, and answers it better.
