@@ -191,9 +191,15 @@ Open questions: 7, listed in the project document (section 6) and in the #278 co
 | RM-CODECOND | Conditions with a "run custom code" outcome (screen 6) | Candidate (future) | Code is never kept from imports (Profile.lua) |
 | #268 | 9-point anchors | Open, high priority | Screen 8 read as the wording answer (this point -> anchored to -> the target's point); to be confirmed |
 
+### Logged 2026-11-05 (load on demand: the detail is in `docs/plans/GAMES-MODULE-2026-11-05.md`; read it only when the work starts)
+
+| ID | Feature | Status | Weakest point | Open questions |
+|---|---|---|---|---|
+| RM-GAMES | **Games module** (Xaya, 2026-11-05: "LFG simulator and Wordle with friends, different game modes, puzzle modes, community submitted games"). Proposed: its own `## LoadOnDemand: 1` addon, like `XayaUI_Options`. First stage: one solo word game with a daily mode (puzzle picked from the date, so friends get the same one with no messages) and a practice mode. The word game has its own name, look and word list: Wordle's are not used. | Candidate, nothing built | Community games: addons have no internet access and shared code is never run, so players can share only puzzle data (word lists, puzzles), never new kinds of game. Live play relies on addon messages, which can be throttled or locked down at times the reference does not state. "LFG simulator" is undefined. | Nine questions in the plan's section 6. First: what "LFG simulator" means, and whether "load on demand only" meant the addon, this documentation, or both. |
+
 ## 10. Waiting on a decision
 
-These are logged and need an answer before work starts: #79, #80, #81, #82 (gated panes); #87 (backup); #90 (what happens when a Specialization or Role is unticked); #108 (skeleton rules); #115 and #117 (engine per-frame step, periodic snapshot); #123 (options refactor); #126 (gradient cursor trail); #151 (loaded-rule safeguard); #188 (rule build assistant); the five new candidates (#321 to #325); and the seven tester requests in #278 (meaning of item 2, scope and design of items 5 to 7, volume and texture approach).
+These are logged and need an answer before work starts: #79, #80, #81, #82 (gated panes); #87 (backup); #90 (what happens when a Specialization or Role is unticked); #108 (skeleton rules); #115 and #117 (engine per-frame step, periodic snapshot); #123 (options refactor); #126 (gradient cursor trail); #151 (loaded-rule safeguard); #188 (rule build assistant); the five new candidates (#321 to #325); RM-GAMES (games module, nine questions in its plan); and the seven tester requests in #278 (meaning of item 2, scope and design of items 5 to 7, volume and texture approach).
 
 ## 11. Parked or dropped
 

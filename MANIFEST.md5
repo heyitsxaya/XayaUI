@@ -4,7 +4,7 @@ f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 d32239bcb673463ab874e80d47fae504  LICENSE
 abeb912560615db56e33a502dd63da9f  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
-74acac5eb276995c47208b6d09b72a7d  ROADMAP.md
+d3a3eeadb65bd0420a408f21c07a04f7  ROADMAP.md
 95ba07da9476bb45d4e803d662ff2c7f  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 025ce4d2c1f1b462c61cda5ef1e42815  USER-GUIDE.md
@@ -452,6 +452,7 @@ dd5578186e7bd08a7a4d9ecadd75bf82  debug-log/2026-11-04-2338-engine-garbage-measu
 69ffe23eb4ff195f29d0c1f718564a03  debug-log/2026-11-04-2341-cursor-trail-cost-qol-0.7.13.md
 3c9a6dacd74999b270dbe3dadeb5aa40  debug-log/2026-11-04-2344-chat-pieces-every-tab-whispers-chat-0.6.12.md
 842f92774a782b67439718e1e9414090  debug-log/2026-11-04-2345-spell-search-scope-options-0.6.37.md
+d741eecfb72e435964d053525b65a49a  debug-log/2026-11-05-1354-roadmap-games-module.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -461,6 +462,7 @@ d219067bc85426f02913fb1b3eece809  docs/issue-screenshots/toolkit-spells-id-place
 2edfd954de3e0f9b0ecffe4974a91398  docs/issue-screenshots/toolkit-what-if-tab.png
 a2e49515e283e72fc94f220e8148b746  docs/issue-screenshots/toolkit-window-resize.png
 58ad0a99081eea454e70a353255849e5  docs/plans/AURA-PLAN.md
+5ca23ca57e5553f7112a34099c0207b9  docs/plans/GAMES-MODULE-2026-11-05.md
 25e9cf312a11d30076f032e0a3e750a4  docs/plans/GROUP-PAGE-REVIEW-2026-11-04.md
 633d429f2013d7a9d9bf59092db3bb6d  docs/plans/INSTANCE-CAPTURE-2026-11-04.md
 9a907df3961024106bb6ae03b230abf3  docs/plans/REFERENCE-SCREENS-AND-FEASIBILITY-2026-11-04.md
