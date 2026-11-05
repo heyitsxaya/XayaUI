@@ -8,7 +8,7 @@
 --   * Formatting (toolbar underlined-A button, off by default): a format bar (heading, bullet, checkbox, colors, spell icon) and a formatted view.
 --     Markup is plain text: '# heading', '- bullet', '[ ] / [x] checkbox', |cffRRGGBBtext|r colors, {spell:ID} icon + name.
 --   * Toolbar: at the top, bottom, left, or right of the box; always visible, or only while the mouse is over the box.
---   * Open / close: /xui notepad, the x on the box, or Bonus Features > Notepad. Whether it is open is remembered.
+--   * Open / close: /xui notepad, the x on the box, or the tick box on its row in Bonus Features > Utilities. Whether it is open is remembered.
 --   * Drag the title bar to move, drag the bottom-right corner to resize. "Lock" stops both.
 -- Own code, written against Blizzard's frame API only (no other addon's code or data). UNTESTED in game.
 -------------------------------------------------------------------------------
@@ -1017,7 +1017,9 @@ ev:SetScript("OnEvent", function(_, e)
 end)
 
 -------------------------------------------------------------------------------
--- options page: Bonus Features > "Notepad"
+-- options page: Bonus Features > Utilities > "Notepad" (a part of the Utilities node since Bonus 0.6.11: Utilities.lua)
+-- "Show Notepad" is the tick box on this page's row in the left pane (xuiSwitch; Xaya 2026-11-05: "move all enable/disable toggles
+-- onto the sidebar instead"), the same set as the page's old switch.
 -------------------------------------------------------------------------------
 function ns.BuildNotepadTab(Notify)
     local db = DB()
@@ -1025,10 +1027,12 @@ function ns.BuildNotepadTab(Notify)
     ns.Notepad_Changed = function() if Notify then Notify() end end
     local function g(k) return function() return db[k] end end
     local function s(k) return function(_, v) db[k] = v; ns.Notepad_Refresh() end end
-    return { type = "group", name = "Notepad", order = 11, args = {
+    return { type = "group", name = "Notepad", order = 11,
+      xuiSwitch = { type = "toggle", name = "Show Notepad", desc = "Opens or closes the notepad box (also the x on the box, and /xui notepad).",
+          get = g("shown"), set = function(_, v) ns.Notepad_SetShown(v) end },
+      args = {
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "A small floating box for typed reminders. It holds any number of notes, and nothing you type is lost: your text is saved as you type, earlier versions of each note are kept automatically, and deleted notes go to a trash. The history (clock) button on the toolbar (or the button below) opens the Restore list, and the list button shows all your notes at once. Open or close the box here, with the x on it, or with /xui notepad." },
-        show = { type = "toggle", order = 1, name = "Show Notepad", get = g("shown"), set = function(_, v) ns.Notepad_SetShown(v) end },
+            name = "A small floating box for typed reminders. It holds any number of notes, and nothing you type is lost: your text is saved as you type, earlier versions of each note are kept automatically, and deleted notes go to a trash. The history (clock) button on the toolbar (or the button below) opens the Restore list, and the list button shows all your notes at once. Open or close the box with the tick box next to Notepad on the left, with the x on it, or with /xui notepad." },
         lock = { type = "toggle", order = 2, name = "Lock position and size", desc = "Also the Lock button on the box's title bar.", get = g("locked"), set = s("locked") },
         fmt = { type = "toggle", order = 2.5, name = "Formatting tools", desc = "Adds a format bar (heading, bullet, checkbox, colors, spell icon) and a formatted view. Also the underlined-A button on the toolbar. Notes stay plain text: the formatting is markup you can read and edit.",
             get = g("format"), set = function(_, v) db.format = v and true or false; if not db.format then mode.view = false end; ns.Notepad_Refresh() end },
@@ -1084,7 +1088,7 @@ function ns.BuildNotepadTab(Notify)
 end
 
 function ns.Notepad_OpenSettings()
-    ns.OpenSettingsPage("bonus", "notepad")
+    ns.OpenSettingsPage("bonus", "utilities", "notepad")   -- Bonus Features > Utilities > Notepad (Bonus 0.6.11)
 end
 
 -------------------------------------------------------------------------------
@@ -1094,4 +1098,4 @@ ns.WhenReady(ns.Notepad_OnDBReady)
 ns.RegisterCommand({ "notes", "notepad", "note" }, function() ns.Notepad_Toggle() end, "/xui notes (show / hide the notepad)")
 ns.RegisterLauncher({ "notes", "Notes", "Show or hide the notepad (also /xui notes)", function() ns.Notepad_Toggle() end,
     function() local d = ns.notepadDB; return d and d.shown and "on" or "off" end, order = 10 })
-ns.RegisterSettingsPage("bonus", "notepad", ns.BuildNotepadTab)
+-- its settings page is a part of Bonus Features > Utilities (registered by Utilities.lua, Bonus 0.6.11), not a page of its own

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 -- Calculator.lua (Bonus 0.6.8, written 2026-11-04; Xaya: "add a feature: a little calculator"). UNTESTED IN GAME.
---   * /xui calc <sum>: the answer in chat, e.g. "/xui calc 23,249 / 3,472" -> "23,249 / 3,472 = 6.696083".
+--   * /xui calc <sum>: the answer in chat, e.g. "/xui calc 23,249 / 3,472" -> "23,249 / 3,472 = 6.696141" (23249 / 3472 = 6.69614055...; the header said 6.696083 until Bonus 0.6.11).
 --   * /xui calc (nothing after it), or Calculator in the minimap button's list: a small window with a typed line and a keypad.
 --     Enter or = works the sum out; the answer replaces the line so the next sum can build on it; the last sums are listed above.
 --   * What it reads: numbers (3472, 3,472, 3.5, .5), k / m / b after a number (12k = 12,000), + - * / ^, x or the multiply sign,
@@ -302,6 +302,26 @@ end
 function ns.Calculator_Toggle()
     local f = Build()
     if f:IsShown() then f:Hide() else f:Show(); f.edit:SetFocus() end
+end
+-- the settings page's "Open calculator" button: shows the window (never closes it) with the cursor in the typed line
+function ns.Calculator_Open()
+    local f = Build()
+    f:Show(); f.edit:SetFocus()
+end
+
+-- Settings: Bonus Features > Utilities > Calculator (Bonus 0.6.11; Xaya 2026-11-05: "Under bonus features, create "Utilities" Group
+-- and nest Notepad and Calculator"). What it is and how to open it, from this file's header; it has nothing to switch on or off, so
+-- its row in the left pane has no tick box. Built only when the settings window draws (Utilities.lua).
+function ns.BuildCalculatorPage()
+    return { type = "group", name = "Calculator", order = 1, args = {
+        about = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = "A small calculator: a window with a typed line and a keypad. Enter or = works the sum out; the answer replaces the line so the next sum can build on it, and the last sums are listed above it." },
+        reads = { type = "description", order = 1, width = "full", fontSize = "medium",
+            name = "It reads numbers (3472, 3,472, 3.5, .5), k / m / b after a number (12k = 12,000), + - * / ^, x or the multiply sign, the divide sign, % after a number (15% = 0.15), brackets and a leading minus. Nothing else: no functions, no variables. What you type is never run as code." },
+        how = { type = "description", order = 2, width = "full", fontSize = "medium",
+            name = "Open it with the button below, with /xui calc, or with Calculator in the minimap button's list. /xui calc with a sum after it gives the answer in chat: /xui calc 23,249 / 3,472 prints 23,249 / 3,472 = 6.696141." },
+        open = { type = "execute", order = 3, name = "Open calculator", func = function() ns.Calculator_Open() end },
+    } }
 end
 ns.Calculator_Press = function(key) Build(); Press(key) end   -- (tests press keys through this)
 

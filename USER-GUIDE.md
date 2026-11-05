@@ -498,7 +498,7 @@ The Class/Spec Rule Creator builds a first batch of rules for you. Pick your spe
 
 The rules it creates are skeletons: they watch for the cooldown or aura but show and play nothing until you decide what each one should do.
 
-**Where:** Rules > Class/Spec Rule Creator (the far-right sub-tab). Press a spec button, or **Auto-populate for my class (all specs)**, then find the new folder under Smart Categories. **Scan all talents now** (or `/xui talents`) refreshes the talent data.
+**Where:** Rules > Class/Spec Rule Creator (the far-right sub-tab). Press a spec button, or **Auto-populate for my class (all specs)**, then find the new folder under Smart Categories. The talent data (every class, spec and hero talent tree, read from the game) is refreshed under Settings > UI Options > Rule Creation > **All talents (every class and spec)**: **Scan all talents now**, or `/xui talents`; that section also shows when the last scan ran.
 
 ### 12.2 Rule Drafts
 
@@ -537,17 +537,17 @@ Info panels for the screen, each holding 1 to 20 data slots: a **Left Panel** an
 
 Each slot is a **block** with its own gaps, alignment, text scale, background, and text color. Rows can size blocks automatically or split them evenly, and a block can fill the remaining space. Each panel also has its own width, height, growth direction (horizontal or vertical), backdrop and border, colors, frame layer, tooltip placement, a hide-in-combat option, and a visibility macro. The General page sets the font, outline, and size, and can block clicks and mouseover during combat. The Chat Bar of the Chat Panel (section 12.10) uses the same block engine and data-type list.
 
-**Where:** Bonus Features > Custom Data Panels and Bars (XayaUI Bonus Features), or `/xui data`; right-click any panel to jump there. Everything is on the **General** tab as sections: a master switch (**Enable Custom Data Panels and Bars**) shows or hides all panels and the sections below it, and each section (Left Panel, Right Panel, Center Panel, Custom Panels) opens its settings once its own Enable switch is on. **Add a custom panel** creates another panel; **Remove this panel** deletes it. On the center and custom panels, **Unlock to drag** (fixed width only) lets you place them; a blue border shows while unlocked.
+**Where:** Bonus Features > Custom Data Panels and Bars (XayaUI Bonus Features), or `/xui data`; right-click any panel to jump there. The master switch is the tick box next to **Custom Data Panels and Bars** in the left pane (hover it: **Enable Custom Data Panels and Bars**): it shows or hides all panels and the sections of the page. Everything else is on the **General** tab as sections, and each section (Left Panel, Right Panel, Center Panel, Custom Panels) opens its settings once its own Enable switch is on. **Add a custom panel** creates another panel; **Remove this panel** deletes it. On the center and custom panels, **Unlock to drag** (fixed width only) lets you place them; a blue border shows while unlocked.
 
 ### 12.4 Notepad
 
-Notepad is a movable, resizable box for typed reminders. It holds any number of notes, with a row of icon buttons to create (plus sign), duplicate (two pages), delete (trash bin), and flip between notes (small arrows). Hover over any icon to see what it does. The bar at the top is just the Notepad label with Lock and the close button; the row under it is the note's name. A new note is named after its position (Note 1, Note 2, and so on, shown in grey). Click the name box (it has a pencil icon) to type your own name, press Enter to keep it, or Esc to cancel; clearing it goes back to the default. Names show in the list of notes and stay on your computer: sharing, exporting, and importing carry only the note text. When the box is too narrow for the icon row, the icons wrap onto more rows. As the box grows past its default size the icon row grows with it, up to twice the size. If the image icons do not show, turn on QoL UI Updates > Notepad > Toolbar > Use simple line icons. Text saves as you type, and earlier versions of every note are kept automatically: a new version after a pause in typing, and always just before a big chunk of text is removed. Deleted notes go to a trash, and the history button (a clock with a counter-clockwise arrow) opens a Restore list of earlier versions and deleted notes (up to 20 versions per note, 30 in the trash, 8,000 characters per note). The toolbar can sit at the top, bottom, left, or right, and can appear only when your mouse is over the box. Choose the font, size, backdrop opacity, and frame layer; lock it in place; hide it in combat; and have it release the keyboard when combat starts so it never steals your keybinds. Open it with `/xui notepad`, the close button on the box, or the QoL UI Updates > Notepad page.
+Notepad is a movable, resizable box for typed reminders. It holds any number of notes, with a row of icon buttons to create (plus sign), duplicate (two pages), delete (trash bin), and flip between notes (small arrows). Hover over any icon to see what it does. The bar at the top is just the Notepad label with Lock and the close button; the row under it is the note's name. A new note is named after its position (Note 1, Note 2, and so on, shown in grey). Click the name box (it has a pencil icon) to type your own name, press Enter to keep it, or Esc to cancel; clearing it goes back to the default. Names show in the list of notes and stay on your computer: sharing, exporting, and importing carry only the note text. When the box is too narrow for the icon row, the icons wrap onto more rows. As the box grows past its default size the icon row grows with it, up to twice the size. If the image icons do not show, turn on Bonus Features > Utilities > Notepad > Toolbar > Use simple line icons. Text saves as you type, and earlier versions of every note are kept automatically: a new version after a pause in typing, and always just before a big chunk of text is removed. Deleted notes go to a trash, and the history button (a clock with a counter-clockwise arrow) opens a Restore list of earlier versions and deleted notes (up to 20 versions per note, 30 in the trash, 8,000 characters per note). The toolbar can sit at the top, bottom, left, or right, and can appear only when your mouse is over the box. Choose the font, size, backdrop opacity, and frame layer; lock it in place; hide it in combat; and have it release the keyboard when combat starts so it never steals your keybinds. Open or close it with `/xui notepad`, the close button on the box, or the tick box next to Notepad in the settings window's left pane (Bonus Features > Utilities).
 
 **Undo and redo:** in the typing box, Ctrl+Z undoes and Ctrl+Y or Ctrl+Shift+Z redoes. Quick typing is one step, a pause or a big paste or delete is its own step, and clearing a note or restoring an earlier version is a step too. Each note has its own history for up to 200 steps while the game is running; it is not saved.
 
 The list button (three bulleted lines) shows every note in the box at once; click one to open it. The underlined **A** button turns on formatting tools: a format bar (heading, bullet, checkbox, red, yellow, green, and blue text, spell link) and a formatted view that you switch to with **View** and click to edit again. Notes stay plain text: `# Heading`, `- bullet`, `[ ] task` and `[x] done`, `|cffRRGGBBtext|r` colors, and `{spell:...}` (type a spell ID, a spell name, or paste a spell link between the braces; the formatted view shows the spell's icon and name, and an unknown spell stays visible in grey). The menu button (three horizontal lines) shares the current note to chat, or exports and imports notes. **Share** sends the note to your party, raid, instance group, guild, or one player: a header line (and optionally the first lines of the text) goes to chat, and other XayaUI users get a small window offering the note, with Save as new note, Dismiss, and Block sender. Nothing is saved without a click, and shared text is cleaned of links, textures, and escape codes. Addon messages are paused during boss encounters and some restricted content, and a long note takes up to about half a minute to send. **Export** gives a block of text (this note or all notes) to copy; **Import** reads such a block, or any plain text as one note, and adds the notes at the end of your list.
 
-**Where:** Bonus Features > Notepad (XayaUI Bonus Features), or `/xui notes` (also `/xui notepad`), which shows or hides the box. Drag the title bar to move and the bottom-right corner to resize; **Lock** stops both.
+**Where:** Bonus Features > Utilities > Notepad (XayaUI Bonus Features); the tick box on its row in the left pane shows or hides the box, and so does `/xui notes` (also `/xui notepad`). Drag the title bar to move and the bottom-right corner to resize; **Lock** stops both.
 
 ### 12.4b Calculator
 
@@ -557,6 +557,8 @@ A little calculator, part of XayaUI Bonus Features.
 - **The window:** `/xui calc` with nothing after it, or **Calculator** in the minimap button's list, shows or hides a small window. Type a sum and press Enter, or use the keypad and **=**. The answer replaces the sum, so the next sum can build on it (press **×** then 2 to double it). **C** clears. The last three sums show above the line; the last ten are kept. Drag the title bar to move it; Escape or **x** closes it.
 - **What a sum can hold:** numbers (`3472`, `3,472`, `3.5`, `.5`), `k`, `m` or `b` right after a number (`12k` is 12,000), `+ - * / ^`, `x` or **×** for times, **÷** for divide, `%` after a number (`15%` is 0.15, so `200*15%` is 30), and brackets. Powers come before a leading minus: `-2^2` is -4. Commas must sit between groups of three digits.
 - Answers show commas and up to six decimals. A sum that cannot be worked out says why (for example "cannot divide by zero") instead of giving an answer. What you type is only ever read as a sum; it is never run as code.
+
+**Where:** Bonus Features > Utilities > Calculator: what it reads and how to open it, and an **Open calculator** button. It has nothing to switch on or off, so its row has no tick box.
 
 ### 12.5 Addon Theming and Color Customization
 
@@ -657,7 +659,7 @@ Two separate effects (XayaUI QoL) that make the mouse cursor easy to find. Both 
 - **Cursor Highlight:** a colored shape (or a picture from the game's own cursor art) drawn at the cursor. Tabs: Shape | Color and Size | Behavior (only in combat, hide while turning the camera).
 - **Gradient Cursor Trail:** a trail of dots whose colors run through a gradient (ready-made or your own, 2 to 6 colors). Tabs: Colors | Dots | Behavior (trail length, hide while turning the camera).
 
-**Where:** QoL > Cursor. The Cursor page has an on/off switch for each; the two effects are listed under Cursor in the left pane, each with its own page. `/xui cursor` opens the Cursor page; `/xui cursor highlight` and `/xui cursor trail` open one effect. The tabs appear once that effect is on.
+**Where:** QoL > Cursor. The two effects are listed under Cursor in the left pane, each with its own page; the tick box just left of each one's name in that list turns it on or off. `/xui cursor` opens the Cursor page; `/xui cursor highlight` and `/xui cursor trail` open one effect. The tabs appear once that effect is on.
 
 ### 12.12 Character Toolkit
 
@@ -704,16 +706,16 @@ A panel beside the character window (XayaUI QoL; its title reads **Stat Calculat
 
 **Character window tooltips:** hovering a stat in the character window adds a short XayaUI block under Blizzard's own text (can be switched off; QoL 0.7.14): the stat map's lines for that stat at your real numbers, in two columns: rating and what it gives, rating per 1%, diminishing returns and the next threshold in words, then what it feeds (parry from crit, armor from mastery, ...). No bars. The numbers you type on the Stats tab do not show here. The panel's own hover does not depend on it.
 
-**Where:** QoL > Character Toolkit. Its own page has the on/off switch and quick switches for the panel, the slot overlays and the tooltip lines. Under it in the left pane:
+**Where:** QoL > Character Toolkit. The tick box on its row in the left pane turns it on or off; once it is on, its parts are listed under it, each with its own tick box (Panel: show the panel; Slot Overlays: the overlays; Spell Math: the spell math). Under it in the left pane:
 - **Panel**, with tabs:
-  - Layout: show the panel, side, detail level (every line or key lines), rating lines (percent or rating), text size, background.
+  - Layout: side, detail level (every line or key lines), rating lines (percent or rating), text size, background.
   - Layout also has Reset size (the size you dragged the panel to).
   - Your numbers (was What If): the All ratings amount, Clear all (every Stats box back to yours), Reset line flips.
   - Tooltips: the character window lines.
 - **Slot Overlays**, with tabs:
-  - Show: slot overlays, item level, empty sockets, enchant check, text size.
+  - Show: item level, empty sockets, enchant check, text size.
   - Enchant Slots: the slots to check for an enchant (this expansion's enchantable slots until you change them).
-- **Spell Math:** the switch; List spells without numbers; adding a spell by ID, name, or shift-clicked link. Per spell: scales with attack or spell power, an optional coefficient, its filter (from its description, Offense, Defense, or both), remove.
+- **Spell Math:** List spells without numbers; adding a spell by ID, name, or shift-clicked link. Per spell: scales with attack or spell power, an optional coefficient, its filter (from its description, Offense, Defense, or both), remove.
 
 `/xui stats` shows or hides the panel (docked when the character window is open, otherwise free and draggable); `/xui stats on`, `off`, `options`, `status`. `/xui stats widthprobe [px]` / `widthprobe off` is a one-off test for the planned wider character window (QoL 0.7.12; QA E1x): it widens the open character window until you turn it off or /reload, and reports any action the game blocks.
 
@@ -740,7 +742,7 @@ Blizzard's character window in XayaUI's look (XayaUI QoL 0.7.14). Only the look 
 
 **Where:** Blizzard UI Reskin > Character Pane (its switch is called Character Reskin). `/xui reskin on`, `off`, `status`, `options`.
 
-**How the settings pages are laid out (all feature tabs, from 0.6.1 on):** a feature is an entry in the left pane, its parts are entries under it, and the sections of one part are tabs. The feature's own page holds its main switches.
+**How the settings pages are laid out (all feature tabs, from 0.6.1 on):** a feature is an entry in the left pane, its parts are entries under it, and the sections of one part are tabs. In the QoL and Bonus Features tabs, a feature or part that has one on / off shows it as a tick box just left of its name in the left pane (hover the box for what it does); clicking the box does not open the page. The feature's own page holds an overview and any other switches.
 
 ### 12.13 Dev Assist (developer tool)
 

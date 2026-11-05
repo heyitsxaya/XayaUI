@@ -407,17 +407,18 @@ function ns.BuildCursorTab(Notify)
             set = function(_, r, g, b) C().custom[i] = { r, g, b }; Changed() end }
     end
 
-    -- Colors | Dots | Behavior tabs under the on/off switch (Xaya, 2026-11-03: a part's sections are tabs)
+    -- Colors | Dots | Behavior tabs (Xaya, 2026-11-03: a part's sections are tabs). The on/off switch is the tick box on this page's
+    -- row in the left pane (xuiSwitch, QoL 0.7.16; Xaya 2026-11-05: "move all enable/disable toggles onto the sidebar instead").
     custom.order = 5
     return {
         type = "group", name = "Gradient Cursor Trail", order = 2, childGroups = "tab",
+        xuiSwitch = { type = "toggle", name = "Gradient cursor trail",
+            desc = "Turns the trail on. While it is off nothing is drawn or polled.",
+            get = function() return C().enabled and true or false end,
+            set = function(_, v) C().enabled = v and true or false; Changed() end },
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "A gradient trail that follows your mouse cursor. Off by default." },
-            enabled = { type = "toggle", order = 1, width = "full", name = "Gradient cursor trail",
-                desc = "Turns the trail on. While it is off nothing is drawn or polled.",
-                get = function() return C().enabled and true or false end,
-                set = function(_, v) C().enabled = v and true or false; Changed() end },
+                name = "A gradient trail that follows your mouse cursor. Off by default: tick the box next to Gradient Cursor Trail on the left to turn it on." },
             colors = {
                 type = "group", name = "Colors", order = 2, hidden = isOff,
                 args = {
@@ -470,22 +471,15 @@ function ns.BuildCursorTab(Notify)
 end
 
 -- The Cursor node of the QoL tab (Xaya, 2026-11-03): its parts, Cursor Highlight and Gradient Cursor Trail, are nodes under it in
--- the left pane; Cursor's own page is an overview with both on/off switches (the same settings as the switch on each part's page).
+-- the left pane. Each part's on/off is the tick box on its own row (QoL 0.7.16; Xaya 2026-11-05: "move all enable/disable toggles
+-- onto the sidebar instead"); Cursor itself has no single switch (two separate effects), so its row has no box and its page is a note.
 function ns.BuildCursorGroup(Notify)
     local hl = ns.BuildCursorHighlightTab and ns.BuildCursorHighlightTab(Notify) or nil
     local tr = ns.BuildCursorTab(Notify)
     local overview = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Two separate effects that make your mouse cursor easy to find. Turn either on here, then pick it on the left to set it up." },
+            name = "Two separate effects that make your mouse cursor easy to find. Turn either on with the tick box on its row on the left, then pick it to set it up." },
     }
-    if hl and hl.args and hl.args.enabled then
-        overview.highlightOn = { type = "toggle", order = 1, width = "full", name = "Cursor Highlight",
-            desc = "A colored shape that follows your mouse cursor.", get = hl.args.enabled.get, set = hl.args.enabled.set }
-    end
-    if tr and tr.args and tr.args.enabled then
-        overview.trailOn = { type = "toggle", order = 2, width = "full", name = "Gradient Cursor Trail",
-            desc = "A gradient trail that follows your mouse cursor.", get = tr.args.enabled.get, set = tr.args.enabled.set }
-    end
     overview.highlight = hl
     overview.trail = tr
     return { type = "group", name = "Cursor", order = 2, childGroups = "tree", args = overview }
