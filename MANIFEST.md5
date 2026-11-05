@@ -92,8 +92,8 @@ e94cfc0c3fc54c4e5188a7aadaf41d90  XayaUI/Media/UI/xui_progresstex.tga
 658ce55fe96abe45fa773744424a3c58  XayaUI/Media/UI/xui_stgroup.tga
 66226a0137e47566a0fd0ce9c41e6bcc  XayaUI/Media/UI/xui_sttexture.tga
 30d50e1964ffdb6d81b4e902ecb5accd  XayaUI/Media/UI/xui_text.tga
-3ffb197c0d26c1eed6d69ec4ba98888a  XayaUI/MinimapButton.lua
-cf9140f607d52ce55a0fa6b68bf657aa  XayaUI/Modules.lua
+be197c19fdae94f6ab8a0407e642dd82  XayaUI/MinimapButton.lua
+2c65c7f9a5aba6a478f5601583f84d02  XayaUI/Modules.lua
 8a7e3eacecc07b76ff48bb9e8ef21d5b  XayaUI/Outcomes.lua
 ac819cb3c0f1c6bd28bdcd33566a74f8  XayaUI/ProcGlows.lua
 b76823560a93ae68a07689af413b01ec  XayaUI/RecycleBin.lua
@@ -107,7 +107,7 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 570c15831b621bb0f2b57518e60eed39  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
 217115660973c1e46cd832ab92fdb0e5  XayaUI/Visual.lua
-933713e9269ab528f9cfa9b3102874db  XayaUI/XayaUI.toc
+96ebf8c9b5fcb6c3a23fe69ec9898083  XayaUI/XayaUI.toc
 7de6ddcbf9085bc9d8bc3d7b0dbd95b6  XayaUI_Bonus/Calculator.lua
 7c8c4b6ef4fab8a18001668d5d23932a  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
@@ -474,7 +474,7 @@ cb6bc1c05e9d53be747ebd894280764b  debug-log/2026-11-05-2018-xaya-decisions-bars-
 3ee6f39bd0e39c58907869842586fdd0  debug-log/2026-11-05-2022-stat-calculator-450-rating-change-qol-0.7.21.md
 7ae093ebf5e4a1cf11c934f652ae112e  debug-log/2026-11-05-2024-roadmap-friends-short-commands.md
 4b067d8c979d3a235a6a21cd5b3c5d82  debug-log/2026-11-05-2027-history-active-tab-whisper-tabs-chat-0.6.15.md
-0ce5125022dc643592d475c4e344079f  debug-log/2026-11-05-2052-stat-calculator-window-stats-weights-qol-0.7.23.md
+a74c9d31e5676786851ceffb82455e9e  debug-log/2026-11-05-2052-stat-calculator-window-stats-weights-qol-0.7.23.md
 5e1bee6867620a007c5ea4bbeecbbcbc  debug-log/2026-11-05-2154-stat-calculator-spells-compare-qol-0.7.24.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png

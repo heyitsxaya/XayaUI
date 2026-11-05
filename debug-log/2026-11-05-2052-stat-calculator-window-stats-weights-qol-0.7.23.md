@@ -1,4 +1,4 @@
-# Stat Calculator: window (button, saved state, minimap row, Min / Max), one Character Stats section, Stat Weights (XayaUI_QoL 0.7.23, core 0.6.48)
+# Stat Calculator: window (button, saved state, minimap row, Min / Max), one Character Stats section, Stat Weights (XayaUI_QoL 0.7.23, core 0.6.49)
 Logged 2026-11-05 20:52 UTC. Worktree branch on the session branch `claude/adoring-hawking-wyda59`: started at 907475b (QoL 0.7.21),
 merged the session branch at 0f05ad6 (main efab00a: QoL 0.7.21 "Stat Calculator opens 450 wide, Rating 528 +172"; this branch's
 character pane build relabelled QoL 0.7.22) before the final run, so this batch is QoL 0.7.23. Nothing here has run in the game
@@ -24,7 +24,7 @@ character pane build relabelled QoL 0.7.22) before the final run, so this batch 
 ## Scope (V4; `git grep` for Launchers / RegisterLauncher, userHidden, Toggle, ShowIfDocked, c.size, whatIf / "all" / map_all,
 ## durability / repair / MoneyText / SlotRepairCost / GetRepairAllCost / MERCHANT_ / UPDATE_INVENTORY_DURABILITY, gearSum, map_weapon /
 ## map_regen / map_ranged, Primary stats / Secondary stats / Offense (what feeds it), noAll, MAP_KEY)
-- Core 0.6.48: a launcher entry may carry `available = function` (`XayaUI/Modules.lua` documents it); `XayaUI/MinimapButton.lua`
+- Core 0.6.49 (written as 0.6.48; relabelled because PR #407 uses 0.6.48 for Triggers.lua, at the combined-push coordination of 2026-11-05): a launcher entry may carry `available = function` (`XayaUI/Modules.lua` documents it); `XayaUI/MinimapButton.lua`
   leaves an entry whose `available()` is false out of the list (`Visible`, read each time the list opens) and hides its row on
   Settings > Minimap Button (`hidden` function). Readers of the list: those two only. (A first version added `ns.UnregisterLauncher`
   and took the row out of the list on switch-off; the full suite's `tests/sidebar_switches_run.py` failed 2 checks with it: "the options
