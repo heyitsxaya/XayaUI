@@ -79,8 +79,8 @@ The research and outline are on branch `roadmap-features/games`: `roadmap-featur
    - (c) Something else.
 2. **"Load on demand only":** does it mean the addon (1.1 reading 1), keeping the documentation out of the start-up summary (reading 2), or both? Both are applied for now.
 3. **The game's name.**
-4. **Modes and puzzle types:** which ones, and which first?
-5. **Word list:** where it comes from, and which languages.
+4. **Modes and puzzle types:** which ones, and which first? **Answered in part (Xaya, 2026-11-05):** "Minesweeper", "Sudoku".
+5. **Word list:** where it comes from, and which languages. **Answered (Xaya, 2026-11-05):** "For wordle: wow trivia edition (uses words from in-wow)". The words are read from the client at runtime (zones, dungeons, races, classes, specs, mounts, factions), so no list ships and every client language works. Outline: `roadmap-features/games/XayaUI_Games/Games/Word/WordPool.lua`, which also holds the new questions W1-W3.
 6. **In combat:** close the game, hide it, or leave it open?
 7. **"With friends":** group, guild and whisper only, or Battle.net friends too? Async first?
 8. **Community games:** is data-only acceptable, meaning puzzle packs only and never shared code?

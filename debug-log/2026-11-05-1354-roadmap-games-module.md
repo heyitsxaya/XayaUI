@@ -34,3 +34,5 @@ Not verified in game: every API point in the plan. Each stage starts with an in-
 Update (2026-11-05 14:02 UTC): Xaya asked for "Rough scaffolding and proposed code structure (outline only) in a dedicated “roadmap features: ______” brand per feature". Built on branch `roadmap-features/games` (commit 0bf0e8f; its own debug-log entry is there). Here: the convention is added to SESSION-START-SUMMARY.md section 2, and the RM-GAMES row now points to the branch.
 
 Update (2026-11-05 14:16 UTC): arcade games and Xaya's gates (her own folder; a "Games" tab switch; nothing runs unless called). Research and outline on `roadmap-features/games` (commit 129f0ba, `debug-log/2026-11-05-1414-games-arcade-feasibility-gates.md` there). Here: the RM-GAMES row and plan section 5b point to it.
+
+Update (2026-11-05 15:00 UTC): Xaya picked mine-sweeping and sudoku, and the word game as a "wow trivia edition (uses words from in-wow)". Outline on `roadmap-features/games` (commit a86f6d0, `debug-log/2026-11-05-1500-games-picks-mines-sudoku-wow-trivia.md` there). Here: plan questions 4 (in part) and 5 are marked answered, and the RM-GAMES row lists her picks.
