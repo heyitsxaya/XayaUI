@@ -107,6 +107,7 @@ Issue numbers refer to this repository. Small interface tweaks, wording changes,
 | #259 | Condensed option panes: a checkbox with an inline dropdown that appears only when ticked | Open | |
 | #231 | Right-click empty space in the Rules sidebar for New Rule, New Group, New Dynamic Group | Built, unverified in game | `XayaUI_Options/Options.lua` (right-click on empty sidebar space). Found by the 2026-11-04 old-branch audit. |
 | #291 | Import opens its own window and goes into its own folder | Open | |
+| (Xaya 2026-11-05) | On / off tick boxes in the QoL and Bonus Features left pane ("move all enable/disable toggles onto the sidebar"); Bonus Features > Utilities with Calculator and Notepad; the talent scan in Settings > UI Options > Rule Creation | Built (Options 0.6.40, QoL 0.7.18, Bonus 0.6.11), unverified in game (QA B131, E3, F7, F8); five decisions open | Open: (1) Tooltips has four section switches and no master: make the sections rows with a box each, add a master, or leave it; (2) the Character Toolkit's "Tooltip lines" has no row (stays on Panel > Tooltips): its own row?; (3) "Show Notepad" as the Notepad's box, and whether V14 covers the Notepad's always-on pieces; (4) Utilities order: Calculator, Notepad (by name) or Notepad first; (5) the same for the Blizzard UI Reskin tab? Debug log 2026-11-05-1612. |
 
 ## 6. Quality of life
 
@@ -209,7 +210,7 @@ Open questions: 7, listed in the project document (section 6) and in the #278 co
 
 ## 10. Waiting on a decision
 
-These are logged and need an answer before work starts: #79, #80, #81, #82 (gated panes); #87 (backup); #90 (what happens when a Specialization or Role is unticked); #108 (skeleton rules); #115 and #117 (engine per-frame step, periodic snapshot); #123 (options refactor); #126 (gradient cursor trail); #151 (loaded-rule safeguard); #188 (rule build assistant); the five new candidates (#321 to #325); RM-GAMES (games module, nine questions in its plan); RM-RPPM (where it shows and where its numbers come from); and the seven tester requests in #278 (meaning of item 2, scope and design of items 5 to 7, volume and texture approach).
+These are logged and need an answer before work starts: #79, #80, #81, #82 (gated panes); #87 (backup); #90 (what happens when a Specialization or Role is unticked); #108 (skeleton rules); #115 and #117 (engine per-frame step, periodic snapshot); #123 (options refactor); #126 (gradient cursor trail); #151 (loaded-rule safeguard); #188 (rule build assistant); the five new candidates (#321 to #325); the sidebar tick-box questions (section 5, 2026-11-05); RM-GAMES (games module, nine questions in its plan); RM-RPPM (where it shows and where its numbers come from); and the seven tester requests in #278 (meaning of item 2, scope and design of items 5 to 7, volume and texture approach).
 
 ## 11. Parked or dropped
 

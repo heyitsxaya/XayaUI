@@ -1453,12 +1453,14 @@ function ns.BuildCharToolkitPage(Notify)
             set = function(_, v) C()[key] = v and true or false; Changed() end }
     end
 
+    -- each part's on/off (and the toolkit's own) is the tick box on its row in the left pane: xuiSwitch (QoL 0.7.18; Xaya 2026-11-05:
+    -- "move all enable/disable toggles onto the sidebar instead"), the same Toggle as the switch the page had
     local spells = {
         type = "group", name = "Spell Math", order = 30, hidden = isOff,
+        xuiSwitch = Toggle("advanced", 1, "Spell Math", "Shows the Spells tab's spell math in the panel (advanced)."),
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "The Spells tab lists every active spell of your current spec's spellbook that has numbers in its description, and the spells you add here first (any spell ID). For each: every number in its current description divided by your current attack power (or spell power), and what one point of your primary stat adds. This is the ratio right now, with talents and buffs already applied; it is not Blizzard's base coefficient. You can type a coefficient from a database such as Wowhead to compare." },
-            advanced = Toggle("advanced", 1, "Spell Math", "Shows the Spells tab's spell math in the panel (advanced).", "full"),
             spellsAll = Toggle("spellsAll", 1.5, "List spells without numbers",
                 "Also list spellbook spells whose description has no amount to measure (they show \"none in the description\").", "full"),
             add = { type = "input", order = 2, width = "double", name = "Add a spell",
@@ -1510,9 +1512,9 @@ function ns.BuildCharToolkitPage(Notify)
 
     local panelPart = {
         type = "group", name = "Panel", order = 10, childGroups = "tab", hidden = isOff,
+        xuiSwitch = Toggle("panel", 1, "Show the panel", "Beside the character window whenever it opens. /xui stats shows it on its own."),
         args = {
             layout = { type = "group", name = "Layout", order = 1, args = {
-                panel = Toggle("panel", 1, "Show the panel", "Beside the character window whenever it opens. /xui stats shows it on its own."),
                 side = { type = "select", order = 2, name = "Side", values = { right = "Right", left = "Left" },
                     desc = "Which side of the character window the panel docks to.",
                     get = function() return C().side end, set = function(_, v) C().side = v; Changed() end },
@@ -1576,9 +1578,9 @@ function ns.BuildCharToolkitPage(Notify)
     end
     local overlayPart = {
         type = "group", name = "Slot Overlays", order = 20, childGroups = "tab", hidden = isOff,
+        xuiSwitch = Toggle("overlays", 1, "Slot overlays", "Marks on the character window's item slots. Off by default."),
         args = {
             show = { type = "group", name = "Show", order = 1, args = {
-                overlays = Toggle("overlays", 1, "Slot overlays", "Marks on the character window's item slots. Off by default.", "full"),
                 ovIlvl = Toggle("ovIlvl", 2, "Item level", "The item's level, at the bottom of the slot."),
                 ovSockets = Toggle("ovSockets", 3, "Empty sockets", "How many empty sockets the item's stat table lists (for example 2S), at the top."),
                 ovEnchants = Toggle("ovEnchants", 4, "Enchant check", "E? on a ticked slot with no enchant, E when it has one. This expansion's enchantable slots are ticked until you pick your own on the Enchant Slots tab."),
@@ -1591,13 +1593,10 @@ function ns.BuildCharToolkitPage(Notify)
 
     return {
         type = "group", name = "Character Toolkit", order = 3, childGroups = "tree",
+        xuiSwitch = Toggle("enabled", 1, "Character Toolkit", "Turns the toolkit on. While it is off nothing is created, registered or read."),
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "A panel beside the character window: every stat the game gives, where each number comes from, what the next point buys, what each stat feeds (type your own numbers to see the change), and a gear comparison. What the game does not give is marked, never guessed. Turn it on here, then pick a part on the left. Off by default." },
-            enabled = Toggle("enabled", 1, "Character Toolkit", "Turns the toolkit on. While it is off nothing is created, registered or read.", "full"),
-            panelOn = Toggle("panel", 2, "Panel", "The stat panel beside the character window.", nil, isOff),
-            overlaysOn = Toggle("overlays", 3, "Slot overlays", "Item level, empty sockets and enchant marks on the character window's slots.", nil, isOff),
-            tooltipsOn = Toggle("tooltips", 4, "Tooltip lines", "The toolkit's lines under the character window's own stat tooltips.", nil, isOff),
+                name = "A panel beside the character window: every stat the game gives, where each number comes from, what the next point buys, what each stat feeds (type your own numbers to see the change), and a gear comparison. What the game does not give is marked, never guessed. Turn it on with the tick box on its row on the left; its parts (Panel, Slot Overlays, Spell Math) then show under it, each with its own tick box. The tooltip lines are on Panel > Tooltips. Off by default." },
             panelPart = panelPart,
             overlayPart = overlayPart,
             spells = spells,
