@@ -1023,11 +1023,48 @@ function CM.LinkEnchanted(link)
     return f ~= "" and f ~= "0"
 end
 
+-- The sockets of an equipped item and the gem in each (QoL 0.7.19; Xaya 2026-11-05: "show gem sockets and gems socketed"). The same
+-- calls the game's own socket display makes (PaperDollFrame.lua, PaperDollItemSocketDisplayMixin:SetItem, live 12.1.5 source, read
+-- 2026-11-05; the game shows that display only for Timerunning characters: "item ~= nil and PlayerIsTimerunning()"):
+--   C_Item.GetItemNumSockets(itemInfo: ItemInfo) → socketCount: number · SecretArguments=AllowedWhenUntainted (namespaces.md:2786)
+--   C_Item.GetItemGemID(itemInfo: ItemInfo, index: luaIndex) → gemID: number · MayReturnNothing, SecretArguments=AllowedWhenUntainted (:2765)
+--   C_Item.GetItemIconByID(itemInfo: ItemInfo) → icon: fileID? · SecretArguments=AllowedWhenUntainted (:2770)
+--   C_Item.GetItemGem(hyperlink: cstring, index: luaIndex) → gemName: string, gemLink: cstring · MayReturnNothing,
+--     SecretArguments=AllowedWhenUntainted (:2764)
+-- Returns one entry per socket, { gemID, icon, name, link } (all nil for an empty socket), or nil when the count cannot be read or a
+-- read is secret: then no socket is shown (nothing guessed). A socket without a gem ID is empty (INFERENCE: the game's own display
+-- shows a gem only where GetItemGemID returns one). At most 3, as the game's display has three places (INFERENCE that no item has more).
+CM.MAX_SOCKETS = 3
+function CM.SlotSockets(link)
+    if type(link) ~= "string" or IsSecret(link) or not (C_Item and C_Item.GetItemNumSockets) then return nil end
+    local n = N(C_Item.GetItemNumSockets, link)
+    if not num(n) then return nil end
+    local out = {}
+    for i = 1, math.min(math.floor(n), CM.MAX_SOCKETS) do
+        local id = C_Item.GetItemGemID and N(C_Item.GetItemGemID, link, i) or nil
+        if id == HIDDEN then return nil end
+        local g = {}
+        if num(id) and id > 0 then
+            g.gemID = id
+            local icon = C_Item.GetItemIconByID and R(C_Item.GetItemIconByID, id) or nil
+            if icon ~= nil and icon ~= HIDDEN then g.icon = icon end
+            local name, glink = R(C_Item.GetItemGem, link, i)
+            if type(name) == "string" and name ~= "" then g.name = name end
+            if type(glink) == "string" and glink ~= "" then g.link = glink end
+        end
+        out[i] = g
+    end
+    return out
+end
+
 -- Everything one equipped slot shows: link, item level, listed ratings, empty sockets, enchant, durability.
+-- Empty sockets (QoL 0.7.19): sockets without a gem (CM.SlotSockets), no longer the stat table's EMPTY_SOCKET_ count, which lists the
+-- item's sockets whether a gem is in them or not (INFERENCE from Xaya's screenshot of 2026-11-05: "1S" / "2S" marks on slots whose
+-- gems are in; the API docs do not say). The stat table's socket keys are kept for the socket type on hover (socketTypes).
 function CM.SlotInfo(slot)
     local link = R(GetInventoryItemLink, "player", slot)
     if type(link) ~= "string" then return nil end
-    local s = { slot = slot, link = link, ilvl = ItemLevel(link), sockets = 0, ratings = {} }
+    local s = { slot = slot, link = link, ilvl = ItemLevel(link), sockets = 0, ratings = {}, socketTypes = {} }
     local st = ItemStats(link)
     s.statsRead = st ~= nil
     if st then
@@ -1037,9 +1074,11 @@ function CM.SlotInfo(slot)
             if num(v) and v ~= 0 then s.ratings[#s.ratings + 1] = { gs[2], v } end
         end
         for k, v in pairs(st) do
-            if type(k) == "string" and k:find("^EMPTY_SOCKET_") and num(v) then s.sockets = s.sockets + v end
+            if type(k) == "string" and k:find("^EMPTY_SOCKET_") and num(v) and v > 0 then s.socketTypes[k] = v end
         end
     end
+    s.gems = CM.SlotSockets(link)
+    for _, g in ipairs(s.gems or {}) do if not g.gemID then s.sockets = s.sockets + 1 end end
     s.enchanted = CM.LinkEnchanted(link)
     local dc, dm = R(GetInventoryItemDurability, slot)
     if num(dc) and num(dm) and dm > 0 then s.dur, s.durMax = dc, dm end
@@ -1082,14 +1121,16 @@ end
 -- What the overlay on one character-window slot shows: { ilvl = text or nil, marks = { { text, tone, why } } }.
 -- opts: { ilvl = bool, sockets = bool, enchants = bool, enchantSlots = { [slot] = true }, enchantDefault = bool }.
 -- "No enchant" is flagged only on the slots in enchantSlots (CM.EnchantSlots: this expansion's slots, or the player's own ticks).
+-- No item level on the shirt and the tabard (QoL 0.7.19; their item level is 1 and says nothing; the Gear tab leaves them out too).
+CM.NO_ILVL = { [4] = true, [19] = true }
 function CM.SlotOverlay(slot, opts)
     opts = opts or {}
     local s = CM.SlotInfo(slot)
     local o = { marks = {} }
     if not s then return o end
-    if opts.ilvl ~= false and s.ilvl then o.ilvl = tostring(math.floor(s.ilvl + 0.5)) end
+    if opts.ilvl ~= false and s.ilvl and not CM.NO_ILVL[slot] then o.ilvl = tostring(math.floor(s.ilvl + 0.5)) end
     if opts.sockets ~= false and s.sockets > 0 then
-        o.marks[#o.marks + 1] = { s.sockets .. "S", "warn", ("%d empty socket%s (the item's stat table lists it)"):format(s.sockets, s.sockets == 1 and "" or "s") }
+        o.marks[#o.marks + 1] = { s.sockets .. "S", "warn", ("%d empty socket%s (no gem in it)"):format(s.sockets, s.sockets == 1 and "" or "s") }
     end
     if opts.enchants ~= false and opts.enchantSlots and opts.enchantSlots[slot] then
         if s.enchanted == false then
@@ -1133,6 +1174,15 @@ end
 -- Enum.TooltipDataLineType.ItemEnchantmentPermanent = 15, enums.md:12639), without the "Enchanted: " the game puts before it
 -- (ENCHANTED_TOOLTIP_LINE, "Enchanted: %s", when the client has it). Returns the name, or nil; the yes / no comes from the link
 -- (CM.LinkEnchanted).
+-- (QoL 0.7.19) The name comes back as plain text: the line's own colour codes, inline icons and link wrappers are taken out, so the
+-- label is drawn in one colour. Xaya's screenshot of 2026-11-05 had one label in purple among the green ones: an item enhancement
+-- ("Ancient Hash'ey Battle Art: ...", an epic Item Enhancement in the client data, docs/reference/content/items.json, subclass 14) whose
+-- line carries the epic colour in its text (INFERENCE: an inline |c code beats the font string's colour; our code only sets green).
+function CM.PlainText(text)
+    if type(text) ~= "string" or IsSecret(text) then return nil end
+    text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|H.-|h(.-)|h", "%1")
+    return (text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", ""))
+end
 local function EnchantPrefixPattern()
     local g = _G.ENCHANTED_TOOLTIP_LINE
     if type(g) ~= "string" or IsSecret(g) or not g:find("%s", 1, true) then return nil end
@@ -1150,7 +1200,8 @@ function CM.SlotEnchant(slot)
         if type(ln) == "table" then
             if TooltipUtil and TooltipUtil.SurfaceArgs and ln.leftText == nil then pcall(TooltipUtil.SurfaceArgs, ln) end
             local t, text = Field(ln, "type"), Field(ln, "leftText")
-            if t == want and type(text) == "string" and text ~= "" then
+            text = (t == want) and CM.PlainText(text) or nil
+            if text and text ~= "" then
                 local pat = EnchantPrefixPattern()
                 local name = pat and text:match(pat) or nil
                 return (name and name ~= "") and name or text
@@ -1531,12 +1582,15 @@ function GearCompareSections(ctx, out)
     for _, gs in ipairs(GEAR_STATS) do
         Row(gs[2], GearStatName(gs[2]), eqStats[gs[1]], newStats and newStats[gs[1]], CM.STAT_COLORS[gs[2] == "speed" and "speed2" or gs[2]])
     end
-    local function Sockets(st)
+    -- (QoL 0.7.19) sockets without a gem, as on the slots (CM.SlotSockets); before, the stat table's count, which lists filled ones too
+    local function Empty(lnk)
+        local g = lnk and CM.SlotSockets(lnk)
+        if not g then return nil end
         local n = 0
-        for k, v in pairs(st or {}) do if type(k) == "string" and k:find("^EMPTY_SOCKET_") and num(v) then n = n + v end end
+        for _, s in ipairs(g) do if not s.gemID then n = n + 1 end end
         return n
     end
-    Row("sockets", "Empty sockets", Sockets(eqStats), newStats and Sockets(newStats), nil, true)
+    Row("sockets", "Empty sockets", old and Empty(old.link), link and Empty(link), nil, true)
     if old or link then
         local it = Item("gc_enchant", "Enchant", "cmprow")
         local function E(v) return v == true and "yes" or (v == false and "none" or "?") end
