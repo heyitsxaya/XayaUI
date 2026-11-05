@@ -60,6 +60,18 @@ Checked 2026-11-05 in `docs/reference/api/` (the live client's generated documen
 5. The LFG simulator, once its meaning is settled.
 6. Community puzzle packs as data-only imports.
 
+## 5b. Added the same day: arcade games and Xaya's gates
+Xaya asked about embedding Blizzard's Arcantina gem-matching game, and about the feasibility of classic arcade games (Snake, Block Breaker, Bejeweled, Tetris, etc.). She also set three gates:
+- the games are their own folder;
+- nothing runs unless "Games" is enabled as its own tab;
+- nothing runs unless the player calls it.
+
+The research and outline are on branch `roadmap-features/games`: `roadmap-features/games/ARCADE-FEASIBILITY.md` (six more questions there) and `CORE-HOOK.md`. In short:
+- **Blizzard's gem game:** cannot be embedded; the mechanic can be rebuilt with our own name and look.
+- **Mouse-only turn-based games come first:** match-3 endless, mine-sweeping, memory pairs, sliding merge. Keyboard games follow after an in-game probe.
+- **Falling blocks** waits on her decision.
+- **No live real-time play with friends.**
+
 ## 6. Open questions for Xaya
 1. **LFG simulator:** which is it?
    - (a) A game: you lead a made-up group-finder listing and choose from made-up applicants.
