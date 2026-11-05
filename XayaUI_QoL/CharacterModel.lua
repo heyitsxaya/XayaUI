@@ -108,6 +108,13 @@ local function P(v, d) if not num(v) then return "?" end; return ("%." .. (d or 
 local function SP(v, d) if not num(v) then return "?" end; return (v >= 0 and "+" or "") .. P(v, d) end
 local function F(v, d) if not num(v) then return "?" end; return ("%." .. (d or 1) .. "f"):format(v) end
 local function SB(v) if not num(v) then return "?" end; return (v >= 0 and "+" or "") .. Big(v) end
+local function BF(v)   -- one decimal with thousands separators: 4,270.7
+    if not num(v) then return "?" end
+    local str = ("%.1f"):format(math.abs(v))
+    local i, d = str:match("^(%d+)(%.%d)$")
+    i = i:reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
+    return (v < 0 and "-" or "") .. i .. d
+end
 CM.Big, CM.P, CM.F = Big, P, F
 
 -- text and tone for a read: hidden in combat, unavailable, or the formatted number
@@ -259,6 +266,7 @@ local function RatingItem(ctx, key, label, idx, total, coeff, unit, opts)
     local rating = N(GetCombatRating, idx)
     local pctNow = N(GetCombatRatingBonus, idx)
     SetValue(it, total, P)
+    it.total, it.mult = total, opts.mult   -- (the stat map reads them, QoL 0.7.14)
     it.rvalue, it.rtone = Show(rating, Big)
     if rating == HIDDEN or pctNow == HIDDEN then it.hidden = true end
     if not num(rating) then
@@ -316,6 +324,7 @@ local function RatingItem(ctx, key, label, idx, total, coeff, unit, opts)
                 if opts.mult then after = ((1 + total / 100) / (1 + fromRating / 100) * (1 + (fromRating + w.gain) / 100) - 1) * 100
                 else after = total + w.gain end
             end
+            it.totalAfter = after
             Pair(it, ("What if %s rating"):format(SB(delta)), SP(w.gain) .. (after and (" (total " .. P(after) .. ")") or ""), "good")
         end
     end
@@ -1083,6 +1092,67 @@ function CM.SlotOverlay(slot, opts)
     return o
 end
 
+-- The colour of an item level (QoL Character Reskin, requirements A4; Xaya 2026-11-04: "ilvl colored based on ilv tier (track ...
+-- AND upgrade tier (color gradient))"). The track and step come from the game: C_Item.GetItemUpgradeInfo (namespaces.md:2798) returns
+-- trackString ("Hero"), currentLevel and maxLevel (structures.md:4285). One colour per track, from the game's own item quality colours
+-- (C_Item.GetItemQualityColor): Explorer and Adventurer grey (0), Veteran green (2), Champion blue (3), Hero purple (4), Myth orange
+-- (5). The pairing is XayaUI's choice (she named none; requirements A4, decision task); within a track the colour goes from dim (step
+-- 1, 55%) to full (the last step). The track is matched by its English name (INFERENCE: trackString is localised; on other clients an
+-- item shows its quality colour instead, nothing is guessed). Returns { r, g, b, 1 } and { track, step, max } (or nil for no track).
+CM.TRACK_QUALITY = { Explorer = 0, Adventurer = 0, Veteran = 2, Champion = 3, Hero = 4, Myth = 5 }
+local function QualityRGB(q)
+    if not (num(q) and C_Item and C_Item.GetItemQualityColor) then return nil end
+    local r, g, b = R(C_Item.GetItemQualityColor, q)
+    if num(r) and num(g) and num(b) then return { r, g, b, 1 } end
+end
+function CM.TrackColor(link, quality)
+    local info = (type(link) == "string" and not IsSecret(link) and C_Item and C_Item.GetItemUpgradeInfo) and R(C_Item.GetItemUpgradeInfo, link) or nil
+    if type(info) == "table" then
+        local name = Field(info, "trackString")
+        local track = type(name) == "string" and name:match("^(%a+)") or nil
+        local q = track and CM.TRACK_QUALITY[track]
+        local cur, mx = Field(info, "currentLevel"), Field(info, "maxLevel")
+        local col = q and QualityRGB(q)
+        if col and num(cur) and num(mx) then
+            local f = (mx > 1) and (0.55 + 0.45 * math.max(0, math.min(1, (cur - 1) / (mx - 1)))) or 1
+            return { col[1] * f, col[2] * f, col[3] * f, 1 }, { track = track, step = cur, max = mx }
+        end
+    end
+    return QualityRGB(quality), nil
+end
+
+-- The enchant on an equipped item, by name (requirements A5: "enchants + gems should show to the side of the character pane"). The
+-- name is the item tooltip's permanent-enchant line (C_TooltipInfo.GetInventoryItem, namespaces.md:4711; line type
+-- Enum.TooltipDataLineType.ItemEnchantmentPermanent = 15, enums.md:12639), without the "Enchanted: " the game puts before it
+-- (ENCHANTED_TOOLTIP_LINE, "Enchanted: %s", when the client has it). Returns the name, or nil; the yes / no comes from the link
+-- (CM.LinkEnchanted).
+local function EnchantPrefixPattern()
+    local g = _G.ENCHANTED_TOOLTIP_LINE
+    if type(g) ~= "string" or IsSecret(g) or not g:find("%s", 1, true) then return nil end
+    local a, b = g:match("^(.-)%%s(.*)$")
+    if not a then return nil end
+    return "^" .. Esc(a) .. "(.-)" .. Esc(b) .. "$"
+end
+function CM.SlotEnchant(slot)
+    if not (C_TooltipInfo and C_TooltipInfo.GetInventoryItem) then return nil end
+    local data = R(C_TooltipInfo.GetInventoryItem, "player", slot)
+    local lines = type(data) == "table" and Field(data, "lines") or nil
+    if type(lines) ~= "table" then return nil end
+    local want = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.ItemEnchantmentPermanent) or 15
+    for _, ln in ipairs(lines) do
+        if type(ln) == "table" then
+            if TooltipUtil and TooltipUtil.SurfaceArgs and ln.leftText == nil then pcall(TooltipUtil.SurfaceArgs, ln) end
+            local t, text = Field(ln, "type"), Field(ln, "leftText")
+            if t == want and type(text) == "string" and text ~= "" then
+                local pat = EnchantPrefixPattern()
+                local name = pat and text:match(pat) or nil
+                return (name and name ~= "") and name or text
+            end
+        end
+    end
+    return nil
+end
+
 local function MoneyText(copper)
     local g, s, c = SM.Coins(copper)
     if not g then return UNAV end
@@ -1109,6 +1179,7 @@ end
 -- C_Item.GetItemQualityColor (namespaces.md:2789). The panel's hover shows the game's item tooltip (GameTooltip:SetInventoryItem, as
 -- ItemUtil.DisplayEquipSlotTooltip does).
 local NO_ICON = { [4] = true, [19] = true }
+local GearCompareSections   -- (defined below, after the item readers it uses)
 local function GearIcon(sl, s)
     local slot = sl[1]
     local ic = { slot = slot, label = L(sl[2], sl[3]), link = s.link, ilvl = s.ilvl }
@@ -1125,37 +1196,34 @@ end
 
 local function GearSections(ctx, out)
     local totals, sockets, durCur, durMax, lowest = {}, 0, 0, 0, nil
-    local slotItems, repair, repairKnown, damaged = {}, 0, false, 0
+    local repair, repairKnown, damaged = 0, false, 0
     local icons = Item("gearIcons", "Equipped", "icons")
     icons.icons = {}
-    Tip(icons, "Hover an icon for the game's item tooltip; shift-click links it in chat, as on the character window.")
+    Tip(icons, "Click an item to compare it with what you own; drop an item on it to compare that one. Hover for the game's item tooltip; shift-click links it in chat, as on the character window.")
     out[#out + 1] = { key = "gearIcons", title = "Equipped", items = { icons } }
+    -- (QoL 0.7.14) the per-slot list is gone: a clicked slot's ratings, sockets, enchant and durability show in the comparison
     for _, sl in ipairs(SLOTS) do
         local s = CM.SlotInfo(sl[1])
-        if s and not NO_ICON[sl[1]] then icons.icons[#icons.icons + 1] = GearIcon(sl, s) end
-        if s then
-            local it = Item("slot" .. sl[1], L(sl[2], sl[3]))
-            it.value = s.ilvl and tostring(math.floor(s.ilvl + 0.5)) or ""
-            local parts = {}
-            for _, r in ipairs(s.ratings) do parts[#parts + 1] = r[1] .. " " .. Big(r[2]); totals[r[1]] = (totals[r[1]] or 0) + r[2] end
-            Pair(it, "Ratings", #parts > 0 and table.concat(parts, ", ") or (s.statsRead and "no secondary ratings" or "stats not readable"),
-                #parts == 0 and "mute" or nil, true)
-            if s.sockets > 0 then Pair(it, "Empty sockets", tostring(s.sockets), "warn"); sockets = sockets + s.sockets end
-            if s.enchanted == true then Pair(it, "Enchant", "yes") elseif s.enchanted == false then Pair(it, "Enchant", "none", "mute") end
+        if s and not NO_ICON[sl[1]] then
+            local ic = GearIcon(sl, s)
+            ic.selected = CM.gearSlot == sl[1]
+            icons.icons[#icons.icons + 1] = ic
+        end
+        if s then   -- the totals for the Summary and Durability sections
+            for _, r in ipairs(s.ratings) do totals[r[1]] = (totals[r[1]] or 0) + r[2] end
+            sockets = sockets + s.sockets
             if s.dur then
                 durCur, durMax = durCur + s.dur, durMax + s.durMax
                 local pct = s.dur / s.durMax * 100
                 if not lowest or pct < lowest then lowest = pct end
-                if pct < 100 then Pair(it, "Durability", P(pct, 0), pct < 25 and "warn" or nil); damaged = damaged + 1 end
+                if pct < 100 then damaged = damaged + 1 end
                 local rc = SlotRepairCost(sl[1])
-                if rc then repairKnown = true; repair = repair + rc; if rc > 0 then Pair(it, "Repair", MoneyText(rc)) end end
+                if rc then repairKnown = true; repair = repair + rc end
             end
-            Tip(it, "Ratings from the game's item stat table (C_Item.GetItemStats). It may leave out gems, enchants, set bonuses and on-use or proc effects.")
-            Tip(it, "Whether a slot should have an enchant is not given by the game; the slot overlays flag only the slots you tick.")
-            slotItems[#slotItems + 1] = it
         end
     end
     if #icons.icons == 0 then icons.kind, icons.value, icons.tone = "note", "nothing equipped", "mute" end
+    GearCompareSections(ctx, out)
     local sum = Item("gearSum", "Gear totals")
     sum.value = ""
     for _, gs in ipairs(GEAR_STATS) do
@@ -1200,11 +1268,10 @@ local function GearSections(ctx, out)
         end
     end
     out[#out + 1] = { key = "durability", title = "Durability and repair", items = { du, rp } }
-    out[#out + 1] = { key = "slots", title = "Slots", items = slotItems }
 end
 
 -------------------------------------------------------------------------------
--- What If: per-stat rating inputs, an "all ratings" amount, and an item compare
+-- Items: reading a typed or shift-clicked item, and which equipped item it would replace (the Gear comparison below)
 -------------------------------------------------------------------------------
 local WI_STATS = { "crit", "haste", "mastery", "vers", "avoidance", "leech", "speed2" }
 CM.WI_STATS = WI_STATS
@@ -1279,191 +1346,254 @@ function CM.CompareDeltas(text, primary)
     return out
 end
 
-local function CompareItem(ctx, text)
-    local it = Item("compare", "Compare an item", "stat")
-    if not text or text == "" then
-        it.value, it.tone = "paste or shift-click an item link above", "mute"
-        Tip(it, "Shift-click an item (bags, chat, the Adventure Guide) into the box, or type an item ID.")
-        return { it }
+-------------------------------------------------------------------------------
+-- Gear comparison (QoL 0.7.14; it replaces the What If tab's item compare). Xaya 2026-11-04: "this is meant to be a gear COMPARISON
+-- sheet to see how different item slots will affect stats and therefore my ABILITIES"; plan item 6: "a comparison column to drag and
+-- drop or click-select gear options to track stat changes into their relative calculations with highlights".
+-- Click an equipped icon: the items in your bags that fit that slot are listed. Pick one (or drop / shift-click any item into the
+-- box): the two side by side, then every change run through the stat map (the same cards, with the item's changes as the amounts),
+-- so crit -> parry, mastery -> armor, haste -> global cooldown and recharges, and the primary stat -> attack power and abilities show.
+-------------------------------------------------------------------------------
+-- the equipped slots an equip location fits. The location is C_Item.GetItemInfoInstant's itemEquipLoc (namespaces.md:2772); its
+-- names match Enum.InventoryType's (IndexRobeType = INVTYPE_ROBE, enums.md:7422). A one-hand weapon fits the off hand only when you
+-- can dual wield (CanDualWield, globals.md:37). A two-hander in the off hand (a talent of one spec) is not listed.
+local LOC_SLOTS = {
+    INVTYPE_HEAD = { 1 }, INVTYPE_NECK = { 2 }, INVTYPE_SHOULDER = { 3 }, INVTYPE_BODY = { 4 }, INVTYPE_CHEST = { 5 }, INVTYPE_ROBE = { 5 },
+    INVTYPE_WAIST = { 6 }, INVTYPE_LEGS = { 7 }, INVTYPE_FEET = { 8 }, INVTYPE_WRIST = { 9 }, INVTYPE_HAND = { 10 },
+    INVTYPE_FINGER = { 11, 12 }, INVTYPE_TRINKET = { 13, 14 }, INVTYPE_CLOAK = { 15 }, INVTYPE_TABARD = { 19 },
+    INVTYPE_WEAPON = { 16, 17 }, INVTYPE_2HWEAPON = { 16 }, INVTYPE_WEAPONMAINHAND = { 16 }, INVTYPE_WEAPONOFFHAND = { 17 },
+    INVTYPE_SHIELD = { 17 }, INVTYPE_HOLDABLE = { 17 }, INVTYPE_RANGED = { 16 }, INVTYPE_RANGEDRIGHT = { 16 }, INVTYPE_THROWN = { 16 },
+}
+function CM.SlotsForLink(link)
+    local loc = link and EquipLoc(link)
+    local out = {}
+    for _, s in ipairs(LOC_SLOTS[loc or ""] or {}) do
+        if not (s == 17 and loc == "INVTYPE_WEAPON" and R(CanDualWield) ~= true) then out[#out + 1] = s end
     end
-    local link, why = ResolveItemLink(text)
-    if not link then
-        it.value, it.tone = why == "loading" and "item data loading; press Enter again in a moment" or "no item found", "mute"
-        return { it }
-    end
-    local items = { it }
-    local newStats = ItemStats(link) or {}
-    local newIlvl = ItemLevel(link)
-    -- the equipped item of the same kind (equip location from the game); with two (rings, trinkets, one-hand weapons) the one chosen
-    -- below, else the lower item level
-    local old, cands = Replaced(link)
-    it.value = (newIlvl and ("item level " .. Big(newIlvl)) or "item level " .. UNAV)
-    if old then
-        Pair(it, "Replaces", ("%s (item level %s)"):format(CM.SlotLabel(old.slot), old.ilvl and Big(old.ilvl) or "?"), nil, true)
-        if newIlvl and old.ilvl then Pair(it, "Item level change", SB(newIlvl - old.ilvl), nil, true) end
-        if #cands > 1 then
-            for _, c in ipairs(cands) do
-                local ch = Item("cmpSlot" .. c.slot, (c == old) and "Replacing" or "Replace instead", "choice")
-                ch.slot = c.slot
-                ch.value, ch.tone = ("%s (item level %s)"):format(CM.SlotLabel(c.slot), c.ilvl and Big(c.ilvl) or "?"), (c == old) and "good" or "mute"
-                Tip(ch, "Click to compare against this one. Both equipped items of this kind are listed; with none chosen, the lower item level is replaced.")
-                items[#items + 1] = ch
-            end
-        end
-    else
-        Pair(it, "Replaces", "nothing equipped of the same kind (shown as an addition)", "mute", true)
-    end
-    local delta = SM.StatDelta(newStats, old and old.stats or {})
-    local any = false
-    for _, gs in ipairs(GEAR_STATS) do
-        local d = delta[gs[1]]
-        if num(d) then
-            any = true
-            local idx = IDX[gs[3]]
-            local key = (gs[2] == "speed") and "speed2" or gs[2]
-            local rating = N(GetCombatRating, idx)
-            local f = Converter(idx)
-            local coeff = 1
-            if key == "mastery" then local _, c = R(GetMasteryEffect); if num(c) and c > 0 then coeff = c end end
-            if key == "crit" then idx = CritRead(); rating = N(GetCombatRating, idx); f = Converter(idx) end
-            local w = num(rating) and f and SM.WhatIf(f, rating, d, coeff, thresholdCache[idx] and thresholdCache[idx].list)
-            -- (short = true: the stat changes are the point of a comparison, so they show in the short view too; Xaya 2026-11-04)
-            if rating == HIDDEN then Pair(it, gs[2], SB(d) .. " rating, percent " .. HID, "mute", true)
-            elseif w then Pair(it, gs[2], ("%s rating = %s%s"):format(SB(d), SP(w.gain), #w.crossed > 0 and " (crosses a threshold)" or ""), w.gain >= 0 and "good" or "warn", true)
-            else Pair(it, gs[2], SB(d) .. " rating, percent " .. UNAV, "mute", true) end
-        end
-    end
-    local p = ctx.primary
-    local pd = PrimaryFrom(newStats, p) - PrimaryFrom(old and old.stats, p)
-    if pd ~= 0 then
-        any = true
-        local _, eff = R(UnitStat, "player", p)
-        local txt = SB(pd) .. " " .. StatName(p)
-        if (p == 1 or p == 2) and num(eff) then
-            local a0, a1 = N(GetAttackPowerForStat, p, eff), N(GetAttackPowerForStat, p, math.max(0, eff + pd))
-            if num(a0) and num(a1) then txt = txt .. (" = %s attack power"):format(SB(a1 - a0)) end
-        elseif p == 4 then
-            txt = txt .. " (spell power from it: " .. NA .. ")"
-        end
-        Pair(it, StatName(p), txt, pd > 0 and "good" or "warn", true)
-    end
-    local sd = (num(newStats.ITEM_MOD_STAMINA_SHORT) and newStats.ITEM_MOD_STAMINA_SHORT or 0) -
-        ((old and old.stats and num(old.stats.ITEM_MOD_STAMINA_SHORT)) and old.stats.ITEM_MOD_STAMINA_SHORT or 0)
-    if sd ~= 0 then
-        any = true
-        local hpPer, mod = N(UnitHPPerStamina, "player"), N(GetUnitMaxHealthModifier, "player")
-        Pair(it, StatName(3), SB(sd) .. (num(hpPer) and (" = %s health"):format(SB(sd * hpPer * (num(mod) and mod or 1))) or ""), sd > 0 and "good" or "warn", true)
-    end
-    -- armor: the item's own armor, plus the armor its primary stat change gives where the mastery text links them (Xaya 2026-11-04:
-    -- "armor from armor + armor_from_item + armor_from_agi")
-    local ad = (num(newStats.RESISTANCE0_NAME) and newStats.RESISTANCE0_NAME or 0) -
-        ((old and old.stats and num(old.stats.RESISTANCE0_NAME)) and old.stats.RESISTANCE0_NAME or 0)
-    local apct = ArmorPerPrimary(ctx)
-    local fromP = (apct and pd ~= 0) and (pd * apct / 100) or 0
-    if ad ~= 0 or fromP ~= 0 then
-        any = true
-        local total = ad + fromP
-        local txt = SB(total)
-        if fromP ~= 0 then txt = txt .. (" (item %s, %s %s)"):format(SB(ad), StatName(p), SB(fromP)) end
-        local dr = ArmorDRChange(ctx, total)
-        if dr then txt = txt .. (" = %s damage reduction"):format(SP(dr)) end
-        Pair(it, L("STAT_ARMOR", "Armor"), txt, total >= 0 and "good" or "warn", true)
-        if fromP ~= 0 then
-            Tip(it, ("Armor from %s: %s x %s%% (your mastery's text) = %s. Armor buffs that multiply your armor right now are not applied to the change."):format(
-                StatName(p), SB(pd), F(apct, 1), SB(fromP)))
-        end
-    end
-    if not any then Pair(it, "Stats", "no change in the stats the game lists", "mute", true) end
-    Pair(it, "Gems, enchant, set bonus", "not in the item's stat table", "mute")
-    Pair(it, "On-use and proc effects", NA, "mute")
-    Pair(it, "This item at another item level", NA, "mute")
-    Tip(it, "Both items' stats come from the game's item stat tables (C_Item.GetItemStats) at the item level in the link; rating changes go through the game's converter, so thresholds apply.")
-    Tip(it, "Primary stat to attack power uses GetAttackPowerForStat; Stamina to health uses UnitHPPerStamina; armor uses the game's armor effectiveness.")
-    Tip(it, "The game gives no stats for the same item at another item level, so that is not estimated.")
-    return items
+    return out
+end
+function CM.FitsSlot(link, slot)
+    for _, s in ipairs(CM.SlotsForLink(link)) do if s == slot then return true end end
+    return false
 end
 
-local function WhatIfSections(ctx, out, ratingSecs)
-    local byKey = {}
-    for _, sec in ipairs(ratingSecs) do for _, it in ipairs(sec.items) do byKey[it.key] = it end end
-    local sec = { key = "whatifStats", title = "Rating per stat", items = {} }
-    for _, key in ipairs(WI_STATS) do
-        local r = byKey[key]
-        if r then
-            local it = Item("wi_" .. key, r.label, "input")
-            it.input = key
-            local amount = num(ctx.whatIfStat[key]) and ctx.whatIfStat[key] or 0
-            it.amount = amount
-            if r.hidden or not r.rating then
-                it.value, it.tone = r.hidden and HID or UNAV, "mute"
-            elseif amount == 0 then
-                it.value, it.tone = r.value .. " now", "mute"
-            else
-                local w = r.f and SM.WhatIf(r.f, r.rating, amount, r.coeff, r.thresholds)
-                if w then
-                    it.value, it.tone = ("%s (%s)"):format(SP(w.gain), P(w.after)), w.gain >= 0 and "good" or "warn"
-                    Pair(it, "Rating", ("%s -> %s"):format(Big(w.rating), Big(w.newRating)), nil, true)
-                    Pair(it, "From rating", ("%s -> %s"):format(P(w.now), P(w.after)))
-                    for _, t in ipairs(w.crossed) do Pair(it, "Crosses", ("%s rating (%s)"):format(Big(t.rating), P(t.pct * r.coeff)), "warn") end
-                else
-                    it.value, it.tone = UNAV, "mute"
-                end
+-- The items in your bags that fit one slot, best item level first. Bags 0-4 (Enum.BagIndex Backpack..Bag_4, and
+-- Constants.InventoryConstants.NumBagSlots = 4); the bank is not read. C_Container.GetContainerItemInfo (namespaces.md:1291) gives
+-- the link, icon and quality (structures.md:1737, ContainerItemInfo).
+local function BagCount()
+    local k = _G.Constants and Constants.InventoryConstants and Constants.InventoryConstants.NumBagSlots
+    return num(k) and k or 4
+end
+function CM.OwnedFor(slot)
+    local out = {}
+    if not (C_Container and C_Container.GetContainerNumSlots and C_Container.GetContainerItemInfo) then return out end
+    for bag = 0, BagCount() do
+        local n = N(C_Container.GetContainerNumSlots, bag)
+        for i = 1, (num(n) and n or 0) do
+            local info = R(C_Container.GetContainerItemInfo, bag, i)
+            local link = type(info) == "table" and Field(info, "hyperlink") or nil
+            if type(link) == "string" and CM.FitsSlot(link, slot) then
+                local q = Field(info, "quality")
+                out[#out + 1] = { link = link, bag = bag, index = i, icon = Field(info, "iconFileID"), quality = num(q) and q or nil,
+                    ilvl = ItemLevel(link), name = link:match("%[(.-)%]") or link }
             end
-            Tip(it, ("Type extra %s rating (a minus sign for less) and press Enter. It is read through the game's converter, so diminishing-return thresholds apply."):format(r.label))
-            Tip(it, "The amount shows on the stat's own line too (Stats tab), added to the All ratings amount.")
-            sec.items[#sec.items + 1] = it
         end
     end
-    -- the primary stat (Xaya 2026-11-04: "primary stat is also not included in the what if calculator"): Strength / Agility through
-    -- the game's GetAttackPowerForStat; the game gives no spell power per Intellect, so that is said, not guessed
-    do
-        local p = ctx.primary
-        if PRIMARY_WORD[p] then
-            local it = Item("wi_primary", StatName(p), "input")
-            it.input = "primary"
-            local amount = ctx.whatIfPrimary or 0
-            it.amount = amount
-            local _, eff = R(UnitStat, "player", p)
-            if amount == 0 then
-                it.value, it.tone = (num(eff) and (Big(eff) .. " now") or UNAV), "mute"
-            elseif not num(eff) then
-                it.value, it.tone = (eff == HIDDEN) and HID or UNAV, "mute"
-            else
-                local txt = ("%s -> %s"):format(Big(eff), Big(math.max(0, eff + amount)))
-                if p == 1 or p == 2 then
-                    local a0, a1 = N(GetAttackPowerForStat, p, eff), N(GetAttackPowerForStat, p, math.max(0, eff + amount))
-                    if num(a0) and num(a1) then txt = ("%s attack power (%s)"):format(SB(a1 - a0), txt) end
-                else
-                    txt = txt .. ", spell power from it: " .. NA
-                end
-                it.value, it.tone = txt, amount >= 0 and "good" or "warn"
-                local apct = ArmorPerPrimary(ctx)
-                if apct then
-                    local da = amount * apct / 100
-                    local dr = ArmorDRChange(ctx, da)
-                    Pair(it, "Armor from it", ("%s (%s%%, mastery)%s"):format(SB(da), F(apct, 1), dr and (" = %s damage reduction"):format(SP(dr)) or ""),
-                        amount >= 0 and "good" or "warn", true)
-                end
-            end
-            Tip(it, ("Type extra %s (a minus sign for less) and press Enter."):format(StatName(p)))
-            sec.items[#sec.items + 1] = it
+    table.sort(out, function(a, b) return (a.ilvl or 0) > (b.ilvl or 0) end)
+    return out
+end
+
+local function QualityColor(q)
+    if not (num(q) and C_Item and C_Item.GetItemQualityColor) then return nil end
+    local r, g, b = R(C_Item.GetItemQualityColor, q)
+    if num(r) and num(g) and num(b) then return { r, g, b, 1 } end
+end
+
+-- whether a "now -> then" change is better (green) or worse (orange): lower is better for times (the global cooldown, attack speed,
+-- recharges: values in seconds) and for damage taken; higher for everything else
+local function Dir(label, value)
+    if type(value) ~= "string" then return nil end
+    local a, b = value:match("^(.-) %-> (.*)$")
+    if not a then return nil end
+    local function first(t) local x = t:match("[%-+]?%d[%d,]*%.?%d*"); return x and tonumber((x:gsub(",", ""))) end
+    local x, y = first(a), first(b)
+    if not (x and y) or math.abs(x - y) < 1e-9 then return nil end
+    local lowerBetter = value:find("%d s") ~= nil or (label or ""):lower():find("taken", 1, true) ~= nil
+    if lowerBetter then return (y < x) and "good" or "warn" end
+    return (y > x) and "good" or "warn"
+end
+CM.ChangeTone = Dir
+
+function GearCompareSections(ctx, out)
+    local p = ctx.primary
+    local slot = CM.gearSlot
+    local text = CM.compareText
+    local link, why
+    if text and text ~= "" then link, why = ResolveItemLink(text) end
+    local old, cands
+    if link then
+        old, cands = Replaced(link)
+        if old then slot = old.slot else slot = CM.SlotsForLink(link)[1] or slot end
+    elseif slot then
+        old = CM.SlotInfo(slot)
+    end
+    -- 1. pick: the box, the items you own for the slot, and which of two equipped items it replaces
+    local pick = { key = "gearPick", title = slot and ("Compare: " .. CM.SlotLabel(slot)) or "Compare", items = {} }
+    local box = Item("gear_item", "Item", "input")
+    box.input, box.text, box.value = "item", text or "", ""
+    Tip(box, "Drop an item here, shift-click one (bags, chat, the Adventure Guide), or type an item ID, then press Enter.")
+    pick.items[1] = box
+    if not slot then
+        local n = Item("gearHint", "Click an equipped item above to list what you own for it, or put any item in the box.", "note")
+        n.value, n.minor = "", true
+        pick.items[#pick.items + 1] = n
+    else
+        local owned = CM.OwnedFor(slot)
+        for i, o in ipairs(owned) do
+            if i > 12 then break end
+            local ch = Item("gearOwn" .. i, o.name, "choice")
+            ch.pick, ch.slot = o.link, slot
+            ch.labelColor = QualityColor(o.quality)
+            local on = link == o.link
+            ch.value, ch.tone = (on and "comparing, " or "") .. "item level " .. (o.ilvl and Big(o.ilvl) or "?"), on and "good" or "mute"
+            Tip(ch, ("Click to compare it with your %s."):format(CM.SlotLabel(slot)))
+            pick.items[#pick.items + 1] = ch
+        end
+        if #owned == 0 then
+            local n = Item("gearNone", "Nothing in your bags fits this slot.", "note")
+            n.value, n.minor = "", true
+            pick.items[#pick.items + 1] = n
         end
     end
-    out[#out + 1] = sec
-    local all = Item("wi_all", "All ratings", "input")
-    all.input = "all"
-    all.amount = ctx.whatIfAll
-    all.value, all.tone = ctx.whatIfAll ~= 0 and (SB(ctx.whatIfAll) .. " on every rating") or "off", ctx.whatIfAll ~= 0 and "good" or "mute"
-    Tip(all, "Adds this much rating to every stat; each stat's line on the Stats tab shows what it would gain. 0 turns it off.")
-    out[#out + 1] = { key = "whatifAll", title = "All ratings", items = { all } }
-    local cmpInput = Item("wi_item", "Item", "input")
-    cmpInput.input = "item"
-    cmpInput.text = CM.compareText or ""
-    cmpInput.value = ""
-    Tip(cmpInput, "Shift-click an item link here (or type an item ID) and press Enter.")
-    local cmp = CompareItem(ctx, CM.compareText)
-    table.insert(cmp, 1, cmpInput)
-    out[#out + 1] = { key = "whatifItem", title = "Compare an item", items = cmp }
+    if link and cands and #cands > 1 then
+        for _, cs in ipairs(cands) do
+            local ch = Item("cmpSlot" .. cs.slot, (cs == old) and "Replacing" or "Replace instead", "choice")
+            ch.slot = cs.slot
+            ch.value, ch.tone = ("%s (item level %s)"):format(CM.SlotLabel(cs.slot), cs.ilvl and Big(cs.ilvl) or "?"), (cs == old) and "good" or "mute"
+            Tip(ch, "Click to compare against this one. Both equipped items of this kind are listed; with none chosen, the lower item level is replaced.")
+            pick.items[#pick.items + 1] = ch
+        end
+    end
+    if text and text ~= "" and not link then
+        local n = Item("gearLoading", why == "loading" and "Item data loading; press Enter again in a moment." or "No item found for that.", "note")
+        n.value, n.minor = "", true
+        pick.items[#pick.items + 1] = n
+    end
+    out[#out + 1] = pick
+    if not slot then return end
+
+    -- 2. side by side: equipped | this item | change
+    local eqStats = old and old.stats or {}
+    local newStats = link and (ItemStats(link) or {}) or nil
+    local side = { key = "gearSide", title = "Side by side", items = {} }
+    local head = Item("gearCols", "", "colhead")
+    head.cmp = true
+    head.cols = { "Equipped", link and (link:match("%[(.-)%]") or "This item") or "This item", "Change" }
+    side.items[1] = head
+    local function Row(key, label, a, b, color, lowerBetter)
+        local anyA, anyB = num(a) and a ~= 0, num(b) and b ~= 0
+        if not anyA and not anyB and key ~= "ilvl" then return end
+        local it = Item("gc_" .. key, label, "cmprow")
+        it.labelColor = color
+        it.cells = { num(a) and Big(a) or (old and "0" or "empty"), newStats and (num(b) and Big(b) or "0") or "", "" }
+        if newStats then
+            local d = (num(b) and b or 0) - (num(a) and a or 0)
+            if math.abs(d) > 0.0001 then
+                it.cells[3] = SB(d)
+                local better = (lowerBetter and d < 0) or (not lowerBetter and d > 0)
+                it.cellTone = better and "good" or "warn"
+            end
+        end
+        side.items[#side.items + 1] = it
+    end
+    Row("ilvl", "Item level", old and old.ilvl, link and ItemLevel(link) or nil)
+    if PRIMARY_WORD[p] then Row("primary", StatName(p), PrimaryFrom(eqStats, p), newStats and PrimaryFrom(newStats, p), CM.STAT_COLORS.primary) end
+    Row("stamina", StatName(3), eqStats.ITEM_MOD_STAMINA_SHORT, newStats and newStats.ITEM_MOD_STAMINA_SHORT, CM.STAT_COLORS.stamina)
+    Row("armor", L("STAT_ARMOR", "Armor"), eqStats.RESISTANCE0_NAME, newStats and newStats.RESISTANCE0_NAME)
+    local LABEL = { crit = L("STAT_CRITICAL_STRIKE", "Critical Strike"), haste = L("STAT_HASTE", "Haste"), mastery = L("STAT_MASTERY", "Mastery"),
+        vers = L("STAT_VERSATILITY", "Versatility"), leech = L("STAT_LIFESTEAL", "Leech"), avoidance = L("STAT_AVOIDANCE", "Avoidance"),
+        speed = L("STAT_SPEED", "Speed") }
+    for _, gs in ipairs(GEAR_STATS) do
+        Row(gs[2], LABEL[gs[2]] or gs[2], eqStats[gs[1]], newStats and newStats[gs[1]], CM.STAT_COLORS[gs[2] == "speed" and "speed2" or gs[2]])
+    end
+    local function Sockets(st)
+        local n = 0
+        for k, v in pairs(st or {}) do if type(k) == "string" and k:find("^EMPTY_SOCKET_") and num(v) then n = n + v end end
+        return n
+    end
+    Row("sockets", "Empty sockets", Sockets(eqStats), newStats and Sockets(newStats), nil, true)
+    if old or link then
+        local it = Item("gc_enchant", "Enchant", "cmprow")
+        local function E(v) return v == true and "yes" or (v == false and "none" or "?") end
+        it.cells = { old and E(old.enchanted) or "empty", link and E(CM.LinkEnchanted(link)) or "", "" }
+        side.items[#side.items + 1] = it
+    end
+    if old and old.dur then
+        local it = Item("gc_dur", "Durability", "cmprow")
+        it.cells = { P(old.dur / old.durMax * 100, 0), "", "" }
+        side.items[#side.items + 1] = it
+        local rc = SlotRepairCost(old.slot)
+        if rc and rc > 0 then
+            local r2 = Item("gc_repair", "Repair", "cmprow")
+            r2.cells = { MoneyText(rc), "", "" }
+            side.items[#side.items + 1] = r2
+        end
+    end
+    Tip(head, "Both items' stats from the game's item stat tables (C_Item.GetItemStats) at the item level in the link. Gems, enchants, set bonuses and on-use or proc effects are not in them.")
+    out[#out + 1] = side
+    if not newStats then return end
+
+    -- 3. what it changes: the stat map with the item's changes as the amounts; only the cards and lines that change
+    local ratings = {}
+    local delta = SM.StatDelta(newStats, eqStats)
+    for _, gs in ipairs(GEAR_STATS) do
+        local d = delta[gs[1]]
+        if num(d) and d ~= 0 then ratings[(gs[2] == "speed") and "speed2" or gs[2]] = d end
+    end
+    local function V(st, k) return num(st[k]) and st[k] or 0 end
+    local ctx2 = Context(ctx.cfg)
+    ctx2.whatIfAll, ctx2.whatIfStat, ctx2.noAll = 0, ratings, true
+    ctx2.whatIfPrimary = PrimaryFrom(newStats, p) - PrimaryFrom(eqStats, p)
+    ctx2.whatIfStamina = V(newStats, "ITEM_MOD_STAMINA_SHORT") - V(eqStats, "ITEM_MOD_STAMINA_SHORT")
+    ctx2.whatIfArmor = V(newStats, "RESISTANCE0_NAME") - V(eqStats, "RESISTANCE0_NAME")
+    local saved = CM.svBase
+    local tmp = {}
+    CM.StatMapSections(ctx2, tmp)
+    CM.svBase = saved
+    local eff = { key = "gearEffects", title = "What it changes", items = {} }
+    for _, sec in ipairs(tmp) do
+        for _, it in ipairs(sec.items) do
+            if it.kind ~= "colhead" then
+                local keep = {}
+                for _, pr in ipairs(it.pairs or {}) do
+                    if pr.change or (type(pr.value) == "string" and pr.value:find(" -> ", 1, true)) then
+                        pr.tone = pr.tone or Dir(pr.label, pr.value)
+                        keep[#keep + 1] = pr
+                    end
+                end
+                local changed = type(it.value) == "string" and it.value:find(" -> ", 1, true) ~= nil
+                local k = type(it.input) == "string" and it.input:match("^sv:(.+)$")
+                if it.value == HID and k and (num(ratings[k]) or (k == "primary" and ctx2.whatIfPrimary ~= 0)) then
+                    -- the item changes a stat the game hides right now (in combat): said, not left out
+                    local c2 = Item("gc_" .. it.key, it.label)
+                    c2.value, c2.tone, c2.labelColor, c2.tip = HID, "mute", it.labelColor, it.tip
+                    eff.items[#eff.items + 1] = c2
+                elseif changed or #keep > 0 then
+                    local c2 = Item("gc_" .. it.key, it.label)
+                    c2.value, c2.labelColor, c2.bigPairs, c2.pairs, c2.tip = it.value, it.labelColor, true, keep, it.tip
+                    c2.tone = changed and (it.tone or Dir(it.label, it.value)) or "mute"
+                    if not changed then c2.value = "" end
+                    eff.items[#eff.items + 1] = c2
+                end
+            end
+        end
+    end
+    if #eff.items == 0 then
+        local n = Item("gearNoChange", "No change in the stats the game lists for these items.", "note")
+        n.value, n.minor = "", true
+        eff.items[1] = n
+    end
+    out[#out + 1] = eff
 end
 
 -------------------------------------------------------------------------------
@@ -1518,13 +1648,14 @@ function CM.SpellKind(desc)
     return (off and "offense") or (def and "defense") or nil
 end
 
--- The filters on the Spells tab (they replace the Defense and Offense tabs). Offense and Defense also draw those stat sections.
+-- The filters on the Spells tab (they replace the Defense and Offense tabs). They filter spells only (QoL 0.7.14): the stat sections they
+-- used to draw are on the Stats tab's map (Offense and Defense, what feeds it).
 CM.SPELL_FILTERS = {
     { "all", "All", "Every spell listed." },
-    { "offense", "Offense", "Spells whose description deals damage, then your offensive stats: power, weapons, timing." },
-    { "defense", "Defense", "Spells that absorb, heal, reduce damage taken or add armor, avoidance or leech, then your defensive stats: health and armor, avoidance, damage taken." },
+    { "offense", "Offense", "Spells whose description deals damage. Your offensive stats are on the Stats tab (Offense)." },
+    { "defense", "Defense", "Spells that absorb, heal, reduce damage taken or add armor, avoidance or leech. Your defensive stats are on the Stats tab (Defense)." },
 }
-local FILTER_TITLE = { all = "Spells", offense = "Offensive spells", defense = "Defensive spells" }
+local FILTER_TITLE = { all = "Active spells", offense = "Active offensive spells", defense = "Active defensive spells" }
 local KIND_TEXT = { offense = "offense", defense = "defense", both = "offense and defense" }
 function CM.FilterOf(c)
     local f = type(c) == "table" and c.spellFilter
@@ -1534,6 +1665,7 @@ end
 -- Descriptions the game has not sent yet are asked for once (C_Spell.RequestLoadSpellData); SPELL_DATA_LOAD_RESULT then redraws.
 local requested = {}
 function CM.SpellRequested(id) return id ~= nil and not IsSecret(id) and requested[id] == true end
+function CM.ResetSpellRequests() requested = {} end
 local function RequestDesc(id)
     if requested[id] then return end
     requested[id] = true
@@ -1609,6 +1741,8 @@ local function SpellItem(s, desc, nums, kind, refs, primary)
     Tip(it, "Durations, distances and target counts are skipped; other numbers that do not scale with " .. refName .. " (flat amounts) give meaningless ratios.")
     if s.hand then
         Tip(it, "Added by hand in QoL > Character Toolkit > Spell Math.")
+    elseif s.talent then
+        Tip(it, ("A talent of your current trees that you have not picked. Measured against %s, like your other spells."):format(refName))
     else
         Tip(it, ("From your spellbook. Measured against %s because your primary stat is %s (Intellect specs' spells usually scale with spell power, the others' with attack power). Add the spell by hand to choose."):format(refName, StatName(primary)))
     end
@@ -1619,15 +1753,81 @@ local function SpellItem(s, desc, nums, kind, refs, primary)
     return it
 end
 
+-- Your talent trees (the active loadout): each talent's spell, whether it is picked, and whether it is passive. The same C_Traits
+-- walk as core's ns.BuildTalentList, plus the node's activeEntry (structures.md TraitNodeInfo: activeEntry = { entryID, rank }) and
+-- C_Spell.IsSpellPassive (namespaces.md:4439). Kept until core's talent list is rebuilt (spec, talent or spellbook change).
+local talentScan, talentFor
+function CM.Talents()
+    local ok, key = false, nil
+    if type(ns.BuildTalentList) == "function" then ok, key = pcall(ns.BuildTalentList) end
+    if not ok then key = nil end
+    if talentScan and key ~= nil and talentFor == key then return talentScan end
+    local out, seen = {}, {}
+    local configID = C_ClassTalents and R(C_ClassTalents.GetActiveConfigID)
+    if num(configID) and C_Traits then
+        local cfg = R(C_Traits.GetConfigInfo, configID)
+        for _, treeID in ipairs(type(cfg) == "table" and type(cfg.treeIDs) == "table" and cfg.treeIDs or {}) do
+            local nodes = R(C_Traits.GetTreeNodes, treeID)
+            for _, nodeID in ipairs(type(nodes) == "table" and nodes or {}) do
+                local node = R(C_Traits.GetNodeInfo, configID, nodeID)
+                if type(node) == "table" and node.isVisible and type(node.entryIDs) == "table" then
+                    local ae = node.activeEntry
+                    for _, entryID in ipairs(node.entryIDs) do
+                        local e = R(C_Traits.GetEntryInfo, configID, entryID)
+                        local defID = type(e) == "table" and e.definitionID or nil
+                        local d = num(defID) and R(C_Traits.GetDefinitionInfo, defID) or nil
+                        local sid = type(d) == "table" and d.spellID or nil
+                        if num(sid) and not IsSecret(sid) and not seen[sid] then
+                            seen[sid] = true
+                            local picked = type(ae) == "table" and ae.entryID == entryID and num(ae.rank) and ae.rank > 0
+                            out[#out + 1] = { id = sid, name = SpellName(sid), picked = picked and true or false,
+                                passive = C_Spell and R(C_Spell.IsSpellPassive, sid) == true or false }
+                        end
+                    end
+                end
+            end
+        end
+    end
+    talentScan, talentFor = out, key
+    return out
+end
+function CM.ClearTalents() talentScan, talentFor = nil, nil end
+
+-- The picked talents whose own description names a spell: how the game words "this talent changes that spell" (#377: "talent
+-- modifiers"). A word match on the spell's name in the talent's text; the game has no list of which talents change a spell.
+local function TalentModifiers(spellID, name, talents)
+    local outT = {}
+    if type(name) ~= "string" or #name < 4 then return outT end
+    for _, t in ipairs(talents) do
+        if t.picked and t.id ~= spellID and t.name ~= name then
+            local d = SpellDesc(t.id)
+            if type(d) == "string" and d ~= "" then
+                if d:find(name, 1, true) then outT[#outT + 1] = t.name end
+            else RequestDesc(t.id) end
+        end
+    end
+    table.sort(outT)
+    return outT
+end
+
 local function SpellSection(ctx, out)
     local c = ctx.cfg
     local filter = CM.FilterOf(c)
     local sec = { key = "spellmath", title = FILTER_TITLE[filter], items = {} }
     out[#out + 1] = sec
     if not (c and c.advanced) then
-        sec.items[1] = Note("spellsOff", "Spell Math is off", "turn it on in QoL > Character Toolkit > Spell Math")
+        -- #377 (Xaya): "first time the tab is opened, show a button labelled 'configure spell data'" that pulls every spell and its
+        -- talent modifiers. The button turns Spell Math on and reads them (it is also in QoL > Character Toolkit > Spell Math).
+        local b = Item("spellsConfigure", "Configure spell data", "action")
+        b.action, b.value = "configureSpells", ""
+        Tip(b, "Reads your spellbook and talents, measures each spell's numbers against your attack power or spell power, and lists them Active / Inactive with the talents that change them.")
+        sec.items[1] = b
         return
     end
+    local rb = Item("spellsRefresh", "Refresh spell data", "action")
+    rb.action, rb.value = "refreshSpells", ""
+    Tip(rb, "Reads your spellbook and talents again (after a talent or spec change the panel also does this by itself) and asks the game again for any spell text it has not sent.")
+    sec.items[1] = rb
     local base, pos, neg = R(UnitAttackPower, "player")
     local ap = num(base) and (base + (num(pos) and pos or 0) + (num(neg) and neg or 0)) or nil
     if base == HIDDEN then ap = HIDDEN end
@@ -1638,26 +1838,45 @@ local function SpellSection(ctx, out)
         local a = N(GetAttackPowerForStat, p, eff)
         if num(a) then refs.apPerPrimary = a / eff end
     end
+    local talents = CM.Talents()
+    -- Active: the spells you have (your spellbook and the ones added by hand). Inactive: the castable talents of your trees you have
+    -- not picked (#377: "sorted into active and inactive"; known and usable vs not available to you now).
+    local inact = { key = "spellsInactive", title = "Inactive: talents not picked", items = {}, defaultFolded = true }
     local list = CM.SpellList(c, p)
+    local known = {}
+    for _, s in ipairs(list) do known[s.id] = true end
     local loading, noNumbers = 0, 0
-    for _, s in ipairs(list) do
+    local function Add(s, target, inactive)
         local desc = SpellDesc(s.id)
         if not desc or desc == "" then RequestDesc(s.id) end
-        if not s.hand and (not desc or desc == "") then
-            loading = loading + 1
+        if not s.hand and (not desc or desc == "") then loading = loading + 1; return end
+        local nums = CM.Numbers(desc)
+        local kind = CM.SpellKind(desc)
+        local k = s.kind or kind
+        if not (filter == "all" or k == filter or k == "both") then return end
+        if not s.hand and #nums == 0 and not c.spellsAll then noNumbers = noNumbers + 1; return end
+        local it = SpellItem(s, desc, nums, kind, refs, p)
+        if inactive then
+            Pair(it, "Not picked", "a talent in your trees; pick it to use it", "mute", true)
         else
-            local nums = CM.Numbers(desc)
-            local kind = CM.SpellKind(desc)
-            local k = s.kind or kind
-            if filter == "all" or k == filter or k == "both" then
-                if not s.hand and #nums == 0 and not c.spellsAll then noNumbers = noNumbers + 1
-                else sec.items[#sec.items + 1] = SpellItem(s, desc, nums, kind, refs, p) end
+            local usable, noPower = R(C_Spell and C_Spell.IsSpellUsable, s.id)
+            if usable == false and noPower ~= true then Pair(it, "Usable now", "no (the game says so: form, stance or a requirement)", "warn", true) end
+            local mods = TalentModifiers(s.id, SpellName(s.id), talents)
+            if #mods > 0 then
+                Pair(it, "Changed by talents", table.concat(mods, ", "), "good", true)
+                Tip(it, "Changed by talents: the talents you picked whose own text names this spell (a word match; the game does not list which talents change a spell). Their effect is already in the numbers above when the game puts it in the spell's text.")
             end
         end
+        target.items[#target.items + 1] = it
     end
-    if #sec.items == 0 then
-        if #list == 0 then sec.items[1] = Note("noSpells", "No spells found", "add spells in QoL > Character Toolkit > Spell Math")
-        elseif loading == 0 then sec.items[1] = Note("noSpells", "No spells in this filter", "") end
+    for _, s in ipairs(list) do Add(s, sec, false) end
+    local primaryBase = (p == 4) and "sp" or "ap"
+    for _, t in ipairs(talents) do
+        if not t.picked and not t.passive and not known[t.id] then Add({ id = t.id, base = primaryBase, talent = true }, inact, true) end
+    end
+    if #sec.items == 1 then
+        if #list == 0 then sec.items[2] = Note("noSpells", "No spells found", "add spells in QoL > Character Toolkit > Spell Math")
+        elseif loading == 0 then sec.items[2] = Note("noSpells", "No spells in this filter", "") end
     end
     if noNumbers > 0 then
         local it = Note("spellsNoNumbers", ("%d without numbers"):format(noNumbers), "not listed")
@@ -1669,16 +1888,572 @@ local function SpellSection(ctx, out)
         Tip(it, "The game sends spell descriptions on request (C_Spell.RequestLoadSpellData); the panel redraws when they arrive.")
         sec.items[#sec.items + 1] = it
     end
+    if #inact.items > 0 then out[#out + 1] = inact end
 end
+
+-------------------------------------------------------------------------------
+-- The stat map: the Stats tab (QoL 0.7.14). Xaya, 2026-11-04: "the whole point of this sheet is to show me what influences what";
+-- "why is parry not listed anywhere on my stats? why do I not see how many points of crit add to an additional 1% parry chance? why do
+-- I not see how much armor mastery gives me?"; "give me this in a sheet with the option to change the numbers" / "so I can see what
+-- the other numbers will look like in relation to each other"; "the window to the right needs to surface all interconnected data in a
+-- clean, digestible way"; "I don't want a bar next to the threshold".
+-- One card per stat: its value; a box with the number itself (type another number and press Enter to see what it would do; empty or
+-- your own number = back to yours); then a "»" line for everything it feeds, each through the game's own conversion, "now -> with
+-- your numbers" side by side. The boxes are the What If amounts, so both tabs agree. Defense cards show what armor, dodge and parry
+-- are made of. Every number is read from the game; the few estimates are labelled.
+-------------------------------------------------------------------------------
+CM.svBase = {}   -- the number each box showed as "yours", by box key: the panel turns a typed number into a What If amount
+
+-- One colour per stat, used for its name wherever it appears in the panel (#379, Xaya: "all secondaries in the toolkit should be
+-- colorized"). The colours are XayaUI's choice (she named none); she can change them.
+CM.STAT_COLORS = {
+    crit = { 1.00, 0.45, 0.35, 1 }, haste = { 1.00, 0.82, 0.30, 1 }, mastery = { 0.72, 0.55, 1.00, 1 }, vers = { 0.40, 0.85, 0.45, 1 },
+    avoidance = { 0.35, 0.80, 0.85, 1 }, leech = { 1.00, 0.45, 0.70, 1 }, speed2 = { 0.55, 0.75, 1.00, 1 },
+    primary = { 1.00, 0.95, 0.75, 1 }, stamina = { 0.95, 0.55, 0.45, 1 },
+}
+
+local function Was(now, after, fmt)   -- "now" or "now -> after" (after only when it differs)
+    if after == nil or not num(now) or not num(after) or math.abs(after - now) < 0.0005 then return fmt(now) end
+    return fmt(now) .. " -> " .. fmt(after)
+end
+local function MapNote(it, label, value, tone, colorKey)   -- every map line shows in the short view too
+    Pair(it, label, value, tone, true)
+    if colorKey then it.pairs[#it.pairs].labelColor = CM.STAT_COLORS[colorKey] end
+end
+
+-- the percents in the mastery's own text ("Increases Armor by 89.7% of your Agility", "attack power by 32.0%"), by what they modify
+local function MasteryNumbers(ctx)
+    local out = {}
+    local ap = Esc(L("STAT_ATTACK_POWER", "Attack Power"):lower())
+    for _, mid in ipairs(MasterySpells(ctx.spec)) do
+        local d = SpellDesc(mid)
+        if type(d) == "string" and d ~= "" then
+            local t = d:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):lower()
+            local v = t:match(ap .. " by ([%d%.,]+)%%")
+            if v then out.ap = tonumber((v:gsub(",", "."))) end
+            out.name = out.name or SpellName(mid)
+        end
+    end
+    return out
+end
+
+local function MapRating(ctx, src, key, kit)
+    local it = Item("map_" .. key, src.label, "input")
+    it.input, it.bigPairs, it.mapCard, it.labelColor = "sv:" .. key, true, true, CM.STAT_COLORS[key]
+    it.amount = num(ctx.whatIfStat[key]) and ctx.whatIfStat[key] or 0
+    if src.hidden or not num(src.rating) then
+        it.value, it.tone = HID, "mute"
+        if not src.hidden then it.value = UNAV end
+        it.tip = src.tip
+        return it
+    end
+    it.absolute, CM.svBase[key] = src.rating, src.rating
+    local a, w = src.analysis or {}, src.whatIf
+    it.value = num(src.total) and Was(src.total, src.totalAfter, P) or UNAV
+    if src.totalAfter and num(src.total) then it.tone = (src.totalAfter >= src.total) and "good" or "warn" end
+    local per = a.perPctNow or a.perPctBase
+    local quiet = src.rating < 1 and not w   -- a stat you have no rating in: only what it does (clean; Xaya: "clean, digestible")
+    it.per = per and (F(per) .. " / 1%") or ""   -- the head row's last column: rating for 1% (#382: rating, percent and per 1% side by side)
+    if not quiet then
+        MapNote(it, "From rating", Was(src.fromRating or 0, w and ((src.fromRating or 0) + w.gain), SP))
+    end
+    local dr
+    if (a.lost or 0) > 0 then dr = ("%s rating lost; next point counts %s less"):format(Big(a.lost), P((a.penalty or 0) * 100, 0))
+    else dr = "none yet" end
+    if a.nextThreshold then dr = dr .. ("; next at %s rating (%s away)"):format(Big(a.nextThreshold.rating), Big(a.toNext)) end
+    if w and #w.crossed > 0 then dr = dr .. "; your numbers cross " .. #w.crossed end
+    if not quiet then MapNote(it, "Diminishing returns", dr, (a.lost or 0) > 0 and "warn" or nil) end
+    if kit then kit(it, src, w) end
+    -- the hover: where the numbers come from (short)
+    it.tip = {}
+    Tip(it, ("%s rating %s gives %s through the game's converter (GetCombatRatingBonusForCombatRatingValue): %s rating per 1%% now, %s with no penalty."):format(
+        src.label, Big(src.rating), SP(src.fromRating or 0), F(per), F(a.perPctBase)))
+    if num(src.total) then Tip(it, ("The total %s also counts your spec, talents and buffs."):format(P(src.total))) end
+    if src.thresholds and #src.thresholds > 0 then
+        local t = {}
+        for i, th in ipairs(src.thresholds) do if i <= 4 then t[#t + 1] = Big(th.rating) .. " (" .. P(th.pct * (a.coeff or 1), 0) .. ")" end end
+        Tip(it, "Diminishing-return thresholds: " .. table.concat(t, ", ") .. ".")
+    end
+    Tip(it, "Type another rating in the box and press Enter to see what it would do; clear it to go back to yours.")
+    return it
+end
+
+local function StatMapSections(ctx, out)
+    CM.svBase = {}
+    local tmp = {}
+    RatingSections(ctx, tmp)
+    local byKey = {}
+    for _, sec in ipairs(tmp) do for _, it in ipairs(sec.items) do byKey[it.key] = it end end
+    local p = ctx.primary
+    local _, eff = R(UnitStat, "player", p)
+    local dP = ctx.whatIfPrimary or 0
+    local apct = ArmorPerPrimary(ctx)
+    local mst = byKey.mastery
+    -- the armor percent with your numbers: the mastery text's percent moves with your mastery (INFERENCE: mastery effects are linear in
+    -- mastery percent; the game fills the text in with the current value)
+    local apctAfter = apct
+    if apct and mst and num(mst.total) and mst.total > 0 and num(mst.totalAfter) then apctAfter = apct * mst.totalAfter / mst.total end
+    local eff2 = num(eff) and math.max(0, eff + dP) or nil
+    local armorFromP = (apct and num(eff)) and eff * apct / 100 or nil
+    local armorFromPAfter = (apctAfter and num(eff2)) and eff2 * apctAfter / 100 or nil
+
+    -- 1. Primary stat and Stamina
+    local prim = { key = "map_primary", title = "Primary stats", items = {} }
+    do
+        local it = Item("map_primary", StatName(p), "input")
+        it.input, it.bigPairs, it.mapCard, it.labelColor = "sv:primary", true, true, CM.STAT_COLORS.primary
+        it.amount = dP
+        if eff == HIDDEN then it.value, it.tone = HID, "mute"
+        elseif num(eff) then
+            it.absolute, CM.svBase.primary = eff, eff
+            it.value = Was(eff, dP ~= 0 and eff2 or nil, Big)
+            if p == 1 or p == 2 then
+                local a0, a1 = N(GetAttackPowerForStat, p, eff), N(GetAttackPowerForStat, p, eff2)
+                if num(a0) then MapNote(it, "» Attack power", Was(a0, dP ~= 0 and a1 or nil, SB) .. (eff > 0 and ("  (1 = " .. F(a0 / eff, 2) .. ")") or "")) end
+            end
+            if p == 2 then
+                local d = N(GetDodgeChanceFromAttribute)
+                if num(d) then MapNote(it, "» Dodge", SP(d) .. (dP ~= 0 and "  (with your numbers: not given by the game)" or "")) end
+            elseif p == 1 then
+                local d = N(GetParryChanceFromAttribute)
+                if num(d) then MapNote(it, "» Parry", SP(d) .. (dP ~= 0 and "  (with your numbers: not given by the game)" or "")) end
+            end
+            if armorFromP then
+                MapNote(it, "» Armor", Was(armorFromP, (armorFromPAfter ~= armorFromP) and armorFromPAfter or nil, SB) .. ("  (%s%% of %s, mastery)"):format(F(apct, 1), StatName(p)))
+            end
+            -- abilities: what 100 more of the primary stat adds to each damage / healing number, measured from their text the way the
+            -- Spells tab does (first number / attack power x attack power per point; Strength and Agility specs)
+            if (p == 1 or p == 2) and eff > 0 then
+                local base, pos, neg = R(UnitAttackPower, "player")
+                local apNow = num(base) and (base + (num(pos) and pos or 0) + (num(neg) and neg or 0)) or nil
+                local a0 = N(GetAttackPowerForStat, p, eff)
+                local apPer = num(a0) and a0 / eff or nil
+                local okL, list = false, nil
+                if type(ns.BuildSpellList) == "function" then okL, list = pcall(ns.BuildSpellList) end
+                local rows = {}
+                if num(apNow) and apNow > 0 and apPer then
+                    for _, sp in ipairs((okL and type(list) == "table") and list or {}) do
+                        local d = num(sp.id) and SpellDesc(sp.id)
+                        local kind = d and CM.SpellKind(d)
+                        local nums = d and CM.Numbers(d)
+                        if nums and nums[1] and (kind == "offense" or kind == "both") then
+                            rows[#rows + 1] = { SpellName(sp.id), nums[1] / apNow * apPer * 100, nums[1] }
+                        end
+                    end
+                end
+                table.sort(rows, function(x, y) return x[2] > y[2] end)
+                local parts = {}
+                for i = 1, math.min(4, #rows) do parts[#parts + 1] = rows[i][1] .. " +" .. Big(rows[i][2]) end
+                if #parts > 0 then MapNote(it, "» Abilities (per 100)", table.concat(parts, ", ")) end
+                -- with your number: each ability's own number now -> then (its first number moves with attack power: B7, #325
+                -- "what happens to your other stats and abilities")
+                local a1 = num(eff2) and N(GetAttackPowerForStat, p, eff2) or nil
+                if dP ~= 0 and #rows > 0 and num(a1) and num(a0) then
+                    local ratio = (apNow + a1 - a0) / apNow
+                    local ch = {}
+                    for i = 1, math.min(4, #rows) do ch[#ch + 1] = rows[i][1] .. " " .. Big(rows[i][3]) .. " -> " .. Big(rows[i][3] * ratio) end
+                    MapNote(it, "» Abilities with your number", table.concat(ch, ", "), ratio >= 1 and "good" or "warn")
+                    Tip(it, "Abilities with your number: each one's first number x (attack power then / attack power now); talents and buffs stay as they are.")
+                end
+                Tip(it, "Abilities: each one's first number in its own description divided by your attack power, times the attack power 100 more gives (as on the Spells tab; talents and buffs already in the text).")
+            end
+            Tip(it, ("Attack power per point from GetAttackPowerForStat; dodge or parry from %s as the character window reads it; armor from the percent in your mastery's own text."):format(StatName(p)))
+            Tip(it, "Type another number in the box and press Enter; clear it to go back to yours.")
+        else it.value, it.tone = UNAV, "mute" end
+        prim.items[#prim.items + 1] = it
+        local st = Item("map_stamina", StatName(3))
+        st.bigPairs, st.labelColor = true, CM.STAT_COLORS.stamina
+        local _, sta = R(UnitStat, "player", 3)
+        SetValue(st, sta, Big)
+        local dS = ctx.whatIfStamina or 0   -- (the gear comparison's Stamina change; the map itself has no Stamina box)
+        if dS ~= 0 and num(sta) then st.value = Was(sta, math.max(0, sta + dS), Big) end
+        local hp, per, mod = N(UnitHealthMax, "player"), N(UnitHPPerStamina, "player"), N(GetUnitMaxHealthModifier, "player")
+        local hpPer = num(per) and per * (num(mod) and mod or 1) or nil
+        if num(hp) then
+            MapNote(st, "» Health", Was(hp, (dS ~= 0 and hpPer) and hp + dS * hpPer or nil, Big) .. (hpPer and ("  (1 = " .. F(hpPer, 2) .. ")") or ""))
+        end
+        prim.items[#prim.items + 1] = st
+    end
+    out[#out + 1] = prim
+
+    -- 2. Secondary stats and what they feed (a column head over the cards: rating, percent, rating per 1%)
+    local function ColHead(k) local h = Item(k, "", "colhead"); h.cols = { "Rating", "Percent", "Per 1%" }; return h end
+    local sec = { key = "map_secondary", title = "Secondary stats", items = { ColHead("map_cols2") } }
+    if byKey.crit then
+        sec.items[#sec.items + 1] = MapRating(ctx, byKey.crit, "crit", function(it, src, w)
+            if R(GetCritChanceProvidesParryEffect) == true then
+                local fp = Converter(IDX.parry)
+                local now = fp and fp(src.rating)
+                if num(now) then
+                    local after = (w and fp) and fp(w.newRating) or nil
+                    local ap = SM.Analyze(fp, src.rating, SM.BaseRate(fp), nil, 1, nil)
+                    local per = ap and (ap.perPctNow or ap.perPctBase)
+                    MapNote(it, "» Parry", Was(now, after, SP) .. (per and ("  (" .. F(per) .. " crit rating = 1% parry)") or "") .. ", before DR")
+                    it.parryPer = per
+                end
+            end
+        end)
+    end
+    if byKey.haste then
+        sec.items[#sec.items + 1] = MapRating(ctx, byKey.haste, "haste", function(it, src, w)
+            local h0, h1 = src.total, src.totalAfter
+            local g = CM.gcd
+            if g and num(g.dur) then
+                local est = (num(h0) and num(h1)) and g.dur * (1 + h0 / 100) / (1 + h1 / 100) or nil
+                MapNote(it, "» Global cooldown", F(g.dur, 2) .. " s" .. (est and math.abs(est - g.dur) > 0.0005 and (" -> about " .. F(est, 2) .. " s") or ""))
+            elseif CM.gcdHidden then MapNote(it, "» Global cooldown", HID, "mute")
+            else MapNote(it, "» Global cooldown", "cast any spell to read it", "mute") end
+            local mh = N(UnitAttackSpeed, "player")
+            if num(mh) then
+                local est = (num(h0) and num(h1)) and mh * (1 + h0 / 100) / (1 + h1 / 100) or nil
+                MapNote(it, "» Attack speed", F(mh, 2) .. " s" .. (est and math.abs(est - mh) > 0.0005 and (" -> about " .. F(est, 2) .. " s") or ""))
+            end
+            -- abilities whose own text mentions Haste (English word match; the game has no list of what haste shortens), with their
+            -- recharge now where they have charges (C_Spell.GetSpellCharges; secret while cooldowns are restricted)
+            local okL, list = false, nil
+            if type(ns.BuildSpellList) == "function" then okL, list = pcall(ns.BuildSpellList) end
+            local names = {}
+            for _, sp in ipairs((okL and type(list) == "table") and list or {}) do
+                local d = num(sp.id) and SpellDesc(sp.id)
+                if type(d) == "string" and d:lower():find("haste", 1, true) then
+                    local ch = C_Spell and C_Spell.GetSpellCharges and R(C_Spell.GetSpellCharges, sp.id)
+                    local dur = (type(ch) == "table") and Field(ch, "cooldownDuration") or nil
+                    local dur2 = (num(dur) and dur > 0 and num(h0) and num(h1) and math.abs(h1 - h0) > 0.0005) and dur * (1 + h0 / 100) / (1 + h1 / 100) or nil
+                    names[#names + 1] = SpellName(sp.id) .. ((num(dur) and dur > 0) and (" (" .. Was(dur, dur2, function(v) return F(v, 1) .. " s" end) .. " recharge)") or "")
+                    if #names >= 5 then break end
+                end
+            end
+            if #names > 0 then MapNote(it, "» Abilities (their text names Haste)", table.concat(names, ", ")) end
+            Tip(it, "The global cooldown and attack speed with your numbers are estimates: the game's figure now, times (1 + haste now) / (1 + haste then).")
+            Tip(it, "Abilities: those whose own description mentions Haste (a word match on English text; the game does not list what haste shortens). Their recharge is the game's figure now (C_Spell.GetSpellCharges); with your numbers it is an estimate, like the global cooldown.")
+        end)
+    end
+    if mst then
+        sec.items[#sec.items + 1] = MapRating(ctx, mst, "mastery", function(it, src, w)
+            if apct and num(eff) then
+                local per1 = (num(src.total) and src.total > 0) and eff * (apct / src.total) / 100 or nil
+                MapNote(it, "» Armor", Was(armorFromP, (armorFromPAfter ~= armorFromP) and armorFromPAfter or nil, SB)
+                    .. ("  (%s%% of %s)"):format(F(apct, 1), StatName(p)))
+                if per1 then
+                    local a = src.analysis or {}
+                    local per = a.perPctNow or a.perPctBase
+                    MapNote(it, "» Armor per 1% mastery", SB(per1) .. (per and ("  (" .. F(per) .. " mastery rating)") or ""))
+                end
+            end
+            local mn = MasteryNumbers(ctx)
+            if mn.ap then
+                local after = (num(src.total) and src.total > 0 and num(src.totalAfter)) and mn.ap * src.totalAfter / src.total or nil
+                MapNote(it, "» Attack power", Was(mn.ap, after, SP))
+            end
+            if apct or mn.ap then
+                Tip(it, "Armor and attack power from mastery: the percents in your mastery's own text, which the game fills in; with your numbers they move in step with mastery (an estimate).")
+            end
+        end)
+    end
+    if byKey.vers then
+        sec.items[#sec.items + 1] = MapRating(ctx, byKey.vers, "vers", function(it, src, w)
+            MapNote(it, "» Damage and healing done (every ability)", Was(src.total or 0, src.totalAfter, SP))
+            local ft = Converter(IDX.versTaken)
+            local tNow = N(GetCombatRatingBonus, IDX.versTaken)
+            local tBonus = N(GetVersatilityBonus, IDX.versTaken)
+            if num(tNow) then
+                local base = num(tBonus) and tBonus or 0
+                local after = (w and ft) and ft(w.newRating) or nil
+                local at = ft and SM.Analyze(ft, src.rating, SM.BaseRate(ft), nil, 1, nil)
+                local per = at and (at.perPctNow or at.perPctBase)
+                MapNote(it, "» Damage taken", Was(-(tNow + base), num(after) and -(after + base) or nil, function(v) return P(v) end)
+                    .. (per and ("  (" .. F(per) .. " rating = 1%)") or ""))
+            elseif tNow == HIDDEN then MapNote(it, "» Damage taken", HID, "mute") end
+        end)
+    end
+    if not ctx.noAll then
+        -- one amount added to every rating (the What If tab's "All ratings", kept here when that tab folded into the map, B9)
+        local all = Item("map_all", "All ratings", "input")
+        all.input, all.amount = "all", ctx.whatIfAll
+        all.value, all.tone = ctx.whatIfAll ~= 0 and (SB(ctx.whatIfAll) .. " on every rating") or "off", ctx.whatIfAll ~= 0 and "good" or "mute"
+        Tip(all, "Adds this much rating to every secondary and tertiary stat at once; each card shows what it does. 0 turns it off.")
+        sec.items[#sec.items + 1] = all
+    end
+    out[#out + 1] = sec
+
+    -- 3. Tertiary stats
+    local ter = { key = "map_tertiary", title = "Tertiary stats", items = { ColHead("map_cols3") } }
+    local function Simple(key, what)
+        if byKey[key] then
+            ter.items[#ter.items + 1] = MapRating(ctx, byKey[key], key, function(it, src)
+                MapNote(it, what, Was(src.total or 0, src.totalAfter, SP))
+            end)
+        end
+    end
+    Simple("avoidance", "» Area damage taken (less)")
+    Simple("leech", "» Healed for (of damage done)")
+    Simple("speed2", "» Movement speed")
+    out[#out + 1] = ter
+
+    -- 4. Offense: what attack power, spell power, your weapons, the global cooldown and your resource are made of (these were the old
+    -- Offense section under the Spells filter; they live here now, so the filter only filters spells: requirements row B12)
+    local off = { key = "map_offense", title = "Offense (what feeds it)", items = {} }
+    local hst = byKey.haste
+    local h0, h1 = hst and hst.total, hst and hst.totalAfter
+    local function Hasted(v)   -- a time with your haste, if you changed it (estimate: time x (1 + haste now) / (1 + haste then))
+        if num(v) and num(h0) and num(h1) and math.abs(h1 - h0) > 0.0005 then return v * (1 + h0 / 100) / (1 + h1 / 100) end
+    end
+    do
+        local base, pos, neg = R(UnitAttackPower, "player")
+        local mn = MasteryNumbers(ctx)
+        if base == HIDDEN then
+            local it = Item("map_ap", L("STAT_ATTACK_POWER", "Attack Power")); SetValue(it, HIDDEN); off.items[#off.items + 1] = it
+        elseif num(base) and (p == 1 or p == 2 or base > 0) then
+            local it = Item("map_ap", L("STAT_ATTACK_POWER", "Attack Power"))
+            it.bigPairs = true
+            local ap = math.max(0, base + (num(pos) and pos or 0) + (num(neg) and neg or 0))
+            local a0 = (p == 1 or p == 2) and num(eff) and N(GetAttackPowerForStat, p, eff) or nil
+            local a1 = (num(a0) and num(eff2)) and N(GetAttackPowerForStat, p, eff2) or nil
+            local apAfter = (num(a0) and num(a1) and dP ~= 0) and math.max(0, ap + a1 - a0) or nil
+            it.value = Was(ap, apAfter, Big)
+            if apAfter then it.tone = apAfter >= ap and "good" or "warn" end
+            if num(a0) then MapNote(it, "From " .. StatName(p), Was(a0, apAfter and a1 or nil, SB), nil, "primary") end
+            if mn.ap then
+                local after = (mst and num(mst.total) and mst.total > 0 and num(mst.totalAfter)) and mn.ap * mst.totalAfter / mst.total or nil
+                MapNote(it, "From Mastery", Was(mn.ap, after, SP), nil, "mastery")
+            end
+            local bd = (num(pos) and pos or 0) + (num(neg) and neg or 0)
+            if bd ~= 0 then MapNote(it, "Buffs and debuffs", SB(bd), bd > 0 and "good" or "warn") end
+            local apFromSP = N(GetOverrideAPBySpellPower)
+            if num(apFromSP) and apFromSP > 0 then MapNote(it, "From spell power", P(apFromSP * 100, 0) .. " of spell power") end
+            local magic = _G.ATTACK_POWER_MAGIC_NUMBER
+            if num(magic) and magic > 0 then
+                MapNote(it, "» Damage per second", Was(ap / magic, apAfter and apAfter / magic or nil, function(v) return "+" .. BF(v) end))
+            end
+            Tip(it, "Attack power from UnitAttackPower; the part from your primary stat from GetAttackPowerForStat; damage per second is the character window's own figure (attack power / ATTACK_POWER_MAGIC_NUMBER).")
+            if mn.ap then Tip(it, "With your numbers the total moves with your primary stat only; the mastery's percent is shown beside it (the game does not say which attack power it multiplies).") end
+            off.items[#off.items + 1] = it
+        end
+        local sp, heal, spFromAP = SpellPowerNow(), N(GetSpellBonusHealing), N(GetOverrideSpellPowerByAP)
+        if sp == HIDDEN or (num(sp) and sp > 0) or (num(heal) and heal > 0) then
+            local it = Item("map_sp", L("STAT_SPELLPOWER", "Spell Power"))
+            it.bigPairs = true
+            SetValue(it, sp, Big)
+            if p == 4 then
+                local _, int = R(UnitStat, "player", 4)
+                if num(int) and num(sp) and int > 0 then
+                    local per = sp / int
+                    it.value = Was(sp, dP ~= 0 and math.max(0, sp + dP * per) or nil, Big)
+                    MapNote(it, "From " .. StatName(4), F(per, 2) .. " per point (average, all sources)" .. (dP ~= 0 and ", your numbers at that rate (estimate)" or ""), nil, "primary")
+                end
+            end
+            if num(heal) and num(sp) and heal ~= sp then MapNote(it, "Healing bonus", Big(heal)) end
+            if num(spFromAP) and spFromAP > 0 then MapNote(it, "From attack power", P(spFromAP * 100, 0) .. " of attack power") end
+            Tip(it, "Spell power as the character window shows it: your lowest school (GetSpellBonusDamage).")
+            off.items[#off.items + 1] = it
+        end
+        local mh, oh = R(UnitAttackSpeed, "player")
+        local dmin, dmax, ohMin, ohMax, _, _, pct = R(UnitDamage, "player")
+        if mh == HIDDEN or dmin == HIDDEN then
+            local it = Item("map_weapon", L("WEAPON_SPEED", "Attack Speed")); SetValue(it, HIDDEN); off.items[#off.items + 1] = it
+        elseif num(mh) and mh > 0 and num(dmin) and num(dmax) then
+            local it = Item("map_weapon", "Main hand")
+            it.bigPairs = true
+            it.value = Big(math.max(1, math.floor(dmin))) .. " - " .. Big(math.max(1, math.ceil(dmax)))
+            local mh2, oh2 = Hasted(mh), Hasted(oh)
+            MapNote(it, "Speed, from Haste", Was(mh, mh2, function(v) return F(v, 2) .. " s" end) .. (mh2 and " (estimate)" or ""), nil, "haste")
+            MapNote(it, "» Damage per second", Was((dmin + dmax) / 2 / mh, mh2 and (dmin + dmax) / 2 / mh2 or nil, BF))
+            if num(ohMin) and num(ohMax) and ohMax > 0 and num(oh) and oh > 0 then
+                MapNote(it, "Off hand", ("%s - %s, %s, %s DPS"):format(Big(ohMin), Big(ohMax), Was(oh, oh2, function(v) return F(v, 2) .. " s" end),
+                    BF((ohMin + ohMax) / 2 / oh)))
+            end
+            if num(pct) and math.abs(pct - 1) > 0.0001 then MapNote(it, "Physical damage modifier", "x" .. F(pct, 3)) end
+            local mhExp, ohExp = R(GetExpertise)
+            if num(mhExp) and mhExp > 0 then MapNote(it, "Expertise", P(mhExp) .. ((num(ohExp) and ohExp > 0) and (" / " .. P(ohExp)) or "")) end
+            Tip(it, "Weapon damage and speed from UnitDamage and UnitAttackSpeed, with every modifier already applied. Speed with your haste is an estimate: speed x (1 + haste now) / (1 + haste then).")
+            off.items[#off.items + 1] = it
+        end
+        local rSpeed, rMin, rMax = R(UnitRangedDamage, "player")
+        if rSpeed ~= HIDDEN and num(rSpeed) and rSpeed > 0 and num(rMin) and num(rMax) and rMax > 0 then
+            local it = Item("map_ranged", "Ranged")
+            it.bigPairs = true
+            it.value = Big(rMin) .. " - " .. Big(rMax)
+            local r2 = Hasted(rSpeed)
+            MapNote(it, "Speed, from Haste", Was(rSpeed, r2, function(v) return F(v, 2) .. " s" end) .. (r2 and " (estimate)" or ""), nil, "haste")
+            MapNote(it, "» Damage per second", Was((rMin + rMax) / 2 / rSpeed, r2 and (rMin + rMax) / 2 / r2 or nil, BF))
+            local rb, rp, rn = R(UnitRangedAttackPower, "player")
+            if num(rb) then MapNote(it, "Ranged attack power", Big(rb + (num(rp) and rp or 0) + (num(rn) and rn or 0))) end
+            Tip(it, "From UnitRangedDamage and UnitRangedAttackPower.")
+            off.items[#off.items + 1] = it
+        end
+        local g = CM.gcd
+        local it = Item("map_gcd", "Global cooldown")
+        it.bigPairs = true
+        if CM.gcdHidden then
+            SetValue(it, HIDDEN)
+            if g and num(g.dur) then MapNote(it, "Last read", F(g.dur, 2) .. " s") end
+        elseif g and num(g.dur) then
+            local g2 = Hasted(g.dur)
+            it.value = Was(g.dur, g2, function(v) return F(v, 2) .. " s" end)
+            MapNote(it, "From Haste", num(g.haste) and (P(g.haste) .. " haste when read" .. (g2 and "; with your numbers about " .. F(g2, 2) .. " s (estimate)" or "")) or "read live", nil, "haste")
+            if num(g.haste) then
+                local unh = g.dur * (1 + g.haste / 100)
+                local need = (g.dur > 0.01) and HasteRatingFor((unh / (g.dur - 0.01) - 1) * 100) or nil
+                MapNote(it, "Unhasted (estimate)", F(unh, 2) .. " s" .. (need and ("; " .. Big(need) .. " more haste rating for -0.01 s") or ""))
+                if math.abs(g.dur - 1.0) < 0.005 and g.haste > 1 then MapNote(it, "Note", "looks like a fixed 1 s GCD: haste may not shorten it", "warn") end
+            end
+            Tip(it, "Read from the game's global cooldown (spell 61304, C_Spell.GetSpellCooldown) each time one runs. Unhasted and with-your-numbers figures are estimates: GCD = unhasted / (1 + haste).")
+        else
+            SetValue(it, nil)
+            MapNote(it, "Read", "cast any spell to read it", "mute")
+        end
+        off.items[#off.items + 1] = it
+        local inactive, active = R(GetPowerRegen)
+        local _, token = R(UnitPowerType, "player")
+        if inactive == HIDDEN then
+            local rg = Item("map_regen", "Resource regen"); SetValue(rg, HIDDEN); off.items[#off.items + 1] = rg
+        elseif num(inactive) and num(active) and (inactive > 0 or active > 0) then
+            local name = (type(token) == "string" and type(_G[token]) == "string") and _G[token] or "Resource"
+            local rg = Item("map_regen", tostring(name) .. " regen")
+            rg.bigPairs = true
+            rg.value = F(active, 2) .. "/s in combat"
+            MapNote(rg, "Out of combat", F(inactive, 2) .. "/s")
+            if token == "MANA" then
+                local mb, mc = R(GetManaRegen)
+                if num(mb) then MapNote(rg, "Mana", ("%s/s, while casting %s/s"):format(F(mb, 1), num(mc) and F(mc, 1) or "?")) end
+            end
+            Tip(rg, "From GetPowerRegen (and GetManaRegen for mana): the figure now; the game gives no amount per point of any stat.")
+            off.items[#off.items + 1] = rg
+        end
+    end
+    out[#out + 1] = off
+
+    -- 5. What armor, dodge, parry, block and stagger are made of
+    local def = { key = "map_defense", title = "Defense (what feeds it)", items = {} }
+    do
+        local _, armor = R(UnitArmor, "player")
+        local it = Item("map_armor", L("STAT_ARMOR", "Armor"))
+        it.bigPairs = true
+        SetValue(it, armor, Big)
+        if num(armor) then
+            local itemArmor = ctx.whatIfArmor or 0   -- (the gear comparison: the item's own armor change)
+            local delta = ((armorFromPAfter and armorFromP) and (armorFromPAfter - armorFromP) or 0) + itemArmor
+            if delta ~= 0 then it.value = Was(armor, armor + delta, Big) end
+            if itemArmor ~= 0 then
+                MapNote(it, "From the item itself", SB(itemArmor), itemArmor > 0 and "good" or "warn")
+                it.pairs[#it.pairs].change = true   -- a change by itself (no "now -> then"): the gear comparison keeps it
+            end
+            local fx = ArmorEff()
+            if num(ctx.level) and type(fx) == "function" then
+                local r0, r1 = N(fx, armor, ctx.level), N(fx, armor + delta, ctx.level)
+                if num(r0) then MapNote(it, "» Damage reduction", Was(r0 * 100, (delta ~= 0 and num(r1)) and r1 * 100 or nil, P) .. "  (vs your level)") end
+                local g = function(a) local v = N(fx, a, ctx.level); if num(v) then return v * 100 end end
+                local need = num(r0) and SM.Solve(g, r0 * 100 + 1, armor, armor * 20 + 100000, true)
+                MapNote(it, "Armor for the next 1%", need and Big(need - armor) or "out of reach", (not need) and "warn" or nil)
+            end
+            if HasAttackableTarget() then
+                local v = N(ArmorVsTarget(), armor)
+                if num(v) then MapNote(it, "» Against your target", P(v * 100)) end
+            end
+            if armorFromP then MapNote(it, "From " .. StatName(p) .. " (mastery)", Was(armorFromP, delta ~= 0 and armorFromPAfter or nil, SB), nil, "mastery") end
+            local abase, _, _, abonus = R(UnitArmor, "player")
+            if num(abase) then
+                MapNote(it, "Base, buffs and talents", Big(abase) .. (armor ~= abase and (", " .. SB(armor - abase)) or "") .. ((num(abonus) and abonus > 0) and (", bonus armor " .. Big(abonus)) or ""))
+            end
+            Tip(it, "Armor from UnitArmor; damage reduction from C_PaperDollInfo.GetArmorEffectiveness against your level (not linear: each 1% costs more armor). The mastery part is read from your mastery's own text.")
+        end
+        def.items[#def.items + 1] = it
+        local dg = Item("map_dodge", L("STAT_DODGE", "Dodge"))
+        dg.bigPairs = true
+        local dTot = N(GetDodgeChance)
+        SetValue(dg, dTot, P)
+        local dAgi = N(GetDodgeChanceFromAttribute)
+        if num(dTot) and num(dAgi) and dAgi > 0 then
+            MapNote(dg, "From " .. StatName(2), SP(dAgi), nil, "primary")
+            MapNote(dg, "Other (base, talents, rating)", SP(dTot - dAgi))
+        end
+        def.items[#def.items + 1] = dg
+        local pr = Item("map_parry", L("STAT_PARRY", "Parry"))
+        pr.bigPairs = true
+        local pTot = N(GetParryChance)
+        SetValue(pr, pTot, P)
+        if num(pTot) then
+            local crit = byKey.crit
+            local fromCrit
+            if crit and num(crit.rating) and R(GetCritChanceProvidesParryEffect) == true then
+                local fp = Converter(IDX.parry)
+                fromCrit = fp and fp(crit.rating)
+                local after = (fp and crit.whatIf) and fp(crit.whatIf.newRating) or nil
+                if num(fromCrit) then MapNote(pr, "From Critical Strike", Was(fromCrit, after, SP) .. ", before DR", nil, "crit") end
+            end
+            local pStr = N(GetParryChanceFromAttribute)
+            if num(pStr) and pStr > 0 then MapNote(pr, "From " .. StatName(1), SP(pStr)) end
+            Tip(pr, "Parry total from GetParryChance (after diminishing returns); the parts are read before them, so they need not add up exactly.")
+        end
+        def.items[#def.items + 1] = pr
+        local block = N(GetBlockChance)
+        local shield = C_PaperDollInfo and R(C_PaperDollInfo.OffhandHasShield)
+        if block == HIDDEN or (num(block) and block > 0) or shield == true then
+            local bl = Item("map_block", L("STAT_BLOCK", "Block"))
+            bl.bigPairs = true
+            SetValue(bl, block, P)
+            local sb, fx = N(GetShieldBlock), ArmorEff()
+            if num(sb) and sb > 0 and num(ctx.level) and type(fx) == "function" then
+                local red = N(fx, sb, ctx.level)
+                if num(red) then MapNote(bl, "» A block reduces the hit by", P(red * 100)) end
+                if HasAttackableTarget() then
+                    local v = N(ArmorVsTarget(), sb)
+                    if num(v) then MapNote(bl, "» Against your target", P(v * 100)) end
+                end
+            end
+            Tip(bl, "Block chance from GetBlockChance; what a block takes off: shield block value (GetShieldBlock) through the game's armor effectiveness, as the character window works it out.")
+            def.items[#def.items + 1] = bl
+        end
+        local stagger, staggerT = R(C_PaperDollInfo and C_PaperDollInfo.GetStaggerPercentage, "player")
+        if stagger == HIDDEN or (num(stagger) and stagger > 0) then
+            local stg = Item("map_stagger", L("STAT_STAGGER", "Stagger"))
+            stg.bigPairs = true
+            SetValue(stg, stagger, P)
+            if num(staggerT) and staggerT > 0 then MapNote(stg, "» Against your target", P(staggerT)) end
+            Tip(stg, "From C_PaperDollInfo.GetStaggerPercentage.")
+            def.items[#def.items + 1] = stg
+        end
+    end
+    out[#out + 1] = def
+end
+CM.StatMapSections = StatMapSections
 
 -------------------------------------------------------------------------------
 -- The whole model
 -------------------------------------------------------------------------------
+-- The panel's header (B2; Xaya 2026-11-04, #383: "Name and spec go at the top as a decorative header above the tabs"; "item level is
+-- fine up top"; role and movement left out): name, spec and class in the class colour, item level equipped and overall. UnitName,
+-- UnitClass (globals.md:668, 573), the spec from the same read as the rest of the model, GetAverageItemLevel (as PaperDollFrame.lua),
+-- the colour from C_ClassColor.GetClassColor (namespaces.md:860), else RAID_CLASS_COLORS. Secret values are left out.
+function CM.HeaderInfo()
+    local h = {}
+    local name = R(UnitName, "player")
+    if type(name) == "string" then h.name = name end
+    local className, classFile = R(UnitClass, "player")
+    if type(className) == "string" then h.className = className end
+    local sp = SpecIndex()
+    local info = sp and SpecInfo(sp) or {}
+    if type(info[2]) == "string" and not IsSecret(info[2]) then h.spec = info[2] end
+    if type(classFile) == "string" then
+        local col = C_ClassColor and R(C_ClassColor.GetClassColor, classFile)
+        if type(col) ~= "table" then col = _G.RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile] end
+        if type(col) == "table" and num(col.r) and num(col.g) and num(col.b) then h.color = { col.r, col.g, col.b, 1 } end
+    end
+    local overall, equipped = R(GetAverageItemLevel)
+    if num(overall) then h.ilvlOverall = overall end
+    if num(equipped) then h.ilvlEquipped = equipped end
+    return h
+end
+
 -- Tabs and which sections each one draws. The Sheet draws every section of Stats, Defense and Offense in compact form. Defense and
 -- Offense are no longer tabs (QoL 0.7.7; Xaya 2026-11-04: "remove defense and offense tabs from stat calculator, they should be filters
 -- for 'Spells'"): their sections are drawn under the Spells tab's Offense and Defense filters, and CM.Build still takes "defense" and
 -- "offense" for the tooltips and the tests.
-CM.TABS = { { "sheet", "Sheet" }, { "stats", "Stats" }, { "gear", "Gear" }, { "whatif", "What If" }, { "spells", "Spells" } }
+-- The Sheet tab is gone (QoL 0.7.14; Xaya 2026-11-04: "I don't care about this sheet at all. I want a reskin OF THE CHARACTER MENU AND
+-- NOTHING ELSE"): a saved "sheet" tab opens Stats; the stats go into the restyled character window (QoL Character Reskin).
+-- The What If tab is gone too (QoL 0.7.14): its numbers are the stat map's boxes (and its All ratings box), its item compare is the
+-- Gear tab's comparison (requirements B9); a saved "whatif" tab opens Stats.
+CM.TABS = { { "stats", "Stats" }, { "gear", "Gear" }, { "spells", "Spells" } }
 local TAB_OK = {}
 for _, t in ipairs(CM.TABS) do TAB_OK[t[1]] = true end
 CM.TAB_OK = TAB_OK
@@ -1701,20 +2476,18 @@ function CM.Build(cfg, tab)
         end
         return list
     end
-    local core = (tab == nil or tab == "sheet" or tab == "stats" or tab == "defense" or tab == "offense" or tab == "whatif")
-    local ratingSecs
-    if core then
+    local core = (tab == nil or tab == "sheet" or tab == "defense" or tab == "offense")
+    if tab == "stats" then
+        add("stats", StatMapSections)   -- the stat map (QoL 0.7.14): the Stats tab
+    elseif core then
         add("stats", CharacterSection)
-        ratingSecs = add("stats", RatingSections)
+        add("stats", RatingSections)
         add("defense", DefenseSections)
         add("offense", OffenseSections)
     end
     if tab == "gear" then add("gear", GearSections) end
-    if tab == "whatif" then add("whatif", function(c, list) WhatIfSections(c, list, ratingSecs or {}) end) end
     if tab == "spells" then
-        add("spells", SpellSection)
-        local f = CM.FilterOf(cfg)
-        if f == "offense" then add("spells", OffenseSections) elseif f == "defense" then add("spells", DefenseSections) end
+        add("spells", SpellSection)   -- the filters filter spells only; the old Offense / Defense stat sections are on the stat map (B12)
     end
     return m
 end

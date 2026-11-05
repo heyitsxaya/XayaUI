@@ -5,7 +5,7 @@
 -- pooled buttons too, so two skins fight over the same buttons (0.5.37-0.5.40 showed that). This file never writes to a pooled button.
 --   * GameMenuFrame stays the real menu: it builds its entries, owns ESC, and runs every entry's action. We only fade it out (frame alpha).
 --   * Our own frame (child of UIParent, never pooled) is drawn over it, one row per Blizzard entry, with the entry's own text and state.
--- Two modes (Settings > UI Options > Display > Game Menu, "Match Blizzard's button positions", on by default since 0.5.106):
+-- Two modes (Blizzard UI Reskin > Esc Menu, "Match Blizzard's button positions", on by default since 0.5.106):
 --   * MATCH (default): every row is anchored to its real Blizzard button, so it sits exactly where that button is, and the rows take no
 --     mouse: a click lands on the real button under the pointer and runs its own action. No lookup, so no way to run another action.
 --     Hover / pressed looks are read from the real button (polled). The XayaUI row is the real slot GameMenu.lua adds to the menu.
@@ -198,7 +198,7 @@ local function GetRow(i)
             local src = ResolveSource(self)
             if not src then
                 diag.lastError = "no real button with the text '" .. tostring(self.label) .. "' - nothing was clicked"
-                if ns.Print then ns.Print("Game Menu skin: could not find the real '" .. tostring(self.label) .. "' button, so nothing was clicked. Turn on 'Match Blizzard's button positions' (Settings > UI Options > Display > Game Menu).") end
+                if ns.Print then ns.Print("Game Menu skin: could not find the real '" .. tostring(self.label) .. "' button, so nothing was clicked. Turn on 'Match Blizzard's button positions' (XayaUI settings: Blizzard UI Reskin > Esc Menu).") end
                 return
             end
             local okE, en = pcall(src.IsEnabled, src)
@@ -476,7 +476,7 @@ function ns.GameMenuSkin_Diagnostics()
     end
 end
 
--- Settings > UI Options > Display (Game Menu look) ----------------------------------------------------------------------------------------------------------
+-- Blizzard UI Reskin > Esc Menu (the Game Menu look) ----------------------------------------------------------------------------------------------------------
 function ns.GameMenuSkin_Options(Notify)
     local function re() diag.failed = false; ns.GameMenuSkin_Refresh(); if Notify then Notify() end end
     local function g(k) return function() return Cfg()[k] end end
@@ -555,11 +555,11 @@ function ns.GameMenuSkin_Options(Notify)
         reset = { type = "execute", order = 50, name = "Reset Game Menu settings", disabled = off,
             func = function() Ui().gm = nil; Cfg().skin = true; re() end },
     }
-    return { type = "group", name = "Game Menu", order = 3, args = args }
+    return { type = "group", name = "Esc Menu", order = 3, args = args }   -- (Reskin 0.6.1: a page of the Blizzard UI Reskin tab)
 end
 
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
 ns.RegisterCommand("gamemenu", function() ns.GameMenuSkin_Diagnostics() end)
-ns.RegisterSettingsPage("reskin", "gamemenu", ns.GameMenuSkin_Options)   -- shown inside Settings > UI Options > Display (Options.lua)
+ns.RegisterSettingsPage("reskin", "gamemenu", ns.GameMenuSkin_Options)   -- the Blizzard UI Reskin tab's Esc Menu page (Options 0.6.38)
