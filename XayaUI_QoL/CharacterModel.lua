@@ -2,7 +2,8 @@
 -- CharacterModel.lua : the one stat model behind QoL > Character Toolkit (XayaUI QoL 0.7.0). No frames here: it reads the game and
 -- returns plain data (sections of items, each item a label, a value, label/value detail pairs and hover lines; since QoL 0.7.15 a stat
 -- map line also carries its Pt value and note apart from its value, per / note, and CM.PairText joins them for one-column readers;
--- a section with grid = true is drawn as a table, Stat | Current value | Pt value | Note). The panel's tabs, its
+-- a section with grid = true is drawn as a table, Stat | Rating | Current value | Pt value | Note | Change since QoL 0.7.20, a rating
+-- card's rating text in ratingText, and a pair with nested = true is one ability under the "»" line above it). The panel's tabs, its
 -- compact sheet, the What If pane, the gear slot overlays and the extra lines on the character window's tooltips all draw from it.
 -- Arithmetic lives in StatMath.lua. NOT RUN IN GAME when written (2026-11-04): every number needs the in-game pass (QA-CHECKLIST E1).
 --
@@ -1023,11 +1024,48 @@ function CM.LinkEnchanted(link)
     return f ~= "" and f ~= "0"
 end
 
+-- The sockets of an equipped item and the gem in each (QoL 0.7.19; Xaya 2026-11-05: "show gem sockets and gems socketed"). The same
+-- calls the game's own socket display makes (PaperDollFrame.lua, PaperDollItemSocketDisplayMixin:SetItem, live 12.1.5 source, read
+-- 2026-11-05; the game shows that display only for Timerunning characters: "item ~= nil and PlayerIsTimerunning()"):
+--   C_Item.GetItemNumSockets(itemInfo: ItemInfo) → socketCount: number · SecretArguments=AllowedWhenUntainted (namespaces.md:2786)
+--   C_Item.GetItemGemID(itemInfo: ItemInfo, index: luaIndex) → gemID: number · MayReturnNothing, SecretArguments=AllowedWhenUntainted (:2765)
+--   C_Item.GetItemIconByID(itemInfo: ItemInfo) → icon: fileID? · SecretArguments=AllowedWhenUntainted (:2770)
+--   C_Item.GetItemGem(hyperlink: cstring, index: luaIndex) → gemName: string, gemLink: cstring · MayReturnNothing,
+--     SecretArguments=AllowedWhenUntainted (:2764)
+-- Returns one entry per socket, { gemID, icon, name, link } (all nil for an empty socket), or nil when the count cannot be read or a
+-- read is secret: then no socket is shown (nothing guessed). A socket without a gem ID is empty (INFERENCE: the game's own display
+-- shows a gem only where GetItemGemID returns one). At most 3, as the game's display has three places (INFERENCE that no item has more).
+CM.MAX_SOCKETS = 3
+function CM.SlotSockets(link)
+    if type(link) ~= "string" or IsSecret(link) or not (C_Item and C_Item.GetItemNumSockets) then return nil end
+    local n = N(C_Item.GetItemNumSockets, link)
+    if not num(n) then return nil end
+    local out = {}
+    for i = 1, math.min(math.floor(n), CM.MAX_SOCKETS) do
+        local id = C_Item.GetItemGemID and N(C_Item.GetItemGemID, link, i) or nil
+        if id == HIDDEN then return nil end
+        local g = {}
+        if num(id) and id > 0 then
+            g.gemID = id
+            local icon = C_Item.GetItemIconByID and R(C_Item.GetItemIconByID, id) or nil
+            if icon ~= nil and icon ~= HIDDEN then g.icon = icon end
+            local name, glink = R(C_Item.GetItemGem, link, i)
+            if type(name) == "string" and name ~= "" then g.name = name end
+            if type(glink) == "string" and glink ~= "" then g.link = glink end
+        end
+        out[i] = g
+    end
+    return out
+end
+
 -- Everything one equipped slot shows: link, item level, listed ratings, empty sockets, enchant, durability.
+-- Empty sockets (QoL 0.7.19): sockets without a gem (CM.SlotSockets), no longer the stat table's EMPTY_SOCKET_ count, which lists the
+-- item's sockets whether a gem is in them or not (INFERENCE from Xaya's screenshot of 2026-11-05: "1S" / "2S" marks on slots whose
+-- gems are in; the API docs do not say). The stat table's socket keys are kept for the socket type on hover (socketTypes).
 function CM.SlotInfo(slot)
     local link = R(GetInventoryItemLink, "player", slot)
     if type(link) ~= "string" then return nil end
-    local s = { slot = slot, link = link, ilvl = ItemLevel(link), sockets = 0, ratings = {} }
+    local s = { slot = slot, link = link, ilvl = ItemLevel(link), sockets = 0, ratings = {}, socketTypes = {} }
     local st = ItemStats(link)
     s.statsRead = st ~= nil
     if st then
@@ -1037,9 +1075,11 @@ function CM.SlotInfo(slot)
             if num(v) and v ~= 0 then s.ratings[#s.ratings + 1] = { gs[2], v } end
         end
         for k, v in pairs(st) do
-            if type(k) == "string" and k:find("^EMPTY_SOCKET_") and num(v) then s.sockets = s.sockets + v end
+            if type(k) == "string" and k:find("^EMPTY_SOCKET_") and num(v) and v > 0 then s.socketTypes[k] = v end
         end
     end
+    s.gems = CM.SlotSockets(link)
+    for _, g in ipairs(s.gems or {}) do if not g.gemID then s.sockets = s.sockets + 1 end end
     s.enchanted = CM.LinkEnchanted(link)
     local dc, dm = R(GetInventoryItemDurability, slot)
     if num(dc) and num(dm) and dm > 0 then s.dur, s.durMax = dc, dm end
@@ -1082,14 +1122,16 @@ end
 -- What the overlay on one character-window slot shows: { ilvl = text or nil, marks = { { text, tone, why } } }.
 -- opts: { ilvl = bool, sockets = bool, enchants = bool, enchantSlots = { [slot] = true }, enchantDefault = bool }.
 -- "No enchant" is flagged only on the slots in enchantSlots (CM.EnchantSlots: this expansion's slots, or the player's own ticks).
+-- No item level on the shirt and the tabard (QoL 0.7.19; their item level is 1 and says nothing; the Gear tab leaves them out too).
+CM.NO_ILVL = { [4] = true, [19] = true }
 function CM.SlotOverlay(slot, opts)
     opts = opts or {}
     local s = CM.SlotInfo(slot)
     local o = { marks = {} }
     if not s then return o end
-    if opts.ilvl ~= false and s.ilvl then o.ilvl = tostring(math.floor(s.ilvl + 0.5)) end
+    if opts.ilvl ~= false and s.ilvl and not CM.NO_ILVL[slot] then o.ilvl = tostring(math.floor(s.ilvl + 0.5)) end
     if opts.sockets ~= false and s.sockets > 0 then
-        o.marks[#o.marks + 1] = { s.sockets .. "S", "warn", ("%d empty socket%s (the item's stat table lists it)"):format(s.sockets, s.sockets == 1 and "" or "s") }
+        o.marks[#o.marks + 1] = { s.sockets .. "S", "warn", ("%d empty socket%s (no gem in it)"):format(s.sockets, s.sockets == 1 and "" or "s") }
     end
     if opts.enchants ~= false and opts.enchantSlots and opts.enchantSlots[slot] then
         if s.enchanted == false then
@@ -1133,6 +1175,15 @@ end
 -- Enum.TooltipDataLineType.ItemEnchantmentPermanent = 15, enums.md:12639), without the "Enchanted: " the game puts before it
 -- (ENCHANTED_TOOLTIP_LINE, "Enchanted: %s", when the client has it). Returns the name, or nil; the yes / no comes from the link
 -- (CM.LinkEnchanted).
+-- (QoL 0.7.19) The name comes back as plain text: the line's own colour codes, inline icons and link wrappers are taken out, so the
+-- label is drawn in one colour. Xaya's screenshot of 2026-11-05 had one label in purple among the green ones: an item enhancement
+-- ("Ancient Hash'ey Battle Art: ...", an epic Item Enhancement in the client data, docs/reference/content/items.json, subclass 14) whose
+-- line carries the epic colour in its text (INFERENCE: an inline |c code beats the font string's colour; our code only sets green).
+function CM.PlainText(text)
+    if type(text) ~= "string" or IsSecret(text) then return nil end
+    text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|H.-|h(.-)|h", "%1")
+    return (text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", ""))
+end
 local function EnchantPrefixPattern()
     local g = _G.ENCHANTED_TOOLTIP_LINE
     if type(g) ~= "string" or IsSecret(g) or not g:find("%s", 1, true) then return nil end
@@ -1150,7 +1201,8 @@ function CM.SlotEnchant(slot)
         if type(ln) == "table" then
             if TooltipUtil and TooltipUtil.SurfaceArgs and ln.leftText == nil then pcall(TooltipUtil.SurfaceArgs, ln) end
             local t, text = Field(ln, "type"), Field(ln, "leftText")
-            if t == want and type(text) == "string" and text ~= "" then
+            text = (t == want) and CM.PlainText(text) or nil
+            if text and text ~= "" then
                 local pat = EnchantPrefixPattern()
                 local name = pat and text:match(pat) or nil
                 return (name and name ~= "") and name or text
@@ -1531,12 +1583,15 @@ function GearCompareSections(ctx, out)
     for _, gs in ipairs(GEAR_STATS) do
         Row(gs[2], GearStatName(gs[2]), eqStats[gs[1]], newStats and newStats[gs[1]], CM.STAT_COLORS[gs[2] == "speed" and "speed2" or gs[2]])
     end
-    local function Sockets(st)
+    -- (QoL 0.7.19) sockets without a gem, as on the slots (CM.SlotSockets); before, the stat table's count, which lists filled ones too
+    local function Empty(lnk)
+        local g = lnk and CM.SlotSockets(lnk)
+        if not g then return nil end
         local n = 0
-        for k, v in pairs(st or {}) do if type(k) == "string" and k:find("^EMPTY_SOCKET_") and num(v) then n = n + v end end
+        for _, s in ipairs(g) do if not s.gemID then n = n + 1 end end
         return n
     end
-    Row("sockets", "Empty sockets", Sockets(eqStats), newStats and Sockets(newStats), nil, true)
+    Row("sockets", "Empty sockets", old and Empty(old.link), link and Empty(link), nil, true)
     if old or link then
         local it = Item("gc_enchant", "Enchant", "cmprow")
         local function E(v) return v == true and "yes" or (v == false and "none" or "?") end
@@ -1581,13 +1636,18 @@ function GearCompareSections(ctx, out)
         for _, it in ipairs(sec.items) do
             if it.kind ~= "colhead" then
                 local keep = {}
+                local head, headKept   -- the last line that is not nested: the "»" line the nested ones sit under
                 for _, pr in ipairs(it.pairs or {}) do
-                    -- a change can sit in the value or, for a list (abilities and their recharges), in the note
+                    if not pr.nested then head, headKept = pr, false end
+                    -- a change sits in the value (one ability under "» Ability Scaling" or haste's abilities is a nested line of its
+                    -- own since QoL 0.7.20) or in the note
                     local whole = CM.PairText(pr)
                     if pr.change or whole:find(" -> ", 1, true) then
                         local v = (type(pr.value) == "string" and pr.value:find(" -> ", 1, true)) and pr.value or whole
                         pr.tone = pr.tone or Dir(pr.label, v)
+                        if pr.nested and head and not headKept then keep[#keep + 1] = head; headKept = true end   -- (its "»" line first)
                         keep[#keep + 1] = pr
+                        if not pr.nested then headKept = true end
                     end
                 end
                 local changed = type(it.value) == "string" and it.value:find(" -> ", 1, true) ~= nil
@@ -1951,6 +2011,14 @@ local function MapNote(it, label, value, tone, colorKey, cols)
     end
     return p
 end
+-- One line nested under the map line above it (QoL 0.7.20; Xaya 2026-11-05: "ability names should be nested under abilities"): one
+-- ability of a list ("» Abilities (per 100)", "» Ability Scaling", haste's abilities), its number in the value cell. The panel draws it
+-- one indent deeper than the "»" lines; the one-column readers indent its name (CM.PairLabel).
+local function MapSub(it, label, value, tone)
+    local p = MapNote(it, label, value, tone)
+    p.nested = true
+    return p
+end
 local function PerPoint(v) if num(v) then return { per = F(v, 2), perPoint = true } end end   -- a Pt value: one point gives v
 local function PerPct(v, words)   -- a Pt value: v of the card's rating makes 1% of the line
     if num(v) then return { per = F(v) .. " / 1%", perText = F(v) .. " " .. words .. " = 1%" } end
@@ -1973,14 +2041,24 @@ function CM.PairText(p)
     if p.note and p.note ~= "" then v = v .. (v ~= "" and "; " or "") .. p.note end
     return v
 end
+-- A detail line's name for the one-column readers: a nested line (one ability under "» Abilities (per 100)", QoL 0.7.20) is indented.
+-- INFERENCE: the game's tooltip keeps leading spaces (not documented; without the indent the names still read as a list).
+function CM.PairLabel(p)
+    if type(p) ~= "table" then return "" end
+    return (p.nested and "    " or "") .. tostring(p.label or "")
+end
 
--- The column head over a grid section: Stat | (the box: "Rating" over a rating card's box) | Current value | Pt value | Note.
-local function GridHead(key, boxHead)
+-- The column head over a grid section: Stat | Rating | Current value | Pt value | Note | Change. QoL 0.7.20 (Xaya 2026-11-05: "put the
+-- input box on the far right under a new column "Change""): the box moved from under Rating to the far right; Rating shows a rating
+-- card's rating as text. ratingHead / changeHead: only a section whose lines have a rating / a box names that column.
+local function GridHead(key, ratingHead, changeHead)
     local h = Item(key, "Columns", "colhead")   -- (the label is its hover's title; the head draws its cols)
-    h.grid, h.cols = true, { "Stat", boxHead or "", "Current value", "Pt value", "Note" }
+    h.grid, h.cols = true, { "Stat", ratingHead or "", "Current value", "Pt value", "Note", changeHead or "" }
+    if ratingHead then Tip(h, "Rating: your rating now. A number you type stays in its Change box; Current value shows what it changes.") end
     Tip(h, "Current value: the game's figure now; \"now -> then\" when your numbers (or a compared item) change it.")
     Tip(h, "Pt value: what one point of the card's stat gives (1 Agility = 1.00 attack power), or \"N / 1%\": how much of the card's rating makes 1% of that line.")
-    Tip(h, "Note: where a number comes from, what it leaves out, and lists (abilities). On a narrow panel the note goes under its line; drag the corner wider and it gets its own column.")
+    Tip(h, "Note: where a number comes from and what it leaves out. On a narrow panel the note goes under its line; drag the corner wider and it gets its own column.")
+    if changeHead then Tip(h, "Change: type a number in the box (the number itself, not an amount) and press Enter; every line it feeds shows \"now -> then\". Clear it to go back to yours.") end
     return h
 end
 CM.GridHead = GridHead   -- (the Gear comparison, defined above this, uses it)
@@ -2012,6 +2090,7 @@ local function MapRating(ctx, src, key, kit)
         return it
     end
     it.absolute, CM.svBase[key] = src.rating, src.rating
+    it.ratingText = Big(src.rating)   -- the Rating column: your rating now, as text (QoL 0.7.20; the box moved to the Change column)
     local a, w = src.analysis or {}, src.whatIf
     it.value = num(src.total) and Was(src.total, src.totalAfter, P) or UNAV
     if src.totalAfter and num(src.total) then it.tone = (src.totalAfter >= src.total) and "good" or "warn" end
@@ -2065,7 +2144,7 @@ local function StatMapSections(ctx, out)
     local armorFromPAfter = (apctAfter and num(eff2)) and eff2 * apctAfter / 100 or nil
 
     -- 1. Primary stat and Stamina
-    local prim = { key = "map_primary", title = "Primary stats", grid = true, items = { GridHead("map_cols1") } }
+    local prim = { key = "map_primary", title = "Primary stats", grid = true, items = { GridHead("map_cols1", nil, "Change") } }
     do
         local it = Item("map_primary", StatName(p), "input")
         it.input, it.bigPairs, it.mapCard, it.labelColor = "sv:primary", true, true, CM.STAT_COLORS.primary
@@ -2112,19 +2191,22 @@ local function StatMapSections(ctx, out)
                     end
                 end
                 table.sort(rows, function(x, y) return x[2] > y[2] end)
-                local parts = {}
-                for i = 1, math.min(4, #rows) do parts[#parts + 1] = rows[i][1] .. " +" .. Big(rows[i][2]) end
-                -- (a list: the Note cell, which wraps, so every ability stays readable; QoL 0.7.15)
-                if #parts > 0 then MapNote(it, "» Abilities (per 100)", "", nil, nil, { note = table.concat(parts, ", ") }) end
-                -- with your number: each ability's own number now -> then (its first number moves with attack power: B7, #325
-                -- "what happens to your other stats and abilities")
+                -- each ability on its own line nested under the "»" line, its number in the value cell, in the same order as before
+                -- (QoL 0.7.20; Xaya 2026-11-05: "ability names should be nested under abilities"; before, one list in the note)
+                if #rows > 0 then
+                    MapNote(it, "» Abilities (per 100)", "")
+                    for i = 1, math.min(4, #rows) do MapSub(it, rows[i][1], "+" .. Big(rows[i][2])) end
+                end
+                -- Ability Scaling (this line was "Abilities with your number" until QoL 0.7.20; Xaya 2026-11-05: "should be renamed to
+                -- "Ability Scaling""): each ability's own number now -> then (its first number moves with attack power: B7, #325 "what
+                -- happens to your other stats and abilities")
                 local a1 = num(eff2) and N(GetAttackPowerForStat, p, eff2) or nil
                 if dP ~= 0 and #rows > 0 and num(a1) and num(a0) then
                     local ratio = (apNow + a1 - a0) / apNow
-                    local ch = {}
-                    for i = 1, math.min(4, #rows) do ch[#ch + 1] = rows[i][1] .. " " .. Big(rows[i][3]) .. " -> " .. Big(rows[i][3] * ratio) end
-                    MapNote(it, "» Abilities with your number", "", ratio >= 1 and "good" or "warn", nil, { note = table.concat(ch, ", ") })
-                    Tip(it, "Abilities with your number: each one's first number x (attack power then / attack power now); talents and buffs stay as they are.")
+                    local tone = ratio >= 1 and "good" or "warn"
+                    MapNote(it, "» Ability Scaling", "", tone)
+                    for i = 1, math.min(4, #rows) do MapSub(it, rows[i][1], Big(rows[i][3]) .. " -> " .. Big(rows[i][3] * ratio), tone) end
+                    Tip(it, "Ability Scaling: each ability's first number x (attack power then / attack power now); talents and buffs stay as they are.")
                 end
                 Tip(it, "Abilities: each one's first number in its own description divided by your attack power, times the attack power 100 more gives (as on the Spells tab; talents and buffs already in the text).")
             end
@@ -2147,9 +2229,9 @@ local function StatMapSections(ctx, out)
     end
     out[#out + 1] = prim
 
-    -- 2. Secondary stats and what they feed (a column head over the cards: Stat | Rating (the box) | Current value | Pt value (the
-    -- rating per 1%, #382) | Note)
-    local function ColHead(k) return GridHead(k, "Rating") end
+    -- 2. Secondary stats and what they feed (a column head over the cards: Stat | Rating | Current value | Pt value (the rating per
+    -- 1%, #382) | Note | Change (the box))
+    local function ColHead(k) return GridHead(k, "Rating", "Change") end
     local sec = { key = "map_secondary", title = "Secondary stats", grid = true, items = { ColHead("map_cols2") } }
     if byKey.crit then
         sec.items[#sec.items + 1] = MapRating(ctx, byKey.crit, "crit", function(it, src, w)
@@ -2192,11 +2274,16 @@ local function StatMapSections(ctx, out)
                     local ch = C_Spell and C_Spell.GetSpellCharges and R(C_Spell.GetSpellCharges, sp.id)
                     local dur = (type(ch) == "table") and Field(ch, "cooldownDuration") or nil
                     local dur2 = (num(dur) and dur > 0 and num(h0) and num(h1) and math.abs(h1 - h0) > 0.0005) and dur * (1 + h0 / 100) / (1 + h1 / 100) or nil
-                    names[#names + 1] = SpellName(sp.id) .. ((num(dur) and dur > 0) and (" (" .. Was(dur, dur2, function(v) return F(v, 1) .. " s" end) .. " recharge)") or "")
+                    names[#names + 1] = { SpellName(sp.id), (num(dur) and dur > 0) and (Was(dur, dur2, function(v) return F(v, 1) .. " s" end) .. " recharge") or "" }
                     if #names >= 5 then break end
                 end
             end
-            if #names > 0 then MapNote(it, "» Abilities (their text names Haste)", "", nil, nil, { note = table.concat(names, ", ") }) end
+            -- each ability on its own nested line, its recharge in the value cell (QoL 0.7.20: "ability names should be nested under
+            -- abilities"; before, one list in the note)
+            if #names > 0 then
+                MapNote(it, "» Abilities (their text names Haste)", "")
+                for _, nm in ipairs(names) do MapSub(it, nm[1], nm[2]) end
+            end
             Tip(it, "The global cooldown and attack speed with your numbers are estimates: the game's figure now, times (1 + haste now) / (1 + haste then).")
             Tip(it, "Abilities: those whose own description mentions Haste (a word match on English text; the game does not list what haste shortens). Their recharge is the game's figure now (C_Spell.GetSpellCharges); with your numbers it is an estimate, like the global cooldown.")
         end)
