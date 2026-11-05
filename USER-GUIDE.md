@@ -18,7 +18,7 @@ XayaUI is a group of addons. Each one is its own entry in the game's AddOns list
 | **XayaUI Blizzard Reskin** | XayaUI's look on Blizzard's frames without changing what they do (today: the Game Menu) | Blizzard's own look |
 | **XayaUI Media** | Your own pictures and sounds (a support folder, not a feature) | Your own files are not in the lists. The art picker (and the sound list) offer only the bundled pictures this computer actually has, checked once per session (pictures since 0.6.15, #333); your own XayaUI Media files are always listed |
 
-Each feature addon has its own tab in the settings window (**Chat**, **QoL**, **Bonus Features**); the Game Menu look stays under Settings > UI Options > Display. A tab, a minimap-button row, or a /xui command of an addon that is switched off is simply not there (a command says which addon to turn on). Your settings are kept either way: switching an addon off and on again loses nothing.
+Each feature addon has its own tab in the settings window (**QoL**, **Bonus Features**). Every restyle of Blizzard's own windows is in one tab, **Blizzard UI Reskin** (Options 0.6.38): the Chat Panel (XayaUI Chat), the Character Pane (XayaUI QoL) and the Esc Menu (XayaUI Blizzard Reskin); the shopping list is planned there next. The Chat tab is gone (the Chat Panel was its only page). A tab, a minimap-button row, or a /xui command of an addon that is switched off is simply not there (a command says which addon to turn on). Your settings are kept either way: switching an addon off and on again loses nothing.
 
 ## Contents
 
@@ -607,7 +607,7 @@ If an imported group (older imports used ids like "feui1") could not be previewe
 
 XayaUI can draw its own look over the Game Menu (the ESC menu); Blizzard's own buttons are not edited, so other UI addons that restyle them are not touched. There are two modes. **Match Blizzard's button positions** (on by default) draws every row exactly on top of the real Blizzard button it stands for, so the rows are where Blizzard's buttons are and a click goes straight to the real button under the pointer: no button can run a different action. The XayaUI row is a real slot in the menu, after Macros, and buttons that other addons added to the menu get a row too. With it off, XayaUI draws its own layout (button size and spacing, panel padding, scale, the XayaUI row's position, and hiding Shop, What's New, or Support from this look only); each row then finds the real Blizzard button by its name when you click it, and if no real button has that name nothing is clicked and chat says so. A change of mode applies the next time the menu opens. If something goes wrong the look turns itself off and Blizzard's menu comes back. Both modes have panel and button opacity, border, hover color, the title, the font, size, outline and color of the text, and colors (a "Use my own colors" switch plus panel fill, panel border, button fill, button border, accent for hover, glow and the XayaUI row, and title; with the switch off the look follows the theme or your class color). **Reset Game Menu settings** restores the defaults. `/xui gamemenu` prints the mode, each row and the real button it sits on, and what the menu exposes.
 
-**Where:** Settings > UI Options > Display, below the Menu button (ESC menu) options. The Settings page has a left sidebar with UI Options (Display, Rule Creation, and Theme tabs), Minimap Button, Debugging, and **Acknowledgements** (credits and attribution, moved here from Addon Info in Options 0.6.30). The window's bottom-left corner shows the XayaUI version, followed by the Addon Info link; the empty status strip AceGUI draws left of Close is hidden in XayaUI's window. The Rule Creation tab holds "Prompt for saving and enable drafts" and "Condensed rule list (no icons, compact rows)".
+**Where:** the Blizzard UI Reskin tab > Esc Menu (Options 0.6.38; before that, Settings > UI Options > Display, where a line now points to it). The XayaUI button in the menu stays under Settings > UI Options > Display > Menu button (ESC menu): it adds a button, it does not restyle the menu. The Settings page has a left sidebar with UI Options (Display, Rule Creation, and Theme tabs), Minimap Button, Debugging, and **Acknowledgements** (credits and attribution, moved here from Addon Info in Options 0.6.30). The window's bottom-left corner shows the XayaUI version, followed by the Addon Info link; the empty status strip AceGUI draws left of Close is hidden in XayaUI's window. The Rule Creation tab holds "Prompt for saving and enable drafts" and "Condensed rule list (no icons, compact rows)".
 
 ### 12.9 Combat aura display
 
@@ -646,7 +646,7 @@ The Chat Panel reskins Blizzard's own chat in place: one block that holds the ta
 - **Whisper tabs:** a tab per whisper conversation is the game's own feature (Options > Social > New Whispers: New Tab, or Both); the Chat Panel shows those tabs in its tab row like any other tab. `/xui chat whispers` prints that setting, whether the game is listening for whispers to open tabs, how many whispers arrived and how many whisper tabs the game opened since the last /reload, and the whisper windows there are now. It never prints a name.
 - **Privacy cover:** a button beside the block covers the chat text and input line with a color or picture (the tab row too, if you choose; the tabs stay clickable under the cover so you can switch tabs while it is on). It has its own page under Privacy. The Chat Bar and the collapse arrow stay visible.
 
-**Where:** Chat > Chat Panel (XayaUI Chat), or `/xui chat settings`. The Chat Panel page holds the panel-wide switches (Enable Chat Panel, Use the XayaUI theme). Its parts are listed under it in the left pane: Layout, Appearance, Chat Bar, Fade and hide, Filters, History, Sounds, Privacy. Inside a part, its sections are tabs (for example Appearance: Background and border | Chat text | Tabs | Input line). Right-clicking a Chat Bar block opens Chat Bar > Blocks. Commands: `/xui chat` (status), `/xui chat on|off|reset|move|history|settings`; `/xui chat wrap` and `/xui chat indent` print read-only measurements for bug reports. `/xui chat off` gives Blizzard's chat back its own position, size, fonts, border, and scroll bar at once.
+**Where:** Blizzard UI Reskin > Chat Panel (XayaUI Chat; the Chat tab until Chat 0.6.13), or `/xui chat settings`. The Chat Panel page holds the panel-wide switches (Enable Chat Panel, Use the XayaUI theme). Its parts are listed under it in the left pane: Layout, Appearance, Chat Bar, Fade and hide, Filters, History, Sounds, Privacy. Inside a part, its sections are tabs (for example Appearance: Background and border | Chat text | Tabs | Input line). Right-clicking a Chat Bar block opens Chat Bar > Blocks. Commands: `/xui chat` (status), `/xui chat on|off|reset|move|history|settings`; `/xui chat wrap` and `/xui chat indent` print read-only measurements for bug reports. `/xui chat off` gives Blizzard's chat back its own position, size, fonts, border, and scroll bar at once.
 
 **Limits:** the game does not let addons read or filter protected messages, so spam filters, links, history and sounds skip them. Blizzard can change its chat frames, so a part that cannot be found is skipped and listed as failed by `/xui chat`.
 
@@ -663,48 +663,37 @@ Two separate effects (XayaUI QoL) that make the mouse cursor easy to find. Both 
 
 A panel beside the character window (XayaUI QoL; its title reads **Stat Calculator** from QoL 0.7.3) that shows every stat the game gives, how each number is built, where it comes from, and what the next point buys. It does not copy the character window: it adds what that window leaves out. Off by default. Every number is read from the game when the panel draws. Anything the game does not give as a number is marked "not given by the game" and is never guessed. A value the game hides in combat shows "hidden in combat" and fills in again afterwards. Colors and font follow the XayaUI theme.
 
-**How the panel reads:**
-- **Tabs** along the top. Each tab is made of sections with a header. Click a header to fold or unfold its section.
-- **Each stat line** has its name on the left and its value on the right. The detail lines under it (label and value) show how the value is built.
-- **Hover any line** to see where the number comes from:
-  - the total split into what your rating gives and what other sources give (talents, buffs, your spec's base);
-  - the rating turned into a percent through the game's own converter, and the rating per 1%;
-  - base against buffs and debuffs;
-  - linked conversions the game reports, such as crit rating that also gives parry, your primary stat to attack power and to dodge or parry, Stamina to health, and Versatility to damage taken;
-  - every diminishing-return threshold.
-- **Rating or percent:** the "Show: %" / "Show: rating" button in the title row switches every rating line between its percent and its rating. Clicking one rating line flips that line alone; the button resets every single-line flip.
+**How the panel reads (QoL 0.7.14):**
+- **Header:** your name, your spec and class in your class colour, and your equipped item level (overall beside it). No role or movement speed.
+- **Tabs:** Stats | Gear | Spells. (The Sheet tab and the What If tab are gone: the character window itself is restyled by the QoL Character Reskin, below; What If's numbers are the Stats tab's boxes and its item compare is the Gear tab's comparison.) Each tab is made of sections with a header; click a header to fold or unfold it.
+- **Hover** a card's name for where its numbers come from. There is no "Show: %" button any more: each card shows the rating, the percent and the rating per 1% side by side.
+- **Size:** drag the bottom-right corner to resize the panel; the content reflows and the size is kept. Panel > Layout > Reset size puts it back.
 
 **Tabs:**
-- **Tabs (QoL 0.7.7):** Sheet | Stats | Gear | What If | Spells. Defense and Offense are not tabs any more: they are filters on the Spells tab (below), which also draw these two sections.
-- **Sheet:** every stat of the Stats, Defense and Offense sections in two compact columns, grouped under the same section headers. Each entry has its own hover with the same detail as the full line, and a click flips a rating between percent and rating.
-- **Stats:**
-  - **Character:** your spec and role, primary stat and mastery factor; item level (equipped, best in bags, PvP); movement speeds (run, swim, flight, now) as a percent of base speed; your mastery spell in the game's own words, numbers filled in.
-  - **Attributes:** your primary stat and Stamina with base, buffs and debuffs, the attack power your primary stat gives, the dodge (Agility) or parry (Strength) it gives where the game reports it, and Stamina to health. Your other primary stats are listed in grey.
-  - **Secondary and tertiary stats** (Critical Strike, Haste, Mastery, Versatility, Avoidance, Leech, Speed):
-    - the total, your rating, and the percent it gives;
-    - the part of the total that comes from other sources;
-    - rating per 1%, and the exact rating for your next 1% (accounts for thresholds);
-    - rating lost to diminishing returns, the penalty on your next point, and the next threshold and how far away it is.
-    - Critical Strike also shows the parry it gives for specs that turn crit into parry (before diminishing returns, as the character window words it). Versatility also shows the damage taken reduction. Mastery is counted in mastery percent (rating x your spec's mastery factor, read from the game). Haste from other sources assumes haste sources multiply, and says so.
-- **Defense section** (Spells tab, Defense filter): armor to damage reduction against your level and your current target, armor for the next 1%, base armor against buffs and talents; Stamina to health; dodge (with the share from Agility where the game gives it); parry (crit to parry for specs that have it, the share from Strength where the game gives it); block chance and how much a block reduces a hit (shown with a shield or any block chance); stagger for specs that have it; Versatility to damage taken. Armor from your primary stat (QoL 0.7.8), where your mastery's own text gives it (Vengeance: "Increases Armor by 88.7% of your Agility"): the percent is read from that text, never typed in; for other specs, or a client whose wording differs, the line says the game gives no number.
-- **Offense section** (Spells tab, Offense filter): attack power (base, buffs, debuffs; per point of Strength or Agility; the amount for +1%; the damage per second it adds, as the character window works it out); spell power, healing bonus, the attack power and spell power links some specs have, and spell haste; attack speed, with the haste rating for 0.01 s faster; main and off hand damage and DPS, physical damage modifier, expertise; a ranged weapon when you have one; the global cooldown, read live from the game each time one runs (in combat too, while the game shows it), with the haste and haste rating for 0.01 s shorter (the unhasted figures are labelled estimates); resource regeneration.
-- **Gear:**
-  - **Equipped** (QoL 0.7.9): small icons of what you have on, in slot order (shirt and tabard left out), each with its item level under it in the item's quality colour. Hover one for the game's item tooltip; shift-click links it in chat, as on the character window. A comparison column is planned next (waiting on one design question).
-  - **Summary:** the secondary ratings your items' stat tables list, against your character's ratings; the difference is "from elsewhere" (gems, enchants, buffs, or effects the tables leave out).
-  - **Durability and repair:** overall durability, the lowest item, how many items are damaged; the repair cost the game gives in your items' data (shown as not given where the game gives none). At a repair vendor, the vendor's own "repair all" cost.
-  - **Slots:** each equipped item's item level, listed ratings, empty sockets, whether it has an enchant, durability below 100%, and its repair cost.
-  - This tab reads your items only while it is open.
-- **What If:**
-  - **Rating per stat:** type extra rating for any stat (a minus sign for less) and press Enter. The line shows the gain, the new percent from rating, the new rating, and any threshold it crosses. It is read through the game's own converter, so thresholds apply.
-  - The primary stat box also shows the armor it gives where your mastery's text links them (QoL 0.7.8).
-  - **All ratings:** adds the same amount to every stat. Each stat's line on the Stats tab shows its own amount plus this one.
-  - **Compare an item:** shift-click an item (from the game's bags or another bag addon) or drag and drop it onto the box, and it is compared at once (QoL 0.7.4: its stat changes show in the short view too, and fill the rating boxes and the primary-stat box above with what it changes; emptying the item box takes back what it filled, keeping any amount you changed by hand; with two rings, trinkets or one-hand weapons equipped, both are listed under it, and clicking one compares against that one); or type an item ID and press Enter. A shift-click goes into the box while the What If tab is shown, unless a chat box is open (then the link goes to chat, as usual) (QoL 0.7.2). The panel shows the item's level and the equipped item of the same kind it replaces (for two rings or trinkets, the lower item level). Then:
-    - each rating change, through the converter;
-    - your primary stat change and the attack power it gives;
-    - Stamina to health;
-    - armor: the item's own armor plus the armor its primary stat change gives through your mastery's text (QoL 0.7.8; e.g. "+602 (item +500, Agility +102)"), then the damage reduction it adds. Armor buffs that multiply your armor at that moment are not applied to the change.
-    - Both items' stats come from the game at the item level in the link. Gems, enchants and set bonuses are not in an item's stat table. On-use and proc effects, and the same item at another item level, are not given by the game and are not estimated.
-- **Spells:** filter buttons at the top: **All**, **Offense** (spells whose description deals damage, then the Offense section), **Defense** (spells that absorb, heal, reduce damage taken or add armor, avoidance or leech, then the Defense section).
+- **Stats, the stat map:** what influences what.
+  - One card per stat. Its name is in that stat's own colour (one colour per stat, used across the panel; XayaUI's choice until you pick).
+  - Secondary and tertiary cards: a box holding your rating, the percent, and "N / 1%" (the rating for 1% now); then "From rating" and "Diminishing returns" in words (rating lost, how much less the next point counts, the next threshold and how far away). A stat you have no rating in shows only what it does.
+  - **Type a number** in any box (the number itself, not an amount) and press Enter: every number it feeds shows "now -> then". Empty, or your own number, puts it back. The All ratings box at the end of Secondary stats adds the same amount to every rating.
+  - The "»" lines are what each stat feeds, each through the game's own conversion:
+    - Agility / Strength: attack power, dodge or parry (the game's figure; with your own number it says the game gives no per-point figure), armor through your mastery's text where it links them, and each ability's first number per 100 (and with your number, each ability's number now -> then);
+    - Stamina: health;
+    - Critical Strike: parry for specs that turn crit into parry, with the crit rating for 1% parry;
+    - Haste: the global cooldown, attack speed and the recharge of abilities whose text names Haste (with your number: estimates, the game's figure x (1 + haste now) / (1 + haste then));
+    - Mastery: armor from your primary stat, armor per 1% mastery, and attack power where your mastery's text gives them;
+    - Versatility: damage and healing done, damage taken;
+    - Avoidance, Leech, Speed: what each does.
+  - **Offense (what feeds it):** attack power (from your primary stat, from mastery, buffs, the damage per second it adds), spell power (Intellect specs: per point, average), main hand and off hand (damage, speed from haste, damage per second, expertise), ranged, the global cooldown (haste when read, unhasted estimate, haste rating for 0.01 s faster), resource regen.
+  - **Defense (what feeds it):** armor (damage reduction against your level and your target, armor for the next 1%, base and buffs, the part from your primary stat through mastery), dodge (the share from Agility), parry (from Critical Strike, from Strength), block (what a block takes off), stagger.
+- **Gear, the comparison:**
+  - **Equipped:** small icons of what you have on, each with its item level. **Click one** to compare it; shift-click links it in chat; **drop** an item on an icon to compare that item with that slot.
+  - **Compare:** the box (drop, shift-click, or type an item ID), then the items in your bags that fit the clicked slot, best item level first (bags only, not the bank). Click one. With two rings, trinkets or one-hand weapons equipped, choose which one it replaces.
+  - **Side by side:** item level, primary stat, Stamina, armor and each rating: Equipped | that item | Change, green for better, orange for worse; empty sockets, enchant, durability and repair cost of the equipped one.
+  - **What it changes:** the stat map run with the item's changes as the amounts; only the cards and lines that change, so a ring's crit shows its parry, an item's Agility its attack power, armor and abilities, its Stamina your health. It does not touch the Stats tab's boxes.
+  - **Summary** and **Durability and repair** as before. Gems, enchants, set bonuses, on-use and proc effects are not in an item's stat table, so they are not compared.
+- **Spells:** filter buttons at the top: **All**, **Offense** (spells whose description deals damage), **Defense** (spells that absorb, heal, reduce damage taken or add armor, avoidance or leech). Since QoL 0.7.14 they filter spells only; the stat sections moved to the Stats tab.
+  - With Spell Math off, the tab shows one button, **Configure spell data**: it turns Spell Math on and reads your spells and talents. Then a **Refresh spell data** button sits on top (after a talent or spec change the panel also reads them again by itself).
+  - **Active spells:** your spellbook's spells (and the ones you added by hand). Hover a spell's name for the game's own spell tooltip, then the toolkit's lines. "Changed by talents" lists the talents you picked whose text names the spell (a word match: the game does not list which talents change a spell). A spell the game says you cannot use now (form, stance, a requirement) says so.
+  - **Inactive: talents not picked** (folded to start with): the castable talents of your trees you have not picked, each measured like the rest.
   - **Spell math (advanced, off by default)** lists, once it is on, every active spell of your current spec's spellbook that has numbers in its description (QoL 0.7.7), after the spells you added by hand. Spells without numbers are counted on one line; a setting lists them too. A description the game has not sent yet is asked for, and the spell appears when it arrives.
   - Which filter a spell is under comes from the words of its description (English): a guess. A spell you add by hand can be set to Offense, Defense or both. Spells with none of those words show under All only (on a non-English client, that is most of them).
   - A listed spell is measured against spell power when your primary stat is Intellect, and against attack power otherwise (the usual rule, not something the game reports); add the spell by hand to choose.
@@ -713,12 +702,13 @@ A panel beside the character window (XayaUI QoL; its title reads **Stat Calculat
 
 **Slot overlays (off by default):** marks on the character window's item slots. The item level shows at the bottom of each slot, and the number of empty sockets at the top (for example 2S). The slots this expansion's enchants cover are checked to start with: head, shoulders, chest, legs (spellthread or armor kit), feet, both rings, main hand, and off hand when it holds a weapon. The game has no call that says which slots take an enchant, so this list comes from the expansion's enchant items in Blizzard's game data. Change any tick on the Enchant Slots tab and your own choice is kept; **This expansion's slots** puts the list back. A checked slot with no enchant shows E? (orange), and an enchanted one shows E (green).
 
-**Character window tooltips:** hovering a stat in the character window adds the toolkit's lines under Blizzard's own text (can be switched off). The panel's own hover does not depend on it.
+**Character window tooltips:** hovering a stat in the character window adds a short XayaUI block under Blizzard's own text (can be switched off; QoL 0.7.14): the stat map's lines for that stat at your real numbers, in two columns: rating and what it gives, rating per 1%, diminishing returns and the next threshold in words, then what it feeds (parry from crit, armor from mastery, ...). No bars. The numbers you type on the Stats tab do not show here. The panel's own hover does not depend on it.
 
 **Where:** QoL > Character Toolkit. Its own page has the on/off switch and quick switches for the panel, the slot overlays and the tooltip lines. Under it in the left pane:
 - **Panel**, with tabs:
   - Layout: show the panel, side, detail level (every line or key lines), rating lines (percent or rating), text size, background.
-  - What If: the All ratings amount, Clear all, Reset line flips.
+  - Layout also has Reset size (the size you dragged the panel to).
+  - Your numbers (was What If): the All ratings amount, Clear all (every Stats box back to yours), Reset line flips.
   - Tooltips: the character window lines.
 - **Slot Overlays**, with tabs:
   - Show: slot overlays, item level, empty sockets, enchant check, text size.
@@ -737,6 +727,18 @@ A panel beside the character window (XayaUI QoL; its title reads **Stat Calculat
   - a mastery's own percent modifiers (read those in the mastery text).
 - The enchant check reads the enchant field of the item link. Repair cost needs the game to put it in the item's data, which it may do only at a vendor.
 - The tooltip lines rely on matching the stat names in the character window, so another addon that renames them stops the lines (the panel is unaffected).
+
+### 12.12b Character Reskin
+
+Blizzard's character window in XayaUI's look (XayaUI QoL 0.7.14). Only the look changes; the window works as before, in and out of combat. Off by default.
+- **Clean window:** a flat background in your theme's window colour with a thin border; no portrait, stone frame or backdrop picture behind the model; the title and tabs in the theme's colours. The item slots lose their frame art.
+- **Item level on each slot:** one number per slot, coloured by the item's upgrade track: Veteran green, Champion blue, Hero purple, Myth orange, Explorer and Adventurer grey (the game's own quality colours; XayaUI's pairing until you choose), dim at the first upgrade step and full at the last. An item with no track shows its quality colour. The track is matched by its English name; on other clients items show their quality colour. While this is on, the Character Toolkit's slot overlays leave out their own item level (one number per slot).
+- **Enchants beside the slots:** the enchant's name beside each slot, toward the model, in green; "No enchant" in orange on a slot that takes one (the Character Toolkit's enchant slots). Gems and empty sockets are the game's own marks beside the slot. The toolkit's overlays leave out their enchant mark while this is on.
+- **Stat list:** headers in the theme's label colour with a thin rule, muted labels, values in the text colour, a faint stripe on every other row.
+- Each part has its own switch. Off gives Blizzard's look back at once. If anything goes wrong while it applies, it turns itself off until /reload and says so in chat.
+- A wider window comes next, after the in-game test (`/xui stats widthprobe`, QA E1x).
+
+**Where:** Blizzard UI Reskin > Character Pane (its switch is called Character Reskin). `/xui reskin on`, `off`, `status`, `options`.
 
 **How the settings pages are laid out (all feature tabs, from 0.6.1 on):** a feature is an entry in the left pane, its parts are entries under it, and the sections of one part are tabs. The feature's own page holds its main switches.
 
