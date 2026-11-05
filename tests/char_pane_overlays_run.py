@@ -1,4 +1,4 @@
-# The character pane, end to end (XayaUI_QoL 0.7.19, 0.7.21). Xaya's reports of 2026-11-05: "character pane is broken" (every slot's
+# The character pane, end to end (XayaUI_QoL 0.7.19, 0.7.22). Xaya's reports of 2026-11-05: "character pane is broken" (every slot's
 # item level twice, a shirt "1", "15" / "25" marks, enchant labels cut off and over the model), then after 0.7.19 "character pane still
 # broken" (every enchant label over the 3D model; a large purple item level over each slot plus XayaUI's), "the current invisible
 # background is not good", "gemstone display is much too small and doesn't show the gem name socketed", "hovering over the enchant name

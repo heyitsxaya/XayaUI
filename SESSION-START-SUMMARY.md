@@ -76,6 +76,14 @@ Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.
 
 ## 4. Active items
 
+**Update 2026-11-05 20:25 UTC (session 014bN6tSuhd4nhS3kubHR58K, branch `claude/admiring-ride-sm7jrh`, draft PR #406):** Xaya answered
+(debug-log 2026-11-05-2018 and -2022): RM-BARS and disabled rules: check WeakAuras (done: bars are their own display kind there;
+unloaded-aura cost NOT verified, the file was too large for the Drive tool); terms 3b: option a + a database we maintain, as a future
+enhancement with the other third-party data items; #372 Config tab = folder name, folder type, original character / source, enable
+switch; Group tab = WeakAuras' group options; "DO NOT RELEASE" and a durability / broken-gear reminder become pre-baked rule templates;
+chat history: "All" is not the default tab, and whisper windows get their own tabs (Blizzard's New Whispers setting or an addon switch).
+Stat Calculator: QoL 0.7.21 built (450 wide, Rating "528 +172"; QA E1z21); all ability lists stay nested. Next free: QoL 0.7.22.
+
 **NEXT SESSION: START HERE (updated 2026-11-05 16:45 UTC, session 014bN6tWZxqCW85vMEyHdfnt)**
 `main` = `a859028` or later. Landed today (all full-suite green WITH the API index; none run in game yet):
 - core 0.6.45-0.6.46 / Options 0.6.39: console switches without the full options-tree rebuild (B115), version text = Addon Info link in

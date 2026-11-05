@@ -1055,7 +1055,7 @@ function CM.SlotSockets(link)
             local name, glink = R(C_Item.GetItemGem, link, i)
             if type(name) == "string" and name ~= "" then g.name = name end
             if type(glink) == "string" and glink ~= "" then g.link = glink end
-            -- (QoL 0.7.21) the name from the gem's ID when the socket read gave none (not cached yet: GET_ITEM_INFO_RECEIVED redraws)
+            -- (QoL 0.7.22) the name from the gem's ID when the socket read gave none (not cached yet: GET_ITEM_INFO_RECEIVED redraws)
             --   C_Item.GetItemNameByID(itemInfo: ItemInfo) → itemName: string? · SecretArguments=AllowedWhenUntainted (namespaces.md:2784)
             if not g.name and C_Item.GetItemNameByID then
                 local nm = R(C_Item.GetItemNameByID, id)
@@ -1198,7 +1198,7 @@ local function EnchantPrefixPattern()
     if not a then return nil end
     return "^" .. Esc(a) .. "(.-)" .. Esc(b) .. "$"
 end
--- (QoL 0.7.21) What the equipped item's tooltip says about its enchant and its embellishment, from one read (the enchant label, its
+-- (QoL 0.7.22) What the equipped item's tooltip says about its enchant and its embellishment, from one read (the enchant label, its
 -- hover, the embellishment line; Xaya 2026-11-05: "hovering over the enchant name ... should also allow you to see what the enchant does",
 -- "embellished items should be hoverable so you can read what the embellishment does"):
 --   C_TooltipInfo.GetInventoryItem(unit: UnitToken, slot: luaIndex, hideUselessStats: bool?) → data: TooltipData · MayReturnNothing,
@@ -1248,7 +1248,7 @@ function CM.SlotEnchant(slot)
     local t = CM.SlotTip(slot)
     return t and t.enchant or nil
 end
--- (QoL 0.7.21) the enchant's own name without the "Enchant <slot> - " every enchant of this expansion starts with (client data:
+-- (QoL 0.7.22) the enchant's own name without the "Enchant <slot> - " every enchant of this expansion starts with (client data:
 -- "Enchant Ring - Eyes of the Eagle"); the slot already says which slot it is, and the hover has the whole line. Anything else as it is.
 function CM.ShortEnchant(name)
     if type(name) ~= "string" then return name end
@@ -2078,7 +2078,10 @@ local function MapRating(ctx, src, key, kit)
         return it
     end
     it.absolute, CM.svBase[key] = src.rating, src.rating
-    it.ratingText = Big(src.rating)   -- the Rating column: your rating now, as text (QoL 0.7.20; the box moved to the Change column)
+    -- the Rating column: your rating now, as text (QoL 0.7.20; the box moved to the Change column), and while you have typed another
+    -- number, the change beside it: "528 +172", "528 -28" (QoL 0.7.21, Xaya: "should show alongside the +/- stat amount")
+    local dR = math.floor(it.amount + 0.5)
+    it.ratingText = Big(src.rating) .. (dR > 0 and (" +" .. Big(dR)) or dR < 0 and (" " .. Big(dR)) or "")
     local a, w = src.analysis or {}, src.whatIf
     it.value = num(src.total) and Was(src.total, src.totalAfter, P) or UNAV
     if src.totalAfter and num(src.total) then it.tone = (src.totalAfter >= src.total) and "good" or "warn" end

@@ -45,7 +45,7 @@ local inset = CharacterFrame.Inset; CharacterFrame.Inset = false; printed = {}
 ns.CharWidthProbe_Run("")
 check("no Inset (the window is built differently): refused, nothing changed", said("not built the way") and CharacterFrame.w == 338)
 CharacterFrame.Inset = inset
--- (QoL 0.7.21) the Character Reskin's wider window is built on this probe; with it on the probe would widen the window twice
+-- (QoL 0.7.22) the Character Reskin's wider window is built on this probe; with it on the probe would widen the window twice
 ns.CharReskin_WideOn = function() return true end; printed = {}
 ns.CharWidthProbe_Run("")
 check("the Character Reskin's wider window on: refused, it says where to turn it off, nothing changed", said("wider window is on") and said("Character Pane")

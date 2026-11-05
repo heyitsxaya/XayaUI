@@ -235,7 +235,7 @@ check("  ...and the smallest / tallest it may be (340 x 1100)", c.size.w == L0.m
 local page = ns.BuildCharToolkitPage(function() end)
 page.args.panelPart.args.layout.args.resetSize.func()
 render()
-check("settings: Reset size goes back to the default width (360 of content) and the two heights (440, 760; QoL 0.7.22)", c.size == nil and L0.content == 360
+check("settings: Reset size goes back to the default width (430 of content since QoL 0.7.21) and the two heights (440, 760; QoL 0.7.23)", c.size == nil and L0.content == 430
   and c.heightSmall == 440 and c.heightLarge == 760 and P.h == 440, L0.content)
 c.size = { w = "wide" }
 check("a broken saved size is dropped", ns.CharToolkit_Cfg().size == nil)

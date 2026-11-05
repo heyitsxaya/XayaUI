@@ -7,9 +7,9 @@
 -- ELSE"; "GIVE ME A PRETTY VERSION OF THE CHARACTER SHEET"; "THIS window needs to look beautiful and CLEAN"; "prettify the character
 -- window" (her screenshot: two item-level numbers per slot); "ilvl colored based on ilv tier (track ... AND upgrade tier (color
 -- gradient))"; "enchants + gems should show to the side of the character pane". Requirements: docs/plans/STAT-CALCULATOR-REQUIREMENTS-
--- 2026-11-04.md, rows A1-A7 (A6, the wider window, built in QoL 0.7.21 after her /xui stats widthprobe result; A8, the compact stat
+-- 2026-11-04.md, rows A1-A7 (A6, the wider window, built in QoL 0.7.22 after her /xui stats widthprobe result; A8, the compact stat
 -- tooltips, is the Character Toolkit's tooltip lines).
--- Xaya, 2026-11-05 (QoL 0.7.21): "complete the entire character pane issue now and make sure the reskin of the character pane is also
+-- Xaya, 2026-11-05 (QoL 0.7.22): "complete the entire character pane issue now and make sure the reskin of the character pane is also
 -- solved -- the current invisible background is not good"; "gemstone display is much too small and doesn't show the gem name
 -- socketed"; "hovering over the enchant name on the character pane should also allow you to see what the enchant does"; "embellished
 -- items should be hoverable so you can read what the embellishment does".
@@ -18,7 +18,7 @@
 -- SharedUIPanelTemplates.xml for ButtonFrameTemplate / PortraitFrameBaseTemplate / InsetFrameTemplate / PanelTabButtonTemplate):
 --   * Restyle: Blizzard's art is faded (alpha 0) and ours is drawn on its own textures and font strings. Switching off puts every alpha
 --     and text colour back. The only size and anchor changes are the wider window's (below), made out of combat only.
---   * Background (QoL 0.7.21): a solid fill in the theme's window colour under the whole window (the stats pane and the wider area
+--   * Background (QoL 0.7.22): a solid fill in the theme's window colour under the whole window (the stats pane and the wider area
 --     too) whenever the reskin is on, at its own "Background opacity" (default 95%, never below 50%). With Clean window off Blizzard's
 --     own art is drawn over it; with Clean window on Blizzard's art goes and ours (border, pane fills) is drawn.
 --   * Window (Clean window): the frame art (NineSlice, Bg, TopTileStreaks), the portrait, the paper-doll background, the insets' art, the
@@ -28,12 +28,12 @@
 --     while this is on; none on the shirt and the tabard; none when another addon's text on the slot shows the same number), coloured
 --     by upgrade track and step (CM.TrackColor); beside each slot a block with the enchant, the embellishment and each gem (layout notes
 --     at "Slots" below). Every row of the block shows its text on hover.
---   * Wider window (QoL 0.7.21, requirement A6; on by default with the reskin): the room for the blocks between the slot columns and
+--   * Wider window (QoL 0.7.22, requirement A6; on by default with the reskin): the room for the blocks between the slot columns and
 --     the model (notes at "The wider window" below).
 --   * Stat list: the row and header art goes; theme-coloured headers with a thin rule, labels, values and a faint stripe on every other
 --     row (where Blizzard shows its own).
 --   * Safety (as the Game Menu skin): any error while applying turns the reskin off for the session and gives Blizzard's look back.
--- NOT RUN IN GAME when written: QA E1z6 (and E1z7 for the tooltips; E1z11-E1z13 for QoL 0.7.19; E1z21-E1z25 for QoL 0.7.21).
+-- NOT RUN IN GAME when written: QA E1z6 (and E1z7 for the tooltips; E1z11-E1z13 for QoL 0.7.19; E1z40-E1z44 for QoL 0.7.22).
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
@@ -134,7 +134,7 @@ local function StyleTabs()
     end
 end
 
--- (QoL 0.7.21) the solid background, whenever the reskin is on: the theme's window colour (xui-window bg = token windowBg) at the page's
+-- (QoL 0.7.22) the solid background, whenever the reskin is on: the theme's window colour (xui-window bg = token windowBg) at the page's
 -- "Background opacity", on the window's own BACKGROUND layer at the lowest sublevel, so Blizzard's art (when Clean window is off) and
 -- every child frame draw over it. It covers the whole window, the stats pane and the wider area too (all points on the window).
 -- Root cause of her "invisible background" (QoL 0.7.14 - 0.7.20): every re-apply (each time the window opened) hid our pieces
@@ -201,7 +201,7 @@ end
 -- the right column starts 8 px after it; the model's camera buttons (its ControlFrame, TOP -10) are 32 high and 2 + n x (32 - 6) wide
 -- for n <= 5 buttons, shown only while the mouse is over the model (ModelSceneMixin:OnEnter / OnLeave); the weapon slots sit at the
 -- bottom between the columns; the game's own socket display (11 px sockets, 7 px beside the slot) shows only for Timerunning characters.
--- Our layout (QoL 0.7.21):
+-- Our layout (QoL 0.7.22):
 --   * beside each slot, toward the model, a block of rows: the enchant (its own name, without the "Enchant <slot> - " every enchant
 --     name starts with), the embellishment, then one row per socket: a 14 px icon (12 when the block does not fit otherwise) and the
 --     gem's name, or the socket's type when it is empty. The block stays inside its slot's band (the slot plus half the 4 px gap above
@@ -506,7 +506,7 @@ local function ScanForeign(btn, fn)
     end
     scan(btn, 0)
 end
--- (QoL 0.7.21) our item level stays hidden on a slot where another addon's text already shows the same number (her pane: a large
+-- (QoL 0.7.22) our item level stays hidden on a slot where another addon's text already shows the same number (her pane: a large
 -- purple "334" plus ours); the other addon's text is never touched
 local function ShowIlvl(btn)
     local fs, t = btn.xuiIlvl, btn.xuiIlvlText
@@ -688,7 +688,7 @@ local function OtherText()
 end
 
 -------------------------------------------------------------------------------
--- The wider window (QoL 0.7.21, requirement A6; Xaya's in-game /xui stats widthprobe of 2026-11-05: "width probe: on, 120 px wider (540
+-- The wider window (QoL 0.7.22, requirement A6; Xaya's in-game /xui stats widthprobe of 2026-11-05: "width probe: on, 120 px wider (540
 -- -> 660). window width ok, inset edge ok, model width ok, main hand slot ok, panel placement ok", no ADDON_ACTION line)
 -------------------------------------------------------------------------------
 -- The same calls the probe made (CharacterWidthProbe.lua), out of combat only, with the character window open on its Character tab:

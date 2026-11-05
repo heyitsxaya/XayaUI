@@ -226,7 +226,7 @@ local function Paint(fs, col) if fs and col then fs:SetTextColor(col[1], col[2],
 -------------------------------------------------------------------------------
 local panel, scroll, content
 -- spacing from core (#351 phase 2, XayaUI/Modules.lua): PAD = the margin inside the panel, GUT = the gutter between two controls
-local PANEL_W, PAD, GUT = 380, ns.UI_MARGIN, ns.UI_GUTTER
+local PANEL_W, PAD, GUT = 450, ns.UI_MARGIN, ns.UI_GUTTER   -- 450 (QoL 0.7.21, Xaya: "up to 450px" so every column fits; was 380)
 local TITLE_H = 18            -- the title row (the mode button is 18 tall)
 local NAME_H = 32             -- the header: name and item level (15), spec and class (11) under them (B2)
 local HEADER = TITLE_H + GUT + NAME_H + GUT + 20 + GUT  -- title row, header, the tab row (20 tall), a gutter before the content
@@ -739,26 +739,32 @@ end
 -- (the #351 gutter between columns). QoL 0.7.20 (Xaya 2026-11-05: "put the input box on the far right under a new column "Change""):
 -- Stat | Rating | Current value | Pt value | (Note) | Change. The box is the last cell of its row, at the content's right edge; Rating
 -- shows a rating card's rating as text where the box sat before. The note is a column of its own (between Pt value and Change) once
--- the panel is wide enough for it (drag the corner: content 520 or wider, as before), else it goes under its line, from the Current
+-- the panel is wide enough for it (drag the corner: content 564 or wider since QoL 0.7.21), else it goes under its line, from the Current
 -- value column to the right edge; a line that has only a note puts it on the line itself. A line with no rating lets its name run on
 -- over the Rating column. Every cell wraps inside its own column, so nothing overlaps at any width or text size, and nothing is cut.
 -- (Replaces the stat map's MapCols of QoL 0.7.14: name | rating box | percent | rating per 1%, #382.)
--- Widths (by the estimate the layout test uses, 0.55 x text size per character, at text size 11): Rating holds "1,287"; Current
+-- Widths (by the estimate the layout test uses, 0.55 x text size per character, at text size 11): Rating holds "1,287 +1,000"; Current
 -- value "22.63% -> 26.22%" and "hidden in combat" (16 characters); Pt value "46.0 / 1%"; the box five digits in its own font. On the
--- default panel (content 360) that leaves Stat 86 and a "»" line's name 120 ("Diminishing returns" fits on one line).
-local GRID_RAT, GRID_VAL, GRID_PER, GRID_BOX = 36, 98, 56, 44
+-- default panel (QoL 0.7.20: content 360) that left Stat 86 and a "»" line's name 120; see QoL 0.7.21 below.
+-- QoL 0.7.21 (Xaya 2026-11-05: the Rating cell "should show alongside the +/- stat amount"): Rating is 80 wide so "1,287 +1,000"
+-- (12 characters, 72.6 by the estimate) fits; the default panel is 450 (content 430), which leaves Stat 112, so "Critical Strike"
+-- (90.75) and "» Abilities (per 100)" fit on one line. The Note column now starts at content 564 (panel 584; it was 540).
+local GRID_RAT, GRID_VAL, GRID_PER, GRID_BOX = 80, 98, 56, 44
 local GRID_STAT_MIN, GRID_NOTE_MIN = 96, 140
 -- hasBox false: no line of the tab has a box (the Gear tab), so it has no Rating and no Change column: Current value takes the
 -- Rating column's room ("now -> then" fits on one line); Stat and Pt value keep their x, the note runs to the right edge
+local GRID_STAT_KEEP = 86   -- QoL 0.7.21: below the default width Rating gives up its room first (down to 36, its 0.7.20 width; "528 +172"
+                            -- then wraps inside its cell) so Stat keeps 86 as long as it can and the narrowest panel (340) still fits
 local function GridCols(hasBox)
-    local fixed = GRID_RAT + GRID_VAL + GRID_PER + GRID_BOX + 4 * GUT
-    local g = { rat = GRID_RAT, val = GRID_VAL, per = GRID_PER, box = GRID_BOX }
+    local rat = math.max(36, math.min(GRID_RAT, W - (GRID_VAL + GRID_PER + GRID_BOX + 4 * GUT) - GRID_STAT_KEEP))
+    local fixed = rat + GRID_VAL + GRID_PER + GRID_BOX + 4 * GUT
+    local g = { rat = rat, val = GRID_VAL, per = GRID_PER, box = GRID_BOX }
     local slack = W - fixed - GUT
     g.wide = slack - GRID_STAT_MIN >= GRID_NOTE_MIN
     g.stat = g.wide and math.max(GRID_STAT_MIN, math.floor(slack * 0.4)) or math.max(40, W - fixed)
     g.rx = g.stat + GUT
-    g.vx = g.rx + GRID_RAT + GUT
-    if hasBox == false then g.rat, g.box, g.vx, g.val = 0, 0, g.rx, GRID_VAL + GRID_RAT + GUT end
+    g.vx = g.rx + rat + GUT
+    if hasBox == false then g.rat, g.box, g.vx, g.val = 0, 0, g.rx, GRID_VAL + rat + GUT end
     g.px = g.vx + g.val + GUT
     g.label = g.vx - GUT
     g.cx = W - g.box   -- Change: the box, the last cell of its row
