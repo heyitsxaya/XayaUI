@@ -51,7 +51,7 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 - **"Profile"** means only the whole addon as configured (#354 is asking whether that changes).
 - **Wording to Xaya:** truth first; flag inferences; no unearned compliments; state what is not verified in game.
 - **Roadmap feature branches (Xaya, 2026-11-05, her words):** "Rough scaffolding and proposed code structure (outline only) in a
-  dedicated “roadmap features: ______” brand per feature". Applied as:
+  dedicated “roadmap features: ______” brand per feature"; then "Branch, not brand". Applied as:
   - one branch per roadmap feature, `roadmap-features/<feature>` (git refuses a colon or spaces in a branch name);
   - the scaffold sits under `roadmap-features/<feature>/` (never a top-level `XayaUI*` folder, which the tools treat as shipping);
   - comments only, no code that runs; a draft PR that is not for merging.
