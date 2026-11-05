@@ -1,4 +1,4 @@
-# /xui help: one command per line (core 0.6.45)
+# /xui help: one command per line (core 0.6.46; written as 0.6.45, which reached main without it)
 Logged 2026-11-05 15:38 UTC. Session branch `claude/adoring-hawking-wyda59`.
 
 Xaya (2026-11-05, screenshot of the chat history's Console tab): "console print is difficult to read". The /xui help (any unknown

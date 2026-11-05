@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""/xui help prints one command per line (core 0.6.45; Xaya 2026-11-05: "console print is difficult to read": the whole command list
+"""/xui help prints one command per line (core 0.6.46; Xaya 2026-11-05: "console print is difficult to read": the whole command list
 was one line joined by " | ", unreadable in the console window and the chat history's Console tab). Checks the printed lines: a
 header with the count, then every command on its own line starting with /xui, the command colored and closed, what it does after it,
 literal pipes doubled (the game shows "||" as "|"), and no line holding two commands.

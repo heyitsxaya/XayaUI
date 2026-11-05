@@ -853,7 +853,7 @@ SlashCmdList["XAYAUI"] = function(msg)
             "/xui timing (how every cue gets time in combat)", "/xui seed", "/xui talents [status|<name>]", "/xui model [setup|<spellID>]",
             "/xui tracker [shadow|status]", "/xui loc", "/xui media" }
         for _, h in ipairs(ns.CommandHelp()) do help[#help + 1] = h end
-        -- one command per line (core 0.6.45; Xaya 2026-11-05: "console print is difficult to read": the list was one long line
+        -- one command per line (core 0.6.46; Xaya 2026-11-05: "console print is difficult to read": the list was one long line
         -- joined by " | "): the command in the theme's accent text color, what it does after it. A feature's help entry that
         -- holds two commands (" | /xui ...") is split. Pipes in the text are doubled ("||"), which the game shows as one "|";
         -- the color codes are not.
