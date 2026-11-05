@@ -12,9 +12,12 @@
 --   Gear: the equipped items as icons; click one to list what you own for that slot, pick one, and see the two side by side and
 --   everything the change does through the stat map. The Spells tab lists the spells added by hand and every spell of the
 --   spellbook with numbers in its description, under All / Offense / Defense filter buttons (spells only since 0.7.14).
---   Each tab is made of sections with a header (click a header to fold it). Each stat line is label and value, with its detail
---   pairs under it; hovering a line shows where the number comes from (the conversion hover: rating through the game's converter,
---   base and buffs, linked conversions such as crit to parry where the game reports them, thresholds).
+--   Each tab is made of sections with a header (click a header to fold it). The stat sections (every Stats section, the Gear
+--   comparison's "What it changes") are tables since QoL 0.7.15: Stat | (a card's box) | Current value | Pt value | Note under a
+--   column head, each card's "»" lines in the same columns (RenderGrid); the Gear Summary and Side by side are Gear | Character |
+--   Elsewhere and Equipped | this item | Change. Other lines are label and value, with their detail pairs under them. Hovering a line
+--   shows where the number comes from (the conversion hover: rating through the game's converter, base and buffs, linked conversions
+--   such as crit to parry where the game reports them, thresholds).
 --   Rating lines show a percent or a rating: the "%" / "rating" button in the title row sets it for every line, and clicking a
 --   rating line flips that line alone.
 --   Look: the XayaUI theme's colors and font (ns.Theme): window, border, tab, button and text classes; nothing from another addon.
@@ -156,12 +159,13 @@ ns.CharToolkit_Numbers = function(text) return CM.Numbers(text) end
 ns.CharToolkit_SpellName = function(id) return CM.SpellName(id) end
 ns.CharToolkit_ItemStats = function(link) return CM.ItemStats(link) end
 
--- The hover of one line: { { left, right, tone } or { text } }. Used by the panel, the sheet and the tests.
+-- The hover of one line: { { left, right, tone } or { text } }. Used by the panel, the sheet and the tests. A tooltip has one text
+-- column, so each line's Pt value and note follow its value (CM.PairText; the panel draws them in their own columns, QoL 0.7.15).
 function ns.CharToolkit_TooltipLines(it, mode)
     local out = {}
     local v, tone = CM.ValueFor(it, mode)
-    out[#out + 1] = { it.label or "", v or "", tone, title = true }
-    for _, p in ipairs(it.pairs or {}) do out[#out + 1] = { p.label, tostring(p.value), p.tone } end
+    out[#out + 1] = { it.label or "", CM.PairText({ value = v or "", per = it.per, note = it.note }), tone, title = true }
+    for _, p in ipairs(it.pairs or {}) do out[#out + 1] = { p.label, CM.PairText(p), p.tone } end
     if #(it.tip or {}) > 0 then
         out[#out + 1] = { " " }
         for _, l in ipairs(it.tip) do out[#out + 1] = { l } end
@@ -690,14 +694,32 @@ local function PlaceFS(f, x, y, w, size, text, col, justify, wrap, kind)
     return h
 end
 
--- the stat map's columns (QoL 0.7.14): name | rating box | percent | rating per 1% (#382: side by side, no toggle)
-local function MapCols()
-    local lw, bw, pw = math.floor(W * 0.30), 56, 64
-    local bx = lw + GUT
-    local vx = bx + bw + GUT
-    local px = W - pw
-    return lw, bw, bx, vx, px - GUT - vx, px, pw
+-- The stat grid (QoL 0.7.15; Xaya 2026-11-05: "do multiple columns: for cleaner presentation * Stat | Current Value | Pt Value | etc";
+-- before, each line was label | value with the Pt value and the note glued into the value, "+2,671  (1 = 1.00)"). Every Stats-tab
+-- section and the Gear comparison's "What it changes" draw Stat | (a card's box) | Current value | Pt value | Note at one set of x
+-- positions, worked out from the panel's width (the #351 gutter between columns). The note is a column of its own once the panel is
+-- wide enough for it (drag the corner: content 520 or wider), else it goes under its line, from the Current value column to the
+-- right edge; a line that has only a note (a list of abilities) puts it on the line itself. A line with no box lets its name run on
+-- over the box column. Every cell wraps inside its own column, so nothing overlaps at any width or text size, and nothing is cut.
+-- (Replaces the stat map's MapCols of QoL 0.7.14: name | rating box | percent | rating per 1%, #382.)
+local GRID_BOX, GRID_VAL, GRID_PER = 56, 102, 64     -- the box (as before), Current value ("hidden in combat" fits), Pt value
+local GRID_STAT_MIN, GRID_NOTE_MIN = 108, 150
+-- hasBox false: no line of the tab has a box (the Gear tab), so Current value takes the box column's room ("now -> then" fits on
+-- one line); Stat, Pt value and Note keep their x
+local function GridCols(hasBox)
+    local fixed = GRID_BOX + GRID_VAL + GRID_PER + 3 * GUT
+    local g = { box = GRID_BOX, val = GRID_VAL, per = GRID_PER }
+    g.wide = W - fixed - GUT - GRID_STAT_MIN >= GRID_NOTE_MIN
+    g.stat = g.wide and math.max(GRID_STAT_MIN, math.floor((W - fixed - GUT) * 0.4)) or math.max(40, W - fixed)
+    g.bx = g.stat + GUT
+    g.vx = g.bx + GRID_BOX + GUT
+    if hasBox == false then g.box, g.vx, g.val = 0, g.bx, GRID_VAL + GRID_BOX + GUT end
+    g.px = g.vx + g.val + GUT
+    g.label = g.vx - GUT
+    if g.wide then g.nx = g.px + GRID_PER + GUT; g.note = W - g.nx end
+    return g
 end
+ns.CharToolkit_GridCols = GridCols   -- (tests: the x positions the cells must sit at)
 
 -- the Gear comparison's columns (QoL 0.7.14): name | equipped | this item | change
 local function CmpCols()
@@ -707,7 +729,123 @@ local function CmpCols()
     return lw, cw, x1, x1 + cw + 4, x1 + 2 * (cw + 4)
 end
 
--- detail tabs: sections with headers; each line is label | value, its pairs under it
+-- one line of the grid: its cells at the grid's x positions; returns the line's height (its note under it included)
+-- o: x0 (indent), label, labelCol, size, value, valueCol, per, perCol, note, noteCol, box (the line has a box), boxH, kind (the layout
+-- records' prefix: "" for a card's own line, "pair" for a line under it)
+local function GridLine(g, y, o)
+    local k = o.kind or ""
+    local function K(s) return (k == "") and s or (k .. s:sub(1, 1):upper() .. s:sub(2)) end
+    local h = PlaceFS(FS(), o.x0, y, (o.box and g.stat or g.label) - o.x0, o.size, o.label, o.labelCol, "LEFT", true, K("label"))
+    local hasV, hasP, hasN = (o.value or "") ~= "", (o.per or "") ~= "", (o.note or "") ~= ""
+    if o.boxH then h = math.max(h, o.boxH) end
+    if hasV then h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, o.size, o.value, o.valueCol, "RIGHT", true, K("value"))) end
+    if hasP then h = math.max(h, PlaceFS(FS(), g.px, y, g.per, o.size, o.per, o.perCol, "RIGHT", true, K("per"))) end
+    if hasN and g.wide then
+        h = math.max(h, PlaceFS(FS(), g.nx, y, g.note, o.size, o.note, o.noteCol, "LEFT", true, K("note")))
+    elseif hasN and not hasV and not hasP then
+        h = math.max(h, PlaceFS(FS(), g.vx, y, W - g.vx, o.size, o.note, o.noteCol, "LEFT", true, K("note")))
+    elseif hasN then
+        h = h + 1 + PlaceFS(FS(), g.vx, y + h + 1, W - g.vx, o.size, o.note, o.noteCol, "LEFT", true, K("note"))
+    end
+    return h
+end
+
+-- a grid section's lines (sec.grid: the stat map's sections, the Gear comparison's "What it changes"); returns the y under them
+local function RenderGrid(c, items, y, hasBox)
+    local size = c.fontSize
+    local cText = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
+    local cMuted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
+    local short = c.detail == "short"
+    local g = GridCols(hasBox)
+    for _, it in ipairs(items) do
+        local top = y
+        if it.kind == "colhead" then
+            local cs, hs = it.cols or {}, size - 1
+            local h = PlaceFS(FS(), 0, y, g.stat, hs, cs[1] or "", cMuted, "LEFT", true, "colhead")
+            if (cs[2] or "") ~= "" and g.box > 0 then h = math.max(h, PlaceFS(FS(), g.bx, y, g.box, hs, cs[2], cMuted, "LEFT", true, "colhead")) end
+            h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, hs, cs[3] or "", cMuted, "RIGHT", true, "colhead"))
+            h = math.max(h, PlaceFS(FS(), g.px, y, g.per, hs, cs[4] or "", cMuted, "RIGHT", true, "colhead"))
+            if g.wide then h = math.max(h, PlaceFS(FS(), g.nx, y, g.note, hs, cs[5] or "", cMuted, "LEFT", true, "colhead")) end
+            local hb = Btn()   -- hover: what each column holds
+            hb.item = it
+            hb:ClearAllPoints()
+            hb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+            hb:SetSize(W, h + 1)
+            Rec("hit", 0, y, W, h + 1, it.key)
+            y = y + h + 3
+        elseif it.kind == "note" then
+            local h = PlaceFS(FS(), 0, y, W, size, it.label, it.minor and cMuted or cText, "LEFT", true, "label")
+            y = y + h + 5
+        else
+            local v, tone = CM.ValueFor(it, nil)
+            local boxed = it.kind == "input" and it.input ~= nil
+            local boxH = boxed and (size + 6) or nil
+            if boxed then
+                local eb = Box(it.input)
+                eb:ClearAllPoints()
+                eb:SetPoint("TOPLEFT", content, "TOPLEFT", g.bx, -y + 2)
+                eb:SetSize(g.box, size + 6)
+                if not (eb.HasFocus and eb:HasFocus()) then
+                    local amt = num(it.amount) and it.amount or 0
+                    -- a stat map box holds the number itself (yours, or the one typed); All ratings holds its amount
+                    eb:SetText(it.absolute and tostring(math.floor(it.absolute + amt + 0.5)) or (amt ~= 0 and tostring(amt) or ""))
+                end
+                eb:Show()
+                eb.xuiUsed = true
+                Rec("input", g.bx, y, g.box, size + 6, it.input, size)
+            end
+            local hasV = (v or "") ~= ""
+            local h = GridLine(g, y, { x0 = 0, label = it.label, labelCol = it.labelColor or (it.minor and cMuted or cText), size = size,
+                value = v, valueCol = ToneColor(tone, cText), per = it.per, perCol = cText, note = it.note,
+                noteCol = (hasV or (it.per or "") ~= "") and cMuted or ToneColor(tone, cText), box = boxed, boxH = boxH })
+            y = y + h + 2
+            local headEnd = y
+            -- the lines under it: one size smaller and muted, except a card that asks for full-size ones (#378: "way too tiny")
+            local big = it.bigPairs == true
+            local psz, pcol = big and size or size - 1, big and cText or cMuted
+            for _, p in ipairs(it.pairs or {}) do
+                if not short or p.short then
+                    local pv = (p.value ~= nil) and tostring(p.value) or ""
+                    local lone = pv == "" and (p.per or "") == ""
+                    local ph = GridLine(g, y, { x0 = 12, label = p.label, labelCol = p.labelColor or pcol, size = psz, value = pv,
+                        valueCol = ToneColor(p.tone, cText), per = p.per, perCol = pcol, note = p.note,
+                        noteCol = lone and ToneColor(p.tone, pcol) or cMuted, kind = "pair" })
+                    y = y + ph + 1
+                end
+            end
+            -- the hover (where the numbers come from): a card with a box keeps its box clickable, so its hover is its name and the
+            -- lines under it; any other card hovers as a whole
+            if boxed then
+                local lb = Btn()
+                lb.item = it
+                lb:ClearAllPoints()
+                lb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top)
+                lb:SetSize(g.stat, size + 6)
+                Rec("hit", 0, top, g.stat, size + 6, it.key)
+                if y > headEnd then
+                    local pb = Btn()
+                    pb.item = it
+                    pb:ClearAllPoints()
+                    pb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -headEnd)
+                    pb:SetSize(W, y - headEnd)
+                    Rec("hit", 0, headEnd, W, y - headEnd, it.key)
+                end
+            else
+                local b = Btn()
+                b.item = it
+                b:ClearAllPoints()
+                b:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top)
+                b:SetSize(W, math.max(1, y - top))
+                Rec("hit", 0, top, W, y - top, it.key)
+            end
+            y = y + 4
+        end
+    end
+    return y
+end
+
+-- detail tabs: sections with headers; a grid section draws its lines in columns (RenderGrid), any other each line as label | value
+-- with its pairs under it
 local function RenderSections(c, m, tab, y0)
     local size = c.fontSize
     local cText = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
@@ -716,6 +854,13 @@ local function RenderSections(c, m, tab, y0)
     local cLine = TC("xui-window", "border", { 0.3, 0.3, 0.3, 1 })
     local short = c.detail == "short"
     local y = y0 or 0
+    -- the grid's box column exists when a grid line of this tab has a box (one set of columns per tab)
+    local gridBox = false
+    for _, sec in ipairs(m.sections) do
+        if sec.tab == tab and sec.grid then
+            for _, it in ipairs(sec.items) do if it.kind == "input" then gridBox = true end end
+        end
+    end
     for _, sec in ipairs(m.sections) do
         if sec.tab == tab and #sec.items > 0 then
             if y > (y0 or 0) then y = y + 6 end
@@ -732,7 +877,9 @@ local function RenderSections(c, m, tab, y0)
             h.line:SetColorTexture(cLine[1], cLine[2], cLine[3], 0.8)
             Rec("header", 0, y, W, size + 7, (folded and "+ " or "- ") .. sec.title, size + 1)
             y = y + size + 9
-            if not folded then
+            if not folded and sec.grid then
+                y = RenderGrid(c, sec.items, y, gridBox)
+            elseif not folded then
                 for _, it in ipairs(sec.items) do
                     local top = y
                     local mode = it.kind == "rating" and ModeFor(c, it.key) or nil
@@ -806,42 +953,14 @@ local function RenderSections(c, m, tab, y0)
                         Rec("hit", 0, y, bw, bh, it.key)
                         y = y + bh + 2
                     elseif it.kind == "cmprow" then
+                        -- (QoL 0.7.15: cells wrap inside their column rather than being cut, and each may carry its own tone)
                         local lw, cw, x1, x2, x3 = CmpCols()
-                        local cs = it.cells or {}
+                        local cs, ct = it.cells or {}, it.cellTones or {}
                         rowH = PlaceFS(FS(), 0, y, lw - 4, size, it.label, it.labelColor or cText, "LEFT", false, "label")
-                        PlaceFS(FS(), x1, y, cw, size, cs[1] or "", cText, "RIGHT", false, "cmpcell")
-                        PlaceFS(FS(), x2, y, cw, size, cs[2] or "", cText, "RIGHT", false, "cmpcell")
-                        PlaceFS(FS(), x3, y, cw, size, cs[3] or "", ToneColor(it.cellTone, cText), "RIGHT", false, "cmpcell")
+                        rowH = math.max(rowH, PlaceFS(FS(), x1, y, cw, size, cs[1] or "", ToneColor(ct[1], cText), "RIGHT", true, "cmpcell"))
+                        rowH = math.max(rowH, PlaceFS(FS(), x2, y, cw, size, cs[2] or "", ToneColor(ct[2], cText), "RIGHT", true, "cmpcell"))
+                        rowH = math.max(rowH, PlaceFS(FS(), x3, y, cw, size, cs[3] or "", ToneColor(ct[3] or it.cellTone, cText), "RIGHT", true, "cmpcell"))
                         y = y + rowH + 1
-                    elseif it.kind == "colhead" then
-                        local lw, bw, bx, vx, vw, px, pw = MapCols()
-                        local cs = it.cols or {}
-                        PlaceFS(FS(), bx, y, bw, size - 1, cs[1] or "", cMuted, "LEFT", false, "colhead")
-                        PlaceFS(FS(), vx, y, vw, size - 1, cs[2] or "", cMuted, "RIGHT", false, "colhead")
-                        PlaceFS(FS(), px, y, pw, size - 1, cs[3] or "", cMuted, "RIGHT", false, "colhead")
-                        y = y + size + 1
-                    elseif it.kind == "input" and it.mapCard then
-                        local lw, bw, bx, vx, vw, px, pw = MapCols()
-                        rowH = PlaceFS(FS(), 0, y, lw - 4, size, it.label, it.labelColor or cText, "LEFT", false, "label")
-                        local eb = Box(it.input)
-                        eb:ClearAllPoints()
-                        eb:SetPoint("TOPLEFT", content, "TOPLEFT", bx, -y + 2)
-                        eb:SetSize(bw, size + 6)
-                        if not (eb.HasFocus and eb:HasFocus()) then
-                            eb:SetText(it.absolute and tostring(math.floor(it.absolute + (num(it.amount) and it.amount or 0) + 0.5)) or "")
-                        end
-                        eb:Show()
-                        eb.xuiUsed = true
-                        Rec("input", bx, y, bw, size + 6, it.input, size)
-                        local vh = PlaceFS(FS(), vx, y, vw, size, v, ToneColor(tone, cText), "RIGHT", true, "value")
-                        if it.per and it.per ~= "" then PlaceFS(FS(), px, y, pw, size - 1, it.per, cMuted, "RIGHT", false, "per") end
-                        local lb = Btn()   -- hover on the name: where the numbers come from
-                        lb.item = it
-                        lb:ClearAllPoints()
-                        lb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-                        lb:SetSize(lw, size + 6)
-                        Rec("hit", 0, y, lw, size + 6, it.key)
-                        y = y + math.max(rowH, vh, size + 6) + 2
                     elseif it.kind == "input" then
                         local lw, bw = math.floor(W * 0.36), 64
                         rowH = PlaceFS(FS(), 0, y, lw, size, it.label, cText, "LEFT", false, "label")
@@ -1211,7 +1330,8 @@ local function AppendTooltip(frame)
             if card.per and card.per ~= "" then lines[#lines + 1] = { "Rating per 1%", (card.per:gsub(" / 1%%$", "")) } end
         end
         for _, p in ipairs(card.pairs or {}) do
-            if p.label ~= "From rating" then lines[#lines + 1] = { p.label, tostring(p.value) } end
+            -- (one text column: the Pt value and the note follow the value, QoL 0.7.15)
+            if p.label ~= "From rating" then lines[#lines + 1] = { p.label, CM.PairText(p) } end
         end
     else
         local it = CM.Build(c, nil).byKey[key]

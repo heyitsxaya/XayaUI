@@ -17,6 +17,10 @@ Every piece of addon work is multi-session (Xaya, 2026-11-04). New chat: read th
 Project documents outside the repo (Claude project docs, the Drive `Feature sketches` folder) hold long specs; ROADMAP section 13 says so. They are not readable from a cloud session.
 
 ## 2. Standing rules
+- **Off costs nothing (Xaya, 2026-11-05 15:07 UTC, her words):** "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a standing rule for all current and future feature / element builds". Applied through rule V14
+  (`docs/process/VERIFICATION.md`): while a feature is off, none of its frames, events, OnUpdate, timers or hooks exist or run; strict
+  "never loads" needs a LoadOnDemand addon (an enabled addon's files are always read at login), and a hook placed while on stays inert
+  until /reload. Audit of the current features: pending (session 014bN6tWZxqCW85vMEyHdfnt task list; results go to the debug log).
 - **Work the backlog, never idle (Xaya, 2026-11-04 17:15 UTC, her words):** "for the time being, as long as there are features or overt bugs in any of the core addon functionality, you should just aim to solve for the backlog and avoid idling in all cases". How it is applied:
   - When an item waits on Xaya (a design decision, in-game data), move to the next item that does not. List the blocked ones once;
     never guess her decisions into code (V12).

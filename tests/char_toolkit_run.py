@@ -188,8 +188,11 @@ gm = ns.CharToolkit_Model("gear")
 check("gear: its empty socket (Ring: 1)", cell("gc_sockets", 1) == "1", cell("gc_sockets", 1))
 ns.CharModel.gearSlot = nil
 gm = ns.CharToolkit_Model("gear")
-check("gear totals vs character: crit gear 400, character 528, +128 elsewhere", pair(gs, "crit") == "gear 400, character 528 (+128 from elsewhere)", pair(gs, "crit"))
-check("gear totals: sockets", pair(gs, "Empty sockets") == "1")
+-- (QoL 0.7.15: the Summary is a table, Gear | Character | Elsewhere, one row per stat)
+check("gear totals: a column head Gear | Character | Elsewhere", gs and gs.kind == "colhead" and table.concat(gs.cols or {}, "|") == "Gear|Character|Elsewhere")
+local function sumCells(k) local r = row(gm, "gearSum_" .. k); return r and table.concat(r.cells, "|") end
+check("gear totals vs character: Critical Strike gear 400 | character 528 | +128 elsewhere", sumCells("crit") == "400|528|+128" and row(gm, "gearSum_crit").label == "Critical Strike", sumCells("crit"))
+check("gear totals: sockets", sumCells("sockets") == "1||" and row(gm, "gearSum_sockets").cellTones[1] == "warn", sumCells("sockets"))
 
 -- no converter: current figures only, said plainly
 local saved = GetCombatRatingBonusForCombatRatingValue

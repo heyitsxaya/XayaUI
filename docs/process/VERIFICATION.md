@@ -16,6 +16,15 @@ another addon.
   or a defect issue. When Xaya answers, check the code against the answer (D1 was answered but the code still returns 0).
 - **V9 Rebuild carry-over.** Before rewriting a file or feature from scratch, list its earlier fixes (`git log --follow`, the debug log,
   issue numbers in comments) and keep a test for each.
+- **V14 Off costs nothing** (Xaya, 2026-11-05, her words: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a standing rule for all current and future feature / element builds"). For every feature or element with an on/off tick box: while
+  it is off, nothing of it is created or runs: no frame, event registration, OnUpdate, ticker or timer, hook, secure hook or
+  per-frame / per-event work, and no data built for it. Create those only when it is turned on (or at login when it is saved on),
+  and on turning off, hide, unregister and stop them. Two limits the game sets (state them, never hide them): (1) every Lua file of an
+  ENABLED addon is read at login, so code in an always-loaded addon still costs its parse and function definitions; "never loads" in
+  the strict sense needs a separate LoadOnDemand addon (as XayaUI_Options is) — say which level a feature reaches; (2) the game has
+  no way to remove a hooksecurefunc / HookScript hook, so a hook placed while the feature was on stays until /reload: it must return
+  at once when the feature is off, and the switch's text says a /reload removes it fully. Test it (V1): with the switch off at login,
+  assert no frame of the feature exists, no event of it is registered, no OnUpdate / timer of it runs.
 
 ## While writing tests
 - **V1 Outcome, not input.** Assert what the player sees or hears: drawn positions, text, which sound fires, the final list order. A
