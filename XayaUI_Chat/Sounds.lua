@@ -19,6 +19,10 @@ local GROUP_OF = {
 C.SOUND_GROUPS = GROUP_OF
 
 local lastPlayed = {}
+-- V14: the events this file asks the message bus for (Messages.lua): every kind a tab can show while "Play tab sounds" is on; only the
+-- two incoming whisper events while just "Use whisper sound overrides" is on; none with both off.
+local TAB_EVENTS, WHISPER_EVENTS = {}, { CHAT_MSG_WHISPER = true, CHAT_MSG_BN_WHISPER = true }
+for ev in pairs(GROUP_OF) do TAB_EVENTS[ev] = true end
 
 -- Whisper sound overrides (Xaya 2026-11-04: "specific sound overrides for specific bnet/character whispers/favorites"). A whisper
 -- from a listed sender (a character "Name" / "Name-Realm", or a Battle.net "BattleTag#1234" / "BattleTag") or from a Battle.net
@@ -28,10 +32,19 @@ local lastPlayed = {}
 -- isFavorite (structures.md:565 / 572). Blizzard has no friend groups of its own (only fixed friend tags), so groups made by another
 -- addon cannot be read here.
 local function Low(v) return (type(v) == "string" and not C.IsSecret(v)) and v:lower():gsub("^%s+", ""):gsub("%s+$", "") or nil end
+-- is any override set up at all? (with none, nothing about the whisper is looked up)
+local function AnyOverride(ws)
+    for _, e in ipairs(ws.list or {}) do
+        if e.enabled ~= false and e.value and e.value ~= "" and type(e.who) == "string" and e.who ~= "" then return true end
+    end
+    local f = ws.fav
+    return (f and f.enabled and f.value and f.value ~= "") and true or false
+end
 function C.WhisperOverride(event, author, bnID)
     local s = S()
     local ws = s and s.whisperSounds
     if not (ws and s.whisperSoundsOn ~= false) then return nil end
+    if not AnyOverride(ws) then return nil end
     if C_ChatInfo and C_ChatInfo.InChatMessagingLockdown then
         local ok, locked = pcall(C_ChatInfo.InChatMessagingLockdown)
         if not ok or locked ~= false then return nil end   -- locked, or the game cannot say
@@ -62,15 +75,29 @@ function C.WhisperOverride(event, author, bnID)
     return nil
 end
 
+-- does any tab have a sound to play? (the per-tab "Play a sound" switches)
+local function AnyTabSound(s)
+    for _, cfg in pairs(type(s.sounds) == "table" and s.sounds or {}) do
+        if type(cfg) == "table" and cfg.enabled and cfg.value and cfg.value ~= "" then return true end
+    end
+    return false
+end
+
 C.OnMessage(function(event, _, author, _, _, _, _, _, _, channelBase, _, _, _, bnID)
     local s = S()
     if not s then return end
     local group = GROUP_OF[event]
     if not group then return end                                    -- includes outgoing whispers: no group, no sound
+    -- V14: the switches first. Up to Chat 0.6.13 the sender's name, combat and the clock were read for every message before
+    -- "Play tab sounds" was checked.
+    local whisper = (group == "WHISPER" or group == "BN_WHISPER")
+    local tabs = s.soundsOn and AnyTabSound(s)
+    local overrides = whisper and s.whisperSoundsOn ~= false
+    if not (tabs or overrides) then return end
     if C.IsMe(author) then return end
     if not s.soundsInCombat and InCombatLockdown and InCombatLockdown() then return end
     local now = GetTime()
-    if group == "WHISPER" or group == "BN_WHISPER" then
+    if overrides then
         local ov = C.WhisperOverride(event, author, bnID)
         if ov then
             if (now - (lastPlayed.whisper or 0)) > 0.25 then
@@ -80,7 +107,7 @@ C.OnMessage(function(event, _, author, _, _, _, _, _, _, channelBase, _, _, _, b
             return   -- instead of the tab sounds
         end
     end
-    if not s.soundsOn then return end
+    if not tabs then return end
     local played = {}
     for _, f in ipairs(C.Frames()) do
         local id = f.GetID and f:GetID()
@@ -94,4 +121,8 @@ C.OnMessage(function(event, _, author, _, _, _, _, _, _, channelBase, _, _, _, b
             end
         end
     end
+end, function(s)
+    if s.soundsOn then return TAB_EVENTS end
+    if s.whisperSoundsOn ~= false then return WHISPER_EVENTS end
+    return nil
 end)

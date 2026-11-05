@@ -16,16 +16,54 @@ C.MSG_EVENTS = { "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_EMOTE", "CHAT_MSG_TE
     "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_RAID_WARNING", "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_INSTANCE_CHAT_LEADER",
     "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER", "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM", "CHAT_MSG_BN_WHISPER",
     "CHAT_MSG_BN_WHISPER_INFORM", "CHAT_MSG_CHANNEL" }
+local ALL = {}
+for _, ev in ipairs(C.MSG_EVENTS) do ALL[ev] = true end
+C.MSG_ALL = ALL
+-- V14: the bus listens only for the events that a switched-on consumer needs (the history, the tab sounds, the whisper sound overrides,
+-- "a new message brings the chat back"), and only while the Chat Panel is on. A consumer gives the set of events it wants for the
+-- current settings; C.Refresh works the sets out again after every settings change (the "messages" part). With every consumer off, the
+-- bus frame is never made. Up to Chat 0.6.13 all 18 events were registered at login, with the Chat Panel off too.
 local handlers = {}
-function C.OnMessage(fn) handlers[#handlers + 1] = fn end
-local bus = CreateFrame("Frame")
-for _, ev in ipairs(C.MSG_EVENTS) do pcall(bus.RegisterEvent, bus, ev) end
-bus:SetScript("OnEvent", function(_, event, ...)
-    if not C.On() then return end
-    local s = S()
-    if s and s.fadeWake and C.Touch then C.Touch() end
-    for i, fn in ipairs(handlers) do C.Try("message-handler-" .. i, fn, event, ...) end
-end)
+-- fn(event, ...) is called for the events that events(s) returns (a set; nil: none). events nil: every chat message event.
+function C.OnMessage(fn, events)
+    handlers[#handlers + 1] = { fn = fn, events = events or function() return ALL end, want = {} }
+end
+local bus, wake
+local registered = {}
+local function OnBusEvent(_, event, ...)
+    if wake and C.Touch then C.Touch() end
+    for i, h in ipairs(handlers) do
+        if h.want[event] then C.Try("message-handler-" .. i, h.fn, event, ...) end
+    end
+end
+local function SyncBus(s)
+    wake = (s.fadeOn and s.fadeWake) and true or false
+    local need = {}
+    if wake then for ev in pairs(ALL) do need[ev] = true end end
+    for _, h in ipairs(handlers) do
+        h.want = h.events(s) or {}
+        for ev in pairs(h.want) do need[ev] = true end
+    end
+    if not bus then
+        if not next(need) then return end
+        bus = CreateFrame("Frame")
+        bus:SetScript("OnEvent", OnBusEvent)
+    end
+    for _, ev in ipairs(C.MSG_EVENTS) do
+        if need[ev] and not registered[ev] then
+            if pcall(bus.RegisterEvent, bus, ev) then registered[ev] = true end
+        elseif registered[ev] and not need[ev] then
+            pcall(bus.UnregisterEvent, bus, ev); registered[ev] = nil
+        end
+    end
+end
+C.Part("messages", function() return true end, SyncBus,
+    function()
+        wake = false
+        for _, h in ipairs(handlers) do h.want = {} end
+        if bus then for ev in pairs(registered) do pcall(bus.UnregisterEvent, bus, ev) end end
+        registered = {}
+    end, SyncBus)
 
 local function PlayerName()
     local n = UnitName and UnitName("player")
@@ -73,6 +111,7 @@ local decided, decidedN = {}, 0
 
 local function Decide(s, kind, msg, author)
     if not SPAM_KINDS[kind] then return false end
+    if not s.spamRepeat and #Phrases(s) == 0 then return false end   -- links only: nothing to decide (no name read, no lower-case copy)
     if IsMe(author) then return false end
     local lower = msg:lower()
     if HasPhrase(s, lower) then return true end
@@ -127,8 +166,9 @@ function C.Linkify(s, msg)
 end
 
 local function Filter(_, event, msg, author, ...)
+    if not C.on.filter then return false end   -- the game keeps the filter until /reload: with its switches off it returns at once
     local s = S()
-    if not (s and C.On()) then return false end
+    if not s then return false end
     if type(msg) ~= "string" then return false end
     if issecret(msg) then C.stats.protected = C.stats.protected + 1; return false end
     local kind = event:match("^CHAT_MSG_(.+)$") or event
@@ -152,6 +192,11 @@ local function Filter(_, event, msg, author, ...)
 end
 C.Filter = Filter
 
+-- the "filter" part: added to the game's chat filters the first time "Hide repeated messages", a blocked phrase or "Make web addresses
+-- clickable" is on (with the Chat Panel on). The game's API documentation (docs/reference/api, 12.1.5) lists no way to take a filter
+-- out again (ChatFrameUtil.RemoveMessageEventFilter is Blizzard UI code, not documented there: INFERENCE, not relied on), so turned off
+-- it stays in the game's list and returns at once on C.on.filter. Up to Chat 0.6.13 it was added with the Chat Panel and, with all
+-- three off, still read the sender's name and made a lower-case copy of every message on every chat window.
 local function Install()
     if C.hooked.filters then return end
     local add = ns.Compat.Chat("AddMessageEventFilter")   -- ChatFrameUtil.AddMessageEventFilter in 12.x (Compat.lua)
@@ -190,9 +235,10 @@ function C.CopyBox(text, title)
 end
 
 local function OnItemRef(link, text, button)
+    if not C.on.itemref then return end   -- a hook the game cannot take back: idle with both switches (or the Chat Panel) off
     if type(link) ~= "string" or issecret(link) then return end
     local s = S()
-    if not (s and C.On()) then return end
+    if not s then return end
     local a, addon, kind, id = strsplit(":", link)
     if a == "addon" and addon == "XayaUI" and kind == "url" then
         local url = C.LinkTarget(id)
@@ -210,9 +256,8 @@ local function OnItemRef(link, text, button)
     end
 end
 
-local function Refresh()
-    if not C.On() then return end
-    Install()
-    C.HookOnce("messages:itemref", "SetItemRef", nil, OnItemRef)
-end
-C.Register("messages", Refresh)
+C.Part("filter", function(s) return s.spamRepeat or s.links or #Phrases(s) > 0 end, Install)
+-- the "itemref" part: clicking a web address (made by "Make web addresses clickable") and Ctrl + right-click on a name. The hook is
+-- placed the first time either switch is on.
+C.Part("itemref", function(s) return s.links or s.ignoreClick end,
+    function() C.HookOnce("messages:itemref", "SetItemRef", nil, OnItemRef) end)
