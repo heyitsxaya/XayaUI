@@ -27,6 +27,13 @@
 --   opens / closes it and its open state is kept for the next time; a "Stat Calculator" row in XayaUI's minimap button list and
 --   /xui stats open it on its own (at its own place; docked beside the character window while that is open); a Max / Min button in
 --   its title row switches between two heights set on the settings page; the corner grip still resizes (and sets the current height).
+--   QoL 0.7.24 (Xaya 2026-11-05): the Spells tab's filters are a menu on a filter icon at the right of its top row (None / Offense /
+--   Defense / Utility), its spell data button is a real button centred above the sections (at most 250 wide), and each spell is a row
+--   of columns: Spell Name (Spell ID under it) | Value | % PSV ("1 Agility = +N" under it) | Talent Modifiers; "Usable now" is gone.
+--   Gear: the selected equipped item's box is highlighted (a click on it again lets it go); the items you own for the slot are icons
+--   (click to pick, several at once, up to 3; the box shows the last one's name); one "Changes" section (Stat | Pt value | Equipped |
+--   each picked item, DR threshold and true / lost rating under each secondary that changes, Stat effects, Spell Changes, on-use and
+--   proc effects with the RPPM wording) replaces Side by side and What it changes; slots are named Ring slot #1 ... Main-hand, Off-hand.
 --   Look: the XayaUI theme's colors and font (ns.Theme): window, border, tab, button and text classes; nothing from another addon.
 --   Slot overlays (off by default): item level, empty sockets, and "no enchant" on the slots the player ticks (the game does not say
 --   which slots take an enchant).
@@ -51,7 +58,7 @@ ns.CHARTOOLKIT_DEFAULTS = {
     opacity = 0.92,
     advanced = false,      -- spell math
     spells = {},           -- added by hand: { { id = spellID, coeff = number|nil, base = "ap"|"sp", kind = nil|"offense"|"defense"|"both" } }
-    spellFilter = "all",   -- the Spells tab's filter: all | offense | defense (QoL 0.7.7: these were the Defense and Offense tabs)
+    spellFilter = "all",   -- the Spells tab's filter: all (None) | offense | defense | utility (QoL 0.7.7: these were the Defense and Offense tabs; utility QoL 0.7.24)
     spellsAll = false,     -- list spellbook spells whose description has no numbers too
     free = { x = 0, y = 0 }, -- position when shown on its own (the character window closed)
     panelOpen = true,      -- the panel's open / closed state, kept for the next time (QoL 0.7.23; Xaya: "remember the last-left state")
@@ -101,7 +108,7 @@ local function Cfg()
         else
             if s.coeff ~= nil and not num(s.coeff) then s.coeff = nil end
             if s.base ~= "sp" then s.base = "ap" end
-            if s.kind ~= "offense" and s.kind ~= "defense" and s.kind ~= "both" then s.kind = nil end
+            if s.kind ~= "offense" and s.kind ~= "defense" and s.kind ~= "both" and s.kind ~= "utility" then s.kind = nil end
         end
     end
     if type(c.free) ~= "table" then c.free = { x = 0, y = 0 } end
@@ -346,29 +353,94 @@ local function Hdr()
     return h
 end
 
--- the Spells tab's filter buttons (All / Offense / Defense): own buttons with their label on them, so the label draws above the fill
-local filterBtns = {}
-local function FilterBtn(i)
-    local b = filterBtns[i]
-    if not b then
-        b = CreateFrame("Button", nil, content)
-        b:EnableMouse(true)
-        if b.RegisterForClicks then b:RegisterForClicks("LeftButtonUp") end
-        b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(b)
-        local hl = b:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(b); hl:SetColorTexture(1, 1, 1, 0.08)
-        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); b.text:SetPoint("CENTER")
-        b:SetScript("OnEnter", function(self) ShowTooltip(self, self.item) end)
-        b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-        b:SetScript("OnClick", function(self)
-            local c = Cfg(); if not (c and self.filter) then return end
-            c.spellFilter = self.filter
-            if scroll then scroll:SetVerticalScroll(0) end
-            ns.CharToolkit_Render()
-        end)
-        b:SetScript("OnMouseWheel", function(_, d) if panel and panel.Scroll then panel.Scroll(d) end end)
-        filterBtns[i] = b
+-- The Spells tab's top row (QoL 0.7.24): the spell data button and the filter icon. Xaya 2026-11-05, her words: "refresh spell data or
+-- load spell data should be a button above the spell segments and more clearly clickable / defined. put it as a centered button that is
+-- no more than 250px wide"; "Filter tabs should be indicated by a filter icon on the right hand side with "none" by default (therefore
+-- showing all)". (Before: All / Offense / Defense buttons across the top, and the data button a dim bar inside the first section.)
+local SPELL_BTN_MAX, FILTER_ICON = 250, 20
+-- the button: Blizzard's UIPanelButtonTemplate in XayaUI's flat look (core's ns.FlatButton: the theme's button colours and border, the
+-- text turning white on hover; Blizzard's own look and highlight when the settings addon's skin is off). Its label and action are the
+-- section's action item's (Configure spell data while Spell Math is off, else Refresh spell data), as before.
+local function SpellDataButton()
+    if panel.spellBtn then return panel.spellBtn end
+    local ok, b = pcall(CreateFrame, "Button", nil, content, "UIPanelButtonTemplate")
+    if not ok or not b then b = CreateFrame("Button", nil, content) end
+    if b.RegisterForClicks then b:RegisterForClicks("LeftButtonUp") end
+    b:SetScript("OnClick", function(self) if self.item and self.item.action then ns.CharToolkit_Action(self.item.action) end end)
+    b:SetScript("OnEnter", function(self) ShowTooltip(self, self.item) end)
+    b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    b:SetScript("OnMouseWheel", function(_, d) if panel and panel.Scroll then panel.Scroll(d) end end)
+    if ns.FlatButton then ns.FlatButton(b) end
+    panel.spellBtn = b
+    return b
+end
+-- the filter menu: None (show all), Offense, Defense, Utility; the chosen one is saved (c.spellFilter) and marked
+function ns.CharToolkit_SetSpellFilter(f)
+    local c = Cfg(); if not c then return end
+    c.spellFilter = f
+    c.spellFilter = CM.FilterOf(c)
+    if panel and panel.filterMenu then panel.filterMenu:Hide() end
+    if scroll then scroll:SetVerticalScroll(0) end
+    ns.CharToolkit_Render()
+end
+local function FilterMenu()
+    if panel.filterMenu then return panel.filterMenu end
+    local f = CreateFrame("Frame", nil, panel)
+    f:SetFrameLevel((panel:GetFrameLevel() or 1) + 20)   -- above the panel's content
+    f:EnableMouse(true)
+    f.bg = f:CreateTexture(nil, "BACKGROUND"); f.bg:SetAllPoints(f)
+    f.edges = {}
+    for i, pts in ipairs({ { "TOPLEFT", "TOPRIGHT", 0 }, { "BOTTOMLEFT", "BOTTOMRIGHT", 0 }, { "TOPLEFT", "BOTTOMLEFT", 1 }, { "TOPRIGHT", "BOTTOMRIGHT", 1 } }) do
+        local e = f:CreateTexture(nil, "BORDER")
+        e:SetPoint(pts[1]); e:SetPoint(pts[2])
+        if pts[3] == 1 then e:SetWidth(1) else e:SetHeight(1) end
+        f.edges[i] = e
     end
-    b:Show()
+    f.rows = {}
+    for i, fl in ipairs(CM.SPELL_FILTERS) do
+        local r = CreateFrame("Button", nil, f)
+        r:EnableMouse(true)
+        if r.RegisterForClicks then r:RegisterForClicks("LeftButtonUp") end
+        r.bg = r:CreateTexture(nil, "BACKGROUND"); r.bg:SetAllPoints(r)
+        local hl = r:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(r); hl:SetColorTexture(1, 1, 1, 0.1)
+        r.text = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        r.text:SetPoint("LEFT", r, "LEFT", 8, 0); r.text:SetJustifyH("LEFT")
+        r.filter, r.label = fl[1], fl[2]
+        r.item = { kind = "filter", key = "filter:" .. fl[1], label = fl[2], value = "", tip = { fl[3] } }
+        r:SetScript("OnClick", function(self) ns.CharToolkit_SetSpellFilter(self.filter) end)
+        r:SetScript("OnEnter", function(self) ShowTooltip(self, self.item) end)
+        r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        f.rows[i] = r
+    end
+    f:Hide()
+    panel.filterMenu = f
+    return f
+end
+-- the icon: a funnel drawn from four flat bars (XayaUI's own drawing, no game art): muted while no filter is on, in the theme's accent
+-- colour with a dot when one is; a click opens or closes the menu under it
+local function FilterIcon()
+    if panel.filterIcon then return panel.filterIcon end
+    local b = CreateFrame("Button", nil, content)
+    b:EnableMouse(true)
+    if b.RegisterForClicks then b:RegisterForClicks("LeftButtonUp") end
+    b:SetFrameLevel((content:GetFrameLevel() or 1) + 5)
+    b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(b)
+    local hl = b:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(b); hl:SetColorTexture(1, 1, 1, 0.15)
+    b.parts = {}
+    for i, d in ipairs({ { 14, 2, 5 }, { 10, 2, 8 }, { 6, 2, 11 }, { 2, 4, 13 } }) do
+        local t = b:CreateTexture(nil, "ARTWORK")
+        t:SetSize(d[1], d[2]); t:SetPoint("TOP", b, "TOP", 0, -d[3])
+        b.parts[i] = t
+    end
+    b.dot = b:CreateTexture(nil, "OVERLAY"); b.dot:SetSize(5, 5); b.dot:SetPoint("TOPRIGHT", b, "TOPRIGHT", -1, -1)
+    b:SetScript("OnClick", function(self)
+        local m = FilterMenu()
+        if m:IsShown() then m:Hide() else m:Show(); ns.CharToolkit_Render() end
+    end)
+    b:SetScript("OnEnter", function(self) ShowTooltip(self, self.item) end)
+    b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    b:SetScript("OnMouseWheel", function(_, d) if panel and panel.Scroll then panel.Scroll(d) end end)
+    panel.filterIcon = b
     return b
 end
 
@@ -388,8 +460,29 @@ local function IconBtn()
         b.tex:SetPoint("TOPLEFT", b, "TOPLEFT", 1, -1); b.tex:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -1, 1)
         if b.tex.SetTexCoord then b.tex:SetTexCoord(0.07, 0.93, 0.07, 0.93) end
         local hl = b:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(b); hl:SetColorTexture(1, 1, 1, 0.15)
+        -- the selected box (QoL 0.7.24; Xaya: "should highlight the box to indicate its selection"): a 2 px frame in the theme's accent
+        -- colour just outside the icon (the item level under it sits 3 px down to clear it)
+        b.selEdges = {}
+        for i, e in ipairs({ { "TOPLEFT", -2, 2, "TOPRIGHT", 2, 2, 0 }, { "BOTTOMLEFT", -2, -2, "BOTTOMRIGHT", 2, -2, 0 },
+            { "TOPLEFT", -2, 2, "BOTTOMLEFT", -2, -2, 1 }, { "TOPRIGHT", 2, 2, "BOTTOMRIGHT", 2, -2, 1 } }) do
+            local t = b:CreateTexture(nil, "OVERLAY")
+            t:SetPoint(e[1], b, e[1], e[2], e[3]); t:SetPoint(e[4], b, e[4], e[5], e[6])
+            if e[7] == 1 then t:SetWidth(2) else t:SetHeight(2) end
+            t:Hide()
+            b.selEdges[i] = t
+        end
         b:SetScript("OnEnter", function(self)
-            if not (GameTooltip and self.slot) then return end
+            if not GameTooltip then return end
+            if self.cand then
+                -- an item in the bags: the game's tooltip for that bag slot (GameTooltip:SetBagItem, the tooltip's own method, not in the
+                -- generated widget docs: INFERENCE, so the item link is the fallback)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                local ok = self.bag and GameTooltip.SetBagItem and pcall(GameTooltip.SetBagItem, GameTooltip, self.bag, self.index)
+                if not ok and type(self.link) == "string" and GameTooltip.SetHyperlink then pcall(GameTooltip.SetHyperlink, GameTooltip, self.link) end
+                GameTooltip:Show()
+                return
+            end
+            if not self.slot then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             local ok = GameTooltip.SetInventoryItem and pcall(GameTooltip.SetInventoryItem, GameTooltip, "player", self.slot)
             if not ok and type(self.link) == "string" and GameTooltip.SetHyperlink then pcall(GameTooltip.SetHyperlink, GameTooltip, self.link) end
@@ -402,18 +495,20 @@ local function IconBtn()
             local mod = (IsShiftKeyDown and IsShiftKeyDown()) or (IsControlKeyDown and IsControlKeyDown())
             if mod then
                 if type(self.link) == "string" and type(HandleModifiedItemClick) == "function" then pcall(HandleModifiedItemClick, self.link) end
+            elseif self.cand then
+                ns.CharToolkit_PickItem(self.link, self.slot)   -- a bag item: picked, or let go when it was picked (QoL 0.7.24)
             elseif self.slot then
-                ns.CharToolkit_SelectGearSlot(self.slot)
+                ns.CharToolkit_SelectGearSlot(self.slot)   -- an equipped item: selected, or let go when it was (QoL 0.7.24)
             end
         end)
         -- an item dropped on an equipped icon is compared with that slot (plan item 6: "drag and drop")
         b:SetScript("OnReceiveDrag", function(self)
             local ok, kind, id, link = pcall(GetCursorInfo)
-            if not ok or kind ~= "item" or not self.slot then return end
+            if not ok or kind ~= "item" or not self.slot or self.cand then return end
             local text = (type(link) == "string" and not isSecret(link)) and link or ((type(id) == "number" and not isSecret(id)) and tostring(id) or nil)
             if not text then return end
             if ClearCursor then pcall(ClearCursor) end
-            ns.CharToolkit_PickItem(text, self.slot)
+            ns.CharToolkit_PickItem(text, self.slot, true)
         end)
         b:SetScript("OnMouseWheel", function(_, d) if panel and panel.Scroll then panel.Scroll(d) end end)
         iconBtns[nIcon] = b
@@ -466,6 +561,12 @@ function ns.CharToolkit_SetInput(key, text)
         local t = tostring(text or "")
         CM.compareText = (t:gsub("^%s+", ""):gsub("%s+$", ""))
         CM.compareSlot = CM.gearSlot   -- the slot you picked, when the item fits it; else the lower item level of two
+        -- (QoL 0.7.24) the item joins the picked ones (up to CM.MAX_COMPARE); an empty box lets them all go, as an empty box did before
+        if CM.compareText == "" then CM.compareLinks = {}
+        else
+            local link = CM.ResolveItemLink(CM.compareText)
+            if link then CM.AddCompare(link) end
+        end
     elseif key == "primary" then
         local n = math.max(-100000, math.min(100000, math.floor(tonumber(text) or 0)))
         c.whatIfPrimary = (n ~= 0) and n or nil
@@ -498,21 +599,44 @@ function ns.CharToolkit_Action(action)
     end
     ns.CharToolkit_Render()
 end
--- Gear: a clicked equipped item picks its slot; an item compared before that does not fit the slot is let go
+-- Gear: a clicked equipped item picks its slot; an item compared before that does not fit the slot is let go. QoL 0.7.24 (Xaya:
+-- "clicking it again should deselect it"): a click on the selected one lets it go and clears the comparison.
 function ns.CharToolkit_SelectGearSlot(slot)
     local c = Cfg(); if not c then return end
+    local st = CM.CompareState and CM.CompareState()
+    if slot ~= nil and st and st.slot == slot then
+        CM.gearSlot, CM.compareSlot, CM.compareText, CM.compareLinks = nil, nil, nil, {}
+        if boxes.item then boxes.item:SetText("") end
+        ns.CharToolkit_Render()
+        return
+    end
     CM.gearSlot, CM.compareSlot = slot, slot
+    local keep = {}
+    for _, l in ipairs(CM.compareLinks or {}) do if CM.FitsSlot(l, slot) then keep[#keep + 1] = l end end
+    CM.compareLinks = keep
     local link = (CM.compareText or "") ~= "" and CM.ResolveItemLink(CM.compareText) or nil
     if link and not CM.FitsSlot(link, slot) then CM.compareText = nil end
     if boxes.item and CM.compareText == nil then boxes.item:SetText("") end
     ns.CharToolkit_Render()
 end
--- Gear: compare this item (a link or an ID) with the given slot (a bag item clicked in the list, or an item dropped on an icon)
-function ns.CharToolkit_PickItem(text, slot)
+-- Gear: compare this item (a link or an ID) with the given slot (a bag item clicked in the list, or an item dropped on an icon).
+-- QoL 0.7.24: a bag item clicked again is let go (several can be picked: CM.compareLinks); the box shows the last one picked. add:
+-- never let go (a dropped item).
+function ns.CharToolkit_PickItem(text, slot, add)
     local c = Cfg(); if not c then return end
-    CM.compareText = tostring(text or "")
+    local t = tostring(text or "")
     if slot then CM.gearSlot, CM.compareSlot = slot, slot end
-    if boxes.item then boxes.item:SetText(CM.compareText) end
+    CM.compareLinks = type(CM.compareLinks) == "table" and CM.compareLinks or {}
+    local link = CM.ResolveItemLink(t) or t
+    local at = CM.InList(CM.compareLinks, link)
+    if at and not add then
+        table.remove(CM.compareLinks, at)
+        if CM.compareText == t or CM.compareText == link then CM.compareText = CM.compareLinks[#CM.compareLinks] end
+    else
+        CM.AddCompare(link)
+        CM.compareText = t
+    end
+    if boxes.item then boxes.item:SetText(CM.compareText or "") end
     ns.CharToolkit_Render()
 end
 
@@ -1012,6 +1136,158 @@ local function RenderWeights(c, items, y)
     return y
 end
 
+-- The Spells tab's spell table (QoL 0.7.24; Xaya 2026-11-05: "add columns to help clarity in info displays: Spell Name (spell id
+-- underneath) | % PSV (underneath each entry show "1 agility = {value}") | Talent Modifiers"). DECISION: the number itself (38,011) keeps
+-- a narrow column of its own, Value, between the name and % PSV, one line per number of the description, beside its percent. Widths:
+-- Value holds seven characters at the text size (0.55 x size each: "123,456"); Spell Name 27% and Talent Modifiers 22% of the content;
+-- % PSV the rest (141 at the default 450 panel, so "355.6% of attack power" fits one line at size 11). Every cell wraps in its column.
+local function SpellCols(size)
+    local g = { val = math.ceil(size * 0.55 * 8), name = math.floor(W * 0.27), tm = math.floor(W * 0.22) }
+    g.psv = W - g.name - g.val - g.tm - 3 * GUT
+    g.vx = g.name + GUT
+    g.px = g.vx + g.val + GUT
+    g.tx = g.px + g.psv + GUT
+    return g
+end
+ns.CharToolkit_SpellCols = SpellCols   -- (tests)
+local SPELL_HEAD = { kind = "spellhead", key = "spellCols", label = "Columns", value = "", pairs = {}, tip = {
+    "Spell Name: the spell, and its spell ID under it.",
+    "Value: each number in the spell's description (durations, distances and counts left out).",
+    "% PSV: that number as a percent of your attack power (spell power for Intellect specs), and under it what one point of your primary stat adds to it.",
+    "Talent Modifiers: the talents you picked whose own text names the spell." } }
+local function RenderSpells(c, items, y)
+    local size = c.fontSize
+    local cText = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
+    local cMuted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
+    local g = SpellCols(size)
+    local hs = size - 1
+    local h = PlaceFS(FS(), 0, y, g.name, hs, "Spell Name", cMuted, "LEFT", true, "spellhead")
+    h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, hs, "Value", cMuted, "RIGHT", true, "spellhead"))
+    h = math.max(h, PlaceFS(FS(), g.px, y, g.psv, hs, "% PSV", cMuted, "LEFT", true, "spellhead"))
+    h = math.max(h, PlaceFS(FS(), g.tx, y, g.tm, hs, "Talent Modifiers", cMuted, "LEFT", true, "spellhead"))
+    local hb = Btn()
+    hb.item = SPELL_HEAD
+    hb:ClearAllPoints(); hb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y); hb:SetSize(W, h + 1)
+    Rec("hit", 0, y, W, h + 1, "spellCols")
+    y = y + h + 4
+    for _, it in ipairs(items) do
+        local top = y
+        if it.row then
+            local r = it.row
+            local hn = PlaceFS(FS(), 0, y, g.name, size, it.label, it.labelColor or cText, "LEFT", true, "spellname")
+            hn = hn + 1 + PlaceFS(FS(), 0, y + hn + 1, g.name, hs, r.idText, cMuted, "LEFT", true, "spellid")
+            if r.notPicked then hn = hn + 1 + PlaceFS(FS(), 0, y + hn + 1, g.name, hs, r.notPicked, cMuted, "LEFT", true, "spellnote") end
+            local hm = 0
+            for _, e in ipairs(r.entries) do
+                local ey = y + hm
+                local hv = PlaceFS(FS(), g.vx, ey, g.val, size, e.value, cText, "RIGHT", true, "spellvalue")
+                local hp = PlaceFS(FS(), g.px, ey, g.psv, size, e.pct, cText, "LEFT", true, "spellpct")
+                if e.per then hp = hp + 1 + PlaceFS(FS(), g.px, ey + hp + 1, g.psv, hs, e.per, cMuted, "LEFT", true, "spellper") end
+                hm = hm + math.max(hv, hp) + 2
+            end
+            for _, n in ipairs({ { r.note, r.noteTone }, { r.entered, r.enteredTone } }) do
+                if n[1] then hm = hm + PlaceFS(FS(), g.vx, y + hm, g.val + GUT + g.psv, hs, n[1], ToneColor(n[2], cMuted), "LEFT", true, "spellnote") + 2 end
+            end
+            local mods = (#(r.mods or {}) > 0) and table.concat(r.mods, ", ") or (r.notPicked and "" or "none")
+            local ht = 0
+            if mods ~= "" then ht = PlaceFS(FS(), g.tx, y, g.tm, size, mods, (#r.mods > 0) and ToneColor("good", cText) or cMuted, "LEFT", true, "spellmods") end
+            y = y + math.max(hn, hm, ht) + 2
+        else
+            -- a note (spells without numbers, still loading, none in this filter): its label left, its value right
+            local v = it.value or ""
+            local lw = (v ~= "") and math.floor(W * 0.5) or W
+            local lh = PlaceFS(FS(), 0, y, lw - ((v ~= "") and 4 or 0), size, it.label, it.minor and cMuted or cText, "LEFT", true, "label")
+            local vh = (v ~= "") and PlaceFS(FS(), lw, y, W - lw, size, v, ToneColor(it.tone, cMuted), "RIGHT", true, "value") or 0
+            y = y + math.max(lh, vh) + 1
+        end
+        local b = Btn()
+        b.item = it
+        b:ClearAllPoints(); b:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top); b:SetSize(W, math.max(1, y - top))
+        Rec("hit", 0, top, W, y - top, it.key)
+        y = y + 4
+    end
+    return y
+end
+
+-- The Gear tab's Changes table (QoL 0.7.24): Stat | Pt value | Equipped | each picked item. Widths: Pt value holds "46.0 / 1%" (9.5
+-- characters at the text size), each item column eight characters ("+12,345", "T 12,345"), Stat 22% of the content (at least 64).
+-- DECISION (the limit): up to 3 items are picked (CM.MAX_COMPARE); as many item columns are drawn as fit at the panel's width and text
+-- size (3 at the default 450 panel up to text size 12; 2 at the narrowest panel or a larger text), never fewer than one; a line under
+-- the head says how many more are picked and that a wider panel shows them. Every cell wraps in its column; a cell's change (or the
+-- lost rating) is a second, smaller line under it.
+local function MultiCols(size, nv)
+    local g = { pt = math.ceil(size * 0.55 * 9.5), stat = math.max(64, math.floor(W * 0.22)) }
+    local minCol = math.ceil(size * 0.55 * 8)
+    local avail = W - g.stat - g.pt - 2 * GUT
+    local fit = math.max(2, math.floor((avail + GUT) / (minCol + GUT)))
+    g.n = math.max(1, math.min(nv, fit))
+    g.col = math.min(120, math.floor((avail - (g.n - 1) * GUT) / g.n))
+    g.px = g.stat + GUT
+    g.vx = g.px + g.pt + GUT
+    return g
+end
+ns.CharToolkit_MultiCols = MultiCols   -- (tests)
+local function RenderMulti(c, items, y)
+    local size = c.fontSize
+    local cText = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
+    local cMuted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
+    local cLabel = TC("xui-label", "text", { 1, 0.82, 0, 1 })
+    local nv = 1
+    for _, it in ipairs(items) do if it.kind == "mhead" then nv = math.max(1, #(it.cols or {}) - 2) end end
+    local g = MultiCols(size, nv)
+    local function CX(i) return g.vx + (i - 1) * (g.col + GUT) end
+    local function Hover(it, top, h)
+        local b = Btn()
+        b.item = it
+        b:ClearAllPoints(); b:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top); b:SetSize(W, math.max(1, h))
+        Rec("hit", 0, top, W, h, it.key)
+    end
+    for _, it in ipairs(items) do
+        local top = y
+        if it.kind == "mhead" then
+            local hs, cs = size - 1, it.cols or {}
+            local h = PlaceFS(FS(), 0, y, g.stat, hs, cs[1] or "", cMuted, "LEFT", true, "mhead")
+            h = math.max(h, PlaceFS(FS(), g.px, y, g.pt, hs, cs[2] or "", cMuted, "RIGHT", true, "mhead"))
+            for i = 1, g.n do
+                h = math.max(h, PlaceFS(FS(), CX(i), y, g.col, hs, cs[i + 2] or "", (it.colColors and it.colColors[i + 2]) or cMuted, "RIGHT", true, "mhead"))
+            end
+            Hover(it, top, h + 1)
+            y = y + h + 3
+            if nv > g.n then
+                y = y + PlaceFS(FS(), 0, y, W, hs, ("%d more picked: drag the panel's corner wider (or choose a smaller text size) to see them side by side."):format(nv - g.n),
+                    ToneColor("warn", cMuted), "LEFT", true, "mmore") + 3
+            end
+        elseif it.kind == "msubhead" then
+            y = y + 4
+            local h = PlaceFS(FS(), 0, y, W, size, it.label, cLabel, "LEFT", true, "msubhead")
+            Hover(it, y, h)
+            y = y + h + 3
+        elseif it.kind == "mrow" then
+            -- (it.sub: a line under the one above, one indent in; 2: a line nested under that one, two indents in)
+            local x0, lsz = (it.sub == 2 and 16) or (it.sub and 8) or 0, it.sub and (size - 1) or size
+            local h = PlaceFS(FS(), x0, y, g.stat - x0, lsz, it.label, it.labelColor or (it.sub and cMuted or cText), "LEFT", true, "mlabel")
+            if (it.per or "") ~= "" then h = math.max(h, PlaceFS(FS(), g.px, y, g.pt, lsz, it.per, cMuted, "RIGHT", true, "mper")) end
+            for i = 1, g.n do
+                local txt = it.cells and it.cells[i]
+                if txt ~= nil then
+                    local ch = PlaceFS(FS(), CX(i), y, g.col, lsz, tostring(txt), ToneColor((it.cellTones and it.cellTones[i]) or it.tone, cText), "RIGHT", true, "mcell")
+                    local sub = it.subs and it.subs[i]
+                    if sub then ch = ch + 1 + PlaceFS(FS(), CX(i), y + ch + 1, g.col, size - 1, sub, ToneColor(it.subTones and it.subTones[i], cMuted), "RIGHT", true, "msub") end
+                    h = math.max(h, ch)
+                end
+            end
+            y = y + h + 2
+            Hover(it, top, y - top)
+        else
+            local v = it.value or ""
+            local h = PlaceFS(FS(), 0, y, W, size - 1, it.label .. ((v ~= "") and (": " .. v) or ""), ToneColor(it.tone, it.minor and cMuted or cText), "LEFT", true, "mnote")
+            y = y + h + 3
+            if #(it.tip or {}) > 0 then Hover(it, top, y - top) end
+        end
+    end
+    return y
+end
+
 -- detail tabs: sections with headers; a grid section draws its lines in columns (RenderGrid), any other each line as label | value
 -- with its pairs under it
 local function RenderSections(c, m, tab, y0)
@@ -1047,10 +1323,17 @@ local function RenderSections(c, m, tab, y0)
             y = y + size + 9
             if not folded and sec.weights then
                 y = RenderWeights(c, sec.items, y)
+            elseif not folded and sec.spells then
+                y = RenderSpells(c, sec.items, y)
+            elseif not folded and sec.multi then
+                y = RenderMulti(c, sec.items, y)
             elseif not folded and sec.grid then
                 y = RenderGrid(c, sec.items, y, gridBox)
             elseif not folded then
-                for _, it in ipairs(sec.items) do
+                -- (QoL 0.7.24) a section's action item (Configure / Refresh spell data) is drawn as the button above the sections
+                local list = {}
+                for _, it in ipairs(sec.items) do if it.kind ~= "action" then list[#list + 1] = it end end
+                for _, it in ipairs(list) do
                     local top = y
                     local mode = it.kind == "rating" and ModeFor(c, it.key) or nil
                     local v, tone = CM.ValueFor(it, mode)
@@ -1065,26 +1348,22 @@ local function RenderSections(c, m, tab, y0)
                             local x, yy = math.floor(col * cw + (cw - ICON_SIZE) / 2), y + row * rowStep
                             local b = IconBtn()
                             b.slot, b.link, b.label = ic.slot, ic.link, ic.label
+                            b.cand, b.bag, b.index = ic.cand, ic.bag, ic.index
                             b:ClearAllPoints()
                             b:SetPoint("TOPLEFT", content, "TOPLEFT", x, -yy)
                             b:SetSize(ICON_SIZE, ICON_SIZE)
                             b.tex:SetTexture(ic.tex or QUESTION_MARK)
                             local bc = ic.color or cLine
                             b.border:SetColorTexture(bc[1], bc[2], bc[3], 1)
-                            -- the slot being compared: a theme-coloured mark under its item level (the quality border stays)
-                            if ic.selected then
-                                local acc = TC("xui-tab-selected", "bg", { 0.55, 0.3, 0.8, 1 })
-                                if not b.sel then b.sel = b:CreateTexture(nil, "OVERLAY") end
-                                b.sel:ClearAllPoints()
-                                b.sel:SetPoint("TOPLEFT", b, "BOTTOMLEFT", -2, -(size + 2))
-                                b.sel:SetPoint("TOPRIGHT", b, "BOTTOMRIGHT", 2, -(size + 2))
-                                b.sel:SetHeight(2)
-                                b.sel:SetColorTexture(acc[1], acc[2], acc[3], 1)
-                                b.sel:Show()
-                            elseif b.sel then b.sel:Hide() end
-                            b.selected = ic.selected
+                            -- the selected box: the slot being compared, a picked bag item (QoL 0.7.24: a 2 px frame in the theme's
+                            -- accent colour around the icon; before, a mark under the item level). The quality border stays.
+                            local acc = TC("xui-tab-selected", "bg", { 0.55, 0.3, 0.8, 1 })
+                            for _, e in ipairs(b.selEdges or {}) do
+                                if ic.selected then e:SetColorTexture(acc[1], acc[2], acc[3], 1); e:Show() else e:Hide() end
+                            end
+                            b.selected = ic.selected == true
                             Rec("icon", x, yy, ICON_SIZE, ICON_SIZE, ic.label)
-                            PlaceFS(FS(), cx, yy + ICON_SIZE + 1, math.floor(cw), size - 1, ic.ilvl and tostring(math.floor(ic.ilvl + 0.5)) or "",
+                            PlaceFS(FS(), cx, yy + ICON_SIZE + 3, math.floor(cw), size - 1, ic.ilvl and tostring(math.floor(ic.ilvl + 0.5)) or "",
                                 ic.color or cText, "CENTER", false, "iconText")
                         end
                         y = y + math.ceil(#(it.icons or {}) / cols) * rowStep
@@ -1095,22 +1374,6 @@ local function RenderSections(c, m, tab, y0)
                         y = y + rowH + 1
                     elseif it.kind == "colhead" and it.cmp then
                         y = CmpHead(it, y, size, cMuted)
-                    elseif it.kind == "action" then
-                        -- a button (Spells: Configure / Refresh spell data): the theme's button colours, its label centred
-                        local bw = math.min(W, math.floor(W * 0.6))
-                        local bh = size + 10
-                        local b = Btn()
-                        b.item = it
-                        b:ClearAllPoints()
-                        b:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-                        b:SetSize(bw, bh)
-                        if not b.bg then b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(b) end
-                        local bg = TC("xui-button", "bg", { 0.04, 0.04, 0.04, 0.7 })
-                        b.bg:SetColorTexture(bg[1], bg[2], bg[3], bg[4] or 1)
-                        b.bg:Show()
-                        PlaceFS(FS(), 0, y + 5, bw, size, it.label, TC("xui-button", "text", { 1, 0.82, 0, 1 }), "CENTER", false, "action")
-                        Rec("hit", 0, y, bw, bh, it.key)
-                        y = y + bh + 2
                     elseif it.kind == "cmprow" then
                         y = CmpRow(it, y, size, cText)
                     elseif it.kind == "input" then
@@ -1182,29 +1445,86 @@ local function RenderSections(c, m, tab, y0)
     return y
 end
 
--- the filter row at the top of the Spells tab; returns the height it took
-local function RenderFilters(c)
+-- the Spells tab's top row: the spell data button centred (at most 250 wide, and clear of the icon), the filter icon at the right, the
+-- menu under the icon while it is open; returns the height it took
+local function RenderSpellBar(c, m)
     local size = c.fontSize
-    local n = #CM.SPELL_FILTERS
-    local fw = math.floor(W / n)
-    local h = size + 8
-    for i, f in ipairs(CM.SPELL_FILTERS) do
-        local on = c.spellFilter == f[1]
-        local cls = on and "xui-tab-selected" or "xui-tab"
-        local b = FilterBtn(i)
-        b.filter = f[1]
-        b.item = { kind = "filter", key = "filter:" .. f[1], label = f[2], value = on and "shown" or "", tip = { f[3] } }
-        b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", content, "TOPLEFT", (i - 1) * fw, 0)
-        b:SetSize(fw - 2, h)
-        local tb = TC(cls, "bg", on and { 0.22, 0.1, 0.3, 0.9 } or { 0.03, 0.03, 0.03, 0.7 })
-        b.bg:SetColorTexture(tb[1], tb[2], tb[3], tb[4] or 1)
-        SetFont(b.text, size, "")
-        b.text:SetText(f[2])
-        Paint(b.text, TC(cls, "text", on and { 1, 1, 1, 1 } or { 1, 0.82, 0, 1 }))
-        Rec("filter", (i - 1) * fw, 0, fw - 2, h, f[2], size)
+    local h = size + 12
+    local act
+    for _, sec in ipairs(m.sections) do
+        if sec.key == "spellmath" then for _, it in ipairs(sec.items) do if it.kind == "action" and not act then act = it end end end
     end
-    return h + 6
+    local b = SpellDataButton()
+    if act then
+        local bw = math.min(SPELL_BTN_MAX, W - 2 * (FILTER_ICON + GUT))
+        local x = math.floor((W - bw) / 2)
+        b.item = act
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", content, "TOPLEFT", x, 0)
+        b:SetSize(bw, h)
+        b:SetText(act.label)
+        local fs = b.GetFontString and b:GetFontString()
+        if fs then SetFont(fs, size, "") end
+        b:Show()
+        Rec("spellbtn", x, 0, bw, h, act.label, size)
+    else b:Hide() end
+    local fi = FilterIcon()
+    local filter = CM.FilterOf(c)
+    local on = filter ~= "all"
+    local fy = math.floor((h - FILTER_ICON) / 2)
+    fi:ClearAllPoints()
+    fi:SetPoint("TOPLEFT", content, "TOPLEFT", W - FILTER_ICON, -fy)
+    fi:SetSize(FILTER_ICON, FILTER_ICON)
+    local acc = TC("xui-tab-selected", "bg", { 0.55, 0.3, 0.8, 1 })
+    local muted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
+    local bg = TC("xui-button", "bg", { 0.04, 0.04, 0.04, 0.7 })
+    fi.bg:SetColorTexture(bg[1], bg[2], bg[3], bg[4] or 1)
+    local col = on and TC("xui-label", "text", { 1, 0.82, 0, 1 }) or muted
+    for _, t in ipairs(fi.parts) do t:SetColorTexture(col[1], col[2], col[3], 1) end
+    fi.dot:SetColorTexture(acc[1], acc[2], acc[3], 1)
+    if on then fi.dot:Show() else fi.dot:Hide() end
+    local label
+    for _, f in ipairs(CM.SPELL_FILTERS) do if f[1] == filter then label = f[2] end end
+    fi.active, fi.filterLabel = on, label
+    fi.item = { kind = "filter", key = "filterIcon", label = "Filter: " .. (label or ""), value = "", pairs = {},
+        tip = { on and ("Showing " .. (label or "") .. " spells only.") or "No filter: every spell is shown.", "Click to choose: None (show all), Offense, Defense or Utility. The choice is kept." } }
+    fi:Show()
+    Rec("filtericon", W - FILTER_ICON, fy, FILTER_ICON, FILTER_ICON, label, size)
+    -- the menu (a child of the panel, so the scroll frame does not cut it): its rows painted for the current choice
+    local menu = panel.filterMenu
+    panel.menuRecs = {}
+    if menu and menu:IsShown() then
+        local rh = size + 8
+        local mw = math.max(120, math.ceil(size * 0.55 * 16) + 16)
+        menu:ClearAllPoints()
+        menu:SetPoint("TOPRIGHT", fi, "BOTTOMRIGHT", 0, -2)
+        menu:SetSize(mw, #menu.rows * rh + 4)
+        local wbg = TC("xui-window", "bg", { 0.04, 0.04, 0.06, 1 })
+        menu.bg:SetColorTexture(wbg[1], wbg[2], wbg[3], 0.97)
+        local bc = TC("xui-window", "border", { 0.35, 0.35, 0.4, 1 })
+        for _, e in ipairs(menu.edges) do e:SetColorTexture(bc[1], bc[2], bc[3], bc[4] or 1) end
+        for i, r in ipairs(menu.rows) do
+            local sel = r.filter == filter
+            r:ClearAllPoints()
+            r:SetPoint("TOPLEFT", menu, "TOPLEFT", 2, -(2 + (i - 1) * rh))
+            r:SetSize(mw - 4, rh)
+            local cls = sel and "xui-tab-selected" or "xui-tab"
+            local tb = TC(cls, "bg", sel and { 0.22, 0.1, 0.3, 0.9 } or { 0.03, 0.03, 0.03, 0 })
+            r.bg:SetColorTexture(tb[1], tb[2], tb[3], sel and (tb[4] or 1) or 0)
+            SetFont(r.text, size, "")
+            r.text:SetText(r.label)
+            Paint(r.text, TC(cls, "text", sel and { 1, 1, 1, 1 } or { 1, 0.82, 0, 1 }))
+            r.selected = sel
+            r:Show()
+            panel.menuRecs[i] = { label = r.label, selected = sel, w = mw - 4, h = rh, size = size }
+        end
+    end
+    return h + GUT
+end
+local function HideSpellBar()
+    if panel.spellBtn then panel.spellBtn:Hide() end
+    if panel.filterIcon then panel.filterIcon:Hide() end
+    if panel.filterMenu then panel.filterMenu:Hide() end
 end
 
 -- the panel's width from the saved size (B10): the content width and the tab row follow
@@ -1285,11 +1605,9 @@ function ns.CharToolkit_Render()
     local m = CM.Build(c, c.tab)
     panel.model = m
     local y
-    local nFilters = 0
-    if c.tab == "spells" then nFilters = #CM.SPELL_FILTERS; y = RenderSections(c, m, c.tab, RenderFilters(c))
-    else y = RenderSections(c, m, c.tab) end
-    for i = nFilters + 1, #filterBtns do filterBtns[i]:Hide() end
-    for i = nIcon + 1, #iconBtns do iconBtns[i]:Hide(); iconBtns[i].slot, iconBtns[i].link = nil, nil end
+    if c.tab == "spells" then y = RenderSections(c, m, c.tab, RenderSpellBar(c, m))
+    else HideSpellBar(); y = RenderSections(c, m, c.tab) end
+    for i = nIcon + 1, #iconBtns do iconBtns[i]:Hide(); iconBtns[i].slot, iconBtns[i].link, iconBtns[i].cand = nil, nil, nil end
     for i = nFS + 1, #fsPool do fsPool[i]:Hide() end
     for i = nBtn + 1, #btnPool do btnPool[i]:Hide(); btnPool[i].item = nil end
     for i = nHdr + 1, #hdrPool do hdrPool[i]:Hide() end
@@ -1305,7 +1623,8 @@ end
 function ns.CharToolkit_Drawn()
     if not panel then return nil end
     return { model = panel.model, layout = panel.layoutRecs, modeText = panel.modeText, sizeText = panel.sizeText, buttons = btnPool, headers = hdrPool, boxes = boxes,
-        fonts = fsPool, filters = filterBtns, icons = iconBtns }
+        fonts = fsPool, icons = iconBtns, spellBtn = panel.spellBtn, filterIcon = panel.filterIcon, filterMenu = panel.filterMenu,
+        menuRecs = panel.menuRecs }
 end
 
 -------------------------------------------------------------------------------
@@ -1757,8 +2076,8 @@ function ns.BuildCharToolkitPage(Notify)
                         Changed()
                     end },
                 kind = { type = "select", order = 2.5, name = "Filter",
-                    values = { auto = "From its description", offense = "Offense", defense = "Defense", both = "Offense and Defense" },
-                    sorting = { "auto", "offense", "defense", "both" },
+                    values = { auto = "From its description", offense = "Offense", defense = "Defense", both = "Offense and Defense", utility = "Utility" },
+                    sorting = { "auto", "offense", "defense", "both", "utility" },
                     desc = "Which of the Spells tab's filters show this spell. \"From its description\" sorts by its words (damage, or absorb / heal / armor / damage taken).",
                     get = function() local s = S(); return (s and s.kind) or "auto" end,
                     set = function(_, v) local s = S(); if s then s.kind = (v ~= "auto") and v or nil; Changed() end end },

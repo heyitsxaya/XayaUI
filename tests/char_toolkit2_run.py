@@ -290,16 +290,27 @@ check("0 clears a stat", c.whatIfStats.crit == nil and c.whatIf == 0)
 -- Agility 500)
 ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
 local gm = CM.Build(c, "gear")
-local function cells(key) local it = gm.byKey[key]; return it and table.concat(it.cells, "|"), it end
-local function eff(key) return gm.byKey["gc_" .. key] end
-local function effLine(key, label) for _, pp in ipairs(eff(key) and eff(key).pairs or {}) do if pp.label == label then return pp.value, pp.tone end end end
+-- (QoL 0.7.24: one "Changes" table, Equipped | each picked item with its change on the line under it; the stat map's lines that change are
+-- rows "gc_<card>" / "gc_<card>:<line>" with now in the Equipped column, then in the item's. These helpers read them in the old shape.)
+local function cells(key) local it = gm.byKey[key]; return it and (it.cells[1] .. "|" .. (it.cells[2] or "") .. "|" .. ((it.subs or {})[2] or "")), it end
+local function eff(key)
+  local it = gm.byKey["gc_" .. key]
+  if not it then return nil end
+  return { value = (it.cells[1] or "") .. " -> " .. (it.cells[2] or ""), tone = (it.cellTones or {})[2], row = it }
+end
+local function effLine(key, label)
+  local it = gm.byKey["gc_" .. key .. ":" .. label]
+  if not it then return nil end
+  if it.cells[1] == "" then return it.cells[2], (it.cellTones or {})[2] end
+  return it.cells[1] .. " -> " .. it.cells[2], (it.cellTones or {})[2]
+end
 check("compare: it finds the slot it replaces (Head) and names it", gm.sections[2] and gm.sections[2].title == "Compare: Head", gm.sections[2] and gm.sections[2].title)
 check("compare: side by side item level 336 | 346 | +10", cells("gc_ilvl") == "336|346|+10", cells("gc_ilvl"))
-check("compare: crit 300 | 400 | +100 (green), haste 200 | 0 | -200 (orange)", cells("gc_crit") == "300|400|+100" and gm.byKey.gc_crit.cellTone == "good"
-  and cells("gc_haste") == "200|0|-200" and gm.byKey.gc_haste.cellTone == "warn", cells("gc_haste"))
+check("compare: crit 300 | 400 | +100 (green), haste 200 | 0 | -200 (orange)", cells("gc_crit") == "300|400|+100" and gm.byKey.gc_crit.subTones[2] == "good"
+  and cells("gc_haste") == "200|0|-200" and gm.byKey.gc_haste.subTones[2] == "warn", cells("gc_haste"))
 check("compare: Agility 500 | 600 | +100, Stamina 0 | 900 | +900, armor 0 | 500 | +500", cells("gc_primary") == "500|600|+100"
   and cells("gc_stamina") == "0|900|+900" and cells("gc_armor") == "0|500|+500", cells("gc_armor"))
-check("compare: the column head names the item", gm.byKey.gearCols.cols[2] == "Better Helm", gm.byKey.gearCols.cols[2])
+check("compare: the column head names the item", gm.byKey.gearCols.cols[4] == "Better Helm", gm.byKey.gearCols.cols[4])
 check("what it changes: crit through the converter 22.48% -> 24.65% (+100 = +2.17%)", eff("map_crit") and eff("map_crit").value == "22.48% -> 24.65%", eff("map_crit") and eff("map_crit").value)
 check("  ...and parry from crit with it (the crit -> parry link)", (effLine("map_crit", "» Parry") or ""):find(" -> ", 1, true) ~= nil, effLine("map_crit", "» Parry"))
 check("  ...haste down (orange), and the global cooldown with it", eff("map_haste") and eff("map_haste").tone == "warn" and (select(1, effLine("map_haste", "» Global cooldown")) or ""):find("about", 1, true) ~= nil,
@@ -311,10 +322,11 @@ check("  ...+900 Stamina: health 1,476,516 -> 1,495,596 (+900 x 21.20)", (effLin
 check("  ...armor: the item's own +500 and more from Agility through the mastery text, damage reduction up (green)",
   effLine("map_armor", "From the item itself") == "+500" and (effLine("map_armor", "From Agility (mastery)") or ""):find(" -> ", 1, true) ~= nil
   and select(2, effLine("map_armor", "» Damage reduction")) == "good", effLine("map_armor", "From Agility (mastery)"))
-check("  ...lines that do not change are left out (no Diminishing returns line on Haste unless it changed)", (function()
-  for _, pp in ipairs(eff("map_haste").pairs) do if not tostring(pp.value):find(" -> ", 1, true) then return false end end; return true end)())
+check("  ...lines that do not change are left out (every Haste line listed changes)", (function()
+  local n = 0
+  for k, it in pairs(gm.byKey) do if k:find("^gc_map_haste:") and (it.cells[1] ~= "" or it.cells[2] ~= "") then n = n + 1; if it.cells[1] == it.cells[2] then return false end end end; return n > 0 end)())
 check("  ...cards that do not change are left out (Versatility, Avoidance)", eff("map_vers") == nil and eff("map_avoidance") == nil)
-check("compare: what the item tables leave out is said (gems, enchants, set bonuses, on-use and procs)", tipHas(gm.byKey.gearCols, "on-use or proc effects are not in them"))
+check("compare: what the item tables leave out is said (gems, enchants, set bonuses, on-use and procs)", tipHas(gm.byKey.gearCols, "on-use and proc effects are listed under the table"))
 local savedDesc = C_Spell.GetSpellDescription
 C_Spell.GetSpellDescription = function(id) if id == 203747 then return "Increases your damage done by 12.0%." end; return savedDesc(id) end
 gm = CM.Build(c, "gear")
@@ -428,7 +440,7 @@ check("secret values: the character window tooltip lines run without an error", 
 ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
 local okG, gmS = pcall(CM.Build, c, "gear")
 check("secret values: the gear comparison runs and says crit is hidden in combat (not left out)", okG and misuse == 0 and gmS.byKey.gc_map_crit
-  and gmS.byKey.gc_map_crit.value == "hidden in combat", okG and "" or gmS)
+  and gmS.byKey.gc_map_crit.cells[2] == "hidden in combat", okG and "" or gmS)
 ns.CharToolkit_SetInput("item", ""); CM.gearSlot = nil
 c.advanced = true; c.spells = { { id = 263642, base = "ap" } }
 local fr = CM.Build(c, "spells").byKey.spell263642
@@ -606,22 +618,24 @@ local CM = ns.CharModel
 c.tab = "gear"; ns.CharToolkit_SelectGearSlot(11)
 local gm = CM.Build(c, "gear")
 local owned = {}
-for _, it in ipairs(gm.sections[2].items) do if it.kind == "choice" and it.pick then owned[#owned + 1] = it.label end end
+for _, ic in ipairs(gm.byKey.gearOwn and gm.byKey.gearOwn.icons or {}) do owned[#owned + 1] = ic.label end
+-- (QoL 0.7.24: the bag items are icons, gearOwn)
 check("a clicked ring lists the rings in your bags, not the helm", table.concat(owned, ",") == "New Ring", table.concat(owned, ","))
-check("  ...the item level beside each", gm.byKey.gearOwn1 and gm.byKey.gearOwn1.value == "item level 345", gm.byKey.gearOwn1 and gm.byKey.gearOwn1.value)
+check("  ...the item level with each", gm.byKey.gearOwn and gm.byKey.gearOwn.icons[1].ilvl == 345)
 ns.CharToolkit_PickItem(NEWRING, 11)
 gm = CM.Build(c, "gear")
 local choices = {}
 for _, it in ipairs(gm.sections[2].items) do if it.kind == "choice" and not it.pick then choices[#choices + 1] = it end end
 check("two rings equipped: both are offered to replace, the clicked one (Finger 1) marked as replaced", #choices == 2
   and ((choices[1].slot == 11 and choices[1].label == "Replacing") or (choices[2].slot == 11 and choices[2].label == "Replacing")), #choices)
-check("  ...side by side against Ring (crit 100 | 300 | +200, mastery 400 | 0 | -400)", table.concat(gm.byKey.gc_crit.cells, "|") == "100|300|+200"
-  and table.concat(gm.byKey.gc_mastery.cells, "|") == "400|0|-400", table.concat(gm.byKey.gc_crit.cells, "|"))
+local function c3(it) return it and (it.cells[1] .. "|" .. it.cells[2] .. "|" .. tostring(it.subs[2])) end
+check("  ...side by side against Ring (crit 100 | 300 | +200, mastery 400 | 0 | -400)", c3(gm.byKey.gc_crit) == "100|300|+200"
+  and c3(gm.byKey.gc_mastery) == "400|0|-400", c3(gm.byKey.gc_crit))
 ns.CharToolkit_SetCompareSlot(12)
 gm = CM.Build(c, "gear")
-check("choosing the other ring compares against it (crit 50 | 300 | +250, haste 300 | 150 | -150)", table.concat(gm.byKey.gc_crit.cells, "|") == "50|300|+250"
-  and table.concat(gm.byKey.gc_haste.cells, "|") == "300|150|-150" and gm.sections[2].title == "Compare: Finger 2", table.concat(gm.byKey.gc_crit.cells, "|"))
-check("  ...the picked bag item is marked", gm.byKey.gearOwn1 and gm.byKey.gearOwn1.value == "comparing, item level 345" and gm.byKey.gearOwn1.tone == "good", gm.byKey.gearOwn1 and gm.byKey.gearOwn1.value)
+check("choosing the other ring compares against it (crit 50 | 300 | +250, haste 300 | 150 | -150)", c3(gm.byKey.gc_crit) == "50|300|+250"
+  and c3(gm.byKey.gc_haste) == "300|150|-150" and gm.sections[2].title == "Compare: Ring slot #2", c3(gm.byKey.gc_crit))
+check("  ...the picked bag item is marked", gm.byKey.gearOwn and gm.byKey.gearOwn.icons[1].selected == true)
 check("  ...and the map's boxes are not filled by it (the comparison shows its own changes)", next(c.whatIfStats) == nil)
 ns.CharToolkit_SelectGearSlot(1)
 check("clicking the helm lets go of the ring (it does not fit)", (CM.compareText or "") == "" and CM.gearSlot == 1, CM.compareText)
