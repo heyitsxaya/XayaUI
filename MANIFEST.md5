@@ -2,12 +2,12 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-e3d276f0244fbe228d5992b5d1ed2cf7  QA-CHECKLIST.md
+abeb912560615db56e33a502dd63da9f  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 74acac5eb276995c47208b6d09b72a7d  ROADMAP.md
-64b887e4bffa11008f517a29c7d447a1  SESSION-START-SUMMARY.md
+95ba07da9476bb45d4e803d662ff2c7f  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-06795bce481a5b4443f2e3172f7b1027  USER-GUIDE.md
+025ce4d2c1f1b462c61cda5ef1e42815  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 4cc1b0cabaf7b9fbfcbcdcbc5d14a9b4  XayaUI/AuraSound.lua
@@ -138,12 +138,12 @@ a71ac7b866221b1be83fedd9e8ef7d40  XayaUI_Bonus/Notepad.lua
 7964bb7d450bb9f0c26fed89749d5536  XayaUI_Bonus/TooltipsUI.lua
 a097e6740cc35e6c4c7ed0d974e28bba  XayaUI_Bonus/XayaUI_Bonus.toc
 83c87e8920a975caccb49149edab3556  XayaUI_Chat/Bar.lua
-b484c9d047a69769000f756fd0c00175  XayaUI_Chat/Core.lua
+9c4b5b041ab741a84d4a8798e0a1a629  XayaUI_Chat/Core.lua
 691117347e0437f78c88e3734c54c438  XayaUI_Chat/Fade.lua
-0ec84e72d4f5f0ee06871262927d6d56  XayaUI_Chat/Frame.lua
+3f0939bb40f04db5788276ee6acbde94  XayaUI_Chat/Frame.lua
 cd16a90ef83b01262f06d76cf1e1630a  XayaUI_Chat/History.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
-3c0e14e6ad04c0b509e107036ddcef35  XayaUI_Chat/Locate.lua
+9388a815dd6428f2bffc9aa74caa53a2  XayaUI_Chat/Locate.lua
 48d2a961e44b48df3798b5bad9872d24  XayaUI_Chat/Messages.lua
 49f40adccefabf26e1de114b11f5f12f  XayaUI_Chat/Options.lua
 9d4b2a2b5630132d0c0aceafb1eff313  XayaUI_Chat/Privacy.lua
@@ -151,7 +151,7 @@ cd16a90ef83b01262f06d76cf1e1630a  XayaUI_Chat/History.lua
 be9610bdcced17c795922423eb46c687  XayaUI_Chat/Scroll.lua
 c60c6bfa477e38b0ef452b5d482ad934  XayaUI_Chat/Skin.lua
 5d46314176fee1fa13fbe9155c4865cc  XayaUI_Chat/Sounds.lua
-dab60d5a049e3260a8c57c7ed78ffb2a  XayaUI_Chat/XayaUI_Chat.toc
+54addb4dc8fb29340dbed58a9b36be48  XayaUI_Chat/XayaUI_Chat.toc
 d1214a6ecb251789fe882787dce5d8ef  XayaUI_DevAssist/ApiInventory.lua
 2927a47181fd6886394e1b61d1fc0faf  XayaUI_DevAssist/AuraCatalogue.lua
 48cfc73c1cd5b513bb8d9490bca2bdae  XayaUI_DevAssist/DevAssist.lua
@@ -450,6 +450,7 @@ c1d7d03ab3ff7630015402cd7d314428  debug-log/2026-11-04-2303-mover-right-click-co
 a7820cd111f019a93a67a9a972cd12b6  debug-log/2026-11-04-2326-engine-kept-step-index-core-0.6.44.md
 dd5578186e7bd08a7a4d9ecadd75bf82  debug-log/2026-11-04-2338-engine-garbage-measured-on-her-rules.md
 69ffe23eb4ff195f29d0c1f718564a03  debug-log/2026-11-04-2341-cursor-trail-cost-qol-0.7.13.md
+3c9a6dacd74999b270dbe3dadeb5aa40  debug-log/2026-11-04-2344-chat-pieces-every-tab-whispers-chat-0.6.12.md
 842f92774a782b67439718e1e9414090  debug-log/2026-11-04-2345-spell-search-scope-options-0.6.37.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
@@ -530,6 +531,7 @@ f12b32b38fb923090735c0534040e6eb  tests/char_spells_run.py
 e7051e48189cd46b2f488bd5463c23b6  tests/char_toolkit_world.lua
 403d1dafc4dbc1f3f91fabfa2387126e  tests/char_width_probe_run.py
 396b0fc9fa6a88b4131443cae359900c  tests/charges_combat_run.py
+cbf3c82d2398010da18d49bd2ef1a940  tests/chat_pieces_run.py
 410840cd60ff55bab46051fb5d5fcf9d  tests/chat_run.py
 26bb775dcf3ca2b2c0164c2167c33515  tests/chat_world.lua
 abe22a2816956a2c3babb802857cc524  tests/chatprobe_run.py
