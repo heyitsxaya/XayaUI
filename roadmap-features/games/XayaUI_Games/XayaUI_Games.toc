@@ -1,0 +1,30 @@
+# OUTLINE ONLY (RM-GAMES, 2026-11-05). Not an installed addon: it lives under roadmap-features/ so no tool or game reads it.
+# Proposed .toc for the games addon. The name, the saved table's name and the version are placeholders.
+## Interface: 120100
+## Title: XayaUI Games
+## Notes: Small games to play alone or with friends. Loads only when opened. Needs XayaUI.
+## Author: Xaya
+## Version: 0.0.0
+## X-Date: 2026-11-05
+## Dependencies: XayaUI
+## LoadOnDemand: 1
+## SavedVariables: XayaUIGamesDB
+## Group: XayaUI
+## X-XayaUI-Launcher: Games
+## X-XayaUI-Command: games
+
+Games.lua
+Seed.lua
+Comms.lua
+Share.lua
+
+UI\Window.lua
+UI\Input.lua
+
+Games\Word\WordGame.lua
+Games\Word\WordModes.lua
+Games\Word\Words_enUS.lua
+Games\Word\WordUI.lua
+
+Packs\PackFormat.lua
+Packs\PackImport.lua

@@ -1,0 +1,14 @@
+-------------------------------------------------------------------------------
+-- Share.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- A result line that gives nothing away, posted to chat; friends' results shown on a small board.
+-------------------------------------------------------------------------------
+-- Share.ResultLine(gameID, modeID, result)  plain text: game name, day, guesses used of allowed, and one short row of symbols per
+--                                           guess (marks only, no letters). Which characters show in WoW chat: check in game.
+-- Share.Post(channel, target)               posts the line. C_ChatInfo.SendChatMessage (namespaces.md:847) has HasRestrictions and
+--                                           RestrictedForMacroChatMessages: post only from a click, never automatically.
+-- Share.Board(dayKey)                       friends' results for a day, from XayaUIGamesDB.friends (local only)
+--
+-- Results also travel as a RESULT addon message (Comms.lua), so friends with the addon see them on the board without reading chat.
+-- Not decided: which channels to offer; whether results are sent automatically to friends who have the addon, or only on a click
+-- (proposed: only on a click).
+-------------------------------------------------------------------------------

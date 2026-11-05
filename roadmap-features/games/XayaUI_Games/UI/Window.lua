@@ -1,0 +1,20 @@
+-------------------------------------------------------------------------------
+-- UI/Window.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- The games window: the list of games, a mode picker, the stats pane, and the area each game draws its board in.
+-------------------------------------------------------------------------------
+-- Window.Get()              builds the window the first time (nothing is built before the player opens it)
+-- Window.ShowGame(def, session)
+-- Window.ShowStats(gameID)
+--
+-- Follows the suite's window rules:
+--   - spacing from core: ns.UI_MARGIN / ns.UI_GUTTER (XayaUI/Modules.lua section 0, #351)
+--   - the XayaUI theme and class colours, like the other windows
+--   - movable, position saved; Escape closes it (and lets go of the keyboard first)
+--   - options style: a dropdown never takes a row alone; short labels, the explanation in the tooltip
+-- Layout sketch (proportions only):
+--   [ title bar ........................................ x ]
+--   [ game list | mode tabs: Daily  Practice  Timed  ...   ]
+--   [           | board (drawn by the game)                ]
+--   [           | on-screen keyboard (UI/Input.lua)        ]
+--   [ stats / friends' board (folds away)                  ]
+-------------------------------------------------------------------------------

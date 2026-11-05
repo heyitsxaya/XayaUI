@@ -1,0 +1,18 @@
+-------------------------------------------------------------------------------
+-- Packs/PackFormat.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- Community puzzle packs: what a pack may hold and how it is read. Frame-free: tested offline.
+-------------------------------------------------------------------------------
+-- A pack is DATA ONLY: new puzzles or words for a game that already exists. It can never add a new kind of game, because shared
+-- code is never run (addons have no internet access; imports never keep code).
+--
+-- Transport: core's share codec, not a new one. XayaUI/Share.lua already reads every share string as
+-- PREFIX:<checksum>:<base64 of JSON> with a data-only JSON reader (no loadstring), and kinds register through
+-- ns.Share.RegisterKind. The games addon would register one kind, e.g. prefix "XUIPACK1" (name open).
+--
+-- pack = { format = 1, kind = "wordlist" | "puzzleset", gameID, title, entries = {...}, listVersion }
+--   (no author field by default: a character name is data about a player)
+--
+-- PackFormat.Check(pack)   -> ok, problems: known kind and gameID; entry count and entry length under fixed limits; letters only
+--                             for word lists; duplicates removed; anything else dropped
+-- PackFormat.Summary(pack) -> a one-line description for the import preview (as Share.lua's kinds do)
+-------------------------------------------------------------------------------

@@ -1,0 +1,16 @@
+-------------------------------------------------------------------------------
+-- Games/Word/WordModes.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- The ways to play the word game, as data. WHICH modes, and which first, is plan question 4: the list below is a starting point.
+-------------------------------------------------------------------------------
+-- mode = { id, title, seed = "day" | "random" | "shared", stats = true / false, onePerDay, timeLimit, players = 1 | 2+, needsComms }
+--
+--   daily     seed "day" (Seed.lua), once per day, counts in stats                       stage 1
+--   practice  seed "random", unlimited, separate stats or none                           stage 1
+--   timed     like practice with a clock (GetTime); best times kept                      stage 4
+--   versus    seed "shared" (sent in INVITE); same word, first to solve wins; marks only cross the wire   stage 3
+--   co-op     seed "shared"; players take turns guessing on one board                     stage 3
+--   hard      a switch on any mode: hints already revealed must be reused (WordGame.Check)
+--
+-- Other puzzle types (Xaya's "puzzle modes") would be their own folders under Games/, each with a rules file without frames, a
+-- modes file and a UI file, and each registered with Games.Register.
+-------------------------------------------------------------------------------

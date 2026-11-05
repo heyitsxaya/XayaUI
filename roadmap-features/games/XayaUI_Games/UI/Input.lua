@@ -1,0 +1,14 @@
+-------------------------------------------------------------------------------
+-- UI/Input.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- Typing guesses without ever trapping the player's movement keys.
+-------------------------------------------------------------------------------
+-- Why an edit box: EnableKeyboard is IsProtectedFunction and SetPropagateKeyboardInput has HasRestrictions (widgets.md:109, :295).
+-- An edit box takes typing only while it has focus, so neither call is needed (INFERENCE from the flags; check in game).
+--
+-- Input.Attach(parent, onLetter, onBackspace, onEnter)
+-- Input.Release()           ClearFocus. Called on Escape, on closing the window, on PLAYER_REGEN_DISABLED, and when the game ends
+-- Input.Filter(text)        letters only, upper-cased, no longer than the word
+--
+-- On-screen letter keys too: every guess can be made with the mouse alone, and each key shows what is known about its letter.
+-- Marks never rely on colour alone: each also has a shape or symbol, so they read with any colour vision.
+-------------------------------------------------------------------------------

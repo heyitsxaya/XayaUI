@@ -1,0 +1,14 @@
+-------------------------------------------------------------------------------
+-- Packs/PackImport.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- Bringing a pack in, seeing it first, and taking it out again.
+-------------------------------------------------------------------------------
+-- PackImport.FromText(text)     a pasted string; goes through core's codec, then PackFormat.Check
+-- PackImport.Preview(pack)      the count, a sample of entries, and the problems found. Nothing is installed without the player's
+--                               click. Shared word lists can hold offensive words: the preview shows them before accepting.
+-- PackImport.Accept(pack) / Remove(packID) / List()
+-- PackImport.Offered(sender, pack)  a pack sent by a friend over Comms is OFFERED, never installed on its own (plan question 8:
+--                               whether friends can send packs at all)
+--
+-- Shipping route (the other half of "community submitted games"): a player sends a game or pack to Xaya, she reviews it, and it
+-- ships in a release. That is a process, not code: no file here.
+-------------------------------------------------------------------------------

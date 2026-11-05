@@ -1,0 +1,15 @@
+-------------------------------------------------------------------------------
+-- Games/Word/Words_enUS.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No words, no code. SOURCE UNDECIDED (plan question 5).
+-------------------------------------------------------------------------------
+-- Would hold two lists for the English client:
+--   ANSWERS   words that can be the answer (common words)
+--   ALLOWED   every word accepted as a guess (larger)
+--   VERSION   a number, raised whenever either list changes (Seed.PickIndex and shared results use it)
+--
+-- Where the words may come from (#290: no data copied from another product):
+--   - a list whose licence allows it, named in THIRD_PARTY.md with its licence;
+--   - or a list written for XayaUI.
+--   Wordle's answer list is not used.
+-- Other languages: one file per client language (Words_deDE.lua, ...) picked by GetLocale(), or English only: open.
+-- Size: the memory cost is measured once the list exists. It is paid only while the addon is loaded (it loads on demand).
+-------------------------------------------------------------------------------
