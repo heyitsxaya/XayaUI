@@ -148,7 +148,7 @@ end
 -------------------------------------------------------------------------------
 -- 4. Minimap button list. entry = { key, label, tooltip, action, stateFn (optional), order = number, available = fn (optional) }
 -- Positional fields keep MinimapButton.lua's row code unchanged. Lower order is higher in the list.
--- available (core 0.6.48): a function that returns false while the entry's feature is switched off; the list then leaves the row out
+-- available (core 0.6.49): a function that returns false while the entry's feature is switched off; the list then leaves the row out
 -- (V14: a switched-off feature shows no row; first user: the Character Toolkit's Stat Calculator row, QoL 0.7.23). The entry stays
 -- registered, so the settings window's options tree is the same with the feature on and off (a sidebar tick reuses the drawn tree,
 -- tests/sidebar_switches_run.py); its row on Settings > Minimap Button is hidden instead.
