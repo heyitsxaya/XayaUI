@@ -4,5 +4,7 @@
 -------------------------------------------------------------------------------
 -- Rules (frame-free): Mines.New(cols, rows, mines, seed, firstCell) (mines placed after the first click, never on it),
 -- Mines.Reveal(cell) (an empty cell opens its neighbours too), Mines.Flag(cell), Mines.Won() / Mines.Lost().
+-- Mines.Chord(cell)   a click on a number whose flags are all placed opens its other neighbours (the usual shortcut)
 -- Input: mouse only (left reveal, right flag). Sizes: small, medium, large; daily board from the date.
+-- Xaya's pick (2026-11-05). Open: a "no guessing" option (only boards that logic alone can finish) costs a solver run per board.
 -------------------------------------------------------------------------------

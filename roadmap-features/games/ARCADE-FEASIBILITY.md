@@ -93,7 +93,7 @@ Nothing forbids games. Rule 3 limits multiplayer; rule 6 matters for shared word
 5. Shooter and maze chase last, or never.
 
 ## 8. Open questions for Xaya
-1. Which games, and which first?
+1. Which games, and which first? **Answered in part (Xaya, 2026-11-05): "Minesweeper", "Sudoku"**, and the word game as a "wow trivia edition (uses words from in-wow)". Outlines: `Games/Mines/Mines.lua`, `Games/Sudoku/Sudoku.lua`, `Games/Word/WordPool.lua`. The other games stay listed and not picked.
 2. Falling blocks: a clearly different design, or leave it out?
 3. The "Games" switch off by default?
 4. A switch per game inside the tab as well?

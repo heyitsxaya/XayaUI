@@ -26,8 +26,9 @@ Arcade\Loop.lua
 Arcade\Grid.lua
 Arcade\Keys.lua
 
-Games\Match\Match.lua
 Games\Mines\Mines.lua
+Games\Sudoku\Sudoku.lua
+Games\Match\Match.lua
 Games\Pairs\Pairs.lua
 Games\Merge\Merge.lua
 Games\Snake\Snake.lua
@@ -35,7 +36,7 @@ Games\Breaker\Breaker.lua
 
 Games\Word\WordGame.lua
 Games\Word\WordModes.lua
-Games\Word\Words_enUS.lua
+Games\Word\WordPool.lua
 Games\Word\WordUI.lua
 
 Packs\PackFormat.lua

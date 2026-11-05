@@ -25,7 +25,8 @@ roadmap-features/games/
 │  ├─ Arcade/Loop.lua        the one game loop; exists only while a game is open
 │  ├─ Arcade/Grid.lua        board drawing for grid games
 │  ├─ Arcade/Keys.lua        keyboard for real-time games (in-game probe first)
-│  ├─ Games/Match, Mines, Pairs, Merge, Snake, Breaker   one outline each (rules frame-free)
+│  ├─ Games/Mines, Sudoku    Xaya's first picks (2026-11-05)
+│  ├─ Games/Match, Pairs, Merge, Snake, Breaker   one outline each (rules frame-free), not picked yet
 │  ├─ Games/Falling/README.md   on hold: legal question
 │  ├─ XayaUI_Games.toc       LoadOnDemand, own saved table, launcher field
 │  ├─ Games.lua              start-up, saved table, game list, open / close, combat
@@ -37,7 +38,7 @@ roadmap-features/games/
 │  ├─ Games/Word/WordGame.lua   word game rules, no frames (testable offline)
 │  ├─ Games/Word/WordModes.lua  daily, practice, timed, versus, co-op
 │  ├─ Games/Word/WordUI.lua     the word game's board
-│  ├─ Games/Word/Words_enUS.lua the word list (source undecided)
+│  ├─ Games/Word/WordPool.lua   "WoW trivia edition": words read from the game at runtime, none shipped
 │  ├─ Games/LFGSim/README.md    not designed: waits on plan question 1
 │  ├─ Packs/PackFormat.lua      community puzzle packs: data-only format and reader
 │  └─ Packs/PackImport.lua      import, preview, accept, remove

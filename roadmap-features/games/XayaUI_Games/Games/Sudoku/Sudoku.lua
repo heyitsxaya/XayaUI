@@ -1,0 +1,24 @@
+-------------------------------------------------------------------------------
+-- Games/Sudoku/Sudoku.lua : OUTLINE ONLY (RM-GAMES). No code. Proposed, not decided.
+-- Xaya's pick (2026-11-05). A 9x9 number puzzle with exactly one answer. Own name and look. No puzzles ship: each is made in the
+-- addon from a seed, so a daily puzzle from the date (Seed.lua) is the same for everyone.
+-------------------------------------------------------------------------------
+-- Making a puzzle (frame-free, tested offline):
+--   Sudoku.Fill(seed)               a complete valid grid, by backtracking in a seeded order
+--   Sudoku.Count(grid, limit)       solver that stops at `limit` solutions (2 is enough to prove "not unique")
+--   Sudoku.Carve(full, seed, level) removes clues in a seeded order, keeping a removal only if Count(...) is still 1
+--   Sudoku.Rate(puzzle)             difficulty by the techniques needed (singles only = easy; more = harder). Open: how many levels
+--   Cost: making a puzzle runs the solver many times. It runs in a coroutine with a small time budget per frame, so the game never
+--   stutters (budget and time per puzzle to be measured in game). Lua 5.1 has no built-in bit operations, so candidate sets are
+--   small arrays.
+--
+-- Playing:
+--   Sudoku.Set(cell, n) / Clear(cell)   givens cannot change
+--   Sudoku.Note(cell, n)                pencil marks (candidates) in a cell
+--   Sudoku.Conflicts(grid)              same number twice in a row, column or box: shown on a switch (open: on by default?)
+--   Sudoku.Solved(grid)
+--   Undo, a timer, and a hint (one correct cell) that is counted in the result.
+-- Input: click a cell, then a number on the on-screen pad (mouse only), or type 1-9 (the edit-box route of UI/Input.lua, so no
+-- protected keyboard call).
+-- Board: 81 cells and 729 small note texts at most, drawn through Arcade/Grid.lua (notes shown only in cells that have them).
+-------------------------------------------------------------------------------

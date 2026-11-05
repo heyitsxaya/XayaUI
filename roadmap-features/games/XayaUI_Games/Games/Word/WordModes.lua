@@ -10,6 +10,9 @@
 --   versus    seed "shared" (sent in INVITE); same word, first to solve wins; marks only cross the wire   stage 3
 --   co-op     seed "shared"; players take turns guessing on one board                     stage 3
 --   hard      a switch on any mode: hints already revealed must be reused (WordGame.Check)
+--   trivia    Xaya's pick (2026-11-05: "wow trivia edition (uses words from in-wow)"): the answer is a WoW name from
+--             WordPool.lua, and the category (Zone, Dungeon, Race, Class, Spec, Mount, Faction) is the trivia clue. Open
+--             (question W2): shown from the start, or revealed after N wrong guesses; one category a day, or mixed.
 --
 -- Other puzzle types (Xaya's "puzzle modes") would be their own folders under Games/, each with a rules file without frames, a
 -- modes file and a UI file, and each registered with Games.Register.

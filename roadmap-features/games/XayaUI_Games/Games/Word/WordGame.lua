@@ -12,6 +12,13 @@
 -- WordGame.Apply(round, guess)      records the guess and its marks; sets round.finished / round.won
 -- WordGame.Known(round)             what is known about each letter, for the on-screen keys
 --
+-- WoW trivia answers (WordPool.lua) change the rules in three ways:
+--   - the length differs per answer, so the board is sized per round;
+--   - letters are UTF-8 characters, not bytes;
+--   - fixed characters (a space, an apostrophe, if kept) are shown from the start and are not guessed.
+-- Which guesses are accepted is open (question W3): any letters, or only names in the pool of that length. A pool may hold few
+-- names of a given length, which would make "pool only" too easy.
+--
 -- round = { answer, length, maxGuesses, hard, guesses = {}, marks = {}, finished, won, startedAt }
 -- The answer never leaves this file in a message (Comms sends marks only).
 -------------------------------------------------------------------------------
