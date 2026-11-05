@@ -18,7 +18,7 @@ GameTooltip = { AddDoubleLine=function(self,a,b) lines[#lines+1]=a.." "..b end, 
 posts = {}
 Enum = { TooltipDataType = { Item=0, Spell=1, Unit=2, Currency=5, BattlePet=6, UnitAura=7, Mount=10, Achievement=12, Toy=19, Quest=23 } }
 TooltipDataProcessor = { AddTooltipPostCall=function(t,f) posts[t]=f end }
-function CreateFrame() return { RegisterEvent=function() end, SetScript=function(s,n,f) _G.evh=f end } end
+function CreateFrame() return { RegisterEvent=function() end, UnregisterEvent=function() end, SetScript=function(s,n,f) _G.evh=f end } end
 SlashCmdList = {}
 function strsplit(sep, s) local t={} for p in (s..sep):gmatch("(.-)"..sep) do t[#t+1]=p end return table.unpack(t) end
 C_Spell = { GetSpellTexture=function(id) return 1000+id end }

@@ -52,6 +52,10 @@ function ns.CharWidthProbe_Run(arg)
         return
     end
     if probe.on then Say("already running; /xui stats widthprobe off first."); return end
+    -- (QoL 0.7.22) the Character Reskin's "Wider window" is built on what this probe tested; the two would widen the window twice
+    if ns.CharReskin_WideOn and ns.CharReskin_WideOn() then
+        Say("the Character Reskin's wider window is on (Blizzard UI Reskin > Character Pane); turn it off there first."); return
+    end
     if InCombatLockdown and InCombatLockdown() then Say("not in combat: try again out of combat."); return end
     local cf, mdl, mh = _G.CharacterFrame, _G.CharacterModelScene, _G.CharacterMainHandSlot
     if not (cf and cf.IsShown and cf:IsShown() and _G.PaperDollFrame and _G.PaperDollFrame:IsShown()) then
