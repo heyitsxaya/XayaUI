@@ -41,6 +41,8 @@ local function recs(d, kind) local out = {}; for _, r in ipairs(d.layout) do if 
 local function texts(d, kind) local t = {}; for _, r in ipairs(recs(d, kind)) do t[#t + 1] = r.text end; return t end
 local function card(key) return drawn().model.byKey[key] end
 local function line(key, label) local it = card(key); for _, p in ipairs(it and it.pairs or {}) do if p.label == label then return p.value, p end end end
+-- QoL 0.7.15 (columns): a map line's three cells, "value|Pt value|note"
+local function cells(key, label) local v, p = line(key, label); if not p then return nil end; return tostring(v or "") .. "|" .. tostring(p.per or "") .. "|" .. tostring(p.note or "") end
 
 -- 1. The tab and its cards ---------------------------------------------------------------------------------------------------
 local d = render()
@@ -48,35 +50,39 @@ check("Stats tab = the stat map: Primary stats, Secondary stats, Tertiary stats,
   table.concat(texts(d, "header"), "|") == "- Primary stats|- Secondary stats|- Tertiary stats|- Offense (what feeds it)|- Defense (what feeds it)", table.concat(texts(d, "header"), "|"))
 check("no Show: % button (#382: it did nothing)", not XayaUICharacterToolkit.modeBtn.shown)
 check("the Agility card: 2,637, its box holds the number itself", card("map_primary").value == "2,637" and d.boxes["sv:primary"] and d.boxes["sv:primary"].text == "2637", d.boxes["sv:primary"] and d.boxes["sv:primary"].text)
-check("  » Attack power +2,637 (1 = 1.00)", line("map_primary", "» Attack power") == "+2,637  (1 = 1.00)", line("map_primary", "» Attack power"))
+check("  » Attack power: value +2,637, Pt value 1.00 (1 Agility = 1.00 attack power), no note", cells("map_primary", "» Attack power") == "+2,637|1.00|", cells("map_primary", "» Attack power"))
 check("  » Dodge +5.00% (the game's figure from Agility)", line("map_primary", "» Dodge") == "+5.00%", line("map_primary", "» Dodge"))
-check("  » Armor +2,684 through the mastery text (2,637 x 101.8%)", (line("map_primary", "» Armor") or ""):find("+2,684  (101.8% of Agility, mastery)", 1, true) == 1, line("map_primary", "» Armor"))
-check("  » Abilities (per 100): Fracture +200 and Infernal Strike +100 (first number / attack power x 100), Demon Spikes left out (no damage)",
-  line("map_primary", "» Abilities (per 100)") == "Fracture +200, Infernal Strike +100", line("map_primary", "» Abilities (per 100)"))
-check("the Stamina card: » Health 1,476,516 (1 = 21.20)", line("map_stamina", "» Health") == "1,476,516  (1 = 21.20)", line("map_stamina", "» Health"))
+check("  » Armor through the mastery text (2,637 x 101.8%): value +2,684, Pt value 1.02, note 101.8% of Agility, mastery",
+  cells("map_primary", "» Armor") == "+2,684|1.02|101.8% of Agility, mastery", cells("map_primary", "» Armor"))
+check("  » Abilities (per 100): Fracture +200 and Infernal Strike +100 (first number / attack power x 100) in the note, Demon Spikes left out (no damage)",
+  cells("map_primary", "» Abilities (per 100)") == "||Fracture +200, Infernal Strike +100", cells("map_primary", "» Abilities (per 100)"))
+check("the Stamina card: » Health value 1,476,516, Pt value 21.20", cells("map_stamina", "» Health") == "1,476,516|21.20|", cells("map_stamina", "» Health"))
 -- crit: rating, percent, per 1% side by side; parry from crit with the crit rating per 1% parry (her question)
 check("Critical Strike card: 22.48%, its box 528, 46.0 / 1% in its own column", card("map_crit").value == "22.48%" and d.boxes["sv:crit"].text == "528" and card("map_crit").per == "46.0 / 1%")
-check("  » Parry +10.15% (52.0 crit rating = 1% parry), before DR", line("map_crit", "» Parry") == "+10.15%  (52.0 crit rating = 1% parry), before DR", line("map_crit", "» Parry"))
-check("  a column head over the cards: Rating, Percent, Per 1%", texts(d, "colhead")[1] == "Rating" and texts(d, "colhead")[2] == "Percent" and texts(d, "colhead")[3] == "Per 1%")
+check("  » Parry: value +10.15%, Pt value 52.0 / 1% (52.0 crit rating = 1% parry), note before DR", cells("map_crit", "» Parry") == "+10.15%|52.0 / 1%|before DR", cells("map_crit", "» Parry"))
+check("  ...its words for the one-column readers: 52.0 crit rating = 1% parry", CM.PairText(select(2, line("map_crit", "» Parry"))) == "+10.15%  (52.0 crit rating = 1% parry); before DR", CM.PairText(select(2, line("map_crit", "» Parry"))))
+check("  column heads (QoL 0.7.15): Primary Stat | Current value | Pt value; Secondary Stat | Rating | Current value | Pt value",
+  table.concat(texts(d, "colhead"), "|"):find("^Stat|Current value|Pt value|Stat|Rating|Current value|Pt value|") ~= nil, table.concat(texts(d, "colhead"), "|"))
 -- mastery: armor from mastery and armor per 1% mastery (her question)
-check("Mastery card: » Armor +2,684 (101.8% of Agility)", line("map_mastery", "» Armor") == "+2,684  (101.8% of Agility)", line("map_mastery", "» Armor"))
-check("  » Armor per 1% mastery: +30 (2,637 x 101.8 / 88.69 / 100), 16.4 mastery rating", line("map_mastery", "» Armor per 1% mastery") == "+30  (16.4 mastery rating)", line("map_mastery", "» Armor per 1% mastery"))
+check("Mastery card: » Armor value +2,684, note 101.8% of Agility", cells("map_mastery", "» Armor") == "+2,684||101.8% of Agility", cells("map_mastery", "» Armor"))
+check("  » Armor per 1% mastery: +30 (2,637 x 101.8 / 88.69 / 100), note 16.4 mastery rating", cells("map_mastery", "» Armor per 1% mastery") == "+30||16.4 mastery rating", cells("map_mastery", "» Armor per 1% mastery"))
 check("Haste card: » Global cooldown 1.16 s, » Attack speed 2.00 s", line("map_haste", "» Global cooldown") == "1.16 s" and line("map_haste", "» Attack speed") == "2.00 s")
-check("  » Abilities whose text names Haste, with their recharge now", line("map_haste", "» Abilities (their text names Haste)") == "Infernal Strike (9.6 s recharge)", line("map_haste", "» Abilities (their text names Haste)"))
-check("Versatility card: » Damage and healing done (every ability) +2.61%, » Damage taken -1.30% (92.0 rating = 1%)",
-  line("map_vers", "» Damage and healing done (every ability)") == "+2.61%" and line("map_vers", "» Damage taken") == "-1.30%  (92.0 rating = 1%)", line("map_vers", "» Damage taken"))
+check("  » Abilities whose text names Haste, with their recharge now (in the note)", cells("map_haste", "» Abilities (their text names Haste)") == "||Infernal Strike (9.6 s recharge)", cells("map_haste", "» Abilities (their text names Haste)"))
+check("Versatility card: » Damage and healing done (every ability) +2.61%, » Damage taken -1.30% with Pt value 92.0 / 1%",
+  line("map_vers", "» Damage and healing done (every ability)") == "+2.61%" and cells("map_vers", "» Damage taken") == "-1.30%|92.0 / 1%|", cells("map_vers", "» Damage taken"))
 check("a stat you have no rating in shows only what it does (Avoidance: one line)", #card("map_avoidance").pairs == 1, #card("map_avoidance").pairs)
-check("Defense: Parry 14.01%, from Critical Strike +10.15%; Armor from Agility +2,684; Dodge from Agility +5.00%",
-  card("map_parry").value == "14.01%" and line("map_parry", "From Critical Strike") == "+10.15%, before DR" and line("map_armor", "From Agility (mastery)") == "+2,684"
-  and line("map_dodge", "From Agility") == "+5.00%")
+check("Defense: Parry 14.01%, from Critical Strike +10.15% (note before DR); Armor from Agility +2,684 (Pt value 1.02); Dodge from Agility +5.00%",
+  card("map_parry").value == "14.01%" and cells("map_parry", "From Critical Strike") == "+10.15%||before DR" and cells("map_armor", "From Agility (mastery)") == "+2,684|1.02|"
+  and line("map_dodge", "From Agility") == "+5.00%", tostring(cells("map_parry", "From Critical Strike")) .. " / " .. tostring(cells("map_armor", "From Agility (mastery)")))
 -- Offense and Defense details that used to sit under the Spells filters (B12: they move here, nothing is dropped)
 check("Offense: Attack Power 3,472, from Agility +2,637, » Damage per second +992.0 (3,472 / 3.5)", card("map_ap").value == "3,472"
   and line("map_ap", "From Agility") == "+2,637" and line("map_ap", "» Damage per second") == "+992.0", tostring(card("map_ap") and card("map_ap").value) .. " " .. tostring(line("map_ap", "» Damage per second")))
 check("  Spell Power 500 (GetSpellBonusDamage, lowest school)", card("map_sp") and card("map_sp").value == "500")
 check("  Main hand 8,138 - 8,945, speed 2.00 s from Haste, » Damage per second 4,270.7 ((8,138.2 + 8,944.6) / 2 / 2.00)", card("map_weapon").value == "8,138 - 8,945"
   and line("map_weapon", "Speed, from Haste") == "2.00 s" and line("map_weapon", "» Damage per second") == "4,270.7", tostring(line("map_weapon", "» Damage per second")))
-check("  Global cooldown 1.16 s, from Haste 29.25% when read, unhasted 1.50 s (estimate)", card("map_gcd").value == "1.16 s"
-  and (line("map_gcd", "From Haste") or ""):find("29.25% haste when read", 1, true) == 1 and (line("map_gcd", "Unhasted (estimate)") or ""):find("1.50 s", 1, true) == 1, line("map_gcd", "Unhasted (estimate)"))
+check("  Global cooldown 1.16 s, from Haste 29.25% (note haste when read), unhasted 1.50 s (estimate; the rating for -0.01 s in its note)", card("map_gcd").value == "1.16 s"
+  and cells("map_gcd", "From Haste") == "29.25%||haste when read" and line("map_gcd", "Unhasted (estimate)") == "1.50 s"
+  and (select(2, line("map_gcd", "Unhasted (estimate)")).note or ""):find("^[%d,]+ more haste rating for %-0%.01 s$") ~= nil, cells("map_gcd", "Unhasted (estimate)"))
 check("  #379: 'Speed, from Haste' and the GCD's 'From Haste' use haste's colour", select(2, line("map_weapon", "Speed, from Haste")).labelColor == CM.STAT_COLORS.haste
   and select(2, line("map_gcd", "From Haste")).labelColor == CM.STAT_COLORS.haste)
 check("  no ranged weapon, no regen (Fury 0/s): no cards for them", card("map_ranged") == nil and card("map_regen") == nil)
@@ -111,7 +117,7 @@ d = render()
 check("type 700 crit: the amount is +172, the box shows 700", c.whatIfStats.crit == 172 and d.boxes["sv:crit"].text == "700", c.whatIfStats.crit)
 check("  crit 22.48% -> 26.22%", card("map_crit").value == "22.48% -> 26.22%", card("map_crit").value)
 check("  parry from crit +10.15% -> +13.46%", (line("map_crit", "» Parry") or ""):find("+10.15% -> +13.46%", 1, true) == 1, line("map_crit", "» Parry"))
-check("  Defense > Parry: from Critical Strike +10.15% -> +13.46%", line("map_parry", "From Critical Strike") == "+10.15% -> +13.46%, before DR", line("map_parry", "From Critical Strike"))
+check("  Defense > Parry: from Critical Strike +10.15% -> +13.46% (note before DR)", cells("map_parry", "From Critical Strike") == "+10.15% -> +13.46%||before DR", cells("map_parry", "From Critical Strike"))
 ns.CharToolkit_SetInput("sv:mastery", "1200")
 d = render()
 check("type 1,200 mastery: 88.69% -> 101.05%, armor from Agility grows in step (+2,684 -> +3,058)", card("map_mastery").value == "88.69% -> 101.05%"
@@ -120,20 +126,20 @@ ns.CharToolkit_SetInput("sv:primary", "2737")
 d = render()
 check("type 2,737 Agility: attack power +2,637 -> +2,737, armor +2,684 -> +3,174 (both changes)", (line("map_primary", "» Attack power") or ""):find("+2,637 -> +2,737", 1, true) == 1
   and (line("map_primary", "» Armor") or ""):find("+2,684 -> +3,174", 1, true) == 1, line("map_primary", "» Armor"))
-check("  » Abilities with your number: Fracture 6,944 -> 7,144, Infernal Strike 3,472 -> 3,572 (x 3,572 / 3,472 attack power)",
-  line("map_primary", "» Abilities with your number") == "Fracture 6,944 -> 7,144, Infernal Strike 3,472 -> 3,572", line("map_primary", "» Abilities with your number"))
+check("  » Abilities with your number: Fracture 6,944 -> 7,144, Infernal Strike 3,472 -> 3,572 (x 3,572 / 3,472 attack power), in the note",
+  cells("map_primary", "» Abilities with your number") == "||Fracture 6,944 -> 7,144, Infernal Strike 3,472 -> 3,572", cells("map_primary", "» Abilities with your number"))
 check("  without a changed number there is no such line", (function() ns.CharToolkit_SetInput("sv:primary", ""); local v = CM.Build(c, "stats").byKey.map_primary; ns.CharToolkit_SetInput("sv:primary", "2737")
   for _, pp in ipairs(v.pairs) do if pp.label == "» Abilities with your number" then return false end end; return true end)())
-check("  dodge per Agility is not given by the game: said, not guessed", (line("map_primary", "» Dodge") or ""):find("not given by the game", 1, true) ~= nil)
+check("  dodge with your numbers is not given by the game: said in the note, not guessed", cells("map_primary", "» Dodge") == "+5.00%||with your numbers: not given by the game", cells("map_primary", "» Dodge"))
 check("  Defense > Armor shows the new total and damage reduction", (card("map_armor").value or ""):find(" -> ", 1, true) ~= nil and (line("map_armor", "» Damage reduction") or ""):find(" -> ", 1, true) ~= nil)
 check("  Offense > Attack Power 3,472 -> 3,572, from Agility +2,637 -> +2,737, DPS +992.0 -> +1,020.6", card("map_ap").value == "3,472 -> 3,572"
   and line("map_ap", "From Agility") == "+2,637 -> +2,737" and line("map_ap", "» Damage per second") == "+992.0 -> +1,020.6", tostring(card("map_ap").value) .. " " .. tostring(line("map_ap", "» Damage per second")))
 ns.CharToolkit_SetInput("sv:haste", tostring(CM.svBase.haste + 300))
 d = render()
 check("type 300 more haste: Infernal Strike's recharge 9.6 s -> less (estimate, its text names Haste)",
-  (line("map_haste", "» Abilities (their text names Haste)") or ""):find("^Infernal Strike %(9%.6 s %-> %d%.%d s recharge%)$") ~= nil, line("map_haste", "» Abilities (their text names Haste)"))
-check("type 300 more haste: weapon speed 2.00 s -> about faster (estimate), GCD 1.16 s -> less", (line("map_weapon", "Speed, from Haste") or ""):find("^2%.00 s %-> 1%.%d%d s %(estimate%)") ~= nil
-  and (card("map_gcd").value or ""):find("^1%.16 s %-> 1%.%d%d s") ~= nil, tostring(line("map_weapon", "Speed, from Haste")) .. " / " .. tostring(card("map_gcd").value))
+  (cells("map_haste", "» Abilities (their text names Haste)") or ""):find("^||Infernal Strike %(9%.6 s %-> %d%.%d s recharge%)$") ~= nil, cells("map_haste", "» Abilities (their text names Haste)"))
+check("type 300 more haste: weapon speed 2.00 s -> faster (note: estimate), GCD 1.16 s -> less", (cells("map_weapon", "Speed, from Haste") or ""):find("^2%.00 s %-> 1%.%d%d s||estimate$") ~= nil
+  and (card("map_gcd").value or ""):find("^1%.16 s %-> 1%.%d%d s") ~= nil, tostring(cells("map_weapon", "Speed, from Haste")) .. " / " .. tostring(card("map_gcd").value))
 ns.CharToolkit_SetInput("sv:haste", "")
 ns.CharToolkit_SetInput("sv:crit", ""); ns.CharToolkit_SetInput("sv:mastery", "997"); ns.CharToolkit_SetInput("sv:primary", "")
 d = render()

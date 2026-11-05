@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-c67c0e15a76222494d9c1bec354f6fa4  QA-CHECKLIST.md
+f47e4bcb4f369c4dabadf48d118982d3  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 63b2e4f690ac314d8965977aa66a75b4  ROADMAP.md
 bfa2f931d3c882cb4253b6e633d8f140  SESSION-START-SUMMARY.md
@@ -212,9 +212,9 @@ a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
 9d22b0cf700c8720ec99f104a14ff52e  XayaUI_Options/XayaUI_Options.toc
-3c560ecddcdc871ee027132eb7bc55e0  XayaUI_QoL/CharacterModel.lua
+e70ef5a2810572678fcd224eca403761  XayaUI_QoL/CharacterModel.lua
 721cd197c5cb8dbea86bd6b9220c52cd  XayaUI_QoL/CharacterReskin.lua
-ab5299b205d71475e97c52060d0e3dce  XayaUI_QoL/CharacterToolkit.lua
+4b5da222c794a6b926d86fb1cca58d29  XayaUI_QoL/CharacterToolkit.lua
 51995f01e31136f0c68b4db7ef5f7fe1  XayaUI_QoL/CharacterWidthProbe.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
 5845286dd16b8c3f711fc5cc2f235676  XayaUI_QoL/CursorTrail.lua
@@ -254,7 +254,7 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 08343552c22eb2676c663b0576e218c3  XayaUI_QoL/Media/Cursor/RingThick.tga
 054aa82635cfab8851fded7704d8f102  XayaUI_QoL/Media/Cursor/Sparkle.tga
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
-6defe62ec81367c4498fc7723c9abfc3  XayaUI_QoL/XayaUI_QoL.toc
+5a6f9fd0475a0e90bedd4cba008f6c87  XayaUI_QoL/XayaUI_QoL.toc
 acb0abd02d4ab3bdc79b076ba95bdfbc  XayaUI_Reskin/GameMenuSkin.lua
 aec726a4b16ec32be9e78663eda2dff1  XayaUI_Reskin/XayaUI_Reskin.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
@@ -458,6 +458,7 @@ fa0ce99ac539fc76181c79ccdc075462  debug-log/2026-11-05-0411-stat-calculator-and-
 8e795e343c27555c3c211e58b767e556  debug-log/2026-11-05-1354-roadmap-games-module.md
 7a8661fabc23d908b08c8d5651a7dd52  debug-log/2026-11-05-1402-blizzard-ui-reskin-tab-options-0.6.38.md
 bbd35f726b2fefe160f53ab3b43ddbf8  debug-log/2026-11-05-1405-roadmap-rppm-tooltip-gear-compare.md
+c549c241567d8de3bc4f5c029ea46280  debug-log/2026-11-05-1518-char-stat-columns-qol-0.7.15.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -535,9 +536,10 @@ a48d4b3a546f29c2dbd4fdfb8bc661c4  tests/build_set_auras_run.py
 14e9c29a197714a8a368d5e880181396  tests/char_gear_icons_run.py
 c71edf87d9a75e8342e729343f718e08  tests/char_reskin_run.py
 4c368340b983fbfe0b403dd7c5387808  tests/char_spells_run.py
-ccd5984686f844667d3dd1eb0cf3197d  tests/char_stat_map_run.py
-f55f1688cefdeec0266ea6df2335cf5c  tests/char_toolkit2_run.py
-0c87b34f722e5be27bd649a4f6252ac3  tests/char_toolkit_run.py
+dabb74d1028dd3dec027948017b85ead  tests/char_stat_columns_run.py
+0d50418eee973fc8cdfbd7d31cc9b115  tests/char_stat_map_run.py
+5835ef450260c8e4cc251e1a45606cf0  tests/char_toolkit2_run.py
+68ae151ad48fde37d1cc1c58040d1026  tests/char_toolkit_run.py
 e7051e48189cd46b2f488bd5463c23b6  tests/char_toolkit_world.lua
 403d1dafc4dbc1f3f91fabfa2387126e  tests/char_width_probe_run.py
 396b0fc9fa6a88b4131443cae359900c  tests/charges_combat_run.py
