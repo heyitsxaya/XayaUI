@@ -1052,6 +1052,12 @@ function CM.SlotSockets(link)
             local name, glink = R(C_Item.GetItemGem, link, i)
             if type(name) == "string" and name ~= "" then g.name = name end
             if type(glink) == "string" and glink ~= "" then g.link = glink end
+            -- (QoL 0.7.22) the name from the gem's ID when the socket read gave none (not cached yet: GET_ITEM_INFO_RECEIVED redraws)
+            --   C_Item.GetItemNameByID(itemInfo: ItemInfo) → itemName: string? · SecretArguments=AllowedWhenUntainted (namespaces.md:2784)
+            if not g.name and C_Item.GetItemNameByID then
+                local nm = R(C_Item.GetItemNameByID, id)
+                if type(nm) == "string" and nm ~= "" then g.name = nm end
+            end
         end
         out[i] = g
     end
@@ -1191,25 +1197,62 @@ local function EnchantPrefixPattern()
     if not a then return nil end
     return "^" .. Esc(a) .. "(.-)" .. Esc(b) .. "$"
 end
-function CM.SlotEnchant(slot)
+-- (QoL 0.7.22) What the equipped item's tooltip says about its enchant and its embellishment, from one read (the enchant label, its
+-- hover, the embellishment line; Xaya 2026-11-05: "hovering over the enchant name ... should also allow you to see what the enchant does",
+-- "embellished items should be hoverable so you can read what the embellishment does"):
+--   C_TooltipInfo.GetInventoryItem(unit: UnitToken, slot: luaIndex, hideUselessStats: bool?) → data: TooltipData · MayReturnNothing,
+--     SecretArguments=AllowedWhenUntainted (namespaces.md:4711)
+--   Enum.TooltipDataLineType (enums.md:12622): ItemEnchantmentPermanent = 15, ItemSpellTriggerOnUse = 44, ItemSpellTriggerOnEquip = 45,
+--     ItemSpellTriggerOnProc = 46.
+-- The enchant line gives the enchantment's name ("Enchanted: Enchant Ring - Eyes of the Eagle"), or for a stat kit its stats; no
+-- documented call turns an item's enchantment into its spell or effect text, so nothing more is read (the hover says so).
+-- No line type marks an embellishment and no documented call names one (C_Item.GetItemUniquenessByID's docs do not say whether a
+-- crafted item's embellishment counts). INFERENCE: the game's tooltip shows the line "Unique-Equipped: Embellished (2)" on such items
+-- (English client); the line is found by the word "Embellished" and its "(n)" is the game's own limit. On another language nothing
+-- matches and nothing is shown. The item's own Use / Equip / Proc lines (types 44-46) are its effect text, as the game gives them.
+-- Returns { enchant, enchantLine, embellished = { line, max }, effects = { plain lines } } or nil when the tooltip cannot be read.
+local function TipLines(slot)
     if not (C_TooltipInfo and C_TooltipInfo.GetInventoryItem) then return nil end
     local data = R(C_TooltipInfo.GetInventoryItem, "player", slot)
     local lines = type(data) == "table" and Field(data, "lines") or nil
-    if type(lines) ~= "table" then return nil end
-    local want = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.ItemEnchantmentPermanent) or 15
+    return type(lines) == "table" and lines or nil
+end
+function CM.SlotTip(slot)
+    local lines = TipLines(slot)
+    if not lines then return nil end
+    local LT = Enum and Enum.TooltipDataLineType or {}
+    local want = LT.ItemEnchantmentPermanent or 15
+    local eff = { [LT.ItemSpellTriggerOnUse or 44] = true, [LT.ItemSpellTriggerOnEquip or 45] = true, [LT.ItemSpellTriggerOnProc or 46] = true }
+    local out = { effects = {} }
     for _, ln in ipairs(lines) do
         if type(ln) == "table" then
             if TooltipUtil and TooltipUtil.SurfaceArgs and ln.leftText == nil then pcall(TooltipUtil.SurfaceArgs, ln) end
-            local t, text = Field(ln, "type"), Field(ln, "leftText")
-            text = (t == want) and CM.PlainText(text) or nil
-            if text and text ~= "" then
-                local pat = EnchantPrefixPattern()
-                local name = pat and text:match(pat) or nil
-                return (name and name ~= "") and name or text
+            local t, text = Field(ln, "type"), CM.PlainText(Field(ln, "leftText"))
+            if text and text ~= "" and not IsSecret(t) then
+                if t == want and not out.enchant then
+                    local pat = EnchantPrefixPattern()
+                    local name = pat and text:match(pat) or nil
+                    out.enchant, out.enchantLine = (name and name ~= "") and name or text, text
+                elseif eff[t] then
+                    out.effects[#out.effects + 1] = text
+                elseif not out.embellished and text:find("Embellished", 1, true) then
+                    out.embellished = { line = text, max = tonumber(text:match("Embellished%s*%((%d+)%)")) }
+                end
             end
         end
     end
-    return nil
+    return out
+end
+function CM.SlotEnchant(slot)
+    local t = CM.SlotTip(slot)
+    return t and t.enchant or nil
+end
+-- (QoL 0.7.22) the enchant's own name without the "Enchant <slot> - " every enchant of this expansion starts with (client data:
+-- "Enchant Ring - Eyes of the Eagle"); the slot already says which slot it is, and the hover has the whole line. Anything else as it is.
+function CM.ShortEnchant(name)
+    if type(name) ~= "string" then return name end
+    local short = name:match("^Enchant [^%-]- %- (.+)$")
+    return (short and short ~= "") and short or name
 end
 
 local function MoneyText(copper)
