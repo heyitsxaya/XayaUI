@@ -42,8 +42,13 @@ for name, f in docs["functions"].items():
     idx["functions"][name] = {"args": names(inner), "returns": names(f.get("returns", ""))}
 for name, e in docs["events"].items():
     idx["events"][name] = names(e.get("payload", ""))
+# Enums keep their real values ({field: value}, ordered by value). api.json lists each enum's fields alphabetically, and world.lua
+# numbers a plain list by position, so a list here gave 741 of 856 enums the wrong numbers (Enum.SecrecyLevel.NeverSecret = 2, not 0).
 for name, fields in docs["enums"].items():
-    idx["enums"][name] = list(fields.keys()) if isinstance(fields, dict) else list(fields)
+    if isinstance(fields, dict) and all(isinstance(v, (int, float)) for v in fields.values()):
+        idx["enums"][name] = dict(sorted(fields.items(), key=lambda kv: kv[1]))
+    else:
+        idx["enums"][name] = list(fields.keys()) if isinstance(fields, dict) else list(fields)
 for method, entries in docs["widgetMethods"].items():
     for ent in entries:
         obj = ent.get("object")

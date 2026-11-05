@@ -817,7 +817,9 @@ C_AddOnProfiler = { IsEnabled = function() return true end, GetApplicationMetric
 Enum = setmetatable({}, { __index = function(t, k)
   local fields = API.enums and API.enums[k]
   local v = {}
-  if fields then for i, f in ipairs(fields) do v[f] = i - 1 end end
+  -- a {field = value} table keeps the game's numbers (api_index_from_docs.py); a plain list (build_api_index.py) is numbered by position
+  if fields and fields[1] ~= nil then for i, f in ipairs(fields) do v[f] = i - 1 end
+  elseif fields then for f, n in pairs(fields) do v[f] = n end end
   setmetatable(v, { __index = function(_, f) record(W.unknownGlobals, "Enum." .. k .. "." .. tostring(f)); return nil end })
   rawset(t, k, v); return v end })
 Constants = setmetatable({}, { __index = function(t, k) local v = setmetatable({}, { __index = function() return 0 end }); rawset(t, k, v); return v end })
