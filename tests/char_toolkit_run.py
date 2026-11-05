@@ -232,9 +232,16 @@ check("panel shown docked with the character window", XayaUICharacterToolkit and
 check("stat row hooked", statRow.hooks.OnEnter and #statRow.hooks.OnEnter == 1)
 GameTooltip:SetOwner(statRow)
 statRow.hooks.OnEnter[1](statRow)
-local found = false
-for _, l in ipairs(GameTooltip.lines or {}) do if tostring(l):find("Lost to diminishing returns: 0", 1, true) then found = true end end
-check("tooltip: toolkit lines added to the crit tooltip", found)
+-- (QoL 0.7.14, A8) a compact block: the stat map's lines for crit at the real numbers, two columns, no bars
+local function tl(pat) for _, l in ipairs(GameTooltip.lines or {}) do if tostring(l):find(pat, 1, true) then return tostring(l) end end end
+check("tooltip: a compact block under the crit tooltip: Rating | 528 = +11.48%", tl("Rating | 528 = +11.48%") ~= nil, table.concat(GameTooltip.lines or {}, " / "))
+check("  ...rating per 1% and the diminishing returns in words (next threshold)", tl("Rating per 1% | 46.0") ~= nil and (tl("Diminishing returns | ") or ""):find("next at", 1, true) ~= nil,
+  tl("Diminishing returns"))
+check("  ...no long detail list (no 'Penalty on the next point', no 'Other sources')", tl("Penalty on the next point") == nil and tl("Other sources") == nil)
+c.whatIfStats = { crit = 852 }
+GameTooltip:SetOwner(statRow); statRow.hooks.OnEnter[1](statRow)
+check("  ...your typed numbers on the Stats tab are left out of it (real numbers only)", tl("Rating | 528 = +11.48%") ~= nil and tl(" -> ") == nil, table.concat(GameTooltip.lines or {}, " / "))
+c.whatIfStats = {}
 PaperDollFrame:Hide()
 check("panel hides with the character window", not XayaUICharacterToolkit:IsShown())
 for _, t in ipairs({ "sheet", "stats", "defense", "offense", "gear", "whatif", "spells" }) do

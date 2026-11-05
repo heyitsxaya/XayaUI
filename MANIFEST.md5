@@ -3,8 +3,6 @@ f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
 e26f71310875b83128c58dac1a3f8cc5  QA-CHECKLIST.md
-e26f71310875b83128c58dac1a3f8cc5  QA-CHECKLIST.md
-e26f71310875b83128c58dac1a3f8cc5  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 74acac5eb276995c47208b6d09b72a7d  ROADMAP.md
 64b887e4bffa11008f517a29c7d447a1  SESSION-START-SUMMARY.md
@@ -214,8 +212,9 @@ a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
 ecc5e8ae419e2290f06640eb7f8a48b6  XayaUI_Options/XayaUI_Options.toc
-9d217e00a7b62915a3b2ecf1ec59af6d  XayaUI_QoL/CharacterModel.lua
-38c14199f41a0aa1233bbbdfb028df51  XayaUI_QoL/CharacterToolkit.lua
+3c560ecddcdc871ee027132eb7bc55e0  XayaUI_QoL/CharacterModel.lua
+8ef12ffa818be2ca5556a8bbe45621af  XayaUI_QoL/CharacterReskin.lua
+ab5299b205d71475e97c52060d0e3dce  XayaUI_QoL/CharacterToolkit.lua
 51995f01e31136f0c68b4db7ef5f7fe1  XayaUI_QoL/CharacterWidthProbe.lua
 98054ba4b2ba6fa7f3a7a6d0399d5954  XayaUI_QoL/CursorHighlight.lua
 5845286dd16b8c3f711fc5cc2f235676  XayaUI_QoL/CursorTrail.lua
@@ -255,7 +254,7 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 08343552c22eb2676c663b0576e218c3  XayaUI_QoL/Media/Cursor/RingThick.tga
 054aa82635cfab8851fded7704d8f102  XayaUI_QoL/Media/Cursor/Sparkle.tga
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
-4e977de40779e2f59d04d266408580a1  XayaUI_QoL/XayaUI_QoL.toc
+6defe62ec81367c4498fc7723c9abfc3  XayaUI_QoL/XayaUI_QoL.toc
 6c204c615c32aeec49965a86f9649ccb  XayaUI_Reskin/GameMenuSkin.lua
 920bbd6d916017df661baf257a16b7d2  XayaUI_Reskin/XayaUI_Reskin.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
@@ -449,7 +448,7 @@ cc9d1ed3dee5d80a51312a494fd7c128  debug-log/2026-11-04-2218-probe-findings-oh-fl
 8534575268d7d2d8a2111d3750efdd0e  debug-log/2026-11-04-2301-load-checks-no-garbage-core-0.6.41.md
 c1d7d03ab3ff7630015402cd7d314428  debug-log/2026-11-04-2303-mover-right-click-core-0.6.42.md
 368776f26a56f31f0c9615d565ea41bd  debug-log/2026-11-04-2311-mover-click-slop-core-0.6.43.md
-57063c95ad270d5fee9e9efccac9a41d  debug-log/2026-11-04-2320-sheet-tab-removed-qol-0.7.13.md
+372c0054a8781d361c7eb2a2c4133d14  debug-log/2026-11-04-2320-sheet-tab-removed-qol-0.7.14.md
 a7820cd111f019a93a67a9a972cd12b6  debug-log/2026-11-04-2326-engine-kept-step-index-core-0.6.44.md
 dd5578186e7bd08a7a4d9ecadd75bf82  debug-log/2026-11-04-2338-engine-garbage-measured-on-her-rules.md
 69ffe23eb4ff195f29d0c1f718564a03  debug-log/2026-11-04-2341-cursor-trail-cost-qol-0.7.13.md
@@ -528,10 +527,11 @@ f115df38e9fbc8e0ce989f9a4184ef18  tests/auras_cmd_run.py
 a48d4b3a546f29c2dbd4fdfb8bc661c4  tests/build_set_auras_run.py
 65503283e0c12a3b57ecfe5ae496b507  tests/calculator_run.py
 14e9c29a197714a8a368d5e880181396  tests/char_gear_icons_run.py
-101c437f3593c744ef5e466bd49c5434  tests/char_spells_run.py
+808009973332855c35f083fad513e95d  tests/char_reskin_run.py
+4c368340b983fbfe0b403dd7c5387808  tests/char_spells_run.py
 ccd5984686f844667d3dd1eb0cf3197d  tests/char_stat_map_run.py
-80c8e752571038917c6df415d95735ea  tests/char_toolkit2_run.py
-7f7533e103aebbb010e14ba2b1a2b37d  tests/char_toolkit_run.py
+f55f1688cefdeec0266ea6df2335cf5c  tests/char_toolkit2_run.py
+0c87b34f722e5be27bd649a4f6252ac3  tests/char_toolkit_run.py
 e7051e48189cd46b2f488bd5463c23b6  tests/char_toolkit_world.lua
 403d1dafc4dbc1f3f91fabfa2387126e  tests/char_width_probe_run.py
 396b0fc9fa6a88b4131443cae359900c  tests/charges_combat_run.py

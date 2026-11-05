@@ -1092,6 +1092,67 @@ function CM.SlotOverlay(slot, opts)
     return o
 end
 
+-- The colour of an item level (QoL Character Reskin, requirements A4; Xaya 2026-11-04: "ilvl colored based on ilv tier (track ...
+-- AND upgrade tier (color gradient))"). The track and step come from the game: C_Item.GetItemUpgradeInfo (namespaces.md:2798) returns
+-- trackString ("Hero"), currentLevel and maxLevel (structures.md:4285). One colour per track, from the game's own item quality colours
+-- (C_Item.GetItemQualityColor): Explorer and Adventurer grey (0), Veteran green (2), Champion blue (3), Hero purple (4), Myth orange
+-- (5). The pairing is XayaUI's choice (she named none; requirements A4, decision task); within a track the colour goes from dim (step
+-- 1, 55%) to full (the last step). The track is matched by its English name (INFERENCE: trackString is localised; on other clients an
+-- item shows its quality colour instead, nothing is guessed). Returns { r, g, b, 1 } and { track, step, max } (or nil for no track).
+CM.TRACK_QUALITY = { Explorer = 0, Adventurer = 0, Veteran = 2, Champion = 3, Hero = 4, Myth = 5 }
+local function QualityRGB(q)
+    if not (num(q) and C_Item and C_Item.GetItemQualityColor) then return nil end
+    local r, g, b = R(C_Item.GetItemQualityColor, q)
+    if num(r) and num(g) and num(b) then return { r, g, b, 1 } end
+end
+function CM.TrackColor(link, quality)
+    local info = (type(link) == "string" and not IsSecret(link) and C_Item and C_Item.GetItemUpgradeInfo) and R(C_Item.GetItemUpgradeInfo, link) or nil
+    if type(info) == "table" then
+        local name = Field(info, "trackString")
+        local track = type(name) == "string" and name:match("^(%a+)") or nil
+        local q = track and CM.TRACK_QUALITY[track]
+        local cur, mx = Field(info, "currentLevel"), Field(info, "maxLevel")
+        local col = q and QualityRGB(q)
+        if col and num(cur) and num(mx) then
+            local f = (mx > 1) and (0.55 + 0.45 * math.max(0, math.min(1, (cur - 1) / (mx - 1)))) or 1
+            return { col[1] * f, col[2] * f, col[3] * f, 1 }, { track = track, step = cur, max = mx }
+        end
+    end
+    return QualityRGB(quality), nil
+end
+
+-- The enchant on an equipped item, by name (requirements A5: "enchants + gems should show to the side of the character pane"). The
+-- name is the item tooltip's permanent-enchant line (C_TooltipInfo.GetInventoryItem, namespaces.md:4711; line type
+-- Enum.TooltipDataLineType.ItemEnchantmentPermanent = 15, enums.md:12639), without the "Enchanted: " the game puts before it
+-- (ENCHANTED_TOOLTIP_LINE, "Enchanted: %s", when the client has it). Returns the name, or nil; the yes / no comes from the link
+-- (CM.LinkEnchanted).
+local function EnchantPrefixPattern()
+    local g = _G.ENCHANTED_TOOLTIP_LINE
+    if type(g) ~= "string" or IsSecret(g) or not g:find("%s", 1, true) then return nil end
+    local a, b = g:match("^(.-)%%s(.*)$")
+    if not a then return nil end
+    return "^" .. Esc(a) .. "(.-)" .. Esc(b) .. "$"
+end
+function CM.SlotEnchant(slot)
+    if not (C_TooltipInfo and C_TooltipInfo.GetInventoryItem) then return nil end
+    local data = R(C_TooltipInfo.GetInventoryItem, "player", slot)
+    local lines = type(data) == "table" and Field(data, "lines") or nil
+    if type(lines) ~= "table" then return nil end
+    local want = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.ItemEnchantmentPermanent) or 15
+    for _, ln in ipairs(lines) do
+        if type(ln) == "table" then
+            if TooltipUtil and TooltipUtil.SurfaceArgs and ln.leftText == nil then pcall(TooltipUtil.SurfaceArgs, ln) end
+            local t, text = Field(ln, "type"), Field(ln, "leftText")
+            if t == want and type(text) == "string" and text ~= "" then
+                local pat = EnchantPrefixPattern()
+                local name = pat and text:match(pat) or nil
+                return (name and name ~= "") and name or text
+            end
+        end
+    end
+    return nil
+end
+
 local function MoneyText(copper)
     local g, s, c = SM.Coins(copper)
     if not g then return UNAV end

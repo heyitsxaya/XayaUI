@@ -1064,7 +1064,11 @@ local function UpdateOverlay(button)
         overlays[button] = o
     end
     local eSlots, eDefault = CM.EnchantSlots(c)
-    local data = CM.SlotOverlay(slot, { ilvl = c.ovIlvl, sockets = c.ovSockets, enchants = c.ovEnchants, enchantSlots = eSlots, enchantDefault = eDefault })
+    -- (QoL 0.7.14) while the Character Reskin draws its own item level / enchant on the slot, these leave theirs out: one of each per slot
+    local rIlvl = ns.CharReskin_DrawsIlvl and ns.CharReskin_DrawsIlvl()
+    local rEnch = ns.CharReskin_DrawsEnchants and ns.CharReskin_DrawsEnchants()
+    local data = CM.SlotOverlay(slot, { ilvl = c.ovIlvl and not rIlvl, sockets = c.ovSockets, enchants = c.ovEnchants and not rEnch,
+        enchantSlots = eSlots, enchantDefault = eDefault })
     SetFont(o.ilvl, c.ovSize, "OUTLINE")
     SetFont(o.marks, math.max(8, c.ovSize - 2), "OUTLINE")
     o.ilvl:SetText(data.ilvl or "")
@@ -1179,6 +1183,10 @@ local function KeyForLabel(text)
 end
 ns.CharToolkit_KeyForLabel = KeyForLabel
 
+-- the stat map card each character-window stat row shows in its tooltip (A8)
+local MAP_KEY = { crit = "map_crit", haste = "map_haste", mastery = "map_mastery", vers = "map_vers", avoidance = "map_avoidance",
+    leech = "map_leech", speed2 = "map_speed2", armor = "map_armor", dodge = "map_dodge", parry = "map_parry", block = "map_block",
+    ap = "map_ap", speed = "map_weapon", damage = "map_weapon", stamina = "map_stamina", stagger = "map_stagger", sp = "map_sp", gcd = "map_gcd" }
 local function AppendTooltip(frame)
     local c = Cfg()
     if not (c and c.enabled and c.tooltips) or not GameTooltip then return end
@@ -1186,12 +1194,38 @@ local function AppendTooltip(frame)
     local label = frame.Label and frame.Label.GetText and frame.Label:GetText()
     local key = KeyForLabel(label)
     if not key then return end
-    local m = CM.Build(c, nil)
-    local it = m.byKey[key]
-    if not it then return end
+    -- (QoL 0.7.14, requirements A8; Xaya: "do you see how these tooltips behave?", "no. I don't want a bar next to the threshold")
+    -- a compact block under Blizzard's own text: the stat map's lines for this stat at your real numbers (your typed numbers are left
+    -- out here): rating and what it gives, rating per 1%, diminishing returns and the next threshold in words, then what it feeds (the
+    -- "»" lines: parry from crit, armor from mastery, ...). No bars. Our own wording.
+    local mk = MAP_KEY[key] or ((key == "stat1" or key == "stat2" or key == "stat4") and "map_primary") or nil
+    local clean = setmetatable({ whatIf = 0, whatIfStats = {}, whatIfPrimary = false }, { __index = c })
+    local card = mk and CM.Build(clean, "stats").byKey[mk] or nil
+    if key:match("^stat%d$") and card and card.label ~= (label and label:gsub("[:：]%s*$", "")) then card = nil end   -- not your primary stat
+    local lines = {}
+    if card then
+        if card.absolute then
+            local from
+            for _, p in ipairs(card.pairs or {}) do if p.label == "From rating" then from = tostring(p.value) end end
+            lines[#lines + 1] = { "Rating", CM.Big(card.absolute) .. (from and (" = " .. from) or "") }
+            if card.per and card.per ~= "" then lines[#lines + 1] = { "Rating per 1%", (card.per:gsub(" / 1%%$", "")) } end
+        end
+        for _, p in ipairs(card.pairs or {}) do
+            if p.label ~= "From rating" then lines[#lines + 1] = { p.label, tostring(p.value) } end
+        end
+    else
+        local it = CM.Build(c, nil).byKey[key]
+        if not it then return end
+        for _, line in ipairs(CM.PairLines(it, true)) do lines[#lines + 1] = { line } end
+    end
+    if #lines == 0 then return end
     GameTooltip:AddLine(" ")
-    GameTooltip:AddLine("XayaUI Character Toolkit", 0.2, 0.8, 1)
-    for _, line in ipairs(CM.PairLines(it, c.detail == "short")) do GameTooltip:AddLine(line, 0.85, 0.85, 0.85, true) end
+    GameTooltip:AddLine("XayaUI", 0.2, 0.8, 1)
+    for _, l in ipairs(lines) do
+        if l[2] ~= nil and GameTooltip.AddDoubleLine then GameTooltip:AddDoubleLine(l[1], l[2], 0.75, 0.75, 0.8, 0.95, 0.95, 0.95)
+        elseif l[2] ~= nil then GameTooltip:AddLine(l[1] .. ": " .. l[2], 0.85, 0.85, 0.85, true)
+        else GameTooltip:AddLine(l[1], 0.85, 0.85, 0.85, true) end
+    end
     GameTooltip:Show()
 end
 
