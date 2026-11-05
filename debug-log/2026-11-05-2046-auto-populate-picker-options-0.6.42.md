@@ -1,4 +1,4 @@
-# Auto-populate: choose which rules to make, their main cue, and target debuffs (Options 0.6.41)
+# Auto-populate: choose which rules to make, their main cue, and target debuffs (Options 0.6.42)
 Logged 2026-11-05 20:46 UTC. Engine session, branch `claude/fervent-cerf-hldtwn`. The other sessions were told before work started (the
 Class/Spec Rule Creator page was changed by another session today: the talent scan moved to Settings, Options 0.6.40).
 
@@ -45,3 +45,8 @@ bar) on a case-by-case basis". Read as: "speech to text" = the speech cue (text-
   check.
 - `display_tab_run`, `drafts_run`, `disabled_tree_run` pass; `lua_pitfalls_run` FAILS: 0.
 - QA B146-B148. USER-GUIDE 12.1. Nothing was run in game.
+
+## Landing note
+Options 0.6.41 was taken by another session while this was in its full suite (402262a, "off costs nothing"), so this change is Options
+0.6.42; merged with main 0f05ad6 (QA-CHECKLIST: both sets of steps kept). Xaya's answer on progress bars (debug-log
+2026-11-05-2018: refer to the WeakAuras reference; a design note is pending) does not change the picker: "Progress bar" stays "not yet".

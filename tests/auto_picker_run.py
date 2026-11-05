@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline test (XayaUI_Options 0.6.41): the auto-populate picker (AutoPicker.lua). Xaya, 2026-11-05: "Auto-populate rules should also
+"""Offline test (XayaUI_Options 0.6.42): the auto-populate picker (AutoPicker.lua). Xaya, 2026-11-05: "Auto-populate rules should also
 provide support for target debuffs - you should be able to also customize auto-populate rule behavior to auto-populate with only
 specific, selected auto rules and choose their primary cue type (speech to text, icon, progress texture, progress bar) on a
 case-by-case basis". Checks what the player gets: which candidates are listed (cooldowns from the learned spec list, target debuffs

@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- AutoPicker.lua : auto-populate, but you choose which rules to make and each one's main cue (XayaUI_Options 0.6.41). Own code.
+-- AutoPicker.lua : auto-populate, but you choose which rules to make and each one's main cue (XayaUI_Options 0.6.42). Own code.
 -- UNTESTED in game.
 -- Xaya, 2026-11-05: "Auto-populate rules should also provide support for target debuffs - you should be able to also customize
 -- auto-populate rule behavior to auto-populate with only specific, selected auto rules and choose their primary cue type (speech to

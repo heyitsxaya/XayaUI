@@ -168,8 +168,17 @@ end
 -------------------------------------------------------------------------------
 -- sending
 -------------------------------------------------------------------------------
+-- V14 (Bonus 0.6.12; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to
+-- performance cost / demand in any way"). The send pump runs only while a note is being sent: its OnUpdate is set by
+-- ns.NotepadShare_Send and cleared when the queue is empty (up to 0.6.11 it ran on every frame from login, with nothing to send). The
+-- tokens it would have refilled while stopped are added when it starts again (pumpStopped), so the pacing is the same.
 local sendQueue, tokens, sending = {}, BURST, nil
-local pump = CreateFrame("Frame")
+local pump, pumpStopped
+local function Now() return GetTime and GetTime() or 0 end
+local function StopPump()
+    if pump then pump:SetScript("OnUpdate", nil) end
+    pumpStopped = Now()
+end
 
 local function ResultOK(...)
     local r = select(select("#", ...), ...)   -- the result is the last return value (older clients return a boolean)
@@ -186,9 +195,9 @@ local function SendOne(item)
     return ResultOK(a, b)
 end
 
-pump:SetScript("OnUpdate", function(_, dt)
+local function Pump(_, dt)
     tokens = math.min(BURST, tokens + dt / REFILL)   -- the game allows a burst, then about one message a second
-    if #sendQueue == 0 then return end
+    if #sendQueue == 0 then StopPump(); return end
     while tokens >= 1 and #sendQueue > 0 do
         if ns.Compat.InEncounter() then return end   -- wait: addon messages are paused in encounters
         local item = table.remove(sendQueue, 1)
@@ -202,7 +211,13 @@ pump:SetScript("OnUpdate", function(_, dt)
         tokens = tokens - 1
         if item.last then Say("Note shared (" .. item.total .. " parts sent).") ; sending = nil end
     end
-end)
+    if #sendQueue == 0 then StopPump() end
+end
+local function StartPump()
+    if pumpStopped then tokens = math.min(BURST, tokens + (Now() - pumpStopped) / REFILL); pumpStopped = nil end
+    pump = pump or CreateFrame("Frame")
+    if not pump:GetScript("OnUpdate") then pump:SetScript("OnUpdate", Pump) end
+end
 
 local function NewSid()
     local chars, t = "abcdefghjkmnpqrstuvwxyz23456789", {}
@@ -232,6 +247,7 @@ function ns.NotepadShare_Send(text, channel, target, withText)
             last = (i == #pieces), total = #pieces }
     end
     sending = sid
+    StartPump()
 
     if withText or true then   -- the header line always goes out (it tells everyone what is happening); the text lines are the option
         for _, line in ipairs(ns.NotepadShare_ChatLines(text, withText)) do
@@ -254,7 +270,7 @@ local offerFrame
 local function ShortName(sender) return (tostring(sender or "?"):gsub("%-.*$", "")) end
 local function Me() return UnitName and UnitName("player") end
 
-local ShowOffer
+local ShowOffer, WaitCombat
 local function Offer(sender, text)
     local db = DB()
     if not (db and db.acceptShares) then return end
@@ -262,12 +278,13 @@ local function Offer(sender, text)
     text = ns.NotepadShare_Clean(text, MaxChars())
     if not text:match("%S") then return end
     pending[#pending + 1] = { sender = sender, text = text }
-    if InCombatLockdown and InCombatLockdown() then return end   -- shown when combat ends
+    if InCombatLockdown and InCombatLockdown() then WaitCombat(true); return end   -- shown when combat ends
     ShowOffer()
 end
 
+local accepting = false   -- "Accept notes shared by other XayaUI users", cached by ns.NotepadShare_Sync
 local function Handle(prefix, msg, channel, sender)
-    if prefix ~= PREFIX or type(msg) ~= "string" then return end
+    if not accepting or prefix ~= PREFIX or type(msg) ~= "string" then return end
     if issecretvalue and (issecretvalue(msg) or issecretvalue(sender)) then return end
     sender = tostring(sender or "")
     if sender == "" or ShortName(sender) == Me() then return end
@@ -561,18 +578,45 @@ function ns.NotepadShare_Menu(owner)
 end
 
 -------------------------------------------------------------------------------
--- events
+-- events (V14, Bonus 0.6.12): CHAT_MSG_ADDON and the XUINOTE prefix only while "Accept notes shared by other XayaUI users" is on
+-- (ns.NotepadShare_Sync: at login and when the switch changes); PLAYER_REGEN_ENABLED only while an offer waits for combat to end. Up to
+-- 0.6.11 all three were registered at load: every addon message from every addon ran Handle, and XUINOTE parts were put together
+-- with the switch off. The game has no call to take a prefix back (docs/reference/api/namespaces.md lists C_ChatInfo
+-- RegisterAddonMessagePrefix and IsAddonMessagePrefixRegistered only), so a prefix registered while it was on stays until /reload; with
+-- the event let go nothing of this file runs for it.
 -------------------------------------------------------------------------------
-local ev = CreateFrame("Frame")
-ev:RegisterEvent("CHAT_MSG_ADDON")
-ev:RegisterEvent("PLAYER_LOGIN")
-ev:RegisterEvent("PLAYER_REGEN_ENABLED")
-ev:SetScript("OnEvent", function(_, e, ...)
-    if e == "PLAYER_LOGIN" then
-        if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then pcall(C_ChatInfo.RegisterAddonMessagePrefix, PREFIX) end
-    elseif e == "CHAT_MSG_ADDON" then
+local ev, prefixDone
+local function OnEvent(_, e, ...)
+    if e == "CHAT_MSG_ADDON" then
         Handle(...)
     elseif e == "PLAYER_REGEN_ENABLED" then
+        WaitCombat(false)
         if #pending > 0 then ShowOffer() end
     end
-end)
+end
+local function Ev()
+    if not ev then ev = CreateFrame("Frame"); ev:SetScript("OnEvent", OnEvent) end
+    return ev
+end
+WaitCombat = function(on)
+    if on then Ev():RegisterEvent("PLAYER_REGEN_ENABLED") elseif ev then ev:UnregisterEvent("PLAYER_REGEN_ENABLED") end
+end
+function ns.NotepadShare_Sync()
+    local db = DB()
+    accepting = (db and db.acceptShares) and true or false
+    if accepting then
+        if not prefixDone and C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
+            prefixDone = pcall(C_ChatInfo.RegisterAddonMessagePrefix, PREFIX)
+        end
+        Ev():RegisterEvent("CHAT_MSG_ADDON")
+    else
+        if ev then ev:UnregisterEvent("CHAT_MSG_ADDON") end
+        wipe(assembling)   -- parts of notes still coming in are dropped
+    end
+end
+if ns.AtLogin then ns.AtLogin(ns.NotepadShare_Sync)   -- (core Modules.lua: at PLAYER_LOGIN, or at once after it)
+else
+    local boot = CreateFrame("Frame")
+    boot:RegisterEvent("PLAYER_LOGIN")
+    boot:SetScript("OnEvent", function(self) self:UnregisterAllEvents(); ns.NotepadShare_Sync() end)
+end
