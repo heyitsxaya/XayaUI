@@ -69,6 +69,10 @@ function geom(o)
   rawset(o, "CreateFontString", function(self) local f = mk("FS"); f.text = ""; f.font = { "Fonts\\FRIZQT__.TTF", 12, "" }; f.parent = self
     regionsOf[self] = regionsOf[self] or {}; table.insert(regionsOf[self], f); return f end)
   rawset(o, "CreateTexture", function(self) local t = mk("Texture"); t.parent = self; regionsOf[self] = regionsOf[self] or {}; table.insert(regionsOf[self], t); return t end)
+  -- (QoL 0.7.21) anchors as the game reports them: one per point name, the last one set wins
+  rawset(o, "GetNumPoints", function(self) local seen, k = {}, 0; for _, pt in ipairs(self.pts or {}) do if not seen[pt[1]] then seen[pt[1]] = true; k = k + 1 end end; return k end)
+  rawset(o, "GetPointByName", function(self, name) local hit; for _, pt in ipairs(self.pts or {}) do if pt[1] == name then hit = pt end end
+    if hit then return hit[1], hit[2], hit[3], hit[4], hit[5] end end)
   return o
 end
 function addRegion(frame, region) regionsOf[frame] = regionsOf[frame] or {}; table.insert(regionsOf[frame], region) end
@@ -175,5 +179,28 @@ function placePane(width)
   for _, name in ipairs({ "MainHandSlot", "SecondaryHandSlot" }) do local t = mk("Texture"); t.pts = { { "TOPLEFT", _G["Character" .. name], "TOPLEFT", -4, 8 } }; t.w, t.h = 42, 53; ART[name] = t end
   local l = mk("Texture"); l.pts = { { "TOPRIGHT", ART.MainHandSlot, "TOPLEFT", 0, 0 } }; l.w, l.h = 6, 54; ART.MainHandSide = l
   local r = mk("Texture"); r.pts = { { "TOPLEFT", ART.SecondaryHandSlot, "TOPRIGHT", 0, 0 } }; r.w, r.h = 7, 54; ART.SecondaryHandSide = r
+  -- the stats pane: hangs from the Inset's TOPRIGHT (CharacterFrame.xml; the offsets here are a STAND-IN) to the window's right edge
+  cf.InsetRight = geom(rawget(cf, "InsetRight") or mk("Frame"))
+  cf.InsetRight.pts = { { "TOPLEFT", cf.Inset, "TOPRIGHT", 1, 0 }, { "BOTTOMRIGHT", cf, "BOTTOMRIGHT", -6, 4 } }
+  cf.activeSubframe = "PaperDollFrame"
   return cf
+end
+
+-- (QoL 0.7.21) Blizzard's own sizing, as the 0.7.19 debug log read it in CharacterFrame.lua UpdateSize(): the window 540 wide with the
+-- stats pane open on the Character tab (CHARACTERFRAME_EXPANDED_WIDTH), else PANEL_DEFAULT_WIDTH; on the Character tab the Inset's
+-- BOTTOMRIGHT at the window's BOTTOMLEFT + (PANEL_DEFAULT_WIDTH + PANEL_INSET_RIGHT_OFFSET, PANEL_INSET_BOTTOM_OFFSET); then, when the
+-- width changed, UpdateUIPanelPositions(self). STAND-IN: the real function does more (other tabs' insets), none of which the reskin reads.
+function blizzardSizing()
+  PANEL_DEFAULT_WIDTH, PANEL_INSET_RIGHT_OFFSET, PANEL_INSET_BOTTOM_OFFSET = 338, -6, 4
+  panelCalls = 0
+  UpdateUIPanelPositions = function(f) panelCalls = panelCalls + 1 end
+  STATS_OPEN = true
+  CharacterFrame.UpdateSize = function(self)
+    local before = self.w
+    self.w = (self.activeSubframe == "PaperDollFrame" and STATS_OPEN) and 540 or PANEL_DEFAULT_WIDTH
+    if self.activeSubframe == "PaperDollFrame" then
+      self.Inset:SetPoint("BOTTOMRIGHT", self, "BOTTOMLEFT", PANEL_DEFAULT_WIDTH + PANEL_INSET_RIGHT_OFFSET, PANEL_INSET_BOTTOM_OFFSET)
+    end
+    if before ~= self.w then UpdateUIPanelPositions(self) end
+  end
 end
