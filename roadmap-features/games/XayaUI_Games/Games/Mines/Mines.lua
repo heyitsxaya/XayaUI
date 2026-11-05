@@ -1,0 +1,8 @@
+-------------------------------------------------------------------------------
+-- Games/Mines/Mines.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- Mine-sweeping: reveal every safe cell, flag the mines. Own name and look.
+-------------------------------------------------------------------------------
+-- Rules (frame-free): Mines.New(cols, rows, mines, seed, firstCell) (mines placed after the first click, never on it),
+-- Mines.Reveal(cell) (an empty cell opens its neighbours too), Mines.Flag(cell), Mines.Won() / Mines.Lost().
+-- Input: mouse only (left reveal, right flag). Sizes: small, medium, large; daily board from the date.
+-------------------------------------------------------------------------------

@@ -18,8 +18,15 @@ A scaffold up there would look like a real add-on to all three. Here, nothing re
 ```
 roadmap-features/games/
 ├─ README.md                 this file
-├─ CORE-HOOK.md              the one change core would need: finding load-on-demand features without naming them
+├─ ARCADE-FEASIBILITY.md     classic arcade games: feasibility of each, Blizzard's gem game, Xaya's gates, sources
+├─ CORE-HOOK.md              the one change core would need: finding load-on-demand features; core's "Games" switch
 ├─ XayaUI_Games/             the add-on (name to be chosen, plan question 3)
+│  ├─ Arcade/Guard.lua       Xaya's gates inside the add-on: only on the player's call, never in restricted play
+│  ├─ Arcade/Loop.lua        the one game loop; exists only while a game is open
+│  ├─ Arcade/Grid.lua        board drawing for grid games
+│  ├─ Arcade/Keys.lua        keyboard for real-time games (in-game probe first)
+│  ├─ Games/Match, Mines, Pairs, Merge, Snake, Breaker   one outline each (rules frame-free)
+│  ├─ Games/Falling/README.md   on hold: legal question
 │  ├─ XayaUI_Games.toc       LoadOnDemand, own saved table, launcher field
 │  ├─ Games.lua              start-up, saved table, game list, open / close, combat
 │  ├─ Seed.lua               the day's puzzle from the date (no messages needed)

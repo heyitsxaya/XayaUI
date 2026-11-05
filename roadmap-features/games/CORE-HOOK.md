@@ -14,6 +14,17 @@ At login, core walks the installed add-ons. For each one that is load-on-demand 
 
 Once loaded, the add-on registers its real handlers through `Modules.lua` as usual and takes over its row and command.
 
+## The "Games" switch (Xaya, 2026-11-05: "none should run at all if “Games” aren't Enabled as their own tab")
+The games add-on is not loaded while the switch is shown, so it cannot own the switch. Core owns it:
+- **A "Games" node in the settings window,** shown only when an add-on with the launcher line is installed. It holds one switch, "Enable Games", **off by default** (proposed). Its value is a core setting.
+- **While off:**
+  - no minimap row;
+  - `/xui games` only says where to turn it on;
+  - `C_AddOns.LoadAddOn` is never called for it.
+- **Turning it on** registers the row and the command. Nothing loads until the player clicks or types.
+- **Turning it off** after a game was loaded closes any open game. The add-on's memory stays until a /reload, because the 12.1.5 `C_AddOns` list has no unload call (namespaces.md:140-164).
+- **The whole folder** can also be switched off in the game's AddOns list. Core then finds no launcher line and shows no "Games" node.
+
 ## Calls it would use (12.1.5 reference, `docs/reference/api/namespaces.md`)
 - `C_AddOns.GetNumAddOns()` → `numAddOns: number` (:157)
 - `C_AddOns.GetAddOnMetadata(name: uiAddon, variable: cstring)` → `value: cstring` · SecretArguments=AllowedWhenUntainted (:151)

@@ -1,0 +1,15 @@
+-------------------------------------------------------------------------------
+-- Arcade/Keys.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided. NEEDS AN IN-GAME PROBE FIRST.
+-- Keyboard for real-time games (snake, falling blocks, block breaker with keys). Mouse-only games never use this file.
+-------------------------------------------------------------------------------
+-- Facts (12.1.5 reference):
+--   EnableKeyboard            IsProtectedFunction (widgets.md:109)
+--   SetPropagateKeyboardInput HasRestrictions (widgets.md:295)
+--   IsKeyDown(key)            SecretArguments=AllowedWhenUntainted (globals.md:359)
+-- INFERENCE (to probe): both of the first two are usable out of combat, which is the only time a game runs (Arcade/Guard.lua).
+--
+-- Keys.Capture(window, onKey)   only after Guard.CanStart; keys the game uses are kept, every other key passes on to the game
+-- Keys.Release()                on Escape, close, pause, combat, restriction: the player's movement keys always come back
+-- Keys.Held(key)                for keys held down (IsKeyDown)
+-- Default keys: arrows and WASD; rebinding is open.
+-------------------------------------------------------------------------------

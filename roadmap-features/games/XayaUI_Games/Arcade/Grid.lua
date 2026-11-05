@@ -1,0 +1,12 @@
+-------------------------------------------------------------------------------
+-- Arcade/Grid.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- Drawing a board of cells for grid games (match-3, snake, mine-sweeping, sliding merge, pairs, logic puzzles).
+-------------------------------------------------------------------------------
+-- Grid.New(parent, cols, rows, cellSize)   creates one texture per cell once, and reuses them for the whole session
+-- Grid.Set(col, row, look)                  look = colour (SetColorTexture, widgets.md:2138) or icon (file ID + SetTexCoord, :2175)
+--                                           Only cells whose look changed are touched (the cursor-trail lesson: fewer texture
+--                                           calls a frame, QoL 0.7.13).
+-- Grid.CellAt(x, y)                         cursor position -> cell, for mouse games
+-- Grid.Tween(col, row, from, to, seconds)   short moves for falling or swapped pieces (match-3 cascades)
+-- Spacing and frame from core: ns.UI_MARGIN / ns.UI_GUTTER; colours from the XayaUI theme.
+-------------------------------------------------------------------------------

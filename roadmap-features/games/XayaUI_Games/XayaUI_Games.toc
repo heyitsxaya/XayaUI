@@ -21,6 +21,18 @@ Share.lua
 UI\Window.lua
 UI\Input.lua
 
+Arcade\Guard.lua
+Arcade\Loop.lua
+Arcade\Grid.lua
+Arcade\Keys.lua
+
+Games\Match\Match.lua
+Games\Mines\Mines.lua
+Games\Pairs\Pairs.lua
+Games\Merge\Merge.lua
+Games\Snake\Snake.lua
+Games\Breaker\Breaker.lua
+
 Games\Word\WordGame.lua
 Games\Word\WordModes.lua
 Games\Word\Words_enUS.lua

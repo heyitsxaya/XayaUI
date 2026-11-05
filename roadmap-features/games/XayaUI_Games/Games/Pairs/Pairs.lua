@@ -1,0 +1,8 @@
+-------------------------------------------------------------------------------
+-- Games/Pairs/Pairs.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- Memory pairs: turn two cards; a matching pair stays open. Card faces are WoW icons by file ID.
+-------------------------------------------------------------------------------
+-- Rules (frame-free): Pairs.New(count, seed), Pairs.Turn(card) (after a second card that does not match, both turn back after a
+-- short pause), Pairs.Won(); score = turns used and time.
+-- Input: mouse only.
+-------------------------------------------------------------------------------

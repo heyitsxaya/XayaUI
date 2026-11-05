@@ -29,6 +29,12 @@
 --   PLAYER_REGEN_ENABLED       show again if it was hidden for combat
 --   (addon messages are handled in Comms.lua)
 --
+-- Gates (Xaya, 2026-11-05; ARCADE-FEASIBILITY.md section 2):
+--   1. its own folder, switchable in the AddOns list;
+--   2. core's "Games" switch (off by default) must be on, or this addon is never loaded (CORE-HOOK.md);
+--   3. it loads only on the player's click or command; with no game open it runs nothing: no OnUpdate, no timers, no events;
+--   4. a game starts and keeps running only outside restricted play (Arcade/Guard.lua).
+--
 -- Open points: the addon and table names (question 3); whether a game in progress survives a /reload (proposed: daily yes,
 -- live versus no).
 -------------------------------------------------------------------------------

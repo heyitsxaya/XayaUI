@@ -1,0 +1,13 @@
+-------------------------------------------------------------------------------
+-- Games/Match/Match.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- Match-3 with an endless mode. Own name and look: not Blizzard's hologram game, not Bejeweled (ARCADE-FEASIBILITY section 1).
+-------------------------------------------------------------------------------
+-- Rules (frame-free, tested offline):
+--   Match.NewBoard(cols, rows, kinds, seed)  fills the board with no ready-made line of three
+--   Match.Swap(board, a, b)                  only neighbours; undone if it makes no line
+--   Match.Lines(board)                       every row or column of 3+ equal pieces
+--   Match.Clear / Fall / Refill              cascade until nothing matches; score per cleared piece and per cascade step
+--   Match.HasMove(board)                     if false: reshuffle (endless mode never ends on a stuck board)
+-- Modes: endless (no move limit), moves (N swaps), timed, daily (seed from the date, Seed.lua).
+-- Input: mouse only (click two neighbours, or drag). Art: WoW item icons by file ID, or own shapes (question 6).
+-------------------------------------------------------------------------------

@@ -1,0 +1,14 @@
+-------------------------------------------------------------------------------
+-- Arcade/Loop.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- The one game loop. It exists only while a game is open: nothing runs while no game is.
+-------------------------------------------------------------------------------
+-- Loop.Start(game)   checks Guard.CanStart, then sets one OnUpdate script on the game window
+-- Loop.Stop()        clears the OnUpdate script (SetScript("OnUpdate", nil)) and calls Guard.Release
+-- Loop.Pause() / Loop.Resume()
+--
+-- Fixed step: add each frame's elapsed time to a store, and run game.Step(dt) once per whole step (for example 1/60 s), at most
+-- a few steps per frame so a slow frame cannot spiral. Speed then does not depend on frame rate. Drawing happens once per frame,
+-- after the steps (game.Draw).
+-- Turn-based games use the same loop only while an animation plays, then stop it until the next click.
+-- No new tables per step (the suite's per-step garbage rule, #309).
+-------------------------------------------------------------------------------

@@ -1,0 +1,10 @@
+-------------------------------------------------------------------------------
+-- Games/Breaker/Breaker.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- Block breaker: a paddle keeps a ball in play and the ball breaks bricks. Own name and own brick layouts.
+-------------------------------------------------------------------------------
+-- Rules (frame-free): Breaker.New(layout, seed), Breaker.Step(dt, paddleX) moves the ball and bounces it off the walls, the paddle
+-- (the angle depends on where it hits) and the bricks (a brick is removed or loses a hit point), Breaker.Over().
+-- Input: the mouse moves the paddle (GetCursorPosition), so no keyboard probe is needed; keys are optional.
+-- Fast balls: move in small sub-steps so the ball never passes through a brick.
+-- Layouts: our own, stored as data (a later community pack kind could add more: Packs/).
+-------------------------------------------------------------------------------
