@@ -2,7 +2,7 @@ fdb080a203260bb4a48e5a7933ec857d  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-a1e016f72b06a42fc04218516e325921  QA-CHECKLIST.md
+0204be732d1a1fac48a7c6682929e7ba  QA-CHECKLIST.md
 9420db0e6abf6c9b83cbab8f2e4e91ba  README.md
 63b2e4f690ac314d8965977aa66a75b4  ROADMAP.md
 aabaeee51048f87a0cfe3c4544841c56  SESSION-START-SUMMARY.md
@@ -22,7 +22,7 @@ d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 90a7c4511e2a3988040393f1c413a9b3  XayaUI/Compat.lua
 13a60b31b56a009cc309b9a5350f5605  XayaUI/Conditions.lua
 b2559ab57462004655898c8bca0ab18a  XayaUI/Console.lua
-cfe938d591b43d3e4ad3d89afdf1e93d  XayaUI/Core.lua
+0f6446f5b3f61dc3fb11eafb933a4581  XayaUI/Core.lua
 54cd777342d376237760b45e6c8c8358  XayaUI/Cues.lua
 2a0f2a633dae957c132cc16968ab9edf  XayaUI/DebugRecord.lua
 d817c5a68e5d3e797559c40b2571de8c  XayaUI/Engine.lua
@@ -460,6 +460,7 @@ fa0ce99ac539fc76181c79ccdc075462  debug-log/2026-11-05-0411-stat-calculator-and-
 bbd35f726b2fefe160f53ab3b43ddbf8  debug-log/2026-11-05-1405-roadmap-rppm-tooltip-gear-compare.md
 b9e16256d10461db7c21a56e5dcf7259  debug-log/2026-11-05-1512-console-toggle-footer-subtabs-core-0.6.45-options-0.6.39.md
 c549c241567d8de3bc4f5c029ea46280  debug-log/2026-11-05-1518-char-stat-columns-qol-0.7.15.md
+7e1a2548796b23387ab91ba8b9095a61  debug-log/2026-11-05-1538-xui-help-one-per-line-core-0.6.45.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -625,6 +626,7 @@ eccba8875a1faeb20465640570668d83  tests/trigger_parity_run.py
 06abd3bc39893cbb62c55a168ba32788  tests/usage_run.py
 e7cdd7a30b073750bf9d255839ce19a3  tests/window_footer_run.py
 480b49a29f06991788f1bff461d947fd  tests/window_margins_run.py
+8e96b7c2f78af99584122638973219ee  tests/xui_help_lines_run.py
 9cf2dbe8870484cac06007449100805c  tools/formula_fit.py
 5ea11cb0d56f3c473cd881158515069e  tools/manifest.py
 f7da6506c18b451dcf535c9484dbcbb1  tools/precheck.py
