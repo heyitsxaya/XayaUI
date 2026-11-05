@@ -446,7 +446,8 @@ check("Chat Panel: parts under it, panel switches on its own page, sections as t
 opened = []
 run("_G.__open = {}; ns.OpenSettingsPage = function(...) _G.__open = { ... } end")
 run("C.OpenSettings('bar', 'tab_blocksHdr')")
-check("right-click path opens Chat Bar > Blocks", str(run("return table.concat(_G.__open, '>')")) == "chat>chatpanel>bar>tab_blocksHdr")
+# Chat 0.6.13: the Chat Panel's page is in the Blizzard UI Reskin tab (module "reskin"; Xaya 2026-11-05)
+check("right-click path opens Blizzard UI Reskin > Chat Panel > Chat Bar > Blocks", str(run("return table.concat(_G.__open, '>')")) == "reskin>chatpanel>bar>tab_blocksHdr")
 
 # ---- settings changes through the option setters actually refresh the layout ----------------------------------------------
 run("""
