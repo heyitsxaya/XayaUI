@@ -97,10 +97,16 @@ function A.Available()
     return C_UnitAuras and C_UnitAuras.AddAuraSound and C_UnitAuras.RemoveAuraSound and Enum and Enum.UnitAuraSoundTrigger and true or false
 end
 
+local Start, Stop, Users   -- (below: the feature's events, V14)
+
 -- Bring the game's registrations in line with the rules. Out of combat only.
 function A.Sync()
     if not A.Available() then return false, "this game client has no C_UnitAuras.AddAuraSound" end
-    if InCombatLockdown and InCombatLockdown() then pending = true; return false, "in combat: updated when combat ends" end
+    if InCombatLockdown and InCombatLockdown() then
+        pending = true
+        if next(registered) or Users() then Start() end   -- (the end of combat applies it: PLAYER_REGEN_ENABLED)
+        return false, "in combat: updated when combat ends"
+    end
     pending = false
     local want = {}
     for _, r in ipairs(ns.rules or {}) do
@@ -125,12 +131,13 @@ function A.Sync()
             end
             if #got > 0 then registered[r] = { ids = got, sig = p.sig, partial = err }; lastWhy[r] = nil
             else lastWhy[r] = "the game refused it: " .. tostring(err) end
-            if ns.RecordLine then
+            if ns.RecordOn and ns.RecordOn("sound") then   -- (the text only while the debug record keeps "Sounds"; DebugRecord.lua)
                 ns.RecordLine("sound", ("game-played sound for rule '%s' (auras %s, %s): %s"):format(tostring(r.name), table.concat(p.ids, ","), p.when,
                     #got > 0 and ("set up, " .. #got .. " ID(s)" .. (err and ("; some refused: " .. tostring(err)) or "")) or ("refused: " .. tostring(err))))
             end
         end
     end
+    if not next(registered) and not Users() then Stop() end   -- the last rule unticked and the game's copies taken back: nothing left
     return true
 end
 
@@ -174,16 +181,54 @@ function A.Queue()
     local function Run() queued = false; pcall(A.Sync) end
     if C_Timer and C_Timer.After then C_Timer.After(0.5, Run) else Run() end
 end
-if CreateFrame then
-    local f = CreateFrame("Frame")
-    for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "PLAYER_SPECIALIZATION_CHANGED", "TRAIT_CONFIG_UPDATED",
-        "PLAYER_EQUIPMENT_CHANGED" }) do pcall(f.RegisterEvent, f, e) end
-    if f.SetScript then
-        f:SetScript("OnEvent", function(_, event)
-            if event == "PLAYER_REGEN_ENABLED" and not pending then return end
-            A.Queue()
-        end)
+
+-- V14 (core 0.6.47; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to
+-- performance cost / demand in any way"). The switch is per rule ("Let the game play this sound on the aura itself", off by default).
+-- While no rule ticks it and the game holds none of XayaUI's sounds: no frame, no event, no timer, no sync. The events below are
+-- registered while at least one rule ticks it (or a registration still has to be taken back), and let go after the sync that takes
+-- the last one back. What remains while off: on each rule edit (core's own EDITED message, which ns.MarkDirty sends), one pass over
+-- the rules reading each rule's switch, to notice a tick (the switch is written by the settings window, which tells core only
+-- through ns.MarkDirty). The old hook on ns.MarkDirty (a sync 0.5 s after every edit, every rule planned) is gone.
+-- Game API (docs/reference/api/widgets.md, Frame): RegisterEvent(eventName) -> registered: bool; UnregisterAllEvents().
+local EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "PLAYER_SPECIALIZATION_CHANGED", "TRAIT_CONFIG_UPDATED",
+    "PLAYER_EQUIPMENT_CHANGED" }
+local evf, live = nil, false
+-- does any rule tick the switch? (one field read per rule; no table is made)
+Users = function()
+    for _, r in ipairs(ns.rules or {}) do
+        local g = r.gameSound
+        if type(g) == "table" and g.enabled then return true end
     end
+    return false
 end
-if hooksecurefunc and ns.MarkDirty then hooksecurefunc(ns, "MarkDirty", A.Queue) end
+Start = function()
+    if live or not CreateFrame then return end
+    live = true
+    if not evf then
+        evf = CreateFrame("Frame")
+        if evf.SetScript then
+            evf:SetScript("OnEvent", function(_, event)
+                if event == "PLAYER_REGEN_ENABLED" and not pending then return end
+                A.Queue()
+            end)
+        end
+    end
+    for _, e in ipairs(EVENTS) do pcall(evf.RegisterEvent, evf, e) end
+end
+Stop = function()
+    if not live then return end
+    live = false
+    if evf and evf.UnregisterAllEvents then evf:UnregisterAllEvents() end
+end
+function A.Live() return live end   -- (tests)
+-- after a rule edit: a ticked switch starts it (and syncs, as every edit did); with none ticked, one more sync takes the game's
+-- copies back if it still holds any, then it stops
+local function OnEdited()
+    if Users() then Start(); A.Queue()
+    elseif live or next(registered) or pending then A.Queue() end
+end
+A.OnEdited = OnEdited
+if ns.On then ns.On("EDITED", OnEdited) end
+-- at login: start only if a rule ticks it (the first sync waits for PLAYER_ENTERING_WORLD, as before)
+if ns.WhenReady then ns.WhenReady(function() if Users() then Start() end end) end
 A._registered = registered

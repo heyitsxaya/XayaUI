@@ -179,6 +179,28 @@ end
 -- Console window
 -------------------------------------------------------------------------------
 local win
+local winShown = false   -- the window is up (OnShow / OnHide); while not, ns.ConsoleSink draws nothing
+local drawnSerial = 0    -- ns.logSerial when the window was last up to date (Core.lua counts every line put in ns.logBuf)
+local held = {}          -- { serial, line }: private lines that came while it was closed (they are never in ns.logBuf)
+-- the window opens again: draw what it missed, in the order it came
+local function CatchUp()
+    winShown = true
+    if not (win and win.log) then return end
+    local now, buf = ns.logSerial or 0, ns.logBuf or {}
+    local missed = now - drawnSerial
+    local h = 1
+    if missed > 0 then
+        local n = #buf
+        for i = math.max(1, n - missed + 1), n do
+            local serial = now - (n - i)   -- (buf[n] is line number `now`; a trim only drops lines from the front)
+            while held[h] and held[h][1] < serial do win.log:AddMessage(held[h][2]); h = h + 1 end
+            win.log:AddMessage(buf[i])
+        end
+    end
+    while held[h] do win.log:AddMessage(held[h][2]); h = h + 1 end
+    if #held > 0 then held = {} end
+    drawnSerial = now
+end
 local function SavePos()
     if not win then return end
     local u = Ui()
@@ -240,11 +262,22 @@ local function BuildWindow()
     grip:SetScript("OnMouseUp", function() f:StopMovingOrSizing(); SavePos() end)
     for _, line in ipairs(ns.logBuf or {}) do f.log:AddMessage(line) end
     win = f
+    f:SetScript("OnShow", CatchUp)
+    f:SetScript("OnHide", function() winShown = false; drawnSerial = ns.logSerial or 0 end)
+    winShown, drawnSerial = true, ns.logSerial or 0
     return f
 end
--- the log hands every new line here as well (Core.lua ns.Log); nothing is drawn while the window does not exist
-function ns.ConsoleSink(line)
-    if win and win.log then win.log:AddMessage(line) end
+-- the log hands every new line here as well (Core.lua ns.Log, DebugRecord.lua ns.ConsoleMessage). V14 (core 0.6.47; Xaya 2026-11-05:
+-- "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand in any way"):
+-- nothing is drawn while the window does not exist or is closed ("Console window" off); when it opens again it draws, in order, the
+-- lines of ns.logBuf it missed (CatchUp) and the private lines (ns.PrintPrivate, never in ns.logBuf) that came while it was closed.
+function ns.ConsoleSink(line, private)
+    if not win then return end
+    if winShown then win.log:AddMessage(line)
+    elseif private then
+        held[#held + 1] = { ns.logSerial or 0, line }
+        if #held > 100 then table.remove(held, 1) end
+    end
 end
 -- fromSettings: the settings window's own switch made the change; that window redraws itself after the click, so no redraw is
 -- asked for here. Any other caller (the close X, /xui console, a message opening it) asks for a "view" redraw: only the switch's
@@ -264,8 +297,9 @@ function ns.ConsoleWindow(show, fromSettings)
 end
 function ns.ConsoleWindowOn() return (win and win:IsShown()) and true or false end
 
-local ev = CreateFrame("Frame")
-ev:RegisterEvent("PLAYER_LOGIN")
-ev:SetScript("OnEvent", function()
-    if Ui().consoleOpen then ns.ConsoleWindow(true) end
+-- reopened at login when it was open at logout. V14: decided when the saved settings are ready; a window saved closed makes no frame
+-- and waits for nothing (core's start-up frame runs it at PLAYER_LOGIN, Modules.lua ns.AtLogin; this file had its own frame for it).
+ns.WhenReady(function()
+    if not Ui().consoleOpen then return end
+    ns.AtLogin(function() if Ui().consoleOpen then ns.ConsoleWindow(true) end end)
 end)

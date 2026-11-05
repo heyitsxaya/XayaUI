@@ -57,8 +57,11 @@ local function Cfg()
 end
 ns.GameMenuSkin_Cfg = Cfg
 
-function ns.GameMenuSkin_Active() return Cfg().skin and not diag.failed end
-function ns.GameMenuSkin_MatchReal() return Cfg().matchReal ~= false end
+-- The saved switch, read without filling in the defaults (Cfg does that): V14, a look that is off builds no data either.
+local function Saved() local ui = CueRulesDB and CueRulesDB.ui; local gm = ui and ui.gm; return type(gm) == "table" and gm or nil end
+local function SavedOn() local gm = Saved(); return gm and gm.skin and true or false end
+function ns.GameMenuSkin_Active() return SavedOn() and not diag.failed end
+function ns.GameMenuSkin_MatchReal() local gm = Saved(); return not (gm and gm.matchReal == false) end
 ns.Provide("gameMenuSkin", { Active = function() return ns.GameMenuSkin_Active() end, MatchReal = function() return ns.GameMenuSkin_MatchReal() end })
 
 -- colors -------------------------------------------------------------------------------------------------------------------------
@@ -92,6 +95,8 @@ end
 
 -- our frame and rows -------------------------------------------------------------------------------------------------------------
 local panel, rows, title = nil, {}, nil
+local faded = false   -- this file set Blizzard's menu to alpha 0 (and has not given it back yet)
+local live = false    -- "Use the XayaUI Game Menu look", cached (V14; set by Enable / Disable below)
 
 local function Edges(f)
     f.e = {}
@@ -322,7 +327,7 @@ end
 
 local function BuildMatch(menu, c)
     local list = ReadEntriesMatch(menu)
-    if #list == 0 then diag.lastError = "no menu entries found"; if panel then panel:Hide() end; menu:SetAlpha(1); return end
+    if #list == 0 then diag.lastError = "no menu entries found"; if panel then panel:Hide() end; menu:SetAlpha(1); faded = false; return end
     local p = Panel()
     p:SetScale(1)
     p:EnableMouse(false); p.cover:EnableMouse(false); p.cover:Hide()       -- nothing of ours takes a click: the real buttons do
@@ -358,7 +363,7 @@ local function BuildMatch(menu, c)
     for i = used + 1, #rows do rows[i]:Hide(); rows[i].matchSrc = nil end
     p.nRows = used
     p:SetScript("OnUpdate", PollRows)
-    menu:SetAlpha(0)
+    menu:SetAlpha(0); faded = true
     p:Show()
     diag.built, diag.rows = diag.built + 1, used
 end
@@ -369,12 +374,13 @@ local function Build()
     local c = Cfg()
     if not ns.GameMenuSkin_Active() then
         if panel then panel:Hide() end
-        if menu.SetAlpha then menu:SetAlpha(1) end
+        if faded and menu.SetAlpha then menu:SetAlpha(1) end   -- (only if this file had faded it; core 0.6.47 / Reskin 0.6.2, V14)
+        faded = false
         return
     end
     if c.matchReal ~= false then return BuildMatch(menu, c) end
     local list = ReadEntries(menu)
-    if #list == 0 then diag.lastError = "no menu entries found"; if panel then panel:Hide() end; menu:SetAlpha(1); return end
+    if #list == 0 then diag.lastError = "no menu entries found"; if panel then panel:Hide() end; menu:SetAlpha(1); faded = false; return end
     MarkGroups(list)
     local entries = Place(LABEL, c.xuiRow, list)
     local p = Panel()
@@ -414,7 +420,7 @@ local function Build()
     for i = used + 1, #rows do rows[i]:Hide() end
     p:SetSize(c.w + c.pad * 2, y + c.pad)
     p:ClearAllPoints(); p:SetPoint("CENTER", menu, "CENTER", 0, 0)
-    menu:SetAlpha(0)
+    menu:SetAlpha(0); faded = true
     p:Show()
     diag.built, diag.rows = diag.built + 1, used
 end
@@ -425,25 +431,46 @@ local function SafeBuild()
         diag.failed, diag.lastError = true, tostring(err)
         if panel then panel:Hide() end
         if GameMenuFrame and GameMenuFrame.SetAlpha then GameMenuFrame:SetAlpha(1) end    -- give Blizzard's menu back
+        faded = false
         if ns.CaptureError then ns.CaptureError(err) end
     end
 end
-function ns.GameMenuSkin_Refresh() if GameMenuFrame and GameMenuFrame:IsShown() then SafeBuild() end end
+function ns.GameMenuSkin_Refresh() if live and GameMenuFrame and GameMenuFrame:IsShown() then SafeBuild() end end
 
-local hooked
+-- V14 (Reskin 0.6.2; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to
+-- performance cost / demand in any way"). `live` is "Use the XayaUI Game Menu look", cached. Saved off: no frame, no event, no hook, no
+-- saved defaults. Saved on: the hooks are placed at PLAYER_LOGIN (as before); ticked later: at once. Unticked: the panel is hidden,
+-- Blizzard's menu gets its alpha back if this file had faded it, and the hooks (the game cannot take them back) return at once.
+local hooked = false
 local function Hook()
     if hooked or not GameMenuFrame then return end
     hooked = true
-    local function later() SafeBuild(); if C_Timer then C_Timer.After(0, SafeBuild) end end   -- again next frame: layout may settle after us
+    local function later()
+        if not live then return end
+        SafeBuild(); if C_Timer then C_Timer.After(0, SafeBuild) end   -- again next frame: layout may settle after us
+    end
     if type(GameMenuFrame.InitButtons) == "function" then hooksecurefunc(GameMenuFrame, "InitButtons", later) end
     GameMenuFrame:HookScript("OnShow", later)
-    GameMenuFrame:HookScript("OnHide", function() if panel then panel:Hide() end end)
+    GameMenuFrame:HookScript("OnHide", function() if live and panel then panel:Hide() end end)
 end
-
-local f = CreateFrame("Frame")
-f:RegisterEvent("PLAYER_LOGIN")
-f:SetScript("OnEvent", Hook)
-ns.GameMenuSkin_Hook = Hook
+local function Enable()
+    live = true
+    if hooked then return end
+    if ns.AtLogin then ns.AtLogin(function() if live then Hook() end end)   -- (core Modules.lua: at PLAYER_LOGIN, or at once after it)
+    else Hook() end
+end
+local function Disable()
+    live = false
+    if panel then panel:SetScript("OnUpdate", nil); panel:Hide() end
+    if faded and GameMenuFrame and GameMenuFrame.SetAlpha then GameMenuFrame:SetAlpha(1) end   -- only if this file had faded it
+    faded = false
+end
+-- the switch (and every other setting on the page) calls this through re() below
+local function Apply() if SavedOn() then Enable() elseif live then Disable() end end
+ns.GameMenuSkin_Hook = function() live = true; Hook() end   -- (tests: place the hooks and let them work, as ticking the switch does)
+function ns.GameMenuSkin_Live() return live end              -- (tests)
+-- at login (XayaUI's settings are ready before this addon loads, so this runs while the file loads)
+ns.WhenReady(function() if SavedOn() then Enable() end end)
 
 function ns.GameMenuSkin_Diagnostics()
     local c = Cfg()
@@ -478,7 +505,7 @@ end
 
 -- Blizzard UI Reskin > Esc Menu (the Game Menu look) ----------------------------------------------------------------------------------------------------------
 function ns.GameMenuSkin_Options(Notify)
-    local function re() diag.failed = false; ns.GameMenuSkin_Refresh(); if Notify then Notify() end end
+    local function re() diag.failed = false; Apply(); ns.GameMenuSkin_Refresh(); if Notify then Notify() end end
     local function g(k) return function() return Cfg()[k] end end
     local function s(k) return function(_, v) Cfg()[k] = v; re() end end
     local off = function() return not Cfg().skin end
@@ -493,7 +520,8 @@ function ns.GameMenuSkin_Options(Notify)
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "XayaUI's own look for the ESC menu. It draws its own look over Blizzard's menu and never edits the buttons other UI addons restyle. If something goes wrong the skin turns itself off and Blizzard's menu comes back. Off by default; /xui gamemenu shows what the menu exposes." },
-        skin = { type = "toggle", order = 1, width = "full", name = "Use the XayaUI Game Menu look", get = g("skin"), set = s("skin") },
+        skin = { type = "toggle", order = 1, width = "full", name = "Use the XayaUI Game Menu look", get = g("skin"), set = s("skin"),
+            desc = "Off: nothing of the look is made or runs. Switched off after it was on, Blizzard's menu comes back at once; the look's hooks on the menu stay until you /reload but do nothing." },
         match = { type = "toggle", order = 2, width = "full", name = "Match Blizzard's button positions (recommended)", disabled = off,
             desc = "On: the look is drawn on top of Blizzard's own buttons, exactly where they are, and a click goes straight to the real button under the pointer, so no button can run the wrong action. Button size, spacing, padding, scale, the XayaUI button's position, and 'Leave out of this menu' only apply when this is off. A change takes effect the next time the menu opens.",
             get = function() return Cfg().matchReal ~= false end, set = s("matchReal") },
