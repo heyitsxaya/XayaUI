@@ -8,16 +8,17 @@
 -- guessed; secret values show as "hidden in combat"). This file only draws it:
 --   Tabs: Stats | Gear | Spells (the Sheet tab was removed in QoL 0.7.14: the character window itself is restyled instead,
 --   QoL Character Reskin; the What If tab in 0.7.14: its numbers are the stat map's boxes, its item compare the Gear comparison).
---   Stats is the stat map: one card per stat with a box holding the number itself and what it feeds, "now -> with your number".
+--   Stats is the stat map: one card per stat with a box holding the number itself (the Change column, far right, QoL 0.7.20) and
+--   what it feeds, "now -> with your number"; an ability list is one nested line per ability.
 --   Gear: the equipped items as icons; click one to list what you own for that slot, pick one, and see the two side by side and
 --   everything the change does through the stat map. The Spells tab lists the spells added by hand and every spell of the
 --   spellbook with numbers in its description, under All / Offense / Defense filter buttons (spells only since 0.7.14).
 --   Each tab is made of sections with a header (click a header to fold it). The stat sections (every Stats section, the Gear
---   comparison's "What it changes") are tables since QoL 0.7.15: Stat | (a card's box) | Current value | Pt value | Note under a
---   column head, each card's "»" lines in the same columns (RenderGrid); the Gear Summary and Side by side are Gear | Character |
---   Elsewhere and Equipped | this item | Change. Other lines are label and value, with their detail pairs under them. Hovering a line
---   shows where the number comes from (the conversion hover: rating through the game's converter, base and buffs, linked conversions
---   such as crit to parry where the game reports them, thresholds).
+--   comparison's "What it changes") are tables since QoL 0.7.15: Stat | Rating | Current value | Pt value | Note | Change (the box,
+--   since 0.7.20) under a column head, each card's "»" lines in the same columns (RenderGrid); the Gear Summary and Side by side
+--   are Gear | Character | Elsewhere and Equipped | this item | Change. Other lines are label and value, with their detail pairs
+--   under them. Hovering a line shows where the number comes from (the conversion hover: rating through the game's converter, base
+--   and buffs, linked conversions such as crit to parry where the game reports them, thresholds).
 --   Rating lines show a percent or a rating: the "%" / "rating" button in the title row sets it for every line, and clicking a
 --   rating line flips that line alone.
 --   Look: the XayaUI theme's colors and font (ns.Theme): window, border, tab, button and text classes; nothing from another addon.
@@ -165,7 +166,7 @@ function ns.CharToolkit_TooltipLines(it, mode)
     local out = {}
     local v, tone = CM.ValueFor(it, mode)
     out[#out + 1] = { it.label or "", CM.PairText({ value = v or "", per = it.per, note = it.note }), tone, title = true }
-    for _, p in ipairs(it.pairs or {}) do out[#out + 1] = { p.label, CM.PairText(p), p.tone } end
+    for _, p in ipairs(it.pairs or {}) do out[#out + 1] = { CM.PairLabel(p), CM.PairText(p), p.tone } end   -- (nested: indented)
     if #(it.tip or {}) > 0 then
         out[#out + 1] = { " " }
         for _, l in ipairs(it.tip) do out[#out + 1] = { l } end
@@ -696,27 +697,34 @@ end
 
 -- The stat grid (QoL 0.7.15; Xaya 2026-11-05: "do multiple columns: for cleaner presentation * Stat | Current Value | Pt Value | etc";
 -- before, each line was label | value with the Pt value and the note glued into the value, "+2,671  (1 = 1.00)"). Every Stats-tab
--- section and the Gear comparison's "What it changes" draw Stat | (a card's box) | Current value | Pt value | Note at one set of x
--- positions, worked out from the panel's width (the #351 gutter between columns). The note is a column of its own once the panel is
--- wide enough for it (drag the corner: content 520 or wider), else it goes under its line, from the Current value column to the
--- right edge; a line that has only a note (a list of abilities) puts it on the line itself. A line with no box lets its name run on
--- over the box column. Every cell wraps inside its own column, so nothing overlaps at any width or text size, and nothing is cut.
+-- section and the Gear comparison's "What it changes" draw their cells at one set of x positions, worked out from the panel's width
+-- (the #351 gutter between columns). QoL 0.7.20 (Xaya 2026-11-05: "put the input box on the far right under a new column "Change""):
+-- Stat | Rating | Current value | Pt value | (Note) | Change. The box is the last cell of its row, at the content's right edge; Rating
+-- shows a rating card's rating as text where the box sat before. The note is a column of its own (between Pt value and Change) once
+-- the panel is wide enough for it (drag the corner: content 520 or wider, as before), else it goes under its line, from the Current
+-- value column to the right edge; a line that has only a note puts it on the line itself. A line with no rating lets its name run on
+-- over the Rating column. Every cell wraps inside its own column, so nothing overlaps at any width or text size, and nothing is cut.
 -- (Replaces the stat map's MapCols of QoL 0.7.14: name | rating box | percent | rating per 1%, #382.)
-local GRID_BOX, GRID_VAL, GRID_PER = 56, 102, 64     -- the box (as before), Current value ("hidden in combat" fits), Pt value
-local GRID_STAT_MIN, GRID_NOTE_MIN = 108, 150
--- hasBox false: no line of the tab has a box (the Gear tab), so Current value takes the box column's room ("now -> then" fits on
--- one line); Stat, Pt value and Note keep their x
+-- Widths (by the estimate the layout test uses, 0.55 x text size per character, at text size 11): Rating holds "1,287"; Current
+-- value "22.63% -> 26.22%" and "hidden in combat" (16 characters); Pt value "46.0 / 1%"; the box five digits in its own font. On the
+-- default panel (content 360) that leaves Stat 86 and a "»" line's name 120 ("Diminishing returns" fits on one line).
+local GRID_RAT, GRID_VAL, GRID_PER, GRID_BOX = 36, 98, 56, 44
+local GRID_STAT_MIN, GRID_NOTE_MIN = 96, 140
+-- hasBox false: no line of the tab has a box (the Gear tab), so it has no Rating and no Change column: Current value takes the
+-- Rating column's room ("now -> then" fits on one line); Stat and Pt value keep their x, the note runs to the right edge
 local function GridCols(hasBox)
-    local fixed = GRID_BOX + GRID_VAL + GRID_PER + 3 * GUT
-    local g = { box = GRID_BOX, val = GRID_VAL, per = GRID_PER }
-    g.wide = W - fixed - GUT - GRID_STAT_MIN >= GRID_NOTE_MIN
-    g.stat = g.wide and math.max(GRID_STAT_MIN, math.floor((W - fixed - GUT) * 0.4)) or math.max(40, W - fixed)
-    g.bx = g.stat + GUT
-    g.vx = g.bx + GRID_BOX + GUT
-    if hasBox == false then g.box, g.vx, g.val = 0, g.bx, GRID_VAL + GRID_BOX + GUT end
+    local fixed = GRID_RAT + GRID_VAL + GRID_PER + GRID_BOX + 4 * GUT
+    local g = { rat = GRID_RAT, val = GRID_VAL, per = GRID_PER, box = GRID_BOX }
+    local slack = W - fixed - GUT
+    g.wide = slack - GRID_STAT_MIN >= GRID_NOTE_MIN
+    g.stat = g.wide and math.max(GRID_STAT_MIN, math.floor(slack * 0.4)) or math.max(40, W - fixed)
+    g.rx = g.stat + GUT
+    g.vx = g.rx + GRID_RAT + GUT
+    if hasBox == false then g.rat, g.box, g.vx, g.val = 0, 0, g.rx, GRID_VAL + GRID_RAT + GUT end
     g.px = g.vx + g.val + GUT
     g.label = g.vx - GUT
-    if g.wide then g.nx = g.px + GRID_PER + GUT; g.note = W - g.nx end
+    g.cx = W - g.box   -- Change: the box, the last cell of its row
+    if g.wide then g.nx = g.px + GRID_PER + GUT; g.note = (g.box > 0 and (g.cx - GUT) or W) - g.nx end
     return g
 end
 ns.CharToolkit_GridCols = GridCols   -- (tests: the x positions the cells must sit at)
@@ -730,20 +738,24 @@ local function CmpCols()
 end
 
 -- one line of the grid: its cells at the grid's x positions; returns the line's height (its note under it included)
--- o: x0 (indent), label, labelCol, size, value, valueCol, per, perCol, note, noteCol, box (the line has a box), boxH, kind (the layout
--- records' prefix: "" for a card's own line, "pair" for a line under it)
+-- o: x0 (indent), label, labelCol, size, rating (a rating card's rating text), value, valueCol, per, perCol, note, noteCol, box (the
+-- line has a box), boxH, kind (the layout records' prefix: "" for a card's own line, "pair" for a line under it)
 local function GridLine(g, y, o)
     local k = o.kind or ""
     local function K(s) return (k == "") and s or (k .. s:sub(1, 1):upper() .. s:sub(2)) end
-    local h = PlaceFS(FS(), o.x0, y, (o.box and g.stat or g.label) - o.x0, o.size, o.label, o.labelCol, "LEFT", true, K("label"))
+    local hasR = (o.rating or "") ~= "" and g.rat > 0
+    local h = PlaceFS(FS(), o.x0, y, (hasR and g.stat or g.label) - o.x0, o.size, o.label, o.labelCol, "LEFT", true, K("label"))
     local hasV, hasP, hasN = (o.value or "") ~= "", (o.per or "") ~= "", (o.note or "") ~= ""
     if o.boxH then h = math.max(h, o.boxH) end
+    if hasR then h = math.max(h, PlaceFS(FS(), g.rx, y, g.rat, o.size, o.rating, o.ratingCol, "RIGHT", true, K("rating"))) end
     if hasV then h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, o.size, o.value, o.valueCol, "RIGHT", true, K("value"))) end
     if hasP then h = math.max(h, PlaceFS(FS(), g.px, y, g.per, o.size, o.per, o.perCol, "RIGHT", true, K("per"))) end
     if hasN and g.wide then
         h = math.max(h, PlaceFS(FS(), g.nx, y, g.note, o.size, o.note, o.noteCol, "LEFT", true, K("note")))
     elseif hasN and not hasV and not hasP then
-        h = math.max(h, PlaceFS(FS(), g.vx, y, W - g.vx, o.size, o.note, o.noteCol, "LEFT", true, K("note")))
+        -- (on the line itself: up to the box when the line has one)
+        local right = (o.box and g.box > 0) and (g.cx - GUT) or W
+        h = math.max(h, PlaceFS(FS(), g.vx, y, right - g.vx, o.size, o.note, o.noteCol, "LEFT", true, K("note")))
     elseif hasN then
         h = h + 1 + PlaceFS(FS(), g.vx, y + h + 1, W - g.vx, o.size, o.note, o.noteCol, "LEFT", true, K("note"))
     end
@@ -762,10 +774,11 @@ local function RenderGrid(c, items, y, hasBox)
         if it.kind == "colhead" then
             local cs, hs = it.cols or {}, size - 1
             local h = PlaceFS(FS(), 0, y, g.stat, hs, cs[1] or "", cMuted, "LEFT", true, "colhead")
-            if (cs[2] or "") ~= "" and g.box > 0 then h = math.max(h, PlaceFS(FS(), g.bx, y, g.box, hs, cs[2], cMuted, "LEFT", true, "colhead")) end
+            if (cs[2] or "") ~= "" and g.rat > 0 then h = math.max(h, PlaceFS(FS(), g.rx, y, g.rat, hs, cs[2], cMuted, "RIGHT", true, "colhead")) end
             h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, hs, cs[3] or "", cMuted, "RIGHT", true, "colhead"))
             h = math.max(h, PlaceFS(FS(), g.px, y, g.per, hs, cs[4] or "", cMuted, "RIGHT", true, "colhead"))
             if g.wide then h = math.max(h, PlaceFS(FS(), g.nx, y, g.note, hs, cs[5] or "", cMuted, "LEFT", true, "colhead")) end
+            if (cs[6] or "") ~= "" and g.box > 0 then h = math.max(h, PlaceFS(FS(), g.cx, y, g.box, hs, cs[6], cMuted, "LEFT", true, "colhead")) end
             local hb = Btn()   -- hover: what each column holds
             hb.item = it
             hb:ClearAllPoints()
@@ -781,9 +794,10 @@ local function RenderGrid(c, items, y, hasBox)
             local boxed = it.kind == "input" and it.input ~= nil
             local boxH = boxed and (size + 6) or nil
             if boxed then
+                -- the box: the Change column, the last cell of its row (QoL 0.7.20; it sat under Rating before)
                 local eb = Box(it.input)
                 eb:ClearAllPoints()
-                eb:SetPoint("TOPLEFT", content, "TOPLEFT", g.bx, -y + 2)
+                eb:SetPoint("TOPLEFT", content, "TOPLEFT", g.cx, -y + 2)
                 eb:SetSize(g.box, size + 6)
                 if not (eb.HasFocus and eb:HasFocus()) then
                     local amt = num(it.amount) and it.amount or 0
@@ -792,10 +806,11 @@ local function RenderGrid(c, items, y, hasBox)
                 end
                 eb:Show()
                 eb.xuiUsed = true
-                Rec("input", g.bx, y, g.box, size + 6, it.input, size)
+                Rec("input", g.cx, y, g.box, size + 6, it.input, size)
             end
             local hasV = (v or "") ~= ""
             local h = GridLine(g, y, { x0 = 0, label = it.label, labelCol = it.labelColor or (it.minor and cMuted or cText), size = size,
+                rating = it.ratingText, ratingCol = cText,
                 value = v, valueCol = ToneColor(tone, cText), per = it.per, perCol = cText, note = it.note,
                 noteCol = (hasV or (it.per or "") ~= "") and cMuted or ToneColor(tone, cText), box = boxed, boxH = boxH })
             y = y + h + 2
@@ -807,21 +822,22 @@ local function RenderGrid(c, items, y, hasBox)
                 if not short or p.short then
                     local pv = (p.value ~= nil) and tostring(p.value) or ""
                     local lone = pv == "" and (p.per or "") == ""
-                    local ph = GridLine(g, y, { x0 = 12, label = p.label, labelCol = p.labelColor or pcol, size = psz, value = pv,
+                    -- a nested line (one ability under its "»" line, QoL 0.7.20) sits one indent deeper than the "»" lines
+                    local ph = GridLine(g, y, { x0 = p.nested and 24 or 12, label = p.label, labelCol = p.labelColor or pcol, size = psz, value = pv,
                         valueCol = ToneColor(p.tone, cText), per = p.per, perCol = pcol, note = p.note,
                         noteCol = lone and ToneColor(p.tone, pcol) or cMuted, kind = "pair" })
                     y = y + ph + 1
                 end
             end
-            -- the hover (where the numbers come from): a card with a box keeps its box clickable, so its hover is its name and the
-            -- lines under it; any other card hovers as a whole
+            -- the hover (where the numbers come from): a card with a box keeps its box clickable, so its hover is its line up to the
+            -- box (name, rating, value, Pt value) and the lines under it; any other card hovers as a whole
             if boxed then
                 local lb = Btn()
                 lb.item = it
                 lb:ClearAllPoints()
                 lb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top)
-                lb:SetSize(g.stat, size + 6)
-                Rec("hit", 0, top, g.stat, size + 6, it.key)
+                lb:SetSize(g.cx - GUT, size + 6)
+                Rec("hit", 0, top, g.cx - GUT, size + 6, it.key)
                 if y > headEnd then
                     local pb = Btn()
                     pb.item = it
@@ -854,7 +870,7 @@ local function RenderSections(c, m, tab, y0)
     local cLine = TC("xui-window", "border", { 0.3, 0.3, 0.3, 1 })
     local short = c.detail == "short"
     local y = y0 or 0
-    -- the grid's box column exists when a grid line of this tab has a box (one set of columns per tab)
+    -- the grid's Rating and Change (box) columns exist when a grid line of this tab has a box (one set of columns per tab)
     local gridBox = false
     for _, sec in ipairs(m.sections) do
         if sec.tab == tab and sec.grid then
@@ -1335,8 +1351,8 @@ local function AppendTooltip(frame)
             if card.per and card.per ~= "" then lines[#lines + 1] = { "Rating per 1%", (card.per:gsub(" / 1%%$", "")) } end
         end
         for _, p in ipairs(card.pairs or {}) do
-            -- (one text column: the Pt value and the note follow the value, QoL 0.7.15)
-            if p.label ~= "From rating" then lines[#lines + 1] = { p.label, CM.PairText(p) } end
+            -- (one text column: the Pt value and the note follow the value, QoL 0.7.15; a nested ability line is indented, 0.7.20)
+            if p.label ~= "From rating" then lines[#lines + 1] = { CM.PairLabel(p), CM.PairText(p) } end
         end
     else
         local it = CM.Build(c, nil).byKey[key]

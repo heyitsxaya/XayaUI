@@ -674,13 +674,14 @@ A panel beside the character window (XayaUI QoL; its title reads **Stat Calculat
 **Tabs:**
 - **Stats, the stat map:** what influences what.
   - One card per stat. Its name is in that stat's own colour (one colour per stat, used across the panel; XayaUI's choice until you pick).
-  - Secondary and tertiary cards: a box holding your rating, the percent, and "N / 1%" (the rating for 1% now); then "From rating" and "Diminishing returns" in words (rating lost, how much less the next point counts, the next threshold and how far away). A stat you have no rating in shows only what it does.
-  - **Type a number** in any box (the number itself, not an amount) and press Enter: every number it feeds shows "now -> then". Empty, or your own number, puts it back. The All ratings box at the end of Secondary stats adds the same amount to every rating.
+  - **Columns** (QoL 0.7.15; the Change column since QoL 0.7.20): every section is a table under a grey head, **Stat | Rating | Current value | Pt value | Change**. Rating (Secondary and Tertiary stats) is your rating; Current value the game's figure now ("now -> then" when a typed number changes it); Pt value what one point gives (1.00 attack power per Agility) or "N / 1%" (the rating for 1%); **Change** is the box, the last thing on its row at the far right. Notes (where a number comes from) go under their line; drag the panel wider (540 or more) and they get a **Note** column between Pt value and Change.
+  - Secondary and tertiary cards: your rating, the percent, "N / 1%" (the rating for 1% now) and the box with your rating; then "From rating" and "Diminishing returns" in words (rating lost, how much less the next point counts, the next threshold and how far away). A stat you have no rating in shows only what it does.
+  - **Type a number** in any box under Change (the number itself, not an amount) and press Enter: every number it feeds shows "now -> then"; Rating keeps showing your own rating. Empty, or your own number, puts it back. The All ratings box at the end of Secondary stats adds the same amount to every rating.
   - The "»" lines are what each stat feeds, each through the game's own conversion:
-    - Agility / Strength: attack power, dodge or parry (the game's figure; with your own number it says the game gives no per-point figure), armor through your mastery's text where it links them, and each ability's first number per 100 (and with your number, each ability's number now -> then);
+    - Agility / Strength: attack power, dodge or parry (the game's figure; with your own number it says the game gives no per-point figure), armor through your mastery's text where it links them, and **Abilities (per 100)**: each ability's first number per 100, one ability per line under it with its number under Current value; with your number, **Ability Scaling** (called "Abilities with your number" before QoL 0.7.20): each ability's number now -> then, one ability per line;
     - Stamina: health;
     - Critical Strike: parry for specs that turn crit into parry, with the crit rating for 1% parry;
-    - Haste: the global cooldown, attack speed and the recharge of abilities whose text names Haste (with your number: estimates, the game's figure x (1 + haste now) / (1 + haste then));
+    - Haste: the global cooldown, attack speed and the abilities whose text names Haste, one per line with its recharge (with your number: estimates, the game's figure x (1 + haste now) / (1 + haste then));
     - Mastery: armor from your primary stat, armor per 1% mastery, and attack power where your mastery's text gives them;
     - Versatility: damage and healing done, damage taken;
     - Avoidance, Leech, Speed: what each does.
