@@ -110,6 +110,42 @@ function C.Register(name, fn)
     C.mods[#C.mods + 1] = { name = name, fn = fn }
 end
 
+-------------------------------------------------------------------------------
+-- V14 "off costs nothing" (Xaya, 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute
+-- to performance cost / demand in any way"). Every part of the Chat Panel that has a switch registers a start and a stop here, and
+-- C.Refresh starts or stops only the parts whose switch changed. Nothing of a part exists before its first start: its frames, events,
+-- OnUpdate scripts, chat filters and hooks are made there; its stop clears its OnUpdate and unregisters its events. With the Chat Panel
+-- off, nothing of it is created, registered or run. Two limits the game sets: (1) this addon is not LoadOnDemand, so its files are read
+-- at every login while it is enabled in the AddOns list; (2) a hook (hooksecurefunc / HookScript) cannot be taken back, and neither can
+-- a chat filter here (the 12.1.5 API documentation, docs/reference/api, has no RemoveMessageEventFilter; INFERENCE: not relied on). Those
+-- are placed once, on the first start, and return at once on a cached flag (C.on[part], C.active) while their part is off; a /reload
+-- removes them fully.
+-------------------------------------------------------------------------------
+C.on = {}          -- part name -> true while that part runs (the cached answer hooks read; never a settings read)
+local parts = {}
+-- want(s): is the part wanted (the Chat Panel being on is checked by the caller); start(s) / stop(s); update(s): on every refresh while it runs
+function C.Part(name, want, start, stop, update)
+    parts[#parts + 1] = { name = name, want = want, start = start, stop = stop, update = update }
+end
+local function RunPart(p, fn, s)
+    if not fn then return end
+    local ok, err = pcall(fn, s)
+    if not ok then C.applied[p.name] = false; if not C.errors[p.name] then C.errors[p.name] = tostring(err) end end
+end
+function C.SyncParts(s, live)
+    for _, p in ipairs(parts) do
+        local w = (live and s and p.want(s)) and true or false
+        if w and not C.on[p.name] then C.on[p.name] = true; RunPart(p, p.start, s)
+        elseif w then RunPart(p, p.update, s)
+        elseif C.on[p.name] then C.on[p.name] = false; RunPart(p, p.stop, s) end
+    end
+end
+function C.StartPart(name, s)
+    for _, p in ipairs(parts) do
+        if p.name == name and not C.on[name] then C.on[name] = true; RunPart(p, p.start, s) end
+    end
+end
+
 local function IsLoaded(name)
     if C_AddOns and C_AddOns.IsAddOnLoaded then return C_AddOns.IsAddOnLoaded(name) and true or false end
     return IsAddOnLoaded and IsAddOnLoaded(name) and true or false
@@ -128,9 +164,19 @@ function C.BlockedReason()
     return nil
 end
 
+-- The blocked answer is read again at every C.Refresh while the Chat Panel is switched on (the loading-screen and chat-window events
+-- that also took the Chat Panel down before), never per frame or per message: up to Chat 0.6.13 every C.On() call made two
+-- C_AddOns.IsAddOnLoaded calls (namespaces.md:162 `C_AddOns.IsAddOnLoaded(name: uiAddon)` -> `loadedOrLoading: bool, loaded: bool`),
+-- and the fade driver called C.On() on every frame. INFERENCE: the other addon's own chat switch changes only with a reload of its
+-- settings, so a value read at the refresh is current.
+local blocked      -- nil: not read yet; false: nothing blocks; a string: the reason
+local function Blocked()
+    if blocked == nil then blocked = C.BlockedReason() or false end
+    return blocked
+end
 function C.On()
     local s = ns.chat2
-    return s and s.enabled and not C.BlockedReason() and true or false
+    return s and s.enabled and not Blocked() and true or false
 end
 
 function C.Frames()
@@ -273,6 +319,7 @@ function C.Teardown()
     end
     C.raised = {}
     C.master, C.fade = 1, 1
+    C.inputFocus = false   -- the edit box's focus hooks are idle while the Chat Panel is off (Skin.lua); the next focus sets it again
     for _, el in ipairs(C.alphaEls) do
         pcall(function()
             el._xuiSetting = true
@@ -280,6 +327,8 @@ function C.Teardown()
             el._xuiSetting = false
             if el._xuiMouse ~= nil and el.EnableMouse then el:EnableMouse(el._xuiMouse); el._xuiMouse = nil end
         end)
+        -- the SetAlpha hook (Frame.lua HookAlpha) is idle while off, so the game's value is read afresh when the Chat Panel comes back
+        el._xuiBase = nil
     end
     for _, o in ipairs(C.remembered) do
         pcall(function()
@@ -312,12 +361,32 @@ function C.Teardown()
     end
 end
 
+-- the saved defaults: filled in the first time the Chat Panel is on (at login when it is saved on), or when its settings page is built
+-- (the page shows them). V14: with the Chat Panel saved off, nothing is built for it at login.
+local defaulted
+function C.EnsureDefaults()
+    local s = ns.chat2
+    if not s or defaulted == s then return end
+    defaulted = s
+    for k, v in pairs(C.DEFAULTS) do if s[k] == nil then s[k] = Copy(v) end end
+    s.sounds = type(s.sounds) == "table" and s.sounds or {}
+    -- whisper sound overrides (Sounds.lua): { list = { { who, enabled, source, value, channel } ... }, fav = { enabled, source, value, channel } }
+    s.whisperSounds = type(s.whisperSounds) == "table" and s.whisperSounds or {}
+    s.whisperSounds.list = type(s.whisperSounds.list) == "table" and s.whisperSounds.list or {}
+end
+
 -- the refresh bus ----------------------------------------------------------------------------------------------------------
+-- C.active: the Chat Panel is applied right now (set here, cleared by C.Teardown). Hooks the game cannot take back read it.
 function C.Refresh()
     local s = ns.chat2
     if not s then return end
-    if not C.On() then C.Teardown(); return end      -- off (or blocked by another chat addon): give Blizzard's chat back, untouched
+    if s.enabled then blocked = C.BlockedReason() or false end
+    if not C.On() then                               -- off (or blocked by another chat addon): give Blizzard's chat back, untouched,
+        C.Teardown(); C.SyncParts(s, false); return  -- and stop every driver, event and filter of it
+    end
+    C.EnsureDefaults()
     C.active = true
+    C.SyncParts(s, true)
     for _, m in ipairs(C.mods) do C.Try(m.name, m.fn, s) end
 end
 
@@ -330,24 +399,40 @@ end
 
 function ns.Chat_OnDBReady()
     CueRulesDB.chat = CueRulesDB.chat or {}                        -- privacy cover settings (kept as they are)
-    ns.Merge(CueRulesDB.chat, ns.CHAT_DEFAULTS)
     ns.chatDB = CueRulesDB.chat
     CueRulesDB.chat2 = CueRulesDB.chat2 or {}                      -- the new Chat Panel (old chat settings are not read)
     local s = CueRulesDB.chat2
-    for k, v in pairs(C.DEFAULTS) do if s[k] == nil then s[k] = Copy(v) end end
-    s.sounds = type(s.sounds) == "table" and s.sounds or {}
-    -- whisper sound overrides (Sounds.lua): { list = { { who, enabled, source, value, channel } ... }, fav = { enabled, source, value, channel } }
-    s.whisperSounds = type(s.whisperSounds) == "table" and s.whisperSounds or {}
-    s.whisperSounds.list = type(s.whisperSounds.list) == "table" and s.whisperSounds.list or {}
+    if s.enabled == nil then s.enabled = C.DEFAULTS.enabled end
     ns.chat2 = s
+    -- "Cover the chat at every login" (Privacy.lua): up to Chat 0.6.13 read on the first loading screen by a frame of its own
+    if ns.chatDB.privStartHidden then ns.chatDB.privOn = true end
+    if not s.enabled then return end                              -- V14: saved off, nothing more is built, registered or run
+    -- the privacy defaults are merged here, at the same moment as before (INFERENCE: in the game this runs while this file loads, before
+    -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14)
+    ns.Merge(CueRulesDB.chat, ns.CHAT_DEFAULTS)
+    C.EnsureDefaults()
+    C.StartPart("panel", s)                                       -- the refresh events below; the first refresh starts the rest
 end
 
-local drv = CreateFrame("Frame")
-for _, ev in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "UPDATE_CHAT_WINDOWS", "UPDATE_FLOATING_CHAT_WINDOWS", "DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED" }) do
-    drv:RegisterEvent(ev)
-end
-drv:SetScript("OnEvent", function() C.Schedule() end)
-if ns.Theme and ns.Theme.OnResolve then ns.Theme.OnResolve(function() C.Schedule() end) end
+-- the "panel" part: the events that make the Chat Panel lay itself out again, and the theme callback (placed once; idle while off)
+local REFRESH_EVENTS = { "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "UPDATE_CHAT_WINDOWS", "UPDATE_FLOATING_CHAT_WINDOWS", "DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED" }
+local drv, themeHooked
+C.Part("panel", function() return true end,
+    function()
+        if not drv then
+            drv = CreateFrame("Frame")
+            drv:SetScript("OnEvent", function() C.Schedule() end)
+        end
+        for _, ev in ipairs(REFRESH_EVENTS) do drv:RegisterEvent(ev) end
+        if not themeHooked and ns.Theme and ns.Theme.OnResolve then
+            themeHooked = true
+            -- a theme change only matters to the chat with "Use the XayaUI theme" on (C.ThemeOn is the only reader of ns.Theme here)
+            ns.Theme.OnResolve(function() if C.on.panel and ns.chat2 and ns.chat2.useTheme then C.Schedule() end end)
+        end
+    end,
+    function()
+        if drv then for _, ev in ipairs(REFRESH_EVENTS) do drv:UnregisterEvent(ev) end end
+    end)
 
 -- /xui chat indent : READ ONLY. Where the empty space at the left of the chat text comes from. For the first visible lines it prints how far
 -- the line's own box sits from the window's left edge, and the first characters of the line's text with every |-code shown as typed (a
@@ -399,21 +484,32 @@ end
 -- setting Options > Social > New Whispers (CVar whisperMode) is "popout" (New Tab) or "popout_and_inline" (Both), and only when no tab
 -- for that sender exists yet. The Chat Panel never opens, closes or hides those windows (no reason for a missing tab was found in its
 -- code). The report counts, since the last /reload, the whispers that arrived and the whisper tabs the game opened, and the whisper
--- windows there are now. No name is read or printed.
+-- windows there are now. No name is read or printed. V14: counted only while the Chat Panel is on (the "whispers" part).
 local WHISPER_IN = { CHAT_MSG_WHISPER = true, CHAT_MSG_BN_WHISPER = true }
 local WHISPER_OUT = { CHAT_MSG_WHISPER_INFORM = true, CHAT_MSG_BN_WHISPER_INFORM = true }
 C.whispers = { got = 0, sent = 0, opened = 0 }
-local wdrv = CreateFrame("Frame")
-for ev in pairs(WHISPER_IN) do pcall(wdrv.RegisterEvent, wdrv, ev) end
-for ev in pairs(WHISPER_OUT) do pcall(wdrv.RegisterEvent, wdrv, ev) end
-wdrv:SetScript("OnEvent", function(_, event)
-    if WHISPER_IN[event] then C.whispers.got = C.whispers.got + 1
-    elseif WHISPER_OUT[event] then C.whispers.sent = C.whispers.sent + 1 end
-end)
+local wdrv
 local function IsWhisperType(t) return type(t) == "string" and not issecret(t) and (t == "WHISPER" or t == "BN_WHISPER") end
-C.HookOnce("whispers:open", "FCF_OpenTemporaryWindow", nil, function(chatType)
-    if IsWhisperType(chatType) then C.whispers.opened = C.whispers.opened + 1 end
-end)
+C.Part("whispers", function() return true end,
+    function()
+        if not wdrv then
+            wdrv = CreateFrame("Frame")
+            wdrv:SetScript("OnEvent", function(_, event)
+                if WHISPER_IN[event] then C.whispers.got = C.whispers.got + 1
+                elseif WHISPER_OUT[event] then C.whispers.sent = C.whispers.sent + 1 end
+            end)
+        end
+        for ev in pairs(WHISPER_IN) do pcall(wdrv.RegisterEvent, wdrv, ev) end
+        for ev in pairs(WHISPER_OUT) do pcall(wdrv.RegisterEvent, wdrv, ev) end
+        C.HookOnce("whispers:open", "FCF_OpenTemporaryWindow", nil, function(chatType)
+            if C.on.whispers and IsWhisperType(chatType) then C.whispers.opened = C.whispers.opened + 1 end
+        end)
+    end,
+    function()
+        if not wdrv then return end
+        for ev in pairs(WHISPER_IN) do pcall(wdrv.UnregisterEvent, wdrv, ev) end
+        for ev in pairs(WHISPER_OUT) do pcall(wdrv.UnregisterEvent, wdrv, ev) end
+    end)
 
 local WHISPER_MODES = { popout = "New Tab", inline = "In-line", popout_and_inline = "Both" }
 function C.WhisperFacts()
@@ -447,7 +543,7 @@ local function WhisperReport()
     ns.Print(("Chat whispers: the game's setting Options > Social > New Whispers is %s"):format(
         w.mode and ("\"" .. (WHISPER_MODES[w.mode] or w.mode) .. "\" (whisperMode " .. w.mode .. ")") or "unreadable"))
     ns.Print(("  the game's whisper-tab manager listens for whispers: %s; for Battle.net whispers: %s"):format(yn(w.listens), yn(w.listensBN)))
-    ns.Print(("  since the last /reload: %d whispers received, %d sent, %d whisper tabs opened by the game"):format(w.got, w.sent, w.opened))
+    ns.Print(("  since the last /reload, while the Chat Panel was on: %d whispers received, %d sent, %d whisper tabs opened by the game"):format(w.got, w.sent, w.opened))
     ns.Print(("  whisper windows now: %d in the tab row, %d floating; windows in the tab row: %s"):format(w.docked, w.floating, tostring(w.inRow or "unreadable")))
     if w.mode == "inline" then
         ns.Print("  -> the game puts whispers into the chat window itself. For a tab per conversation: Options > Social > New Whispers > New Tab (or Both).")
