@@ -27,7 +27,7 @@ Logged 2026-11-05 20:27 UTC. Session branch `claude/admiring-ride-sm7jrh`. Not r
 ## Decisions (mine; each can be changed)
 - DECISION: "All" goes to the very end, after Console (her earlier wording "should not show except for on the last tab").
 - DECISION: two choices only, as she named them; with the game set to In-line and "As the game" chosen there are no whisper tabs.
-- DECISION: a conversation is matched by name without realm (the game's whisper window target and the message author can differ in
+- (Replaced in Chat 0.6.16 after Xaya's correction: matched by name and realm, a missing realm being your own.) DECISION: a conversation is matched by name without realm (the game's whisper window target and the message author can differ in
   whether they carry the realm). INFERENCE: two people of the same name on different realms share a tab.
 
 ## INFERENCES (not checked in game)

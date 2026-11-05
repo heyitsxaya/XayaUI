@@ -2,12 +2,12 @@ a6b90f93be08b2134468e876fefd33d1  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-f6c090d7598d0ad5533f00aefb30a7c6  QA-CHECKLIST.md
+4cad2feee0869b8fe96ffa54f5419372  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 af70051b991ea3877b4fb5f1a2002ba5  ROADMAP.md
 8e26fa7260dfdd487f86249f75b6c9d2  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-f75ca7c64b796fd15b89a9c29db85093  USER-GUIDE.md
+4a9db3232413e677e10b7339d93c2c94  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 7bc5ab6899bc167c8fc5f3db72f3c9ff  XayaUI/AuraSound.lua
@@ -142,7 +142,7 @@ c6d4fdeafa8b7fe319031fc259f1ae99  XayaUI_Bonus/Utilities.lua
 5dca5ea1fb1066fcd02b2674eefdfa24  XayaUI_Chat/Core.lua
 8a087c49d9bd56d9daa92cb0054f97d6  XayaUI_Chat/Fade.lua
 46e7eaa0b4e8fb149a947c1d5391305b  XayaUI_Chat/Frame.lua
-651d30a8b05e3b84d312544c8f4065d1  XayaUI_Chat/History.lua
+9df96724d676ea9794f20ace8b30202d  XayaUI_Chat/History.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 356fb84ca4d9f2b324c96e4f68c56082  XayaUI_Chat/Locate.lua
 5ffcad428d3ce5c974ae3e0b32989cbb  XayaUI_Chat/Messages.lua
@@ -152,7 +152,7 @@ bce170e2650756692b6efc5b0ab4697f  XayaUI_Chat/Options.lua
 271385b46e5eb6735ddf1295454bc596  XayaUI_Chat/Scroll.lua
 811fd8fbb77e7068f1f88e024bf55344  XayaUI_Chat/Skin.lua
 c3443dcf8a486e540ddfeac1aae87728  XayaUI_Chat/Sounds.lua
-9b3fa491608df6b38bf4a6351592daae  XayaUI_Chat/XayaUI_Chat.toc
+7aff8c364897b0a0d163f3cc4b8bb034  XayaUI_Chat/XayaUI_Chat.toc
 d1214a6ecb251789fe882787dce5d8ef  XayaUI_DevAssist/ApiInventory.lua
 2927a47181fd6886394e1b61d1fc0faf  XayaUI_DevAssist/AuraCatalogue.lua
 48cfc73c1cd5b513bb8d9490bca2bdae  XayaUI_DevAssist/DevAssist.lua
@@ -473,7 +473,8 @@ fabc52b8b64454291db142c198900336  debug-log/2026-11-05-2003-options-bonus-off-co
 30b20fa3b60da0d2165c8777cbdbad69  debug-log/2026-11-05-2018-xaya-decisions-bars-v14-terms-372-templates-history.md
 3ee6f39bd0e39c58907869842586fdd0  debug-log/2026-11-05-2022-stat-calculator-450-rating-change-qol-0.7.21.md
 7ae093ebf5e4a1cf11c934f652ae112e  debug-log/2026-11-05-2024-roadmap-friends-short-commands.md
-4b067d8c979d3a235a6a21cd5b3c5d82  debug-log/2026-11-05-2027-history-active-tab-whisper-tabs-chat-0.6.15.md
+a5a4838023947cc05abe784fbafb4e93  debug-log/2026-11-05-2027-history-active-tab-whisper-tabs-chat-0.6.15.md
+c54bd9d2d6be53369953c26744e65136  debug-log/2026-11-05-2141-history-whisper-tabs-by-realm-chat-0.6.16.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -563,7 +564,7 @@ df452f8daf2deace03b7d5d27e02caa4  tests/char_stat_map_run.py
 396b0fc9fa6a88b4131443cae359900c  tests/charges_combat_run.py
 fe5081788e33a4b0edb0ff1d7e05d095  tests/chat_off_costs_nothing_run.py
 cbf3c82d2398010da18d49bd2ef1a940  tests/chat_pieces_run.py
-86856df40993ddad17be74ccf9f9042a  tests/chat_run.py
+e4f9308c54b9e7e634d6f41276ada184  tests/chat_run.py
 1c96c68b90a98f38ba83cf032d0765f6  tests/chat_world.lua
 abe22a2816956a2c3babb802857cc524  tests/chatprobe_run.py
 c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
