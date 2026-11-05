@@ -35,8 +35,33 @@ Logged 2026-11-05 20:18 UTC. Session branch `claude/admiring-ride-sm7jrh` on `ma
   Durability is not read anywhere today.
 
 ## WeakAuras sanity check (items 1, 2, 4)
-Done by a sub-agent against the read-only reference folder, under the reference-addon rule (behaviour only; nothing copied). Its
-findings are added below when it reports.
+Done by a sub-agent against the read-only reference folder (Drive "Reference Addons (REFERENCE AND READ ONLY)" > WeakAuras,
+WeakAurasOptions), under the reference-addon rule: behaviour only, nothing copied, nothing run, nothing written to Drive or disk. The
+Drive tool returned files only as base64 into the agent's context, so it cites file and option name, not line numbers.
+- **Bars (verified in WeakAurasOptions `RegionOptions/AuraBar.lua`, `RegionOptions/ProgressTexture.lua`):** a progress bar and a
+  progress texture are two separate display types that share one progress-source block (the duration / value feed), position options,
+  inverse, smooth progress and orientation. Only the bar has: bar texture, gradient / colours, an icon (side, source, desaturate, zoom),
+  a spark (texture, colour, size, offsets, rotation, hide on) and anchor points for other elements (spark, bar, icon). Only the
+  texture has: foreground / background textures, circular orientations, angles, crop, rotation, slant. Dynamic groups: no bar-specific
+  handling found (INFERENCE from a full-text search; not read line by line).
+- **Unloaded auras (NOT verified):** the deciding file (`WeakAuras.lua`, 231 KB) was too large to read through the tool. Names found by
+  search (EnsureRegion, LoadDisplays / UnloadDisplays per trigger system, ScanForLoads, InCombatLockdown, PLAYER_REGEN_ENABLED) suggest:
+  regions are built when an aura loads, not at login; triggers are registered on load and removed on unload; some work waits for the
+  end of combat. INFERENCE only.
+- **Group tab (verified in `RegionOptions/Group.lua`, `DynamicGroup.lua`, `InformationOptions.lua`):** plain group: icon, align /
+  distribute / space tools (one-shot, rewrite the members' offsets), scale, alpha, flat frame levels, border, position. Dynamic group:
+  grow direction (incl. custom), group by frame (unit frames, nameplates), align, circle and grid layouts, space, stagger, sort (incl.
+  hybrid), limit, animated expand / collapse, scale, alpha, frame levels, border, position. Origin: name, URL (applies to every member
+  on a group), description, "ignore updates" with a URL; no author / creator field found; no group-level enable toggle on these tabs.
+
+## Recommendation (Claude; for Xaya)
+1. RM-BARS: a **new bar display kind**, sharing the progress source with progress textures (WeakAuras' split, reached on our own
+   model: a bar has an icon, a spark and texts that a texture does not).
+2. Disabled rules: **yes**, build frames when a rule is switched on and stop stepping it while off, keeping the editor preview. The
+   WeakAuras evidence for this is inference only; our own case does not depend on it (V14 already says so).
+3. #372: XayaUI's Group tab gets the plain-group set (align / distribute / space, scale, alpha, border, position) and, for a dynamic
+   group, the layout set (grow, align, space, sort, limit). The Config tab's "original character / source" and the enable switch are
+   our own: WeakAuras has neither.
 
 ## Status after this entry
 - 3 (terms): decided as the direction; built later, together with the other third-party data enhancements (RM-UPGRADES, RM-RPPM).

@@ -2090,7 +2090,10 @@ local function MapRating(ctx, src, key, kit)
         return it
     end
     it.absolute, CM.svBase[key] = src.rating, src.rating
-    it.ratingText = Big(src.rating)   -- the Rating column: your rating now, as text (QoL 0.7.20; the box moved to the Change column)
+    -- the Rating column: your rating now, as text (QoL 0.7.20; the box moved to the Change column), and while you have typed another
+    -- number, the change beside it: "528 +172", "528 -28" (QoL 0.7.21, Xaya: "should show alongside the +/- stat amount")
+    local dR = math.floor(it.amount + 0.5)
+    it.ratingText = Big(src.rating) .. (dR > 0 and (" +" .. Big(dR)) or dR < 0 and (" " .. Big(dR)) or "")
     local a, w = src.analysis or {}, src.whatIf
     it.value = num(src.total) and Was(src.total, src.totalAfter, P) or UNAV
     if src.totalAfter and num(src.total) then it.tone = (src.totalAfter >= src.total) and "good" or "warn" end
