@@ -2,7 +2,7 @@
 ## Title: XayaUI QoL
 ## Notes: XayaUI quality-of-life changes: cursor highlight, cursor trail, the Character Toolkit stat panel and the Character Reskin (friends and bags come later). Needs XayaUI.
 ## Author: Xaya
-## Version: 0.7.14
+## Version: 0.7.17
 ## X-Date: 2026-11-05
 ## Dependencies: XayaUI
 ## Group: XayaUI

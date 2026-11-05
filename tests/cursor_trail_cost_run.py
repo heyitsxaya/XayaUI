@@ -18,6 +18,8 @@ from lua51 import runtime as LuaRuntime
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 SRC = open(os.path.join(ROOT, "XayaUI_QoL", "CursorTrail.lua"), encoding="utf-8").read()
+# QoL 0.7.17: the gradients live in core (XayaUI/Theme.lua, ns.Theme.CURSOR_PRESETS); core loads first in the game, so here too
+THEME_SRC = open(os.path.join(ROOT, "XayaUI", "Theme.lua"), encoding="utf-8").read()
 REPORT = "--report" in sys.argv
 BUDGET = {"calls_avg": 760, "calls_max": 980, "live_max": 345}
 GAP_RATIO = 0.5   # nearest shown neighbour within half the dot's own width
@@ -87,8 +89,12 @@ end
 def run(src, speed, moving=60, still=0, look=0):
     lua = LuaRuntime()
     lua.globals().SRC = src
+    lua.globals().THEME_SRC = THEME_SRC
     lua.execute(WORLD)
+    lua.execute('local ns = XayaUI_NS; ns.Share = { RegisterKind = function() end }; assert(loadstring(THEME_SRC, "@Theme.lua"))("XayaUI", ns)')
     lua.execute('local ns = XayaUI_NS; assert(loadstring(SRC, "@CursorTrail.lua"))("XayaUI_QoL", ns); ns.CursorTrail_Apply()')
+    if lua.eval("XayaUI_NS.CURSORTRAIL_PRESETS.fel ~= nil") is not True:
+        raise RuntimeError("the trail did not get core's gradients (ns.Theme.CURSOR_PRESETS)")
     lua.execute('OU = nil; for _, f in ipairs(FRAMES_SEEN) do if f.scripts.OnUpdate then OU = f.scripts.OnUpdate end end')
     if lua.eval("OU") is None:
         raise RuntimeError("the trail never set its OnUpdate")
