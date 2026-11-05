@@ -5121,7 +5121,8 @@ local HEAD_ATLASES = { "voicechat-icon-headphone-on" }
 local HEAD_FILE = "Interface\\Common\\VoiceChat-Speaker"
 
 local function AtlasOK(n)
-    local ok, info = pcall(C_Texture.GetAtlasInfo, n)
+    local ok, info = false, nil   -- (C_Texture checked first: indexing a missing table is outside the pcall)
+    if C_Texture and C_Texture.GetAtlasInfo then ok, info = pcall(C_Texture.GetAtlasInfo, n) end
     return ok and info and true or false
 end
 local function ApplyIcon(tex, atlases, file)

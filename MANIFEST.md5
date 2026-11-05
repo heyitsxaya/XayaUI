@@ -106,7 +106,7 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 3948f17e4d4520c468e201eb110ed947  XayaUI/Timing.lua
 570c15831b621bb0f2b57518e60eed39  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
-0089ea922613cac75be4b9b79d837709  XayaUI/Visual.lua
+217115660973c1e46cd832ab92fdb0e5  XayaUI/Visual.lua
 55f452b338bc052da40b127948d6bb59  XayaUI/XayaUI.toc
 5d8ef2b3d9cd4855e81ae79e59a247ba  XayaUI_Bonus/Calculator.lua
 2aa60e5b886011e223cebd97126a7326  XayaUI_Bonus/DataPanels.lua
@@ -205,7 +205,7 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-7b485e51bbba8c80752e9d4561401ff1  XayaUI_Options/Options.lua
+575cf7cac6cbb7d32ff45ea433f3017b  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
 b2c1cb89c4059e3f328552f4253f4abc  XayaUI_Options/Skin.lua
@@ -458,7 +458,7 @@ fa0ce99ac539fc76181c79ccdc075462  debug-log/2026-11-05-0411-stat-calculator-and-
 8e795e343c27555c3c211e58b767e556  debug-log/2026-11-05-1354-roadmap-games-module.md
 7a8661fabc23d908b08c8d5651a7dd52  debug-log/2026-11-05-1402-blizzard-ui-reskin-tab-options-0.6.38.md
 bbd35f726b2fefe160f53ab3b43ddbf8  debug-log/2026-11-05-1405-roadmap-rppm-tooltip-gear-compare.md
-fb8adb26267a6d81fdc60e5acfa50831  debug-log/2026-11-05-1512-console-toggle-footer-subtabs-core-0.6.45-options-0.6.39.md
+b9e16256d10461db7c21a56e5dcf7259  debug-log/2026-11-05-1512-console-toggle-footer-subtabs-core-0.6.45-options-0.6.39.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png

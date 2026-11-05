@@ -52,6 +52,16 @@ compact layout wanted, chosen because #352 calls stretched buttons a defect and 
 text plus 4 px (AceGUI's own unpadded spacing) plus its side art; Class/Spec Rule Creator stays pinned right. Only the row that holds
 creatorTab; other tab rows are unchanged (open question for Xaya whether they should match).
 
+## 4. Whole-addon harness red on main before this change (fixed here)
+The full suite on b8017df: 104 unit groups ok; the whole-addon harness failed 1 check in all 17 combinations with Options:
+"session 1, slash commands: Options.lua:5124: attempt to index global 'C_Texture' (a nil value)". The same failure on main 1f12026
+(`tests/harness/run.py --fresh-only --only XayaUI_QoL XayaUI_Options` in a worktree of 1f12026: RESULT FAIL (1), Options.lua:5081), so
+it predates this change. Cause: `pcall(C_Texture.GetAtlasInfo, n)` indexes `C_Texture` OUTSIDE the pcall; the stand-in game has no
+C_Texture table. The game has it (docs/reference/api/namespaces.md: "`C_Texture.GetAtlasInfo(atlas: textureAtlas)` → `info: AtlasInfo`
+· MayReturnNothing, SecretArguments=AllowedWhenUntainted"), so in game nothing changes; the guard makes the pcall's fail-safe real.
+Same pattern fixed in all three places (V4, `git grep "C_Texture\."`): Options.lua AtlasOK, Visual.lua AtlasBase and the atlas size
+read; the QoL cursor files already checked `C_Texture` first. No closure per call (garbage).
+
 ## Tests
 - `tests/console_toggle_cost_run.py` (new, 26 checks): clicks both switches in the stand-in window and counts fresh trees and redraws;
   outside opens / closes; safety (a real change still builds fresh, a same-frame redraw builds fresh, nothing reused after closing).
