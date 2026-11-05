@@ -62,7 +62,8 @@ check("  ...a texture the game has not sent yet is left empty", it.icons[3].tex 
 -- 2. The panel -----------------------------------------------------------------------------------------------------------------
 local d = render("gear")
 local hs = texts(d, "header")
-check("Gear tab headers: Equipped, Summary, Durability and repair, Slots", table.concat(hs, "|") == "- Equipped|- Summary|- Durability and repair|- Slots", table.concat(hs, "|"))
+check("Gear tab headers: Equipped, Compare, Summary, Durability and repair (QoL 0.7.14: the per-slot list became the comparison)",
+  table.concat(hs, "|") == "- Equipped|- Compare|- Summary|- Durability and repair", table.concat(hs, "|"))
 local ib = shownIcons(d)
 check("three icons drawn", #ib == 3, #ib)
 for _, b in ipairs(ib) do b.tex.SetTexture = function(self, t) self.texture = t end end
@@ -85,9 +86,18 @@ GameTooltip.SetHyperlink = function(self, link) hyper = link end
 ib[1].scripts.OnEnter(ib[1])
 check("hover: falls back to the item link when SetInventoryItem fails", hyper == GEAR[1], hyper)
 GameTooltip.SetInventoryItem = savedInv
--- click: the game's modified click with the item's link
+-- shift-click: the game's modified click with the item's link; a plain click picks the slot for the comparison (QoL 0.7.14)
+IsShiftKeyDown = function() return true end
 ib[3].scripts.OnClick(ib[3])
-check("click: the game's HandleModifiedItemClick with the item link", modClicks[1] == GEAR[16], modClicks[1])
+check("shift-click: the game's HandleModifiedItemClick with the item link", modClicks[1] == GEAR[16] and CM.gearSlot == nil, modClicks[1])
+IsShiftKeyDown = function() return false end
+ib[3].scripts.OnClick(ib[3])
+check("plain click: picks the slot for the comparison (Main Hand), no chat link", CM.gearSlot == 16 and #modClicks == 1, CM.gearSlot)
+d = render("gear"); hs = texts(d, "header")
+check("  ...the Compare section names the slot", hs[2] == "- Compare: Main Hand", hs[2])
+ib = shownIcons(d)
+check("  ...and its icon is marked", ib[3].selected == true and ib[1].selected ~= true and ib[3].sel and ib[3].sel:IsShown())
+CM.gearSlot = nil; d = render("gear"); ib = shownIcons(d)
 -- the hit areas of the line rows do not cover the icons
 local cover = false
 for _, r in ipairs(recs(d, "hit")) do
