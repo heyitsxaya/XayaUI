@@ -24,7 +24,10 @@ COMBAT = false
 InCombatLockdown = function() return COMBAT end
 EVENTS = {}
 local M = FRAME_METHODS
-function M:RegisterEvent(e) EVENTS[e] = EVENTS[e] or {}; table.insert(EVENTS[e], self) end
+-- (as the game's Frame:RegisterEvent / UnregisterEvent: a frame is registered for an event once, and can let it go; core 0.6.47
+-- registers the record's events only while they are switched on, so they come and go)
+function M:RegisterEvent(e) EVENTS[e] = EVENTS[e] or {}; for _, f in ipairs(EVENTS[e]) do if f == self then return true end end; table.insert(EVENTS[e], self); return true end
+function M:UnregisterEvent(e) local l = EVENTS[e] or {}; for i = #l, 1, -1 do if l[i] == self then table.remove(l, i) end end; return false end
 function FIRE(e, ...) for _, f in ipairs(EVENTS[e] or {}) do local s = f["_s_OnEvent"]; if s then s(f, e, ...) end end end
 date = function(fmt) return fmt == "%H:%M:%S" and "12:00:00" or "2026-11-04 12:00:00" end
 GetBuildInfo = function() return "12.1.5", "70783" end

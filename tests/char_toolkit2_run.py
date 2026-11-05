@@ -261,7 +261,9 @@ local function mline(key, label) local it = card(key); for _, pp in ipairs(it an
 ns.CharToolkit_SetInput("crit", "852")
 check("crit +852: 22.48% -> 41.00%, from rating +11.48% -> +30.00% (the stand-in threshold)", card("map_crit").value == "22.48% -> 41.00%"
   and mline("map_crit", "From rating") == "+11.48% -> +30.00%", mline("map_crit", "From rating"))
-check("  ...the threshold it reaches is named", (mline("map_crit", "Diminishing returns") or ""):find("your numbers cross 1", 1, true) ~= nil, mline("map_crit", "Diminishing returns"))
+-- (QoL 0.7.15: the rating lost is the line's value, the thresholds its note)
+local function mnote(key, label) local it = card(key); for _, pp in ipairs(it and it.pairs or {}) do if pp.label == label then return pp.note end end end
+check("  ...the threshold it reaches is named (in the line's note)", (mnote("map_crit", "Diminishing returns") or ""):find("your numbers cross 1", 1, true) ~= nil, mnote("map_crit", "Diminishing returns"))
 check("  ...other stats untouched (haste shows its value now)", card("map_haste").value == "29.25%", card("map_haste").value)
 d = render("stats")
 check("  ...the crit box holds the number itself (528 + 852 = 1380)", d.boxes["sv:crit"] and d.boxes["sv:crit"].text == "1380" and d.boxes["sv:crit"]:IsShown())
@@ -475,7 +477,7 @@ lay.valueMode.set(nil, "percent")
 lay.detail.set(nil, "short"); d = render("stats")
 check("settings: Detail = Key lines hides the other pairs", not hasText(d, "pairLabel", "Lost to diminishing returns"))
 lay.detail.set(nil, "all")
-page.args.overlaysOn.set(nil, true)
+page.args.overlayPart.xuiSwitch.set(nil, true)   -- the Slot Overlays row's tick box in the left pane (QoL 0.7.18)
 check("settings: the Slot overlays switch draws the overlays", ns.CharToolkit_OverlayText("HeadSlot") == "336")
 page.args.overlayPart.args.enchants.args.slot1.set(nil, true)
 check("settings: ticking Head in Enchant Slots flags it (E?)", (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
@@ -488,7 +490,7 @@ do
   check("settings: the reset button goes back to this expansion's slots (Head E? again)", cc.enchantSlotsSet == nil and next(cc.enchantSlots) == nil
     and (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
 end
-page.args.overlaysOn.set(nil, false)
+page.args.overlayPart.xuiSwitch.set(nil, false)
 page.args.panelPart.args.values.args.whatIf.set(nil, "200")
 d = render("stats")
 check("settings: All ratings + 200 shows on every stat card (now -> then)", (valueOf(d, "Haste") or ""):find(" -> ", 1, true) ~= nil and (valueOf(d, "Mastery") or ""):find(" -> ", 1, true) ~= nil, valueOf(d, "Haste"))

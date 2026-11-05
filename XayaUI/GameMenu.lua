@@ -141,10 +141,10 @@ local function CreateButton(menu)
     return b
 end
 
--- repaint when the theme / class colors change
-if ns.Theme and ns.Theme.OnResolve then
-    ns.Theme.OnResolve(function() if btn and btn:IsShown() then Paint() end end)
-end
+-- V14 (core 0.6.47; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to
+-- performance cost / demand in any way"): `live` is the switch "Show a XayaUI button in the Game Menu", cached. While it is off, nothing
+-- of this file is made or placed (no frame, no event, no hook, no theme listener); hooks placed while it was on return at once on it.
+local live = false
 
 -------------------------------------------------------------------------------
 -- Menu wiring
@@ -219,6 +219,21 @@ function ns.GameMenuResetPad() naturalPad = nil end   -- (tests)
 ns.GameMenuFitHeight = FitHeight   -- (tests)
 
 local fallbackSlot
+local function ResetSlots(menu)
+    if menu.buttonPool and menu.buttonPool.EnumerateActive then
+        for b in menu.buttonPool:EnumerateActive() do
+            if b.xuiGMslot then b.xuiGMslot = nil; b:SetAlpha(1) end
+        end
+    end
+end
+-- switched off: our button and slot frame hidden, a pooled button made invisible by the last build given its alpha back
+local leftover = false   -- (the switch went off while the menu was open: done at the menu's next build)
+local function TidyUp(menu)
+    leftover = false
+    if btn then btn:Hide() end
+    if fallbackSlot then fallbackSlot:Hide() end
+    ResetSlots(menu)
+end
 local function Place(slot, anchor)
     -- size the slot (and our button) like the Macros button
     local w, h = anchor:GetWidth(), anchor:GetHeight()
@@ -233,17 +248,13 @@ end
 
 local function Install(menu)
     -- the pool recycles buttons: a slot we made invisible last time may now be a real menu entry, so put its alpha back
-    if menu.buttonPool and menu.buttonPool.EnumerateActive then
-        for b in menu.buttonPool:EnumerateActive() do
-            if b.xuiGMslot then b.xuiGMslot = nil; b:SetAlpha(1) end
-        end
-    end
-    CreateButton(menu)
+    ResetSlots(menu)
     -- the skin (GameMenuSkin.lua) in OWN LAYOUT mode draws its own XayaUI row; in MATCH mode it needs the real slot below (it draws on it)
     local skin = ns.Service("gameMenuSkin")   -- XayaUI_Reskin, when it is on (Modules.lua section 8)
     local skinOn = skin and skin.Active()
     local match = skinOn and skin.MatchReal()
-    if (skinOn and not match) or not Enabled() then btn:Hide(); if fallbackSlot then fallbackSlot:Hide() end; return end
+    if (skinOn and not match) or not Enabled() then if btn then btn:Hide() end; if fallbackSlot then fallbackSlot:Hide() end; return end
+    CreateButton(menu)   -- (core 0.6.47: only when the button is drawn; it was made on every open, also with the switch off)
 
     if not naturalPad then
         local g = BottomGap(menu)   -- the bottom padding as the menu was drawn before this file added anything, the first time
@@ -293,6 +304,9 @@ end
 local function Hook()
     if diag.hooked or not GameMenuFrame then return end
     local function run(menu)
+        -- switched off after it was on: the hook stays (the game cannot take a hook back) and returns at once, after tidying up, once,
+        -- what the last build left when the switch went off with the menu open
+        if not live then if leftover then pcall(TidyUp, menu) end; return end
         local ok, err = pcall(Install, menu)
         if not ok then diag.lastError = tostring(err); if ns.CaptureError then ns.CaptureError(err) end end
     end
@@ -303,10 +317,33 @@ local function Hook()
     end
     diag.hooked = true
 end
+-- repaint when the theme / class colors change: a listener only while the button is on (Theme.lua OnResolve / OffResolve)
+local function OnTheme() if live and btn and btn:IsShown() then Paint() end end
+local themeOn = false
+local function ThemeListen(on)
+    local T = ns.Theme
+    if on and not themeOn and T and T.OnResolve then T.OnResolve(OnTheme); themeOn = true
+    elseif not on and themeOn and T and T.OffResolve then T.OffResolve(OnTheme); themeOn = false end
+end
 
-local f = CreateFrame("Frame")
-f:RegisterEvent("PLAYER_LOGIN")
-f:SetScript("OnEvent", function() Hook() end)
+-- Enable: the hooks are placed at PLAYER_LOGIN when the button is saved on (the moment they were always placed), at once when it is
+-- switched on later (the login has passed then). Disable: hides the button now; a slot this file made invisible is put back now when the menu is closed, else
+-- at the menu's next build (the change applies the next time the menu opens, as the switch says).
+local function Enable()
+    live = true
+    ThemeListen(true)
+    if diag.hooked then return end
+    ns.AtLogin(function() if live then Hook() end end)   -- (Modules.lua: at PLAYER_LOGIN, or at once after it)
+end
+local function Disable()
+    live = false
+    ThemeListen(false)
+    local menu = GameMenuFrame
+    if menu and menu.IsShown and menu:IsShown() then leftover = true   -- open now: it stays as drawn until the menu is built again
+    elseif menu then TidyUp(menu) end
+end
+ns.WhenReady(function() if Enabled() then Enable() end end)
+function ns.GameMenu_Live() return live end   -- (tests)
 
 function ns.GameMenu_Diagnostics()
     ns.Print(("game menu button: enabled=%s style=%s hooked=%s path=%s anchor=%s opens=%d paints=%d lastError=%s AddButton=%s InitButtons=%s"):format(
@@ -318,8 +355,10 @@ end
 
 function ns.GameMenu_Repaint() if btn and btn:IsShown() then Paint() end end
 
--- Toggling the option while the menu is open takes effect the next time the menu opens.
+-- Toggling the option while the menu is open takes effect the next time the menu opens. (Settings > UI Options > Display calls this
+-- right after it saved the switch.)
 function ns.GameMenu_OnOptionChanged()
+    if Enabled() then Enable() else Disable() end
     if GameMenuFrame and GameMenuFrame:IsShown() then ns.Print("the Game Menu button change applies the next time you open the menu.") end
 end
 

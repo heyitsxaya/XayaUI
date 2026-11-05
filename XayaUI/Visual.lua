@@ -164,7 +164,8 @@ local function AnchorArt(tex, fr, v, dx, dy)
 end
 
 local function AtlasBase(name)
-    local ok, info = pcall(C_Texture.GetAtlasInfo, name)
+    local ok, info = false, nil   -- (C_Texture checked first: indexing a missing table is outside the pcall)
+    if C_Texture and C_Texture.GetAtlasInfo then ok, info = pcall(C_Texture.GetAtlasInfo, name) end
     if ok and type(info) == "table" and info.leftTexCoord then
         return { info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord }
     end
@@ -187,7 +188,8 @@ function ns.ArtNativeRatio(v)
         if (v.iconSrc or "auto") == "file" then w, h = GraphicSize(v.iconPath) end
         if not w then return 1 end   -- game icons are square (and your own icon files are required to be)
     elseif kind == "atlas" and v.tex and v.tex ~= "" then
-        local ok, info = pcall(C_Texture.GetAtlasInfo, v.tex)
+        local ok, info = false, nil   -- (C_Texture checked first: indexing a missing table is outside the pcall)
+        if C_Texture and C_Texture.GetAtlasInfo then ok, info = pcall(C_Texture.GetAtlasInfo, v.tex) end
         if ok and type(info) == "table" then w, h = tonumber(info.width), tonumber(info.height) end
     elseif kind and v.tex and v.tex ~= "" and not tonumber(v.tex) then
         w, h = GraphicSize(v.tex)

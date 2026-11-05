@@ -19,7 +19,7 @@ Read `SESSION-START-SUMMARY.md` first in a new session.
    that decide the same thing get a parity test.
 5. **Before committing:**
    - `python3 tests/lua_pitfalls_run.py`
-   - the targeted tests, then `XUI_API_INDEX=tests/harness/api_index.json python3 tests/run_all.py`
+   - the targeted tests, then `XUI_API_INDEX=tests/harness/api_index.json python3 tests/run_all.py` (no `tests/harness/api_index.json` in a cloud session: build it first with `python3 tests/harness/api_index_from_docs.py`, from the repo's own docs/reference/api/api.json; without it the harness prints "API documentation: NOT LOADED" and checks no widget method or event, so that run does not count as the full suite)
    - bump the `## Version` of every addon whose code changed; add the debug-log entry (`debug-log/YYYY-MM-DD-HHMM-topic-version.md`,
      UTC, never a future time) and a QA-CHECKLIST step with exact steps and the expected result (V13)
    - `git add` the files, THEN `python3 tools/manifest.py`, then `git add MANIFEST.md5`
@@ -28,6 +28,8 @@ Read `SESSION-START-SUMMARY.md` first in a new session.
    then they carry `unverified-in-game`.
 
 ## Standing rules (from Xaya)
+- **Off costs nothing** (Xaya, 2026-11-05, her words): "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a standing rule for all current and future feature / element builds". Rule V14 in `docs/process/VERIFICATION.md` says how it is
+  applied and checked, and the two limits the game sets (files of an enabled addon are always read; hooks stay until /reload).
 - **Work the backlog, never idle** (Xaya, 2026-11-04): "for the time being, as long as there are features or overt bugs in any of the core
   addon functionality, you should just aim to solve for the backlog and avoid idling in all cases". When an item waits on her, move
   to the next unblocked one (list the blocked ones once; never guess her decisions into code). Order: SESSION-START-SUMMARY.md section 4.

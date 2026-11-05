@@ -43,18 +43,17 @@ local function Refresh(s)
 end
 C.Register("fade", Refresh)
 
-local drv = CreateFrame("Frame")
+-- the fade driver: it watches the mouse, typing and the time since the last message, so it has to look every frame while Fade is on. It
+-- runs only then (the "fade" part: its OnUpdate is set when Fade is turned on and cleared when Fade or the Chat Panel is turned off). Up
+-- to Chat 0.6.13 it ran on every frame from login with Fade off (the default), calling C.On() and its two C_AddOns.IsAddOnLoaded each time.
+local drv
 local acc = 0
-drv:SetScript("OnUpdate", function(_, dt)
-    local s = S()
-    if not (s and C.On() and C.Container()) then return end
-    if not s.fadeOn then
-        if C.fade ~= 1 then C.fade = 1; C.ApplyAlpha() end
-        return
-    end
+local function Tick(_, dt)
     acc = acc + dt
     if acc < 0.05 then return end
     dt, acc = acc, 0
+    local s = S()
+    if not (s and C.Container()) then return end
     local now = GetTime()
     if C.unlocked or Over(C.Container()) or Typing() or s.collapsed then last = now end
     local floor = math.max(0, math.min(100, tonumber(s.fadeTo) or 0)) / 100
@@ -66,4 +65,18 @@ drv:SetScript("OnUpdate", function(_, dt)
         C.fade = cur
         C.ApplyAlpha()
     end
-end)
+end
+C.Part("fade", function(s) return s.fadeOn end,
+    function()
+        if not drv then drv = CreateFrame("Frame") end
+        acc = 0
+        C.Touch()
+        drv:SetScript("OnUpdate", Tick)
+    end,
+    function()
+        if drv then drv:SetScript("OnUpdate", nil) end
+        if C.fade ~= 1 then
+            C.fade = 1
+            if C.active then C.ApplyAlpha() end   -- the Chat Panel turned off has already put the game's alpha back (C.Teardown)
+        end
+    end)

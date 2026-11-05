@@ -162,6 +162,21 @@ C_Item = {
   GetItemInfo = function(id) if id == 3 then return "Better Helm", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r" end end,
   RequestLoadItemDataByID = function(id) table.insert(loadRequests, id) end,
 }
+-- sockets (QoL 0.7.19): an item's socket count is its stat table's EMPTY_SOCKET_ count (the stand-in follows the INFERENCE that the
+-- table lists every socket, filled or not); GEMS[item name][socket] = gem item ID puts a gem in it; GEM_INFO the gem's icon and name
+GEMS, GEM_INFO = {}, {}
+C_Item.GetItemNumSockets = function(link)
+  local it = itemOf(link); if not it then return 0 end
+  local n = 0
+  for k, v in pairs(it.stats) do if k:find("^EMPTY_SOCKET_") then n = n + v end end
+  return n
+end
+C_Item.GetItemGemID = function(link, i) local name = type(link) == "string" and link:match("%[(.-)%]"); local g = name and GEMS[name]; return g and g[i] or nil end
+C_Item.GetItemIconByID = function(id) local g = GEM_INFO[id]; return g and g.icon end
+C_Item.GetItemGem = function(link, i)
+  local id = C_Item.GetItemGemID(link, i); local g = id and GEM_INFO[id]
+  if g then return g.name, "|cffa335ee|Hitem:" .. id .. "::::::::90:::::|h[" .. g.name .. "]|h|r" end
+end
 REPAIR = { [1] = 12345 }
 C_TooltipInfo = { GetInventoryItem = function(_, slot) return { lines = {}, repairCost = REPAIR[slot] } end }
 GetRepairAllCost = function() return 12345, true end
