@@ -261,7 +261,9 @@ local function mline(key, label) local it = card(key); for _, pp in ipairs(it an
 ns.CharToolkit_SetInput("crit", "852")
 check("crit +852: 22.48% -> 41.00%, from rating +11.48% -> +30.00% (the stand-in threshold)", card("map_crit").value == "22.48% -> 41.00%"
   and mline("map_crit", "From rating") == "+11.48% -> +30.00%", mline("map_crit", "From rating"))
-check("  ...the threshold it reaches is named", (mline("map_crit", "Diminishing returns") or ""):find("your numbers cross 1", 1, true) ~= nil, mline("map_crit", "Diminishing returns"))
+-- (QoL 0.7.15: the rating lost is the line's value, the thresholds its note)
+local function mnote(key, label) local it = card(key); for _, pp in ipairs(it and it.pairs or {}) do if pp.label == label then return pp.note end end end
+check("  ...the threshold it reaches is named (in the line's note)", (mnote("map_crit", "Diminishing returns") or ""):find("your numbers cross 1", 1, true) ~= nil, mnote("map_crit", "Diminishing returns"))
 check("  ...other stats untouched (haste shows its value now)", card("map_haste").value == "29.25%", card("map_haste").value)
 d = render("stats")
 check("  ...the crit box holds the number itself (528 + 852 = 1380)", d.boxes["sv:crit"] and d.boxes["sv:crit"].text == "1380" and d.boxes["sv:crit"]:IsShown())
