@@ -4,7 +4,7 @@ f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 d32239bcb673463ab874e80d47fae504  LICENSE
 7a3115d62237cddc12104d0d5198ea8d  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
-fd60b523ca7121179386cc4b40515158  ROADMAP.md
+af70051b991ea3877b4fb5f1a2002ba5  ROADMAP.md
 a6c8563ae6634980667f161e253e2470  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 2160f86f92bbc7c8acb3a6cb63dc0e18  USER-GUIDE.md
@@ -470,6 +470,7 @@ d27f8382f0cf14a88b89d448efa972d5  debug-log/2026-11-05-1612-sidebar-switches-uti
 8c7ceaa8ff08bbbb847a6cfc1acf0f64  debug-log/2026-11-05-1716-stat-calculator-change-column-qol-0.7.20.md
 cb6bc1c05e9d53be747ebd894280764b  debug-log/2026-11-05-2018-xaya-decisions-bars-v14-terms-372-templates-history.md
 3ee6f39bd0e39c58907869842586fdd0  debug-log/2026-11-05-2022-stat-calculator-450-rating-change-qol-0.7.21.md
+7ae093ebf5e4a1cf11c934f652ae112e  debug-log/2026-11-05-2024-roadmap-friends-short-commands.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
