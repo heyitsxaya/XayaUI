@@ -17,8 +17,8 @@
 #   - layout at the smallest, default, and widest panel, text sizes 8 / 11 / 16, typed numbers: inside the width, no overlaps,
 #     with font strings that report a wrapped height (estimated 0.55 x size per character); text that must fit on one line does;
 #   - the hovers and the character window's stat tooltips still carry every number (one text column: CM.PairText);
-#   - the Gear Summary is a table (Gear | Character | Elsewhere); since QoL 0.7.22 it is on the Stats tab (Character Stats > Gear Summary).
-# QoL 0.7.22 (Xaya 2026-11-05): the Stats tab is one Character Stats section; the old section headers are its headings (subhead records),
+#   - the Gear Summary is a table (Gear | Character | Elsewhere); since QoL 0.7.23 it is on the Stats tab (Character Stats > Gear Summary).
+# QoL 0.7.23 (Xaya 2026-11-05): the Stats tab is one Character Stats section; the old section headers are its headings (subhead records),
 # the All ratings box is gone (8 boxes, not 9), one column head per heading with lines (Core Stats, Secondaries, Tertiaries). The checks
 # here follow those names; the tree itself is checked in tests/char_stat_window_run.py.
 # Negative controls (V1). Checks tagged [0.7.20] are new or rewritten for QoL 0.7.20: each fails on QoL 0.7.18's files (the session
@@ -237,7 +237,7 @@ local nVal, nCh, nRat = 0, 0, 0
 for _, r in ipairs(heads) do
   if r.text == "Current value" then nVal = nVal + 1 elseif r.text == "Change" then nCh = nCh + 1 elseif r.text == "Rating" then nRat = nRat + 1 end
 end
-check("every part of Character Stats with stat lines has the column head (Core Stats, Secondaries, Tertiaries: 3; QoL 0.7.22)", nVal == 3, nVal)
+check("every part of Character Stats with stat lines has the column head (Core Stats, Secondaries, Tertiaries: 3; QoL 0.7.23)", nVal == 3, nVal)
 check("[0.7.20] a Change head over the three parts with boxes (Core Stats, Secondaries, Tertiaries), none over the Gear Summary; Rating over Secondaries and Tertiaries",
   nCh == 3 and nRat == 2 and find(d, "colhead", "Change", 3).y < find(d, "subhead", "Gear Summary").y, nCh .. " Change, " .. nRat .. " Rating")
 local function allAt(kinds, h)
@@ -276,7 +276,7 @@ local okR, whyR = allAt({ "rating" }, hRat)
 check("[0.7.20] every rating on the Stats tab sits at the Rating head's x and width (7: 4 secondary, 3 tertiary; none on Primary)",
   okR and #recs(d, "rating") == 7, whyR or #recs(d, "rating"))
 local okB, whyB = boxesOK(d, 8)
-check("[0.7.20] every box on the Stats tab (8: Agility, 4 secondary, 3 tertiary; All ratings gone in QoL 0.7.22) is under Change, at the right edge, the last cell of its row",
+check("[0.7.20] every box on the Stats tab (8: Agility, 4 secondary, 3 tertiary; All ratings gone in QoL 0.7.23) is under Change, at the right edge, the last cell of its row",
   okB, whyB)
 local pa = lineCells(d, "pairLabel", "» Parry")
 check("  » Parry: +10.15% | 52.0 / 1% (crit rating for 1% parry) | note before DR", T(pa.value) == "+10.15%" and T(pa.per) == "52.0 / 1%" and T(pa.note) == "before DR", T(pa.value) .. " | " .. T(pa.per) .. " | " .. T(pa.note))
@@ -429,7 +429,7 @@ check("[0.7.20] ...200 less haste: haste's ability kept under its » line, neste
 check("[0.7.20] ...no comma-joined ability list on the Gear tab", joinedText(d) == nil, joinedText(d))
 local gHealth = lineCells(d, "pairLabel", "» Health")
 check("  ...+900 Stamina: » Health 1,476,516 -> 1,495,596 and Pt value 21.20", T(gHealth.value) == "1,476,516 -> 1,495,596" and T(gHealth.per) == "21.20", T(gHealth.value) .. " | " .. T(gHealth.per))
--- (QoL 0.7.22: the Summary is drawn on the Stats tab, Character Stats > Gear Summary)
+-- (QoL 0.7.23: the Summary is drawn on the Stats tab, Character Stats > Gear Summary)
 local dG = d
 d = render("stats")
 local sGear, sChar, sElse = find(d, "colhead", "Gear"), find(d, "colhead", "Character"), find(d, "colhead", "Elsewhere")

@@ -62,7 +62,7 @@ check("  ...a texture the game has not sent yet is left empty", it.icons[3].tex 
 -- 2. The panel -----------------------------------------------------------------------------------------------------------------
 local d = render("gear")
 local hs = texts(d, "header")
-check("Gear tab headers: Equipped, Compare (QoL 0.7.14: the per-slot list became the comparison; QoL 0.7.22: the Summary moved to the Stats tab, Durability and repair is gone)",
+check("Gear tab headers: Equipped, Compare (QoL 0.7.14: the per-slot list became the comparison; QoL 0.7.23: the Summary moved to the Stats tab, Durability and repair is gone)",
   table.concat(hs, "|") == "- Equipped|- Compare", table.concat(hs, "|"))
 local ib = shownIcons(d)
 check("three icons drawn", #ib == 3, #ib)

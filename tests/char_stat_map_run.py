@@ -6,7 +6,7 @@
 # stats coloured), #387 (a changed stat shows what it changes). Requirements: docs/plans/STAT-CALCULATOR-REQUIREMENTS-2026-11-04.md B3-B7.
 # QoL 0.7.20 (Xaya 2026-11-05): the column heads end with Change, "» Ability Scaling" (was "Abilities with your number"), and every
 # ability list is one nested line per ability (sub() below); the panel's drawing of it: tests/char_stat_columns_run.py.
-# QoL 0.7.22 (Xaya 2026-11-05): one Character Stats section (its tree: tests/char_stat_window_run.py); the weapon card became Attack
+# QoL 0.7.23 (Xaya 2026-11-05): one Character Stats section (its tree: tests/char_stat_window_run.py); the weapon card became Attack
 # Speed, Weapon DPS and Damage; Block is always listed. The checks below follow the new keys and say so where they changed.
 # Run from the repo root: python3 tests/char_stat_map_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
 # Spell IDs 9101-9103 and their texts are TEST STAND-INS.
@@ -62,7 +62,7 @@ end
 
 -- 1. The tab and its cards ---------------------------------------------------------------------------------------------------
 local d = render()
-check("Stats tab = the stat map: Character Stats, Stat Weights (QoL 0.7.22)",
+check("Stats tab = the stat map: Character Stats, Stat Weights (QoL 0.7.23)",
   table.concat(texts(d, "header"), "|") == "- Character Stats|- Stat Weights", table.concat(texts(d, "header"), "|"))
 check("no Show: % button (#382: it did nothing)", not XayaUICharacterToolkit.modeBtn.shown)
 check("the Agility card: 2,637, its box holds the number itself", card("map_primary").value == "2,637" and d.boxes["sv:primary"] and d.boxes["sv:primary"].text == "2637", d.boxes["sv:primary"] and d.boxes["sv:primary"].text)
@@ -97,7 +97,7 @@ check("Defense: Parry 14.01%, from Critical Strike +10.15% (note before DR); Arm
 check("Offense: Attack Power 3,472, from Agility +2,637, » Damage per second +992.0 (3,472 / 3.5)", card("map_ap").value == "3,472"
   and line("map_ap", "From Agility") == "+2,637" and line("map_ap", "» Damage per second") == "+992.0", tostring(card("map_ap") and card("map_ap").value) .. " " .. tostring(line("map_ap", "» Damage per second")))
 check("  Spell Power 500 (GetSpellBonusDamage, lowest school)", card("map_sp") and card("map_sp").value == "500")
-check("  Damage 8,138 - 8,945, Attack Speed 2.00 s, Weapon DPS 4,270.7 ((8,138.2 + 8,944.6) / 2 / 2.00) (QoL 0.7.22: three lines, was one Main hand card)",
+check("  Damage 8,138 - 8,945, Attack Speed 2.00 s, Weapon DPS 4,270.7 ((8,138.2 + 8,944.6) / 2 / 2.00) (QoL 0.7.23: three lines, was one Main hand card)",
   card("map_damage").value == "8,138 - 8,945" and card("map_aspeed").value == "2.00 s" and card("map_wdps").value == "4,270.7", tostring(card("map_wdps") and card("map_wdps").value))
 check("  Global cooldown 1.16 s, from Haste 29.25% (note haste when read), unhasted 1.50 s (estimate; the rating for -0.01 s in its note)", card("map_gcd").value == "1.16 s"
   and cells("map_gcd", "From Haste") == "29.25%||haste when read" and line("map_gcd", "Unhasted (estimate)") == "1.50 s"
@@ -106,7 +106,7 @@ check("  #379: the GCD's 'From Haste' uses haste's colour", select(2, line("map_
 check("  no ranged weapon, no regen (Fury 0/s): no cards for them", card("map_ranged") == nil and card("map_regen") == nil)
 check("Defense > Armor: armor for the next 1% and base, buffs and talents", (line("map_armor", "Armor for the next 1%") or ""):match("^%d") ~= nil
   and line("map_armor", "Base, buffs and talents") == "5,685", tostring(line("map_armor", "Armor for the next 1%")) .. " / " .. tostring(line("map_armor", "Base, buffs and talents")))
-check("  no shield: Block 0.00% (QoL 0.7.22: always listed, her list names it), no » lines; no stagger", card("map_block") and card("map_block").value == "0.00%"
+check("  no shield: Block 0.00% (QoL 0.7.23: always listed, her list names it), no » lines; no stagger", card("map_block") and card("map_block").value == "0.00%"
   and #card("map_block").pairs == 0 and card("map_stagger") == nil, card("map_block") and card("map_block").value)
 local gb, gs, sh = GetBlockChance, GetShieldBlock, C_PaperDollInfo.OffhandHasShield
 GetBlockChance = function() return 25 end; GetShieldBlock = function() return 3000 end; C_PaperDollInfo.OffhandHasShield = function() return true end
@@ -215,7 +215,7 @@ local okH = pcall(function() local u = UnitName; UnitName = function() return "S
   render(); UnitName = u; issecretvalue = function() return false end end)
 check("  ...a secret name is left out, not shown or compared", okH and P.hName.text == "", P.hName.text)
 render()
--- the grip: drag to 500 x 450, the size is kept, the content reflows to 480 (QoL 0.7.22: the width in c.size, the height is the
+-- the grip: drag to 500 x 450, the size is kept, the content reflows to 480 (QoL 0.7.23: the width in c.size, the height is the
 -- current Min / Max mode's, here the smaller one)
 check("grip: a corner grip at the bottom right", P.grip and P.grip.pts and P.grip.pts[1] and P.grip.pts[1][1] == "BOTTOMRIGHT")
 P:SetSize(500, 450)

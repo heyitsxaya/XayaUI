@@ -52,7 +52,7 @@ local function linesHave(lines, s) for _, l in ipairs(lines) do if tostring(l):f
 -- character window's own tooltips, so its lines and hovers are checked through the model below
 local d = render("stats")
 local hs = texts(d, "header")
--- (QoL 0.7.22: one Character Stats section, its parts drawn as headings inside it, and the Stat Weights pane; tests/char_stat_window_run.py)
+-- (QoL 0.7.23: one Character Stats section, its parts drawn as headings inside it, and the Stat Weights pane; tests/char_stat_window_run.py)
 check("Stats tab (the stat map): headers Character Stats, Stat Weights", table.concat(hs, "|") == "- Character Stats|- Stat Weights", table.concat(hs, " | "))
 -- QoL 0.7.7: Defense and Offense are the Spells tab's filters now (a saved "defense" / "offense" tab opens Spells with that filter);
 -- QoL 0.7.14: the filters filter spells only; the stat sections they drew are on the stat map (Offense / Defense, what feeds it)
@@ -64,7 +64,7 @@ check("Spells, Offense filter: Offensive spells only (QoL 0.7.14)", c.tab == "sp
   and table.concat(hs, "|") == "- Active offensive spells", table.concat(hs, "|"))
 c.spellFilter = "all"
 d = render("gear"); hs = texts(d, "header")
-check("Gear tab: Equipped (icons), Compare (QoL 0.7.14: the comparison replaces the per-slot list; QoL 0.7.22: Summary on Stats, no Durability)",
+check("Gear tab: Equipped (icons), Compare (QoL 0.7.14: the comparison replaces the per-slot list; QoL 0.7.23: Summary on Stats, no Durability)",
   table.concat(hs, "|") == "- Equipped|- Compare", table.concat(hs, "|"))
 d = render("whatif"); hs = texts(d, "header")
 check("a saved What If tab opens Stats (QoL 0.7.14: its numbers are the map's boxes, its item compare is on Gear)", c.tab == "stats"
@@ -159,7 +159,7 @@ ns.CharToolkit_ReadGCD()
 -- (char_toolkit_world.lua), so these fail on 0.7.1, where the line was built from them.
 check("Mythic+ rating is not a line anywhere (the game gives it; the toolkit leaves it out)", CM.Build(c, nil).byKey.mplus == nil and CM.Build(c, "stats").byKey.mplus == nil)
 check("the panel did not ask the server for Mythic+ details", mythicRequested == nil or mythicRequested == false)
--- (QoL 0.7.22; Xaya 2026-11-05: "durability and repair can be removed from all stat calculator panes": the durability, repair cost,
+-- (QoL 0.7.23; Xaya 2026-11-05: "durability and repair can be removed from all stat calculator panes": the durability, repair cost,
 -- per-slot repair and vendor repair-all checks that stood here are now one check that none of it is built, on any tab)
 m = CM.Build(c, "gear")
 CM.gearSlot = 1
@@ -168,7 +168,7 @@ CM.gearSlot = nil
 MerchantFrame = mk("Frame"); MerchantFrame.shown = true
 local m2 = CM.Build(c, "stats")
 MerchantFrame.shown = false
-check("[0.7.22] no durability or repair line on any tab (Gear, a clicked slot, Stats at a vendor)", m.byKey.durability == nil and m.byKey.repair == nil
+check("[0.7.23] no durability or repair line on any tab (Gear, a clicked slot, Stats at a vendor)", m.byKey.durability == nil and m.byKey.repair == nil
   and m1.byKey.gc_dur == nil and m1.byKey.gc_repair == nil and m2.byKey.durability == nil and m2.byKey.repair == nil)
 CM.gearSlot = 11; local e11 = CM.Build(c, "gear").byKey.gc_enchant
 CM.gearSlot = 1; local e1 = CM.Build(c, "gear").byKey.gc_enchant
@@ -278,10 +278,10 @@ check("crit -1000: stops at 0 rating (+11.48% -> +0.00%)", mline("map_crit", "Fr
 ns.CharToolkit_SetInput("crit", "852")
 d = render("stats")
 check("Stats tab: crit +852 = +18.52%: 22.48% -> 41.00%", valueOf(d, "Critical Strike") == "22.48% -> 41.00%", valueOf(d, "Critical Strike"))
--- (QoL 0.7.22; Xaya 2026-11-05: "remove "all ratings" as an entry option")
+-- (QoL 0.7.23; Xaya 2026-11-05: "remove "all ratings" as an entry option")
 ns.CharToolkit_SetInput("all", "100")
 d = render("stats")
-check("[0.7.22] no All ratings box on the map; an \"all\" amount reaches no card (haste unchanged)", not (d.boxes.all and d.boxes.all:IsShown())
+check("[0.7.23] no All ratings box on the map; an \"all\" amount reaches no card (haste unchanged)", not (d.boxes.all and d.boxes.all:IsShown())
   and valueOf(d, "Haste") == "29.25%" and not hasText(d, "label", "All ratings"), valueOf(d, "Haste"))
 ns.CharToolkit_SetInput("crit", "0"); ns.CharToolkit_SetInput("mastery", "0")
 check("0 clears a stat", c.whatIfStats.crit == nil and c.whatIf == 0)
@@ -493,7 +493,7 @@ do
     and (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
 end
 page.args.overlayPart.xuiSwitch.set(nil, false)
-check("[0.7.22] settings: no All ratings + field (Panel > Your numbers)", page.args.panelPart.args.values.args.whatIf == nil)
+check("[0.7.23] settings: no All ratings + field (Panel > Your numbers)", page.args.panelPart.args.values.args.whatIf == nil)
 ns.CharToolkit_SetInput("haste", "200")
 page.args.panelPart.args.values.args.clear.func()
 check("settings: Clear all sets every What If amount back to 0", c.whatIf == 0 and next(c.whatIfStats) == nil)

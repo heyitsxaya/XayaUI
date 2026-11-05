@@ -248,7 +248,7 @@ check("  ...their value gets 70% of the line, so \"N% of attack power; 1 Agility
 d = render("gear")
 local sm = 0
 for _, r in ipairs(recs(d, "pairValue")) do if r.size == c.fontSize then sm = sm + 1 end end
--- (QoL 0.7.22: the Gear tab's Durability lines, the smaller detail lines this checked, are gone; what stays checkable is that the
+-- (QoL 0.7.23: the Gear tab's Durability lines, the smaller detail lines this checked, are gone; what stays checkable is that the
 -- spell math's full size does not leak to another tab)
 check("  ...other tabs do not take the spell math's full-size detail lines", sm == 0, sm)
 c.tab = "spells"

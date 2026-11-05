@@ -13,7 +13,6 @@
 --   ns.WhenReady(fn)                          run fn once the saved settings exist (right away if they already do)
 --   ns.RegisterCommand(names, fn, help)       /xui <name> [args]; names is one string or a list; several handlers may share a name
 --   ns.RegisterLauncher(entry)                a row in the minimap button's quick-access list
---   ns.UnregisterLauncher(key)                takes that row out again (a feature switched off; core 0.6.48)
 --   ns.RegisterSettingsPage(module, key, fn)  a page in the settings window; fn(Notify) returns an AceConfig group
 --   ns.MODULES                                which addon owns which /xui commands, so core can say why one does nothing
 -- Every registered function is called through pcall: one feature's error never stops the next one from starting.
@@ -147,8 +146,12 @@ function ns.ModuleMissingText(cmd)
 end
 
 -------------------------------------------------------------------------------
--- 4. Minimap button list. entry = { key, label, tooltip, action, stateFn (optional), order = number }
+-- 4. Minimap button list. entry = { key, label, tooltip, action, stateFn (optional), order = number, available = fn (optional) }
 -- Positional fields keep MinimapButton.lua's row code unchanged. Lower order is higher in the list.
+-- available (core 0.6.48): a function that returns false while the entry's feature is switched off; the list then leaves the row out
+-- (V14: a switched-off feature shows no row; first user: the Character Toolkit's Stat Calculator row, QoL 0.7.23). The entry stays
+-- registered, so the settings window's options tree is the same with the feature on and off (a sidebar tick reuses the drawn tree,
+-- tests/sidebar_switches_run.py); its row on Settings > Minimap Button is hidden instead.
 -------------------------------------------------------------------------------
 local launchers = {}
 
@@ -163,14 +166,6 @@ function ns.RegisterLauncher(entry)
         if oa ~= ob then return oa < ob end
         return a[1] < b[1]
     end)
-end
-
--- Remove a row (core 0.6.48): a feature that is switched off takes its row out, so the list shows only what is on (V14; first user: the
--- Character Toolkit's Stat Calculator row, QoL 0.7.22). The list is read each time it opens, so the row is gone at once.
-function ns.UnregisterLauncher(key)
-    for i = #launchers, 1, -1 do
-        if launchers[i][1] == key then table.remove(launchers, i) end
-    end
 end
 
 function ns.Launchers() return launchers end

@@ -15,9 +15,9 @@
 --     GetDodgeChanceFromAttribute, GetParryChanceFromAttribute, GetShieldBlock, UnitStat, UnitArmor, UnitAttackPower,
 --     UnitRangedAttackPower, GetAttackPowerForStat, UnitAttackSpeed, UnitDamage, UnitRangedDamage, GetSpellBonusDamage,
 --     GetSpellBonusHealing, GetOverrideAPBySpellPower, GetOverrideSpellPowerByAP, GetExpertise, GetPowerRegen, GetManaRegen,
---     GetUnitSpeed, GetPowerRegenForPowerType (QoL 0.7.22)
+--     GetUnitSpeed, GetPowerRegenForPowerType (QoL 0.7.23)
 --   SecretWhenUnitHealthMaxRestricted: UnitHealthMax
---   SecretWhenUnitPowerMaxRestricted: UnitPowerMax (QoL 0.7.22; a secret answer reads "not given now")
+--   SecretWhenUnitPowerMaxRestricted: UnitPowerMax (QoL 0.7.23; a secret answer reads "not given now")
 --   SecretWhenCooldownsRestricted: C_Spell.GetSpellCooldown (fields startTime, duration, modRate can be secret; isActive, isOnGCD never)
 --   no secret flag: GetCombatRatingBonusForCombatRatingValue (the converter), UnitHPPerStamina, GetUnitMaxHealthModifier,
 --     UnitEffectiveLevel, UnitLevel, C_PaperDollInfo.GetArmorEffectiveness / GetArmorEffectivenessAgainstTarget /
@@ -25,11 +25,11 @@
 --     C_SpecializationInfo.GetSpecialization / GetSpecializationInfo / GetSpecializationMasterySpells, C_Spell.GetSpellName /
 --     GetSpellInfo / GetSpellDescription (MayReturnNothing), C_Item.GetItemStats / GetDetailedItemLevelInfo / GetItemInfo /
 --     GetItemInfoInstant (MayReturnNothing), C_Item.RequestLoadItemDataByID, C_TooltipInfo.GetInventoryItem (MayReturnNothing),
---     GetRuneCooldown (MayReturnNothing; QoL 0.7.22).
+--     GetRuneCooldown (MayReturnNothing; QoL 0.7.23).
 --   undocumented, read the way Blizzard's UI reads them: GetInventoryItemLink, GetAverageItemLevel (PaperDollFrame.lua),
 --     InCombatLockdown, GetSpecialization / GetSpecializationInfo / GetSpecializationMasterySpells (older globals, used only when the
 --     C_ ones are missing), ATTACK_POWER_MAGIC_NUMBER (a value in Blizzard's PaperDollFrame.lua: the character window's "increases
---     damage by N DPS" is attack power / this number). (QoL 0.7.22: durability and repair cost are no longer read.)
+--     damage by N DPS" is attack power / this number). (QoL 0.7.23: durability and repair cost are no longer read.)
 --
 -- Secret values: every read goes through R(); a secret answer becomes CM.HIDDEN (never compared, formatted or used in arithmetic)
 -- and is shown as "hidden in combat". A call that is missing or errors shows "unavailable". What the game does not give at all is
@@ -229,7 +229,7 @@ local function Context(cfg)
     ctx.role = type(ctx.specInfo[5]) == "string" and ctx.specInfo[5] or nil
     ctx.level = N(UnitEffectiveLevel, "player")
     if not num(ctx.level) then ctx.level = N(UnitLevel, "player") end
-    -- (QoL 0.7.22; Xaya 2026-11-05: "remove "all ratings" as an entry option") no amount is added to every rating any more; a saved
+    -- (QoL 0.7.23; Xaya 2026-11-05: "remove "all ratings" as an entry option") no amount is added to every rating any more; a saved
     -- one is ignored (the settings reset it to 0), so nothing changes the numbers out of sight
     ctx.whatIfAll = 0
     ctx.whatIfStat = cfg and type(cfg.whatIfStats) == "table" and cfg.whatIfStats or {}
@@ -1067,7 +1067,7 @@ function CM.SlotSockets(link)
     return out
 end
 
--- Everything one equipped slot shows: link, item level, listed ratings, empty sockets, enchant (durability: not read since QoL 0.7.22).
+-- Everything one equipped slot shows: link, item level, listed ratings, empty sockets, enchant (durability: not read since QoL 0.7.23).
 -- Empty sockets (QoL 0.7.19): sockets without a gem (CM.SlotSockets), no longer the stat table's EMPTY_SOCKET_ count, which lists the
 -- item's sockets whether a gem is in them or not (INFERENCE from Xaya's screenshot of 2026-11-05: "1S" / "2S" marks on slots whose
 -- gems are in; the API docs do not say). The stat table's socket keys are kept for the socket type on hover (socketTypes).
@@ -1256,7 +1256,7 @@ function CM.ShortEnchant(name)
     return (short and short ~= "") and short or name
 end
 
--- (QoL 0.7.22) MoneyText and the repair cost read are gone with the Durability and repair section (Xaya 2026-11-05: "durability and
+-- (QoL 0.7.23) MoneyText and the repair cost read are gone with the Durability and repair section (Xaya 2026-11-05: "durability and
 -- repair can be removed from all stat calculator panes").
 
 -- The equipped items as small icons in slot order (QoL 0.7.9; Xaya 2026-11-04: "gear pane should show small icons of the gear
@@ -1280,7 +1280,7 @@ local function GearIcon(sl, s)
     return ic
 end
 
--- The gear totals in columns (QoL 0.7.15): Gear | Character | Elsewhere, one row per stat, and the empty sockets. QoL 0.7.22 (Xaya
+-- The gear totals in columns (QoL 0.7.15): Gear | Character | Elsewhere, one row per stat, and the empty sockets. QoL 0.7.23 (Xaya
 -- 2026-11-05: the Gear tab's Summary "belongs in stats pane"): drawn on the Stats tab, under Character Stats > Gear Summary.
 -- Returns the items: the column head first, then one row per stat the gear or the character has.
 local function GearSummaryItems()
@@ -1319,7 +1319,7 @@ local function GearSummaryItems()
 end
 CM.GearSummaryItems = GearSummaryItems
 
--- The Gear tab: the equipped items as icons, then the comparison. (QoL 0.7.22: the Summary moved to the Stats tab; the Durability and
+-- The Gear tab: the equipped items as icons, then the comparison. (QoL 0.7.23: the Summary moved to the Stats tab; the Durability and
 -- repair section is gone, Xaya 2026-11-05: "durability and repair can be removed from all stat calculator panes".)
 local function GearSections(ctx, out)
     local icons = Item("gearIcons", "Equipped", "icons")
@@ -1622,7 +1622,7 @@ function GearCompareSections(ctx, out)
     local eff = { key = "gearEffects", title = "What it changes", grid = true, items = { CM.GridHead("gearEffCols") } }
     for _, sec in ipairs(tmp) do
         for _, it in ipairs(sec.items) do
-            if it.kind ~= "colhead" and it.kind ~= "subhead" and it.kind ~= "cmprow" then   -- (QoL 0.7.22: the tree's headings)
+            if it.kind ~= "colhead" and it.kind ~= "subhead" and it.kind ~= "cmprow" then   -- (QoL 0.7.23: the tree's headings)
                 local keep = {}
                 local head, headKept   -- the last line that is not nested: the "»" line the nested ones sit under
                 for _, pr in ipairs(it.pairs or {}) do
@@ -2115,7 +2115,7 @@ local function MapRating(ctx, src, key, kit)
     return it
 end
 
--- A heading inside a grid section (QoL 0.7.22, the Character Stats tree): level 1 (Core Stats, Secondaries, Tertiaries, Gear Summary)
+-- A heading inside a grid section (QoL 0.7.23, the Character Stats tree): level 1 (Core Stats, Secondaries, Tertiaries, Gear Summary)
 -- or level 2 (Primary, General, Offensive, Defensive under Core Stats). Not folded on its own; the section's header folds it all.
 local function SubHead(key, label, level)
     local it = Item(key, label, "subhead")
@@ -2123,7 +2123,7 @@ local function SubHead(key, label, level)
     return it
 end
 
--- Resources (QoL 0.7.22; Xaya 2026-11-05: "mana / energy / resource (for a drain-type resource: total amount; for a generator: max
+-- Resources (QoL 0.7.23; Xaya 2026-11-05: "mana / energy / resource (for a drain-type resource: total amount; for a generator: max
 -- possible; generation rate only for drain classes)"; a class with two resources shows both, e.g. Death Knight Runes and Runic Power).
 --   UnitPowerType(unit: UnitTokenPvPRestrictedForAddOns, index: number = 0) → powerType: PowerType, powerTypeToken: string, rgbX: number,
 --     rgbY: number, rgbZ: number · MayReturnNothing, SecretArguments=AllowedWhenUntainted (globals.md:690)
@@ -2209,7 +2209,7 @@ local function PowerItems(cur)
     return items
 end
 
--- Critical strike effectiveness (QoL 0.7.22; Xaya 2026-11-05, her example: "Enchant Ring - Eyes of the Eagle ... increasing critical
+-- Critical strike effectiveness (QoL 0.7.23; Xaya 2026-11-05, her example: "Enchant Ring - Eyes of the Eagle ... increasing critical
 -- strike effectiveness by 2%"). No call gives it: the documentation lists only GetCritChance, GetSpellCritChance and GetRangedCritChance
 -- (globals.md:150, 278, 248), each a chance. So it is read from the equipped items' own tooltip text (C_TooltipInfo.GetInventoryItem,
 -- namespaces.md:4711, every line's left and right text): each "critical strike effectiveness by N%" is added up. INFERENCE: the
@@ -2240,13 +2240,13 @@ end
 CM.CritEffect = CritEffect
 local function PctShort(v) if math.abs(v - math.floor(v + 0.5)) < 0.001 then return ("%d%%"):format(math.floor(v + 0.5)) end; return F(v, 1) .. "%" end
 
--- The Stats tab's Character Stats section (QoL 0.7.22; Xaya 2026-11-05, her words: "combine primary, secondary, and tertiary stats into
+-- The Stats tab's Character Stats section (QoL 0.7.23; Xaya 2026-11-05, her words: "combine primary, secondary, and tertiary stats into
 -- one major section under the name "Character Stats""). One section, one header; inside it, in this order:
 --   Core Stats > Primary (your spec's primary stat, Stamina), General (Health, your resources, Global cooldown, Movement speed),
 --     Offensive (Attack Power / Spell Power, Attack Speed, Weapon DPS, Damage, Critical strike effectiveness), Defensive (Armor, Dodge,
 --     Parry, Block; Stagger for a Brewmaster);
 --   Secondaries (Critical Strike, Haste, Mastery, Versatility); Tertiaries (Avoidance, Leech, Speed); Gear Summary (the Gear tab's
---     Summary until QoL 0.7.22: Gear | Character | Elsewhere and the empty sockets).
+--     Summary until QoL 0.7.23: Gear | Character | Elsewhere and the empty sockets).
 -- Columns as before (Stat | Rating | Current value | Pt value | (Note) | Change), the "»" lines and the nested abilities as before. The
 -- old Offense / Defense (what feeds it) sections are Offensive / Defensive here; the All ratings box is gone ("remove "all ratings" as an
 -- entry option"). While it builds, each "what feeds what" number is kept for the Stat Weights pane (ctx.weights).
@@ -2779,7 +2779,7 @@ local function StatMapSections(ctx, out)
     Simple("leech", "» Healed for (of damage done)", "Healing from damage done", true)
     Simple("speed2", "» Movement speed", "Movement speed", true)
 
-    -- 7. Gear Summary (the Gear tab's Summary until QoL 0.7.22; Xaya 2026-11-05: it "belongs in stats pane")
+    -- 7. Gear Summary (the Gear tab's Summary until QoL 0.7.23; Xaya 2026-11-05: it "belongs in stats pane")
     if not ctx.compare then
         Add(SubHead("sub_gearsum", "Gear Summary", 1))
         for _, it in ipairs(GearSummaryItems()) do Add(it) end
@@ -2789,7 +2789,7 @@ local function StatMapSections(ctx, out)
 end
 CM.StatMapSections = StatMapSections
 
--- The Stat Weights pane (QoL 0.7.22; Xaya 2026-11-05, her words: "Stat Weights should be a collapsible pane below the character stats
+-- The Stat Weights pane (QoL 0.7.23; Xaya 2026-11-05, her words: "Stat Weights should be a collapsible pane below the character stats
 -- that shows how all stats affect one another"; her columns "Stat | Rating (P / %) | PPP | | DR Threshold | T/L Rating | Influences";
 -- her row "Haste | 1442 / 32.5% | 48.9 / 1% (under if above DR threshold DR conversion value) | DR Threshold | T: 1429 / L: 12.2 |
 -- Influences: GCD (amount), Attack Speed (amount)"; "hovering over a given row/column for influences should say "{stat}
@@ -2935,8 +2935,8 @@ function CM.Build(cfg, tab)
     end
     local core = (tab == nil or tab == "sheet" or tab == "defense" or tab == "offense")
     if tab == "stats" then
-        add("stats", StatMapSections)   -- the stat map (QoL 0.7.14): the Stats tab; one Character Stats section since QoL 0.7.22
-        add("stats", StatWeightsSection)   -- the Stat Weights pane under it (QoL 0.7.22), from the numbers Character Stats read
+        add("stats", StatMapSections)   -- the stat map (QoL 0.7.14): the Stats tab; one Character Stats section since QoL 0.7.23
+        add("stats", StatWeightsSection)   -- the Stat Weights pane under it (QoL 0.7.23), from the numbers Character Stats read
     elseif core then
         add("stats", CharacterSection)
         add("stats", RatingSections)
