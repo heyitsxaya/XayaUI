@@ -5030,14 +5030,21 @@ do
             LowerWindow()
             if not ns.paneSizeApplied then ns.paneSizeApplied = true; if ns.ApplyPaneSize then pcall(ns.ApplyPaneSize) end end   -- saved size override, once per session
             if ns.DraftsOnOpen then pcall(ns.DraftsOnOpen) end   -- remember every rule's saved version
+            if Tree.DriverStart then Tree.DriverStart() end   -- the window's driver runs while it is open, never while closed (V14)
             local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
             if of and of.frame and not of.frame.xuiDraftHook then   -- window closed (button, Esc, toggle): unsaved rules go to Drafts
                 of.frame.xuiDraftHook = true
                 of.frame:HookScript("OnHide", function()
                     if ns.DraftsOnClose then pcall(ns.DraftsOnClose) end
                     if ns.SearchOnClose then pcall(ns.SearchOnClose) end   -- free the search indexes, stop their scans (Options 0.6.37)
+                    if Tree.Closed then pcall(Tree.Closed) end   -- stop the driver; clear previews, the kept tree, the strips (Options 0.6.41)
                 end)
             end
+        end)
+        -- every pane the window builds (an opening, a redraw, a click on a row): with "Use drafts" off the rule shown gets its first
+        -- undo state here, before it can be edited (Drafts.lua ns.UndoFirstState; Options 0.6.41, instead of copying every rule)
+        hooksecurefunc(AceConfigDialog, "FeedGroup", function(_, app)
+            if app == APP and ns.UndoFirstState then pcall(ns.UndoFirstState) end
         end)
     end
 end
@@ -5114,12 +5121,25 @@ local function BuildTray()
     t.log:EnableMouseWheel(true)
     t.log:SetScript("OnMouseWheel", function(self, d) if d > 0 then self:ScrollUp() else self:ScrollDown() end end)
     for _, line in ipairs(ns.logBuf or {}) do t.log:AddMessage(line) end
+    Tree.trayDrawn = ns.logSerial or 0   -- (core Core.lua counts every line put in ns.logBuf)
     return t
 end
 
+-- A log line is drawn into the strip only while the strip is shown (V14, Options 0.6.41): hidden (the window closed, or "Show the
+-- debug console" off) it draws nothing, and when it is shown again it draws the lines of ns.logBuf it missed (Tree.TrayCatchUp).
+-- Private lines (ns.PrintPrivate, never in ns.logBuf) that come while it is hidden are not drawn later, as before the strip is built.
 ns.On("LOG", function(line)
-    if tray and tray.log then tray.log:AddMessage(line) end
+    if not (tray and tray:IsShown()) then return end
+    tray.log:AddMessage(line)
+    Tree.trayDrawn = ns.logSerial or 0
 end)
+function Tree.TrayCatchUp()
+    local now, buf = ns.logSerial or 0, ns.logBuf or {}
+    local n = #buf
+    local missed = math.min(now - (Tree.trayDrawn or now), n)
+    for i = n - missed + 1, n do tray.log:AddMessage(buf[i]) end
+    Tree.trayDrawn = now
+end
 
 -------------------------------------------------------------------------------
 -- Sidebar preview toggles: an eye (visual) and a headphone (sound) on tree rows.
@@ -7721,10 +7741,18 @@ end
 do
     -- /xui perf: trace of what happens after a click, in FRAMES. Anything that lands on a later frame than the click is a visible
     -- intermediate state (the cause of a blink), so the trace shows exactly which step is late.
+    -- The frame counter runs only while tracing is on (V14, Options 0.6.41; it counted every frame from the first opening before).
     local fno, fclick = 0, 0
-    local tf = CreateFrame("Frame"); tf:SetScript("OnUpdate", function() fno = fno + 1 end)
+    local tf
     function ns.Trace(tag)
         if not (ns.perf and ns.perf.show) then return end
+        tf = tf or CreateFrame("Frame")
+        if not tf:GetScript("OnUpdate") then
+            tf:SetScript("OnUpdate", function(self)
+                if not (ns.perf and ns.perf.show) then self:SetScript("OnUpdate", nil) return end   -- /xui perf off: the counter stops
+                fno = fno + 1
+            end)
+        end
         if tag == "click" then fclick = fno end
         print(string.format("|cffffd100XayaUI|r trace +%d frame(s): %s", fno - fclick, tag))
     end
@@ -8121,6 +8149,7 @@ function Tree.PlaceTray(of, fr, sbar)
         end
         tray:SetFrameStrata(fr:GetFrameStrata())
         tray:SetFrameLevel(fr:GetFrameLevel())
+        if not tray:IsShown() then Tree.TrayCatchUp() end
         tray:Show()
         if TrayOpen() then
             local r = SelectedRule()
@@ -8137,21 +8166,37 @@ function ns.UpdateTrayNow()
     Tree.PlaceTray(of, fr, fr and fr:IsShown() and ns.SaveBarUpdate and ns.SaveBarUpdate(fr) or nil)
 end
 
+-- The window's driver (dresses the window, keeps the strips under it, re-reads which rules are loaded). V14 (Options 0.6.41; Xaya
+-- 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand
+-- in any way"): it runs only while the window is open. Tree.DriverStart (the AceConfigDialog.Open hook above) starts it; the window's
+-- OnHide hook (same place) runs Tree.Closed, which stops it and does at once what its first pass after a close used to do: clear the
+-- sidebar previews, let go of the kept tree, hide the unsaved-changes strip and the debug console strip, remember the Rules sub-tab.
+-- Up to 0.6.40 it ran on every frame from the first opening until /reload, with work every 0.25 s while the window was closed.
 local driver, acc = CreateFrame("Frame"), 0
 local sigAcc, lastSig = 0, nil
-driver:SetScript("OnUpdate", function(_, e)
+function Tree.Closed()
+    local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    if of and of.frame and of.frame:IsShown() then return end   -- another addon's window (AceGUI reuses frames) hid, not this one
+    driver:SetScript("OnUpdate", nil)
+    acc, sigAcc = 0, 0
+    Tree.last, Tree.keep = nil, nil   -- the kept tree is let go
+    if ns.AnyPreview() then ns.ClearPreview() end   -- previews are temporary: they end with the window
+    if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
+    if ns.SaveBarUpdate then ns.SaveBarUpdate(nil) end
+    Tree.PlaceTray(nil, nil, nil)
+end
+function Tree.Tick(_, e)
     Tree.keep = nil   -- a kept tree is for the redraw in the same call as Tree.Keep(), never a later frame's (top of this file)
     acc = acc + e
     if acc < 0.25 then return end
     acc = 0
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
     local fr = of and of.frame
-    if not (fr and fr:IsShown()) then Tree.last, Tree.keep = nil, nil end   -- window closed: the kept tree is let go
-    if ns.AnyPreview() and not (fr and fr:IsShown()) then ns.ClearPreview() end
-    if fr and fr:IsShown() and ns.SaveRulesSub then pcall(ns.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
-    if fr and fr:IsShown() then pcall(EnsureChrome, of) end
-    if fr and fr:IsShown() and ns.DecorateTrees then ns.DecorateTrees(of) end
-    if fr and fr:IsShown() and ns.rules then
+    if not (fr and fr:IsShown()) then Tree.Closed(); return end   -- (closed without the OnHide hook seeing it)
+    if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
+    pcall(EnsureChrome, of)
+    if ns.DecorateTrees then ns.DecorateTrees(of) end
+    if ns.rules then
         sigAcc = sigAcc + 1
         if sigAcc >= 4 then
             sigAcc = 0
@@ -8167,7 +8212,11 @@ driver:SetScript("OnUpdate", function(_, e)
     end
     local sbar = ns.SaveBarUpdate and ns.SaveBarUpdate(fr)
     Tree.PlaceTray(of, fr, sbar)
-end)
+end
+function Tree.DriverStart()
+    local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    if of and of.frame and of.frame:IsShown() and not driver:GetScript("OnUpdate") then driver:SetScript("OnUpdate", Tree.Tick) end
+end
 
 -------------------------------------------------------------------------------
 -- Publish what core may call (Modules.lua section 7). The game's Options > AddOns entry and the addon compartment click live in
