@@ -1,23 +1,27 @@
-# The character pane's slot overlays (XayaUI_QoL 0.7.19). Xaya's report of 2026-11-05, "character pane is broken": every slot showed
-# its item level twice, a shirt "1", small "15" / "25" numbers on some slots, enchant labels cut off ("Enchant Helm - E...") running
-# over the model, its camera buttons and each other, one of them purple ("Ancient Hash'ey B..."); then her direction: "correctly
-# word wrap enchant lines" and "show gem sockets and gems socketed". Her settings at the time (her second screenshot): Character
-# Reskin on, Clean window off, Item level / Enchants / Stat list on; the Character Toolkit on with its Slot Overlays.
+# The character pane, end to end (XayaUI_QoL 0.7.19, 0.7.21). Xaya's reports of 2026-11-05: "character pane is broken" (every slot's
+# item level twice, a shirt "1", "15" / "25" marks, enchant labels cut off and over the model), then after 0.7.19 "character pane still
+# broken" (every enchant label over the 3D model; a large purple item level over each slot plus XayaUI's), "the current invisible
+# background is not good", "gemstone display is much too small and doesn't show the gem name socketed", "hovering over the enchant name
+# ... should also allow you to see what the enchant does", "embellished items should be hoverable so you can read what the
+# embellishment does". Her settings: Character Reskin on, Clean window off, Item level / Enchants / Stat list / Gems on; the Character
+# Toolkit on with its Slot Overlays. Her width probe (2026-11-05): "120 px wider (540 -> 660) ... all ok".
 # Checks what the player sees, in Blizzard's real window geometry (tests/char_pane_geometry.lua, from the live 12.1.5 XML):
-#   1. reproduction in her settings: one XayaUI item level per slot (none on the shirt); the toolkit's empty-socket marks only where a
-#      socket has no gem;
-#   2. the enchant labels: the whole name, wrapped, in one colour; every line fits its width (estimated font width); each label inside
-#      its slot's band and its side of the window; no two labels overlap; none covers a slot, a socket, the weapon slots' art or an
-#      item level; none meets the model's camera buttons while they show; at 338 and 540 px (stats pane open) and a wider window;
-#   3. the sockets: one per gem socket, the gem's icon or an empty socket, the gem on hover, placed where the game puts its own;
-#   4. every combination of the reskin's and the toolkit's switches: one item level, one socket mark and one enchant mark per slot;
-#   5. /xui reskin status names text on the slots that is not XayaUI's (another addon's item level);
-#   6. V14: a part that is off reads nothing, creates nothing, listens to nothing.
+#   A. her settings with the wider window (on by default, 240 px): the window, the model whole and centred, the stats pane placed; one
+#      item level per slot (none on the shirt; XayaUI's hidden where another addon's text shows the same number); each slot's block
+#      (enchant, embellishment, gems): the whole enchant name, wrapped, every line within its width, inside its band, none over the
+#      model or its camera buttons, none over a slot, an item level, the weapon art or another row; gem icons 12-14 px with the gem's
+#      name, the empty socket's type; hover texts from the game's data only; the solid background, also after the window reopens;
+#   B. the wider window off (Blizzard's width): the reproduction (the labels lie over the model) and everything else still holding;
+#   C. every enchant name of this expansion at the wider width; the extra width at 120 and 300;
+#   D. the window's sizing: tabs, the stats pane, combat (nothing changes in combat; the model and main hand go back), the end of combat;
+#   E. sockets, the toolkit's marks and the Gear tab's count (QoL 0.7.19); /xui reskin status;
+#   F. every combination of the switches; G. V14: off costs nothing.
 # Run from the repo root: python3 tests/char_pane_overlays_run.py   Needs: pip install lupa.
-# Every item, gem, socket and enchant below is a TEST STAND-IN. Names are real ones from Blizzard's client data
-# (docs/reference/content/items.json, build 12.1.5.70783) where her screenshot shows their start; "+41 Agility/Strength & 41 Stamina"
-# is made up past the "+41 Agility/Strengt" she showed. Which gems she has is not known: the gems are stand-ins.
-import os, sys
+# Every item, gem, socket, enchant and tooltip line below is a TEST STAND-IN. Enchant names are real ones from Blizzard's client data
+# (docs/reference/content/items.json, build 12.1.5.70783), the ones her 0.7.19 screenshot shows; "+41 Agility/Strength & +27 Armor" is
+# her legs' line as she read it (INFERENCE: no space after the "/", the game wrapped there). Which gems she has, which item is
+# embellished and the embellishment's text are not known: stand-ins.
+import os, sys, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lua51 import runtime as LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
@@ -31,21 +35,30 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
 CM = ns.CharModel
-placePane(338)
+placePane(540)
+blizzardSizing()
 function PaperDollItemSlotButton_Update(btn) end
 function PaperDollFrame_UpdateStats() end
 function PanelTemplates_SetTab(frame, id) frame.selectedTab = id end
 ENCHANTED_TOOLTIP_LINE = "Enchanted: %s"
 EMPTY_SOCKET_PRISMATIC = "Prismatic Socket"
--- her gear: item level 334 (her 333.75 equipped), Hero track; a shirt (item level 1), no tabard
+-- the theme (a stand-in for XayaUI/Theme.lua: tokens, T.Col, the resolve listeners)
+THEME = { windowBg = { 0.06, 0.06, 0.06, 1 }, paneBg = { 0.04, 0.04, 0.04, 1 }, border = { 0.35, 0.35, 0.4, 1 } }
+ns.Theme = { listeners = {} }
+local CLS = { ["xui-window"] = { bg = "windowBg", border = "border" }, ["xui-pane"] = { bg = "paneBg", border = "border" } }
+function ns.Theme.Col(class, prop, fb) local k = CLS[class] and CLS[class][prop]; local c = k and THEME[k] or fb or { 1, 1, 1, 1 }; return { c[1], c[2], c[3], c[4] } end
+function ns.Theme.OnResolve(fn) table.insert(ns.Theme.listeners, fn) end
+function ns.Theme.OffResolve(fn) local keep = {}; for _, f in ipairs(ns.Theme.listeners) do if f ~= fn then keep[#keep + 1] = f end end; ns.Theme.listeners = keep end
+function ns.Theme.Resolve() for _, f in ipairs(ns.Theme.listeners) do f() end end
+-- her gear: item level 334, Hero track; a shirt (item level 1), no tabard
 local LIST = {
   { 1, "Helm", 1 }, { 2, "Amulet", 2 }, { 3, "Spaulders", 0 }, { 15, "Cloak", 0 }, { 5, "Chestguard", 0 }, { 4, "Shirt", 0 },
   { 9, "Bracers", 1 }, { 10, "Gloves", 0 }, { 6, "Belt", 1 }, { 7, "Legguards", 0 }, { 8, "Boots", 0 }, { 11, "Ring A", 2 },
   { 12, "Ring B", 2 }, { 13, "Trinket A", 0 }, { 14, "Trinket B", 0 }, { 16, "Glaive A", 1 }, { 17, "Glaive B", 0 } }
-ENCH = { [1] = "Enchant Helm - Empowered Rune of Avoidance", [3] = "Enchant Shoulders - Akil'zon's Swiftness",
-  [5] = "Enchant Chest - Mark of the Rootwarden", [6] = "Ancient Hash'ey Battle Art: Ursine's Ironhide",
-  [7] = "+41 Agility/Strength & 41 Stamina", [8] = "Enchant Boots - Shaladrassil's Roots", [11] = "Enchant Ring - Eyes of the Eagle",
-  [12] = "Enchant Ring - Eyes of the Eagle", [16] = "Enchant Weapon - Acuity of the Ren'dorei", [17] = "Enchant Weapon - Flames of the Sin'dorei" }
+ENCH = { [1] = "Enchant Helm - Empowered Rune of Avoidance", [3] = "Enchant Shoulders - Silvermoon's Mending",
+  [5] = "Enchant Chest - Mark of the Worldsoul", [6] = "Ancient Hash'ey Battle Art: Ursine's Ironhide",
+  [7] = "+41 Agility/Strength & +27 Armor", [8] = "Enchant Boots - Shaladrassil's Roots", [11] = "Enchant Ring - Eyes of the Eagle",
+  [12] = "Enchant Ring - Eyes of the Eagle", [16] = "Enchant Weapon - Acuity of the Ren'dorei", [17] = "Enchant Weapon - Acuity of the Ren'dorei" }
 GEAR, ITEMS, TIP, UPG = {}, {}, {}, {}
 for _, e in ipairs(LIST) do
   local slot, name, sockets = e[1], e[2], e[3]
@@ -53,11 +66,15 @@ for _, e in ipairs(LIST) do
   ITEMS[name] = { ilvl = (slot == 4) and 1 or 334, loc = "INVTYPE_X", class = (slot == 16 or slot == 17) and 2 or 4,
     stats = { ITEM_MOD_AGILITY_SHORT = 500, EMPTY_SOCKET_PRISMATIC = sockets > 0 and sockets or nil } }
   UPG[name] = { trackString = "Hero", currentLevel = 6, maxLevel = 6 }
-  if ENCH[slot] then TIP[slot] = { { type = 15, leftText = "Enchanted: " .. ENCH[slot] } } end
+  TIP[slot] = {}
+  if ENCH[slot] then TIP[slot][1] = { type = 15, leftText = "Enchanted: " .. ENCH[slot] } end
 end
--- the purple one: the line carries the epic colour in its text, after the "Enchanted: " (INFERENCE from her screenshot: the label read
--- "Ancient Hash'ey B..." in purple, so the prefix was taken off and a colour code stayed)
+-- the purple one: the line carries the epic colour in its text, after the "Enchanted: " (INFERENCE from her 0.7.19 screenshot)
 TIP[6] = { { type = 15, leftText = "Enchanted: |cffa335ee" .. ENCH[6] .. "|r" } }
+-- an embellished item (stand-in): the bracers, with the game's limit line and an Equip line; a trinket with an Equip line, not embellished
+EMB_LINE, EMB_EFFECT = "Unique-Equipped: Embellished (2)", "Equip: Your attacks have a chance to grant 300 Haste for 10 sec."
+TIP[9] = { { type = 0, leftText = "|cffffffff" .. EMB_LINE .. "|r" }, { type = 45, leftText = EMB_EFFECT } }
+TIP[13] = { { type = 45, leftText = "Equip: Your spells have a chance to deal 5000 Fire damage." } }
 -- gems (real names from the client data; which ones she has is not known)
 GEMS = { Helm = { 240889 }, Amulet = { 240895, 240905 }, Belt = { 240889 }, ["Ring A"] = { 240895 }, ["Ring B"] = { 240889, 240905 } }
 GEM_INFO = { [240889] = { icon = 9001, name = "Flawless Deadly Peridot" }, [240895] = { icon = 9002, name = "Flawless Masterful Amethyst" },
@@ -69,13 +86,14 @@ C_Item.GetItemUpgradeInfo = function(link) local name = type(link) == "string" a
 GetInventoryItemQuality = function(_, slot) if GEAR[slot] then return slot == 4 and 1 or 4 end end
 linkReads = 0
 GetInventoryItemLink = function(_, slot) linkReads = linkReads + 1; return GEAR[slot] end
-C_TooltipInfo.GetInventoryItem = function(_, slot) return { lines = TIP[slot] or {} } end
+tipReads = 0
+C_TooltipInfo.GetInventoryItem = function(_, slot) tipReads = tipReads + 1; if GEAR[slot] then return { lines = TIP[slot] or {} } end end
 GameTooltip.SetHyperlink = function(self, l) self.link = l end
 timers = {}
 C_Timer.After = function(d, fn) timers[#timers + 1] = d; fn() end
 assert(loadfile(__CT__))("XayaUI_QoL", ns)
 assert(loadfile(__RS__))("XayaUI_QoL", ns)
--- XayaUI's texts on one slot: the reskin's item level and label, the toolkit overlay's item level and marks
+-- what the player sees on one slot
 function shownText(fs) return fs and fs.shown and (fs.alpha or 1) > 0 and fs.text ~= nil and fs.text ~= "" end
 function ilvlTexts(name)
   local n, b = 0, _G["Character" .. name]
@@ -84,8 +102,18 @@ function ilvlTexts(name)
   if ti and ti ~= "" then n = n + 1 end
   return n
 end
+FOREIGN = {}   -- another addon's item level on a slot (her pane: a large purple number)
+function allIlvls(name) local n = ilvlTexts(name); local f = FOREIGN[name]; if f and f.shown then n = n + 1 end; return n end
 function marks(name) local _, m = ns.CharToolkit_OverlayText(name); return (m or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") end
 function sockets(name) local b, out = _G["Character" .. name], {}; for _, f in ipairs(b.xuiSockets or {}) do if f.shown then out[#out + 1] = f end end; return out end
+-- every visible row of a slot's block (enchant, embellishment, sockets): { frame, its rectangle }
+function rowsOf(name)
+  local b, out = _G["Character" .. name], {}
+  for _, f in ipairs({ b.xuiEnchantRow or false, b.xuiEmbRow or false, unpack(b.xuiSockets or {}) }) do
+    if f and f.shown and (f.alpha or 1) > 0 then out[#out + 1] = f end
+  end
+  return out
+end
 ALL = {}
 for _, n in ipairs(PANE_SLOTS_LEFT) do ALL[#ALL + 1] = n end
 for _, n in ipairs(PANE_SLOTS_RIGHT) do ALL[#ALL + 1] = n end
@@ -94,6 +122,84 @@ SLOT_ID = {}
 for _, s in ipairs(CM.SLOTS) do SLOT_ID[s[4]] = s[1] end
 LEFTSET = {}
 for _, n in ipairs(PANE_SLOTS_LEFT) do LEFTSET[n] = true end
+GOOD, WARN = { 0.5, 1, 0.5 }, { 1, 0.56, 0.25 }
+function near(c, t) return c and math.abs(c[1] - t[1]) < 0.01 and math.abs(c[2] - t[2]) < 0.01 and math.abs(c[3] - t[3]) < 0.01 end
+-- the enchant's own name: what is left after "Enchant <slot> - " (the test's own rule, so it does not lean on the code under test)
+function SHORT(n) return n:match("^Enchant [^%-]- %- (.+)$") or n end
+-- (the parts the code keeps for the tests; empty on code without them, so a check fails instead of the run stopping)
+function TXT(f) return (f and f.text and type(f.text) == "table") and table.concat(seenLines(f.text), " ") or "" end
+function PARTS() return ns.CharReskinParts or {} end
+function WIDE() return ns.CharReskinWide or { } end
+function WIDEEV() return (WIDE().ev or { events = {} }).events end
+EXPECT = {}
+for slot, txt in pairs(ENCH) do EXPECT[slot] = { SHORT(txt), GOOD } end
+EXPECT[9] = { "No enchant", WARN }
+
+-- the enchant rows: the whole (short) name, wrapped, every line within its width at 8-10 pt, one colour
+function labelProblems()
+  local all, colour = {}, {}
+  for _, name in ipairs(ALL) do
+    local fs, e = _G["Character" .. name].xuiEnchant, EXPECT[SLOT_ID[name]]
+    if e then
+      local lines = seenLines(fs)
+      local seen = table.concat(lines, " ")
+      if not shownText(fs) then all[#all + 1] = name .. " missing"
+      elseif seen ~= e[1] then all[#all + 1] = name .. ": " .. seen end
+      if tostring(fs.text):find("|c", 1, true) or not near(fs.color, e[2]) then colour[#colour + 1] = name end
+      local size = fs.font and fs.font[2] or 0
+      if size < 8 or size > 10 then all[#all + 1] = name .. " size " .. size end
+      for _, l in ipairs(lines) do if #l * CHAR_W(size) > (fs.w or 0) + 0.01 then all[#all + 1] = name .. " too wide: " .. l end end
+    elseif shownText(fs) then all[#all + 1] = name .. " (a label where none is due: " .. fs.text .. ")" end
+  end
+  return all, colour
+end
+-- every row's rectangle against the window, the model, the camera buttons, the slots, the item levels, the weapon art and each other
+function layoutProblems(camShown, wideOn)
+  local inset = RECT(CharacterFrame.Inset)
+  local head, hands = RECT(CharacterHeadSlot), RECT(CharacterHandsSlot)
+  local mid, gut = (head.r + hands.l) / 2, ns.UI_GUTTER
+  local model, cam = RECT(CharacterModelScene), RECT(CharacterModelScene.ControlFrame)
+  local rows, slots, ilvls, arts = {}, {}, {}, {}
+  for _, name in ipairs(ALL) do
+    local b = _G["Character" .. name]
+    slots[#slots + 1] = { name, RECT(b) }
+    if shownText(b.xuiIlvl) then ilvls[#ilvls + 1] = { name, RECT(b.xuiIlvl) } end
+    for i, f in ipairs(rowsOf(name)) do rows[#rows + 1] = { name .. "#" .. i, RECT(f), b, name, f } end
+  end
+  for _, k in ipairs({ "MainHandSlot", "SecondaryHandSlot", "MainHandSide", "SecondaryHandSide" }) do arts[#arts + 1] = { k .. " art", RECT(ART[k]) } end
+  local out, overModel = {}, {}
+  local lastL, lastR = RECT(CharacterWristSlot), RECT(CharacterTrinket1Slot)
+  for _, R in ipairs(rows) do
+    local id, r, b, name, f = R[1], R[2], R[3], R[4], R[5]
+    local sr = RECT(b)
+    if not r then out[#out + 1] = id .. " (no rectangle)"
+    else
+      if name == "MainHandSlot" or name == "SecondaryHandSlot" then
+        local top = (name == "MainHandSlot" and lastL or lastR).b - 2
+        if r.t > top + 0.01 or r.b < inset.b - 0.01 then out[#out + 1] = id .. " outside its band " .. rstr(r) end
+      elseif r.t > sr.t + 2.01 or r.b < sr.b - 2.01 then out[#out + 1] = id .. " outside its band " .. rstr(r) end
+      if not wideOn then
+        if LEFTSET[name] or name == "MainHandSlot" then if r.r > mid - gut / 2 + 0.01 then out[#out + 1] = id .. " past the middle " .. rstr(r) end
+        elseif r.l < mid + gut / 2 - 0.01 then out[#out + 1] = id .. " past the middle " .. rstr(r) end
+      end
+      if not inside(r, inset) then out[#out + 1] = id .. " outside the window " .. rstr(r) end
+      if overlaps(r, model) then overModel[#overModel + 1] = id .. " " .. rstr(r) end
+      if camShown and overlaps(r, cam) then out[#out + 1] = id .. " over the camera buttons " .. rstr(r) end
+      if f.text and f.text.shown then
+        local tr = RECT(f.text)
+        if tr and not inside(tr, r) and f.text.text ~= "" then out[#out + 1] = id .. " text outside its row" end
+      end
+    end
+  end
+  for i = 1, #rows do for j = i + 1, #rows do if overlaps(rows[i][2], rows[j][2]) then out[#out + 1] = rows[i][1] .. " / " .. rows[j][1] end end end
+  for _, R in ipairs(rows) do
+    for _, other in ipairs({ slots, ilvls, arts }) do
+      for _, o in ipairs(other) do if overlaps(R[2], o[2]) then out[#out + 1] = R[1] .. " / " .. o[1] end end
+    end
+  end
+  return out, overModel, #rows
+end
+function list(t, k) return t[1] and (table.concat(t, "; ", 1, math.min(#t, k or 6)) .. (#t > (k or 6) and (" (+" .. (#t - (k or 6)) .. " more)") or "")) or "" end
 '''
 
 def lua_with(prelude_extra=""):
@@ -108,7 +214,6 @@ def lua_with(prelude_extra=""):
 # every enchant name of this expansion (Blizzard's client data, docs/reference/content/items.json: Item Enhancements, classID 8) by slot:
 # subclass 0 helm, 2 shoulders, 4 chest, 9 boots, 10 rings, 11 weapons (not the profession-tool ones), 14 the Hash'ey battle arts (on the
 # waist, as in her screenshot). Armor kits and spellthreads are left out: their tooltip line is the stat text, not the item's name.
-import json
 _items = json.load(open(os.path.join(ROOT, "docs", "reference", "content", "items.json"), encoding="utf-8"))["data"]
 _slots = {0: [1], 2: [3], 4: [5], 9: [8], 10: [11, 12], 11: [16, 17], 14: [6]}
 _names = {}
@@ -126,209 +231,238 @@ def run(lua, code):
     lua.execute(code)
     TOTAL_N += lua.eval("n"); TOTAL_F += lua.eval("fails")
 
-# ---------------------------------------------------------------------------------------------------------------------------------
-# 1-5: her settings, then every combination
-# ---------------------------------------------------------------------------------------------------------------------------------
 lua = lua_with(ALLNAMES + r'''
 local tk = ns.CharToolkit_Cfg()
 tk.enchantSlots = { [1] = true, [3] = true, [5] = true, [7] = true, [8] = true, [9] = true, [11] = true, [12] = true, [16] = true, [17] = true }
 tk.enchantSlotsSet = true   -- she ticked her wrist too: "No enchant" there
 ''')
 run(lua, r'''
-FireReadyDone = ns.FireReady()
-local rc, tk = ns.CharReskin_Cfg(), ns.CharToolkit_Cfg()
--- her settings (second screenshot): reskin on, Clean window off, item level, enchants, stat list on; toolkit and its slot overlays on
-rc.enabled, rc.chrome, rc.ilvl, rc.enchants, rc.stats = true, false, true, true, true
+ns.FireReady()
+rc, tk = ns.CharReskin_Cfg(), ns.CharToolkit_Cfg()
+-- her settings: reskin on, Clean window off, item level, enchants, gems, stat list on (the wider window: its default, on);
+-- the toolkit and its slot overlays on
+rc.enabled, rc.chrome, rc.ilvl, rc.enchants, rc.gems, rc.stats = true, false, true, true, true, true
 tk.enabled, tk.overlays, tk.panel = true, true, false
+CharacterFrame:Show(); PaperDollFrame:Show()
 ns.CharToolkit_Apply(); ns.CharReskin_Apply()
-CharacterFrame:Show()
 CharacterModelScene.ControlFrame:Hide()
 
--- 1. reproduction: what XayaUI draws on each slot -------------------------------------------------------------------------------
+-- A. her settings, the wider window ----------------------------------------------------------------------------------------------
+local cf, inset, model = CharacterFrame, RECT(CharacterFrame.Inset), RECT(CharacterModelScene)
+local win, head, hands, stats = RECT(cf), RECT(CharacterHeadSlot), RECT(CharacterHandsSlot), RECT(cf.InsetRight)
+check("A. the wider window is on by default with the reskin: 240 px wider on the Character tab with the stats pane (540 -> 780), the game asked to place its panels again",
+  rc.wide == true and cf.w == 780 and panelCalls >= 1, cf.w .. " / " .. panelCalls)
+check("  ...the model keeps its width (231 x 320), whole inside the window, centred between the slot columns (127 / 128 px each side)",
+  math.abs(model.r - model.l - 231) < 0.01 and math.abs(model.t - model.b - 320) < 0.01 and inside(model, inset)
+  and math.abs((model.l - head.r) - (hands.l - model.r)) <= 1.01 and model.l - head.r >= 120, rstr(model) .. " head.r " .. head.r .. " hands.l " .. hands.l)
+local mh, oh = RECT(CharacterMainHandSlot), RECT(CharacterSecondaryHandSlot)
+check("  ...the weapons centred under the model (moved 120 px, as the probe moved them by half); the right column and the stats pane moved out with the Inset",
+  math.abs(mh.l - (win.l + 130 + 120)) < 0.01 and math.abs(((mh.l + oh.r) / 2) - ((model.l + model.r) / 2)) <= 2 and math.abs(hands.r - (inset.r - 4)) < 0.01
+  and math.abs(inset.r - (win.l + 338 - 6 + 240)) < 0.01 and stats and stats.l >= inset.r and inside(stats, win),
+  rstr(mh) .. " / " .. rstr(stats))
+-- one item level per slot
 local bad = {}
 for _, name in ipairs(ALL) do
   local want = (GEAR[SLOT_ID[name]] and name ~= "ShirtSlot") and 1 or 0
   if ilvlTexts(name) ~= want then bad[#bad + 1] = name .. "=" .. ilvlTexts(name) end
 end
-check("her settings: XayaUI draws exactly one item level on each equipped slot, none on the shirt (her pane: a shirt \"1\")", #bad == 0, table.concat(bad, " "))
-check("  ...the shirt's \"1\" is gone (its item level says nothing; the Gear tab leaves the shirt out too)", not shownText(CharacterShirtSlot.xuiIlvl), CharacterShirtSlot.xuiIlvl and CharacterShirtSlot.xuiIlvl.text)
-
--- 2. the enchant labels ---------------------------------------------------------------------------------------------------------
-local GOOD, WARN = { 0.5, 1, 0.5 }, { 1, 0.56, 0.25 }
-local function near(c, t) return c and math.abs(c[1] - t[1]) < 0.01 and math.abs(c[2] - t[2]) < 0.01 and math.abs(c[3] - t[3]) < 0.01 end
-EXPECT = {}
-for slot, txt in pairs(ENCH) do EXPECT[slot] = { txt, GOOD } end
-EXPECT[9] = { "No enchant", WARN }
-function labelChecks(tag)
-  local missing, cut, colour, fit = {}, {}, {}, {}
-  for _, name in ipairs(ALL) do
-    local fs, e = _G["Character" .. name].xuiEnchant, EXPECT[SLOT_ID[name]]
-    if e then
-      local lines = seenLines(fs)
-      local seen = table.concat(lines, " ")
-      if not shownText(fs) then missing[#missing + 1] = name
-      elseif seen ~= e[1] then cut[#cut + 1] = name .. ": " .. seen end
-      if tostring(fs.text):find("|c", 1, true) or not near(fs.color, e[2]) then colour[#colour + 1] = name end
-      local size = fs.font and fs.font[2] or 0
-      if size < 8 or size > 10 then fit[#fit + 1] = name .. " size " .. size end
-      for _, l in ipairs(lines) do if #l * CHAR_W(size) > (fs.w or 0) + 0.01 then fit[#fit + 1] = name .. ": " .. l end end
-    elseif shownText(fs) then missing[#missing + 1] = name .. " (a label where none is due: " .. fs.text .. ")" end
-  end
-  -- (one check: every enchanted slot has its label, none elsewhere; the whole name, wrapped; every line within the label's width)
-  local all = {}
-  for _, t in ipairs({ missing, cut, fit }) do for _, x in ipairs(t) do all[#all + 1] = x end end
-  check(tag .. "every enchanted slot shows the whole name, word-wrapped, every line within its width at 8-10 pt, nothing cut (her pane: \"Enchant Helm - E...\")",
-    #all == 0, table.concat(all, " | "))
-  check(tag .. "  ...in one colour: green, or orange for \"No enchant\" (her pane: the Hash'ey one in purple)", #colour == 0, table.concat(colour, " "))
-end
-function layoutProblems(camShown)
-  local inset = RECT(CharacterFrame.Inset)
-  local head, hands = RECT(CharacterHeadSlot), RECT(CharacterHandsSlot)
-  local mid = (head.r + hands.l) / 2
-  local gut = ns.UI_GUTTER
-  local labels, slots, socks, ilvls, arts = {}, {}, {}, {}, {}
-  for _, name in ipairs(ALL) do
-    local b = _G["Character" .. name]
-    slots[#slots + 1] = { name, RECT(b) }
-    if shownText(b.xuiEnchant) then labels[#labels + 1] = { name, RECT(b.xuiEnchant), b } end
-    if shownText(b.xuiIlvl) then ilvls[#ilvls + 1] = { name, RECT(b.xuiIlvl) } end
-    for i, f in ipairs(sockets(name)) do socks[#socks + 1] = { name .. "#" .. i, RECT(f) } end
-  end
-  for _, k in ipairs({ "MainHandSlot", "SecondaryHandSlot", "MainHandSide", "SecondaryHandSide" }) do arts[#arts + 1] = { k .. " art", RECT(ART[k]) } end
-  local band, side, inwin, ov, slotov, camov = {}, {}, {}, {}, {}, {}
-  local lastL, lastR = RECT(CharacterWristSlot), RECT(CharacterTrinket1Slot)
-  for _, L in ipairs(labels) do
-    local name, r, b = L[1], L[2], L[3]
-    local sr = RECT(b)
-    if not r then band[#band + 1] = name .. " (no rectangle)"
-    else
-      if name == "MainHandSlot" or name == "SecondaryHandSlot" then
-        local top = (name == "MainHandSlot" and lastL or lastR).b - 2
-        if r.t > top + 0.01 or r.b < inset.b - 0.01 then band[#band + 1] = name .. " " .. rstr(r) end
-      elseif r.t > sr.t + 2.01 or r.b < sr.b - 2.01 then band[#band + 1] = name .. " " .. rstr(r) end
-      if LEFTSET[name] or name == "MainHandSlot" then if r.r > mid - gut / 2 + 0.01 then side[#side + 1] = name .. " " .. rstr(r) end
-      elseif r.l < mid + gut / 2 - 0.01 then side[#side + 1] = name .. " " .. rstr(r) end
-      if not inside(r, inset) then inwin[#inwin + 1] = name .. " " .. rstr(r) end
-    end
-  end
-  for i = 1, #labels do for j = i + 1, #labels do
-    if overlaps(labels[i][2], labels[j][2]) then ov[#ov + 1] = labels[i][1] .. " / " .. labels[j][1] end
-  end end
-  for _, L in ipairs(labels) do
-    for _, other in ipairs({ slots, socks, ilvls, arts }) do
-      for _, o in ipairs(other) do if overlaps(L[2], o[2]) then slotov[#slotov + 1] = L[1] .. " / " .. o[1] end end
-    end
-  end
-  local cam = RECT(CharacterModelScene.ControlFrame)
-  if camShown then for _, L in ipairs(labels) do if overlaps(L[2], cam) then camov[#camov + 1] = L[1] .. " " .. rstr(L[2]) end end end
-  -- (one V11 check per window: band, side, inside the window, no overlaps; the camera buttons while they show)
-  local all = {}
-  for _, t in ipairs({ band, side, inwin, ov, slotov, camov }) do for _, x in ipairs(t) do all[#all + 1] = x end end
-  -- the sockets: inside the window, clear of the slots, the camera buttons and each other
-  local sbad = {}
-  for i, s in ipairs(socks) do
-    if not inside(s[2], inset) then sbad[#sbad + 1] = s[1] .. " outside " .. rstr(s[2]) end
-    for _, o in ipairs(slots) do if overlaps(s[2], o[2]) then sbad[#sbad + 1] = s[1] .. " / " .. o[1] end end
-    for _, o in ipairs(ilvls) do if overlaps(s[2], o[2]) then sbad[#sbad + 1] = s[1] .. " / " .. o[1] .. " item level" end end
-    if overlaps(s[2], cam) then sbad[#sbad + 1] = s[1] .. " / camera" end
-    for j = i + 1, #socks do if overlaps(s[2], socks[j][2]) then sbad[#sbad + 1] = s[1] .. " / " .. socks[j][1] end end
-  end
-  return all, sbad, #socks
-end
-function layoutChecks(tag, camShown)
-  local all, sbad, nsock = layoutProblems(camShown)
-  check(tag .. "every label inside its slot's band (the weapons' under the side columns), on its side of the window (a gutter apart, #351), inside the window; no two overlap; none covers a slot, a socket, an item level or the weapon slots' art"
-    .. (camShown and "; none meets the model's camera buttons while they show (her pane: the head row ran over them)" or ""), #all == 0, table.concat(all, "; "))
-  check(tag .. "the sockets: inside the window, clear of the slots, the item levels, the camera buttons and each other", nsock > 0 and #sbad == 0, table.concat(sbad, "; "))
-end
-labelChecks("338 px: ")
-layoutChecks("338 px, camera buttons hidden: ", false)
+check("A. XayaUI draws exactly one item level on each equipped slot, none on the shirt (her 0.7.18 pane: a shirt \"1\")", #bad == 0, table.concat(bad, " "))
+-- the enchant rows
+local lp, colour = labelProblems()
+check("A. every enchanted slot shows its enchant's whole name (without \"Enchant <slot> - \"), word-wrapped, every line within its width at 8-10 pt, nothing cut",
+  #lp == 0, list(lp))
+check("  ...in one colour: green, or orange for \"No enchant\" (her 0.7.18 pane: the Hash'ey one in purple)", #colour == 0, table.concat(colour, " "))
+local out, overModel, nrows = layoutProblems(false, true)
+check("A. no row of any slot's block (enchant, embellishment, gem) lies over the 3D model (her report: every label over the model's body)",
+  nrows > 15 and #overModel == 0, nrows .. " rows; " .. list(overModel))
+check("  ...each row inside its slot's band (the weapons' under the side columns), inside the window; no two overlap; none covers a slot, an item level or the weapon art",
+  #out == 0, list(out))
 CharacterModelScene.ControlFrame:Show()
-layoutChecks("338 px, camera buttons shown: ", true)
-local hidden = {}
-for _, name in ipairs(ALL) do local fs = _G["Character" .. name].xuiEnchant; if fs and fs.text ~= "" and (fs.alpha or 1) == 0 then hidden[#hidden + 1] = name end end
+local out2 = layoutProblems(true, true)
+local hid = {}
+for _, name in ipairs(ALL) do local f = _G["Character" .. name].xuiEnchantRow; if f and f.shown and (f.alpha or 1) == 0 then hid[#hid + 1] = name end end
+check("  ...with the camera buttons shown (mouse over the model): none meets them, and none has to hide", #out2 == 0 and #hid == 0, list(out2) .. table.concat(hid, ","))
 CharacterModelScene.ControlFrame:Hide()
-local back = true
-for _, name in ipairs(ALL) do local fs = _G["Character" .. name].xuiEnchant; if fs and (fs.alpha or 1) == 0 then back = false end end
-check("  ...only the labels that meet them hide (DECISION: the head row's), and only while they show", table.concat(hidden, ",") == "HeadSlot" and back, table.concat(hidden, ","))
-
--- the window with the stats pane open (540 wide): the paper doll does not move
-placePane(540); ns.CharReskin_Apply()
-labelChecks("540 px: ")
-CharacterModelScene.ControlFrame:Show()
-layoutChecks("540 px, camera buttons shown: ", true)
-CharacterModelScene.ControlFrame:Hide()
--- a wider window (the width probe's 120 px: the Inset, the model and the right column move out, the main hand by 60)
-placePane(458)
-CharacterFrame.Inset.pts[2] = { "BOTTOMRIGHT", CharacterFrame, "BOTTOMLEFT", 338 - 6 + 120, 4 }
-CharacterModelScene.w = 231 + 120
-CharacterMainHandSlot.pts = { { "BOTTOMLEFT", PaperDollItemsFrame, "BOTTOMLEFT", 130 + 60, 16 } }
+-- gems: bigger icons, the gem's name, the empty socket's type
+local nb, ra = sockets("NeckSlot"), sockets("Finger0Slot")
+local function icon(f) return f and f.bg and f.bg.w or 0 end
+local small = {}
+for _, name in ipairs(ALL) do for i, f in ipairs(sockets(name)) do if icon(f) < 12 or (f.bg.h or 0) < 12 then small[#small + 1] = name .. "#" .. i .. " " .. icon(f) end end end
+local fourteen = 0
+for _, name in ipairs(ALL) do for _, f in ipairs(sockets(name)) do if icon(f) == 14 then fourteen = fourteen + 1 end end end
+check("A. gem / socket icons 12-14 px (the game's own is 11; her pane: \"much too small\"), 14 where the block fits it",
+  #small == 0 and fourteen > 0, table.concat(small, " ") .. " / 14 px: " .. fourteen)
+check("  ...a name line per socketed gem: the neck's two (\"Flawless Masterful Amethyst\", \"Flawless Quick Garnet\"), with their icons",
+  #nb == 2 and TXT(nb[1]) == "Flawless Masterful Amethyst" and TXT(nb[2]) == "Flawless Quick Garnet"
+  and nb[1].gem.shown and nb[1].gem.tex == 9002 and nb[2].gem.tex == 9003, #nb == 2 and (TXT(nb[1]) .. " | " .. TXT(nb[2])) or #nb)
+check("  ...an empty socket: the game's string for its type (\"Prismatic Socket\") in orange, no gem icon (Ring A's second)",
+  #ra == 2 and TXT(ra[2]) == "Prismatic Socket" and near(ra[2].text.color, WARN) and not ra[2].gem.shown, #ra == 2 and TXT(ra[2]) or #ra)
+-- a gem whose name the game has not loaded yet: the icon only, the name when the item info arrives (GET_ITEM_INFO_RECEIVED)
+local saved = GEM_INFO[240889].name
+GEM_INFO[240889].name = nil
 ns.CharReskin_Apply()
-labelChecks("wider window: ")
-CharacterModelScene.ControlFrame:Show()
-layoutChecks("wider window, camera buttons shown: ", true)
-CharacterModelScene.ControlFrame:Hide()
-placePane(338); ns.CharReskin_Apply()
+local hb = sockets("HeadSlot")[1]
+local before = hb and hb.text and hb.text.text
+GEM_INFO[240889].name = saved
+fire("GET_ITEM_INFO_RECEIVED", 240889, true)
+check("  ...a gem name not loaded yet: its icon only (nothing guessed); filled in when the game sends the item (GET_ITEM_INFO_RECEIVED)",
+  before == "" and hb.gem.shown and TXT(sockets("HeadSlot")[1]) == saved, tostring(before) .. " -> " .. TXT(sockets("HeadSlot")[1]))
+-- hover: what the enchant does, as the game gives it; nothing invented
+local function hover(f) GameTooltip.lines, GameTooltip.link = {}, nil; if f and f.scripts.OnEnter then f.scripts.OnEnter(f) end; return table.concat(GameTooltip.lines or {}, " | ") end
+local legs, ring = hover(CharacterLegsSlot.xuiEnchantRow), hover(CharacterFinger0Slot.xuiEnchantRow)
+check("A. hover the legs' enchant: the game's line with its stats, nothing added (\"Enchanted: +41 Agility/Strength & +27 Armor\")",
+  legs == "Enchanted: +41 Agility/Strength & +27 Armor", legs)
+check("  ...hover a ring's: the whole line, and that the game gives no effect text for it (no text invented)",
+  ring == "Enchanted: Enchant Ring - Eyes of the Eagle | Effect text not given by the game.", ring)
+hover(nb[1])
+check("  ...hover a gem's name: the gem's own tooltip (its link)", TXT(nb[1]) ~= "" and tostring(GameTooltip.link):find("Flawless Masterful Amethyst", 1, true) ~= nil, tostring(GameTooltip.link))
+check("  ...the rows take the mouse only over themselves (each row's rectangle is outside every slot: checked above); the slot keeps its clicks",
+  CharacterLegsSlot.xuiEnchantRow ~= nil and CharacterLegsSlot.xuiEnchantRow.parent == CharacterLegsSlot and not overlaps(RECT(CharacterLegsSlot.xuiEnchantRow), RECT(CharacterLegsSlot)))
+-- the embellishment
+local emb = CharacterWristSlot.xuiEmbRow
+local embT = emb and emb.shown and emb.text.text
+local eh = emb and hover(emb) or ""
+local plain = {}
+for _, name in ipairs(ALL) do local f = _G["Character" .. name].xuiEmbRow; if name ~= "WristSlot" and f and f.shown then plain[#plain + 1] = name end end
+check("A. the embellished bracers show \"Embellished (1/2)\" (worn / the game's own limit from its line); no other item shows one (the trinket's Equip line alone is not one)",
+  embT == "Embellished (1/2)" and #plain == 0, tostring(embT) .. " / " .. table.concat(plain, " "))
+check("  ...hover it: the game's line, the item's Equip line as the game gives it, how many are worn",
+  eh == EMB_LINE .. " | " .. EMB_EFFECT .. " | 1 of 2 embellished items worn.", eh)
+-- the background
+local own = PARTS()
+local bg = own.bg or {}
+check("A. the background: solid (95%), the theme's window colour, covering the whole window (the stats pane and the wider area) with Clean window off",
+  bg and bg.shown and bg.color and near(bg.color, THEME.windowBg) and math.abs(bg.color[4] - 0.95) < 0.001 and RECT(bg).l == win.l and RECT(bg).r == win.r
+  and RECT(bg).t == win.t and RECT(bg).b == win.b, bg and rstr(RECT(bg)))
+CharacterFrame:Hide(); CharacterFrame:Show()
+check("  ...still there after the window is closed and opened again (her \"invisible background\": each reopen hid it)", bg.shown == true)
+rc.chrome = true; ns.CharReskin_Apply(); CharacterFrame:Hide(); CharacterFrame:Show()
+local edges = own.edges or {}
+check("  ...Clean window on: after a reopen ours is shown again (background, border, the stats pane's fill in the theme's pane colour)",
+  bg.shown and edges[1] and edges[1].shown and own.stats and own.stats.shown and near(own.stats.color, THEME.paneBg))
+rc.bgAlpha = 0.7; ns.CharReskin_Apply()
+check("  ...its opacity follows the page's \"Background opacity\" (70%)", bg.color ~= nil and math.abs(bg.color[4] - 0.7) < 0.001, bg.color and bg.color[4])
+rc.enabled = false; ns.CharReskin_Apply(); LISTEN0 = #ns.Theme.listeners; rc.enabled = true; ns.CharReskin_Apply()
+THEME.windowBg = { 0.2, 0.1, 0.3, 1 }; ns.Theme.Resolve()
+check("  ...a theme change repaints it (one listener, there only while the reskin is on)", near(bg.color, THEME.windowBg) and #ns.Theme.listeners == LISTEN0 + 1,
+  #ns.Theme.listeners .. " / " .. LISTEN0)
+THEME.windowBg = { 0.06, 0.06, 0.06, 1 }; rc.bgAlpha, rc.chrome = 0.95, false; ns.CharReskin_Apply()
+-- one item level per slot when another addon draws its own (her 0.7.19 pane: a large purple number plus ours)
+for _, name in ipairs(ALL) do
+  local id = SLOT_ID[name]
+  if GEAR[id] and id ~= 4 then
+    local f = mk("FS"); f.text = "|cffa335ee334|r"; f.shown = true; f.debugName = "OtherAddon" .. name .. "ItemLevel"; addRegion(_G["Character" .. name], f); FOREIGN[name] = f
+  end
+end
+ns.CharReskin_Apply()
+local two = {}
+for _, name in ipairs(ALL) do local want = (GEAR[SLOT_ID[name]] and name ~= "ShirtSlot") and 1 or 0; if allIlvls(name) ~= want then two[#two + 1] = name .. "=" .. allIlvls(name) end end
+check("A. another addon's item level on every slot, the same number: XayaUI's stays hidden, ONE number per slot (the other addon's text untouched)",
+  #two == 0 and FOREIGN.HeadSlot.shown and FOREIGN.HeadSlot.text == "|cffa335ee334|r", table.concat(two, " "))
+FOREIGN.Finger0Slot.text = "335"; FOREIGN.NeckSlot.shown = false
+ns.CharReskin_Apply()
+check("  ...a different number there (Ring A): XayaUI's shown; none there (the neck): XayaUI's shown", shownText(CharacterFinger0Slot.xuiIlvl) and shownText(CharacterNeckSlot.xuiIlvl)
+  and not shownText(CharacterHeadSlot.xuiIlvl))
+-- another addon that writes its number after XayaUI (its hook runs later): looked at again on the next frame
+FOREIGN.NeckSlot.shown = true
+timers = {}
+PaperDollItemSlotButton_Update(CharacterNeckSlot)
+check("  ...an addon that writes after XayaUI: checked again on the next frame (one timer), then hidden", not shownText(CharacterNeckSlot.xuiIlvl) and #timers >= 1, #timers)
+printed = {}
+ns.RunCommand("reskin", "status")
+local said = table.concat(printed, "\n")
+check("  .../xui reskin status names the other text (frame name) and says on how many slots XayaUI's is hidden and how to keep one",
+  said:find("OtherAddonHeadSlotItemLevel", 1, true) ~= nil and said:find("Head 334", 1, true) ~= nil and said:find("hidden on 15 slot", 1, true) ~= nil
+  and said:find("turn the other addon's item level off", 1, true) ~= nil and not said:find("Eyes of the Eagle", 1, true), said)
+for _, f in pairs(FOREIGN) do f.shown = false end
+FOREIGN = {}
+ns.CharReskin_Apply()
 
--- every enchant name of this expansion in the client data, on the slots it goes on (the head and the hands rows with the camera
--- buttons shown too): the whole name shown, nothing cut, the layout holds
-local savedTIP, bad, sizes = TIP, {}, {}
+-- B. the wider window off: Blizzard's width -----------------------------------------------------------------------------------------
+local wasW = CharacterFrame.w
+rc.wide = false; ns.CharReskin_Apply()
+model = RECT(CharacterModelScene)
+check("B. wider window switched off (from 780): Blizzard's width back (540), the model and the main hand back at Blizzard's places (52, -66 / 130, 16)",
+  wasW == 780 and CharacterFrame.w == 540 and math.abs(model.l - (RECT(CharacterFrame).l + 52)) < 0.01 and math.abs(RECT(CharacterMainHandSlot).l - (RECT(CharacterFrame).l + 130)) < 0.01,
+  CharacterFrame.w .. " " .. rstr(model))
+local lpB = labelProblems()
+local outB, overB = layoutProblems(false, false)
+check("B. the reproduction (her report): at Blizzard's width the enchant rows lie over the model (the columns are 7-8 px from it)", #overB > 0, #overB)
+check("  ...everything else holds: the whole names, wrapped; every row inside its band, its side of the window, no overlaps", #lpB == 0 and #outB == 0, list(lpB) .. list(outB))
+CharacterModelScene.ControlFrame:Show()
+local outB2 = layoutProblems(true, false)
+local hidB = {}
+for _, name in ipairs(ALL) do local f = _G["Character" .. name].xuiEnchantRow; if f and f.text.text ~= "" and (f.alpha or 1) == 0 then hidB[#hidB + 1] = name end end
+check("  ...with the camera buttons shown none meets them: the blocks that cannot clear them hide while they show (the head and waist rows)",
+  #outB2 == 0 and #hidB >= 1, list(outB2) .. " hidden: " .. table.concat(hidB, ","))
+CharacterModelScene.ControlFrame:Hide()
+rc.wide = true; ns.CharReskin_Apply()
+
+-- C. every enchant name of this expansion, and the extra width at 120 and 300 -------------------------------------------------------
+local savedTIP, badC, sizes = TIP, {}, {}
 for _, e in ipairs(ALLNAMES) do
   TIP = {}
   for k, v in pairs(savedTIP) do TIP[k] = v end
   for _, slot in ipairs(e.slots) do TIP[slot] = { { type = 15, leftText = "Enchanted: " .. e.name } } end
-  CharacterModelScene.ControlFrame:Hide()
   ns.CharReskin_Apply()
   for _, slot in ipairs(e.slots) do
     local name
     for n2, id in pairs(SLOT_ID) do if id == slot then name = n2 end end
     local fs = _G["Character" .. name].xuiEnchant
     local seen = table.concat(seenLines(fs), " ")
-    if not shownText(fs) or seen ~= e.name then bad[#bad + 1] = name .. ": " .. seen end
-    for _, l in ipairs(seenLines(fs)) do if #l * CHAR_W(fs.font[2]) > fs.w + 0.01 then bad[#bad + 1] = name .. " line too wide: " .. l end end
+    if not shownText(fs) or seen ~= SHORT(e.name) then badC[#badC + 1] = name .. ": " .. seen end
+    for _, l in ipairs(seenLines(fs)) do if #l * CHAR_W(fs.font[2]) > fs.w + 0.01 then badC[#badC + 1] = name .. " line too wide: " .. l end end
     sizes[fs.font[2]] = (sizes[fs.font[2]] or 0) + 1
   end
-  local p1 = layoutProblems(false)
-  CharacterModelScene.ControlFrame:Show()
-  local p2 = layoutProblems(true)
-  for _, x in ipairs(p1) do bad[#bad + 1] = e.name .. ": " .. x end
-  for _, x in ipairs(p2) do bad[#bad + 1] = e.name .. " (camera shown): " .. x end
+  local p1, o1 = layoutProblems(false, true)
+  for _, x in ipairs(p1) do badC[#badC + 1] = e.name .. ": " .. x end
+  for _, x in ipairs(o1) do badC[#badC + 1] = e.name .. " over the model: " .. x end
 end
-CharacterModelScene.ControlFrame:Hide()
 TIP = savedTIP; ns.CharReskin_Apply()
-check(("every enchant name of this expansion in the client data (%d names) on its slots: the whole name, every line within its width, the layout holds (sizes used: 10 pt %d, 9 pt %d, 8 pt %d)")
-  :format(#ALLNAMES, sizes[10] or 0, sizes[9] or 0, sizes[8] or 0), #bad == 0, bad[1] and (bad[1] .. (#bad > 1 and (" (+" .. (#bad - 1) .. " more)") or "")))
+check(("C. every enchant name of this expansion in the client data (%d) on its slots, at the wider window: the whole name, every line within its width, nothing over the model, the layout holds (10 pt %d, 9 pt %d, 8 pt %d)")
+  :format(#ALLNAMES, sizes[10] or 0, sizes[9] or 0, sizes[8] or 0), #badC == 0, list(badC, 2))
+for _, px in ipairs({ 120, 300 }) do
+  rc.widePx = px; ns.CharReskin_Apply()
+  local o, ov, nr = layoutProblems(false, true)
+  local cut = ns.CharReskinDiag.cut
+  check(("C. extra width %d px (window %d): no row over the model, inside bands, no overlaps (%d rows; %d blocks cut to fit at a word)"):format(px, CharacterFrame.w, nr, cut),
+    CharacterFrame.w == 540 + px and #o == 0 and #ov == 0, list(o) .. list(ov))
+end
+rc.widePx = 240; ns.CharReskin_Apply()
+check("  ...back to 240: 780 wide, the base width remembered (not widened twice)", CharacterFrame.w == 780, CharacterFrame.w)
 
--- the window open but a slot without a position on the first pass (INFERENCE: possible in the frame it opens): laid out on a retry
-local realGetLeft, realAfter, nextFrame = CharacterHeadSlot.GetLeft, C_Timer.After, false
-CharacterHeadSlot.GetLeft = function(self) if not nextFrame then return nil end; return realGetLeft(self) end
-C_Timer.After = function(d, fn) nextFrame = true; return realAfter(d, fn) end
-ns.CharReskin_Apply()
-CharacterHeadSlot.GetLeft, C_Timer.After = realGetLeft, realAfter
-check("the slots with no position yet when the window opens: the labels are laid out on the next frame (the whole name)",
-  nextFrame and table.concat(seenLines(CharacterHeadSlot.xuiEnchant), " ") == ENCH[1] and table.concat(seenLines(CharacterFeetSlot.xuiEnchant), " ") == ENCH[8],
-  table.concat(seenLines(CharacterHeadSlot.xuiEnchant), " "))
+-- D. the window's sizing: tabs, the stats pane, combat -----------------------------------------------------------------------------
+cf.activeSubframe = "ReputationFrame"; PaperDollFrame:Hide(); cf:UpdateSize()
+local otherTab = cf.w
+cf.activeSubframe = "PaperDollFrame"; cf:UpdateSize(); PaperDollFrame:Show()
+check("D. another tab: Blizzard's width (338); back on the Character tab: wider again (780)", otherTab == 338 and cf.w == 780
+  and ns.CharReskin_WideOn ~= nil and ns.CharReskin_WideOn(), otherTab .. " / " .. cf.w)
+STATS_OPEN = false; cf:UpdateSize()
+check("  ...the stats pane closed (Blizzard 338): 578; opened again: 780", cf.w == 578 and (function() STATS_OPEN = true; cf:UpdateSize(); return cf.w == 780 end)(), cf.w)
+combat = true
+local evBefore = WIDEEV().PLAYER_REGEN_ENABLED
+STATS_OPEN = false; cf:UpdateSize()
+local mm = RECT(CharacterModelScene)
+check("D. in combat Blizzard puts its width back (338): XayaUI does not size the window; the model and the main hand go back to Blizzard's places; it waits for the end of combat",
+  cf.w == 338 and math.abs(mm.l - (RECT(cf).l + 52)) < 0.01 and math.abs(RECT(CharacterMainHandSlot).l - (RECT(cf).l + 130)) < 0.01
+  and not evBefore and WIDEEV().PLAYER_REGEN_ENABLED == true, cf.w .. " " .. rstr(mm))
+local o3, ov3 = layoutProblems(false, false)
+check("  ...meanwhile the blocks laid out for Blizzard's width (inside their bands, no overlaps)", #o3 == 0, list(o3))
+combat = false
+fire("PLAYER_REGEN_ENABLED")
+check("  ...combat ends: wider again (338 + 240 = 578) and it stops listening for the end of combat", cf.w == 578 and WIDE().ev ~= nil and next(WIDEEV()) == nil, cf.w)
+STATS_OPEN = true; cf:UpdateSize()
+combat = true; rc.wide = false; ns.CharReskin_Apply()
+local inCombatW = cf.w
+combat = false; fire("PLAYER_REGEN_ENABLED")
+check("D. switched off in combat: nothing changes until the fight ends (780), then Blizzard's width and places", inCombatW == 780 and cf.w == 540 and math.abs(RECT(CharacterModelScene).l - (RECT(cf).l + 52)) < 0.01, cf.w)
+rc.wide = true; ns.CharReskin_Apply()
+check("  ...wider window on: 780 again", cf.w == 780, cf.w)
 
--- 3. the sockets ----------------------------------------------------------------------------------------------------------------
-local nb = sockets("NeckSlot")
-check("sockets: the neck's two, both with their gem's icon; none on a slot without sockets (DECISION: the reskin draws them; the game's own display is for Timerunning only)",
-  #nb == 2 and nb[1].gem.shown and nb[1].gem.tex == 9002 and nb[2].gem.shown and nb[2].gem.tex == 9003 and #sockets("ChestSlot") == 0 and #sockets("HandsSlot") == 0, #nb)
-local ra = sockets("Finger0Slot")
-check("  ...Ring A: its gem, then an empty socket (no gem art in it)", #ra == 2 and ra[1].gem.shown and ra[1].gem.tex == 9002 and not ra[2].gem.shown, #ra)
-local hr, nr, mr, wr = RECT(CharacterHeadSlot), RECT(nb[1]), RECT(sockets("MainHandSlot")[1]), RECT(CharacterMainHandSlot)
-local rb = RECT(ra[1]); local r0 = RECT(CharacterFinger0Slot)
-check("  ...where the game puts its own: 7 px beside the slot, toward the model (left and right columns)", nr ~= nil and rb ~= nil and math.abs(nr.l - (RECT(CharacterNeckSlot).r + 7)) < 0.01
-  and math.abs(rb.r - (r0.l - 7)) < 0.01, rstr(nr) .. " / " .. rstr(rb))
-check("  ...the main hand's under the weapon", mr and mr.t <= wr.b + 0.01 and mr.l >= wr.l - 0.01 and mr.r <= wr.r + 0.01, rstr(mr))
-GameTooltip.link = nil; if nb[1] then nb[1].scripts.OnEnter(nb[1]) end
-check("  ...hover a gem: the gem's own tooltip (its link)", tostring(GameTooltip.link):find("Flawless Masterful Amethyst", 1, true) ~= nil, tostring(GameTooltip.link))
-GameTooltip.lines = {}; if ra[2] then ra[2].scripts.OnEnter(ra[2]) end
-check("  ...hover an empty socket: its type, from the game's own string", GameTooltip.lines[1] == "Prismatic Socket", tostring(GameTooltip.lines[1]))
-
--- the toolkit's marks: "nS" counts sockets without a gem; left out while the reskin draws the sockets
+-- E. sockets and the toolkit's marks (QoL 0.7.19) --------------------------------------------------------------------------------
 local m = {}
 for _, name in ipairs(ALL) do if marks(name):find("S", 1, true) then m[#m + 1] = name end end
-check("while the reskin draws the sockets the toolkit leaves its socket mark out (one per slot)", #m == 0, table.concat(m, " "))
+check("E. while the reskin draws the sockets the toolkit leaves its socket mark out (one per slot)", #m == 0, table.concat(m, " "))
 rc.gems = false; ns.CharReskin_Apply()
 check("  ...gems off: the reskin's sockets go, and the toolkit's mark counts only sockets without a gem: neck (both filled) none (her pane: \"25\" = 2S)",
   #sockets("NeckSlot") == 0 and marks("NeckSlot") == "", marks("NeckSlot"))
@@ -336,8 +470,6 @@ check("  ...Ring A one empty: 1S; Ring B (both filled) none; the bracers' empty 
   and not marks("Finger1Slot"):find("S", 1, true) and marks("WristSlot"):find("1S", 1, true) ~= nil,
   marks("Finger0Slot") .. " | " .. marks("Finger1Slot") .. " | " .. marks("WristSlot"))
 rc.gems = true; ns.CharReskin_Apply()
-
--- the same count in the Stat Calculator's Gear tab (V4: the other readers of the slot's socket count)
 CM.gearSlot = 2
 local gm = ns.CharToolkit_Model("gear")
 local function grow(key) for _, r in ipairs(gm) do if r.key == key then return r end end end
@@ -345,28 +477,28 @@ local amulet = grow("gc_sockets")
 CM.gearSlot = nil
 gm = ns.CharToolkit_Model("gear")
 local sum = grow("gearSum_sockets")
-check("Gear tab: the amulet (both sockets filled) has no Empty sockets row; the Summary counts 3 (bracers, Ring A, Glaive A)",
+check("E. Gear tab: the amulet (both sockets filled) has no Empty sockets row; the Summary counts 3 (bracers, Ring A, Glaive A)",
   amulet == nil and sum and sum.cells[1] == "3", (amulet and table.concat(amulet.cells, "|") or "none") .. " / " .. (sum and sum.cells[1] or "none"))
+-- the window open but a slot without a position on the first pass (INFERENCE: possible in the frame it opens): laid out on a retry
+local realGetLeft, realAfter, nextFrame = CharacterHeadSlot.GetLeft, C_Timer.After, false
+CharacterHeadSlot.GetLeft = function(self) if not nextFrame then return nil end; return realGetLeft(self) end
+C_Timer.After = function(d, fn) nextFrame = true; return realAfter(d, fn) end
+ns.CharReskin_Apply()
+CharacterHeadSlot.GetLeft, C_Timer.After = realGetLeft, realAfter
+check("E. the slots with no position yet when the window opens: the blocks are laid out on the next frame (the whole name)",
+  nextFrame and table.concat(seenLines(CharacterHeadSlot.xuiEnchant), " ") == SHORT(ENCH[1]) and table.concat(seenLines(CharacterFeetSlot.xuiEnchant), " ") == SHORT(ENCH[8]),
+  table.concat(seenLines(CharacterHeadSlot.xuiEnchant), " "))
 
--- 5. who else draws on the slots ---------------------------------------------------------------------------------------------------
-local other = mk("FS"); other.text = "|cffa335ee334|r"; other.shown = true; other.debugName = "OtherAddonHeadItemLevel"
-addRegion(CharacterHeadSlot, other)
-printed = {}
-ns.RunCommand("reskin", "status")
-local said = table.concat(printed, "\n")
-check("/xui reskin status names text on the slots that is not XayaUI's (another addon's item level)", said:find("OtherAddonHeadItemLevel", 1, true) ~= nil
-  and said:find("Head 334", 1, true) ~= nil, said)
-check("  ...and not XayaUI's own (the reskin's item level and labels, the toolkit's marks)", not said:find("Enchant Helm", 1, true) and said:find("not XayaUI's (1)", 1, true) ~= nil, said)
-other.shown = false
-
--- 4. every combination of the switches: one item level, one socket mark, one enchant mark per slot ---------------------------------
+-- F. every combination of the switches: one item level, one socket mark, one enchant mark per slot -------------------------------
 local combos, badc = 0, {}
 for _, ron in ipairs({ false, true }) do for _, ril in ipairs({ false, true }) do for _, ren in ipairs({ false, true }) do for _, rge in ipairs({ false, true }) do
-for _, ton in ipairs({ false, true }) do for _, tov in ipairs({ false, true }) do
-  rc.enabled, rc.ilvl, rc.enchants, rc.gems = ron, ril, ren, rge
+for _, ton in ipairs({ false, true }) do for _, tov in ipairs({ false, true }) do for _, rwi in ipairs({ false, true }) do
+  rc.enabled, rc.ilvl, rc.enchants, rc.gems, rc.wide = ron, ril, ren, rge, rwi
   tk.enabled, tk.overlays = ton, tov
   ns.CharReskin_Apply(); ns.CharToolkit_Apply(); ns.CharToolkit_UpdateOverlays()
   combos = combos + 1
+  local wantW = (ron and rwi) and 780 or 540
+  if CharacterFrame.w ~= wantW then badc[#badc + 1] = ("width %d (want %d) r%s w%s"):format(CharacterFrame.w, wantW, tostring(ron), tostring(rwi)) end
   for _, name in ipairs(ALL) do
     local slot = SLOT_ID[name]
     local drawer = (ron and ril) or (ton and tov)
@@ -380,16 +512,23 @@ for _, ton in ipairs({ false, true }) do for _, tov in ipairs({ false, true }) d
         tostring(rge), tostring(ton), tostring(tov), il, want, sockMarks, enchMarks)
     end
   end
-end end end end end end
-check(("every combination of the reskin's and the toolkit's switches (%d): one item level per slot (none on the shirt), at most one socket mark and one enchant mark"):format(combos),
-  #badc == 0, badc[1] and (badc[1] .. (#badc > 1 and (" (+" .. (#badc - 1) .. " more)") or "")))
+  if ron and rwi then local _, ov = layoutProblems(false, true); for _, x in ipairs(ov) do badc[#badc + 1] = "over the model: " .. x end end
+end end end end end end end
+check(("F. every combination of the reskin's (with the wider window) and the toolkit's switches (%d): one item level per slot (none on the shirt), at most one socket and one enchant mark, the width as switched, nothing over the model while wider"):format(combos),
+  #badc == 0, list(badc, 2))
+rc.enabled, rc.wide = true, true; ns.CharReskin_Apply()
+local onW, onBg = CharacterFrame.w, PARTS().bg and PARTS().bg.shown
+rc.enabled = false; ns.CharReskin_Apply()
+check("F. the reskin switched off (from 780, background shown): Blizzard's width and places, the theme listener gone, the background hidden",
+  onW == 780 and onBg and CharacterFrame.w == 540 and math.abs(RECT(CharacterModelScene).l - (RECT(cf).l + 52)) < 0.01 and #ns.Theme.listeners == LISTEN0 and not (PARTS().bg and PARTS().bg.shown),
+  CharacterFrame.w .. " / " .. #ns.Theme.listeners)
 ''')
 
 # ---------------------------------------------------------------------------------------------------------------------------------
-# 6. V14: a part that is off reads nothing, creates nothing, listens to nothing (each from a fresh login)
+# G. V14: a part that is off reads nothing, creates nothing, listens to nothing (each from a fresh login)
 # ---------------------------------------------------------------------------------------------------------------------------------
 lua = lua_with(r'''
-CueRulesDB.characterReskin = { enabled = true, chrome = true, ilvl = false, enchants = false, gems = false, stats = false }
+CueRulesDB.characterReskin = { enabled = true, chrome = true, ilvl = false, enchants = false, gems = false, stats = false, wide = false }
 CueRulesDB.characterToolkit = { enabled = true, overlays = false, panel = false }
 HOOKS = {}
 local baseHook = hooksecurefunc
@@ -397,36 +536,51 @@ hooksecurefunc = function(a, b, c)
   HOOKS[#HOOKS + 1] = { name = type(a) == "string" and a or b, src = debug.getinfo(2, "S").source }
   return baseHook(a, b, c)
 end
-function toolkitSlotHooks()
+PDHOOKS = {}
+rawset(PaperDollFrame, "HookScript", function(self, sc, f)
+  PDHOOKS[#PDHOOKS + 1] = debug.getinfo(2, "S").source
+  self.hooks[sc] = self.hooks[sc] or {}; table.insert(self.hooks[sc], f)
+end)
+function pdHooksFrom(file) local k = 0; for _, src in ipairs(PDHOOKS) do if src:find(file, 1, true) then k = k + 1 end end; return k end
+function hooksFrom(name, file)
   local k = 0
-  for _, h in ipairs(HOOKS) do if h.name == "PaperDollItemSlotButton_Update" and h.src:find("CharacterToolkit.lua", 1, true) then k = k + 1 end end
+  for _, h in ipairs(HOOKS) do if h.name == name and h.src:find(file, 1, true) then k = k + 1 end end
   return k
 end
 ''')
 run(lua, r'''
-local hookBefore = PaperDollItemSlotButton_Update
 local createdBefore = #created
+local updateSize = CharacterFrame.UpdateSize
 ns.FireReady()
-CharacterFrame:Show()
-linkReads = 0
+CharacterFrame:Show(); PaperDollFrame:Show()
+linkReads, tipReads = 0, 0
 ns.CharReskin_Apply()
 local sock = 0
-for _, name in ipairs(ALL) do if _G["Character" .. name].xuiSockets then sock = sock + 1 end end
-check("V14: only the Clean window on: the reskin reads no item and creates no socket (no item level, gems or enchant part is on)", linkReads == 0 and sock == 0, linkReads .. " reads, " .. sock .. " sockets")
+for _, name in ipairs(ALL) do if _G["Character" .. name].xuiSockets or _G["Character" .. name].xuiEnchantRow then sock = sock + 1 end end
+check("V14: only the Clean window on: the reskin reads no item and no tooltip, creates no row (no item level, gems or enchant part is on)",
+  linkReads == 0 and tipReads == 0 and sock == 0, linkReads .. " reads, " .. tipReads .. " tooltips, " .. sock .. " rows")
 local regd = {}
 for i = createdBefore + 1, #created do if tostring(created[i].src):find("CharacterReskin.lua", 1, true) then for e in pairs(created[i].events) do regd[#regd + 1] = e end end end
 check("  ...and listens to no item event", #regd == 0, table.concat(regd, " "))
+check("V14: the wider window off at login: the window's UpdateSize not hooked, the Character tab not hooked, no frame waiting for combat, the width untouched",
+  CharacterFrame.UpdateSize == updateSize and hooksFrom("UpdateSize", "CharacterReskin.lua") == 0 and pdHooksFrom("CharacterReskin.lua") == 0
+  and WIDE().ev == nil and CharacterFrame.w == 540, ("%s %d %d %s %d"):format(tostring(CharacterFrame.UpdateSize == updateSize),
+  hooksFrom("UpdateSize", "CharacterReskin.lua"), pdHooksFrom("CharacterReskin.lua"), tostring(WIDE().ev), CharacterFrame.w))
+local rc = ns.CharReskin_Cfg(); rc.wide = true; ns.CharReskin_Apply()
+check("  ...switched on: one hook on UpdateSize and one on the Character tab, wider (780); off again: Blizzard's width, the hooks return at once (a /reload removes them)",
+  hooksFrom("UpdateSize", "CharacterReskin.lua") == 1 and pdHooksFrom("CharacterReskin.lua") == 1 and CharacterFrame.w == 780 and (function()
+    rc.wide = false; ns.CharReskin_Apply(); local w1 = CharacterFrame.w; CharacterFrame:UpdateSize(); return w1 == 540 and CharacterFrame.w == 540 end)(), CharacterFrame.w)
 -- the toolkit is on, its slot overlays off: it does not hook the slot buttons
-local hooksOff = toolkitSlotHooks()
+local hooksOff = hooksFrom("PaperDollItemSlotButton_Update", "CharacterToolkit.lua")
 timers = {}
 fire("PLAYER_EQUIPMENT_CHANGED", 1, true)
 local t02 = 0
 for _, d in ipairs(timers) do if d == 0.2 then t02 = t02 + 1 end end
 local tk = ns.CharToolkit_Cfg(); tk.overlays = true; ns.CharToolkit_Apply()
 check("V14: the toolkit on with its slot overlays off: no hook on the slot buttons and no overlay refresh on an item event; switched on: one hook, the overlay drawn",
-  hooksOff == 0 and t02 == 0 and toolkitSlotHooks() == 1 and ns.CharToolkit_OverlayText("HeadSlot") ~= nil, hooksOff .. " hooks, " .. t02 .. " refreshes")
+  hooksOff == 0 and t02 == 0 and hooksFrom("PaperDollItemSlotButton_Update", "CharacterToolkit.lua") == 1 and ns.CharToolkit_OverlayText("HeadSlot") ~= nil, hooksOff .. " hooks, " .. t02 .. " refreshes")
 -- the reskin switched off: its event frame listens to nothing
-local rc = ns.CharReskin_Cfg(); rc.ilvl = true; ns.CharReskin_Apply()
+rc.ilvl = true; ns.CharReskin_Apply()
 local listening = {}
 for i = createdBefore + 1, #created do if tostring(created[i].src):find("CharacterReskin.lua", 1, true) and created[i].events.PLAYER_EQUIPMENT_CHANGED then listening[#listening + 1] = i end end
 rc.enabled = false; ns.CharReskin_Apply()
@@ -440,12 +594,13 @@ CueRulesDB.characterReskin = { enabled = false }
 CueRulesDB.characterToolkit = { enabled = false }
 ''')
 run(lua, r'''
-local before, hookBefore = #created, PaperDollItemSlotButton_Update
+local before, hookBefore, sizeBefore = #created, PaperDollItemSlotButton_Update, CharacterFrame.UpdateSize
 ns.FireReady()
-CharacterFrame:Show(); CharacterModelScene.ControlFrame:Show()
-check("V14: both off at login: no frame created, the slot buttons not hooked, nothing drawn on a slot", #created == before
-  and PaperDollItemSlotButton_Update == hookBefore and not CharacterHeadSlot.xuiIlvl and not CharacterHeadSlot.xuiEnchant and not CharacterHeadSlot.xuiSockets
-  and #(CharacterModelScene.ControlFrame.hooks.OnShow or {}) == 0, #created - before)
+CharacterFrame:Show(); CharacterModelScene.ControlFrame:Show(); PaperDollFrame:Show()
+check("V14: both off at login: no frame created, nothing hooked (slots, UpdateSize, the Character tab), no theme listener, nothing drawn, Blizzard's width",
+  #created == before and PaperDollItemSlotButton_Update == hookBefore and CharacterFrame.UpdateSize == sizeBefore and #(PaperDollFrame.hooks.OnShow or {}) == 0
+  and #ns.Theme.listeners == 0 and not CharacterHeadSlot.xuiIlvl and not CharacterHeadSlot.xuiEnchant and not CharacterHeadSlot.xuiSockets
+  and #(CharacterModelScene.ControlFrame.hooks.OnShow or {}) == 0 and CharacterFrame.w == 540, #created - before)
 ''')
 
 print("%d checks, %d failed" % (TOTAL_N, TOTAL_F))

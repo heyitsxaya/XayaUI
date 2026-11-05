@@ -111,10 +111,11 @@ check("the toolkit's slot overlay leaves out its item level while the reskin dra
 local re, he = CharacterFinger0Slot.xuiEnchant, CharacterHeadSlot.xuiEnchant
 check("the ring's enchant by name, from its tooltip line, without 'Enchanted: ' (green)", re and re.text == "Radiant Mastery" and col(re.color, 0.5, 1, 0.5), re and re.text)
 check("  ...the helm: 'No enchant' in orange (the head takes one this expansion)", he and he.text == "No enchant" and col(he.color, 1, 0.56, 0.25), he and he.text)
--- (QoL 0.7.19) placed past the socket column, 22 px from the slot; every position check is in tests/char_pane_overlays_run.py
+-- (QoL 0.7.21) the first row of the slot's block, 6 px from the slot (the sockets are rows of the block now); every position check is
+-- in tests/char_pane_overlays_run.py
 local hr, rr, hs, rs = RECT(he), RECT(re), RECT(CharacterHeadSlot), RECT(CharacterFinger0Slot)
-check("  ...left-column slots: to the right of the slot, past the socket column (22 px)", hr and math.abs(hr.l - (hs.r + 22)) < 0.01, rstr(hr))
-check("  ...right-column slots: to the left of the slot (22 px)", rr and math.abs(rr.r - (rs.l - 22)) < 0.01, rstr(rr))
+check("  ...left-column slots: to the right of the slot (6 px)", hr and math.abs(hr.l - (hs.r + 6)) < 0.01, rstr(hr))
+check("  ...right-column slots: to the left of the slot (6 px)", rr and math.abs(rr.r - (rs.l - 6)) < 0.01, rstr(rr))
 check("  ...the toolkit's overlay leaves its enchant mark out too (one per slot)", not tostring(ns.CharToolkit_OverlayText("HeadSlot") or ""):find("E%?"),
   tostring(ns.CharToolkit_OverlayText("HeadSlot")))
 local savedLine = ENCHANTED_TOOLTIP_LINE; ENCHANTED_TOOLTIP_LINE = nil
@@ -191,7 +192,14 @@ local page = ns.BuildCharReskinPage(function() end)
 check("settings: Blizzard UI Reskin > Character Pane with its switch and one per part", page.name == "Character Pane" and page.args.enabled and page.args.chrome
   and page.args.ilvl and page.args.enchants and page.args.stats)
 check("  ...the parts are greyed out while it is off", (function() rc.enabled = false; local d = page.args.ilvl.disabled(); rc.enabled = true; return d end)() == true)
-check("  ...it says the wider window comes after the in-game test", tostring(page.args.width.name):find("widthprobe", 1, true) ~= nil)
+-- (QoL 0.7.21) the wider window is built: its switch, its extra width (120 - 300, greyed out while it is off) and the background opacity
+check("  ...the wider window has its switch (on by default), its extra width (120-300 px, default 240) and the background opacity (50-100%, default 95%)",
+  page.args.wide and page.args.wide.name:find("Wider window", 1, true) and page.args.widePx.min == 120 and page.args.widePx.max == 300
+  and ns.CHARRESKIN_DEFAULTS.wide == true and ns.CHARRESKIN_DEFAULTS.widePx == 240 and page.args.bgAlpha.min == 0.5 and ns.CHARRESKIN_DEFAULTS.bgAlpha == 0.95
+  and (function() rc.wide = false; local d = page.args.widePx.disabled(); rc.wide = true; return d end)() == true and page.args.width == nil)
+CueRulesDB.characterReskin.widePx, CueRulesDB.characterReskin.bgAlpha = 5000, 0.1
+local cl = ns.CharReskin_Cfg()
+check("  ...a saved value out of range is brought back inside it (300 px, 50%)", cl.widePx == 300 and cl.bgAlpha == 0.5, cl.widePx .. " " .. cl.bgAlpha)
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__GEOM__", P("tests/char_pane_geometry.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
    .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua"))
    .replace("__RS__", P("XayaUI_QoL/CharacterReskin.lua")))
