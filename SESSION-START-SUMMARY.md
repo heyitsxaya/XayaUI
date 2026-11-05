@@ -50,6 +50,13 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 - **Feature addons never get called by name from core:** they register through `XayaUI/Modules.lua` (`ns.WhenReady`, `ns.RegisterSettingsPage`, `ns.RegisterCommand`, `ns.RegisterLauncher`).
 - **"Profile"** means only the whole addon as configured (#354 is asking whether that changes).
 - **Wording to Xaya:** truth first; flag inferences; no unearned compliments; state what is not verified in game.
+- **Roadmap feature branches (Xaya, 2026-11-05, her words):** "Rough scaffolding and proposed code structure (outline only) in a
+  dedicated “roadmap features: ______” brand per feature". Applied as:
+  - one branch per roadmap feature, `roadmap-features/<feature>` (git refuses a colon or spaces in a branch name);
+  - the scaffold sits under `roadmap-features/<feature>/` (never a top-level `XayaUI*` folder, which the tools treat as shipping);
+  - comments only, no code that runs; a draft PR that is not for merging.
+  First one: `roadmap-features/games` (RM-GAMES).
+  Its detail is read only when that feature's work starts; it is not repeated here.
 
 ## 3. Addons (versions from the .toc files on `main` 8d81e3f, 2026-11-04 22:45 UTC)
 | Folder | Version | Holds |

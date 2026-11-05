@@ -30,3 +30,5 @@ request
 ```
 
 Not verified in game: every API point in the plan. Each stage starts with an in-game probe.
+
+Update (2026-11-05 14:02 UTC): Xaya asked for "Rough scaffolding and proposed code structure (outline only) in a dedicated “roadmap features: ______” brand per feature". Built on branch `roadmap-features/games` (commit 0bf0e8f; its own debug-log entry is there). Here: the convention is added to SESSION-START-SUMMARY.md section 2, and the RM-GAMES row now points to the branch.
