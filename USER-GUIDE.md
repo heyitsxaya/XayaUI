@@ -18,7 +18,7 @@ XayaUI is a group of addons. Each one is its own entry in the game's AddOns list
 | **XayaUI Blizzard Reskin** | XayaUI's look on Blizzard's frames without changing what they do (today: the Game Menu) | Blizzard's own look |
 | **XayaUI Media** | Your own pictures and sounds (a support folder, not a feature) | Your own files are not in the lists. The art picker (and the sound list) offer only the bundled pictures this computer actually has, checked once per session (pictures since 0.6.15, #333); your own XayaUI Media files are always listed |
 
-Each feature addon has its own tab in the settings window (**QoL**, **Bonus Features**). Every restyle of Blizzard's own windows is in one tab, **Blizzard UI Reskin** (Options 0.6.38): the Chat Panel (XayaUI Chat), the Character Pane (XayaUI QoL) and the Esc Menu (XayaUI Blizzard Reskin); the shopping list is planned there next. The Chat tab is gone (the Chat Panel was its only page). A tab, a minimap-button row, or a /xui command of an addon that is switched off is simply not there (a command says which addon to turn on). Your settings are kept either way: switching an addon off and on again loses nothing.
+Each feature addon has its own tab in the settings window (**QoL**, **Bonus Features**). Every restyle of Blizzard's own windows is in one tab, **Blizzard UI Reskin** (Options 0.6.38): the Chat Panel (XayaUI Chat), the Character Pane and the Shopping List (XayaUI QoL) and the Esc Menu (XayaUI Blizzard Reskin); the objective tracker is planned there next. The Chat tab is gone (the Chat Panel was its only page). A tab, a minimap-button row, or a /xui command of an addon that is switched off is simply not there (a command says which addon to turn on). Your settings are kept either way: switching an addon off and on again loses nothing.
 
 ## Contents
 
@@ -750,6 +750,20 @@ Blizzard's character window in XayaUI's look (XayaUI QoL 0.7.14). The window wor
 **Where:** Blizzard UI Reskin > Character Pane (its switch is called Character Reskin). `/xui reskin on`, `off`, `status`, `options`.
 
 **How the settings pages are laid out (all feature tabs, from 0.6.1 on):** a feature is an entry in the left pane, its parts are entries under it, and the sections of one part are tabs. In the QoL and Bonus Features tabs, a feature or part that has one on / off shows it as a tick box just left of its name in the left pane (hover the box for what it does); clicking the box does not open the page. The feature's own page holds an overview and any other switches.
+
+### 12.12c Shopping List
+
+Your crafting shopping list (XayaUI QoL 0.7.24): the recipes you track in your profession window, with their reagents, and what is missing on your gear. Off by default; while off nothing is created or read.
+- **XayaUI's Shopping List panel** (movable; `/xui shop` shows or hides it):
+  - **Missing on your gear:** each slot that takes an enchant (the Character Toolkit's enchant slots) whose item has none, and each item with empty sockets, with one suggestion each: your own default for that slot, else the enchant (gem) XayaUI has seen most on it on this character (the most recent if tied). What you wear when you switch it on counts from the first look; the game itself keeps no such history. "Other" lists what you used before, what is in your bags and, while the Auction House is open, what it has for that slot (a click on "List what the Auction House has"); click one to use it now, or "Default" to make it your default. "+ Add" puts the suggestion in To buy.
+  - **To buy:** what you added, with how many you have against how many you need (x removes a line).
+  - **Your tracked recipes:** each with its required reagents, have / need, counted the way Blizzard's tracker counts them (every quality); finished lines are ticked and dimmed.
+  - **Click any name** while the Auction House is open: it goes into the Auction House's search box and the search starts (on its Buy tab; on the Sell or Auctions tab the text is put in and the search waits for you). Shift-click links the item.
+  - An enchant you add is counted by its name: the enchant scrolls in your bags whose name holds it (for example "Amani Mastery" in "Enchant Ring - Amani Mastery").
+- **Blizzard's Professions list restyled:** the tracked recipes in Blizzard's objective tracker take the theme's colours (header, recipe names; finished reagents muted). The rest of the objective tracker is untouched for now (its reskin is planned).
+- **Your defaults** (settings, Your defaults tab): one per enchantable slot (rings share one) and one for gems; type a name or shift-click an item into the box; empty goes back to the most used. **History** tab: forget what this character used; empty the To buy list.
+
+**Where:** Blizzard UI Reskin > Shopping List. `/xui shop`, `/xui shop options`, `/xui shop status`.
 
 ### 12.13 Dev Assist (developer tool)
 

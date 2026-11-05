@@ -37,7 +37,8 @@ end
 if MODE == "all" then
   check("a top tab named Blizzard UI Reskin, after Bonus Features", tab ~= nil and tab.name == "Blizzard UI Reskin" and built.args.bonus and tab.order > built.args.bonus.order,
     tab and tab.name)
-  check("  ...its pages: Character Pane, Chat Panel, Esc Menu (in name order)", names(tab) == "Character Pane | Chat Panel | Esc Menu", names(tab))
+  -- (QoL 0.7.24: the Shopping List page joined the tab; Xaya 2026-11-05: "Will apply in the future to: shopping list")
+  check("  ...its pages: Character Pane, Chat Panel, Esc Menu, Shopping List (in name order)", names(tab) == "Character Pane | Chat Panel | Esc Menu | Shopping List", names(tab))
   check("  ...each page is the real one (switches inside)", tab.args.chatpanel and tab.args.chatpanel.args.layout and tab.args.charreskin.args.enabled
     and tab.args.gamemenu.args.skin ~= nil)
   check("the Chat tab is gone (the Chat Panel was its only page)", built.args.chat == nil)
