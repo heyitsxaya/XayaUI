@@ -167,10 +167,10 @@ end
 -- one line by the estimate the wrapped heights use (0.55 x size per character)
 local function fits(r) return r ~= nil and #tostring(r.text or "") * 0.55 * (r.size or 0) <= r.w + 0.01 end
 
--- 1. Default panel (380 wide, content 360): Primary stats as in her screenshot ------------------------------------------------
+-- 1. Default panel (450 wide since QoL 0.7.21, content 430): Primary stats as in her screenshot ------------------------------------------------
 c.size = nil
 local d = render()
-check("(setup) the default content width is 360 (the panel 380)", LAY.content == 360, LAY.content)
+check("[0.7.21] (setup) the default content width is 430 (the panel 450; Xaya: \"up to 450px\")", LAY.content == 430, LAY.content)
 local hStat, hVal, hPer = find(d, "colhead", "Stat"), find(d, "colhead", "Current value"), find(d, "colhead", "Pt value")
 check("Primary stats has a column head: Stat | Current value | Pt value", hStat and hVal and hPer and hStat.x == 0 and hStat.y < hVal.y + 1 and hVal.y == hPer.y
   and hVal.y > find(d, "header", "- Primary stats").y and hVal.y < (find(d, "label", "Agility") or { y = -1 }).y, T(hStat) .. " " .. T(hVal) .. " " .. T(hPer))
@@ -309,7 +309,7 @@ check("[0.7.20] ...every box is still the last cell of its row, under Change, ri
 
 -- 3. Layout (V11): smallest, default, just below and at the wide threshold, widest; text sizes; typed numbers ----------------
 ns.CharToolkit_SetInput("sv:crit", "700"); ns.CharToolkit_SetInput("sv:primary", "2737"); ns.CharToolkit_SetInput("sv:haste", "1500")
-for _, pw in ipairs({ 340, 380, 539, 540, 760 }) do
+for _, pw in ipairs({ 340, 380, 450, 583, 584, 760 }) do
   for _, fs in ipairs({ 8, 11, 16 }) do
     c.fontSize = fs; setWidth(pw)
     local dd = render()
@@ -320,7 +320,7 @@ for _, pw in ipairs({ 340, 380, 539, 540, 760 }) do
   end
 end
 c.fontSize = 11
-setWidth(380)
+setWidth(450)
 d = render()
 hVal, hPer, hRat, hCh = find(d, "colhead", "Current value"), find(d, "colhead", "Pt value"), find(d, "colhead", "Rating"), find(d, "colhead", "Change")
 check("[0.7.20] typed Agility: the line reads » Ability Scaling, and » Abilities with your number is gone", find(d, "pairLabel", "» Ability Scaling") ~= nil
@@ -338,20 +338,21 @@ ap = lineCells(d, "pairLabel", "» Attack power")
 check("typed Agility: » Attack power +2,637 -> +2,737 in Current value, Pt value 1.00 beside it", T(ap.value) == "+2,637 -> +2,737" and T(ap.per) == "1.00", T(ap.value) .. " | " .. T(ap.per))
 cr = lineCells(d, "label", "Critical Strike")
 crBox = find(d, "input", "sv:crit")
-check("[0.7.20] typed 700 crit: Rating still shows your 528, the box under Change holds 700, Current value 22.48% -> 26.22%", T(cr.rating) == "528"
+check("[0.7.21] typed 700 crit: Rating shows your 528 and the change, 528 +172; the box under Change holds 700, Current value 22.48% -> 26.22%", T(cr.rating) == "528 +172"
   and d.boxes["sv:crit"].text == "700" and crBox and crBox.x == hCh.x and T(cr.value) == "22.48% -> 26.22%", T(cr.rating) .. " | " .. T(cr.value))
 -- text that must sit on one line does (the estimate): the heads, ratings, Pt values, the nested abilities, the » line's name
 local long
 for _, r in ipairs(d.layout) do
   local must = (r.kind == "colhead" and (r.text == "Rating" or r.text == "Change" or r.text == "Current value" or r.text == "Pt value"))
-    or r.kind == "rating" or r.kind == "per" or r.kind == "pairPer" or (r.kind == "pairLabel" and (r.x == 24 or r.text == "» Ability Scaling"))
+    or r.kind == "rating" or r.kind == "per" or r.kind == "pairPer" or (r.kind == "pairLabel" and (r.x == 24 or r.text == "» Ability Scaling" or r.text == "» Abilities (per 100)"))
+    or (r.kind == "label" and r.text == "Critical Strike")   -- QoL 0.7.21: every name fits at the default 450
   if must and not fits(r) then long = r.kind .. " '" .. tostring(r.text) .. "' w " .. r.w end
 end
 for _, l in ipairs(sc) do if not fits(l.value) then long = "value '" .. T(l.value) .. "'" end end
 check("[0.7.20] text fits on one line (0.55 x size per character), default panel, text size 11, typed numbers: the Rating and Change heads, every rating, every Pt value, each ability's name and now -> then, » Ability Scaling",
   long == nil and #recs(d, "rating") == 7, long)
-local fRat = font(d, "528")
-check("[0.7.20] ...and 528 is a font string of its own at the Rating column's x (the player's screen)", fRat and hRat and fontX(fRat) == hRat.x and fRat.w == hRat.w, fRat and fontX(fRat))
+local fRat = font(d, "528 +172")
+check("[0.7.21] ...and '528 +172' is a font string of its own at the Rating column's x (the player's screen)", fRat and hRat and fontX(fRat) == hRat.x and fRat.w == hRat.w, fRat and fontX(fRat))
 -- the panel hover with typed numbers: Ability Scaling and its lines, the old name nowhere
 local agiHover
 for _, b in ipairs(d.buttons) do if b.shown and b.item and b.item.key == "map_primary" and b.h and b.h <= c.fontSize + 6 then agiHover = b end end
@@ -408,8 +409,8 @@ local gEff = find(d, "header", "- What it changes")
 check("Gear > What it changes: a column head Stat | Current value | Pt value under its header", gEff and ghVal and ghPer and ghVal.y > gEff.y and find(d, "colhead", "Stat") ~= nil, T(ghVal))
 -- (the Side by side table has a Change head of its own, Equipped | this item | Change: only the What it changes head row counts here)
 local function effHead(text) for _, r in ipairs(recs(d, "colhead")) do if ghVal and r.y == ghVal.y and r.text == text then return r end end end
-check("[0.7.20] ...no box on the Gear tab: no Rating, no Change head; Current value takes the Rating column's room (144 wide), Pt value keeps the Stats tab's x (250)",
-  ghVal and ghPer and ghVal.w == 144 and ghPer.x == 250 and effHead("Rating") == nil and effHead("Change") == nil
+check("[0.7.21] ...no box on the Gear tab: no Rating, no Change head; Current value takes the Rating column's room (188 wide at 450), Pt value keeps the Stats tab's x (320)",
+  ghVal and ghPer and ghVal.w == 188 and ghPer.x == 320 and effHead("Rating") == nil and effHead("Change") == nil
   and #recs(d, "rating") == 0 and (function() for _, r in ipairs(recs(d, "input")) do if tostring(r.text):find("^sv:") then return false end end; return true end)(),
   ghVal and (ghVal.w .. " / " .. ghPer.x))
 local gap = lineCells(d, "pairLabel", "» Attack power")
