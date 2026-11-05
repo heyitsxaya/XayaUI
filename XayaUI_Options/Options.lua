@@ -2614,6 +2614,7 @@ local function BuildRule(i, rule)
     actionsTab.xuiParts = actions.xuiParts
     if outcomeArgs then for k, v in pairs(outcomeArgs) do conditionsTab.args[k] = v end end
     if cueArgs then for k, v in pairs(cueArgs) do cuesTab.args[k] = v end end
+    if ns.CdmWarnArg then cuesTab.args.cdmWarn = ns.CdmWarnArg(rule, -1) end   -- Cooldown Manager limits of this rule's auras / debuffs
 
     ---------------------------------------------------------------- Info tab (was "Rule")
     local ruleTab = {
