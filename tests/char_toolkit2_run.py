@@ -477,7 +477,7 @@ lay.valueMode.set(nil, "percent")
 lay.detail.set(nil, "short"); d = render("stats")
 check("settings: Detail = Key lines hides the other pairs", not hasText(d, "pairLabel", "Lost to diminishing returns"))
 lay.detail.set(nil, "all")
-page.args.overlaysOn.set(nil, true)
+page.args.overlayPart.xuiSwitch.set(nil, true)   -- the Slot Overlays row's tick box in the left pane (QoL 0.7.18)
 check("settings: the Slot overlays switch draws the overlays", ns.CharToolkit_OverlayText("HeadSlot") == "336")
 page.args.overlayPart.args.enchants.args.slot1.set(nil, true)
 check("settings: ticking Head in Enchant Slots flags it (E?)", (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
@@ -490,7 +490,7 @@ do
   check("settings: the reset button goes back to this expansion's slots (Head E? again)", cc.enchantSlotsSet == nil and next(cc.enchantSlots) == nil
     and (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
 end
-page.args.overlaysOn.set(nil, false)
+page.args.overlayPart.xuiSwitch.set(nil, false)
 page.args.panelPart.args.values.args.whatIf.set(nil, "200")
 d = render("stats")
 check("settings: All ratings + 200 shows on every stat card (now -> then)", (valueOf(d, "Haste") or ""):find(" -> ", 1, true) ~= nil and (valueOf(d, "Mastery") or ""):find(" -> ", 1, true) ~= nil, valueOf(d, "Haste"))

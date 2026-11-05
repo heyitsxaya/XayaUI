@@ -128,7 +128,9 @@ function Tree.ViewChanged()
         Tree.keep = nil
     end)
 end
-local function Notify() Tree.keep, Tree.view = nil, nil; if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end if ns.SmartOpen then pcall(ns.SmartOpen) end if ns.FeatureTreesOpen then pcall(ns.FeatureTreesOpen) end if ns.FixSelection then pcall(ns.FixSelection) end AceConfigRegistry:NotifyChange(APP) end
+-- Tree.hold: a sidebar tick box is running its switch's set (Tree.SwitchClick); a redraw that set asks for is dropped and the click
+-- makes the one redraw itself.
+local function Notify() if Tree.hold then return end Tree.keep, Tree.view = nil, nil; if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end if ns.SmartOpen then pcall(ns.SmartOpen) end if ns.FeatureTreesOpen then pcall(ns.FeatureTreesOpen) end if ns.FixSelection then pcall(ns.FixSelection) end AceConfigRegistry:NotifyChange(APP) end
 
 local function Changed(rule)
     if rule then
@@ -3024,6 +3026,21 @@ local function BuildAddonSettings()
                 desc = "Drops the icons and the taller rows from the left-hand rule list and shows plain, compact rows with the +/- toggle on the left.",
                 get = function() return ns.CondensedOn() end,
                 set = function(_, v) Ui().condensedList = v and true or false; Repaint() end },
+            -- The talent scan (Options 0.6.40; Xaya, 2026-11-05: "scan belongs in Settings"; it was in Rules > Class/Spec Rule Creator).
+            -- Here because what it saves (XayaUITalentDB, XayaUI/TalentDump.lua) is read only by rule creation: the talent search of
+            -- the rule editor's talent requirement lists every spec and hero tree from it. The last message stays under the button.
+            talHdr = { type = "header", name = "All talents (every class and spec)", order = 30 },
+            talInfo = { type = "description", order = 30.1, width = "full", fontSize = "medium",
+                name = function() return (ns.TalentStatus and ns.TalentStatus() or "") .. " Reads every class, spec, and hero talent tree from the game (not from a fixed list), so it follows the current patch. In chat: /xui talents, /xui talents status, /xui talents <name>." end },
+            talScan = { type = "execute", order = 30.2, width = "double", name = "Scan all talents now",
+                func = function()
+                    if not ns.ScanAllTalents then return end
+                    local ok, m = ns.ScanAllTalents(function(_, msg) ns.OptionsApi.talentScanMsg = msg; Notify() end)
+                    ns.OptionsApi.talentScanMsg = m; ns.Print(m); Notify()
+                end },
+            talMsg = { type = "description", order = 30.3, width = "full", fontSize = "medium",
+                name = function() return ns.OptionsApi.talentScanMsg or "" end,
+                hidden = function() return not ns.OptionsApi.talentScanMsg end },
         } },
         theme = { type = "group", name = "Theme", order = 1.5, args = ns.Theme and ns.Theme.BuildArgs(Repaint) or {} },
         debug = { type = "group", name = "Debugging", order = 2, args = {
@@ -3333,14 +3350,8 @@ function BuildClassCreator()
                 local _, m = ns.ClassAutoPopulateAllSpecs(ns.AutoCfg().talents ~= false)
                 creatorMsg = m; ns.Print("auto-populate: " .. tostring(m)); Notify()
             end },
-        talHdr = { type = "header", order = 0.6, name = "All talents (every class and spec)" },
-        talInfo = { type = "description", order = 0.61, width = "full", fontSize = "medium",
-            name = function() return (ns.TalentStatus and ns.TalentStatus() or "") .. " Reads every class, spec, and hero talent tree from the game (not from a fixed list), so it follows the current patch. In chat: /xui talents, /xui talents status, /xui talents <name>." end },
-        talScan = { type = "execute", order = 0.62, width = "double", name = "Scan all talents now",
-            func = function()
-                local ok, m = ns.ScanAllTalents(function(_, msg) creatorMsg = msg; Notify() end)
-                creatorMsg = m; ns.Print(m); Notify()
-            end },
+        -- "All talents (every class and spec)" (the talent scan) moved to Settings > UI Options > Rule Creation (Options 0.6.40; Xaya,
+        -- 2026-11-05: "scan belongs in Settings"): BuildAddonSettings, rules.args.talHdr.
         -- the "Add Vengeance DH test rules" button is gone: every class and spec is supported by the auto-populate above (Xaya, 2026-11-01)
         msg = { type = "description", order = 0.5, width = "full", fontSize = "medium", name = function() return creatorMsg or "" end,
             hidden = function() return not creatorMsg end },
@@ -6512,6 +6523,111 @@ local ROW_TOGGLES = {
         set = function(v) CueRulesDB.barGroup.enabled = v; pcall(ns.Bars_RefreshAll) end },
 }
 
+-- Sidebar switches (Options 0.6.40; Xaya, 2026-11-05: "move all enable/disable toggles onto the sidebar instead for all bonus
+-- features and QoL items"). A feature page, or one of its parts (a node under it in the left pane), that has one on / off carries
+-- it as group.xuiSwitch: an ordinary AceConfig toggle (name, desc, get, set; hidden / disabled optional) that is NOT in its args, so
+-- the page no longer shows it. Its row in a feature tab's left pane gets a tick box left of its name (placement below) that shows
+-- get() and calls set() (the same function the in-page switch called, so every side effect stays). get / set receive the info table AceConfigDialog
+-- would give a toggle at that place (path, then "xuiSwitch"). The box's tooltip is the switch's name and desc. A click on the box
+-- is the box's own: it never selects or opens the row (the game hands a click to the topmost mouse-enabled frame under the cursor,
+-- and the box sits above the row; INFERENCE, standard behaviour the rule rows' eye / lock buttons rely on too, not stated in the
+-- API documentation). Rows whose page has no single on / off (Tooltips, Calculator, Utilities) get no box.
+-- Where the box sits (#369: a row's name room is precious): every row keeps a 16 px slot left of its name for the open / close
+-- arrow, empty on a row without parts; the box takes that slot, so it costs those names nothing. On a row that has parts (Character
+-- Toolkit) the box sits right after the arrow slot and only that row's name moves right by the box's width; it stays there while
+-- the parts are hidden too, so the box never moves under the mouse when it is clicked.
+-- Only rows of the feature tabs are looked at (the Rules trees skip at once: the window repaints every row 4 times a second).
+Tree.SWITCH_W, Tree.SWITCH_GAP = 16, 1   -- box size (the arrow slot's width); space after the arrow on a row that has one
+function Tree.RowSwitch(button)
+    local tree = button and button.obj
+    local user = tree and tree.GetUserDataTable and tree:GetUserDataTable()
+    local path = user and user.path
+    if type(path) ~= "table" or not ns.OptionsApi.TABS[path[1] or ""] or #path ~= 1 then return nil end
+    local g = user.option
+    for seg in tostring(button.uniquevalue or ""):gmatch("[^\001]+") do
+        g = type(g) == "table" and type(g.args) == "table" and g.args[seg] or nil
+    end
+    local sw = type(g) == "table" and g.xuiSwitch or nil
+    if type(sw) ~= "table" or type(sw.get) ~= "function" or type(sw.set) ~= "function" then return nil end
+    local info = { path[1] }
+    for seg in tostring(button.uniquevalue):gmatch("[^\001]+") do info[#info + 1] = seg end
+    info[#info + 1] = "xuiSwitch"
+    info.options, info.option, info.appName, info.type, info.uiType, info.uiName = user.options, sw, APP, "toggle", "dialog", "AceConfigDialog-3.0"
+    local hid = sw.hidden
+    if type(hid) == "function" then local ok, h = pcall(hid, info); hid = ok and h end
+    if hid then return nil end
+    -- parts: the node lists parts under it in the left pane (so it has the open / close arrow), even while they are hidden (the
+    -- Character Toolkit hides its parts while it is off): the box keeps one place whether the arrow shows or not
+    local parts = false
+    if (g.childGroups or "tree") == "tree" then
+        for _, c in pairs(type(g.args) == "table" and g.args or {}) do
+            if type(c) == "table" and c.type == "group" and not c.inline then parts = true; break end
+        end
+    end
+    return sw, info, parts
+end
+-- A click on a row's tick box: the switch's own set, then exactly one redraw. That redraw reuses the tree drawn last (Tree.Keep):
+-- a switch's state is read only by functions inside the tree (get / hidden / disabled / name), never while the tree is built, so a
+-- fresh build would give the same tree; tests/sidebar_switches_run.py builds the whole tree with every switch off and on and
+-- compares the two. The redraws the set asks for (Notify, CONFIG_CHANGED) are dropped while it runs (Tree.hold, see Notify), and a
+-- console "view" redraw waiting for the next frame (Tree.ViewChanged) is cancelled: this redraw shows that change too.
+function Tree.SwitchClick(box)
+    local sw, info = Tree.RowSwitch(box:GetParent())
+    if not sw then return end
+    Tree.hold = true
+    local ok, err = pcall(sw.set, info, box:GetChecked() and true or false)
+    Tree.hold = nil
+    if not ok then local h = geterrorhandler and geterrorhandler(); if h then h(err) end end
+    local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    if not (of and of.frame and of.frame:IsShown()) or Tree.AcePending() then return end   -- closed, or a fresh redraw already on its way
+    local user = of:GetUserDataTable()
+    Tree.view = nil
+    Tree.Keep()
+    pcall(AceConfigDialog.Open, AceConfigDialog, APP, unpack(user.basepath or {}))
+    Tree.keep = nil
+end
+function Tree.SwitchTip(box)
+    local sw, info = Tree.RowSwitch(box:GetParent())
+    if not sw then return end
+    local function val(v) if type(v) == "function" then local ok, r = pcall(v, info); return ok and r or nil end return v end
+    GameTooltip:SetOwner(box, "ANCHOR_RIGHT")
+    GameTooltip:SetText(tostring(val(sw.name) or ""))
+    local d = val(sw.desc)
+    if type(d) == "string" and d ~= "" then GameTooltip:AddLine(d, 1, 1, 1, true) end
+    GameTooltip:Show()
+end
+-- Called by DecorateButton for every row (toggleCfg: the row already has a ROW_TOGGLES box; x0: where the row's arrow slot starts;
+-- arrow: the row shows its open / close arrow in that slot). Returns how far the name must move right for the box (0 when the box
+-- sits in the empty arrow slot).
+function ns.OptionsApi.PaintRowSwitch(button, toggleCfg, x0, arrow)
+    local sw, info, parts
+    if not toggleCfg then sw, info, parts = Tree.RowSwitch(button) end
+    arrow = arrow or parts
+    local box = button.xuiSwitchBox
+    if not sw then if box then box:Hide() end return 0 end
+    if not box then
+        box = CreateFrame("CheckButton", nil, button, "UICheckButtonTemplate")
+        box:SetSize(Tree.SWITCH_W, Tree.SWITCH_W)
+        box:EnableMouse(true)   -- (a button takes the mouse anyway; stated, since the box must take the click instead of the row)
+        box:SetScript("OnClick", Tree.SwitchClick)
+        box:SetScript("OnEnter", Tree.SwitchTip)
+        box:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        button.xuiSwitchBox = box
+    end
+    box:SetFrameLevel(button:GetFrameLevel() + 3)
+    local ok, on = pcall(sw.get, info)
+    box:SetChecked((ok and on) and true or false)
+    local dis = sw.disabled
+    if type(dis) == "function" then local okD, d = pcall(dis, info); dis = okD and d end
+    box:SetEnabled(not dis)
+    box:ClearAllPoints()
+    local x, shift = x0 or 6, 0
+    if arrow then x = x + Tree.SWITCH_W + Tree.SWITCH_GAP; shift = Tree.SWITCH_W + Tree.SWITCH_GAP end   -- (the arrow slot is SWITCH_W wide)
+    box:SetPoint("LEFT", button, "LEFT", x, 0)
+    box:Show()
+    return shift
+end
+
 -- Left cluster, in order:  [collapse arrow] [eye] [headphone]  text
 -- Multi-select delete: Ctrl+click toggles a rule row, Shift+click selects the visible rule rows between the last clicked row and
 -- this one (either direction). Selected rows get a purple wash in every list they appear in. "Delete N selected" (bottom-left of the window) deletes them
@@ -6710,7 +6826,7 @@ local function DecorateButton(button)
         -- Smart Categories: the tab is the root, so its own row and the "by type" row are drawn as nothing
         button.xuiGone = true
         button:SetHeight(0.01); button:SetAlpha(0); button:EnableMouse(false)
-        for _, k in ipairs({ "xuiChev", "xuiEye", "xuiHead", "xuiEdit", "xuiUp", "xuiDown", "xuiMove", "xuiBanner", "xuiBannerBar", "xuiSelTex", "xuiDivider", "xuiType", "xuiType2", "xuiSub", "xuiStatCheck" }) do
+        for _, k in ipairs({ "xuiChev", "xuiEye", "xuiHead", "xuiEdit", "xuiUp", "xuiDown", "xuiMove", "xuiBanner", "xuiBannerBar", "xuiSelTex", "xuiDivider", "xuiType", "xuiType2", "xuiSub", "xuiStatCheck", "xuiSwitchBox" }) do
             if button[k] and button[k].Hide then button[k]:Hide() end
         end
         return
@@ -6861,9 +6977,11 @@ local function DecorateButton(button)
     elseif button.xuiEye then
         button.xuiEye:Hide(); button.xuiHead:Hide()
     end
+    -- a feature's on / off as a tick box in the row's arrow slot, or right after the arrow (Options 0.6.40)
+    local swShift = ns.OptionsApi.PaintRowSwitch(button, toggleCfg, x0, canExpand and chevMode == "left")
     do
         local rk = tostring(button.uniquevalue or ""):match("([^\001]+)$")
-        local iconSlots = toggleCfg and 26 or 0   -- only the on / off tick box sits left of the label now
+        local iconSlots = toggleCfg and 26 or swShift   -- only an on / off tick box sits left of the label now
         local lead = (tw > 0) and tw or ((chevMode == "right") and 0 or CHEV_W)   -- icon column, or the left chevron slot
         if tw > 0 then
             local h = math.max(button:GetHeight() or 0, ns.TYPE_ICON_SIDEBAR_H + 6)
@@ -6952,6 +7070,7 @@ local function DecorateTree(tree)
             if b.xuiBanner then b.xuiBanner:Hide(); b.xuiBannerBar:Hide() end
             if b.xuiSelTex then b.xuiSelTex:Hide() end
             if b.xuiDivider then b.xuiDivider:Hide() end
+            if b.xuiSwitchBox then b.xuiSwitchBox:Hide() end
         end
     end
 end

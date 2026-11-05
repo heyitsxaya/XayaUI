@@ -268,7 +268,8 @@ ev:RegisterEvent("PLAYER_LOGIN")
 ev:SetScript("OnEvent", function() ns.CursorHighlight_Apply() end)
 
 -- options: the Cursor Highlight page (QoL > Cursor > Cursor Highlight in the left pane) ----------------------------------------
--- The on/off switch stays at the top; everything else sits in tabs (Shape | Color and Size | Behavior), shown once it is on.
+-- The on/off switch is the tick box on this page's row in the left pane (xuiSwitch, QoL 0.7.18; Xaya 2026-11-05: "move all
+-- enable/disable toggles onto the sidebar instead"); everything else sits in tabs (Shape | Color and Size | Behavior), shown once it is on.
 function ns.BuildCursorHighlightTab(Notify)
     local function C() return Ensure() or ns.CURSORHIGHLIGHT_DEFAULTS end
     local function Changed() ns.CursorHighlight_Apply(); if Notify then Notify() end end
@@ -277,13 +278,13 @@ function ns.BuildCursorHighlightTab(Notify)
     for _, k in ipairs(SHAPE_ORDER) do shapeValues[k] = SHAPES[k][1] end
     return {
         type = "group", name = "Cursor Highlight", order = 1, childGroups = "tab",
+        xuiSwitch = { type = "toggle", name = "Cursor highlight",
+            desc = "Turns the highlight on. While it is off nothing is drawn or polled.",
+            get = function() return C().enabled and true or false end,
+            set = function(_, v) C().enabled = v and true or false; Changed() end },
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "A colored shape that follows your mouse cursor so you can find it at a glance. Off by default." },
-            enabled = { type = "toggle", order = 1, width = "full", name = "Cursor highlight",
-                desc = "Turns the highlight on. While it is off nothing is drawn or polled.",
-                get = function() return C().enabled and true or false end,
-                set = function(_, v) C().enabled = v and true or false; Changed() end },
+                name = "A colored shape that follows your mouse cursor so you can find it at a glance. Off by default: tick the box next to Cursor Highlight on the left to turn it on." },
             shape = {
                 type = "group", name = "Shape", order = 2, hidden = isOff,
                 args = {
