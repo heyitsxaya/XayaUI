@@ -52,8 +52,8 @@ local function linesHave(lines, s) for _, l in ipairs(lines) do if tostring(l):f
 -- character window's own tooltips, so its lines and hovers are checked through the model below
 local d = render("stats")
 local hs = texts(d, "header")
-check("Stats tab (the stat map): headers Primary stats, Secondary stats, Tertiary stats, Offense (what feeds it), Defense (what feeds it)",
-  table.concat(hs, "|") == "- Primary stats|- Secondary stats|- Tertiary stats|- Offense (what feeds it)|- Defense (what feeds it)", table.concat(hs, " | "))
+-- (QoL 0.7.23: one Character Stats section, its parts drawn as headings inside it, and the Stat Weights pane; tests/char_stat_window_run.py)
+check("Stats tab (the stat map): headers Character Stats, Stat Weights", table.concat(hs, "|") == "- Character Stats|- Stat Weights", table.concat(hs, " | "))
 -- QoL 0.7.7: Defense and Offense are the Spells tab's filters now (a saved "defense" / "offense" tab opens Spells with that filter);
 -- QoL 0.7.14: the filters filter spells only; the stat sections they drew are on the stat map (Offense / Defense, what feeds it)
 d = render("defense"); hs = texts(d, "header")
@@ -64,21 +64,21 @@ check("Spells, Offense filter: Offensive spells only (QoL 0.7.14)", c.tab == "sp
   and table.concat(hs, "|") == "- Active offensive spells", table.concat(hs, "|"))
 c.spellFilter = "all"
 d = render("gear"); hs = texts(d, "header")
-check("Gear tab: Equipped (icons), Compare, Summary, Durability and repair (QoL 0.7.14: the comparison replaces the per-slot list)",
-  table.concat(hs, "|") == "- Equipped|- Compare|- Summary|- Durability and repair", table.concat(hs, "|"))
+check("Gear tab: Equipped (icons), Compare (QoL 0.7.14: the comparison replaces the per-slot list; QoL 0.7.23: Summary on Stats, no Durability)",
+  table.concat(hs, "|") == "- Equipped|- Compare", table.concat(hs, "|"))
 d = render("whatif"); hs = texts(d, "header")
 check("a saved What If tab opens Stats (QoL 0.7.14: its numbers are the map's boxes, its item compare is on Gear)", c.tab == "stats"
-  and hs[1] == "- Primary stats", c.tab .. " " .. tostring(hs[1]))
+  and hs[1] == "- Character Stats", c.tab .. " " .. tostring(hs[1]))
 d = render("stats")
 check("a stat line: label on the left, its value on the right of the same row", valueOf(d, "Critical Strike") == "22.48%", valueOf(d, "Critical Strike"))
-local h = headerFor(d, "map_secondary")
+local h = headerFor(d, "map_character")
 h.scripts.OnClick(h)
 d = drawn()
-check("clicking a header folds its section: the header shows +, its lines are gone", hasText(d, "header", "+ Secondary stats") and not hasText(d, "label", "Critical Strike")
-  and hasText(d, "label", "Avoidance"))
-headerFor(d, "map_secondary").scripts.OnClick(headerFor(d, "map_secondary"))
+check("clicking a header folds its section: the header shows +, its lines are gone (the Stat Weights pane under it stays)",
+  hasText(d, "header", "+ Character Stats") and not hasText(d, "label", "Critical Strike") and hasText(d, "wlabel", "Critical Strike"))
+headerFor(d, "map_character").scripts.OnClick(headerFor(d, "map_character"))
 d = drawn()
-check("clicking it again unfolds it", hasText(d, "header", "- Secondary stats") and valueOf(d, "Critical Strike") == "22.48%")
+check("clicking it again unfolds it", hasText(d, "header", "- Character Stats") and valueOf(d, "Critical Strike") == "22.48%")
 check("theme: the panel background and the header text use the XayaUI theme's colors",
   XayaUICharacterToolkit.bg.color[1] == 0.11 and d.headers[1].text.color[1] == 0.91, tostring(XayaUICharacterToolkit.bg.color[1]))
 check("theme: the theme's font is used", d.fonts[1].font[1] == "Fonts\\THEME.TTF", d.fonts[1].font[1])
@@ -159,18 +159,17 @@ ns.CharToolkit_ReadGCD()
 -- (char_toolkit_world.lua), so these fail on 0.7.1, where the line was built from them.
 check("Mythic+ rating is not a line anywhere (the game gives it; the toolkit leaves it out)", CM.Build(c, nil).byKey.mplus == nil and CM.Build(c, "stats").byKey.mplus == nil)
 check("the panel did not ask the server for Mythic+ details", mythicRequested == nil or mythicRequested == false)
+-- (QoL 0.7.23; Xaya 2026-11-05: "durability and repair can be removed from all stat calculator panes": the durability, repair cost,
+-- per-slot repair and vendor repair-all checks that stood here are now one check that none of it is built, on any tab)
 m = CM.Build(c, "gear")
-check("durability: 89% overall (178 / 200), lowest item 78%", m.byKey.durability.value == "89%" and pair(m.byKey.durability, "Lowest item") == "78%", m.byKey.durability.value)
-check("repair cost: the sum of the items' repair cost (12,345 copper = 1g 23s 45c)", m.byKey.repair.value == "1g 23s 45c", m.byKey.repair.value)
 CM.gearSlot = 1
 local m1 = CM.Build(c, "gear")
-check("repair cost per slot (a clicked slot, Gear > Side by side)", m1.byKey.gc_repair and m1.byKey.gc_repair.cells[1] == "1g 23s 45c", m1.byKey.gc_repair and m1.byKey.gc_repair.cells[1])
 CM.gearSlot = nil
-REPAIR = {}
-check("repair cost the game does not give: shown as not given", CM.Build(c, "gear").byKey.repair.value == "not given by the game here")
 MerchantFrame = mk("Frame"); MerchantFrame.shown = true
-check("at a vendor: the vendor's own repair-all figure", pair(CM.Build(c, "gear").byKey.repair, "Repair all at this vendor") == "1g 23s 45c")
-MerchantFrame.shown = false; REPAIR = { [1] = 12345 }
+local m2 = CM.Build(c, "stats")
+MerchantFrame.shown = false
+check("[0.7.23] no durability or repair line on any tab (Gear, a clicked slot, Stats at a vendor)", m.byKey.durability == nil and m.byKey.repair == nil
+  and m1.byKey.gc_dur == nil and m1.byKey.gc_repair == nil and m2.byKey.durability == nil and m2.byKey.repair == nil)
 CM.gearSlot = 11; local e11 = CM.Build(c, "gear").byKey.gc_enchant
 CM.gearSlot = 1; local e1 = CM.Build(c, "gear").byKey.gc_enchant
 CM.gearSlot = nil
@@ -211,7 +210,7 @@ local tabKeys = {}
 for _, t in ipairs(CM.TABS) do tabKeys[#tabKeys + 1] = t[1] end
 check("no Sheet tab, no What If tab: Stats, Gear, Spells", table.concat(tabKeys, ",") == "stats,gear,spells", table.concat(tabKeys, ","))
 d = render("sheet")
-check("a saved Sheet tab opens Stats", c.tab == "stats" and hasText(d, "header", "- Secondary stats") and #recs(d, "cell") == 0, c.tab)
+check("a saved Sheet tab opens Stats", c.tab == "stats" and hasText(d, "header", "- Character Stats") and #recs(d, "cell") == 0, c.tab)
 check("a fresh profile starts on Stats", ns.CHARTOOLKIT_DEFAULTS.tab == "stats", ns.CHARTOOLKIT_DEFAULTS.tab)
 c.lineModes = {}
 
@@ -276,12 +275,15 @@ local m0, m1 = mFrom:match("^%+([%d%.]+)%% %-> %+([%d%.]+)%%$")
 check("mastery +100: through the mastery factor (+6.09%, shown values rounded)", m0 and math.abs((tonumber(m1) - tonumber(m0)) - 6.09) < 0.011, mFrom)
 ns.CharToolkit_SetInput("crit", "-1000")
 check("crit -1000: stops at 0 rating (+11.48% -> +0.00%)", mline("map_crit", "From rating") == "+11.48% -> +0.00%", mline("map_crit", "From rating"))
-ns.CharToolkit_SetInput("crit", "752"); ns.CharToolkit_SetInput("all", "100")
+ns.CharToolkit_SetInput("crit", "852")
 d = render("stats")
-check("Stats tab: crit adds its own amount to All ratings (+852 = +18.52%: 22.48% -> 41.00%)", valueOf(d, "Critical Strike") == "22.48% -> 41.00%", valueOf(d, "Critical Strike"))
-check("Stats tab: haste gets the All ratings amount only (+100)", (valueOf(d, "Haste") or ""):find("29.25% -> ", 1, true) == 1, valueOf(d, "Haste"))
-check("Stats tab: the All ratings box is on the map (it was on the What If tab)", d.boxes.all and d.boxes.all:IsShown() and d.boxes.all.text == "100", d.boxes.all and d.boxes.all.text)
-ns.CharToolkit_SetInput("all", "0"); ns.CharToolkit_SetInput("crit", "0"); ns.CharToolkit_SetInput("mastery", "0")
+check("Stats tab: crit +852 = +18.52%: 22.48% -> 41.00%", valueOf(d, "Critical Strike") == "22.48% -> 41.00%", valueOf(d, "Critical Strike"))
+-- (QoL 0.7.23; Xaya 2026-11-05: "remove "all ratings" as an entry option")
+ns.CharToolkit_SetInput("all", "100")
+d = render("stats")
+check("[0.7.23] no All ratings box on the map; an \"all\" amount reaches no card (haste unchanged)", not (d.boxes.all and d.boxes.all:IsShown())
+  and valueOf(d, "Haste") == "29.25%" and not hasText(d, "label", "All ratings"), valueOf(d, "Haste"))
+ns.CharToolkit_SetInput("crit", "0"); ns.CharToolkit_SetInput("mastery", "0")
 check("0 clears a stat", c.whatIfStats.crit == nil and c.whatIf == 0)
 -- the Gear comparison (QoL 0.7.14; Xaya: "a gear COMPARISON sheet to see how different item slots will affect stats and therefore my
 -- ABILITIES"): Better Helm (346: crit 400, mastery 100, Agility 600, Stamina 900, armor 500) against Helm (336: crit 300, haste 200,
@@ -491,9 +493,8 @@ do
     and (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
 end
 page.args.overlayPart.xuiSwitch.set(nil, false)
-page.args.panelPart.args.values.args.whatIf.set(nil, "200")
-d = render("stats")
-check("settings: All ratings + 200 shows on every stat card (now -> then)", (valueOf(d, "Haste") or ""):find(" -> ", 1, true) ~= nil and (valueOf(d, "Mastery") or ""):find(" -> ", 1, true) ~= nil, valueOf(d, "Haste"))
+check("[0.7.23] settings: no All ratings + field (Panel > Your numbers)", page.args.panelPart.args.values.args.whatIf == nil)
+ns.CharToolkit_SetInput("haste", "200")
 page.args.panelPart.args.values.args.clear.func()
 check("settings: Clear all sets every What If amount back to 0", c.whatIf == 0 and next(c.whatIfStats) == nil)
 check("theme changes repaint the open panel", type(themeListener) == "function" and pcall(themeListener))

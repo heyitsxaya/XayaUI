@@ -169,12 +169,12 @@ check("character section: spec, Agility, item level, movement, mastery text",
   and pair(row(m, "move"), "Flight") == "300%" and row(m, "masteryText") and row(m, "masteryText").value:find("101.8%", 1, true))
 check("items carry their tab", row(m, "crit").tab == "stats" and row(m, "armor").tab == "defense" and row(m, "ap").tab == "offense")
 check("gear is not built unless its tab is asked for", row(m, "gearSum") == nil)
-c.whatIf = 852
+c.whatIfStats.crit = 852   -- (QoL 0.7.23: the All ratings amount is gone; crit's own amount takes the same converter path)
 local wcrit = row(ns.CharToolkit_Model(), "crit")   -- (the full model; the Stats tab is the stat map since QoL 0.7.14)
 check("what if +852 crit: +18.52% (exactly to the 30% threshold)", pair(wcrit, "What if +852 rating") == "+18.52% (total 41.00%)", pair(wcrit, "What if +852 rating"))
-c.whatIf = 0
+c.whatIfStats.crit = nil
 local gm = ns.CharToolkit_Model("gear")
-local gs = row(gm, "gearSum")
+local gs = row(ns.CharToolkit_Model("stats"), "gearSum")   -- (QoL 0.7.23: the Summary is on the Stats tab)
 -- QoL 0.7.14: no per-slot list; a clicked slot shows its item level, ratings, sockets and durability in the comparison
 check("gear: no per-slot list any more (the comparison shows a clicked slot)", row(gm, "slot1") == nil)
 ns.CharModel.gearSlot = 1
@@ -182,13 +182,14 @@ gm = ns.CharToolkit_Model("gear")
 local function cell(key, i) local r = row(gm, key); return r and r.cells and r.cells[i] end
 check("gear: a clicked slot's item level and ratings (Head: 336, crit 300, haste 200)", cell("gc_ilvl", 1) == "336" and cell("gc_crit", 1) == "300" and cell("gc_haste", 1) == "200",
   tostring(cell("gc_ilvl", 1)) .. " " .. tostring(cell("gc_crit", 1)))
-check("gear: its durability under 100% (78%)", cell("gc_dur", 1) == "78%", cell("gc_dur", 1))
+check("[0.7.23] gear: no durability or repair row in the comparison (Xaya: \"durability and repair can be removed from all stat calculator panes\")",
+  row(gm, "gc_dur") == nil and row(gm, "gc_repair") == nil, cell("gc_dur", 1))
 ns.CharModel.gearSlot = 11
 gm = ns.CharToolkit_Model("gear")
 check("gear: its empty socket (Ring: 1)", cell("gc_sockets", 1) == "1", cell("gc_sockets", 1))
 ns.CharModel.gearSlot = nil
-gm = ns.CharToolkit_Model("gear")
--- (QoL 0.7.15: the Summary is a table, Gear | Character | Elsewhere, one row per stat)
+gm = ns.CharToolkit_Model("stats")
+-- (QoL 0.7.15: the Summary is a table, Gear | Character | Elsewhere, one row per stat; QoL 0.7.23: on the Stats tab)
 check("gear totals: a column head Gear | Character | Elsewhere", gs and gs.kind == "colhead" and table.concat(gs.cols or {}, "|") == "Gear|Character|Elsewhere")
 local function sumCells(k) local r = row(gm, "gearSum_" .. k); return r and table.concat(r.cells, "|") end
 check("gear totals vs character: Critical Strike gear 400 | character 528 | +128 elsewhere", sumCells("crit") == "400|528|+128" and row(gm, "gearSum_crit").label == "Critical Strike", sumCells("crit"))

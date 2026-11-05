@@ -247,8 +247,10 @@ local Wc = ns.CHARTOOLKIT_LAYOUT.content
 check("  ...their value gets 70% of the line, so \"N% of attack power; 1 Agility = +N\" fits one line more often", pv ~= nil and pv.w == Wc - 12 - math.floor((Wc - 12) * 0.3), pv and pv.w)
 d = render("gear")
 local sm = 0
-for _, r in ipairs(recs(d, "pairValue")) do if r.size == c.fontSize - 1 then sm = sm + 1 end end
-check("  ...other tabs keep their smaller detail lines", sm > 0, sm)
+for _, r in ipairs(recs(d, "pairValue")) do if r.size == c.fontSize then sm = sm + 1 end end
+-- (QoL 0.7.23: the Gear tab's Durability lines, the smaller detail lines this checked, are gone; what stays checkable is that the
+-- spell math's full size does not leak to another tab)
+check("  ...other tabs do not take the spell math's full-size detail lines", sm == 0, sm)
 c.tab = "spells"
 
 -- 11. Settings -----------------------------------------------------------------------------------------------------------------
