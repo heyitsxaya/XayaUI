@@ -11,6 +11,22 @@ ns = _G.XayaUI_NS or ns
 
 local ADD_KINDS = { { "icon", "Icon" }, { "texture", "Texture" }, { "text", "Text" } }
 
+-- Xaya 2026-11-05: wherever a limit to aura / debuff tracking can be detected, say so in the display pane / the rule's Display tab
+-- (ns.CdmNeeds, Triggers.lua). One red line per aura or debuff the game hides in combat that Blizzard's Cooldown Manager does not track.
+function ns.CdmWarnArg(rule, order)
+    local function lines()
+        local p = rule
+        if rule and rule.isCue and ns.FindParentRule then p = ns.FindParentRule(rule) or rule end   -- a cue follows its rule's triggers
+        local ok, needs = pcall(ns.CdmNeeds or function() return {} end, p)
+        if not ok or type(needs) ~= "table" or #needs == 0 then return nil end
+        local t = {}
+        for _, e in ipairs(needs) do t[#t + 1] = "|cffff5555" .. ns.CdmNeedText(e) .. "|r" end
+        return table.concat(t, "\n")
+    end
+    return { type = "description", order = order or 0.05, width = "full", fontSize = "medium",
+        hidden = function() return lines() == nil end, name = function() return lines() or "" end }
+end
+
 local function IsVisualCue(c) return c.cueKind ~= "sound" and c.cueKind ~= "speech" and c.cueKind ~= "custom" end
 
 -- the displays this rule owns: its visual cues; or, for an older rule with no cues, the rule's own display while it is on
@@ -46,6 +62,7 @@ function ns.BuildDisplayTab(rule, Notify, Changed)
         return false
     end
     local args = {
+        cdmWarn = ns.CdmWarnArg and ns.CdmWarnArg(rule, -1) or nil,   -- first on the tab
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "This rule is the container for its cues. Each cue's own look is set on the Cues tab; the settings here apply to every display cue of this rule at once." },
 
