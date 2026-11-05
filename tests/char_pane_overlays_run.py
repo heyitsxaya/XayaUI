@@ -475,9 +475,9 @@ local gm = ns.CharToolkit_Model("gear")
 local function grow(key) for _, r in ipairs(gm) do if r.key == key then return r end end end
 local amulet = grow("gc_sockets")
 CM.gearSlot = nil
-gm = ns.CharToolkit_Model("gear")
+gm = ns.CharToolkit_Model("stats")   -- (QoL 0.7.22: the Summary is on the Stats tab, Character Stats > Gear Summary)
 local sum = grow("gearSum_sockets")
-check("E. Gear tab: the amulet (both sockets filled) has no Empty sockets row; the Summary counts 3 (bracers, Ring A, Glaive A)",
+check("E. Gear tab: the amulet (both sockets filled) has no Empty sockets row; the Gear Summary (Stats tab since QoL 0.7.22) counts 3 (bracers, Ring A, Glaive A)",
   amulet == nil and sum and sum.cells[1] == "3", (amulet and table.concat(amulet.cells, "|") or "none") .. " / " .. (sum and sum.cells[1] or "none"))
 -- the window open but a slot without a position on the first pass (INFERENCE: possible in the frame it opens): laid out on a retry
 local realGetLeft, realAfter, nextFrame = CharacterHeadSlot.GetLeft, C_Timer.After, false

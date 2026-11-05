@@ -17,7 +17,10 @@
 #   - layout at the smallest, default, and widest panel, text sizes 8 / 11 / 16, typed numbers: inside the width, no overlaps,
 #     with font strings that report a wrapped height (estimated 0.55 x size per character); text that must fit on one line does;
 #   - the hovers and the character window's stat tooltips still carry every number (one text column: CM.PairText);
-#   - the Gear Summary is a table (Gear | Character | Elsewhere).
+#   - the Gear Summary is a table (Gear | Character | Elsewhere); since QoL 0.7.22 it is on the Stats tab (Character Stats > Gear Summary).
+# QoL 0.7.22 (Xaya 2026-11-05): the Stats tab is one Character Stats section; the old section headers are its headings (subhead records),
+# the All ratings box is gone (8 boxes, not 9), one column head per heading with lines (Core Stats, Secondaries, Tertiaries). The checks
+# here follow those names; the tree itself is checked in tests/char_stat_window_run.py.
 # Negative controls (V1). Checks tagged [0.7.20] are new or rewritten for QoL 0.7.20: each fails on QoL 0.7.18's files (the session
 # branch head 20b805c, 2026-11-05), except those also marked "(guard)". Untagged checks are from QoL 0.7.15 and pass on 0.7.18 as well
 # (behaviour this change keeps); against QoL 0.7.14 they failed, except those marked "(guard)" (behaviour that did not change then),
@@ -173,7 +176,7 @@ local d = render()
 check("(setup) the default content width is 360 (the panel 380)", LAY.content == 360, LAY.content)
 local hStat, hVal, hPer = find(d, "colhead", "Stat"), find(d, "colhead", "Current value"), find(d, "colhead", "Pt value")
 check("Primary stats has a column head: Stat | Current value | Pt value", hStat and hVal and hPer and hStat.x == 0 and hStat.y < hVal.y + 1 and hVal.y == hPer.y
-  and hVal.y > find(d, "header", "- Primary stats").y and hVal.y < (find(d, "label", "Agility") or { y = -1 }).y, T(hStat) .. " " .. T(hVal) .. " " .. T(hPer))
+  and hVal.y > find(d, "subhead", "Core Stats").y and hVal.y < (find(d, "label", "Agility") or { y = -1 }).y, T(hStat) .. " " .. T(hVal) .. " " .. T(hPer))
 check("  ...the head reads left to right Stat, Current value, Pt value; no Note head on a narrow panel (the note goes under its line)",
   hStat and hVal and hPer and hStat.x < hVal.x and hVal.x < hPer.x and find(d, "colhead", "Note") == nil)
 local hCh = find(d, "colhead", "Change")
@@ -181,7 +184,7 @@ check("[0.7.20] Primary stats' head ends with Change, after Pt value, at the con
   and hCh.x >= hPer.x + hPer.w + GUT and hCh.x + hCh.w == LAY.content, T(hCh))
 local hRat1 = find(d, "colhead", "Rating")
 check("[0.7.20] (guard) ...no Rating head over Primary stats (no rating there): the first Rating head is Secondary stats'", hRat1 and hVal and hRat1.y > hVal.y
-  and hRat1.y > find(d, "header", "- Secondary stats").y, T(hRat1))
+  and hRat1.y > find(d, "subhead", "Secondaries").y, T(hRat1))
 local agi = lineCells(d, "label", "Agility")
 check("Agility: its current value 2,637 sits in the Current value column (same x and width as the head)", T(agi.value) == "2,637" and at(agi.value, hVal), T(agi.value))
 local agiBox = find(d, "input", "sv:primary")
@@ -234,9 +237,9 @@ local nVal, nCh, nRat = 0, 0, 0
 for _, r in ipairs(heads) do
   if r.text == "Current value" then nVal = nVal + 1 elseif r.text == "Change" then nCh = nCh + 1 elseif r.text == "Rating" then nRat = nRat + 1 end
 end
-check("every Stats section has the column head (Primary, Secondary, Tertiary, Offense, Defense: 5)", nVal == 5, nVal)
-check("[0.7.20] a Change head over the three sections with boxes (Primary, Secondary, Tertiary), none over Offense and Defense; Rating over Secondary and Tertiary",
-  nCh == 3 and nRat == 2 and find(d, "colhead", "Change", 3).y < find(d, "header", "- Offense (what feeds it)").y, nCh .. " Change, " .. nRat .. " Rating")
+check("every part of Character Stats with stat lines has the column head (Core Stats, Secondaries, Tertiaries: 3; QoL 0.7.22)", nVal == 3, nVal)
+check("[0.7.20] a Change head over the three parts with boxes (Core Stats, Secondaries, Tertiaries), none over the Gear Summary; Rating over Secondaries and Tertiaries",
+  nCh == 3 and nRat == 2 and find(d, "colhead", "Change", 3).y < find(d, "subhead", "Gear Summary").y, nCh .. " Change, " .. nRat .. " Rating")
 local function allAt(kinds, h)
   for _, k in ipairs(kinds) do for _, r in ipairs(recs(d, k)) do
     if not at(r, h) then return false, k .. " '" .. tostring(r.text) .. "' x=" .. r.x .. " w=" .. r.w end
@@ -272,8 +275,8 @@ check("[0.7.20] every rating card shows its rating under Rating: Haste 1,200, Ma
 local okR, whyR = allAt({ "rating" }, hRat)
 check("[0.7.20] every rating on the Stats tab sits at the Rating head's x and width (7: 4 secondary, 3 tertiary; none on Primary)",
   okR and #recs(d, "rating") == 7, whyR or #recs(d, "rating"))
-local okB, whyB = boxesOK(d, 9)
-check("[0.7.20] every box on the Stats tab (9: Agility, 4 secondary, All ratings, 3 tertiary) is under Change, at the right edge, the last cell of its row",
+local okB, whyB = boxesOK(d, 8)
+check("[0.7.20] every box on the Stats tab (8: Agility, 4 secondary, 3 tertiary; All ratings gone in QoL 0.7.22) is under Change, at the right edge, the last cell of its row",
   okB, whyB)
 local pa = lineCells(d, "pairLabel", "» Parry")
 check("  » Parry: +10.15% | 52.0 / 1% (crit rating for 1% parry) | note before DR", T(pa.value) == "+10.15%" and T(pa.per) == "52.0 / 1%" and T(pa.note) == "before DR", T(pa.value) .. " | " .. T(pa.per) .. " | " .. T(pa.note))
@@ -304,7 +307,7 @@ check("[0.7.20] ...the abilities stay nested lines, each number in Current value
 local okN = true
 for _, k in ipairs({ "note", "pairNote" }) do for _, r in ipairs(recs(d, k)) do if r.x ~= hNote.x then okN = false end end end
 check("  ...every note on the Stats tab is in the Note column", okN and #recs(d, "pairNote") >= 5, #recs(d, "pairNote"))
-okB, whyB = boxesOK(d, 9)
+okB, whyB = boxesOK(d, 8)
 check("[0.7.20] ...every box is still the last cell of its row, under Change, right of the Note column", okB, whyB)
 
 -- 3. Layout (V11): smallest, default, just below and at the wide threshold, widest; text sizes; typed numbers ----------------
@@ -315,7 +318,7 @@ for _, pw in ipairs({ 340, 380, 539, 540, 760 }) do
     local dd = render()
     local ok, why = layoutOK(dd)
     check(("(guard, V11) layout, panel %d wide, text size %d, typed numbers: inside the width, no overlaps"):format(pw, fs), ok, why)
-    local okb, whyb = boxesOK(dd, 9)
+    local okb, whyb = boxesOK(dd, 8)
     check(("[0.7.20] (V11) panel %d wide, text size %d: every box is under Change at the right edge, a gutter clear of Pt value and every other cell of its row"):format(pw, fs), okb, whyb)
   end
 end
@@ -425,9 +428,12 @@ check("[0.7.20] ...200 less haste: haste's ability kept under its » line, neste
 check("[0.7.20] ...no comma-joined ability list on the Gear tab", joinedText(d) == nil, joinedText(d))
 local gHealth = lineCells(d, "pairLabel", "» Health")
 check("  ...+900 Stamina: » Health 1,476,516 -> 1,495,596 and Pt value 21.20", T(gHealth.value) == "1,476,516 -> 1,495,596" and T(gHealth.per) == "21.20", T(gHealth.value) .. " | " .. T(gHealth.per))
+-- (QoL 0.7.22: the Summary is drawn on the Stats tab, Character Stats > Gear Summary)
+local dG = d
+d = render("stats")
 local sGear, sChar, sElse = find(d, "colhead", "Gear"), find(d, "colhead", "Character"), find(d, "colhead", "Elsewhere")
-check("Gear > Summary: a table with Gear | Character | Elsewhere heads", sGear and sChar and sElse and sGear.x < sChar.x and sChar.x < sElse.x, T(sGear))
-local sumHead, sumLabel = find(d, "header", "- Summary"), nil
+check("Gear Summary (Stats tab): a table with Gear | Character | Elsewhere heads", sGear and sChar and sElse and sGear.x < sChar.x and sChar.x < sElse.x, T(sGear))
+local sumHead, sumLabel = find(d, "subhead", "Gear Summary"), nil
 for _, r in ipairs(recs(d, "label")) do if not sumLabel and sumHead and r.text == "Critical Strike" and r.y > sumHead.y then sumLabel = r end end
 local sc2 = {}
 for _, r in ipairs(recs(d, "cmpcell")) do if sumLabel and r.y == sumLabel.y then sc2[#sc2 + 1] = r end end

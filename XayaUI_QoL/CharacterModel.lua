@@ -15,20 +15,21 @@
 --     GetDodgeChanceFromAttribute, GetParryChanceFromAttribute, GetShieldBlock, UnitStat, UnitArmor, UnitAttackPower,
 --     UnitRangedAttackPower, GetAttackPowerForStat, UnitAttackSpeed, UnitDamage, UnitRangedDamage, GetSpellBonusDamage,
 --     GetSpellBonusHealing, GetOverrideAPBySpellPower, GetOverrideSpellPowerByAP, GetExpertise, GetPowerRegen, GetManaRegen,
---     GetUnitSpeed
+--     GetUnitSpeed, GetPowerRegenForPowerType (QoL 0.7.22)
 --   SecretWhenUnitHealthMaxRestricted: UnitHealthMax
+--   SecretWhenUnitPowerMaxRestricted: UnitPowerMax (QoL 0.7.22; a secret answer reads "not given now")
 --   SecretWhenCooldownsRestricted: C_Spell.GetSpellCooldown (fields startTime, duration, modRate can be secret; isActive, isOnGCD never)
 --   no secret flag: GetCombatRatingBonusForCombatRatingValue (the converter), UnitHPPerStamina, GetUnitMaxHealthModifier,
 --     UnitEffectiveLevel, UnitLevel, C_PaperDollInfo.GetArmorEffectiveness / GetArmorEffectivenessAgainstTarget /
 --     GetStaggerPercentage / OffhandHasShield, GetCritChanceProvidesParryEffect, UnitPowerType (MayReturnNothing),
 --     C_SpecializationInfo.GetSpecialization / GetSpecializationInfo / GetSpecializationMasterySpells, C_Spell.GetSpellName /
 --     GetSpellInfo / GetSpellDescription (MayReturnNothing), C_Item.GetItemStats / GetDetailedItemLevelInfo / GetItemInfo /
---     GetItemInfoInstant (MayReturnNothing), C_Item.RequestLoadItemDataByID, C_TooltipInfo.GetInventoryItem (MayReturnNothing).
---   undocumented, read the way Blizzard's UI reads them: GetInventoryItemLink, GetInventoryItemDurability (EquipmentManager.lua),
---     GetRepairAllCost (MerchantFrame.lua: cost, canRepair), GetAverageItemLevel (PaperDollFrame.lua), InCombatLockdown,
---     GetSpecialization / GetSpecializationInfo / GetSpecializationMasterySpells (older globals, used only when the C_ ones are
---     missing), ATTACK_POWER_MAGIC_NUMBER (a value in Blizzard's PaperDollFrame.lua: the character window's "increases damage by
---     N DPS" is attack power / this number), the tooltip data field repairCost (Blizzard's TooltipDataRules shows it at a vendor).
+--     GetItemInfoInstant (MayReturnNothing), C_Item.RequestLoadItemDataByID, C_TooltipInfo.GetInventoryItem (MayReturnNothing),
+--     GetRuneCooldown (MayReturnNothing; QoL 0.7.22).
+--   undocumented, read the way Blizzard's UI reads them: GetInventoryItemLink, GetAverageItemLevel (PaperDollFrame.lua),
+--     InCombatLockdown, GetSpecialization / GetSpecializationInfo / GetSpecializationMasterySpells (older globals, used only when the
+--     C_ ones are missing), ATTACK_POWER_MAGIC_NUMBER (a value in Blizzard's PaperDollFrame.lua: the character window's "increases
+--     damage by N DPS" is attack power / this number). (QoL 0.7.22: durability and repair cost are no longer read.)
 --
 -- Secret values: every read goes through R(); a secret answer becomes CM.HIDDEN (never compared, formatted or used in arithmetic)
 -- and is shown as "hidden in combat". A call that is missing or errors shows "unavailable". What the game does not give at all is
@@ -228,7 +229,9 @@ local function Context(cfg)
     ctx.role = type(ctx.specInfo[5]) == "string" and ctx.specInfo[5] or nil
     ctx.level = N(UnitEffectiveLevel, "player")
     if not num(ctx.level) then ctx.level = N(UnitLevel, "player") end
-    ctx.whatIfAll = cfg and num(cfg.whatIf) and cfg.whatIf or 0
+    -- (QoL 0.7.22; Xaya 2026-11-05: "remove "all ratings" as an entry option") no amount is added to every rating any more; a saved
+    -- one is ignored (the settings reset it to 0), so nothing changes the numbers out of sight
+    ctx.whatIfAll = 0
     ctx.whatIfStat = cfg and type(cfg.whatIfStats) == "table" and cfg.whatIfStats or {}
     ctx.whatIfPrimary = cfg and num(cfg.whatIfPrimary) and cfg.whatIfPrimary or 0   -- What If: primary stat added (Xaya 2026-11-04)
     ctx.short = cfg and cfg.detail == "short"
@@ -1064,7 +1067,7 @@ function CM.SlotSockets(link)
     return out
 end
 
--- Everything one equipped slot shows: link, item level, listed ratings, empty sockets, enchant, durability.
+-- Everything one equipped slot shows: link, item level, listed ratings, empty sockets, enchant (durability: not read since QoL 0.7.22).
 -- Empty sockets (QoL 0.7.19): sockets without a gem (CM.SlotSockets), no longer the stat table's EMPTY_SOCKET_ count, which lists the
 -- item's sockets whether a gem is in them or not (INFERENCE from Xaya's screenshot of 2026-11-05: "1S" / "2S" marks on slots whose
 -- gems are in; the API docs do not say). The stat table's socket keys are kept for the socket type on hover (socketTypes).
@@ -1087,8 +1090,6 @@ function CM.SlotInfo(slot)
     s.gems = CM.SlotSockets(link)
     for _, g in ipairs(s.gems or {}) do if not g.gemID then s.sockets = s.sockets + 1 end end
     s.enchanted = CM.LinkEnchanted(link)
-    local dc, dm = R(GetInventoryItemDurability, slot)
-    if num(dc) and num(dm) and dm > 0 then s.dur, s.durMax = dc, dm end
     return s
 end
 
@@ -1255,25 +1256,8 @@ function CM.ShortEnchant(name)
     return (short and short ~= "") and short or name
 end
 
-local function MoneyText(copper)
-    local g, s, c = SM.Coins(copper)
-    if not g then return UNAV end
-    local parts = {}
-    if g > 0 then parts[#parts + 1] = Big(g) .. "g" end
-    if s > 0 or g > 0 then parts[#parts + 1] = s .. "s" end
-    parts[#parts + 1] = c .. "c"
-    return table.concat(parts, " ")
-end
-CM.MoneyText = MoneyText
-
--- repair cost from an equipped item's tooltip data (field repairCost; INFERENCE: undocumented, Blizzard's TooltipDataRules shows it at
--- a repair vendor; whether it is filled away from one is the open QA-CHECKLIST J3 question). nil when the game gives no number.
-local function SlotRepairCost(slot)
-    if not (C_TooltipInfo and C_TooltipInfo.GetInventoryItem) then return nil end
-    local data = R(C_TooltipInfo.GetInventoryItem, "player", slot)
-    local v = Field(data, "repairCost")
-    if num(v) and v >= 0 then return v end
-end
+-- (QoL 0.7.22) MoneyText and the repair cost read are gone with the Durability and repair section (Xaya 2026-11-05: "durability and
+-- repair can be removed from all stat calculator panes").
 
 -- The equipped items as small icons in slot order (QoL 0.7.9; Xaya 2026-11-04: "gear pane should show small icons of the gear
 -- equipped"). Shirt and tabard are left out (no stats). Texture and quality come from the calls Blizzard's own slot buttons make
@@ -1296,38 +1280,18 @@ local function GearIcon(sl, s)
     return ic
 end
 
-local function GearSections(ctx, out)
-    local totals, sockets, durCur, durMax, lowest = {}, 0, 0, 0, nil
-    local repair, repairKnown, damaged = 0, false, 0
-    local icons = Item("gearIcons", "Equipped", "icons")
-    icons.icons = {}
-    Tip(icons, "Click an item to compare it with what you own; drop an item on it to compare that one. Hover for the game's item tooltip; shift-click links it in chat, as on the character window.")
-    out[#out + 1] = { key = "gearIcons", title = "Equipped", items = { icons } }
-    -- (QoL 0.7.14) the per-slot list is gone: a clicked slot's ratings, sockets, enchant and durability show in the comparison
+-- The gear totals in columns (QoL 0.7.15): Gear | Character | Elsewhere, one row per stat, and the empty sockets. QoL 0.7.22 (Xaya
+-- 2026-11-05: the Gear tab's Summary "belongs in stats pane"): drawn on the Stats tab, under Character Stats > Gear Summary.
+-- Returns the items: the column head first, then one row per stat the gear or the character has.
+local function GearSummaryItems()
+    local totals, sockets = {}, 0
     for _, sl in ipairs(SLOTS) do
         local s = CM.SlotInfo(sl[1])
-        if s and not NO_ICON[sl[1]] then
-            local ic = GearIcon(sl, s)
-            ic.selected = CM.gearSlot == sl[1]
-            icons.icons[#icons.icons + 1] = ic
-        end
-        if s then   -- the totals for the Summary and Durability sections
+        if s then
             for _, r in ipairs(s.ratings) do totals[r[1]] = (totals[r[1]] or 0) + r[2] end
             sockets = sockets + s.sockets
-            if s.dur then
-                durCur, durMax = durCur + s.dur, durMax + s.durMax
-                local pct = s.dur / s.durMax * 100
-                if not lowest or pct < lowest then lowest = pct end
-                if pct < 100 then damaged = damaged + 1 end
-                local rc = SlotRepairCost(sl[1])
-                if rc then repairKnown = true; repair = repair + rc end
-            end
         end
     end
-    if #icons.icons == 0 then icons.kind, icons.value, icons.tone = "note", "nothing equipped", "mute" end
-    GearCompareSections(ctx, out)
-    -- the gear totals in columns (QoL 0.7.15; Xaya 2026-11-05: "do multiple columns: for cleaner presentation"): Stat | Gear |
-    -- Character | Elsewhere, the Side by side table's columns; before, each was one "gear N, character N (+N from elsewhere)" line
     local sum = Item("gearSum", "", "colhead")
     sum.cmp, sum.cols = true, { "Gear", "Character", "Elsewhere" }
     local sumItems = { sum }
@@ -1351,36 +1315,28 @@ local function GearSections(ctx, out)
         sumItems[#sumItems + 1] = r
     end
     Tip(sum, "Gear: the rating the item stat tables list for everything you wear. Character: your rating now. Elsewhere: the character's rating minus the gear's: gems, enchants, buffs, or effects the tables leave out.")
-    out[#out + 1] = { key = "gearSummary", title = "Summary", items = sumItems }
+    return sumItems
+end
+CM.GearSummaryItems = GearSummaryItems
 
-    local du = Item("durability", "Durability")
-    if durMax > 0 then
-        SetValue(du, durCur / durMax * 100, function(v) return P(v, 0) end)
-        Pair(du, "Lowest item", P(lowest or 100, 0), (lowest and lowest < 25) and "warn" or nil, true)
-        Pair(du, "Damaged items", tostring(damaged))
-    else
-        du.value, du.tone = "nothing to wear out", "mute"
-    end
-    Tip(du, "Durability per item from the game (GetInventoryItemDurability), added up over everything that can wear out.")
-    local rp = Item("repair", "Repair cost")
-    if repairKnown then
-        rp.value = MoneyText(repair)
-        Tip(rp, "The sum of the repair cost the game puts in each equipped item's tooltip data. Discounts (reputation, guild) are not in it.")
-    elseif damaged == 0 then
-        rp.value, rp.tone = "nothing to repair", "mute"
-    else
-        rp.value, rp.tone = NA .. " here", "mute"
-        Tip(rp, "The game puts an item's repair cost in its tooltip data at a repair vendor (Blizzard shows it there); away from one it gave none.")
-    end
-    local merchant = _G.MerchantFrame
-    if merchant and merchant.IsShown and merchant:IsShown() then
-        local cost, can = R(GetRepairAllCost)
-        if num(cost) then
-            Pair(rp, "Repair all at this vendor", MoneyText(cost) .. (can == true and "" or " (cannot repair here)"), nil, true)
-            Tip(rp, "\"Repair all at this vendor\" is the vendor's own figure (GetRepairAllCost).")
+-- The Gear tab: the equipped items as icons, then the comparison. (QoL 0.7.22: the Summary moved to the Stats tab; the Durability and
+-- repair section is gone, Xaya 2026-11-05: "durability and repair can be removed from all stat calculator panes".)
+local function GearSections(ctx, out)
+    local icons = Item("gearIcons", "Equipped", "icons")
+    icons.icons = {}
+    Tip(icons, "Click an item to compare it with what you own; drop an item on it to compare that one. Hover for the game's item tooltip; shift-click links it in chat, as on the character window.")
+    out[#out + 1] = { key = "gearIcons", title = "Equipped", items = { icons } }
+    -- (QoL 0.7.14) the per-slot list is gone: a clicked slot's ratings, sockets and enchant show in the comparison
+    for _, sl in ipairs(SLOTS) do
+        local s = CM.SlotInfo(sl[1])
+        if s and not NO_ICON[sl[1]] then
+            local ic = GearIcon(sl, s)
+            ic.selected = CM.gearSlot == sl[1]
+            icons.icons[#icons.icons + 1] = ic
         end
     end
-    out[#out + 1] = { key = "durability", title = "Durability and repair", items = { du, rp } }
+    if #icons.icons == 0 then icons.kind, icons.value, icons.tone = "note", "nothing equipped", "mute" end
+    GearCompareSections(ctx, out)
 end
 
 -------------------------------------------------------------------------------
@@ -1641,17 +1597,6 @@ function GearCompareSections(ctx, out)
         it.cells = { old and E(old.enchanted) or "empty", link and E(CM.LinkEnchanted(link)) or "", "" }
         side.items[#side.items + 1] = it
     end
-    if old and old.dur then
-        local it = Item("gc_dur", "Durability", "cmprow")
-        it.cells = { P(old.dur / old.durMax * 100, 0), "", "" }
-        side.items[#side.items + 1] = it
-        local rc = SlotRepairCost(old.slot)
-        if rc and rc > 0 then
-            local r2 = Item("gc_repair", "Repair", "cmprow")
-            r2.cells = { MoneyText(rc), "", "" }
-            side.items[#side.items + 1] = r2
-        end
-    end
     Tip(head, "Both items' stats from the game's item stat tables (C_Item.GetItemStats) at the item level in the link. Gems, enchants, set bonuses and on-use or proc effects are not in them.")
     out[#out + 1] = side
     if not newStats then return end
@@ -1665,7 +1610,7 @@ function GearCompareSections(ctx, out)
     end
     local function V(st, k) return num(st[k]) and st[k] or 0 end
     local ctx2 = Context(ctx.cfg)
-    ctx2.whatIfAll, ctx2.whatIfStat, ctx2.noAll = 0, ratings, true
+    ctx2.whatIfAll, ctx2.whatIfStat, ctx2.compare = 0, ratings, true
     ctx2.whatIfPrimary = PrimaryFrom(newStats, p) - PrimaryFrom(eqStats, p)
     ctx2.whatIfStamina = V(newStats, "ITEM_MOD_STAMINA_SHORT") - V(eqStats, "ITEM_MOD_STAMINA_SHORT")
     ctx2.whatIfArmor = V(newStats, "RESISTANCE0_NAME") - V(eqStats, "RESISTANCE0_NAME")
@@ -1677,7 +1622,7 @@ function GearCompareSections(ctx, out)
     local eff = { key = "gearEffects", title = "What it changes", grid = true, items = { CM.GridHead("gearEffCols") } }
     for _, sec in ipairs(tmp) do
         for _, it in ipairs(sec.items) do
-            if it.kind ~= "colhead" then
+            if it.kind ~= "colhead" and it.kind ~= "subhead" and it.kind ~= "cmprow" then   -- (QoL 0.7.22: the tree's headings)
                 local keep = {}
                 local head, headKept   -- the last line that is not nested: the "»" line the nested ones sit under
                 for _, pr in ipairs(it.pairs or {}) do
@@ -2167,6 +2112,142 @@ local function MapRating(ctx, src, key, kit)
     return it
 end
 
+-- A heading inside a grid section (QoL 0.7.22, the Character Stats tree): level 1 (Core Stats, Secondaries, Tertiaries, Gear Summary)
+-- or level 2 (Primary, General, Offensive, Defensive under Core Stats). Not folded on its own; the section's header folds it all.
+local function SubHead(key, label, level)
+    local it = Item(key, label, "subhead")
+    it.level = level
+    return it
+end
+
+-- Resources (QoL 0.7.22; Xaya 2026-11-05: "mana / energy / resource (for a drain-type resource: total amount; for a generator: max
+-- possible; generation rate only for drain classes)"; a class with two resources shows both, e.g. Death Knight Runes and Runic Power).
+--   UnitPowerType(unit: UnitTokenPvPRestrictedForAddOns, index: number = 0) → powerType: PowerType, powerTypeToken: string, rgbX: number,
+--     rgbY: number, rgbZ: number · MayReturnNothing, SecretArguments=AllowedWhenUntainted (globals.md:690)
+--   UnitPowerMax(unitToken: UnitTokenPvPRestrictedForAddOns, powerType: PowerType?, unmodified: bool = false) → maxPower: number ·
+--     SecretArguments=AllowedWhenUntainted, SecretWhenUnitPowerMaxRestricted (globals.md:687)
+--   UnitPower(unitToken: UnitTokenPvPRestrictedForAddOns, powerType: PowerType?, unmodified: bool = false) → power: number ·
+--     SecretArguments=AllowedWhenUntainted, SecretWhenUnitPowerRestricted (globals.md:683). Not drawn: the panel refreshes on stat events,
+--     not on every power change, so a current amount would be stale (DECISION; watching UNIT_POWER_FREQUENT would cost every frame).
+--   GetPowerRegen() → basePowerRegen: number, castingPowerRegen: number · SecretWhenUnitStatsRestricted (globals.md:241)
+--   GetPowerRegenForPowerType(powerType: number) → basePowerRegen: number, castingPowerRegen: number · SecretArguments=AllowedWhenUntainted,
+--     SecretWhenUnitStatsRestricted (globals.md:242)
+--   GetRuneCooldown(runeIndex: luaIndex) → startTime: number, duration: number, isRuneReady: bool · MayReturnNothing,
+--     SecretArguments=AllowedWhenUntainted (globals.md:257)
+--   Enum.PowerType (enums.md:10234): Mana 0, Rage 1, Focus 2, Energy 3, ComboPoints 4, Runes 5, RunicPower 6, SoulShards 7, LunarPower 8,
+--     HolyPower 9, Maelstrom 11, Chi 12, Insanity 13, ArcaneCharges 16, Fury 17, Pain 18, Essence 19.
+-- Drain type (DECISION from her wording): Mana, Focus and Energy start full and refill on their own; they show the total amount and the
+-- generation rate. Every other pool is built by abilities: its maximum, no rate. Runes: how many, and one rune's recharge time.
+-- Which pools: your current one (UnitPowerType), then each class resource whose maximum is above 0 (UnitPowerMax with that type).
+-- INFERENCE (not documented): UnitPowerMax gives 0 for a pool your class does not have; a druid may list more than two (forms).
+-- A secret answer reads "not given now"; a call that is missing or gives nothing reads "not given by the game".
+local NOW_NA = "not given now"
+-- a line whose number the game does not give: the words go in its note cell (the value column is too narrow for them; the grid draws
+-- a note with no value on the line itself), the value stays empty
+local function NotGiven(it) it.value, it.note, it.tone = "", NA, "mute"; return it end
+local POWER_DRAIN = { [0] = true, [2] = true, [3] = true }
+local POWER_EXTRA = { 0, 4, 5, 6, 7, 8, 9, 11, 12, 13, 16, 19 }   -- the class resources a second pool can be (not Rage / Focus / Energy / Fury / Pain: forms)
+local POWER_TOKEN = { [0] = "MANA", [1] = "RAGE", [2] = "FOCUS", [3] = "ENERGY", [4] = "COMBO_POINTS", [5] = "RUNES", [6] = "RUNIC_POWER",
+    [7] = "SOUL_SHARDS", [8] = "LUNAR_POWER", [9] = "HOLY_POWER", [11] = "MAELSTROM", [12] = "CHI", [13] = "INSANITY", [16] = "ARCANE_CHARGES",
+    [17] = "FURY", [18] = "PAIN", [19] = "ESSENCE" }
+local POWER_NAME = { [0] = "Mana", [1] = "Rage", [2] = "Focus", [3] = "Energy", [4] = "Combo Points", [5] = "Runes", [6] = "Runic Power",
+    [7] = "Soul Shards", [8] = "Astral Power", [9] = "Holy Power", [11] = "Maelstrom", [12] = "Chi", [13] = "Insanity", [16] = "Arcane Charges",
+    [17] = "Fury", [18] = "Pain", [19] = "Essence" }
+local function PowerItems(cur)
+    local list, seen = {}, {}
+    if num(cur) and cur >= 0 then list[1] = cur; seen[cur] = true end
+    for _, pt in ipairs(POWER_EXTRA) do
+        if not seen[pt] then
+            local mx = N(UnitPowerMax, "player", pt)
+            if num(mx) and mx > 0 then list[#list + 1] = pt; seen[pt] = true end
+        end
+    end
+    local items = {}
+    for i, pt in ipairs(list) do
+        -- (the game's own name: the global string its token names; English fallback)
+        local it = Item("map_power" .. pt, L(POWER_TOKEN[pt] or "", POWER_NAME[pt] or ("Resource " .. pt)))
+        it.bigPairs = true
+        local mx = N(UnitPowerMax, "player", pt)
+        if mx == HIDDEN then
+            it.value, it.tone = NOW_NA, "mute"
+            Tip(it, "The game keeps this number secret right now (UnitPowerMax). It fills in when it is given again.")
+        elseif not num(mx) then
+            NotGiven(it)
+        elseif pt == 5 then
+            it.value = Big(mx)
+            local dur
+            for r = 1, math.min(mx, 10) do
+                local st, d = R(GetRuneCooldown, r)
+                if st == HIDDEN then dur = HIDDEN; break end
+                if num(d) and d > 0 then dur = d; break end
+            end
+            if dur == HIDDEN then MapNote(it, "One recharges in", NOW_NA, "mute")
+            elseif dur then MapNote(it, "One recharges in", F(dur, 1) .. " s")
+            else MapNote(it, "One recharges in", "", "mute", nil, { note = "read while a rune recharges" }) end
+            Tip(it, "Runes from UnitPowerMax; a rune's recharge time is the duration GetRuneCooldown gives for a rune that is recharging.")
+        elseif POWER_DRAIN[pt] then
+            it.value, it.note = Big(mx), "total"
+            local base, cast = R(GetPowerRegenForPowerType, pt)
+            if base == nil and i == 1 then base, cast = R(GetPowerRegen) end
+            if base == HIDDEN then MapNote(it, "Generation", NOW_NA, "mute")
+            elseif num(base) then
+                MapNote(it, "Generation", F(base, 2) .. "/s", nil, nil, num(cast) and { note = ("while casting %s/s"):format(F(cast, 2)) } or nil)
+            else MapNote(it, "Generation", NA, "mute") end
+            Tip(it, "The total from UnitPowerMax; the rate from GetPowerRegenForPowerType (base, and while casting). The game gives no amount per point of any stat.")
+        else
+            it.value, it.note = Big(mx), "max"
+            Tip(it, "The most it can hold, from UnitPowerMax. Abilities build it; it has no rate of its own.")
+        end
+        items[#items + 1] = it
+    end
+    if #items == 0 then
+        items[1] = NotGiven(Item("map_power", "Resource"))
+    end
+    return items
+end
+
+-- Critical strike effectiveness (QoL 0.7.22; Xaya 2026-11-05, her example: "Enchant Ring - Eyes of the Eagle ... increasing critical
+-- strike effectiveness by 2%"). No call gives it: the documentation lists only GetCritChance, GetSpellCritChance and GetRangedCritChance
+-- (globals.md:150, 278, 248), each a chance. So it is read from the equipped items' own tooltip text (C_TooltipInfo.GetInventoryItem,
+-- namespaces.md:4711, every line's left and right text): each "critical strike effectiveness by N%" is added up. INFERENCE: the
+-- English words; on another language nothing matches and the line says none was found. Talents and buffs are not in item text.
+-- Returns the total (nil when no item tooltip could be read) and the sources { slot, line, pct }.
+local function CritEffect()
+    if not (C_TooltipInfo and C_TooltipInfo.GetInventoryItem) then return nil, {} end
+    local total, src, read = 0, {}, false
+    for _, sl in ipairs(SLOTS) do
+        local lines = TipLines(sl[1])
+        if lines then
+            read = true
+            for _, ln in ipairs(lines) do
+                if type(ln) == "table" then
+                    if TooltipUtil and TooltipUtil.SurfaceArgs and ln.leftText == nil then pcall(TooltipUtil.SurfaceArgs, ln) end
+                    for _, k in ipairs({ "leftText", "rightText" }) do
+                        local text = CM.PlainText(Field(ln, k))
+                        local v = text and text:lower():match("critical strike effectiveness by ([%d%.,]+)%%")
+                        local n = v and tonumber((v:gsub(",", ".")))
+                        if n then total = total + n; src[#src + 1] = { slot = L(sl[2], sl[3]), line = text, pct = n } end
+                    end
+                end
+            end
+        end
+    end
+    return read and total or nil, src
+end
+CM.CritEffect = CritEffect
+local function PctShort(v) if math.abs(v - math.floor(v + 0.5)) < 0.001 then return ("%d%%"):format(math.floor(v + 0.5)) end; return F(v, 1) .. "%" end
+
+-- The Stats tab's Character Stats section (QoL 0.7.22; Xaya 2026-11-05, her words: "combine primary, secondary, and tertiary stats into
+-- one major section under the name "Character Stats""). One section, one header; inside it, in this order:
+--   Core Stats > Primary (your spec's primary stat, Stamina), General (Health, your resources, Global cooldown, Movement speed),
+--     Offensive (Attack Power / Spell Power, Attack Speed, Weapon DPS, Damage, Critical strike effectiveness), Defensive (Armor, Dodge,
+--     Parry, Block; Stagger for a Brewmaster);
+--   Secondaries (Critical Strike, Haste, Mastery, Versatility); Tertiaries (Avoidance, Leech, Speed); Gear Summary (the Gear tab's
+--     Summary until QoL 0.7.22: Gear | Character | Elsewhere and the empty sockets).
+-- Columns as before (Stat | Rating | Current value | Pt value | (Note) | Change), the "»" lines and the nested abilities as before. The
+-- old Offense / Defense (what feeds it) sections are Offensive / Defensive here; the All ratings box is gone ("remove "all ratings" as an
+-- entry option"). While it builds, each "what feeds what" number is kept for the Stat Weights pane (ctx.weights).
+-- ctx.compare: the Gear comparison's copy (its "What it changes"): no Gear Summary, no weights.
 local function StatMapSections(ctx, out)
     CM.svBase = {}
     local tmp = {}
@@ -2185,9 +2266,28 @@ local function StatMapSections(ctx, out)
     local eff2 = num(eff) and math.max(0, eff + dP) or nil
     local armorFromP = (apct and num(eff)) and eff * apct / 100 or nil
     local armorFromPAfter = (apctAfter and num(eff2)) and eff2 * apctAfter / 100 or nil
+    local hst = byKey.haste
+    local h0, h1 = hst and hst.total, hst and hst.totalAfter
+    local function Hasted(v)   -- a time with your haste, if you changed it (estimate: time x (1 + haste now) / (1 + haste then))
+        if num(v) and num(h0) and num(h1) and math.abs(h1 - h0) > 0.0005 then return v * (1 + h0 / 100) / (1 + h1 / 100) end
+    end
+    -- what each stat feeds, for the Stat Weights pane: infl[stat key] = { { other, short, amount (text, no sign), up, est } }; amount nil =
+    -- the game does not give it
+    local infl = {}
+    local function Feeds(key, other, short, amount, up, est)
+        infl[key] = infl[key] or {}
+        local t = infl[key]
+        t[#t + 1] = { other = other, short = short or other, amount = amount, up = up, est = est }
+    end
+    local AP_NAME = L("STAT_ATTACK_POWER", "Attack Power")
 
-    -- 1. Primary stat and Stamina
-    local prim = { key = "map_primary", title = "Primary stats", grid = true, items = { GridHead("map_cols1", nil, "Change") } }
+    local cs = { key = "map_character", title = "Character Stats", grid = true, items = {} }
+    local function Add(it) cs.items[#cs.items + 1] = it end
+
+    -- 1. Core Stats > Primary: your spec's primary stat (its box), Stamina
+    Add(SubHead("sub_core", "Core Stats", 1))
+    Add(GridHead("map_cols1", nil, "Change"))
+    Add(SubHead("sub_primary", "Primary", 2))
     do
         local it = Item("map_primary", StatName(p), "input")
         it.input, it.bigPairs, it.mapCard, it.labelColor = "sv:primary", true, true, CM.STAT_COLORS.primary
@@ -2199,19 +2299,25 @@ local function StatMapSections(ctx, out)
             local notGiven = dP ~= 0 and { note = "with your numbers: " .. NA } or nil
             if p == 1 or p == 2 then
                 local a0, a1 = N(GetAttackPowerForStat, p, eff), N(GetAttackPowerForStat, p, eff2)
-                if num(a0) then MapNote(it, "» Attack power", Was(a0, dP ~= 0 and a1 or nil, SB), nil, nil, eff > 0 and PerPoint(a0 / eff) or nil) end
+                if num(a0) then
+                    MapNote(it, "» Attack power", Was(a0, dP ~= 0 and a1 or nil, SB), nil, nil, eff > 0 and PerPoint(a0 / eff) or nil)
+                    Feeds("primary", AP_NAME, AP_NAME, Big(a0), a0 >= 0)
+                else Feeds("primary", AP_NAME, AP_NAME, nil) end
+            elseif p == 4 then
+                Feeds("primary", L("STAT_SPELLPOWER", "Spell Power"), L("STAT_SPELLPOWER", "Spell Power"), nil)
             end
             if p == 2 then
                 local d = N(GetDodgeChanceFromAttribute)
-                if num(d) then MapNote(it, "» Dodge", SP(d), nil, nil, notGiven) end
+                if num(d) then MapNote(it, "» Dodge", SP(d), nil, nil, notGiven); Feeds("primary", L("STAT_DODGE", "Dodge"), nil, P(math.abs(d)), d >= 0) end
             elseif p == 1 then
                 local d = N(GetParryChanceFromAttribute)
-                if num(d) then MapNote(it, "» Parry", SP(d), nil, nil, notGiven) end
+                if num(d) then MapNote(it, "» Parry", SP(d), nil, nil, notGiven); Feeds("primary", L("STAT_PARRY", "Parry"), nil, P(math.abs(d)), d >= 0) end
             end
             if armorFromP then
                 -- Pt value: the mastery text's percent per point of the stat (89.7% of Agility = 0.90 armor per Agility)
                 MapNote(it, "» Armor", Was(armorFromP, (armorFromPAfter ~= armorFromP) and armorFromPAfter or nil, SB), nil, nil,
                     With(PerPoint(apct / 100), ("%s%% of %s, mastery"):format(F(apct, 1), StatName(p))))
+                Feeds("primary", L("STAT_ARMOR", "Armor"), nil, Big(armorFromP), true)
             end
             -- abilities: what 100 more of the primary stat adds to each damage / healing number, measured from their text the way the
             -- Spells tab does (first number / attack power x attack power per point; Strength and Agility specs)
@@ -2256,46 +2362,328 @@ local function StatMapSections(ctx, out)
             Tip(it, ("Attack power per point from GetAttackPowerForStat; dodge or parry from %s as the character window reads it; armor from the percent in your mastery's own text."):format(StatName(p)))
             Tip(it, "Type another number in the box and press Enter; clear it to go back to yours.")
         else it.value, it.tone = UNAV, "mute" end
-        prim.items[#prim.items + 1] = it
+        Add(it)
+    end
+    local _, sta = R(UnitStat, "player", 3)
+    local dS = ctx.whatIfStamina or 0   -- (the gear comparison's Stamina change; the map itself has no Stamina box)
+    local hp, per, mod = N(UnitHealthMax, "player"), N(UnitHPPerStamina, "player"), N(GetUnitMaxHealthModifier, "player")
+    local hpPer = num(per) and per * (num(mod) and mod or 1) or nil
+    do
         local st = Item("map_stamina", StatName(3))
         st.bigPairs, st.labelColor = true, CM.STAT_COLORS.stamina
-        local _, sta = R(UnitStat, "player", 3)
         SetValue(st, sta, Big)
-        local dS = ctx.whatIfStamina or 0   -- (the gear comparison's Stamina change; the map itself has no Stamina box)
         if dS ~= 0 and num(sta) then st.value = Was(sta, math.max(0, sta + dS), Big) end
-        local hp, per, mod = N(UnitHealthMax, "player"), N(UnitHPPerStamina, "player"), N(GetUnitMaxHealthModifier, "player")
-        local hpPer = num(per) and per * (num(mod) and mod or 1) or nil
         if num(hp) then
             MapNote(st, "» Health", Was(hp, (dS ~= 0 and hpPer) and hp + dS * hpPer or nil, Big), nil, nil, PerPoint(hpPer))
         end
-        prim.items[#prim.items + 1] = st
+        if num(sta) and hpPer then Feeds("stamina", L("HEALTH", "Health"), nil, Big(sta * hpPer), true)
+        else Feeds("stamina", L("HEALTH", "Health"), nil, nil) end
+        Add(st)
     end
-    out[#out + 1] = prim
 
-    -- 2. Secondary stats and what they feed (a column head over the cards: Stat | Rating | Current value | Pt value (the rating per
-    -- 1%, #382) | Note | Change (the box))
+    -- 2. Core Stats > General: Health, your resources, Global cooldown, Movement speed
+    Add(SubHead("sub_general", "General", 2))
+    do
+        local it = Item("map_health", L("HEALTH", "Health"))
+        it.bigPairs = true
+        SetValue(it, hp, Big)
+        if num(hp) and dS ~= 0 and hpPer then it.value = Was(hp, hp + dS * hpPer, Big) end
+        Tip(it, "Maximum health from UnitHealthMax; per point of Stamina from UnitHPPerStamina x GetUnitMaxHealthModifier.")
+        Add(it)
+    end
+    local ptCur = R(UnitPowerType, "player")
+    if ptCur == HIDDEN then ptCur = nil end
+    for _, it in ipairs(PowerItems(ptCur)) do Add(it) end
+    local g = CM.gcd
+    do
+        local it = Item("map_gcd", "Global cooldown")
+        it.bigPairs = true
+        if CM.gcdHidden then
+            SetValue(it, HIDDEN)
+            if g and num(g.dur) then MapNote(it, "Last read", F(g.dur, 2) .. " s") end
+        elseif g and num(g.dur) then
+            local g2 = Hasted(g.dur)
+            it.value = Was(g.dur, g2, function(v) return F(v, 2) .. " s" end)
+            MapNote(it, "From Haste", num(g.haste) and P(g.haste) or "", nil, "haste",
+                { note = num(g.haste) and ("haste when read" .. (g2 and ("; with your numbers about " .. F(g2, 2) .. " s (estimate)") or "")) or "read live" })
+            if num(g.haste) then
+                local unh = g.dur * (1 + g.haste / 100)
+                local need = (g.dur > 0.01) and HasteRatingFor((unh / (g.dur - 0.01) - 1) * 100) or nil
+                MapNote(it, "Unhasted (estimate)", F(unh, 2) .. " s", nil, nil, need and { note = Big(need) .. " more haste rating for -0.01 s" } or nil)
+                if math.abs(g.dur - 1.0) < 0.005 and g.haste > 1 then MapNote(it, "Note", "", "warn", nil, { note = "looks like a fixed 1 s GCD: haste may not shorten it" }) end
+            end
+            Tip(it, "Read from the game's global cooldown (spell 61304, C_Spell.GetSpellCooldown) each time one runs. Unhasted and with-your-numbers figures are estimates: GCD = unhasted / (1 + haste).")
+        else
+            SetValue(it, nil)
+            MapNote(it, "Read", "", "mute", nil, { note = "cast any spell to read it" })
+        end
+        Add(it)
+    end
+    if g and num(g.dur) and num(g.haste) and not CM.gcdHidden then
+        Feeds("haste", "Global cooldown", "GCD", F(g.dur * (1 + g.haste / 100) - g.dur, 2) .. " s", false, true)
+    else Feeds("haste", "Global cooldown", "GCD", nil) end
+    do
+        -- GetUnitSpeed(unit: UnitToken) → currentSpeed: number, runSpeed: number, flightSpeed: number, swimSpeed: number ·
+        -- SecretArguments=AllowedWhenUntainted, SecretWhenUnitStatsRestricted (globals.md:308); a percent of BASE_MOVEMENT_SPEED (7, the
+        -- character window's own reading; constants.md)
+        local cur, run = R(GetUnitSpeed, "player")
+        local base = num(BASE_MOVEMENT_SPEED) and BASE_MOVEMENT_SPEED or 7
+        local it = Item("map_movespeed", "Movement speed")
+        it.bigPairs = true
+        if cur == HIDDEN then SetValue(it, HIDDEN)
+        elseif num(run) and run > 0 then
+            it.value, it.note = P(run / base * 100, 0), "run"
+            if num(cur) and cur > 0 and math.abs(cur - run) > 0.001 then MapNote(it, "Now", P(cur / base * 100, 0)) end
+            Tip(it, ("Run speed from GetUnitSpeed, as a percent of the game's base speed (%s yards per second, BASE_MOVEMENT_SPEED)."):format(F(base, 1)))
+        else SetValue(it, nil) end
+        Add(it)
+    end
+
+    -- 3. Core Stats > Offensive: Attack Power / Spell Power, Attack Speed, Weapon DPS, Damage, Critical strike effectiveness
+    Add(SubHead("sub_offensive", "Offensive", 2))
+    do
+        local base, pos, neg = R(UnitAttackPower, "player")
+        local mn = MasteryNumbers(ctx)
+        if base == HIDDEN then
+            local it = Item("map_ap", AP_NAME); SetValue(it, HIDDEN); Add(it)
+        elseif num(base) and (p == 1 or p == 2 or base > 0) then
+            local it = Item("map_ap", AP_NAME)
+            it.bigPairs = true
+            local ap = math.max(0, base + (num(pos) and pos or 0) + (num(neg) and neg or 0))
+            local a0 = (p == 1 or p == 2) and num(eff) and N(GetAttackPowerForStat, p, eff) or nil
+            local a1 = (num(a0) and num(eff2)) and N(GetAttackPowerForStat, p, eff2) or nil
+            local apAfter = (num(a0) and num(a1) and dP ~= 0) and math.max(0, ap + a1 - a0) or nil
+            it.value = Was(ap, apAfter, Big)
+            if apAfter then it.tone = apAfter >= ap and "good" or "warn" end
+            if num(a0) then MapNote(it, "From " .. StatName(p), Was(a0, apAfter and a1 or nil, SB), nil, "primary", (num(eff) and eff > 0) and PerPoint(a0 / eff) or nil) end
+            if mn.ap then
+                local after = (mst and num(mst.total) and mst.total > 0 and num(mst.totalAfter)) and mn.ap * mst.totalAfter / mst.total or nil
+                MapNote(it, "From Mastery", Was(mn.ap, after, SP), nil, "mastery")
+            end
+            local bd = (num(pos) and pos or 0) + (num(neg) and neg or 0)
+            if bd ~= 0 then MapNote(it, "Buffs and debuffs", SB(bd), bd > 0 and "good" or "warn") end
+            local apFromSP = N(GetOverrideAPBySpellPower)
+            if num(apFromSP) and apFromSP > 0 then MapNote(it, "From spell power", P(apFromSP * 100, 0), nil, nil, { note = "of spell power" }) end
+            local magic = _G.ATTACK_POWER_MAGIC_NUMBER
+            if num(magic) and magic > 0 then
+                MapNote(it, "» Damage per second", Was(ap / magic, apAfter and apAfter / magic or nil, function(v) return "+" .. BF(v) end))
+            end
+            Tip(it, "Attack power from UnitAttackPower; the part from your primary stat from GetAttackPowerForStat; damage per second is the character window's own figure (attack power / ATTACK_POWER_MAGIC_NUMBER).")
+            if mn.ap then Tip(it, "With your numbers the total moves with your primary stat only; the mastery's percent is shown beside it (the game does not say which attack power it multiplies).") end
+            Add(it)
+        end
+        local sp, heal, spFromAP = SpellPowerNow(), N(GetSpellBonusHealing), N(GetOverrideSpellPowerByAP)
+        if sp == HIDDEN or (num(sp) and sp > 0) or (num(heal) and heal > 0) then
+            local it = Item("map_sp", L("STAT_SPELLPOWER", "Spell Power"))
+            it.bigPairs = true
+            SetValue(it, sp, Big)
+            if p == 4 then
+                local _, int = R(UnitStat, "player", 4)
+                if num(int) and num(sp) and int > 0 then
+                    local per4 = sp / int
+                    it.value = Was(sp, dP ~= 0 and math.max(0, sp + dP * per4) or nil, Big)
+                    MapNote(it, "From " .. StatName(4), "", nil, "primary",
+                        With(PerPoint(per4), "average, all sources" .. (dP ~= 0 and "; your numbers at that rate (estimate)" or "")))
+                end
+            end
+            if num(heal) and num(sp) and heal ~= sp then MapNote(it, "Healing bonus", Big(heal)) end
+            if num(spFromAP) and spFromAP > 0 then MapNote(it, "From attack power", P(spFromAP * 100, 0), nil, nil, { note = "of attack power" }) end
+            Tip(it, "Spell power as the character window shows it: your lowest school (GetSpellBonusDamage).")
+            Add(it)
+        end
+        if mn.ap then Feeds("mastery", AP_NAME, AP_NAME, P(mn.ap, 1), mn.ap >= 0) end
+    end
+    do
+        local mh, oh = R(UnitAttackSpeed, "player")
+        local dmin, dmax, ohMin, ohMax, _, _, pct = R(UnitDamage, "player")
+        local rSpeed, rMin, rMax = R(UnitRangedDamage, "player")
+        local hasMH = num(mh) and mh > 0 and num(dmin) and num(dmax)
+        local hasOH = hasMH and num(ohMin) and num(ohMax) and ohMax > 0 and num(oh) and oh > 0
+        local hasR = rSpeed ~= HIDDEN and num(rSpeed) and rSpeed > 0 and num(rMin) and num(rMax) and rMax > 0
+        local hidden = mh == HIDDEN or dmin == HIDDEN
+        local function Sec(v) return F(v, 2) .. " s" end
+        -- Attack Speed: the weapon's swing time now (with your haste: an estimate)
+        local as = Item("map_aspeed", "Attack Speed")
+        as.bigPairs = true
+        if hidden then SetValue(as, HIDDEN)
+        elseif hasMH or hasR then
+            local s0 = hasMH and mh or rSpeed
+            local s2 = Hasted(s0)
+            as.value = Was(s0, s2, Sec)
+            if s2 then as.note = "estimate" end
+            if hasMH and hasOH then MapNote(as, "Off hand", Was(oh, Hasted(oh), Sec)) end
+            if hasMH and hasR then MapNote(as, "Ranged", Was(rSpeed, Hasted(rSpeed), Sec)) end
+            Tip(as, "Swing time from UnitAttackSpeed (UnitRangedDamage for a ranged weapon), every modifier applied. With your haste it is an estimate: speed x (1 + haste now) / (1 + haste then).")
+            if num(h0) then Feeds("haste", "Attack Speed", nil, F(s0 * (1 + h0 / 100) - s0, 2) .. " s", false, true) end
+        else NotGiven(as) end
+        if not (num(h0) and (hasMH or hasR) and not hidden) then Feeds("haste", "Attack Speed", nil, nil) end
+        Add(as)
+        -- Weapon DPS: (low + high) / 2 / speed, the character window's own figure
+        local dps = Item("map_wdps", "Weapon DPS")
+        dps.bigPairs = true
+        if hidden then SetValue(dps, HIDDEN)
+        elseif hasMH or hasR then
+            local lo, hi, s0 = hasMH and dmin or rMin, hasMH and dmax or rMax, hasMH and mh or rSpeed
+            local s2 = Hasted(s0)
+            dps.value = Was((lo + hi) / 2 / s0, s2 and (lo + hi) / 2 / s2 or nil, BF)
+            if hasOH then MapNote(dps, "Off hand", BF((ohMin + ohMax) / 2 / oh)) end
+            if hasMH and hasR then MapNote(dps, "Ranged", BF((rMin + rMax) / 2 / rSpeed)) end
+            Tip(dps, "Weapon damage per second: (low + high) / 2 / swing time, from UnitDamage and UnitAttackSpeed (UnitRangedDamage for a ranged weapon).")
+        else NotGiven(dps) end
+        Add(dps)
+        -- Damage: the weapon's damage range
+        local dmg = Item("map_damage", L("DAMAGE", "Damage"))
+        dmg.bigPairs = true
+        if hidden then SetValue(dmg, HIDDEN)
+        elseif hasMH or hasR then
+            local lo, hi = hasMH and dmin or rMin, hasMH and dmax or rMax
+            dmg.value = Big(math.max(1, math.floor(lo))) .. " - " .. Big(math.max(1, math.ceil(hi)))
+            if hasOH then MapNote(dmg, "Off hand", ("%s - %s"):format(Big(ohMin), Big(ohMax))) end
+            if hasMH and hasR then MapNote(dmg, "Ranged", ("%s - %s"):format(Big(rMin), Big(rMax))) end
+            if num(pct) and math.abs(pct - 1) > 0.0001 then MapNote(dmg, "Physical damage modifier", "x" .. F(pct, 3)) end
+            local mhExp, ohExp = R(GetExpertise)
+            if num(mhExp) and mhExp > 0 then MapNote(dmg, "Expertise", P(mhExp) .. ((num(ohExp) and ohExp > 0) and (" / " .. P(ohExp)) or "")) end
+            if hasR then
+                local rb, rp, rn = R(UnitRangedAttackPower, "player")
+                if num(rb) then MapNote(dmg, "Ranged attack power", Big(rb + (num(rp) and rp or 0) + (num(rn) and rn or 0))) end
+            end
+            Tip(dmg, "Weapon damage from UnitDamage (UnitRangedDamage for a ranged weapon), with every modifier already applied.")
+        else NotGiven(dmg) end
+        Add(dmg)
+    end
+    do
+        local ce = Item("map_critfx", "Critical strike effectiveness")
+        ce.bigPairs = true
+        local total, src = CritEffect()
+        if total == nil then NotGiven(ce)
+        elseif total > 0 then ce.value, ce.note = "+" .. PctShort(total), "read from item text"
+        else ce.value, ce.tone, ce.note = "none found", "mute", "read from item text" end
+        Tip(ce, "No game call gives critical strike effectiveness: it is read from your equipped items' own tooltip text, every \"critical strike effectiveness by N%\" added up (English text). Talents and buffs are not in item text.")
+        if #src > 0 then
+            Tip(ce, " ")
+            for _, s in ipairs(src) do Tip(ce, ("%s: %s (+%s)"):format(s.slot, s.line, PctShort(s.pct))) end
+        end
+        ce.sources = src
+        Add(ce)
+    end
+
+    -- 4. Core Stats > Defensive: Armor, Dodge, Parry, Block (and Stagger for a Brewmaster)
+    Add(SubHead("sub_defensive", "Defensive", 2))
+    do
+        local _, armor = R(UnitArmor, "player")
+        local it = Item("map_armor", L("STAT_ARMOR", "Armor"))
+        it.bigPairs = true
+        SetValue(it, armor, Big)
+        if num(armor) then
+            local itemArmor = ctx.whatIfArmor or 0   -- (the gear comparison: the item's own armor change)
+            local delta = ((armorFromPAfter and armorFromP) and (armorFromPAfter - armorFromP) or 0) + itemArmor
+            if delta ~= 0 then it.value = Was(armor, armor + delta, Big) end
+            if itemArmor ~= 0 then
+                MapNote(it, "From the item itself", SB(itemArmor), itemArmor > 0 and "good" or "warn")
+                it.pairs[#it.pairs].change = true   -- a change by itself (no "now -> then"): the gear comparison keeps it
+            end
+            local fx = ArmorEff()
+            if num(ctx.level) and type(fx) == "function" then
+                local r0, r1 = N(fx, armor, ctx.level), N(fx, armor + delta, ctx.level)
+                if num(r0) then MapNote(it, "» Damage reduction", Was(r0 * 100, (delta ~= 0 and num(r1)) and r1 * 100 or nil, P), nil, nil, { note = "vs your level" }) end
+                local gfn = function(a) local v = N(fx, a, ctx.level); if num(v) then return v * 100 end end
+                local need = num(r0) and SM.Solve(gfn, r0 * 100 + 1, armor, armor * 20 + 100000, true)
+                MapNote(it, "Armor for the next 1%", need and Big(need - armor) or "out of reach", (not need) and "warn" or nil)
+            end
+            if HasAttackableTarget() then
+                local v = N(ArmorVsTarget(), armor)
+                if num(v) then MapNote(it, "» Against your target", P(v * 100)) end
+            end
+            if armorFromP then MapNote(it, "From " .. StatName(p) .. " (mastery)", Was(armorFromP, delta ~= 0 and armorFromPAfter or nil, SB), nil, "mastery", PerPoint(apct / 100)) end
+            local abase, _, _, abonus = R(UnitArmor, "player")
+            if num(abase) then
+                -- the base is the value; buffs and talents and the bonus armor are its note (QoL 0.7.15)
+                local bn = (armor ~= abase) and With(nil, SB(armor - abase) .. " buffs and talents") or nil
+                if num(abonus) and abonus > 0 then bn = With(bn, "bonus armor " .. Big(abonus)) end
+                MapNote(it, "Base, buffs and talents", Big(abase), nil, nil, bn)
+            end
+            Tip(it, "Armor from UnitArmor; damage reduction from C_PaperDollInfo.GetArmorEffectiveness against your level (not linear: each 1% costs more armor). The mastery part is read from your mastery's own text.")
+        end
+        Add(it)
+        local dg = Item("map_dodge", L("STAT_DODGE", "Dodge"))
+        dg.bigPairs = true
+        local dTot = N(GetDodgeChance)
+        SetValue(dg, dTot, P)
+        local dAgi = N(GetDodgeChanceFromAttribute)
+        if num(dTot) and num(dAgi) and dAgi > 0 then
+            MapNote(dg, "From " .. StatName(2), SP(dAgi), nil, "primary")
+            MapNote(dg, "Other (base, talents, rating)", SP(dTot - dAgi))
+        end
+        Add(dg)
+        local pr = Item("map_parry", L("STAT_PARRY", "Parry"))
+        pr.bigPairs = true
+        local pTot = N(GetParryChance)
+        SetValue(pr, pTot, P)
+        if num(pTot) then
+            local crit = byKey.crit
+            local fromCrit
+            if crit and num(crit.rating) and R(GetCritChanceProvidesParryEffect) == true then
+                local fp = Converter(IDX.parry)
+                fromCrit = fp and fp(crit.rating)
+                local after = (fp and crit.whatIf) and fp(crit.whatIf.newRating) or nil
+                if num(fromCrit) then MapNote(pr, "From Critical Strike", Was(fromCrit, after, SP), nil, "crit", { note = "before DR" }) end
+            end
+            local pStr = N(GetParryChanceFromAttribute)
+            if num(pStr) and pStr > 0 then MapNote(pr, "From " .. StatName(1), SP(pStr)) end
+            Tip(pr, "Parry total from GetParryChance (after diminishing returns); the parts are read before them, so they need not add up exactly.")
+        end
+        Add(pr)
+        -- Block: always listed (her list names it); 0% when you carry no shield, as the game gives it
+        local block = N(GetBlockChance)
+        local bl = Item("map_block", L("STAT_BLOCK", "Block"))
+        bl.bigPairs = true
+        SetValue(bl, block, P)
+        local sb, fx = N(GetShieldBlock), ArmorEff()
+        if num(sb) and sb > 0 and num(ctx.level) and type(fx) == "function" then
+            local red = N(fx, sb, ctx.level)
+            if num(red) then MapNote(bl, "» A block reduces the hit by", P(red * 100)) end
+            if HasAttackableTarget() then
+                local v = N(ArmorVsTarget(), sb)
+                if num(v) then MapNote(bl, "» Against your target", P(v * 100)) end
+            end
+        end
+        Tip(bl, "Block chance from GetBlockChance; what a block takes off: shield block value (GetShieldBlock) through the game's armor effectiveness, as the character window works it out.")
+        Add(bl)
+        local stagger, staggerT = R(C_PaperDollInfo and C_PaperDollInfo.GetStaggerPercentage, "player")
+        if stagger == HIDDEN or (num(stagger) and stagger > 0) then
+            local stg = Item("map_stagger", L("STAT_STAGGER", "Stagger"))
+            stg.bigPairs = true
+            SetValue(stg, stagger, P)
+            if num(staggerT) and staggerT > 0 then MapNote(stg, "» Against your target", P(staggerT)) end
+            Tip(stg, "From C_PaperDollInfo.GetStaggerPercentage.")
+            Add(stg)
+        end
+    end
+
+    -- 5. Secondaries and what they feed (a column head over the cards: Stat | Rating | Current value | Pt value (the rating per 1%,
+    -- #382) | Note | Change (the box))
     local function ColHead(k) return GridHead(k, "Rating", "Change") end
-    local sec = { key = "map_secondary", title = "Secondary stats", grid = true, items = { ColHead("map_cols2") } }
+    Add(SubHead("sub_secondary", "Secondaries", 1))
+    Add(ColHead("map_cols2"))
     if byKey.crit then
-        sec.items[#sec.items + 1] = MapRating(ctx, byKey.crit, "crit", function(it, src, w)
+        Add(MapRating(ctx, byKey.crit, "crit", function(it, src, w)
             if R(GetCritChanceProvidesParryEffect) == true then
                 local fp = Converter(IDX.parry)
                 local now = fp and fp(src.rating)
                 if num(now) then
                     local after = (w and fp) and fp(w.newRating) or nil
                     local ap = SM.Analyze(fp, src.rating, SM.BaseRate(fp), nil, 1, nil)
-                    local per = ap and (ap.perPctNow or ap.perPctBase)
-                    MapNote(it, "» Parry", Was(now, after, SP), nil, nil, With(PerPct(per, "crit rating"), "before DR"))
-                    if per then it.pairs[#it.pairs].perText = F(per) .. " crit rating = 1% parry" end
-                    it.parryPer = per
+                    local per2 = ap and (ap.perPctNow or ap.perPctBase)
+                    MapNote(it, "» Parry", Was(now, after, SP), nil, nil, With(PerPct(per2, "crit rating"), "before DR"))
+                    if per2 then it.pairs[#it.pairs].perText = F(per2) .. " crit rating = 1% parry" end
+                    it.parryPer = per2
+                    Feeds("crit", L("STAT_PARRY", "Parry"), nil, P(math.abs(now)), now >= 0)
                 end
             end
-        end)
+        end))
     end
-    if byKey.haste then
-        sec.items[#sec.items + 1] = MapRating(ctx, byKey.haste, "haste", function(it, src, w)
-            local h0, h1 = src.total, src.totalAfter
-            local g = CM.gcd
+    if hst then
+        Add(MapRating(ctx, hst, "haste", function(it, src, w)
             if g and num(g.dur) then
                 local est = (num(h0) and num(h1)) and g.dur * (1 + h0 / 100) / (1 + h1 / 100) or nil
                 MapNote(it, "» Global cooldown", F(g.dur, 2) .. " s" .. (est and math.abs(est - g.dur) > 0.0005 and (" -> about " .. F(est, 2) .. " s") or ""))
@@ -2329,18 +2717,19 @@ local function StatMapSections(ctx, out)
             end
             Tip(it, "The global cooldown and attack speed with your numbers are estimates: the game's figure now, times (1 + haste now) / (1 + haste then).")
             Tip(it, "Abilities: those whose own description mentions Haste (a word match on English text; the game does not list what haste shortens). Their recharge is the game's figure now (C_Spell.GetSpellCharges); with your numbers it is an estimate, like the global cooldown.")
-        end)
+        end))
     end
     if mst then
-        sec.items[#sec.items + 1] = MapRating(ctx, mst, "mastery", function(it, src, w)
+        Add(MapRating(ctx, mst, "mastery", function(it, src, w)
             if apct and num(eff) then
                 local per1 = (num(src.total) and src.total > 0) and eff * (apct / src.total) / 100 or nil
                 MapNote(it, "» Armor", Was(armorFromP, (armorFromPAfter ~= armorFromP) and armorFromPAfter or nil, SB), nil, nil,
                     { note = ("%s%% of %s"):format(F(apct, 1), StatName(p)) })
+                Feeds("mastery", L("STAT_ARMOR", "Armor"), nil, Big(armorFromP), true)
                 if per1 then
                     local a = src.analysis or {}
-                    local per = a.perPctNow or a.perPctBase
-                    MapNote(it, "» Armor per 1% mastery", SB(per1), nil, nil, per and { note = F(per) .. " mastery rating" } or nil)
+                    local per2 = a.perPctNow or a.perPctBase
+                    MapNote(it, "» Armor per 1% mastery", SB(per1), nil, nil, per2 and { note = F(per2) .. " mastery rating" } or nil)
                 end
             end
             local mn = MasteryNumbers(ctx)
@@ -2351,11 +2740,12 @@ local function StatMapSections(ctx, out)
             if apct or mn.ap then
                 Tip(it, "Armor and attack power from mastery: the percents in your mastery's own text, which the game fills in; with your numbers they move in step with mastery (an estimate).")
             end
-        end)
+        end))
     end
     if byKey.vers then
-        sec.items[#sec.items + 1] = MapRating(ctx, byKey.vers, "vers", function(it, src, w)
+        Add(MapRating(ctx, byKey.vers, "vers", function(it, src, w)
             MapNote(it, "» Damage and healing done (every ability)", Was(src.total or 0, src.totalAfter, SP))
+            if num(src.total) then Feeds("vers", "Damage and healing done", "Damage done", P(math.abs(src.total)), src.total >= 0) end
             local ft = Converter(IDX.versTaken)
             local tNow = N(GetCombatRatingBonus, IDX.versTaken)
             local tBonus = N(GetVersatilityBonus, IDX.versTaken)
@@ -2363,269 +2753,124 @@ local function StatMapSections(ctx, out)
                 local base = num(tBonus) and tBonus or 0
                 local after = (w and ft) and ft(w.newRating) or nil
                 local at = ft and SM.Analyze(ft, src.rating, SM.BaseRate(ft), nil, 1, nil)
-                local per = at and (at.perPctNow or at.perPctBase)
+                local per2 = at and (at.perPctNow or at.perPctBase)
                 MapNote(it, "» Damage taken", Was(-(tNow + base), num(after) and -(after + base) or nil, function(v) return P(v) end), nil, nil,
-                    PerPct(per, "rating"))
-            elseif tNow == HIDDEN then MapNote(it, "» Damage taken", HID, "mute") end
-        end)
+                    PerPct(per2, "rating"))
+                Feeds("vers", "Damage taken", nil, P(math.abs(tNow + base)), (tNow + base) < 0)
+            elseif tNow == HIDDEN then MapNote(it, "» Damage taken", HID, "mute"); Feeds("vers", "Damage taken", nil, nil) end
+        end))
     end
-    if not ctx.noAll then
-        -- one amount added to every rating (the What If tab's "All ratings", kept here when that tab folded into the map, B9)
-        local all = Item("map_all", "All ratings", "input")
-        all.input, all.amount = "all", ctx.whatIfAll
-        all.value, all.tone = ctx.whatIfAll ~= 0 and SB(ctx.whatIfAll) or "off", ctx.whatIfAll ~= 0 and "good" or "mute"
-        if ctx.whatIfAll ~= 0 then all.note = "on every rating" end
-        Tip(all, "Adds this much rating to every secondary and tertiary stat at once; each card shows what it does. 0 turns it off.")
-        sec.items[#sec.items + 1] = all
-    end
-    out[#out + 1] = sec
 
-    -- 3. Tertiary stats
-    local ter = { key = "map_tertiary", title = "Tertiary stats", grid = true, items = { ColHead("map_cols3") } }
-    local function Simple(key, what)
+    -- 6. Tertiaries
+    Add(SubHead("sub_tertiary", "Tertiaries", 1))
+    Add(ColHead("map_cols3"))
+    local function Simple(key, what, other, up)
         if byKey[key] then
-            ter.items[#ter.items + 1] = MapRating(ctx, byKey[key], key, function(it, src)
+            Add(MapRating(ctx, byKey[key], key, function(it, src)
                 MapNote(it, what, Was(src.total or 0, src.totalAfter, SP))
-            end)
+                if num(src.total) then Feeds(key, other, nil, P(math.abs(src.total)), up) end
+            end))
         end
     end
-    Simple("avoidance", "» Area damage taken (less)")
-    Simple("leech", "» Healed for (of damage done)")
-    Simple("speed2", "» Movement speed")
-    out[#out + 1] = ter
+    Simple("avoidance", "» Area damage taken (less)", "Area damage taken", false)
+    Simple("leech", "» Healed for (of damage done)", "Healing from damage done", true)
+    Simple("speed2", "» Movement speed", "Movement speed", true)
 
-    -- 4. Offense: what attack power, spell power, your weapons, the global cooldown and your resource are made of (these were the old
-    -- Offense section under the Spells filter; they live here now, so the filter only filters spells: requirements row B12)
-    local off = { key = "map_offense", title = "Offense (what feeds it)", grid = true, items = { GridHead("map_cols4") } }
-    local hst = byKey.haste
-    local h0, h1 = hst and hst.total, hst and hst.totalAfter
-    local function Hasted(v)   -- a time with your haste, if you changed it (estimate: time x (1 + haste now) / (1 + haste then))
-        if num(v) and num(h0) and num(h1) and math.abs(h1 - h0) > 0.0005 then return v * (1 + h0 / 100) / (1 + h1 / 100) end
+    -- 7. Gear Summary (the Gear tab's Summary until QoL 0.7.22; Xaya 2026-11-05: it "belongs in stats pane")
+    if not ctx.compare then
+        Add(SubHead("sub_gearsum", "Gear Summary", 1))
+        for _, it in ipairs(GearSummaryItems()) do Add(it) end
     end
-    do
-        local base, pos, neg = R(UnitAttackPower, "player")
-        local mn = MasteryNumbers(ctx)
-        if base == HIDDEN then
-            local it = Item("map_ap", L("STAT_ATTACK_POWER", "Attack Power")); SetValue(it, HIDDEN); off.items[#off.items + 1] = it
-        elseif num(base) and (p == 1 or p == 2 or base > 0) then
-            local it = Item("map_ap", L("STAT_ATTACK_POWER", "Attack Power"))
-            it.bigPairs = true
-            local ap = math.max(0, base + (num(pos) and pos or 0) + (num(neg) and neg or 0))
-            local a0 = (p == 1 or p == 2) and num(eff) and N(GetAttackPowerForStat, p, eff) or nil
-            local a1 = (num(a0) and num(eff2)) and N(GetAttackPowerForStat, p, eff2) or nil
-            local apAfter = (num(a0) and num(a1) and dP ~= 0) and math.max(0, ap + a1 - a0) or nil
-            it.value = Was(ap, apAfter, Big)
-            if apAfter then it.tone = apAfter >= ap and "good" or "warn" end
-            if num(a0) then MapNote(it, "From " .. StatName(p), Was(a0, apAfter and a1 or nil, SB), nil, "primary", (num(eff) and eff > 0) and PerPoint(a0 / eff) or nil) end
-            if mn.ap then
-                local after = (mst and num(mst.total) and mst.total > 0 and num(mst.totalAfter)) and mn.ap * mst.totalAfter / mst.total or nil
-                MapNote(it, "From Mastery", Was(mn.ap, after, SP), nil, "mastery")
-            end
-            local bd = (num(pos) and pos or 0) + (num(neg) and neg or 0)
-            if bd ~= 0 then MapNote(it, "Buffs and debuffs", SB(bd), bd > 0 and "good" or "warn") end
-            local apFromSP = N(GetOverrideAPBySpellPower)
-            if num(apFromSP) and apFromSP > 0 then MapNote(it, "From spell power", P(apFromSP * 100, 0), nil, nil, { note = "of spell power" }) end
-            local magic = _G.ATTACK_POWER_MAGIC_NUMBER
-            if num(magic) and magic > 0 then
-                MapNote(it, "» Damage per second", Was(ap / magic, apAfter and apAfter / magic or nil, function(v) return "+" .. BF(v) end))
-            end
-            Tip(it, "Attack power from UnitAttackPower; the part from your primary stat from GetAttackPowerForStat; damage per second is the character window's own figure (attack power / ATTACK_POWER_MAGIC_NUMBER).")
-            if mn.ap then Tip(it, "With your numbers the total moves with your primary stat only; the mastery's percent is shown beside it (the game does not say which attack power it multiplies).") end
-            off.items[#off.items + 1] = it
-        end
-        local sp, heal, spFromAP = SpellPowerNow(), N(GetSpellBonusHealing), N(GetOverrideSpellPowerByAP)
-        if sp == HIDDEN or (num(sp) and sp > 0) or (num(heal) and heal > 0) then
-            local it = Item("map_sp", L("STAT_SPELLPOWER", "Spell Power"))
-            it.bigPairs = true
-            SetValue(it, sp, Big)
-            if p == 4 then
-                local _, int = R(UnitStat, "player", 4)
-                if num(int) and num(sp) and int > 0 then
-                    local per = sp / int
-                    it.value = Was(sp, dP ~= 0 and math.max(0, sp + dP * per) or nil, Big)
-                    MapNote(it, "From " .. StatName(4), "", nil, "primary",
-                        With(PerPoint(per), "average, all sources" .. (dP ~= 0 and "; your numbers at that rate (estimate)" or "")))
-                end
-            end
-            if num(heal) and num(sp) and heal ~= sp then MapNote(it, "Healing bonus", Big(heal)) end
-            if num(spFromAP) and spFromAP > 0 then MapNote(it, "From attack power", P(spFromAP * 100, 0), nil, nil, { note = "of attack power" }) end
-            Tip(it, "Spell power as the character window shows it: your lowest school (GetSpellBonusDamage).")
-            off.items[#off.items + 1] = it
-        end
-        local mh, oh = R(UnitAttackSpeed, "player")
-        local dmin, dmax, ohMin, ohMax, _, _, pct = R(UnitDamage, "player")
-        if mh == HIDDEN or dmin == HIDDEN then
-            local it = Item("map_weapon", L("WEAPON_SPEED", "Attack Speed")); SetValue(it, HIDDEN); off.items[#off.items + 1] = it
-        elseif num(mh) and mh > 0 and num(dmin) and num(dmax) then
-            local it = Item("map_weapon", "Main hand")
-            it.bigPairs = true
-            it.value = Big(math.max(1, math.floor(dmin))) .. " - " .. Big(math.max(1, math.ceil(dmax)))
-            local mh2, oh2 = Hasted(mh), Hasted(oh)
-            MapNote(it, "Speed, from Haste", Was(mh, mh2, function(v) return F(v, 2) .. " s" end), nil, "haste", mh2 and { note = "estimate" } or nil)
-            MapNote(it, "» Damage per second", Was((dmin + dmax) / 2 / mh, mh2 and (dmin + dmax) / 2 / mh2 or nil, BF))
-            if num(ohMin) and num(ohMax) and ohMax > 0 and num(oh) and oh > 0 then
-                MapNote(it, "Off hand", ("%s - %s"):format(Big(ohMin), Big(ohMax)), nil, nil,
-                    { note = ("%s, %s DPS"):format(Was(oh, oh2, function(v) return F(v, 2) .. " s" end), BF((ohMin + ohMax) / 2 / oh)) })
-            end
-            if num(pct) and math.abs(pct - 1) > 0.0001 then MapNote(it, "Physical damage modifier", "x" .. F(pct, 3)) end
-            local mhExp, ohExp = R(GetExpertise)
-            if num(mhExp) and mhExp > 0 then MapNote(it, "Expertise", P(mhExp) .. ((num(ohExp) and ohExp > 0) and (" / " .. P(ohExp)) or "")) end
-            Tip(it, "Weapon damage and speed from UnitDamage and UnitAttackSpeed, with every modifier already applied. Speed with your haste is an estimate: speed x (1 + haste now) / (1 + haste then).")
-            off.items[#off.items + 1] = it
-        end
-        local rSpeed, rMin, rMax = R(UnitRangedDamage, "player")
-        if rSpeed ~= HIDDEN and num(rSpeed) and rSpeed > 0 and num(rMin) and num(rMax) and rMax > 0 then
-            local it = Item("map_ranged", "Ranged")
-            it.bigPairs = true
-            it.value = Big(rMin) .. " - " .. Big(rMax)
-            local r2 = Hasted(rSpeed)
-            MapNote(it, "Speed, from Haste", Was(rSpeed, r2, function(v) return F(v, 2) .. " s" end), nil, "haste", r2 and { note = "estimate" } or nil)
-            MapNote(it, "» Damage per second", Was((rMin + rMax) / 2 / rSpeed, r2 and (rMin + rMax) / 2 / r2 or nil, BF))
-            local rb, rp, rn = R(UnitRangedAttackPower, "player")
-            if num(rb) then MapNote(it, "Ranged attack power", Big(rb + (num(rp) and rp or 0) + (num(rn) and rn or 0))) end
-            Tip(it, "From UnitRangedDamage and UnitRangedAttackPower.")
-            off.items[#off.items + 1] = it
-        end
-        local g = CM.gcd
-        local it = Item("map_gcd", "Global cooldown")
-        it.bigPairs = true
-        if CM.gcdHidden then
-            SetValue(it, HIDDEN)
-            if g and num(g.dur) then MapNote(it, "Last read", F(g.dur, 2) .. " s") end
-        elseif g and num(g.dur) then
-            local g2 = Hasted(g.dur)
-            it.value = Was(g.dur, g2, function(v) return F(v, 2) .. " s" end)
-            MapNote(it, "From Haste", num(g.haste) and P(g.haste) or "", nil, "haste",
-                { note = num(g.haste) and ("haste when read" .. (g2 and ("; with your numbers about " .. F(g2, 2) .. " s (estimate)") or "")) or "read live" })
-            if num(g.haste) then
-                local unh = g.dur * (1 + g.haste / 100)
-                local need = (g.dur > 0.01) and HasteRatingFor((unh / (g.dur - 0.01) - 1) * 100) or nil
-                MapNote(it, "Unhasted (estimate)", F(unh, 2) .. " s", nil, nil, need and { note = Big(need) .. " more haste rating for -0.01 s" } or nil)
-                if math.abs(g.dur - 1.0) < 0.005 and g.haste > 1 then MapNote(it, "Note", "", "warn", nil, { note = "looks like a fixed 1 s GCD: haste may not shorten it" }) end
-            end
-            Tip(it, "Read from the game's global cooldown (spell 61304, C_Spell.GetSpellCooldown) each time one runs. Unhasted and with-your-numbers figures are estimates: GCD = unhasted / (1 + haste).")
-        else
-            SetValue(it, nil)
-            MapNote(it, "Read", "", "mute", nil, { note = "cast any spell to read it" })
-        end
-        off.items[#off.items + 1] = it
-        local inactive, active = R(GetPowerRegen)
-        local _, token = R(UnitPowerType, "player")
-        if inactive == HIDDEN then
-            local rg = Item("map_regen", "Resource regen"); SetValue(rg, HIDDEN); off.items[#off.items + 1] = rg
-        elseif num(inactive) and num(active) and (inactive > 0 or active > 0) then
-            local name = (type(token) == "string" and type(_G[token]) == "string") and _G[token] or "Resource"
-            local rg = Item("map_regen", tostring(name) .. " regen")
-            rg.bigPairs = true
-            rg.value, rg.note = F(active, 2) .. "/s", "in combat"
-            MapNote(rg, "Out of combat", F(inactive, 2) .. "/s")
-            if token == "MANA" then
-                local mb, mc = R(GetManaRegen)
-                if num(mb) then MapNote(rg, "Mana", F(mb, 1) .. "/s", nil, nil, { note = ("while casting %s/s"):format(num(mc) and F(mc, 1) or "?") }) end
-            end
-            Tip(rg, "From GetPowerRegen (and GetManaRegen for mana): the figure now; the game gives no amount per point of any stat.")
-            off.items[#off.items + 1] = rg
-        end
-    end
-    out[#out + 1] = off
-
-    -- 5. What armor, dodge, parry, block and stagger are made of
-    local def = { key = "map_defense", title = "Defense (what feeds it)", grid = true, items = { GridHead("map_cols5") } }
-    do
-        local _, armor = R(UnitArmor, "player")
-        local it = Item("map_armor", L("STAT_ARMOR", "Armor"))
-        it.bigPairs = true
-        SetValue(it, armor, Big)
-        if num(armor) then
-            local itemArmor = ctx.whatIfArmor or 0   -- (the gear comparison: the item's own armor change)
-            local delta = ((armorFromPAfter and armorFromP) and (armorFromPAfter - armorFromP) or 0) + itemArmor
-            if delta ~= 0 then it.value = Was(armor, armor + delta, Big) end
-            if itemArmor ~= 0 then
-                MapNote(it, "From the item itself", SB(itemArmor), itemArmor > 0 and "good" or "warn")
-                it.pairs[#it.pairs].change = true   -- a change by itself (no "now -> then"): the gear comparison keeps it
-            end
-            local fx = ArmorEff()
-            if num(ctx.level) and type(fx) == "function" then
-                local r0, r1 = N(fx, armor, ctx.level), N(fx, armor + delta, ctx.level)
-                if num(r0) then MapNote(it, "» Damage reduction", Was(r0 * 100, (delta ~= 0 and num(r1)) and r1 * 100 or nil, P), nil, nil, { note = "vs your level" }) end
-                local g = function(a) local v = N(fx, a, ctx.level); if num(v) then return v * 100 end end
-                local need = num(r0) and SM.Solve(g, r0 * 100 + 1, armor, armor * 20 + 100000, true)
-                MapNote(it, "Armor for the next 1%", need and Big(need - armor) or "out of reach", (not need) and "warn" or nil)
-            end
-            if HasAttackableTarget() then
-                local v = N(ArmorVsTarget(), armor)
-                if num(v) then MapNote(it, "» Against your target", P(v * 100)) end
-            end
-            if armorFromP then MapNote(it, "From " .. StatName(p) .. " (mastery)", Was(armorFromP, delta ~= 0 and armorFromPAfter or nil, SB), nil, "mastery", PerPoint(apct / 100)) end
-            local abase, _, _, abonus = R(UnitArmor, "player")
-            if num(abase) then
-                -- the base is the value; buffs and talents and the bonus armor are its note (QoL 0.7.15)
-                local bn = (armor ~= abase) and With(nil, SB(armor - abase) .. " buffs and talents") or nil
-                if num(abonus) and abonus > 0 then bn = With(bn, "bonus armor " .. Big(abonus)) end
-                MapNote(it, "Base, buffs and talents", Big(abase), nil, nil, bn)
-            end
-            Tip(it, "Armor from UnitArmor; damage reduction from C_PaperDollInfo.GetArmorEffectiveness against your level (not linear: each 1% costs more armor). The mastery part is read from your mastery's own text.")
-        end
-        def.items[#def.items + 1] = it
-        local dg = Item("map_dodge", L("STAT_DODGE", "Dodge"))
-        dg.bigPairs = true
-        local dTot = N(GetDodgeChance)
-        SetValue(dg, dTot, P)
-        local dAgi = N(GetDodgeChanceFromAttribute)
-        if num(dTot) and num(dAgi) and dAgi > 0 then
-            MapNote(dg, "From " .. StatName(2), SP(dAgi), nil, "primary")
-            MapNote(dg, "Other (base, talents, rating)", SP(dTot - dAgi))
-        end
-        def.items[#def.items + 1] = dg
-        local pr = Item("map_parry", L("STAT_PARRY", "Parry"))
-        pr.bigPairs = true
-        local pTot = N(GetParryChance)
-        SetValue(pr, pTot, P)
-        if num(pTot) then
-            local crit = byKey.crit
-            local fromCrit
-            if crit and num(crit.rating) and R(GetCritChanceProvidesParryEffect) == true then
-                local fp = Converter(IDX.parry)
-                fromCrit = fp and fp(crit.rating)
-                local after = (fp and crit.whatIf) and fp(crit.whatIf.newRating) or nil
-                if num(fromCrit) then MapNote(pr, "From Critical Strike", Was(fromCrit, after, SP), nil, "crit", { note = "before DR" }) end
-            end
-            local pStr = N(GetParryChanceFromAttribute)
-            if num(pStr) and pStr > 0 then MapNote(pr, "From " .. StatName(1), SP(pStr)) end
-            Tip(pr, "Parry total from GetParryChance (after diminishing returns); the parts are read before them, so they need not add up exactly.")
-        end
-        def.items[#def.items + 1] = pr
-        local block = N(GetBlockChance)
-        local shield = C_PaperDollInfo and R(C_PaperDollInfo.OffhandHasShield)
-        if block == HIDDEN or (num(block) and block > 0) or shield == true then
-            local bl = Item("map_block", L("STAT_BLOCK", "Block"))
-            bl.bigPairs = true
-            SetValue(bl, block, P)
-            local sb, fx = N(GetShieldBlock), ArmorEff()
-            if num(sb) and sb > 0 and num(ctx.level) and type(fx) == "function" then
-                local red = N(fx, sb, ctx.level)
-                if num(red) then MapNote(bl, "» A block reduces the hit by", P(red * 100)) end
-                if HasAttackableTarget() then
-                    local v = N(ArmorVsTarget(), sb)
-                    if num(v) then MapNote(bl, "» Against your target", P(v * 100)) end
-                end
-            end
-            Tip(bl, "Block chance from GetBlockChance; what a block takes off: shield block value (GetShieldBlock) through the game's armor effectiveness, as the character window works it out.")
-            def.items[#def.items + 1] = bl
-        end
-        local stagger, staggerT = R(C_PaperDollInfo and C_PaperDollInfo.GetStaggerPercentage, "player")
-        if stagger == HIDDEN or (num(stagger) and stagger > 0) then
-            local stg = Item("map_stagger", L("STAT_STAGGER", "Stagger"))
-            stg.bigPairs = true
-            SetValue(stg, stagger, P)
-            if num(staggerT) and staggerT > 0 then MapNote(stg, "» Against your target", P(staggerT)) end
-            Tip(stg, "From C_PaperDollInfo.GetStaggerPercentage.")
-            def.items[#def.items + 1] = stg
-        end
-    end
-    out[#out + 1] = def
+    out[#out + 1] = cs
+    ctx.weights = { byKey = byKey, infl = infl, primary = p, eff = eff, sta = sta }
 end
 CM.StatMapSections = StatMapSections
+
+-- The Stat Weights pane (QoL 0.7.22; Xaya 2026-11-05, her words: "Stat Weights should be a collapsible pane below the character stats
+-- that shows how all stats affect one another"; her columns "Stat | Rating (P / %) | PPP | | DR Threshold | T/L Rating | Influences";
+-- her row "Haste | 1442 / 32.5% | 48.9 / 1% (under if above DR threshold DR conversion value) | DR Threshold | T: 1429 / L: 12.2 |
+-- Influences: GCD (amount), Attack Speed (amount)"; "hovering over a given row/column for influences should say "{stat}
+-- increases/decreases {other stat} by {amount}"").
+-- Built from the numbers Character Stats already read (no new game call): rating and percent, rating per 1% with no penalty (PPP) and,
+-- once past a diminishing-return threshold, at the rate the next point gets (the second line), the next threshold, the true rating
+-- (rating minus what diminishing returns took) and the lost rating, and what the stat feeds (ctx.weights.infl): Agility / Strength ->
+-- attack power, dodge / parry, armor (mastery text); Stamina -> health; Critical Strike -> parry; Haste -> global cooldown, attack
+-- speed; Mastery -> armor, attack power (the mastery's own text); Versatility -> damage done, damage taken; the tertiaries -> their own
+-- effect. An amount the game does not give reads "not given". The name stays "Stat Weights" (hers); it is not a simulated damage-per-point weight.
+local WEIGHT_ROWS = { "primary", "stamina", "crit", "haste", "mastery", "vers", "avoidance", "leech", "speed2" }
+local function StatWeightsSection(ctx, out)
+    local wt = ctx.weights
+    if not wt then return end
+    local sec = { key = "map_weights", title = "Stat Weights", weights = true, items = {} }
+    local head = Item("weights_cols", "Columns", "weighthead")
+    head.cols = { "Stat", "Rating (P / %)", "PPP", "DR Threshold", "T/L Rating", "Influences" }
+    Tip(head, "Rating (P / %): your rating (points) and the stat's percent now.")
+    Tip(head, "PPP: points per percent, the rating that makes 1% with no penalty. Past a diminishing-return threshold, the line under it is the rate the next point gets (DR).")
+    Tip(head, "DR Threshold: the next rating where diminishing returns cut in (or the last one, passed).")
+    Tip(head, "T/L Rating: T = the rating that still counts in full (rating minus what diminishing returns took), L = the rating lost to them.")
+    Tip(head, "Influences: what the stat feeds and by how much now. Hover a row: \"{stat} increases / decreases {other stat} by {amount}\".")
+    sec.items[1] = head
+    for _, key in ipairs(WEIGHT_ROWS) do
+        local it
+        if key == "primary" or key == "stamina" then
+            local v = key == "primary" and wt.eff or wt.sta
+            it = Item("w_" .. key, StatName(key == "primary" and wt.primary or 3), "weight")
+            it.cells = { v == HIDDEN and HID or (num(v) and Big(v) or UNAV), "", "", "" }
+            Tip(it, "No diminishing returns on " .. it.label .. ": every point counts in full.")
+        else
+            local src = wt.byKey[key]
+            if src then
+                it = Item("w_" .. key, src.label, "weight")
+                local a = src.analysis
+                if src.hidden or not num(src.rating) then
+                    it.cells = { src.hidden and HID or UNAV, "", "", "" }
+                else
+                    local th = src.thresholds
+                    local dr
+                    if not a then dr = UNAV
+                    elseif th == nil then dr = "after combat"
+                    elseif a.nextThreshold then dr = Big(a.nextThreshold.rating)
+                    elseif #th == 0 then dr = "none"
+                    else dr = Big(th[#th].rating) .. " (passed)" end
+                    local lost = a and a.lost or 0
+                    it.cells = {
+                        Big(src.rating) .. " / " .. (num(src.total) and P(src.total) or UNAV),
+                        (a and num(a.perPctBase)) and (F(a.perPctBase) .. " / 1%") or UNAV,
+                        dr,
+                        a and ("T: " .. Big(math.max(0, src.rating - lost)) .. " / L: " .. F(lost, 1)) or UNAV,
+                    }
+                    if a and lost > 0 and num(a.perPctNow) then it.pppDR = "DR: " .. F(a.perPctNow) .. " / 1%" end
+                end
+            end
+        end
+        if it then
+            it.labelColor = CM.STAT_COLORS[key]
+            local parts = {}
+            local tips = {}
+            for _, f in ipairs(wt.infl[key] or {}) do
+                if f.amount then
+                    parts[#parts + 1] = ("%s (%s%s)"):format(f.short, f.up and "+" or "-", f.amount)
+                    tips[#tips + 1] = ("%s %s %s by %s%s"):format(it.label, f.up and "increases" or "decreases", f.other, f.amount, f.est and " (estimate)" or "")
+                else
+                    parts[#parts + 1] = f.short .. " (not given)"
+                    tips[#tips + 1] = ("%s -> %s: not given"):format(it.label, f.other)
+                end
+            end
+            it.influences = "Influences: " .. (#parts > 0 and table.concat(parts, ", ") or "none")
+            if it.cells[1] == HID then it.influences, tips = "Influences: " .. HID, {} end
+            it.influenceTips = tips
+            local base = it.tip
+            it.tip = {}
+            for _, l in ipairs(tips) do Tip(it, l) end
+            if #tips == 0 then Tip(it, it.label .. " feeds no other stat the game reports.") end
+            Tip(it, " ")
+            for _, l in ipairs(base) do Tip(it, l) end
+            sec.items[#sec.items + 1] = it
+        end
+    end
+    out[#out + 1] = sec
+end
+CM.StatWeightsSection = StatWeightsSection
 
 -------------------------------------------------------------------------------
 -- The whole model
@@ -2687,7 +2932,8 @@ function CM.Build(cfg, tab)
     end
     local core = (tab == nil or tab == "sheet" or tab == "defense" or tab == "offense")
     if tab == "stats" then
-        add("stats", StatMapSections)   -- the stat map (QoL 0.7.14): the Stats tab
+        add("stats", StatMapSections)   -- the stat map (QoL 0.7.14): the Stats tab; one Character Stats section since QoL 0.7.22
+        add("stats", StatWeightsSection)   -- the Stat Weights pane under it (QoL 0.7.22), from the numbers Character Stats read
     elseif core then
         add("stats", CharacterSection)
         add("stats", RatingSections)
