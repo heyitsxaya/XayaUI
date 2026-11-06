@@ -10,4 +10,4 @@ cost first"): stand-in measurement, one read of a 120-entry Cooldown Manager cat
 - V2: see the catalogue comment (namespaces.md:1370-1371, structures.md:1798); selfAura meaning is an INFERENCE (undocumented).
 - Scope (V4, git grep CLASS_AURA_DATA): AutoPicker.Candidates (filters by kind) and the spell ID search (Options.lua ~7279, which already
   labels "debuff" / "buff" entries): learned auras and debuffs now also appear in the spell search ("spell data capture holds debuffs").
-- Tests: tests/class_learn_auras_run.py (6; 3 fail on the old code), tests/auto_picker_run.py C1 check (fails on the old code). QA B200.
+- Tests: tests/class_learn_auras_run.py (6; 3 fail on the old code), tests/auto_picker_run.py C1 check (fails on the old code). QA B211.
