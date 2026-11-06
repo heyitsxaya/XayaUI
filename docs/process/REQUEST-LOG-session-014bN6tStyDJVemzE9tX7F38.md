@@ -91,6 +91,7 @@ Status as of 2026-11-06. `main` = `0ef9cb0`; this session's branch `claude/cool-
 | R65 | C3 proposal: "Not now — either wait for direct request or set for next week development after token reset (Wednesday)" | DEFERRED | Requirements doc S12; reminder scheduled in this session for Wednesday 2026-11-11. |
 | R66 | C9 (where the question shows): "Panel only is fine" / C10 (a default for the diamond): "Give the diamond a default too" | C9 as built; C10 BRANCH | The diamond has its own default (Select other's Default button, settings box). |
 | R67 | Static group scaling (asked through the question flow, V19): "Toggle + ask on resize" | OPEN | docs/plans/GROUP-PAGE-REQUIREMENTS-2026-11-06.md G9; with the group page (G1-G11) and positioning (P1-P5) built from her answers in the engine session. |
+| R68 | #343 (question flow): pressing a rule row and dragging does "Nothing at all" | BRANCH | Drag now starts from the press (Options 0.6.54); root cause not found offline; QA B173. |
 
 ## Items from other chats that this session holds (S1's cross-chat review, 2026-11-06: `docs/process/REQUEST-LOG-CROSS-CHAT.md` on S1's branch)
 | # | Her words (verbatim, as S1 recorded them) | Status | Where / what |

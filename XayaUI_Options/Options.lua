@@ -5615,6 +5615,7 @@ function drag.ClearMarks()
     if drag.line then pcall(drag.line.Hide, drag.line); drag.line = nil end
 end
 local function StartDrag(button)
+    if drag.obj then return end   -- (already dragging: the press watcher below and the game's OnDragStart can both start one)
     local last = LastKey(button.uniquevalue) or ""
     local kind, obj, label
     local n = last:match("^rule(%d+)$")
@@ -5716,7 +5717,36 @@ local function StopDrag(button)
     ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()   -- the on-screen preview / dynamic groups lay out in rule order: redo it now
     ns.SelectKeep(kind == "rule" and RulePath(obj) or FolderPath(obj))
 end
-ns.DragForTest = { start = StartDrag, stop = StopDrag, zone = drag.DropZone, target = DropTarget, state = drag }   -- tests/drag_drop_run.py
+-- #343 (Xaya 2026-11-06: the broken drag is "rule rows in the sidebar"; pressing a row and dragging does "Nothing at all"): the game's
+-- own OnDragStart never reached the rows in her game (the cause was not found offline: the rows are registered for dragging and nothing
+-- covers them). So the drag no longer depends on it: a left press on a row arms a watcher; once the mouse has moved DRAG_PX pixels with
+-- the button still held, the drag starts; releasing the button drops it (wherever the mouse is). OnDragStart / OnDragStop stay as a
+-- second way in (StartDrag / StopDrag ignore a second start or stop). A press that does not move is a plain click, as before.
+drag.DRAG_PX = 6
+function drag.Arm(button)
+    if drag.obj or not GetCursorPosition then return end
+    local x0, y0 = GetCursorPosition()
+    local sc = (UIParent and UIParent.GetEffectiveScale and UIParent:GetEffectiveScale()) or 1
+    drag.watch = drag.watch or CreateFrame("Frame")
+    local w = drag.watch
+    w.btn, w.x0, w.y0, w.sc = button, x0, y0, sc
+    w:SetScript("OnUpdate", function(self)
+        local ok, err = pcall(function()
+            local held = IsMouseButtonDown and IsMouseButtonDown("LeftButton")
+            if not held then
+                self:SetScript("OnUpdate", nil)
+                if drag.obj then StopDrag(self.btn) end
+                return
+            end
+            if not drag.obj then
+                local x, y = GetCursorPosition()
+                if math.abs(x - self.x0) + math.abs(y - self.y0) >= drag.DRAG_PX * self.sc then StartDrag(self.btn) end
+            end
+        end)
+        if not ok then self:SetScript("OnUpdate", nil); drag.fail(err) end
+    end)
+end
+ns.DragForTest = { start = StartDrag, stop = StopDrag, zone = drag.DropZone, target = DropTarget, state = drag, arm = drag.Arm }   -- tests/drag_drop_run.py
 
 -------------------------------------------------------------------------------
 -- Reorder arrows: small up / down triangles at the left of every rule and folder row under All Rules.
@@ -6977,6 +7007,7 @@ local function DecorateButton(button)
         button:RegisterForDrag("LeftButton")
         button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         button:HookScript("OnClick", function(self, mouse) ns.Trace("click"); if mouse == "RightButton" then ShowRowMenu(self) else ns.MultiClick(self, mouse) end end)
+        button:HookScript("OnMouseDown", function(self, mouse) if mouse == "LeftButton" then local ok, e = pcall(drag.Arm, self); if not ok then drag.fail(e) end end end)   -- #343
         button:HookScript("OnDragStart", function(self) local ok, e = pcall(StartDrag, self); if not ok then drag.fail(e) end end)
         button:HookScript("OnDragStop", function(self) local ok, e = pcall(StopDrag, self); if not ok then drag.fail(e) end end)
     end

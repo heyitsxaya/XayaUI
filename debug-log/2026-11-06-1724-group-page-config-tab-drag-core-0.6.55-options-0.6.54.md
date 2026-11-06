@@ -1,0 +1,45 @@
+# Group page: Config tab, controls moved to Group, label-left position; sidebar drag from the press (core 0.6.55, Options 0.6.54)
+Logged 2026-11-06 17:24 UTC. Session branch `claude/cool-ramanujan-ewx8e5`. Nothing here has run in the game. Requirements:
+`docs/plans/GROUP-PAGE-REQUIREMENTS-2026-11-06.md` (G1, G2, G3, G4, G6, P3). Versions assigned by the coordinating session (core 0.6.55,
+Options 0.6.54, QA B171-B185).
+
+## Her words
+- 2026-11-06 (engine session, question prompts): "tabs Group | Display | Load | Config (Group first)"; "Delete / New / Enable on Config";
+  "strata / opacity / scale on Group"; "icon size on Group"; "Sort beside Grow on Group".
+- #372: "the relative / point on the frame should both be left-hand put into two columns with labels on the left and right-hand side
+  with dropdown menus"; CHAT-3d: "config includes folder name, folder type, and original character / source of creation. Also includes
+  enable/disable toggle".
+- #343: the broken drag is "rule rows in the sidebar" (D6); pressing a row and dragging does "Nothing at all" (this session).
+
+## What changed
+- **Group page tabs:** Group | Display | Load | Config. Config takes:
+  - the name;
+  - one **Enabled** toggle, replacing Enable all / Disable all. Ticked when every rule in the group and its nested groups is on;
+  - the group type;
+  - **Sound Channel Override** (her label; it was "Sound Channel for This Group");
+  - + New rule, + Nested group, Delete, Delete with contents;
+  - "Made by".
+- **Group tab** keeps the container with opacity, scale and layer (they no longer move to Display), and gets the every-display size
+  section. Display loses its "Whole group" box.
+- **Position:** Relative to, this group's point and the frame's point are label-left / dropdown-right rows (`arg.xuiSide`, the
+  skin's existing label-left mode).
+- **Sort beside Grow:** already so on main (G3); no change.
+- **Core `ns.NewFolder(name, parent, how)`** records `origin = { by = "Name-Realm", how, at }` (`ns.CharacterKey`). Built-in categories
+  say "default".
+- **Imports (`Share.lua`)** keep the exporter's origin, cleaned to plain text (`ns.CleanOrigin`: no "|" codes, 64 / 24 characters).
+  Without one, an imported group reads "imported", and the import wrapper group is marked imported.
+- **#343:**
+  - Root cause NOT found offline: rows are registered for dragging (`RegisterForDrag`), hooked, and nothing covers them; the drag
+    code works when called.
+  - Fix that does not depend on the cause: a left press on a row arms a watcher (`drag.Arm`). Moving 6 px with the button held starts
+    the drag; releasing drops it.
+  - The game's OnDragStart / OnDragStop stay as a second way in; `StartDrag` ignores a second start.
+  - INFERENCE: if her game never even fires OnMouseDown on the rows, this will not help either. QA B173 asks her to say so.
+
+## Tests
+- `display_tab_run` 86: the tabs and their order, the Config contents, the Group tab's moved controls, label-left position, the origin
+  record and its cleaning.
+- `drag_drop_run` 39: 5 new checks, a drag started from the press (under 6 px is a click, 6 px starts it, release drops it, the
+  watcher stops).
+- `import_run`, `export_group_run`, `recycle_bin_run` pass.
+- On the old code the new checks fail: no Config tab, no `D.arm`, no `origin`.
