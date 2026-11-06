@@ -1,0 +1,109 @@
+# Xaya's request log: session 014bN6tStyDJVemzE9tX7F38 (standing rule V15)
+
+This session's part of the running log that `docs/process/REQUEST-LOG.md` keeps for session S1 (014bN6tWZxqCW85vMEyHdfnt, branch
+`claude/adoring-hawking-wyda59`; not on `main` yet). It is a separate file so the two logs do not collide when both land. The
+statuses are the same as S1's:
+- **OPEN**: not built.
+- **CONFIRM**: a proposal is waiting for her answer (V16).
+- **BRANCH**: built and tested on a branch, not on `main`, so she does not have it.
+- **MAIN**: on `main` at the commit named; not yet seen in game.
+- **DONE**: she confirmed it in game.
+- **RETRACTED**: her own words withdrew it.
+- **Answered**: a question; the answer was given in this chat.
+
+Only MAIN, DONE and RETRACTED close an item. Each "MAIN" was checked against `git log origin/main`. Nothing in this log has been
+confirmed in game, so no row is DONE.
+
+How this list was made: her messages were read from this chat's own transcript, including those queued while a turn was running,
+and are quoted verbatim. Subagent reports that arrived in the same stream are not her words and are left out. Screenshots are
+described in brackets.
+
+Status as of 2026-11-06. `main` = `0ef9cb0`; this session's branch `claude/cool-ramanujan-ewx8e5` = `5fd3655`.
+
+## Rows (in the order she sent them)
+
+| # | Her words (verbatim; [screenshot]) | Status | Where / what |
+|---|---|---|---|
+| R1 | "Read SESSION-START-SUMMARY.md and follow "NEXT SESSION: START HERE" in section 4. Use the xayaui-change skill for every change." | Standing | Process. |
+| R2 | "The adventure journal in game will tell you what dungeons are in the current season rotation — is that helpful?" / "question wrt wago.tools use — does our use of this data in any way violate their or blizzard's tos? Confirm that we are in good standing with wago.tools practices and t&c and the same for blizzard and wow t&c + tos" | Answered; MAIN (docs) | 106529c, `debug-log/2026-11-04-1550-terms-check-blizzard-wago.md`. Holding default: no new client-table data in shipped files. She later chose to build shipped data from in-game reads, as a future enhancement (d81e529). |
+| R3 | "https://nerfradar.com/heroes/world-of-warcraft 1. Death Knight ... 13. Warrior / Those are the 13 playable classes. Your assertion only 11 classes were playable was wrong — make sure that error isn't reflected into the addon in any way" | MAIN | b8a1e87: classes.json marks the 13 playable classes from the game's own class list; ROADMAP no longer gives a wrong count. |
+| R4 | "where are we with respect to open roadmap features in need of development?" | Answered | 2026-11-04 16:16. |
+| R5 | "> #131, #249, #259, #291, #273, #120 / #122 / since they're small, let's clear these off" | Partly MAIN; rest CONFIRM | **#249:** MAIN 34beac1 (core 0.6.24). **#291:** built in 0.5.79; waits on an in-game check. **#120:** was already closed. **#273:** MAIN c66f6ff (core 0.6.46, built by S1 from her later words). **#131 group-wide tint:** CONFIRM (what should it do?). **#122 `shelved/` removal:** CONFIRM (it changes what is public). **#259:** CONFIRM (her rule is mockups first; four questions open). My "they're small" label was wrong and was said so at the time. |
+| R6 | "> Large; listed as "next without a decision" / what decision is needed for this?" (#351) | Answered; MAIN | No decision was needed. #351 phases 1-2 are on `main` (3be55aa, d344e04 and later). |
+| R7 | "to this effect, glow tends to have several glow type options. check what are available and make sure support for each type is available in addition to colorizing and opacity / positioning options" | MAIN (action glow); CONFIRM (display glows) | 34beac1: Actions > Glow a frame offers every LibCustomGlow type, each with its own settings, colour with opacity, offsets and layer (QA B58). Whether display (cue) glows get the same: decision task #20, with no answer recorded. |
+| R8 | "chat history icon still clips over sidebar" [screenshot] | MAIN | 2d798c0 (Chat 0.6.8): history button at the tab row's end, off the scroll bar. |
+| R9 | "chat align now works, but if possible create a small gutter of 2-3px for easier llegibility" [screenshot] | MAIN | 2d798c0: 2 px minimum text gutter. |
+| R10 | "user-created chat tabs should not have their boxes overflow" [screenshot] | MAIN | 2d798c0: tabs laid out for the row's width. |
+| R11 | "logged two new issues with the rules segment" / "these should be treated as higher priority" | MAIN | #368 and #370: 2ab6257 (Options 0.6.19). #369: fa08b39 (Options 0.6.20). |
+| R12 | "refer to this screen shot and copy these properties to the "Group" tab. Revert my request to call it "Group Display"" [screenshot] | OPEN | #372. Her answers on #372 were logged by another session (d81e529). Owner not settled: see the note at the end. |
+| R13 | "also review this screenshot and evaluate what can be done with the current apis with respect to these functions" [screenshot] | Answered; MAIN (docs) | d58428d, `docs/plans/REFERENCE-SCREENS-AND-FEASIBILITY-2026-11-04.md`. |
+| R14 | "also add a property for group display: background (puts an assigned color / texture under the aura)" | OPEN | #372 (task #7). |
+| R15 | "note we don't yet have support for progress bars as part of our rules / engines and we absolutely need to be able to support in groups all texture types. dynamic groups will need to be able to support multiple progress bars. make sure that the addon can support that now or prioritize that functionality after the requested fixes" | OPEN | ROADMAP: progress bars come first after the fixes (d58428d). Her design answer is logged in d81e529. Not built. |
+| R16 | "review these trigger options and make sure whatever is currently supported by the api is recflected into our trigger pane" [3 screenshots] | MAIN (B1-B4); OPEN (B5); CONFIRM (B6) | **B1** count the GCD: ec2725f. **B2** seconds-left / charge comparisons: 9dda9e0. **B3** lockout as cooldown: 76d8f83. **B4** exact spell ID: f2e4e91. **B5** "Track: auto / charges / cooldown": OPEN. **B6** "track even if not known": see R33. |
+| R17 | [screenshots, no text] (16:39, 16:41, 16:44, 16:46, 16:46, 16:47, 16:48) / "all of these screenshots are important reference points" | MAIN (docs) | Recorded as her spec in d58428d. |
+| R18 | "note this is a condtion that allows code injection -- ideally we support this at some point" [screenshot] | Roadmap | ROADMAP RM-CODECOND (candidate). Code is never kept from imports. |
+| R19 | "more load conditions we should include if they're supported by the current api" [screenshot] | MAIN | 3276a4c (core 0.6.28) on rules and 163dbbb (core 0.6.33) on groups: zone, instance, difficulty, size, encounter, equipped item. Raid role was dropped on her word ("that's not something we care to track", ROADMAP). |
+| R20 | "forced group sort confirmed working for me but fel flame fortification seems to not appear" [screenshot] / "it appears outside of combat but not in" | OPEN | Task #12. Needs her in-game debug record (task #22). Engine work, held by the engine session (R40). |
+| R21 | "where are we on all outstanding items?" | Answered | 2026-11-04 17:54. |
+| R22 | "commit to memory: for the time being, as long as there are features or overt bugs in any of the core addon functionality, you should just aim to solve for the backlog and avoid idling in all cases" | Standing | Kept as a standing rule. |
+| R23 | "for things that await my decision, create tasks to specifically collect those decisions" | Standing | DECISION tasks #13-#23, #43. |
+| R24 | "feature request - UI improvement: create a collapsible navigation side panel on the RIGHT hand side for active triggers / cues / conditions for your currently selected rule" | CONFIRM | Task #23: behaviour and priority. |
+| R25 | "boiling point rule doesn't fire when combined with a trigger that tracks stacks" + [2 screenshots, 18:04] | OPEN | Task #24 (engine). |
+| R26 | "wow started dancing around on my screen and blinking" [screenshot] | MAIN (guess); CONFIRM | f6f98cc (Chat 0.6.9): the chat-tab lay-out guard. This is an INFERENCE: the cause was not seen in game. Asked which part moved (the game window or a part inside it); no answer recorded. |
+| R27 | "when you open the anchors/mover view, enable hover-over groups or individual icons and enable the ability to go to a specific element to modify its options." | MAIN | 47ff99b (core 0.6.29 / Options 0.6.26). |
+| R28 | "allow anchoring/snapping to other fames in the UI" [screenshot] | MAIN | a901936 (core 0.6.31). |
+| R29 | "allow search bar inside individual rules (perhaps in the proposed right-hand side?) to search through options (also allow regular expression / smart keyword searching)" [screenshot] | MAIN | 1ef4a74 (Options 0.6.29). It takes Lua patterns, not full regular expressions; its tooltip says so. Its place moves to the right-hand panel if R24 is built. |
+| R30 | "no group global-apply tooltip display option" [screenshot] | CONFIRM | Not built: the option already exists at Group page > Display tab > "Every display: behavior" > "Show tooltip on hover" (since Options 0.6.4). She was told where it is. If it was missing on her screen, the cause is her addon version, which needs her check. |
+| R31 | "rule sidebar continues to bug out and clip itself after any rule change is made" [screenshot] | OPEN | Task #30. |
+| R32 | "icon options should have their own nested text options to display things like progress / duration; stacks; absorb values; etc" [screenshot] | MAIN | 9eb5fcf (Options 0.6.28). |
+| R33 | "deleting a condition forces you out of the rule you're editing entirely / deleting a cue forces you out ... / deleting a trigger forces you out ..." | MAIN (condition, cue); CONFIRM (trigger) | 6e1a106 (Options 0.6.27). The trigger case did not reproduce in old or new code; asked her for the steps. |
+| R34 | "is it possible to allow for specific sound overrides for specific bnet/character whispers/favorites/(future-focused) assigned friend categories?" [2 screenshots] | MAIN; Roadmap | d06495c (Chat 0.6.10): overrides per sender and for Battle.net favorites. Friend categories: roadmap, custom friend groups (19b9255). |
+| R35 | "I can't drop or shift+click an item into the item comparison" [screenshot] | MAIN | dcb3703 (QoL 0.7.2). |
+| R36 | "clicking tabs force-reszies the left and right panes / acknowledgements still needs to be put into settings into its own tab / addon version should be put in the bottom left / bottom random bar left of close should be removed" [2 screenshots + 1] | MAIN | a432301 (Options 0.6.31); 63813a0 (Options 0.6.30). |
+| R37 | "> Do you want "track even if not known"? ... / what is this in respect to?" | Answered; CONFIRM | Trigger option B6 on spell cooldown triggers: keep a rule's spell trigger working for a spell your character does not know. The game reports such a spell as not on cooldown, so it would read "ready". Wanted or not: CONFIRM. |
+| R38 | "adding the item does not auto-fill in information and does prompt an item to slot in cases where there are more than one slot available (weapon, trinket, ring)" [2 screenshots] / "primary stat is also not included in the what if calculator" [screenshot] | MAIN | a3de6c3 (QoL 0.7.4). Folded into the Gear comparison in f9e5159 (QoL 0.7.14). |
+| R39 | "stats pane should be stat value calculator / "character toolkit" title should be changed to `Stat Calculator`" [screenshot] | MAIN | b12a6b6 (QoL 0.7.3, title); f9e5159 (QoL 0.7.14, stat map). Stat Calculator requirements B1 and B3. |
+| R40 | "note that one claude instance is working on the outstanding rule and combat engine issues" | Noted | Engine items (R15, R20, R25, R31) are left to that session. |
+| R41 | ""sheet" tab is not intended to be a tab but instead a reskin of the character pane" / "prettify the character window" [3 screenshots] | MAIN | 7cc7626 (Sheet tab removed); f9e5159 (QoL Character Reskin); S1's fixes 0.7.19 to 0.7.22. Requirements A2, A3. |
+| R42 | "remove defense and offense tabs from stat calculator, they should be filters for "Spells" that show stat conversion rate into the offensive/defensive spell scaling" | MAIN | f9e5159 (requirements B12). |
+| R43 | "gear pane should show small icons of the gear equipped and allow for a comparison column to drag and drop or click-select gear options to track stat changes into their relative calculations with highlights" [screenshot] / "e.g. beyond this, show what will happen to your agility and therefore armor from armor+armor_from_item+armor_from_agi" [screenshot] | MAIN | f9e5159 (requirements B8, B9: armor chain). |
+| R44 | "spells pane still needs a full auto-populate" [screenshot] | MAIN | f9e5159 (requirements B12, B13). |
+| R45 | "improved character pane should show ivl colored based on ilv tier (track (common, adventurer, veteran, champion, heroic, mythic) AND upgrade tier (color gradient)); enchants + gems should show to the side of the character pane / character pane should be resizable" | MAIN; CONFIRM | f9e5159 (A4, A5). The colours were my choice: CONFIRM (task #43). Width: see R47. |
+| R46 | "game menu when button is enabled clips incorrectly" [screenshot] | MAIN | 069ff9d (core 0.6.32); 493e6c6 (core 0.6.39). |
+| R47 | "> 5. Resizing: ... / a wider character viewport / also create a QoL Character Reskin option to toggle on or off" | MAIN (switch); OPEN (width) | The switch: f9e5159 (A1). Width: built +240 px in QoL 0.7.22; her later word "start by only increasing the width by an additional 10-15%" is S1's #38 (OPEN, held by S1). |
+| R48 | "what are you working on at the moment?" | Answered | |
+| R49 | "again, I don't care about this sheet at all. I want a reskin OF THE CHARACTER MENU AND NOTHING ELSE" [2 screenshots] | MAIN | 7cc7626 (QoL 0.7.13); f9e5159 (A1-A3). |
+| R50 | "GIVE ME A PRETTY VERSION OF THE CHARACTER SHEET. THEN GIVE ME A SIDE PANEL THAT SHOWS ME INFO ABOUT THE POINTS TO % CONVERSION PER STAT AND SHOW ME HOW MUCH EACH SECONDARY STAT INFLUENCES PARTS OF MY KIT PLEASE T-T" | MAIN | f9e5159 (A3, B3, B7). |
+| R51 | "do you see how these tooltips behave?" [4 screenshots] / "no. I don't want a bar next to the threshold" | MAIN | f9e5159 (A8: compact stat tooltips, no bar). |
+| R52 | "give me this in a sheet with the option to change the numbers" / "so I can see what the other numbers will look like in relation to each other" | MAIN | f9e5159 (B4). Columns later changed by S1 (S1 #2, #15). |
+| R53 | "I want you to surface how the stats map to one another" / "the whole point of this sheet is to show me what influences what" | MAIN | f9e5159 (B3, B7). S1's Stat Weights (S1 #36) is BRANCH. |
+| R54 | "why is parry not listed anywhere on my stats? why do I not see how many points of crit add to an additional 1% parry chance? why do I not see how much armor mastery gives me?" [2 screenshots] | MAIN | f9e5159 (B3, B7). |
+| R55 | "THIS window needs to look beautiful and CLEAN. the window to the right needs to surface all interconnected data in a clean, digestible way" [screenshot] | MAIN | f9e5159 (A3, B3). Her later reports ("character pane is broken" and others) are S1's #13 and #37. |
+| R56 | "this gear pane is also wrong. this is meant to be a gear COMPARISON sheet to see how different item slots will affect stats and therefore my ABILITIES" [screenshot] | MAIN | f9e5159 (B8). S1's compare changes (S1 #17-#22, #31) are in progress there. |
+| R57 | "review every single issue that contains comments or complaints about the stat tracker. stop fucking up and dropping elements of my requests. review everything holistically and aim to solve every outstanding issue before shipping anything." | MAIN | `docs/plans/STAT-CALCULATOR-REQUIREMENTS-2026-11-04.md` (every request as one list); batch f9e5159 on `main` (1f12026). |
+| R58 | "where are we on finishing everything up?" | Answered | |
+| R59 | "Take all reskins and put them into a new tab: Blizzard UI Reskin / Currently applies to: chat, character pane, Esc menu / Will apply in the future to: shopping list" | MAIN; BRANCH | Tab: 4b93780 (Options 0.6.38, Chat 0.6.13, Reskin 0.6.1). Shopping list: BRANCH (R61). Her later "double: both enable/disable of reskin at all; then individual toggles" is S1's #48 (OPEN). |
+| R60 | "What feature can you take over that requires building that isn't being worked on in another session?" | Answered | The Shopping List (RM-SHOP). |
+| R61 | "Shopping list reskin is the profession / crafting list function, correct / It should also auto-suggest the user's commonly used gear enchant if a given slot has an equipped item that can be enchanted. The same applies for gems for items that have empty sockets" | BRANCH; CONFIRM | 5fd3655 (QoL 0.7.25), rows S1-S10 of `docs/plans/SHOPPING-LIST-REQUIREMENTS-2026-11-05.md`. Held from `main` until she answers C1-C11 below. |
+| R62 | Her answers: "Both — we're also going to reskin the objective pane" / "In the shopping list" / "Default to one, user configurable default, also "select other" button to provide the list of other available options in case the user wants to feelcraft a different choice spontaneously and needs help looking it up. Clicking the name of the gem or item in the pane should autopopulate the auction house search if auction house pane is open. (Attach this note to feature details)" / "Show + add to list" | BRANCH; OPEN (objective pane) | The note is attached verbatim (ROADMAP RM-SHOP; requirements doc). Objective pane reskin: RM-OBJECTIVES, planned (S11). |
+
+## Confirmations this session owes her (V16): Shopping List choices she did not state
+
+| # | My choice (built on the branch; changes if she says so) | Other options |
+|---|---|---|
+| C1 | The enchant / gem history is kept **per character**. | Per spec; account-wide. |
+| C2 | **Both rings share** one default and one history. Main hand and off hand are separate. | Each ring on its own. |
+| C3 | The **enchant scroll in your bags** is found by name: the scroll's name contains the enchant's name (e.g. "Enchant Ring - Amani Mastery"). This is an INFERENCE until seen in game. | None found in the API: no game call maps an enchant to its scroll. |
+| C4 | **Select other** lists: enchants (gems) used before; those in your bags; and, on a button press while the Auction House is open, what it sells for that slot. That browse also fills Blizzard's own results list. | Browse automatically on open; never fill Blizzard's list. |
+| C5 | A **name click** while the Auction House is open puts the name in its search box **and starts the search**. She said "autopopulate". | Fill the box only and let her press Search. |
+| C6 | In Select other, a click **uses that one now** (this session) and searches; **"Default"** saves it as the slot's default. | One click saves the default. |
+| C7 | Panel layout: "Missing on your gear" at the top, then "To buy", then one section per tracked recipe. 340 px wide, movable. Opened with `/xui shop`. | Another order or width; a minimap row. |
+| C8 | **Blizzard's Professions list restyle** fades the banner art and changes colours only (met lines muted). Its own switch. | A fuller restyle (fonts, spacing). |
+| C9 | **Need counts**: 1 per missing enchant; for gems, the number of empty sockets. Done lines stay until removed with x. | Done lines removed by themselves. |
+| C10 | **One gem default** overall, not one per slot. | Per slot; per socket colour. |
+| C11 | **Off by default.** The Shopping List and the Professions restyle each have their own switch. This is related to her "double" toggles (S1 #48): a whole-tab on/off switch is not built here. | On by default. |
+
+## Ownership notes
+- Engine items R15, R20, R25 and R31 are held by the engine session (R40). The #372 Group tab (R12, R14) has no owner in this
+  session's records: flagged so it is not dropped.
+- S1 holds the character pane width (R47 → S1 #38) and the reskin-tab double switch (R59 → S1 #48).
