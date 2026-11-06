@@ -216,3 +216,9 @@ Your sentence: "this _____ requires blizzard's cooldown manager to track it befo
 - D7: "Accept 1-3": (1) the engine skips disabled rules entirely after a one-time switch-off clean-up; (2) a disabled rule (and its cues)
   never gets a display frame, and its frame is freed when switched off; (3) the Disabled tab still lists them.
 - D7 preview: "Still works": the sidebar eye / headphone preview of a disabled rule still works; its frame exists only while previewed.
+
+## Round 5 answers (2026-11-06 ~21:10 UTC; question prompt)
+- D8: "Rule drives the cover": the Release Guard cover's on/off moves into a pre-created rule (its Load decides where it is active),
+  instead of QoL's own setting. Needs S1's agreement (S1 owns the cover).
+- D1 (Track: Auto / Charges / Spell cooldown as a forced choice): "unsure what this is -- defer for now unless flagged as an essential solve
+  for functionality". Deferred; not essential (Auto is today's behaviour and works).

@@ -290,7 +290,7 @@ In combat XayaUI asks, in this order, and stops at the first answer (0.6.13; the
 | Buff / Aura (another) | Another buff, add as many as you need | The same trigger as the built-in Buff / Aura: extra aura IDs (any one counts), Seconds left, and stacks / seconds-left numbers for conditions. Offered once the built-in Buff / Aura is in the rule |
 | Target Debuff (yours) | A debuff *you* applied to target or focus | See 4.4. Optional Seconds left (exact out of combat; in combat the game hides enemy aura times, so it reads unknown there) |
 | Loss of control on you | Stunned, feared, charmed / mind controlled, incapacitated / disoriented, asleep, silenced, interrupted (school locked), rooted, disarmed, pacified, or **Any effect** | Tick the effects that count; optional Seconds left (the longest matching effect). The effect names are the game's own and are not documented: if a tick box never reacts, run `/xui debug loc` while the effect is on you and report what it prints. Target and focus versions are not possible: the game hides that data for anyone but you |
-| Player State | Alive, in a vehicle, PvP flagged, has a pet, moving, AFK, has a target, has a focus, stunned, feared/incapacitated, rooted, silenced | Combat, group, mounted, resting live under Load instead. Moving reads the game's "is moving" flag |
+| Player State | Alive, dead and not released (core 0.6.56: true from the moment you die until you release; false as a ghost), in a vehicle, PvP flagged, has a pet, moving, AFK, has a target, has a focus, stunned, feared/incapacitated, rooted, silenced | Combat, group, mounted, resting live under Load instead. Moving reads the game's "is moving" flag |
 
 Every trigger row shows a live **Right now: true / false / unknown - reason** line.
 

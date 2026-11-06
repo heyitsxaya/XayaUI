@@ -110,11 +110,11 @@ POWER_VALUES.runes = "Runes (Death Knight)"   -- not an Enum.PowerType read: cou
 POWER_ORDER[#POWER_ORDER + 1] = "runes"
 
 local STATE_VALUES = {
-    alive = "Alive", vehicle = "In a vehicle", pvp = "PvP flagged", pet = "Has a pet", moving = "Moving",
+    alive = "Alive", deadBody = "Dead, not released", vehicle = "In a vehicle", pvp = "PvP flagged", pet = "Has a pet", moving = "Moving",
     afk = "Away from keyboard", target = "Has a target", focus = "Has a focus target",
     stunned = "Stunned", incapacitated = "Feared / charmed / incapacitated", rooted = "Rooted", silenced = "Silenced",
 }
-local STATE_ORDER = { "alive", "vehicle", "pvp", "pet", "moving", "afk", "target", "focus", "stunned", "incapacitated", "rooted", "silenced" }
+local STATE_ORDER = { "alive", "deadBody", "vehicle", "pvp", "pet", "moving", "afk", "target", "focus", "stunned", "incapacitated", "rooted", "silenced" }
 
 -- Loss of control (stun, fear, root, silence ...) on YOU, from C_LossOfControl. true / false / nil (unreadable: API missing, secret values).
 -- locType names are Blizzard's own strings; the wiki only documents "SCHOOL_INTERRUPT" as an example, so the sets below are the
@@ -900,6 +900,12 @@ Add("playerState", {
     check = function(t)
         local w, v = t.what, nil
         if w == "alive" then local d = Bool(UnitIsDeadOrGhost, "player"); if d ~= nil then v = not d end
+        elseif w == "deadBody" then
+            -- D8 (core 0.6.56; Xaya: fires while dead and NOT released, hides as a ghost). UnitIsDead / UnitIsGhost (12.1.5 docs,
+            -- globals.md:632 / 638: -> result: bool, SecretArguments=AllowedWhenUntainted). Whether UnitIsDead is also true for a ghost is
+            -- not documented (INFERENCE), so a ghost is ruled out with UnitIsGhost; either one unreadable = unknown.
+            local d, g = Bool(UnitIsDead, "player"), Bool(UnitIsGhost, "player")
+            if d ~= nil and g ~= nil then v = d and not g end
         elseif w == "vehicle" then v = Bool(UnitInVehicle, "player")
         elseif w == "pvp" then v = Bool(UnitIsPVP, "player")
         elseif w == "pet" then v = Bool(UnitExists, "pet")
