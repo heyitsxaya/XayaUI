@@ -29,13 +29,13 @@ list. Her answers were given in the engine session's question prompts (`docs/pro
 | G2 | Config: name, type, Sound Channel Override (her label), enable / disable as one toggle, Delete, New, original character / source of creation | BUILT (branch, Options 0.6.54; display_tab_run; QA B171-B172) | The fields move from the Group tab to Config. "Source of creation" is new saved data: groups made before it show "not recorded". |
 | G3 | Sort beside Grow on Group (her order: Default, Expiration, Name, Important, Manual; on main since Options 0.6.50) | DONE (already beside Grow on the Group tab, main) | Sort sits beside Growth Direction. |
 | G4 | Position: "relative / point ... two columns with labels on the left and right-hand side with dropdown menus" | BUILT (branch, Options 0.6.54; display_tab_run; QA B171-B172) | Two columns, label left, dropdown right. |
-| G5 | Size: auto (default) or set; clip and wrap as separate tick boxes; auto fits the items showing; the border follows | OPEN | Auto-fit box (today 0 = a 1 x 1 anchor). INFERENCE: auto-fit can move rules that use corner anchors (#268): checked in tests. |
+| G5 | Size: auto (default) or set; clip and wrap as separate tick boxes; auto fits the items showing; the border follows | BUILT (branch; group_box_run 20; QA B174) | Auto-fit box (today 0 = a 1 x 1 anchor). INFERENCE: auto-fit can move rules that use corner anchors (#268): checked in tests. |
 | G6 | Strata, opacity, scale, icon size on Group | BUILT (branch, Options 0.6.54; display_tab_run; QA B171-B172) | From Display "Whole group" to Group. |
 | G7 | Align / distribute / spacing saved and kept applying | OPEN | Today one-shot buttons on Display (static groups). |
 | G8 | Nested groups: "anchored to: screen / parent group" | OPEN | Today a nested group's "Screen" means its parent. |
 | G9 | Static groups: "Scale items to fit the box" tick box; off + box made smaller than its items: prompt "Scale the items to fit?" | OPEN | |
 | G10 | Group tab shows the WeakAuras group-tab options (her CHAT-3d); WeakAuras behaviour checked, code our own | OPEN | The checked list (debug-log 2026-11-05-2018): plain group align / distribute / space, scale, alpha, border, position; dynamic group grow, align, space, sort, limit. |
-| G11 | Group background (#372, "puts an assigned color / texture under the aura") | OPEN | |
+| G11 | Group background (#372, "puts an assigned color / texture under the aura") | BUILT (branch; group_box_run; QA B174) | |
 | P1 | #268 separate points ("this point" / "anchored to") | OPEN | |
 | P2 | #61 Snap Target stays a lasting anchor | DONE (as built) | |
 | P3 | #343 the broken drag is rule rows in the sidebar; pressing and dragging does "Nothing at all" (2026-11-06) | BUILT (branch; drag_drop_run; QA B173) | |

@@ -403,7 +403,8 @@ local function Container(f)
     local c = containers[f.id]
     if not c then c = CreateFrame("Frame", nil, UIParent); c:SetSize(1, 1); containers[f.id] = c end
     c:SetSize(math.max(1, f.cW or 1), math.max(1, f.cH or 1))
-    if c.SetClipsChildren then c:SetClipsChildren(f.cClip and true or false) end
+    -- clip only with a set size (G5: in Auto the container is the 1 x 1 anchor, clipping it would hide everything)
+    if c.SetClipsChildren then c:SetClipsChildren((f.cClip and ns.GroupSizeMode(f) == "set") and true or false) end
     local pf = f.parent and ns.FolderById(f.parent)
     local parentC = pf and Container(pf) or UIParent
     if c:GetParent() ~= parentC then c:SetParent(parentC) end
@@ -675,6 +676,23 @@ end
 
 -- The draggable outline for an unlocked group: fitted around the group's shown displays, drags the GROUP (its X / Y), not the displays.
 local groupHandles = {}
+-- Group size (G5; Xaya 2026-11-06: "size = auto or set + clip / wrap tick boxes; auto fits the showing items, border follows").
+-- Auto: the container stays the 1 x 1 anchor it is with no size (cW / cH nil, exactly as "0 = no fixed size" was, so the combat
+-- engine and the layout read it unchanged); the set numbers wait in cSetW / cSetH. Set: cW / cH are the box.
+function ns.GroupSizeMode(f)
+    if f.cSize == "set" or f.cSize == "auto" then return f.cSize end
+    return ((f.cW or 0) > 0 or (f.cH or 0) > 0) and "set" or "auto"
+end
+function ns.SetGroupSizeMode(f, mode)
+    if mode == "auto" then
+        if (f.cW or 0) > 0 then f.cSetW = f.cW end
+        if (f.cH or 0) > 0 then f.cSetH = f.cH end
+        f.cW, f.cH, f.cSize = nil, nil, "auto"
+    else
+        f.cW, f.cH = f.cW or f.cSetW or 200, f.cH or f.cSetH or 100
+        f.cSize = "set"
+    end
+end
 local function GroupBounds(f)
     local l, b, r, t
     local us = UIParent:GetEffectiveScale()
@@ -691,6 +709,79 @@ local function GroupBounds(f)
     end
     return l, b, r, t
 end
+-- The group's box (G5 / G11; #372 "puts an assigned color / texture under the aura"; the WeakAuras group-tab border, CHAT-3d): a
+-- border and / or a background behind the group's items. Auto size: it hugs what is showing now (GroupBounds) plus padding and
+-- follows as items come and go; Set size: it is the container's box. Off (neither border nor background): nothing is made (V14), and
+-- the watcher that follows Auto boxes runs only while one such box exists.
+local boxes, boxWatch = {}, nil
+local function BoxOn(f) return (f.cBorder or f.cBg) and true or false end
+function ns.GroupBox(f) return f and boxes[f.id] or nil end
+function ns.UpdateGroupBox(f)
+    local b = boxes[f.id]
+    if not BoxOn(f) then if b then b:Hide() end; return end
+    local c = containers[f.id]
+    if not b then
+        b = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+        if b.EnableMouse then b:EnableMouse(false) end
+        b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(b)
+        boxes[f.id] = b
+    end
+    local pad = tonumber(f.cPad) or 4
+    b:ClearAllPoints()
+    if ns.GroupSizeMode(f) == "set" and c then
+        if b:GetParent() ~= c then b:SetParent(c) end
+        b:SetPoint("TOPLEFT", c, "TOPLEFT", -pad, pad); b:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", pad, -pad)
+    else
+        if b:GetParent() ~= UIParent then b:SetParent(UIParent) end
+        local l, bt, r, t = GroupBounds(f)
+        if not l then b:Hide(); return end
+        b:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - pad, bt - pad)
+        b:SetSize((r - l) + 2 * pad, (t - bt) + 2 * pad)
+    end
+    if c then
+        if c.GetFrameStrata then b:SetFrameStrata(c:GetFrameStrata()) end
+        if c.GetFrameLevel then b:SetFrameLevel(math.max(0, c:GetFrameLevel())) end
+    end
+    local bg = f.cBgColor or { 0, 0, 0, 0.45 }
+    if f.cBg then
+        local tex = f.cBgTex
+        if type(tex) == "string" and tex ~= "" or type(tex) == "number" then b.bg:SetTexture(tex); b.bg:SetVertexColor(bg[1] or 1, bg[2] or 1, bg[3] or 1, bg[4] or 1)
+        else b.bg:SetColorTexture(bg[1] or 0, bg[2] or 0, bg[3] or 0, bg[4] or 0.45) end
+        b.bg:Show()
+    else b.bg:Hide() end
+    if b.SetBackdrop then
+        if f.cBorder then
+            local bd = f.cBdColor or { 0.6, 0.6, 0.65, 1 }
+            b:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = math.max(1, tonumber(f.cBdSize) or 1) })
+            b:SetBackdropBorderColor(bd[1] or 1, bd[2] or 1, bd[3] or 1, bd[4] or 1)
+        else b:SetBackdrop(nil) end
+    end
+    b:Show()
+end
+function ns.UpdateGroupBoxes()
+    local anyAuto = false
+    for _, f in ipairs(ns.folders or {}) do
+        if BoxOn(f) or boxes[f.id] then pcall(ns.UpdateGroupBox, f) end
+        if BoxOn(f) and ns.GroupSizeMode(f) == "auto" then anyAuto = true end
+    end
+    if anyAuto then
+        if not boxWatch then
+            boxWatch = CreateFrame("Frame")
+            boxWatch.t = 0
+            boxWatch:SetScript("OnUpdate", function(self, e)
+                self.t = self.t + (e or 0)
+                if self.t < 0.2 then return end
+                self.t = 0
+                local still = false
+                for _, f in ipairs(ns.folders or {}) do
+                    if BoxOn(f) and ns.GroupSizeMode(f) == "auto" then still = true; pcall(ns.UpdateGroupBox, f) end
+                end
+                if not still then self:SetScript("OnUpdate", nil); boxWatch = nil end
+            end)
+        end
+    elseif boxWatch then boxWatch:SetScript("OnUpdate", nil); boxWatch = nil end
+end
+function ns.GroupBoxWatching() return boxWatch ~= nil end   -- (tests)
 -- Right-click on the outline: type the group's X / Y, or center it on the screen on one axis or both ("center" = the outline's middle on the
 -- screen's middle). X / Y are the same numbers as the group's X / Y offset options.
 local posPopup
@@ -2654,6 +2745,7 @@ function ns.RefreshAllVisuals()
         end
     end
     if ns.unlocked then ns.RefreshGroupTags() end   -- a group made or changed while everything is unlocked gets its mover-view tag
+    pcall(ns.UpdateGroupBoxes)   -- the groups' border / background boxes (G5 / G11)
 end
 
 function ns.ToggleUnlock()

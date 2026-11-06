@@ -43,3 +43,18 @@ Options 0.6.54, QA B171-B185).
   watcher stops).
 - `import_run`, `export_group_run`, `recycle_bin_run` pass.
 - On the old code the new checks fail: no Config tab, no `D.arm`, no `origin`.
+
+## G5 / G11: group size Auto / Set, and the group's border and background box
+- **Size:** `ns.GroupSizeMode(f)` reads Auto or Set. Old data with a width / height reads Set, so its box stays.
+  - Auto clears cW / cH (exactly the old "0 = no fixed size", so `Visual.lua` and the combat engine's `AuraDisplay.lua` read it
+    unchanged) and keeps the numbers in cSetW / cSetH; Set brings them back.
+  - Clip applies only with Set: in Auto the container is the 1 x 1 anchor and clipping it would hide everything.
+- **Design choice** (her "auto fits the showing items, border follows"): in Auto the anchor container is NOT resized. Resizing it would
+  move displays anchored to its corners (#268). The border / background is a separate box (`ns.UpdateGroupBox`) that hugs
+  `GroupBounds` (the showing displays) plus the padding. In Set it is the container's box plus the padding.
+- **Box settings:** Border (colour), Background (colour, optional texture path or ID), Padding.
+- **V14:** no frame until a border or background is ticked. A 0.2 s watcher follows Auto boxes only while one exists, and stops when
+  none is left.
+- **Updated:** on every `ns.RefreshAllVisuals` (each settings change) and by the watcher.
+- **Tests:** `tests/group_box_run.py` (new, 20, real frame positions). `display_tab_run`, `layout_parity_run`, `aura_display_run`,
+  `export_group_run`, `import_run`, `core_off_costs_nothing_run` and `lua_pitfalls_run` pass. QA B174.

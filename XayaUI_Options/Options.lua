@@ -4167,12 +4167,41 @@ function ns.FolderContainerGroup(f)
         get = function() return f.cAlpha or 1 end, set = function(_, v) f.cAlpha = (v < 1) and v or nil; apply() end }
     g.args.scale = { type = "range", name = "Group scale", order = 3.01, min = 0.25, max = 3, step = 0.05,
         get = function() return f.cScale or 1 end, set = function(_, v) f.cScale = (v ~= 1) and v or nil; apply() end }
-    g.args.width = { type = "range", name = "Container width (0 = no fixed size)", order = 3.05, min = 0, max = 1500, step = 1,
-        get = function() return f.cW or 0 end, set = function(_, v) f.cW = (v > 0) and v or nil; apply() end }
-    g.args.height = { type = "range", name = "Container height (0 = no fixed size)", order = 3.06, min = 0, max = 1500, step = 1,
-        get = function() return f.cH or 0 end, set = function(_, v) f.cH = (v > 0) and v or nil; apply() end }
-    g.args.clip = { type = "toggle", name = "Clip contents to the container size (hide anything outside it)", order = 3.07, width = "full",
+    -- Size (G5; Xaya 2026-11-06: "size = auto or set + clip / wrap tick boxes; auto fits the showing items, border follows"). Auto (the
+    -- default) fits what is showing; Set gives the box a width and height, and only then can it clip. Wrap is the dynamic group's
+    -- "Wrap into rows / columns" tick box above.
+    local function setSize() return ns.GroupSizeMode and ns.GroupSizeMode(f) == "set" end
+    g.args.sizeMode = { type = "select", name = "Size", order = 3.04, width = "full", arg = { xuiSide = true },
+        values = { auto = "Auto (fits what is showing)", set = "Set (width and height below)" }, sorting = { "auto", "set" },
+        desc = "Auto: the group's box (its border and background) fits the items that are showing, and follows as they come and go. Set: the box has the width and height you give it; it can clip what falls outside it.",
+        get = function() return ns.GroupSizeMode and ns.GroupSizeMode(f) or "auto" end,
+        set = function(_, v) if ns.SetGroupSizeMode then ns.SetGroupSizeMode(f, v) end; apply() end }
+    g.args.width = { type = "range", name = "Width", order = 3.05, min = 1, max = 1500, step = 1, hidden = function() return not setSize() end,
+        get = function() return f.cW or 1 end, set = function(_, v) f.cW = math.max(1, v); apply() end }
+    g.args.height = { type = "range", name = "Height", order = 3.06, min = 1, max = 1500, step = 1, hidden = function() return not setSize() end,
+        get = function() return f.cH or 1 end, set = function(_, v) f.cH = math.max(1, v); apply() end }
+    g.args.clip = { type = "toggle", name = "Clip (hide anything outside the box)", order = 3.07, width = "full", hidden = function() return not setSize() end,
         get = function() return f.cClip and true or false end, set = function(_, v) f.cClip = v and true or nil; apply() end }
+    -- Border and background (G5 "border follows", G11 #372 "a property for group display: background (puts an assigned color /
+    -- texture under the aura)"; WeakAuras' group tab has a border, CHAT-3d)
+    local function col(key, dflt) return function() local c = f[key] or dflt; return c[1], c[2], c[3], c[4] end end
+    local function setCol(key) return function(_, r, gg, b, a) f[key] = { r, gg, b, a }; apply() end end
+    g.args.boxH = { type = "header", name = "Border and background", order = 3.08 }
+    g.args.border = { type = "toggle", name = "Border", order = 3.081, get = function() return f.cBorder and true or false end,
+        set = function(_, v) f.cBorder = v and true or nil; apply() end }
+    g.args.borderColor = { type = "color", name = "Border colour", order = 3.082, hasAlpha = true, hidden = function() return not f.cBorder end,
+        get = col("cBdColor", { 0.6, 0.6, 0.65, 1 }), set = setCol("cBdColor") }
+    g.args.bg = { type = "toggle", name = "Background", order = 3.083, get = function() return f.cBg and true or false end,
+        set = function(_, v) f.cBg = v and true or nil; apply() end }
+    g.args.bgColor = { type = "color", name = "Background colour", order = 3.084, hasAlpha = true, hidden = function() return not f.cBg end,
+        get = col("cBgColor", { 0, 0, 0, 0.45 }), set = setCol("cBgColor") }
+    g.args.bgTex = { type = "input", name = "Background texture (file path or ID; empty = the colour only)", order = 3.085, width = "full",
+        hidden = function() return not f.cBg end,
+        get = function() return f.cBgTex and tostring(f.cBgTex) or "" end,
+        set = function(_, v) v = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", ""); f.cBgTex = (v ~= "") and (tonumber(v) or v) or nil; apply() end }
+    g.args.pad = { type = "range", name = "Padding around the items", order = 3.086, min = 0, max = 40, step = 1,
+        hidden = function() return not (f.cBorder or f.cBg) end,
+        get = function() return tonumber(f.cPad) or 4 end, set = function(_, v) f.cPad = v; apply() end }
     g.args.strata = { type = "select", name = "Layer (strata)", order = 3.2, values = SV, sorting = STRATA,
         get = function() return f.cStrata or "inherit" end, set = function(_, v) f.cStrata = (v ~= "inherit") and v or nil; apply() end }
     g.args.level = { type = "range", name = "Z-index within the layer (0 = automatic)", order = 3.3, min = 0, max = 200, step = 1,
