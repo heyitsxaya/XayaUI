@@ -139,3 +139,31 @@ Your sentence: "this _____ requires blizzard's cooldown manager to track it befo
   - #372 puts Sort on Config; AURA-PLAN 3a and screen 2 put it beside Growth.
   - Strata: screen 1 says the Group tab; #131 and the code use Display.
   - Icon size: AURA-PLAN says the Group tab; the code has it on Display.
+
+## Her answers (2026-11-06, question prompts; verbatim where she typed text)
+- A1: rule's own name (as built).
+- A2: decide after a perf test (QA B154).
+- A3: title and help text.
+- A4: both Reload list and Close.
+- A5: a Spec column.
+- A6 (split): speech: cooldown says its name; aura ends: "_____ ended"; When present: "custom"; plus "a tick box underneath for STT to
+  'customize'". Sound: "same as previous: request customization from the user". Texture / progress texture: "force choice from drop
+  down list". Placement: spread in rows of 8.
+- Cue set-up controls: an extra column (preview: [x] Customize / sound picker / picture picker per row).
+- Forced pick unmet: "all rules completed get made; the ones that don't stay in the tray and an alert pops saying "error issue making
+  the following rules: []. Please finish configuring them to create them.""
+- A7: yes, When missing for debuffs with Speech / Sound.
+- A8: "depends on the button pressed -- spec or all dependent"; for another spec: show them all.
+- A9: button "Populate".
+- A10: named by type ("<spell> (icon)").
+- A11: "Type, then A-Z, with clear headers and the ability to full deselect full buckets".
+- A13: OK as built.
+- A14: remove made rows from the table.
+- A15: "yes, new window will build to drop excessive context" (progress bar designed in a new session).
+- A16: "icon and name only in the creation process -- don't embed in the actual rule name".
+- A17: listed "(soonTM)".
+- B1: "This aura / debuff (name) requires..."
+- B2: keep the second sentence.
+- B3: "Blizzard's Cooldown Manager does not offer in-combat tracking for this aura for your current spec. Rule might not work reliably."
+  Note: "(EUI allows you to add extra things to track via custom aura bars -- we can figure out workarounds like overlaying textures on
+  them and setting the actual bars to zero, ex)".
