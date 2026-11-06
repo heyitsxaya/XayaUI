@@ -20,5 +20,8 @@ between each ability to segmenrt more clearly / put the numbers to left-align to
 lookups in it and in `tests/char_spells_run.py` now include the "- " marker. char_toolkit 110, char_toolkit2 166, char_stat_columns
 101: pass.
 
+Missed at first and found by the full suite on 8280424: `tests/char_stat_round_run.py` looked spells up by their bare name; its
+rowOf now accepts the "- " / "+ " marker (85 of 85 pass).
+
 ## QA
 E1z92.
