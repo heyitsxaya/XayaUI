@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-fac5f7c693495a5e1507e465acec6697  QA-CHECKLIST.md
+a3ff8972b6337ecddc2fb31515193a09  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 410cc1e26e183b9410bf509ed6e97752  ROADMAP.md
 0167d4c5066cc2bf0f96150c48e8f63f  SESSION-START-SUMMARY.md
@@ -106,7 +106,7 @@ a126ef2cd2852eae4c6f9eb2cadb6e1c  XayaUI/TalentDump.lua
 9bf55354dce003634bea5d20d5bbbf58  XayaUI/Timing.lua
 a798bbc0f8b2389a2b4de9c26599d737  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
-277bcc44804fc8865b92994e3144f57e  XayaUI/Visual.lua
+abc1ddcefcb25abba2820478ccb82346  XayaUI/Visual.lua
 5f60a4a3936e04065571b8a0089098b2  XayaUI/XayaUI.toc
 aa67ceca7421466d01bbf874bda53c92  XayaUI_Bonus/Calculator.lua
 7c8c4b6ef4fab8a18001668d5d23932a  XayaUI_Bonus/DataPanels.lua
@@ -160,7 +160,7 @@ d1214a6ecb251789fe882787dce5d8ef  XayaUI_DevAssist/ApiInventory.lua
 540e759425acffdcd2e04155ed259ae3  XayaUI_DevAssist/FormulaCapture.lua
 10a00a7f66ce081044f89e3d998619fd  XayaUI_DevAssist/Probe.lua
 c4215f2946649c03da3ea7e1816ac4ef  XayaUI_DevAssist/QAWalk.lua
-bb5c419673c60e3fc0d02a0b781c2cb4  XayaUI_DevAssist/QAWalks-Checklist.lua
+f9307a097af5cf268af78ffb12a61fad  XayaUI_DevAssist/QAWalks-Checklist.lua
 05a4d94bb901141dc698b12f3e4907ed  XayaUI_DevAssist/QAWalks.lua
 f2877d3cc5435af3bba6ea9ee410168a  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
@@ -210,7 +210,7 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-7655dae9d5867cca5bf2ad011df4963f  XayaUI_Options/Options.lua
+d9d0adebf6a048699f801aa08f507566  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
 24601ef16af1a663ebc42c4dca3973c8  XayaUI_Options/Skin.lua
@@ -519,7 +519,7 @@ d219067bc85426f02913fb1b3eece809  docs/issue-screenshots/toolkit-spells-id-place
 a2e49515e283e72fc94f220e8148b746  docs/issue-screenshots/toolkit-window-resize.png
 58ad0a99081eea454e70a353255849e5  docs/plans/AURA-PLAN.md
 2de37e534204c1536e75af8aab9d621b  docs/plans/GAMES-MODULE-2026-11-05.md
-0eca3e6342bfa21f7e1140757bfedfb7  docs/plans/GROUP-PAGE-REQUIREMENTS-2026-11-06.md
+dadadaa921ed0e650f1db97f1df2111d  docs/plans/GROUP-PAGE-REQUIREMENTS-2026-11-06.md
 25e9cf312a11d30076f032e0a3e750a4  docs/plans/GROUP-PAGE-REVIEW-2026-11-04.md
 380f2b16f139ddfcfc51f7af62f48176  docs/plans/IDEA-CHAT-WORD-GAME-2026-11-05.md
 e80a5c2d309d09f70935f65abd599ec3  docs/plans/IDEA-UPGRADE-OPTIONS-2026-11-05.md
@@ -652,6 +652,7 @@ f02c43c10e399a57286e1d36682f938d  tests/frame_anchor_run.py
 60c2b4ed72565803ed1036b60bc58940  tests/gamemenu_fit_run.py
 cca9d978e3b3e2e5ae5ad632f2f78020  tests/gamemenu_ratchet_run.py
 1ca7f2f5d990875bf66174004935ccde  tests/gamemenu_run.py
+aec2dbf95f988bba4d474fc0a65af7c3  tests/group_arrange_run.py
 e49807981e17f05447c306cbac63a7b4  tests/group_box_run.py
 2432f77932fc7e94d63c1f8c3f453c37  tests/harness/.gitignore
 f8b5cec9ebb759edfcdfb5fe05ec292e  tests/harness/api_index_from_docs.py

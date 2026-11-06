@@ -1502,7 +1502,89 @@ function ns.SetVisualAnchor(rule, anchor, place)
     ns.RefreshVisual(rule)
     ns.Fire("CONFIG_CHANGED")
 end
-local function Place(fr, rule, parent)
+-- G7 (Xaya 2026-11-06: "align / distribute / spacing saved and kept applying"; when one display is dragged: "Arrangement wins"):
+-- a static group can keep one arrangement per direction: f.cArrX = left / center / right / distribute / space, f.cArrY = top / middle /
+-- bottom / distribute / space, f.cArrGap = the gap for space. It is applied again whenever one of its displays is refreshed,
+-- dragged or nudged, so a dragged display goes back into line and a new or resized one joins it. It works on the displays directly in
+-- the group (each nested group keeps its own) that are not snapped to a game frame; dynamic groups place their displays themselves.
+-- ns.ArrangeList is also what the one-shot Align / Distribute / Space buttons use.
+local Place   -- (defined below; the arrangement places frames with it)
+local function ArrDims(r) local v = r.visual; return tonumber(v.x) or 0, tonumber(v.y) or 0, math.max(8, tonumber(v.w) or 128), math.max(8, tonumber(v.h) or 128) end
+local function ArrR(n) return math.floor(n + 0.5) end
+function ns.ArrangeList(l, xMode, yMode, gap)
+    if #l < 2 or not (xMode or yMode) then return false end
+    gap = tonumber(gap) or 8
+    for _, r in ipairs(l) do local cx, cy = ns.VisualCenterOffset(r); r.visual.x, r.visual.y = cx, cy end
+    local function sorted(horiz)
+        local t = {}
+        for i, r in ipairs(l) do t[i] = r end
+        table.sort(t, function(a, b)
+            local ax, ay = ArrDims(a); local bx, by = ArrDims(b)
+            if horiz then if ax ~= bx then return ax < bx end else if ay ~= by then return ay > by end end
+            return tostring(a.name) < tostring(b.name)   -- (a fixed order for ties, so applying again changes nothing)
+        end)
+        return t
+    end
+    if xMode == "left" or xMode == "center" or xMode == "right" then
+        local lo, hi = math.huge, -math.huge
+        for _, r in ipairs(l) do local x, _, w = ArrDims(r); lo = math.min(lo, x - w / 2); hi = math.max(hi, x + w / 2) end
+        for _, r in ipairs(l) do local _, _, w = ArrDims(r)
+            r.visual.x = ArrR(xMode == "left" and lo + w / 2 or xMode == "right" and hi - w / 2 or (lo + hi) / 2) end
+    elseif xMode == "distribute" then
+        local t = sorted(true)
+        local a, b = ArrDims(t[1]), ArrDims(t[#t])
+        for i, r in ipairs(t) do r.visual.x = ArrR(a + (b - a) * (i - 1) / (#t - 1)) end
+    elseif xMode == "space" then
+        local t, cur = sorted(true)
+        for i, r in ipairs(t) do
+            local x, _, w = ArrDims(r)
+            if i == 1 then cur = x + w / 2 else r.visual.x = ArrR(cur + gap + w / 2); cur = r.visual.x + w / 2 end
+        end
+    end
+    if yMode == "top" or yMode == "middle" or yMode == "bottom" then
+        local top, bot = -math.huge, math.huge
+        for _, r in ipairs(l) do local _, y, _, h = ArrDims(r); top = math.max(top, y + h / 2); bot = math.min(bot, y - h / 2) end
+        for _, r in ipairs(l) do local _, _, _, h = ArrDims(r)
+            r.visual.y = ArrR(yMode == "top" and top - h / 2 or yMode == "bottom" and bot + h / 2 or (top + bot) / 2) end
+    elseif yMode == "distribute" then
+        local t = sorted(false)
+        local _, a = ArrDims(t[1]); local _, b = ArrDims(t[#t])
+        for i, r in ipairs(t) do r.visual.y = ArrR(a + (b - a) * (i - 1) / (#t - 1)) end
+    elseif yMode == "space" then
+        local t, cur = sorted(false)
+        for i, r in ipairs(t) do
+            local _, y, _, h = ArrDims(r)
+            if i == 1 then cur = y - h / 2 else r.visual.y = ArrR(cur - gap - h / 2); cur = r.visual.y - h / 2 end
+        end
+    end
+    for _, r in ipairs(l) do ns.SetVisualCenterOffset(r, r.visual.x, r.visual.y) end
+    return true
+end
+local arranging = false
+function ns.GroupArrangement(f) return f and (f.cArrX or f.cArrY) and f.cType ~= "dynamic" and true or false end
+function ns.ApplyGroupArrangement(f)
+    if arranging or not ns.GroupArrangement(f) then return false end
+    local l = {}
+    for _, r in ipairs(ns.rules or {}) do
+        local v = r.visual
+        if r.folder == f.id and type(v) == "table" and v.enabled and not (v.snap and v.snap.target) then l[#l + 1] = r end
+    end
+    if #l < 2 then return false end
+    arranging = true
+    local ok = pcall(ns.ArrangeList, l, f.cArrX, f.cArrY, f.cArrGap)
+    for _, r in ipairs(l) do
+        local fr = frames[r]
+        if fr then pcall(Place, fr, r, (ParentFor(r))) end
+    end
+    arranging = false
+    return ok
+end
+local function ArrangeAfter(rule)   -- the display's group keeps an arrangement: put it (and its neighbours) back in line
+    if arranging or not (rule and rule.folder) then return end
+    local f = ns.FolderById(rule.folder)
+    if f and ns.GroupArrangement(f) then ns.ApplyGroupArrangement(f) end
+end
+function Place(fr, rule, parent)   -- (the local declared above the arrangement)
     local v = rule.visual
     local g = SnapFrame(v)
     fr:ClearAllPoints()
@@ -1528,6 +1610,7 @@ local function CommitDrag(rule, fr, useSnap)
     ns.SetVisualCenterOffset(rule, cox, coy)
     Place(fr, rule, parent)
     if dyn then LayoutDynamic(dyn) end
+    ArrangeAfter(rule)   -- G7: "arrangement wins"
     ns.Fire("CONFIG_CHANGED")
 end
 -- a display snapped to a frame picked on screen: the side and alignment nearest to where the display is now (SNAP_POS keys)
@@ -2111,7 +2194,7 @@ function ns.RefreshVisual(rule)
     if fr:GetParent() ~= parent then fr:SetParent(parent) end
     ApplyStrata(fr, rule.folder)
     Place(fr, rule, parent)
-    if dyn then LayoutDynamic(dyn) end
+    if dyn then LayoutDynamic(dyn) else ArrangeAfter(rule) end   -- (G7: a new or resized display joins its group's line)
     fr.baseAlpha = v.alpha or 1
     fr:SetAlpha(fr.baseAlpha)
     fr.tex:SetBlendMode(v.additive and "ADD" or "BLEND")
@@ -2935,7 +3018,7 @@ function ns.MoverNudge(dx, dy)
         r.visual.x = (r.visual.x or 0) + dx; r.visual.y = (r.visual.y or 0) + dy
         local parent, dyn = ParentFor(r)
         Place(frames[r], r, parent)
-        if dyn then LayoutDynamic(dyn) end
+        if dyn then LayoutDynamic(dyn) else ArrangeAfter(r) end
         ns.Fire("CONFIG_CHANGED")
     end
     return true

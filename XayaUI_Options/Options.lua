@@ -1305,7 +1305,7 @@ ns.PASTE_VIS = {
     vOnBar   = { "requireOnBar" },
     vHoverTip = { "hoverTip" },   -- "Show tooltip on hover" (own tick box; no longer rides along with "Texture / art")
 }
-ns.PASTE_VIS_SKIP = { text = true, count = true, absorb = true, x = true, y = true, anchor = true, anchorPlace = true }
+ns.PASTE_VIS_SKIP = { text = true, count = true, absorb = true, x = true, y = true, anchor = true, anchorPlace = true, point = true }
 ns.PASTE_TREE = {
     { "Triggers", {
         { "Cooldown trigger", {
@@ -2259,16 +2259,28 @@ local function BuildRule(i, rule)
     local ANCHOR_ORDER = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }
     local pos = {
         type = "group", inline = true, name = "Position (Offset From the Anchor)", order = 20, args = {
-            anchor = { type = "select", name = "Anchor (X / Y are measured from this point)", order = 0.5, width = "double",
-                desc = "The point of the screen, or of this rule's group container, that X and Y are measured from. Changing it keeps the display exactly where it is and recalculates X / Y. Ignored while the display is snapped to a game frame, and in dynamic groups.",
+            -- P1 (#268; Xaya 2026-11-06, her labels: "Anchor point" -> "Anchored to" -> "To <target>'s point")
+            point = { type = "select", name = "Anchor point", order = 0.4, width = "double",
+                desc = "The point of this display that is placed. Changing it keeps the display exactly where it is and recalculates X / Y. Ignored while the display is snapped to a game frame, and in dynamic groups.",
                 values = ANCHOR_VALUES, sorting = ANCHOR_ORDER,
-                get = function() return V.anchor or "CENTER" end,
-                set = function(_, val) ns.SetVisualAnchor(rule, val, nil); ns.MarkDirty(); Notify() end },
-            anchorPlace = { type = "select", name = "Place the display", order = 0.6, width = "double",
-                desc = "Inside: the display's matching point sits on the anchor, flush inside the box (bottom left anchor: the display's bottom left corner). Outside: the display's opposite point sits on the anchor, so the display lies outside the box next to that edge or corner. Center is the same either way.",
-                values = { inner = "Inside the anchor point", outer = "Outside the anchor point" }, sorting = { "inner", "outer" },
-                get = function() return V.anchorPlace == "outer" and "outer" or "inner" end,
-                set = function(_, val) ns.SetVisualAnchor(rule, nil, val); ns.MarkDirty(); Notify() end },
+                get = function() local _, f = ns.VisualPoints(rule); return f end,
+                set = function(_, val) ns.SetVisualPoints(rule, val, nil); ns.MarkDirty(); Notify() end },
+            anchoredTo = { type = "description", order = 0.45, width = "full", fontSize = "medium",
+                name = function()
+                    local kind, nm = ns.VisualAnchorTarget(rule)
+                    local what = kind == "screen" and "The screen" or kind == "frame" and (nm .. " (snapped)")
+                        or kind == "dynamic" and ("Group: " .. nm .. " (a dynamic group places its displays itself)") or ("Group: " .. nm)
+                    return "|cffffd100Anchored to:|r " .. what
+                end },
+            anchor = { type = "select", order = 0.5, width = "double",
+                name = function()
+                    local kind, nm = ns.VisualAnchorTarget(rule)
+                    return kind == "screen" and "To the screen's point" or ("To " .. nm .. "'s point")
+                end,
+                desc = "The point of what this display is anchored to (the screen, or its group's box) that X and Y are measured from. Changing it keeps the display exactly where it is and recalculates X / Y. Ignored while the display is snapped to a game frame, and in dynamic groups.",
+                values = ANCHOR_VALUES, sorting = ANCHOR_ORDER,
+                get = function() local a = ns.VisualPoints(rule); return a end,
+                set = function(_, val) ns.SetVisualPoints(rule, nil, val); ns.MarkDirty(); Notify() end },
             x = Rng(V, "x", "X", 1, -1200, 1200, 1, on),
             y = Rng(V, "y", "Y", 2, -800, 800, 1, on),
             unlock = { type = "execute", order = 3, width = "double",
@@ -2518,7 +2530,7 @@ local function BuildRule(i, rule)
     overlay.args.enabled = nil
     -- Position is its own collapsible section (between Texture and Overlay Layer), no longer inside the Texture box
     pos.args.x.order, pos.args.y.order, pos.args.unlock.order = 3, 4, 5
-    local posArgs = { anchor = pos.args.anchor, anchorPlace = pos.args.anchorPlace, x = pos.args.x, y = pos.args.y, unlock = pos.args.unlock }
+    local posArgs = { point = pos.args.point, anchoredTo = pos.args.anchoredTo, anchor = pos.args.anchor, x = pos.args.x, y = pos.args.y, unlock = pos.args.unlock }
     display.args.trigger.order = 0
     -- Color & Blend (20-29) goes to Color & Transparency; Fade / Opacity / Flash (30-39) and Glow & Outline (40-49) live under Animation Options
     -- Overlay Layer: no collapse arrow of its own any more (it sits inside Animation Options, which collapses), and it comes last,
@@ -4236,78 +4248,34 @@ function ns.FolderContainerGroup(f)
     return g
 end
 
--- Static group tools: Align, Distribute and Space the displays inside the group by editing their own X / Y.
+-- Static group arrangement (G7; Xaya 2026-11-06: "align / distribute / spacing saved and kept applying"; a dragged display: "Arrangement
+-- wins"). One choice per direction is saved on the group (f.cArrX / f.cArrY / f.cArrGap) and core applies it again whenever a display in
+-- the group changes (ns.ApplyGroupArrangement). The values keep the names of the former one-time buttons.
 -- ns function (not a local) to stay under Lua's 200-locals-per-chunk limit.
 function ns.FolderArrangeGroup(f)
-    local gap = 8
-    local function items()
-        local l = {}
-        for _, r in ipairs(FolderRules(f.id)) do
-            local v = r.visual
-            if type(v) == "table" and v.enabled then l[#l + 1] = r end
-        end
-        return l
-    end
-    local function R(n) return math.floor(n + 0.5) end
-    local function done(n, what)
-        for _, r in ipairs(items()) do pcall(ns.RefreshVisual, r) end
+    local X = { none = "None", left = "Align left", center = "Align center", right = "Align right", distribute = "Distribute horizontally", space = "Space horizontally" }
+    local Y = { none = "None", top = "Align top", middle = "Align middle", bottom = "Align bottom", distribute = "Distribute vertically", space = "Space vertically" }
+    local function apply()
+        ns.ApplyGroupArrangement(f)
         ns.MarkDirty(); Notify()
-        ns.Print(("%s: %d display(s) in group '%s'"):format(what, n, tostring(f.name)))
     end
-    local function Act(what, fn)
-        local l = items()
-        if #l < 2 then ns.Print("a group needs at least two displays to " .. what:lower()); return end
-        -- the tools work on center offsets; each display's own anchor is converted in and out so mixed anchors line up correctly
-        for _, r in ipairs(l) do local cx, cy = ns.VisualCenterOffset(r); r.visual.x, r.visual.y = cx, cy end
-        fn(l)
-        for _, r in ipairs(l) do ns.SetVisualCenterOffset(r, r.visual.x, r.visual.y) end
-        done(#l, what)
-    end
-    local function dims(r) local v = r.visual; return tonumber(v.x) or 0, tonumber(v.y) or 0, tonumber(v.w) or 0, tonumber(v.h) or 0 end
-    local function alignX(mode) Act("Align", function(l)
-        local lo, hi = math.huge, -math.huge
-        for _, r in ipairs(l) do local x, _, w = dims(r); lo = math.min(lo, x - w / 2); hi = math.max(hi, x + w / 2) end
-        for _, r in ipairs(l) do local _, _, w = dims(r)
-            r.visual.x = R(mode == "left" and lo + w / 2 or mode == "right" and hi - w / 2 or (lo + hi) / 2) end
-    end) end
-    local function alignY(mode) Act("Align", function(l)
-        local top, bot = -math.huge, math.huge
-        for _, r in ipairs(l) do local _, y, _, h = dims(r); top = math.max(top, y + h / 2); bot = math.min(bot, y - h / 2) end
-        for _, r in ipairs(l) do local _, _, _, h = dims(r)
-            r.visual.y = R(mode == "top" and top - h / 2 or mode == "bottom" and bot + h / 2 or (top + bot) / 2) end
-    end) end
-    local function distribute(horiz) Act("Distribute", function(l)
-        table.sort(l, function(a, b) local ax, ay = dims(a); local bx, by = dims(b); if horiz then return ax < bx end return ay > by end)
-        local n = #l
-        local ax, ay = dims(l[1]); local bx, by = dims(l[n])
-        for i, r in ipairs(l) do
-            if horiz then r.visual.x = R(ax + (bx - ax) * (i - 1) / (n - 1)) else r.visual.y = R(ay + (by - ay) * (i - 1) / (n - 1)) end
-        end
-    end) end
-    local function space(horiz) Act("Space", function(l)
-        table.sort(l, function(a, b) local ax, ay = dims(a); local bx, by = dims(b); if horiz then return ax < bx end return ay > by end)
-        local cur
-        for i, r in ipairs(l) do
-            local x, y, w, h = dims(r)
-            if horiz then
-                if i == 1 then cur = x + w / 2 else r.visual.x = R(cur + gap + w / 2); cur = r.visual.x + w / 2 end
-            else
-                if i == 1 then cur = y - h / 2 else r.visual.y = R(cur - gap - h / 2); cur = r.visual.y - h / 2 end
-            end
-        end
-    end) end
-    local function B(order, name, fn) return { type = "execute", order = order, width = 1.1, name = name, func = fn } end
     return { type = "group", inline = true, order = 5.45, name = "Align & Arrange (Static Group)",
         hidden = function() return f.cType == "dynamic" or not ns.KindHas({ folder = f.id }, "visual") end,
         args = {
             note = { type = "description", order = 0, width = "full", fontSize = "small",
-                name = "Group tools: these edit the X / Y of the displays inside this group (and nested groups) so they line up, spread out evenly, or sit a fixed gap apart. Use Unlock visuals to see the result." },
-            l = B(1, "Align left", function() alignX("left") end), c = B(2, "Align center", function() alignX("center") end), r = B(3, "Align right", function() alignX("right") end),
-            t = B(4, "Align top", function() alignY("top") end), m = B(5, "Align middle", function() alignY("middle") end), b = B(6, "Align bottom", function() alignY("bottom") end),
-            dh = B(7, "Distribute horizontally", function() distribute(true) end), dv = B(8, "Distribute vertically", function() distribute(false) end),
-            gap = { type = "range", order = 9, width = "double", name = "Gap for Space (pixels)", min = 0, max = 200, step = 1,
-                get = function() return gap end, set = function(_, v) gap = v end },
-            sh = B(10, "Space horizontally", function() space(true) end), sv = B(11, "Space vertically", function() space(false) end),
+                name = "Kept for this group: its displays (not those of nested groups) stay lined up this way. A display you drag, nudge, add or resize goes back into line; pick None to place them freely." },
+            arrX = { type = "select", order = 1, name = "Horizontal", values = X,
+                sorting = { "none", "left", "center", "right", "distribute", "space" }, arg = { xuiSide = true },
+                get = function() return f.cArrX or "none" end,
+                set = function(_, v) f.cArrX = (v ~= "none") and v or nil; apply() end },
+            arrY = { type = "select", order = 2, name = "Vertical", values = Y,
+                sorting = { "none", "top", "middle", "bottom", "distribute", "space" }, arg = { xuiSide = true },
+                get = function() return f.cArrY or "none" end,
+                set = function(_, v) f.cArrY = (v ~= "none") and v or nil; apply() end },
+            gap = { type = "range", order = 3, width = "double", name = "Gap for Space (pixels)", min = 0, max = 200, step = 1,
+                hidden = function() return f.cArrX ~= "space" and f.cArrY ~= "space" end,
+                get = function() return f.cArrGap or 8 end,
+                set = function(_, v) f.cArrGap = (v ~= 8) and v or nil; apply() end },
         } }
 end
 
