@@ -399,10 +399,44 @@ local function DynAncestor(folderId)
         id, guard = f.parent, guard + 1
     end
 end
+-- G9 (Xaya 2026-11-06, static group scaling: "Toggle + ask on resize"): with "Scale items to fit the box" ticked, a static group with a
+-- set size scales what is inside it down (never up) so its displays fit the box. The box keeps its size on screen: the container is
+-- scaled by the factor and made larger by the same factor. Measured from the saved X / Y and sizes of the group's own displays, from
+-- the box's centre (INFERENCE: displays anchored to a corner of the box are measured the same way, so for them the fit is approximate).
+local FIT_PTS = { TOPLEFT = { 0, 1 }, TOP = { 0.5, 1 }, TOPRIGHT = { 1, 1 }, LEFT = { 0, 0.5 }, CENTER = { 0.5, 0.5 }, RIGHT = { 1, 0.5 },
+    BOTTOMLEFT = { 0, 0 }, BOTTOM = { 0.5, 0 }, BOTTOMRIGHT = { 1, 0 } }
+local function ItemsExtent(f)
+    local ex, ey, n = 0, 0, 0
+    local W, Hh = math.max(1, f.cW or 1), math.max(1, f.cH or 1)
+    for _, r in ipairs(ns.rules or {}) do
+        local v = r.visual
+        if r.folder == f.id and type(v) == "table" and v.enabled and not (v.snap and v.snap.target) then
+            local w, h = math.max(8, v.w or 128), math.max(8, v.h or 128)
+            local a, fp = ns.VisualPoints(r)
+            local PA, PF = FIT_PTS[a] or FIT_PTS.CENTER, FIT_PTS[fp] or FIT_PTS.CENTER
+            local cx = (v.x or 0) - (PF[1] - 0.5) * w + (PA[1] - 0.5) * W
+            local cy = (v.y or 0) - (PF[2] - 0.5) * h + (PA[2] - 0.5) * Hh
+            ex = math.max(ex, math.abs(cx) + w / 2); ey = math.max(ey, math.abs(cy) + h / 2); n = n + 1
+        end
+    end
+    return ex, ey, n
+end
+function ns.GroupFitNeeded(f)   -- the factor the items need to fit the set box (1 = they fit), whatever the tick box says
+    if not f or f.cType == "dynamic" or ns.GroupSizeMode(f) ~= "set" then return 1 end
+    local ex, ey, n = ItemsExtent(f)
+    if n == 0 then return 1 end
+    local W, Hh = math.max(1, f.cW or 1), math.max(1, f.cH or 1)
+    local k = 1
+    if ex > 0 then k = math.min(k, (W / 2) / ex) end
+    if ey > 0 then k = math.min(k, (Hh / 2) / ey) end
+    return math.max(0.05, k)
+end
+function ns.GroupFitScale(f) return (f and f.cFit) and ns.GroupFitNeeded(f) or 1 end
 local function Container(f)
     local c = containers[f.id]
     if not c then c = CreateFrame("Frame", nil, UIParent); c:SetSize(1, 1); containers[f.id] = c end
-    c:SetSize(math.max(1, f.cW or 1), math.max(1, f.cH or 1))
+    local fit = f.cFit and ns.GroupFitScale(f) or 1   -- (V14: nothing is measured unless the tick box is on)
+    c:SetSize(math.max(1, f.cW or 1) / fit, math.max(1, f.cH or 1) / fit)
     -- clip only with a set size (G5: in Auto the container is the 1 x 1 anchor, clipping it would hide everything)
     if c.SetClipsChildren then c:SetClipsChildren((f.cClip and ns.GroupSizeMode(f) == "set") and true or false) end
     local pf = f.parent and ns.FolderById(f.parent)
@@ -416,7 +450,7 @@ local function Container(f)
     local gname = (rel == "custom") and f.cFrame or REL_FRAMES[rel]
     local g = gname and gname ~= "" and _G[gname]
     if g and g.GetCenter and g ~= c then target = g end
-    local sc = math.max(0.1, f.cScale or 1)
+    local sc = math.max(0.1, f.cScale or 1) * fit
     c:SetScale(sc)
     c:SetAlpha(f.cAlpha or 1)
     if f.cStrata then c:SetFrameStrata(f.cStrata) end

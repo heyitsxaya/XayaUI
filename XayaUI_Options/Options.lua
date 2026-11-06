@@ -24,6 +24,8 @@ ns.OptionsApi = {}
 -- applies to: chat, character pane, Esc menu. Will apply in the future to: shopping list"): every page registered under module
 -- "reskin": the Chat Panel (XayaUI_Chat), the Character Pane (XayaUI_QoL) and the Esc Menu (XayaUI_Reskin). The Chat tab is gone with
 -- it (the Chat Panel was its only page); a tab with no pages is not drawn.
+-- a group and everything in it to the Recycle Bin, by id (the Dev Assist QA walkthroughs clean up their test group with it)
+function ns.OptionsApi.DeleteFolderAll(id) if ns.DeleteFolderAllById then return ns.DeleteFolderAllById(id) end end
 ns.OptionsApi.TABS = { chat = { key = "chat", name = "Chat", order = 5 }, qol = { key = "qol", name = "QoL", order = 5.1 },
     bonus = { key = "bonus", name = "Bonus Features", order = 5.2 }, reskin = { key = "reskin", name = "Blizzard UI Reskin", order = 5.3 } }
 ns.OptionsApi.pageTab = {}   -- page key -> the top tab it is drawn in (filled by ModuleTabs), so a page that moved still opens
@@ -4188,10 +4190,28 @@ function ns.FolderContainerGroup(f)
         desc = "Auto: the group's box (its border and background) fits the items that are showing, and follows as they come and go. Set: the box has the width and height you give it; it can clip what falls outside it.",
         get = function() return ns.GroupSizeMode and ns.GroupSizeMode(f) or "auto" end,
         set = function(_, v) if ns.SetGroupSizeMode then ns.SetGroupSizeMode(f, v) end; apply() end }
+    -- G9 (Xaya 2026-11-06: "Toggle + ask on resize"): with the tick box off, making a static group's box smaller than its items asks
+    -- once "Scale the items to fit?" (Yes ticks it); asked again only after the items fit again
+    local function askFit()
+        if f.cFit or f.cType == "dynamic" or not ns.GroupFitNeeded then return end
+        ns.fitAsked = ns.fitAsked or setmetatable({}, { __mode = "k" })
+        if ns.GroupFitNeeded(f) >= 1 then ns.fitAsked[f] = nil; return end
+        if ns.fitAsked[f] then return end
+        ns.fitAsked[f] = true
+        StaticPopupDialogs["XAYAUI_GROUP_FIT"] = StaticPopupDialogs["XAYAUI_GROUP_FIT"] or {
+            text = "%s", button1 = YES or "Yes", button2 = NO or "No", timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
+            OnAccept = function(self, data) if data and data.cb then data.cb() end end }
+        local dlg = StaticPopup_Show("XAYAUI_GROUP_FIT", "Scale the items to fit?", nil, { cb = function() f.cFit = true; apply() end })
+        if dlg and dlg.SetFrameStrata then dlg:SetFrameStrata("TOOLTIP") end
+    end
     g.args.width = { type = "range", name = "Width", order = 3.05, min = 1, max = 1500, step = 1, hidden = function() return not setSize() end,
-        get = function() return f.cW or 1 end, set = function(_, v) f.cW = math.max(1, v); apply() end }
+        get = function() return f.cW or 1 end, set = function(_, v) f.cW = math.max(1, v); apply(); askFit() end }
     g.args.height = { type = "range", name = "Height", order = 3.06, min = 1, max = 1500, step = 1, hidden = function() return not setSize() end,
-        get = function() return f.cH or 1 end, set = function(_, v) f.cH = math.max(1, v); apply() end }
+        get = function() return f.cH or 1 end, set = function(_, v) f.cH = math.max(1, v); apply(); askFit() end }
+    g.args.fit = { type = "toggle", name = "Scale items to fit the box", order = 3.065, width = "full",
+        hidden = function() return not setSize() or isDyn() end,
+        desc = "Shrinks everything in this group (never enlarges it) so its displays fit inside the width and height above. The box keeps its size; the saved X / Y and sizes of the displays do not change.",
+        get = function() return f.cFit and true or false end, set = function(_, v) f.cFit = v and true or nil; apply() end }
     g.args.clip = { type = "toggle", name = "Clip (hide anything outside the box)", order = 3.07, width = "full", hidden = function() return not setSize() end,
         get = function() return f.cClip and true or false end, set = function(_, v) f.cClip = v and true or nil; apply() end }
     -- Border and background (G5 "border follows", G11 #372 "a property for group display: background (puts an assigned color /

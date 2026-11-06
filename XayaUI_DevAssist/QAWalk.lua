@@ -115,6 +115,8 @@ local ACC = { 0.55, 0.35, 0.95 }
 local function Btn(parent, label, w, onClick)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     b:SetSize(w or 90, 22); b:SetText(label)
+    local cns = rawget(_G, "XayaUI_NS")
+    if cns and cns.FlatButton then cns.FlatButton(b) end   -- (#286: XayaUI's flat look)
     b:SetScript("OnClick", onClick)
     return b
 end

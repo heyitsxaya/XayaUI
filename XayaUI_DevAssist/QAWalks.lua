@@ -46,7 +46,8 @@ local function RemoveTestGroup()
     local list = {}
     for _, r in ipairs(ns.rules or {}) do if r.folder == f.id then list[#list + 1] = r end end
     if ns.SetPreview then ns.SetPreview(list, "visual", false) end
-    if ns.DeleteFolderAllById then ns.DeleteFolderAllById(f.id) end
+    if ns.LoadOptions then ns.LoadOptions() end
+    if ns.OptionsApi and ns.OptionsApi.DeleteFolderAll then ns.OptionsApi.DeleteFolderAll(f.id) end
     if ns.RefreshAllVisuals then pcall(ns.RefreshAllVisuals) end
 end
 local function Cleanup()
@@ -110,7 +111,7 @@ QA.Register("reskin-switches", { title = "Blizzard UI Reskin: All reskins and ea
 } })
 
 -- E2a / E2g / E2h: the Shopping List ---------------------------------------------------------------------------------------------
-local function Shop() local ns = NS(); return ns and ns.Shop end
+local function Shop() local ns = NS(); return ns and ns.Service and ns.Service("shoppingList") end   -- (QoL provides it; nil while QoL is off)
 QA.Register("shopping-list", { title = "Shopping List: panel, stop-tracking question, diamond", qa = "E2a, E2g, E2h", order = 121, steps = {
     { text = "Press |cffffd100Do it for me|r: the Shopping List is switched on and its panel opens.\n\n|cffffd100Expect:|r a movable panel \"Shopping List\" with Missing on your gear, To buy, and your tracked recipes.",
         setup = function() local S = Shop(); if not S then error("XayaUI QoL is off") end; local c = S.Cfg(); c.enabled, c.panel = true, true; S.Apply() end,
