@@ -37,7 +37,7 @@ end
 if MODE == "all" then
   check("a top tab named Blizzard UI Reskin, after Bonus Features", tab ~= nil and tab.name == "Blizzard UI Reskin" and built.args.bonus and tab.order > built.args.bonus.order,
     tab and tab.name)
-  -- (QoL 0.7.25: the Shopping List page joined the tab; Xaya 2026-11-05: "Will apply in the future to: shopping list")
+  -- (QoL 0.7.29: the Shopping List page joined the tab; Xaya 2026-11-05: "Will apply in the future to: shopping list")
   -- (S1 #48: "All reskins", the tab's own switch, is the first row; tests/reskin_tab_switch_run.py checks it works)
   check("  ...its rows: All reskins, then Character Pane, Chat Panel, Esc Menu, Shopping List (in name order)", names(tab) == "All reskins | Character Pane | Chat Panel | Esc Menu | Shopping List", names(tab))
   check("  ...each page is the real one (its switch is the tick box on its row)", tab.args.chatpanel and tab.args.chatpanel.args.layout and tab.args.charreskin.xuiSwitch

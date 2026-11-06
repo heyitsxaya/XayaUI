@@ -845,7 +845,7 @@ function ns.BuildShoppingListPage(Notify)
     end
     for i, slot in ipairs(SLOT_KEYS) do args["def" .. slot] = DefInput("ench:" .. slot, 10 + i, "Enchant: " .. (CM.SlotLabel(slot) == "Finger 1" and "Rings" or CM.SlotLabel(slot))) end
     args.defGem = DefInput("gem", 20, "Gem")
-    -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.25, S1 #48: "individual toggles for
+    -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.29, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
     local switch = { type = "toggle", name = "Shopping List", desc = "Turns the shopping list on. While it is off nothing is created or read. Greyed while All reskins (the top row of this tab) is off.",
         disabled = function() return not ns.ReskinTabOn() end,

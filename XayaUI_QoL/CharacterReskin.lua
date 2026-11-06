@@ -51,6 +51,13 @@ local function Cfg()
     if not CueRulesDB then return nil end
     local c = CueRulesDB.characterReskin
     if type(c) ~= "table" then c = {}; CueRulesDB.characterReskin = c end
+    -- (QoL 0.7.27) once per install: QoL 0.7.21-0.7.23 saved their default extra width, 240, into the settings, so the 0.7.24 default
+    -- (42: 380 / 582) never reached an install that had run them (Xaya 2026-11-06: "surely this isn't 380px?", REQUEST-LOG #58-#59;
+    -- her answer: a saved 240, the old default, becomes 42 once; any other saved number stays; a 240 picked after this stays too)
+    if c.widePxTo42 == nil then
+        if tonumber(c.widePx) == 240 then c.widePx = 42 end
+        c.widePxTo42 = true
+    end
     for k, v in pairs(DEFAULTS) do
         if type(v) == "boolean" then
             if c[k] == nil then c[k] = v end
@@ -928,7 +935,7 @@ end
 -- On / off
 -------------------------------------------------------------------------------
 local hooked = false
--- on = its own switch AND the Blizzard UI Reskin tab's switch (QoL 0.7.25, S1 #48: off there turns every reskin off)
+-- on = its own switch AND the Blizzard UI Reskin tab's switch (QoL 0.7.29, S1 #48: off there turns every reskin off)
 local function On(c) return c and c.enabled and ns.ReskinTabOn() and true or false end
 Active = function() local c = Cfg(); return On(c) and not diag.failed end
 function ns.CharReskin_Active() return Active() == true end
@@ -1055,7 +1062,7 @@ function ns.BuildCharReskinPage(Notify)
             disabled = disabled, get = function() return C()[key] end,
             set = function(_, v) local lim = LIMITS[key]; C()[key] = math.max(lim[1], math.min(lim[2], tonumber(v) or DEFAULTS[key])); Changed() end }
     end
-    -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.25, S1 #48: "individual toggles for
+    -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.29, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
     local switch = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends). Greyed while All reskins (the top row of this tab) is off.")
     switch.disabled = function() return not ns.ReskinTabOn() end
