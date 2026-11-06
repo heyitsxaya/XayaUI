@@ -4,7 +4,7 @@ f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 d32239bcb673463ab874e80d47fae504  LICENSE
 d4295158aa9bf82a5578d135f8a69810  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
-410cc1e26e183b9410bf509ed6e97752  ROADMAP.md
+b3900ed8d5bad014133539902efadd7e  ROADMAP.md
 f25f0108f6fbee67e9948a3789ca22d0  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 b8469358db525f5914d63a8f104612c0  USER-GUIDE.md
@@ -568,6 +568,10 @@ f2392efc4795cf87f14f959076d53174  docs/reference/spells/PRIEST.md
 53f985e580da756189083057adc801a6  docs/reference/spells/WARRIOR.md
 698743cb103884e952cacf7c8b11adeb  docs/reference/spells/other-spells.md
 eaa8da10b5a8d76dce1fdfeeef149d63  docs/reference/spells/spells.json
+2a56f241169d44424bf7782d09e31f7a  roadmap-features/layout-profiles/README.md
+dd2c6d6bd9d39e808a7e63ce65adfbd5  roadmap-features/layout-profiles/XayaUI/Layouts.lua
+8c3487f40f3672ba62ec46d399999982  roadmap-features/layout-profiles/XayaUI_Options/LayoutsPage.lua
+d1b9e2cd9f67d8fbfc4e1f8d74e18416  roadmap-features/layout-profiles/tests/README.md
 7f9f4549410ba8da5e6fb9e9cb573be0  shelved/Bars.lua
 5857b882061b2df7a8d4fb33945efc80  shelved/CountSupport.lua
 ba241e46458e8e4296563689c7708a51  shelved/CursorReminders.lua

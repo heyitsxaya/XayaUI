@@ -1,0 +1,13 @@
+-------------------------------------------------------------------------------
+-- RM-LAYOUTS settings page (roadmap scaffold, outline only: comments, no code that runs). See ../README.md.
+-------------------------------------------------------------------------------
+-- Where: a node in the left pane (the Options style rule: a feature is a node, its parts are child nodes, a part's sections are tabs).
+-- The name of the node waits on question 1 ("Layout profiles" or "Layouts").
+--
+-- Proposed contents:
+--   - the list of layouts, in the order that decides which wins (question 3), with the one in use marked;
+--   - per layout: its name, its load conditions (the same controls as a group's Load tab), Apply now, Save current places into it,
+--     Delete;
+--   - "Save as layout" (new layout from where everything is now);
+--   - Export / Import of one layout (question 7).
+-- Nothing here is built until Xaya answers the README's questions (V16: propose and confirm).

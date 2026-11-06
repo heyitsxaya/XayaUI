@@ -1,0 +1,22 @@
+-------------------------------------------------------------------------------
+-- RM-LAYOUTS (roadmap scaffold, outline only: comments, no code that runs). Xaya 2026-11-06: "layout profiles (remembering full
+-- positions) with their own load conditions to support multi-spec display needs". See ../README.md for the open questions.
+-------------------------------------------------------------------------------
+-- Saved data (proposal):
+--   CueRulesDB.layouts = {
+--     { name = "Healing", load = { <the same fields as a group's load conditions> },
+--       rules   = { [<stable rule id>] = { x, y, anchor, point, snap } },
+--       folders = { [<folder id>]      = { cX, cY, cRel, cPoint, cRelPoint, cFrame, cAnchorTo } } },
+--     ...
+--   }
+--   CueRulesDB.layoutActive = <index or name>
+--
+-- Functions (proposal):
+--   ns.LayoutCapture(name)      -- copy every display's and group's place into a layout (the P5 draft's TakeDraft, kept by name)
+--   ns.LayoutApply(layout)      -- put every place back (the P5 draft's Restore), then RefreshAllVisuals once
+--   ns.LayoutChoose()           -- run on the load engine's "conditions changed" (spec, zone, instance...): the matching layout
+--                               -- wins (question 3); none matches: question 4
+--   ns.LayoutSaveActive()       -- what the mover view's Save does to the layout in use (question 5)
+--
+-- Needs first: a stable ID on every rule (README "Prerequisite").
+-- V14 (off costs nothing): with no layout saved, nothing is registered and no event is watched.
