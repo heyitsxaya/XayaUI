@@ -550,6 +550,8 @@ f2ab2c6149d77a1489dc842a2fb341fe  debug-log/2026-11-06-2228-chat-whisper-tab-lis
 db8f1a60c45274fe25e884a7a426aa50  docs/SESSION-START-SUMMARY.md
 3f06a5b578774bf7f0e295ebd991c86b  docs/USER-GUIDE.md
 06bc780dc6fe6cd89117f5b4e81bcb26  docs/WHATS-NEW.md
+04745f953642a5676c789f474d06f995  docs/design/DISPLAY-RULES.md
+84fad70d7c65c3b624adb1b235ef2c70  docs/design/DISPLAY-RULINGS.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -581,7 +583,7 @@ dfcbabf9d31c1dd77c47bb51963267db  docs/process/QUESTIONS-engine-session.md
 d142966e66f8d7ba8331b3f76f14f5d5  docs/process/REQUEST-LOG-session-014bN6tTRFsCmBvVCUDVtrds.md
 464423c7fb4d67b104141acdce9d4ea3  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-5205539f75d998b9c5b12199a1827317  docs/process/REQUEST-LOG.md
+208c63c190cc89d0519d1b5c584b4a38  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 fc9ae6bece5db2731de3bf3b926c8c0c  docs/process/VERIFICATION.md
 a0e830eb30bd5b86ec89c71472e8bdb9  docs/process/qa-open-bugs.json
