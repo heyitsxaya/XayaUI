@@ -1174,40 +1174,9 @@ function ns.RefreshGroupTags()
 end
 function ns.GroupTagFor(fid) return groupTags[fid] end   -- (tests)
 
--- /xui debug groups: what each group holds and where its displays really hang, so "the group setting does nothing" can be told apart from
--- "the display is not attached to the group". Read-only.
-function ns.ProbeGroups()
-    ns.Print("group probe: every group with displays, its settings, and each display's attachment")
-    local lines = 0
-    for _, f in ipairs(ns.folders or {}) do
-        local mine = {}
-        for _, r in ipairs(ns.rules or {}) do
-            if r.folder == f.id and r.visual and r.visual.enabled then mine[#mine + 1] = r end
-        end
-        if #mine > 0 then
-            local c = containers[f.id]
-            ns.Print(("|cffffd100%s|r  type=%s  W/H=%s/%s  scale=%s  alpha=%s  strata=%s  level=%s  rel=%s  X/Y=%s/%s  clip=%s  container=%s"):format(
-                tostring(f.name), f.cType or "static", tostring(f.cW), tostring(f.cH), tostring(f.cScale), tostring(f.cAlpha),
-                tostring(f.cStrata), tostring(f.cLevel), tostring(f.cRel), tostring(f.cX), tostring(f.cY), tostring(f.cClip),
-                c and ("%dx%d scale %.2f"):format(c:GetWidth(), c:GetHeight(), c:GetScale()) or "not created yet"))
-            for _, r in ipairs(mine) do
-                if lines >= 60 then ns.Print("  ... (stopped at 60 lines)") return end
-                lines = lines + 1
-                local fr = frames[r]
-                if fr then
-                    local par = fr:GetParent()
-                    local dyn = DynAncestor(r.folder)
-                    ns.Print(("  %s: attached to group container=%s  effAlpha=%.2f  effScale=%.2f  strata=%s  shown=%s  dynamicLayout=%s%s"):format(
-                        tostring(r.name or "?"), tostring(par == c), fr:GetEffectiveAlpha(), fr:GetEffectiveScale(), fr:GetFrameStrata(),
-                        tostring(fr:IsShown()), dyn and tostring(dyn.name) or "no",
-                        r.parentUid and "  (cue/outcome: follows its parent's group)" or ""))
-                else
-                    ns.Print(("  %s: no frame built yet"):format(tostring(r.name or "?")))
-                end
-            end
-        end
-    end
-end
+-- /xui debug groups moved to XayaUI Dev Assist (core 0.6.56; REQUEST-LOG #81, XayaUI_DevAssist/CoreDebug.lua). It reads the frames
+-- through this (read-only; nothing runs until it is typed).
+function ns.VisualProbeState() return frames, containers, DynAncestor end
 
 local function SnapMode() return (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.snapMode) or "free" end
 
@@ -2091,7 +2060,7 @@ local function FxOnUpdate(self, elapsed)
     if not ok then   -- a failing effect stops itself instead of erroring every frame
         self.fxRule = nil
         self:SetScript("OnUpdate", nil)
-        if ns.CaptureError then pcall(ns.CaptureError, "XayaUI display effect: " .. tostring(err)) end
+        if ns.CaptureError then pcall(ns.CaptureError, "XayaUI display effect: " .. tostring(err), nil, "XUI-E012") end
     end
 end
 local function SetFxRule(fr, rule)
@@ -2649,7 +2618,7 @@ function ns.RefreshAllVisuals()
             if not ok and not refreshErrSeen[r] then
                 refreshErrSeen[r] = true
                 if ns.Print then ns.Print("display of '" .. tostring(r.name) .. "' could not be refreshed: " .. tostring(err)) end
-                if ns.CaptureError then pcall(ns.CaptureError, "XayaUI display refresh: " .. tostring(err)) end
+                if ns.CaptureError then pcall(ns.CaptureError, "XayaUI display refresh: " .. tostring(err), nil, "XUI-E012") end
             end
         end
     end

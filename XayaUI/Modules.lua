@@ -129,12 +129,45 @@ function ns.RunDebugCommand(cmd, arg)
 end
 function ns.DebugCommandHelp() return debugHelp end
 
+-- 2c. Words added to a command another file owns (core 0.6.56; Xaya 2026-11-06, REQUEST-LOG #81: developer tools move to XayaUI Dev
+-- Assist). slash = the owner's name for its command ("chat" for /xui chat, "xuiskin", "xuiengine"); names = one word or a list.
+-- The owner asks ns.RunSubcommand before its own "unknown word" answer, so a word nobody registered does not exist. Dev Assist is the
+-- only one that registers words today; without it these lists are empty and cost nothing.
+local subs, subHelp = {}, {}
+function ns.RegisterSubcommand(slash, names, fn, help)
+    if type(slash) ~= "string" or type(fn) ~= "function" then return end
+    if type(names) == "string" then names = { names } end
+    subs[slash] = subs[slash] or {}
+    for _, n in ipairs(names) do subs[slash][tostring(n):lower()] = fn end
+    if type(help) == "string" and help ~= "" then
+        subHelp[slash] = subHelp[slash] or {}
+        table.insert(subHelp[slash], help)
+    end
+end
+-- true when a registered word took it
+function ns.RunSubcommand(slash, word, arg)
+    local fn = subs[slash] and subs[slash][tostring(word or ""):lower()]
+    if not fn then return false end
+    Call(fn, arg or "")
+    return true
+end
+-- "" when nothing is registered; else " Also: " and each help line after cmd (e.g. "/xuiskin "), joined with "; ", and "."
+function ns.SubcommandList(slash, cmd)
+    local h = subHelp[slash]
+    if not h or #h == 0 then return "" end
+    local t = {}
+    for i, line in ipairs(h) do t[i] = (cmd or "") .. line end
+    return " Also: " .. table.concat(t, "; ") .. "."
+end
+function ns.SubcommandHelp(slash) return subHelp[slash] or {} end
+
 -------------------------------------------------------------------------------
 -- 3. Which addon owns what. Only used for messages and the Addon Info status list; nothing here is called.
 -------------------------------------------------------------------------------
 ns.MODULES = {
-    { addon = "XayaUI_Chat",    title = "XayaUI Chat",            commands = { "chat", "panel", "privacy" }, debug = { "chatprobe" } },
-    { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor" }, debug = { "widthprobe" } },
+    -- (core 0.6.56: chatprobe and widthprobe are XayaUI Dev Assist's now, REQUEST-LOG #81; without it they do not exist)
+    { addon = "XayaUI_Chat",    title = "XayaUI Chat",            commands = { "chat", "panel", "privacy" } },
+    { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor" } },
     { addon = "XayaUI_Bonus",   title = "XayaUI Bonus Features",  commands = { "notes", "notepad", "note", "data" } },
     { addon = "XayaUI_Reskin",  title = "XayaUI Blizzard Reskin", commands = {} },
     { addon = "XayaUI_Options", title = "XayaUI Options",         commands = {} },
@@ -347,7 +380,6 @@ function ns.EditFolder(f) if f and ns.LoadOptions() and ns.Options.EditFolder th
 -- module = "chat" | "qol" | "bonus" | "reskin" | "core"; key = the page registered with ns.RegisterSettingsPage; sub = a tab inside it
 -- ... = the path below the page: a part (left-pane child node) and/or a tab, e.g. ("chat", "chatpanel", "bar", "tab_blocksHdr")
 function ns.OpenSettingsPage(module, key, ...) if ns.LoadOptions() then ns.Options.OpenPage(module, key, ...) end end
-function ns.IconReport() if ns.LoadOptions() and ns.Options.IconReport then ns.Options.IconReport() end end
 function ns.IsOptionsOpen() return ns.Options and ns.Options.IsOpen and ns.Options.IsOpen() or false end
 
 -- The game's own Options > AddOns list gets an entry that opens the real window, and the addon compartment (the minimap "addons"
@@ -363,7 +395,7 @@ local function RegisterBlizzardPanel()
     sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
     sub:SetWidth(560)
     sub:SetJustifyH("LEFT")
-    sub:SetText("Sound cues and on-screen alerts driven by rules: buff, cooldown, talent, and conditions.\nSlash commands: /xui (or /xayaui)  |  /xui debug status  |  /xui debug probe <spellID>  |  /xui unlock")
+    sub:SetText("Sound cues and on-screen alerts driven by rules: buff, cooldown, talent, and conditions.\nSlash commands: /xui (or /xayaui)  |  /xui status  |  /xui report  |  /xui unlock")
     local btn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     btn:SetSize(200, 28)
     btn:SetPoint("TOPLEFT", sub, "BOTTOMLEFT", 0, -20)
@@ -384,22 +416,19 @@ end
 Call(RegisterBlizzardPanel)
 function XayaUI_OnCompartmentClick() ns.ToggleUI() end
 
--- /xuiskin [pad N | alpha X]: the settings window's flat look (read by XayaUI_Options when the window opens)
+-- /xuiskin: the settings window's flat look on or off (read by XayaUI_Options when the window opens). core 0.6.56 (Xaya 2026-11-06,
+-- REQUEST-LOG #81: "move pad and alpha to dev"): "/xuiskin pad N" and "/xuiskin alpha X" are XayaUI Dev Assist's (registered with
+-- ns.RegisterSubcommand("xuiskin", ...), XayaUI_DevAssist/CoreDebug.lua); without it they do not exist and the command says what it does.
 SLASH_XUISKIN1 = "/xuiskin"
 if type(SlashCmdList) == "table" then SlashCmdList["XUISKIN"] = function(msg)
     if not CueRulesDB then return end
     CueRulesDB.ui = CueRulesDB.ui or {}
-    local pd = tostring(msg or ""):match("pad%s+(%d+)")
-    if pd then
-        CueRulesDB.ui.skinPad = math.max(0, math.min(30, tonumber(pd)))
-        print("|cffffd100XayaUI|r right-pane gutter " .. CueRulesDB.ui.skinPad .. "px (reopen the window to apply).")
-        return
-    end
-    local v = tostring(msg or ""):match("alpha%s+([%d%.]+)")
-    if v then
-        v = math.max(0.1, math.min(1, tonumber(v) or 0.5))
-        CueRulesDB.ui.skinAlpha = v
-        print("|cffffd100XayaUI|r window opacity " .. v .. " (reopen the window to apply).")
+    local word, rest = tostring(msg or ""):lower():match("^%s*(%S*)%s*(.-)%s*$")
+    if word ~= "" then
+        if not ns.RunSubcommand("xuiskin", word, rest) then
+            print("|cffffd100XayaUI|r /xuiskin switches the settings window's skin on or off (type it without anything after it)."
+                .. ns.SubcommandList("xuiskin", "/xuiskin "))
+        end
         return
     end
     CueRulesDB.ui.skinOff = (not CueRulesDB.ui.skinOff) or nil
@@ -415,6 +444,9 @@ end
 local services = {}
 function ns.Provide(name, obj) if type(name) == "string" and type(obj) == "table" then services[name] = obj end end
 function ns.Service(name) return services[name] end
+-- Is XayaUI Dev Assist (the separate developer addon, folder XayaUI_DevAssist) loaded? It sets ns.devAssistLoaded when its first file
+-- runs (core 0.6.56; REQUEST-LOG #81: the developer tools are there, and the Aura ID "via ..." text shows only while it is on).
+function ns.DevAssistOn() return ns.devAssistLoaded == true end
 
 -------------------------------------------------------------------------------
 -- 9. The world map report: /xui debug map (core 0.6.49; REQUEST-LOG #30, Xaya 2026-11-05: "map eclipses full screen" [the Silvermoon
@@ -441,53 +473,6 @@ function ns.MapTrace(name)
     t.last = GetTime and GetTime() or 0
 end
 function ns.MapTraceCounts() return mapTrace end   -- (tests)
-local function MapLines()
-    local function S(v)
-        if v == nil then return "?" end
-        if issecretvalue and issecretvalue(v) then return "?" end
-        if type(v) == "number" then return ("%.4g"):format(v) end
-        return tostring(v)
-    end
-    local function Try(fn, ...) if type(fn) ~= "function" then return nil end; local ok, a, b = pcall(fn, ...); if ok then return a, b end end
-    local function CV(name) local get = C_CVar and C_CVar.GetCVar or GetCVar; return S(Try(get, name)) end
-    local out = {}
-    local m = rawget(_G, "WorldMapFrame")
-    if type(m) ~= "table" then
-        out[#out + 1] = "world map: not loaded yet"
-    else
-        local w, h = Try(m.GetSize, m)
-        local maxd = Try(m.IsMaximized, m)
-        out[#out + 1] = ("world map: shown %s, maximized %s, size %s x %s, scale %s, effective scale %s"):format(S(Try(m.IsShown, m)),
-            S(maxd), S(w), S(h), S(Try(m.GetScale, m)), S(Try(m.GetEffectiveScale, m)))
-    end
-    local rule = C_GameRules and Enum and Enum.GameRule and Enum.GameRule.MaximizeWorldMapDisabled
-    out[#out + 1] = ("CVars: miniWorldMap %s (1 = opens small, 0 = opens full screen), questLogOpen %s, useUiScale %s, uiScale %s; game rule MaximizeWorldMapDisabled %s"):format(
-        CV("miniWorldMap"), CV("questLogOpen"), CV("useUiScale"), CV("uiScale"), rule and S(Try(C_GameRules.IsGameRuleActive, rule)) or "?")
-    local u = rawget(_G, "UIParent")
-    if type(u) == "table" then
-        local w, h = Try(u.GetSize, u)
-        out[#out + 1] = ("UIParent: shown %s, size %s x %s, scale %s, effective scale %s"):format(S(Try(u.IsShown, u)), S(w), S(h),
-            S(Try(u.GetScale, u)), S(Try(u.GetEffectiveScale, u)))
-    end
-    local slots = {}
-    for _, k in ipairs({ "fullscreen", "left", "center", "right", "doublewide" }) do
-        local f = Try(rawget(_G, "GetUIPanel"), k)
-        local n = type(f) == "table" and Try(f.GetName, f) or nil
-        slots[#slots + 1] = k .. " " .. (f and S(n or "(unnamed)") or "-")
-    end
-    out[#out + 1] = "Blizzard's panel slots: " .. table.concat(slots, ", ")
-    if #mapOrder == 0 then
-        out[#out + 1] = "XayaUI calls into Blizzard's panel layout since login: none"
-    else
-        local now = GetTime and GetTime() or 0
-        for _, name in ipairs(mapOrder) do
-            local t = mapTrace[name]
-            out[#out + 1] = ("XayaUI since login: %s x%d (last %ds ago)"):format(name, t.n, math.floor(now - (t.last or now) + 0.5))
-        end
-    end
-    return out
-end
-ns.MapReportLines = MapLines   -- (tests)
-function ns.MapReport()
-    for _, l in ipairs(MapLines()) do ns.Print("map: " .. l) end
-end
+function ns.MapTraceOrder() return mapOrder end
+-- (core 0.6.56; REQUEST-LOG #81, Xaya 2026-11-06 "Move all of them": the report itself, /xui debug map, is in XayaUI Dev Assist,
+-- XayaUI_DevAssist/CoreDebug.lua; the counter above stays, as XayaUI's own calls are counted whether or not Dev Assist is there)

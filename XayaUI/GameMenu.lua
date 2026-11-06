@@ -309,7 +309,7 @@ local function Hook()
         -- what the last build left when the switch went off with the menu open
         if not live then if leftover then pcall(TidyUp, menu) end; return end
         local ok, err = pcall(Install, menu)
-        if not ok then diag.lastError = tostring(err); if ns.CaptureError then ns.CaptureError(err) end end
+        if not ok then diag.lastError = tostring(err); if ns.CaptureError then ns.CaptureError(err, nil, "XUI-E014") end end
     end
     if type(GameMenuFrame.InitButtons) == "function" then
         hooksecurefunc(GameMenuFrame, "InitButtons", run)
@@ -345,14 +345,8 @@ local function Disable()
 end
 ns.WhenReady(function() if Enabled() then Enable() end end)
 function ns.GameMenu_Live() return live end   -- (tests)
-
-function ns.GameMenu_Diagnostics()
-    ns.Print(("game menu button: enabled=%s style=%s hooked=%s path=%s anchor=%s opens=%d paints=%d lastError=%s AddButton=%s InitButtons=%s"):format(
-        tostring(Enabled()), Style(), tostring(diag.hooked), diag.path, diag.anchor, diag.opens, diag.paints, tostring(diag.lastError),
-        tostring(GameMenuFrame and type(GameMenuFrame.AddButton) == "function"),
-        tostring(GameMenuFrame and type(GameMenuFrame.InitButtons) == "function")))
-    ns.Print("game menu sizes: " .. tostring(diag.sizes) .. "; height fit: " .. tostring(diag.fit) .. "; " .. tostring(diag.pad))
-end
+-- /xui debug gamemenu moved to XayaUI Dev Assist (core 0.6.56; REQUEST-LOG #81, XayaUI_DevAssist/CoreDebug.lua): it reads this
+function ns.GameMenu_DiagState() return diag, Enabled(), Style() end
 
 function ns.GameMenu_Repaint() if btn and btn:IsShown() then Paint() end end
 
@@ -366,4 +360,4 @@ end
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
-ns.RegisterDebugCommand("gamemenu", function() ns.GameMenu_Diagnostics() end, "gamemenu (the ESC menu button and skin)")   -- (core 0.6.50: under /xui debug)
+-- (/xui debug gamemenu: XayaUI Dev Assist since core 0.6.56; nothing else of this file plugs in by command)

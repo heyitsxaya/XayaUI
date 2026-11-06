@@ -78,14 +78,8 @@ else
     boot:SetScript("OnEvent", function(self) self:UnregisterAllEvents(); TT.Sync() end)
 end
 
-SLASH_XUITT1 = "/xuitt"
-SlashCmdList.XUITT = function(msg)
-    msg = (msg or ""):lower()
-    if msg:find("probe") then TT.Probe()
-    elseif msg:find("^%s*aura") then TT.AuraReport(tonumber(msg:match("aura%s+(%d+)")))
-    elseif msg:find("lines") then TT.DumpLines()
-    else print("XayaUI Tooltips: /xuitt aura [spellID] (what each aura source says), /xuitt probe (point at a unit first), /xuitt lines (raw lines of the tooltip under the mouse)") end
-end
+-- /xuitt (aura, probe, lines: developer reports) is XayaUI Dev Assist's since Bonus 0.6.18 (REQUEST-LOG #81, Xaya 2026-11-06: "Move all
+-- of them"; XayaUI_DevAssist/CoreDebug.lua). Without Dev Assist the command does not exist.
 
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.

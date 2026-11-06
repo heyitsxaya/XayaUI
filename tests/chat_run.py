@@ -626,6 +626,8 @@ for k in list(W.printed.keys()): W.printed[k] = None
 run("C.Command('status')")
 check("/xui chat status prints", any(v for v in W.printed.values() if v))
 # /xui chat indent: read-only report of the space at the left of the text; shows |-codes as typed and never reads protected text
+# (Chat 0.6.20 / Dev Assist 0.7.5, REQUEST-LOG #81: the report is XayaUI Dev Assist's; loaded here as the game would, after XayaUI Chat)
+W.loadDevAssist(W)
 for k in list(W.printed.keys()): W.printed[k] = None
 run("local cf = C.Main(); cf.visibleLines = { { IsShown = function() return true end, GetText = function() return '|cff808080' .. '05:11 |rhello there' end, GetLeft = function() return 41 end } } ; C.Command('indent')")
 out = " ".join(str(v) for v in W.printed.values() if v)
@@ -824,7 +826,7 @@ check("console: the history window has a Console tab button", "Console" in names
 run("C.History_Toggle()")
 
 # ---- chat probe: a secret 'shown' no longer stops the probe (0.6.4: Probe.lua:229) -------------------------------------------
-probe = open(os.path.join(ROOT, "XayaUI_Chat", "Probe.lua")).read()
+probe = open(os.path.join(ROOT, "XayaUI_DevAssist", "ChatProbe.lua")).read()   # (moved from XayaUI_Chat/Probe.lua, Dev Assist 0.7.5)
 check("probe: 'shown' is checked for secret before it is compared", "not secret(shown) and shown == true" in probe)
 
 # ---- #346: the game's clamp-to-screen margin pushed the chat window off the text area at the screen edge ---------------------------

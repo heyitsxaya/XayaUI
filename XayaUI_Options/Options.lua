@@ -1623,7 +1623,7 @@ local function BuildRule(i, rule)
             cdTimeOp = Sel(rule, "cdTimeOp", "Seconds left", 4.6, ns.CMP_OPS and ns.CMP_OPS.values or { any = "Any" }, ns.CMP_OPS and ns.CMP_OPS.order or { "any" },
                 function() Changed(rule); Notify() end,
                 { get = function() return rule.cdTimeOp or "any" end,
-                  desc = "Only true while the cooldown has this much time left. Exact when the game shows it; in combat the duration engine's estimate (/xui debug timing); with no estimate yet the trigger is unknown." }),
+                  desc = "Only true while the cooldown has this much time left. Exact when the game shows it; in combat the duration engine's estimate; with no estimate yet the trigger is unknown." }),
             cdTimeSec = { type = "input", name = "Seconds", order = 4.61, width = "half",
                 hidden = function() return not ns.CooldownUsed(rule) or not rule.cdTimeOp or rule.cdTimeOp == "any" end,
                 get = function() return rule.cdTimeSec ~= nil and tostring(rule.cdTimeSec) or "" end,
@@ -1646,7 +1646,7 @@ local function BuildRule(i, rule)
                 function() Changed(rule); Notify() end,
                 { get = function() return rule.buffTimeOp or "any" end,
                   hidden = function() return not ns.BuffUsed(rule) or rule.buffState ~= "present" end,
-                  desc = "Only true while the buff has this much time left. In combat the time is exact when the game shows it, otherwise the duration engine's estimate (/xui debug timing); with no estimate yet the trigger is unknown and the rule waits." }),
+                  desc = "Only true while the buff has this much time left. In combat the time is exact when the game shows it, otherwise the duration engine's estimate; with no estimate yet the trigger is unknown and the rule waits." }),
             buffTimeSec = { type = "input", name = "Seconds", order = 11.2, width = "half",
                 hidden = function() return not ns.BuffUsed(rule) or rule.buffState ~= "present" or not rule.buffTimeOp or rule.buffTimeOp == "any" end,
                 get = function() return rule.buffTimeSec ~= nil and tostring(rule.buffTimeSec) or "" end,
@@ -3066,7 +3066,7 @@ local function BuildAddonSettings()
                 func = function() Ui().paneW = 0; Ui().paneH = 0; if ns.ApplyPaneSize then ns.ApplyPaneSize() end; Notify() end },
             menuBtnHeader = { type = "header", name = "Menu button (ESC menu)", order = 23.5 },
             gameMenuButton = { type = "toggle", name = "Show a XayaUI button in the Game Menu (ESC menu)", order = 24, width = "full",
-                desc = "Adds a XayaUI entry to the ESC menu that opens this window. Off: the entry is removed the next time the menu opens. Also: /xui debug gamemenu prints diagnostics.",
+                desc = "Adds a XayaUI entry to the ESC menu that opens this window. Off: the entry is removed the next time the menu opens.",
                 get = function() return not (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.hideGameMenuButton) end,
                 set = function(_, v) Ui().hideGameMenuButton = (not v) or nil; if ns.GameMenu_OnOptionChanged then ns.GameMenu_OnOptionChanged() end end },
             gameMenuStyle = { type = "select", name = "Menu button style", order = 24.1, width = "double",
@@ -3123,12 +3123,22 @@ local function BuildAddonSettings()
             talMsg = { type = "description", order = 30.3, width = "full", fontSize = "medium",
                 name = function() return ns.OptionsApi.talentScanMsg or "" end,
                 hidden = function() return not ns.OptionsApi.talentScanMsg end },
+            -- Combat Tracking Setup (Options 0.6.55; Xaya 2026-11-06, REQUEST-LOG #81: "Rule Creation"; it was on Settings > Debugging)
+            auraSetup = { type = "group", inline = true, name = "Combat Tracking Setup", order = 40, args = {
+                asText = { type = "description", order = 1, fontSize = "medium",
+                    name = "Scans YOUR class, spec and talents, reads the game's own spell text, and learns real buff durations from your own casts out of combat. Works for every class. Runs once per spec, and any time you change talents or gear." },
+                asOpen = { type = "execute", name = "Open Combat Tracking Setup", order = 2, width = "double",
+                    func = function() if ns.AuraSetup_Open then ns.AuraSetup_Open() else ns.Print("combat tracking setup is not loaded") end end },
+                asPresence = { type = "toggle", name = "Estimate buffs the game hides in combat (from your own casts)", order = 3, width = "full",
+                    get = function() return ns.AuraModel and ns.AuraModel.PresenceEnabled() end,
+                    set = function(_, v) if ns.AuraModel then ns.AuraModel.SetSetting("presence", v and true or false) end end },
+            } },
         } },
         theme = { type = "group", name = "Theme", order = 1.5, args = ns.Theme and ns.Theme.BuildArgs(Repaint) or {} },
         debug = { type = "group", name = "Debugging", order = 2, args = {
             debugHeader = { type = "header", name = "Debugging", order = 10 },
             advancedDebug = { type = "toggle", name = "Advanced Debugging (recommended)", order = 11, width = "full",
-                desc = "Records automatically what is needed to find a problem, so you never have to type a debug command or remember a chat line. Choose below what is recorded: each kind of line has its own switch and says what it costs. The record is saved with your settings (written at /reload or logout); \"What to send\" below says which file to send and where it is. Also sends XayaUI's messages to the console window instead of chat (change that below).",
+                desc = "On (default): XayaUI records its own errors and warnings by itself, each with a code, so you never have to type a debug command or remember a chat line. It does work only when an error happens: nothing is recorded or run while everything works. The debug report below (/xui report) shows them for a screenshot and as a string to send to Xaya. Also sends XayaUI's messages to the console window instead of chat (change that below). Off: nothing is recorded.",
                 get = function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug and true or false end,
                 set = function(_, v) Ui().advancedDebug = v and true or false; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end; Notify() end },
             -- the options Advanced Debugging brings (XayaUI/DebugRecord.lua)
@@ -3142,88 +3152,24 @@ local function BuildAddonSettings()
                 hidden = function() return not (ns.MessageDest and ns.MessageDest() == "console") end,
                 get = function() return Ui().consoleAutoOpen ~= false end,
                 set = function(_, v) if v then Ui().consoleAutoOpen = nil else Ui().consoleAutoOpen = false end end },
-            recordOn = { type = "toggle", name = "Keep the debug record", order = 11.3, width = "full",
-                desc = "On (default with Advanced Debugging): the lines chosen below are kept. Off: nothing is recorded (messages still go where chosen above).",
-                hidden = function() return not Ui().advancedDebug end,
-                get = function() return Ui().recordOff ~= true end,
-                set = function(_, v) Ui().recordOff = (not v) and true or nil; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end; Notify() end },
-            recWhat = { type = "group", inline = true, name = "What to record", order = 11.4,
-                hidden = function() return not (Ui().advancedDebug and Ui().recordOff ~= true) end,
-                args = (function()
-                    local a = {
-                        recIntro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                            name = "Each switch adds one kind of line; one that is off costs nothing. XayaUI's own errors, combat start and end, and any action the game blocked are always kept. The cost is in grey." },
-                        presetLight = { type = "execute", name = "Light set", order = 90, width = "normal",
-                            desc = "Only rules firing and clearing, game state and messages: the cheapest record that still says what happened.",
-                            func = function() if ns.SetRecPreset then ns.SetRecPreset("light"); ns.DebugSettingsChanged() end; Notify() end },
-                        presetAll = { type = "execute", name = "Everything", order = 91, width = "normal",
-                            desc = "Every kind of line, including trigger detail (for the rules chosen above), displays and performance timing.",
-                            func = function() if ns.SetRecPreset then ns.SetRecPreset("all"); ns.DebugSettingsChanged() end; Notify() end },
-                        presetDefault = { type = "execute", name = "Defaults", order = 92, width = "normal",
-                            func = function() if ns.SetRecPreset then ns.SetRecPreset("default"); ns.DebugSettingsChanged() end; Notify() end },
-                        recordMax = { type = "select", name = "Lines kept", order = 95,
-                            desc = "The newest lines are kept; older ones are dropped and counted. More lines make a bigger saved file.",
-                            values = { [1000] = "1000", [3000] = "3000 (default)", [10000] = "10000 (a bigger file)" }, sorting = { 1000, 3000, 10000 },
-                            get = function() local n = tonumber(Ui().recordMax); return (n == 1000 or n == 10000) and n or 3000 end,
-                            set = function(_, v) v = tonumber(v); Ui().recordMax = (v == 1000 or v == 10000) and v or nil end },
-                        recFocus = { type = "multiselect", name = "Rules for trigger detail", order = 4.5, width = "full", dialogControl = "Dropdown",
-                            desc = "The rules whose every trigger change is recorded (their cues and conditions too). Pick only the rules you are looking into.",
-                            hidden = function() return not (ns.RecCatSetting and ns.RecCatSetting("triggers")) end,
-                            values = function()
-                                local v = {}
-                                for _, r in ipairs(ns.rules or {}) do
-                                    if not r.isCue and not r.parentUid then
-                                        if not r.uid and ns.NewUID then r.uid = ns.NewUID() end
-                                        if r.uid then v[r.uid] = tostring(r.name or "?") end
-                                    end
-                                end
-                                return v
-                            end,
-                            get = function(_, key) local f = Ui().recFocus; return type(f) == "table" and f[key] and true or false end,
-                            set = function(_, key, val)
-                                local u = Ui()
-                                u.recFocus = type(u.recFocus) == "table" and u.recFocus or {}
-                                u.recFocus[key] = val and true or nil
-                                if next(u.recFocus) == nil then u.recFocus = nil end
-                                if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end
-                            end },
-                    }
-                    for i, c in ipairs((ns.DebugRecordInfo and ns.DebugRecordInfo.CATS) or {}) do
-                        local key = c.key
-                        a["cat_" .. key] = { type = "toggle", order = i, width = "full",
-                            name = c.name .. "  |cff888888(" .. c.cost .. ")|r", desc = c.desc,
-                            get = function() return ns.RecCatSetting and ns.RecCatSetting(key) or false end,
-                            set = function(_, v) if ns.SetRecCat then ns.SetRecCat(key, v); ns.DebugSettingsChanged() end; Notify() end }
-                        if key == "triggers" then a.recFocus.order = i + 0.5 end
-                    end
-                    return a
-                end)() },
-            debugProbe = { type = "toggle", name = "Also run the game-data probe (XayaUI Dev Assist)", order = 11.5, width = "full",
-                desc = "The separate XayaUI Dev Assist addon is installed: switch its event probe on together with Advanced Debugging (it records what the game lets addons read, for the run sheet in docs/process). It goes off again with Advanced Debugging if this switched it on.",
-                hidden = function() return not (Ui().advancedDebug and ns.ProbeInstalled and ns.ProbeInstalled()) end,
-                get = function() return Ui().debugProbe ~= false end,
-                set = function(_, v) if v then Ui().debugProbe = nil else Ui().debugProbe = false end; if ns.SyncDebugProbe then ns.SyncDebugProbe() end end },
-            recordInfo = { type = "description", order = 11.6, width = "full", fontSize = "medium",
-                hidden = function() return not Ui().advancedDebug end,
-                name = function()
-                    local n, drop, start = 0, 0, nil
-                    if ns.RecordSummary then n, drop, start = ns.RecordSummary() end
-                    if n == 0 then return "Debug record: empty so far (it fills as you play)." end
-                    return ("Debug record: %d lines since %s%s. It holds rule names, spell IDs and XayaUI's messages; no character name or realm. Messages that name another player are shown but never kept."):format(
-                        n, tostring(start), drop > 0 and (" (" .. drop .. " older lines dropped)") or "")
-                end },
-            recordView = { type = "execute", name = "View the debug record", order = 11.7,
-                hidden = function() return not Ui().advancedDebug end,
-                desc = "Opens the whole record as text you can read and copy: what each kind of line means, the lines (newest at the bottom), and what to send.",
-                func = function() if ns.RecordText and ns.ShowCopyBox then ns.ShowCopyBox("XayaUI debug record", ns.RecordText()) end end },
-            recordClear = { type = "execute", name = "Clear the debug record", order = 11.8,
-                hidden = function() return not Ui().advancedDebug end,
-                confirm = true, confirmText = "Delete every line of the debug record?",
-                func = function() if ns.ClearRecord then ns.ClearRecord() end; Notify() end },
+            -- (Options 0.6.55; REQUEST-LOG #82) the debug report: XayaUI's errors and warnings with their codes (core DebugRecord.lua). The
+            -- detailed record (11 kinds of line, its switches, view and clear) is XayaUI Dev Assist's since core 0.6.56: its settings show
+            -- under "Dev Assist (separate tool)" below while it is loaded.
+            report = { type = "group", inline = true, name = "Debug report", order = 11.3, args = {
+                repText = { type = "description", order = 1, width = "full", fontSize = "medium",
+                    name = function()
+                        local total, kinds, nErr, nWarn = 0, 0, 0, 0
+                        if ns.ErrorCount then total, kinds, nErr, nWarn = ns.ErrorCount() end
+                        return ("XayaUI records its own errors and warnings, each with a code, only when one happens (nothing is recorded or run while everything works). Now: %d error%s and %d warning%s (%d times in all). The debug report shows them for a screenshot, and as one string to copy and send to Xaya. Also: /xui report."):format(
+                            nErr or 0, nErr == 1 and "" or "s", nWarn or 0, nWarn == 1 and "" or "s", total or 0)
+                    end },
+                repOpen = { type = "execute", name = "Open the debug report", order = 2, width = "double",
+                    func = function() if ns.ShowDebugReport then ns.ShowDebugReport() end end },
+            } },
             send = { type = "group", inline = true, name = "What to send", order = 11.9, args = {
                 sendText = { type = "description", order = 1, width = "full", fontSize = "medium",
                     name = "1. Type /reload (or log out): the game writes the files only then.  2. Open the folder below (copy the path, then replace <YOUR ACCOUNT FOLDER> with your account's folder inside WTF\\Account, often a number such as 12345678#1; if there are several, use the one with the newest XayaUI.lua).  3. Send the files below to Xaya. They hold no password, character name, realm or chat text; XayaUI.lua holds your rule names and settings." },
-                sendCore = { type = "input", name = "XayaUI.lua: your rules, settings, saved errors and the debug record  (click, Ctrl+A, Ctrl+C)", order = 2, width = "full",
+                sendCore = { type = "input", name = "XayaUI.lua: your rules, settings, and saved errors and warnings  (click, Ctrl+A, Ctrl+C)", order = 2, width = "full",
                     get = function() return ns.SavedFilePath and ns.SavedFilePath("XayaUI.lua") or "" end,
                     set = function() end },
                 sendDev = { type = "input", order = 3, width = "full",
@@ -3273,15 +3219,6 @@ local function BuildAddonSettings()
                     confirmText = "Clear XayaUI's saved Lua errors?",
                     func = function() if ns.ClearErrorLog then ns.ClearErrorLog() end; Notify() end },
             } },
-            auraSetup = { type = "group", inline = true, name = "Combat Tracking Setup", order = 29, args = {
-                asText = { type = "description", order = 1, fontSize = "medium",
-                    name = "Scans YOUR class, spec and talents, reads the game's own spell text, and learns real buff durations from your own casts out of combat. Works for every class. Runs once per spec, and any time you change talents or gear." },
-                asOpen = { type = "execute", name = "Open Combat Tracking Setup", order = 2, width = "double",
-                    func = function() if ns.AuraSetup_Open then ns.AuraSetup_Open() else ns.Print("combat tracking setup is not loaded") end end },
-                asPresence = { type = "toggle", name = "Estimate buffs the game hides in combat (from your own casts)", order = 3, width = "full",
-                    get = function() return ns.AuraModel and ns.AuraModel.PresenceEnabled() end,
-                    set = function(_, v) if ns.AuraModel then ns.AuraModel.SetSetting("presence", v and true or false) end end },
-            } },
             -- the separate developer addon (XayaUI Dev Assist), reached through its "gameDataProbe" service (Modules.lua contract)
             gameDump = { type = "group", inline = true, name = "Dev Assist (separate tool)", order = 30,
                 hidden = function() local svc = ns.Service and ns.Service("gameDataProbe"); return not (svc and type(svc.Open) == "function") end, args = {
@@ -3294,6 +3231,12 @@ local function BuildAddonSettings()
                         else ns.Print("XayaUI Dev Assist is not loaded. Enable it in the AddOns list, then /reload.") end
                     end },
             } },
+            -- (Options 0.6.55; REQUEST-LOG #81, #82) XayaUI Dev Assist's own settings: the game-data probe switch and the detailed debug
+            -- record. Its code registers them (ns.RegisterSettingsPage("debugging", ...), XayaUI_DevAssist/DevRecord.lua); without it,
+            -- nothing of them exists here.
+            devPages = { type = "group", inline = true, name = "Dev Assist settings", order = 31,
+                hidden = function() return not (ns.DevAssistOn and ns.DevAssistOn()) end,
+                args = ns.BuildSettingsPages and ns.BuildSettingsPages("debugging", Notify) or {} },
         } },
     } }
 end
@@ -5666,7 +5609,7 @@ drag.fail = function(err)
     if dragFrame then dragFrame:Hide(); dragFrame:SetScript("OnUpdate", nil) end
     drag.ClearMarks()
     ns.Print("moving a row failed and was cancelled: " .. tostring(err))
-    if ns.CaptureError then pcall(ns.CaptureError, "XayaUI move: " .. tostring(err), debugstack and debugstack(2) or "") end
+    if ns.CaptureError then pcall(ns.CaptureError, "XayaUI move: " .. tostring(err), debugstack and debugstack(2) or "", "XUI-E013") end
     pcall(Notify)
 end
 local function StopDrag(button)

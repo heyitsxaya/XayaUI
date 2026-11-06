@@ -29,7 +29,9 @@ CharacterMainHandSlot.GetPoint = function(self, i) local p = self.pts[i or 1]; i
 assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)
 local before = #created
-assert(loadfile(__PROBE__))("XayaUI_QoL", ns)
+-- (Dev Assist 0.7.5: the probe moved to XayaUI Dev Assist, REQUEST-LOG #81; it finds XayaUI by its shared namespace)
+XayaUI_NS = ns
+assert(loadfile(__PROBE__))("XayaUI_DevAssist", {})
 check("nothing is created or changed when the file loads", #created == before and CharacterFrame.w == 338 and panelCalls == 0)
 local function said(s) for _, l in ipairs(printed) do if l:find(s, 1, true) then return true end end return false end
 -- refusals
@@ -87,7 +89,7 @@ ns.CharWidthProbe_Run("5")
 check("px is clamped to 40", CharacterFrame.w == 378, CharacterFrame.w)
 ns.CharWidthProbe_Run("off")
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__PROBE__", P("XayaUI_QoL/CharacterWidthProbe.lua")))
+   .replace("__PROBE__", P("XayaUI_DevAssist/CharacterWidthProbe.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))
 sys.exit(1 if fails else 0)

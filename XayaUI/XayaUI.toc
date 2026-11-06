@@ -45,5 +45,4 @@ DebugRecord.lua
 Combat\AuraModel.lua
 Combat\AuraTracker.lua
 Combat\AuraSetup.lua
-Combat\AuraIDProbe.lua
 Combat\AuraDisplay.lua

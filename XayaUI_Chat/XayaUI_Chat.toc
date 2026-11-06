@@ -22,4 +22,3 @@ History.lua
 Sounds.lua
 Options.lua
 Privacy.lua
-Probe.lua

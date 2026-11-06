@@ -51,26 +51,45 @@ function ns.Print(...)
 end
 
 -------------------------------------------------------------------------------
--- Addon Settings > Advanced Debugging: when CueRulesDB.ui.advancedDebug is on, XayaUI's own Lua errors are also
--- printed to the chat window as a system-style message, on top of whatever BugSack / the default UI error frame
--- already does. The previous error handler is chained (never replaced), so other addons are unaffected. Filters
--- on the addon's own folder name in the error text so other addons' errors are not spammed into chat.
+-- XayaUI's own Lua errors (core 0.6.56; REQUEST-LOG #82, Xaya 2026-11-06: the debug record is "only there to catch errors and bugs
+-- that might be expected within a live, user-facing version of the addon. these should have error codes built out, auto detection, and
+-- auto documenting with a simple debug report that someone can directly send to me"). The game's error handler is chained, never
+-- replaced: whatever handler was set before (the game's own error frame, BugSack, another addon's) is still called with the same
+-- message, every time. Only an error raised in a XayaUI file (the file named at the start of the message, else the first file the stack
+-- names: Interface/AddOns/XayaUI*/...) is recorded, with its code (DebugRecord.lua ns.RecordError: XUI-E001 for core, E002 the settings
+-- window, ...). Nothing here runs unless an error happens: no event, no timer, no per-frame work.
+-- With Advanced Debugging on (Settings > Debugging, on by default) the error is also shown where XayaUI's messages go.
 -------------------------------------------------------------------------------
+-- The XayaUI folder an error came from, or nil: the message's own location ("Interface/AddOns/XayaUI_Chat/Core.lua:12: ...") decides;
+-- a message without one (error(msg, 0)) is decided by the first addon file in the stack.
+function ns.ErrorFolder(text, stack)
+    text = tostring(text or "")
+    local loc = text:match("^%s*([^\n]-%.lua):%d+:")
+    if loc then
+        local folder = loc:match("AddOns[/\\](XayaUI[%w_]*)[/\\]")
+        return folder
+    end
+    for path in tostring(stack or ""):gmatch("([^\n%[%]\"']-%.lua)") do
+        local addon = path:match("AddOns[/\\]([%w_%-]+)[/\\]")
+        if addon then return addon:match("^XayaUI[%w_]*$") and addon or nil end
+    end
+    return nil
+end
 do
     local prevHandler = geterrorhandler()
     seterrorhandler(function(msg)
         local text = tostring(msg)
-        if text:find(addonName, 1, true) and ns.CaptureError then   -- kept in the error log for the bug report (Console.lua)
-            local okS, stack = pcall(debugstack, 2, 10, 0)
-            pcall(ns.CaptureError, text, okS and stack or "")
-        end
+        local okS, stack = pcall(debugstack, 2, 12, 0)
+        stack = (okS and type(stack) == "string") and stack or ""
+        local okF, folder = pcall(ns.ErrorFolder, text, stack)
+        folder = okF and folder or nil
+        if folder and ns.RecordError then pcall(ns.RecordError, text, stack, folder) end   -- (DebugRecord.lua; nothing while it is off)
         local ok, on = pcall(function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug end)
-        local mine = ok and on and text:find(addonName, 1, true)
+        local mine = ok and on and folder ~= nil
         -- (core 0.6.50) an error while a command typed in the console window runs (Console.lua ns.ConsoleRun) is that command's:
         -- shown in the console window, Advanced Debugging on or off
         local typed = ns.consoleRunning
         if mine or typed then
-            if mine and ns.RecordLine then pcall(ns.RecordLine, "error", text) end
             -- the same place as XayaUI's messages (DebugRecord.lua): the console window, chat, or both
             local dest = typed and "console" or (ns.MessageDest and ns.MessageDest() or "chat")
             local shown = dest ~= "chat" and ns.ConsoleMessage and pcall(ns.ConsoleMessage, text, true)
@@ -776,40 +795,6 @@ f:SetScript("OnEvent", function(_, event, name)
 end)
 
 -------------------------------------------------------------------------------
--- Seed rules (Xaya's Vengeance DH test set). Usage: /xui debug seed
--------------------------------------------------------------------------------
-function ns.SeedRules()
-    local kit = SOUNDKIT and SOUNDKIT.RAID_WARNING and tostring(SOUNDKIT.RAID_WARNING) or ""
-    local function base(name, spell, buff)
-        local r = ns.NewRule()
-        r.name = name
-        r.spellID, r.buffID = spell, buff
-        r.cdState, r.buffState, r.talentMode = "ready", "missing", "none"
-        r.load.combat = "yes"
-        r.sound.enabled = true
-        r.sound.source, r.sound.value = "kit", kit
-        return r
-    end
-    -- 1) Infernal Strike: FILO talent known, in combat, 2 charges, FILO shield NOT up -> sound + icon glow
-    local a = base("Infernal Strike (FILO)", 189110, 1266619)
-    a.talents, a.talentMode = { { id = 1266497, state = "known" } }, "all"
-    a.visual.enabled, a.visual.kind, a.visual.glow, a.visual.trigger = true, "spellicon", true, "condition"
-    a.visual.w, a.visual.h, a.visual.y, a.visual.additive = 64, 64, 120, false
-    -- 2) Demon Spikes: 2 charges, buff missing, in combat -> repeat 1/s
-    local b = base("Demon Spikes 2 charges", 203720, 203819)
-    b.repeatSec = 1
-    -- 3) Fiery Brand: 2 charges, buff missing, in combat -> repeat 1/s
-    --    buffID 204021 is a PLACEHOLDER: confirm the player-buff spell ID in game.
-    local c = base("Fiery Brand 2 charges", 204021, 204021)
-    c.repeatSec = 1
-    for _, r in ipairs({ a, b, c }) do ns.rules[#ns.rules + 1] = r end
-    ns.RefreshAllVisuals()
-    ns.MarkDirty()
-    ns.Fire("CONFIG_CHANGED")
-    ns.Print("seeded 3 rules. Pick your sounds in /xui. Fiery Brand buff ID is a placeholder.")
-end
-
--------------------------------------------------------------------------------
 -- Slash commands
 -- core 0.6.50 (Xaya 2026-11-05: "can't some of these be consolidated into a /xui debug _____ ? this is a LOT of noise"): /xui help
 -- lists only what a player uses (16 lines, was 29); the diagnostic commands are under /xui debug <name>, and /xui debug alone lists
@@ -819,29 +804,23 @@ end
 -- prints to chat instead", status "Yes, same as auras"); the old /xui debug (can the settings window load) is /xui debug loader.
 -------------------------------------------------------------------------------
 -- the diagnostic commands core owns: { name, fn(arg), help }. help is "name [args] (what it does)", without "/xui debug".
+-- core 0.6.56 (Xaya 2026-11-06, REQUEST-LOG #81, her answers: developer diagnostics "Move all of them"; edge cases "Yes, as
+-- recommended"): only these stay in core for players: status (the console form of /xui status), perf (the engine meter; "perf ui" is
+-- XayaUI Dev Assist's), talents (rule creation uses the scan) and loader (for when /xui will not open the window). auras is AuraList.lua's.
+-- Every other diagnostic (probe, timing, model, tracker, mods, groups, icons, media, seed, map, debuffs, loc, gamemenu, chatprobe,
+-- widthprobe, perf ui) is registered by XayaUI Dev Assist (XayaUI_DevAssist/CoreDebug.lua); without it they and their help lines do
+-- not exist, and core does not load their code.
 local CORE_DEBUG = {
     { "status", function() if ns.PrintStatus then ns.PrintStatus() end end, "status (every rule's answer right now, and why)" },
-    { "probe", function(arg)
-        if arg:match("^ids") then
-            if ns.IDProbe then ns.IDProbe((arg:gsub("^ids%s*", ""))) end
-        elseif ns.Probe then ns.Probe(tonumber(arg)) end
-    end, { "probe <spellID> (what the game says about one spell's cooldown and aura)", "probe ids (arm or disarm the aura instance ID probe; probe ids log prints its log)" } },
-    { "debuffs", function(arg) if ns.ProbeDebuffs then ns.ProbeDebuffs(arg) end end, "debuffs [target|focus] [spellID] (the debuffs on your target or focus)" },
     { "perf", function(arg)
-        if tostring(arg or ""):lower():match("^ui") then   -- settings-window rebuild timing (/xui debug perf ui); plain perf is the engine meter
-            ns.perf = ns.perf or { n = 0 }; ns.perf.show = not ns.perf.show
-            ns.Print("rebuild timing " .. (ns.perf.show and "ON: every window rebuild prints build + skin milliseconds" or "OFF"))
+        if tostring(arg or ""):lower():match("^ui") then   -- settings-window rebuild timing: XayaUI Dev Assist's (it registers "perf")
+            if not (ns.RunDebugCommand and ns.RunDebugCommand("perf", arg)) then
+                ns.Print(("there is no debug command \"perf %s\"."):format((tostring(arg):gsub("|", "||"))))
+                ns.PrintDebugHelp()
+            end
         elseif ns.PerfCommand then ns.PerfCommand(arg) end   -- engine timing on this machine (Engine.lua)
-    end, { "perf [on|off] (engine timing)", "perf ui (settings window rebuild timing)" } },
-    { "timing", function() if ns.Timing then ns.Timing.Report() end end, "timing (how every cue gets its time in combat)" },
+    end, "perf [on|off] (engine timing)" },
     { "talents", function(arg) if ns.TalentCommand then ns.TalentCommand(arg) end end, "talents [status|<name>] (scan every class's talents; find one by name)" },
-    { "model", function(arg) if ns.ModelCommand then ns.ModelCommand(arg) end end, "model [setup|<spellID>] (the combat aura duration model)" },
-    { "tracker", function(arg) if ns.TrackerCommand then ns.TrackerCommand(arg) end end, "tracker [shadow|status] (the combat aura tracker)" },
-    { "loc", function() if ns.ProbeLossOfControl then ns.ProbeLossOfControl() end end, "loc (loss of control the game reports right now)" },
-    { "media", function() if ns.UserMediaReport then ns.UserMediaReport() end end, "media (how many pictures and sounds XayaUI_Media lists)" },
-    { "mods", function() if ns.ProbeMods then ns.ProbeMods() end end, "mods (each cue's modifiers, step by step)" },
-    { "groups", function() if ns.ProbeGroups then ns.ProbeGroups() end end, "groups (each group and where its displays hang)" },
-    { "icons", function() if ns.IconReport then ns.IconReport() end end, "icons (which eye and headphone icons the settings window uses)" },
     { "loader", function()   -- (was /xui debug window; Xaya 2026-11-06: "Rename it" -> "/xui debug loader")
         local function yn(v) return v and "yes" or "NO" end
         ns.Print(("debug: ToggleUI=%s rules=%s AceConfigDialog=%s AceConfigRegistry=%s AceGUI=%s"):format(
@@ -849,17 +828,14 @@ local CORE_DEBUG = {
             yn(LibStub and LibStub("AceConfigRegistry-3.0", true)), yn(LibStub and LibStub("AceGUI-3.0", true))))
         ns.Print("debug: settings window " .. (ns.Options and "loaded" or ("not loaded yet (" .. ns.ModuleState(ns.OPTIONS_ADDON) .. ")")))
     end, "loader (whether the settings window's code can load)" },
-    { "seed", function() if ns.rules then ns.SeedRules() end end, "seed (add three Vengeance Demon Hunter test rules)" },
-    -- (core 0.6.49, another session: Modules.lua section 9, REQUEST-LOG #30 "map eclipses full screen"; moved into this list when
-    -- main was merged into core 0.6.50)
-    { "map", function() if ns.MapReport then ns.MapReport() end end, "map (why the world map opens full screen: its settings and size)" },
 }
 local coreDebug = {}
 for _, d in ipairs(CORE_DEBUG) do coreDebug[d[1]] = d[2] end
 
 -- the player's commands core owns (/xui help); features add theirs through ns.RegisterCommand (Modules.lua)
 local CORE_HELP = { "/xui (settings)", "/xui console (the XayaUI console: its messages, and a line to type these commands in)",
-    "/xui bug (bug report)", "/xui unlock (drag displays and groups; again to lock)",
+    "/xui bug (bug report)", "/xui report (debug report: XayaUI's errors and warnings with their codes, to send to Xaya)",
+    "/xui unlock (drag displays and groups; again to lock)",
     "/xui status (every rule's answer right now, and why; in chat)",
     "/xui auras [target|focus|pet] [debuffs] or <spellID> (aura IDs, and whether XayaUI can follow them in combat; in chat)",
     "/xui debug (diagnostic commands, shown in the console window: lists them)" }
@@ -948,6 +924,8 @@ SlashCmdList["XAYAUI"] = function(msg)
         if ns.ConsoleWindow then ns.ConsoleWindow() end
     elseif cmd == "bug" then
         if ns.ShowBugReport then ns.ShowBugReport() end
+    elseif cmd == "report" then   -- (core 0.6.56; REQUEST-LOG #82: the debug report window, DebugRecord.lua)
+        if ns.ShowDebugReport then ns.ShowDebugReport() end
     elseif ns.RunCommand(cmd, arg) then   -- a feature's own command (Modules.lua: ns.RegisterCommand)
     elseif ns.ModuleMissingText(cmd) then   -- a feature's command whose addon is off or failed to load
         ns.Print(ns.ModuleMissingText(cmd))

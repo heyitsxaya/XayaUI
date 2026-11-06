@@ -298,6 +298,28 @@ function Share.Json_Decode(str)
     return v
 end
 
+-- The same codec (PREFIX:<checksum>:<base64 of JSON>) for text that is not imported into XayaUI, so no kind is registered for it and
+-- the Import window refuses it (core 0.6.56: the debug report string, DebugRecord.lua; XayaUI Dev Assist reads it back).
+function Share.Pack(prefix, data)
+    local json, err = Json(data)
+    if not json then return nil, err end
+    return prefix .. ":" .. checksum(json) .. ":" .. b64enc(json)
+end
+function Share.Unpack(str, prefix)
+    if type(str) ~= "string" then return nil, "Nothing to read." end
+    str = str:gsub("%s+", "")
+    if #str == 0 then return nil, "The box is empty." end
+    if #str > MAX_LEN then return nil, "The text is too large." end
+    local head, sum, body = str:match("^(%w+):(%x+):(.+)$")
+    if head ~= prefix then return nil, "This is not a " .. prefix .. " string." end
+    local json = b64dec(body)
+    if not json then return nil, "The text is damaged (not valid base64). Was it cut off when copying?" end
+    if checksum(json) ~= sum then return nil, "The checksum does not match: the text was changed or cut off." end
+    local ok, data = pcall(Decode, json)
+    if not ok or type(data) ~= "table" then return nil, "Could not read the data: " .. tostring(data) end
+    return data
+end
+
 -- data -> share string. The kind's Strip runs on a copy, so nothing in your settings is touched.
 function Share.Encode(kind, data)
     local def = Share.kinds[kind]

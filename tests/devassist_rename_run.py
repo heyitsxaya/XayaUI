@@ -84,8 +84,12 @@ check("the service says the new saved file, the name, and opens the window",
       'savedFile = "XayaUI_DevAssist.lua"' in probe and 'name = "XayaUI Dev Assist"' in probe and "Open = function() if GD and GD.Toggle then GD.Toggle() end end" in probe)
 opts = open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
 check("Settings opens it through the service, not through the old global", "_G.XayaUIGameDump" not in opts and "svc.Open()" in opts and 'name = "Open Dev Assist"' in opts)
+import re
 core = "".join(open(os.path.join(ROOT, "XayaUI", f), encoding="utf-8").read() for f in os.listdir(os.path.join(ROOT, "XayaUI")) if f.endswith(".lua"))
-check("core names neither the old nor the new folder (it uses the service)", "XayaUI_GameDump" not in core and "XayaUI_DevAssist" not in core and "XayaUIDevAssist" not in core)
+# (core 0.6.56: comments may say where a moved command went, XayaUI_DevAssist/CoreDebug.lua, and the error-code table maps an error
+# raised in that folder to XUI-E007; neither calls the addon. Comments and that one data line are left out of this check.)
+code = re.sub(r"--[^\n]*", "", core).replace('folder = "XayaUI_DevAssist"', "")
+check("core names neither the old nor the new folder in its code (it uses the service)", "XayaUI_GameDump" not in core and "XayaUI_DevAssist" not in code and "XayaUIDevAssist" not in code)
 
 # 4. the toc
 toc = open(os.path.join(DA, "XayaUI_DevAssist.toc"), encoding="utf-8").read()

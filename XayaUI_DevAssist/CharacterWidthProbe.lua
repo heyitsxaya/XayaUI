@@ -18,8 +18,9 @@
 -- the game raises (events.md:34-35: isTainted, function), which is what taint would show as. "off" puts the window back through
 -- Blizzard's own UpdateSize and restores the model and the slot. A /reload clears anything left.
 -------------------------------------------------------------------------------
-local _, ns = ...
-ns = _G.XayaUI_NS or ns
+-- (Dev Assist 0.7.5: moved here from XayaUI_QoL; REQUEST-LOG #81. Registered as /xui debug widthprobe by CoreDebug.lua.)
+local ns = rawget(_G, "XayaUI_NS")
+if type(ns) ~= "table" then return end
 
 local probe = { on = false, blocked = 0 }
 ns.CharWidthProbe = probe   -- for the tests

@@ -130,7 +130,14 @@ end
 local function RunPart(p, fn, s)
     if not fn then return end
     local ok, err = pcall(fn, s)
-    if not ok then C.applied[p.name] = false; if not C.errors[p.name] then C.errors[p.name] = tostring(err) end end
+    if not ok then
+        C.applied[p.name] = false
+        if not C.errors[p.name] then
+            C.errors[p.name] = tostring(err)
+            -- (Chat 0.6.20; REQUEST-LOG #82: recorded with its code in XayaUI's debug report, only when it happens)
+            if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W005", p.name .. ": " .. tostring(err)) end
+        end
+    end
 end
 function C.SyncParts(s, live)
     for _, p in ipairs(parts) do
@@ -437,133 +444,14 @@ C.Part("panel", function() return true end,
         if drv then for _, ev in ipairs(REFRESH_EVENTS) do drv:UnregisterEvent(ev) end end
     end)
 
--- /xui chat indent : READ ONLY. Where the empty space at the left of the chat text comes from. For the first visible lines it prints how far
--- the line's own box sits from the window's left edge, and the first characters of the line's text with every |-code shown as typed (a
--- timestamp or a hidden color / texture code in front of the words shows up there). Text the game marks secret is never read.
-local function IndentReport()
-    local cf, ta = C.Main(), C.TextArea()
-    if not (cf and ta) then ns.Print("Chat Panel indent: the chat window is not there to measure."); return end
-    local function f(v) v = tonumber(v); return (v and not C.IsSecret(v)) and ("%.1f"):format(v) or "?" end
-    local function left(o) local ok, v = pcall(function() return o:GetLeft() end); return ok and tonumber(v) or nil end
-    local cl, tl = left(cf), left(ta)
-    local s = ns.chat2 or {}
-    ns.Print(("Chat Panel indent: window left %s, text area left %s (setting: %s px), text area to window: %s px"):format(f(cl), f(tl), tostring(s.textInset), (cl and tl) and f(tl - cl) or "?"))
-    local okI, cL, cR, cT, cB = pcall(function() return cf:GetClampRectInsets() end)
-    local cl0 = Clamped(cf)
-    ns.Print(("  clamped to the screen: %s; clamp margins left %s, right %s, top %s, bottom %s (a left margin pushes the window right at the screen edge)"):format(
-        cl0 == nil and "unreadable" or (cl0 and "yes" or "no"), okI and f(cL) or "?", okI and f(cR) or "?", okI and f(cT) or "?", okI and f(cB) or "?"))
-    local fmt
-    if _G.Settings and _G.Settings.GetValue then local ok, v = pcall(_G.Settings.GetValue, "showTimestamps"); if ok and type(v) == "string" then fmt = v end end
-    ns.Print(("  the game's timestamp setting: %s"):format(fmt and ("\"" .. fmt:gsub("|", "||") .. "\"") or "unreadable"))
-    local function onoff(v) if v == nil then return "unreadable" end return v and "on" or "off" end
-    local lines = cf.visibleLines
-    ns.Print(("  indent wrapped lines: setting %s, the window's font %s, its first line %s"):format(onoff(s.wrapIndent ~= false), onoff(C.IndentOf(cf)),
-        onoff(type(lines) == "table" and C.IndentOf(lines[1]) or nil)))
-    if type(lines) ~= "table" or #lines == 0 then ns.Print("  no visible lines to measure (say something in chat first)"); return end
-    local shown = 0
-    for i = #lines, 1, -1 do
-        local fs = lines[i]
-        local txt = fs and fs.IsShown and fs:IsShown() and fs.GetText and fs:GetText() or nil
-        if type(txt) == "string" and not C.IsSecret(txt) and txt ~= "" then
-            local pre = txt:sub(1, 40):gsub("|", "||"):gsub("[%c]", "?")
-            -- the start of a chat line can name another player: shown, never recorded or put in a report (Core.lua ns.PrintPrivate)
-            local say = ns.PrintPrivate or ns.Print
-            say(("  line %d: box left %s px from the window edge, text starts \"%s\""):format(i, (cl and left(fs)) and f(left(fs) - cl) or "?", pre))
-            shown = shown + 1
-            if shown >= 4 then break end
-        end
-    end
-    if shown == 0 then ns.Print("  the visible lines are empty or protected") end
-end
+-- /xui chat indent, /xui chat whispers and the measurements of /xui chat wrap moved to XayaUI Dev Assist (Chat 0.6.20; REQUEST-LOG #81,
+-- Xaya 2026-11-06: "Move all of them"; XayaUI_DevAssist/CoreDebug.lua), with the whisper counters that only its report read. Dev Assist
+-- adds the three words to /xui chat (ns.RegisterSubcommand("chat", ...)); without it they do not exist. C.Rewrap (the fix itself),
+-- C.WrapStatus, C.IndentOf and C.Clamped stay here.
 
-function C.IndentReport()   -- never raises: a game value that cannot be read ends the report with one line, not an error
-    local ok, err = pcall(IndentReport)
-    if not ok then ns.Print(("Chat Panel indent: could not finish (%s)"):format((tostring(err):gsub("|", "||")))) end
-end
-
--- /xui chat whispers : READ ONLY. Why a whisper does or does not get a tab of its own (Xaya, 2026-11-04: "whispers are not shown as
--- their own tabs even though the option is enabled"). The tab is the game's: its whisper manager (FloatingChatFrameManager_OnEvent,
--- FloatingChatFrame.lua, wow-ui-source live 12.1.5.70783) opens one with FCF_OpenTemporaryWindow when a whisper arrives and the game's
--- setting Options > Social > New Whispers (CVar whisperMode) is "popout" (New Tab) or "popout_and_inline" (Both), and only when no tab
--- for that sender exists yet. The Chat Panel never opens, closes or hides those windows (no reason for a missing tab was found in its
--- code). The report counts, since the last /reload, the whispers that arrived and the whisper tabs the game opened, and the whisper
--- windows there are now. No name is read or printed. V14: counted only while the Chat Panel is on (the "whispers" part).
-local WHISPER_IN = { CHAT_MSG_WHISPER = true, CHAT_MSG_BN_WHISPER = true }
-local WHISPER_OUT = { CHAT_MSG_WHISPER_INFORM = true, CHAT_MSG_BN_WHISPER_INFORM = true }
-C.whispers = { got = 0, sent = 0, opened = 0 }
-local wdrv
-local function IsWhisperType(t) return type(t) == "string" and not issecret(t) and (t == "WHISPER" or t == "BN_WHISPER") end
-C.Part("whispers", function() return true end,
-    function()
-        if not wdrv then
-            wdrv = CreateFrame("Frame")
-            wdrv:SetScript("OnEvent", function(_, event)
-                if WHISPER_IN[event] then C.whispers.got = C.whispers.got + 1
-                elseif WHISPER_OUT[event] then C.whispers.sent = C.whispers.sent + 1 end
-            end)
-        end
-        for ev in pairs(WHISPER_IN) do pcall(wdrv.RegisterEvent, wdrv, ev) end
-        for ev in pairs(WHISPER_OUT) do pcall(wdrv.RegisterEvent, wdrv, ev) end
-        C.HookOnce("whispers:open", "FCF_OpenTemporaryWindow", nil, function(chatType)
-            if C.on.whispers and IsWhisperType(chatType) then C.whispers.opened = C.whispers.opened + 1 end
-        end)
-    end,
-    function()
-        if not wdrv then return end
-        for ev in pairs(WHISPER_IN) do pcall(wdrv.UnregisterEvent, wdrv, ev) end
-        for ev in pairs(WHISPER_OUT) do pcall(wdrv.UnregisterEvent, wdrv, ev) end
-    end)
-
-local WHISPER_MODES = { popout = "New Tab", inline = "In-line", popout_and_inline = "Both" }
-function C.WhisperFacts()
-    local out = { got = C.whispers.got, sent = C.whispers.sent, opened = C.whispers.opened, docked = 0, floating = 0 }
-    local get = (_G.C_CVar and _G.C_CVar.GetCVar) or _G.GetCVar
-    if get then
-        local ok, v = pcall(get, "whisperMode")
-        if ok and type(v) == "string" and not issecret(v) then out.mode = v end
-    end
-    local mgr = _G.FloatingChatFrameManager
-    local function listens(ev)
-        if not (mgr and mgr.IsEventRegistered) then return nil end
-        local ok, v = pcall(mgr.IsEventRegistered, mgr, ev)
-        if not ok or issecret(v) then return nil end
-        return v and true or false
-    end
-    out.listens, out.listensBN = listens("CHAT_MSG_WHISPER"), listens("CHAT_MSG_BN_WHISPER")
-    for _, f in ipairs(C.Frames()) do
-        if f.isTemporary and f.inUse and IsWhisperType(f.chatType) then
-            if f.isDocked then out.docked = out.docked + 1 else out.floating = out.floating + 1 end
-        end
-    end
-    local dock = _G.GENERAL_CHAT_DOCK
-    out.inRow = (type(dock) == "table" and type(dock.DOCKED_CHAT_FRAMES) == "table") and #dock.DOCKED_CHAT_FRAMES or nil
-    return out
-end
-
-local function WhisperReport()
-    local w = C.WhisperFacts()
-    local function yn(v) if v == nil then return "unreadable" end return v and "yes" or "no" end
-    ns.Print(("Chat whispers: the game's setting Options > Social > New Whispers is %s"):format(
-        w.mode and ("\"" .. (WHISPER_MODES[w.mode] or w.mode) .. "\" (whisperMode " .. w.mode .. ")") or "unreadable"))
-    ns.Print(("  the game's whisper-tab manager listens for whispers: %s; for Battle.net whispers: %s"):format(yn(w.listens), yn(w.listensBN)))
-    ns.Print(("  since the last /reload, while the Chat Panel was on: %d whispers received, %d sent, %d whisper tabs opened by the game"):format(w.got, w.sent, w.opened))
-    ns.Print(("  whisper windows now: %d in the tab row, %d floating; windows in the tab row: %s"):format(w.docked, w.floating, tostring(w.inRow or "unreadable")))
-    if w.mode == "inline" then
-        ns.Print("  -> the game puts whispers into the chat window itself. For a tab per conversation: Options > Social > New Whispers > New Tab (or Both).")
-    elseif w.got == 0 and w.sent == 0 then
-        ns.Print("  -> no whisper since the last /reload. Whisper someone (or have them whisper you), then run /xui chat whispers again.")
-    elseif (w.mode == "popout" or w.mode == "popout_and_inline") and w.opened == 0 and w.docked + w.floating == 0 then
-        ns.Print("  -> whispers arrived but the game opened no tab. Please send this report and any Lua error (turn errors on with /console scriptErrors 1).")
-    end
-end
-
-function C.WhisperReport()   -- never raises
-    local ok, err = pcall(WhisperReport)
-    if not ok then ns.Print(("Chat whispers: could not finish (%s)"):format((tostring(err):gsub("|", "||")))) end
-end
-
--- /xui chat [on|off|reset|move|history|wrap|indent|whispers|settings|status]
+-- /xui chat [on|off|reset|move|history|settings|status]
 function C.Command(arg)
+    local rest = tostring(arg or ""):lower():match("^%s*%S*%s*(.-)%s*$") or ""
     arg = (arg or ""):lower():match("^%s*(%S*)") or ""
     local s = ns.chat2
     if not s then ns.Print("Chat Panel: settings are not loaded yet."); return end
@@ -575,23 +463,14 @@ function C.Command(arg)
     elseif arg == "move" then if C.ToggleMover then C.ToggleMover() end
     elseif arg == "history" then if C.History_Toggle then C.History_Toggle() end
     elseif arg == "settings" or arg == "options" then if C.OpenSettings then C.OpenSettings() end
-    elseif arg == "wrap" then
-        local st = C.WrapStatus and C.WrapStatus()
-        if not st then ns.Print("Chat Panel wrap: the chat window is not there to measure."); return end
-        local function f(v) return v and ("%.1f"):format(v) or "?" end
-        ns.Print(("Chat Panel wrap: window width %s, text area %s, line width %s (%s lines), widest wrapped line %s, lines wider than their box: %s%s"):format(f(st.cf), f(st.text), f(st.line), tostring(st.numLines or "?"), f(st.wrapped), tostring(st.over or "?"), C.WrapOff() and "  <- OFF, laying out again" or "  (consistent)"))
-        local cf = C.Main()
-        local sc, tsc = cf and cf.GetEffectiveScale and cf:GetEffectiveScale(), C.TextArea() and C.TextArea():GetEffectiveScale()
-        ns.Print(("  scale: window %s, text area %s; relayouts asked for this session: %d; indent wrapped lines: %s"):format(f(sc), f(tsc), C.stats.rewraps or 0,
-            (C.IndentOf(cf) == nil and "unreadable") or (C.IndentOf(cf) and "on" or "off")))
-        C.Rewrap(true)
-        ns.Print("  the window lays its lines out again on its next frame; run /xui chat wrap again to see the result")
-    elseif arg == "indent" then C.IndentReport()
-    elseif arg == "whispers" then C.WhisperReport()
+    elseif arg ~= "" and ns.RunSubcommand and ns.RunSubcommand("chat", arg, rest) then
+        -- (XayaUI Dev Assist's: wrap, indent, whispers; Chat 0.6.20)
     else
         local why = C.BlockedReason()
         local state = not s.enabled and "OFF" or (not ns.ReskinTabOn() and "OFF (All reskins is off in the Blizzard UI Reskin tab)") or (why and ("blocked: " .. why)) or "ON"
-        ns.Print((("Chat Panel: " .. state .. ". /xui chat on|off|reset|move|history|wrap|indent|whispers|settings"):gsub("|", "||")))
+        local extra = {}
+        for _, h in ipairs(ns.SubcommandHelp and ns.SubcommandHelp("chat") or {}) do extra[#extra + 1] = h:match("^(%S+)") end
+        ns.Print((("Chat Panel: " .. state .. ". /xui chat on|off|reset|move|history|" .. (#extra > 0 and (table.concat(extra, "|") .. "|") or "") .. "settings"):gsub("|", "||")))
         local names = {}
         for k in pairs(C.applied) do names[#names + 1] = k end
         table.sort(names)
@@ -606,5 +485,5 @@ end
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
 ns.WhenReady(ns.Chat_OnDBReady)
-ns.RegisterCommand("chat", function(arg) C.Command(arg) end, "/xui chat (Chat Panel: on, off, reset, move, history, wrap, indent, whispers, settings)")
+ns.RegisterCommand("chat", function(arg) C.Command(arg) end, "/xui chat (Chat Panel: on, off, reset, move, history, settings)")
 ns.RegisterCommand("panel", function() if C.OpenSettings then C.OpenSettings("bar") end end, "/xui panel (Chat Bar settings)")

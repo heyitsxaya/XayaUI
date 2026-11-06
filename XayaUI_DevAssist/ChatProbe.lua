@@ -6,8 +6,9 @@
 -- Privacy: message TEXT is never written. Only whether a message is readable ("secret") and how long it is.
 -- Own code, written from the documented game API only. UNTESTED in game.
 -------------------------------------------------------------------------------
-local ADDON, ns = ...
-ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+-- (Dev Assist 0.7.5: moved here from XayaUI_Chat/Probe.lua; REQUEST-LOG #81, Xaya 2026-11-06: "Move all of them". Unchanged otherwise.)
+local ns = rawget(_G, "XayaUI_NS")   -- XayaUI core's namespace; without XayaUI there is nothing to register into
+if type(ns) ~= "table" or type(ns.RegisterDebugCommand) ~= "function" then return end
 
 local MAX_LINES = 1400
 local lines
@@ -277,8 +278,4 @@ end
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
 -- /xui debug chatprobe (core 0.6.50 runs diagnostics only there). The fallback (/xui chatprobe) is for a core older than 0.6.50.
-if ns.RegisterDebugCommand then
-    ns.RegisterDebugCommand("chatprobe", function() ns.ChatProbe() end, "chatprobe (read-only chat frame report)")
-else
-    ns.RegisterCommand("chatprobe", function() ns.ChatProbe() end, "/xui debug chatprobe (read-only chat frame report)")
-end
+ns.RegisterDebugCommand("chatprobe", function() ns.ChatProbe() end, "chatprobe (read-only chat frame report)")
