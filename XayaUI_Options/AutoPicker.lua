@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 -- AutoPicker.lua : auto-populate as a table you fill in before anything is made (XayaUI_Options 0.6.44; every cue type 0.6.45; exactly her
--- spec 0.6.46; rebuilt to her answers 0.6.49). Own code. UNTESTED in game.
+-- spec 0.6.46; rebuilt to her answers 0.6.53). Own code. UNTESTED in game.
 -- Xaya, 2026-11-05: "Clicking auto-populate should pre-load into a frame below all rules that will load in a table view. Columns will be
 -- (Checkbox - clicking the header row will select all; clicking again will deselect all) | name | type (spell cd, aura, debuff) | trigger
 -- (when available / when ready (for CD); at max stacks (for CD); when present (aura / debuff); when missing (aura / debuff) | cue type |
@@ -14,8 +14,8 @@
 --   finished are not made, stay in the table and a popup says "error issue making the following rules: [...]. Please finish configuring
 --   them to create them."; A7 debuff + Speech / Sound = When missing; A8 the talent switch applies to the spec you are in, another spec
 --   shows all its talent cooldowns; A9 "Populate"; A10 cue names "<spell> (<cue type>)"; A12 widths fit their contents; A14 made rows
---   leave the table; A16 icon + name in the table only; A17 "(soonTM)"; placement "3 across, then 3 down" (blocks of 3 x 3 from the screen
---   centre); "Hide / Show already generated rules (can potentially cause duplicates)": hidden by default, shown rows start unticked.
+--   leave the table; A16 icon + name in the table only; A17 "(soonTM)"; placement "3 across, offset down, 3 across, return to center and
+--   offset up" (rows of 3 centred on the screen centre; unmoved auto-placed cues re-laid out together); "Hide / Show already generated rules (can potentially cause duplicates)": hidden by default, shown rows start unticked.
 --   Extra cues with a set-up get their own controls in the Cue set-up cell ("1 for now, flag for potential revision pending feedback").
 --
 -- Candidates, all read from the game:
@@ -66,8 +66,9 @@ AP.NEEDS_PICK = { sound = true, texture = true, progtex = true }
 AP.ALERT = "error issue making the following rules: [%s]. Please finish configuring them to create them."
 -- her switch label, verbatim
 AP.SHOW_MADE_LABEL = "Hide / Show already generated rules (can potentially cause duplicates)"
--- placement (her "3 across, then 3 down"): blocks of 3 x 3, the first cue at the screen centre, rows going down, the next block to the right
-AP.GRID_GAP, AP.BLOCK_GAP = 4, 12
+-- placement (Xaya, 2026-11-06: "3 across, offset down, 3 across, return to center and offset up"; her answers "Rows centred on C" and "Re-laid
+-- out together"): rows of 3 centred on the screen centre, in the order centre, below, above, further below, further above
+AP.GRID_GAP = 4
 
 local function Readable(v) return v ~= nil and not issecret(v) end
 local function SpellName(id)
@@ -469,12 +470,24 @@ local function AddCue(r, kind, c)
     end
     return cue
 end
--- her placement: the n-th shown cue (0-based) of the class: blocks of 3 x 3, the first cue at the screen centre, 3 across then the next row
--- down, the 10th cue starts the next block to the right
+-- her placement: the n-th cue (0-based): rows of 3, each centred on the screen centre (the 2nd cue of a row sits on it); row 1 at the
+-- centre, row 2 below, row 3 above, row 4 further below, row 5 further above, ...
 function AP.GridPos(n, stride)
-    local block, within = math.floor(n / 9), n % 9
-    local col, row = within % 3, math.floor(within / 3)
-    return (block * 3 + col) * stride + block * AP.BLOCK_GAP, (row == 0) and 0 or -row * stride
+    local k, col = math.floor(n / 3), n % 3
+    local y = 0
+    if k % 2 == 1 then y = -((k + 1) / 2) * stride elseif k > 0 then y = (k / 2) * stride end
+    return (col - 1) * stride, y
+end
+-- the cues this table placed and nobody has moved since (their position is still the one it gave them); "This applies only to rules
+-- auto populated that have not yet been manually moved"
+function AP.UnmovedPlaced()
+    local out = {}
+    for _, r in ipairs(ns.rules or {}) do
+        local v = r.isCue and r.visual
+        local a = v and v.enabled and v.autoPos
+        if type(a) == "table" and a.x == v.x and a.y == v.y then out[#out + 1] = r end
+    end
+    return out
 end
 
 -- Makes the ticked rows of a list. Returns made, skipped (already there), notMade (soonTM), message, unfinished names.
@@ -496,11 +509,10 @@ function AP.Make(view)
     local classF
     local perSpec, specOrder = {}, {}
     local madeRows, newShown = {}, {}
-    local startShown
+    local earlier = AP.UnmovedPlaced()   -- read before anything new is made
     for _, t in ipairs(todo) do
         local c, trig, cue = t.c, t.trig, t.cue
         classF = classF or TopFolder(className)
-        if not startShown then startShown = select(2, Have(classF)) end
         local ps = perSpec[c.spec]
         if not ps then
             ps = { folder = SubFolder(classF, SpecName(c.spec)), made = 0, cueF = {} }
@@ -547,13 +559,19 @@ function AP.Make(view)
             madeRows[c] = true
         end
     end
-    -- place the shown cues made now after the ones the class's groups already show (a second Populate does not cover the first)
+    -- placement: the cues placed earlier and not moved since, then the new ones, laid out again together in one pattern ("Re-laid out
+    -- together"); a cue she moved keeps its place and is left out. The step is the largest of them + the gap.
     if #newShown > 0 then
+        local all = {}
+        for _, cue in ipairs(earlier) do all[#all + 1] = cue end
+        for _, cue in ipairs(newShown) do all[#all + 1] = cue end
         local size = 0
-        for _, cue in ipairs(newShown) do size = math.max(size, tonumber(cue.visual.w) or 0, tonumber(cue.visual.h) or 0) end
+        for _, cue in ipairs(all) do size = math.max(size, tonumber(cue.visual.w) or 0, tonumber(cue.visual.h) or 0) end
         local stride = size + AP.GRID_GAP
-        for i, cue in ipairs(newShown) do
-            cue.visual.x, cue.visual.y = AP.GridPos((startShown or 0) + i - 1, stride)
+        for i, cue in ipairs(all) do
+            local x, y = AP.GridPos(i - 1, stride)
+            cue.visual.x, cue.visual.y = x, y
+            cue.visual.autoPos = { x = x, y = y }
             if ns.RefreshVisual then pcall(ns.RefreshVisual, cue) end
         end
     end

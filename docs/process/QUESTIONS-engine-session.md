@@ -203,3 +203,11 @@ Your sentence: "this _____ requires blizzard's cooldown manager to track it befo
 - Extra cues needing a set-up: "1 for now, flag for potential revision pending feedback" (option 1 = own controls per extra in the
   Cue set-up cell; unpicked = row unfinished). FLAGGED: may be revised after her feedback.
 - The unfinished-rows alert: "Popup window with OK" (game-style popup, her exact text, OK button).
+
+## Round 3 answers (2026-11-06 ~17:00 UTC; question prompt)
+- Her message: "3 across, offset down, 3 across, return to center and offset up" / "This applies only to rules auto populated that have
+  not yet been manually moved".
+- Shape: "Rows centred on C": each row of 3 centred on the screen centre; rows in the order centre, below, above, further below, further
+  above, alternating (replaces the 3 x 3 blocks).
+- Not moved: "Re-laid out together": on each Populate every auto-populated cue not moved by hand is placed again with the new ones in one
+  pattern; cues she moved stay where she put them and are left out.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline test (XayaUI_Options 0.6.44-0.6.45; rebuilt to her answers 0.6.49): auto-populate as a table (AutoPicker.lua, Skin.lua table cells). Xaya, 2026-11-05:
+"""Offline test (XayaUI_Options 0.6.44-0.6.45; rebuilt to her answers 0.6.53): auto-populate as a table (AutoPicker.lua, Skin.lua table cells). Xaya, 2026-11-05:
 "Clicking auto-populate should pre-load into a frame below all rules that will load in a table view. Columns will be (Checkbox - clicking
 the header row will select all; clicking again will deselect all) | name | type (spell cd, aura, debuff) | trigger (when available /
 when ready (for CD); at max stacks (for CD); when present (aura / debuff); when missing (aura / debuff) | cue type | combat load (any, in
@@ -276,18 +276,25 @@ check("each cue starts as '+ New rule' starts that type (icon = spell icon 64 x 
 check("extra cues (Advanced) beside the main one, the main one not twice: icon + sound + speech + text", kinds(dMiss) == "icon,sound,speech,text")
 -- placement: 3 across, then 3 down; the second Populate continues after the first
 local function xy(c) return tostring(c.visual.x) .. "," .. tostring(c.visual.y) end
--- first Populate made one shown cue (the icon of 187827); the second continues at the 2nd place: progress texture, texture, then the debuff's
--- icon and text start the second row (stride = the largest new cue, 128, + the gap)
+-- her placement: rows of 3 centred on the screen centre, in the order centre, below, above. The first Populate placed the icon of 187827
+-- alone (step 64 + 4: the left place of row 1); the second laid it out again with the new ones (it was not moved): icon, progress texture,
+-- texture on the centre row, the debuff's icon and text on the row below (step = the largest, 128, + the gap)
 local s2 = 128 + AP.GRID_GAP
-check("her placement: the first cue at the screen centre, 3 across, then the next row down; a later Populate continues (does not cover the first)",
-  xy(ic) == "0,0" and xy(pt) == s2 .. ",0" and xy(cueOf(tex, "texture")) == (2 * s2) .. ",0"
-  and xy(cueOf(dMiss, "icon")) == "0," .. (-s2) and xy(cueOf(dMiss, "text")) == s2 .. "," .. (-s2),
+check("her placement: rows of 3 centred on the screen centre; unmoved cues re-laid out together with the new ones",
+  xy(ic) == (-s2) .. ",0" and xy(pt) == "0,0" and xy(cueOf(tex, "texture")) == s2 .. ",0"
+  and xy(cueOf(dMiss, "icon")) == (-s2) .. "," .. (-s2) and xy(cueOf(dMiss, "text")) == "0," .. (-s2),
   xy(ic) .. " " .. xy(pt) .. " " .. xy(cueOf(tex, "texture")) .. " " .. xy(cueOf(dMiss, "icon")) .. " " .. xy(cueOf(dMiss, "text")))
-local gx, gy = AP.GridPos(8, 100)
-local hx, hy = AP.GridPos(9, 100)
-local jx, jy = AP.GridPos(13, 100)
-check("blocks of 3 x 3: the 9th cue ends the first block (bottom right); the 10th starts the next block to the right at the top", gx == 200 and gy == -200 and hx == 300 + AP.BLOCK_GAP and hy == 0
-  and jx == 400 + AP.BLOCK_GAP and jy == -100)
+local order = {}
+for n = 0, 14 do local x, y = AP.GridPos(n, 100); order[#order + 1] = x .. "," .. y end
+check("the row order: centre, below, above, further below, further above (each row centred: its 2nd cue on the centre)",
+  table.concat(order, " ") == "-100,0 0,0 100,0 -100,-100 0,-100 100,-100 -100,100 0,100 100,100 -100,-200 0,-200 100,-200 -100,200 0,200 100,200",
+  table.concat(order, " "))
+-- a cue moved by hand keeps its place on the next Populate; the unmoved ones are laid out again without it
+cueOf(tex, "texture").visual.x, cueOf(tex, "texture").visual.y = 500, 300
+local unmoved = AP.UnmovedPlaced()
+local hasTex = false
+for _, c in ipairs(unmoved) do if c == cueOf(tex, "texture") then hasTex = true end end
+check("a cue moved by hand is no longer counted as auto-placed (it keeps the place you gave it)", #unmoved == 4 and not hasTex, #unmoved)
 -- groups: class > spec > cue type
 local function F(id) for _, f in ipairs(ns.folders) do if f.id == id then return f end end end
 local function path(r) local t, f = {}, F(r.folder); while f do table.insert(t, 1, f.name); f = f.parent and F(f.parent) end; return table.concat(t, " > ") end
@@ -317,6 +324,8 @@ made = AP.Make()
 local metas = 0
 for _, r in ipairs(ns.rules) do if r.spellID == 187827 and r.useCooldown and not r.isCue then metas = metas + 1 end end
 check("a row ticked by hand while the switch is on is made again (a duplicate, as her label warns)", made == 1 and metas == 2 and #ns.rules == n0 + 2)
+check("that Populate left the cue moved by hand where it was, and laid out the 4 unmoved ones and the new icon from the centre again",
+  xy(cueOf(tex, "texture")) == "500,300" and #AP.UnmovedPlaced() == 5 and xy(pt) == "0,0", xy(cueOf(tex, "texture")) .. " " .. #AP.UnmovedPlaced() .. " " .. xy(pt))
 T.showMade.set(nil, false)
 -- all specs: one button, every spec's list, rules in each spec's group
 a = creator(); a.apClass.func()

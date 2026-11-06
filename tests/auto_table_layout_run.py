@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline test (XayaUI_Options 0.6.45; Cue set-up, Spec column and bucket headers 0.6.49): the auto-populate table as it is DRAWN. Xaya, 2026-11-06, on a screenshot of the 0.6.42 picker
+"""Offline test (XayaUI_Options 0.6.45; Cue set-up, Spec column and bucket headers 0.6.53): the auto-populate table as it is DRAWN. Xaya, 2026-11-06, on a screenshot of the 0.6.42 picker
 (each row a tick box with a far-away cue dropdown, the debuff choice on a line of its own, no column names): "need to fix display and
 follow proposed rule of columns and type as specified. also need to actually display proposed column names -- note I don't suggest them
 just for fun, they are prescriptions for initial display pane configurations".

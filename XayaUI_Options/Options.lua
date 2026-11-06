@@ -295,7 +295,7 @@ local function EnsureTextures()
     end
 end
 
--- the sound and art lists, for the auto-populate table's Cue set-up column (AutoPicker.lua, Options 0.6.49): the same lists the cue
+-- the sound and art lists, for the auto-populate table's Cue set-up column (AutoPicker.lua, Options 0.6.53): the same lists the cue
 -- editor offers, and the same way a picked art is applied (ns.ApplyArtPick, used by the editor's "Or pick art" below)
 function ns.SoundChoices() EnsureSounds(); return soundList, soundValues, soundSorting end
 function ns.TexChoices() EnsureTextures(); return texValues, texSorting end
