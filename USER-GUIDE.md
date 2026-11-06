@@ -760,6 +760,9 @@ Blizzard's character window in XayaUI's look (XayaUI QoL 0.7.14). The window wor
 
 **How the settings pages are laid out (all feature tabs, from 0.6.1 on):** a feature is an entry in the left pane, its parts are entries under it, and the sections of one part are tabs. In the QoL and Bonus Features tabs, a feature or part that has one on / off shows it as a tick box just left of its name in the left pane (hover the box for what it does); clicking the box does not open the page. The feature's own page holds an overview and any other switches.
 
+### 12.12c Release Guard
+QoL > **Release Guard** (QoL 0.7.31; its own row with a tick box; off by default, and while off nothing of it is made or listened to). When you die, a black box covers the death window's **Release Spirit** button, so a misclick does not release you. It reads **NO RELEASE** with a flavour text under it, the next one of your list each death (to start: BAD MONKEY, death comes for us all, NOPE, Disagree, WTB Rez). Hold the **key to click through** (Shift to start; Ctrl or Alt in the settings) and the box steps aside so your click reaches Release; let go and it is back. It hides once you are a ghost or the window closes. **Where:** raids only to start, or raids and dungeons, or everywhere. The text, the flavour texts (one per line, on or off), the key and where are all on its page. It never presses Release for you; it only covers the button.
+
 ### 12.13 Dev Assist (developer tool)
 
 A separate addon (XayaUI Dev Assist, folder `XayaUI_DevAssist`) that is not needed to play. It writes what the game tells an addon into its own saved-data file, `WTF\Account\<account>\SavedVariables\XayaUI_DevAssist.lua`, so the file can be uploaded for development (Settings > Debugging > What to send shows the path). It never stores your rules, your character's name, or your realm. Open it with `/xuidev` (`/xuidump` also works), or from Settings > Debugging > Open Dev Assist.
