@@ -2679,10 +2679,10 @@ ns.RegisterCommand("stats", function(arg)
     if arg == "on" then c.enabled = true; ns.CharToolkit_Apply(); ns.Print("Character Toolkit on."); return end
     if arg == "off" then c.enabled = false; ns.CharToolkit_Apply(); ns.Print("Character Toolkit off."); return end
     ns.CharToolkit_Toggle()
-end, "/xui stats [on/off/options/status] (Character Toolkit stat panel)")
+end, "/xui stats [on|off|options|status] (Character Toolkit stat panel)")
 -- /xui debug widthprobe (core 0.6.50 runs diagnostics only there; /xui stats widthprobe was taken out, Xaya 2026-11-06: "let's move to
 -- /xui debug ____")
 if ns.RegisterDebugCommand then
     ns.RegisterDebugCommand("widthprobe", function(arg) if ns.CharWidthProbe_Run then ns.CharWidthProbe_Run(arg or "") end end,
-        "widthprobe [px/off] (the in-game test for a wider character window)")
+        "widthprobe [px|off] (the in-game test for a wider character window)")
 end

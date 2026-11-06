@@ -39,9 +39,11 @@ function ns.Print(...)
     local text = table.concat(parts, " ")
     if ns._capture and not privateMsg then ns._capture[#ns._capture + 1] = text; return end   -- (DebugRecord.lua ns.CaptureOutput)
     if ns.RecordLine and not privateMsg then ns.RecordLine("msg", text) end
-    -- where messages go (DebugRecord.lua, Settings > Debugging): chat, the XayaUI console window, or both. A command typed in the
-    -- console window prints there, whatever the setting (Console.lua ns.ConsoleRun sets ns.consoleRunning while it runs; core 0.6.50).
-    local dest = ns.consoleRunning and "console" or (ns.MessageDest and ns.MessageDest() or "chat")
+    -- where messages go (DebugRecord.lua, Settings > Debugging): chat, the XayaUI console window, or both. core 0.6.50, whatever the
+    -- setting: a command typed in the console window, and any /xui debug command, prints in the console window (ns.consoleRunning,
+    -- Console.lua ns.RunInConsole); the /xui status and /xui auras shortcuts print in chat (ns.chatRunning, RunInChat below). The
+    -- console wins when both are set (a shortcut typed in the console window prints there).
+    local dest = (ns.consoleRunning and "console") or (ns.chatRunning and "chat") or (ns.MessageDest and ns.MessageDest() or "chat")
     -- (Xaya 2026-11-06, asked whether messages set to the chat window should also show in the open console window: "Only xui console
     -- messages should display". So the console window shows only what is sent to it.)
     if dest ~= "chat" and ns.ConsoleMessage and pcall(ns.ConsoleMessage, text, false, privateMsg) and dest == "console" then return end
@@ -810,9 +812,11 @@ end
 -------------------------------------------------------------------------------
 -- Slash commands
 -- core 0.6.50 (Xaya 2026-11-05: "can't some of these be consolidated into a /xui debug _____ ? this is a LOT of noise"): /xui help
--- lists only what a player uses (14 lines, was 29); the diagnostic commands are under /xui debug <name>, and /xui debug alone lists
--- them. Their old forms (/xui status, /xui perf ...) no longer run (Xaya 2026-11-06: "let's move to /xui debug ____"): an unknown word
--- prints /xui help, which names /xui debug. The old /xui debug (can the settings window load) is /xui debug window.
+-- lists only what a player uses (16 lines, was 29); the diagnostic commands are under /xui debug <name>, and /xui debug alone lists
+-- them. Their old forms (/xui perf ...) no longer run (Xaya 2026-11-06: "let's move to /xui debug ____", "7. Retire"): an unknown
+-- word prints /xui help. Xaya's answers of 2026-11-06 (request log row 7): any /xui debug command opens the console window and prints
+-- there ("Debug cmds open console"); /xui status and /xui auras stay as shortcuts that print in chat ("Debug + shortcut", "/xui auras
+-- prints to chat instead", status "Yes, same as auras"); the old /xui debug (can the settings window load) is /xui debug loader.
 -------------------------------------------------------------------------------
 -- the diagnostic commands core owns: { name, fn(arg), help }. help is "name [args] (what it does)", without "/xui debug".
 local CORE_DEBUG = {
@@ -822,29 +826,29 @@ local CORE_DEBUG = {
             if ns.IDProbe then ns.IDProbe((arg:gsub("^ids%s*", ""))) end
         elseif ns.Probe then ns.Probe(tonumber(arg)) end
     end, { "probe <spellID> (what the game says about one spell's cooldown and aura)", "probe ids (arm or disarm the aura instance ID probe; probe ids log prints its log)" } },
-    { "debuffs", function(arg) if ns.ProbeDebuffs then ns.ProbeDebuffs(arg) end end, "debuffs [target/focus] [spellID] (the debuffs on your target or focus)" },
+    { "debuffs", function(arg) if ns.ProbeDebuffs then ns.ProbeDebuffs(arg) end end, "debuffs [target|focus] [spellID] (the debuffs on your target or focus)" },
     { "perf", function(arg)
         if tostring(arg or ""):lower():match("^ui") then   -- settings-window rebuild timing (/xui debug perf ui); plain perf is the engine meter
             ns.perf = ns.perf or { n = 0 }; ns.perf.show = not ns.perf.show
             ns.Print("rebuild timing " .. (ns.perf.show and "ON: every window rebuild prints build + skin milliseconds" or "OFF"))
         elseif ns.PerfCommand then ns.PerfCommand(arg) end   -- engine timing on this machine (Engine.lua)
-    end, { "perf [on/off] (engine timing)", "perf ui (settings window rebuild timing)" } },
+    end, { "perf [on|off] (engine timing)", "perf ui (settings window rebuild timing)" } },
     { "timing", function() if ns.Timing then ns.Timing.Report() end end, "timing (how every cue gets its time in combat)" },
-    { "talents", function(arg) if ns.TalentCommand then ns.TalentCommand(arg) end end, "talents [status/<name>] (scan every class's talents; find one by name)" },
-    { "model", function(arg) if ns.ModelCommand then ns.ModelCommand(arg) end end, "model [setup/<spellID>] (the combat aura duration model)" },
-    { "tracker", function(arg) if ns.TrackerCommand then ns.TrackerCommand(arg) end end, "tracker [shadow/status] (the combat aura tracker)" },
+    { "talents", function(arg) if ns.TalentCommand then ns.TalentCommand(arg) end end, "talents [status|<name>] (scan every class's talents; find one by name)" },
+    { "model", function(arg) if ns.ModelCommand then ns.ModelCommand(arg) end end, "model [setup|<spellID>] (the combat aura duration model)" },
+    { "tracker", function(arg) if ns.TrackerCommand then ns.TrackerCommand(arg) end end, "tracker [shadow|status] (the combat aura tracker)" },
     { "loc", function() if ns.ProbeLossOfControl then ns.ProbeLossOfControl() end end, "loc (loss of control the game reports right now)" },
     { "media", function() if ns.UserMediaReport then ns.UserMediaReport() end end, "media (how many pictures and sounds XayaUI_Media lists)" },
     { "mods", function() if ns.ProbeMods then ns.ProbeMods() end end, "mods (each cue's modifiers, step by step)" },
     { "groups", function() if ns.ProbeGroups then ns.ProbeGroups() end end, "groups (each group and where its displays hang)" },
     { "icons", function() if ns.IconReport then ns.IconReport() end end, "icons (which eye and headphone icons the settings window uses)" },
-    { "window", function()
+    { "loader", function()   -- (was /xui debug window; Xaya 2026-11-06: "Rename it" -> "/xui debug loader")
         local function yn(v) return v and "yes" or "NO" end
         ns.Print(("debug: ToggleUI=%s rules=%s AceConfigDialog=%s AceConfigRegistry=%s AceGUI=%s"):format(
             yn(ns.ToggleUI), yn(ns.rules), yn(LibStub and LibStub("AceConfigDialog-3.0", true)),
             yn(LibStub and LibStub("AceConfigRegistry-3.0", true)), yn(LibStub and LibStub("AceGUI-3.0", true))))
         ns.Print("debug: settings window " .. (ns.Options and "loaded" or ("not loaded yet (" .. ns.ModuleState(ns.OPTIONS_ADDON) .. ")")))
-    end, "window (whether the settings window can load)" },
+    end, "loader (whether the settings window's code can load)" },
     { "seed", function() if ns.rules then ns.SeedRules() end end, "seed (add three Vengeance Demon Hunter test rules)" },
     -- (core 0.6.49, another session: Modules.lua section 9, REQUEST-LOG #30 "map eclipses full screen"; moved into this list when
     -- main was merged into core 0.6.50)
@@ -855,12 +859,15 @@ for _, d in ipairs(CORE_DEBUG) do coreDebug[d[1]] = d[2] end
 
 -- the player's commands core owns (/xui help); features add theirs through ns.RegisterCommand (Modules.lua)
 local CORE_HELP = { "/xui (settings)", "/xui console (the XayaUI console: its messages, and a line to type these commands in)",
-    "/xui bug (bug report)", "/xui unlock (drag displays and groups; again to lock)", "/xui debug (diagnostic commands: lists them)" }
+    "/xui bug (bug report)", "/xui unlock (drag displays and groups; again to lock)",
+    "/xui status (every rule's answer right now, and why; in chat)",
+    "/xui auras [target|focus|pet] [debuffs] or <spellID> (aura IDs, and whether XayaUI can follow them in combat; in chat)",
+    "/xui debug (diagnostic commands, shown in the console window: lists them)" }
 
 -- one command per line (core 0.6.46; Xaya 2026-11-05: "console print is difficult to read"): the command in the theme's accent text
--- color, what it does after it. An entry that holds two commands (" | /xui ...") is split. core 0.6.50: a "|" left in the text
--- (option lists such as [on|off]) is printed as "/": a doubled "||" showed as "|" in chat, but the chat history window lost it and
--- the letter after it (Xaya's screenshot of 2026-11-05: "[highlighttrail]", "statusidthprobe").
+-- color, what it does after it. An entry that holds two commands (" | /xui ...") is split. Pipes in the text (option lists such as
+-- [on|off]) are doubled ("||"), which the game shows as one "|" (Xaya 2026-11-06 chose "Back to '|'" over "[on/off]"; the chat history
+-- window, which lost a "|" and the letter after it, shows them right since Chat 0.6.17).
 local function PrintCommandList(header, list, prefix)
     local items = {}
     for _, h in ipairs(list) do
@@ -877,8 +884,8 @@ local function PrintCommandList(header, list, prefix)
     for _, h in ipairs(items) do
         local cmdText, desc = h:match("^(.-)%s*(%b())$")
         if not cmdText or cmdText == "" then cmdText, desc = h, nil end
-        local line = "  " .. hex .. (prefix or "") .. (cmdText:gsub("|", "/")) .. "|r"
-        if desc then line = line .. "  " .. (desc:sub(2, -2):gsub("|", "/")) end
+        local line = "  " .. hex .. (prefix or "") .. (cmdText:gsub("|", "||")) .. "|r"
+        if desc then line = line .. "  " .. (desc:sub(2, -2):gsub("|", "||")) end
         ns.Print(line)
     end
 end
@@ -904,9 +911,23 @@ local function RunDebug(arg)
     elseif ns.RunDebugCommand and ns.RunDebugCommand(sub, rest) then   -- a feature's own (Modules.lua ns.RegisterDebugCommand)
     elseif ns.ModuleMissingText(sub, true) then ns.Print(ns.ModuleMissingText(sub, true))   -- a feature's, whose addon is off
     else
-        ns.Print(("there is no debug command \"%s\"."):format((sub:gsub("|", "/"))))
+        ns.Print(("there is no debug command \"%s\"."):format((sub:gsub("|", "||"))))
         ns.PrintDebugHelp()
     end
+end
+
+-- /xui status and /xui auras: their /xui debug command, printed in chat (Xaya 2026-11-06). An error goes to the game's error handler
+-- with ns.chatRunning still set, then it is cleared.
+local SHORTCUTS = { status = true, auras = true }
+local function RunInChat(fn, ...)
+    local prev, args, n = ns.chatRunning, { ... }, select("#", ...)
+    ns.chatRunning = true
+    xpcall(function() fn(unpack(args, 1, n)) end, function(e) local h = geterrorhandler and geterrorhandler(); if h then pcall(h, e) end end)
+    ns.chatRunning = prev
+end
+local function RunShortcut(name, arg)
+    if coreDebug[name] then coreDebug[name](arg)
+    elseif not (ns.RunDebugCommand and ns.RunDebugCommand(name, arg)) then ns.PrintHelp() end
 end
 
 SLASH_XAYAUI1 = "/xui"
@@ -917,7 +938,10 @@ SlashCmdList["XAYAUI"] = function(msg)
     if cmd == "" or cmd == "config" or cmd == "options" then
         ns.ToggleUI()   -- loads XayaUI_Options on first use (Modules.lua section 7)
     elseif cmd == "debug" then
-        RunDebug(arg)
+        -- (Xaya 2026-11-06: "Debug cmds open console") opens the console window and prints there; Console.lua ns.RunInConsole
+        if ns.RunInConsole then ns.RunInConsole(true, RunDebug, arg) else RunDebug(arg) end
+    elseif SHORTCUTS[cmd] then
+        RunInChat(RunShortcut, cmd, arg)
     elseif cmd == "unlock" then
         if ns.ToggleUnlock then ns.ToggleUnlock() end
     elseif cmd == "console" then

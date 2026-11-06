@@ -2,8 +2,8 @@
 """/xui help prints one command per line (core 0.6.46; Xaya 2026-11-05: "console print is difficult to read": the whole command list
 was one line joined by " | ", unreadable in the console window and the chat history's Console tab). Checks the printed lines: a
 header with the count, then every command on its own line starting with /xui, the command colored and closed, what it does after it,
-no literal pipe (core 0.6.50: option lists read [on/off]; the chat history window lost a doubled "||" and the letter after it), and
-no line holding two commands. (core 0.6.50 moved the diagnostic commands under /xui debug: tests/console_commands_run.py.)
+literal pipes doubled ("||", shown as "|"; core 0.6.50 printed "/" for a while, Xaya 2026-11-06 chose "Back to '|'" and the chat
+history window shows them right since Chat 0.6.17), and no line holding two commands. (core 0.6.50 moved the diagnostic commands under /xui debug: tests/console_commands_run.py.)
 Run: python3 tests/xui_help_lines_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -31,14 +31,14 @@ for i = 2, #out do
   if not l:find("^  |cff%x%x%x%x%x%x/xui") then uncolored = l end
   if not l:find("|r", 1, true) then unclosed = l end
   local stripped = l:gsub("^  |cff%x%x%x%x%x%x", ""):gsub("|r", "", 1)
-  if stripped:find("|", 1, true) then badPipe = l end
+  if stripped:gsub("||", ""):find("|", 1, true) then badPipe = l end
   if l:find("/xui debug|r  diagnostic commands", 1, true) then debugLine = l end
   if l:find("/xui console|r  the XayaUI console", 1, true) then consoleLine = l end
 end
 check("no line holds two commands (the old ' | ' join)", two == nil, two)
 check("every line starts with the colored command", uncolored == nil, uncolored)
 check("every color is closed", unclosed == nil, unclosed)
-check("no literal pipe in the text, color codes kept", badPipe == nil, badPipe)
+check("literal pipes are doubled, color codes are not", badPipe == nil, badPipe)
 check("/xui debug is listed with what it does", debugLine ~= nil)
 check("the description follows its command without the brackets", consoleLine ~= nil)
 return R

@@ -2,14 +2,14 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-a36f5bb22157248303b3159ccc035d26  QA-CHECKLIST.md
+e251d2b75b6545f21cb49b0c1083ba2a  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 6388e5710be433673f12516d5df50ef4  ROADMAP.md
 7b14e6ac857f1076bcea7daf8f75c2f5  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-0046c3d4b1d7a4a4877e9b4a41afa14a  USER-GUIDE.md
+75617556e154714282a8d15742067257  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
-88205caf1d0b6561981c4e3740c80ca2  XayaUI/AuraList.lua
+bf5134b45b181fdc9d83ba8478cc65aa  XayaUI/AuraList.lua
 7bc5ab6899bc167c8fc5f3db72f3c9ff  XayaUI/AuraSound.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
 40b7591dd5f7fe4f0c4b0f5a965155bb  XayaUI/ClassLearn.lua
@@ -21,8 +21,8 @@ e0495a5745257a858e14cbd77a715c0c  XayaUI/Combat/AuraTracker.lua
 e347531f81e7b1c81dfd3db3a4d5f6f2  XayaUI/Combat/README.md
 90a7c4511e2a3988040393f1c413a9b3  XayaUI/Compat.lua
 ebd7aa72eb0a6e85b587290f421e7741  XayaUI/Conditions.lua
-eb142e89a94760830c0e8ac87451605f  XayaUI/Console.lua
-e6fc3c194ba6121502c50c3a31730d6f  XayaUI/Core.lua
+11b9d4a7541715c2172a726e7279faeb  XayaUI/Console.lua
+dce0c976aa2a3a88c2faed9501c1cbf8  XayaUI/Core.lua
 db497422119cbfffd2eea19c785df167  XayaUI/Cues.lua
 5d1c864ae837732b1b3a035b774ab3dc  XayaUI/DebugRecord.lua
 66ebd06d977bc5fbad54749b84936cc8  XayaUI/Engine.lua
@@ -142,7 +142,7 @@ e9e54b6afdaec3eaa20e255322bb0d1e  XayaUI_Bonus/TooltipsUI.lua
 5dca5ea1fb1066fcd02b2674eefdfa24  XayaUI_Chat/Core.lua
 8a087c49d9bd56d9daa92cb0054f97d6  XayaUI_Chat/Fade.lua
 46e7eaa0b4e8fb149a947c1d5391305b  XayaUI_Chat/Frame.lua
-9df96724d676ea9794f20ace8b30202d  XayaUI_Chat/History.lua
+9ac8b056fe70a4aca0050113a02993cd  XayaUI_Chat/History.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 356fb84ca4d9f2b324c96e4f68c56082  XayaUI_Chat/Locate.lua
 5ffcad428d3ce5c974ae3e0b32989cbb  XayaUI_Chat/Messages.lua
@@ -216,7 +216,7 @@ a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 d4690500db6f2af478ebfb7544d8aee2  XayaUI_Options/XayaUI_Options.toc
 5afe11f54ae24648f309bff7987178e0  XayaUI_QoL/CharacterModel.lua
 ddfadc11ced8617cc79735bcf8fcf798  XayaUI_QoL/CharacterReskin.lua
-76e59d5c842c660811bc10c7715dfb51  XayaUI_QoL/CharacterToolkit.lua
+71a9c5e2546cef30f382de5d323903ea  XayaUI_QoL/CharacterToolkit.lua
 852083e509ef46ba46037600b22bad6f  XayaUI_QoL/CharacterWidthProbe.lua
 ebb711c6a474f2773d4b40a0f3d79e64  XayaUI_QoL/CursorHighlight.lua
 c3617b22a301f3dc2a881c6e62360910  XayaUI_QoL/CursorTrail.lua
@@ -494,6 +494,7 @@ cdd375e8fd192ce310da4594190c313c  debug-log/2026-11-06-0048-console-save-only-co
 8672d383a4690ca2e7d5678e62390ac3  debug-log/2026-11-06-0400-character-width-upgrade-qol-0.7.27.md
 5d218f7c42e73e577b2e2e2e026e3ff1  debug-log/2026-11-06-0409-tooltip-aura-source-debug-only-bonus-0.6.15.md
 5198473bdf9b295c6432636b81ef4b5c  debug-log/2026-11-06-0435-stat-calculator-round-qol-0.7.28.md
+6e8236b73c4aa9274c3dea0ce6dfed78  debug-log/2026-11-06-0542-debug-opens-console-shortcuts-loader-history-pipes-core-0.6.50-chat-0.6.17.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -515,7 +516,7 @@ e80a5c2d309d09f70935f65abd599ec3  docs/plans/IDEA-UPGRADE-OPTIONS-2026-11-05.md
 4951caf3d08972511c0552aaeba5f0f1  docs/process/ELVUI-STRUCTURE-REVIEW-2026-11-05.md
 d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 544369ba5f2fb2b6f2e2cdabc4dfeb65  docs/process/REQUEST-LOG-CROSS-CHAT.md
-dc46d8d611b2aa5e42bf2bc5db167e9e  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
+31485f31b36300256cf2f28f62f62e75  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
 1789b4ebd0209727bf139f74245d208b  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 90936a78a2724875d4e7d1118d31997a  docs/process/VERIFICATION.md
@@ -593,12 +594,12 @@ a8e5c2bbdb81d4bb1a3dffb7e6c05a9c  tests/char_toolkit_run.py
 0f46f11222291c70483718691d730c62  tests/charges_combat_run.py
 fe5081788e33a4b0edb0ff1d7e05d095  tests/chat_off_costs_nothing_run.py
 cbf3c82d2398010da18d49bd2ef1a940  tests/chat_pieces_run.py
-e4f9308c54b9e7e634d6f41276ada184  tests/chat_run.py
+bac159cb9f76ef1ac7a840d31bb92918  tests/chat_run.py
 1c96c68b90a98f38ba83cf032d0765f6  tests/chat_world.lua
 de8e42cd1a1c7ce6149f4c172854b190  tests/chatprobe_run.py
 c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
 77c4528b7a2dd2ec35f14acbb7abec18  tests/compact_button_width_run.py
-8ec6ba4b86a0a065fe171f842c70c5f3  tests/console_commands_run.py
+394bb596535379f143f960738bbb2466  tests/console_commands_run.py
 5a5034513603092a5062a0bb8ef84779  tests/console_toggle_cost_run.py
 b8838d4363b7fe225b7b7fe641d3c249  tests/core_off_costs_nothing_run.py
 385efab273152e93a25d127204b06e1e  tests/count_gcd_run.py
@@ -623,7 +624,7 @@ c368c3d4a0e31da169d5370dec0c7c3a  tests/drag_drop_run.py
 8363bfc20282f173bb23c1db7fc4c9f7  tests/engine_garbage_run.py
 9aa5354c2bf9c78cf8b46e32d9142dff  tests/engine_text_run.py
 91e69f1cabaacf58537aa37237ffb06c  tests/export_group_run.py
-ddf76b808219bb97f6ac4da1e1b91322  tests/feature_rows_map_run.py
+6b2939dc372abffc54e1ef9558012d7b  tests/feature_rows_map_run.py
 ba76b8a4cede40d6a498477cb17fbd93  tests/flat_buttons_run.py
 73996db55adfc87161e59f4458dc4a2e  tests/flex_dropdown_run.py
 f490934467b632f21c38c487f87fbf32  tests/formula_capture_run.py
@@ -637,7 +638,7 @@ a36a03ecc872c2cf4b1b410e1aeba87e  tests/harness/build_api_index.py
 e419bc6fcc002cffc52e4a48a97807a8  tests/harness/build_framexml_index.py
 6f6d8a592b30903806cc446181eef8f5  tests/harness/loader.lua
 a86f56d3d0f0e1ed426ca5decffcbdbf  tests/harness/run.py
-c71836eae1fc6fc66f6a5422a720b6a6  tests/harness/scenario.lua
+9de9e7a08f41cb1724a50f5dfc1a8eec  tests/harness/scenario.lua
 2a91f90a18bc2c518a3264bce9dda6cd  tests/harness/world.lua
 7f8e06958cff5b6defb1058572578426  tests/harness_enum_values_run.py
 54ac3f5374107845cd76a8303a1e4a90  tests/header_chevron_run.py
@@ -681,7 +682,7 @@ eccba8875a1faeb20465640570668d83  tests/trigger_parity_run.py
 06abd3bc39893cbb62c55a168ba32788  tests/usage_run.py
 da76e46324134f12c93e5a987a10280e  tests/window_footer_run.py
 480b49a29f06991788f1bff461d947fd  tests/window_margins_run.py
-5520e4cfd9aa06f69d94a740b9be00b5  tests/xui_help_lines_run.py
+964ab86ead726b28b2d24bc02c0cd0c9  tests/xui_help_lines_run.py
 9cf2dbe8870484cac06007449100805c  tools/formula_fit.py
 5ea11cb0d56f3c473cd881158515069e  tools/manifest.py
 f7da6506c18b451dcf535c9484dbcbb1  tools/precheck.py

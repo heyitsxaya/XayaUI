@@ -240,9 +240,10 @@ function ns.AurasCommand(arg)
     for _, l in ipairs(lines) do ns.Print(l) end
 end
 
--- core 0.6.50: a diagnostic command, /xui debug auras (Modules.lua ns.RegisterDebugCommand)
+-- core 0.6.50: a diagnostic command, /xui debug auras (Modules.lua ns.RegisterDebugCommand); /xui auras is its shortcut, printed in
+-- chat (Core.lua SHORTCUTS; Xaya 2026-11-06)
 ns.RegisterDebugCommand("auras", ns.AurasCommand,
-    { "auras [target/focus/pet] [debuffs] (aura IDs, and whether XayaUI can follow them in combat)", "auras <spellID> (one spell; works in combat)" })
+    { "auras [target|focus|pet] [debuffs] (aura IDs, and whether XayaUI can follow them in combat)", "auras <spellID> (one spell; works in combat)" })
 
 -- the catalogue follows spec and talent changes
 local ev = CreateFrame("Frame")

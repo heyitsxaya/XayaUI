@@ -360,11 +360,23 @@ end
 function ns.ConsoleWindowOn() return (win and win:IsShown()) and true or false end
 
 -- Run what was typed in the console's command line (core 0.6.50). "/xui debug status", "/xayaui debug status" and "debug status" all
--- run /xui debug status; /save reloads the interface; any other slash command, the game's or another addon's, is not run (only
--- XayaUI's own handler is called). The typed line is echoed into the
+-- run /xui debug status; /save and /reload reload the interface; any other slash command, the game's or another addon's, is not run
+-- (only XayaUI's own handler is called). The typed line is echoed into the
 -- window; what the command prints goes to the window (ns.consoleRunning, read by Core.lua ns.Print), whatever "XayaUI's messages"
 -- says. Messages a command prints later (after a timer, at the end of combat) go where the setting says. Returns true when a
 -- command ran (the edit box keeps it in its history).
+-- Run fn(...) with what it prints going to the console window, whatever "XayaUI's messages" says (ns.consoleRunning, read by Core.lua
+-- ns.Print and its error handler). open: open the window first if it is closed (any /xui debug command; Xaya 2026-11-06: "Debug cmds
+-- open console"). An error goes to the game's error handler while ns.consoleRunning is still set: XayaUI's handler (Core.lua) shows it
+-- in the window and keeps it for the bug report, and BugSack or the game's error frame still get it; a feature's command reaches the
+-- same handler from Modules.lua's own pcall. Messages printed later (after a timer, at the end of combat) go where the setting says.
+function ns.RunInConsole(open, fn, ...)
+    if open and not ns.ConsoleWindowOn() then ns.ConsoleWindow(true) end
+    local prev, args, n = ns.consoleRunning, { ... }, select("#", ...)
+    ns.consoleRunning = true
+    xpcall(function() fn(unpack(args, 1, n)) end, function(e) local h = geterrorhandler and geterrorhandler(); if h then pcall(h, e) end end)
+    ns.consoleRunning = prev
+end
 -- a line of the console's own (the typed command, a refusal): kept in ns.logBuf like a message, drawn in the window and the settings
 -- window's strip, not put in chat or the debug record
 local function Put(line)
@@ -380,18 +392,19 @@ function ns.ConsoleRun(text)
         if low == p then body = "" elseif low:sub(1, #p + 1) == p .. " " then body = text:sub(#p + 2) end
         if body then break end
     end
-    -- (Xaya 2026-11-06, of refusing other slash commands here: "Yes, but /save should trigger a reload") /save reloads the interface,
+    -- (Xaya 2026-11-06, of refusing other slash commands here: "Yes, but /save should trigger a reload"; of /reload: "Both work")
+    -- /save and /reload reload the interface,
     -- which is when the game writes the saved settings to disk. C_UI.Reload is documented (docs/reference/api/namespaces.md, C_UI:
     -- "`C_UI.Reload()`", no flags, no returns); ReloadUI, the older global XayaUI already calls from buttons, if it is missing.
     -- INFERENCE (not documented): an addon may call it from a key press in its own edit box, as the game's own reload buttons do.
-    if low == "/save" then
-        Put("|cff888888> /save|r  reloading the interface (that writes your settings to disk)")
+    if low == "/save" or low == "/reload" then
+        Put("|cff888888> " .. low .. "|r  reloading the interface (that writes your settings to disk)")
         local reload = (C_UI and C_UI.Reload) or ReloadUI
         if type(reload) == "function" then reload() end
         return true
     end
     if not body and text:sub(1, 1) == "/" then
-        Put("|cffff5555Only XayaUI's own commands run here|r (and /save, which reloads the interface). Type them with or without /xui, "
+        Put("|cffff5555Only XayaUI's own commands run here|r (and /save or /reload, which reload the interface). Type them with or without /xui, "
             .. "for example: help, debug, debug status.")
         return false
     end
@@ -399,12 +412,7 @@ function ns.ConsoleRun(text)
     Put("|cff888888> /xui " .. body .. "|r")   -- the typed line, as the console's own record of what ran
     local run = SlashCmdList and SlashCmdList["XAYAUI"]
     if type(run) ~= "function" then return false end
-    -- an error goes to the game's error handler while ns.consoleRunning is still set: XayaUI's handler (Core.lua) shows it in this
-    -- window and keeps it for the bug report, and BugSack or the game's error frame still get it. A feature's command reaches the
-    -- same handler from Modules.lua's own pcall.
-    ns.consoleRunning = true
-    xpcall(function() run(body) end, function(e) local h = geterrorhandler and geterrorhandler(); if h then pcall(h, e) end end)
-    ns.consoleRunning = nil
+    ns.RunInConsole(false, run, body)
     return true
 end
 
