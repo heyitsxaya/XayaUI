@@ -295,6 +295,21 @@ local function EnsureTextures()
     end
 end
 
+-- the sound and art lists, for the auto-populate table's Cue set-up column (AutoPicker.lua, Options 0.6.49): the same lists the cue
+-- editor offers, and the same way a picked art is applied (ns.ApplyArtPick, used by the editor's "Or pick art" below)
+function ns.SoundChoices() EnsureSounds(); return soundList, soundValues, soundSorting end
+function ns.TexChoices() EnsureTextures(); return texValues, texSorting end
+function ns.ApplyArtPick(V, k)
+    if k == "0" then V.tex = "" else V.kind, V.tex = "file", k end
+    local follows = (tonumber(V.iconW) or 0) <= 0 and (tonumber(V.iconH) or 0) <= 0
+    for _, g in ipairs(ns.LocalGraphics or {}) do   -- art that follows the display: shape the display like the picture (capped at 256)
+        if follows and g[2] == k then
+            local sc = math.min(1, 256 / math.max(g[3], g[4]))
+            V.w, V.h = math.max(8, math.floor(g[3] * sc)), math.max(8, math.floor(g[4] * sc))
+        end
+    end
+end
+
 -- Specs of the current class
 local function SpecValues()
     local v, order = { ["0"] = "(none - any spec)" }, { "0" }
@@ -1995,14 +2010,7 @@ local function BuildRule(i, rule)
                 sorting = function() EnsureTextures(); return texSorting end,
                 get = function() if V.kind == "file" then return tostring(V.tex) end end,
                 set = function(_, k)
-                    if k == "0" then V.tex = "" else V.kind, V.tex = "file", k end
-                    local follows = (tonumber(V.iconW) or 0) <= 0 and (tonumber(V.iconH) or 0) <= 0
-                    for _, g in ipairs(ns.LocalGraphics or {}) do   -- art that follows the display: shape the display like the picture (capped at 256)
-                        if follows and g[2] == k then
-                            local sc = math.min(1, 256 / math.max(g[3], g[4]))
-                            V.w, V.h = math.max(8, math.floor(g[3] * sc)), math.max(8, math.floor(g[4] * sc))
-                        end
-                    end
+                    ns.ApplyArtPick(V, k)   -- shared with the auto-populate table's picture picker
                     Changed(rule); Notify()
                 end },
             sizeH = { type = "header", name = "Size & Orientation", order = 10 },
@@ -3335,13 +3343,13 @@ function BuildClassCreator()
     local function shown() return not creatorOpen end
     local args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Press a spec's Auto-populate button (or the one for your whole class) to load its cooldowns, auras and target debuffs in a table below. Tick the ones you want, set each one's trigger, cue and combat load, then make them: each becomes a rule with its cue, in Class > Spec > cue type." },
+            name = "Press a spec's Auto-populate button (or the one for your whole class) to load its cooldowns, auras and target debuffs in a table below. Tick the ones you want, set each one's trigger, cue and combat load, then press Populate: each becomes a rule with its cue, in Class > Spec > cue type." },
         apHdr = { type = "header", order = 0.1, name = "Auto-populate my class / spec" },
         apInfo = { type = "description", order = 0.2, width = "full", fontSize = "medium",
             name = function()
                 local specID = ns.CurrentSpecID and ns.CurrentSpecID()
                 local okS, _, specName = pcall(GetSpecializationInfoByID, specID or 0)
-                return "Detected: |cffffd100" .. (UnitClass("player") or "?") .. " - " .. ((okS and specName) or "unknown spec") .. "|r. Cooldowns are read from this game client (the addon remembers each spec once you have played it); auras and target debuffs from your Cooldown Manager, for the spec you are in now. Nothing is made until you press Make the ticked rules under the table." end },
+                return "Detected: |cffffd100" .. (UnitClass("player") or "?") .. " - " .. ((okS and specName) or "unknown spec") .. "|r. Cooldowns are read from this game client (the addon remembers each spec once you have played it); auras and target debuffs from your Cooldown Manager, for the spec you are in now. Nothing is made until you press Populate under the table." end },
         apTalents = { type = "toggle", order = 0.3, width = "full", name = "Include talents I have not picked (rule only loads when the talent is known)",
             get = function() return ns.AutoCfg().talents ~= false end,
             set = function(_, v)

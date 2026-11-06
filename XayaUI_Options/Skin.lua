@@ -1786,7 +1786,7 @@ function ns.FlexPrepass(content, children, bw)
             -- The row-wrap check above already counts the gutter, so this never pushes a control past the edge.
             local g = (i > 1) and gap or nil
             if g and e.tab and row[i - 1].tab then g = TAB_GAP end   -- #370: tabs sit side by side like a real tab row
-            if g and e.cell and row[i - 1].cell then g = CELL_GAP end
+            if g and e.cell and row[i - 1].cell then g = e.sub and 0 or CELL_GAP end   -- a sub-cell (arg.xuiSubCell) shares its cell: no gutter
             e.ch.xuiGapX = g
         end
         row, used = {}, 0
@@ -1794,7 +1794,8 @@ function ns.FlexPrepass(content, children, bw)
     local cells   -- the table row being collected (arg.xuiCell): { list, nom = the sum of its relative widths }
     local function closeCells()
         if not cells then return end
-        local n = #cells.list
+        local n = 0   -- gutters sit between cells; a sub-cell (arg.xuiSubCell: the 2nd+ control of one table cell) adds none
+        for _, e in ipairs(cells.list) do if not e.sub then n = n + 1 end end
         local scale = 1
         if cells.nom > 0 then scale = math.min(1, (width - CELL_GAP * (n - 1)) / (cells.nom * width)) end
         if scale < 0 then scale = 0 end
@@ -1836,7 +1837,7 @@ function ns.FlexPrepass(content, children, bw)
                         closeCells(); flush()
                         cells = { list = {}, nom = 0 }
                     end
-                    local e = { ch = ch, base = width * nom, flex = false, cell = true, nom = nom }
+                    local e = { ch = ch, base = width * nom, flex = false, cell = true, nom = nom, sub = oc.arg.xuiSubCell and true or nil }
                     row[#row + 1] = e
                     cells.list[#cells.list + 1] = e
                     cells.nom = cells.nom + nom

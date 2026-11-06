@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline test (XayaUI_Options 0.6.45): the auto-populate table as it is DRAWN. Xaya, 2026-11-06, on a screenshot of the 0.6.42 picker
+"""Offline test (XayaUI_Options 0.6.45; Cue set-up, Spec column and bucket headers 0.6.49): the auto-populate table as it is DRAWN. Xaya, 2026-11-06, on a screenshot of the 0.6.42 picker
 (each row a tick box with a far-away cue dropdown, the debuff choice on a line of its own, no column names): "need to fix display and
 follow proposed rule of columns and type as specified. also need to actually display proposed column names -- note I don't suggest them
 just for fun, they are prescriptions for initial display pane configurations".
@@ -18,6 +18,7 @@ import run as H  # noqa: E402
 LUA = r'''
 return function(W, L)
 local R = {}
+local multiSU = nil
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 20)
@@ -36,9 +37,13 @@ C_CooldownViewer = { GetCooldownViewerCategorySet = function(cat) if cat == 0 th
   GetCooldownViewerCooldownInfo = function(id) return INFO[id] end }
 local ACD = LibStub("AceConfigDialog-3.0")
 pcall(ns.ToggleUI); W.tick(0.1, 4)
+-- rows with a Cue set-up: 187827 Speech (Customize) with an extra Sound (two controls share the cell under Advanced); 204021 Sound
+AP.SetChoice({ spec = 581, key = "cd:187827" }, "cue", "speech")
+AP.SetExtra({ spec = 581, key = "cd:187827" }, "sound", true)
+AP.SetChoice({ spec = 581, key = "cd:204021" }, "cue", "sound")
 AP.Load(581)
-local COLS = { "on", "nm", "ty", "tr", "cu", "cb" }
-local NAMES = { nm = "Name", ty = "Type", tr = "Trigger", cu = "Cue type", cb = "Combat load", xc = "Extra cues" }
+local COLS = { "on", "nm", "ty", "tr", "cu", "su", "cb" }
+local NAMES = { nm = "Name", sp = "Spec", ty = "Type", tr = "Trigger", cu = "Cue type", su = "Cue set-up", cb = "Combat load", xc = "Extra cues" }
 
 local function measure(label, cols)
   ACD:SelectGroup("CueRules", "cooldowns", "creatorTab"); W.tick(0.3, 4)
@@ -62,6 +67,21 @@ local function measure(label, cols)
   local cl, cr = content:GetLeft(), content:GetRight()
   local br = box:GetRight()
   local function mid(f) return f:GetTop() - f:GetHeight() / 2 end
+  -- a cell: one widget, or the Cue set-up cell's controls together (su1, su2: from the first one's left edge to the last one's right edge)
+  local function cellOf(i, k)
+    if i == 0 then return (k == "on") and found.hOn or found["h" .. k] end
+    local w = found["r" .. i .. k]
+    if w or k ~= "su" then return w end
+    local parts = {}
+    for j = 1, 4 do if found["r" .. i .. "su" .. j] then parts[#parts + 1] = found["r" .. i .. "su" .. j].frame end end
+    if #parts == 0 then return nil end
+    if #parts > 1 then multiSU = (multiSU or 0) + 1 end
+    local a, z = parts[1], parts[#parts]
+    local f = { GetLeft = function() return a:GetLeft() end, GetRight = function() return z:GetRight() end,
+      GetTop = function() local t = -math.huge; for _, p in ipairs(parts) do t = math.max(t, p:GetTop()) end; return t end,
+      GetHeight = function() return a:GetHeight() end, GetWidth = function() return z:GetRight() - a:GetLeft() end }
+    return { frame = f }
+  end
   -- header: column names in her order, each over its column
   local hOK, why = true, ""
   for _, k in ipairs(cols) do
@@ -76,7 +96,7 @@ local function measure(label, cols)
   local prevBottom
   for i = 0, nrows do
     local cells = {}
-    for _, k in ipairs(cols) do cells[#cells + 1] = (i == 0) and (k == "on" and found.hOn or found["h" .. k]) or found["r" .. i .. k] end
+    for _, k in ipairs(cols) do cells[#cells + 1] = cellOf(i, k) end
     local m0 = mid(cells[1].frame)
     local top, bottom = -math.huge, math.huge
     for j, c in ipairs(cells) do
@@ -97,13 +117,30 @@ local function measure(label, cols)
   check(label .. ": every cell is exactly under its column name (same left edge and width)", alignOK)
   check(label .. ": rows start at the box's left edge and end inside its right edge", edgeOK, ("pane %.1f-%.1f, box right %.1f"):format(cl, cr, br))
   check(label .. ": rows stack top to bottom without overlapping", stackOK)
+  -- the bucket headers (Spell CD / Aura / Debuff): a tick box and the name on one line, across the table, inside the box
+  local bOK, bw = true, ""
+  local nb = 0
+  for _, b in ipairs({ "cd", "aura", "debuff" }) do
+    local t, n = found["b" .. b .. "On"], found["b" .. b .. "Nm"]
+    if t and n then
+      nb = nb + 1
+      if math.abs(mid(t.frame) - mid(n.frame)) > 1 or n.frame:GetLeft() < t.frame:GetRight() - 0.5 or math.abs(t.frame:GetLeft() - cl) > 0.5
+        or n.frame:GetRight() > br - 5 then bOK = false; bw = bw .. b .. " " end
+    end
+  end
+  check(label .. ": the bucket headers (Spell CD, Aura, Debuff) each sit on one line with their tick box, inside the box", bOK and nb == 3, bw .. nb)
   return cr - cl
 end
 
 local wide = measure("default window", COLS)
 AP.adv = true
-measure("Advanced", { "on", "nm", "ty", "tr", "cu", "cb", "xc" })
+multiSU = 0
+measure("Advanced", { "on", "nm", "ty", "tr", "cu", "su", "cb", "xc" })
+check("Advanced: a row whose Cue set-up cell holds two controls (Speech + an extra Sound) was measured", multiSU > 0, multiSU)
 AP.adv = nil
+AP.Load("all")
+measure("all specs (Spec column)", { "on", "nm", "sp", "ty", "tr", "cu", "su", "cb" })
+AP.Load(581)
 -- less room: the window 200 px narrower (its saved width: AceConfigDialog reopens the window at that size)
 local st = ACD:GetStatusTable("CueRules")
 local w0 = st.width or ACD.OpenFrames["CueRules"].frame:GetWidth()

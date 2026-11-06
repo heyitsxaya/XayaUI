@@ -196,3 +196,10 @@ Your sentence: "this _____ requires blizzard's cooldown manager to track it befo
   set + clip / wrap tick boxes; auto fits the showing items, border follows; strata / opacity / scale on Group; align / distribute /
   spacing saved and kept applying; Delete / New / Enable on Config; nested groups get "anchored to: screen / parent group"; static
   group scaling: "Toggle / prompt"; icon size on Group; position / growth / size on Group (no "Group Display" rename).
+
+## Round 2 answers (2026-11-06 ~05:50 UTC, engine session 2 = session_014bN6tV8wAAEXAShpTKqUfz continuation; question prompts)
+- Speech Customize: "Small typing window" (ticking Customize opens a small window to type the text; the cell then shows the text).
+- Speech, aura / debuff "When present": "Says the name" (starts saying "<name>"; Customize lets her change it; never blocks the row).
+- Extra cues needing a set-up: "1 for now, flag for potential revision pending feedback" (option 1 = own controls per extra in the
+  Cue set-up cell; unpicked = row unfinished). FLAGGED: may be revised after her feedback.
+- The unfinished-rows alert: "Popup window with OK" (game-style popup, her exact text, OK button).
