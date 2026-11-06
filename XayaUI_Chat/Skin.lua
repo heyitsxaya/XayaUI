@@ -132,6 +132,37 @@ local TAB_PIECES = { "Left", "Middle", "Right", "SelectedLeft", "SelectedMiddle"
 
 local function TabText(tab) return tab and (tab.Text or _G[(tab:GetName() or "") .. "Text"]) end
 
+-- (Chat 0.6.20, REQUEST-LOG UI-2 / UI-4; Xaya 2026-11-06: "text differences between general / combat log / user created panes should
+-- not exist. make sure all align properly"; her answer: "set all v-aligns to the same -- the ones that cannot be changed determine
+-- the rest"). Every docked tab's name sits at one height: the place Blizzard's tab template gives it (ChatTabArtTemplate ButtonText:
+-- CENTER 0, -5; Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.xml:414-418, wow-ui-source 297d7aa = 12.1.5.70783), the anchor
+-- General, Combat Log and every tab made from the template start with. Known difference: a whisper window's tab (FCF_OpenTemporaryWindow,
+-- FloatingChatFrame.lua:718-720) is re-anchored LEFT of chatTab.Left's right edge + 10, -6, so with the tab row's height (not Blizzard's
+-- 32) its name sat lower than the others. It keeps its left alignment (its conversation icon hangs off the name's left side) and only
+-- its height is evened out; x 24 = Left's right edge (BOTTOMLEFT -2, 16 wide) + 10, the same place as before. A tab whose name was
+-- moved by something else (General's lower name in her screenshot: cause not found in XayaUI's or Blizzard's code, INFERENCE that it is
+-- an anchor) gets the same anchor too. Colours are unchanged: the theme / Chat Panel colours, the same rule for every tab.
+local TAB_TEXT_Y = -5
+local TEMP_TAB_TEXT_X = 24
+local function AlignTabText(tab, fs)
+    if not (fs and fs.ClearAllPoints and fs.SetPoint) then return end
+    if tab._xuiTextPts == nil and fs.GetNumPoints and fs.GetPoint then   -- the game's anchors, given back when the Chat Panel goes off
+        local pts = {}
+        for i = 1, (fs:GetNumPoints() or 0) do pts[i] = { fs:GetPoint(i) } end
+        tab._xuiTextPts = pts
+    end
+    fs:ClearAllPoints()
+    if tab.conversationIcon then fs:SetPoint("LEFT", tab, "LEFT", TEMP_TAB_TEXT_X, TAB_TEXT_Y)
+    else fs:SetPoint("CENTER", tab, "CENTER", 0, TAB_TEXT_Y) end
+end
+function C.RestoreTabText(tab)
+    local fs, pts = TabText(tab), tab and tab._xuiTextPts
+    if not (fs and pts) then return end
+    fs:ClearAllPoints()
+    for _, p in ipairs(pts) do if p[1] then fs:SetPoint(p[1], p[2], p[3], p[4], p[5]) end end
+    tab._xuiTextPts = nil
+end
+
 function C.StyleTabs()
     local s = S()
     if not (s and C.On()) then return end
@@ -167,6 +198,7 @@ function C.StyleTabs()
                         if selected then r, g, b = s.tabSelR, s.tabSelG, s.tabSelB else r, g, b = s.tabTextR, s.tabTextG, s.tabTextB end
                     end
                     fs:SetTextColor(r, g, b, 1)
+                    AlignTabText(tab, fs)
                 end
                 if tab.SetHeight and tonumber(th) then
                     if not tab._xuiH and tab.GetHeight then tab._xuiH = tab:GetHeight() end

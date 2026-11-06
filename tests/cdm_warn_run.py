@@ -15,7 +15,7 @@ import run as H  # noqa: E402
 LUA = r'''
 return function(W, L)
 local R = {}
-local function check(name, ok) R[#R + 1] = { name, ok and true or false } end
+local function check(name, ok, extra) R[#R + 1] = { name .. ((ok or extra == nil) and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 10)
 local ns = rawget(_G, "XayaUI_NS")
@@ -53,11 +53,14 @@ check("a target debuff tracked through its ability's icon (Cooldown Manager ID) 
 check("a debuff watched by two rows is listed once", (function() local n = 0; for _, e in ipairs(needs) do if e.id == 2001 then n = n + 1 end end; return n == 1 end)())
 check("3 limits in all (1001, 1004, debuff 2001), nothing guessed", #needs == 3)
 local t1 = ns.CdmNeedText(by.aura1001)
-check("message: Xaya's sentence for an aura the Cooldown Manager can track",
-  t1:find("This aura (Spell 1001, 1001) requires Blizzard's Cooldown Manager to track it before it can be tracked by the addon.", 1, true) == 1
-  and t1:find("Tracked Buffs or Tracked Bars", 1, true) ~= nil)
-check("message: a debuff says 'debuff'; one the Cooldown Manager does not offer says it cannot be tracked in combat",
-  ns.CdmNeedText(by.debuff2001):find("This debuff (", 1, true) == 1 and ns.CdmNeedText(by.debuff2001):find("cannot be tracked in combat", 1, true) ~= nil)
+check("message (B1, her answer 'Right word + name'): the aura's name, no ID, then her second sentence kept (B2)",
+  t1 == "This aura (Spell 1001) requires Blizzard's Cooldown Manager to track it before it can be tracked by the addon. In the Cooldown Manager's settings, move it to Tracked Buffs or Tracked Bars (the game hides it in combat, encounters, Mythic+ and PvP).", t1)
+local tD = ns.CdmNeedText({ kind = "debuff", id = 2009, name = "Frailty", offered = true })
+check("message: a debuff says 'debuff' and its name", tD:find("This debuff (Frailty) requires Blizzard's Cooldown Manager", 1, true) == 1, tD)
+check("message (B3): one the Cooldown Manager does not offer, exactly her sentence",
+  ns.CdmNeedText(by.debuff2001) == "Blizzard's Cooldown Manager does not offer in-combat tracking for this aura for your current spec. Rule might not work reliably."
+  and ns.CdmNeedText(by.aura1004) == ns.CdmNeedText(by.debuff2001), ns.CdmNeedText(by.debuff2001))
+check("message: with no readable name, the ID stands in for it", ns.CdmNeedText({ kind = "aura", id = 4242 }):find("This aura (4242) requires", 1, true) == 1)
 -- unknown secrecy: not judged; unreadable catalogue: 'offered' unknown, so the main sentence
 SEC[1001] = nil
 check("an aura whose secrecy the game will not say is not judged", (function() for _, e in ipairs(ns.CdmNeeds(A)) do if e.id == 1001 then return false end end return true end)())

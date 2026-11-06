@@ -11,6 +11,11 @@ from lua51 import runtime as LuaRuntime   # Lua 5.1, like the game (tests/lua51.
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 lua = LuaRuntime(unpack_returned_tuples=True)
 W = lua.eval("function(root) return dofile(root .. '/tests/chat_world.lua')(root) end")(ROOT)
+# (Chat 0.6.20 / Dev Assist 0.7.5, REQUEST-LOG #81: /xui chat whispers and its counters are XayaUI Dev Assist's; loaded here as the game
+# would, after XayaUI Chat. Without it the word does not exist: checked first.)
+lua.eval("function(W, C) for k in pairs(W.printed) do W.printed[k] = nil end; C.Command('whispers') end")(W, W.ns.Chat)
+NO_DEV_WHISPERS = "\n".join(str(v) for v in W.printed.values() if v)
+W.loadDevAssist(W)
 fails = 0
 def check(name, cond, extra=""):
     global fails
@@ -154,6 +159,8 @@ def report():
     for k in list(W.printed.keys()): W.printed[k] = None
     run("C.Command('whispers')")
     return "\n".join(str(v) for v in W.printed.values() if v)
+check("whispers: without XayaUI Dev Assist /xui chat whispers prints no report (only the Chat Panel's status)",
+      "Chat whispers:" not in NO_DEV_WHISPERS and "Chat Panel:" in NO_DEV_WHISPERS, NO_DEV_WHISPERS)
 out = report()
 check("whispers: the game's setting is named", '"New Tab" (whisperMode popout)' in out, out)
 check("whispers: the game's whisper manager is listening", "listens for whispers: yes; for Battle.net whispers: yes" in out, out)

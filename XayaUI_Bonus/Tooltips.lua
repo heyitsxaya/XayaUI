@@ -260,15 +260,16 @@ function TT.AurasFor(kind, id, data)
     return out, same
 end
 
--- Sources are shown only while Advanced Debugging is on (Bonus 0.6.15; Xaya 2026-11-06: "only offer this if debugging mode is
--- enabled"). Advanced Debugging is core's one debugging mode (Settings > Debugging, CueRulesDB.ui.advancedDebug, ns.AdvancedDebugOn in
--- DebugRecord.lua; on by default). Without core's reader the text is left out.
+-- Sources ("via ...") are shown only while the XayaUI Dev Assist addon is loaded (Bonus 0.6.18; Xaya 2026-11-06, REQUEST-LOG #81, her
+-- answer "Tooltip, Dev Assist on": on the tooltip only while Dev Assist is enabled; never otherwise). It was Advanced Debugging's
+-- (Bonus 0.6.15), which is on for most players. Core says whether Dev Assist is loaded (Modules.lua ns.DevAssistOn); without core's
+-- reader the text is left out.
 function TT.SourcesOn()
-    local ok, on = pcall(function() return ns.AdvancedDebugOn and ns.AdvancedDebugOn() end)
+    local ok, on = pcall(function() return ns.DevAssistOn and ns.DevAssistOn() end)
     return ok and on == true
 end
 
--- "via this tooltip, your casts" in TT.AURA_SOURCE_ORDER, grey; "" when the entry has no source or Advanced Debugging is off
+-- "via this tooltip, your casts" in TT.AURA_SOURCE_ORDER, grey; "" when the entry has no source or XayaUI Dev Assist is not loaded
 function TT.SourceText(e)
     if not TT.SourcesOn() then return "" end
     local t = {}
@@ -535,56 +536,10 @@ function TT.ObservedLines(id)
 end
 TT.FormulaSource = TT.FormulaSource or TT.ObservedLines
 
--- /xuitt aura [spellID]: what every aura source says for one spell (the spell under the mouse when no ID is given). Read only.
-function TT.AuraReport(id)
-    local function P(...) print("|cff9966ffXayaUI Tooltips|r", ...) end
-    if not id then
-        local ok, data = pcall(function() return GameTooltip:GetTooltipData() end)
-        id = ok and type(data) == "table" and readable(data.id) and data.id or nil
-    end
-    id = tonumber(id)
-    if not id then P("Hover a spell and run it from a macro (/run C_Timer.After(3, function() SlashCmdList.XUITT('aura') end)), or: /xuitt aura 258920"); return end
-    local ver = C_AddOns and C_AddOns.GetAddOnMetadata and select(2, pcall(C_AddOns.GetAddOnMetadata, "XayaUI_Bonus", "Version"))
-    local inCombat = InCombatLockdown and InCombatLockdown() and true or false
-    P(("spell %d (%s); XayaUI Bonus %s; in combat: %s"):format(id, tostring(SpellNameOf(id) or "?"), tostring(ver or "?"), inCombat and "yes" or "no"))
-    if not TT.watching and TT.ResetCooldownLinks then TT.ResetCooldownLinks() end   -- (no spec-change event while IDs and Formulas are off)
-    local link = TT.CooldownLinks()[id]
-    if link then
-        local t = {}
-        for _, a in ipairs(link.auras) do t[#t + 1] = tostring(a) end
-        P(("  Cooldown Manager: linked auras {%s}; buff tracker with its own ID: %s"):format(table.concat(t, ", "), link.own and "yes" or "no"))
-    else
-        P("  Cooldown Manager: no entry for this spell (not in your spec's Cooldown Manager list, or its data is not loaded)")
-    end
-    local okA, ad = pcall(function() return C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID and C_UnitAuras.GetPlayerAuraBySpellID(id) end)
-    P("  aura with this ID on you now: " .. (not okA and "error" or ad == nil and (inCombat and "no answer (hidden in combat)" or "no") or isSecret(ad) and "hidden" or "yes"))
-    local cast = {}
-    if ns.AuraModel and ns.AuraModel.AurasForCast then
-        local ok, list = pcall(ns.AuraModel.AurasForCast, id)
-        if ok and type(list) == "table" then for _, a in ipairs(list) do cast[#cast + 1] = tostring(a.id) end end
-    end
-    local castSelf = ns.AuraModel and ns.AuraModel.CastAppliesSelf and select(2, pcall(ns.AuraModel.CastAppliesSelf, id))
-    P(("  your recorded casts: auras {%s}; same-ID aura seen: %s"):format(table.concat(cast, ", "), castSelf == true and "yes" or "no"))
-    local auras, same = TT.AurasFor("spell", id, nil)
-    local t = {}
-    if same then t[#t + 1] = tostring(id) .. " (same as the spell)" end
-    for _, a in ipairs(auras) do t[#t + 1] = tostring(a.id) .. (a.name and (" " .. a.name) or "") .. TT.SourceText(a) end
-    P("  tooltip shows: " .. (#t > 0 and table.concat(t, "; ") or "not known yet"))
-end
-
--- /xuitt lines: dump the raw lines of the tooltip under the mouse (type, tooltipType, tooltipID) so the aura-ID source can be verified.
-function TT.DumpLines()
-    local function P(...) print("|cff9966ffXayaUI Tooltips|r", ...) end
-    local ok, data = pcall(function() return GameTooltip:GetTooltipData() end)
-    if not ok or type(data) ~= "table" or type(data.lines) ~= "table" then P("Hover an item or spell, then run it from a macro: /run C_Timer.After(3, function() SlashCmdList.XUITT('lines') end)"); return end
-    P("tooltip type", tostring(readable(data.type) and data.type or "?"), "id", tostring(readable(data.id) and data.id or "?"), "lines", #data.lines)
-    for i, ln in ipairs(data.lines) do
-        if type(ln) == "table" and readable(ln.type) and (ln.type == ns.AuraSources.NestedType() or ln.tooltipID ~= nil) then
-            P(i, "lineType", tostring(ln.type), "tooltipType", tostring(readable(ln.tooltipType) and ln.tooltipType or "?"),
-              "tooltipID", tostring(readable(ln.tooltipID) and ln.tooltipID or "?"), tostring(readable(ln.leftText) and ln.leftText or ""))
-        end
-    end
-end
+-- /xuitt aura, /xuitt lines and /xuitt probe moved to XayaUI Dev Assist (Bonus 0.6.18; REQUEST-LOG #81, XayaUI_DevAssist/CoreDebug.lua).
+-- They read these two helpers.
+TT.SpellNameOf, TT.NpcIDFromGUID = SpellNameOf, NpcIDFromGUID
+if ns.Provide then ns.Provide("tooltipsDebug", { TT = TT }) end
 
 -------------------------------------------------------------------------------
 -- 2. Item level on hover
@@ -785,30 +740,4 @@ function TT.Sync()
     end
     TT.watching = want
     if TT.SectionOn("formulas") and TT.LoadClassData then pcall(TT.LoadClassData) end
-end
-
--------------------------------------------------------------------------------
--- /xuitt probe: what can this client read on the unit under the mouse?
--------------------------------------------------------------------------------
-function TT.Probe()
-    local function P(...) print("|cff9966ffXayaUI Tooltips|r", ...) end
-    local unit = "mouseover"
-    if not UnitExists(unit) then
-        P("Point at a unit, then run it from a macro or: /run C_Timer.After(3, function() SlashCmdList.XUITT('probe') end)")
-        return
-    end
-    local function show(v) if v == nil then return "nil" elseif isSecret(v) then return "SECRET" else return tostring(v) end end
-    local function try(label, fn)
-        local ok, a, b, c = pcall(fn)
-        if not ok then P(label, "ERROR", tostring(a)) else P(label, show(a), b ~= nil and show(b) or "", c ~= nil and show(c) or "") end
-    end
-    try("UnitGUID", function() return UnitGUID(unit) end)
-    local okg, guid = pcall(UnitGUID, unit)
-    P("NPC ID from GUID", okg and tostring(NpcIDFromGUID(guid)) or "unreadable")
-    try("UnitCanAttack", function() return UnitCanAttack("player", unit) end)
-    try("UnitIsPlayer", function() return UnitIsPlayer(unit) end)
-    try("Enemy forces (count, percent)", function() return C_ScenarioInfo.GetUnitCriteriaProgressValues(unit) end)
-    try("CanInspect", function() return CanInspect(unit) end)
-    P("IsInInstance type / M+ active", tostring((select(2, IsInInstance()))),
-      tostring(C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive and C_ChallengeMode.IsChallengeModeActive()))
 end

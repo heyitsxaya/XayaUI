@@ -8,7 +8,9 @@
 -- appeared after a readable player cast and later vanished (= early removal detection)?
 -- Every call is wrapped in pcall. A possibly-secret value is NEVER passed to tostring or
 -- compared: only issecretvalue() and type() are used on values of unknown secrecy.
-local ADDON, ns = ...; ns = XayaUI_NS or ns -- part of XayaUI core since 0.6.0 (Combat/); shares its namespace
+-- (Dev Assist 0.7.5: moved here from core's Combat/AuraIDProbe.lua; REQUEST-LOG #81. /xui debug probe ids: CoreDebug.lua.)
+local ns = rawget(_G, "XayaUI_NS")   -- shares XayaUI core's namespace; without XayaUI it has nothing to report on
+if type(ns) ~= "table" then return end
 
 -- Loaded once: XayaUI itself loads the engine files (XayaUI.toc), so pulling the repo is enough; an old separate
 -- XayaUI_CombatEngine folder (installed before 0.6.0) finds this and steps aside (no double load).

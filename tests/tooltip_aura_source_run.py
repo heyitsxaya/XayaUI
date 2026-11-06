@@ -50,15 +50,18 @@ XayaUI_NS = {}; CueRulesDB = {}
 def make(src):
     L = LuaRuntime(unpack_returned_tuples=True)
     L.execute(WORLD)
-    files = [("XayaUI/Modules.lua", None), ("XayaUI_Bonus/Tooltips.lua", src), ("XayaUI/AuraSources.lua", None), ("XayaUI_Bonus/TooltipsUI.lua", None)]
+    # (Bonus 0.6.18 / Dev Assist 0.7.5, REQUEST-LOG #81: /xuitt is XayaUI Dev Assist's, loaded last as the game loads it)
+    files = [("XayaUI/Modules.lua", None), ("XayaUI_Bonus/Tooltips.lua", src), ("XayaUI/AuraSources.lua", None), ("XayaUI_Bonus/TooltipsUI.lua", None),
+             ("XayaUI_DevAssist/CoreDebug.lua", None)]
     for f, text in files:
         text = text if text is not None else open(os.path.join(ROOT, f), encoding="utf-8").read()
         L.eval("function(src, n) return assert(loadstring(src, n)) end")(text, f)("XayaUI", L.eval("XayaUI_NS"))
     # AuraSources is core; keep its embedded-aura reader and give each check its own record (as tests/tooltips_run.py does)
     L.execute("REAL_AS = XayaUI_NS.AuraSources; RECORDED = {}; XayaUI_NS.AuraSources = { EmbeddedAuras = REAL_AS.EmbeddedAuras, "
               "NestedType = REAL_AS.NestedType, AurasOf = function(k, id) return RECORDED[k .. id] or {} end }")
-    # Advanced Debugging (core DebugRecord.lua ns.AdvancedDebugOn; on by default in the game): the sources show only while it is on
-    L.execute("DEBUG_ON = true; XayaUI_NS.AdvancedDebugOn = function() return DEBUG_ON end")
+    # XayaUI Dev Assist loaded (core Modules.lua ns.DevAssistOn; Bonus 0.6.18, Xaya 2026-11-06 "Tooltip, Dev Assist on"): the sources show
+    # only while it is. Advanced Debugging (on by default) no longer decides it: it is set off here and the sources still show.
+    L.execute("DEBUG_ON = true; XayaUI_NS.DevAssistOn = function() return DEBUG_ON end; XayaUI_NS.AdvancedDebugOn = function() return false end")
     L.execute("XayaUI_NS.TT.DB(); XayaUI_NS.TT.Init(); XayaUI_NS.TT.DB().ids.icon = true")
     return L
 
@@ -133,24 +136,24 @@ def checks(L):
     rep = " | ".join(L.eval("printed").values())
     check("/xuitt aura names the source too", "tooltip shows: 701 Spikes" + VIA("Cooldown Manager") in rep, rep[-200:])
 
-    # H. Advanced Debugging off (Xaya 2026-11-06: "only offer this if debugging mode is enabled"): no source text; the repeated icon
-    # line stays left out (that part is not a debugging aid)
-    L.execute("DEBUG_ON = false")
+    # H. XayaUI Dev Assist not loaded (Xaya 2026-11-06: "Tooltip, Dev Assist on"; before Bonus 0.6.18 it followed Advanced Debugging):
+    # no source text, Advanced Debugging on; the repeated icon line stays left out (that part is not a debugging aid)
+    L.execute("DEBUG_ON = false; XayaUI_NS.AdvancedDebugOn = function() return true end")
     off = run("NAMES = { [204021] = 'Fiery Brand', [207771] = 'Fiery Brand', [207744] = 'Fiery Brand' }; "
               "ICONS = { [204021] = 1344647, [207771] = 1344647, [207744] = 1344647 }; "
               "cdmSets[0] = { 11 }; cdmInfo[11] = { spellID = 204021, linkedSpellIDs = { 207744 } }",
               "posts[1](GameTooltip, { id = 204021, lines = { %s } })" % nested(207771))
-    check("debugging off: no source text, and still no repeated aura icon line", off == ["Spell ID: 204021", "Icon ID: 1344647",
+    check("Dev Assist not loaded (Advanced Debugging on): no source text, and still no repeated aura icon line", off == ["Spell ID: 204021", "Icon ID: 1344647",
           "Aura ID: 207771  (Fiery Brand)", "Aura ID: 207744  (Fiery Brand)"], off)
     L.execute("printed = {}")
     run("NAMES = { [700] = 'Spikes', [701] = 'Spikes' }; cdmSets[0] = { 21 }; cdmInfo[21] = { spellID = 700, linkedSpellIDs = { 701 } }",
         "SlashCmdList.XUITT('aura 700')")
     rep2 = " | ".join(L.eval("printed").values())
-    check("debugging off: /xuitt aura's tooltip shows line matches the tooltip (no source)", "tooltip shows: 701 Spikes" in rep2 and "via" not in rep2, rep2[-160:])
-    L.execute("XayaUI_NS.AdvancedDebugOn = nil")
+    check("Dev Assist reported off: /xuitt aura's tooltip shows line matches the tooltip (no source)", "tooltip shows: 701 Spikes" in rep2 and "via" not in rep2, rep2[-160:])
+    L.execute("XayaUI_NS.DevAssistOn = nil")
     nocore = run("NAMES = { [500] = 'Shield', [501] = 'Shield Buff' }", "XayaUI_NS.TT.DB().ids.icon = false; posts[1](GameTooltip, { id = 500, lines = { %s } }); XayaUI_NS.TT.DB().ids.icon = true" % nested(501))
-    check("without core's debugging reader: no source text, no error", nocore == ["Spell ID: 500", "Aura ID: 501  (Shield Buff)"], nocore)
-    L.execute("DEBUG_ON = true; XayaUI_NS.AdvancedDebugOn = function() return DEBUG_ON end")
+    check("without core's Dev Assist reader: no source text, no error", nocore == ["Spell ID: 500", "Aura ID: 501  (Shield Buff)"], nocore)
+    L.execute("DEBUG_ON = true; XayaUI_NS.DevAssistOn = function() return DEBUG_ON end")
     return R
 
 
@@ -160,7 +163,8 @@ BREAKS = [
      '(db.ids.icon) and IconID(kind.key, id)'),
     ("only the first source kept", "if src and not e.src[src] then e.src[src] = true end", "if src and next(e.src) == nil then e.src[src] = true end"),
     ("recorded earlier kept beside other sources", 'if other then e.src["recorded earlier"] = nil end', ""),
-    ("sources shown with debugging off", "if not TT.SourcesOn() then return \"\" end", ""),
+    ("sources shown without Dev Assist", "if not TT.SourcesOn() then return \"\" end", ""),
+    ("sources follow Advanced Debugging again (before Bonus 0.6.18)", "return ns.DevAssistOn and ns.DevAssistOn()", "return ns.AdvancedDebugOn and ns.AdvancedDebugOn()"),
     ("no source text", 'return "  |cff999999via " .. table.concat(t, ", ") .. "|r"', 'return ""'),
 ]
 

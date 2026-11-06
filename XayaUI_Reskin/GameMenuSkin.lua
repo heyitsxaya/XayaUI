@@ -433,7 +433,7 @@ local function SafeBuild()
         if panel then panel:Hide() end
         if GameMenuFrame and GameMenuFrame.SetAlpha then GameMenuFrame:SetAlpha(1) end    -- give Blizzard's menu back
         faded = false
-        if ns.CaptureError then ns.CaptureError(err) end
+        if ns.CaptureError then ns.CaptureError(err, nil, "XUI-E014") end
     end
 end
 function ns.GameMenuSkin_Refresh() if live and GameMenuFrame and GameMenuFrame:IsShown() then SafeBuild() end end
@@ -474,36 +474,9 @@ function ns.GameMenuSkin_Live() return live end              -- (tests)
 -- at login (XayaUI's settings are ready before this addon loads, so this runs while the file loads)
 ns.WhenReady(function() if SavedOn() then Enable() end end)
 
-function ns.GameMenuSkin_Diagnostics()
-    local c = Cfg()
-    ns.Print(("game menu skin: on=%s mode=%s failed=%s built=%d rows=%d title found=%s lastError=%s"):format(
-        tostring(c.skin), c.matchReal ~= false and "match (rows sit on the real buttons)" or "own layout", tostring(diag.failed), diag.built, diag.rows, tostring(diag.titleFound), tostring(diag.lastError)))
-    for i, r in ipairs(rows) do
-        if r:IsShown() and r.matchSrc then
-            local okP, top = pcall(function() return r.matchSrc:GetTop() end)
-            local okL, lx = pcall(function() return r.matchSrc:GetLeft() end)
-            ns.Print(("  row %d '%s' sits on its real button (layoutIndex=%s, top=%s, left=%s)%s"):format(i, tostring(r.label), tostring(r.matchSrc.layoutIndex),
-                okP and tostring(top and math.floor(top)) or "?", okL and tostring(lx and math.floor(lx)) or "?", r.isXui and " [XayaUI slot]" or ""))
-        elseif r:IsShown() then
-            if r.isXui then ns.Print(("  row %d '%s' -> XayaUI (opens the settings)"):format(i, tostring(r.label)))
-            else
-                local b = ResolveSource(r)
-                local okT, t = pcall(function() return b and b:GetText() end)
-                local okP, top = pcall(function() return b and b:GetTop() end)
-                ns.Print(("  row %d '%s' -> real '%s' layoutIndex=%s top=%s"):format(i, tostring(r.label), okT and tostring(t) or "?", tostring(b and b.layoutIndex), okP and tostring(top and math.floor(top)) or "?"))
-            end
-        end
-    end
-    if GameMenuFrame and GameMenuFrame.buttonPool and GameMenuFrame.buttonPool.EnumerateActive then
-        local n, names = 0, {}
-        for b in GameMenuFrame.buttonPool:EnumerateActive() do
-            n = n + 1; local ok, t = pcall(b.GetText, b); names[#names + 1] = ok and tostring(t) or "?"
-        end
-        ns.Print(("Blizzard entries (%d): %s"):format(n, table.concat(names, " | ")))
-    else
-        ns.Print("the Game Menu exposes no button pool on this client: the skin cannot read its entries.")
-    end
-end
+-- /xui debug gamemenu (the skin's half) moved to XayaUI Dev Assist (Reskin 0.6.5; REQUEST-LOG #81, XayaUI_DevAssist/CoreDebug.lua): it
+-- reads this
+ns.Provide("gameMenuSkinDiag", { State = function() return Cfg(), diag, rows, ResolveSource end })
 
 -- Blizzard UI Reskin > Esc Menu (the Game Menu look) ----------------------------------------------------------------------------------------------------------
 function ns.GameMenuSkin_Options(Notify)
@@ -521,7 +494,7 @@ function ns.GameMenuSkin_Options(Notify)
     end
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "XayaUI's own look for the ESC menu. It draws its own look over Blizzard's menu and never edits the buttons other UI addons restyle. If something goes wrong the skin turns itself off and Blizzard's menu comes back. Off by default; /xui debug gamemenu shows what the menu exposes." },
+            name = "XayaUI's own look for the ESC menu. It draws its own look over Blizzard's menu and never edits the buttons other UI addons restyle. If something goes wrong the skin turns itself off and Blizzard's menu comes back. Off by default." },
         match = { type = "toggle", order = 2, width = "full", name = "Match Blizzard's button positions (recommended)", disabled = off,
             desc = "On: the look is drawn on top of Blizzard's own buttons, exactly where they are, and a click goes straight to the real button under the pointer, so no button can run the wrong action. Button size, spacing, padding, scale, the XayaUI button's position, and 'Leave out of this menu' only apply when this is off. A change takes effect the next time the menu opens.",
             get = function() return Cfg().matchReal ~= false end, set = s("matchReal") },
@@ -587,14 +560,11 @@ function ns.GameMenuSkin_Options(Notify)
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
     local switch = { type = "toggle", name = "Use the XayaUI Game Menu look", get = g("skin"), set = s("skin"),
         disabled = function() return not ns.ReskinTabOn() end,
-        desc = "Off: nothing of the look is made or runs. Switched off after it was on, Blizzard's menu comes back at once; the look's hooks on the menu stay until you /reload but do nothing. Greyed while All reskins (the top row of this tab) is off." }
+        desc = "Off: nothing of the look is made or runs. Switched off after it was on, Blizzard's menu comes back at once; the look's hooks on the menu stay until you /reload but do nothing. Greyed while Blizzard UI Reskin is off (this tab's Overview)." }
     return { type = "group", name = "Esc Menu", order = 3, xuiSwitch = switch, args = args }   -- (Reskin 0.6.1: a page of the Blizzard UI Reskin tab)
 end
 
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
--- /xui debug gamemenu (core's help line covers both; core 0.6.50). The fallback is for a core older than 0.6.50.
-local registerDebug = ns.RegisterDebugCommand or ns.RegisterCommand
-registerDebug("gamemenu", function() ns.GameMenuSkin_Diagnostics() end)
 ns.RegisterSettingsPage("reskin", "gamemenu", ns.GameMenuSkin_Options)   -- the Blizzard UI Reskin tab's Esc Menu page (Options 0.6.38)

@@ -3,7 +3,7 @@ Logged 2026-11-06 17:15 UTC by session 014bN6tSStpdmmCXviFAqPdQ (branch `claude/
 session 014bN6tTjuXobzzk8oJHeYwn (8e20e1b on `claude/eloquent-wright-iic6k6`), handed over at Xaya's request (REQUEST-LOG #81, #82).
 Nothing here has run in the game.
 
-## Her request (REQUEST-LOG #81)
+## Her request (REQUEST-LOG O-81)
 The chat history window lost literal pipes and sometimes the next letter (her screenshot of 2026-11-05: `[highlighttrail]`,
 `statusidthprobe`). Her two strings were already fixed on `main` by Chat 0.6.17 (4fd7c98: `C.ForEditBox` doubles each "|" for the
 edit box; QA D12). So a test of her two strings cannot fail on `main`; it fails only on 0.6.16. Said to her plainly.

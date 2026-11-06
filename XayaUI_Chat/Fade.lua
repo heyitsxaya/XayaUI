@@ -55,7 +55,10 @@ local function Tick(_, dt)
     local s = S()
     if not (s and C.Container()) then return end
     local now = GetTime()
-    if C.unlocked or Over(C.Container()) or Typing() or s.collapsed then last = now end
+    -- (Chat 0.6.24; REQUEST-LOG UI-11, Xaya 2026-11-06: "mouse hover over should also allow for chat to reappear if this option is
+    -- selected", her answer "Its own tick box") the mouse over the chat wakes it only while "The mouse over the chat brings it back" is
+    -- ticked (on unless unticked: nothing saved means on, as before)
+    if C.unlocked or (s.fadeHover ~= false and Over(C.Container())) or Typing() or s.collapsed then last = now end
     local floor = math.max(0, math.min(100, tonumber(s.fadeTo) or 0)) / 100
     local target = ((now - last) >= (tonumber(s.fadeAfter) or 10)) and floor or 1
     local rate = (1 - floor) / math.max(0.05, tonumber(s.fadeSeconds) or 0.4)

@@ -1,11 +1,11 @@
 # Outstanding items, 2026-11-06
 
-Xaya's request (REQUEST-LOG #80): "11-06 outstanding items".
+Xaya's request (REQUEST-LOG O-80): "11-06 outstanding items".
 Compiled 2026-11-06 ~17:10 UTC by Claude Code session 014bN6tSStpdmmCXviFAqPdQ (branch `claude/determined-gates-89j6pv`).
 `main` = `22abdeb`. Versions on `main`: core 0.6.51, Options 0.6.50, QoL 0.7.32, Bonus 0.6.17, Chat 0.6.18, Reskin 0.6.4, Dev Assist 0.7.2.
 
 Sources read (nothing else): `docs/process/REQUEST-LOG.md` (sections A-A7, B), `REQUEST-LOG-CROSS-CHAT.md` section (2),
-`REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md` (S3), `SESSION-START-SUMMARY.md` section 4, open pull requests and open issues on GitHub.
+`REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md` (S3), `docs/SESSION-START-SUMMARY.md` section 4, open pull requests and open issues on GitHub.
 Nothing here was checked in game. Row numbers are the request log's; "S3 R.." are S3's log; "B.." / "ENG-.." / "CHAT-.." are section B / the cross-chat file.
 
 Closed items (MAIN / DONE / RETRACTED) are not repeated. "Not seen in game" applies to every MAIN item.
@@ -74,7 +74,7 @@ Closed items (MAIN / DONE / RETRACTED) are not repeated. "Not seen in game" appl
 | S2-15 / Cursor Highlight | Right-click lag: which feels slow, which shape, trail on? Cursor trail spacing: her "Decide after playing". |
 | S3 R20 (fel flame fortification), R25 (boiling point + stacks), #365, #332, #315 | Engine bugs that need her in-game debug record. Owned by the engine session. |
 | #15 | Which version her game shows (her "missed" screenshot was pre-0.7.20). |
-| Everything MAIN since 2026-11-04 | None of it has been seen in game (QA-CHECKLIST.md sections B, D, E, F). |
+| Everything MAIN since 2026-11-04 | None of it has been seen in game (docs/QA-CHECKLIST.md sections B, D, E, F). |
 
 ## 3. Being built, not on `main` (open draft pull requests)
 | PR | What | State |
@@ -119,7 +119,7 @@ Twelve chats (and engine session 2, partly) sent their outstanding items here at
 | "Attribution pane styling" (014bN6tXAHaczRsBX4wyBunJ) | Credits pane restyle: gutter +10 px, "Credits and attribution" as h1, subheaders h2, one square-cornered box per section with rows only, background 10 % less transparent | Same as **B6** (section 1). Its blocker ("code not found") is resolved: the pane is `XayaUI_Options/AddonInfo.lua` (checked). New CONFIRM points for her: (a) gutter = the pane's outer padding; (b) "10 % less transparent" = background alpha +0.10; (c) what h1 / h2 look like (font sizes). |
 | "Repository push check" (014bN6tSeFBsvYBzTaNndPGE) | Nothing to push. Asks whether the Recycle Bin branch `claude/magical-cray-jmspwv` is merged, superseded or pending | It is open draft PR #92 (section 3); HIEFF-3 deferred the recycle bin. Keep or close: her call. `wip/notepad-icons` ("paused, untested") is not reviewed: added as unknown. |
 | "xui chat indentation / wrapping" (014bN6tVUUALYM7nWYh9SuGx) | #346 chat left gap (fix in Chat 0.6.6, 39f37ad; still open on GitHub, checked); scroll bar vs history button (Chat 0.6.8); QA D4b-D4e | In-game checks for her (section 2): #346 on a build ≥ 0.6.6, ideally with `/xui chat indent` output, then close #346. Unconfirmed lead: Edit Mode clamp insets push ChatFrame1 right near the screen edge. |
-| "Character window stat display improvements" (014bN6tVdvvFNcwwRRBHuqTv) | QA E1d2 (does the game's rating converter apply diminishing returns?); DECISIONS-2026-11-04 "Character Toolkit" questions; about 24 stat calls added in QoL 0.6.2 not checked against the 12.1.5 docs | In-game check (E1d2) and decisions for her; the unchecked calls are owned work (S1). New, never tracked: (1) **proposal**: two decimals on Blizzard's own character stats (22.48 % instead of 22 %), by hooking PaperDollFrame_SetLabelAndText: CONFIRM, not built; (2) her "~16.1 mastery rating per 1 %" vs her screenshot 997 / 60.69 = 16.43: where 16.1 came from is unknown (CHARWIN-1 quotes 16.1 without this note); (3) SESSION-START-SUMMARY.md line 280 still says "Character Toolkit (QoL 0.7.0-0.7.1)" (checked): stale. |
+| "Character window stat display improvements" (014bN6tVdvvFNcwwRRBHuqTv) | QA E1d2 (does the game's rating converter apply diminishing returns?); DECISIONS-2026-11-04 "Character Toolkit" questions; about 24 stat calls added in QoL 0.6.2 not checked against the 12.1.5 docs | In-game check (E1d2) and decisions for her; the unchecked calls are owned work (S1). New, never tracked: (1) **proposal**: two decimals on Blizzard's own character stats (22.48 % instead of 22 %), by hooking PaperDollFrame_SetLabelAndText: CONFIRM, not built; (2) her "~16.1 mastery rating per 1 %" vs her screenshot 997 / 60.69 = 16.43: where 16.1 came from is unknown (CHARWIN-1 quotes 16.1 without this note); (3) docs/SESSION-START-SUMMARY.md line 280 still says "Character Toolkit (QoL 0.7.0-0.7.1)" (checked): stale. |
 | "Last chat visibility" (014bN6tWzNXK37yGSNX83DuV) | (1) "the growth should also be informed by anchor placement in the parent group container" | **Closed**: MAIN in core 0.6.7 (HIEFF-D6, debug-log 2026-11-04-0425; checked). |
 | same | (2) The "XayaUI High-Effort Build" / Combat Engine chat (014bN6tUvbkCv9Ha9VgNF4Xa) still RUNNING, about 635k tokens of context, cost field about $437.57 (the sender's get_session reading, not re-checked) | **Her decision**: stop or archive that chat. Its PR #363 has had no activity since 11-04. |
 | same | (3) Whether a chat uses credits or the plan limit is account-wide, not per chat | INFERENCE by the sender; no official source found. Not verified here. What a fresh chat does change is the cached context re-read each turn. |
@@ -130,7 +130,7 @@ Twelve chats (and engine session 2, partly) sent their outstanding items here at
 | "Whispers tabs and UI overlap bugs" (014bN6tUJ5JTttjgNR2yaUnU) | QA D4k: chat scroll pieces on every tab, back-to-newest arrow, tab list above the privacy button (Chat 0.6.12, on `main`) | In-game check for her. |
 | same | WHISP-1 / QA D4l whisper tabs: root cause still open (the tab is the game's own, `FCF_OpenTemporaryWindow`) | In-game for her (section 2), exact steps: New Whispers = New Tab, `/reload`, `/console scriptErrors 1`, get a whisper, then the full `/xui chat whispers` output and any Lua error. Since Chat 0.6.14 its counters run only while the Chat Panel is on. No fix before that output. |
 | same | Branch `claude/clever-noether-0o0uuj` fully merged (head f3df397) | Her action: delete it on GitHub (the session proxy refuses deletions). |
-| same | Harness note: the API doc files have no trailing newline | **Done here**: added to SESSION-START-SUMMARY.md section 6, step 2. |
+| same | Harness note: the API doc files have no trailing newline | **Done here**: added to docs/SESSION-START-SUMMARY.md section 6, step 2. |
 | "Advanced tooltips" | Harness has no C_Texture stand-in | **Moot**: the Options code checks `C_Texture` before use (`XayaUI_Options/Options.lua:5240-5241`, checked); the 11-04 harness failure was fixed that way. |
 | "XayaUI High-Effort Build" (014bN6tUvbkCv9Ha9VgNF4Xa) | Branch fully pushed; its work is on `main`. Open per the cross-chat file: HIEFF-9 in-game pulls, HIEFF-10 map pins (future), CONFIRM HIEFF-3, HIEFF-5 (= B7), HIEFF-17 | Already listed (sections 1, 5). |
 | same | **Gap closed**: 69 of her messages from 2026-11-04 00:29-07:52 UTC were in no log | Logged verbatim as HIEFF-E3..E77 and HIEFF-19 in REQUEST-LOG-CROSS-CHAT.md, each checked against `main`. Still open from them: **E63** recycle bin should also hold deleted themes, notes and profiles (only rules and groups today); **E38** "auto-delete container scripts?" and **E39-E46** combat-log / KiraUI approach to removing frames (no answer traced on `main`: need a fresh answer); **E7-E8, E29** every aura (Blood Boil, Death and Decay, warrior / paladin / evoker procs) working in game (in-game check; #365); **E54-E61** PR #92 (`magical-cray`) keep or close (likely superseded by the core 0.6.12 Recycle Bin: INFERENCE). |

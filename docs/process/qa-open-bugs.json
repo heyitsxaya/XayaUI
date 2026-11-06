@@ -1,0 +1,73 @@
+{
+ "about": "Open GitHub issues labelled bug + unverified-in-game (heyitsxaya/XayaUI), read 2026-11-06 with gh search/issues; refreshed by hand. Used by tools/qa_walks_from_checklist.py for the /xui dev qa walkthrough 'Open bugs to confirm'.",
+ "issues": [
+  {
+   "number": 97,
+   "title": "[Bug] Trigger buttons differ between Cooldown, Buff/Aura and extra-trigger sections"
+  },
+  {
+   "number": 315,
+   "title": "[defect] Tester report: Boiling Point procs (Blood DK) cannot be tracked, aura ID unconfirmed - 2026-11-03 17:40 UTC (0.5.99)"
+  },
+  {
+   "number": 319,
+   "title": "[defect] Tester report: no Class load condition; spec list shows only the current character's class, so DK auras load on a Paladin - 2026-11-03 18:08 UTC (0.5.104)"
+  },
+  {
+   "number": 331,
+   "title": "Chat history window: footer text clipped and overlapping at the bottom (XayaUI_Chat 0.6.0)"
+  },
+  {
+   "number": 332,
+   "title": "[defect] Tester report: Divine Arbiter tracking does not work in combat; which aura ID is the buff is unconfirmed (1306161 vs 1306162) - 2026-11-03 21:42 UTC (0.6.0)"
+  },
+  {
+   "number": 333,
+   "title": "[defect] Art picker lists 149 pictures only the author has: blank previews for everyone else (Insivius) - fixed in 0.6.2, 2026-11-03 21:42 UTC"
+  },
+  {
+   "number": 340,
+   "title": "[bug] Rules > Disabled lists parent, grandparent and sibling groups instead of only the direct container - fixed in 0.6.2, unverified in game"
+  },
+  {
+   "number": 344,
+   "title": "[bug] Changing a rule's position in a group does not update the on-screen preview - fixed in 0.6.2, unverified in game"
+  },
+  {
+   "number": 346,
+   "title": "Chat Panel: empty space (about 40 px) at the left of the chat text; cause not yet found (XayaUI_Chat 0.6.1)"
+  },
+  {
+   "number": 347,
+   "title": "[defect] Tester: duration text and shield value missing in game, shown in preview; icon looks different (Anti-Magic Shell, 0.6.0)"
+  },
+  {
+   "number": 348,
+   "title": "[defect] Red mouse-over highlight and click-anywhere on trigger / cue / condition headers; replaced by the open / close button - Options 0.6.3"
+  },
+  {
+   "number": 351,
+   "title": "[bug] Every pane: no standard margin or gutter; controls are pressed against their container edges"
+  },
+  {
+   "number": 352,
+   "title": "[bug] Settings window: buttons stretch to fill rows; use small buttons or tick boxes with a dropdown to the right"
+  },
+  {
+   "number": 353,
+   "title": "[bug?] PlaySound called with a channel string where 12.1.5 documents a sound-subtype enum (unverified)"
+  },
+  {
+   "number": 359,
+   "title": "[review] Combat engine and rules vs the 12.1.5 API: duration, shield amount, stacks, debuffs, cooldown time - XayaUI core 0.6.3"
+  },
+  {
+   "number": 364,
+   "title": "[defect] Tester report: Battle.net keeps patching the game while XayaUI is in the AddOns folder (cause unconfirmed)"
+  },
+  {
+   "number": 365,
+   "title": "[defect] Tester report: Death and Decay rule (Unholy) never fires in combat, though the buff is tracked in his Cooldown Manager"
+  }
+ ]
+}

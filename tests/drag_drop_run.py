@@ -123,6 +123,32 @@ local before = names("f1")
 D.start(src); dst.over = false
 D.stop(src)
 check("drop outside any row: nothing moves", names("f1") == before)
+-- #343 (Xaya 2026-11-06: pressing a rule row and dragging does "Nothing at all"): the drag starts from the press itself, without the
+-- game's OnDragStart: a press arms a watcher, a move of 6 px with the button held starts it, letting go drops it
+do
+  local held = true
+  local oldDown = IsMouseButtonDown
+  IsMouseButtonDown = function() return held end
+  local cx, cy2 = 10, 190
+  GetCursorPosition = function() return cx, cy2 end
+  local src2 = fakeRow("all\001f1\001rule" .. idx(C), 200)
+  local dst2 = fakeRow("all\001f1\001rule" .. idx(A), 100)
+  check("#343: the drag-press watcher exists", type(D.arm) == "function")
+  D.arm(src2)
+  local w = D.state.watch
+  local function step() local f = w and w:GetScript("OnUpdate"); if f then f(w) end end
+  cx = 12; step()
+  check("#343: a press that moves less than 6 px is still a click (no drag)", D.state.obj == nil)
+  cx = 20; step()
+  check("#343: moving 6 px or more with the button held starts the drag", D.state.obj == C, tostring(D.state.obj and D.state.obj.name))
+  dst2.over = true; cx, cy2 = 10, 96
+  step()
+  held = false; step()
+  check("#343: letting go over the top half of A drops C above A", names("f1"):find("C,A") ~= nil, names("f1"))
+  check("#343: the watcher stops once the button is up", w:GetScript("OnUpdate") == nil and D.state.obj == nil)
+  IsMouseButtonDown = oldDown
+  GetCursorPosition = oldCur
+end
 return R
 end
 '''

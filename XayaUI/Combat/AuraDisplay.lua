@@ -87,6 +87,8 @@ local function DB()
 end
 
 local function Say(...) if ns.Print then ns.Print(...) end end
+-- is XayaUI Dev Assist loaded (it has /xuiengine auto, on, off and reset since core 0.6.56)
+local function DevOn() return ns.DevAssistOn and ns.DevAssistOn() or false end
 
 -------------------------------------------------------------------------------
 -- Rules: which display does XayaUI draw for a rule, and can the engine draw it faithfully?
@@ -673,6 +675,8 @@ end
 local function Fail(slot, why)
     slot.ok, slot.err = false, tostring(why)
     lastError = slot.err
+    -- (core 0.6.56; REQUEST-LOG #82) a guarded game call failed: recorded with its code, only when it happens (DebugRecord.lua)
+    if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W002", slot.err) end
     if slot.frame then slot.frame:Hide() end
 end
 
@@ -980,8 +984,8 @@ function D.Status()
     if not db then return end
     if db.auto == false or guard.off then
         Say(guard.off and db.auto ~= false
-            and "automatic engine drawing is OFF for this session (performance guard): XayaUI draws every display itself. /xuiengine auto on, or a /reload, turns it back on."
-            or "automatic engine drawing is OFF: XayaUI draws every display itself. /xuiengine auto on to turn it on.")
+            and ("automatic engine drawing is OFF for this session (performance guard): XayaUI draws every display itself. " .. (DevOn() and "/xuiengine auto on, or a /reload, turns it back on." or "A /reload turns it back on."))
+            or ("automatic engine drawing is OFF: XayaUI draws every display itself." .. (DevOn() and " /xuiengine auto on to turn it on." or " It was switched off with XayaUI Dev Assist's /xuiengine auto off: turn it on there.")))
         if lastError then Say("last engine error: " .. lastError) end
         return
     end
@@ -1077,33 +1081,26 @@ local function FindFolder(q)
     return nil, (count == 0) and ("no group matches '" .. q .. "'") or (count .. " groups match '" .. q .. "'; use more of the name")
 end
 
+-- core 0.6.56 (Xaya 2026-11-06, REQUEST-LOG #81, her answer "Yes, as recommended": players keep full and refresh; auto, on, off and
+-- reset move to XayaUI Dev Assist). Those four are registered by Dev Assist (ns.RegisterSubcommand("xuiengine", ...),
+-- XayaUI_DevAssist/CoreDebug.lua) and reach the engine through D.DB, D.FindFolder and D._guard; without Dev Assist they do not exist.
+D.DB, D.FindFolder = DB, FindFolder
 local function Slash(msg)
     local cmd, rest = tostring(msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
     cmd = cmd:lower()
     local db = DB()
     if not db then Say("saved data not loaded yet") return end
-    if cmd == "auto" then
-        local a = rest:lower()
-        if a == "on" or a == "off" then db.auto = (a == "on"); guard.lean, guard.off = nil, nil; guard.bad = 0; D.Build() end
-        D.Status()
-    elseif cmd == "full" then   -- leave lean mode: every spec's displays again
+    if cmd == "full" then   -- leave lean mode: every spec's displays again
         guard.lean = nil; guard.bad = 0; D.Build(); D.Status()
-    elseif cmd == "on" or cmd == "off" then
-        local fo, err = FindFolder(rest)
-        if not fo then Say(err) return end
-        db.groups[fo.id] = (cmd == "on")
-        D.Build(); D.Status()
-    elseif cmd == "reset" then
-        local fo, err = FindFolder(rest)
-        if not fo then Say(err) return end
-        db.groups[fo.id] = nil   -- back to automatic
-        D.Build(); D.Status()
     elseif cmd == "refresh" or cmd == "build" then
         D.Build(); D.Status()
+    elseif cmd ~= "" and ns.RunSubcommand and ns.RunSubcommand("xuiengine", cmd, rest) then
+        -- (Dev Assist's: auto on / off, on / off / reset <group>)
     else
         D.Status()
         -- (no "|r" in chat text: WoW reads it as a colour code)
-        Say("/xuiengine auto on / off;  /xuiengine off / reset <group>;  /xuiengine full (leave lean mode);  /xuiengine refresh.  Draws every aura display through Blizzard's secure aura container so time and stacks show in combat.")
+        Say("/xuiengine full (leave lean mode);  /xuiengine refresh." .. (ns.SubcommandList and ns.SubcommandList("xuiengine", "/xuiengine ") or "")
+            .. "  Draws every aura display through Blizzard's secure aura container so time and stacks show in combat.")
     end
 end
 SLASH_XUIENGINE1 = "/xuiengine"
@@ -1138,10 +1135,12 @@ local function GuardCheck()
     while #db.guardTrips > 10 do table.remove(db.guardTrips, 1) end
     if step == "lean" then
         guard.lean = true
+        if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W003", ("Blizzard's aura containers %.2f ms per frame (limit %.1f)"):format(v, LIMIT_MS)) end
         Say(string.format("performance guard: Blizzard's aura containers cost %.2f ms per frame (limit %.1f; this includes Blizzard's own target-frame auras), so the engine now draws only the displays of the spec you are playing (lean mode, applied once combat ends, until /reload). /xuiengine full to undo.", v, LIMIT_MS))
     else
         guard.off = true
-        Say(string.format("performance guard: still %.2f ms per frame in lean mode, so automatic engine drawing is OFF until /reload; XayaUI draws the displays itself once combat ends. /xuiengine auto on to turn it back on now.", v))
+        if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W004", ("still %.2f ms per frame in lean mode (limit %.1f)"):format(v, LIMIT_MS)) end
+        Say(string.format("performance guard: still %.2f ms per frame in lean mode, so automatic engine drawing is OFF until /reload; XayaUI draws the displays itself once combat ends." .. (DevOn() and " /xuiengine auto on to turn it back on now." or ""), v))
     end
     D.Build()
 end

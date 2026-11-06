@@ -11,7 +11,6 @@
 -- Opened with /xui console and /xui bug, and from Settings > Debugging. Not run in game when written (2026-11-01).
 local addonName, ns = ...
 
-local MAX_ERRORS = 40
 
 local function Plain(s)
     s = tostring(s or "")
@@ -84,33 +83,14 @@ function ns.CopyConsole()
 end
 
 -------------------------------------------------------------------------------
--- Error log (saved between sessions, de-duplicated)
+-- Error log: since core 0.6.56 the coded record in DebugRecord.lua (ns.RecordError, ns.ErrorEntries, ns.ErrorCount, ns.ClearErrorLog;
+-- CueRulesDB.errorLog, the same saved list). The bug report below reads it.
 -------------------------------------------------------------------------------
-local function ErrList()
-    if not CueRulesDB then return {} end
-    CueRulesDB.errorLog = CueRulesDB.errorLog or {}
-    return CueRulesDB.errorLog
-end
 local function AddonVersion()
     local f = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
     local ok, v = pcall(f, addonName, "Version")
     return (ok and v) or "?"
 end
--- Called from the error handler in Core.lua for errors that mention XayaUI. Must never raise an error itself.
-function ns.CaptureError(msg, stack)
-    if not CueRulesDB then return end
-    local text = Plain(msg):sub(1, 700)
-    local list = ErrList()
-    local combat = (UnitAffectingCombat and UnitAffectingCombat("player")) and true or false
-    for _, e in ipairs(list) do
-        if e.msg == text then e.n = (e.n or 1) + 1; e.last = time(); e.combat = e.combat or combat; return end
-    end
-    table.insert(list, 1, { msg = text, stack = Plain(stack or ""):sub(1, 900), first = time(), last = time(), n = 1, ver = AddonVersion(), combat = combat or nil })
-    while #list > MAX_ERRORS do table.remove(list) end
-    if ns.Log then pcall(ns.Log, "|cffff5555Lua error captured|r (see Settings > Debugging > Bug report): " .. text:sub(1, 120)) end
-end
-function ns.ErrorCount() local n = 0; for _, e in ipairs(ErrList()) do n = n + (e.n or 1) end return n, #ErrList() end
-function ns.ClearErrorLog() if CueRulesDB then CueRulesDB.errorLog = {} end end
 
 -------------------------------------------------------------------------------
 -- Bug report
@@ -130,16 +110,16 @@ function ns.BuildBugReport(description, includeAddons)
         if r.isCue then nc = nc + 1 elseif r.parentUid then ncond = ncond + 1 else nr = nr + 1 end
     end
     add(("Rules: %d | cues: %d | conditions: %d | skin on: %s"):format(nr, nc, ncond, (ns.Options and tostring(ns.Options.SkinOn()) or "window not loaded")))
-    add("(No character name or realm, and no rule settings. Rule names appear in the console lines and the debug record below.)")
+    add("(No character name or realm, and no rule settings. Rule names appear in the console lines below, and in XayaUI Dev Assist's detailed record when it is on.)")
     add("")
     add("What happened:")
     add((description and description:match("%S")) and description or "(not filled in)")
     add("")
     local total, kinds = ns.ErrorCount()
-    add(("Lua errors from XayaUI: %d occurrence(s), %d different"):format(total, kinds))
-    for i, e in ipairs(ErrList()) do
+    add(("Errors and warnings from XayaUI: %d occurrence(s), %d different (codes: /xui report)"):format(total, kinds))
+    for i, e in ipairs(ns.ErrorEntries()) do
         if i > 15 then add("... " .. (kinds - 15) .. " more not shown"); break end
-        add(("[%d] x%d | first %s | last %s | version %s%s"):format(i, e.n or 1, date("%m-%d %H:%M", e.first or 0), date("%m-%d %H:%M", e.last or 0), tostring(e.ver), e.combat and " | in combat" or ""))
+        add(("[%d] %s x%d | first %s | last %s | version %s%s"):format(i, tostring(e.code), e.n or 1, date("%m-%d %H:%M", e.first or 0), date("%m-%d %H:%M", e.last or 0), tostring(e.ver), e.combat and " | in combat" or ""))
         add("    " .. tostring(e.msg))
         if e.stack and e.stack ~= "" then add("    stack: " .. e.stack:gsub("\n", " / ")) end
     end

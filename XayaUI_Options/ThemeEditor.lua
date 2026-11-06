@@ -96,7 +96,7 @@ function T.BuildArgs(refresh)
     surf("titleBar", "Title bar", "The strip behind the window title.", false)
     surf("border", "Borders", "Window and pane outlines.", true)
     cust.args.opacity = { type = "range", order = cx(), width = "double", name = "Window opacity", min = 0.1, max = 1, step = 0.01, isPercent = true,
-        desc = "How solid the window background is. Same setting as /xuiskin alpha. Takes effect when the window is next redrawn or reopened.",
+        desc = "How solid the window background is. Takes effect when the window is next redrawn or reopened.",
         get = function() local u = CueRulesDB and CueRulesDB.ui; return tonumber(u and u.skinAlpha) or 0.62 end,
         set = function(_, v)
             if not CueRulesDB then return end

@@ -26,9 +26,9 @@ files, by a parallel sub-agent. Still out of scope: item -> aura confirmation.
 ## Files this branch touches (the other session: please avoid these)
 - `XayaUI_DevAssist/*` (code, `.toc` version 0.7.0 -> 0.7.1)
 - new `tests/devassist_instance_run.py`
-- additive only: `USER-GUIDE.md` 12.13, `QA-CHECKLIST.md` section J (new IDs after the last J step), `docs/process/IN-GAME-DATA-2026-11-05.md`,
+- additive only: `docs/USER-GUIDE.md` 12.13, `docs/QA-CHECKLIST.md` section J (new IDs after the last J step), `docs/process/IN-GAME-DATA-2026-11-05.md`,
   one new `debug-log/` entry, `MANIFEST.md5` (regenerated)
-- **Not touched:** `XayaUI/` core, `XayaUI_Options`, `XayaUI_QoL`, `ROADMAP.md`, `SESSION-START-SUMMARY.md` (updated only at the
+- **Not touched:** `XayaUI/` core, `XayaUI_Options`, `XayaUI_QoL`, `docs/ROADMAP.md`, `docs/SESSION-START-SUMMARY.md` (updated only at the
   end, after rebasing on whatever `main` holds then).
 
 ## Decision graph (how this item was picked)
