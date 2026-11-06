@@ -13,7 +13,7 @@ How this file works:
 - Session that logged it: S1 = session 014bN6tWZxqCW85vMEyHdfnt (branch `claude/adoring-hawking-wyda59`). Other sessions add their own
   rows with their session id; a cross-chat review of other sessions' requests is section B.
 
-Status as of 2026-11-05 ~23:55 UTC. `main` = `0ef9cb0`; S1's branch head = `af87755` (QoL 0.7.23, core 0.6.49), not on `main`.
+Status as of 2026-11-06 ~00:25 UTC. `main` = `7426e7f` (combined push by S4); earlier rows were checked against `0ef9cb0`; S1's branch head = `af87755` (QoL 0.7.23, core 0.6.49), not on `main`.
 
 ## A. Session S1 (this chat), in the order she sent them
 
@@ -48,7 +48,7 @@ Status as of 2026-11-05 ~23:55 UTC. `main` = `0ef9cb0`; S1's branch head = `af87
 | 27 | "add columns to help clarity in info displays: Spell Name (spell id underneath) \| % PSV (underneath each entry show "1 agility = {value}") \| Talent Modifiers" | OPEN (in progress) | QoL 0.7.24 | Exact columns, nothing added (V16). |
 | 28 | "remove "usable now" from spirit bomb"" | OPEN (in progress) | QoL 0.7.24 | |
 | 29 | [uploaded XayaUI.lua, XayaUI.lua.bak, XayaUI_DevAssist.lua, .bak] | Kept as data | outside the repo | Read for #30; nothing about the map in them. |
-| 30 | "map eclipses full screen" [Silvermoon world map full screen] | OPEN | — | S1 answered "not XayaUI" without a test: wrong to close it. Needs a real check (XayaUI on / off, and Deja Character Stats on / off) and a proposal: CONFIRM in #49. |
+| 30 | "map eclipses full screen" [Silvermoon world map full screen] | OPEN (bug) | — | S1 answered "not XayaUI" without a test: wrong. Her answer 2026-11-06: it happens "only with XayaUI on": a XayaUI defect to find and fix. |
 | 31 | "gear compare pane should show Stat DR threshold and diminishing return true >> lost rating information" | OPEN (in progress) | QoL 0.7.24 | |
 | 32 | "combine primary, secondary, and tertiary stats into one major section under the name "Character Stats"" + the Core Stats tree (Primary: agility / strength / intellect, stamina; General: health, mana / energy / resource ..., gcd, movement speed; Offensive: Attack Power / Spell Power, Attack Speed, Weapon DPS, Damage; Defensive: Armor, Dodge, Parry, Block; Secondaries; Tertiaries) + "remove "all ratings" as an entry option" | BRANCH | af87755 (QoL 0.7.23) | Split resources: built as "show both pools" (her open question): CONFIRM. |
 | 33 | "offensive stat I forgot: critical damage" / "sorry, *critical strike effectiveness" / "e.g." [Eyes of the Eagle tooltip] | BRANCH | af87755 | Summed from item text (no API call returns it). |
@@ -56,23 +56,100 @@ Status as of 2026-11-05 ~23:55 UTC. `main` = `0ef9cb0`; S1's branch head = `af87
 | 35 | "should have a min/max window toggle that toggles between two configured sizes -- one smaller and one larger (NOT full screen, just longer) -- as well as the free resize option in the bottom corner" | BRANCH | af87755 | Heights 440 / 760 were S1's choice: CONFIRM. |
 | 36 | "Stat Weights should be a collapsible pane below the character stats that shows how all stats affect one another" + "Stat \| Rating (P / %) \| PPP \| \| DR Threshold \| T/L Rating \| Influences" + the Haste example + "hovering over a given row/column for influences should say "{stat} increases/decreases {other stat} by {amount}"" | BRANCH | af87755 | |
 | 37 | "character pane still broken" / "complete the entire character pane issue now and make sure the reskin of the character pane is also solved -- the current invisible background is not good" / "note gemstone display is much too small and doesn't show the gem name socketed" / "hovering over the enchant name on the character pane should also allow you to see what the enchant does (what it adds or what it procs)" / "embellished items should be hoverable so you can read what the embellishment does" | MAIN, with corrections OPEN | 0f05ad6 (QoL 0.7.22) | Corrections #41-#43. |
-| 38 | "this character pane should not be auto resized to a wider pane to this extent. start by only increasing the width by an additional 10-15%." | OPEN | — | Built +240 px (S1's choice, beyond her tested 120 px): a guess she did not confirm (V16 breach). Spellbook / talents overlap it (#16). |
+| 38 | "this character pane should not be auto resized to a wider pane to this extent. start by only increasing the width by an additional 10-15%." | CONFIRM | — | She asked (2026-11-06): "What is the original, blizzard base character pane width?" Answer: Blizzard 12.1.5 source: PANEL_DEFAULT_WIDTH = 338 (the window without the stats pane), CHARACTERFRAME_EXPANDED_WIDTH = 540 (with it). | Built +240 px (S1's choice, beyond her tested 120 px): a guess she did not confirm (V16 breach). Spellbook / talents overlap it (#16). |
 | 39 | "both: requires a modifier key to allow click-through" (DO NOT RELEASE) | OPEN | — | See #10. |
 | 40 | "ideally, yes" (disabled rules cost nothing) | OPEN | — | Another session logged it too; owner: CONFIRM in #49. |
 | 41 | "Deja Character Stats" (the other character-sheet addon) | Recorded | — | The large purple slot item level and the green bars are Deja Character Stats'. XayaUI hides its own number where DCS shows the same one (0.7.22). |
-| 42 | "Icon should be 10% larger" (gem icons) | OPEN | — | 14 px x 1.10 = 15.4 px: CONFIRM 15 or 16 px. |
+| 42 | "Icon should be 10% larger" (gem icons) | OPEN | — | 14 px x 1.10 = 15.4 px; her answer 2026-11-06: "16 px". |
 | 43 | "put Embellished - Name: ______ and a line break before the description of the embellishment. Detect if it is (1/2) or (2/2) embellishments on the character" | OPEN | — | |
-| 44 | "I did not ask for notes. I gave you explicit column instructions about what I wanted the columns to be. review every instance where I gave you a precise data display structure and do not fail to capture and implement a single instance. do this across all chats." [Note column screenshot] | OPEN | — | Remove the Note column everywhere; where its text goes (gone, or hover only): CONFIRM. Cross-chat review: section B. |
+| 44 | "I did not ask for notes. I gave you explicit column instructions about what I wanted the columns to be. review every instance where I gave you a precise data display structure and do not fail to capture and implement a single instance. do this across all chats." [Note column screenshot] | OPEN | — | Her answer 2026-11-06: "Remove it entirely" (column and text). Cross-chat review: section B. |
 | 45 | "yes, give an enable / disable "Enhanced Tooltips" as a feature" | OPEN | — | One master switch for the four tooltip parts. |
 | 46 | "Assume yes for now" (Character Toolkit "Tooltip lines" gets its own row and tick box) | OPEN | — | |
 | 47 | "No. It should only enable or disable notepad functionality in its entirety" (Notepad's tick box) | OPEN | — | Today the box is "Show Notepad". |
-| 48 | "double: both enable/disable of reskin at all; then individual toggles for individual reskins" (Blizzard UI Reskin tab) | OPEN | — | |
+| 48 | "double: both enable/disable of reskin at all; then individual toggles for individual reskins" (Blizzard UI Reskin tab) | OPEN | owned by S3 | S3 builds it (agreed 2026-11-06). |
 | 49 | Confirmations S1 owes her (V16): Note column text; exact width % (#38); gem px (#42); map (#30); DO NOT RELEASE and disabled rules owner (#10, #40); compare multi-select method; minimap row vs icon (#34); heights (#35); Utilities order (#7) | CONFIRM | — | Asked 2026-11-05. |
 | 50 | "remove "what feeds it" as well." [section titles "(what feeds it)"] | BRANCH | af87755 | The titles "Offense (what feeds it)" / "Defense (what feeds it)" are on `main` (QoL 0.7.22); 0.7.23 replaces those sections. |
 | 51 | "unsure what these mean or what they entail" (R2, R3) / "what is the performance save estimation?" (R4) / "stress test this assumption. don't be lazy." (R5) | Answered 2026-11-05 | — | Measured numbers in the debug log of 2026-11-05 ~23:55. |
 | 52 | (R5: LoadOnDemand bodies) | CONFIRM | — | Measured cost of the off-by-default addons: see #51. |
 | 53 | "set as your standing rule for ALL instances ..." / "stop interpreting my suggestions if they appear prescriptive ..." / "do not guess and implement without providing proposals around that guess with confirmation." / "all of these unless otherwise specified should have been bundled in with the core update. do a proper fix without pushing in piecemeal" | MAIN on landing | SKILL.md, SESSION-START-SUMMARY.md, VERIFICATION.md (V15-V17) | Sent to the other active sessions. |
+| 55 | (S1 defect found by session "Additional Concepts") `tests/harness/api_index_from_docs.py` wrote enum fields in alphabetical order; the stand-in numbers them by position, so 741 of 856 enums had wrong values in cloud test runs | Fixed by that session (its push) | — | Every "ALL CHECKS PASS" S1 reported on 2026-11-05 ran with wrong enum values: S1's bundle is re-tested after that fix lands. |
+| 56 | Answers 2026-11-06 ~00:30 UTC: width "Push to 380px before stats pane and request feedback confirmation"; minimap "If standalone addon, minimal button; otherwise fold into xui minimap button"; heights "Defer after width confirmation"; split resources "Show both pools" | Recorded | — | #38: the window without the stats pane 338 -> 380 px (+42; 582 px with the pane), then ask her. #34: Stat Calculator is part of XayaUI_QoL, so it stays a row in the XayaUI minimap button (as built). #35: heights wait for #38. #32: both pools (as built). |
+| 57 | Answers 2026-11-06: embellishments "1 + pane line says embellished (2/2): name — the rest goes in tooltip"; Spells "Fourth column - computed Value"; defaults while off "How does it work in other addons?" | Recorded; CONFIRM (defaults) | — | #43: pane line "Embellished (2/2): <name>"; hover "Embellished - Name: <name>", a line break, then the description. #27: a fourth column, the computed value (e.g. 38,011). Defaults: answered with AceDB's published source (in-memory defaults, values equal to a default stripped at PLAYER_LOGOUT); her decision pending. |
 | 54 | "Review with other open sessions and coordinate a single push to main with all builds that pass" (relayed by session "Additional Concepts") | In progress | — | S1 holds pushes to `main`; af87755 offered for the combined push. |
+
+## A2. Session S2 = session 014bN6tSy3HbUDWYQsk69naX (branch `claude/inspiring-mendel-8r8qao`; Dev Assist / performance chat)
+Rows written by S2 (sent to S1 on 2026-11-06 00:00 UTC), verbatim from Xaya; statuses as of 2026-11-05 ~23:59 UTC, `main` = `0ef9cb0`.
+S2 has no work off `main` (its last landing: `1f12026`). "Not seen in game" applies to every MAIN row.
+
+| # | Her words (verbatim; [screenshot]) | Status | Where / what | Notes |
+|---|---|---|---|---|
+| S2-1 | "what is an outstanding build item you need to develop? pick one with the awareness you are going to be running alongside another claude code instance" | MAIN | 26e4d18, e87560b (Dev Assist 0.7.1): `/xuidev instance` | S2 picked it (her question asked it to pick). `/xuidev stats` and `tooltips` were planned, then taken back out (not built). |
+| S2-2 | "do a check to see how many tokens I have available before my weekly reset and try to estimate token cost to outstanding feature build items" | Answered | — | Only the five-hour window was visible; the weekly figure could not be read. |
+| S2-3 | "optimize for the highest cost token expenditure that you can complete within a 1h window" / "in that case pick the biggest task, and fast-track it. tell me which one you're working on and tell me if I can have another claude code instance run alongside you on a different feature or item. tell me / tell the other instance what it can work on." | Answered | — | |
+| S2-4 | [screenshot] "this is supposed to support auto-spell grab and populate" | CONFIRM | Passed to the rule / engine session (S2-9); Options 0.6.41 auto-populate picker `44941cf` is on `main` (built by another session) | Not yet checked that 0.6.41 covers the case in her screenshot: needs that check or her confirmation. |
+| S2-5 | "why are there two aura icon ids and damage ratios?" [Fiery Brand tooltip] | Answered; CONFIRM | — | Proposal waiting: hide "Aura icon ID" when it equals the spell's icon; name the source of each aura ID. 207771 vs 207744 still unsettled from game data. |
+| S2-6 | [screenshot] "feature option: talent page overlay with talent name labeling" / "low priority, defer to future enhancement for now" | OPEN (deferred by her) | Issue #388 | |
+| S2-7 | "this should be better. you can absolutely read professions for a current expansion and see what enchanting options are available and make an educated guess from there" [screenshot] | MAIN, part CONFIRM | d11f404 (QoL 0.7.6) | Default enchant slot set was S2's reading of "educated guess" (V16): needs her confirmation. Her answer on question 3b still pending. |
+| S2-8 | "note that one claude instance is working on the outstanding rule and combat engine issues" | Recorded | — | |
+| S2-9 | "are you working on something right now? if not, bundle up all comments about behaviors and display and pass them to the rule and combat engine chat" | Done | Sent to session 014bN6tV8wAAEXAShpTKqUfz | The items are that session's to log. |
+| S2-10 | "what is available for you to work on without conflicting with the other two claude code instances?" | Answered | — | |
+| S2-11 | "what feature does that belong to?" / "defer that to a later build because a spec selection naturally self-selects the role" / "that's not something we care to track" (raid role) | RETRACTED | ROADMAP RM-LOAD row | Her words: "that's not something we care to track". |
+| S2-12 | "what big feature piece requires development that is safe to work on alongside two other simultaneous claude code instances?" | CONFIRM | — | S2 proposed the combat-log analyser; no go / no-go from her yet. Not built. |
+| S2-13 | "add a feature: a little calculator" | MAIN, part CONFIRM | e3cf896 (Bonus 0.6.8); under Utilities (a859028) | S2's choices from a one-line request (V16): 20-key keypad, last 10 results, k / m / b suffixes, `/xui calc <sum>`, launcher entry: needs her confirmation. |
+| S2-14 | [uploads: XayaUI_DevAssist.lua, .bak, XayaUI_GameDump.lua, .bak] | Kept as data; MAIN | 8d81e3f (Dev Assist 0.7.2) | Proc-art hides with no spell ID flooded the log; now counted. |
+| S2-15 | "right clicking mouse with the cursor shape enabled makes cursor less responsive" | MAIN, part CONFIRM | 1b1657d (QoL 0.7.13) | About 60 % fewer texture calls a frame in the stand-in (900.6 to 320.1 at 2,000 px/s). Dot spacing 0.15 to 0.25 was S2's choice. QA E1y. |
+| S2-16 | "escape menu looks sus" [screenshot] / "closing and reopening the esc menu made it even larger" | MAIN | 493e6c6 (core 0.6.39) | |
+| S2-17 | [addon usage tooltip: XayaUI 61.8 MB] / [uploads: XayaUI.lua x3] / [FPS 53 MS 22] | MAIN | 0cf95f2..572c8b7 (core 0.6.40-0.6.44) | Engine garbage per step 52.49 KB to 13.79 KB on her rules, same decisions. |
+| S2-18 | "right mouse click mover is unreliable" | MAIN | d21a39e, fb23e4b (core 0.6.42-0.6.43) | |
+| S2-19 | "right clicking in combat is especially laggy" / "right clicking to move and pan camera" | MAIN | 1b1657d plus S2-17 | Unknown until she plays. |
+| S2-20 | [screenshot] "future roadmap feature: movable interactive widget for displaying mdt routes" [second screenshot] | OPEN (future, her words) | Issue #391 | |
+| S2-21 | "typing in /xui into the console causes a 5-6s delay between the enter press and the addon load" | MAIN | 4be80ee (Options 0.6.37); b8017df (S1) | No in-game timing yet (QA B98, B115). |
+| S2-22 | [screenshot: Options 521.4 MB] "it looks like we need significant performance optimization" / "not just for opening the UI but also for while playing the game. this much memory demand makes the addon worthless" | MAIN | 4be80ee (Options 0.6.37); S2-17; V14 builds | The 521 MB figure not re-measured in game (QA B98). |
+| S2-23 | "have I asked for this before?" / "I don't understand the larger context." / "go with b" | Answered; MAIN | 4be80ee | |
+| S2-24 | "are you able to push a merge now?" / "I need cursor and performance improvements if I want to be able to play" | MAIN | 1b1657d, 4be80ee | |
+| S2-25 | "Push everything you added here and everything else outstanding that has been done onto main" | MAIN | 1f12026 | |
+| S2-26 | "Are any branches in need of merging onto main?" | Answered | — | |
+| S2-27 | "Confirm with the active Claude code sessions with code branches that they're finished and their elements can be pushed together into main" | In progress | — | The combined push had not happened at 23:57 UTC. |
+
+S2: precise data-display structures she gave in S2 (her #44 review): none.
+
+## A3. Session S3 = session 014bN6tStyDJVemzE9tX7F38 (branch `claude/cool-ramanujan-ewx8e5`; Stat Calculator / Shopping List chat)
+Its 62 rows (verbatim) and C1-C11 (its choices awaiting her answer) are in
+`docs/process/REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md` on its branch (kept separate to avoid a merge conflict). Its R47 points
+to S1 #38 (character pane width) and its R59 to S1 #48. **#48 (Blizzard UI Reskin: whole-tab switch + one switch per reskin) is owned
+by S3** (agreed 2026-11-06 00:20 UTC; S1 does not build it). Unowned in S3's records: #372 Group tab properties + group background
+(S3 R12, R14).
+
+## A4. Session S4 = session 014bN6tSiDK8R3ZHPmcK9QHR ("Additional Concepts"; branch `claude/exciting-carson-7gl2bt`)
+Rows sent by S4 to S1 on 2026-11-06 00:17 UTC; her words verbatim.
+
+| # | Her words (verbatim) | Status | Where / what | Notes |
+|---|---|---|---|---|
+| S4-1 | "concept: community chat-based "guess the word" (not even a roadmap feature at the moment, only an idea)" | MAIN | 7426e7f: IDEA-CHATWORD, ROADMAP section 9 "Ideas only", docs/plans/IDEA-CHAT-WORD-GAME-2026-11-05.md | Its 6 questions apply only if she promotes it. |
+| S4-2 | "Words On Stream" | MAIN | 7426e7f | The reference for S4-1, mechanic only. |
+| S4-3 | "potential upgrade options based on stat priority wishlist and evolving diminishing return calculator" | MAIN | 7426e7f | Logged. |
+| S4-4 | "Move this to a roadmap enhancement consideration with the note that it might require 3rd party plugin support from things like Warcraft log analysis, raidbot sims, bloodmallet/archon.gg style projected value, etc" | MAIN; CONFIRM | 7426e7f: RM-UPGRADES, ROADMAP section 9, docs/plans/IDEA-UPGRADE-OPTIONS-2026-11-05.md | CONFIRM: its 8 questions; a roadmap-features/upgrades scaffold branch? |
+| S4-5 | "Review with other open sessions and coordinate a single push to main with all builds that pass" | MAIN | 7426e7f (combined push: #396 d4704c1, #406 67c26a0, #399, harness enum fix) | Left out by their owners' choice, not dropped: #407 Options 0.6.44 (she asked for more changes); #408 (S1's bundle: one landing, V17). |
+
+## A5. Session S5 = session 014bN6tSRsJgz4JWyawQp5gk ("LFG simulator and Wordle features"; roadmap RM-GAMES, RM-RPPM)
+Rows sent by S5 to S1 on 2026-11-06 00:18 UTC; her words verbatim. S5: no precise data-display structures in this session.
+
+| # | Her words (verbatim) | Status | Where / what | Notes |
+|---|---|---|---|---|
+| S5-1 | "Additional feature / roadmap option (load on demand only) LFG simulator and Wordle with friends, different game modes, puzzle modes, community submitted games." | MAIN (roadmap + plan only); feature OPEN; CONFIRM | ROADMAP RM-GAMES, docs/plans/GAMES-MODULE-2026-11-05.md (1f12026, 7426e7f); outline on roadmap-features/games (#397) | CONFIRM: what "LFG simulator" means; "load on demand only" = the addon, the documentation, or both (both applied for now). The word game has its own name and look. |
+| S5-2 | "No code yet, just roadmap and outline sketch" | MAIN (rule followed) | as S5-1 | Nothing built. |
+| S5-3 | "Rough scaffolding and proposed code structure (outline only) in a dedicated "roadmap features: ______" brand per feature" | MAIN (rule in SESSION-START-SUMMARY section 2); outlines BRANCH | roadmap-features/games (#397), roadmap-features/rppm (#398) | Branch names cannot hold a colon or spaces. |
+| S5-4 | "Branch, not brand" | MAIN | SESSION-START-SUMMARY section 2 | |
+| S5-5 | "Another proposed feature: RPPM addition to the tooltip or gear compare windows (undecided)" | MAIN (roadmap row RM-RPPM); feature OPEN; CONFIRM | ROADMAP RM-RPPM; outline on roadmap-features/rppm (#398) | Same need as S1 #22: one design for both. No API gives RPPM. CONFIRM: where; data source; what to show; which items. |
+| S5-6 | "Blizzard has a gem-matching game already — an infinite version seems to be in the arcantina. is it possible to embed it or replicate it? Look up old arcade-style games — Snake, Block Breaker, Bejeweled, Tetris, etc — and research the feasibility of implementation for each. None of these should run unless called by the user directly and none should run at all if "Games" aren't Enabled as their own tab. Note this would be its own plugin folder that could be fully enabled or disabled from the addon folder" | Research BRANCH; summary MAIN; gates are requirements; CONFIRM | roadmap-features/games/ARCADE-FEASIBILITY.md (#397); RM-GAMES row and plan section 5b (7426e7f) | Embedding not possible; mechanics can be rebuilt under our own name and look. CONFIRM: falling blocks (legal risk), Games switch off by default, a switch per game, restricted play, match-3 art. |
+| S5-7 | "Minesweeper / Sudoku / For wordle: wow trivia edition (uses words from in-wow)" | Picks MAIN (plan questions 4-5, 7426e7f); outlines BRANCH; feature OPEN; CONFIRM | Games/Mines, Games/Sudoku, Games/Word/WordPool.lua on #397 | CONFIRM: W1-W3, sudoku levels, no-guess boards. |
+
+## A6. Session S6 = session 014bN6tVFhD1GEbb6ieFgKLz ("XUI Console input options"; branch `claude/great-franklin-j4cahh`, draft PR #411)
+Its rows are in `docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md` on its branch. Summary (S6's words): (1) "XUI Console does
+nothing and has no input options" [empty console window]: BRANCH + CONFIRM (4a1727d: a command line in the console window); (2) "can't
+some of these be consolidated into a /xui debug _____ ? this is a LOT of noise" [/xui help, 29 lines]: BRANCH + CONFIRM (4a1727d: /xui
+help 14 lines, /xui debug <name>). Not on `main`; waits for her confirmations. Versions renumbered by agreement (core 0.6.50, QoL 0.7.26,
+Chat 0.6.17, Reskin 0.6.3).
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 To be filled by the cross-chat review: every precise data-display structure she gave in any session, with its status.
