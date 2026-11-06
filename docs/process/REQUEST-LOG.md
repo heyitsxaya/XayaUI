@@ -190,6 +190,12 @@ Chat 0.6.17, Reskin 0.6.3).
 | S7-3 | "are we able to retire this chat? is everything documented and anything outstanding pushed to 11-06?" | MAIN (docs) | this row; handoff sent to session 014bN6tSStpdmmCXviFAqPdQ ("Outstanding items 11-06") | Session S7 retired: nothing unpushed (S7-1 / S7-2 on `main` at 1834e68). Handed to 11-06: (a) her in-game check QA F17 (moves S7-1 / S7-2 to DONE); (b) stale comment `XayaUI_Options/Options.lua` (Tree.RowSwitch header, "Tooltips, Calculator, Utilities" get no box; Tooltips and Calculator have boxes now): fix with the next Options version bump, no behaviour change. |
 | S7-4 | "retire this chat then please" | DONE | session 014bN6tWsEQA8BZbHidBmJ1Y archived after this row | Nothing open in S7; outstanding items are with "Outstanding items 11-06" (S7-3). |
 
+## A8. Session S8 = session 014bN6tUPG6SDvkoa3i3tMu5 (branch `claude/determined-cerf-981pn8`; "Xaya UI Reskin elements")
+
+| # | Her words (verbatim; [screenshot]) | Status | Where / what | Notes |
+|---|---|---|---|---|
+| S8-1 | "Xaya UI Reskin elements: review what of blizzard's ui elements can be reskinned and generate a list of them (no functionality changes, just reskins of core blizzard UI)" | BRANCH (list); CONFIRM (Q1-Q5) | `docs/plans/BLIZZARD-RESKIN-CANDIDATES-2026-11-06.md`; debug-log/2026-11-06-2100-blizzard-reskin-candidates-12.1.5.md; ROADMAP 6b RM-RESKIN-LIST | The list is findings only, from Blizzard's 12.1.5 UI source; nothing built. Her picks wait on Q1 (which, in what order), Q2 (does a reskin include size), Q3 (one theme or per-element colours), Q4 (combat HUD yes / no), Q5 (global font). |
+
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
 a single instance. do this across all chats."
