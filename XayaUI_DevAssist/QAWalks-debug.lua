@@ -40,7 +40,9 @@ QA.Register("debug-tools-devassist", { title = "Developer tools are XayaUI Dev A
       end },
     { text = "Hover Fiery Brand (Aura IDs on): each Aura ID line ends in grey with \"via ...\" (QA F19). The addon side: the tooltip's source text is on.",
       check = function()
-          local t = ns.TT and ns.TT.SourceText and ns.TT.SourceText({ src = { ["your casts"] = true } }) or ""
+          local svc = ns.Service and ns.Service("tooltipsDebug")   -- (Bonus offers its tooltip table as a service: no cross-addon name)
+          local TT = svc and svc.TT
+          local t = TT and TT.SourceText and TT.SourceText({ src = { ["your casts"] = true } }) or ""
           return t:find("via", 1, true) ~= nil, t ~= "" and "source text on" or "source text off (is XayaUI Bonus Features on?)"
       end },
 } })
