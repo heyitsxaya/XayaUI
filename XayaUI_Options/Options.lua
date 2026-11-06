@@ -376,6 +376,21 @@ local function EnsureTextures()
     end
 end
 
+-- the sound and art lists, for the auto-populate table's Cue set-up column (AutoPicker.lua, Options 0.6.53): the same lists the cue
+-- editor offers, and the same way a picked art is applied (ns.ApplyArtPick, used by the editor's "Or pick art" below)
+function ns.SoundChoices() EnsureSounds(); return soundList, soundValues, soundSorting end
+function ns.TexChoices() EnsureTextures(); return texValues, texSorting end
+function ns.ApplyArtPick(V, k)
+    if k == "0" then V.tex = "" else V.kind, V.tex = "file", k end
+    local follows = (tonumber(V.iconW) or 0) <= 0 and (tonumber(V.iconH) or 0) <= 0
+    for _, g in ipairs(ns.LocalGraphics or {}) do   -- art that follows the display: shape the display like the picture (capped at 256)
+        if follows and g[2] == k then
+            local sc = math.min(1, 256 / math.max(g[3], g[4]))
+            V.w, V.h = math.max(8, math.floor(g[3] * sc)), math.max(8, math.floor(g[4] * sc))
+        end
+    end
+end
+
 -- Specs of the current class
 local function SpecValues()
     local v, order = { ["0"] = "(none - any spec)" }, { "0" }
@@ -2076,14 +2091,7 @@ local function BuildRule(i, rule)
                 sorting = function() EnsureTextures(); return texSorting end,
                 get = function() if V.kind == "file" then return tostring(V.tex) end end,
                 set = function(_, k)
-                    if k == "0" then V.tex = "" else V.kind, V.tex = "file", k end
-                    local follows = (tonumber(V.iconW) or 0) <= 0 and (tonumber(V.iconH) or 0) <= 0
-                    for _, g in ipairs(ns.LocalGraphics or {}) do   -- art that follows the display: shape the display like the picture (capped at 256)
-                        if follows and g[2] == k then
-                            local sc = math.min(1, 256 / math.max(g[3], g[4]))
-                            V.w, V.h = math.max(8, math.floor(g[3] * sc)), math.max(8, math.floor(g[4] * sc))
-                        end
-                    end
+                    ns.ApplyArtPick(V, k)   -- shared with the auto-populate table's picture picker
                     Changed(rule); Notify()
                 end },
             sizeH = { type = "header", name = "Size & Orientation", order = 10 },
@@ -3359,22 +3367,24 @@ function BuildClassCreator()
     local function shown() return not creatorOpen end
     local args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Pick a class / spec set, tick the auras to track, and XayaUI makes a skeleton rule for each one: it watches for the aura being present, and shows or plays nothing yet. Set what each rule does afterwards under Smart Categories." },
+            name = "Press a spec's Auto-populate button (or the one for your whole class) to load its cooldowns, auras and target debuffs in a table below. Tick the ones you want, set each one's trigger, cue and combat load, then press Populate: each becomes a rule with its cue, in Class > Spec > cue type." },
         apHdr = { type = "header", order = 0.1, name = "Auto-populate my class / spec" },
         apInfo = { type = "description", order = 0.2, width = "full", fontSize = "medium",
             name = function()
                 local specID = ns.CurrentSpecID and ns.CurrentSpecID()
                 local okS, _, specName = pcall(GetSpecializationInfoByID, specID or 0)
-                return "Detected: |cffffd100" .. (UnitClass("player") or "?") .. " - " .. ((okS and specName) or "unknown spec") .. "|r. It makes one skeleton rule (cooldown ready) per spellbook or talent cooldown of that spec, read from this game client (the addon remembers each spec once you have played it), sorted into Defensive / Offensive / Utility / Unsorted inside the static group '<Class> <Spec> - autorule population' by the name list for that spec, and flags each rule (kind, role, talent, charges). The window jumps to the new group." end },
+                return "Detected: |cffffd100" .. (UnitClass("player") or "?") .. " - " .. ((okS and specName) or "unknown spec") .. "|r. Cooldowns are read from this game client (the addon remembers each spec once you have played it); auras and target debuffs from your Cooldown Manager, for the spec you are in now. Nothing is made until you press Populate under the table." end },
         apTalents = { type = "toggle", order = 0.3, width = "full", name = "Include talents I have not picked (rule only loads when the talent is known)",
             get = function() return ns.AutoCfg().talents ~= false end,
-            set = function(_, v) ns.AutoCfg().talents = v and true or false; ns.MarkDirty(); Notify() end },
-        apClass = { type = "execute", order = 0.58, width = 1.6, xuiCenter = true, name = "Auto-populate for my class (all specs)",
-            desc = "Runs the auto-populate for every spec of your class in one go.",
-            func = function()
-                local _, m = ns.ClassAutoPopulateAllSpecs(ns.AutoCfg().talents ~= false)
-                creatorMsg = m; ns.Print("auto-populate: " .. tostring(m)); Notify()
+            set = function(_, v)
+                ns.AutoCfg().talents = v and true or false; ns.MarkDirty()
+                local AP = ns.AutoPicker
+                if AP and AP.view then AP.Load(AP.view.spec) end   -- the table shown follows the option at once
+                Notify()
             end },
+        apClass = { type = "execute", order = 0.58, width = 1.6, xuiCenter = true, name = "Auto-populate for my class (all specs)",
+            desc = "Loads the list for every spec of your class into the table below (nothing is made yet).",
+            func = function() ns.AutoPicker.Load("all"); Notify() end },
         -- "All talents (every class and spec)" (the talent scan) moved to Settings > UI Options > Rule Creation (Options 0.6.40; Xaya,
         -- 2026-11-05: "scan belongs in Settings"): BuildAddonSettings, rules.args.talHdr.
         -- the "Add Vengeance DH test rules" button is gone: every class and spec is supported by the auto-populate above (Xaya, 2026-11-01)
@@ -3395,11 +3405,8 @@ function BuildClassCreator()
             args["apBrk" .. i] = { type = "description", order = 0.47 + i * 0.01 + 0.005, width = "full", fontSize = "small", name = " " }
             args["apSpec" .. i] = { type = "execute", order = 0.47 + i * 0.01, width = 1.6, xuiCenter = true,
                 name = (sicon and ("|T" .. sicon .. ":16|t ") or "") .. "Auto-populate " .. tostring(sname),
-                desc = "Makes the skeleton rules for " .. tostring(sname) .. " (" .. (UnitClass("player") or "your class") .. "), whichever spec you are in now.",
-                func = function()
-                    local _, m = ns.ClassAutoPopulateSpec(sid, ns.AutoCfg().talents ~= false)
-                    creatorMsg = m; ns.Print("auto-populate: " .. tostring(m)); Notify()
-                end }
+                desc = "Loads the list for " .. tostring(sname) .. " (" .. (UnitClass("player") or "your class") .. ") into the table below, whichever spec you are in now (nothing is made yet).",
+                func = function() ns.AutoPicker.Load(sid); Notify() end }
         end
     end
     for i, a in ipairs(VDH_AURAS) do
@@ -3414,8 +3421,8 @@ function BuildClassCreator()
         args["st_" .. a.key] = { type = "description", order = o + 2, width = 1.5, fontSize = "medium", hidden = shown,
             name = function() return AuraStatus(a) end }
     end
-    -- Xaya 2026-11-05: choose which auto rules to make (cooldowns and target debuffs) and each one's main cue (AutoPicker.lua)
-    if ns.AutoPicker and ns.AutoPicker.Args then for k, v in pairs(ns.AutoPicker.Args(Notify)) do args[k] = v end end
+    -- Xaya 2026-11-05: the auto-populate table (AutoPicker.lua): the list of the button pressed, ticked and set up before anything is made
+    if ns.AutoPicker and ns.AutoPicker.Args then for k, v in pairs(ns.AutoPicker.Args(Notify, Tree.Keep)) do args[k] = v end end
     return { type = "group", name = "Class/Spec Rule Creator", order = 2, hidden = ns.PageHidden("creator"), args = args }
 end
 end   -- do (class/spec creator)
@@ -3571,6 +3578,27 @@ function ns.SmartAny(rule)
 end
 
 local picker = nil   -- { folder = id|nil } while the page is open
+-- The first set-up of a rule type's cue, shared by the "+ New rule" type list (CreateRuleOfType below) and the auto-populate table
+-- (AutoPicker.lua, Options 0.6.45): Icon -> icon cue (spell icon, 64 x 64, gray while on cooldown); Texture -> texture cue; Progress
+-- Texture -> texture cue with fill and overlay, base at 0.35; Text -> text cue (the duration text, no art); Sound / Speech -> that cue.
+-- One explicit cue kind per type. Returns the cue (nil when the rule holds the most cues it may) and its kind.
+ns.CUE_FOR_TYPE = { icon = "icon", text = "text", sound = "sound", speech = "speech", texture = "texture", progresstex = "texture" }
+function ns.NewTypedCue(r, typ)
+    local kind = ns.CUE_FOR_TYPE[typ] or "texture"
+    r.uid = r.uid or ns.NewUID()
+    local cue = ns.NewCueRule(r, kind)
+    if cue then
+        local v = cue.visual
+        if kind ~= "icon" and ns.Val(v.kind) == "spellicon" then v.kind = nil end   -- only an Icon row may start as a spell icon
+        if typ == "icon" then v.kind = "spellicon"; v.w, v.h = 64, 64; v.desatOnCD = true
+        elseif typ == "progresstex" then
+            v.fill.enabled = true
+            v.overlay.enabled = true      -- progress textures are two-layered by default: base (reduced opacity below) + overlay (full)
+            v.texAlpha = 0.35              -- reduced base opacity; ratio to Overlay opacity (1) is preserved while locked (see ProgLocked)
+        elseif typ == "text" then v.text.enabled = true; v.texAlpha = 0 end
+    end
+    return cue, kind
+end
 local function CreateRuleOfType(typ, fid)
     local r = ns.NewRule()
     r.name = ""   -- new rules are not auto-named: the sidebar row opens a name box for it instead
@@ -3582,22 +3610,9 @@ local function CreateRuleOfType(typ, fid)
     elseif typ then
         -- the chosen type becomes the rule's first cue (Cues tab), already set up for that type; the rule itself shows / plays nothing
         r.visual.enabled, r.sound.enabled = false, false
-        -- one explicit cue kind per picker row: Icon -> icon cue, Texture / Progress Texture -> texture cue, Text -> text cue, Sound -> sound cue
-        local CUE_FOR_TYPE = { icon = "icon", text = "text", sound = "sound", texture = "texture", progresstex = "texture" }
-        local kind = CUE_FOR_TYPE[typ] or "texture"
-        r.uid = r.uid or ns.NewUID()
-        local cue = ns.NewCueRule(r, kind)
+        -- one explicit cue kind per picker row (ns.NewTypedCue above, shared with the auto-populate table)
+        local cue, kind = ns.NewTypedCue(r, typ)
         if ns.Log then ns.Log("new rule: picker row '%s' -> cue kind '%s' (cue made: %s)", tostring(typ), kind, tostring(cue ~= nil)) end
-        if cue then
-            local v = cue.visual
-            if kind ~= "icon" and ns.Val(v.kind) == "spellicon" then v.kind = nil end   -- only an Icon row may start as a spell icon
-            if typ == "icon" then v.kind = "spellicon"; v.w, v.h = 64, 64; v.desatOnCD = true
-            elseif typ == "progresstex" then
-                v.fill.enabled = true
-                v.overlay.enabled = true      -- progress textures are two-layered by default: base (reduced opacity below) + overlay (full)
-                v.texAlpha = 0.35              -- reduced base opacity; ratio to Overlay opacity (1) is preserved while locked (see ProgLocked)
-            elseif typ == "text" then v.text.enabled = true; v.texAlpha = 0 end
-        end
     end
     ns.pendingRename = r
     if ns.DraftNew then ns.DraftNew(r) end   -- never saved yet: Save changes keeps it, closing the window first moves it to Drafts
@@ -3719,200 +3734,9 @@ local function AutoPreview()
     return line
 end
 
--- Class / spec auto-populate (Class/Spec Rule Creator tab): one skeleton rule per cooldown spell of the current spec, sorted into
--- Defensive / Offensive / Utility folders inside one parent folder "<Class> <Spec> - autorule population". The sorting tables are
--- curated by spell NAME (never by ID, so no ID is guessed; a name that is not in the spellbook is simply never matched). Spells
--- that are not in the spec's table go to "Unsorted". Only cooldown spells are found (auras cannot be listed from the spellbook).
-local SPEC_SORT = {
-    -- Demon Hunter / Vengeance. Curated by Claude from general class knowledge, NOT checked against game data: edit freely.
-    [581] = {
-        Defensive = { "Demon Spikes", "Fiery Brand", "Metamorphosis", "Darkness", "Soul Barrier", "Blur", "Netherwalk" },
-        Offensive = { "Fel Devastation", "Soul Carver", "The Hunt", "Sigil of Flame", "Immolation Aura", "Fracture", "Soul Cleave", "Spirit Bomb", "Throw Glaive", "Felblade" },
-        Utility   = { "Sigil of Misery", "Sigil of Chains", "Sigil of Silence", "Chaos Nova", "Disrupt", "Imprison", "Consume Magic", "Torment", "Infernal Strike", "Vengeful Retreat", "Spectral Sight", "Glide" },
-    },
-}
-function ns.AutoPopulateSpellbook(includeUnpicked)   -- fallback: spellbook cooldowns only (a spec ClassLearn.lua has not learned yet)
-    local specID = ns.CurrentSpecID and ns.CurrentSpecID()
-    if not specID then return false, "Could not read your specialization right now." end
-    local className = UnitClass("player") or "Class"
-    local okS, _, specName = pcall(GetSpecializationInfoByID, specID)
-    if not okS or not specName then specName = "spec " .. tostring(specID) end
-    local ok, list = pcall(ns.CollectCooldownSpells, 0, includeUnpicked)
-    if not ok or type(list) ~= "table" or #list == 0 then return false, "Found no cooldown spells in your spellbook right now." end
-    local parentName = className .. " " .. specName .. " - autorule population"
-    local parent
-    for _, f in ipairs(ns.folders) do if not f.parent and f.name == parentName then parent = f; break end end
-    parent = parent or ns.NewFolder(parentName)
-    local function Sub(name)
-        for _, f in ipairs(ns.folders) do if f.parent == parent.id and f.name == name then return f end end
-        return ns.NewFolder(name, parent.id)
-    end
-    Sub("Defensive"); Sub("Offensive"); Sub("Utility")
-    local lookup, curated = {}, SPEC_SORT[specID]
-    if curated then for folder, names in pairs(curated) do for _, n in ipairs(names) do lookup[n:lower()] = folder end end end
-    local have = {}
-    for _, r in ipairs(FolderRules(parent.id)) do if (tonumber(r.spellID) or 0) ~= 0 then have[r.spellID] = true end end
-    local made, skipped, counts = 0, 0, {}
-    for _, sp in ipairs(list) do
-        if have[sp.id] then skipped = skipped + 1
-        else
-            local fname = lookup[(sp.name or ""):lower()] or "Unsorted"
-            local dest = Sub(fname)
-            local r = ns.NewRule()
-            r.name, r.folder, r.spellID = sp.name, dest.id, sp.id
-            r.useCooldown = true
-            r.cdState, r.buffState, r.talentMode = "ready", "none", "none"
-            if sp.talent then r.talents, r.talentMode = { { id = sp.id, state = "known" } }, "all" end
-            r.load.specs = { [tostring(specID)] = true }
-            ns.rules[#ns.rules + 1] = r
-            have[sp.id] = true
-            made = made + 1; counts[fname] = (counts[fname] or 0) + 1
-        end
-    end
-    if made > 0 then ns.MarkDirty(); ns.Fire("CONFIG_CHANGED") end
-    local parts = {}
-    for _, k in ipairs({ "Defensive", "Offensive", "Utility", "Unsorted" }) do if counts[k] then parts[#parts + 1] = k .. " " .. counts[k] end end
-    local msg = ("%s: added %d rule(s) (%s); %d already there."):format(parentName, made, #parts > 0 and table.concat(parts, ", ") or "none", skipped)
-    if not curated then msg = msg .. " There is no curated Defensive / Offensive / Utility list for this spec yet, so everything went to Unsorted." end
-    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(parent))   -- show the new group right away
-    return true, msg
-end
-
--- Data-driven auto-populate (ClassLearn.lua: the cooldown list learned from this game client for each spec you have played). One skeleton rule per entry of the
--- CURRENT spec, in  "<Class> <Spec> - autorule population" > Cooldowns | Auras | Procs > Defensive | Offensive | Utility | Unsorted.
--- Every rule is also FLAGGED on the rule itself so it can be sorted later: r.autoKind ("cd" | "aura" | "proc"), r.autoRole, r.autoFlags
--- (talent, hero, glow, charges, rt, inferred, midnight) and r.autoSrc. Target debuffs are in the data and flagged "debuff" but get NO rule:
--- the rule engine only reads auras on YOU. IDs are checked against the live game; ones that no longer exist are skipped and counted.
-do   -- block-scoped: Options.lua's main chunk is close to Lua's 200-local limit
-local KIND_FOLDER = { cd = "Cooldowns", aura = "Auras", proc = "Procs" }
-local function AutoPopulateData(specID, data, includeUnpicked)
-    local className = UnitClass("player") or data.class or "Class"
-    local okS, _, specName = pcall(GetSpecializationInfoByID, specID)
-    if not okS or not specName then specName = data.spec or ("spec " .. tostring(specID)) end
-    local parentName = className .. " " .. specName .. " - autorule population"
-    local parent
-    for _, f in ipairs(ns.folders) do if not f.parent and f.name == parentName then parent = f; break end end
-    parent = parent or ns.NewFolder(parentName)
-    local function Sub(name, pid)
-        for _, f in ipairs(ns.folders) do if f.parent == pid and f.name == name then return f end end
-        return ns.NewFolder(name, pid)
-    end
-    local have = { cd = {}, buff = {} }
-    for _, r in ipairs(FolderRules(parent.id)) do
-        if r.autoKind == "aura" or r.autoKind == "proc" then
-            if (tonumber(r.buffID) or 0) ~= 0 then have.buff[r.buffID] = true end
-        elseif (tonumber(r.spellID) or 0) ~= 0 then have.cd[r.spellID] = true end   -- cooldown rules, including ones from the old spellbook path
-    end
-    local cdName, dataCd = {}, {}
-    for _, e in ipairs(data.entries) do if e.kind == "cd" then cdName[e.name] = true; dataCd[e.id] = true end end
-    local counts, made, skipped, gone, noCd, talentOff, debuffs, extra = {}, 0, 0, 0, 0, 0, 0, 0
-    local function Put(kind, role, r)
-        local kf = Sub(KIND_FOLDER[kind], parent.id)
-        r.folder = Sub(role, kf.id).id
-        r.load.specs = { [tostring(specID)] = true }
-        ns.rules[#ns.rules + 1] = r
-        made = made + 1
-        local k = KIND_FOLDER[kind] .. "/" .. role
-        counts[k] = (counts[k] or 0) + 1
-    end
-    for _, e in ipairs(data.entries) do
-        if e.kind == "debuff" then debuffs = debuffs + 1
-        else
-            local okN, nm = pcall(C_Spell.GetSpellName, e.id)
-            if not okN or not nm then gone = gone + 1
-            else
-                local fl = {}
-                for _, k in ipairs({ "talent", "hero", "glow", "charges", "rt", "totem", "selfBuff", "inferred" }) do if e[k] then fl[#fl + 1] = k end end
-                if e.mn then fl[#fl + 1] = "midnight" end
-                local function Tag(r)
-                    r.autoKind, r.autoRole, r.autoFlags, r.autoSrc = e.kind, e.role, table.concat(fl, ","), "learned from this client"
-                end
-                if e.kind == "cd" then
-                    if have.cd[e.id] then skipped = skipped + 1
-                    elseif e.talent and not includeUnpicked and ns.ReadTalentKnown(e.id) == false then talentOff = talentOff + 1
-                    else
-                        local base = ns.BaseCooldownSec and ns.BaseCooldownSec(e.id) or 0
-                        if base <= 0 and not e.charges then noCd = noCd + 1   -- no cooldown to watch: a "ready" rule would always be true
-                        else
-                            local r = ns.NewRule()
-                            r.name, r.spellID, r.useCooldown = nm, e.id, true
-                            r.cdState, r.buffState, r.talentMode = "ready", "none", "none"
-                            if e.talent then r.talents, r.talentMode = { { id = e.id, state = "known" } }, "all" end
-                            Tag(r); Put("cd", e.role, r); have.cd[e.id] = true
-                        end
-                    end
-                else   -- aura / proc: a buff on you
-                    if have.buff[e.id] then skipped = skipped + 1
-                    else
-                        local r = ns.NewRule()
-                        r.name = cdName[nm] and (nm .. (e.kind == "proc" and " (proc)" or " (aura)")) or nm
-                        r.buffID, r.useBuff, r.buffState = e.id, true, "present"
-                        r.cdState, r.talentMode = "none", "none"
-                        Tag(r); Put(e.kind, e.role, r); have.buff[e.id] = true
-                    end
-                end
-            end
-        end
-    end
-    -- spellbook cooldowns the data does not list (new patch spells, off-list talents) still come in, flagged "spellbook"
-    local ok, list = pcall(ns.CollectCooldownSpells, 0, includeUnpicked)
-    if ok and type(list) == "table" then
-        local lookup = {}
-        for folder, names in pairs(SPEC_SORT[specID] or {}) do for _, n in ipairs(names) do lookup[n:lower()] = folder end end
-        for _, sp in ipairs(list) do
-            if not dataCd[sp.id] and not have.cd[sp.id] then
-                local r = ns.NewRule()
-                r.name, r.spellID, r.useCooldown = sp.name, sp.id, true
-                r.cdState, r.buffState, r.talentMode = "ready", "none", "none"
-                if sp.talent then r.talents, r.talentMode = { { id = sp.id, state = "known" } }, "all" end
-                r.autoKind, r.autoRole, r.autoFlags, r.autoSrc = "cd", lookup[(sp.name or ""):lower()] or "Unsorted", "spellbook" .. (sp.talent and ",talent" or ""), "spellbook scan"
-                Put("cd", r.autoRole, r); have.cd[sp.id] = true; extra = extra + 1
-            end
-        end
-    end
-    if made > 0 then ns.MarkDirty(); ns.Fire("CONFIG_CHANGED") end
-    local keys = {}
-    for k in pairs(counts) do keys[#keys + 1] = k end
-    table.sort(keys)
-    local parts = {}
-    for _, k in ipairs(keys) do parts[#parts + 1] = k .. " " .. counts[k] end
-    local msg = ("%s: added %d rule(s) (%s); %d already there."):format(parentName, made, #parts > 0 and table.concat(parts, ", ") or "none", skipped)
-    if extra > 0 then msg = msg .. (" %d of them are spellbook cooldowns the data did not list."):format(extra) end
-    if gone > 0 then msg = msg .. (" %d data entries skipped: no such spell in this game version."):format(gone) end
-    if noCd > 0 then msg = msg .. (" %d abilities skipped: no cooldown to watch."):format(noCd) end
-    if talentOff > 0 then msg = msg .. (" %d talent cooldowns skipped (talent not picked, option off)."):format(talentOff) end
-    if debuffs > 0 then msg = msg .. (" %d target debuffs are listed in the data but no rules were made (rules only read auras on you)."):format(debuffs) end
-    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(parent))
-    return true, msg
-end
-function ns.ClassAutoPopulate(includeUnpicked)
-    local specID = ns.CurrentSpecID and ns.CurrentSpecID()
-    local data = specID and ns.CLASS_AURA_DATA and ns.CLASS_AURA_DATA[specID]
-    if data then return AutoPopulateData(specID, data, includeUnpicked) end
-    return ns.AutoPopulateSpellbook(includeUnpicked)
-end
--- One chosen spec of the player's class (any spec, not only the active one). Needs the spec to have been learned (played once); the spellbook fallback only knows the active spec.
-function ns.ClassAutoPopulateSpec(specID, includeUnpicked)
-    local data = specID and ns.CLASS_AURA_DATA and ns.CLASS_AURA_DATA[specID]
-    if data then return AutoPopulateData(specID, data, includeUnpicked) end
-    if specID == (ns.CurrentSpecID and ns.CurrentSpecID()) then return ns.AutoPopulateSpellbook(includeUnpicked) end
-    return false, "That spec has not been learned yet: switch to it once (the addon reads its spellbook and talents a few seconds after you log in or change spec), then try again."
-end
--- Every spec of the player's class, one after another (specs without data are named in the summary, not silently skipped).
-function ns.ClassAutoPopulateAllSpecs(includeUnpicked)
-    local made, skipped = 0, {}
-    for i = 1, (GetNumSpecializations and GetNumSpecializations() or 0) do
-        local id, name = GetSpecializationInfo(i)
-        if id then
-            local ok = ns.ClassAutoPopulateSpec(id, includeUnpicked)
-            if ok then made = made + 1 else skipped[#skipped + 1] = tostring(name) end
-        end
-    end
-    local msg = ("Auto-populated %d spec(s) of %s."):format(made, UnitClass("player") or "your class")
-    if #skipped > 0 then msg = msg .. " Not learned yet (play each once): " .. table.concat(skipped, ", ") .. "." end
-    return made > 0, msg
-end
-end   -- do
+-- The class / spec auto-populate (one skeleton rule per cooldown, made at once, in "<Class> <Spec> - autorule population" >
+-- Defensive / Offensive / Utility / Unsorted) was replaced in Options 0.6.44 by the table in AutoPicker.lua: the spec buttons on the
+-- Class/Spec Rule Creator page load a list you tick and set up first (Xaya, 2026-11-05). Rules made by the old buttons are kept as they are.
 
 ns.UI.NewRule = function() StartNewRule(nil) end
 local function PickType(typ)

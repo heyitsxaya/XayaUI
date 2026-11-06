@@ -1457,12 +1457,13 @@ function ns.CdmNeeds(rule)
 end
 -- The message for one entry of ns.CdmNeeds (the first sentence is Xaya's wording).
 function ns.CdmNeedText(e)
-    local what = (e.kind == "debuff") and "debuff" or "aura"
-    local label = (e.name and (e.name .. ", ") or "") .. tostring(e.id)
+    -- Xaya, 2026-11-06 (B1, B2, B3; core 0.6.52): "This aura / debuff (name) requires..." = the right word and the aura's name (her
+    -- answer: "Right word + name", no ID); the second sentence kept (B2); the not-offered case in her words, exactly (B3).
     if e.offered == false then
-        return ("This %s (%s) cannot be tracked in combat: the game hides it there, and Blizzard's Cooldown Manager does not offer it for "
-            .. "your current spec."):format(what, label)
+        return "Blizzard's Cooldown Manager does not offer in-combat tracking for this aura for your current spec. Rule might not work reliably."
     end
+    local what = (e.kind == "debuff") and "debuff" or "aura"
+    local label = e.name or tostring(e.id)   -- no readable name: the ID, so the line still says which one
     return ("This %s (%s) requires Blizzard's Cooldown Manager to track it before it can be tracked by the addon. In the Cooldown "
         .. "Manager's settings, move it to Tracked Buffs or Tracked Bars (the game hides it in combat, encounters, Mythic+ and PvP)."):format(what, label)
 end

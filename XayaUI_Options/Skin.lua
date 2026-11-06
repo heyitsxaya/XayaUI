@@ -1724,6 +1724,11 @@ end
 -- the whole label 2 px clear on each side (26 was 4 px short: even a well-measured label was cut by a few pixels, #368)
 local COMPACT_PAD, COMPACT_MIN = 34, 64
 local TAB_GAP = 2   -- between the tabs drawn as buttons (#370)
+-- Table cells (arg.xuiCell, Options 0.6.44: the auto-populate table, AutoPicker.lua). Controls with a relative width whose widths add up
+-- to 1 make one table row. They sit CELL_GAP apart instead of the grid's 30 px gutter, and each cell gives up its share of the gutters,
+-- so the row fills the pane exactly. A full row also makes AceGUI's Flow start the next table row on a new line (its first cell no
+-- longer fits beside it; true while that cell is wider than the row's gutters, e.g. 0.08 of a pane wider than 330 px).
+local CELL_GAP = 4
 function ns.IsCompactButton(ch)
     if ch.type ~= "Button" or not SkinOn() then return false end
     local o = ch.GetUserData and ch:GetUserData("option")
@@ -1781,11 +1786,29 @@ function ns.FlexPrepass(content, children, bw)
             -- The row-wrap check above already counts the gutter, so this never pushes a control past the edge.
             local g = (i > 1) and gap or nil
             if g and e.tab and row[i - 1].tab then g = TAB_GAP end   -- #370: tabs sit side by side like a real tab row
+            if g and e.cell and row[i - 1].cell then g = e.sub and 0 or CELL_GAP end   -- a sub-cell (arg.xuiSubCell) shares its cell: no gutter
             e.ch.xuiGapX = g
         end
         row, used = {}, 0
     end
+    local cells   -- the table row being collected (arg.xuiCell): { list, nom = the sum of its relative widths }
+    local function closeCells()
+        if not cells then return end
+        local n = 0   -- gutters sit between cells; a sub-cell (arg.xuiSubCell: the 2nd+ control of one table cell) adds none
+        for _, e in ipairs(cells.list) do if not e.sub then n = n + 1 end end
+        local scale = 1
+        if cells.nom > 0 then scale = math.min(1, (width - CELL_GAP * (n - 1)) / (cells.nom * width)) end
+        if scale < 0 then scale = 0 end
+        for _, e in ipairs(cells.list) do
+            e.ch.relWidth = math.max(0.001, e.nom * scale)
+            e.base = width * e.ch.relWidth
+        end
+        cells = nil
+    end
     for _, ch in ipairs(children) do
+        local oc = ch.GetUserData and ch:GetUserData("option")
+        local isCell = ch.width == "relative" and oc and type(oc.arg) == "table" and oc.arg.xuiCell
+        if cells and not isCell then closeCells(); flush() end   -- the table row ends: whatever follows starts its own
         if ns.IsCompactButton(ch) then   -- sized to its label, shares the row, never stretched
             if ch.width == "fill" or ch.width == "relative" then ch.width = nil end   -- (AceConfigDialog sets it again on the next build)
             local w = CompactWidth(ch, width)
@@ -1808,16 +1831,32 @@ function ns.FlexPrepass(content, children, bw)
                     end
                 end
                 w = width * (ch.relWidth or 1); flex = false
+                if isCell then
+                    local nom = (type(oc.relWidth) == "number") and oc.relWidth or (ch.relWidth or 0)   -- the option's own width, every pass
+                    if not cells or cells.nom >= 0.999 then
+                        closeCells(); flush()
+                        cells = { list = {}, nom = 0 }
+                    end
+                    local e = { ch = ch, base = width * nom, flex = false, cell = true, nom = nom, sub = oc.arg.xuiSubCell and true or nil }
+                    row[#row + 1] = e
+                    cells.list[#cells.list + 1] = e
+                    cells.nom = cells.nom + nom
+                    used = used + width * nom
+                    w = nil
+                end
             else
                 w = (bw or BaseW)(ch); flex = not NOFLEX[ch.type]
                 -- two-column grid: a control is either one column wide or spans both (when it cannot fit in a column)
                 if grid and flex then w = (w > colW + 0.5) and width or colW end
             end
-            if #row > 0 and used + gap + w > width then flush() end
-            row[#row + 1] = { ch = ch, base = w, flex = flex }
-            used = used + w
+            if w then   -- (nil: a table cell, placed above)
+                if #row > 0 and used + gap + w > width then flush() end
+                row[#row + 1] = { ch = ch, base = w, flex = flex }
+                used = used + w
+            end
         end
     end
+    closeCells()
     flush()
 end
 local function ApplyGaps(children)
