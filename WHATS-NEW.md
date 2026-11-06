@@ -216,6 +216,11 @@ Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default
 - **Chat history shows "|" correctly** (Chat 0.6.17). Lines containing "|" now show every pipe and letter (before, a pipe and
   sometimes the next letter went missing), and searching for text with "|" finds them. **Not yet tested in game:** whether
   copying such a line pastes one "|" or two.
+- **Chat history keeps the letter after a "|"** (Chat 0.6.19, on `main` at 4fa2150, 2026-11-06 about 21:20 UTC; a later landing than the
+  window above). In the chat history window (the Console tab and the chat tabs), a "|" followed by r, n, c, T, H, A or K no longer
+  loses that letter. Example: the `/xui chat` status line used to read "on|off|eset|move|..." and now reads
+  "on|off|reset|move|history|wrap|indent|whispers|settings". **Not yet tested in game** (QA D13); what Ctrl+C pastes, one "|" or
+  two, is also still unchecked (QA D12).
 - **Cursor colours as UI themes** (XayaUI 0.6.46, QoL 0.7.17). Each Gradient Cursor Trail gradient is also a UI theme in
   Settings > Theme ("Cursor trail: <name>"). The trail can follow your UI theme ("Match the UI theme"), and the Cursor Highlight
   can use your theme's accent colour.
