@@ -64,7 +64,16 @@ local function keys(list) local t = {}; for _, c in ipairs(list) do t[#t + 1] = 
 check("A11: rows by type (Spell CD, Aura, Debuff), then A-Z by name", keys(rows) ==
   "cd:187827@581 cd:204021@581 cd:6789@581 au:187827@581 au:203819@581 db:204596@581 db:207771@581", keys(rows))
 local other = AP.BuildRows(577)
-check("another spec lists its cooldowns only (the Cooldown Manager answers for the spec you are in)", #other == 2 and other[1].kind == "cd" and other[2].kind == "cd")
+check("another spec never played with the learner lists its cooldowns only (the Cooldown Manager answers for the spec you are in)", #other == 2 and other[1].kind == "cd" and other[2].kind == "cd")
+-- C1 (core 0.6.56): the learner keeps each spec's Cooldown Manager auras / debuffs; another spec's list then shows them
+table.insert(ns.CLASS_AURA_DATA[577].entries, { kind = "aura", id = 162264, name = "Metamorphosis" })
+table.insert(ns.CLASS_AURA_DATA[577].entries, { kind = "debuff", id = 391191, cdmID = 391189, name = "Burning Wound" })
+local other2 = AP.BuildRows(577)
+local o2 = {}
+for _, c in ipairs(other2) do o2[c.key] = c end
+check("C1: another spec lists the auras and debuffs learned while you played it", #other2 == 4 and o2["au:162264"] and o2["au:162264"].kind == "aura"
+  and o2["db:391191"] and o2["db:391191"].cdmID == 391189 and o2["db:391191"].spec == 577, #other2)
+table.remove(ns.CLASS_AURA_DATA[577].entries); table.remove(ns.CLASS_AURA_DATA[577].entries)
 local all = AP.BuildRows("all")
 check("all specs: both specs' rows in one list, by type then A-Z (the Spec column tells them apart)", keys(all) ==
   "cd:187827@581 cd:195072@577 cd:204021@581 cd:258920@577 cd:6789@581 au:187827@581 au:203819@581 db:204596@581 db:207771@581", keys(all))

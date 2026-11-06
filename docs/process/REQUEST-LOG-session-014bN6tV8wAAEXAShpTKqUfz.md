@@ -79,3 +79,5 @@ S1 asked her what fills the blank and whether the additions stay; this session c
 | E59 | (her answers) D2 talent load: "ask again in 15m"; talent-modified spells: "Investigate first" | Answered; scheduled | | Re-ask scheduled in 15 min. #18: the code already gives an unset option no bearing (CheckContextRaw: SetActive / Ignored); a test will prove it. |
 | E60 | (resent E45-E56 after the session restarted: "Try again" + the same icon / lock / link / Deselect / pair / previews / Loaded-eye messages) | Answered | 19b4144, 87ce60d, then the boundary fix below | All already built on the branch; the full suite on 19b4144 found one failure (core read the settings addon's window flag): fixed (core owns ns.SetWindowOpen / ns.WindowOpen). |
 | E61 | (her answers) D2: "is there a performance difference?", then "defer decision until other engine testing is conducted" | Answered; deferred | QUESTIONS "Round 6 answers" | D2 waits for in-game engine testing. |
+| E62 | (her answers) C1: "Build it"; #278 5/6: "1 + review EUI CDM manager buff tracking" | OPEN (build) | QUESTIONS "Round 6 answers" | |
+| E63 | (status) C1 built | BRANCH | core 0.6.56; QA B197 | |

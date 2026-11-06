@@ -227,3 +227,7 @@ Your sentence: "this _____ requires blizzard's cooldown manager to track it befo
 - D2 / #23 (how talent load is built in): first "is there a performance difference?"; told: no meaningful difference by reading the code
   (not measured: the engine option is not built), the difference is visible-per-rule vs hidden-for-all. Then: "defer decision until other
   engine testing is conducted". Deferred.
+- C1: "Build it" (per-spec aura / debuff learner; out of combat after login / spec change; saved per spec; used by the all-specs list).
+- #278 items 5/6: "1 + review EUI CDM manager buff tracking" = build the "CC on target / focus" shortcut (her own CC as Target Debuff rules,
+  grouped by effect) + the in-game QA step, and review how EllesmereUI's Cooldown Manager handling adds buff tracking (behaviour only; never
+  copy code, data or text).
