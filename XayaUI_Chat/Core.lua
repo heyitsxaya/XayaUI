@@ -67,7 +67,7 @@ C.DEFAULTS = {
     -- messages
     spamRepeat = true, spamSeconds = 30, spamPhrases = "", spamWord = false, ignoreClick = true,
     links = true, linkR = 0.4, linkG = 0.75, linkB = 1,
-    histOn = true, histSize = 300, histConsole = true,   -- histConsole: printed lines (addons, /xui) and system messages, in their own Console tab
+    histOn = true, histSize = 300, histConsole = true, histWhispers = "game",   -- histConsole: printed lines (addons, /xui) and system messages, in their own Console tab
     soundsOn = true, soundsInCombat = true, whisperSoundsOn = true,   -- whisperSoundsOn: the whisper sound overrides (Sounds.lua)
 }
 C.MAX_SLOTS = 8
