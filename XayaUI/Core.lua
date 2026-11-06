@@ -18,6 +18,9 @@ function ns.FlatButton(b, primary)
     return b
 end
 ns.rules = nil -- set at ADDON_LOADED to CueRulesDB.rules
+-- the settings window's rebuild timing switch: { show = bool } (XayaUI Dev Assist's /xui debug perf ui sets it; XayaUI_Options and
+-- ns.NewFolder below read it). Core 0.6.56: declared here, as the command that made it moved to Dev Assist.
+ns.perf = nil
 
 -- "Not chosen / none" helpers. Dropdowns start blank (nil) so a choice is forced;
 -- "none" (or legacy "any") is an explicit "ignore this".

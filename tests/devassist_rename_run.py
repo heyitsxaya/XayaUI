@@ -95,6 +95,10 @@ check("core names neither the old nor the new folder in its code (it uses the se
 toc = open(os.path.join(DA, "XayaUI_DevAssist.toc"), encoding="utf-8").read()
 listed = [l.strip() for l in toc.splitlines() if l.strip() and not l.startswith("#")]
 on_disk = sorted(f for f in os.listdir(DA) if f.endswith(".lua"))
+# (Dev Assist 0.7.5: QAWalks-*.lua are walkthroughs for the shared QA framework, QAWalk.lua, on another branch; until that file is here
+# they stay out of the toc on purpose, so the game never reads them)
+if "QAWalk.lua" not in on_disk:
+    on_disk = [f for f in on_disk if not f.startswith("QAWalks-")]
 _ver = re.search(r"^## Version: (\d+)\.(\d+)\.(\d+)\s*$", toc, re.M)   # 0.7.0 or later (0.7.1: instance, stats, tooltips)
 check("toc: title, version 0.7.0 or later, saved table XayaUIDevAssistDB", "## Title: XayaUI Dev Assist" in toc and _ver is not None
       and tuple(int(x) for x in _ver.groups()) >= (0, 7, 0) and "## SavedVariables: XayaUIDevAssistDB" in toc)

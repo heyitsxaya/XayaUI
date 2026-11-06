@@ -539,6 +539,7 @@ TT.FormulaSource = TT.FormulaSource or TT.ObservedLines
 -- /xuitt aura, /xuitt lines and /xuitt probe moved to XayaUI Dev Assist (Bonus 0.6.18; REQUEST-LOG #81, XayaUI_DevAssist/CoreDebug.lua).
 -- They read these two helpers.
 TT.SpellNameOf, TT.NpcIDFromGUID = SpellNameOf, NpcIDFromGUID
+if ns.Provide then ns.Provide("tooltipsDebug", { TT = TT }) end
 
 -------------------------------------------------------------------------------
 -- 2. Item level on hover

@@ -48,11 +48,12 @@ ns.CharWidthProbe_Run("")
 check("no Inset (the window is built differently): refused, nothing changed", said("not built the way") and CharacterFrame.w == 338)
 CharacterFrame.Inset = inset
 -- (QoL 0.7.22) the Character Reskin's wider window is built on this probe; with it on the probe would widen the window twice
-ns.CharReskin_WideOn = function() return true end; printed = {}
+-- (Dev Assist 0.7.5: the probe asks XayaUI QoL through the service list, "characterReskin")
+ns.Provide("characterReskin", { WideOn = function() return true end }); printed = {}
 ns.CharWidthProbe_Run("")
 check("the Character Reskin's wider window on: refused, it says where to turn it off, nothing changed", said("wider window is on") and said("Character Pane")
   and CharacterFrame.w == 338 and not ns.CharWidthProbe.on)
-ns.CharReskin_WideOn = nil
+ns.Provide("characterReskin", { WideOn = function() return false end })
 -- on
 printed = {}
 ns.CharWidthProbe_Run("100")

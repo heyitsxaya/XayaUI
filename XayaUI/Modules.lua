@@ -161,6 +161,18 @@ function ns.SubcommandList(slash, cmd)
 end
 function ns.SubcommandHelp(slash) return subHelp[slash] or {} end
 
+-- 2d. The detailed debug record's hand-in points (core 0.6.56; REQUEST-LOG #82). Core's files call these on their paths (a rule fired,
+-- a sound played, a display shown, a log line) only after testing them for nil. They are nil unless XayaUI Dev Assist, which keeps the
+-- detailed record, puts its functions here when it loads; nothing else may. Without it each call site costs one nil test.
+local DEBUG_HOOKS = { RecordLine = true, RecordOn = true, RecTrigger = true, RecDisplay = true, RecSound = true, RecordSummary = true,
+    DevRecordChanged = true }
+function ns.SetDebugHooks(t)
+    if type(t) ~= "table" then return end
+    for k, fn in pairs(t) do
+        if DEBUG_HOOKS[k] and type(fn) == "function" then ns[k] = fn end
+    end
+end
+
 -------------------------------------------------------------------------------
 -- 3. Which addon owns what. Only used for messages and the Addon Info status list; nothing here is called.
 -------------------------------------------------------------------------------

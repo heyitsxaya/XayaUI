@@ -32,6 +32,13 @@ local function Field(t, k)
     return v
 end
 
+-- What the feature addons offer these reports, through XayaUI's service list (Modules.lua ns.Provide / ns.Service): nil while that addon
+-- is off or not installed
+local function Svc(name) return ns.Service and ns.Service(name) or nil end
+local function ChatC() local v = Svc("chatDebug"); return v and v.C end
+local function ChatSettings() local v = Svc("chatDebug"); return v and v.Settings and v.Settings() end
+local function TTof() local v = Svc("tooltipsDebug"); return v and v.TT end
+
 -------------------------------------------------------------------------------
 -- /xui debug probe <spellID> (was core's Conditions.lua)
 -------------------------------------------------------------------------------
@@ -510,8 +517,9 @@ local function GameMenuDiagnostics()
 end
 
 local function GameMenuSkinDiagnostics()
-    if not ns.GameMenuSkin_DiagState then return end
-    local c, diag, rows, ResolveSource = ns.GameMenuSkin_DiagState()
+    local v = Svc("gameMenuSkinDiag")
+    if not (v and v.State) then return end
+    local c, diag, rows, ResolveSource = v.State()
     ns.Print(("game menu skin: on=%s mode=%s failed=%s built=%d rows=%d title found=%s lastError=%s"):format(
         tostring(c.skin), c.matchReal ~= false and "match (rows sit on the real buttons)" or "own layout", tostring(diag.failed), diag.built, diag.rows, tostring(diag.titleFound), tostring(diag.lastError)))
     for i, r in ipairs(rows) do
@@ -579,6 +587,7 @@ local isSecret = issecret
 local function readable(v) return v ~= nil and not isSecret(v) end
 -- /xuitt aura [spellID]: what every aura source says for one spell (the spell under the mouse when no ID is given). Read only.
 local function TTAuraReport(id)
+    local TT = TTof()
     local function P(...) print("|cff9966ffXayaUI Tooltips|r", ...) end
     if not id then
         local ok, data = pcall(function() return GameTooltip:GetTooltipData() end)
@@ -588,9 +597,9 @@ local function TTAuraReport(id)
     if not id then P("Hover a spell and run it from a macro (/run C_Timer.After(3, function() SlashCmdList.XUITT('aura') end)), or: /xuitt aura 258920"); return end
     local ver = C_AddOns and C_AddOns.GetAddOnMetadata and select(2, pcall(C_AddOns.GetAddOnMetadata, "XayaUI_Bonus", "Version"))
     local inCombat = InCombatLockdown and InCombatLockdown() and true or false
-    P(("spell %d (%s); XayaUI Bonus %s; in combat: %s"):format(id, tostring(ns.TT.SpellNameOf(id) or "?"), tostring(ver or "?"), inCombat and "yes" or "no"))
-    if not ns.TT.watching and ns.TT.ResetCooldownLinks then ns.TT.ResetCooldownLinks() end   -- (no spec-change event while IDs and Formulas are off)
-    local link = ns.TT.CooldownLinks()[id]
+    P(("spell %d (%s); XayaUI Bonus %s; in combat: %s"):format(id, tostring(TT.SpellNameOf(id) or "?"), tostring(ver or "?"), inCombat and "yes" or "no"))
+    if not TT.watching and TT.ResetCooldownLinks then TT.ResetCooldownLinks() end   -- (no spec-change event while IDs and Formulas are off)
+    local link = TT.CooldownLinks()[id]
     if link then
         local t = {}
         for _, a in ipairs(link.auras) do t[#t + 1] = tostring(a) end
@@ -607,15 +616,16 @@ local function TTAuraReport(id)
     end
     local castSelf = ns.AuraModel and ns.AuraModel.CastAppliesSelf and select(2, pcall(ns.AuraModel.CastAppliesSelf, id))
     P(("  your recorded casts: auras {%s}; same-ID aura seen: %s"):format(table.concat(cast, ", "), castSelf == true and "yes" or "no"))
-    local auras, same = ns.TT.AurasFor("spell", id, nil)
+    local auras, same = TT.AurasFor("spell", id, nil)
     local t = {}
     if same then t[#t + 1] = tostring(id) .. " (same as the spell)" end
-    for _, a in ipairs(auras) do t[#t + 1] = tostring(a.id) .. (a.name and (" " .. a.name) or "") .. ns.TT.SourceText(a) end
+    for _, a in ipairs(auras) do t[#t + 1] = tostring(a.id) .. (a.name and (" " .. a.name) or "") .. TT.SourceText(a) end
     P("  tooltip shows: " .. (#t > 0 and table.concat(t, "; ") or "not known yet"))
 end
 
 -- /xuitt lines: dump the raw lines of the tooltip under the mouse (type, tooltipType, tooltipID) so the aura-ID source can be verified.
 local function TTDumpLines()
+    local TT = TTof()
     local function P(...) print("|cff9966ffXayaUI Tooltips|r", ...) end
     local ok, data = pcall(function() return GameTooltip:GetTooltipData() end)
     if not ok or type(data) ~= "table" or type(data.lines) ~= "table" then P("Hover an item or spell, then run it from a macro: /run C_Timer.After(3, function() SlashCmdList.XUITT('lines') end)"); return end
@@ -629,6 +639,7 @@ local function TTDumpLines()
 end
 
 local function TTProbe()
+    local TT = TTof()
     local function P(...) print("|cff9966ffXayaUI Tooltips|r", ...) end
     local unit = "mouseover"
     if not UnitExists(unit) then
@@ -642,7 +653,7 @@ local function TTProbe()
     end
     try("UnitGUID", function() return UnitGUID(unit) end)
     local okg, guid = pcall(UnitGUID, unit)
-    P("NPC ID from GUID", okg and tostring(ns.TT.NpcIDFromGUID(guid)) or "unreadable")
+    P("NPC ID from GUID", okg and tostring(TT.NpcIDFromGUID(guid)) or "unreadable")
     try("UnitCanAttack", function() return UnitCanAttack("player", unit) end)
     try("UnitIsPlayer", function() return UnitIsPlayer(unit) end)
     try("Enemy forces (count, percent)", function() return C_ScenarioInfo.GetUnitCriteriaProgressValues(unit) end)
@@ -658,13 +669,13 @@ end
 -- the line's own box sits from the window's left edge, and the first characters of the line's text with every |-code shown as typed (a
 -- timestamp or a hidden color / texture code in front of the words shows up there). Text the game marks secret is never read.
 local function IndentReport()
-    local C = ns.Chat
+    local C = ChatC()
     local cf, ta = C.Main(), C.TextArea()
     if not (cf and ta) then ns.Print("Chat Panel indent: the chat window is not there to measure."); return end
     local function f(v) v = tonumber(v); return (v and not C.IsSecret(v)) and ("%.1f"):format(v) or "?" end
     local function left(o) local ok, v = pcall(function() return o:GetLeft() end); return ok and tonumber(v) or nil end
     local cl, tl = left(cf), left(ta)
-    local s = ns.chat2 or {}
+    local s = ChatSettings() or {}
     ns.Print(("Chat Panel indent: window left %s, text area left %s (setting: %s px), text area to window: %s px"):format(f(cl), f(tl), tostring(s.textInset), (cl and tl) and f(tl - cl) or "?"))
     local okI, cL, cR, cT, cB = pcall(function() return cf:GetClampRectInsets() end)
     local cl0 = C.Clamped(cf)
@@ -737,7 +748,7 @@ end
 
 local WHISPER_MODES = { popout = "New Tab", inline = "In-line", popout_and_inline = "Both" }
 local function WhisperFacts()
-    local C = ns.Chat
+    local C = ChatC()
     local out = { got = whispers.got, sent = whispers.sent, opened = whispers.opened, docked = 0, floating = 0 }
     local get = (_G.C_CVar and _G.C_CVar.GetCVar) or _G.GetCVar
     if get then
@@ -786,7 +797,7 @@ end
 
 -- /xui chat wrap: the measurements (the fix itself, C.Rewrap, is the Chat Panel's)
 local function ChatWrap()
-    local C = ns.Chat
+    local C = ChatC()
     local st = C.WrapStatus and C.WrapStatus()
     if not st then ns.Print("Chat Panel wrap: the chat window is not there to measure."); return end
     local function f(v) return v and ("%.1f"):format(v) or "?" end
@@ -873,16 +884,16 @@ if Sub then
     Sub("xuiengine", "on", EngineGroup("on"), "on / off <group> (a group drawn by the engine, or kept with XayaUI)")
     Sub("xuiengine", "off", EngineGroup("off"))
     Sub("xuiengine", "reset", EngineGroup("reset"), "reset <group> (a group back to automatic)")
-    Sub("chat", "wrap", function() if ns.Chat then ChatWrap() end end, "wrap (measure the chat lines and lay them out again)")
-    Sub("chat", "indent", function() if ns.Chat then ChatIndent() end end, "indent (where the space left of the chat text comes from)")
-    Sub("chat", "whispers", function() if ns.Chat then ChatWhispers() end end, "whispers (why a whisper does or does not get its own tab)")
+    Sub("chat", "wrap", function() if ChatC() then ChatWrap() end end, "wrap (measure the chat lines and lay them out again)")
+    Sub("chat", "indent", function() if ChatC() then ChatIndent() end end, "indent (where the space left of the chat text comes from)")
+    Sub("chat", "whispers", function() if ChatC() then ChatWhispers() end end, "whispers (why a whisper does or does not get its own tab)")
 end
 -- the whisper counters: a part of the Chat Panel (counted only while it runs), when XayaUI Chat is there
-if type(ns.Chat) == "table" and type(ns.Chat.Part) == "function" then WhisperPart(ns.Chat) end
+do local C = ChatC(); if type(C) == "table" and type(C.Part) == "function" then WhisperPart(C) end end
 
 SLASH_XUITT1 = "/xuitt"
 if type(SlashCmdList) == "table" then SlashCmdList.XUITT = function(msg)
-    if type(ns.TT) ~= "table" then print("XayaUI Tooltips: /xuitt needs XayaUI Bonus Features, which is switched off or not installed.") return end
+    if type(TTof()) ~= "table" then print("XayaUI Tooltips: /xuitt needs XayaUI Bonus Features, which is switched off or not installed.") return end
     msg = (msg or ""):lower()
     if msg:find("probe") then TTProbe()
     elseif msg:find("^%s*aura") then TTAuraReport(tonumber(msg:match("aura%s+(%d+)")))

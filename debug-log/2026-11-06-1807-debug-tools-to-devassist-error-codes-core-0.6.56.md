@@ -88,3 +88,13 @@ the summary and the roadmap themselves, tools/precheck.py, tests/precheck_run.py
 verbatim session request logs (her own words). New precheck group "moved documents" fails on any old root path elsewhere and on a
 missing docs/ file; the QA-ID check now fails when the checklist is not found (it passed silently on a missing file). tests/precheck_run.py
 has six new checks for it (they fail on the old precheck: no check_doc_paths, and check_qa_ids(None) passed).
+
+## Addon boundaries (the harness's static check, found by the full suite)
+The whole-addon harness fails a file that uses a name another addon defines (they talk through Modules.lua). Fixed the way the contract
+asks: core's detailed-record hand-in points (RecordLine, RecordOn, RecTrigger, RecDisplay, RecSound, RecordSummary, DevRecordChanged)
+are filled by Dev Assist through `ns.SetDebugHooks` (Modules.lua 2d; a whitelist, nothing else may set them); `ns.perf` (the rebuild
+timing switch) is declared in Core.lua; the feature addons offer what Dev Assist's reports read as services: `chatDebug` (XayaUI Chat),
+`tooltipsDebug` (Bonus), `gameMenuSkinDiag` (Reskin, replacing ns.GameMenuSkin_DiagState), `characterReskin` (QoL, WideOn for the width
+probe). tests/char_width_probe_run.py stubs that service instead of ns.CharReskin_WideOn. tests/devassist_rename_run.py: QAWalks-*.lua stay
+out of the toc check until the framework's QAWalk.lua is in the folder. One full-suite run was spoiled by editing files while it ran (a
+Chat file read half-written in the harness's third session); it was run again without edits.

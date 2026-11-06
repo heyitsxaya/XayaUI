@@ -476,7 +476,7 @@ ns.WhenReady(function() if SavedOn() then Enable() end end)
 
 -- /xui debug gamemenu (the skin's half) moved to XayaUI Dev Assist (Reskin 0.6.5; REQUEST-LOG #81, XayaUI_DevAssist/CoreDebug.lua): it
 -- reads this
-function ns.GameMenuSkin_DiagState() return Cfg(), diag, rows, ResolveSource end
+ns.Provide("gameMenuSkinDiag", { State = function() return Cfg(), diag, rows, ResolveSource end })
 
 -- Blizzard UI Reskin > Esc Menu (the Game Menu look) ----------------------------------------------------------------------------------------------------------
 function ns.GameMenuSkin_Options(Notify)

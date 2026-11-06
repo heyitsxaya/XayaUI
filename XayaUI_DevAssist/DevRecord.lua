@@ -11,7 +11,7 @@
 -- Also here: reading a debug report string back (/xuidev report): the same entries, expanded (with each error's stack).
 -------------------------------------------------------------------------------
 local ns = rawget(_G, "XayaUI_NS")
-if type(ns) ~= "table" or type(ns.DebugRecordInfo) ~= "table" then return end   -- XayaUI is off or older than 0.6.56
+if type(ns) ~= "table" or type(ns.DebugRecordInfo) ~= "table" or type(ns.SetDebugHooks) ~= "function" then return end   -- XayaUI is off or older than 0.6.56
 local DR = ns.DebugRecordInfo
 local issecret = ns.IsSecret or issecretvalue or function() return false end
 local Plain, Version = DR.Plain, DR.Version
@@ -104,7 +104,7 @@ function ns.SetRecPreset(which)
     end
 end
 -- Is a line of this kind kept now? (no kind: is the record kept at all)
-function ns.RecordOn(kind)
+local function RecordOn(kind)
     if not Kept() then return false end
     local cat = kind and KIND_CAT[kind]
     if not cat then return true end
@@ -124,7 +124,7 @@ local function Rec()
     return r
 end
 -- kind: a short word (see LABEL); text: one line (colours are dropped). Each line reads "HH:MM:SS  Category  text".
-function ns.RecordLine(kind, text)
+local function RecordLine(kind, text)
     if not ns.RecordOn(kind) then return end
     local r = Rec()
     if not r then return end
@@ -142,7 +142,7 @@ function ns.ClearRecord()
     if type(CueRulesDB) == "table" then CueRulesDB.debugRecord = nil end
     if ns.ResetRecordedAuras then ns.ResetRecordedAuras() end
 end
-function ns.RecordSummary()
+local function RecordSummary()
     local r = type(CueRulesDB) == "table" and CueRulesDB.debugRecord
     if type(r) ~= "table" or type(r.lines) ~= "table" then return 0, 0, nil end
     return #r.lines, r.dropped or 0, r.started
@@ -186,7 +186,7 @@ local function SourceKind(src)   -- "aura API | time: ..." -> "aura API" (the pa
     local k = tostring(src or ""):match("^([^%(:|]+)") or tostring(src)
     return (k:gsub("%s+$", ""))
 end
-function ns.RecTrigger(rule, result, info)
+local function RecTrigger(rule, result, info)
     if not triggerWatch or type(rule) ~= "table" or not Focused(rule) then return end
     if not ns.RecCatOn("triggers") then return end
     local i = type(info) == "table" and info or {}
@@ -204,13 +204,13 @@ function ns.RecTrigger(rule, result, info)
     end
 end
 -- A display appeared or went (Engine.lua, only on a change).
-function ns.RecDisplay(rule, shown, byEngine)
+local function RecDisplay(rule, shown, byEngine)
     if not ns.RecCatOn("displays") then return end
     ns.RecordLine("display", ("'%s' display %s%s"):format(tostring(rule and rule.name), shown and "shown" or "hidden",
         shown and (byEngine and " (drawn by the combat engine)" or " (drawn by XayaUI)") or ""))
 end
 -- A sound a rule played (Engine.lua).
-function ns.RecSound(rule, how, result, note)
+local function RecSound(rule, how, result, note)
     if not ns.RecCatOn("sounds") then return end
     ns.RecordLine("sound", ("'%s': %s%s%s"):format(tostring(rule and rule.name), tostring(how or "?"),
         result ~= nil and (" | the game returned " .. S(result)) or "", note and (" | " .. note) or ""))
@@ -249,7 +249,7 @@ local function OnList()
     return #on > 0 and table.concat(on, ", ") or "nothing but combat marks"
 end
 -- core's ns.DebugSettingsChanged calls this after any change on Settings > Debugging
-function ns.DevRecordChanged()
+local function DevRecordChanged()
     DR.Refresh()
     SyncProbe()
     if ns.ResetRecordedAuras then ns.ResetRecordedAuras() end
@@ -417,6 +417,9 @@ local function Start()
     local u = Ui()
     if (u.advancedDebug or u.probeByDebug) and ns.AtLogin then ns.AtLogin(SyncProbe) end
 end
+-- the hand-in points core's files call (each tests for nil first), put in place through core's contract (Modules.lua ns.SetDebugHooks)
+ns.SetDebugHooks({ RecordOn = RecordOn, RecordLine = RecordLine, RecordSummary = RecordSummary, RecTrigger = RecTrigger,
+    RecDisplay = RecDisplay, RecSound = RecSound, DevRecordChanged = DevRecordChanged })
 if ns.WhenReady then ns.WhenReady(Start) end
 
 -------------------------------------------------------------------------------

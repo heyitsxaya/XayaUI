@@ -54,7 +54,8 @@ function ns.CharWidthProbe_Run(arg)
     end
     if probe.on then Say("already running; /xui debug widthprobe off first."); return end
     -- (QoL 0.7.22) the Character Reskin's "Wider window" is built on what this probe tested; the two would widen the window twice
-    if ns.CharReskin_WideOn and ns.CharReskin_WideOn() then
+    local wide = ns.Service and ns.Service("characterReskin")   -- (XayaUI QoL's, through the service list)
+    if wide and wide.WideOn and wide.WideOn() then
         Say("the Character Reskin's wider window is on (Blizzard UI Reskin > Character Pane); turn it off there first."); return
     end
     if InCombatLockdown and InCombatLockdown() then Say("not in combat: try again out of combat."); return end
