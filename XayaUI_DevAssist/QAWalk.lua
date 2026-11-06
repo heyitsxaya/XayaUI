@@ -77,7 +77,10 @@ function QA.ExportCode(id)
     local r = DB().results[id]
     if not r then return nil end
     local lines = { "id=" .. Clean(id, 40), "when=" .. tostring(r.when or 0), "v=" .. Clean(r.v or "", 40) }
-    for i, s in ipairs(r.steps or {}) do lines[#lines + 1] = ("%d=%s:%s"):format(i, Clean(s.r, 1), Clean(s.note, 160)) end
+    for i, s in ipairs(r.steps or {}) do
+        lines[#lines + 1] = ("%d=%s:%s"):format(i, Clean(s.r, 1), Clean(s.note, 160))
+        if s.k then lines[#lines + 1] = ("k%d=%s"):format(i, Clean(s.k, 20)) end   -- (the checklist item: steps shift when the list changes)
+    end
     return "XUIQA1:" .. enc64(table.concat(lines, "\n"))
 end
 -- a pasted code -> a result table (or nil, reason); never runs anything from the code
@@ -96,6 +99,8 @@ function QA.ImportCode(code)
         elseif tonumber(k) and tonumber(k) <= 60 then
             local res, note = v:match("^([PFS]?):(.*)$")
             if res then r.steps[tonumber(k)] = { r = res, note = Clean(note, 160) } end
+        elseif k:match("^k%d+$") and r.steps[tonumber(k:sub(2))] then
+            r.steps[tonumber(k:sub(2))].k = Clean(v, 20)
         end
     end
     if not r.id then return nil, "the code has no walkthrough in it" end
@@ -134,11 +139,28 @@ local function Build()
     end
     W.title = W:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge"); W.title:SetPoint("TOPLEFT", 14, -12)
     local close = CreateFrame("Button", nil, W, "UIPanelCloseButton"); close:SetPoint("TOPRIGHT", 2, 2)
-    -- list page
+    -- list page: a scrolling list (the walkthroughs do not fit the window)
     W.rows = {}
+    W.listScroll = CreateFrame("ScrollFrame", nil, W)
+    W.listScroll:SetPoint("TOPLEFT", 14, -40); W.listScroll:SetPoint("BOTTOMRIGHT", -14, 14)
+    W.listChild = CreateFrame("Frame", nil, W.listScroll); W.listChild:SetSize(630, 10); W.listScroll:SetScrollChild(W.listChild)
+    W.listScroll:EnableMouseWheel(true)
+    W.listScroll:SetScript("OnMouseWheel", function(self, d)
+        local maxS = math.max(0, (W.listChild:GetHeight() or 0) - (self:GetHeight() or 0))
+        self:SetVerticalScroll(math.max(0, math.min(maxS, (self:GetVerticalScroll() or 0) - d * 48)))
+    end)
     -- step page
     W.stepNo = W:CreateFontString(nil, "OVERLAY", "GameFontDisable"); W.stepNo:SetPoint("TOPLEFT", 14, -40)
-    W.text = W:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); W.text:SetPoint("TOPLEFT", 14, -62); W.text:SetWidth(630)
+    -- the step's text scrolls when it is long (some checklist items are over 1000 characters)
+    W.textScroll = CreateFrame("ScrollFrame", nil, W)
+    W.textScroll:SetPoint("TOPLEFT", 14, -62); W.textScroll:SetPoint("BOTTOMRIGHT", -14, 132)
+    W.textChild = CreateFrame("Frame", nil, W.textScroll); W.textChild:SetSize(620, 10); W.textScroll:SetScrollChild(W.textChild)
+    W.textScroll:EnableMouseWheel(true)
+    W.textScroll:SetScript("OnMouseWheel", function(self, d)
+        local maxS = math.max(0, (W.textChild:GetHeight() or 0) - (self:GetHeight() or 0))
+        self:SetVerticalScroll(math.max(0, math.min(maxS, (self:GetVerticalScroll() or 0) - d * 40)))
+    end)
+    W.text = W.textChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); W.text:SetPoint("TOPLEFT", 0, 0); W.text:SetWidth(615)
     W.text:SetJustifyH("LEFT"); W.text:SetJustifyV("TOP"); if W.text.SetSpacing then W.text:SetSpacing(3) end
     W.check = W:CreateFontString(nil, "OVERLAY", "GameFontNormal"); W.check:SetPoint("BOTTOMLEFT", 14, 112); W.check:SetWidth(630); W.check:SetJustifyH("LEFT")
     W.doIt = Btn(W, "Do it for me", 120, function() QA.DoSetup() end); W.doIt:SetPoint("BOTTOMLEFT", 14, 82)
@@ -164,7 +186,7 @@ local function Build()
     W.importGo = Btn(W, "Show these results", 140, function() QA.FinishImport() end); W.importGo:SetPoint("BOTTOMRIGHT", -14, 40)
     W:Hide()
 end
-local STEP_WIDGETS = { "stepNo", "text", "check", "doIt", "recheck", "noteLabel", "note", "pass", "fail", "skip", "back", "toList" }
+local STEP_WIDGETS = { "stepNo", "textScroll", "check", "doIt", "recheck", "noteLabel", "note", "pass", "fail", "skip", "back", "toList" }
 local END_WIDGETS = { "summary", "shot", "export", "import", "again", "code", "codeLabel", "importGo" }
 local function ShowOnly(list)
     local want = {}
@@ -172,6 +194,7 @@ local function ShowOnly(list)
     for _, k in ipairs(STEP_WIDGETS) do W[k]:SetShown(want[k] and true or false) end
     for _, k in ipairs(END_WIDGETS) do W[k]:SetShown(want[k] and true or false) end
     for _, r in ipairs(W.rows) do r:Hide() end
+    if W.listScroll then W.listScroll:Hide() end
 end
 
 function ShowList()
@@ -182,19 +205,21 @@ function ShowList()
         local def = QA.walks[id]
         local r = W.rows[i]
         if not r then
-            r = CreateFrame("Button", nil, W)
+            r = CreateFrame("Button", nil, W.listChild)
             r:SetSize(630, 22)
             r.text = r:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); r.text:SetPoint("LEFT", 6, 0); r.text:SetJustifyH("LEFT")
             r.status = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall"); r.status:SetPoint("RIGHT", -6, 0)
             local hl = r:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(r); hl:SetColorTexture(1, 1, 1, 0.08)
             W.rows[i] = r
         end
-        r:ClearAllPoints(); r:SetPoint("TOPLEFT", 14, -40 - (i - 1) * 24)
+        r:ClearAllPoints(); r:SetPoint("TOPLEFT", W.listChild, "TOPLEFT", 0, -(i - 1) * 24)
         r.text:SetText(("%s%s  |cff999999(%d steps)|r"):format(def.qa and ("[" .. def.qa .. "] ") or "", tostring(def.title), #def.steps))
         r.status:SetText(Status(id))
         r:SetScript("OnClick", function() QA.Start(id) end)
         r:Show()
     end
+    W.listChild:SetHeight(math.max(10, #QA.list * 24))
+    W.listScroll:Show(); W.listScroll:SetVerticalScroll(0)
     W.list = true
     W:Show()
 end
@@ -230,6 +255,7 @@ function ShowStep()
     W.title:SetText(tostring(def.title))
     W.stepNo:SetText(("Step %d of %d%s"):format(run.i, #def.steps, def.qa and ("  (" .. def.qa .. ")") or ""))
     W.text:SetText(tostring(st.text or ""))
+    W.textChild:SetHeight(math.max(10, (W.text.GetStringHeight and W.text:GetStringHeight() or 0) + 4)); W.textScroll:SetVerticalScroll(0)
     W.doIt:SetShown(st.setup ~= nil)
     W.recheck:SetShown(st.check ~= nil)
     W.back:SetEnabled(run.i > 1)
@@ -240,8 +266,9 @@ function ShowStep()
 end
 function QA.Answer(r)
     if not run then return end
-    run.steps[run.i] = { r = r, note = Clean(W.note:GetText(), 160) }
     local def = QA.walks[run.id]
+    local key = def.steps[run.i] and def.steps[run.i].key
+    run.steps[run.i] = { r = r, note = Clean(W.note:GetText(), 160), k = key and Clean(key, 20) or nil }
     if run.i < #def.steps then run.i = run.i + 1; ShowStep()
     else
         DB().results[run.id] = { when = time and time() or 0, v = def.version, steps = run.steps }

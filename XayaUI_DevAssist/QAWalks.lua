@@ -55,7 +55,7 @@ local function Cleanup()
 end
 
 -- B171 / B172: the group page --------------------------------------------------------------------------------------------------
-QA.Register("group-page", { title = "Group page: tabs, Config, Group tab", qa = "B171-B172", order = 10, steps = {
+QA.Register("group-page", { title = "Group page: tabs, Config, Group tab", qa = "B171-B172", order = 110, steps = {
     { text = "Press |cffffd100Do it for me|r: XayaUI makes a group called \"QA test group\" and opens its page in the settings window.\n\nLook at the row of tabs above the page.\n\n|cffffd100Expect:|r four tabs, in this order: Group, Display, Load, Config. Group is the picked one.",
         setup = function() OpenGroup(MakeTestGroup(false)) end,
         check = function() local f = TestGroup(); return f ~= nil, f and "the QA test group exists" or "no QA test group yet: press Do it for me" end },
@@ -67,7 +67,7 @@ QA.Register("group-page", { title = "Group page: tabs, Config, Group tab", qa = 
 } })
 
 -- B174 / B175: the group's box and nested groups -------------------------------------------------------------------------------
-QA.Register("group-box", { title = "Group size, border and background", qa = "B174", order = 11, steps = {
+QA.Register("group-box", { title = "Group size, border and background", qa = "B174", order = 111, steps = {
     { text = "Press |cffffd100Do it for me|r: XayaUI makes \"QA test group\" with two sample icons (shown as previews) and turns on its |cffffd100Border|r and |cffffd100Background|r with Size = Auto.\n\n|cffffd100Expect:|r two icons side by side in the middle of the screen, with a dark box and a thin border just around them.",
         setup = function() local f = MakeTestGroup(true); local ns = NS(); f.cBorder, f.cBg = true, true; if ns.SetGroupSizeMode then ns.SetGroupSizeMode(f, "auto") end; pcall(ns.RefreshAllVisuals); OpenGroup(f) end,
         check = function() local ns = NS(); local b = ns.GroupBox and ns.GroupBox(TestGroup()); return (b and b:IsShown()) and true or false, (b and b:IsShown()) and "the box is showing" or "no box is showing" end },
@@ -78,7 +78,7 @@ QA.Register("group-box", { title = "Group size, border and background", qa = "B1
         check = function() local ns = NS(); local f = TestGroup(); return ns.GroupSizeMode(f) == "set" and f.cW == 220, "size mode: " .. tostring(ns.GroupSizeMode(f)) end },
     Cleanup(),
 } })
-QA.Register("group-nested", { title = "Nested group: anchored to the screen", qa = "B175", order = 12, steps = {
+QA.Register("group-nested", { title = "Nested group: anchored to the screen", qa = "B175", order = 112, steps = {
     { text = "Press |cffffd100Do it for me|r: XayaUI makes \"QA test group\" with a nested group inside, and opens the nested group's page.\n\nOn its Group tab, under Group position.\n\n|cffffd100Expect:|r a row \"Anchored to: The parent group\". (A top-level group does not show it.)",
         setup = function() local ns = NS(); local f = MakeTestGroup(false); local inner; for _, x in ipairs(ns.folders) do if x.parent == f.id then inner = x end end; inner = inner or ns.NewFolder("QA nested", f.id); OpenGroup(inner) end },
     { text = "Pick |cffffd100The screen|r in that row.\n\n|cffffd100Expect:|r nothing jumps; from now on the nested group is measured from the screen centre and stays put when the parent group is moved. Change its X offset a little: it moves on the screen as you change it." },
@@ -86,7 +86,7 @@ QA.Register("group-nested", { title = "Nested group: anchored to the screen", qa
 } })
 
 -- B173: dragging rule rows in the sidebar -----------------------------------------------------------------------------------------
-QA.Register("sidebar-drag", { title = "Drag a rule row in the sidebar", qa = "B173", order = 13, steps = {
+QA.Register("sidebar-drag", { title = "Drag a rule row in the sidebar", qa = "B173", order = 113, steps = {
     { text = "Press |cffffd100Do it for me|r: XayaUI makes \"QA test group\" with two sample rules and opens the settings window.\n\nIn the left pane, find QA test group and its two rules (QA sample 1, QA sample 2).",
         setup = function() OpenGroup(MakeTestGroup(true)) end },
     { text = "Press on |cffffd100QA sample 2|r, hold the mouse button, and move the mouse up a little over QA sample 1.\n\n|cffffd100Expect:|r a dark label with the rule's name follows the mouse and says \"above QA sample 1\", with a gold line on that row.\n\nIf nothing at all happens, press Fail and write \"nothing\" in the note." },
@@ -97,7 +97,7 @@ QA.Register("sidebar-drag", { title = "Drag a rule row in the sidebar", qa = "B1
 } })
 
 -- E2e: the Blizzard UI Reskin tab's switches -------------------------------------------------------------------------------------
-QA.Register("reskin-switches", { title = "Blizzard UI Reskin: All reskins and each reskin's tick box", qa = "E2e", order = 20, steps = {
+QA.Register("reskin-switches", { title = "Blizzard UI Reskin: All reskins and each reskin's tick box", qa = "E2e", order = 120, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens on the Blizzard UI Reskin tab.\n\n|cffffd100Expect:|r a tick box on the tab button itself, left of its name (All reskins, ticked), not covering the name; in the left pane each of Character Pane, Chat Panel, Esc Menu and Shopping List has its own tick box.",
         setup = function() local ns = NS(); if ns.OpenSettingsPage then ns.OpenSettingsPage("reskin", "charreskin") end end,
         check = function() local ns = NS(); return ns.ReskinTabOn and ns.ReskinTabOn() == true, "All reskins is " .. ((ns.ReskinTabOn and ns.ReskinTabOn()) and "on" or "off") end },
@@ -111,7 +111,7 @@ QA.Register("reskin-switches", { title = "Blizzard UI Reskin: All reskins and ea
 
 -- E2a / E2g / E2h: the Shopping List ---------------------------------------------------------------------------------------------
 local function Shop() local ns = NS(); return ns and ns.Shop end
-QA.Register("shopping-list", { title = "Shopping List: panel, stop-tracking question, diamond", qa = "E2a, E2g, E2h", order = 21, steps = {
+QA.Register("shopping-list", { title = "Shopping List: panel, stop-tracking question, diamond", qa = "E2a, E2g, E2h", order = 121, steps = {
     { text = "Press |cffffd100Do it for me|r: the Shopping List is switched on and its panel opens.\n\n|cffffd100Expect:|r a movable panel \"Shopping List\" with Missing on your gear, To buy, and your tracked recipes.",
         setup = function() local S = Shop(); if not S then error("XayaUI QoL is off") end; local c = S.Cfg(); c.enabled, c.panel = true, true; S.Apply() end,
         check = function() local p = rawget(_G, "XayaUIShoppingList"); return (p and p:IsShown()) and true or false, (p and p:IsShown()) and "the panel is showing" or "the panel is not showing" end },

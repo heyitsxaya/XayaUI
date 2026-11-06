@@ -37,3 +37,20 @@ Logged 2026-11-06 17:45 UTC. Session branch `claude/cool-ramanujan-ewx8e5`. Noth
 - `tests/qa_walk_run.py` (new, 25): no window before opening, `/xui dev qa` and `/xuidev qa`, a full run with notes and Back, the
   saved result, Screenshot, the export / import round trip, refused and cleaned codes, the cleanup step, the list status.
 - `modules_run`, `console_commands_run` (92), `devassist_*_run`, `lua_pitfalls_run` pass. QA B176.
+
+## The checklist walkthroughs (same day, after "High priority qa items should also be shipped in this first batch")
+- Her words: high priority = "Combat display checks, Things you called urgent, Open bugs not yet checked, Everything on main not
+  checked"; order: "start with bugs, then UI items that don't impact usage".
+- **`tools/qa_walks_from_checklist.py`** writes **`XayaUI_DevAssist/QAWalks-Checklist.lua`** from `QA-CHECKLIST.md` and
+  `docs/process/qa-open-bugs.json`: 32 walkthroughs of at most 12 steps, 287 open items. Each item is in one walkthrough only.
+  1. Open bugs to confirm: the 17 open issues labelled bug + unverified-in-game (97, 315, 319, 331, 332, 333, 340, 344, 346, 347,
+     348, 351, 352, 353, 359, 364, 365), each with the QA IDs that name it.
+  2. Looks and layout (no effect on use): 56 items. INFERENCE: chosen by a word rule (look / layout words such as label, colour,
+     width, border, tab, tooltip; and none of combat, trigger, fire, sound, save, load, cast, aura, proc, delete, error).
+  3. Combat displays: section B-engine. 4. Urgent: #268, #368-#370, the character pane / reskin. 5. Everything else, per section.
+- Each step carries its checklist ID (`key`, or `bugNNN`). The saved result and the export code keep it (`kN=` lines), so a result
+  still points at the right item after the checklist changes and the walkthroughs are rebuilt.
+- The list and the step text scroll (mouse wheel).
+- **Upkeep:** after a checklist change, run `python3 tools/qa_walks_from_checklist.py`; `tests/qa_walk_run.py` fails while the
+  file is out of date. `qa-open-bugs.json` is refreshed by hand from the issue list (gh is used only for search).
+- `tests/qa_walk_run.py`: 32 checks (adds the generated walkthroughs, their order, the scroll, the saved keys and the sync check).

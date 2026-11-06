@@ -81,6 +81,22 @@ check("a code that is not ours is refused", QA.ImportCode("hello") == nil and QA
 local evil = "XUIQA1:aWQ9fGNmZmZmMDAwMHJlZApXPTA="   -- "id=|cffff0000red\nW=0"
 local e = QA.ImportCode(evil)
 check("  ...and what it carries is plain text only", e and e.id == "cffff0000red", e and e.id)
+-- the walkthroughs made from QA-CHECKLIST.md (Xaya 2026-11-06: "start with bugs, then UI items that don't impact usage")
+local gen, firstGen = 0, nil
+for _, id in ipairs(QA.list) do if QA.walks[id].generated then gen = gen + 1; firstGen = firstGen or id end end
+check("the checklist walkthroughs are registered (one per chunk of open items)", gen >= 10, gen)
+check("  ...the list starts with the open bugs to confirm", QA.list[1] == "chk-bugs" and firstGen == "chk-bugs", QA.list[1])
+local look, combat
+for i, id in ipairs(QA.list) do if id == "chk-look-1" then look = i elseif id == "chk-combat-1" then combat = combat or i end end
+check("  ...then looks and layout before the combat displays", look and combat and look < combat, ("%s %s"):format(tostring(look), tostring(combat)))
+QA.Start("chk-bugs")
+check("  ...a generated step shows its text, with no Do it for me (nothing to set up)", Wn.text:GetText():find("Bug #", 1, true) ~= nil and not Wn.doIt:IsShown())
+check("long step text sits in a scrolling box sized to the text", Wn.textScroll:IsShown() and Wn.textChild:GetHeight() >= 10)
+for _ = 1, #QA.walks["chk-bugs"].steps do QA.Answer("S") end
+local br = QA.DB().results["chk-bugs"]
+check("  ...each answer is saved with its checklist item (steps shift when the list changes)", br and br.steps[1].k == QA.walks["chk-bugs"].steps[1].key and br.steps[1].k:find("^bug%d+$"), br and br.steps[1].k)
+local bk = QA.ImportCode(QA.ExportCode("chk-bugs"))
+check("  ...and the export code carries it", bk and bk.steps[1].k == br.steps[1].k and bk.steps[2].k == br.steps[2].k, bk and bk.steps[1].k)
 -- list status after a run
 QA.Toggle(); QA.Toggle()
 local gp
@@ -105,6 +121,11 @@ def main():
         print(("PASS " if ok else "FAIL ") + name)
         if not ok:
             bad += 1
+    import subprocess
+    chk = subprocess.run([sys.executable, os.path.join(HERE, "..", "tools", "qa_walks_from_checklist.py"), "--check"], capture_output=True, text=True)
+    print(("PASS " if chk.returncode == 0 else "FAIL ") + "QAWalks-Checklist.lua is in sync with QA-CHECKLIST.md: " + chk.stdout.strip())
+    if chk.returncode != 0:
+        bad += 1
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
     for e in errs:
         print("ERROR in the game stand-in:", str(e)[:600])
