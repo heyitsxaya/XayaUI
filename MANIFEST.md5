@@ -472,6 +472,7 @@ d27f8382f0cf14a88b89d448efa972d5  debug-log/2026-11-05-1612-sidebar-switches-uti
 2cd9e04bca8c3a3b47d1b0c197fcd29e  debug-log/2026-11-05-1714-character-pane-overlays-qol-0.7.19.md
 8c7ceaa8ff08bbbb847a6cfc1acf0f64  debug-log/2026-11-05-1716-stat-calculator-change-column-qol-0.7.20.md
 52fe673f6ce190cf24b4ad2b163503d3  debug-log/2026-11-06-0023-games-load-on-demand-answer.md
+a7325d9d3d72bcd5cf000d0e147595ad  debug-log/2026-11-06-0025-games-sudoku-levels.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -544,7 +545,7 @@ e79800370c0263733895122d9b51fa21  roadmap-features/games/XayaUI_Games/Games/Merg
 a9b50c64fa6678c836cb244b7cf611ab  roadmap-features/games/XayaUI_Games/Games/Mines/Mines.lua
 c02c8e610aff1f00d3989edfc799f801  roadmap-features/games/XayaUI_Games/Games/Pairs/Pairs.lua
 8f0d603e223e5b69fa3432cac4043d49  roadmap-features/games/XayaUI_Games/Games/Snake/Snake.lua
-331b5547cb0f7427dcea783d5ae1851a  roadmap-features/games/XayaUI_Games/Games/Sudoku/Sudoku.lua
+a44a3252c96eb0922921a3bc78cee4ed  roadmap-features/games/XayaUI_Games/Games/Sudoku/Sudoku.lua
 8b573accb3105e8176184b126bce34bd  roadmap-features/games/XayaUI_Games/Games/Word/WordGame.lua
 b5722340a578d2f0724db28724c668b2  roadmap-features/games/XayaUI_Games/Games/Word/WordModes.lua
 a85995dc5f6513da904101700f414607  roadmap-features/games/XayaUI_Games/Games/Word/WordPool.lua

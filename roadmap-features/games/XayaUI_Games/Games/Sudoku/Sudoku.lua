@@ -7,7 +7,16 @@
 --   Sudoku.Fill(seed)               a complete valid grid, by backtracking in a seeded order
 --   Sudoku.Count(grid, limit)       solver that stops at `limit` solutions (2 is enough to prove "not unique")
 --   Sudoku.Carve(full, seed, level) removes clues in a seeded order, keeping a removal only if Count(...) is still 1
---   Sudoku.Rate(puzzle)             difficulty by the techniques needed (singles only = easy; more = harder). Open: how many levels
+--   Sudoku.Rate(puzzle)             difficulty. Levels (Xaya, 2026-11-06): "easy, medium, hard".
+--                                   How each level is told apart: PROPOSED, to confirm (V16). A human-style solver checks
+--                                   which steps the puzzle needs:
+--                                     easy   only "one number fits this cell" or "this number fits only one cell" steps;
+--                                     medium also needs ruling numbers out with pairs or with a box-row overlap;
+--                                     hard   needs more advanced elimination steps.
+--                                   No level ever needs guessing, and every puzzle has exactly one answer.
+--                                   Cost: this solver is more code than the answer counter, and a carved puzzle that lands on
+--                                   the wrong level is made again (time to be measured).
+--                                   Still open: conflict marks on by default?
 --   Cost: making a puzzle runs the solver many times. It runs in a coroutine with a small time budget per frame, so the game never
 --   stutters (budget and time per puzzle to be measured in game). Lua 5.1 has no built-in bit operations, so candidate sets are
 --   small arrays.
