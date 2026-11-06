@@ -266,6 +266,40 @@ b.icon = "none"; ns.RefreshVisual(cue)
 check("Icon None: no icon, the bar fills the whole display", not fr.barIcon:IsShown() and select(4, fr.barF:GetPoint(1)) == 0)
 b.icon = "left"; ns.RefreshVisual(cue)
 
+-- 5b. textures (S8-12: fix duplicates, the game's power-bar art, XayaUI's bar fills)
+PowerBarColor = { FURY = { atlas = "Test_Fury_Fill" }, RUNIC_POWER = { atlasElementName = "RunicPower" }, MISSING = { atlas = "Not_An_Atlas" }, FLAT = { r = 1 } }
+local realCT = C_Texture
+C_Texture = setmetatable({ GetAtlasInfo = function(n) if n == "Not_An_Atlas" then return nil end return { width = 64, height = 8 } end }, { __index = realCT })
+ns.LocalGraphics = { { "[Bar Fills] Chogall_Horizontal_Fill", "Interface\\AddOns\\XayaUI\\Media\\Graphics\\Bar_Fills\\Chogall_Horizontal_Fill.tga", 256, 32 },
+  { "[Bar Fills] Chogall_Horizontal_Spark", "Interface\\AddOns\\XayaUI\\Media\\Graphics\\Bar_Fills\\Chogall_Horizontal_Spark.tga", 16, 64 },
+  { "[Glyphs] Something", "Interface\\AddOns\\XayaUI\\Media\\Graphics\\Glyphs\\Something.tga", 64, 64 } }
+local reg = {}
+local fakeLSM = { HashTable = function(self, kind) return reg end,
+  Fetch = function(self, kind, n) return reg[n] end,
+  Register = function(self, kind, n, path) assert(kind == "statusbar"); reg[n] = path; return true end }
+reg["Blizzard"] = "Interface\\TargetingFrame\\UI-StatusBar"; reg["Solid"] = "Interface/Buttons/WHITE8X8"; reg["Blizzard Raid Bar"] = "Interface\\RaidFrame\\Raid-Bar-Hp-Fill"
+reg["Some Pack Bar"] = "Interface\\AddOns\\SomePack\\bar.tga"
+local realLibStub = LibStub
+LibStub = setmetatable({}, { __call = function(_, name, silent) if name == "LibSharedMedia-3.0" then return fakeLSM end return realLibStub(name, silent) end })
+local nreg = ns.BarRegisterLSM()
+check("XayaUI's bar fills are registered with LibSharedMedia as 'XayaUI <name>' (fills only, not sparks)", nreg == 1 and reg["XayaUI Chogall_Horizontal_Fill"] ~= nil and reg["XayaUI Chogall_Horizontal_Spark"] == nil, nreg)
+local vals, ord = ns.BarTextureList()
+local labels = {}
+for _, k in ipairs(ord) do labels[#labels + 1] = vals[k] end
+local function count(lbl) local n = 0; for _, x in ipairs(labels) do if x == lbl then n = n + 1 end end; return n end
+check("no duplicates: LibSharedMedia's 'Blizzard', 'Solid' and 'Blizzard Raid Bar' (the same game files) are not listed again",
+  count("Flat") == 1 and count("Blizzard") == 1 and count("Solid") == 0 and count("Blizzard Raid Bar") == 0, table.concat(labels, " | "))
+check("...and XayaUI's own fill, registered there too, is listed once", count("XayaUI: Chogall_Horizontal_Fill") == 1 and count("XayaUI Chogall_Horizontal_Fill") == 0)
+check("other addons' status-bar textures are still listed", count("Some Pack Bar") == 1)
+check("the game's power-bar art is listed from its own table (full atlas, and the player frame's name for an element)",
+  vals["atlas:Test_Fury_Fill"] == "Blizzard power: Fury" and vals["atlas:UI-HUD-UnitFrame-Player-PortraitOn-Bar-RunicPower"] == "Blizzard power: Runic Power"
+  and vals["atlas:UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health"] == "Blizzard power: Health")
+check("an atlas the game does not know is left out", vals["atlas:Not_An_Atlas"] == nil)
+check("a spark picture is not offered as a bar fill", vals["gfx:Interface\\AddOns\\XayaUI\\Media\\Graphics\\Bar_Fills\\Chogall_Horizontal_Spark.tga"] == nil)
+check("a power-bar choice draws that atlas on the bar", ns.BarTexturePath({ texture = "atlas:Test_Fury_Fill" }) == "Test_Fury_Fill")
+check("a XayaUI fill choice draws its file", ns.BarTexturePath({ texture = "gfx:Interface\\AddOns\\XayaUI\\Media\\Graphics\\Bar_Fills\\Chogall_Horizontal_Fill.tga" }):find("Chogall_Horizontal_Fill", 1, true) ~= nil)
+LibStub = realLibStub; C_Texture = realCT; PowerBarColor = nil; ns.LocalGraphics = nil
+
 -- 6. the editor
 local built = ns.BuildOptionsTable and ns.BuildOptionsTable()
 local function findAll(root, pred)

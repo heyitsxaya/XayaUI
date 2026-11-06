@@ -494,17 +494,100 @@ local BUILTIN_TEX = {
     raid = { "Raid frame", "Interface\\RaidFrame\\Raid-Bar-Hp-Fill" },
 }
 local BUILTIN_ORDER = { "flat", "blizz", "raid" }
+-- The game's own bar art (Xaya S8-12 "Add Blizzard power-bar art"): read at run time from Blizzard's PowerBarColor table
+-- (Blizzard_UnitFrame/Mainline/PowerBarColorUtil.lua, 12.1.5): an entry's `atlas`, or for an `atlasElementName` the name the player
+-- frame builds from it, "UI-HUD-UnitFrame-Player-PortraitOn-Bar-<element>" (UnitFrame.lua / AlternatePowerBarBase.lua), plus the
+-- player frame's health bar. An atlas the game does not know (C_Texture.GetAtlasInfo) is left out. Nothing is copied into this file.
+local function Title(key)
+    return (tostring(key):lower():gsub("_", " "):gsub("(%a)([%w]*)", function(a, b) return a:upper() .. b end))
+end
+local function AtlasKnown(name)
+    local CT = rawget(_G, "C_Texture")
+    if not (CT and CT.GetAtlasInfo) then return true end   -- (cannot check: kept; a missing atlas draws nothing, it never errors)
+    local ok, info = pcall(CT.GetAtlasInfo, name)
+    return ok and info ~= nil
+end
+function ns.BarBlizzardAtlases()
+    local out, seen = {}, {}
+    local function add(label, name)
+        if type(name) ~= "string" or name == "" or seen[name] or not AtlasKnown(name) then return end
+        seen[name] = true
+        out[#out + 1] = { label, name }
+    end
+    add("Health", "UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health")
+    local PBC = rawget(_G, "PowerBarColor")
+    if type(PBC) == "table" then
+        local keys = {}
+        for k, info in pairs(PBC) do if type(k) == "string" and type(info) == "table" then keys[#keys + 1] = k end end
+        table.sort(keys)
+        for _, k in ipairs(keys) do
+            local info = PBC[k]
+            if type(info.atlas) == "string" then add(Title(k), info.atlas)
+            elseif type(info.atlasElementName) == "string" then add(Title(k), "UI-HUD-UnitFrame-Player-PortraitOn-Bar-" .. info.atlasElementName) end
+        end
+    end
+    return out
+end
+-- XayaUI's own bar art (Xaya S8-12 "Add XayaUI's own bar art"): the "[Bar Fills]" pictures of LocalGraphics.lua whose name says they
+-- are a fill ("..._Fill", "...-fill", "...BarHorizontal"); sparks, frames, backgrounds and flashes are not bar fills. These files are
+-- listed from XayaUI\Media\Graphics on Xaya's install; the repository does not hold them (issue #333), so on another install they draw
+-- nothing until they are added.
+function ns.BarXayaFills()
+    local out = {}
+    for _, g in ipairs(ns.LocalGraphics or {}) do
+        local label, path = g[1], g[2]
+        if type(label) == "string" and type(path) == "string" then
+            local nm = label:match("^%[Bar Fills%]%s*(.+)$")
+            local l = nm and nm:lower()
+            if l and (l:find("_fill$") or l:find("%-fill$") or l:find("barhorizontal$")) then out[#out + 1] = { nm, path } end
+        end
+    end
+    return out
+end
+-- XayaUI's bar fills offered to every addon that reads LibSharedMedia "statusbar" (S8-12), as "XayaUI <name>". Once per session.
+local lsmDone
+function ns.BarRegisterLSM()
+    if lsmDone then return 0 end
+    local lsm = LibStub and LibStub("LibSharedMedia-3.0", true)
+    if not lsm then return 0 end
+    lsmDone = true
+    local n = 0
+    for _, e in ipairs(ns.BarXayaFills()) do
+        if pcall(lsm.Register, lsm, "statusbar", "XayaUI " .. e[1], e[2]) then n = n + 1 end
+    end
+    return n
+end
+if ns.AtLogin then ns.AtLogin(function() pcall(ns.BarRegisterLSM) end) end
+
+local function Norm(p) return type(p) == "string" and p:gsub("/", "\\"):lower() or tostring(p) end
+-- The Bar texture list: XayaUI's three (Flat, Blizzard, Raid frame), the game's power-bar art, XayaUI's bar fills, every
+-- LibSharedMedia status-bar texture, your own file. A texture already listed (same file) is listed once (Xaya S8-12 "Fix
+-- duplicates": LibSharedMedia's own defaults are the same game files as Flat / Blizzard / Raid frame, and XayaUI's fills are
+-- registered there too).
 function ns.BarTextureList()
-    local values, order = {}, {}
-    for _, k in ipairs(BUILTIN_ORDER) do values[k] = BUILTIN_TEX[k][1]; order[#order + 1] = k end
+    local values, order, seen = {}, {}, {}
+    local function add(key, label, path)
+        if path then
+            local np = Norm(path)
+            if seen[np] then return end
+            seen[np] = true
+        end
+        values[key] = label; order[#order + 1] = key
+    end
+    for _, k in ipairs(BUILTIN_ORDER) do add(k, BUILTIN_TEX[k][1], BUILTIN_TEX[k][2]) end
+    for _, e in ipairs(ns.BarBlizzardAtlases()) do add("atlas:" .. e[2], "Blizzard power: " .. e[1], "atlas:" .. e[2]) end
+    for _, e in ipairs(ns.BarXayaFills()) do add("gfx:" .. e[2], "XayaUI: " .. e[1], e[2]) end
     local lsm = LibStub and LibStub("LibSharedMedia-3.0", true)
     if lsm then
         local names = {}
         for n in pairs(lsm:HashTable("statusbar")) do names[#names + 1] = n end
         table.sort(names)
-        for _, n in ipairs(names) do values["lsm:" .. n] = n; order[#order + 1] = "lsm:" .. n end
+        for _, n in ipairs(names) do
+            local okp, p = pcall(lsm.Fetch, lsm, "statusbar", n, true)
+            add("lsm:" .. n, n, okp and p or nil)
+        end
     end
-    values.file = "Texture ID / path..."; order[#order + 1] = "file"
+    add("file", "Texture ID / path...")
     return values, order
 end
 function ns.BarTexturePath(b)
@@ -514,6 +597,12 @@ function ns.BarTexturePath(b)
         local p = tostring(b.texFile or ""):gsub("/", "\\")
         if p ~= "" then return tonumber(p) or p end
         return BUILTIN_TEX.flat[2]
+    end
+    if type(key) == "string" then
+        local atlas = key:match("^atlas:(.+)$")
+        if atlas then return atlas end   -- (SetStatusBarTexture takes an atlas name, as Blizzard's own unit frames call it)
+        local gfx = key:match("^gfx:(.+)$")
+        if gfx then return gfx end
     end
     local n = type(key) == "string" and key:match("^lsm:(.+)$")
     local lsm = n and LibStub and LibStub("LibSharedMedia-3.0", true)
