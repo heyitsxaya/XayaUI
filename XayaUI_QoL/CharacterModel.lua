@@ -1007,6 +1007,8 @@ local GEAR_STATS = {
     { "ITEM_MOD_CR_SPEED_SHORT", "speed", "speed" },
 }
 CM.GEAR_STATS = GEAR_STATS
+-- short names for the Gear Summary's legend (QoL 0.7.28; the example she was given: "Crit 544 (489 +55)")
+local GEAR_SHORT = { crit = "Crit", haste = "Haste", mastery = "Mastery", vers = "Vers", leech = "Leech", avoidance = "Avoidance", speed = "Speed" }
 -- a GEAR_STATS key's name as the character window writes it (the game's own strings)
 local GEAR_NAMES = { crit = { "STAT_CRITICAL_STRIKE", "Critical Strike" }, haste = { "STAT_HASTE", "Haste" }, mastery = { "STAT_MASTERY", "Mastery" },
     vers = { "STAT_VERSATILITY", "Versatility" }, leech = { "STAT_LIFESTEAL", "Leech" }, avoidance = { "STAT_AVOIDANCE", "Avoidance" },
@@ -1319,29 +1321,66 @@ local function GearSummaryItems()
     local sum = Item("gearSum", "", "colhead")
     sum.cmp, sum.cols = true, { "Gear", "Character", "Elsewhere" }
     local sumItems = { sum }
+    local EXPLAIN = "Gear: the rating the item stat tables list for everything you wear. Character: your rating now. Elsewhere: the character's rating minus the gear's: gems, enchants, buffs, or effects the tables leave out."
     for _, gs in ipairs(GEAR_STATS) do
         local have = N(GetCombatRating, IDX[gs[3]])
         local g = totals[gs[2]] or 0
         local r = Item("gearSum_" .. gs[2], GearStatName(gs[2]), "cmprow")
-        r.labelColor = CM.STAT_COLORS and CM.STAT_COLORS[gs[2] == "speed" and "speed2" or gs[2]]
+        local sk = gs[2] == "speed" and "speed2" or gs[2]
+        r.labelColor = CM.STAT_COLORS and CM.STAT_COLORS[sk]
+        -- (QoL 0.7.28) the same numbers as plain values for the Gear Summary's graphics (the panel's style setting): stat, gear, character
+        -- (nil when the game gave none), elsewhere; hidden = the game hides the character's rating right now
+        r.stat, r.short, r.gear = sk, GEAR_SHORT[gs[2]] or r.label, g
         if have == HIDDEN then
             r.cells, r.cellTones = { Big(g), HID, "" }, { nil, "mute" }
+            r.hidden = true
+            Tip(r, ("Gear %s; Character: %s."):format(Big(g), HID))
+            Tip(r, EXPLAIN)
             sumItems[#sumItems + 1] = r
         elseif (num(have) and have > 0) or g > 0 then
             local diff = num(have) and (have - g) or nil
             r.cells = { Big(g), num(have) and Big(have) or "?", (diff and diff ~= 0) and SB(diff) or "" }
+            r.char, r.diff = num(have) and have or nil, diff
+            Tip(r, ("Gear %s, Character %s, Elsewhere %s."):format(Big(g), num(have) and Big(have) or "?", diff and SB(diff) or "?"))
+            Tip(r, EXPLAIN)
             sumItems[#sumItems + 1] = r
         end
     end
     if sockets > 0 then
         local r = Item("gearSum_sockets", "Empty sockets", "cmprow")
         r.cells, r.cellTones = { tostring(sockets), "", "" }, { "warn" }
+        r.sockets = sockets
+        Tip(r, "Sockets in the items you wear that have no gem in them.")
         sumItems[#sumItems + 1] = r
     end
-    Tip(sum, "Gear: the rating the item stat tables list for everything you wear. Character: your rating now. Elsewhere: the character's rating minus the gear's: gems, enchants, buffs, or effects the tables leave out.")
+    Tip(sum, EXPLAIN)
     return sumItems
 end
 CM.GearSummaryItems = GearSummaryItems
+
+-- The Gear Summary section (QoL 0.7.28; Xaya 2026-11-06, her words: "Gear Summary should be at the top of the pane in a prettified graphic
+-- of sorts"; her answer: "provide all three visual options this round for me to consider; volunteer more if possible"): the Stats tab's
+-- first section, above Character Stats. The same rows as before (CM.GearSummaryItems: no new game call); the panel draws them in the
+-- style chosen on the settings page (Panel > Layout > Gear Summary style; CM.GEAR_SUM_STYLES below). Default: Split bars (DECISION: the
+-- first design she was shown; she can change it).
+CM.GEAR_SUM_STYLES = {
+    { "bars", "Split bars", "One bar per stat in its colour, as long as your rating: the solid part is from gear, the lighter part from elsewhere; the numbers at its end." },
+    { "tiles", "Stat tiles", "A small tile per stat: its name in its colour, the total large, the gear part and what comes from elsewhere small under it." },
+    { "stacked", "One stacked bar", "One bar split by each stat's share of the ratings listed, in the stats' colours, with a legend under it." },
+    { "columns", "Columns", "One upright column per stat, as tall as your rating: gear solid at the bottom, elsewhere lighter on top; the total above it, the name under it." },
+    { "share", "Gear share", "One full-width bar per stat: how much of your rating comes from gear (solid) and from elsewhere (lighter), with the gear percent." },
+    { "table", "Table", "The table as before: Gear, Character, Elsewhere." },
+}
+CM.GEAR_SUM_DEFAULT = "bars"
+local GEAR_SUM_OK = {}
+for _, st in ipairs(CM.GEAR_SUM_STYLES) do GEAR_SUM_OK[st[1]] = true end
+function CM.GearSumStyle(c)
+    local v = type(c) == "table" and c.gearSumStyle
+    return GEAR_SUM_OK[v] and v or CM.GEAR_SUM_DEFAULT
+end
+function CM.GearSummarySection(ctx)
+    return { key = "map_gearsum", title = "Gear Summary", gearsum = true, style = CM.GearSumStyle(ctx and ctx.cfg), items = GearSummaryItems() }
+end
 
 -- The Gear tab: the equipped items as icons, then the comparison. (QoL 0.7.23: the Summary moved to the Stats tab; the Durability and
 -- repair section is gone, Xaya 2026-11-05: "durability and repair can be removed from all stat calculator panes".)
@@ -1886,10 +1925,10 @@ function GearCompareSections(ctx, out)
                         if math.abs(v - s.n) >= 0.5 then it.subs[i + 1], it.subTones[i + 1] = SB(v - s.n), (v > s.n) and "good" or "warn" end
                     else it.cells[i + 1] = UNAV end
                 end
-                Tip(it, "From the spell's description (its first number), as on the Spells tab.")
+                Tip(it, "From the spell's description (its first number), as on the Ability Scaling tab.")
                 chg.items[#chg.items + 1] = it
             end
-            if #list == 0 then SNote("gearSpellNone", "No damage spell with a number in its description (Spells tab: Configure spell data lists them).") end
+            if #list == 0 then SNote("gearSpellNone", "No damage spell with a number in its description (Ability Scaling tab: Configure spell data lists them).") end
         end
     end
 
@@ -2062,6 +2101,61 @@ local function Note(key, label, value)
     return it
 end
 
+-- The Ability Scaling tab's stat lines (QoL 0.7.28; Xaya 2026-11-06, her words: "whatever modifies abilities (agility, attack power,
+-- mastery, etc) across all classes and specs should be included"; her answer "Only stats that change the number"). Per ability, one line
+-- per stat that changes its number, for every class and spec: the primary stat and attack power / spell power (the % PSV lines, as
+-- before), Versatility, and Mastery only where the spec's own mastery text names the ability or its school. Critical strike and haste are
+-- not listed (they change how often or how fast, not the number). Where the game does not say whether a stat applies, nothing is shown.
+-- Read from the game (docs/reference/api): the versatility percent (GetCombatRatingBonus + GetVersatilityBonus, globals.md:144, 313), the
+-- mastery percent (GetMasteryEffect, globals.md:199), the mastery spells (C_SpecializationInfo.GetSpecializationMasterySpells,
+-- namespaces.md:4362) and their text (C_Spell.GetSpellDescription, namespaces.md:4402, which the game fills in with the current numbers).
+-- INFERENCE (each needs an in-game check): versatility changes the number of an ability whose words say it deals damage or heals / absorbs
+-- (CM.SpellKind and the words "heal", "absorb"; English); the school an ability deals is the word before "damage" in its own text (no
+-- documented call gives a player spell's school: C_Spell.GetSchoolString needs a school mask nothing returns); a mastery percent moves in
+-- step with mastery (as the stat map's armor from mastery); and the number in the description already includes versatility and mastery,
+-- so a typed Versatility or Mastery moves it by (1 + then) / (1 + now).
+local SCHOOL_WORDS = { "physical", "holy", "fire", "nature", "frost", "shadow", "arcane", "chaos", "shadowflame", "frostfire", "spellfire",
+    "plague", "astral", "radiant", "cosmic", "volcanic", "chromatic", "elemental" }
+local SCHOOL_OK = {}
+for _, w in ipairs(SCHOOL_WORDS) do SCHOOL_OK[w] = true end
+local function PlainLower(t) return (t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):lower()) end
+-- the schools an ability's own text says it deals ("dealing 3,472 Fire damage")
+local function SchoolsOf(desc)
+    local out = {}
+    if type(desc) ~= "string" or IsSecret(desc) then return out end
+    for w in PlainLower(desc):gmatch("(%a+) damage") do if SCHOOL_OK[w] then out[w] = true end end
+    return out
+end
+-- the percent the mastery text gives this ability: the first "by N%" after its name, else after one of its schools ("Chaos damage you
+-- deal by 24.6%", "Fire spells", "Frost and Fire damage"); nil when the text names neither
+local function MasteryPctFor(texts, name, desc)
+    local function After(t, pos)
+        local v = t:match("by ([%d%.,]+)%%", pos)
+        return v and tonumber((v:gsub(",", ".")))
+    end
+    local lname = (type(name) == "string" and #name >= 4) and name:lower() or nil
+    local schools = SchoolsOf(desc)
+    for _, t in ipairs(texts or {}) do
+        if lname then
+            local i = t:find(lname, 1, true)
+            if i then local v = After(t, i); if v then return v end end
+        end
+        for w in pairs(schools) do
+            for _, pat in ipairs({ w .. " damage", w .. " spells", w .. " abilities", w .. " and %a+ damage", "%a+ and " .. w .. " damage" }) do
+                local i = t:find(pat)
+                if i then local v = After(t, i); if v then return v end end
+            end
+        end
+    end
+end
+CM.MasteryPctFor = MasteryPctFor
+local function DealsOrHeals(desc, kind)
+    if kind == "offense" or kind == "both" then return true end
+    if type(desc) ~= "string" or IsSecret(desc) then return false end
+    local t = PlainLower(desc)
+    return t:find("heal", 1, true) ~= nil or t:find("absorb", 1, true) ~= nil
+end
+
 local function SpellItem(s, desc, nums, kind, refs, primary)
     -- QoL 0.7.24 (Xaya 2026-11-05: "add columns to help clarity in info displays: Spell Name (spell id underneath) | % PSV (underneath
     -- each entry show "1 agility = {value}") | Talent Modifiers"): the line is drawn as a row of columns from it.row (name, "Spell ID: N"
@@ -2070,7 +2164,7 @@ local function SpellItem(s, desc, nums, kind, refs, primary)
     local it = Item("spell" .. s.id, SpellName(s.id))
     it.value, it.spellID = "", s.id
     it.bigPairs = true   -- #378 (Xaya: "way too tiny"): its number lines at the panel's text size, in the text colour
-    it.row = { idText = "Spell ID: " .. s.id, entries = {}, mods = {} }
+    it.row = { idText = "Spell ID: " .. s.id, entries = {}, mods = {}, statMods = {} }
     local ref = (s.base == "sp") and refs.sp or refs.ap
     local refName = (s.base == "sp") and "spell power" or "attack power"
     local function RowNote(text, tone) it.row.note, it.row.noteTone = text, tone end
@@ -2096,6 +2190,33 @@ local function SpellItem(s, desc, nums, kind, refs, primary)
             Pair(it, Big(n), pct .. (per and ("; " .. per) or ""), nil, i == 1)
             it.row.entries[#it.row.entries + 1] = { value = Big(n), pct = pct, per = per }
         end
+        -- (QoL 0.7.28) the stats that change the number besides the primary stat and attack / spell power (above), and what a typed
+        -- number does to the first number (the rule the Stats pane's "» Ability Scaling" used: the first number x attack power then /
+        -- attack power now; moved here). The new value goes under Computed Value with its sign, as on the Stats tab.
+        local up = 1
+        local refAfter = (s.base == "sp") and refs.spAfter or refs.apAfter
+        if num(refAfter) then up = up * refAfter / ref end
+        local vs = refs.vers
+        if vs and DealsOrHeals(desc, kind) then
+            it.row.statMods[#it.row.statMods + 1] = "Versatility: " .. SP(vs.now)
+            Pair(it, "Versatility", SP(vs.now) .. " damage and healing done")
+            if num(vs.after) then up = up * (1 + vs.after / 100) / (1 + vs.now / 100) end
+        end
+        local ms = refs.mastery
+        local mp = ms and MasteryPctFor(ms.texts, SpellName(s.id), desc)
+        if mp then
+            it.row.statMods[#it.row.statMods + 1] = "Mastery: " .. SP(mp, 1)
+            Pair(it, "Mastery", SP(mp, 1) .. " (" .. (ms.name or "your mastery") .. ")")
+            if num(ms.now) and ms.now > 0 and num(ms.after) then
+                local mpA = mp * ms.after / ms.now
+                up = up * (1 + mpA / 100) / (1 + mp / 100)
+            end
+        end
+        local first = it.row.entries[1]
+        if first and math.abs(nums[1] * up - nums[1]) >= 0.5 and CM.Signed then
+            first.newValue = CM.Signed(nums[1], nums[1] * up, Big)
+            Pair(it, "With your numbers", Big(nums[1] * up))
+        end
         if num(s.coeff) then
             local m = nums[1] / ref * 100
             local off = math.abs(m - s.coeff) > math.max(0.5, 0.05 * s.coeff)
@@ -2106,6 +2227,8 @@ local function SpellItem(s, desc, nums, kind, refs, primary)
     end
     Tip(it, "Measured: each number in the spell's current description divided by your current " .. refName .. ".")
     Tip(it, "Talents, buffs, versatility and mastery may already be in the description, so this is today's ratio, not Blizzard's base coefficient.")
+    Tip(it, "Versatility and Mastery lines: the stats besides your primary stat and " .. refName .. " that change this number (Mastery only where your mastery's own text names the spell or its school; critical strike and haste change how often or how fast, not the number).")
+    Tip(it, "A number typed on the Stats tab moves the first number: x " .. refName .. " then / now, x (1 + versatility then) / (1 + now), x (1 + the mastery percent then) / (1 + now). An estimate: it assumes the description already counts versatility and mastery.")
     Tip(it, "Durations, distances and target counts are skipped; other numbers that do not scale with " .. refName .. " (flat amounts) give meaningless ratios.")
     if s.hand then
         Tip(it, "Added by hand in QoL > Character Toolkit > Spell Math.")
@@ -2211,6 +2334,32 @@ local function SpellSection(ctx, out)
         local a = N(GetAttackPowerForStat, p, eff)
         if num(a) then refs.apPerPrimary = a / eff end
     end
+    -- (QoL 0.7.28) what a typed number does (the Stats tab's boxes): attack power or spell power then, versatility and mastery now and then
+    local dP = ctx.whatIfPrimary or 0
+    if dP ~= 0 and num(eff) and num(refs.ap) and refs.ap > 0 and (p == 1 or p == 2) then
+        local a0, a1 = N(GetAttackPowerForStat, p, eff), N(GetAttackPowerForStat, p, math.max(0, eff + dP))
+        if num(a0) and num(a1) then refs.apAfter = math.max(0, refs.ap + a1 - a0) end
+    end
+    if dP ~= 0 and p == 4 and num(eff) and eff > 0 and num(refs.sp) and refs.sp > 0 then
+        refs.spAfter = math.max(0, refs.sp + dP * refs.sp / eff)   -- (the Stats tab's own estimate: spell power per Intellect, average)
+    end
+    do
+        local rtmp, rk = {}, {}
+        RatingSections(ctx, rtmp)
+        for _, rs in ipairs(rtmp) do for _, ri in ipairs(rs.items) do rk[ri.key] = ri end end
+        local v = rk.vers
+        if v and num(v.total) and not v.hidden then refs.vers = { now = v.total, after = num(v.totalAfter) and v.totalAfter or nil } end
+        local m = rk.mastery
+        local texts, mname = {}, nil
+        for _, mid in ipairs(MasterySpells(ctx.spec)) do
+            local d = SpellDesc(mid)
+            if type(d) == "string" and d ~= "" and not IsSecret(d) then texts[#texts + 1] = PlainLower(d); mname = mname or SpellName(mid) end
+        end
+        if #texts > 0 then
+            refs.mastery = { texts = texts, name = mname, now = (m and num(m.total)) and m.total or nil,
+                after = (m and num(m.totalAfter)) and m.totalAfter or nil }
+        end
+    end
     local talents = CM.Talents()
     -- Active: the spells you have (your spellbook and the ones added by hand). Inactive: the castable talents of your trees you have
     -- not picked (#377: "sorted into active and inactive"; known and usable vs not available to you now).
@@ -2286,9 +2435,54 @@ CM.STAT_COLORS = {
     primary = { 1.00, 0.95, 0.75, 1 }, stamina = { 0.95, 0.55, 0.45, 1 },
 }
 
+-- QoL 0.7.28 (Xaya 2026-11-06, her words: "input changes should show changed values underneath them in a color change with a +/- before";
+-- her answer "New value with sign", e.g. 2,616 with "+2,800" under it): a typed number no longer draws "now -> then". Was still makes
+-- the "now -> then" text (the Gear comparison's Stat effects, ctx.compare, split it into its Equipped and item columns as before), and
+-- keeps its two parts here; at the end of the Stats tab's build (SplitChanges) each value Was made becomes the current value, with
+-- newValue = the new value and its sign ("+" when it is higher than now, "-" when lower), which the panel draws under it in the theme's
+-- accent colour. The sign is the direction; the number after it is the new value without its own sign (DECISION, a question for her:
+-- the only line whose value is below zero is Versatility's "» Damage taken", where a lower Versatility would read "+3.00%").
+local wasParts = {}
+local function Signed(now, after, fmt)
+    local t = tostring(fmt(math.abs(after))):gsub("^[%+%-]", "")
+    return ((after > now) and "+" or "-") .. t
+end
+CM.Signed = Signed   -- (the Ability Scaling tab's Computed Value uses the same form)
 local function Was(now, after, fmt)   -- "now" or "now -> after" (after only when it differs)
     if after == nil or not num(now) or not num(after) or math.abs(after - now) < 0.0005 then return fmt(now) end
-    return fmt(now) .. " -> " .. fmt(after)
+    local s = fmt(now) .. " -> " .. fmt(after)
+    wasParts[s] = { now = fmt(now), new = Signed(now, after, fmt) }
+    return s
+end
+-- the same with words after both parts ("12.0 s -> 11.2 s recharge": the text stays as the Gear comparison reads it)
+local function WasSuffix(now, after, fmt, suffix)
+    local s = Was(now, after, fmt)
+    local w = wasParts[s]
+    if w then wasParts[s .. suffix] = { now = w.now .. suffix, new = w.new .. suffix } end
+    return s .. suffix
+end
+-- an estimate ("1.16 s -> about 0.98 s"): the text as before; under the value the new one with its sign (the word "about" is left out
+-- there, a question for her; the hover says these are estimates)
+local function WasAbout(now, after, fmt)
+    if after == nil or not num(now) or not num(after) or math.abs(after - now) <= 0.0005 then return fmt(now) end
+    local s = fmt(now) .. " -> about " .. fmt(after)
+    wasParts[s] = { now = fmt(now), new = Signed(now, after, fmt) }
+    return s
+end
+-- every value Was made in these items: the current value stays, the new one with its sign goes in newValue; the green / orange tone it
+-- had for the change leaves the current value (the colour is on the line under it now)
+local function SplitChanges(items)
+    local function One(t)
+        local w = type(t.value) == "string" and wasParts[t.value]
+        if w then
+            t.value, t.newValue = w.now, w.new
+            if t.tone == "good" or t.tone == "warn" then t.tone = nil end
+        end
+    end
+    for _, it in ipairs(items) do
+        One(it)
+        for _, p in ipairs(it.pairs or {}) do One(p) end
+    end
 end
 -- One map line (every map line shows in the short view too). QoL 0.7.15 (Xaya 2026-11-05: "do multiple columns: for cleaner
 -- presentation * Stat | Current Value | Pt Value | etc"): the value holds the current value only ("now -> with your numbers" when they
@@ -2354,11 +2548,14 @@ end
 -- Note column is gone (Xaya: "I did not ask for notes"; "Remove it entirely").
 local function GridHead(key, ratingHead, changeHead)
     local h = Item(key, "Columns", "colhead")   -- (the label is its hover's title; the head draws its cols)
-    h.grid, h.cols = true, { "Stat", ratingHead or "", "Current value", "Pt value", changeHead or "" }
+    -- (QoL 0.7.28) a sixth column, Influences (Xaya 2026-11-06, REQUEST-LOG #66-#67), drawn between Pt value and Change; the
+    -- new value a typed number gives is drawn under the current one, with its sign (her answer "New value with sign")
+    h.grid, h.cols = true, { "Stat", ratingHead or "", "Current value", "Pt value", changeHead or "", "Influences" }
     if ratingHead then Tip(h, "Rating: your rating now. A number you type stays in its Change box; Current value shows what it changes.") end
-    Tip(h, "Current value: the game's figure now; \"now -> then\" when your numbers (or a compared item) change it.")
+    Tip(h, "Current value: the game's figure now; under it, in the accent colour, the new value your typed numbers give, with + when it is higher and - when lower.")
     Tip(h, "Pt value: what one point of the card's stat gives (1 Agility = 1.00 attack power), or \"N / 1%\": how much of the card's rating makes 1% of that line.")
-    if changeHead then Tip(h, "Change: type a number in the box (the number itself, not an amount) and press Enter; every line it feeds shows \"now -> then\". Clear it to go back to yours.") end
+    Tip(h, "Influences: what the stat feeds (Attack power, Dodge, Armor ...) and, marked \"from\", what feeds it. Hover a name for its value, its Pt value and the new value your typed numbers give.")
+    if changeHead then Tip(h, "Change: type a number in the box (the number itself, not an amount) and press Enter; every value it moves shows the new value under it. Clear it to go back to yours.") end
     return h
 end
 CM.GridHead = GridHead   -- (the Gear comparison, defined above this, uses it)
@@ -2557,14 +2754,20 @@ local function PctShort(v) if math.abs(v - math.floor(v + 0.5)) < 0.001 then ret
 --   Core Stats > Primary (your spec's primary stat, Stamina), General (Health, your resources, Global cooldown, Movement speed),
 --     Offensive (Attack Power / Spell Power, Attack Speed, Weapon DPS, Damage, Critical strike effectiveness), Defensive (Armor, Dodge,
 --     Parry, Block; Stagger for a Brewmaster);
---   Secondaries (Critical Strike, Haste, Mastery, Versatility); Tertiaries (Avoidance, Leech, Speed); Gear Summary (the Gear tab's
---     Summary until QoL 0.7.23: Gear | Character | Elsewhere and the empty sockets).
+--   Secondaries (Critical Strike, Haste, Mastery, Versatility); Tertiaries (Avoidance, Leech, Speed).
 -- Columns as before (Stat | Rating | Current value | Pt value | (Note) | Change), the "»" lines and the nested abilities as before. The
 -- old Offense / Defense (what feeds it) sections are Offensive / Defensive here; the All ratings box is gone ("remove "all ratings" as an
 -- entry option"). While it builds, each "what feeds what" number is kept for the Stat Weights pane (ctx.weights).
--- ctx.compare: the Gear comparison's copy (its "What it changes"): no Gear Summary, no weights.
+-- QoL 0.7.28: the Gear Summary is a section of its own at the top of the Stats tab (Xaya 2026-11-06, her words: "Gear Summary should be at
+-- the top of the pane in a prettified graphic of sorts"; REQUEST-LOG #64), above Character Stats; "» Abilities (per 100)" and
+-- "» Ability Scaling" left the Stats tab (her words: "remove ability scaling information from stats pane and keep only reflected in Spells
+-- tab (rename Ability Scaling)"; her answer "Both lists"); the scaling moved to the Ability Scaling tab (SpellSection). A typed number's
+-- values are split into the current value and the new one with its sign (SplitChanges, above).
+-- ctx.compare: the Gear comparison's copy (its "What it changes"): no Gear Summary, no weights, and the values keep "now -> then".
 local function StatMapSections(ctx, out)
     CM.svBase = {}
+    wasParts = {}
+    if not ctx.compare then out[#out + 1] = CM.GearSummarySection(ctx) end
     local tmp = {}
     RatingSections(ctx, tmp)
     local byKey = {}
@@ -2634,46 +2837,9 @@ local function StatMapSections(ctx, out)
                     With(PerPoint(apct / 100), ("%s%% of %s, mastery"):format(F(apct, 1), StatName(p))))
                 Feeds("primary", L("STAT_ARMOR", "Armor"), nil, Big(armorFromP), true)
             end
-            -- abilities: what 100 more of the primary stat adds to each damage / healing number, measured from their text the way the
-            -- Spells tab does (first number / attack power x attack power per point; Strength and Agility specs)
-            if (p == 1 or p == 2) and eff > 0 then
-                local base, pos, neg = R(UnitAttackPower, "player")
-                local apNow = num(base) and (base + (num(pos) and pos or 0) + (num(neg) and neg or 0)) or nil
-                local a0 = N(GetAttackPowerForStat, p, eff)
-                local apPer = num(a0) and a0 / eff or nil
-                local okL, list = false, nil
-                if type(ns.BuildSpellList) == "function" then okL, list = pcall(ns.BuildSpellList) end
-                local rows = {}
-                if num(apNow) and apNow > 0 and apPer then
-                    for _, sp in ipairs((okL and type(list) == "table") and list or {}) do
-                        local d = num(sp.id) and SpellDesc(sp.id)
-                        local kind = d and CM.SpellKind(d)
-                        local nums = d and CM.Numbers(d)
-                        if nums and nums[1] and (kind == "offense" or kind == "both") then
-                            rows[#rows + 1] = { SpellName(sp.id), nums[1] / apNow * apPer * 100, nums[1] }
-                        end
-                    end
-                end
-                table.sort(rows, function(x, y) return x[2] > y[2] end)
-                -- each ability on its own line nested under the "»" line, its number in the value cell, in the same order as before
-                -- (QoL 0.7.20; Xaya 2026-11-05: "ability names should be nested under abilities"; before, one list in the note)
-                if #rows > 0 then
-                    MapNote(it, "» Abilities (per 100)", "")
-                    for i = 1, math.min(4, #rows) do MapSub(it, rows[i][1], "+" .. Big(rows[i][2])) end
-                end
-                -- Ability Scaling (this line was "Abilities with your number" until QoL 0.7.20; Xaya 2026-11-05: "should be renamed to
-                -- "Ability Scaling""): each ability's own number now -> then (its first number moves with attack power: B7, #325 "what
-                -- happens to your other stats and abilities")
-                local a1 = num(eff2) and N(GetAttackPowerForStat, p, eff2) or nil
-                if dP ~= 0 and #rows > 0 and num(a1) and num(a0) then
-                    local ratio = (apNow + a1 - a0) / apNow
-                    local tone = ratio >= 1 and "good" or "warn"
-                    MapNote(it, "» Ability Scaling", "", tone)
-                    for i = 1, math.min(4, #rows) do MapSub(it, rows[i][1], Big(rows[i][3]) .. " -> " .. Big(rows[i][3] * ratio), tone) end
-                    Tip(it, "Ability Scaling: each ability's first number x (attack power then / attack power now); talents and buffs stay as they are.")
-                end
-                Tip(it, "Abilities: each one's first number in its own description divided by your attack power, times the attack power 100 more gives (as on the Spells tab; talents and buffs already in the text).")
-            end
+            -- (QoL 0.7.28) "» Abilities (per 100)" and "» Ability Scaling" are gone from here (Xaya 2026-11-06: "remove ability scaling
+            -- information from stats pane and keep only reflected in Spells tab"; her answer "Both lists"): the Ability Scaling tab
+            -- (SpellSection) carries each ability's number and what a typed number does to it.
             Tip(it, ("Attack power per point from GetAttackPowerForStat; dodge or parry from %s as the character window reads it; armor from the percent in your mastery's own text."):format(StatName(p)))
             Tip(it, "Type another number in the box and press Enter; clear it to go back to yours.")
         else it.value, it.tone = UNAV, "mute" end
@@ -3001,13 +3167,13 @@ local function StatMapSections(ctx, out)
         Add(MapRating(ctx, hst, "haste", function(it, src, w)
             if g and num(g.dur) then
                 local est = (num(h0) and num(h1)) and g.dur * (1 + h0 / 100) / (1 + h1 / 100) or nil
-                MapNote(it, "» Global cooldown", F(g.dur, 2) .. " s" .. (est and math.abs(est - g.dur) > 0.0005 and (" -> about " .. F(est, 2) .. " s") or ""))
+                MapNote(it, "» Global cooldown", WasAbout(g.dur, est, function(v) return F(v, 2) .. " s" end))
             elseif CM.gcdHidden then MapNote(it, "» Global cooldown", HID, "mute")
             else MapNote(it, "» Global cooldown", "", "mute", nil, { note = "cast any spell to read it" }) end
             local mh = N(UnitAttackSpeed, "player")
             if num(mh) then
                 local est = (num(h0) and num(h1)) and mh * (1 + h0 / 100) / (1 + h1 / 100) or nil
-                MapNote(it, "» Attack speed", F(mh, 2) .. " s" .. (est and math.abs(est - mh) > 0.0005 and (" -> about " .. F(est, 2) .. " s") or ""))
+                MapNote(it, "» Attack speed", WasAbout(mh, est, function(v) return F(v, 2) .. " s" end))
             end
             -- abilities whose own text mentions Haste (English word match; the game has no list of what haste shortens), with their
             -- recharge now where they have charges (C_Spell.GetSpellCharges; secret while cooldowns are restricted)
@@ -3020,7 +3186,7 @@ local function StatMapSections(ctx, out)
                     local ch = C_Spell and C_Spell.GetSpellCharges and R(C_Spell.GetSpellCharges, sp.id)
                     local dur = (type(ch) == "table") and Field(ch, "cooldownDuration") or nil
                     local dur2 = (num(dur) and dur > 0 and num(h0) and num(h1) and math.abs(h1 - h0) > 0.0005) and dur * (1 + h0 / 100) / (1 + h1 / 100) or nil
-                    names[#names + 1] = { SpellName(sp.id), (num(dur) and dur > 0) and (Was(dur, dur2, function(v) return F(v, 1) .. " s" end) .. " recharge") or "" }
+                    names[#names + 1] = { SpellName(sp.id), (num(dur) and dur > 0) and WasSuffix(dur, dur2, function(v) return F(v, 1) .. " s" end, " recharge") or "" }
                     if #names >= 5 then break end
                 end
             end
@@ -3091,11 +3257,8 @@ local function StatMapSections(ctx, out)
     Simple("leech", "» Healed for (of damage done)", "Healing from damage done", true)
     Simple("speed2", "» Movement speed", "Movement speed", true)
 
-    -- 7. Gear Summary (the Gear tab's Summary until QoL 0.7.23; Xaya 2026-11-05: it "belongs in stats pane")
-    if not ctx.compare then
-        Add(SubHead("sub_gearsum", "Gear Summary", 1))
-        for _, it in ipairs(GearSummaryItems()) do Add(it) end
-    end
+    -- (QoL 0.7.28: the Gear Summary is its own section at the top of the tab, CM.GearSummarySection, added first above)
+    if not ctx.compare then SplitChanges(cs.items) end
     out[#out + 1] = cs
     ctx.weights = { byKey = byKey, infl = infl, primary = p, eff = eff, sta = sta }
 end
@@ -3152,7 +3315,9 @@ local function StatWeightsSection(ctx, out)
                         Big(src.rating) .. " / " .. (num(src.total) and P(src.total) or UNAV),
                         (a and num(a.perPctBase)) and (F(a.perPctBase) .. " / 1%") or UNAV,
                         dr,
-                        a and ("T: " .. Big(math.max(0, src.rating - lost)) .. " / L: " .. F(lost, 1)) or UNAV,
+                        -- (QoL 0.7.28; Xaya 2026-11-06: "T/L rating should be T: # [line break] L: ") two lines; it replaces her
+                        -- earlier one-line "T: 1429 / L: 12.2" (#36). The panel draws each line of a cell under the one before.
+                        a and ("T: " .. Big(math.max(0, src.rating - lost)) .. "\nL: " .. F(lost, 1)) or UNAV,
                     }
                     if a and lost > 0 and num(a.perPctNow) then it.pppDR = "DR: " .. F(a.perPctNow) .. " / 1%" end
                 end
@@ -3222,7 +3387,9 @@ end
 -- NOTHING ELSE"): a saved "sheet" tab opens Stats; the stats go into the restyled character window (QoL Character Reskin).
 -- The What If tab is gone too (QoL 0.7.14): its numbers are the stat map's boxes (and its All ratings box), its item compare is the
 -- Gear tab's comparison (requirements B9); a saved "whatif" tab opens Stats.
-CM.TABS = { { "stats", "Stats" }, { "gear", "Gear" }, { "spells", "Spells" } }
+-- QoL 0.7.28 (Xaya 2026-11-06: "keep only reflected in Spells tab (rename Ability Scaling)"; her answer "Spells tab → Ability Scaling"):
+-- the third tab reads Ability Scaling. Its saved key stays "spells", so a saved tab choice is kept.
+CM.TABS = { { "stats", "Stats" }, { "gear", "Gear" }, { "spells", "Ability Scaling" } }
 local TAB_OK = {}
 for _, t in ipairs(CM.TABS) do TAB_OK[t[1]] = true end
 CM.TAB_OK = TAB_OK
