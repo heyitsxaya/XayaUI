@@ -2485,10 +2485,10 @@ function ns.BuildCharToolkitPage(Notify)
     -- "move all enable/disable toggles onto the sidebar instead"), the same Toggle as the switch the page had
     local spells = {
         type = "group", name = "Spell Math", order = 30, hidden = isOff,
-        xuiSwitch = Toggle("advanced", 1, "Spell Math", "Shows the Spells tab's spell math in the panel (advanced)."),
+        xuiSwitch = Toggle("advanced", 1, "Spell Math", "Shows the Ability Scaling tab's spell math in the panel (advanced)."),
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "The Spells tab lists every active spell of your current spec's spellbook that has numbers in its description, and the spells you add here first (any spell ID). For each: every number in its current description divided by your current attack power (or spell power), and what one point of your primary stat adds. This is the ratio right now, with talents and buffs already applied; it is not Blizzard's base coefficient. You can type a coefficient from a database such as Wowhead to compare." },
+                name = "The Ability Scaling tab lists every active spell of your current spec's spellbook that has numbers in its description, and the spells you add here first (any spell ID). For each: every number in its current description divided by your current attack power (or spell power), and what one point of your primary stat adds. This is the ratio right now, with talents and buffs already applied; it is not Blizzard's base coefficient. You can type a coefficient from a database such as Wowhead to compare." },
             spellsAll = Toggle("spellsAll", 1.5, "List spells without numbers",
                 "Also list spellbook spells whose description has no amount to measure (they show \"none in the description\").", "full"),
             add = { type = "input", order = 2, width = "double", name = "Add a spell",
@@ -2529,7 +2529,7 @@ function ns.BuildCharToolkitPage(Notify)
                 kind = { type = "select", order = 2.5, name = "Filter",
                     values = { auto = "From its description", offense = "Offense", defense = "Defense", both = "Offense and Defense", utility = "Utility" },
                     sorting = { "auto", "offense", "defense", "both", "utility" },
-                    desc = "Which of the Spells tab's filters show this spell. \"From its description\" sorts by its words (damage, or absorb / heal / armor / damage taken).",
+                    desc = "Which of the Ability Scaling tab's filters show this spell. \"From its description\" sorts by its words (damage, or absorb / heal / armor / damage taken).",
                     get = function() local s = S(); return (s and s.kind) or "auto" end,
                     set = function(_, v) local s = S(); if s then s.kind = (v ~= "auto") and v or nil; Changed() end end },
                 remove = { type = "execute", order = 3, width = "half", name = "Remove",

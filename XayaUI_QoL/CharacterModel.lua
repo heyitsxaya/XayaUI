@@ -1925,10 +1925,10 @@ function GearCompareSections(ctx, out)
                         if math.abs(v - s.n) >= 0.5 then it.subs[i + 1], it.subTones[i + 1] = SB(v - s.n), (v > s.n) and "good" or "warn" end
                     else it.cells[i + 1] = UNAV end
                 end
-                Tip(it, "From the spell's description (its first number), as on the Spells tab.")
+                Tip(it, "From the spell's description (its first number), as on the Ability Scaling tab.")
                 chg.items[#chg.items + 1] = it
             end
-            if #list == 0 then SNote("gearSpellNone", "No damage spell with a number in its description (Spells tab: Configure spell data lists them).") end
+            if #list == 0 then SNote("gearSpellNone", "No damage spell with a number in its description (Ability Scaling tab: Configure spell data lists them).") end
         end
     end
 
