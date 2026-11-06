@@ -1202,7 +1202,9 @@ function ns.CharReskin_StatListRecs() return own.statList and own.statList:IsSho
 -- On / off
 -------------------------------------------------------------------------------
 local hooked = false
-Active = function() local c = Cfg(); return c and c.enabled and not diag.failed end
+-- on = its own switch AND the Blizzard UI Reskin tab's switch (QoL 0.7.32, S1 #48: off there turns every reskin off)
+local function On(c) return c and c.enabled and ns.ReskinTabOn() and true or false end
+Active = function() local c = Cfg(); return On(c) and not diag.failed end
 function ns.CharReskin_Active() return Active() == true end
 -- the Character Toolkit's slot overlays leave out their item level while this draws one (one number per slot: her screenshot had two)
 function ns.CharReskin_DrawsIlvl() local c = Cfg(); return (Active() and c.ilvl == true) and true or false end
@@ -1310,10 +1312,11 @@ end
 function ns.CharReskin_Apply()
     local c = Cfg()
     if not c then return end
-    if c.enabled then Hook() end
+    if On(c) then Hook() end
     if hooked then Guard(ApplyNow) end
 end
-ns.WhenReady(function() local c = Cfg(); if c and c.enabled then ns.CharReskin_Apply() end end)
+ns.WhenReady(function() local c = Cfg(); if On(c) then ns.CharReskin_Apply() end end)
+ns.RegisterReskin("charreskin", function() ns.CharReskin_Apply() end)   -- (the Reskin tab's switch: core ns.SetReskinTab walks these)
 
 -------------------------------------------------------------------------------
 -- Settings page: Blizzard UI Reskin > Character Pane (the switch is still called Character Reskin)
@@ -1397,13 +1400,16 @@ function ns.BuildCharReskinPage(Notify)
                 } }
         end
     end
+    -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
+    -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
+    local switch = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends). Greyed while All reskins (the top row of this tab) is off.")
+    switch.disabled = function() return not ns.ReskinTabOn() end
     return {
-        type = "group", name = "Character Pane", order = 4, childGroups = "tree",
+        type = "group", name = "Character Pane", order = 4, childGroups = "tree", xuiSwitch = switch,
         args = {
             statListPage = { type = "group", name = "Stat list", order = 50, hidden = isOff, args = listArgs },
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "Blizzard's character window in XayaUI's look: a solid background, a clean flat window, one item level per slot coloured by its upgrade track, the enchant, embellishment and gems beside each slot (hover any of them), a wider window that gives them room beside the model, and a tidy stat list. The window works as before, in and out of combat. Off by default." },
-            enabled = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends).", "full"),
             chrome = T("chrome", 2, "Clean window", "Blizzard's frame art goes: no portrait or stone frame, no backdrop picture behind the model; a thin border, the theme's pane colour behind the stat list, theme-coloured title and tabs; the slots lose their frame art. Off: Blizzard's art over XayaUI's solid background.", "full", isOff),
             ilvl = T("ilvl", 3, "Item level on each slot", "One item level per slot, coloured by its upgrade track (Veteran green, Champion blue, Hero purple, Myth orange, Explorer / Adventurer grey; the game's quality colours) and brighter with each upgrade step. Items without a track show their quality colour. The Character Toolkit's slot overlays leave out their own item level while this is on, and XayaUI's stays hidden on a slot where another addon already shows the same number (/xui reskin status names it).", "full", isOff),
             enchants = T("enchants", 4, "Enchants beside the slots", "The enchant's name beside each slot, toward the model (without the \"Enchant <slot> - \" the game puts before every enchant's name), wrapped; \"No enchant\" in orange on a slot that takes one (the Character Toolkit's enchant slots); \"Embellished (worn / limit): <item name>\" on an embellished item (its hover: \"Embellished - Name: <item name>\", then what it does as the game words it). Hover a line: the whole line and what it does, as far as the game gives it.", "full", isOff),
@@ -1427,10 +1433,11 @@ ns.RegisterCommand("reskin", function(arg)
     arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     local c = Cfg()
     if not c then return end
-    if arg == "on" then c.enabled = true; ns.CharReskin_Apply(); ns.Print("Character Reskin on."); return end
+    if arg == "on" then c.enabled = true; ns.CharReskin_Apply(); ns.Print("Character Reskin on." .. (ns.ReskinTabOn() and "" or " It shows once All reskins (Blizzard UI Reskin tab, top row) is on again.")); return end
     if arg == "off" then c.enabled = false; ns.CharReskin_Apply(); ns.Print("Character Reskin off."); return end
     if arg == "status" or arg == "" then
-        ns.Print(("Character Reskin: %s%s; %d Blizzard regions faded, %d slots%s."):format(c.enabled and "on" or "off",
+        ns.Print(("Character Reskin: %s%s%s; %d Blizzard regions faded, %d slots%s."):format(c.enabled and "on" or "off",
+            ns.ReskinTabOn() and "" or " (All reskins is off in the Blizzard UI Reskin tab, so it does not show)",
             diag.failed and " (stopped after an error)" or "", diag.faded, diag.slots, diag.lastError and (", last error: " .. diag.lastError) or ""))
         ns.Print(("Wider window: %s."):format(c.wide and tostring(diag.wide) or "switched off"))
         ns.Print(("Extra height: %s; full stat list: %s."):format((c.wide and c.tallPx > 0) and tostring(diag.tall or "waits for the window") or "off",
