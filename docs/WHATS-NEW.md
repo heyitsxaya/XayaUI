@@ -1,5 +1,7 @@
 # What's new in XayaUI
 
+**Updated 2026-11-06 evening:** sections 3 and 4 (below) cover the debug round and the group page / QA round that landed after this page was first written.
+
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
 Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
 before that landing (2026-11-05 07:16 UTC to 2026-11-06 07:16 UTC).
@@ -216,6 +218,11 @@ Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default
 - **Chat history shows "|" correctly** (Chat 0.6.17). Lines containing "|" now show every pipe and letter (before, a pipe and
   sometimes the next letter went missing), and searching for text with "|" finds them. **Not yet tested in game:** whether
   copying such a line pastes one "|" or two.
+- **Chat history keeps the letter after a "|"** (Chat 0.6.19, on `main` at 4fa2150, 2026-11-06 about 21:20 UTC; a later landing than the
+  window above). In the chat history window (the Console tab and the chat tabs), a "|" followed by r, n, c, T, H, A or K no longer
+  loses that letter. Example: the `/xui chat` status line used to read "on|off|eset|move|..." and now reads
+  "on|off|reset|move|history|wrap|indent|whispers|settings". **Not yet tested in game** (QA D13); what Ctrl+C pastes, one "|" or
+  two, is also still unchecked (QA D12).
 - **Cursor colours as UI themes** (XayaUI 0.6.46, QoL 0.7.17). Each Gradient Cursor Trail gradient is also a UI theme in
   Settings > Theme ("Cursor trail: <name>"). The trail can follow your UI theme ("Match the UI theme"), and the Cursor Highlight
   can use your theme's accent colour.
@@ -239,11 +246,78 @@ Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default
   does what `/xui calc` does. If another addon already owns either word, XayaUI leaves it alone and the `/xui` forms still work.
   After you turn the Notepad off, `/notes` stays until `/reload` and only says the Notepad is off.
 - **Clearer Aura ID lines on tooltips** (Bonus 0.6.13, 0.6.15). On spell tooltips, an aura icon ID that is the same as the spell's
-  own icon is no longer repeated. While **Advanced Debugging** is on (Settings > Debugging; it is on by default), each Aura ID line
+  own icon is no longer repeated. (Since the later landing in section 3 the source text shows only while XayaUI Dev Assist is enabled,
+  not under Advanced Debugging.) While **Advanced Debugging** was on (it was on by default), each Aura ID line
   ends in grey with where the ID was found ("via this tooltip", "via Cooldown Manager", "via your casts", "via buff on you",
   "via recorded earlier").
 - **`/xui debug map`** (XayaUI 0.6.49; it now prints in the console, like every `/xui debug` command). A report command for the full-screen world map problem: it prints the map's state so the
   cause can be found. It does not fix the problem yet.
+
+## 3. Developer tools moved to Dev Assist, and the debug report (landed on `main` 2026-11-06 evening, main 687b624)
+
+From the debug round (request log FUS-1 to FUS-5, her answers in the question box). Nothing here has been tested in game yet.
+
+- **Developer tools now live in XayaUI Dev Assist.** These commands exist only while the Dev Assist addon is installed and enabled:
+  `/xui debug` probe, timing, model, tracker, mods, groups, icons, media, seed, map, gamemenu, chatprobe, widthprobe, perf ui, debuffs
+  and loc; `/xuitt` probe, lines and aura; `/xui chat` wrap, indent and whispers; `/xuiskin pad` and `/xuiskin alpha`; and
+  `/xuiengine` auto, on, off and reset. Without Dev Assist they are not there. (`/xui debug seed` adds three test rules to your own rules,
+  which is why players should not have it.)
+- **What players keep:** `/xui debug perf`, `/xui debug loader`, `/xui status`, `/xui auras`, `/xuiskin` (turns the window skin off),
+  and `/xuiengine full` and `refresh`.
+- **Tooltip "via ..." source text** (the grey "via this tooltip", "via Cooldown Manager" and so on at the end of an Aura ID line) now
+  shows only while XayaUI Dev Assist is enabled.
+- **Combat Tracking Setup moved** from the Debugging page to Settings > UI Options > Rule Creation.
+- **Error codes and a debug report.** XayaUI now records only errors and warnings, each with a code (XUI-E...), and only when they
+  happen, so it costs nothing otherwise. `/xui report` opens a readable summary you can screenshot, with a **Copy** string you can send.
+  Dev Assist reads that string back with `/xuidev report`. The detailed record kinds (rule snapshots, aura answers, and so on) now live in
+  Dev Assist.
+- **Documents moved.** The project documents (this page, the user guide, the QA checklist, the roadmap and the session summary) are in
+  `docs/`; README and THIRD_PARTY stay at the root.
+
+## 4. Group page, display position, mover view and in-game QA (landed on `main` with the same evening landing, main 687b624)
+
+From the group page / QA session (shipping versions core 0.6.57, Options 0.6.57, QoL 0.7.34, Dev Assist 0.7.5; the items first
+appeared at core 0.6.55-0.6.56 / Options 0.6.54-0.6.55). Nothing here has been run in the game yet.
+
+**Group page** (open any group in the Rules sidebar)
+- **Tabs:** Group | Display | Load | Config, with Group first. Config holds the name, an Enabled switch (for all rules inside), the group
+  type, Sound Channel Override, new rule / nested group / delete, and "Made by: <character> (made here / imported, date)".
+- **Size** (Group tab): Auto (fits what is showing) or Set (width and height, optional Clip). Border and Background have tick boxes with
+  colour, texture and padding; in Auto the box follows the displays that are showing.
+- **Nested groups:** "Anchored to: The parent group / The screen".
+- **Static groups, Align & Arrange:** Horizontal and Vertical choices (Align left / center / right, Distribute, Space with a gap). The
+  choice is now saved: a display you drag, nudge, add or resize goes back into line; None places them freely.
+- **Static groups with a Set size:** "Scale items to fit the box". Making the box smaller than its items asks "Scale the items to fit?"
+  once.
+- **Dynamic groups:** **Limit** (show at most N; the rest wait and appear when one goes away) and **Align** (Top / Center / Bottom for
+  rows, Left / Center / Right for columns).
+
+**Display position** (a rule's display > Position)
+- "Anchor point" (the display's own point), then "Anchored to:" (group / screen / snapped frame), then "To <target>'s point". Changing
+  either one does not move the display. Fixed: "Outside" with a corner anchor used to act as "Inside".
+
+**Mover view** (`/xui unlock`)
+- **Arrow keys** nudge the display or group you last clicked: 1 pixel, 10 with Shift. Not in combat.
+- **A small lock** on each group's name tab locks that group for now so you can reach what is under it. Nothing is saved.
+- **Save or cancel:** leaving the mover view after moving something asks **Save moves** or **Cancel moves**; Cancel puts everything back.
+  Moves left by a `/reload` or logout without Save are offered back at login. A game crash cannot keep moves: the game writes saved
+  data only at logout or `/reload`. The same prompt now also shows when the settings window closes after it unlocked the displays and
+  something moved (merged with the engine session's window-close change; not seen in game).
+
+**Rule list**
+- Pressing a rule row and moving the mouse starts the drag; a label follows, with a line or highlighted group showing where it lands.
+
+**In-game QA walkthroughs** (needs XayaUI Dev Assist enabled): `/xui dev qa`, `/xui qa test` or `/xui qatest`
+- A window lists walkthroughs, one step at a time. Each step has **Do it for me** and the addon's own check, which never decides for you.
+  Answer Pass / Fail / Skip with a note; Back steps back.
+- Results are saved. The end screen has Screenshot, Export code / Import a code, and Run again.
+- The list holds every open QA checklist item and every open unverified bug, in this order: open bugs, looks-and-layout items, combat
+  displays, urgent items, then the rest by section (34 walkthroughs, 330 items, regenerated from `docs/QA-CHECKLIST.md`).
+  With Dev Assist off, all three commands say to switch it on.
+
+*Not in this list yet:* the rest of that landing's changes (Chat 0.6.25, Bonus 0.6.19, Reskin 0.6.6 and the other sessions' parts of
+Options 0.6.57 and core 0.6.57: the Info pane / Patch Notes, chat changes, the settings window look, the engine session's work). Their sessions send their own notes;
+they are added here only once they arrive and are checked against `main`.
 
 **Version numbers:** two different changes on `main` carry the label Options 0.6.41 (the "switched-off features cost nothing"
 work and the auto-rule picker; two sessions numbered them at the same time). They are listed as they are; history is not
