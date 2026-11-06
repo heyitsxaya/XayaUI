@@ -349,7 +349,7 @@ local scanBtn = findW(root(), function(w) return w.type == "Button" and optName(
 check("C: Settings > UI Options > Rule Creation shows the section: its header and the button", scanBtn ~= nil
   and findW(root(), function(w) return w.type == "Heading" and optName(w) == "All talents (every class and spec)" end) ~= nil)
 local function said(s) return findW(root(), function(w) return w.type == "Label" and w.label and (w.label:GetText() or ""):find(s, 1, true) ~= nil end) ~= nil end
-check("C: ...with the last-scan line (none yet on a fresh install)", said("No talent scan saved yet.") and said("/xui talents status"))
+check("C: ...with the last-scan line (none yet on a fresh install)", said("No talent scan saved yet.") and said("/xui debug talents status"))
 -- the stand-in game's talent view: present (empty trees), so the real scan runs
 C_ClassTalents.InitializeViewLoadout = C_ClassTalents.InitializeViewLoadout or function() end
 C_ClassTalents.ViewLoadout = C_ClassTalents.ViewLoadout or function() end

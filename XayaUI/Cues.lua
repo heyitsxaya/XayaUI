@@ -300,10 +300,11 @@ function ns.MigrateCues()
     return made
 end
 
--- /xui mods: for every cue that a condition lists, print each step: which conditions list it and whether they are TRUE / FALSE / UNKNOWN right now,
+-- /xui debug mods: for every cue that a condition lists, print each step: which conditions list it and whether they are TRUE / FALSE / UNKNOWN right now,
 -- the modifiers each one stores, the merged result the engine hands to the visual, and what the cue's frame actually shows.
 function ns.ProbeMods()
-    local function P(...) print("|cff9966ffXayaUI mods|r", ...) end
+    -- (core 0.6.50: through ns.Print, so /xui debug mods typed in the console window prints there; was print())
+    local function P(...) ns.Print("|cff9966ffmods|r", ...) end
     local function TF(v) return v == true and "|cff55ff55TRUE|r" or v == false and "|cffff5555FALSE|r" or "|cffffd100UNKNOWN|r" end
     local function M(m)
         if type(m) ~= "table" then return "no modifiers stored" end

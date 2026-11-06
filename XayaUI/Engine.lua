@@ -6,7 +6,7 @@ local addonName, ns = ...
 
 ns.runtime = setmetatable({}, { __mode = "k" }) -- rule -> { active, lastPlay, visualWanted }
 
-local perf = { on = false }   -- /xui perf (see the bottom of this file)
+local perf = { on = false }   -- /xui debug perf (see the bottom of this file)
 local dirty = true
 local TICK = 0.2
 local MIN_GAP = 0.05   -- events (UNIT_AURA, cooldown updates) fire many times a second in combat; re-evaluating on each one is what costs frames
@@ -184,7 +184,7 @@ local function Step()
     end
 end
 
--- /xui perf: measures the engine on this machine. Off by default; while on, each Step is timed with debugprofilestop,
+-- /xui debug perf: measures the engine on this machine. Off by default; while on, each Step is timed with debugprofilestop,
 -- split into rule evaluation / visual updates / bars, with the most expensive rules named. Every report is also saved to
 -- CueRulesDB.perfLog (last 6) so it survives /reload and can be read from the saved variables.
 local function PerfReset()
@@ -245,14 +245,14 @@ function ns.PerfCommand(arg)
     arg = tostring(arg or ""):lower():match("^%s*(%a*)") or ""
     if arg == "on" or arg == "reset" then
         perf.on = true; PerfReset()
-        ns.Print("perf: measuring. Play (ideally a fight), then /xui perf to read it, /xui perf off to stop.")
+        ns.Print("perf: measuring. Play (ideally a fight), then /xui debug perf to read it, /xui debug perf off to stop.")
         return
     elseif arg == "off" then
         perf.on = false; ns.perfOn = false
         ns.Print("perf: stopped")
         return
     end
-    if not perf.t0 then ns.Print("perf: not measuring. /xui perf on, play a while, then /xui perf."); return end
+    if not perf.t0 then ns.Print("perf: not measuring. /xui debug perf on, play a while, then /xui debug perf."); return end
     local secs = math.max(0.001, GetTime() - perf.t0)
     local steps = math.max(1, perf.steps)
     local ev, parts = perf.events, {}
@@ -326,7 +326,7 @@ f:SetScript("OnEvent", function(_, event)
         inCombat = (UnitAffectingCombat and UnitAffectingCombat("player")) and true or false   -- a /reload can land mid-fight
     end
     if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "TRAIT_CONFIG_UPDATED" or event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" then ns.talentList = nil; ns.spellList = nil end
-    -- auto-capture status into the ring-buffer log at combat start/end, since /xui status can't be typed mid-fight
+    -- auto-capture status into the ring-buffer log at combat start/end, since /xui debug status can't be typed mid-fight
     if event == "PLAYER_REGEN_DISABLED" then
         inCombat = true
         snapAcc = 0

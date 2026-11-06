@@ -160,7 +160,7 @@ check("own layout, recycled pool: Log Out still runs Log Out", lua("return #CLIC
 # the real entry changes after the rows were built: the text no longer exists -> nothing is clicked
 lua("CLICKS = {}; ACTIONS = {}; PRINTED = {}; local r = ROW('Shop'); BTN('Shop')._text = 'Something Else'; r._s_OnClick(r)")
 check("own layout: no real button has the row's text -> nothing is clicked", lua("return #CLICKS == 0 and #ACTIONS == 0"), lua("return table.concat(CLICKS, ',')"))
-check("own layout: it says so in chat and in /xui gamemenu", lua("return #PRINTED == 1 and PRINTED[1]:find('nothing was clicked') ~= nil"), lua("return table.concat(PRINTED, ' | ')"))
+check("own layout: it says so in chat and in /xui debug gamemenu", lua("return #PRINTED == 1 and PRINTED[1]:find('nothing was clicked') ~= nil"), lua("return table.concat(PRINTED, ' | ')"))
 # the remembered old button now says something else (recycled into another entry): still not clicked
 lua("CLICKS = {}; REBUILD(); local r = ROW('Options'); r.label = 'Gone'; r._s_OnClick(r)")
 check("own layout: a stale remembered button with other text is never clicked", lua("return #CLICKS == 0"))

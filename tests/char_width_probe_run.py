@@ -1,4 +1,4 @@
-"""QoL 0.7.12: /xui stats widthprobe [px | off], the in-game test the plan asks for before the Character Reskin's wider character
+"""QoL 0.7.12: /xui debug widthprobe [px | off], the in-game test the plan asks for before the Character Reskin's wider character
 window is built (docs/plans/STAT-CALCULATOR-REDESIGN-2026-11-04.md; Xaya's answer: "a wider character viewport"). Stand-in frames shaped
 like Blizzard's live 12.1.5 character window (CharacterFrame with an Inset, CharacterModelScene 231 wide, CharacterMainHandSlot at
 BOTTOMLEFT 130, 16; PANEL_DEFAULT_WIDTH and the inset offsets as globals, values made up for the test). Checks: it refuses in combat,
