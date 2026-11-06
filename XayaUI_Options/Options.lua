@@ -2614,6 +2614,7 @@ local function BuildRule(i, rule)
     actionsTab.xuiParts = actions.xuiParts
     if outcomeArgs then for k, v in pairs(outcomeArgs) do conditionsTab.args[k] = v end end
     if cueArgs then for k, v in pairs(cueArgs) do cuesTab.args[k] = v end end
+    if ns.CdmWarnArg then cuesTab.args.cdmWarn = ns.CdmWarnArg(rule, -1) end   -- Cooldown Manager limits of this rule's auras / debuffs
 
     ---------------------------------------------------------------- Info tab (was "Rule")
     local ruleTab = {
@@ -3389,6 +3390,8 @@ function BuildClassCreator()
         args["st_" .. a.key] = { type = "description", order = o + 2, width = 1.5, fontSize = "medium", hidden = shown,
             name = function() return AuraStatus(a) end }
     end
+    -- Xaya 2026-11-05: choose which auto rules to make (cooldowns and target debuffs) and each one's main cue (AutoPicker.lua)
+    if ns.AutoPicker and ns.AutoPicker.Args then for k, v in pairs(ns.AutoPicker.Args(Notify)) do args[k] = v end end
     return { type = "group", name = "Class/Spec Rule Creator", order = 2, hidden = ns.PageHidden("creator"), args = args }
 end
 end   -- do (class/spec creator)
