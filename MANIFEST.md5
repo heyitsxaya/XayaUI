@@ -17,7 +17,7 @@ e347531f81e7b1c81dfd3db3a4d5f6f2  XayaUI/Combat/README.md
 90a7c4511e2a3988040393f1c413a9b3  XayaUI/Compat.lua
 9a181267cde9caba6b738e09a499d51a  XayaUI/Conditions.lua
 4b019193a3c47742b573f00435888c00  XayaUI/Console.lua
-687df2167b37ae8a04035c7c1d877553  XayaUI/Core.lua
+d882ea69eeedd6880c3546eab9d049fb  XayaUI/Core.lua
 ed3e6ee6c7052e7ce403678bae5a70a4  XayaUI/Cues.lua
 b33efd8a8c453fa0859efba75824bc16  XayaUI/DebugRecord.lua
 a3ae7befb2906bbaf4904f85dbadce3f  XayaUI/Engine.lua
@@ -88,7 +88,7 @@ e94cfc0c3fc54c4e5188a7aadaf41d90  XayaUI/Media/UI/xui_progresstex.tga
 66226a0137e47566a0fd0ce9c41e6bcc  XayaUI/Media/UI/xui_sttexture.tga
 30d50e1964ffdb6d81b4e902ecb5accd  XayaUI/Media/UI/xui_text.tga
 be197c19fdae94f6ab8a0407e642dd82  XayaUI/MinimapButton.lua
-152b77fa19a425d8bf1138f82f3f5852  XayaUI/Modules.lua
+d6e78a63458ccc2c2fa2b531a55da02f  XayaUI/Modules.lua
 af50dc9d4e091e6dc803d69c18c9ed5c  XayaUI/Outcomes.lua
 ac819cb3c0f1c6bd28bdcd33566a74f8  XayaUI/ProcGlows.lua
 b76823560a93ae68a07689af413b01ec  XayaUI/RecycleBin.lua
@@ -129,12 +129,12 @@ ded1de1be47477a60c0740ef7769629d  XayaUI_Bonus/Media/UI/Notepad/src/plus.svg
 2a22ac682397b06e682d4cc0a0cd7abc  XayaUI_Bonus/Media/UI/Notepad/trash.png
 224a19602b1b96e485ffd409f0f8f3ae  XayaUI_Bonus/Notepad.lua
 4f459a199b089bb7ee8385c02b7401ed  XayaUI_Bonus/NotepadShare.lua
-6bdeca253d0de4a8a6a0c4451605e279  XayaUI_Bonus/Tooltips.lua
+3ec85287dd472a9ef779a2f5bdb71939  XayaUI_Bonus/Tooltips.lua
 379c4e95b74edd89076763a5e216d81d  XayaUI_Bonus/TooltipsUI.lua
 3a37261e12b91d6cb3d67fe5c00118ee  XayaUI_Bonus/Utilities.lua
 3c04cb42742be07d71396b168dfadff9  XayaUI_Bonus/XayaUI_Bonus.toc
 6e76b1c2978989769c7457380c8e4115  XayaUI_Chat/Bar.lua
-142b29135843c56429eb7107a57b8b9b  XayaUI_Chat/Core.lua
+d13e36d17930ef2d3d16218c6a3a9be3  XayaUI_Chat/Core.lua
 8a087c49d9bd56d9daa92cb0054f97d6  XayaUI_Chat/Fade.lua
 46e7eaa0b4e8fb149a947c1d5391305b  XayaUI_Chat/Frame.lua
 9ac8b056fe70a4aca0050113a02993cd  XayaUI_Chat/History.lua
@@ -150,11 +150,11 @@ c3443dcf8a486e540ddfeac1aae87728  XayaUI_Chat/Sounds.lua
 d1214a6ecb251789fe882787dce5d8ef  XayaUI_DevAssist/ApiInventory.lua
 2927a47181fd6886394e1b61d1fc0faf  XayaUI_DevAssist/AuraCatalogue.lua
 d580499354412d7ae85a86c9eed84350  XayaUI_DevAssist/AuraIDProbe.lua
-a08bb3eba84c0c8bd6329ed8a0060405  XayaUI_DevAssist/CharacterWidthProbe.lua
+b5a92ec17bc645db493b24f51b63147f  XayaUI_DevAssist/CharacterWidthProbe.lua
 58798882f2e26d77fd1cbc47b9534d89  XayaUI_DevAssist/ChatProbe.lua
-a663de4c355b3c8f3da8dd1c52d3c690  XayaUI_DevAssist/CoreDebug.lua
+99575fd704c73272159989066ebf574a  XayaUI_DevAssist/CoreDebug.lua
 ba9b1b2d350099f573c5f6c00c99c6b6  XayaUI_DevAssist/DevAssist.lua
-dc3c2cab2b6462ae342c60ff404b22f0  XayaUI_DevAssist/DevRecord.lua
+03bcf4441d5d619908eb2c887baa7dba  XayaUI_DevAssist/DevRecord.lua
 4f406e5f61d664082acd91fcb9dcafdd  XayaUI_DevAssist/FORMULA-CAPTURE-WALKTHROUGH.md
 540e759425acffdcd2e04155ed259ae3  XayaUI_DevAssist/FormulaCapture.lua
 10a00a7f66ce081044f89e3d998619fd  XayaUI_DevAssist/Probe.lua
@@ -215,7 +215,7 @@ eac6760f4421c937a3ce3171912561df  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
 c79f7aedb61981602d40ea7c1bbbe33b  XayaUI_Options/XayaUI_Options.toc
 5afe11f54ae24648f309bff7987178e0  XayaUI_QoL/CharacterModel.lua
-71d14889cbf161294a7e94dd82a91f2e  XayaUI_QoL/CharacterReskin.lua
+d531d8ee015e6aae8ae44b21f92b4f65  XayaUI_QoL/CharacterReskin.lua
 3e821698f1284eb3840571b13f9c3940  XayaUI_QoL/CharacterToolkit.lua
 ebb711c6a474f2773d4b40a0f3d79e64  XayaUI_QoL/CursorHighlight.lua
 c3617b22a301f3dc2a881c6e62360910  XayaUI_QoL/CursorTrail.lua
@@ -258,7 +258,7 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 6e3449d0cb41b7695956245493afb2db  XayaUI_QoL/ShoppingList.lua
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
 98d9b5b3396863a5a17633a2fb031c02  XayaUI_QoL/XayaUI_QoL.toc
-fbf9ca8852a2e82554349bb5cd598060  XayaUI_Reskin/GameMenuSkin.lua
+b3f32cf405378d0531a53ea8a9df0a6b  XayaUI_Reskin/GameMenuSkin.lua
 ba561866fe377a0aa4a6984cdacdda81  XayaUI_Reskin/XayaUI_Reskin.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
 6282a56ce03230e14f536fc71e16240b  debug-log/2026-11-02-0100-buff-aura-multiple-ids-0.5.55.md
@@ -503,7 +503,7 @@ fe51de1c552b68fd8c3309e6c3a6871c  debug-log/2026-11-06-0520-character-pane-stat-
 0a9288836b02d9cb825e33101d8edbe7  debug-log/2026-11-06-0544-handoff-chat-session-open-items.md
 99eeff9cfe9a67e5fc08c193b088246b  debug-log/2026-11-06-0552-slash-notes-calc-bonus-0.6.17.md
 123e3c41439ee6fad0b573eb19d7f73c  debug-log/2026-11-06-0554-friends-list-ui-source-12.1.5-findings.md
-31971cf8c7c32e54a2f383a2e88cb029  debug-log/2026-11-06-1807-debug-tools-to-devassist-error-codes-core-0.6.56.md
+0c84a8d78ac8855a1968a038ad62926a  debug-log/2026-11-06-1807-debug-tools-to-devassist-error-codes-core-0.6.56.md
 e59c6ee62eabe0c25b8db742ed38d49b  docs/QA-CHECKLIST.md
 3293fed1d8ce80dbe90eeb96172c09ea  docs/ROADMAP.md
 1249866f9f107bae6c87186ecb7fe5de  docs/SESSION-START-SUMMARY.md
@@ -608,7 +608,7 @@ a728b09d9b33b392ede80d974f5e1236  tests/char_reskin_run.py
 07b0146f69e580b375eb198f12b34d54  tests/char_toolkit2_run.py
 a8e5c2bbdb81d4bb1a3dffb7e6c05a9c  tests/char_toolkit_run.py
 89838d7d9ca1deabb0a3654cb4a560da  tests/char_toolkit_world.lua
-7a444d15ae73a0b99a1c06f2c52738c7  tests/char_width_probe_run.py
+4ba50341e18a783aa2882febf468f786  tests/char_width_probe_run.py
 0f46f11222291c70483718691d730c62  tests/charges_combat_run.py
 7f1a2e0398868fda9fd60a58a9e69bb5  tests/chat_off_costs_nothing_run.py
 71d3526a8ec4eb48720197b41d1b8ccd  tests/chat_pieces_run.py
@@ -634,7 +634,7 @@ bee02fd6123bf9edd4e6dd43f306e1e4  tests/devassist_catalogue_run.py
 c9269a3f3691b702722b0759fa168bfd  tests/devassist_debug_tools_run.py
 a988d0843e5594fd1d2e777772e4b56a  tests/devassist_instance_run.py
 beb33f9fd927428616543fd8364aa1bf  tests/devassist_probe_run.py
-aa5909c2e546a4c8e1ce6ba3e8eb68a4  tests/devassist_rename_run.py
+6b96cb7ac65e5986e50b90eca270d409  tests/devassist_rename_run.py
 35083b11f4eb421e42d452fce068a8ea  tests/disabled_tree_run.py
 19a813de5448f9d7f6bbc1ce07dcdf38  tests/display_tab_run.py
 79340b1faeb574b0dd0dd28d6f8915e4  tests/drafts_run.py
