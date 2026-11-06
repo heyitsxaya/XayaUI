@@ -66,4 +66,7 @@ Drive tool returned files only as base64 into the agent's context, so it cites f
 ## Status after this entry
 - 3 (terms): decided as the direction; built later, together with the other third-party data enhancements (RM-UPGRADES, RM-RPPM).
 - 5 and 6: new work items with open details (listed in the session summary).
+- 5, wording corrected by Xaya (2026-11-05, her words): "Rule templates is a bit of a misnomer. They are pre-created rules". So these
+  are ordinary XayaUI rules that ship ready-made ("DO NOT RELEASE", a durability / broken-gear reminder), which a player switches on;
+  not a template or wizard that generates a rule. Called **pre-created rules** from here on.
 - 1, 2, 4: wait on the WeakAuras check, then a design note for Xaya.

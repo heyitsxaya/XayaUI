@@ -92,7 +92,7 @@ Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.
 (debug-log 2026-11-05-2018 and -2022): RM-BARS and disabled rules: check WeakAuras (done: bars are their own display kind there;
 unloaded-aura cost NOT verified, the file was too large for the Drive tool); terms 3b: option a + a database we maintain, as a future
 enhancement with the other third-party data items; #372 Config tab = folder name, folder type, original character / source, enable
-switch; Group tab = WeakAuras' group options; "DO NOT RELEASE" and a durability / broken-gear reminder become pre-baked rule templates;
+switch; Group tab = WeakAuras' group options; "DO NOT RELEASE" and a durability / broken-gear reminder become **pre-created rules** (Xaya: "rule templates is a bit of a misnomer"; ready-made rules a player switches on);
 chat history: "All" is not the default tab, and whisper windows get their own tabs (Blizzard's New Whispers setting or an addon switch).
 Stat Calculator: QoL 0.7.21 built (450 wide, Rating "528 +172"; QA E1z21); all ability lists stay nested. Next free: QoL 0.7.22.
 
