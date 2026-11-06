@@ -58,9 +58,9 @@ local function collect(g, path)
 end
 for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do collect(node(T, tab), { tab }) end
 -- (QoL 0.7.24 / Bonus 0.6.14: qol>chartoolkit>tipsPart, Xaya #46 "Assume yes for now"; bonus>tooltips, #45 "Enhanced Tooltips";
--- bonus>utilities>notepad is the whole Notepad now, #47)
+-- bonus>utilities>notepad is the whole Notepad now, #47; QoL 0.7.31: qol>releaseguard, the Release Guard's own row, REQUEST-LOG #75)
 local WANT = { "qol>chartoolkit", "qol>chartoolkit>panelPart", "qol>chartoolkit>overlayPart", "qol>chartoolkit>spells",
-  "qol>chartoolkit>tipsPart", "qol>cursor>highlight", "qol>cursor>trail", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad" }
+  "qol>chartoolkit>tipsPart", "qol>cursor>highlight", "qol>cursor>trail", "qol>releaseguard", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad" }
 for _, k in ipairs(WANT) do check("A: the row " .. k .. " has an on / off for its tick box", found[k] ~= nil) end
 check("A: no other row has one (Cursor, Utilities, Calculator have no single on / off)", foundN == #WANT, foundN)
 check("A: the switches' names: Enhanced Tooltips, Notepad, Tooltip lines (her words)", found["bonus>tooltips"] and found["bonus>tooltips"].name == "Enhanced Tooltips"

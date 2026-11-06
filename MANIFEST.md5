@@ -663,7 +663,7 @@ f8047cf03744511b898b5efd78065b53  tests/reskin_tab_run.py
 04c191fed34aa1a531e52ce2d67d48a7  tests/rules_subtabs_compact_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py
 033cc3815741ca63d85f3a67a2bd0409  tests/sidebar_name_room_run.py
-61df6f77d88a082eeb34f07174db7806  tests/sidebar_switches_run.py
+26b81ac222db6353dda7d63638934083  tests/sidebar_switches_run.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
 278c42a27cbbe21ebff29250f3f77e9c  tests/spell_search_scope_run.py
 f886a09a99f1c562e4ff35c25675a1bd  tests/timing_run.py
