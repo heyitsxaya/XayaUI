@@ -2,12 +2,12 @@ a6b90f93be08b2134468e876fefd33d1  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-4947e2f4b40893232285661a1810daad  QA-CHECKLIST.md
+04e7cc0c3bb273fc4f403fae29f54e11  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 1fbdaeaf6a100062c43c23836d5fe8a2  ROADMAP.md
-8e26fa7260dfdd487f86249f75b6c9d2  SESSION-START-SUMMARY.md
+52ed02522d4c8e72c08d11a2496d453f  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-f22cc345db23d840fd4ea853686c43e3  USER-GUIDE.md
+a38cdea4e2dda086ae7ce479ab0b4a44  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 7bc5ab6899bc167c8fc5f3db72f3c9ff  XayaUI/AuraSound.lua
@@ -134,10 +134,10 @@ ded1de1be47477a60c0740ef7769629d  XayaUI_Bonus/Media/UI/Notepad/src/plus.svg
 2a22ac682397b06e682d4cc0a0cd7abc  XayaUI_Bonus/Media/UI/Notepad/trash.png
 8da1434fc7212f3e709aa0029070a076  XayaUI_Bonus/Notepad.lua
 55641d8a50b89b986dfacfdf093ebb5a  XayaUI_Bonus/NotepadShare.lua
-cece22e591d60bb82ac0bcd24bff569c  XayaUI_Bonus/Tooltips.lua
+bf1fc47213bc5ccf078b7e8736223211  XayaUI_Bonus/Tooltips.lua
 a27ee1bd936d5ad1155d72a62a92fe0f  XayaUI_Bonus/TooltipsUI.lua
 c6d4fdeafa8b7fe319031fc259f1ae99  XayaUI_Bonus/Utilities.lua
-99838dc183d06a05bdef193ce3a7dfd4  XayaUI_Bonus/XayaUI_Bonus.toc
+610ff0e988c7178e8c683c500def293e  XayaUI_Bonus/XayaUI_Bonus.toc
 6e76b1c2978989769c7457380c8e4115  XayaUI_Chat/Bar.lua
 5dca5ea1fb1066fcd02b2674eefdfa24  XayaUI_Chat/Core.lua
 8a087c49d9bd56d9daa92cb0054f97d6  XayaUI_Chat/Fade.lua
@@ -482,6 +482,7 @@ dca56bc491930fdda05fb77349398fe2  debug-log/2026-11-05-2046-auto-populate-picker
 0c93fe0cae7e2e8d9c550a1497cd4331  debug-log/2026-11-05-2122-cooldown-manager-warnings-core-0.6.48-options-0.6.43.md
 c54bd9d2d6be53369953c26744e65136  debug-log/2026-11-05-2141-history-whisper-tabs-by-realm-chat-0.6.16.md
 ef2aa95835015eb192e93bbbf709ddb0  debug-log/2026-11-05-2359-harness-enum-values-from-docs.md
+7783c66365647d780c7c4fe802eea40e  debug-log/2026-11-06-0032-tooltip-aura-source-and-icon-bonus-0.6.13.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -649,8 +650,9 @@ ab9d0e728de8d9bd5c1ba2543dcffad5  tests/sidebar_switches_run.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
 278c42a27cbbe21ebff29250f3f77e9c  tests/spell_search_scope_run.py
 f886a09a99f1c562e4ff35c25675a1bd  tests/timing_run.py
+59fe39b3f8e4ef2b3aba7a6e3c15a93b  tests/tooltip_aura_source_run.py
 4ab5fd24ca1bb0910e3372c636868b5c  tests/tooltip_formulas_run.py
-6ab0e558cf52a31fb92d54109e3434e2  tests/tooltips_run.py
+fa1d827fffaae8499a416981641b3e5f  tests/tooltips_run.py
 1ebaefa53214e59997760360aa40c80f  tests/tracked_buff_run.py
 b8a468e591bd450e9d60af1c7ea2988c  tests/trigger_labels_run.py
 eccba8875a1faeb20465640570668d83  tests/trigger_parity_run.py

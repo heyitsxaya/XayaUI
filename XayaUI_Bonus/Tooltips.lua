@@ -189,28 +189,37 @@ end
 -- (C_UnitAuras.GetPlayerAuraBySpellID, or the same-name read above returning the spell's ID), a cast of it was seen to apply it
 -- (AuraModel.CastAppliesSelf), or one of those was seen before. A self-referencing embedded block is NOT proof: it may describe damage.
 -- Before Bonus 0.6.1 every one of these was thrown away, so such spells said "not known yet" forever (Xaya, Immolation Aura).
+-- Each entry also carries src: where this hover found it (Bonus 0.6.13, Xaya 2026-11-06 "Yes, build it" to "say where each aura ID
+-- came from, so two IDs don't look like an error"), in TT.AURA_SOURCE_ORDER. "recorded earlier" is kept only when nothing else in this
+-- hover found the aura: the record is fed by this same tooltip's effect block and by the buff-on-you read, so beside either it adds nothing.
+TT.AURA_SOURCE_ORDER = { "this tooltip", "Cooldown Manager", "your casts", "buff on you", "recorded earlier" }
 function TT.AurasFor(kind, id, data)
     local out, seen, same = {}, {}, false
-    local function add(aid, name)
-        if type(aid) ~= "number" or seen[aid] or (kind == "spell" and aid == id) then return end
-        seen[aid] = true
-        out[#out + 1] = { id = aid, name = name or SpellNameOf(aid) }
+    local function add(aid, name, src)
+        if type(aid) ~= "number" or (kind == "spell" and aid == id) then return end
+        local e = seen[aid]
+        if not e then
+            e = { id = aid, name = name or SpellNameOf(aid), src = {} }
+            seen[aid] = e
+            out[#out + 1] = e
+        end
+        if src and not e.src[src] then e.src[src] = true end
     end
-    for _, a in ipairs(TT.EmbeddedAuras(data, id)) do add(a.id, a.name) end
+    for _, a in ipairs(TT.EmbeddedAuras(data, id)) do add(a.id, a.name, "this tooltip") end
     if #out > 0 and ns.AuraSources and ns.AuraSources.Note then pcall(ns.AuraSources.Note, kind, id, out) end   -- feeds the search's "source" column
     if ns.AuraSources and ns.AuraSources.AurasOf then
         local ok, list = pcall(ns.AuraSources.AurasOf, kind, id)
-        if ok and type(list) == "table" then for _, a in ipairs(list) do add(a.id, a.name) end end
+        if ok and type(list) == "table" then for _, a in ipairs(list) do add(a.id, a.name, "recorded earlier") end end
     end
     if kind == "spell" then
         local link = TT.CooldownLinks()[id]
         if link then
-            for _, aid in ipairs(link.auras) do if aid == id then same = true else add(aid) end end
+            for _, aid in ipairs(link.auras) do if aid == id then same = true else add(aid, nil, "Cooldown Manager") end end
             if link.own then same = true end
         end
         if ns.AuraModel and ns.AuraModel.AurasForCast then
             local ok, list = pcall(ns.AuraModel.AurasForCast, id)
-            if ok and type(list) == "table" then for _, a in ipairs(list) do add(a.id, a.name) end end
+            if ok and type(list) == "table" then for _, a in ipairs(list) do add(a.id, a.name, "your casts") end end
         end
         local nm = SpellNameOf(id)
         if nm and C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName then
@@ -218,9 +227,10 @@ function TT.AurasFor(kind, id, data)
             local sid = ok and type(ad) == "table" and ad.spellId
             if sid and readable(sid) and type(sid) == "number" and sid == id then
                 same = true
-            elseif sid and readable(sid) and type(sid) == "number" and not seen[sid] then
-                add(sid, nm)
-                if ns.AuraSources and ns.AuraSources.Note then pcall(ns.AuraSources.Note, "spell", id, { { id = sid } }) end
+            elseif sid and readable(sid) and type(sid) == "number" then
+                local new = not seen[sid]
+                add(sid, nm, "buff on you")
+                if new and ns.AuraSources and ns.AuraSources.Note then pcall(ns.AuraSources.Note, "spell", id, { { id = sid } }) end
             end
         end
         local known = SelfAuraIDs()
@@ -236,7 +246,22 @@ function TT.AurasFor(kind, id, data)
         end
         if same then known[id] = true end
     end
+    for _, e in ipairs(out) do
+        if e.src["recorded earlier"] and next(e.src) ~= nil then
+            local other = false
+            for s in pairs(e.src) do if s ~= "recorded earlier" then other = true; break end end
+            if other then e.src["recorded earlier"] = nil end
+        end
+    end
     return out, same
+end
+
+-- "via this tooltip, your casts" in TT.AURA_SOURCE_ORDER, grey; "" when the entry has no source
+function TT.SourceText(e)
+    local t = {}
+    for _, s in ipairs(TT.AURA_SOURCE_ORDER) do if type(e) == "table" and type(e.src) == "table" and e.src[s] then t[#t + 1] = s end end
+    if #t == 0 then return "" end
+    return "  |cff999999via " .. table.concat(t, ", ") .. "|r"
 end
 
 -- A spell whose text names a duration ("Lasts 8 sec") very likely applies an aura; used only to decide whether to say "not known yet".
@@ -264,11 +289,14 @@ function TT.OnIDData(tooltip, data, kind)
         local auras, same = TT.AurasFor(kind.key, id, data)
         if db.ids.aura then
             if same then AddLine(tooltip, "Aura ID:", tostring(id) .. "  (same as the spell)") end
+            -- an aura icon that repeats the spell's own "Icon ID" line is left out (Xaya 2026-11-06, "Yes, build it": Fiery Brand showed
+            -- 1344647 three times); proposed for spells only, so item tooltips keep every aura icon line
+            local ownIcon = (db.ids.icon and kind.key == "spell") and IconID("spell", id) or nil
             for _, a in ipairs(auras) do
-                AddLine(tooltip, "Aura ID:", a.name and (tostring(a.id) .. "  (" .. a.name .. ")") or tostring(a.id))
+                AddLine(tooltip, "Aura ID:", (a.name and (tostring(a.id) .. "  (" .. a.name .. ")") or tostring(a.id)) .. TT.SourceText(a))
                 if db.ids.icon then
                     local icon = IconID("aura", a.id)
-                    if icon then AddLine(tooltip, "Aura icon ID:", tostring(icon)) end
+                    if icon and icon ~= ownIcon then AddLine(tooltip, "Aura icon ID:", tostring(icon)) end
                 end
             end
             if #auras == 0 and not same and db.ids.auraHint and kind.key == "spell" and TextHasDuration(id) then
@@ -527,7 +555,7 @@ function TT.AuraReport(id)
     local auras, same = TT.AurasFor("spell", id, nil)
     local t = {}
     if same then t[#t + 1] = tostring(id) .. " (same as the spell)" end
-    for _, a in ipairs(auras) do t[#t + 1] = tostring(a.id) .. (a.name and (" " .. a.name) or "") end
+    for _, a in ipairs(auras) do t[#t + 1] = tostring(a.id) .. (a.name and (" " .. a.name) or "") .. TT.SourceText(a) end
     P("  tooltip shows: " .. (#t > 0 and table.concat(t, "; ") or "not known yet"))
 end
 
