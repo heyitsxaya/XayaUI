@@ -912,7 +912,7 @@ local function SideOf(gl, gb, gr, gt, tl, tb, tr, tt)
     local v = (gy > tt) and "TOP" or ((gy < tb) and "BOTTOM" or "")
     return h, v
 end
-local OPP = { LEFT = "RIGHT", RIGHT = "LEFT", TOP = "BOTTOM", BOTTOM = "TOP", [""] = "" }
+local SIDE_OPP = { LEFT = "RIGHT", RIGHT = "LEFT", TOP = "BOTTOM", BOTTOM = "TOP", [""] = "" }   -- (sides only; OPP above has the corners: #268 outer anchors read that one)
 local function PointXY(fr, pt)   -- a frame's point, in screen pixels
     local l, b, r, t = ScreenRect(fr)
     if not l then return nil end
@@ -955,7 +955,7 @@ function ns.AnchorGroupToFrame(fo, target, name)
     if not (gl and tl) then return false end
     local h, v = SideOf(gl, gb, gr, gt, tl, tb, tr, tt)
     local rel = (v .. h ~= "") and (v .. h) or "CENTER"
-    local own = (OPP[v] .. OPP[h] ~= "") and (OPP[v] .. OPP[h]) or "CENTER"
+    local own = (SIDE_OPP[v] .. SIDE_OPP[h] ~= "") and (SIDE_OPP[v] .. SIDE_OPP[h]) or "CENTER"
     Reanchor(fo, function() fo.cRel, fo.cFrame, fo.cPoint, fo.cRelPoint = "custom", name, own, rel end, own)
     return true, own, rel
 end
@@ -1086,6 +1086,8 @@ local function GroupHandle(f)
         if btn ~= "LeftButton" then return end
         local fo = ns.FolderById(self.fid)
         if not fo then return end
+        if ns.MoverSelect and not ns.IsMoverTempLocked(fo) then ns.MoverSelect("group", fo) end
+        if ns.IsMoverTempLocked(fo) then return end   -- (locked for now: the tag still opens the settings, but does not drag)
         local cx, cy = GetCursorPosition()
         self.drag = { cx = cx, cy = cy, x = fo.cX or 0, y = fo.cY or 0 }
     end)
@@ -1202,6 +1204,23 @@ local function GroupTag(f)
     t.box:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     t.box:SetBackdropBorderColor(1, 0.6, 0.1, 0.35)
     t.fid = f.id
+    -- P5: the lock icon locks this group for now (no save): its displays let the mouse through to what is under them
+    t.lock = CreateFrame("Button", nil, t)
+    t.lock:SetSize(TAG_H - 2, TAG_H - 2); t.lock:SetPoint("RIGHT", -2, 0)
+    t.lock.tex = t.lock:CreateTexture(nil, "OVERLAY"); t.lock.tex:SetAllPoints()
+    t.lock.tex:SetTexture("Interface\\PetBattles\\PetBattle-LockIcon")
+    t.lock:SetScript("OnClick", function()
+        local fo = ns.FolderById(t.fid)
+        if fo then ns.SetMoverTempLock(fo, not ns.IsMoverTempLocked(fo)) end
+    end)
+    t.lock:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(ns.IsMoverTempLocked(ns.FolderById(t.fid)) and "Unlock this group" or "Lock this group for now", 1, 0.82, 0)
+        GameTooltip:AddLine("While locked its displays cannot be dragged and the mouse reaches what is under them. Nothing is saved; it ends when you leave the mover view.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    t.lock:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     local function Lit(on) t.box:SetBackdropBorderColor(1, 0.6, 0.1, on and 1 or 0.35) end
     t:SetScript("OnEnter", function(self) self.hovered = true; Lit(true); TagTooltip(self) end)
     t:SetScript("OnLeave", function(self)
@@ -1249,8 +1268,10 @@ local function GroupTag(f)
             return
         end
         self:SetAlpha(1); self:EnableMouse(true)
-        self.label:SetText(tostring(fo.name))
-        self:SetSize(math.max(40, (self.label:GetStringWidth() or 40) + 8), TAG_H)
+        local locked = ns.IsMoverTempLocked(fo)
+        self.label:SetText(tostring(fo.name) .. (locked and " (locked)" or ""))
+        self.lock.tex:SetDesaturated(not locked); self.lock.tex:SetAlpha(locked and 1 or 0.6)
+        self:SetSize(math.max(40, (self.label:GetStringWidth() or 40) + 8 + TAG_H), TAG_H)
         self:ClearAllPoints()
         self:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - TAG_PAD, top + TAG_PAD + 1 + FolderDepth(fo) * (TAG_H + 1))
         self.box:ClearAllPoints()
@@ -1409,9 +1430,15 @@ end
 -- display's OPPOSITE point there, so the display sits outside the box. Ignored while snapped to a Blizzard frame and in dynamic groups.
 local ANCH = { TOPLEFT = { 0, 1 }, TOP = { 0.5, 1 }, TOPRIGHT = { 1, 1 }, LEFT = { 0, 0.5 }, CENTER = { 0.5, 0.5 }, RIGHT = { 1, 0.5 },
     BOTTOMLEFT = { 0, 0 }, BOTTOM = { 0.5, 0 }, BOTTOMRIGHT = { 1, 0 } }
+-- P1 (#268, Xaya 2026-11-06: "separate points"; labels "Anchor point" -> "Anchored to" -> "To <target>'s point"): v.point is the
+-- display's own point, chosen on its own. Older saves have none: their display point follows v.anchor (inner) or its opposite (outer).
 local function AnchorPts(v)   -- the point on the parent, the point on the display
     local a = ANCH[v.anchor] and v.anchor or "CENTER"
+    if ANCH[v.point] then return a, v.point end
     return a, (v.anchorPlace == "outer") and OPP[a] or a
+end
+function ns.VisualPoints(rule)   -- (the target's point, the display's own point) as used now
+    return AnchorPts(rule and rule.visual or {})
 end
 local function VisDims(rule)   -- display size and parent size, in the parent's units
     local v = rule.visual
@@ -1434,6 +1461,35 @@ function ns.SetVisualCenterOffset(rule, cx, cy)
     local A, F = ANCH[a], ANCH[f]
     v.x = math.floor(cx + (F[1] - 0.5) * w - (A[1] - 0.5) * pw + 0.5)
     v.y = math.floor(cy + (F[2] - 0.5) * h - (A[2] - 0.5) * ph + 0.5)
+end
+-- P1: set the display's own point ("Anchor point") and / or the target's point ("To <target>'s point") separately; the display stays
+-- exactly where it is (X / Y are recalculated). Once either is set this way the two points are independent (inner / outer no longer apply).
+function ns.SetVisualPoints(rule, selfPoint, targetPoint)
+    local v = rule and rule.visual
+    if not v then return end
+    local cx, cy = ns.VisualCenterOffset(rule)
+    local a, f = AnchorPts(v)
+    v.point = ANCH[selfPoint] and selfPoint or f
+    v.anchor = ANCH[targetPoint] and targetPoint or a
+    if v.anchor == "CENTER" then v.anchor = nil end
+    v.anchorPlace = nil
+    ns.SetVisualCenterOffset(rule, cx, cy)
+    ns.RefreshVisual(rule)
+    ns.Fire("CONFIG_CHANGED")
+end
+-- what the display is anchored to, for the "Anchored to" line: kind ("frame" / "group" / "screen") and a name
+function ns.VisualAnchorTarget(rule)
+    local v = rule and rule.visual
+    if not v then return "screen", "the screen" end
+    if v.snap and SnapFrame(v) then
+        if v.snap.target == "custom" then return "frame", tostring(v.snap.frame or "a game frame") end
+        for _, t in ipairs(SNAP_TARGETS) do if t.key == v.snap.target then return "frame", t.label end end
+        return "frame", "a game frame"
+    end
+    local _, dyn = ParentFor(rule)
+    local f = dyn or (rule.folder and ns.FolderById(rule.folder))
+    if f then return dyn and "dynamic" or "group", tostring(f.name or "its group") end
+    return "screen", "the screen"
 end
 -- change the anchor and / or inner-outer; X / Y are recalculated so the display stays exactly where it is
 function ns.SetVisualAnchor(rule, anchor, place)
@@ -1764,7 +1820,8 @@ local function GetFrame(rule)
         if GameTooltip and GameTooltip.GetOwner and GameTooltip:GetOwner() == self then GameTooltip:Hide() end
     end)
     fr:SetScript("OnDragStart", function(self)
-        if not Unl(rule) then return end
+        if not Unl(rule) or (ns.MoverTempLocked and ns.MoverTempLocked(rule)) then return end
+        if ns.MoverSelect then ns.MoverSelect("display", rule) end   -- (P4: the arrow keys nudge what was last dragged or clicked)
         self.wasDragged, self.dragStoppedAt = true, nil
         -- a paired aura rides along: anchor it to this one at its current offset for the length of the drag
         local o = pairOf[rule]
@@ -1824,6 +1881,7 @@ local function GetFrame(rule)
         end
         if button == "LeftButton" then
             ns.SelectVisual(rule)
+            if ns.MoverSelect then ns.MoverSelect("display", rule) end
             if ns.EditRule then ns.EditRule(rule) end
         elseif button == "RightButton" then
             ns.SelectVisual(rule)
@@ -2123,9 +2181,10 @@ function ns.RefreshVisual(rule)
     fr.label:SetText(rule.name)
     -- "Show tooltip on hover" needs the frame to see the mouse; clicks still pass through to whatever is behind it unless unlocked for moving
     local tip = v.hoverTip and true or false
-    fr:EnableMouse(Unl(rule) or tip)
+    local movable = Unl(rule) and not (ns.MoverTempLocked and ns.MoverTempLocked(rule))   -- (a group locked for now from its mover tag: P5)
+    fr:EnableMouse(movable or tip)
     if tip then
-        pcall(fr.SetMouseClickEnabled, fr, Unl(rule) and true or false)
+        pcall(fr.SetMouseClickEnabled, fr, movable and true or false)
         pcall(fr.SetMouseMotionEnabled, fr, true)
     elseif fr.SetMouseClickEnabled then
         pcall(fr.SetMouseClickEnabled, fr, true)
@@ -2757,11 +2816,209 @@ function ns.RefreshAllVisuals()
     pcall(ns.UpdateGroupBoxes)   -- the groups' border / background boxes (G5 / G11)
 end
 
+-------------------------------------------------------------------------------
+-- Mover session (P4 / P5; Xaya 2026-11-06, her words: "arrow-key nudges yes; moves held until Save"; "lock icon in mover tool allows for
+-- a temporary lock to account for potentially multiple rule groups stacked on top of each other; does not force a save. exiting out of
+-- mover mode first creates a prompt to cancel or commit move changes. create a temp layout in drafts in case of game crash or something
+-- which auto-deletes after a user clicked save").
+-- - Opening the mover view (/xui unlock) keeps every display's and group's position aside (the draft, CueRulesDB.moverDraft). Moves
+--   show at once; leaving the mover view with any move asks "Save moves" (the draft is deleted) or "Cancel moves" (all go back).
+-- - The game writes saved data only at logout, /reload, a disconnect or quitting (not at a crash). So the draft covers a /reload or a
+--   logout without Save: at the next login a prompt offers to keep or undo those moves. After a crash nothing of the session was
+--   written: the last saved layout is what loads (the moves are lost, the layout is not damaged).
+-- - The lock icon on a group's mover tag locks that group for now: its displays let the mouse through (to reach what is under them)
+--   and its tag does not drag. It saves nothing and ends with the mover view.
+-- - Arrow keys nudge the display or group last clicked or dragged in the mover view by 1 pixel (Shift: 10). Not in combat.
+-------------------------------------------------------------------------------
+local mover = { tempLock = {}, sel = nil }
+local R_KEYS = { "x", "y", "anchor", "point", "anchorPlace" }
+local F_KEYS = { "cX", "cY", "cRel", "cPoint", "cRelPoint", "cFrame", "cAnchorTo" }
+local function Copy(t) if type(t) ~= "table" then return t end local o = {}; for k, v in pairs(t) do o[k] = Copy(v) end; return o end
+local function Same(a, b)
+    if type(a) ~= "table" or type(b) ~= "table" then return a == b end
+    for k, v in pairs(a) do if not Same(v, b[k]) then return false end end
+    for k in pairs(b) do if a[k] == nil then return false end end
+    return true
+end
+local function TakeDraft()
+    local d = { at = time and time() or 0, rules = {}, folders = {} }
+    for i, r in ipairs(ns.rules or {}) do
+        local v = r.visual
+        if type(v) == "table" then
+            local e = { i = i, n = tostring(r.name), snap = Copy(v.snap) }
+            for _, k in ipairs(R_KEYS) do e[k] = v[k] end
+            d.rules[#d.rules + 1] = e
+        end
+    end
+    for _, f in ipairs(ns.folders or {}) do
+        if f.id then
+            local e = {}
+            for _, k in ipairs(F_KEYS) do e[k] = f[k] end
+            d.folders[tostring(f.id)] = e
+        end
+    end
+    return d
+end
+local function DraftRule(e)   -- the rule a draft entry is about (same place in the list and same name), or nil
+    local r = ns.rules and ns.rules[e.i]
+    if r and tostring(r.name) == e.n and type(r.visual) == "table" then return r end
+end
+-- what moved since the draft was taken: a list of { kind = "display" / "group", obj, entry }
+function ns.MoverChanges(d)
+    d = d or (CueRulesDB and CueRulesDB.moverDraft)
+    local out = {}
+    if type(d) ~= "table" then return out end
+    for _, e in ipairs(d.rules or {}) do
+        local r = DraftRule(e)
+        if r then
+            local v, moved = r.visual, not Same(r.visual.snap, e.snap)
+            for _, k in ipairs(R_KEYS) do if v[k] ~= e[k] then moved = true end end
+            if moved then out[#out + 1] = { kind = "display", obj = r, entry = e } end
+        end
+    end
+    for fid, e in pairs(d.folders or {}) do
+        local f = ns.FolderById(fid) or ns.FolderById(tonumber(fid))
+        if f then
+            for _, k in ipairs(F_KEYS) do if f[k] ~= e[k] then out[#out + 1] = { kind = "group", obj = f, entry = e }; break end end
+        end
+    end
+    return out
+end
+local function Restore(d)
+    for _, c in ipairs(ns.MoverChanges(d)) do
+        if c.kind == "display" then
+            local v = c.obj.visual
+            for _, k in ipairs(R_KEYS) do v[k] = c.entry[k] end
+            v.snap = Copy(c.entry.snap)
+        else
+            for _, k in ipairs(F_KEYS) do c.obj[k] = c.entry[k] end
+            pcall(Container, c.obj)
+        end
+    end
+end
+local function EndSession(save)
+    local d = CueRulesDB and CueRulesDB.moverDraft
+    if d and not save then Restore(d) end
+    if CueRulesDB then CueRulesDB.moverDraft = nil end
+    wipe(mover.tempLock); mover.sel = nil
+    if ns.MarkDirty then ns.MarkDirty() end
+    ns.Fire("CONFIG_CHANGED")
+end
+function ns.MoverTempLocked(rule)   -- the display sits in a group locked for now from the mover tag's lock icon
+    if not (ns.unlocked and rule and rule.folder and next(mover.tempLock)) then return false end
+    for fid in pairs(mover.tempLock) do if InFolder(rule.folder, fid) then return true end end
+    return false
+end
+function ns.SetMoverTempLock(f, on)
+    if not f then return end
+    mover.tempLock[f.id] = on and true or nil
+    if mover.sel and mover.sel.kind == "group" and mover.sel.obj == f and on then mover.sel = nil end
+    for _, r in ipairs(ns.rules or {}) do
+        if r.visual and frames[r] and InFolder(r.folder, f.id) then pcall(ns.RefreshVisual, r) end
+    end
+end
+function ns.IsMoverTempLocked(f) return f and mover.tempLock[f.id] and true or false end
+function ns.MoverSelect(kind, obj) if ns.unlocked and obj then mover.sel = { kind = kind, obj = obj } end end
+function ns.MoverSelection() return mover.sel end
+-- P4: move the selected display or group by dx / dy pixels (its own units)
+function ns.MoverNudge(dx, dy)
+    local s = mover.sel
+    if not (ns.unlocked and s) then return false end
+    if InCombatLockdown and InCombatLockdown() then return false end
+    if s.kind == "group" then
+        if mover.tempLock[s.obj.id] then return false end
+        s.obj.cX = (s.obj.cX or 0) + dx; s.obj.cY = (s.obj.cY or 0) + dy
+        GroupPosChanged(s.obj)
+    else
+        local r = s.obj
+        if not (r.visual and frames[r]) or ns.MoverTempLocked(r) then return false end
+        r.visual.x = (r.visual.x or 0) + dx; r.visual.y = (r.visual.y or 0) + dy
+        local parent, dyn = ParentFor(r)
+        Place(frames[r], r, parent)
+        if dyn then LayoutDynamic(dyn) end
+        ns.Fire("CONFIG_CHANGED")
+    end
+    return true
+end
+local NUDGE = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 0 } }
+local function KeyFrame()   -- made on the first opening of the mover view (V14); shown only while it is open
+    if mover.keys then return mover.keys end
+    local k = CreateFrame("Frame", "XayaUIMoverKeys", UIParent)
+    k:EnableKeyboard(true)
+    k:SetScript("OnKeyDown", function(self, key)
+        local n = NUDGE[key]
+        local used = n and not (InCombatLockdown and InCombatLockdown()) and mover.sel ~= nil
+        if not (InCombatLockdown and InCombatLockdown()) and self.SetPropagateKeyboardInput then
+            pcall(self.SetPropagateKeyboardInput, self, not used)   -- every other key still reaches the game
+        end
+        if used then
+            local step = (IsShiftKeyDown and IsShiftKeyDown()) and 10 or 1
+            ns.MoverNudge(n[1] * step, n[2] * step)
+        end
+    end)
+    mover.keys = k
+    return k
+end
+function ns.MoverKeyFrame() return mover.keys end
+local function PromptAndThen(which, text, onSave, onCancel)
+    StaticPopupDialogs[which] = StaticPopupDialogs[which] or {
+        -- (no hide on Escape: an Escape must never throw moves away; the two buttons are her two choices)
+        text = "%s", button1 = "Save moves", button2 = "Cancel moves", timeout = 0, whileDead = true, hideOnEscape = false,
+        preferredIndex = 3,
+        OnAccept = function(self, data) if data and data.save then data.save() end end,
+        OnCancel = function(self, data, reason) if reason ~= "clicked" then return end if data and data.cancel then data.cancel() end end,
+    }
+    local dlg = StaticPopup_Show(which, text, nil, { save = onSave, cancel = onCancel })
+    if dlg and dlg.SetFrameStrata then dlg:SetFrameStrata("TOOLTIP") end
+    mover.prompt = which
+end
+function ns.MoverPromptShown() return mover.prompt end
+local function Lock()
+    ns.unlocked = false
+    for r in pairs(pairOf) do ns.ClearPair(r) end
+    if mover.keys then mover.keys:Hide() end
+    ns.Print("visuals locked.")
+    ns.RefreshAllVisuals()
+    ns.RefreshGroupTags()
+    if ns.QoL_RefreshAll then ns.QoL_RefreshAll() end
+    if ns.Bars_RefreshAll then ns.Bars_RefreshAll() end
+end
+-- leave the mover view: Save keeps the moves, Cancel puts every display and group back where it was when the view opened
+function ns.MoverExit(choice)
+    mover.prompt = nil
+    if choice == "save" or choice == "cancel" then EndSession(choice == "save") end
+    if ns.unlocked then Lock() end
+end
+-- at login: a draft left by a /reload or logout without Save
+function ns.MoverCheckDraft()
+    local d = CueRulesDB and CueRulesDB.moverDraft
+    if not d or ns.unlocked then return end
+    local n = #ns.MoverChanges(d)
+    if n == 0 then CueRulesDB.moverDraft = nil; return end
+    local when = (date and d.at and d.at > 0) and date("%Y-%m-%d %H:%M", d.at) or "earlier"
+    PromptAndThen("XAYAUI_MOVER_DRAFT", ("XayaUI: the mover view was left without Save (%s): %d display(s) or group(s) were moved. Keep these moves?"):format(when, n),
+        function() mover.prompt = nil; EndSession(true) end,
+        function() mover.prompt = nil; EndSession(false); ns.RefreshAllVisuals() end)
+end
+ns.AtLogin(function() ns.MoverCheckDraft() end)
+
 function ns.ToggleUnlock()
-    ns.unlocked = not ns.unlocked
-    if not ns.unlocked then for r in pairs(pairOf) do ns.ClearPair(r) end end
-    ns.Print(ns.unlocked and "visuals UNLOCKED: drag them, then /xui unlock again to lock. Hover a display or a group's name tab to see what it is; click it to open its settings."
-        or "visuals locked.")
+    if ns.unlocked then
+        -- P5: leaving the mover view with moves asks first
+        local n = #ns.MoverChanges()
+        if n > 0 then
+            PromptAndThen("XAYAUI_MOVER_EXIT", ("You moved %d display(s) or group(s) in the mover view. Save the moves, or cancel them (everything goes back to where it was)?"):format(n),
+                function() ns.MoverExit("save") end, function() ns.MoverExit("cancel") end)
+            return
+        end
+        ns.MoverExit("save")
+        return
+    end
+    if CueRulesDB then CueRulesDB.moverDraft = TakeDraft() end
+    wipe(mover.tempLock); mover.sel = nil
+    KeyFrame():Show()
+    ns.unlocked = true
+    ns.Print("visuals UNLOCKED: drag them, then /xui unlock again to lock (you are asked to save or cancel the moves). Arrow keys nudge the display or group you last clicked (Shift: 10 pixels). Hover a display or a group's name tab to see what it is; click it to open its settings; the lock on a group's tab locks it for now.")
     ns.RefreshAllVisuals()
     ns.RefreshGroupTags()
     if ns.QoL_RefreshAll then ns.QoL_RefreshAll() end
