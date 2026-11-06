@@ -70,7 +70,7 @@ check("a saved Defense tab opens Spells with the Defense filter", c.tab == "spel
 c.tab = "offense"; c = ns.CharToolkit_Cfg()
 check("a saved Offense tab opens Spells with the Offense filter", c.tab == "spells" and c.spellFilter == "offense", tostring(c.tab) .. " " .. tostring(c.spellFilter))
 c.spellFilter = "bogus"; c = ns.CharToolkit_Cfg()
-check("an unknown filter becomes All", c.spellFilter == "all", c.spellFilter)
+check("an unknown filter becomes None (all)", c.spellFilter == "all", c.spellFilter)
 local okD = pcall(CM.Build, c, "defense")
 check("the model still builds Defense / Offense for the tooltips and the sheet", okD and CM.Build(c, "defense").byKey.armor ~= nil and CM.Build(c, "offense").byKey.ap ~= nil)
 
@@ -100,7 +100,8 @@ check("kind: no words -> nil (All only)", CM.SpellKind(DESC[9004]) == nil)
 c.advanced = false
 c.spellFilter = "all"
 local m = CM.Build(c, "spells")
-check("Spell Math off: the Configure spell data button (#377), no spells", keys(spellSec(m)) == "spellsConfigure", keys(spellSec(m)))
+-- (QoL 0.7.24: the button is drawn above the sections, so the section keeps a note under its header)
+check("Spell Math off: the Configure spell data button (#377), no spells", keys(spellSec(m)) == "spellsConfigure,spellsOff", keys(spellSec(m)))
 check("Spell Math off: All draws only the Active spells section", secTitles(m) == "Active spells", secTitles(m))
 c.spellFilter = "defense"
 m = CM.Build(c, "spells")
@@ -170,27 +171,26 @@ check("a failing spellbook list does not break the tab", okE)
 ns.BuildSpellList = savedList
 c.spells = { { id = 263642, base = "ap" } }
 
--- 9. The panel: filter buttons ----------------------------------------------------------------------------------------------
+-- 9. The panel: the filter (QoL 0.7.24: a filter icon with a menu replaced the All / Offense / Defense buttons; the full checks are in
+-- tests/char_spells_compare_run.py)
 local d = render("spells")
-local fl = {}
-for _, b in ipairs(d.filters) do if b.shown then fl[#fl + 1] = b.text.text end end
-check("Spells tab: three filter buttons All, Offense, Defense", table.concat(fl, ",") == "All,Offense,Defense", table.concat(fl, ","))
-check("  ...drawn above the first header", recs(d, "filter")[1] and recs(d, "header")[1] and recs(d, "header")[1].y >= recs(d, "filter")[1].y + recs(d, "filter")[1].h,
-  recs(d, "header")[1] and recs(d, "header")[1].y)
-local def = d.filters[3]
+check("Spells tab: a filter icon, drawn above the first header", d.filterIcon and d.filterIcon.shown and recs(d, "filtericon")[1] and recs(d, "header")[1]
+  and recs(d, "header")[1].y >= recs(d, "filtericon")[1].y + recs(d, "filtericon")[1].h, recs(d, "header")[1] and recs(d, "header")[1].y)
+d.filterIcon.scripts.OnClick(d.filterIcon)
+d = drawn()
+local def
+for _, r in ipairs(d.filterMenu.rows) do if r.filter == "defense" then def = r end end
 GameTooltip.lines = {}
 def.scripts.OnEnter(def)
 local tipOK = false
 for _, l in ipairs(GameTooltip.lines or {}) do if tostring(l):find("defensive stats", 1, true) then tipOK = true end end
-check("  ...hovering one says what it shows", tipOK)
+check("  ...hovering a menu choice says what it shows", tipOK)
 def.scripts.OnClick(def)
 d = drawn()
-check("  ...clicking Defense switches the filter and redraws (Active defensive spells header)", c.spellFilter == "defense" and texts(d, "header")[1] == "- Active defensive spells",
+check("  ...choosing Defense switches the filter and redraws (Active defensive spells header)", c.spellFilter == "defense" and texts(d, "header")[1] == "- Active defensive spells",
   tostring(c.spellFilter) .. " " .. tostring(texts(d, "header")[1]))
 d = render("stats")
-local anyShown = false
-for _, b in ipairs(d.filters) do if b.shown then anyShown = true end end
-check("  ...the filter buttons are hidden on other tabs", not anyShown and #recs(d, "filter") == 0)
+check("  ...the filter icon is hidden on other tabs", not d.filterIcon.shown and #recs(d, "filtericon") == 0)
 -- layout (V11): inside the content width, no two text elements overlap
 local W = ns.CHARTOOLKIT_LAYOUT.content
 local function layoutOK(dd)
@@ -205,7 +205,7 @@ local function layoutOK(dd)
   end end
   return true
 end
-for _, f in ipairs({ "all", "offense", "defense" }) do
+for _, f in ipairs({ "all", "offense", "defense", "utility" }) do
   c.spellFilter = f
   local ok, why = layoutOK(render("spells"))
   check("layout Spells / " .. f .. ": inside the content width, no overlaps", ok, why)
@@ -232,23 +232,23 @@ ns.CharToolkit_Render = savedRender
 -- 10b. #380 / #378: the spell ID beside the name; the spell's number lines at the panel's text size -------------------------------
 c.tab = "spells"; c.spellFilter = "all"; c.fontSize = 11
 d = render("spells")
+-- (QoL 0.7.24: the spell is a row of columns; the name in Spell Name, "Spell ID: N" on the line under it; tests/char_spells_compare_run.py)
 local fl = drawn().model.byKey.spell9001
-check("#380: a spell's line reads its name, then \"Spell ID: N\" (no \"#N\" at the right edge)", fl and fl.label:find("^Flame Ring") ~= nil and fl.label:find("Spell ID: 9001", 1, true) ~= nil
-  and fl.value == "", fl and (fl.label .. " | " .. tostring(fl.value)))
-local lab
-for _, r in ipairs(recs(d, "label")) do if tostring(r.text):find("Spell ID: 9001", 1, true) then lab = r end end
-check("  ...drawn across the whole width (no value column beside it)", lab ~= nil and lab.w == ns.CHARTOOLKIT_LAYOUT.content, lab and lab.w)
+check("#380: a spell's name, and \"Spell ID: N\" with it (no \"#N\" at the right edge)", fl and fl.label == "Flame Ring" and fl.row.idText == "Spell ID: 9001"
+  and fl.value == "", fl and (fl.label .. " | " .. tostring(fl.row and fl.row.idText)))
+local lab, idr
+for _, r in ipairs(recs(d, "spellname")) do if r.text == "Flame Ring" then lab = r end end
+for _, r in ipairs(recs(d, "spellid")) do if r.text == "Spell ID: 9001" then idr = r end end
+check("  ...drawn in the Spell Name column, the ID under the name", lab ~= nil and idr ~= nil and idr.x == lab.x and idr.y > lab.y, lab and lab.w)
 local big, small = 0, 0
-for _, r in ipairs(recs(d, "pairValue")) do if r.size == c.fontSize then big = big + 1 else small = small + 1 end end
+for _, r in ipairs(recs(d, "spellpct")) do if r.size == c.fontSize then big = big + 1 else small = small + 1 end end
 check("#378: the spell math lines are drawn at the panel's text size (11), not one smaller", big > 0 and small == 0, big .. " at 11, " .. small .. " smaller")
-local pv
-for _, r in ipairs(recs(d, "pairValue")) do if tostring(r.text):find("of attack power", 1, true) then pv = r end end
-local Wc = ns.CHARTOOLKIT_LAYOUT.content
-check("  ...their value gets 70% of the line, so \"N% of attack power; 1 Agility = +N\" fits one line more often", pv ~= nil and pv.w == Wc - 12 - math.floor((Wc - 12) * 0.3), pv and pv.w)
 d = render("gear")
 local sm = 0
-for _, r in ipairs(recs(d, "pairValue")) do if r.size == c.fontSize - 1 then sm = sm + 1 end end
-check("  ...other tabs keep their smaller detail lines", sm > 0, sm)
+for _, r in ipairs(recs(d, "spellpct")) do if r.size == c.fontSize then sm = sm + 1 end end
+-- (QoL 0.7.23: the Gear tab's Durability lines, the smaller detail lines this checked, are gone; what stays checkable is that the
+-- spell math's full size does not leak to another tab)
+check("  ...other tabs do not take the spell math's full-size detail lines", sm == 0, sm)
 c.tab = "spells"
 
 -- 11. Settings -----------------------------------------------------------------------------------------------------------------
@@ -298,8 +298,8 @@ local function pr(it, label) for _, pp in ipairs(it and it.pairs or {}) do if pp
 check("talent modifiers: Fracture lists the picked talent whose text names it (Burning Fracture)", pr(m.byKey.spell263642, "Changed by talents") == "Burning Fracture",
   pr(m.byKey.spell263642, "Changed by talents"))
 check("  ...Flame Ring too; Ward has none", pr(m.byKey.spell9001, "Changed by talents") == "Burning Fracture" and pr(m.byKey.spell9005, "Changed by talents") == nil)
-check("usable now: the game says no for Flame Ring (form / requirement) -> said; Fel Breath only lacks power -> nothing said",
-  (pr(m.byKey.spell9001, "Usable now") or ""):find("^no") ~= nil and pr(m.byKey.spell9002, "Usable now") == nil)
+-- (QoL 0.7.24; Xaya 2026-11-05: "remove "usable now" from spirit bomb": the line is gone for every spell)
+check("no \"Usable now\" line, even where the game says not usable (Flame Ring)", pr(m.byKey.spell9001, "Usable now") == nil and pr(m.byKey.spell9002, "Usable now") == nil)
 local inSec
 for _, s2 in ipairs(m.sections) do if s2.key == "spellsInactive" then inSec = s2 end end
 check("Inactive: the castable talent you have not picked (Fel Lance), measured like the rest; the passive one and the picked one are not listed",
@@ -324,14 +324,15 @@ check("hovering a spell shows the game's own spell tooltip (SetSpellByID 263642)
 -- the buttons
 local function actionBtn(dd, key) for _, b in ipairs(dd.buttons) do if b.shown and b.item and b.item.key == key then return b end end end
 local rbt = actionBtn(d, "spellsRefresh")
-check("Refresh spell data: a button at the top of the list", rbt ~= nil and recs(d, "action")[1] and recs(d, "action")[1].text == "Refresh spell data")
+check("Refresh spell data: a button above the sections", d.spellBtn and d.spellBtn.shown and d.spellBtn.item.key == "spellsRefresh" and recs(d, "spellbtn")[1] and recs(d, "spellbtn")[1].text == "Refresh spell data")
+rbt = d.spellBtn
 ns.spellList, ns.talentList = "cached", "cached"
 if rbt then rbt.scripts.OnClick(rbt) end
 check("  ...a click reads the spellbook and talents again", ns.spellList == nil and ns.talentList == nil)
 c.advanced = false
 d = render("spells")
-local cbt = actionBtn(d, "spellsConfigure")
-check("Configure spell data (#377, her label): shown while Spell Math is off", cbt ~= nil and recs(d, "action")[1] and recs(d, "action")[1].text == "Configure spell data")
+local cbt = d.spellBtn
+check("Configure spell data (#377, her label): shown while Spell Math is off", cbt ~= nil and cbt.item.key == "spellsConfigure" and recs(d, "spellbtn")[1] and recs(d, "spellbtn")[1].text == "Configure spell data")
 if cbt then cbt.scripts.OnClick(cbt) end
 d = drawn()
 check("  ...a click turns Spell Math on and lists the spells", c.advanced == true and drawn().model.byKey.spell263642 ~= nil)

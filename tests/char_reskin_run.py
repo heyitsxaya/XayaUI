@@ -193,9 +193,9 @@ check("settings: Blizzard UI Reskin > Character Pane with its switch and one per
   and page.args.ilvl and page.args.enchants and page.args.stats)
 check("  ...the parts are greyed out while it is off", (function() rc.enabled = false; local d = page.args.ilvl.disabled(); rc.enabled = true; return d end)() == true)
 -- (QoL 0.7.22) the wider window is built: its switch, its extra width (120 - 300, greyed out while it is off) and the background opacity
-check("  ...the wider window has its switch (on by default), its extra width (120-300 px, default 240) and the background opacity (50-100%, default 95%)",
-  page.args.wide and page.args.wide.name:find("Wider window", 1, true) and page.args.widePx.min == 120 and page.args.widePx.max == 300
-  and ns.CHARRESKIN_DEFAULTS.wide == true and ns.CHARRESKIN_DEFAULTS.widePx == 240 and page.args.bgAlpha.min == 0.5 and ns.CHARRESKIN_DEFAULTS.bgAlpha == 0.95
+check("  ...the wider window has its switch (on by default), its extra width (0-300 px in 1 px steps, default 42: 380 / 582) and the background opacity (50-100%, default 95%)",
+  page.args.wide and page.args.wide.name:find("Wider window", 1, true) and page.args.widePx.min == 0 and page.args.widePx.max == 300
+  and ns.CHARRESKIN_DEFAULTS.wide == true and ns.CHARRESKIN_DEFAULTS.widePx == 42 and page.args.widePx.step == 1 and page.args.bgAlpha.min == 0.5 and ns.CHARRESKIN_DEFAULTS.bgAlpha == 0.95
   and (function() rc.wide = false; local d = page.args.widePx.disabled(); rc.wide = true; return d end)() == true and page.args.width == nil)
 CueRulesDB.characterReskin.widePx, CueRulesDB.characterReskin.bgAlpha = 5000, 0.1
 local cl = ns.CharReskin_Cfg()

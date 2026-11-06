@@ -26,6 +26,13 @@ another addon.
   at once when the feature is off, and the switch's text says a /reload removes it fully. Test it (V1): with the switch off at login,
   assert no frame of the feature exists, no event of it is registered, no OnUpdate / timer of it runs.
 
+- **V15 Request log** (Xaya, 2026-11-05): "set as your standing rule for ALL instances (current and future) that any time I make a comment, append it to a running log of tasks you MUST solve for. Nothing I submit to you unless otherwise explicitly retracted should EVER be dropped or ignored." Before any work in a session, read `docs/process/REQUEST-LOG.md`; append every
+  new message of hers to it (verbatim) in the same turn; when reporting, cite the log numbers closed and still open. A report
+  that says "done" for an item not on `main` is wrong.
+- **V16 Exact, or confirmed** (Xaya, 2026-11-05): "stop interpreting my suggestions if they appear prescriptive. reiterate them with confirmations if you are uncertain." and "do not guess and implement without providing proposals around that guess with confirmation." Her column lists, labels and layouts are built exactly; an extra
+  element (a "Note" column, a "(what feeds it)" label) is a defect. Anything not specified is proposed and confirmed first.
+- **V17 One landing per round** (Xaya, 2026-11-05): "all of these unless otherwise specified should have been bundled in with the core update. do a proper fix without pushing in piecemeal -- it creates more back-and-forth noise that is unnecessary"
+
 ## While writing tests
 - **V1 Outcome, not input.** Assert what the player sees or hears: drawn positions, text, which sound fires, the final list order. A
   test that only checks a setting was stored or a function was called does not count. Each new test must FAIL on the old code

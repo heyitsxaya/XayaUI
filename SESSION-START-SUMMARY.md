@@ -17,6 +17,18 @@ Every piece of addon work is multi-session (Xaya, 2026-11-04). New chat: read th
 Project documents outside the repo (Claude project docs, the Drive `Feature sketches` folder) hold long specs; ROADMAP section 13 says so. They are not readable from a cloud session.
 
 ## 2. Standing rules
+- **Request log: nothing is ever dropped** (Xaya, 2026-11-05 23:5x UTC, her words): "set as your standing rule for ALL instances (current and future) that any time I make a comment, append it to a running log of tasks you MUST solve for. Nothing I submit to you unless otherwise explicitly retracted should EVER be dropped or ignored." Every message from Xaya (each
+  request, correction, answer, screenshot description) is appended to `docs/process/REQUEST-LOG.md` in the same session turn, with
+  her words verbatim, a status (open / needs her confirmation / built on branch X / on main at commit Y / done in game) and where it
+  lives. Read the log at session start; an item leaves "open" only when it is on `main` (or she retracts it). Also: "review every instance where I gave you a precise data display structure and do not fail to capture and implement a single instance. do this across all chats."
+- **Prescriptive means exact** (Xaya, 2026-11-05, her words): "stop interpreting my suggestions if they appear prescriptive. reiterate them with confirmations if you are uncertain." A precise layout, column list, label or wording she gives is built
+  exactly as given: no extra columns, notes, labels or renames. Where her words leave something open, restate it and ask.
+- **No guessing without a confirmed proposal** (Xaya, 2026-11-05, her words): "do not guess and implement without providing proposals around that guess with confirmation." A choice she did not make (a size, a default,
+  a placement, a reading of an ambiguous sentence) is proposed to her with the options and waits for her answer before it is built.
+  The only exceptions are invisible implementation details (code structure, variable names, test layout).
+- **One bundled landing, no piecemeal pushes** (Xaya, 2026-11-05, her words): "all of these unless otherwise specified should have been bundled in with the core update. do a proper fix without pushing in piecemeal -- it creates more back-and-forth noise that is unnecessary" Collect the work for a round of her requests on
+  the branch, run the full suite once on the bundle, and land it on `main` once, with one report listing every request it closes
+  (by REQUEST-LOG number) and every one still open. Coordinate with any other active session so there is one combined push.
 - **Off costs nothing (Xaya, 2026-11-05 15:07 UTC, her words):** "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a standing rule for all current and future feature / element builds". Applied through rule V14
   (`docs/process/VERIFICATION.md`): while a feature is off, none of its frames, events, OnUpdate, timers or hooks exist or run; strict
   "never loads" needs a LoadOnDemand addon (an enabled addon's files are always read at login), and a hook placed while on stays inert
@@ -127,7 +139,7 @@ the QA steps above in game.
 - Cursor Highlight: "right clicking mouse with the cursor shape enabled makes cursor less responsive". No cause found in the code (the
   frame takes no mouse input; one cursor read and one move per frame). Asked: which feels slow (camera turn / shape lag after release /
   clicks), which shape and style, trail on, "hide while turning" on, and whether it goes away with the shape off.
-- Fiery Brand tooltip: hide "Aura icon ID" when it equals the spell's icon, and name each aura ID's source (Bonus): her yes needed.
+- Fiery Brand tooltip: her yes (2026-11-06). Built as Bonus 0.6.13 on `claude/inspiring-mendel-8r8qao` (QA F13): each Aura ID line names its source; a spell's aura icon ID equal to its own icon is left out. Lands with the next bundled push (V17).
 - The combat-log analyser (RM-INST's "complete" part, an offline tool in `tools/`): proposed as the next large safe item; her go needed.
 - The Enchant Slots default (QoL 0.7.6) uses eight slot numbers derived from the client data: flagged against the terms question (3b).
 - Deferred / dropped by her that evening: talent window labels (#388, deferred); raid role load condition (dropped).

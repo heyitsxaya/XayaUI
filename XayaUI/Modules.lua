@@ -147,8 +147,12 @@ function ns.ModuleMissingText(cmd)
 end
 
 -------------------------------------------------------------------------------
--- 4. Minimap button list. entry = { key, label, tooltip, action, stateFn (optional), order = number }
+-- 4. Minimap button list. entry = { key, label, tooltip, action, stateFn (optional), order = number, available = fn (optional) }
 -- Positional fields keep MinimapButton.lua's row code unchanged. Lower order is higher in the list.
+-- available (core 0.6.49): a function that returns false while the entry's feature is switched off; the list then leaves the row out
+-- (V14: a switched-off feature shows no row; first user: the Character Toolkit's Stat Calculator row, QoL 0.7.23). The entry stays
+-- registered, so the settings window's options tree is the same with the feature on and off (a sidebar tick reuses the drawn tree,
+-- tests/sidebar_switches_run.py); its row on Settings > Minimap Button is hidden instead.
 -------------------------------------------------------------------------------
 local launchers = {}
 
@@ -338,6 +342,7 @@ local function RegisterBlizzardPanel()
     btn:SetText("Open XayaUI")
     btn:SetScript("OnClick", function()
         if SettingsPanel and SettingsPanel:IsShown() then
+            if ns.MapTrace then ns.MapTrace("core: HideUIPanel(SettingsPanel)") end
             if HideUIPanel then HideUIPanel(SettingsPanel) else SettingsPanel:Hide() end
         end
         if not ns.IsOptionsOpen() then ns.ToggleUI() end
@@ -382,3 +387,79 @@ end
 local services = {}
 function ns.Provide(name, obj) if type(name) == "string" and type(obj) == "table" then services[name] = obj end end
 function ns.Service(name) return services[name] end
+
+-------------------------------------------------------------------------------
+-- 9. The world map report: /xui debug map (core 0.6.49; REQUEST-LOG #30, Xaya 2026-11-05: "map eclipses full screen" [the Silvermoon
+-- world map full screen], 2026-11-06: it happens "only with XayaUI on"). NOT a fix: the cause was not found offline (debug log of QoL
+-- 0.7.24). What decides it in Blizzard's code (12.1.5 source, read 2026-11-06): the map opens maximized (full screen, black around it)
+-- when QuestLogOwnerMixin:ShouldBeMinimized() is false: `C_GameRules.IsGameRuleActive(Enum.GameRule.MaximizeWorldMapDisabled) or
+-- GetCVarBool("miniWorldMap")` (Blizzard_WorldMap/QuestLogOwnerMixin.lua:194-198); its OnShow maximizes or minimizes to match the CVar
+-- (Blizzard_WorldMap.lua:365-372); maximizing calls MaximizeUIPanel and sizes the map from its parent's size (Blizzard_WorldMap.lua:
+-- 18-23, 438-455). No XayaUI file sets that CVar or calls a world map function (git grep: SetCVar only for the four volume CVars in
+-- Sound.lua). XayaUI's only calls into Blizzard's panel manager are counted here (ns.MapTrace) so the report says which ran since login.
+-- API (docs/reference/api): C_CVar.GetCVar(name: cstring) -> value: string? · SecretArguments=NotAllowed (namespaces.md:584);
+-- C_GameRules.IsGameRuleActive(gameRule: GameRule) -> isActive: bool · SecretArguments=AllowedWhenUntainted (namespaces.md:1926);
+-- Enum.GameRule.MaximizeWorldMapDisabled = 67 (enums.md:5681); GetSize(ignoreRect: bool = false) -> width, height · ConstSecretAccessor,
+-- SecretWhenAnchoringSecret; GetEffectiveScale() -> effectiveScale · SecretReturnsForAspect=[Scale]; GetScale(); IsShown() (widgets.md).
+-- INFERENCE (Blizzard's Lua, not API documentation): WorldMapFrame:IsMaximized() (Blizzard_WorldMap.lua:117) and GetUIPanel(key)
+-- (UIParentPanelManager.lua:918). Every read is pcall'd; a secret or missing answer prints "?". Nothing here runs until typed; the
+-- counter is one table write per call it counts.
+-------------------------------------------------------------------------------
+local mapTrace, mapOrder = {}, {}
+function ns.MapTrace(name)
+    local t = mapTrace[name]
+    if not t then t = { n = 0 }; mapTrace[name] = t; mapOrder[#mapOrder + 1] = name end
+    t.n = t.n + 1
+    t.last = GetTime and GetTime() or 0
+end
+function ns.MapTraceCounts() return mapTrace end   -- (tests)
+local function MapLines()
+    local function S(v)
+        if v == nil then return "?" end
+        if issecretvalue and issecretvalue(v) then return "?" end
+        if type(v) == "number" then return ("%.4g"):format(v) end
+        return tostring(v)
+    end
+    local function Try(fn, ...) if type(fn) ~= "function" then return nil end; local ok, a, b = pcall(fn, ...); if ok then return a, b end end
+    local function CV(name) local get = C_CVar and C_CVar.GetCVar or GetCVar; return S(Try(get, name)) end
+    local out = {}
+    local m = rawget(_G, "WorldMapFrame")
+    if type(m) ~= "table" then
+        out[#out + 1] = "world map: not loaded yet"
+    else
+        local w, h = Try(m.GetSize, m)
+        local maxd = Try(m.IsMaximized, m)
+        out[#out + 1] = ("world map: shown %s, maximized %s, size %s x %s, scale %s, effective scale %s"):format(S(Try(m.IsShown, m)),
+            S(maxd), S(w), S(h), S(Try(m.GetScale, m)), S(Try(m.GetEffectiveScale, m)))
+    end
+    local rule = C_GameRules and Enum and Enum.GameRule and Enum.GameRule.MaximizeWorldMapDisabled
+    out[#out + 1] = ("CVars: miniWorldMap %s (1 = opens small, 0 = opens full screen), questLogOpen %s, useUiScale %s, uiScale %s; game rule MaximizeWorldMapDisabled %s"):format(
+        CV("miniWorldMap"), CV("questLogOpen"), CV("useUiScale"), CV("uiScale"), rule and S(Try(C_GameRules.IsGameRuleActive, rule)) or "?")
+    local u = rawget(_G, "UIParent")
+    if type(u) == "table" then
+        local w, h = Try(u.GetSize, u)
+        out[#out + 1] = ("UIParent: shown %s, size %s x %s, scale %s, effective scale %s"):format(S(Try(u.IsShown, u)), S(w), S(h),
+            S(Try(u.GetScale, u)), S(Try(u.GetEffectiveScale, u)))
+    end
+    local slots = {}
+    for _, k in ipairs({ "fullscreen", "left", "center", "right", "doublewide" }) do
+        local f = Try(rawget(_G, "GetUIPanel"), k)
+        local n = type(f) == "table" and Try(f.GetName, f) or nil
+        slots[#slots + 1] = k .. " " .. (f and S(n or "(unnamed)") or "-")
+    end
+    out[#out + 1] = "Blizzard's panel slots: " .. table.concat(slots, ", ")
+    if #mapOrder == 0 then
+        out[#out + 1] = "XayaUI calls into Blizzard's panel layout since login: none"
+    else
+        local now = GetTime and GetTime() or 0
+        for _, name in ipairs(mapOrder) do
+            local t = mapTrace[name]
+            out[#out + 1] = ("XayaUI since login: %s x%d (last %ds ago)"):format(name, t.n, math.floor(now - (t.last or now) + 0.5))
+        end
+    end
+    return out
+end
+ns.MapReportLines = MapLines   -- (tests)
+function ns.MapReport()
+    for _, l in ipairs(MapLines()) do ns.Print("map: " .. l) end
+end

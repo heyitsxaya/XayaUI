@@ -85,7 +85,10 @@ function ns.CharWidthProbe_Run(arg)
         local p = probe.mainHand
         Step("main hand slot", function() mh:ClearAllPoints(); mh:SetPoint(p[1], p[2], p[3], p[4] + math.floor(px / 2), p[5]) end)
     end
-    if type(UpdateUIPanelPositions) == "function" then Step("panel placement", function() UpdateUIPanelPositions(cf) end) end
+    if type(UpdateUIPanelPositions) == "function" then
+        if ns.MapTrace then ns.MapTrace("width probe: UpdateUIPanelPositions(CharacterFrame)") end
+        Step("panel placement", function() UpdateUIPanelPositions(cf) end)
+    end
     Say(("on, %d px wider (%d -> %d). %s."):format(px, math.floor(w0 + 0.5), math.floor(cf:GetWidth() + 0.5), table.concat(steps, ", ")))
     Say("1) Look: right-hand slots and the stats pane moved out, model wider, weapons centred?")
     Say("2) With it open, press P (spellbook) and N (talents): do they sit beside it without overlapping?")

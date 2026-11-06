@@ -57,12 +57,17 @@ local function collect(g, path)
   end
 end
 for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do collect(node(T, tab), { tab }) end
+-- (QoL 0.7.24 / Bonus 0.6.14: qol>chartoolkit>tipsPart, Xaya #46 "Assume yes for now"; bonus>tooltips, #45 "Enhanced Tooltips";
+-- bonus>utilities>notepad is the whole Notepad now, #47)
 local WANT = { "qol>chartoolkit", "qol>chartoolkit>panelPart", "qol>chartoolkit>overlayPart", "qol>chartoolkit>spells",
-  "qol>cursor>highlight", "qol>cursor>trail", "bonus>datapanels", "bonus>utilities>notepad",
+  "qol>chartoolkit>tipsPart", "qol>cursor>highlight", "qol>cursor>trail", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad",
   -- (S1 #48, Options 0.6.47: the Blizzard UI Reskin tab: its own switch on the All reskins row, and one per reskin)
   "reskin>allreskin", "reskin>charreskin", "reskin>chatpanel", "reskin>gamemenu", "reskin>shoppinglist" }
 for _, k in ipairs(WANT) do check("A: the row " .. k .. " has an on / off for its tick box", found[k] ~= nil) end
-check("A: no other row has one (Cursor, Tooltips, Utilities, Calculator have no single on / off)", foundN == #WANT, foundN)
+check("A: no other row has one (Cursor, Utilities, Calculator have no single on / off)", foundN == #WANT, foundN)
+check("A: the switches' names: Enhanced Tooltips, Notepad, Tooltip lines (her words)", found["bonus>tooltips"] and found["bonus>tooltips"].name == "Enhanced Tooltips"
+  and found["bonus>utilities>notepad"] and found["bonus>utilities>notepad"].name == "Notepad"
+  and found["qol>chartoolkit>tipsPart"] and found["qol>chartoolkit>tipsPart"].name == "Tooltip lines")
 -- the switch is no longer on the pages: no toggle anywhere in the QoL / Bonus Features tabs carries a switch's name (or the old
 -- overview switches' names)
 local names = { ["panel"] = true, ["cursor highlight"] = true, ["gradient cursor trail"] = true, ["tooltip lines"] = true }
@@ -77,7 +82,7 @@ local function toggles(g, path)
   end
 end
 toggles(node(T, "qol"), "qol"); toggles(node(T, "bonus"), "bonus"); toggles(node(T, "reskin"), "reskin")
-check("A: the pages no longer show those switches (Show Notepad, Enable Custom Data Panels and Bars, Character Toolkit, ...)", #left == 0, table.concat(left, "; "))
+check("A: the pages no longer show those switches (Enable Custom Data Panels and Bars, Character Toolkit, Tooltip lines, the reskins' own switches, ...)", #left == 0, table.concat(left, "; "))
 section("A: explanations", function()
 check("A: every switch keeps the explanation its old switch had (shown on the box's hover)", (function()
   for _, k in ipairs({ "qol>chartoolkit", "qol>cursor>highlight", "qol>cursor>trail", "bonus>datapanels" }) do
@@ -201,14 +206,16 @@ CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.consoleAutoOpen = false
 CueRulesDB.dataPanels.bl.enabled = true   -- one panel switched on, so the master switch shows on screen
 pcall(ns.ToggleUI); settle()
 ACD:SelectGroup("CueRules", "bonus", "tooltips"); settle()
-check("the window is open on Bonus Features > Tooltips", root() ~= nil and selected("bonus") == "tooltips", tostring(selected("bonus")))
+check("the window is open on Bonus Features > Enhanced Tooltips", root() ~= nil and selected("bonus") == "tooltips", tostring(selected("bonus")))
 
 -- A, Bonus Features
 section("A: Bonus Features", function()
 local bN, bD = box("bonus", "utilities\001notepad"), box("bonus", "datapanels")
-check("A: Notepad's row has a tick box, unticked like its setting (box hidden)", bN ~= nil and bN:GetChecked() == false and CueRulesDB.notepad.shown == false)
+check("A: Notepad's row has a tick box, ticked like its setting (the Notepad on, its box hidden)", bN ~= nil and bN:GetChecked() == true
+  and CueRulesDB.notepad.enabled == true and CueRulesDB.notepad.shown == false)
 check("A: Custom Data Panels and Bars' row has a tick box, unticked like the master switch", bD ~= nil and bD:GetChecked() == false and CueRulesDB.dataPanels.general.enabled == false)
-check("A: no tick box on Tooltips, Utilities or Calculator", box("bonus", "tooltips") == nil and box("bonus", "utilities") == nil
+check("A: Enhanced Tooltips' row has a tick box, ticked (on by default); none on Utilities or Calculator", box("bonus", "tooltips") ~= nil
+  and box("bonus", "tooltips"):GetChecked() == true and box("bonus", "utilities") == nil
   and box("bonus", "utilities\001calculator") == nil and row("bonus", "tooltips") ~= nil and row("bonus", "utilities") ~= nil)
 do
   local r, t, x = row("bonus", "datapanels"), row("bonus", "tooltips"), bD
@@ -217,7 +224,7 @@ do
   check("A: the box sits on its row, in the empty arrow slot left of the name, above the row, and takes the mouse (a click on it is not the row's)",
     x and x:GetParent() == r and p == "LEFT" and rel == r and rp == "LEFT" and ox == 6 and x:GetFrameLevel() > r:GetFrameLevel() and x:IsMouseEnabled(),
     tostring(p) .. " " .. tostring(ox))
-  check("A: ...and it costs the name nothing: same name room as Tooltips (no box) on the same level (#369)", r and t and r.xuiTextL == t.xuiTextL
+  check("A: ...and the same name room as Enhanced Tooltips (also boxed) on the same level (#369)", r and t and r.xuiTextL == t.xuiTextL
     and r.xuiTextR == t.xuiTextR and r.xuiTextR == 4, tostring(r and r.xuiTextL) .. "/" .. tostring(r and r.xuiTextR) .. " vs " .. tostring(t and t.xuiTextL) .. "/" .. tostring(t and t.xuiTextR))
   check("A: the box ends before the name starts (no overlap, V11)", x and ox + x:GetWidth() <= r.xuiTextL - 2, tostring(ox) .. "+" .. tostring(x and x:GetWidth()) .. " vs " .. tostring(r.xuiTextL))
 end
@@ -233,14 +240,23 @@ check("A: the box's hover says what it does (the switch's name and explanation)"
   return s:find("Enable Custom Data Panels and Bars", 1, true) ~= nil and s:find("Master switch", 1, true) ~= nil, s
 end)())
 
-check("A: Notepad: the box is clickable", click("bonus", "utilities\001notepad", true))
-check("A: Notepad box ticked: the setting is on and the notepad shows", CueRulesDB.notepad.shown == true and _G.XayaUINotepad ~= nil and _G.XayaUINotepad:IsShown())
-check("A: ...the row was not selected (Tooltips is still open)", selected("bonus") == "tooltips", tostring(selected("bonus")))
-oneRedraw("A: Notepad box ticked")
-check("A: ...and the redrawn box shows it ticked", box("bonus", "utilities\001notepad") and box("bonus", "utilities\001notepad"):GetChecked() == true)
-click("bonus", "utilities\001notepad", false)
-check("A: Notepad box unticked: setting off, the notepad is hidden", CueRulesDB.notepad.shown == false and _G.XayaUINotepad ~= nil and not _G.XayaUINotepad:IsShown())
+-- (Bonus 0.6.14) the Notepad's box is the whole feature: shown first with Show Notepad (its page), then the row unticked and ticked
+ns.Notepad_SetShown(true); settle()
+check("A: Notepad: the box is clickable", click("bonus", "utilities\001notepad", false))
+check("A: Notepad box unticked: the Notepad is off, its box hidden, its events let go (Show Notepad stays saved)", CueRulesDB.notepad.enabled == false
+  and CueRulesDB.notepad.shown == true and _G.XayaUINotepad ~= nil and not _G.XayaUINotepad:IsShown())
+check("A: ...the row was not selected (Enhanced Tooltips is still open)", selected("bonus") == "tooltips", tostring(selected("bonus")))
 oneRedraw("A: Notepad box unticked")
+check("A: ...and the redrawn box shows it unticked", box("bonus", "utilities\001notepad") and box("bonus", "utilities\001notepad"):GetChecked() == false)
+click("bonus", "utilities\001notepad", true)
+check("A: Notepad box ticked: on again, the box shows as saved", CueRulesDB.notepad.enabled == true and _G.XayaUINotepad:IsShown())
+oneRedraw("A: Notepad box ticked")
+ns.Notepad_SetShown(false); settle()
+click("bonus", "tooltips", false)
+check("A: Enhanced Tooltips box unticked: the feature is off (nothing of it runs)", CueRulesDB.tooltips.enabled == false and ns.TT.on == false)
+oneRedraw("A: Enhanced Tooltips box unticked")
+click("bonus", "tooltips", true)
+check("A: Enhanced Tooltips box ticked: on again", CueRulesDB.tooltips.enabled == true and ns.TT.on == true)
 click("bonus", "datapanels", true)
 check("A: Data Panels box ticked: master switch on, the left panel shows", CueRulesDB.dataPanels.general.enabled == true
   and _G.XayaUIDataPanel_bl ~= nil and _G.XayaUIDataPanel_bl:IsShown())
@@ -258,7 +274,7 @@ do
   check("B: Bonus Features has a Utilities row with Calculator and Notepad under it", u and c and n and u.level == 1 and c.level == 2 and n.level == 2)
   local t = tree("bonus"); local order = {}
   for _, b in ipairs(t.buttons) do if b:IsShown() then order[#order + 1] = tostring(b.uniquevalue):gsub("\001", ">") end end
-  check("B: the rows read Custom Data Panels and Bars, Tooltips, Utilities > Calculator, Notepad (by name, #274); no Notepad row of its own",
+  check("B: the rows read Custom Data Panels and Bars, Enhanced Tooltips, Utilities > Calculator, Notepad (by name, #274); no Notepad row of its own",
     table.concat(order, ",") == "datapanels,tooltips,utilities,utilities>calculator,utilities>notepad", table.concat(order, ","))
   local up = node(ns.BuildOptionsTable(), "bonus", "utilities")
   check("B: Utilities' own page is an overview of its tools", up and up.args.calcNote and up.args.calcNote.name:find("Calculator", 1, true)
@@ -266,8 +282,8 @@ do
 end
 ns.Notepad_OpenSettings(); settle()
 check("B: the Notepad's settings opener goes to Utilities > Notepad", selected("bonus") == "utilities\001notepad", tostring(selected("bonus")))
-check("A: the Notepad page is drawn without its old Show Notepad switch", findW(root(), function(w) return optName(w) == "Lock position and size" end) ~= nil
-  and findW(root(), function(w) return w.type == "CheckBox" and optName(w) == "Show Notepad" end) == nil)
+check("A: the Notepad page has Show Notepad on it again (Bonus 0.6.14: the row's tick box is the whole Notepad)", findW(root(), function(w) return optName(w) == "Lock position and size" end) ~= nil
+  and findW(root(), function(w) return w.type == "CheckBox" and optName(w) == "Show Notepad" end) ~= nil)
 ACD:SelectGroup("CueRules", "bonus", "utilities", "calculator"); settle()
 local openBtn = findW(root(), function(w) return w.type == "Button" and optName(w) == "Open calculator" end)
 check("B: the Calculator page has an Open calculator button", openBtn ~= nil)
@@ -313,8 +329,9 @@ local function ctPlace()
 end
 check("A: Character Toolkit has parts, so its box sits right after the arrow slot; only that name moves, by the box's width (16 + 1)", ctPlace())
 click("qol", "chartoolkit", true)
-check("A: Character Toolkit ticked: on; Panel, Slot Overlays and Spell Math now show under it, each with its own box (Panel ticked: shown by default)",
+check("A: Character Toolkit ticked: on; Panel, Slot Overlays, Spell Math and Tooltip lines now show under it, each with its own box (Panel and Tooltip lines ticked: on by default)",
   CueRulesDB.characterToolkit.enabled == true and box("qol", "chartoolkit\001panelPart") and box("qol", "chartoolkit\001overlayPart") and box("qol", "chartoolkit\001spells")
+  and box("qol", "chartoolkit\001tipsPart") and box("qol", "chartoolkit\001tipsPart"):GetChecked() == true
   and box("qol", "chartoolkit\001panelPart"):GetChecked() == true and box("qol", "chartoolkit\001overlayPart"):GetChecked() == false)
 check("A: ...and the box stays where it was now that the arrow shows (it never moves under the mouse)", ctPlace() and row("qol", "chartoolkit").xuiChev ~= nil and row("qol", "chartoolkit").xuiChev:IsShown())
 oneRedraw("A: Character Toolkit ticked")
