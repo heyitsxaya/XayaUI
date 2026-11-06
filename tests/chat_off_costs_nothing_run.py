@@ -242,14 +242,14 @@ run("SET('Fade the chat when it is idle', false)")
 check("B17 Fade off again: its driver is gone (only the upkeep is left) and the chat is opaque at once", n(run, "ONUPDATES") == 1 and pane.GetAlpha(pane) > 0.99,
       (both(run, "ONUPDATES"), pane.GetAlpha(pane)))
 
-run("SET('Show the Chat Bar', true)")
+run("SET('Show the Chat Data Panel', true)")
 W.update(1.1, 2)
 bar = run("return C.Bar()")
 check("B18 Chat Bar on: built and shown, its ticker starts (one more OnUpdate)", bar is not None and bar.IsShown(bar) is True and n(run, "ONUPDATES") == base + 1,
       both(run, "ONUPDATES"))
 txt = run("local t = {} for _, o in ipairs({ C.Bar():GetChildren() }) do for _, k in ipairs(o._kids or {}) do if k._text and k._text ~= '' then t[#t+1] = k._text end end end return table.concat(t, ' | ')")
 check("B19 (works) Chat Bar on: its blocks show their text", "FPS" in str(txt), txt)
-run("SET('Show the Chat Bar', false)")
+run("SET('Show the Chat Data Panel', false)")
 check("B20 Chat Bar off again: hidden, its ticker gone (only the upkeep is left)", bar.IsShown(bar) is False and n(run, "ONUPDATES") == 1, both(run, "ONUPDATES"))
 
 run("SET('Keep recent messages for the history window', true)")
@@ -316,7 +316,7 @@ run("W.ctrl = true; local n0 = #W.ignored; _G.SetItemRef('player:Spammer-Realm',
 d = run("return DELTA(...)", s0)
 check("B34 links and Ctrl + right-click off: a click on a name runs no Chat Panel code (hook idle) and ignores no one", run("return W.ign") == 0 and d.chat == 0,
       (run("return W.ign"), d.chat, dict(run("return M.by"))))
-run("SET('Ctrl + right-click a player\\'s name in chat to ignore them', true); W.ctrl = true; local n0 = #W.ignored; _G.SetItemRef('player:Spammer-Realm', 'x', 'RightButton'); W.ctrl = false; W.ign = #W.ignored - n0")
+run("SET('Click a player\\'s name in chat to ignore them', true); W.ctrl = true; local n0 = #W.ignored; _G.SetItemRef('player:Spammer-Realm', 'x', 'RightButton'); W.ctrl = false; W.ign = #W.ignored - n0")
 check("B35 (works) Ctrl + right-click on: it ignores that player", run("return W.ign") == 1)
 
 run("SET('Show the toggle button beside the chat', true)")

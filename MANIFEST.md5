@@ -657,7 +657,7 @@ a8e5c2bbdb81d4bb1a3dffb7e6c05a9c  tests/char_toolkit_run.py
 0f46f11222291c70483718691d730c62  tests/charges_combat_run.py
 b5fba1aa0deaaf3049d15fa46843378c  tests/chat_collapse_bar_run.py
 4632ee7a60dfe31993382bead4ad4837  tests/chat_data_panel_side_run.py
-7f1a2e0398868fda9fd60a58a9e69bb5  tests/chat_off_costs_nothing_run.py
+fb25f035093a928c60f1e054b21dacee  tests/chat_off_costs_nothing_run.py
 71d3526a8ec4eb48720197b41d1b8ccd  tests/chat_pieces_run.py
 f9166bc2445981bed079d2483d4ced4e  tests/chat_run.py
 48559d62f35d5c11d3d04547b997b458  tests/chat_tab_align_run.py
