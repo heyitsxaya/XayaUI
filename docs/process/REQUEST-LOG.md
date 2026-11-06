@@ -13,7 +13,7 @@ How this file works:
 - Session that logged it: S1 = session 014bN6tWZxqCW85vMEyHdfnt (branch `claude/adoring-hawking-wyda59`). Other sessions add their own
   rows with their session id; a cross-chat review of other sessions' requests is section B.
 
-Status as of 2026-11-06 ~00:25 UTC. `main` = `7426e7f` (combined push by S4); earlier rows were checked against `0ef9cb0`; S1's branch head = `af87755` (QoL 0.7.23, core 0.6.49), not on `main`.
+Status as of 2026-11-06 ~00:25 UTC (section B: ~00:50 UTC). `main` = `7426e7f` (combined push by S4); earlier rows were checked against `0ef9cb0`; S1's branch head = `af87755` (QoL 0.7.23, core 0.6.49), not on `main`.
 
 ## A. Session S1 (this chat), in the order she sent them
 
@@ -152,4 +152,36 @@ help 14 lines, /xui debug <name>). Not on `main`; waits for her confirmations. V
 Chat 0.6.17, Reskin 0.6.3).
 
 ## B. Other sessions' chats (cross-chat review, her #44)
-To be filled by the cross-chat review: every precise data-display structure she gave in any session, with its status.
+Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
+a single instance. do this across all chats."
+
+The full review (137 rows from 11 sessions, her words verbatim, each ★ display structure compared field by field with the code on `main`
+`7426e7f`) is [REQUEST-LOG-CROSS-CHAT.md](REQUEST-LOG-CROSS-CHAT.md). Sessions S2-S6 log their own rows (sections A2-A6) and were not
+redone. Limits: the "XayaUI High-Effort Build" session (014bN6tUvbkCv9Ha9VgNF4Xa) before 2026-11-04 14:07 was read only through its
+compaction summary and debug-log quotes, so messages of hers from that stretch that neither quotes are missing; the engine session before
+2026-11-05 21:37 was read through its compaction summary (near-verbatim); screenshots were not opened.
+
+Every ★ row that is OPEN or DIFFERS, with its owner and what happens next (V16: anything that is a reading of her words waits for her
+yes; an exact instruction is built as written):
+
+| B# | Rows | What differs (short) | Owner | Status | Proposal / question to her |
+|---|---|---|---|---|---|
+| B1 | ENG-26, ENG-28, ENG-29 | Auto-populate table built to her columns, labels and order on branch `claude/fervent-cerf-hldtwn` 246dc4f (Options 0.6.46); `main` still has the old list picker with four cue types | Engine session 014bN6tV8wAAEXAShpTKqUfz | BRANCH | Asked the engine session to land it. Its additions she did not ask for ("Make the ticked rules" button, "Nothing to list yet" line, spell icons in Name cells, "(not yet)" on two cue types) are that session's proposals to her. |
+| B2 | ENG-12 | The "% / rating" toggle she said "doesn't do anything" is still there (title-row button "Show: % / rating", a click on one line flips it, Settings "Rating lines" and its reset button), beside the columns that already show rating, current value and Pt value | S1 | CONFIRM | Proposal: remove the toggle in all three places, since the columns already show the three values side by side (that her "three" means rating, current value and Pt value is the sessions' reading: INFERENCE). Yes / no. |
+| B3 | ENG-24 | Her sentence: "this _____ requires blizzard's cooldown manager to track it before it can be tracked by the addon." Drawn: the blank filled with kind + name in parentheses, a second instruction sentence added, and a second message she did not write | Engine session | CONFIRM | Question: what fills the blank (the kind, e.g. "aura", or kind and name), and do the added sentence and the second message stay or go? "Enable tracking" button: waits on her answer about probing. |
+| B4 | ENG-4, CHAT-3d | Group page: no "config" tab; no "original character / source of creation"; enable / disable is two buttons, not a toggle; "Sound Channel Override" reads "Sound Channel for This Group"; Group Size has no "auto" (auto default); the relative / point two-column layout not verified | S3 (#372, R12) | OPEN / CONFIRM | Routed to S3 with her field list. |
+| B5 | HIEFF-D5 | Dynamic group "Sort": her order default, expiration, name, important, manual; drawn Manual first as "Manual (your order)", plus a "Reverse" toggle she did not list | S3 (group page) | OPEN (order, label); CONFIRM (Reverse) | Her order and the plain label "Manual" are exact: build as written. Question: keep or remove "Reverse"? |
+| B6 | ATTR-1 | Credits page: subheaders are collapsible capitalised rows with a count and a grey line (not h2); one box per credit, not one per section; +10 px gutter not verified; an intro paragraph added | S1 (Settings > Acknowledgements, `XayaUI_Options/AddonInfo.lua`) | CONFIRM | Proposal: subheaders as plain h2 in normal case (no arrow, count or grey line); one unrounded box per section, its credits as rows (no columns), background 10 % more opaque; gutter +10 px; intro paragraph removed. Yes / no per point. |
+| B7 | HIEFF-5 | #319 tick box beside Class / Specialization: drawn "Always load: only this class / specialization"; her words "modify always show to this {}" | Rules page (engine session) | CONFIRM | Question: label exactly "Modify always show to this class" / "Modify always show to this specialization"? |
+| B8 | ENG-15, CHARWIN-2 | No line shows how a stat changes Block; no "secondary stat → bonus modifier" line | S1 (Stat Calculator, Stat Weights "Influences") | OPEN; CONFIRM (meaning) | Question: which "bonus modifier" (the attack power bonus from mastery is one reading: INFERENCE), and which classes' block (block exists only for some tanks). Built once the source data is found in the game's API or tooltips, never guessed. |
+| B9 | ENG-9 vs S1 #27 | ENG-9: Spell ID beside the name (on `main`); her later #27: spell ID under the name | S1 | CONFIRM | The bundle builds #27 (her later words). Confirm #27 replaces ENG-9. |
+| B10 | ENG-13 | Header above the tabs adds the class colour and two item levels (equipped and overall) | S1 | CONFIRM | Keep or remove the class colour and the second item level? |
+| B11 | ENG-14 | Tabs read "Stats" / "Gear" / "Spells"; her words "what if, gear review, and spells" | S1 | CONFIRM | Were those labels? If yes: "What If" / "Gear Review" / "Spells". |
+| B12 | CHARWIN-1 | No line labelled "true rating" | S1 | BRANCH | Her later "T/L Rating" column (#36, Stat Weights) carries it; lands with the bundle. |
+| B13 | CHAT-9 | "Rule templates is a bit of a misnomer. They are pre-created rules" | Engine session (with #10 / #39) | OPEN | The feature does not exist yet; the name is recorded for it. |
+| B14 | PART-1 | "partition out the all rules segment from the sidebar and make it its own row in the same container" (2026-10-31); its branch is gone, the change cannot be traced | — | CONFIRM | Question: is today's sidebar (All Rules as the first root row, a blank divider row after its tree) what she asked for? |
+
+Other OPEN and CONFIRM rows (no display structure) are listed in the full file, section (2): ENG-5 (#375 speech channel), ENG-25 (debuff
+learner), CHAT-3a (progress bars), CHAT-3b (= #40), CHAT-3e (= #10), CHAT-5, CHAT-6 (`/notes`, `/calc`), WHISP-1 (whisper tabs in the
+chat window: waits on her `/xui chat whispers` output), TIPS-1, TIPS-3, TIPS-10, TIPS-12, TIPS-23, HIEFF-3, HIEFF-9, HIEFF-10, HIEFF-17,
+REPO-2, PART-3, and LAST-1 / LAST-2 (never answered: she stopped those turns).
