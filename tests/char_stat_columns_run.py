@@ -211,8 +211,10 @@ check("  ...value and Pt value are separate font strings at their columns' x (th
 local ar = lineCells(d, "pairLabel", "» Armor")
 check("» Armor: value +2,684, Pt value 1.02 (101.8% of Agility per point, from the mastery text), each in its column",
   T(ar.value) == "+2,684" and at(ar.value, hVal) and T(ar.per) == "1.02" and at(ar.per, hPer), T(ar.value) .. " | " .. T(ar.per))
-check("  ...its note '101.8% of Agility, mastery' is a font string of its own, under the line, from the Current value column",
-  T(ar.note) == "101.8% of Agility, mastery" and ar.note.x == hVal.x and ar.note.y >= ar.value.y + ar.value.h and ar.note.x + ar.note.w == LAY.content, T(ar.note))
+-- (QoL 0.7.24; Xaya: "I did not ask for notes" / "Remove it entirely": no Note column and no note text, not even under the line)
+local function drawnText(s) for _, r in ipairs(d.layout) do if tostring(r.text):find(s, 1, true) then return r end end end
+check("  ...no note with it: '101.8% of Agility, mastery' is drawn nowhere (no Note column, nothing under the line)",
+  ar.note == nil and drawnText("101.8% of Agility, mastery") == nil, T(ar.note))
 local dg = lineCells(d, "pairLabel", "» Dodge")
 check("» Dodge: value +5.00%, no Pt value (the game gives none), no note", T(dg.value) == "+5.00%" and at(dg.value, hVal) and dg.per == nil and dg.note == nil, T(dg.value))
 -- the abilities: each its own line nested under "» Abilities (per 100)" (QoL 0.7.20)
@@ -279,9 +281,11 @@ local okB, whyB = boxesOK(d, 8)
 check("[0.7.20] every box on the Stats tab (8: Agility, 4 secondary, 3 tertiary; All ratings gone in QoL 0.7.23) is under Change, at the right edge, the last cell of its row",
   okB, whyB)
 local pa = lineCells(d, "pairLabel", "» Parry")
-check("  » Parry: +10.15% | 52.0 / 1% (crit rating for 1% parry) | note before DR", T(pa.value) == "+10.15%" and T(pa.per) == "52.0 / 1%" and T(pa.note) == "before DR", T(pa.value) .. " | " .. T(pa.per) .. " | " .. T(pa.note))
+check("  » Parry: +10.15% | 52.0 / 1% (crit rating for 1% parry); no note (\"before DR\" is gone)", T(pa.value) == "+10.15%" and T(pa.per) == "52.0 / 1%" and pa.note == nil
+  and drawnText("before DR") == nil, T(pa.value) .. " | " .. T(pa.per) .. " | " .. T(pa.note))
 local dr = lineCells(d, "pairLabel", "Diminishing returns")
-check("  Diminishing returns: value none yet, the next threshold in the note", T(dr.value) == "none yet" and T(dr.note) == "next at 1,380 rating (852 away)", T(dr.value) .. " | " .. T(dr.note))
+check("  Diminishing returns: value none yet; no note (\"next at 1,380 rating (852 away)\" is gone)", T(dr.value) == "none yet" and dr.note == nil
+  and drawnText("next at 1,380 rating") == nil, T(dr.value) .. " | " .. T(dr.note))
 local hasteHead, hasteAb = lineCells(d, "pairLabel", "» Abilities (their text names Haste)"), nested(d, "» Abilities (their text names Haste)")
 check("[0.7.20] Haste's abilities: each on its own nested line, its recharge in Current value: Infernal Strike 9.6 s recharge (no list in a note)",
   #hasteAb == 1 and T(hasteAb[1].label) == "Infernal Strike" and hasteAb[1].label.x == 24 and T(hasteAb[1].value) == "9.6 s recharge"
@@ -293,22 +297,31 @@ check("(guard, V11) layout, default width: inside the width, no overlaps (wrappe
 -- 2. Wide panel (760: content 740): the note gets its own column ------------------------------------------------------------
 setWidth(760)
 d = render()
-local hNote = find(d, "colhead", "Note")
+-- (QoL 0.7.24) no Note column at any width: the heads are exactly Stat | Rating | Current value | Pt value | Change
 hVal, hPer, hCh = find(d, "colhead", "Current value"), find(d, "colhead", "Pt value"), find(d, "colhead", "Change")
-check("wide panel: a Note column head after Pt value", hNote and hPer and hNote.x >= hPer.x + hPer.w and hNote.y == hPer.y and LAY.content == 740, T(hNote))
-check("[0.7.20] ...the Note column sits between Pt value and Change; Change stays at the far right", hNote and hCh and hNote.x + hNote.w + GUT <= hCh.x
-  and hCh.y == hNote.y and hCh.x + hCh.w == LAY.content, hNote and hCh and (hNote.x + hNote.w .. " / " .. hCh.x))
+-- (the Gear Summary's own table, Gear | Character | Elsewhere, is not a grid head)
+local headSet, extra = { Stat = true, Rating = true, ["Current value"] = true, ["Pt value"] = true, Change = true, Gear = true, Character = true, Elsewhere = true }, {}
+for _, r in ipairs(recs(d, "colhead")) do if not headSet[r.text] then extra[#extra + 1] = r.text end end
+local hRat = find(d, "colhead", "Rating")
+local rowHeads = {}
+for _, r in ipairs(recs(d, "colhead")) do if hRat and r.y == hRat.y then rowHeads[#rowHeads + 1] = r end end
+table.sort(rowHeads, function(x, y) return x.x < y.x end)
+local rh = {}
+for _, r in ipairs(rowHeads) do rh[#rh + 1] = r.text end
+check("wide panel: no Note column head; a rated section's head reads exactly Stat | Rating | Current value | Pt value | Change, Change at the far right",
+  find(d, "colhead", "Note") == nil and #extra == 0 and table.concat(rh, " | ") == "Stat | Rating | Current value | Pt value | Change"
+  and hCh.x + hCh.w == LAY.content and LAY.content == 740, table.concat(rh, " | ") .. " / extra: " .. table.concat(extra, ","))
 ar = lineCells(d, "pairLabel", "» Armor")
-check("  ...» Armor: value, Pt value and note side by side on one line, each at its head's x", T(ar.note) == "101.8% of Agility, mastery" and ar.note.x == hNote.x
-  and ar.note.y == ar.label.y and at(ar.value, hVal) and at(ar.per, hPer), T(ar.note))
+check("  ...» Armor: value and Pt value on one line at their heads' x; no note beside them", ar.note == nil and drawnText("101.8% of Agility, mastery") == nil
+  and at(ar.value, hVal) and at(ar.per, hPer), T(ar.note))
 ab = nested(d, "» Abilities (per 100)")
 check("[0.7.20] ...the abilities stay nested lines, each number in Current value (nothing in the Note column for them)", #ab == 2 and T(ab[1].value) == "+200"
   and at(ab[1].value, hVal) and ab[1].note == nil and lineCells(d, "pairLabel", "» Abilities (per 100)").note == nil, #ab)
-local okN = true
-for _, k in ipairs({ "note", "pairNote" }) do for _, r in ipairs(recs(d, k)) do if r.x ~= hNote.x then okN = false end end end
-check("  ...every note on the Stats tab is in the Note column", okN and #recs(d, "pairNote") >= 5, #recs(d, "pairNote"))
+check("  ...no note text anywhere on the Stats tab (no note or pairNote cell; \"cast any spell to read it\", \"with your numbers: not given by the game\" gone)",
+  #recs(d, "note") == 0 and #recs(d, "pairNote") == 0 and drawnText("cast any spell to read it") == nil and drawnText("with your numbers") == nil,
+  #recs(d, "note") .. " / " .. #recs(d, "pairNote"))
 okB, whyB = boxesOK(d, 8)
-check("[0.7.20] ...every box is still the last cell of its row, under Change, right of the Note column", okB, whyB)
+check("[0.7.20] ...every box is still the last cell of its row, under Change", okB, whyB)
 
 -- 3. Layout (V11): smallest, default, just below and at the wide threshold, widest; text sizes; typed numbers ----------------
 ns.CharToolkit_SetInput("sv:crit", "700"); ns.CharToolkit_SetInput("sv:primary", "2737"); ns.CharToolkit_SetInput("sv:haste", "1500")
@@ -387,7 +400,8 @@ local agiLabel
 for _, b in ipairs(d.buttons) do if b.shown and b.item and b.item.key == "map_primary" and b.h and b.h <= c.fontSize + 6 then agiLabel = b end end
 local tl = agiLabel and tipLines(agiLabel) or {}
 check("(guard) the Agility hover lists » Attack power with its Pt value: '+2,637  (1 = 1.00)'", has(tl, "» Attack power | +2,637  (1 = 1.00)"), table.concat(tl, " / "))
-check("  ...and » Armor with its Pt value and note: '+2,684  (1 = 1.02); 101.8% of Agility, mastery'", has(tl, "» Armor | +2,684  (1 = 1.02); 101.8% of Agility, mastery"), table.concat(tl, " / "))
+check("  ...and » Armor with its Pt value, no note (QoL 0.7.24: the note text is not moved to the hover): '+2,684  (1 = 1.02)'", has(tl, "» Armor | +2,684  (1 = 1.02)")
+  and not has(tl, "» Armor | +2,684  (1 = 1.02); 101.8% of Agility, mastery"), table.concat(tl, " / "))
 local i0, i1, i2 = idx(tl, "» Abilities (per 100) | "), idx(tl, "    Fracture | +200"), idx(tl, "    Infernal Strike | +100")
 check("[0.7.20] the Agility hover lists » Abilities (per 100), then each ability on its own indented line: '    Fracture | +200', '    Infernal Strike | +100'",
   i0 and i1 and i2 and i1 == i0 + 1 and i2 == i1 + 1, table.concat(tl, " / "))
@@ -469,8 +483,8 @@ d = render("spells")
 local spv, spp, spr = find(d, "spellvalue", "6,944"), nil, nil
 for _, r in ipairs(recs(d, "spellpct")) do if spv and r.y == spv.y then spp = r end end
 for _, r in ipairs(recs(d, "spellper")) do if spp and r.x == spp.x and r.y > spp.y and not spr then spr = r end end
-check("(guard) the Spells tab keeps its numbers: '6,944' | '... of attack power' with '1 Agility = +...' under it", spv ~= nil and spp ~= nil
-  and tostring(spp.text):find("of attack power", 1, true) ~= nil and spr ~= nil and tostring(spr.text):find("^1 Agility = %+") ~= nil, T(spp))
+check("(guard) the Spells tab keeps its numbers: '6,944' | '... of attack power' with '1 Agility = N' under it", spv ~= nil and spp ~= nil
+  and tostring(spp.text):find("of attack power", 1, true) ~= nil and spr ~= nil and tostring(spr.text):find("^1 Agility = %d") ~= nil, T(spp))
 c.advanced = false
 d = render()
 check("(guard) the Show: % button stays hidden (#382; the settings' Rating lines are left for Xaya's decision)", not P.modeBtn.shown)

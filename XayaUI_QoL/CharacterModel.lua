@@ -1262,6 +1262,12 @@ function CM.LinkTip(link)
     local lines = type(data) == "table" and Field(data, "lines") or nil
     return type(lines) == "table" and ParseTip(lines) or nil
 end
+-- (QoL 0.7.24) an item's name from its link ("|cff..|Hitem:..|h[Name]|h|r" -> "Name"); nil for anything else or a secret value
+function CM.LinkName(link)
+    if type(link) ~= "string" or IsSecret(link) then return nil end
+    local n = link:match("|h%[(.-)%]|h")
+    return (n and n ~= "") and n or nil
+end
 function CM.SlotEnchant(slot)
     local t = CM.SlotTip(slot)
     return t and t.enchant or nil
@@ -1926,7 +1932,9 @@ function GearCompareSections(ctx, out)
             end
         end
         if procLike then
-            FNote("gc_rppm", "RPPM: not given by the game. No game call returns an item's proc rate, so none is shown (a data source is a later step: ROADMAP RM-RPPM).", "mute")
+            -- (QoL 0.7.24: RPPM only where a documented source gives it; none does (docs/reference/api: no RPPM / per-minute call;
+            -- ROADMAP RM-RPPM), so the line is exactly the wording agreed for the bundle)
+            FNote("gc_rppm", "RPPM not given by the game", "mute")
         end
     end
     out[#out + 1] = chg
@@ -1992,7 +2000,7 @@ end
 -- filter icon now; "all" is the saved key of None. Utility (DECISION): a spell the words put in neither Offense nor Defense (CM.SpellKind
 -- gives nil: no damage, healing or defensive words) and not set by hand to one of them; a spell added by hand can be set to Utility.
 CM.SPELL_FILTERS = {
-    { "all", "None (show all)", "No filter: every spell listed." },
+    { "all", "None", "No filter: every spell listed." },
     { "offense", "Offense", "Spells whose description deals damage. Your offensive stats are on the Stats tab (Offense)." },
     { "defense", "Defense", "Spells that absorb, heal, reduce damage taken or add armor, avoidance or leech. Your defensive stats are on the Stats tab (Defense)." },
     { "utility", "Utility", "Spells whose description names neither damage nor a defensive effect (movement, control, buffs and the like)." },
@@ -2084,7 +2092,7 @@ local function SpellItem(s, desc, nums, kind, refs, primary)
             local ratio = n / ref
             local perPrimary = (s.base ~= "sp" and refs.apPerPrimary) and (ratio * refs.apPerPrimary) or nil
             local pct = ("%s of %s"):format(P(ratio * 100, 1), refName)
-            local per = perPrimary and ("1 %s = +%s"):format(StatName(primary), F(perPrimary, 2)) or nil
+            local per = perPrimary and ("1 %s = %s"):format(StatName(primary), F(perPrimary, 2)) or nil   -- (her words: "1 agility = {value}")
             Pair(it, Big(n), pct .. (per and ("; " .. per) or ""), nil, i == 1)
             it.row.entries[#it.row.entries + 1] = { value = Big(n), pct = pct, per = per }
         end
@@ -2186,7 +2194,8 @@ local function SpellSection(ctx, out)
         return
     end
     -- (QoL 0.7.24) the button (Configure / Refresh spell data) is drawn as a button of its own above the sections, centred; it stays
-    -- the section's first item so the panel finds it. The spells are drawn as a table: Spell Name | Value | % PSV | Talent Modifiers.
+    -- the section's first item so the panel finds it. The spells are drawn as a table: Spell Name | % PSV | Talent Modifiers |
+    -- Computed Value (QoL 0.7.24: "Fourth column - computed Value").
     sec.spells = true
     local rb = Item("spellsRefresh", "Refresh spell data", "action")
     rb.action, rb.value = "refreshSpells", ""
@@ -2317,14 +2326,20 @@ end
 -- One detail line as one text: the value, the Pt value in brackets ("1 = 1.00", "52.0 crit rating = 1% parry"), then the note. The
 -- panel draws the three in their own columns; the hovers and the character window's stat tooltips (one text column) use this, so no
 -- reader loses a number (QoL 0.7.15).
-function CM.PairText(p)
+function CM.PairText(p, noNote)
     if type(p) ~= "table" then return "" end
     local v = p.value ~= nil and tostring(p.value) or ""
     if p.per and p.per ~= "" then
         v = v .. (v ~= "" and "  " or "") .. "(" .. (p.perText or ((p.perPoint and "1 = " or "") .. p.per)) .. ")"
     end
-    if p.note and p.note ~= "" then v = v .. (v ~= "" and "; " or "") .. p.note end
+    if not noNote and p.note and p.note ~= "" then v = v .. (v ~= "" and "; " or "") .. p.note end
     return v
+end
+-- (QoL 0.7.24) a detail line whose only content is its note: the Stat Calculator panel leaves it out (Xaya, the Note column: "Remove it
+-- entirely"); the character window's own stat tooltips (the toolkit's Tooltip lines) still read it through CM.PairText
+function CM.NoteOnly(p)
+    if type(p) ~= "table" or not (p.note and p.note ~= "") then return false end
+    return (p.value == nil or tostring(p.value) == "") and (p.per or "") == ""
 end
 -- A detail line's name for the one-column readers: a nested line (one ability under "» Abilities (per 100)", QoL 0.7.20) is indented.
 -- INFERENCE: the game's tooltip keeps leading spaces (not documented; without the indent the names still read as a list).
@@ -2333,16 +2348,16 @@ function CM.PairLabel(p)
     return (p.nested and "    " or "") .. tostring(p.label or "")
 end
 
--- The column head over a grid section: Stat | Rating | Current value | Pt value | Note | Change. QoL 0.7.20 (Xaya 2026-11-05: "put the
+-- The column head over a grid section: Stat | Rating | Current value | Pt value | Change. QoL 0.7.20 (Xaya 2026-11-05: "put the
 -- input box on the far right under a new column "Change""): the box moved from under Rating to the far right; Rating shows a rating
--- card's rating as text. ratingHead / changeHead: only a section whose lines have a rating / a box names that column.
+-- card's rating as text. ratingHead / changeHead: only a section whose lines have a rating / a box names that column. QoL 0.7.24: the
+-- Note column is gone (Xaya: "I did not ask for notes"; "Remove it entirely").
 local function GridHead(key, ratingHead, changeHead)
     local h = Item(key, "Columns", "colhead")   -- (the label is its hover's title; the head draws its cols)
-    h.grid, h.cols = true, { "Stat", ratingHead or "", "Current value", "Pt value", "Note", changeHead or "" }
+    h.grid, h.cols = true, { "Stat", ratingHead or "", "Current value", "Pt value", changeHead or "" }
     if ratingHead then Tip(h, "Rating: your rating now. A number you type stays in its Change box; Current value shows what it changes.") end
     Tip(h, "Current value: the game's figure now; \"now -> then\" when your numbers (or a compared item) change it.")
     Tip(h, "Pt value: what one point of the card's stat gives (1 Agility = 1.00 attack power), or \"N / 1%\": how much of the card's rating makes 1% of that line.")
-    Tip(h, "Note: where a number comes from and what it leaves out. On a narrow panel the note goes under its line; drag the corner wider and it gets its own column.")
     if changeHead then Tip(h, "Change: type a number in the box (the number itself, not an amount) and press Enter; every line it feeds shows \"now -> then\". Clear it to go back to yours.") end
     return h
 end

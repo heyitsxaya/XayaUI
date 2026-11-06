@@ -145,15 +145,15 @@ checkp("  ...None by default: every spell shown, the icon muted with no dot, its
   d.filterIcon.scripts.OnEnter(d.filterIcon)
   local said = false
   for _, l in ipairs(GameTooltip.lines) do if tostring(l):find("No filter: every spell is shown", 1, true) then said = true end end
-  return f.spellFilter == "all" and d.filterIcon.filterLabel == "None (show all)" and not d.filterIcon.dot.shown and said
+  return f.spellFilter == "all" and d.filterIcon.filterLabel == "None" and not d.filterIcon.dot.shown and said
     and d.model.byKey.spell9001 and d.model.byKey.spell9005 and d.model.byKey.spell9008
 end)
-checkp("  ...a click opens a menu under it: None (show all), Offense, Defense, Utility; None marked", function()
+checkp("  ...a click opens a menu under it: exactly None, Offense, Defense, Utility (her options: \"none\" (show all), \"offense,\" \"defense,\" \"utility\"); None marked", function()
   d.filterIcon.scripts.OnClick(d.filterIcon)
   d = drawn()
   local labels, sel = {}, nil
   for _, r in ipairs(d.menuRecs) do labels[#labels + 1] = r.label; if r.selected then sel = r.label end end
-  return d.filterMenu.shown and table.concat(labels, ",") == "None (show all),Offense,Defense,Utility" and sel == "None (show all)", table.concat(labels, ",")
+  return d.filterMenu.shown and table.concat(labels, ",") == "None,Offense,Defense,Utility" and sel == "None", table.concat(labels, ",")
 end)
 checkp("  ...choosing Utility: the menu closes, the header says utility, only the utility spell is listed (Banner: no damage or defense words)", function()
   local u
@@ -190,21 +190,37 @@ c.spellFilter = "all"
 -- 2. Spells: the columns and the lines under them; no "Usable now"
 -------------------------------------------------------------------------------------------------------------------------------------
 d = render("spells")
-checkp("columns: a head Spell Name | Value | % PSV | Talent Modifiers, left to right", function()
-  local a, b, cc, dd = find(d, "spellhead", "Spell Name"), find(d, "spellhead", "Value"), find(d, "spellhead", "% PSV"), find(d, "spellhead", "Talent Modifiers")
-  return a and b and cc and dd and a.x < b.x and b.x < cc.x and cc.x < dd.x and a.y == dd.y, T(a)
+-- (QoL 0.7.24; her #27 "Spell Name (spell id underneath) | % PSV (underneath each entry show "1 agility = {value}") | Talent Modifiers"
+-- and her answer 2026-11-06 "Fourth column - computed Value")
+checkp("columns: exactly Spell Name | % PSV | Talent Modifiers | Computed Value, left to right, on one row; nothing else in the head (no Value column)", function()
+  local heads = {}
+  for _, r in ipairs(recs(d, "spellhead")) do heads[#heads + 1] = r end
+  table.sort(heads, function(x, y) return x.x < y.x end)
+  local names = {}
+  for _, r in ipairs(heads) do names[#names + 1] = r.text end
+  local sameRow = #heads == 4 and heads[1].y == heads[4].y
+  return table.concat(names, " | ") == "Spell Name | % PSV | Talent Modifiers | Computed Value" and sameRow, table.concat(names, " | ")
+end)
+checkp("  ...the table draws nothing outside those four columns: no note or \"Entered\" line (a coefficient typed for Fracture), no \"Not picked\" line", function()
+  c.spells[1].coeff = 150
+  local d2 = render("spells")
+  local n, entered = #recs(d2, "spellnote"), false
+  for _, r in ipairs(d2.layout) do if tostring(r.text):find("Entered", 1, true) then entered = true end end
+  c.spells[1].coeff = nil
+  d = render("spells")
+  return n == 0 and not entered, n
 end)
 checkp("  ...Fracture: its name in Spell Name and \"Spell ID: 263642\" on the line under it, in the same column", function()
   local nm, id = find(d, "spellname", "Fracture"), find(d, "spellid", "Spell ID: 263642")
   local head = find(d, "spellhead", "Spell Name")
   return nm and id and nm.x == head.x and id.x == nm.x and id.y > nm.y, T(id)
 end)
-checkp("  ...its number 6,944 in Value, \"200.0% of attack power\" in % PSV, \"1 Agility = +2.00\" on the line under that (primary stat named)", function()
+checkp("  ...\"200.0% of attack power\" in % PSV with \"1 Agility = 2.00\" on the line under it (her words \"1 agility = {value}\"); its number 6,944 in Computed Value, the 4th column, on the same line", function()
   local v = find(d, "spellvalue", "6,944")
   local pc = find(d, "spellpct", "200.0% of attack power")
-  local pe = find(d, "spellper", "1 Agility = +2.00")
-  local hv, hp = find(d, "spellhead", "Value"), find(d, "spellhead", "% PSV")
-  return v and pc and pe and v.x == hv.x and pc.x == hp.x and pe.x == pc.x and pe.y > pc.y and v.y == pc.y, T(pe)
+  local pe = find(d, "spellper", "1 Agility = 2.00")
+  local hv, hp, ht = find(d, "spellhead", "Computed Value"), find(d, "spellhead", "% PSV"), find(d, "spellhead", "Talent Modifiers")
+  return v and pc and pe and hv and v.x == hv.x and v.x > ht.x and pc.x == hp.x and pe.x == pc.x and pe.y > pc.y and v.y == pc.y, T(pe) .. " " .. T(v)
 end)
 checkp("  ...Talent Modifiers: Burning Fracture (the picked talent whose text names it) in its column; Ward: \"none\"", function()
   local hm = find(d, "spellhead", "Talent Modifiers")
@@ -222,9 +238,13 @@ checkp("no \"Usable now\" anywhere on the Spells tab (the game calls every spell
   end
   return d.model.byKey.spell9001 ~= nil
 end)
-checkp("fit (V11): at the default panel and text size 11 the numbers, percents and \"1 Agility = +N\" lines fit their columns on one line", function()
+checkp("(guard) fit (V11): at the default panel and text size 11 the numbers, percents and \"1 Agility = N\" lines fit their columns on one line; the head \"Computed Value\" wraps inside its column (each word fits)", function()
   for _, k in ipairs({ "spellvalue", "spellpct", "spellper", "spellhead" }) do
-    for _, r in ipairs(recs(d, k)) do if not fits(r) then return false, k .. " '" .. r.text .. "' w=" .. r.w end end
+    for _, r in ipairs(recs(d, k)) do
+      local ok = fits(r)
+      if not ok and r.text == "Computed Value" then ok = 8 * 0.55 * r.size <= r.w + 0.01 end   -- ("Computed", its longest word)
+      if not ok then return false, k .. " '" .. r.text .. "' w=" .. r.w end
+    end
   end
   return #recs(d, "spellpct") > 0
 end)
@@ -438,11 +458,11 @@ checkp("  ...effects: the equipped ring's proc line, New Ring's Use line, Big Cr
     and s:find("Big Crit Ring: none", 1, true) ~= nil and s:find("Big Crit Ring: loses the equipped item's effect", 1, true) ~= nil
     and s:find("New Ring: a different effect", 1, true) ~= nil, s
 end)
-checkp("  ...RPPM: \"not given by the game\" (no documented source), and no RPPM number anywhere", function()
+checkp("  ...RPPM: the line reads exactly \"RPPM not given by the game\" (no documented source gives it), and no RPPM number anywhere", function()
   local said, num = false, false
   for _, r in ipairs(d.layout) do
     local tx = tostring(r.text)
-    if tx:find("RPPM: not given by the game", 1, true) then said = true end
+    if tx == "RPPM not given by the game" then said = true end
     if tx:find("RPPM") and tx:find("%d%.%d") then num = true end
   end
   return said and not num

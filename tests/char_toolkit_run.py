@@ -212,7 +212,7 @@ c.advanced = true
 c.spells = { { id = 263642, base = "ap", coeff = 200 } }
 local fr = row(ns.CharToolkit_Model("spells"), "spell263642")
 check("spell math: Fracture row, its spell ID with the name (#380; QoL 0.7.24: on the line under it)", fr ~= nil and fr.label == "Fracture" and fr.row.idText == "Spell ID: 263642" and fr.value == "", fr and fr.label)
-check("spell math: 6,944 = 200.0% of attack power, 1 Agility = +2.00", pair(fr, "6,944") == "200.0% of attack power; 1 Agility = +2.00", pair(fr, "6,944"))
+check("spell math: 6,944 = 200.0% of attack power, 1 Agility = 2.00 (QoL 0.7.24: her words \"1 agility = {value}\")", pair(fr, "6,944") == "200.0% of attack power; 1 Agility = 2.00", pair(fr, "6,944"))
 check("spell math: entered coefficient matches, no warning", pair(fr, "Entered") == "200.0% of attack power; measured 200.0%")
 c.spells[1].coeff = 150
 fr = row(ns.CharToolkit_Model("spells"), "spell263642")

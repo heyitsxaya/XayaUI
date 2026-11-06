@@ -28,6 +28,10 @@ local function readable(v) return v ~= nil and not isSecret(v) end
 -- Settings
 -------------------------------------------------------------------------------
 TT.DEFAULTS = {
+    -- (Bonus 0.6.14; Xaya 2026-11-06: "yes, give an enable / disable "Enhanced Tooltips" as a feature") the feature's master switch, the
+    -- tick box on its row in the settings window's left pane. Off: nothing of the tooltips is installed or runs, whatever the four
+    -- section switches below say (V14). Default on: the four sections were on by default before it existed (question to Xaya).
+    enabled = true,
     ids = { enabled = true, spell = true, item = true, aura = true, auraHint = true, npc = true, icon = false,
             quest = false, currency = false, achievement = false, mount = false, toy = false, battlepet = false },
     ilvl = { enabled = true, inspect = true, cacheSecs = 120 },
@@ -717,7 +721,13 @@ end
 TT.on = false
 function TT.AnyOn()
     local db = TT.DB()
+    if db.enabled == false then return false end   -- (Bonus 0.6.14) Enhanced Tooltips off: nothing, whatever the sections say
     return (db.ids.enabled or db.ilvl.enabled or db.forces.enabled or db.formulas.enabled) and true or false
+end
+-- (Bonus 0.6.14) one section is in effect: the master switch and its own switch both on
+function TT.SectionOn(key)
+    local db = TT.DB()
+    return (db.enabled ~= false and db[key] and db[key].enabled) and true or false
 end
 local hooked
 function TT.Init()
@@ -744,17 +754,16 @@ local function OnWatch(_, event)
         if TT.ResetCooldownLinks then TT.ResetCooldownLinks() end   -- and read the Cooldown Manager's aura links again
     end
     -- observed formulas: your own class's data folder only, loaded out of combat; talent changes reset the talent match
-    if TT.LoadClassData and TT.DB().formulas.enabled then pcall(TT.LoadClassData) end
+    if TT.LoadClassData and TT.SectionOn("formulas") then pcall(TT.LoadClassData) end
 end
 TT.WATCH_EVENTS = { "ACTIVE_PLAYER_SPECIALIZATION_CHANGED", "TRAIT_CONFIG_UPDATED", "PLAYER_REGEN_ENABLED", "COOLDOWN_VIEWER_DATA_LOADED",
     "COOLDOWN_VIEWER_TABLE_HOTFIXED" }
 function TT.Sync()
-    local db = TT.DB()
     local on = TT.AnyOn()
     TT.on = on
     if on then TT.Init() end
-    if not db.ilvl.enabled then TT.DropInspect() end
-    local want = (db.ids.enabled or db.formulas.enabled) and true or false
+    if not TT.SectionOn("ilvl") then TT.DropInspect() end
+    local want = (TT.SectionOn("ids") or TT.SectionOn("formulas")) and true or false
     if want then
         if not watch then watch = CreateFrame("Frame"); watch:SetScript("OnEvent", OnWatch) end
         for _, e in ipairs(TT.WATCH_EVENTS) do watch:RegisterEvent(e) end
@@ -766,7 +775,7 @@ function TT.Sync()
         if TT.ResetCooldownLinks then TT.ResetCooldownLinks() end
     end
     TT.watching = want
-    if db.formulas.enabled and TT.LoadClassData then pcall(TT.LoadClassData) end
+    if TT.SectionOn("formulas") and TT.LoadClassData then pcall(TT.LoadClassData) end
 end
 
 -------------------------------------------------------------------------------

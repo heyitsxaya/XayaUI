@@ -268,26 +268,27 @@ checkp("(guard) the column heads stay: Stat | Current value | Pt value | Change 
 
 -- the lines' numbers
 checkp("Health: the game's maximum health 1,476,516 (UnitHealthMax)", function() return T(lineOf(d, "label", "Health").value) == "1,476,516" end)
-checkp("Movement speed: 100% (run speed 7 / base 7, GetUnitSpeed), noted run", function()
-  local l = lineOf(d, "label", "Movement speed"); return T(l.value) == "100%" and T(l.note) == "run", T(l.value) end)
+-- (QoL 0.7.24; Xaya, the Note column: "Remove it entirely": every line below keeps its value and draws no note)
+checkp("Movement speed: 100% (run speed 7 / base 7, GetUnitSpeed); no note (QoL 0.7.24: \"run\" is gone)", function()
+  local l = lineOf(d, "label", "Movement speed"); return T(l.value) == "100%" and l.note == nil, T(l.value) .. " / " .. T(l.note) end)
 checkp("Attack Speed 2.00 s, Weapon DPS 4,270.7, Damage 8,138 - 8,945 (the weapon card is three lines)", function()
   return T(lineOf(d, "label", "Attack Speed").value) == "2.00 s" and T(lineOf(d, "label", "Weapon DPS").value) == "4,270.7"
     and T(lineOf(d, "label", "Damage").value) == "8,138 - 8,945" end)
 -- resources: a generator shows its maximum, no rate
-checkp("Fury (a generator): its maximum 120, noted max, no generation rate", function()
+checkp("Fury (a generator): its maximum 120, no generation rate; no note", function()
   local l = lineOf(d, "label", "Fury"); local m = CM.Build(c, "stats").byKey.map_power17
-  return T(l.value) == "120" and T(l.note) == "max" and #m.pairs == 0, T(l.value) .. " / " .. T(l.note) end)
+  return T(l.value) == "120" and l.note == nil and #m.pairs == 0, T(l.value) .. " / " .. T(l.note) end)
 PT = { 0, "MANA" }; POWERMAX = { [0] = 250000 }; REGEN = { [0] = { 1200.5, 2400 } }
 d = render()
-checkp("Mana (a drain type): the total 250,000, noted total, and its generation 1200.50/s (while casting 2400.00/s, GetPowerRegenForPowerType)", function()
+checkp("Mana (a drain type): the total 250,000 and its generation 1200.50/s (GetPowerRegenForPowerType); no note (\"total\", \"while casting 2400.00/s\" gone)", function()
   local l = lineOf(d, "label", "Mana"); local gen = lineOf(d, "pairLabel", "Generation")
-  return T(l.value) == "250,000" and T(l.note) == "total" and T(gen.pairValue) == "1200.50/s" and T(gen.pairNote) == "while casting 2400.00/s",
+  return T(l.value) == "250,000" and l.note == nil and T(gen.pairValue) == "1200.50/s" and gen.pairNote == nil,
     T(l.value) .. " / " .. T(gen.pairValue) .. " / " .. T(gen.pairNote) end)
 PT = { 6, "RUNIC_POWER" }; POWERMAX = { [6] = 125, [5] = 6 }; RUNES = { { 0, 0, true }, { 100, 8.5, false } }
 d = render(); g = under(d)
 checkp("a class with two resources shows both (Death Knight): Runic Power max 125, then Runes 6 with one rune's recharge 8.5 s (GetRuneCooldown)", function()
   local rp, ru, rc = lineOf(d, "label", "Runic Power"), lineOf(d, "label", "Runes"), lineOf(d, "pairLabel", "One recharges in")
-  return g.General == "Health|Runic Power|Runes|Global cooldown|Movement speed" and T(rp.value) == "125" and T(rp.note) == "max" and T(ru.value) == "6"
+  return g.General == "Health|Runic Power|Runes|Global cooldown|Movement speed" and T(rp.value) == "125" and rp.note == nil and T(ru.value) == "6"
     and T(rc.pairValue) == "8.5 s", g.General end)
 PT = { 17, "FURY" }; POWERMAX = { [17] = SECRET }; RUNES = {}
 misuse = 0
@@ -297,15 +298,15 @@ checkp("a secret maximum (SecretWhenUnitPowerMaxRestricted) reads \"not given no
 local realMax = UnitPowerMax
 UnitPowerMax = nil
 d = render()
-checkp("no UnitPowerMax at all: the line says \"not given by the game\" (in its note cell), no number", function()
-  local l = lineOf(d, "label", "Fury"); return l.value == nil and T(l.note) == "not given by the game", T(l.note) end)
+checkp("no UnitPowerMax at all: no number, and no note (QoL 0.7.24: the note cell and its \"not given by the game\" are gone; the line shows its name)", function()
+  local l = lineOf(d, "label", "Fury"); return l.label ~= nil and l.value == nil and l.note == nil, T(l.note) end)
 UnitPowerMax = realMax; POWERMAX = { [17] = 120 }
 -- critical strike effectiveness: summed from the items' own text, each source on hover
 TIPS = { [11] = { { leftText = "Enchanted: Enchant Ring - Eyes of the Eagle" }, { leftText = "|cff00ff00Equip: +40 Critical Strike, increasing critical strike effectiveness by 2%.|r" } },
          [12] = { { leftText = "Enchanted: Enchant Ring - Eyes of the Eagle, increasing critical strike effectiveness by 2%" } } }
 d = render()
-checkp("Critical strike effectiveness: +4% (2% + 2% read from two rings' tooltip text), noted read from item text", function()
-  local l = lineOf(d, "label", "Critical strike effectiveness"); return T(l.value) == "+4%" and T(l.note) == "read from item text", T(l.value) .. " / " .. T(l.note) end)
+checkp("Critical strike effectiveness: +4% (2% + 2% read from two rings' tooltip text); no note", function()
+  local l = lineOf(d, "label", "Critical strike effectiveness"); return T(l.value) == "+4%" and l.note == nil, T(l.value) .. " / " .. T(l.note) end)
 checkp("  ...its hover lists each source: the slot, the line (colour codes taken out) and its +2%", function()
   local it = CM.Build(c, "stats").byKey.map_critfx
   return tipHas(it, "Finger: Equip: +40 Critical Strike, increasing critical strike effectiveness by 2%. (+2%)")
@@ -317,8 +318,8 @@ checkp("  ...no such text on any item: none found (not a made-up 0)", function()
 local realTip = C_TooltipInfo
 C_TooltipInfo = nil
 d = render()
-checkp("  ...no tooltip data at all: not given by the game", function()
-  local l = lineOf(d, "label", "Critical strike effectiveness"); return l.value == nil and T(l.note) == "not given by the game", T(l.note) end)
+checkp("  ...no tooltip data at all: no number and no note (the line shows its name)", function()
+  local l = lineOf(d, "label", "Critical strike effectiveness"); return l.label ~= nil and l.value == nil and l.note == nil, T(l.note) end)
 C_TooltipInfo = realTip
 -- All ratings, durability and repair are gone
 c.whatIf = 500

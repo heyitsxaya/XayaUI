@@ -29,7 +29,8 @@
 --   its title row switches between two heights set on the settings page; the corner grip still resizes (and sets the current height).
 --   QoL 0.7.24 (Xaya 2026-11-05): the Spells tab's filters are a menu on a filter icon at the right of its top row (None / Offense /
 --   Defense / Utility), its spell data button is a real button centred above the sections (at most 250 wide), and each spell is a row
---   of columns: Spell Name (Spell ID under it) | Value | % PSV ("1 Agility = +N" under it) | Talent Modifiers; "Usable now" is gone.
+--   of columns: Spell Name (Spell ID under it) | % PSV ("1 Agility = N" under it) | Talent Modifiers | Computed Value (her answer
+--   2026-11-06: "Fourth column - computed Value"); "Usable now" is gone.
 --   Gear: the selected equipped item's box is highlighted (a click on it again lets it go); the items you own for the slot are icons
 --   (click to pick, several at once, up to 3; the box shows the last one's name); one "Changes" section (Stat | Pt value | Equipped |
 --   each picked item, DR threshold and true / lost rating under each secondary that changes, Stat effects, Spell Changes, on-use and
@@ -183,12 +184,15 @@ ns.CharToolkit_SpellName = function(id) return CM.SpellName(id) end
 ns.CharToolkit_ItemStats = function(link) return CM.ItemStats(link) end
 
 -- The hover of one line: { { left, right, tone } or { text } }. Used by the panel, the sheet and the tests. A tooltip has one text
--- column, so each line's Pt value and note follow its value (CM.PairText; the panel draws them in their own columns, QoL 0.7.15).
+-- column, so each line's Pt value follows its value (CM.PairText; the panel draws them in their own columns, QoL 0.7.15). QoL 0.7.24
+-- (Xaya, the Note column: "Remove it entirely"): no note text here either, and a line that held only a note is left out.
 function ns.CharToolkit_TooltipLines(it, mode)
     local out = {}
     local v, tone = CM.ValueFor(it, mode)
-    out[#out + 1] = { it.label or "", CM.PairText({ value = v or "", per = it.per, note = it.note }), tone, title = true }
-    for _, p in ipairs(it.pairs or {}) do out[#out + 1] = { CM.PairLabel(p), CM.PairText(p), p.tone } end   -- (nested: indented)
+    out[#out + 1] = { it.label or "", CM.PairText({ value = v or "", per = it.per }), tone, title = true }
+    for _, p in ipairs(it.pairs or {}) do
+        if not CM.NoteOnly(p) then out[#out + 1] = { CM.PairLabel(p), CM.PairText(p, true), p.tone } end   -- (nested: indented)
+    end
     if #(it.tip or {}) > 0 then
         out[#out + 1] = { " " }
         for _, l in ipairs(it.tip) do out[#out + 1] = { l } end
@@ -374,7 +378,7 @@ local function SpellDataButton()
     panel.spellBtn = b
     return b
 end
--- the filter menu: None (show all), Offense, Defense, Utility; the chosen one is saved (c.spellFilter) and marked
+-- the filter menu: None (shows all), Offense, Defense, Utility; the chosen one is saved (c.spellFilter) and marked
 function ns.CharToolkit_SetSpellFilter(f)
     local c = Cfg(); if not c then return end
     c.spellFilter = f
@@ -872,9 +876,12 @@ end
 -- default panel (QoL 0.7.20: content 360) that left Stat 86 and a "»" line's name 120; see QoL 0.7.21 below.
 -- QoL 0.7.21 (Xaya 2026-11-05: the Rating cell "should show alongside the +/- stat amount"): Rating is 80 wide so "1,287 +1,000"
 -- (12 characters, 72.6 by the estimate) fits; the default panel is 450 (content 430), which leaves Stat 112, so "Critical Strike"
--- (90.75) and "» Abilities (per 100)" fit on one line. The Note column now starts at content 564 (panel 584; it was 540).
+-- (90.75) and "» Abilities (per 100)" fit on one line.
+-- QoL 0.7.24 (Xaya 2026-11-05: "I did not ask for notes. I gave you explicit column instructions about what I wanted the columns to be";
+-- her answer 2026-11-06: "Remove it entirely"): the Note column and every note's text are gone from the grid and its hover. The columns
+-- are exactly Stat | Rating | Current value | Pt value | Change; Stat takes the room the Note column had on a wide panel. A detail line
+-- whose only content was its note (a "Read: cast any spell to read it" line) is not drawn.
 local GRID_RAT, GRID_VAL, GRID_PER, GRID_BOX = 80, 98, 56, 44
-local GRID_STAT_MIN, GRID_NOTE_MIN = 96, 140
 -- hasBox false: no line of the tab has a box (the Gear tab), so it has no Rating and no Change column: Current value takes the
 -- Rating column's room ("now -> then" fits on one line); Stat and Pt value keep their x, the note runs to the right edge
 local GRID_STAT_KEEP = 86   -- QoL 0.7.21: below the default width Rating gives up its room first (down to 36, its 0.7.20 width; "528 +172"
@@ -883,16 +890,13 @@ local function GridCols(hasBox)
     local rat = math.max(36, math.min(GRID_RAT, W - (GRID_VAL + GRID_PER + GRID_BOX + 4 * GUT) - GRID_STAT_KEEP))
     local fixed = rat + GRID_VAL + GRID_PER + GRID_BOX + 4 * GUT
     local g = { rat = rat, val = GRID_VAL, per = GRID_PER, box = GRID_BOX }
-    local slack = W - fixed - GUT
-    g.wide = slack - GRID_STAT_MIN >= GRID_NOTE_MIN
-    g.stat = g.wide and math.max(GRID_STAT_MIN, math.floor(slack * 0.4)) or math.max(40, W - fixed)
+    g.stat = math.max(40, W - fixed)
     g.rx = g.stat + GUT
     g.vx = g.rx + rat + GUT
     if hasBox == false then g.rat, g.box, g.vx, g.val = 0, 0, g.rx, GRID_VAL + rat + GUT end
     g.px = g.vx + g.val + GUT
     g.label = g.vx - GUT
     g.cx = W - g.box   -- Change: the box, the last cell of its row
-    if g.wide then g.nx = g.px + GRID_PER + GUT; g.note = (g.box > 0 and (g.cx - GUT) or W) - g.nx end
     return g
 end
 ns.CharToolkit_GridCols = GridCols   -- (tests: the x positions the cells must sit at)
@@ -905,28 +909,19 @@ local function CmpCols()
     return lw, cw, x1, x1 + cw + 4, x1 + 2 * (cw + 4)
 end
 
--- one line of the grid: its cells at the grid's x positions; returns the line's height (its note under it included)
--- o: x0 (indent), label, labelCol, size, rating (a rating card's rating text), value, valueCol, per, perCol, note, noteCol, box (the
--- line has a box), boxH, kind (the layout records' prefix: "" for a card's own line, "pair" for a line under it)
+-- one line of the grid: its cells at the grid's x positions; returns the line's height
+-- o: x0 (indent), label, labelCol, size, rating (a rating card's rating text), value, valueCol, per, perCol, box (the line has a box),
+-- boxH, kind (the layout records' prefix: "" for a card's own line, "pair" for a line under it). (No note: QoL 0.7.24.)
 local function GridLine(g, y, o)
     local k = o.kind or ""
     local function K(s) return (k == "") and s or (k .. s:sub(1, 1):upper() .. s:sub(2)) end
     local hasR = (o.rating or "") ~= "" and g.rat > 0
     local h = PlaceFS(FS(), o.x0, y, (hasR and g.stat or g.label) - o.x0, o.size, o.label, o.labelCol, "LEFT", true, K("label"))
-    local hasV, hasP, hasN = (o.value or "") ~= "", (o.per or "") ~= "", (o.note or "") ~= ""
+    local hasV, hasP = (o.value or "") ~= "", (o.per or "") ~= ""
     if o.boxH then h = math.max(h, o.boxH) end
     if hasR then h = math.max(h, PlaceFS(FS(), g.rx, y, g.rat, o.size, o.rating, o.ratingCol, "RIGHT", true, K("rating"))) end
     if hasV then h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, o.size, o.value, o.valueCol, "RIGHT", true, K("value"))) end
     if hasP then h = math.max(h, PlaceFS(FS(), g.px, y, g.per, o.size, o.per, o.perCol, "RIGHT", true, K("per"))) end
-    if hasN and g.wide then
-        h = math.max(h, PlaceFS(FS(), g.nx, y, g.note, o.size, o.note, o.noteCol, "LEFT", true, K("note")))
-    elseif hasN and not hasV and not hasP then
-        -- (on the line itself: up to the box when the line has one)
-        local right = (o.box and g.box > 0) and (g.cx - GUT) or W
-        h = math.max(h, PlaceFS(FS(), g.vx, y, right - g.vx, o.size, o.note, o.noteCol, "LEFT", true, K("note")))
-    elseif hasN then
-        h = h + 1 + PlaceFS(FS(), g.vx, y + h + 1, W - g.vx, o.size, o.note, o.noteCol, "LEFT", true, K("note"))
-    end
     return h
 end
 
@@ -973,8 +968,7 @@ local function RenderGrid(c, items, y, hasBox)
             if (cs[2] or "") ~= "" and g.rat > 0 then h = math.max(h, PlaceFS(FS(), g.rx, y, g.rat, hs, cs[2], cMuted, "RIGHT", true, "colhead")) end
             h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, hs, cs[3] or "", cMuted, "RIGHT", true, "colhead"))
             h = math.max(h, PlaceFS(FS(), g.px, y, g.per, hs, cs[4] or "", cMuted, "RIGHT", true, "colhead"))
-            if g.wide then h = math.max(h, PlaceFS(FS(), g.nx, y, g.note, hs, cs[5] or "", cMuted, "LEFT", true, "colhead")) end
-            if (cs[6] or "") ~= "" and g.box > 0 then h = math.max(h, PlaceFS(FS(), g.cx, y, g.box, hs, cs[6], cMuted, "LEFT", true, "colhead")) end
+            if (cs[5] or "") ~= "" and g.box > 0 then h = math.max(h, PlaceFS(FS(), g.cx, y, g.box, hs, cs[5], cMuted, "LEFT", true, "colhead")) end
             local hb = Btn()   -- hover: what each column holds
             hb.item = it
             hb:ClearAllPoints()
@@ -1017,24 +1011,20 @@ local function RenderGrid(c, items, y, hasBox)
                 eb.xuiUsed = true
                 Rec("input", g.cx, y, g.box, size + 6, it.input, size)
             end
-            local hasV = (v or "") ~= ""
             local h = GridLine(g, y, { x0 = 0, label = it.label, labelCol = it.labelColor or (it.minor and cMuted or cText), size = size,
                 rating = it.ratingText, ratingCol = cText,
-                value = v, valueCol = ToneColor(tone, cText), per = it.per, perCol = cText, note = it.note,
-                noteCol = (hasV or (it.per or "") ~= "") and cMuted or ToneColor(tone, cText), box = boxed, boxH = boxH })
+                value = v, valueCol = ToneColor(tone, cText), per = it.per, perCol = cText, box = boxed, boxH = boxH })
             y = y + h + 2
             local headEnd = y
             -- the lines under it: one size smaller and muted, except a card that asks for full-size ones (#378: "way too tiny")
             local big = it.bigPairs == true
             local psz, pcol = big and size or size - 1, big and cText or cMuted
             for _, p in ipairs(it.pairs or {}) do
-                if not short or p.short then
+                if (not short or p.short) and not CM.NoteOnly(p) then
                     local pv = (p.value ~= nil) and tostring(p.value) or ""
-                    local lone = pv == "" and (p.per or "") == ""
                     -- a nested line (one ability under its "»" line, QoL 0.7.20) sits one indent deeper than the "»" lines
                     local ph = GridLine(g, y, { x0 = p.nested and 24 or 12, label = p.label, labelCol = p.labelColor or pcol, size = psz, value = pv,
-                        valueCol = ToneColor(p.tone, cText), per = p.per, perCol = pcol, note = p.note,
-                        noteCol = lone and ToneColor(p.tone, pcol) or cMuted, kind = "pair" })
+                        valueCol = ToneColor(p.tone, cText), per = p.per, perCol = pcol, kind = "pair" })
                     y = y + ph + 1
                 end
             end
@@ -1137,24 +1127,26 @@ local function RenderWeights(c, items, y)
 end
 
 -- The Spells tab's spell table (QoL 0.7.24; Xaya 2026-11-05: "add columns to help clarity in info displays: Spell Name (spell id
--- underneath) | % PSV (underneath each entry show "1 agility = {value}") | Talent Modifiers"). DECISION: the number itself (38,011) keeps
--- a narrow column of its own, Value, between the name and % PSV, one line per number of the description, beside its percent. Widths:
--- Value holds seven characters at the text size (0.55 x size each: "123,456"); Spell Name 27% and Talent Modifiers 22% of the content;
--- % PSV the rest (141 at the default 450 panel, so "355.6% of attack power" fits one line at size 11). Every cell wraps in its column.
+-- underneath) | % PSV (underneath each entry show "1 agility = {value}") | Talent Modifiers"; her answer 2026-11-06: "Fourth column -
+-- computed Value"): exactly Spell Name | % PSV | Talent Modifiers | Computed Value. Under the name its "Spell ID: N"; per number of the
+-- description: its percent in % PSV with "1 <primary stat> = <value>" under it, and the number itself (38,011) in Computed Value on the
+-- same line. Nothing else is drawn in the table (the hover keeps the rest). Widths: Computed Value eight characters at the text size
+-- (0.55 x size each: "123,456"), Spell Name 27% and Talent Modifiers 22% of the content, % PSV the rest (141 at the default 450 panel,
+-- so "355.6% of attack power" fits one line at size 11). Every cell wraps in its column (the head "Computed Value" too).
 local function SpellCols(size)
     local g = { val = math.ceil(size * 0.55 * 8), name = math.floor(W * 0.27), tm = math.floor(W * 0.22) }
     g.psv = W - g.name - g.val - g.tm - 3 * GUT
-    g.vx = g.name + GUT
-    g.px = g.vx + g.val + GUT
+    g.px = g.name + GUT
     g.tx = g.px + g.psv + GUT
+    g.vx = g.tx + g.tm + GUT
     return g
 end
 ns.CharToolkit_SpellCols = SpellCols   -- (tests)
 local SPELL_HEAD = { kind = "spellhead", key = "spellCols", label = "Columns", value = "", pairs = {}, tip = {
     "Spell Name: the spell, and its spell ID under it.",
-    "Value: each number in the spell's description (durations, distances and counts left out).",
-    "% PSV: that number as a percent of your attack power (spell power for Intellect specs), and under it what one point of your primary stat adds to it.",
-    "Talent Modifiers: the talents you picked whose own text names the spell." } }
+    "% PSV: each number in the spell's description as a percent of your attack power (spell power for Intellect specs), and under it what one point of your primary stat adds to it.",
+    "Talent Modifiers: the talents you picked whose own text names the spell.",
+    "Computed Value: the number itself, as the game computes it in the spell's description (durations, distances and counts left out)." } }
 local function RenderSpells(c, items, y)
     local size = c.fontSize
     local cText = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
@@ -1162,9 +1154,9 @@ local function RenderSpells(c, items, y)
     local g = SpellCols(size)
     local hs = size - 1
     local h = PlaceFS(FS(), 0, y, g.name, hs, "Spell Name", cMuted, "LEFT", true, "spellhead")
-    h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, hs, "Value", cMuted, "RIGHT", true, "spellhead"))
     h = math.max(h, PlaceFS(FS(), g.px, y, g.psv, hs, "% PSV", cMuted, "LEFT", true, "spellhead"))
     h = math.max(h, PlaceFS(FS(), g.tx, y, g.tm, hs, "Talent Modifiers", cMuted, "LEFT", true, "spellhead"))
+    h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, hs, "Computed Value", cMuted, "RIGHT", true, "spellhead"))
     local hb = Btn()
     hb.item = SPELL_HEAD
     hb:ClearAllPoints(); hb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y); hb:SetSize(W, h + 1)
@@ -1176,17 +1168,13 @@ local function RenderSpells(c, items, y)
             local r = it.row
             local hn = PlaceFS(FS(), 0, y, g.name, size, it.label, it.labelColor or cText, "LEFT", true, "spellname")
             hn = hn + 1 + PlaceFS(FS(), 0, y + hn + 1, g.name, hs, r.idText, cMuted, "LEFT", true, "spellid")
-            if r.notPicked then hn = hn + 1 + PlaceFS(FS(), 0, y + hn + 1, g.name, hs, r.notPicked, cMuted, "LEFT", true, "spellnote") end
             local hm = 0
             for _, e in ipairs(r.entries) do
                 local ey = y + hm
-                local hv = PlaceFS(FS(), g.vx, ey, g.val, size, e.value, cText, "RIGHT", true, "spellvalue")
                 local hp = PlaceFS(FS(), g.px, ey, g.psv, size, e.pct, cText, "LEFT", true, "spellpct")
                 if e.per then hp = hp + 1 + PlaceFS(FS(), g.px, ey + hp + 1, g.psv, hs, e.per, cMuted, "LEFT", true, "spellper") end
+                local hv = PlaceFS(FS(), g.vx, ey, g.val, size, e.value, cText, "RIGHT", true, "spellvalue")
                 hm = hm + math.max(hv, hp) + 2
-            end
-            for _, n in ipairs({ { r.note, r.noteTone }, { r.entered, r.enteredTone } }) do
-                if n[1] then hm = hm + PlaceFS(FS(), g.vx, y + hm, g.val + GUT + g.psv, hs, n[1], ToneColor(n[2], cMuted), "LEFT", true, "spellnote") + 2 end
             end
             local mods = (#(r.mods or {}) > 0) and table.concat(r.mods, ", ") or (r.notPicked and "" or "none")
             local ht = 0
@@ -1487,7 +1475,7 @@ local function RenderSpellBar(c, m)
     for _, f in ipairs(CM.SPELL_FILTERS) do if f[1] == filter then label = f[2] end end
     fi.active, fi.filterLabel = on, label
     fi.item = { kind = "filter", key = "filterIcon", label = "Filter: " .. (label or ""), value = "", pairs = {},
-        tip = { on and ("Showing " .. (label or "") .. " spells only.") or "No filter: every spell is shown.", "Click to choose: None (show all), Offense, Defense or Utility. The choice is kept." } }
+        tip = { on and ("Showing " .. (label or "") .. " spells only.") or "No filter: every spell is shown.", "Click to choose: None, Offense, Defense or Utility. The choice is kept." } }
     fi:Show()
     Rec("filtericon", W - FILTER_ICON, fy, FILTER_ICON, FILTER_ICON, label, size)
     -- the menu (a child of the panel, so the scroll frame does not cut it): its rows painted for the current choice
@@ -1847,7 +1835,10 @@ ns.CharToolkit_HookStatFrames = HookStatFrames
 -------------------------------------------------------------------------------
 -- On / off
 -------------------------------------------------------------------------------
-local ownerHooked, themeHooked, slotHooked = false, false, false
+local ownerHooked, themeHooked, slotHooked, statHooked = false, false, false, false
+-- (QoL 0.7.24, V14) the Tooltip lines' hooks (PaperDollFrame_UpdateStats and each stat row's OnEnter) are placed only once the Tooltip
+-- lines are on; before, they came with the toolkit even while the lines were off. Placed, they return at once while it is off.
+local function TooltipLinesOn() local c = Cfg(); return (c and c.enabled and c.tooltips) and true or false end
 
 -------------------------------------------------------------------------------
 -- The Stat Calc button on the character window and the Stat Calculator row in XayaUI's minimap button list (QoL 0.7.23; Xaya
@@ -1929,7 +1920,7 @@ function ns.CharToolkit_Apply()
         local owner = Owner()
         if owner and owner.HookScript then
             ownerHooked = true
-            owner:HookScript("OnShow", function() ShowIfDocked(); HookStatFrames(); ns.CharToolkit_UpdateOverlays() end)
+            owner:HookScript("OnShow", function() ShowIfDocked(); if TooltipLinesOn() then HookStatFrames() end; ns.CharToolkit_UpdateOverlays() end)
             -- the character window closed: a panel that docked with it closes with it (its open state is kept for next time); one
             -- opened on its own stays open and goes back to its own place (QoL 0.7.23)
             owner:HookScript("OnHide", function()
@@ -1938,10 +1929,12 @@ function ns.CharToolkit_Apply()
                 if panel.standalone and cc and cc.enabled and cc.panel then ns.CharToolkit_Render() else panel:Hide() end
             end)
         end
-        if type(hooksecurefunc) == "function" then
-            if type(_G.PaperDollFrame_UpdateStats) == "function" then hooksecurefunc("PaperDollFrame_UpdateStats", HookStatFrames) end
-        end
     end
+    if c.tooltips and not statHooked and type(hooksecurefunc) == "function" and type(_G.PaperDollFrame_UpdateStats) == "function" then
+        statHooked = true
+        hooksecurefunc("PaperDollFrame_UpdateStats", function() if TooltipLinesOn() then HookStatFrames() end end)
+    end
+    if c.tooltips then HookStatFrames() end
     -- Blizzard redraws one slot button at a time; the overlay follows (post-hook, Blizzard's code runs unchanged first). Placed only once
     -- the overlays are on (QoL 0.7.19, V14: before, it was placed with the toolkit even while the overlays were off).
     if c.overlays and not slotHooked and type(hooksecurefunc) == "function" and type(_G.PaperDollItemSlotButton_Update) == "function" then
@@ -2128,10 +2121,16 @@ function ns.BuildCharToolkitPage(Notify)
                     desc = "Every rating line goes back to the Rating lines setting.",
                     func = function() C().lineModes = {}; Changed() end },
             } },
-            tips = { type = "group", name = "Tooltips", order = 3, args = {
-                tooltips = Toggle("tooltips", 1, "Character window lines",
-                    "Adds the toolkit's lines under the character window's own stat tooltips. The panel's own hover does not need this.", "double"),
-            } },
+        },
+    }
+    -- (QoL 0.7.24; Xaya 2026-11-06, asked whether the Character Toolkit's "Tooltip lines" get their own row and tick box: "Assume yes for
+    -- now") the tooltip lines are a part of their own in the left pane, its tick box the switch that sat on Panel > Tooltips before
+    local TIP_TEXT = "Adds the toolkit's lines under the character window's own stat tooltips. The panel's own hover does not need this."
+    local tipsPart = {
+        type = "group", name = "Tooltip lines", order = 40, hidden = isOff,
+        xuiSwitch = Toggle("tooltips", 1, "Tooltip lines", TIP_TEXT),
+        args = {
+            intro = { type = "description", order = 0, width = "full", fontSize = "medium", name = TIP_TEXT },
         },
     }
 
@@ -2178,10 +2177,11 @@ function ns.BuildCharToolkitPage(Notify)
         xuiSwitch = Toggle("enabled", 1, "Character Toolkit", "Turns the toolkit on. While it is off nothing is created, registered or read."),
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "The Stat Calculator: a panel beside the character window (its Stat Calc button) or on its own (the XayaUI minimap button, /xui stats): every stat the game gives in one Character Stats section, where each number comes from, what the next point buys, what each stat feeds (type your own numbers to see the change), the Stat Weights pane, and a gear comparison. What the game does not give is marked, never guessed. Turn it on with the tick box on its row on the left; its parts (Panel, Slot Overlays, Spell Math) then show under it, each with its own tick box. The tooltip lines are on Panel > Tooltips. Off by default." },
+                name = "The Stat Calculator: a panel beside the character window (its Stat Calc button) or on its own (the XayaUI minimap button, /xui stats): every stat the game gives in one Character Stats section, where each number comes from, what the next point buys, what each stat feeds (type your own numbers to see the change), the Stat Weights pane, and a gear comparison. What the game does not give is marked, never guessed. Turn it on with the tick box on its row on the left; its parts (Panel, Slot Overlays, Spell Math, Tooltip lines) then show under it, each with its own tick box. Off by default." },
             panelPart = panelPart,
             overlayPart = overlayPart,
             spells = spells,
+            tipsPart = tipsPart,
         },
     }
 end

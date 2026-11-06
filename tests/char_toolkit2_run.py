@@ -462,9 +462,9 @@ ns.CharToolkit_ClearCache()
 local page = ns.BuildCharToolkitPage(function() end)
 check("settings: Character Toolkit is a node with Panel, Slot Overlays and Spell Math under it", page.childGroups == "tree"
   and page.args.panelPart.type == "group" and page.args.overlayPart.type == "group" and page.args.spells.type == "group")
-check("settings: a part's sections are tabs (Panel: Layout, What If, Tooltips; Slot Overlays: Show, Enchant Slots)", page.args.panelPart.childGroups == "tab"
-  and page.args.panelPart.args.layout and page.args.panelPart.args.values and page.args.panelPart.args.tips and page.args.overlayPart.childGroups == "tab"
-  and page.args.overlayPart.args.show and page.args.overlayPart.args.enchants)
+check("settings: a part's sections are tabs (Panel: Layout, What If; Slot Overlays: Show, Enchant Slots); the Tooltips tab left Panel (QoL 0.7.24: Tooltip lines is a part of its own)",
+  page.args.panelPart.childGroups == "tab" and page.args.panelPart.args.layout and page.args.panelPart.args.values and page.args.panelPart.args.tips == nil
+  and page.args.overlayPart.childGroups == "tab" and page.args.overlayPart.args.show and page.args.overlayPart.args.enchants)
 local function selectsShareRows(group)
   local list = {}
   for k, e in pairs(group.args or {}) do if type(e) == "table" and e.type ~= "group" and e.type ~= "description" and e.type ~= "header" then list[#list + 1] = e end end

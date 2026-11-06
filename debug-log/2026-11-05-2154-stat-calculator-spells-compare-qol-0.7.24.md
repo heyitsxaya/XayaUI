@@ -1,6 +1,7 @@
 # Stat Calculator: Spells filter icon, spell columns, spell data button; Gear compare viewer "Changes" (XayaUI_QoL 0.7.24)
 Logged 2026-11-05 21:54 UTC. Worktree branch on the session branch `claude/adoring-hawking-wyda59`, started at 7102a2a (QoL 0.7.23,
 core 0.6.48). Core is not changed. Nothing here has run in the game (QA E1z50-E1z54).
+Corrected in the bundle (2026-11-06, debug-log/2026-11-06-0115-bundle-corrections-qol-0.7.24-core-0.6.49-bonus-0.6.14.md): the Spells table is Spell Name | % PSV | Talent Modifiers | Computed Value (her "Fourth column - computed Value"; the Value column below is gone), the menu reads None, "1 Agility = N", RPPM reads "RPPM not given by the game".
 
 ## Requests (Xaya, 2026-11-05, her words)
 1. Spells: "Filter tabs should be indicated by a filter icon on the right hand side with "none" by default (therefore showing all);
