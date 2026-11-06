@@ -11,7 +11,7 @@ Style: Blizzard's own patch notes (blue posts). Short past-tense or present-tens
 Layout, newest landing first:
   ## YYYY-MM-DD — Short title                      one per landing on main (UTC date)
   ### <Addon> <version>                            Addon is one of: XayaUI, Options, Chat, Quality of Life, Bonus Features,
-                                                   Blizzard Reskin. One heading per addon version.
+                                                   Blizzard Reskin, Dev Assist, Media. One heading per addon version.
   **Feature name**                                 a bold category line; add " (new)" for a brand-new feature
   - Bullet.                                        a change
     - Nested bullet.                               detail under the bullet above (two spaces)
@@ -23,6 +23,12 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
 ## 2026-11-06 — Character Pane, Shopping List and All Reskins
+
+### Chat 0.6.19
+
+**Chat History**
+- Fixed an issue where the chat history window dropped the letter after a literal "|" (r, n, c, T, H, A, K).
+  *Developers' notes: Not yet tested in game (QA D12, D13).*
 
 ### Quality of Life 0.7.32
 
