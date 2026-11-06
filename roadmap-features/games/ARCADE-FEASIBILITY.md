@@ -36,6 +36,25 @@ Status: research and outline only. Nothing is built or decided. "Feasible" means
    - Loaded with no game open, it has no OnUpdate, no timers and no events.
    - A game's loop exists only while that game is open (`Arcade/Loop.lua`).
    - Its memory stays until a /reload: the 12.1.5 `C_AddOns` list has `LoadAddOn` and `DisableAddOn` (namespaces.md:140, 164) but no unload call. INFERENCE: `DisableAddOn` takes effect at the next reload, as AddOns-list changes do.
+   - **Xaya confirmed this, 2026-11-06** (her answer to "load on demand only"): "only things that are enabled should load, and only when directly called. The goal is to improve performance and reduce memory/cpu cost as much as possible except where unavoidable." So "load on demand" means the addon's loading, not where the notes are kept. Section 2b proposes how far to take it.
+
+## 2b. How finely to load (proposal: CONFIRM before building)
+**Why it matters.** Code that is loaded costs memory even while it does nothing. Session S1 measured the always-loaded feature addons in the stand-in test (`debug-log/2026-11-05-2356-request-log-protocol-and-load-cost-measurements.md`, branch `claude/adoring-hawking-wyda59`): about 1.2 MB of Lua memory for QoL + Bonus + Reskin while switched off (675.6 + 482.0 + 67.6 = 1225.2 KB). Only load-on-demand removes that cost, and nothing can unload code after it has loaded.
+
+| Option | What loads when the player opens one game | Cost | Weakness |
+|---|---|---|---|
+| A. One load-on-demand addon for all games | every game's code | one folder | Opening mine-sweeping also loads sudoku's and the word game's code: against "only when directly called" |
+| **B. A small shell plus one load-on-demand addon per game (proposed)** | the shell (window, list, gates) and that one game | one folder per game, grouped by `## Group: XayaUI` (the suite's .toc files already carry it; INFERENCE that the AddOns list groups by it, check in game) | More folders. Shared parts (`Arcade/Loop`, `Grid`, `Guard`) live in the shell, so every game needs it loaded first |
+| C. One addon, each game's code kept as text and compiled on open | that one game | one folder | Needs `loadstring` on our own code. Rejected: it hides code in strings, which is harder to review and test |
+
+Under B, the word game's names pool (`WordPool.lua`) and a sudoku being made are built only after their game opens.
+
+Freed on close: the game's tables (board, pool, history) are dropped, so Lua's garbage collector can take them back. The code stays until a /reload, which is unavoidable because there is no unload call.
+
+Unavoidable costs, named:
+- the core "Games" switch and the launcher row, a few lines in core (`CORE-HOOK.md`);
+- the short wait the first time a game opens (the addon loads; the word pool or sudoku is built over a few frames; not measured);
+- the code of a game already played this session.
 4. **Never during restricted play** (proposed): a game refuses to start, and pauses, while any of these is active:
    - `C_RestrictedActions.IsAddOnRestrictionActive(type)` for `Combat`, `Encounter`, `ChallengeMode` or `PvPMatch` (enums.md:497-504; namespaces.md:4150-4155);
    - followed live through `ADDON_RESTRICTION_STATE_CHANGED` (events.md:37) and `PLAYER_REGEN_DISABLED` (events.md:1206).
@@ -93,6 +112,7 @@ Nothing forbids games. Rule 3 limits multiplayer; rule 6 matters for shared word
 5. Shooter and maze chase last, or never.
 
 ## 8. Open questions for Xaya
+0. **Loading per game (section 2b):** option B (a shell plus one load-on-demand addon per game), or A (one addon for all games)? Also: is "only things that are enabled should load, and only when directly called" meant for the whole suite (on-demand windows such as Notepad, Calculator and Stat Calculator would load at first open, extending V14), or for the games only?
 1. Which games, and which first? **Answered in part (Xaya, 2026-11-05): "Minesweeper", "Sudoku"**, and the word game as a "wow trivia edition (uses words from in-wow)". Outlines: `Games/Mines/Mines.lua`, `Games/Sudoku/Sudoku.lua`, `Games/Word/WordPool.lua`. The other games stay listed and not picked.
 2. Falling blocks: a clearly different design, or leave it out?
 3. The "Games" switch off by default?

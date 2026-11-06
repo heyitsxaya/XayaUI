@@ -471,6 +471,7 @@ d27f8382f0cf14a88b89d448efa972d5  debug-log/2026-11-05-1612-sidebar-switches-uti
 4716f7733cf83de9d6efbc85943772df  debug-log/2026-11-05-1643-core-off-costs-nothing-core-0.6.47.md
 2cd9e04bca8c3a3b47d1b0c197fcd29e  debug-log/2026-11-05-1714-character-pane-overlays-qol-0.7.19.md
 8c7ceaa8ff08bbbb847a6cfc1acf0f64  debug-log/2026-11-05-1716-stat-calculator-change-column-qol-0.7.20.md
+52fe673f6ce190cf24b4ad2b163503d3  debug-log/2026-11-06-0023-games-load-on-demand-answer.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -526,8 +527,8 @@ f2392efc4795cf87f14f959076d53174  docs/reference/spells/PRIEST.md
 53f985e580da756189083057adc801a6  docs/reference/spells/WARRIOR.md
 698743cb103884e952cacf7c8b11adeb  docs/reference/spells/other-spells.md
 eaa8da10b5a8d76dce1fdfeeef149d63  docs/reference/spells/spells.json
-6d5e1ed7ddb63bf0e0b6b6ec4fe8a172  roadmap-features/games/ARCADE-FEASIBILITY.md
-e716bc04e63fb9df2b62656f2cf6c640  roadmap-features/games/CORE-HOOK.md
+9c0ad3f1615aad938a4197e950ed175b  roadmap-features/games/ARCADE-FEASIBILITY.md
+838baa96df2a29fec23b940136e66e5c  roadmap-features/games/CORE-HOOK.md
 805550807e16e8204cef636aaa8e56de  roadmap-features/games/README.md
 64200709de60ee6086d23ab47717282f  roadmap-features/games/XayaUI_Games/Arcade/Grid.lua
 377f0e28370e5cd2dfdca5180f386cd5  roadmap-features/games/XayaUI_Games/Arcade/Guard.lua

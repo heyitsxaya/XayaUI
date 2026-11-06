@@ -14,6 +14,11 @@ At login, core walks the installed add-ons. For each one that is load-on-demand 
 
 Once loaded, the add-on registers its real handlers through `Modules.lua` as usual and takes over its row and command.
 
+## Per-game addons (if Xaya picks option B in ARCADE-FEASIBILITY section 2b)
+- Each game addon's .toc carries `## X-XayaUI-Game: <name>` and depends on the games shell.
+- Core lists them under the "Games" node from these fields, without loading any of them.
+- Clicking a game loads the shell (if not loaded yet) and then that game only. Same calls as above.
+
 ## The "Games" switch (Xaya, 2026-11-05: "none should run at all if “Games” aren't Enabled as their own tab")
 The games add-on is not loaded while the switch is shown, so it cannot own the switch. Core owns it:
 - **A "Games" node in the settings window,** shown only when an add-on with the launcher line is installed. It holds one switch, "Enable Games", **off by default** (proposed). Its value is a core setting.
