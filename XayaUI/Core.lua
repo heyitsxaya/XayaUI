@@ -89,6 +89,7 @@ function ns.Log(fmt, ...)
     local line = ("|cff888888%.1f|r %s"):format(GetTime() % 10000, msg)
     local b = ns.logBuf
     b[#b + 1] = line
+    ns.logSerial = (ns.logSerial or 0) + 1   -- (Console.lua: which lines a closed console window has not drawn yet)
     local n = #b
     if n > 350 then   -- trim in one pass (down to 300) instead of shifting the whole array on every line
         for i = 1, 300 do b[i] = b[n - 300 + i] end
@@ -747,7 +748,13 @@ end
 
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
-f:SetScript("OnEvent", function(_, _, name)
+f:RegisterEvent("PLAYER_LOGIN")   -- (Modules.lua ns.AtLogin: one frame for every feature that waits for the login; let go once fired)
+f:SetScript("OnEvent", function(_, event, name)
+    if event == "PLAYER_LOGIN" then
+        f:UnregisterEvent("PLAYER_LOGIN")
+        if ns.FireLogin then ns.FireLogin() end
+        return
+    end
     if name ~= addonName then return end
     InitDB()
     f:UnregisterEvent("ADDON_LOADED")
@@ -853,6 +860,28 @@ SlashCmdList["XAYAUI"] = function(msg)
             "/xui timing (how every cue gets time in combat)", "/xui seed", "/xui talents [status|<name>]", "/xui model [setup|<spellID>]",
             "/xui tracker [shadow|status]", "/xui loc", "/xui media" }
         for _, h in ipairs(ns.CommandHelp()) do help[#help + 1] = h end
-        ns.Print((("commands: " .. table.concat(help, " | ")):gsub("|", "||")))
+        -- one command per line (core 0.6.46; Xaya 2026-11-05: "console print is difficult to read": the list was one long line
+        -- joined by " | "): the command in the theme's accent text color, what it does after it. A feature's help entry that
+        -- holds two commands (" | /xui ...") is split. Pipes in the text are doubled ("||"), which the game shows as one "|";
+        -- the color codes are not.
+        local items = {}
+        for _, h in ipairs(help) do
+            local rest = h
+            while true do
+                local a = rest:find(" | /xui", 1, true)
+                if not a then items[#items + 1] = rest; break end
+                items[#items + 1] = rest:sub(1, a - 1); rest = rest:sub(a + 3)
+            end
+        end
+        local c = (ns.Theme and ns.Theme.cur and ns.Theme.cur.accentText) or { 0.78, 0.62, 1 }
+        local hex = ("|cff%02x%02x%02x"):format(math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5))
+        ns.Print(("commands (%d):"):format(#items))
+        for _, h in ipairs(items) do
+            local cmdText, desc = h:match("^(.-)%s*(%b())$")
+            if not cmdText or cmdText == "" then cmdText, desc = h, nil end
+            local line = "  " .. hex .. (cmdText:gsub("|", "||")) .. "|r"
+            if desc then line = line .. "  " .. (desc:sub(2, -2):gsub("|", "||")) end
+            ns.Print(line)
+        end
     end
 end

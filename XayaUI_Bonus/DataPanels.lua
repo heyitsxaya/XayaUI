@@ -117,6 +117,7 @@ function ns.DataPanels_OnDBReady()
     ns.Merge(dp, ns.DATAPANEL_DEFAULTS)
     for _, c in pairs(dp.customs) do if type(c) == "table" then ns.Merge(c, CustomDef()) end end   -- custom panels get any setting added since they were made
     ns.dataPanelDB = CueRulesDB.dataPanels
+    ns.DataPanels_Sync()   -- the driver, only when the master switch and a panel are on (V14)
 end
 
 -------------------------------------------------------------------------------
@@ -322,14 +323,12 @@ function ns.DataPanels_Refresh(key)
 end
 
 -- driver --------------------------------------------------------------------------------------------------------------------
-local drv = CreateFrame("Frame")
-drv:RegisterEvent("PLAYER_ENTERING_WORLD")
-drv:RegisterEvent("PLAYER_REGEN_DISABLED")
-drv:RegisterEvent("PLAYER_REGEN_ENABLED")
-drv:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
-drv:SetScript("OnEvent", function(_, ev)
-    if ev == "PLAYER_ENTERING_WORLD" then C_Timer.After(0.3, function() ns.DataPanels_Refresh() end) else ns.DataPanels_Refresh() end
-end)
+-- V14 "off costs nothing" (Bonus 0.6.12; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD
+-- or contribute to performance cost / demand in any way"). The driver (its frame, its four events, its OnUpdate) exists and runs only
+-- while the master switch is on AND at least one panel is enabled: ns.DataPanels_Sync starts or stops it (at login, and when the master
+-- switch, a panel's Enable, or the custom panel list changes). Up to 0.6.11 it was made at load with its events and an OnUpdate on
+-- every frame, whatever the switches said.
+local drv
 local acc, accHover = 0, 0
 local keys, keysAt = nil, -1   -- the panel list, rebuilt at most once a second (it was rebuilt 11 times a second)
 local function Keys()
@@ -337,10 +336,12 @@ local function Keys()
     if not keys or now - keysAt >= 1 or now < keysAt then keys, keysAt = AllKeys(), now end
     return keys
 end
-drv:SetScript("OnUpdate", function(_, dt)
+local function OnEvent(_, ev)
+    if ev == "PLAYER_ENTERING_WORLD" then C_Timer.After(0.3, function() ns.DataPanels_Refresh() end) else ns.DataPanels_Refresh() end
+end
+local function OnUpdate(_, dt)
     acc = acc + dt; accHover = accHover + dt
     if acc < 1 and accHover < 0.1 then return end
-    if not ns.DataPanels_MasterOn() then acc, accHover = 0, 0; return end   -- feature off: nothing to update
     if acc >= 1 then acc = 0; for _, k in ipairs(Keys()) do UpdateText(k) end end
     if accHover >= 0.1 then
         accHover = 0
@@ -352,7 +353,26 @@ drv:SetScript("OnUpdate", function(_, dt)
             end
         end
     end
-end)
+end
+local function Wanted()
+    if not ns.DataPanels_MasterOn() then return false end
+    for _, k in ipairs(AllKeys()) do local cfg = Cfg(k); if cfg and cfg.enabled then return true end end
+    return false
+end
+function ns.DataPanels_Sync()
+    if Wanted() then
+        if not drv then drv = CreateFrame("Frame"); drv:SetScript("OnEvent", OnEvent) end
+        if not drv:GetScript("OnUpdate") then
+            for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_EQUIPMENT_CHANGED" }) do drv:RegisterEvent(e) end
+            acc, accHover, keys = 0, 0, nil
+            drv:SetScript("OnUpdate", OnUpdate)
+        end
+    elseif drv then
+        drv:UnregisterAllEvents()
+        drv:SetScript("OnUpdate", nil)
+        keys = nil
+    end
+end
 
 -------------------------------------------------------------------------------
 -- options page: Bonus Features > "Custom Data Panels and Bars"
@@ -361,17 +381,19 @@ function ns.BuildDataPanelsTab(Notify)
     local db = DB()
     if not db then return nil end
     local function Re(key) ns.DataPanels_Refresh(key) end
-    local function Both(key) ns.DataPanels_Refresh(key); if Notify then Notify() end end
+    local function Both(key) ns.DataPanels_Refresh(key); ns.DataPanels_Sync(); if Notify then Notify() end end
     ns.DataPanels_Changed = function() if Notify then Notify() end end
     local function MasterHidden() return not ns.DataPanels_MasterOn() end
 
+    -- the master switch is the tick box on this page's row in the left pane (xuiSwitch on the page group below; Bonus 0.6.11; Xaya
+    -- 2026-11-05: "move all enable/disable toggles onto the sidebar instead"); the same set as the page's old switch
+    local master = { type = "toggle", name = "Enable Custom Data Panels and Bars",
+        desc = "Master switch. Off: no panel is shown and the sections of this page are hidden (their settings are kept). On: each section then has its own Enable switch.",
+        get = function() return db.general.enabled and true or false end,
+        set = function(_, v) db.general.enabled = v and true or false; ns.DataPanels_Refresh(); ns.DataPanels_Sync(); if Notify then Notify() end end }
     local general = { type = "group", name = "General", order = 1, args = {
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Info panels for the screen. Tick the master switch below, then switch on the sections you want: a left, right, and center panel, and as many custom panels as you like. (The bar attached to the chat is the Chat Bar, under Chat > Chat Panel, part of XayaUI Chat.) Every block of every panel can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). Right-click any panel to jump here. The Chat Panels tab holds the backdrops, tab panel, and sizes of the Blizzard chat windows." },
-        master = { type = "toggle", order = 0.1, width = "full", name = "Enable Custom Data Panels and Bars",
-            desc = "Master switch. Off: no panel is shown and the sections below are hidden (their settings are kept). On: each section then has its own Enable switch.",
-            get = function() return db.general.enabled and true or false end,
-            set = function(_, v) db.general.enabled = v and true or false; ns.DataPanels_Refresh(); if Notify then Notify() end end },
+            name = "Info panels for the screen. Tick the box next to Custom Data Panels and Bars on the left, then switch on the sections you want: a left, right, and center panel, and as many custom panels as you like. (The bar attached to the chat is the Chat Bar, under Chat > Chat Panel, part of XayaUI Chat.) Every block of every panel can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). Right-click any panel to jump here. The Chat Panels tab holds the backdrops, tab panel, and sizes of the Blizzard chat windows." },
         blocks = { type = "group", name = "Clicks and hovering", order = 1, inline = true, hidden = MasterHidden, args = {
             click = { type = "toggle", order = 1, name = "Block combat click", get = function() return db.general.blockCombatClick end, set = function(_, v) db.general.blockCombatClick = v end },
             hover = { type = "toggle", order = 2, name = "Block combat hover", get = function() return db.general.blockCombatHover end, set = function(_, v) db.general.blockCombatHover = v end },
@@ -539,6 +561,7 @@ function ns.BuildDataPanelsTab(Notify)
                     local db2 = DB(); if db2 and db2.customs then db2.customs[key] = nil end
                     if ns.DataPanels_RemoveSection then ns.DataPanels_RemoveSection(key) end
                     local e = frames[key]; if e then SetVisibilityMacro(e, nil); e.f:Hide() end
+                    ns.DataPanels_Sync()
                     if Notify then Notify() end
                 end }
         end
@@ -553,7 +576,7 @@ function ns.BuildDataPanelsTab(Notify)
         return { type = "group", name = title or function() return (cfg.name and cfg.name ~= "") and cfg.name or key end, order = order, inline = true, hidden = MasterHidden, args = args }
     end
 
-    local out = { type = "group", name = "Custom Data Panels and Bars", order = 10, childGroups = "tab", args = { general = general } }
+    local out = { type = "group", name = "Custom Data Panels and Bars", order = 10, childGroups = "tab", xuiSwitch = master, args = { general = general } }
     local gen = general.args
     gen.left = Section("bl", 10)
     gen.right = Section("br", 11)
@@ -575,6 +598,7 @@ function ns.BuildDataPanelsTab(Notify)
             db.customs[key].name = "Custom Panel " .. (count + 1)
             customGroup.args[key] = Section(key, 10 + nxt)
             ns.DataPanels_Refresh(key)
+            ns.DataPanels_Sync()
             if Notify then Notify() end
         end },
     } }

@@ -47,7 +47,7 @@ local function Build()
     pane:SetFrameStrata("BACKGROUND")
     tabsA = CreateFrame("Frame", nil, pane)
     textA = CreateFrame("Frame", nil, pane)
-    textA:SetScript("OnSizeChanged", function() if C.On() and C.Rewrap then C.Rewrap() end end)   -- the text area was resized: wrap at the new width
+    textA:SetScript("OnSizeChanged", function() if C.active and C.Rewrap then C.Rewrap() end end)   -- the text area was resized: wrap at the new width
     inputA = CreateFrame("Button", "XayaUIChatInput", pane)     -- the input line's strip; clicking it opens the edit box
     inputA:SetFrameStrata("LOW")
     inputA:RegisterForClicks("LeftButtonUp")
@@ -59,9 +59,14 @@ local function Build()
     hint = inputA:CreateFontString(nil, "OVERLAY")
     hint:SetPoint("LEFT", inputA, "LEFT", 8, 0)
     hint:SetTextColor(1, 1, 1, 0.35)
+    C.hint = hint
+end
+
+-- the Chat Bar's frame: built the first time the bar is on (V14: never with "Show the Chat Bar" off)
+local function BuildBar()
+    if bar or not container then return end
     bar = CreateFrame("Frame", "XayaUIChatBar", container)
     bar:SetFrameStrata("LOW")
-    C.hint = hint
 end
 
 -- the collapse arrow: a chevron drawn with two lines. Lives at the start of the bar; with the bar off it sits under the pane's corner.
@@ -103,21 +108,25 @@ function C.Layout()
     local bh = barOn and Clamp(s.barH, 14, 60, 22) or 0
     local gap = barOn and Clamp(s.barGap, 0, 20, 2) or 0
     local below = (s.barSide ~= "TOP")
+    if barOn then BuildBar() end
     container:ClearAllPoints()
     container:SetPoint(s.point or "BOTTOMLEFT", UIParent, s.point or "BOTTOMLEFT", tonumber(s.x) or 24, tonumber(s.y) or 90)
     container:SetSize(W, H + bh + gap)
 
-    pane:ClearAllPoints(); bar:ClearAllPoints()
+    pane:ClearAllPoints()
+    if bar then bar:ClearAllPoints() end
     if below then
         pane:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0); pane:SetPoint("TOPRIGHT", container, "TOPRIGHT", 0, 0)
-        bar:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0); bar:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0)
+        if bar then bar:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0); bar:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0) end
     else
         pane:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0); pane:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0)
-        bar:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0); bar:SetPoint("TOPRIGHT", container, "TOPRIGHT", 0, 0)
+        if bar then bar:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0); bar:SetPoint("TOPRIGHT", container, "TOPRIGHT", 0, 0) end
     end
     pane:SetHeight(H)
-    bar:SetHeight(math.max(1, bh))
-    bar:SetShown(barOn)
+    if bar then
+        bar:SetHeight(math.max(1, bh))
+        bar:SetShown(barOn)
+    end
 
     local th = TabH(s)
     tabsA:ClearAllPoints()
@@ -416,7 +425,8 @@ local function HookAlpha(el)
     el._xuiAlphaHook = true
     C.alphaEls[#C.alphaEls + 1] = el
     pcall(hooksecurefunc, el, "SetAlpha", function(self, a)
-        if self._xuiSetting or type(a) ~= "number" or issecret(a) then return end
+        -- the game cannot take this hook back: idle while the Chat Panel is off (C.Teardown then forgets the stored value)
+        if not C.active or self._xuiSetting or type(a) ~= "number" or issecret(a) then return end
         self._xuiBase = a
         if C.master < 0.999 then self._xuiSetting = true; self:SetAlpha(a * C.master); self._xuiSetting = false end
     end)
@@ -444,7 +454,7 @@ function C.ApplyAlpha()
     local collapsed = s.collapsed and true or false
     C.master = (collapsed and 0 or 1) * C.fade
     pane:SetAlpha(collapsed and 0 or C.fade)
-    bar:SetAlpha((s.fadeBar and C.fade) or 1)
+    if bar then bar:SetAlpha((s.fadeBar and C.fade) or 1) end
     local off = C.master < 0.02
     for _, el in ipairs(C.Elements()) do
         C.Try("alpha", function()
@@ -535,7 +545,7 @@ end
 -------------------------------------------------------------------------------
 -- Refresh, hooks, upkeep
 -------------------------------------------------------------------------------
-local function Soft() if C.On() then C.Schedule() end end
+local function Soft() if C.active then C.Schedule() end end   -- a hook the game cannot take back: idle while the Chat Panel is off
 local soonPending
 function C.SoonAnchor()
     if soonPending then return end
@@ -609,6 +619,7 @@ local function Refresh(s)
     Build()
     container:Show()
     C.Layout()
+    if not s.inputHint then hint:Hide() end   -- the upkeep below leaves the hint alone while "Show a hint" is off
     -- the game re-anchors these when windows are docked, locked or opened; anchor again right after
     for _, key in ipairs({ "FCF_DockUpdate", "FCF_RestorePositionAndDimensions", "FCF_SetLocked", "FCF_UpdateButtonSide", "FCF_SetWindowAlpha",
         "FCF_StopDragging", "FCF_DockFrame", "FCF_UnDockFrame", "FCF_ResetChatWindows" }) do
@@ -623,29 +634,39 @@ local function Refresh(s)
     local cf = C.Main()
     if cf then
         for _, m in ipairs({ "SetPoint", "ClearAllPoints", "StopMovingOrSizing", "SetUserPlaced" }) do
-            C.HookOnce("cf:" .. m, cf, m, function() if not C.anchoring and C.On() then C.SoonAnchor() end end)
+            C.HookOnce("cf:" .. m, cf, m, function() if not C.anchoring and C.active then C.SoonAnchor() end end)
         end
     end
 end
 C.Register("frame", Refresh)
 
--- upkeep: input hint, anchors the game may have changed
+-- upkeep: anchors the game may have changed, the back-to-newest arrow, wrapping, the input hint. It runs only while the Chat Panel is on
+-- (the "upkeep" part: its OnUpdate is set when the panel starts and cleared when it stops; up to Chat 0.6.13 it ran on every frame
+-- from login, with the Chat Panel off too).
 local acc, slow = 0, 0
-local up = CreateFrame("Frame")
-up:SetScript("OnUpdate", function(_, dt)
+local up
+local function Upkeep(_, dt)
     acc = acc + dt
     if acc < 0.3 then return end
     slow = slow + acc
     acc = 0
     local s = S()
-    if s and container and C.On() and slow >= 3 then slow = 0; C.Parts() end   -- the game may put its strip / social button back
     if not (s and container and C.On()) then return end
+    if slow >= 3 then slow = 0; C.Parts() end   -- the game may put its strip / social button back
     local cf = C.Main()
     if not C.Glued() then C.Anchor() end
     C.ToBottomUpdate()   -- the back-to-newest arrow follows the window's scroll position (shown while scrolled up)
     if cf and cf.IsShown and cf:IsShown() and C.WrapOff() then C.Rewrap() end
-    local eb = C.EditBoxOf(cf or {})
-    local typing = eb and eb.IsShown and eb:IsShown()
-    hint:SetShown(s.inputHint and not typing and not s.collapsed and true or false)
-    hint:SetText(s.inputHintText or "")
-end)
+    if s.inputHint then
+        local eb = C.EditBoxOf(cf or {})
+        local typing = eb and eb.IsShown and eb:IsShown()
+        hint:SetShown(not typing and not s.collapsed and true or false)
+        hint:SetText(s.inputHintText or "")
+    end
+end
+C.Part("upkeep", function() return true end,
+    function()
+        if not up then up = CreateFrame("Frame") end
+        up:SetScript("OnUpdate", Upkeep)
+    end,
+    function() if up then up:SetScript("OnUpdate", nil) end end)

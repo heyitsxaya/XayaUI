@@ -60,6 +60,7 @@ ns.CURSORHIGHLIGHT_DEFAULTS = {
     shape = "circle",
     size = 56,
     color = { 1.00, 0.82, 0.10 },
+    useThemeColor = false, -- (QoL 0.7.17) draw in the UI theme's accent instead of `color`, following theme changes
     opacity = 0.35,
     combatOnly = false,
     hideMouselook = true,
@@ -149,9 +150,17 @@ local function Segment(i, x1, y1, x2, y2, t, col)
     l:Show()
 end
 
+-- the color drawn: the UI theme's accent (core's resolved token) while "Use the UI theme's accent" is on, else the color picked here
+local function DrawColor(c)
+    local T = c.useThemeColor and ns.Theme
+    local a = T and T.cur and T.cur.accent
+    if a then return { a[1], a[2], a[3] } end
+    return c.color or { 1, 1, 1 }
+end
+
 -- lay out whatever the settings ask for; runs when a setting changes, never per frame
 local function Layout(c)
-    local col = c.color or { 1, 1, 1 }
+    local col = DrawColor(c)
     local size, op = c.size or 56, c.opacity or 0.35
     tex:Hide(); if line then line:Hide() end; HideRing()
     frame:SetAlpha(1)
@@ -219,15 +228,36 @@ local function OnUpdate()
     anchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / s, y / s)
 end
 
+-- "Use the UI theme's accent": the color follows every theme change (core's Theme.OnResolve). The listener is in core's list only
+-- while the highlight is on AND that option is on; otherwise it is taken out (Theme.OffResolve): no work on a theme change (rule V14).
+local themeListening = false
+local function OnThemeResolved()
+    local c = CueRulesDB and CueRulesDB.cursorHighlight
+    if not (frame and c and c.enabled and c.useThemeColor) then return end
+    Layout(c)
+    if hiddenNow then frame:SetAlpha(0) end   -- Layout sets the shape's opacity; keep it hidden while it should be (combat only, turning)
+end
+local function ListenTheme(on)
+    on = on and true or false
+    local T = ns.Theme
+    if on == themeListening or not (T and T.OnResolve) then return end
+    if on then T.OnResolve(OnThemeResolved)
+    elseif T.OffResolve then T.OffResolve(OnThemeResolved)
+    else return end   -- (a core without OffResolve: the listener stays, and returns at once while the option is off)
+    themeListening = on
+end
+
 function ns.CursorHighlight_Apply()
     local c = Ensure()
     if not c then return end
     if not c.enabled then
+        ListenTheme(false)
         if frame then frame:SetScript("OnUpdate", nil); tex:Hide(); if line then line:Hide() end; HideRing(); frame:Hide() end
         return
     end
     Build()
     Layout(c)
+    ListenTheme(c.useThemeColor)
     hiddenNow = false
     frame:Show()
     frame:SetScript("OnUpdate", OnUpdate)
@@ -238,7 +268,8 @@ ev:RegisterEvent("PLAYER_LOGIN")
 ev:SetScript("OnEvent", function() ns.CursorHighlight_Apply() end)
 
 -- options: the Cursor Highlight page (QoL > Cursor > Cursor Highlight in the left pane) ----------------------------------------
--- The on/off switch stays at the top; everything else sits in tabs (Shape | Color and Size | Behavior), shown once it is on.
+-- The on/off switch is the tick box on this page's row in the left pane (xuiSwitch, QoL 0.7.18; Xaya 2026-11-05: "move all
+-- enable/disable toggles onto the sidebar instead"); everything else sits in tabs (Shape | Color and Size | Behavior), shown once it is on.
 function ns.BuildCursorHighlightTab(Notify)
     local function C() return Ensure() or ns.CURSORHIGHLIGHT_DEFAULTS end
     local function Changed() ns.CursorHighlight_Apply(); if Notify then Notify() end end
@@ -247,13 +278,13 @@ function ns.BuildCursorHighlightTab(Notify)
     for _, k in ipairs(SHAPE_ORDER) do shapeValues[k] = SHAPES[k][1] end
     return {
         type = "group", name = "Cursor Highlight", order = 1, childGroups = "tab",
+        xuiSwitch = { type = "toggle", name = "Cursor highlight",
+            desc = "Turns the highlight on. While it is off nothing is drawn or polled.",
+            get = function() return C().enabled and true or false end,
+            set = function(_, v) C().enabled = v and true or false; Changed() end },
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "A colored shape that follows your mouse cursor so you can find it at a glance. Off by default." },
-            enabled = { type = "toggle", order = 1, width = "full", name = "Cursor highlight",
-                desc = "Turns the highlight on. While it is off nothing is drawn or polled.",
-                get = function() return C().enabled and true or false end,
-                set = function(_, v) C().enabled = v and true or false; Changed() end },
+                name = "A colored shape that follows your mouse cursor so you can find it at a glance. Off by default: tick the box next to Cursor Highlight on the left to turn it on." },
             shape = {
                 type = "group", name = "Shape", order = 2, hidden = isOff,
                 args = {
@@ -288,7 +319,12 @@ function ns.BuildCursorHighlightTab(Notify)
             look = {
                 type = "group", name = "Color and Size", order = 3, hidden = isOff,
                 args = {
+                    useThemeColor = { type = "toggle", order = 0.5, width = "full", name = "Use the UI theme's accent",
+                        desc = "Colors the highlight with your UI theme's accent color (Settings > Theme) and follows it when you change the theme. Off: the color you pick here.",
+                        get = function() return C().useThemeColor and true or false end,
+                        set = function(_, v) C().useThemeColor = v and true or false; Changed() end },
                     color = { type = "color", order = 1, name = "Color", hasAlpha = true,   -- the picker's transparency is the Opacity setting below
+                        disabled = function() return C().useThemeColor and true or false end,   -- (kept, used again when the option is off)
                         get = function() local col = C().color; return col[1], col[2], col[3], C().opacity or 0.35 end,
                         set = function(_, r, g, b, a) C().color = { r, g, b }; if a then C().opacity = math.max(0.05, math.floor(a * 20 + 0.5) / 20) end; Changed() end },
                     size = { type = "range", order = 2, name = "Size", min = 16, max = 160, step = 1,

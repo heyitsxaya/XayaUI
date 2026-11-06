@@ -242,16 +242,15 @@ end
 local last
 local function Place()
     local bar, s = C.Bar(), S()
-    if not (bar and s and last and s.barOn and C.On()) then return end
+    if not (bar and s and last and s.barOn and C.active) then return end
     B.Layout(bar, slots, { n = last.n, sizing = last.sizing, lead = C.ArrowLead(), get = last.get })
     -- AUTO sizing measures the text, so lay out again once the strings have their widths
     if last.sizing == "AUTO" then B.Layout(bar, slots, { n = last.n, sizing = "AUTO", lead = C.ArrowLead(), get = last.get }) end
 end
 
 local function Refresh(s)
-    if not C.On() or not C.Bar() then return end
+    if not (C.On() and s.barOn and C.Bar()) then return end   -- the bar's frame is built by C.Layout the first time the bar is on
     local bar = C.Bar()
-    if not s.barOn then return end
     Style(s)
     local n = Count(s)
     for i = 1, n do if not slots[i] then MakeSlot(i) end end
@@ -274,12 +273,20 @@ local function Refresh(s)
 end
 C.Register("bar", Refresh)
 
+-- the clock / frame rate / friends text, once a second, while the bar is on (the "bar" part: its OnUpdate is set when the bar is turned
+-- on and cleared when it is turned off or the Chat Panel goes off; up to Chat 0.6.13 it ran on every frame from login)
 local acc = 0
-local up = CreateFrame("Frame")
-up:SetScript("OnUpdate", function(_, dt)
+local up
+local function Tick(_, dt)
     acc = acc + dt
     if acc < 1 then return end
     acc = 0
-    local s = S()
-    if s and s.barOn and C.On() and C.Bar() and C.Bar():IsShown() then pcall(UpdateText) end
-end)
+    local s, bar = S(), C.Bar()
+    if s and s.barOn and bar and bar:IsShown() then pcall(UpdateText) end
+end
+C.Part("bar", function(s) return s.barOn end,
+    function()
+        if not up then up = CreateFrame("Frame") end
+        up:SetScript("OnUpdate", Tick)
+    end,
+    function() if up then up:SetScript("OnUpdate", nil) end end)

@@ -115,8 +115,10 @@ local function StyleEditBoxes(s)
                 end
                 if not eb._xuiFocusHook then
                     eb._xuiFocusHook = true
-                    eb:HookScript("OnEditFocusGained", function() C.inputFocus = true; C.StyleInput() end)
-                    eb:HookScript("OnEditFocusLost", function() C.inputFocus = false; C.StyleInput() end)
+                    -- HookScript cannot be taken back: idle while the Chat Panel is off (up to Chat 0.6.13 these restyled the hidden
+                    -- input strip every time the chat was opened with the Chat Panel off)
+                    eb:HookScript("OnEditFocusGained", function() if not C.active then return end; C.inputFocus = true; C.StyleInput() end)
+                    eb:HookScript("OnEditFocusLost", function() if not C.active then return end; C.inputFocus = false; C.StyleInput() end)
                 end
             end)
         end
@@ -183,7 +185,7 @@ local function Refresh(s)
     C.StyleTabs()
     -- the game redraws a window's font and the tabs on these; apply ours again right after
     for _, key in ipairs({ "FCF_SetChatWindowFontSize", "FCF_SelectDockFrame", "FCF_Tab_OnClick", "FCF_OpenNewWindow", "FCF_OpenTemporaryWindow" }) do
-        C.HookOnce("skin:" .. key, key, nil, function() if C.On() then C.Schedule() end end)
+        C.HookOnce("skin:" .. key, key, nil, function() if C.active then C.Schedule() end end)   -- idle while the Chat Panel is off
     end
 end
 C.Register("skin", Refresh)

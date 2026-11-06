@@ -34,6 +34,7 @@ local function SoundChoices()
 end
 
 function ns.BuildChatTab(Notify)
+    if C.EnsureDefaults then C.EnsureDefaults() end   -- the page shows the defaults even while the Chat Panel is saved off (V14: not built at login then)
     local function S() return ns.chat2 or {} end
     local function Re(flash)
         C.Refresh()
@@ -96,7 +97,7 @@ function ns.BuildChatTab(Notify)
             name = function() return "|cffff5555Blocked:|r " .. tostring(C.BlockedReason()) end },
         intro = note("Chat Panel restyles Blizzard's own chat window in place and puts it in one block: the tabs, the text, and the line you type in are inside the pane, and the Chat Bar is part of the same block. /xui chat shows what ran and what failed.", 2),
         enabled = { type = "toggle", name = "Enable Chat Panel", order = 3, width = "full",
-            desc = "Off gives Blizzard's chat back as the game draws it.",
+            desc = "Off gives Blizzard's chat back as the game draws it, and nothing of the Chat Panel runs. A few hooks it placed in the game's chat while it was on stay until you /reload, but they do nothing.",
             get = function() return S().enabled and true or false end,
             set = function(_, v) local s = ns.chat2; if s then s.enabled = v and true or false end; Re() end },
         theme = tog("Use the XayaUI theme for the chat's colors and font", "useTheme", 4,
@@ -273,7 +274,7 @@ function ns.BuildChatTab(Notify)
 
     -- 5. FILTERS AND LINKS --------------------------------------------------------------------------------------------------
     local filters = { type = "group", name = "Filters", order = 5, args = {
-        n = note("These work on public messages (say, yell, emotes, channels) and whispers. Your own messages are never filtered. Protected (secret) lines are never touched.", 1),
+        n = note("These work on public messages (say, yell, emotes, channels) and whispers. Your own messages are never filtered. Protected (secret) lines are never touched. With repeats, phrases and links all off, nothing here looks at a message; the game keeps the (idle) filter until you /reload.", 1),
         repHdr = hdr("Repeated messages", 10),
         rep = tog("Hide repeated messages", "spamRepeat", 11, "Hides the same message from the same player when it comes again within the time below. Whispers are not checked."),
         repSec = rng("Repeat window (seconds)", "spamSeconds", 12, 5, 300, nil, 5, function() return not S().spamRepeat end),
@@ -297,8 +298,11 @@ function ns.BuildChatTab(Notify)
         keepHdr = hdr("Keeping messages", 10),
         on = tog("Keep recent messages for the history window", "histOn", 11),
         size = rng("Messages kept", "histSize", 12, 20, 2000, nil, 10, function() return not S().histOn end),
+        whispers = sel("Whisper tabs", "histWhispers", 12.5, { game = "As the game's New Whispers setting", one = "All whispers in one tab" },
+            { "game", "one" }, "Which whisper tabs the history window has. As the game: with Options > Social > New Whispers set to New Tab or Both, one tab per conversation; set to In-line, none (whispers stay in the chat tabs that show them). All whispers in one tab: a Whispers tab with every whisper, sent and received.",
+            function() return not S().histOn end),
         console = tog("Keep console lines in a Console tab", "histConsole", 13,
-            "Lines printed by XayaUI (/xui output) and other addons, and the game's system messages, are kept in their own Console tab of the history window instead of mixing with chat. Lines an addon writes straight into a chat window without printing them are not seen.",
+            "Lines printed by XayaUI (/xui output) and other addons, and the game's system messages, are kept in their own Console tab of the history window instead of mixing with chat. Lines an addon writes straight into a chat window without printing them are not seen. Turned off, its hook on printed lines stays until you /reload but does nothing.",
             function() return not S().histOn end),
         openHdr = hdr("Window", 20),
         histBtn = tog("Show the small history button at the end of the tab row", "histButton", 21, nil, nil, "hist"),

@@ -2,10 +2,12 @@
 -- CursorTrail.lua : the Gradient Cursor Trail tab (QoL > Cursor, XayaUI QoL). A gradient trail that follows the mouse cursor.
 --
 -- * OFF by default. While off nothing is created, polled or drawn.
--- * Pre-populated with gradient presets; "Custom" lets you build your own with 2 to 6 colors.
+-- * Pre-populated with gradient presets; "Custom" lets you build your own with 2 to 6 colors; "Match the UI theme" (QoL 0.7.17)
+--   takes the colors of the UI theme and follows it when the theme changes.
 -- * Independent of the (currently switched-off) QoL Elements / Cursor Tracker files. Its saved
 --   settings live in CueRulesDB.cursorTrail.
--- * Preset colors are Claude's choices, not taken from any other addon.
+-- * Preset colors are Claude's choices, not taken from any other addon. Since QoL 0.7.17 they live in core (XayaUI/Theme.lua,
+--   ns.Theme.CURSOR_PRESETS), where the UI themes made from them read the same table.
 -- * Not run in game when written (2026-11-01): the texture paths and the look need an in-game check.
 --
 -- How it draws: a fixed pool of textures (no per-frame allocation). Each frame the cursor position
@@ -52,24 +54,16 @@ local function SetGameTex(t, path)
 end
 
 
--- Pre-configured gradients (head of the trail first). 3 to 6 colors each.
-local PRESETS = {
-    fel      = { "Fel",        { {0.35,1.00,0.25}, {0.15,0.80,0.45}, {0.55,0.20,0.85} } },
-    fire     = { "Fire",       { {1.00,0.95,0.40}, {1.00,0.55,0.10}, {0.85,0.15,0.05}, {0.25,0.05,0.05} } },
-    ocean    = { "Ocean",      { {0.70,1.00,1.00}, {0.15,0.75,0.95}, {0.10,0.35,0.85}, {0.05,0.10,0.45} } },
-    aurora   = { "Aurora",     { {0.30,1.00,0.60}, {0.20,0.85,0.95}, {0.45,0.45,1.00}, {0.75,0.30,0.95} } },
-    sunset   = { "Sunset",     { {1.00,0.90,0.45}, {1.00,0.55,0.30}, {0.95,0.30,0.50}, {0.55,0.25,0.75}, {0.20,0.15,0.50} } },
-    vapor    = { "Vaporwave",  { {1.00,0.45,0.85}, {0.75,0.50,1.00}, {0.35,0.75,1.00}, {0.30,1.00,0.90} } },
-    rainbow  = { "Rainbow",    { {1.00,0.20,0.20}, {1.00,0.70,0.10}, {0.95,1.00,0.20}, {0.25,0.90,0.35}, {0.25,0.55,1.00}, {0.65,0.30,0.95} } },
-    gold     = { "Gold",       { {1.00,0.98,0.75}, {1.00,0.82,0.25}, {0.80,0.50,0.10} } },
-    ice      = { "Frost",      { {1.00,1.00,1.00}, {0.65,0.90,1.00}, {0.30,0.55,1.00} } },
-}
-local PRESET_ORDER = { "fel", "fire", "ocean", "aurora", "sunset", "vapor", "rainbow", "gold", "ice" }
+-- Pre-configured gradients (head of the trail first). 3 to 6 colors each. Core's table (XayaUI/Theme.lua), read, never copied
+-- (QoL 0.7.17): the UI themes "Cursor trail: <name>" are made from the same colors. Saved preset keys are unchanged.
+local TH = ns.Theme
+local PRESETS = (TH and TH.CURSOR_PRESETS) or {}
+local PRESET_ORDER = (TH and TH.CURSOR_PRESET_ORDER) or {}
 ns.CURSORTRAIL_PRESETS, ns.CURSORTRAIL_PRESET_ORDER = PRESETS, PRESET_ORDER
 
 ns.CURSORTRAIL_DEFAULTS = {
     enabled = false,                       -- OFF until Xaya turns it on
-    preset = "fel",                        -- a preset key, or "custom"
+    preset = "fel",                        -- a preset key, "theme" (Match the UI theme, QoL 0.7.17), or "custom"
     customN = 3,                           -- how many of the custom colors are used (2 to 6)
     custom = { {1.00,0.30,0.30}, {1.00,0.85,0.20}, {0.30,0.50,1.00}, {0.30,1.00,0.50}, {0.85,0.40,1.00}, {1.00,1.00,1.00} },
     length = 0.6,                          -- seconds a dot lives (trail length)
@@ -107,7 +101,11 @@ local function Stops(c)
         for i = 1, n do t[i] = c.custom[i] or { 1, 1, 1 } end
         return t
     end
+    -- Match the UI theme: core decides the colors (Theme.TrailStops: a theme made from a gradient gives exactly that gradient,
+    -- any other theme its accentText -> accent -> gradStart)
+    if c.preset == "theme" and TH and TH.TrailStops then return TH.TrailStops() end
     local p = PRESETS[c.preset] or PRESETS[PRESET_ORDER[1]]
+    if not p then return { { 1, 1, 1 } } end   -- core without the preset table (an older XayaUI folder): plain white, never an error
     return p[2]
 end
 
@@ -323,16 +321,35 @@ local function OnUpdate()
     end
 end
 
+-- Match the UI theme: the colors follow every theme change (core's Theme.OnResolve). The listener is in core's list only while the
+-- trail is on AND set to Match the UI theme, and is taken out again otherwise (Theme.OffResolve), so with the trail off, or on with any
+-- other gradient, a theme change does no trail work at all (rule V14).
+local themeListening = false
+local function OnThemeResolved()
+    local c = CueRulesDB and CueRulesDB.cursorTrail
+    if frame and c and c.enabled and c.preset == "theme" then stops = Stops(c) end
+end
+local function ListenTheme(on)
+    on = on and true or false
+    if on == themeListening or not (TH and TH.OnResolve) then return end
+    if on then TH.OnResolve(OnThemeResolved)
+    elseif TH.OffResolve then TH.OffResolve(OnThemeResolved)
+    else return end   -- (a core without OffResolve: the listener stays, and returns at once while the trail is off or on another gradient)
+    themeListening = on
+end
+
 -- (re)apply the saved settings. Called at login and after every change on the Cursor tab.
 function ns.CursorTrail_Apply()
     local c = Ensure()
     if not c then return end
     if not c.enabled then
+        ListenTheme(false)
         if frame then frame:SetScript("OnUpdate", nil); ClearAll(); frame:Hide() end
         return
     end
     Build()
     stops = Stops(c)
+    ListenTheme(c.preset == "theme")
     curSh = SHAPES[c.shape] or SHAPES.star
     curPath = curSh[2]
     if c.shape == "game" and type(c.gamePath) == "string" and c.gamePath:match("%S") then curPath = (c.gamePath:gsub("^%s+", ""):gsub("%s+$", "")) end
@@ -370,6 +387,7 @@ function ns.BuildCursorTab(Notify)
 
     local presetValues, presetSorting = {}, {}
     for i, k in ipairs(PRESET_ORDER) do presetValues[k] = PRESETS[k][1]; presetSorting[i] = k end
+    presetValues.theme = "Match the UI theme"; presetSorting[#presetSorting + 1] = "theme"
     presetValues.custom = "Custom (build your own)"; presetSorting[#presetSorting + 1] = "custom"
     local shapeValues, shapeSorting = {}, {}
     for i, k in ipairs(SHAPE_ORDER) do shapeValues[k] = SHAPES[k][1]; shapeSorting[i] = k end
@@ -407,22 +425,23 @@ function ns.BuildCursorTab(Notify)
             set = function(_, r, g, b) C().custom[i] = { r, g, b }; Changed() end }
     end
 
-    -- Colors | Dots | Behavior tabs under the on/off switch (Xaya, 2026-11-03: a part's sections are tabs)
+    -- Colors | Dots | Behavior tabs (Xaya, 2026-11-03: a part's sections are tabs). The on/off switch is the tick box on this page's
+    -- row in the left pane (xuiSwitch, QoL 0.7.18; Xaya 2026-11-05: "move all enable/disable toggles onto the sidebar instead").
     custom.order = 5
     return {
         type = "group", name = "Gradient Cursor Trail", order = 2, childGroups = "tab",
+        xuiSwitch = { type = "toggle", name = "Gradient cursor trail",
+            desc = "Turns the trail on. While it is off nothing is drawn or polled.",
+            get = function() return C().enabled and true or false end,
+            set = function(_, v) C().enabled = v and true or false; Changed() end },
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "A gradient trail that follows your mouse cursor. Off by default." },
-            enabled = { type = "toggle", order = 1, width = "full", name = "Gradient cursor trail",
-                desc = "Turns the trail on. While it is off nothing is drawn or polled.",
-                get = function() return C().enabled and true or false end,
-                set = function(_, v) C().enabled = v and true or false; Changed() end },
+                name = "A gradient trail that follows your mouse cursor. Off by default: tick the box next to Gradient Cursor Trail on the left to turn it on." },
             colors = {
                 type = "group", name = "Colors", order = 2, hidden = isOff,
                 args = {
                     preset = { type = "select", order = 1, width = "double", name = "Gradient",
-                        desc = "A ready-made gradient, or Custom to choose your own colors (2 to 6).",
+                        desc = "A ready-made gradient; Match the UI theme (your UI theme's colors, following every theme change: a \"Cursor trail\" theme gives exactly its gradient, any other theme its selected-text, accent and glow colors); or Custom to choose your own colors (2 to 6).",
                         values = presetValues, sorting = presetSorting,
                         get = function() return C().preset end,
                         set = function(_, v) C().preset = v; Changed() end },
@@ -470,22 +489,15 @@ function ns.BuildCursorTab(Notify)
 end
 
 -- The Cursor node of the QoL tab (Xaya, 2026-11-03): its parts, Cursor Highlight and Gradient Cursor Trail, are nodes under it in
--- the left pane; Cursor's own page is an overview with both on/off switches (the same settings as the switch on each part's page).
+-- the left pane. Each part's on/off is the tick box on its own row (QoL 0.7.18; Xaya 2026-11-05: "move all enable/disable toggles
+-- onto the sidebar instead"); Cursor itself has no single switch (two separate effects), so its row has no box and its page is a note.
 function ns.BuildCursorGroup(Notify)
     local hl = ns.BuildCursorHighlightTab and ns.BuildCursorHighlightTab(Notify) or nil
     local tr = ns.BuildCursorTab(Notify)
     local overview = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Two separate effects that make your mouse cursor easy to find. Turn either on here, then pick it on the left to set it up." },
+            name = "Two separate effects that make your mouse cursor easy to find. Turn either on with the tick box on its row on the left, then pick it to set it up." },
     }
-    if hl and hl.args and hl.args.enabled then
-        overview.highlightOn = { type = "toggle", order = 1, width = "full", name = "Cursor Highlight",
-            desc = "A colored shape that follows your mouse cursor.", get = hl.args.enabled.get, set = hl.args.enabled.set }
-    end
-    if tr and tr.args and tr.args.enabled then
-        overview.trailOn = { type = "toggle", order = 2, width = "full", name = "Gradient Cursor Trail",
-            desc = "A gradient trail that follows your mouse cursor.", get = tr.args.enabled.get, set = tr.args.enabled.set }
-    end
     overview.highlight = hl
     overview.trail = tr
     return { type = "group", name = "Cursor", order = 2, childGroups = "tree", args = overview }

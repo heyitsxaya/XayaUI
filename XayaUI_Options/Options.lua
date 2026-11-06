@@ -92,7 +92,45 @@ function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
     return out
 end
 
-local function Notify() if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end if ns.SmartOpen then pcall(ns.SmartOpen) end if ns.FeatureTreesOpen then pcall(ns.FeatureTreesOpen) end if ns.FixSelection then pcall(ns.FixSelection) end AceConfigRegistry:NotifyChange(APP) end
+-- The options tree drawn last, kept for a redraw that changes nothing in it (Options 0.6.39; Xaya 2026-11-05: "console toggle has a
+-- still long time"). Every redraw of the window builds the whole tree (every rule, in several lists): 0.44-0.64 s of Lua with 229 rules
+-- in the test harness, and a click on a switch redraws at least once (AceConfigDialog redraws after every toggle). A switch whose
+-- change shows only in its own tick (the console window, the debug console strip) calls Tree.Keep() so the redraw that follows in
+-- the same call reuses the tree. Single use; only while the window is open; the window driver drops it every frame, and any
+-- Notify() cancels it, so a change that needs a fresh tree always gets one.
+-- Tree.ViewChanged(): the same kind of change made outside the window (the console's close X, /xui console): one redraw on the next
+-- frame that reuses the tree, skipped when AceConfigDialog already has a redraw of its own pending (that one builds fresh).
+local Tree = {}
+function Tree.Keep()
+    local open = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    Tree.keep = (open and Tree.last) and true or nil
+end
+function Tree.Get(...)
+    if Tree.keep and Tree.last then Tree.keep = nil; return Tree.last end
+    Tree.keep = nil
+    Tree.last = ns.BuildOptionsTable(...)
+    return Tree.last
+end
+-- AceConfigDialog keeps the apps waiting for its next-frame redraw in AceConfigDialog.frame.apps (AceConfigDialog-3.0.lua
+-- ConfigTableChanged / RefreshOnUpdate, the copy in Libs/)
+function Tree.AcePending() local f = AceConfigDialog.frame; return (f and f.apps and f.apps[APP]) and true or false end   -- (a field: this file is at Lua's 200-local limit)
+function Tree.ViewChanged()
+    local token = {}
+    Tree.view = token
+    C_Timer.After(0, function()
+        if Tree.view ~= token then return end   -- cancelled by Notify(), or a later request replaced it
+        Tree.view = nil
+        local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+        if not (of and of.frame and of.frame:IsShown()) or Tree.AcePending() then return end
+        local user = of:GetUserDataTable()
+        Tree.Keep()
+        pcall(AceConfigDialog.Open, AceConfigDialog, APP, unpack(user.basepath or {}))
+        Tree.keep = nil
+    end)
+end
+-- Tree.hold: a sidebar tick box is running its switch's set (Tree.SwitchClick); a redraw that set asks for is dropped and the click
+-- makes the one redraw itself.
+local function Notify() if Tree.hold then return end Tree.keep, Tree.view = nil, nil; if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end if ns.SmartOpen then pcall(ns.SmartOpen) end if ns.FeatureTreesOpen then pcall(ns.FeatureTreesOpen) end if ns.FixSelection then pcall(ns.FixSelection) end AceConfigRegistry:NotifyChange(APP) end
 
 local function Changed(rule)
     if rule then
@@ -2576,6 +2614,7 @@ local function BuildRule(i, rule)
     actionsTab.xuiParts = actions.xuiParts
     if outcomeArgs then for k, v in pairs(outcomeArgs) do conditionsTab.args[k] = v end end
     if cueArgs then for k, v in pairs(cueArgs) do cuesTab.args[k] = v end end
+    if ns.CdmWarnArg then cuesTab.args.cdmWarn = ns.CdmWarnArg(rule, -1) end   -- Cooldown Manager limits of this rule's auras / debuffs
 
     ---------------------------------------------------------------- Info tab (was "Rule")
     local ruleTab = {
@@ -2988,6 +3027,21 @@ local function BuildAddonSettings()
                 desc = "Drops the icons and the taller rows from the left-hand rule list and shows plain, compact rows with the +/- toggle on the left.",
                 get = function() return ns.CondensedOn() end,
                 set = function(_, v) Ui().condensedList = v and true or false; Repaint() end },
+            -- The talent scan (Options 0.6.40; Xaya, 2026-11-05: "scan belongs in Settings"; it was in Rules > Class/Spec Rule Creator).
+            -- Here because what it saves (XayaUITalentDB, XayaUI/TalentDump.lua) is read only by rule creation: the talent search of
+            -- the rule editor's talent requirement lists every spec and hero tree from it. The last message stays under the button.
+            talHdr = { type = "header", name = "All talents (every class and spec)", order = 30 },
+            talInfo = { type = "description", order = 30.1, width = "full", fontSize = "medium",
+                name = function() return (ns.TalentStatus and ns.TalentStatus() or "") .. " Reads every class, spec, and hero talent tree from the game (not from a fixed list), so it follows the current patch. In chat: /xui talents, /xui talents status, /xui talents <name>." end },
+            talScan = { type = "execute", order = 30.2, width = "double", name = "Scan all talents now",
+                func = function()
+                    if not ns.ScanAllTalents then return end
+                    local ok, m = ns.ScanAllTalents(function(_, msg) ns.OptionsApi.talentScanMsg = msg; Notify() end)
+                    ns.OptionsApi.talentScanMsg = m; ns.Print(m); Notify()
+                end },
+            talMsg = { type = "description", order = 30.3, width = "full", fontSize = "medium",
+                name = function() return ns.OptionsApi.talentScanMsg or "" end,
+                hidden = function() return not ns.OptionsApi.talentScanMsg end },
         } },
         theme = { type = "group", name = "Theme", order = 1.5, args = ns.Theme and ns.Theme.BuildArgs(Repaint) or {} },
         debug = { type = "group", name = "Debugging", order = 2, args = {
@@ -3106,11 +3160,14 @@ local function BuildAddonSettings()
             showConsole = { type = "toggle", name = "Show the debug console at the bottom of the window", order = 12, width = "full",
                 desc = "The strip under the window with the live rule status and event log. Off: it is not drawn at all (turn it back on here).",
                 get = function() return ns.DebugConsoleOn() end,
-                set = function(_, v) Ui().hideTray = (not v) or nil; Notify() end },
+                -- nothing in the tree changes: the strip is placed now (not on the driver's next tick) and the redraw AceConfigDialog
+                -- makes after the click reuses the tree (Tree.Keep, Options 0.6.39)
+                set = function(_, v) Ui().hideTray = (not v) or nil; Tree.Keep(); if ns.UpdateTrayNow then pcall(ns.UpdateTrayNow) end end },
             consoleWin = { type = "toggle", name = "Console window (separate from this window)", order = 13, width = "full",
                 desc = "The same event log as the strip under this window, but in its own movable, resizable window. It keeps collecting lines while this window is closed and during combat. Also: /xui console.",
                 get = function() return ns.ConsoleWindowOn and ns.ConsoleWindowOn() or false end,
-                set = function(_, v) if ns.ConsoleWindow then ns.ConsoleWindow(v and true or false) end end },
+                -- (true: from this switch, so core asks for no redraw of its own; the one AceConfigDialog makes reuses the tree)
+                set = function(_, v) if ns.ConsoleWindow then ns.ConsoleWindow(v and true or false, true) end; Tree.Keep() end },
             consoleCopy = { type = "execute", name = "Copy the console text", order = 13.5, width = "double",
                 desc = "Opens a box with every console line as plain text, selected and ready for Ctrl+C.",
                 func = function() if ns.CopyConsole then ns.CopyConsole() end end },
@@ -3294,14 +3351,8 @@ function BuildClassCreator()
                 local _, m = ns.ClassAutoPopulateAllSpecs(ns.AutoCfg().talents ~= false)
                 creatorMsg = m; ns.Print("auto-populate: " .. tostring(m)); Notify()
             end },
-        talHdr = { type = "header", order = 0.6, name = "All talents (every class and spec)" },
-        talInfo = { type = "description", order = 0.61, width = "full", fontSize = "medium",
-            name = function() return (ns.TalentStatus and ns.TalentStatus() or "") .. " Reads every class, spec, and hero talent tree from the game (not from a fixed list), so it follows the current patch. In chat: /xui talents, /xui talents status, /xui talents <name>." end },
-        talScan = { type = "execute", order = 0.62, width = "double", name = "Scan all talents now",
-            func = function()
-                local ok, m = ns.ScanAllTalents(function(_, msg) creatorMsg = msg; Notify() end)
-                creatorMsg = m; ns.Print(m); Notify()
-            end },
+        -- "All talents (every class and spec)" (the talent scan) moved to Settings > UI Options > Rule Creation (Options 0.6.40; Xaya,
+        -- 2026-11-05: "scan belongs in Settings"): BuildAddonSettings, rules.args.talHdr.
         -- the "Add Vengeance DH test rules" button is gone: every class and spec is supported by the auto-populate above (Xaya, 2026-11-01)
         msg = { type = "description", order = 0.5, width = "full", fontSize = "medium", name = function() return creatorMsg or "" end,
             hidden = function() return not creatorMsg end },
@@ -3339,6 +3390,8 @@ function BuildClassCreator()
         args["st_" .. a.key] = { type = "description", order = o + 2, width = 1.5, fontSize = "medium", hidden = shown,
             name = function() return AuraStatus(a) end }
     end
+    -- Xaya 2026-11-05: choose which auto rules to make (cooldowns and target debuffs) and each one's main cue (AutoPicker.lua)
+    if ns.AutoPicker and ns.AutoPicker.Args then for k, v in pairs(ns.AutoPicker.Args(Notify)) do args[k] = v end end
     return { type = "group", name = "Class/Spec Rule Creator", order = 2, hidden = ns.PageHidden("creator"), args = args }
 end
 end   -- do (class/spec creator)
@@ -4864,7 +4917,7 @@ local function BuildOptions()
     -- ns.RegisterSettingsPage). An addon that is switched off registers nothing, so its tab is simply absent.
     local modTabs = ns.OptionsApi.ModuleTabs(Notify, ns.QoLOn and { allqol = allQol, allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil, allbars = allBars } or nil)
 
-    -- Addon Info is not in the tab strip: the "Addon Info" link in the window's bottom-left corner opens it (ns.infoOpen) and it
+    -- Addon Info is not in the tab strip: the version text in the window's bottom-left corner opens it (ns.infoOpen) and it
     -- goes away again as soon as another tab is picked.
     local infoGroup = ns.BuildAddonInfo and ns.BuildAddonInfo() or nil
     if infoGroup then infoGroup.order = 8; infoGroup.hidden = function() return not ns.infoOpen end end
@@ -4916,11 +4969,15 @@ ns.BuildOptionsTable = BuildOptions
 
 -- skipValidation: the options tree is very large (every rule repeats in several lists); Ace's one-off type check of it can exceed
 -- the game's script time limit ("script ran too long") when the window first opens.
-AceConfigRegistry:RegisterOptionsTable(APP, BuildOptions, true)
+-- Tree.Get: the tree drawn last when a switch asked for it to be reused (Tree.Keep, top of this file), else a fresh build.
+AceConfigRegistry:RegisterOptionsTable(APP, Tree.Get, true)
 AceConfigDialog:SetDefaultSize(APP, 780, 860)   -- tall rectangle
 
--- anything outside the window that changed settings asks for a redraw (Modules.lua section 6)
-ns.On("CONFIG_CHANGED", function() Notify() end)
+-- anything outside the window that changed settings asks for a redraw (Modules.lua section 6). "view": only a switch's state
+-- changed (the console window opened or closed), nothing in the tree, so the redraw reuses it (Tree.ViewChanged).
+ns.On("CONFIG_CHANGED", function(what)
+    if what == "view" then Tree.ViewChanged() else Notify() end
+end)
 
 -- open the window (if needed) and jump to a rule; used by clicking an aura on screen while unlocked
 function ns.OptionsApi.EditRule(rule)
@@ -4976,14 +5033,21 @@ do
             LowerWindow()
             if not ns.paneSizeApplied then ns.paneSizeApplied = true; if ns.ApplyPaneSize then pcall(ns.ApplyPaneSize) end end   -- saved size override, once per session
             if ns.DraftsOnOpen then pcall(ns.DraftsOnOpen) end   -- remember every rule's saved version
+            if Tree.DriverStart then Tree.DriverStart() end   -- the window's driver runs while it is open, never while closed (V14)
             local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
             if of and of.frame and not of.frame.xuiDraftHook then   -- window closed (button, Esc, toggle): unsaved rules go to Drafts
                 of.frame.xuiDraftHook = true
                 of.frame:HookScript("OnHide", function()
                     if ns.DraftsOnClose then pcall(ns.DraftsOnClose) end
                     if ns.SearchOnClose then pcall(ns.SearchOnClose) end   -- free the search indexes, stop their scans (Options 0.6.37)
+                    if Tree.Closed then pcall(Tree.Closed) end   -- stop the driver; clear previews, the kept tree, the strips (Options 0.6.41)
                 end)
             end
+        end)
+        -- every pane the window builds (an opening, a redraw, a click on a row): with "Use drafts" off the rule shown gets its first
+        -- undo state here, before it can be edited (Drafts.lua ns.UndoFirstState; Options 0.6.41, instead of copying every rule)
+        hooksecurefunc(AceConfigDialog, "FeedGroup", function(_, app)
+            if app == APP and ns.UndoFirstState then pcall(ns.UndoFirstState) end
         end)
     end
 end
@@ -5060,12 +5124,25 @@ local function BuildTray()
     t.log:EnableMouseWheel(true)
     t.log:SetScript("OnMouseWheel", function(self, d) if d > 0 then self:ScrollUp() else self:ScrollDown() end end)
     for _, line in ipairs(ns.logBuf or {}) do t.log:AddMessage(line) end
+    Tree.trayDrawn = ns.logSerial or 0   -- (core Core.lua counts every line put in ns.logBuf)
     return t
 end
 
+-- A log line is drawn into the strip only while the strip is shown (V14, Options 0.6.41): hidden (the window closed, or "Show the
+-- debug console" off) it draws nothing, and when it is shown again it draws the lines of ns.logBuf it missed (Tree.TrayCatchUp).
+-- Private lines (ns.PrintPrivate, never in ns.logBuf) that come while it is hidden are not drawn later, as before the strip is built.
 ns.On("LOG", function(line)
-    if tray and tray.log then tray.log:AddMessage(line) end
+    if not (tray and tray:IsShown()) then return end
+    tray.log:AddMessage(line)
+    Tree.trayDrawn = ns.logSerial or 0
 end)
+function Tree.TrayCatchUp()
+    local now, buf = ns.logSerial or 0, ns.logBuf or {}
+    local n = #buf
+    local missed = math.min(now - (Tree.trayDrawn or now), n)
+    for i = n - missed + 1, n do tray.log:AddMessage(buf[i]) end
+    Tree.trayDrawn = now
+end
 
 -------------------------------------------------------------------------------
 -- Sidebar preview toggles: an eye (visual) and a headphone (sound) on tree rows.
@@ -5078,7 +5155,8 @@ local HEAD_ATLASES = { "voicechat-icon-headphone-on" }
 local HEAD_FILE = "Interface\\Common\\VoiceChat-Speaker"
 
 local function AtlasOK(n)
-    local ok, info = pcall(C_Texture.GetAtlasInfo, n)
+    local ok, info = false, nil   -- (C_Texture checked first: indexing a missing table is outside the pcall)
+    if C_Texture and C_Texture.GetAtlasInfo then ok, info = pcall(C_Texture.GetAtlasInfo, n) end
     return ok and info and true or false
 end
 local function ApplyIcon(tex, atlases, file)
@@ -6468,6 +6546,111 @@ local ROW_TOGGLES = {
         set = function(v) CueRulesDB.barGroup.enabled = v; pcall(ns.Bars_RefreshAll) end },
 }
 
+-- Sidebar switches (Options 0.6.40; Xaya, 2026-11-05: "move all enable/disable toggles onto the sidebar instead for all bonus
+-- features and QoL items"). A feature page, or one of its parts (a node under it in the left pane), that has one on / off carries
+-- it as group.xuiSwitch: an ordinary AceConfig toggle (name, desc, get, set; hidden / disabled optional) that is NOT in its args, so
+-- the page no longer shows it. Its row in a feature tab's left pane gets a tick box left of its name (placement below) that shows
+-- get() and calls set() (the same function the in-page switch called, so every side effect stays). get / set receive the info table AceConfigDialog
+-- would give a toggle at that place (path, then "xuiSwitch"). The box's tooltip is the switch's name and desc. A click on the box
+-- is the box's own: it never selects or opens the row (the game hands a click to the topmost mouse-enabled frame under the cursor,
+-- and the box sits above the row; INFERENCE, standard behaviour the rule rows' eye / lock buttons rely on too, not stated in the
+-- API documentation). Rows whose page has no single on / off (Tooltips, Calculator, Utilities) get no box.
+-- Where the box sits (#369: a row's name room is precious): every row keeps a 16 px slot left of its name for the open / close
+-- arrow, empty on a row without parts; the box takes that slot, so it costs those names nothing. On a row that has parts (Character
+-- Toolkit) the box sits right after the arrow slot and only that row's name moves right by the box's width; it stays there while
+-- the parts are hidden too, so the box never moves under the mouse when it is clicked.
+-- Only rows of the feature tabs are looked at (the Rules trees skip at once: the window repaints every row 4 times a second).
+Tree.SWITCH_W, Tree.SWITCH_GAP = 16, 1   -- box size (the arrow slot's width); space after the arrow on a row that has one
+function Tree.RowSwitch(button)
+    local tree = button and button.obj
+    local user = tree and tree.GetUserDataTable and tree:GetUserDataTable()
+    local path = user and user.path
+    if type(path) ~= "table" or not ns.OptionsApi.TABS[path[1] or ""] or #path ~= 1 then return nil end
+    local g = user.option
+    for seg in tostring(button.uniquevalue or ""):gmatch("[^\001]+") do
+        g = type(g) == "table" and type(g.args) == "table" and g.args[seg] or nil
+    end
+    local sw = type(g) == "table" and g.xuiSwitch or nil
+    if type(sw) ~= "table" or type(sw.get) ~= "function" or type(sw.set) ~= "function" then return nil end
+    local info = { path[1] }
+    for seg in tostring(button.uniquevalue):gmatch("[^\001]+") do info[#info + 1] = seg end
+    info[#info + 1] = "xuiSwitch"
+    info.options, info.option, info.appName, info.type, info.uiType, info.uiName = user.options, sw, APP, "toggle", "dialog", "AceConfigDialog-3.0"
+    local hid = sw.hidden
+    if type(hid) == "function" then local ok, h = pcall(hid, info); hid = ok and h end
+    if hid then return nil end
+    -- parts: the node lists parts under it in the left pane (so it has the open / close arrow), even while they are hidden (the
+    -- Character Toolkit hides its parts while it is off): the box keeps one place whether the arrow shows or not
+    local parts = false
+    if (g.childGroups or "tree") == "tree" then
+        for _, c in pairs(type(g.args) == "table" and g.args or {}) do
+            if type(c) == "table" and c.type == "group" and not c.inline then parts = true; break end
+        end
+    end
+    return sw, info, parts
+end
+-- A click on a row's tick box: the switch's own set, then exactly one redraw. That redraw reuses the tree drawn last (Tree.Keep):
+-- a switch's state is read only by functions inside the tree (get / hidden / disabled / name), never while the tree is built, so a
+-- fresh build would give the same tree; tests/sidebar_switches_run.py builds the whole tree with every switch off and on and
+-- compares the two. The redraws the set asks for (Notify, CONFIG_CHANGED) are dropped while it runs (Tree.hold, see Notify), and a
+-- console "view" redraw waiting for the next frame (Tree.ViewChanged) is cancelled: this redraw shows that change too.
+function Tree.SwitchClick(box)
+    local sw, info = Tree.RowSwitch(box:GetParent())
+    if not sw then return end
+    Tree.hold = true
+    local ok, err = pcall(sw.set, info, box:GetChecked() and true or false)
+    Tree.hold = nil
+    if not ok then local h = geterrorhandler and geterrorhandler(); if h then h(err) end end
+    local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    if not (of and of.frame and of.frame:IsShown()) or Tree.AcePending() then return end   -- closed, or a fresh redraw already on its way
+    local user = of:GetUserDataTable()
+    Tree.view = nil
+    Tree.Keep()
+    pcall(AceConfigDialog.Open, AceConfigDialog, APP, unpack(user.basepath or {}))
+    Tree.keep = nil
+end
+function Tree.SwitchTip(box)
+    local sw, info = Tree.RowSwitch(box:GetParent())
+    if not sw then return end
+    local function val(v) if type(v) == "function" then local ok, r = pcall(v, info); return ok and r or nil end return v end
+    GameTooltip:SetOwner(box, "ANCHOR_RIGHT")
+    GameTooltip:SetText(tostring(val(sw.name) or ""))
+    local d = val(sw.desc)
+    if type(d) == "string" and d ~= "" then GameTooltip:AddLine(d, 1, 1, 1, true) end
+    GameTooltip:Show()
+end
+-- Called by DecorateButton for every row (toggleCfg: the row already has a ROW_TOGGLES box; x0: where the row's arrow slot starts;
+-- arrow: the row shows its open / close arrow in that slot). Returns how far the name must move right for the box (0 when the box
+-- sits in the empty arrow slot).
+function ns.OptionsApi.PaintRowSwitch(button, toggleCfg, x0, arrow)
+    local sw, info, parts
+    if not toggleCfg then sw, info, parts = Tree.RowSwitch(button) end
+    arrow = arrow or parts
+    local box = button.xuiSwitchBox
+    if not sw then if box then box:Hide() end return 0 end
+    if not box then
+        box = CreateFrame("CheckButton", nil, button, "UICheckButtonTemplate")
+        box:SetSize(Tree.SWITCH_W, Tree.SWITCH_W)
+        box:EnableMouse(true)   -- (a button takes the mouse anyway; stated, since the box must take the click instead of the row)
+        box:SetScript("OnClick", Tree.SwitchClick)
+        box:SetScript("OnEnter", Tree.SwitchTip)
+        box:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        button.xuiSwitchBox = box
+    end
+    box:SetFrameLevel(button:GetFrameLevel() + 3)
+    local ok, on = pcall(sw.get, info)
+    box:SetChecked((ok and on) and true or false)
+    local dis = sw.disabled
+    if type(dis) == "function" then local okD, d = pcall(dis, info); dis = okD and d end
+    box:SetEnabled(not dis)
+    box:ClearAllPoints()
+    local x, shift = x0 or 6, 0
+    if arrow then x = x + Tree.SWITCH_W + Tree.SWITCH_GAP; shift = Tree.SWITCH_W + Tree.SWITCH_GAP end   -- (the arrow slot is SWITCH_W wide)
+    box:SetPoint("LEFT", button, "LEFT", x, 0)
+    box:Show()
+    return shift
+end
+
 -- Left cluster, in order:  [collapse arrow] [eye] [headphone]  text
 -- Multi-select delete: Ctrl+click toggles a rule row, Shift+click selects the visible rule rows between the last clicked row and
 -- this one (either direction). Selected rows get a purple wash in every list they appear in. "Delete N selected" (bottom-left of the window) deletes them
@@ -6666,7 +6849,7 @@ local function DecorateButton(button)
         -- Smart Categories: the tab is the root, so its own row and the "by type" row are drawn as nothing
         button.xuiGone = true
         button:SetHeight(0.01); button:SetAlpha(0); button:EnableMouse(false)
-        for _, k in ipairs({ "xuiChev", "xuiEye", "xuiHead", "xuiEdit", "xuiUp", "xuiDown", "xuiMove", "xuiBanner", "xuiBannerBar", "xuiSelTex", "xuiDivider", "xuiType", "xuiType2", "xuiSub", "xuiStatCheck" }) do
+        for _, k in ipairs({ "xuiChev", "xuiEye", "xuiHead", "xuiEdit", "xuiUp", "xuiDown", "xuiMove", "xuiBanner", "xuiBannerBar", "xuiSelTex", "xuiDivider", "xuiType", "xuiType2", "xuiSub", "xuiStatCheck", "xuiSwitchBox" }) do
             if button[k] and button[k].Hide then button[k]:Hide() end
         end
         return
@@ -6817,9 +7000,11 @@ local function DecorateButton(button)
     elseif button.xuiEye then
         button.xuiEye:Hide(); button.xuiHead:Hide()
     end
+    -- a feature's on / off as a tick box in the row's arrow slot, or right after the arrow (Options 0.6.40)
+    local swShift = ns.OptionsApi.PaintRowSwitch(button, toggleCfg, x0, canExpand and chevMode == "left")
     do
         local rk = tostring(button.uniquevalue or ""):match("([^\001]+)$")
-        local iconSlots = toggleCfg and 26 or 0   -- only the on / off tick box sits left of the label now
+        local iconSlots = toggleCfg and 26 or swShift   -- only an on / off tick box sits left of the label now
         local lead = (tw > 0) and tw or ((chevMode == "right") and 0 or CHEV_W)   -- icon column, or the left chevron slot
         if tw > 0 then
             local h = math.max(button:GetHeight() or 0, ns.TYPE_ICON_SIDEBAR_H + 6)
@@ -6908,6 +7093,7 @@ local function DecorateTree(tree)
             if b.xuiBanner then b.xuiBanner:Hide(); b.xuiBannerBar:Hide() end
             if b.xuiSelTex then b.xuiSelTex:Hide() end
             if b.xuiDivider then b.xuiDivider:Hide() end
+            if b.xuiSwitchBox then b.xuiSwitchBox:Hide() end
         end
     end
 end
@@ -7558,10 +7744,18 @@ end
 do
     -- /xui perf: trace of what happens after a click, in FRAMES. Anything that lands on a later frame than the click is a visible
     -- intermediate state (the cause of a blink), so the trace shows exactly which step is late.
+    -- The frame counter runs only while tracing is on (V14, Options 0.6.41; it counted every frame from the first opening before).
     local fno, fclick = 0, 0
-    local tf = CreateFrame("Frame"); tf:SetScript("OnUpdate", function() fno = fno + 1 end)
+    local tf
     function ns.Trace(tag)
         if not (ns.perf and ns.perf.show) then return end
+        tf = tf or CreateFrame("Frame")
+        if not tf:GetScript("OnUpdate") then
+            tf:SetScript("OnUpdate", function(self)
+                if not (ns.perf and ns.perf.show) then self:SetScript("OnUpdate", nil) return end   -- /xui perf off: the counter stops
+                fno = fno + 1
+            end)
+        end
         if tag == "click" then fclick = fno end
         print(string.format("|cffffd100XayaUI|r trace +%d frame(s): %s", fno - fclick, tag))
     end
@@ -7706,31 +7900,46 @@ local function EnsureChrome(of)
         -- removed"). AceGUI's Frame widget does not keep it as a field, only its text (AceGUIContainer-Frame.lua: widget.statustext),
         -- so it is found as that text's parent.
         c.statusbg = of.statustext and of.statustext.GetParent and of.statustext:GetParent()
-        -- the version in the bottom-left corner (Xaya 2026-11-04: "addon version should be put in the bottom left"), then the link
-        c.ver = fr:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        c.ver:SetPoint("BOTTOMLEFT", fr, "BOTTOMLEFT", 20, 13)
-        c.ver:SetTextColor(0.5, 0.5, 0.5)
+        -- the version in the bottom-left corner (Xaya 2026-11-04: "addon version should be put in the bottom left") is itself the link
+        -- to Addon Info, in the active theme's accent colors (Options 0.6.39; Xaya 2026-11-05: "remove Addon Info button, make the
+        -- XayaUI version text clickable instead", "colorize it to active theme colors"). Repainted when the theme changes.
+        c.info = CreateFrame("Button", nil, fr)
+        c.info:SetHeight(16)
+        ns.infoLink = c.info   -- Skin.lua keeps the rule list above this link
+        c.info:SetPoint("BOTTOMLEFT", fr, "BOTTOMLEFT", 20, 11)
+        c.info:SetFrameLevel(fr:GetFrameLevel() + 10)
+        c.ver = c.info:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        c.ver:SetPoint("LEFT", c.info, "LEFT", 0, 0)
+        c.info.text = c.ver
         do
             local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
             local okV, v = pcall(get or function() end, ns.name or "XayaUI", "Version")
             c.ver:SetText("XayaUI " .. ((okV and type(v) == "string" and v ~= "") and ("v" .. v) or "(version unknown)"))
         end
-        -- Addon Info: a small muted link in the bottom-left corner, outside the normal interaction area
-        c.info = CreateFrame("Button", nil, fr)
-        c.info:SetSize(80, 16)
-        ns.infoLink = c.info   -- Skin.lua keeps the rule list above this link
-        c.info:SetPoint("LEFT", c.ver, "RIGHT", 14, 0)
-        c.info:SetFrameLevel(fr:GetFrameLevel() + 10)
-        c.info.text = c.info:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        c.info.text:SetPoint("LEFT", 0, 0); c.info.text:SetText("Addon Info")
-        c.info:SetScript("OnEnter", function(self) self.text:SetTextColor(1, 0.82, 0) end)
-        c.info:SetScript("OnLeave", function(self) self.text:SetTextColor(0.5, 0.5, 0.5) end)
-        c.info.text:SetTextColor(0.5, 0.5, 0.5)
+        c.info:SetWidth(math.max(40, (c.ver:GetStringWidth() or 0) + 4))   -- the click area is the text
+        c.info.Paint = function(self)
+            local T = ns.Theme
+            local col = T and T.cur and T.cur[self.hover and "accentText" or "accent"]
+            if col then self.text:SetTextColor(col[1], col[2], col[3], 1) else self.text:SetTextColor(0.75, 0.25, 1) end
+        end
+        c.info:SetScript("OnEnter", function(self)
+            self.hover = true; self:Paint()
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText("Addon Info")
+            GameTooltip:AddLine("Opens the Addon Info page: version, author, license, commands and the source code link.", 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        c.info:SetScript("OnLeave", function(self) self.hover = false; self:Paint(); GameTooltip:Hide() end)
+        c.info:Paint()
         c.info:SetScript("OnClick", function()
             ns.infoOpen = true; ns.pageOpen = nil
             Notify()
             pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "info")
         end)
+        if not ns.infoLinkThemed and ns.Theme and ns.Theme.OnResolve then
+            ns.infoLinkThemed = true
+            ns.Theme.OnResolve(function() local lk = ns.infoLink; if lk and lk.Paint then lk:Paint() end end)
+        end
 
         if not fr.xuiDelKey then
             fr.xuiDelKey = true
@@ -7782,7 +7991,8 @@ local function EnsureChrome(of)
     end
     c.arrow:Show()
     c.close:Show()
-    if c.info and not c.collapsed then c.info:Show() end
+    -- the version link (its text is c.ver) hides with the collapsed window, click area included
+    if c.info then c.info:SetShown(not c.collapsed) end
     if c.ver then c.ver:SetShown(not c.collapsed) end
     if c.statusbg and c.statusbg:IsShown() then c.statusbg:Hide() end
     -- first time the window opens in a session: every top-level group / Smart Categories list under Rules, Loaded and Not Loaded starts collapsed
@@ -7928,19 +8138,68 @@ do
     end
 end
 
+-- The debug console strip under the window: shown, placed and filled, or hidden. Run by the driver below every 0.25 s, and at once
+-- by the "Show the debug console" switch (ns.UpdateTrayNow; Options 0.6.39), so the strip does not wait for the next tick.
+function Tree.PlaceTray(of, fr, sbar)
+    if fr and fr:IsShown() and not (of.xuiChrome and of.xuiChrome.collapsed) and ns.DebugConsoleOn() then
+        if not tray then tray = BuildTray(); ApplyTrayState() end
+        local anc = sbar or fr
+        if tray.anchoredTo ~= anc then
+            tray:ClearAllPoints()
+            tray:SetPoint("TOPLEFT", anc, "BOTTOMLEFT", 0, 0)
+            tray:SetPoint("TOPRIGHT", anc, "BOTTOMRIGHT", 0, 0)
+            tray.anchoredTo = anc
+        end
+        tray:SetFrameStrata(fr:GetFrameStrata())
+        tray:SetFrameLevel(fr:GetFrameLevel())
+        if not tray:IsShown() then Tree.TrayCatchUp() end
+        tray:Show()
+        if TrayOpen() then
+            local r = SelectedRule()
+            tray.status:SetText(r and StatusText(r) or "Select a rule on the left to see its live status here.")
+        end
+    elseif tray then
+        tray:Hide()
+        tray.anchoredTo = nil
+    end
+end
+function ns.UpdateTrayNow()
+    local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    local fr = of and of.frame
+    Tree.PlaceTray(of, fr, fr and fr:IsShown() and ns.SaveBarUpdate and ns.SaveBarUpdate(fr) or nil)
+end
+
+-- The window's driver (dresses the window, keeps the strips under it, re-reads which rules are loaded). V14 (Options 0.6.41; Xaya
+-- 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand
+-- in any way"): it runs only while the window is open. Tree.DriverStart (the AceConfigDialog.Open hook above) starts it; the window's
+-- OnHide hook (same place) runs Tree.Closed, which stops it and does at once what its first pass after a close used to do: clear the
+-- sidebar previews, let go of the kept tree, hide the unsaved-changes strip and the debug console strip, remember the Rules sub-tab.
+-- Up to 0.6.40 it ran on every frame from the first opening until /reload, with work every 0.25 s while the window was closed.
 local driver, acc = CreateFrame("Frame"), 0
 local sigAcc, lastSig = 0, nil
-driver:SetScript("OnUpdate", function(_, e)
+function Tree.Closed()
+    local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    if of and of.frame and of.frame:IsShown() then return end   -- another addon's window (AceGUI reuses frames) hid, not this one
+    driver:SetScript("OnUpdate", nil)
+    acc, sigAcc = 0, 0
+    Tree.last, Tree.keep = nil, nil   -- the kept tree is let go
+    if ns.AnyPreview() then ns.ClearPreview() end   -- previews are temporary: they end with the window
+    if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
+    if ns.SaveBarUpdate then ns.SaveBarUpdate(nil) end
+    Tree.PlaceTray(nil, nil, nil)
+end
+function Tree.Tick(_, e)
+    Tree.keep = nil   -- a kept tree is for the redraw in the same call as Tree.Keep(), never a later frame's (top of this file)
     acc = acc + e
     if acc < 0.25 then return end
     acc = 0
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
     local fr = of and of.frame
-    if ns.AnyPreview() and not (fr and fr:IsShown()) then ns.ClearPreview() end
-    if fr and fr:IsShown() and ns.SaveRulesSub then pcall(ns.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
-    if fr and fr:IsShown() then pcall(EnsureChrome, of) end
-    if fr and fr:IsShown() and ns.DecorateTrees then ns.DecorateTrees(of) end
-    if fr and fr:IsShown() and ns.rules then
+    if not (fr and fr:IsShown()) then Tree.Closed(); return end   -- (closed without the OnHide hook seeing it)
+    if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
+    pcall(EnsureChrome, of)
+    if ns.DecorateTrees then ns.DecorateTrees(of) end
+    if ns.rules then
         sigAcc = sigAcc + 1
         if sigAcc >= 4 then
             sigAcc = 0
@@ -7955,27 +8214,12 @@ driver:SetScript("OnUpdate", function(_, e)
         end
     end
     local sbar = ns.SaveBarUpdate and ns.SaveBarUpdate(fr)
-    if fr and fr:IsShown() and not (of.xuiChrome and of.xuiChrome.collapsed) and ns.DebugConsoleOn() then
-        if not tray then tray = BuildTray(); ApplyTrayState() end
-        local anc = sbar or fr
-        if tray.anchoredTo ~= anc then
-            tray:ClearAllPoints()
-            tray:SetPoint("TOPLEFT", anc, "BOTTOMLEFT", 0, 0)
-            tray:SetPoint("TOPRIGHT", anc, "BOTTOMRIGHT", 0, 0)
-            tray.anchoredTo = anc
-        end
-        tray:SetFrameStrata(fr:GetFrameStrata())
-        tray:SetFrameLevel(fr:GetFrameLevel())
-        tray:Show()
-        if TrayOpen() then
-            local r = SelectedRule()
-            tray.status:SetText(r and StatusText(r) or "Select a rule on the left to see its live status here.")
-        end
-    elseif tray then
-        tray:Hide()
-        tray.anchoredTo = nil
-    end
-end)
+    Tree.PlaceTray(of, fr, sbar)
+end
+function Tree.DriverStart()
+    local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    if of and of.frame and of.frame:IsShown() and not driver:GetScript("OnUpdate") then driver:SetScript("OnUpdate", Tree.Tick) end
+end
 
 -------------------------------------------------------------------------------
 -- Publish what core may call (Modules.lua section 7). The game's Options > AddOns entry and the addon compartment click live in
