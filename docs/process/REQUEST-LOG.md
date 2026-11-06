@@ -278,6 +278,12 @@ Opened by the coordinating session "Outstanding items 11-06" (session_014bN6tSSt
 | UI-28 | Her answer (question box), Chat Data Panel left / right strip size: "snap to chat window height" | BRANCH (claude/ui-bugs-focused 9d4af25, Chat 0.6.23; QA D16) | UI-10 | The strip is as tall as the chat window; its width asked next. |
 | UI-29 | Her answer (question box), strip width: "Slider 40-200, default 90" | BRANCH (claude/ui-bugs-focused 9d4af25, Chat 0.6.23; QA D16) | UI-10 / UI-28 | Built as answered: a width slider shown only for Left / Right. |
 
+## A10. Session S10 = session 014bN6tV8Z5syBadjkfcN2Z4 ("Repository branch cleanup"; branch `claude/adoring-goldberg-19dcfq`)
+| # | Her words | Status | Where | Notes |
+|---|---|---|---|---|
+| CLEAN-1 | "Review every session and connect it to every branch it's actively working on. Then review all open branches. Confirm which branches are the inactive ones and have their changes pushed to main. Tell 11-06 chat to approve closing them. Also list every single branch that does not yet have their contents pushed to main, and pass to 11-06 for fast-track pushing with the request to close them once the push is completed." (2026-11-06 ~23:08 UTC) | OPEN | all sessions, all branches; handed to S9-5 owner (session 014bN6tSStpdmmCXviFAqPdQ) | Inventory made with `git merge-tree` against origin/main 687b624 (a branch is "on main" when merging it would not change main's tree). |
+| CLEAN-2 | "Tidy up the repo of stale branches and outdated tickets. Give me a summary of what processes are in need of improvement and how we can optimize for more efficient pushes to main for live testing." (same message) | OPEN | branches, GitHub issues | Stale pre-rewrite branches archived to `archive/2026-11-06` (deletion itself was refused by the session's permission check; waits on Xaya). Ticket closes: only those with concrete evidence. |
+
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
 a single instance. do this across all chats."
