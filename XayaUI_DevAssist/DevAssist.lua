@@ -826,6 +826,7 @@ SlashCmdList["XAYAUIDEV"] = function(msg)
     elseif cmd == "seen" then if GD.SeenToggle then GD.SeenToggle() end
     elseif cmd == "probe" then if GD.Probe then GD.Probe(arg) end
     elseif cmd == "instance" then if GD.Instance then GD.Instance(arg) end
+    elseif cmd == "qa" then if XayaUI_DevQA then XayaUI_DevQA.Toggle() end   -- (0.7.4: the QA walkthroughs, QAWalk.lua; also /xui dev qa)
     elseif cmd == "status" then
         local nc, na, nl = GD.RecorderSummary()
         local d = DB()
