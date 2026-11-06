@@ -327,4 +327,11 @@ if core and core.RegisterCommand then
         arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
         if arg == "" or arg == "qa" then QA.Toggle() end
     end)
+    -- (Xaya 2026-11-06, via the feature update summary session, FUS-9: "also create another shortcut /xui qa test and /xui qatest
+    -- aliases for common sense readability")
+    core.RegisterCommand("qa", function(arg)
+        arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+        if arg == "test" or arg == "" then QA.Toggle() end
+    end)
+    core.RegisterCommand("qatest", function() QA.Toggle() end)
 end

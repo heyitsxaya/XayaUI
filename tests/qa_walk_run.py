@@ -38,6 +38,10 @@ QA.Toggle()
 check("  ...and closes again", not Wn:IsShown())
 SlashCmdList.XAYAUIDEV("qa")
 check("/xuidev qa opens it too", Wn:IsShown())
+QA.Toggle(); ns.RunCommand("qa", "test")
+check("/xui qa test opens it (Xaya's alias, FUS-9)", Wn:IsShown())
+QA.Toggle(); ns.RunCommand("qatest", "")
+check("/xui qatest opens it too", Wn:IsShown())
 
 -- run the group page walkthrough
 QA.Start("group-page")

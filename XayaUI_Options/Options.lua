@@ -4166,7 +4166,11 @@ function ns.FolderContainerGroup(f)
             return { start = "Left", center = "Center", ["end"] = "Right" }
         end,
         sorting = { "start", "center", "end" },
-        get = function() return f.cAlign or ((ns.DynamicBlock and ns.DynamicBlock(f)) and nil or "center") end,
+        get = function()
+            if f.cAlign then return f.cAlign end
+            if ns.DynamicBlock and ns.DynamicBlock(f) then return nil end   -- (a Centered / From anchor group lines up from its corner: none picked)
+            return "center"
+        end,
         set = function(_, v) f.cAlign = v; apply() end }
     g.args.spacing = { type = "range", name = "Spacing", order = 2.1, min = 0, max = 200, step = 1,
         desc = "Space between items, in pixels.",

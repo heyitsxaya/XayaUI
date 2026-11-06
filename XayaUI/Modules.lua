@@ -417,7 +417,7 @@ function ns.Provide(name, obj) if type(name) == "string" and type(obj) == "table
 function ns.Service(name) return services[name] end
 -- /xui dev qa: the QA walkthroughs live in the developer add-on, which registers its own "dev" handler. While that add-on is off, this
 -- says how to get them (core finds the add-on only through its service, "gameDataProbe": core 0.6.55)
-ns.RegisterCommand("dev", function()
+ns.RegisterCommand({ "dev", "qa", "qatest" }, function()   -- (/xui qa test and /xui qatest: Xaya's aliases, FUS-9)
     if not services.gameDataProbe and ns.Print then
         ns.Print("the QA walkthroughs are part of XayaUI Dev Assist: switch it on in the AddOns list (character select or Esc > AddOns), then /reload and type /xui dev qa again.")
     end
