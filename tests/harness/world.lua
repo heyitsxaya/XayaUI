@@ -816,8 +816,9 @@ C_AddOnProfiler = { IsEnabled = function() return true end, GetApplicationMetric
   GetAddOnMetric = function() return 0.1 end, GetTopKAddOnsForMetric = function() return {} end }
 Enum = setmetatable({}, { __index = function(t, k)
   local fields = API.enums and API.enums[k]
+  local vals = API.enumValues and API.enumValues[k]   -- the documented numbers when the index has them (api_index_from_docs.py)
   local v = {}
-  if fields then for i, f in ipairs(fields) do v[f] = i - 1 end end
+  if fields then for i, f in ipairs(fields) do v[f] = (vals and tonumber(vals[f])) or (i - 1) end end
   setmetatable(v, { __index = function(_, f) record(W.unknownGlobals, "Enum." .. k .. "." .. tostring(f)); return nil end })
   rawset(t, k, v); return v end })
 Constants = setmetatable({}, { __index = function(t, k) local v = setmetatable({}, { __index = function() return 0 end }); rawset(t, k, v); return v end })

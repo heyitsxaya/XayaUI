@@ -478,6 +478,7 @@ cb6bc1c05e9d53be747ebd894280764b  debug-log/2026-11-05-2018-xaya-decisions-bars-
 dca56bc491930fdda05fb77349398fe2  debug-log/2026-11-05-2046-auto-populate-picker-options-0.6.42.md
 0c93fe0cae7e2e8d9c550a1497cd4331  debug-log/2026-11-05-2122-cooldown-manager-warnings-core-0.6.48-options-0.6.43.md
 58e6285b96e7d5318ee37de5a7dd440b  debug-log/2026-11-06-0005-console-command-line-xui-debug-core-0.6.49.md
+92b3bf55f06fee87ac74cf34d4fd1ae5  debug-log/2026-11-06-0010-harness-enum-values-cloud-index.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -607,13 +608,14 @@ f02c43c10e399a57286e1d36682f938d  tests/frame_anchor_run.py
 cca9d978e3b3e2e5ae5ad632f2f78020  tests/gamemenu_ratchet_run.py
 a9e2c12b9f3c73cc080ba4ce2bb8b5df  tests/gamemenu_run.py
 2432f77932fc7e94d63c1f8c3f453c37  tests/harness/.gitignore
-6420bfdf0a4cffd52970fd4cc1e2477a  tests/harness/api_index_from_docs.py
+75de4f1a72b3cda196800caeea3804e6  tests/harness/api_index_from_docs.py
 a36a03ecc872c2cf4b1b410e1aeba87e  tests/harness/build_api_index.py
 e419bc6fcc002cffc52e4a48a97807a8  tests/harness/build_framexml_index.py
 6f6d8a592b30903806cc446181eef8f5  tests/harness/loader.lua
 a86f56d3d0f0e1ed426ca5decffcbdbf  tests/harness/run.py
 65d36dfcb52b702837581ae71974958f  tests/harness/scenario.lua
-5cba875df79818b481d68b57f135aad6  tests/harness/world.lua
+77d0358d7377cf2861f34e89407ee547  tests/harness/world.lua
+5b2b69c470cf405c04676d822cd6e652  tests/harness_enum_values_run.py
 54ac3f5374107845cd76a8303a1e4a90  tests/header_chevron_run.py
 52415ac2ab3eae856593c419e3877b9b  tests/icon_cue_text_run.py
 4957fdc7190a0ee9fb2a985e1cbf982a  tests/import_run.py
