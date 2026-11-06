@@ -1,7 +1,7 @@
 # XayaUI Readme
 
 <!--
-Shown in the game: version pane > Info > Readme. A short, readable version of USER-GUIDE.md (sections 1, 2, 4 and 5 of the
+Shown in the game: version pane > Info > Readme. A short, readable version of docs/USER-GUIDE.md (sections 1, 2, 4 and 5 of the
 outline Xaya chose on 2026-11-06). The game cannot read this file: after any edit run  python3 tools/build_info_pane_data.py
 Supported markdown: #, ##, ### headings, paragraphs, "- " bullets (two spaces more for a nested bullet), **bold**, `commands`.
 -->
@@ -57,4 +57,4 @@ A feature you switch off costs nothing: it runs no timers, listens to no events 
 - `/xui reskin`, `/xui stats`, `/xui shop`, `/xui cursor` for the QoL features.
 - `/xui notes`, `/xui calc`, `/xui data` for the Bonus Features.
 
-The full manual is USER-GUIDE.md in the XayaUI source code (Info > Version info has the link).
+The full manual is docs/USER-GUIDE.md in the XayaUI source code (Info > Version info has the link).

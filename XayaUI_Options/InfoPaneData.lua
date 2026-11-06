@@ -182,7 +182,7 @@ ns.InfoPaneData = {
     { "b", 1, "`/xui chat`, `/xui panel`, `/xui privacy` for the Chat Panel, the Chat Bar and the privacy cover." },
     { "b", 1, "`/xui reskin`, `/xui stats`, `/xui shop`, `/xui cursor` for the QoL features." },
     { "b", 1, "`/xui notes`, `/xui calc`, `/xui data` for the Bonus Features." },
-    { "p", "The full manual is USER-GUIDE.md in the XayaUI source code (Info > Version info has the link)." },
+    { "p", "The full manual is docs/USER-GUIDE.md in the XayaUI source code (Info > Version info has the link)." },
   },
   faq = {
     { "h2", "Rules not firing" },
