@@ -7,10 +7,12 @@
 --     the divide sign, % after a number (15% = 0.15), brackets, a leading minus. Nothing else: no functions, no variables.
 -- Typed text is never run as code: the sum is read by the small parser below, never handed to loadstring or RunScript.
 --   * (Bonus 0.6.15; Xaya 2026-11-06: "Calculator needs its own enable / disable toggle") a tick box on its row in Bonus Features >
---     Utilities turns the whole Calculator on or off, as the Notepad's does. Off: no window (an open one closes), /xui calc only says it
---     is off (no answer in chat), no Calculator row in the minimap button's list. On by default, as it always was. Its saved sums and
---     window position are kept. Level reached (V14): the file is read at login (Bonus is not load-on-demand); nothing of it is built,
---     registered or run while it is off. It has no events, OnUpdate, timers or hooks at any time.
+--     Utilities turns the Calculator's window on or off. Off: no window (an open one closes), /xui calc alone only says it is off, no
+--     Calculator row in the minimap button's list; /xui calc <sum> still answers in chat (Xaya 2026-11-06, asked whether off should
+--     stop it too: "Is there a performance difference? If no, just the window" -- there is none: the command is registered either way
+--     to say it is off, and a sum is worked out only when one is typed). On by default, as it always was (her answer). Its saved sums
+--     and window position are kept. Level reached (V14): the file is read at login (Bonus is not load-on-demand); the window is never
+--     built while it is off. It has no events, OnUpdate, timers or hooks at any time.
 -- Own code (no other addon's code or data); Blizzard's frame API only.
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
@@ -340,7 +342,7 @@ end
 function ns.BuildCalculatorPage()
     return { type = "group", name = "Calculator", order = 1,
       xuiSwitch = { type = "toggle", name = "Calculator",
-          desc = "Turns the Calculator on or off as a whole. Off: no window, /xui calc gives no answers, no Calculator row in the minimap button's list, and nothing of it is built or runs; your last sums are kept.",
+          desc = "Turns the Calculator's window on or off. Off: no window and no Calculator row in the minimap button's list, and the window is never built; /xui calc with a sum still gives the answer in chat. Your last sums are kept.",
           get = function() return On() end, set = function(_, v) ns.Calculator_SetEnabled(v) end },
       args = {
         about = { type = "description", order = 0, width = "full", fontSize = "medium",
@@ -358,8 +360,7 @@ ns.Calculator_Press = function(key) Build(); Press(key) end   -- (tests press ke
 -- /xui calc [sum]
 local function Command(arg)
     local sum = type(arg) == "string" and arg:match("^%s*(.-)%s*$") or ""
-    if not On() then ns.Print(OFF_TEXT); return end
-    if sum == "" then ns.Calculator_Toggle(); return end
+    if sum == "" then ns.Calculator_Toggle(); return end   -- (off: Calculator_Toggle says so and opens nothing)
     local v, err = ns.CalcEval(sum)
     if not v then ns.Print(("calc: %s (%s)"):format(err, sum)); return end
     local answer = ns.CalcFormat(v)

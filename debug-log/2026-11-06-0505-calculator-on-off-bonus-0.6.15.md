@@ -11,20 +11,21 @@ tick box, Notepad with a ticked box]. REQUEST-LOG section A7, row S7-1.
   Enhanced Tooltips and Custom Data Panels rows use; `XayaUI_Options/Options.lua` `Tree.RowSwitch` draws it, unchanged).
   Saved as `CueRulesDB.calculator.enabled` (false = off; nil / true = on). Off:
   - an open window closes and its line lets go of the keyboard;
-  - `/xui calc` with or without a sum prints only "The Calculator is off: tick it in Bonus Features > Utilities > Calculator."
-    (no answer, no history line);
+  - `/xui calc` alone prints only "The Calculator is off: tick it in Bonus Features > Utilities > Calculator." and opens nothing;
+    `/xui calc <sum>` still answers in chat (her answer 2 below);
   - the minimap button's list leaves the Calculator row out (`available`, core 0.6.49);
   - the page's "Open calculator" button is greyed out.
   Saved sums and the window's position are kept.
 - `XayaUI_Bonus/Utilities.lua`: overview line and header comment mention the Calculator's box.
 - `XayaUI_Bonus/XayaUI_Bonus.toc`: 0.6.14 -> 0.6.15.
 
-## Choices made without her words (to confirm, V16)
-1. **Default: on**, so nothing changes for anyone until they untick it (the Notepad's precedent, Bonus 0.6.14, "on by default as it
-   always was"). Alternative: off by default.
-2. **Off covers `/xui calc <sum>` too** (no chat answers while off), following her words about the Notepad's box: "It should only
-   enable or disable notepad functionality in its entirety". Alternative: the chat answer keeps working while only the window is off.
-3. The off message wording above.
+## Her answers (question box, 2026-11-06 ~05:15 UTC; REQUEST-LOG S7-2)
+1. Default: "On by default (Recommended)".
+2. Does off also stop `/xui calc <sum>`? "Is there a performance difference? If no, just the window". There is none worth naming
+   (from the code, not measured): the command is registered either way (it has to say the Calculator is off), the file and its
+   parser are read at login either way, the Calculator has no events / OnUpdate / timers, and a sum is worked out only when she types
+   one. So: just the window. First commit b6a33b0 had stopped chat sums too; the follow-up commit lets them through.
+3. Off message: "Keep as written".
 
 ## V14 level reached
 The file is read at login (XayaUI_Bonus is not load-on-demand), which costs its parse and function definitions. While off, nothing
@@ -42,9 +43,11 @@ without a box; left alone so that Options needs no version bump while other sess
 ## Tests (V1)
 - `tests/calculator_run.py`: new "on / off" section (switch present and named Calculator, on by default; off closes the window, reads
   off, hides the minimap row, greys the button, `/xui calc` with and without a sum only says it is off, every opener does nothing,
-  sums kept; on again restores all), and an "off at login" scenario in a fresh Lua state (V14: asked for every way, no frame created).
-  5 new deliberate breaks (switch does nothing, off leaves the window open, command ignores off, minimap row stays, Open ignores off).
-  73 checks, 13 breaks, FAILS: 0. Negative control: on the old Calculator.lua it gives FAILS: 9 (two section errors, breaks not found).
+  sums kept; `/xui calc <sum>` still answers while off; on again restores all), and an "off at login" scenario in a fresh Lua state
+  (V14: asked for every way, no frame created; a chat sum still answers).
+  6 new deliberate breaks (switch does nothing, off leaves the window open, off also stops chat sums, minimap row stays, Open ignores
+  off, Toggle ignores off). 74 checks, 14 breaks, FAILS: 0. Negative control: on the old Calculator.lua the first version of the
+  test gave FAILS: 9 (two section errors, breaks not found); the "off also stops chat sums" break is b6a33b0's behaviour and is caught.
 - `tests/sidebar_switches_run.py`: Calculator is in the list of rows with a switch; its drawn row has a ticked box; unticking it in
   the left pane switches the Calculator off and closes its window without selecting the row, with one redraw; ticking it turns it on.
   92 checks, 0 failed.

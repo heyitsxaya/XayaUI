@@ -7,8 +7,9 @@
 #   - /xui calc <sum> prints "sum = answer"; /xui calc alone shows / hides the window; the keypad builds a sum and = works it out;
 #   - the keypad fits inside the window (V11); history keeps the last 10; Escape closes it; no global written by Calculator.lua;
 #   - (Bonus 0.6.15, Xaya 2026-11-06: "Calculator needs its own enable / disable toggle") the settings row's switch: on by default;
-#     off closes the window, /xui calc (with or without a sum) only says it is off, the minimap list leaves the Calculator row out and
-#     the page's Open button is greyed out; saved sums are kept; switched off at login, nothing of it is built when it is asked for.
+#     off closes the window, /xui calc alone only says it is off, the minimap list leaves the Calculator row out and the page's Open
+#     button is greyed out; /xui calc <sum> still answers in chat (her answer: "just the window"); saved sums are kept; switched off
+#     at login, no window is built whichever way it is asked for.
 # Deliberate breaks (MUTATIONS) each must make at least one check fail. The last line carries FAILS: <n>.
 # Run from the repo root: python3 tests/calculator_run.py   Needs: pip install lupa.
 import os, sys, time
@@ -179,14 +180,14 @@ SECTION("on / off", function()
   COMMANDS.calc("")
   check("off: /xui calc alone does not open it and says it is off", not f:IsShown() and PRINTED[1] == "The Calculator is off: tick it in Bonus Features > Utilities > Calculator.", PRINTED[1])
   COMMANDS.calc("2+2")
-  check("off: /xui calc <sum> gives no answer, only that it is off", #PRINTED == 2 and PRINTED[2] == PRINTED[1] and #CueRulesDB.calculator.history == kept, PRINTED[2])
+  check("off: /xui calc <sum> still answers in chat (Xaya: \"just the window\")", PRINTED[2] == "2+2 = 4" and not f:IsShown(), PRINTED[2])
   ns.Calculator_Open(); ns.Calculator_Toggle(); LAUNCHERS.calc[4]()
   check("off: the settings button, the toggle and the minimap action open nothing", not f:IsShown())
-  check("off: the saved sums are kept", #CueRulesDB.calculator.history == kept and kept > 0)
+  check("off: the saved sums are kept (plus the chat sum)", #CueRulesDB.calculator.history == math.min(kept + 1, 10) and kept > 0)
   sw.set(nil, true)
   check("on again: the switch, the minimap row and the Open button come back", sw.get() == true and LAUNCHERS.calc.available() == true and not page.args.open.disabled())
-  COMMANDS.calc("2+2")
-  check("on again: /xui calc <sum> answers", PRINTED[#PRINTED] == "2+2 = 4", PRINTED[#PRINTED])
+  COMMANDS.calc("")
+  check("on again: /xui calc alone opens the window", f:IsShown())
 end)
 
 SECTION("safety", function()
@@ -200,17 +201,20 @@ SECTION("off at login", function()
   local chunk = assert(loadstring_real_for_test(CALC_SRC, "@Calculator.lua"))
   chunk("XayaUI_Bonus", XayaUI_NS)
   local before = #FRAMES
+  PRINTED = {}
   COMMANDS.calc(""); COMMANDS.calc("3*3"); XayaUI_NS.Calculator_Open(); XayaUI_NS.Calculator_Toggle(); LAUNCHERS.calc[4]()
   check("off at login (V14): asked for every way, no frame of it is created", #FRAMES == before, #FRAMES - before)
+  check("off at login: /xui calc 3*3 still answers in chat", PRINTED[2] == "3*3 = 9", PRINTED[2])
   check("off at login: no Calculator row in the minimap list", LAUNCHERS.calc.available() == false)
-  check("off at login: the saved sums are kept", #CueRulesDB.calculator.history == 1)
+  check("off at login: the saved sums are kept", #CueRulesDB.calculator.history == 2 and CueRulesDB.calculator.history[1] == "1+1 = 2")
 end)
 '''
 
 MUTATIONS = [
     ("the switch does nothing", [("    d.enabled = v and true or false\n", "")]),
     ("off does not close the window", [("    if not d.enabled and frame then frame.edit:ClearFocus(); frame:Hide() end\n", "")]),
-    ("the command ignores off", [('    if not On() then ns.Print(OFF_TEXT); return end\n    if sum == ""', '    if sum == ""')]),
+    ("off also stops chat sums", [('    local v, err = ns.CalcEval(sum)\n    if not v then ns.Print(("calc:', '    if not On() then ns.Print(OFF_TEXT); return end\n    local v, err = ns.CalcEval(sum)\n    if not v then ns.Print(("calc:')]),
+    ("Toggle ignores off", [("function ns.Calculator_Toggle()\n    if not On() then ns.Print(OFF_TEXT); return end\n", "function ns.Calculator_Toggle()\n")]),
     ("the minimap row stays while off", [("        available = function() return On() end })", "        available = function() return true end })")]),
     ("Open ignores off", [("function ns.Calculator_Open()\n    if not On() then ns.Print(OFF_TEXT); return end\n", "function ns.Calculator_Open()\n")]),
     ("no divide-by-zero check", [('                if r == 0 then error({ msg = "cannot divide by zero" }) end\n', "")]),

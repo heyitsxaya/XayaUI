@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-cf9dbd83efe8501db1d415cfea068200  QA-CHECKLIST.md
+5a7690fe5d1f411a8fae1251f3e2f74b  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 6388e5710be433673f12516d5df50ef4  ROADMAP.md
 5bfe2afe526ca0b3e5374a6393067959  SESSION-START-SUMMARY.md
@@ -108,7 +108,7 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
 217115660973c1e46cd832ab92fdb0e5  XayaUI/Visual.lua
 96ebf8c9b5fcb6c3a23fe69ec9898083  XayaUI/XayaUI.toc
-f6351c5ca4db3586d099d130aea49508  XayaUI_Bonus/Calculator.lua
+743f20dca7eff28c79704777c40f9a38  XayaUI_Bonus/Calculator.lua
 7c8c4b6ef4fab8a18001668d5d23932a  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -488,7 +488,7 @@ ef2aa95835015eb192e93bbbf709ddb0  debug-log/2026-11-05-2359-harness-enum-values-
 7783c66365647d780c7c4fe802eea40e  debug-log/2026-11-06-0032-tooltip-aura-source-and-icon-bonus-0.6.13.md
 4d0a7e49d961b781138460bedf3945d2  debug-log/2026-11-06-0115-bundle-corrections-qol-0.7.24-core-0.6.49-bonus-0.6.14.md
 8672d383a4690ca2e7d5678e62390ac3  debug-log/2026-11-06-0400-character-width-upgrade-qol-0.7.27.md
-5ee0a442cd11f91b1a479231f455e309  debug-log/2026-11-06-0505-calculator-on-off-bonus-0.6.15.md
+43845295e7280cb7f9912edc302eccfd  debug-log/2026-11-06-0505-calculator-on-off-bonus-0.6.15.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -510,7 +510,7 @@ e80a5c2d309d09f70935f65abd599ec3  docs/plans/IDEA-UPGRADE-OPTIONS-2026-11-05.md
 4951caf3d08972511c0552aaeba5f0f1  docs/process/ELVUI-STRUCTURE-REVIEW-2026-11-05.md
 d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 544369ba5f2fb2b6f2e2cdabc4dfeb65  docs/process/REQUEST-LOG-CROSS-CHAT.md
-d4a9da37ff3c4467dd7ca479b0289dfb  docs/process/REQUEST-LOG.md
+771ae94a303aa0568dc7c4f9c71801ab  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 90936a78a2724875d4e7d1118d31997a  docs/process/VERIFICATION.md
 7af233aeafadc9bade62ce5da4b21189  docs/reference/README.md
@@ -568,7 +568,7 @@ f115df38e9fbc8e0ce989f9a4184ef18  tests/auras_cmd_run.py
 817abf7d5afa126ba039344c5a746b24  tests/auto_picker_run.py
 85b42e051f93867990bead97395d8ac3  tests/build_content_run.py
 a48d4b3a546f29c2dbd4fdfb8bc661c4  tests/build_set_auras_run.py
-8eba32fff656cb95606186527a890ecf  tests/calculator_run.py
+1c6d23fd55e06d0d372375988b4dd64e  tests/calculator_run.py
 cf33f2ac50cae55ac12c54e77e08d483  tests/cdm_warn_run.py
 cda349c3ef803b71feabaa33f9103c43  tests/char_gear_icons_run.py
 a8256603c8e3ad44a640b0927848f31a  tests/char_pane_geometry.lua
