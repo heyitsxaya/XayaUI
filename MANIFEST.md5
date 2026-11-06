@@ -2,9 +2,9 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-e251d2b75b6545f21cb49b0c1083ba2a  QA-CHECKLIST.md
+76933da00485358118b01a26932e12f3  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
-6388e5710be433673f12516d5df50ef4  ROADMAP.md
+ec712a62741167fbebfbd9401df1c3e7  ROADMAP.md
 7b14e6ac857f1076bcea7daf8f75c2f5  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 75617556e154714282a8d15742067257  USER-GUIDE.md
@@ -102,12 +102,12 @@ b978202920b2f4e1cf0f6e47fac3a551  XayaUI/Share.lua
 9966ecc7520f3978efc33a1e1af4efe2  XayaUI/Sound.lua
 a126ef2cd2852eae4c6f9eb2cadb6e1c  XayaUI/TalentDump.lua
 7d0e35ac661d1db2569cdea98562ba17  XayaUI/TextureList.lua
-28c4ffada1c92524f2c40bfeb4480cf9  XayaUI/Theme.lua
+dc4bdcfed5791416f8dbf90b10457bea  XayaUI/Theme.lua
 9bf55354dce003634bea5d20d5bbbf58  XayaUI/Timing.lua
 a798bbc0f8b2389a2b4de9c26599d737  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
 418107b92033fa7474da24b1c0944249  XayaUI/Visual.lua
-3c5923c263594795734b48a57709341e  XayaUI/XayaUI.toc
+6ebae3419f642bf507e44b656afd802e  XayaUI/XayaUI.toc
 7de6ddcbf9085bc9d8bc3d7b0dbd95b6  XayaUI_Bonus/Calculator.lua
 7c8c4b6ef4fab8a18001668d5d23932a  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
@@ -155,11 +155,11 @@ c3443dcf8a486e540ddfeac1aae87728  XayaUI_Chat/Sounds.lua
 2efdee6e686ee844aa41f20a638c7618  XayaUI_Chat/XayaUI_Chat.toc
 d1214a6ecb251789fe882787dce5d8ef  XayaUI_DevAssist/ApiInventory.lua
 2927a47181fd6886394e1b61d1fc0faf  XayaUI_DevAssist/AuraCatalogue.lua
-48cfc73c1cd5b513bb8d9490bca2bdae  XayaUI_DevAssist/DevAssist.lua
+874e5d78bb9f55e17eb4cbc4829f96ab  XayaUI_DevAssist/DevAssist.lua
 4f406e5f61d664082acd91fcb9dcafdd  XayaUI_DevAssist/FORMULA-CAPTURE-WALKTHROUGH.md
 540e759425acffdcd2e04155ed259ae3  XayaUI_DevAssist/FormulaCapture.lua
 10a00a7f66ce081044f89e3d998619fd  XayaUI_DevAssist/Probe.lua
-57c7fb119510212c438cc40987186e1c  XayaUI_DevAssist/XayaUI_DevAssist.toc
+6efd98cb50a70e010ec66a36503f94c5  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
@@ -210,10 +210,10 @@ ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
 6f6d58f8bd0ca100d2c8453c5c5cc5ba  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
-24601ef16af1a663ebc42c4dca3973c8  XayaUI_Options/Skin.lua
+e3153f8142d03d35a9d586dac4f5af47  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
-d4690500db6f2af478ebfb7544d8aee2  XayaUI_Options/XayaUI_Options.toc
+c2c5c6da4bbd868ad61f6f26ce3599f2  XayaUI_Options/XayaUI_Options.toc
 5afe11f54ae24648f309bff7987178e0  XayaUI_QoL/CharacterModel.lua
 ddfadc11ced8617cc79735bcf8fcf798  XayaUI_QoL/CharacterReskin.lua
 71a9c5e2546cef30f382de5d323903ea  XayaUI_QoL/CharacterToolkit.lua
@@ -495,6 +495,7 @@ cdd375e8fd192ce310da4594190c313c  debug-log/2026-11-06-0048-console-save-only-co
 5d218f7c42e73e577b2e2e2e026e3ff1  debug-log/2026-11-06-0409-tooltip-aura-source-debug-only-bonus-0.6.15.md
 5198473bdf9b295c6432636b81ef4b5c  debug-log/2026-11-06-0435-stat-calculator-round-qol-0.7.28.md
 6e8236b73c4aa9274c3dea0ce6dfed78  debug-log/2026-11-06-0542-debug-opens-console-shortcuts-loader-history-pipes-core-0.6.50-chat-0.6.17.md
+bcbf971ed2693812286a40635b15e630  debug-log/2026-11-06-0705-sidebar-rows-regrow-options-0.6.52-core-0.6.54.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -516,7 +517,7 @@ e80a5c2d309d09f70935f65abd599ec3  docs/plans/IDEA-UPGRADE-OPTIONS-2026-11-05.md
 4951caf3d08972511c0552aaeba5f0f1  docs/process/ELVUI-STRUCTURE-REVIEW-2026-11-05.md
 d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 544369ba5f2fb2b6f2e2cdabc4dfeb65  docs/process/REQUEST-LOG-CROSS-CHAT.md
-76aa65d6ffb65c949463865cd5cab2b3  docs/process/REQUEST-LOG-session-014bN6tSs9peLMW4F93tnQcj.md
+b49c399bfdcd3dc16cd45cac1eee4a00  docs/process/REQUEST-LOG-session-014bN6tSs9peLMW4F93tnQcj.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
 1789b4ebd0209727bf139f74245d208b  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
@@ -608,7 +609,7 @@ e78532613d70ebbdcc90fcfb23c97f0a  tests/cue_fire_run.py
 dd665e9accfdaf1a4488086f855742a2  tests/cue_sound_guard_run.py
 e72897e247fb535d4756722cd9f5aad7  tests/cue_volume_run.py
 86b0502bac93727dda27759b8516b6ff  tests/cursor_trail_cost_run.py
-01d4ec634aff5f50470bfd80dfd2a3b2  tests/cursor_ui_themes_run.py
+cafe909a0096f5993f25573a8c89a00b  tests/cursor_ui_themes_run.py
 468a208772bf47d9d5b03f5f786b7989  tests/debug_record_engine_run.py
 3017799bf8b0bd68b54a98c00b94ba91  tests/debug_record_run.py
 c135893b4f8ae3d58b00fd2be6d813af  tests/delete_keeps_rule_run.py
@@ -651,7 +652,7 @@ a86f56d3d0f0e1ed426ca5decffcbdbf  tests/harness/run.py
 6e92b8201fedcf5655092b9bd49106ef  tests/load_ids_options_run.py
 be2a40ff7d3167cccf271f960e0f70a1  tests/load_ids_run.py
 77132f082006e60b78f5bbdc7cc3c57f  tests/lua51.py
-fb351c854fb47dee0e181ce1c3821350  tests/lua_pitfalls_run.py
+9ea525ecdbe994c51ae0a5a95c356296  tests/lua_pitfalls_run.py
 f19616c7613194a3b65115c2c4405087  tests/minimap_run.py
 adb52b5f86b97b5ac549353e59d97f36  tests/modules_run.py
 6ad4b6d2b5aa5998a397aa381d3de5ba  tests/mover_click_run.py
@@ -668,6 +669,7 @@ f8047cf03744511b898b5efd78065b53  tests/reskin_tab_run.py
 04c191fed34aa1a531e52ce2d67d48a7  tests/rules_subtabs_compact_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py
 033cc3815741ca63d85f3a67a2bd0409  tests/sidebar_name_room_run.py
+d3e43ebe0b0c51a82085916ade221862  tests/sidebar_rows_regrow_run.py
 c98d9485f34fd1a686a1943ff07ddc06  tests/sidebar_switches_run.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
 278c42a27cbbe21ebff29250f3f77e9c  tests/spell_search_scope_run.py

@@ -4,6 +4,8 @@
   2026-11-04: Conditions.lua (a new Cooldown Manager lookup returned nil instead of false) and OutcomesEditor.lua (a
   condition's "Desaturate: off" / "Glow: off" stored nothing, so "off" could never be chosen; there since that editor was
   written). Write it out with if / else instead.
+- `local a, b = x and f()`: an and / or operand keeps only the first value of a call, so b is always nil. Found 2026-11-06 in
+  Skin.lua (the settings sidebar could never regrow its rows).
 - In a feature addon (any folder but XayaUI core): `pcall(ns.X.fn, ...)` where ns.X is a table XayaUI core defines. The lookup
   ns.X.fn runs BEFORE pcall, so a core without that table (an older core folder, or new core files the game has not loaded yet
   because it was not restarted) throws outside the pcall. Found 2026-11-04 by a tester: "XayaUI_Options/Options.lua:2112: attempt
@@ -14,6 +16,12 @@ import os, re, sys
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 PATTERNS = [
     (re.compile(r"\band\s+(false|nil)\s+or\b"), "`and false/nil or` always yields the right-hand side; use if / else"),
+    # two or more names from ONE `x and f()` expression: an and / or operand keeps only the call's first value, so every name after
+    # the first is always nil. Found 2026-11-06: Skin.lua `local _, mx = self.scrollbar and self.scrollbar:GetMinMaxValues()` left mx
+    # nil, so the settings sidebar's row count could never grow back (Insivius: "will not show more than 4 lines"). (A line with
+    # `function` is skipped: there the and / or sits inside a wrapped function, e.g. pcall(function() return x and f() end).)
+    (re.compile(r"^(?!.*\bfunction\b)\s*(local\s+)?[\w.]+\s*,[\w\s,.]*=\s*[^,]*\b(and|or)\s+[\w.:\[\]]+\([^,]*\)\s*$"),
+     "`a, b = x and f()` keeps only f()'s first value (b is always nil); test x first, then call f() on its own line"),
 ]
 bad = []
 n = 0

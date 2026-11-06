@@ -263,7 +263,9 @@ end
 -- one built-in theme per gradient, offered after the color blind ones (the Theme page lists T.BUILTIN_ORDER)
 for _, key in ipairs(T.CURSOR_PRESET_ORDER) do
     local p = T.CURSOR_PRESETS[key]
-    T.BUILTIN["cursor_" .. key] = { name = "Cursor trail: " .. p[1], pal = T.CursorPalette(p[2]), cursorPreset = key }
+    -- (core 0.6.54) the gradient's name alone (Xaya 2026-11-06: "theme names should drop "cursor theme:" prefix", her screenshot of
+    -- the Theme list showing "Cursor trail: Fel" ... "Cursor trail: Frost")
+    T.BUILTIN["cursor_" .. key] = { name = p[1], pal = T.CursorPalette(p[2]), cursorPreset = key }
     T.BUILTIN_ORDER[#T.BUILTIN_ORDER + 1] = "cursor_" .. key
 end
 
