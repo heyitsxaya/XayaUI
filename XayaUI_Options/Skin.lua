@@ -2244,6 +2244,14 @@ local function Walk(w, depth)
     elseif t == "TreeGroup" then SkinTree(w)
     elseif t == "Button" then SkinButton(w)
     elseif t == "InlineGroup" then SkinInline(w)
+    elseif t == "Icon" then
+        -- (UI-53) a page's info icon (core ns.InfoBox): the icon alone, no name under it (the name is its tooltip's title line);
+        -- the page is laid out again once, the first time, so no gap stays where the name was
+        local o = w.GetUserData and w:GetUserData("option")
+        if o and type(o.arg) == "table" and o.arg.xuiInfoToggle and w.label and w.label:IsShown() and w.SetLabel then
+            w:SetLabel(nil)
+            if w.parent and w.parent.DoLayout then pcall(w.parent.DoLayout, w.parent) end
+        end
     elseif t == "EditBox" then SideLabel(w, "EditBox")
     elseif t == "Dropdown" or t == "Dropdown-Pullout" then
         if t == "Dropdown" then

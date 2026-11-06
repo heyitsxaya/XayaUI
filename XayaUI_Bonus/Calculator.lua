@@ -340,7 +340,7 @@ end
 -- Calculator's on / off (xuiSwitch, Bonus 0.6.16; Options.lua Tree.RowSwitch draws the box); while it is off the Open button is greyed
 -- out. Built only when the settings window draws (Utilities.lua).
 function ns.BuildCalculatorPage()
-    return { type = "group", name = "Calculator", order = 1,
+    local page = { type = "group", name = "Calculator", order = 1,
       xuiSwitch = { type = "toggle", name = "Calculator", tip = "A small calculator: a window with a typed line and a keypad.",
           desc = "Turns the Calculator's window on or off. Off: no window and no Calculator row in the minimap button's list, and the window is never built; /xui calc with a sum still gives the answer in chat. Your last sums are kept.",
           get = function() return On() end, set = function(_, v) ns.Calculator_SetEnabled(v) end },
@@ -354,6 +354,10 @@ function ns.BuildCalculatorPage()
         open = { type = "execute", order = 3, name = "Open calculator", func = function() ns.Calculator_Open() end,
             disabled = function() return not On() end },
     } }
+    -- (Bonus 0.6.21; REQUEST-LOG UI-53, the trial page for her "info icon that opens/closes a description box"): the summary with
+    -- the icon; the three paragraphs above in the box it opens
+    return ns.InfoBox and ns.InfoBox(page, "bonus.calculator", "A small calculator: a window with a typed line and a keypad. Open it with the button below or /calc.",
+        { "about", "reads", "how" }) or page
 end
 ns.Calculator_Press = function(key) Build(); Press(key) end   -- (tests press keys through this)
 

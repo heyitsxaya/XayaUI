@@ -69,3 +69,12 @@ UI-49 (verbatim): "Note theme has to tie into the skin.lua in some way". Her ans
 - Tests: display_standard_run 4-6 (Muted grey follows the theme; Advanced customization offered / applied; no numeric colour in
   Skin.lua outside the restores: the previous Skin.lua has 22); rules_subtabs_compact_run: theme font on the Rules tabs, Large = 32 px /
   13.8 pt. QA B219-B221.
+
+## Follow-up: UI-51 to UI-53 (tooltip redesign and build standard, relayed from the cleanup session)
+- Logged as relayed (CLEAN-5 / CLEAN-6). docs/design/BUILD-RULES.md (new): "isolated units, shared plumbing" as she adopted it
+  (CLEAN-6), and the tooltip rules with her answers (UI-53). DISPLAY-RULES A9.
+- Trial page only (her "confirm POC before proceeding for all"): core ns.InfoBox(group, id, summary, keys) and Bonus Features >
+  Utilities > Calculator: summary (two sentences) + info icon; the icon opens / closes a titled "Description" box with the three
+  paragraphs. Skin.lua hides the name under that icon (it is the hover's title). tests/info_box_run.py 10 / 10. QA B222.
+- Not done (sequenced by the cleanup session and her rule): the shared tooltip helper and moving the 105 direct GameTooltip calls,
+  and the shared event / timer / hook services: after bundle-2300 is on main, one addon per landing.

@@ -355,6 +355,37 @@ function ns.SectionTabs(group)
     return group
 end
 
+-- A page's summary with an info icon that opens / closes the page's full description in a box (core 0.6.59; REQUEST-LOG UI-53, her
+-- answer: "isolated to an info icon that opens/closes a description box -- try this out for one text-heavy segment and confirm POC
+-- before proceeding for all"; first used on Bonus Features > Utilities > Calculator only, until she confirms).
+-- ns.InfoBox(group, id, summary, keys): the page shows `summary` (up to two sentences, UI-53) with the icon beside it; the description
+-- entries named in `keys` move into a box under it, shown while the icon is toggled open (closed at first; kept for the session).
+ns.infoBoxOpen = ns.infoBoxOpen or {}
+function ns.InfoBox(group, id, summary, keys)
+    local args = type(group) == "table" and group.args
+    if type(args) ~= "table" then return group end
+    local box = { type = "group", inline = true, name = "Description", order = 0.03, args = {},   -- (a titled inline group: AceConfigDialog draws an untitled one with no box)
+        hidden = function() return not ns.infoBoxOpen[id] end }
+    for i, k in ipairs(keys) do
+        local e = args[k]
+        if type(e) == "table" then
+            e.order = i
+            e.arg = type(e.arg) == "table" and e.arg or {}
+            e.arg.xuiKeep = true   -- (not folded into a heading's (i) by the settings window's info pass)
+            box.args[k] = e
+            args[k] = nil
+        end
+    end
+    args.xuiSummary = { type = "description", order = 0.01, width = "relative", relWidth = 0.88, fontSize = "medium", name = summary,
+        arg = { xuiKeep = true } }
+    args.xuiInfoToggle = { type = "execute", order = 0.02, width = "relative", relWidth = 0.1, name = "Description",
+        desc = function() return ns.infoBoxOpen[id] and "Hides this page's full description." or "Shows this page's full description." end,
+        image = "Interface\\common\\help-i", imageWidth = 22, imageHeight = 22, arg = { xuiInfoToggle = true },
+        func = function() ns.infoBoxOpen[id] = not ns.infoBoxOpen[id] or nil; if ns.Fire then ns.Fire("CONFIG_CHANGED") end end }
+    args.xuiInfoBox = box
+    return group
+end
+
 -- { [key] = group } for every page of one module (or of all modules when module is nil). A page whose builder errors is skipped.
 function ns.BuildSettingsPages(module, Notify)
     local out = {}

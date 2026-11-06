@@ -453,7 +453,8 @@ local np = node(ns.BuildOptionsTable(), "bonus", "utilities", "notepad")
 local leaf
 for k, v in pairs(np and np.args or {}) do if type(v) == "table" and v.type ~= "group" and v.type ~= "description" and type(v.disabled) == "function" then leaf = k; break end end
 local function dis() local v = np.args[leaf]; return v.disabled({ "bonus", "utilities", "notepad", leaf }) and true or false end
-check("G: Notepad unticked: its row name is grey", n ~= nil and math.abs(r1 - 0.5) < 0.01 and math.abs(g1 - 0.5) < 0.01 and math.abs(b1 - 0.5) < 0.01, tostring(r1) .. "," .. tostring(g1) .. "," .. tostring(b1))
+local mg = ns.OptionsApi.Muted and ns.OptionsApi.Muted() or { -1, -1, -1 }   -- (UI-49: the grey is the theme's Muted text colour)
+check("G: Notepad unticked: its row name is grey (the theme's Muted text colour)", n ~= nil and math.abs(r1 - mg[1]) < 0.01 and math.abs(g1 - mg[2]) < 0.01 and math.abs(b1 - mg[3]) < 0.01, tostring(r1) .. "," .. tostring(g1) .. "," .. tostring(b1))
 check("G: ...and its settings are greyed (cannot be changed): " .. tostring(leaf), leaf ~= nil and dis() == true)
 click("bonus", "utilities\001notepad", true)
 n = row("bonus", "utilities\001notepad")

@@ -68,6 +68,11 @@ location if they aren't already. / refactor all code appropriately. / priority: 
 6. Theme page: an "Advanced customization" switch, off by default, offers the parked colours (tabs, tree bars) and the class overrides;
    while off they are neither offered nor applied [10.13].
 
+### A9. Tooltips and page descriptions (UI-51 / UI-53; how they are built: [BUILD-RULES.md](BUILD-RULES.md) section B)
+1. A tooltip: a title line, then up to two sentences about that one tab or control; never a whole section's text.
+2. A page: a short summary; its longer description in a box opened and closed by an info icon beside the summary (TRIAL on the
+   Calculator page only, until she confirms).
+
 ## B. Gaps found in the audit (PROPOSED: each waits for her answer)
 Filled in as the tab-by-tab audit (UI-47 step 3) finds display types with no ruling. Each gap is asked through the question flow; the
 answer moves it to section A.
