@@ -266,6 +266,7 @@ function ns.BuildChatTab(Notify)
         to = rng("Opacity when faded (%)", "fadeTo", 13, 0, 100, "0 hides it completely.", 5),
         secs = rng("Fade duration (seconds)", "fadeSeconds", 14, 0.1, 3, nil, 0.1),
         wake = tog("A new message brings the chat back", "fadeWake", 15),
+        hoverWake = (function() local o = tog("The mouse over the chat brings it back", "fadeHover", 15.5); o.get = function() return S().fadeHover ~= false end; return o end)(),
         bar = tog("Fade the Chat Data Panel too", "fadeBar", 16),
 
         textHdr = hdr("Old lines", 20),

@@ -164,6 +164,21 @@ W.mouseX, W.mouseY = cr[0] + 10, cr[1] + 10
 W.update(0.2, 10)
 check("fade: mouse over wakes it", pane.GetAlpha(pane) > 0.95, pane.GetAlpha(pane))
 W.mouseX, W.mouseY = -5, -5
+# (Chat 0.6.24; REQUEST-LOG UI-11, Xaya: "mouse hover over should also allow for chat to reappear if this option is selected", her
+# answer "Its own tick box") "The mouse over the chat brings it back": on by default (above); unticked, the mouse does not wake it.
+# Negative control: the unticked check and the option check fail on Chat 0.6.23.
+run("ns.chat2.fadeHover=false")
+W.update(0.5, 12)
+check("fade, hover unticked: faded again after idle", pane.GetAlpha(pane) < 0.05, pane.GetAlpha(pane))
+W.mouseX, W.mouseY = cr[0] + 10, cr[1] + 10
+W.update(0.2, 10)
+check("fade, hover unticked: the mouse over the chat does NOT bring it back", pane.GetAlpha(pane) < 0.05, pane.GetAlpha(pane))
+hov = lua.eval("function(ns) local t = ns.BuildChatTab(function() end); local found; local function f(g, d) for k, v in pairs(g.args or {}) do if k == 'hoverWake' and type(v) == 'table' and v.type == 'toggle' then found = v end; if type(v) == 'table' and v.type == 'group' and d < 5 then f(v, d + 1) end end end; f(t, 0); return found end")(W.ns)
+check("fade: the option reads 'The mouse over the chat brings it back' and is ticked when nothing is saved",
+      hov is not None and hov.name == "The mouse over the chat brings it back" and lua.eval("function(o, ns) ns.chat2.fadeHover = nil; return o.get() end")(hov, W.ns) == True,
+      hov.name if hov is not None else None)
+run("ns.chat2.fadeHover=nil")
+W.mouseX, W.mouseY = -5, -5
 run("ns.chat2.fadeOn=false; C.Schedule()")
 W.flush(); W.update(0.2, 10)
 check("fade off: opaque again", pane.GetAlpha(pane) > 0.99, pane.GetAlpha(pane))
