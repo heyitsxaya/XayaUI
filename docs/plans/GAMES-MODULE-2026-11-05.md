@@ -10,7 +10,7 @@ Status: **Candidate**. No code written. One row in `ROADMAP.md` section 9 points
 1. **The addon.** The games live in their own addon whose .toc has `## LoadOnDemand: 1`, like `XayaUI_Options` (`XayaUI_Options/XayaUI_Options.toc:8`, which core loads through `ns.LoadOptions`, `XayaUI/Modules.lua:248-262`). Until a player opens a game, the game code and its word lists take no memory. Today `XayaUI_Options` is the suite's only load-on-demand addon.
 2. **The documentation.** The detail stays in this file and is read only when needed. It is kept out of the always-read session-start summary.
 
-If Xaya meant only one of these, undoing the other is a small edit (question 2).
+If Xaya meant only one of these, undoing the other is a small edit (question 2). **Answered 2026-11-06: reading 1** (see question 2).
 
 ### 1.2 The parts
 | Part | Reading | Confidence |
@@ -77,7 +77,10 @@ The research and outline are on branch `roadmap-features/games`: `roadmap-featur
    - (a) A game: you lead a made-up group-finder listing and choose from made-up applicants.
    - (b) Practice for the real group finder.
    - (c) Something else.
-2. **"Load on demand only":** does it mean the addon (1.1 reading 1), keeping the documentation out of the start-up summary (reading 2), or both? Both are applied for now.
+2. **"Load on demand only":** does it mean the addon (1.1 reading 1), keeping the documentation out of the start-up summary (reading 2), or both? **Answered (Xaya, 2026-11-06):** "only things that are enabled should load, and only when directly called. The goal is to improve performance and reduce memory/cpu cost as much as possible except where unavoidable."
+   - So it is reading 1, the addon's loading. Reading 2 was not what she meant; the notes simply stay where the project keeps them.
+   - Follow-up proposal, to confirm: one load-on-demand addon per game, so opening one game loads only that game's code. It is in `roadmap-features/games/ARCADE-FEASIBILITY.md` section 2b, on branch `roadmap-features/games`.
+   - Also to confirm: whether the sentence is meant for the whole suite.
 3. **The game's name.**
 4. **Modes and puzzle types:** which ones, and which first? **Answered in part (Xaya, 2026-11-05):** "Minesweeper", "Sudoku".
 5. **Word list:** where it comes from, and which languages. **Answered (Xaya, 2026-11-05):** "For wordle: wow trivia edition (uses words from in-wow)". The words are read from the client at runtime (zones, dungeons, races, classes, specs, mounts, factions), so no list ships and every client language works. Outline: `roadmap-features/games/XayaUI_Games/Games/Word/WordPool.lua`, which also holds the new questions W1-W3.
