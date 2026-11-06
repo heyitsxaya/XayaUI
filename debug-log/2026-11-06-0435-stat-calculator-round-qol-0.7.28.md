@@ -1,4 +1,4 @@
-# Stat Calculator round: QoL 0.7.28 (REQUEST-LOG #60-#64, #66-#68)
+# Stat Calculator round: QoL 0.7.28 (REQUEST-LOG #60-#64, #66-#69)
 Logged 2026-11-06 04:35 UTC. Session S1 (worker), local branch `s1-statcalc` from `origin/claude/adoring-hawking-wyda59` at e05475a
 (main 5490478 + request-log docs); code commit fc2c597; origin/main 02512a3 (QoL 0.7.27, the width migration) merged in after it. Not
 pushed. Nothing here has run in the game. Versions: QoL 0.7.28 (0.7.25 / 0.7.26 are other branches', 0.7.27 is on main); core, Options,
@@ -15,6 +15,8 @@ Bonus not changed.
 | 63, 65 | Primary, General, Offensive, Defensive drawn as bucket bars (a band across the pane, accent colour at 35% opacity, the name on it in the body text colour); one indentation step (12): headings and bars 0, stats 12, their lines 24. | char_stat_round D (every line of Character Stats checked at 340, 450, 760) |
 | 64, 65 | Gear Summary: its own section at the top of the Stats tab; a "Gear Summary style" setting (Panel > Layout): Split bars (default), Stat tiles, One stacked bar, Columns and Gear share (volunteered), Table. Same numbers as before (no new game call); flat textures only. | char_stat_round E |
 | 66, 67 | Stats grid: an Influences column between Pt value and Change; a card's "»" lines and its "From <stat>" lines (not "From rating", the card's own rating) are names there ("from Agility" for a feeder), comma-separated, wrapping in the column; each name hovers with its value, Pt value and new value; a line nested under a "»" line goes in that name's hover. The nested rows leave the grid. Widths measured like Stat Weights. | char_stat_round C |
+| 69, 71 | Character window slot blocks (CharacterReskin.lua LabelBoxes): the 0.7.24 rule "with the wider window on, a block never goes toward the middle" is removed: below MIN_COL (40 px) of room beside the model a block runs toward the middle, over the model's sides, at any width (the 0.7.19 layout). Result for her 12 slots at Extra width 42 (380 / 582): 11 whole, 1 (wrist) cut at a word with "...", 0 not drawn (was 2 whole, 10 not drawn). The 16 px gems, the embellishment line and the word-fit rule are kept. | char_pane_overlays A0: the "nothing over the model" check is now "the blocks with no room run over its sides", and "ten not drawn" is now "all twelve drawn" (both fail on the 0.7.24 rule) |
+| 70, 71 | NOT BUILT this round (the customisable stats pane in the character window): see the report. | none |
 | 68 | Gear highlight: cause: the 0.7.24 frame used `TC("xui-tab-selected", "bg")`, the selected TAB's background (token tabSelBg); the class theme (her default, Theme.lua DB() base "class") sets it to the class colour x 0.28 at alpha 0.9 (Theme.lua ClassPalette: `pal.tabSelBg = { c[1] * 0.28, ... 0.9 }`): for a Demon Hunter about (0.18, 0.05, 0.22) on a window of about (0.04-0.06): drawn and shown (the 0.7.24 test checked only that), but not visible. Now 3 px (quality border 1 px) in the accent, on OVERLAY sublevel 7 above the ARTWORK icon and the BACKGROUND border, inside the button. (INFERENCE from the theme code and her screenshot; not seen in game.) | char_stat_round G |
 
 ## Scope (V4: readers, callers, displays touched)
@@ -29,7 +31,7 @@ Bonus not changed.
 A scratch copy of e05475a (git archive) with the new tests copied in:
 - tests/char_stat_round_run.py: 85 checks, 70 fail on e05475a; the 15 that pass are all marked "(guard)" (the old widths at text size 8, the layout checks, the Table style, shown / hidden of the highlight, Demon Spikes, haste / crit moving nothing).
 - changed old tests run on e05475a: char_stat_map 15 of 69 fail, char_stat_window 23 of 98, char_stat_columns 19 of 101, char_toolkit2 7 + 9 (the checks rewritten for this change; the rest pass on both).
-At fc2c597 all of them pass.
+At fc2c597 all of them pass. #69: tests/char_pane_overlays_run.py on e05475a (the same 0.7.24 rule as 0.7.27): 2 of 65 fail, the two changed A0 checks.
 
 ## Questions for Xaya (nothing below was guessed into code without saying so)
 1. Default width: with six columns (Influences added) the default 450 panel leaves Influences about 56 px; names wrap one or two per line, "Critical Strike" wraps, and a 10-character rating ("1,200 +300") wraps at its space. Nothing is cut. Widen the default, or keep it?
