@@ -327,6 +327,7 @@ A cue is a named thing that happens. Create it with **Add a cue**, then choose *
 | **Text** | On-screen text |
 | **Texture** | An image with color, animation, glow options |
 | **Icon** | A spell icon |
+| **Bar** | A progress bar: aura time left, a spell's cooldown / recharge, stacks or charges (core 0.6.51; see "Bar cues" below) |
 | **Custom** | Listed in the menu, but it does not yet play, show, or run anything (see Known limitations). |
 
 - Cues are numbered: "Cue 1: Sound 1." Give them your own names and descriptions (name up to 60 characters, description up to 300).
@@ -334,6 +335,19 @@ A cue is a named thing that happens. Create it with **Add a cue**, then choose *
 - Under the hood a cue is a hidden child rule; it uses the parent's spell, buff, and load settings.
 - **Text on Icon and Texture cues** (Options 0.6.28): inside the cue's **Icon Options** / **Texture Options** box, after its art and size sections, a **Text** section holds the buff duration text, the stacks / charges count and the shield / absorb amount, each with its own on / off and style. (From 0.6.1 to 0.6.27 these were missing from Icon and Texture cues; only Text cues had them.)
 - **Show tooltip on hover** (Text, Texture, and Icon cues; set for all of a rule's display cues at once on the rule's **Display** tab): hovering the cue shows the tooltip of the spell or item it is about, which is the icon source chosen on the cue, else the rule's first trigger. Off by default. While it is on, the cue sees the mouse pointer but clicks still pass through to what is behind it. Icons drawn by XayaUI Combat Auras do not support it yet. It has its own tick box in Paste Settings (Cues > Display), so it can be copied to one rule or to every rule in a group on its own.
+
+### Bar cues (core 0.6.51 / Options 0.6.49)
+
+A Bar cue draws a progress bar. **New Rule > Progress Bar** makes a rule with one; **Add a cue > Bar** adds one to any rule.
+
+- **Starts as:** 220 x 22, black background at 20 %, 1 px black border, flat texture, horizontal, draining from right to left, the spell's icon at the left, its name at the left inside the bar, the time at the right, a spark on the fill's moving edge. Everything is editable on the cue.
+- **Tracks:** *Automatic* (the aura's time left when the rule watches an aura, else the spell's cooldown), *Aura time left*, *Spell cooldown / recharge*, *Stacks*, *Charges*. For Stacks and Charges, **Maximum** is the value at which the bar is full; 0 uses the game's own maximum (the aura's maximum stacks, the spell's maximum charges). When the game gives none and you set none, the bar stays empty: it never guesses.
+- **Fill:** *Drains toward* left, right, bottom or top; *Fill up instead of draining* (time bars). **Bar texture:** Flat, Blizzard, Raid frame, any LibSharedMedia status bar texture, or your own file.
+- **Colour:** *Automatic* colours the bar by the first of these that is known: (1) the type the spell's tooltip names: the dispel type at the top right of an aura's tooltip (Magic, Curse, Disease, Poison, Bleed), else the first school named as "<school> damage" in the description ("Shadowflame damage" is Shadow); (2) the aura's dispel type as the game reports it; (3) a fixed blue. The game has no call that gives a spell's school, which is why the tooltip is read. Tooltip words are matched in English only: on another client language step 1 finds nothing. The **Colour** section says which colour it uses now and why. *Fixed colour* uses the colour you pick.
+- **Bar Colours** (Settings > UI Options): the style the type colours are drawn in: *Blizzard default* (the game's own dispel-type and school colours, read from the game), *Neon*, *Pastel*, *Muted / Dark* (each keeps the colour's family and changes its saturation and brightness), or *Custom* (a colour picker for each of the 12 types; a type you never pick shows Blizzard's colour). Nothing is saved until you change it.
+- **Text:** the name, the time, and the stacks / charges count, each with its own on / off and style, in the **Text: name, time, stacks / charges** box.
+- **In combat:** aura-time and stacks bars are drawn by XayaUI Combat Auras through the game's own aura buttons, so they keep moving while the game hides aura numbers from addons; the game also paints the icon and the name. A bar coloured automatically with no tooltip type is coloured by the game from the aura's dispel type there. Inside a dynamic group each member is its own bar. A cooldown / charges bar stays with XayaUI: the game drives it from the cooldown's duration, exact in combat too. `/xuiengine` says which path each bar is on.
+- **Limits (not yet checked in game):** in a dynamic group sorted by the game (Expiration, Name, ...) all members share member 1's look, so a tooltip colour of member 1 applies to all of them; the spark of an engine-drawn bar is shown whenever the bar is (it cannot tell when the bar is full or empty).
 
 ### When does a cue fire?
 

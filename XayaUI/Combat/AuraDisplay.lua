@@ -152,6 +152,13 @@ local function Classify(p)
     if p.enabled == false then return nil, "" end
     local display = DisplayOf(p)
     if not display then return nil, "" end
+    -- a Bar cue (BarCue.lua): the game's aura button drives aura-time and stack bars; a bar that times the spell's cooldown or
+    -- charges is XayaUI's (the game drives that bar from the cooldown's duration object, exact in combat too)
+    if display.visual.kind == "bar" and ns.BarCueSource then
+        local src = ns.BarCueSource(display)
+        if src == "cooldown" or src == "charges" then return nil, "a Bar that times the spell's cooldown / charges (XayaUI draws it; the game drives the bar)" end
+        if src == "stacks" and not (ns.BarCueMax and ns.BarCueMax(display)) then return nil, "a stacks Bar with no maximum (set Maximum on the cue; the game gives none for this aura)" end
+    end
     local trigger = display.visual.trigger
     local rows = ExtraRows(p)
     local buffID = tonumber(p.buffID) or 0
@@ -244,7 +251,8 @@ local function Drops(p, display, single, slot)
     local out = {}
     local v = (display and display.visual) or {}
     local f = v.fill
-    if f and f.enabled and not single then out[#out + 1] = "progress drain (drawn only for a display on its own, not inside a group)" end
+    if f and f.enabled and not single and v.kind ~= "bar" then out[#out + 1] = "progress drain (drawn only for a display on its own, not inside a group)" end
+    if v.kind == "bar" and slot and slot.barDispel == "failed" then out[#out + 1] = "bar colour by dispel type (the game refused it here; the bar shows the fixed blue)" end
     if f and f.enabled and single and ((tonumber(f.min) or 0) ~= 0 or (tonumber(f.max) or 1) ~= 1) then out[#out + 1] = "drain start / end limits" end
     if v.fadeGrey then out[#out + 1] = "grey / colour fade" end
     if v.fadeAlpha then out[#out + 1] = "opacity fade" end
@@ -423,7 +431,117 @@ local function Style(fs, btn, t, default, font)
     fs:SetPoint(default, btn, default, tonumber(t.x) or 0, tonumber(t.y) or 0)
 end
 
+-- A Bar cue's button (BarCue.lua decides source, colour, geometry for both paths): icon square, a status bar the game drives
+-- (aura time: SetDurationBar; stacks: SetApplicationBar), a spark on the fill's edge, the aura's name (SetSpellName), the time and
+-- count texts. Colour: the tooltip's type or a fixed colour is set once; otherwise the game colours the fill by the aura's dispel
+-- type (AddDispelTypeTexture, PreserveAsset style, our colour map with "None" = the fixed blue), in combat too.
+-- Blizzard 12.1.5 source read for this (no code copied): Blizzard_CustomAuraButton.lua SetDurationBar, SetApplicationBar,
+-- SetSpellName, AddDispelTypeTexture / ApplyDispelTypeTexture; Blizzard_AuraContainerUtil.lua ValidateInboundScriptObject (an
+-- inbound object must be the button or a descendant of it).
+local function BarEdge(region, btn, l, r, orient)   -- the bar's rectangle inside the button, beside the icon square
+    region:ClearAllPoints()
+    if orient == "HORIZONTAL" then
+        region:SetPoint("TOPLEFT", btn, "TOPLEFT", l, 0)
+        region:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -r, 0)
+    else
+        region:SetPoint("TOPLEFT", btn, "TOPLEFT", 0, -l)
+        region:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 0, r)
+    end
+end
+local function BarButtonInit(w, h, display, single, rec)
+    local v = display.visual or {}
+    local b = ns.BarCueSettings(v)
+    local src = ns.BarCueSource(display)
+    local tx, cn, nm = v.text or {}, v.count or {}, b.name or {}
+    local font = STANDARD_TEXT_FONT
+    local orient, rev = ns.BarOrient(b)
+    local iconS, l, r = ns.BarGeometry(b, w, h)
+    local texPath = ns.BarTexturePath(b)
+    local cr, cg, cb, ca, why = ns.BarCueColor(display, nil)
+    local map = (why == "fallback") and ns.BarDispelColorMap and ns.BarDispelColorMap() or nil
+    local maxApps = (src == "stacks") and ns.BarCueMax(display) or nil
+    return function(btn)
+        btn:SetSize(w, h)
+        if single then btn:SetAlpha(tonumber(v.alpha) or 1) end
+        if single and rec then rec.btns = rec.btns or {}; rec.btns[#rec.btns + 1] = btn; rec.modSig = nil end
+        if v.bg and v.bg.enabled then
+            local c = v.bg.color or { 0, 0, 0, 0.2 }
+            local bg = btn:CreateTexture(nil, "BACKGROUND")
+            bg:SetAllPoints(btn)
+            bg:SetColorTexture(c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 0.2)
+        end
+        if v.border and v.border.enabled and (tonumber(v.border.size) or 0) > 0 then
+            local s, c = tonumber(v.border.size) or 1, v.border.color or { 0, 0, 0, 1 }
+            for i = 1, 4 do
+                local e = btn:CreateTexture(nil, "OVERLAY")
+                e:SetColorTexture(c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 1)
+                if i == 1 then e:SetPoint("TOPLEFT"); e:SetPoint("TOPRIGHT"); e:SetHeight(s)
+                elseif i == 2 then e:SetPoint("BOTTOMLEFT"); e:SetPoint("BOTTOMRIGHT"); e:SetHeight(s)
+                elseif i == 3 then e:SetPoint("TOPLEFT"); e:SetPoint("BOTTOMLEFT"); e:SetWidth(s)
+                else e:SetPoint("TOPRIGHT"); e:SetPoint("BOTTOMRIGHT"); e:SetWidth(s) end
+            end
+        end
+        if iconS > 0 then
+            local icon = btn:CreateTexture(nil, "ARTWORK")
+            icon:SetSize(iconS, iconS)
+            local pt
+            if orient == "HORIZONTAL" then pt = (b.icon == "left") and "LEFT" or "RIGHT" else pt = (b.icon == "left") and "TOP" or "BOTTOM" end
+            icon:SetPoint(pt, btn, pt, 0, 0)
+            icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            btn:SetIcon(icon)   -- the game paints the aura's own icon
+        end
+        local bar = CreateFrame("StatusBar", nil, btn)
+        BarEdge(bar, btn, l, r, orient)
+        bar:SetStatusBarTexture(texPath)
+        bar:SetOrientation(orient)
+        bar:SetReverseFill(rev and true or false)
+        bar:SetStatusBarColor(cr, cg, cb, ca)
+        if src == "stacks" and maxApps then
+            btn:SetApplicationBar(bar, { maxApplications = maxApps })
+        else
+            btn:SetDurationBar(bar, { direction = TimerDirection(b.reverse) })
+        end
+        if map then
+            local E = Enum and Enum.CustomAuraButtonDispelTypeTextureStyle
+            local okD = pcall(btn.AddDispelTypeTexture, btn, bar:GetStatusBarTexture(),
+                { showAlways = true, style = E and E.PreserveAsset or 3, customDispelColorMap = map })
+            if rec then rec.barDispel = okD and "game" or "failed" end
+        elseif rec then rec.barDispel = why end
+        if b.spark and b.spark.enabled then
+            local sp = bar:CreateTexture(nil, "OVERLAY")
+            sp:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
+            sp:SetBlendMode("ADD")
+            local sw = math.max(1, tonumber(b.spark.w) or 12)
+            if orient == "HORIZONTAL" then sp:SetSize(sw, h * 2.2) else sp:SetSize(w * 2.2, sw); pcall(sp.SetRotation, sp, math.rad(90)) end
+            local c = b.spark.color or { 1, 1, 1, 0.9 }
+            sp:SetVertexColor(c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1)
+            pcall(sp.SetPoint, sp, "CENTER", bar:GetStatusBarTexture(), ns.BarSparkPoint(b), 0, 0)
+        end
+        if nm.enabled then
+            local fs = bar:CreateFontString(nil, "OVERLAY")
+            Style(fs, bar, nm, "LEFT", font)
+            btn:SetSpellName(fs)   -- the game writes the aura's name (in a group: whichever aura the button shows)
+        end
+        if tx.enabled then
+            local fs = btn:CreateFontString(nil, "OVERLAY")
+            Style(fs, btn, tx, "RIGHT", font)
+            local fmt = ns.TimeFormatter and ns.TimeFormatter(tx.decimals, tx.decimalBelow)
+            local okF = fmt and pcall(btn.SetDurationText, btn, fs, { textFormatter = fmt })
+            if not okF then
+                if rec then rec.fmtFallback = true end
+                btn:SetDurationText(fs, {})
+            end
+        end
+        if cn.enabled and not (ns.Val and ns.Val(cn.source) == "charges") then
+            local fs = btn:CreateFontString(nil, "OVERLAY")
+            Style(fs, btn, cn, "CENTER", font)
+            btn:SetApplicationCount(fs, {})
+        end
+    end
+end
+
 local function ButtonInit(w, h, display, single, rec)
+    if display and display.visual and display.visual.kind == "bar" and ns.BarCueSettings then return BarButtonInit(w, h, display, single, rec) end
     local v = (display and display.visual) or {}
     local zoom = 0.08 + (tonumber(v.zoom) or 0)
     local tx, cn = v.text or {}, v.count or {}
@@ -680,6 +798,24 @@ local function ColorKey(c)
     if type(c) ~= "table" then return "-" end
     return tostring(c[1]) .. "," .. tostring(c[2]) .. "," .. tostring(c[3]) .. "," .. tostring(c[4])
 end
+-- A Bar cue's own settings and the bar colour style (BarCue.lua): baked into the buttons too
+local function TextKey(t)
+    t = t or {}
+    return table.concat({ tostring(t.enabled), tostring(t.size), tostring(t.anchor), tostring(t.x), tostring(t.y), tostring(t.font),
+        tostring(t.outline), tostring(t.place), ColorKey(t.color) }, ",")
+end
+local function BarLookKey(display)
+    local v = display.visual or {}
+    if v.kind ~= "bar" or not ns.BarCueSettings then return "" end
+    local b = ns.BarCueSettings(v)
+    local sp, bo = b.spark or {}, v.border or {}
+    local r, g, bl, a, why = ns.BarCueColor(display, nil)
+    return "|bar|" .. table.concat({ tostring(ns.BarCueSource(display)), tostring(b.max), tostring(b.dir), tostring(b.reverse), tostring(b.texture),
+        tostring(b.texFile), tostring(b.colorMode), ColorKey(b.color), tostring(b.icon), tostring(sp.enabled), tostring(sp.w), ColorKey(sp.color),
+        TextKey(b.name), tostring(bo.enabled), tostring(bo.size), ColorKey(bo.color), tostring(why), ColorKey({ r, g, bl, a }),
+        ns.BarColorStyle and ns.BarColorStyle() or "", tostring(ns.barColorVersion or 0),
+        tostring(ns.BarCueMax and ns.BarCueMax(display) or "") }, "|")
+end
 -- Everything about a display's look that is baked into its slot's buttons (an edit to any of it makes a new slot)
 local function LookKey(display)
     local v = display.visual or {}
@@ -693,6 +829,7 @@ local function LookKey(display)
         tostring(c.enabled), tostring(c.size), tostring(c.anchor), tostring(c.x), tostring(c.y),
         tostring(c.font), tostring(c.outline), tostring(c.place), tostring(c.source), ColorKey(c.color),
         tostring(display.spellID), tostring(display.buffID), tostring(v.iconSrc), tostring(v.iconPath), tostring(v.iconSpell), tostring(v.iconItem), tostring(v.iconW), tostring(v.iconH), tostring(v.keepAspect) }, "|")
+        .. BarLookKey(display)
 end
 
 local function BuildGroup(fo, members)
