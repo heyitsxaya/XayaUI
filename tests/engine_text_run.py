@@ -303,11 +303,11 @@ check("a dropped display takes its companion with it", lua("return SHOWN_BEFORE 
 # 8. the engine steps at once on a new target / focus
 check("engine listens to PLAYER_TARGET_CHANGED and PLAYER_FOCUS_CHANGED", lua("return EVENTS.PLAYER_TARGET_CHANGED == true and EVENTS.PLAYER_FOCUS_CHANGED == true"))
 
-# 9. /xui timing says how each display gets its numbers, including the shield-amount limit
+# 9. /xui debug timing says how each display gets its numbers, including the shield-amount limit
 lua('NS.EngineOwns = nil; NS.EngineCompanion = nil; R1.visual.absorb.abbreviate = true; R1.visual.absorb.hideZero = true; PRINTED = {}; NS.Print = function(m) PRINTED[#PRINTED + 1] = m end; NS.Timing.Report()')
 has = lambda name, words: lua("for _, l in ipairs(PRINTED) do if l:find(%r, 1, true) and l:find(%r, 1, true) then return true end end return false" % (name, words))
-check("/xui timing: abbreviate + hide zero on a hidden shield amount is explained, with the fix", has("AMS", "a zero shows as '0'"))
-check("/xui timing: a cooldown display's time is the game's countdown", has("Death Strike", "counted down by the game"))
-check("/xui timing: a debuff-row display's time comes from its row out of combat", has("Sigil debuff", "Target Debuff row out of combat"))
+check("/xui debug timing: abbreviate + hide zero on a hidden shield amount is explained, with the fix", has("AMS", "a zero shows as '0'"))
+check("/xui debug timing: a cooldown display's time is the game's countdown", has("Death Strike", "counted down by the game"))
+check("/xui debug timing: a debuff-row display's time comes from its row out of combat", has("Sigil debuff", "Target Debuff row out of combat"))
 
 print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)

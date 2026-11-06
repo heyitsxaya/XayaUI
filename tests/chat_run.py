@@ -794,6 +794,29 @@ check("console: system messages tagged", "System You are now Away: AFK" in str(r
 check("console: protected text listed as protected, never printed", "[protected message]" in str(r.console) and "<<secret>>" not in str(r.console), r.console)
 check("console: kept out of the All tab", "426.0" not in str(r.all) and "AFK" not in str(r.all), r.all)
 check("console: the setting off keeps nothing", bool(r.offKeepsNothing))
+# Chat 0.6.17 (Xaya 2026-11-06: fix the history window's "|" in this update): a printed "||" (the game's escape for one "|") lost the "|"
+# and sometimes the letter after it in the history window ("[highlighttrail]", "statusidthprobe" in her screenshot). The window's edit
+# box now gets every literal pipe doubled; C.History_Lines (what search reads) keeps one.
+r = run("""
+local out = {}
+print("|cff33ccffXayaUI|r:   |cffffffff/xui cursor [highlight||trail]|r  cursor settings; /xui stats [on||off||options||status]")
+C.History_Select("CONSOLE")
+out.lines = table.concat(C.History_Lines(), "\\n")
+C.History_Toggle()
+local f = _G.XayaUIChatHistory
+out.edit = f and f.edit and f.edit:GetText() or ""
+f.search:SetText("on||off"); f.search:GetScript("OnTextChanged")(f.search)
+out.found = table.concat(C.History_Lines(), "\\n")
+f.search:SetText(""); f.search:GetScript("OnTextChanged")(f.search)
+C.History_Toggle()
+C.History_Select("ALL")
+return out
+""")
+check("history '|': the lines (search, copy) read one '|': [highlight|trail], [on|off|options|status]",
+      "[highlight|trail]" in str(r.lines) and "[on|off|options|status]" in str(r.lines), r.lines)
+check("history '|': the edit box gets each '|' doubled, so none starts a code (shown as one '|')",
+      "[highlight||trail]" in str(r.edit) and "[on||off||options||status]" in str(r.edit) and "[highlight|trail]" not in str(r.edit), r.edit)
+check("history '|': a search typed with '|' (the box gives it back doubled) finds the line", "[on|off|options|status]" in str(r.found), r.found)
 run("C.History_Toggle()")
 names = str(run("local t = {}; for _, b in ipairs(_G.XayaUIChatHistory.kb) do if b:IsShown() then t[#t + 1] = b.t:GetText() end end; return table.concat(t, ',')"))
 check("console: the history window has a Console tab button", "Console" in names, names)

@@ -107,7 +107,7 @@ def src(p): return open(os.path.join(ROOT, p), encoding="utf-8").read()
 chatCore, chatProbe, notes, msgs = src("XayaUI_Chat/Core.lua"), src("XayaUI_Chat/Probe.lua"), src("XayaUI_Bonus/NotepadShare.lua"), src("XayaUI_Chat/Messages.lua")
 check("wiring: /xui chat indent (prints the start of chat lines) is private",
       "local say = ns.PrintPrivate or ns.Print\n            say((\"  line %d: box left" in chatCore and "ns.Print((\"  line %d" not in chatCore)
-check("wiring: /xui chatprobe top-left frames (frame text can be a character name) are private",
+check("wiring: /xui debug chatprobe top-left frames (frame text can be a character name) are private",
       "if shown <= 6 then say(\"  top-left: \"" in chatProbe and "ns.Print(\"  top-left" not in chatProbe)
 check("wiring: shared-note messages naming the sender are private",
       "SayPrivate(pos and (\"Saved \" .. ShortName(o.sender)" in notes and "SayPrivate(\"Ignoring shared notes from \" .. ShortName(o.sender)" in notes
@@ -272,7 +272,7 @@ FIRE('PLAYER_REGEN_DISABLED'); FIRE('PLAYER_REGEN_ENABLED')
 check("performance on: the timer starts with the combat and stops after it", E("PERF.calls[1] == 'on' and PERF.calls[2] == '' and PERF.calls[3] == 'off' and NS.perfOn == false"))
 check("  ...its report is recorded, and none of its own messages reach the player", E("HAS('perf', 'perf over 30s') and #SINK == 0 and #CHAT == 0"))
 L.execute("PERF.calls = {}; NS.perfOn = true; FIRE('PLAYER_REGEN_DISABLED'); FIRE('PLAYER_REGEN_ENABLED')")
-check("  ...a timer the player started (/xui perf on) is read but never stopped", E("PERF.calls[1] == '' and PERF.calls[2] == nil and NS.perfOn == true"))
+check("  ...a timer the player started (/xui debug perf on) is read but never stopped", E("PERF.calls[1] == '' and PERF.calls[2] == nil and NS.perfOn == true"))
 L.execute("NS.perfOn = false; NS.SetRecCat('perf', false); PERF.calls = {}; FIRE('PLAYER_REGEN_DISABLED'); FIRE('PLAYER_REGEN_ENABLED')")
 check("performance off: the timer is never touched", E("#PERF.calls == 0"))
 

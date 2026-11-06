@@ -2,7 +2,7 @@
 """V14 "off costs nothing" for XayaUI_Options and XayaUI_Bonus (Options 0.6.41, Bonus 0.6.12). Xaya, 2026-11-05: "anything that is
 disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a
 standing rule for all current and future feature / element builds".
-Features: the settings window's driver and /xui perf frame counter (Options.lua), the debug console strip (Options.lua), "Use drafts"
+Features: the settings window's driver and /xui debug perf frame counter (Options.lua), the debug console strip (Options.lua), "Use drafts"
 (Drafts.lua), the four Tooltip features (Tooltips.lua, TooltipsUI.lua), Custom Data Panels and Bars (DataPanels.lua), "Show Notepad",
 its formatting tools and toolbar (Notepad.lua), "Accept notes shared by other XayaUI users" and the share pump (NotepadShare.lua), and the
 Calculator (Calculator.lua).
@@ -213,7 +213,7 @@ if MODE == "off" then
   closeWindow()
   check("(works) C5 window closed: the preview is cleared at once, the strip is hidden, the open Rules sub-tab is saved",
     not ns.AnyPreview() and not tray:IsShown() and CueRulesDB.ui.rulesSub == "smartTab", tostring(ns.AnyPreview()) .. " " .. tostring(CueRulesDB.ui.rulesSub))
-  check("C6 ...and no OnUpdate of XayaUI_Options runs while it is closed (the driver and the /xui perf counter ran every frame)",
+  check("C6 ...and no OnUpdate of XayaUI_Options runs while it is closed (the driver and the /xui debug perf counter ran every frame)",
     liveOnUpdates("XayaUI_Options/") == 0, liveOnUpdates("XayaUI_Options/"))
   local asks = 0
   local rawAny = ns.AnyPreview
@@ -243,14 +243,14 @@ if MODE == "off" then
   for _, r in ipairs(ns.rules) do if r.uid == uid and not r.parentUid then now = r end end
   check("(works) C11 ...Ctrl+Z after the first edit puts the rule back as it was when it was shown", now and now.xuiTestEdit == nil, now and now.xuiTestEdit)
   closeWindow()
-  -- /xui perf: its frame counter runs only while tracing
+  -- /xui debug perf: its frame counter runs only while tracing
   ns.perf = ns.perf or { n = 0 }; ns.perf.show = true
   openWindow()
-  check("(works) C12 /xui perf on: the frame counter runs", liveOnUpdates("XayaUI_Options/") >= 2, liveOnUpdates("XayaUI_Options/"))
+  check("(works) C12 /xui debug perf on: the frame counter runs", liveOnUpdates("XayaUI_Options/") >= 2, liveOnUpdates("XayaUI_Options/"))
   closeWindow()
   ns.perf.show = false
   W.tick(0.05, 2)
-  check("C13 /xui perf off, window closed: nothing of XayaUI_Options runs", liveOnUpdates("XayaUI_Options/") == 0, liveOnUpdates("XayaUI_Options/"))
+  check("C13 /xui debug perf off, window closed: nothing of XayaUI_Options runs", liveOnUpdates("XayaUI_Options/") == 0, liveOnUpdates("XayaUI_Options/"))
 elseif MODE == "defaults" then
   ---------------------------------------------------------------------------------------------------------------------------------
   -- D. a fresh install: what is on by default works, what is off by default costs nothing
