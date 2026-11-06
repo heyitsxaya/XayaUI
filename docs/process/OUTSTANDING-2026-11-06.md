@@ -111,8 +111,8 @@ These rows still read open or BRANCH, but `main` already carries the work. Not e
 - S3 log R61, R62, R64 (C8, C9, C10, C12), R66 read BRANCH: landed on `main` at d2ccacd (QoL 0.7.32). Its header still says `main` = `0ef9cb0`.
 - GitHub: 258 open issues; many describe work since landed (for example #380, #378, #381, #273, #351). They were not re-checked one by one. A triage pass is its own task.
 
-## 7. Handed over by retired chats (received 2026-11-06 17:06-17:10 UTC)
-Eight chats sent their outstanding items here at Xaya's request. Each claim below was checked against `main` `22abdeb` where marked "checked"; the rest is the sending session's word.
+## 7. Handed over by retired chats (received 2026-11-06 17:06-17:11 UTC)
+Ten chats sent their outstanding items here at Xaya's request. Each claim below was checked against `main` `22abdeb` where marked "checked"; the rest is the sending session's word.
 
 | From | Item | Status here |
 |---|---|---|
@@ -135,6 +135,10 @@ Eight chats sent their outstanding items here at Xaya's request. Each claim belo
 | "XayaUI High-Effort Build" (014bN6tUvbkCv9Ha9VgNF4Xa) | Branch fully pushed; its work is on `main`. Open per the cross-chat file: HIEFF-9 in-game pulls, HIEFF-10 map pins (future), CONFIRM HIEFF-3, HIEFF-5 (= B7), HIEFF-17 | Already listed (sections 1, 5). |
 | same | **Gap closed**: 69 of her messages from 2026-11-04 00:29-07:52 UTC were in no log | Logged verbatim as HIEFF-E3..E77 and HIEFF-19 in REQUEST-LOG-CROSS-CHAT.md, each checked against `main`. Still open from them: **E63** recycle bin should also hold deleted themes, notes and profiles (only rules and groups today); **E38** "auto-delete container scripts?" and **E39-E46** combat-log / KiraUI approach to removing frames (no answer traced on `main`: need a fresh answer); **E7-E8, E29** every aura (Blood Boil, Death and Decay, warrior / paladin / evoker procs) working in game (in-game check; #365); **E54-E61** PR #92 (`magical-cray`) keep or close (likely superseded by the core 0.6.12 Recycle Bin: INFERENCE). |
 | same | Whether to stop / archive that chat (it is the one the "Last chat visibility" chat asked about) | Her decision (above). |
+| "XUI Console input options" (014bN6tVFhD1GEbb6ieFgKLz) | All on `main` (4fd7c98, PR #411 merged); no decisions owed | In-game checks for her: **B156** console input line (do Up / Down recall earlier commands? inference), **B157** `/xui help` 16 lines and `/xui debug <name>`, **B158** `/save` and `/reload` from the console line (whether the game allows an addon edit box to reload is unknown), **D12** "\|" in chat history (does Ctrl+C copy one "\|" or two?). Cosmetic, never raised: `/xui auras` output still headed "/xui debug auras: ..." (change it? her call). Session 014bN6tTjuXobzzk8oJHeYwn ("Fix chat history eating pipes and letters") duplicates work already in 4fd7c98. |
+| "New bugs review" (014bN6tSs9peLMW4F93tnQcj) | PR #418 (Options 0.6.52 sidebar rows regrow, Dev Assist 0.7.3 ilvlEquipped, core 0.6.54 theme names): built, full suite passed on cee59cf; held | Her answer (relayed by S2): "Wait, land all three": #418 lands in **one combined push with #409 and #417**, after she answers those PRs' questions; final versions set once on the merged commit (at least core 0.6.54 / Options 0.6.53). |
+| same | Questions for her (nothing built): **row 3** (Insivius) enchant text breaks after widening then narrowing the character window: S1's area, cause not looked into; **row 4** (Insivius) choose shown stats like DejaCharacterStats: per-stat show / hide is on `main` in settings; also tick boxes on the window itself?; **row 6** "character sheet reskin belongs in Blizzard UI Reskin": it is there already; does she mean the Character Toolkit parts still in QoL?; **row 7** a Stat Calculator row with its tick box under Bonus Features (today QoL > Character Toolkit > Panel): who builds it?; **row 9** gradient borders on cursor-trail themes, reversible: which borders, and is reverse its own setting or the trail's "Reverse colors"?; **row 10** more gradient colours across theme parts (text kept at 4.5:1 contrast): which parts? | Section 1 (her decisions). |
+| same | Next week's build, roadmap only (rows 11-15): RM-THEMEXFER, RM-CHARPANE-SCALE, -TEXT, -HIDE, -COLLAPSE | Section 5 (deferred). |
 
 ---
 
