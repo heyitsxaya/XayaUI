@@ -3,11 +3,11 @@
 (tests/harness/api_index_from_docs.py, the index cloud sessions use).
 Found 2026-11-06: the stand-in numbered an enum's fields by their place in the index's list (world.lua), and the docs-built index listed
 them alphabetically (api.json keeps them in a dict), so 741 of the 856 enums had wrong numbers in cloud runs, for example
-Enum.SecrecyLevel.NeverSecret = 2 instead of 0. tests/cdm_warn_run.py failed in the cloud for that reason and passed on an index built
-from the raw dump. The index now carries the values (enumValues) and lists fields in value order; world.lua reads the values.
+Enum.SecrecyLevel.NeverSecret = 2 instead of 0. tests/cdm_warn_run.py failed in the cloud for that reason. Fixed on main in 7426e7f
+(the index keeps {field: value}; world.lua uses the values); this is the regression test for that fix.
 This test builds its own index in a temporary folder (whatever XUI_API_INDEX points to is not used) and checks every enum of
-api.json against the stand-in's Enum table. Negative control: with the old builder and world.lua, 5812 of the 6614 documented
-values differ (in 741 enums).
+api.json against the stand-in's Enum table. Negative control: with the builder and world.lua of 0ef9cb0 (before the fix), 5812 of
+the 6614 documented values differ (in 741 enums).
 Run: python3 tests/harness_enum_values_run.py   (Lua 5.1 via lupa)."""
 import json, os, subprocess, sys, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))

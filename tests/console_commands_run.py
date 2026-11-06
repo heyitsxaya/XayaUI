@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The console window's command line and /xui debug (core 0.6.49).
+"""The console window's command line and /xui debug (core 0.6.50).
 Xaya, 2026-11-05: "XUI Console does nothing and has no input options" (screenshot: an empty console window, four buttons, nothing to
 type in), and of the /xui help list: "can't some of these be consolidated into a /xui debug _____ ? this is a LOT of noise" (29 lines).
 What the player sees, checked here with the real addons in the stand-in game:

@@ -276,7 +276,7 @@ end
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
--- /xui debug chatprobe (core 0.6.49 lists diagnostics there; /xui chatprobe still runs). The fallback is for a core older than 0.6.49.
+-- /xui debug chatprobe (core 0.6.50 lists diagnostics there; /xui chatprobe still runs). The fallback is for a core older than 0.6.50.
 if ns.RegisterDebugCommand then
     ns.RegisterDebugCommand("chatprobe", function() ns.ChatProbe() end, "chatprobe (read-only chat frame report)")
 else

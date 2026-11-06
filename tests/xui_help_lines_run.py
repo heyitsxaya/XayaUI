@@ -2,8 +2,8 @@
 """/xui help prints one command per line (core 0.6.46; Xaya 2026-11-05: "console print is difficult to read": the whole command list
 was one line joined by " | ", unreadable in the console window and the chat history's Console tab). Checks the printed lines: a
 header with the count, then every command on its own line starting with /xui, the command colored and closed, what it does after it,
-no literal pipe (core 0.6.49: option lists read [on/off]; the chat history window lost a doubled "||" and the letter after it), and
-no line holding two commands. (core 0.6.49 moved the diagnostic commands under /xui debug: tests/console_commands_run.py.)
+no literal pipe (core 0.6.50: option lists read [on/off]; the chat history window lost a doubled "||" and the letter after it), and
+no line holding two commands. (core 0.6.50 moved the diagnostic commands under /xui debug: tests/console_commands_run.py.)
 Run: python3 tests/xui_help_lines_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

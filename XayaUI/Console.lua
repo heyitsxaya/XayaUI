@@ -4,7 +4,7 @@
 --    collecting lines while the options window is closed and during combat (the log buffer lives in Core.lua and never depends on the window).
 --  * The error log: XayaUI's own Lua errors are kept (de-duplicated, saved between sessions) so they can be shared.
 --  * The bug report: version, game build, recent errors and console lines as plain text, with no character name, realm, or rule contents.
---  * The command line (core 0.6.49; Xaya 2026-11-05: "XUI Console does nothing and has no input options"): a line at the bottom of the
+--  * The command line (core 0.6.50; Xaya 2026-11-05: "XUI Console does nothing and has no input options"): a line at the bottom of the
 --    console window runs any /xui command (typed with or without "/xui"); what it prints shows in the window, whatever "XayaUI's
 --    messages" (Settings > Debugging) is set to. Up / Down bring back this session's commands. While the window has no lines, a hint
 --    says what to type and where XayaUI's other messages go.
@@ -186,7 +186,7 @@ local win
 local winShown = false   -- the window is up (OnShow / OnHide); while not, ns.ConsoleSink draws nothing
 local drawnSerial = 0    -- ns.logSerial when the window was last up to date (Core.lua counts every line put in ns.logBuf)
 local held = {}          -- { serial, line }: private lines that came while it was closed (they are never in ns.logBuf)
--- the hint shown while the window has no lines (core 0.6.49): what to type, and where XayaUI's other messages go
+-- the hint shown while the window has no lines (core 0.6.50): what to type, and where XayaUI's other messages go
 local DEST_WORDS = { chat = "the chat window", console = "this window", both = "this window and the chat window" }
 local function HintText()
     local d = ns.MessageDest and ns.MessageDest() or "chat"
@@ -233,7 +233,7 @@ local function BuildWindow()
     local c = Ui().console or {}
     -- (420 px at least: the title and the four buttons share the top row, a gutter between each; #351 phase 2)
     local M, G = ns.UI_MARGIN, ns.UI_GUTTER
-    -- (160 px tall at least: the top row, the command line and the hint fit; core 0.6.49)
+    -- (160 px tall at least: the top row, the command line and the hint fit; core 0.6.50)
     f:SetSize(math.max(420, tonumber(c.w) or 460), math.max(160, tonumber(c.h) or 300))
     f:SetPoint(c.point or "RIGHT", UIParent, c.rel or "RIGHT", tonumber(c.x) or -20, tonumber(c.y) or 0)
     f:SetFrameStrata("MEDIUM")
@@ -352,7 +352,7 @@ function ns.ConsoleWindow(show, fromSettings)
 end
 function ns.ConsoleWindowOn() return (win and win:IsShown()) and true or false end
 
--- Run what was typed in the console's command line (core 0.6.49). "/xui status", "/xayaui status" and "status" all run /xui status;
+-- Run what was typed in the console's command line (core 0.6.50). "/xui status", "/xayaui status" and "status" all run /xui status;
 -- another addon's or the game's slash command is not run (only XayaUI's own handler is called). The typed line is echoed into the
 -- window; what the command prints goes to the window (ns.consoleRunning, read by Core.lua ns.Print), whatever "XayaUI's messages"
 -- says. Messages a command prints later (after a timer, at the end of combat) go where the setting says. Returns true when a

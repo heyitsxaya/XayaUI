@@ -102,7 +102,7 @@ end
 
 function ns.CommandHelp() return helpText end
 
--- 2b. /xui debug <name> [args] (core 0.6.49; Xaya 2026-11-05: "can't some of these be consolidated into a /xui debug _____ ? this is a
+-- 2b. /xui debug <name> [args] (core 0.6.50; Xaya 2026-11-05: "can't some of these be consolidated into a /xui debug _____ ? this is a
 -- LOT of noise"). Diagnostic commands live under /xui debug, so /xui help lists only what a player uses. A diagnostic command is also
 -- registered under its old name (/xui chatprobe still runs), without a /xui help line, so run sheets and habits keep working.
 -- help: one string or a list of strings, each "name [args] (what it does)", without "/xui debug".

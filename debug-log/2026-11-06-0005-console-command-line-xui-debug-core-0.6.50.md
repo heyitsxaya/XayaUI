@@ -1,5 +1,8 @@
-# Console window gets a command line; diagnostic commands move under /xui debug (core 0.6.49, Chat 0.6.16, QoL 0.7.23, Reskin 0.6.3)
+# Console window gets a command line; diagnostic commands move under /xui debug (core 0.6.50, Chat 0.6.17, QoL 0.7.26, Reskin 0.6.3)
 Logged 2026-11-06 00:05 UTC. Session 014bN6tVFhD1GEbb6ieFgKLz, branch `claude/great-franklin-j4cahh` (from `main` 0ef9cb0).
+Relabelled 2026-11-06 00:22 UTC (built as core 0.6.49, Chat 0.6.16, QoL 0.7.23): those numbers were taken by PR #408 (core 0.6.49,
+QoL 0.7.23) and by `main` 7426e7f (Chat 0.6.16, PR #406); QoL 0.7.24 / 0.7.25 are taken by S1 and PR #410 (coordination message from
+session 014bN6tSy3HbUDWYQsk69naX, checked against the remote). `main` 7426e7f merged into this branch.
 
 ## Reports (Xaya, 2026-11-05, her words, with two screenshots)
 1. "XUI Console does nothing and has no input options" (the console window: title, What to send / Copy / Clear / Bug report, an
@@ -41,7 +44,7 @@ Logged 2026-11-06 00:05 UTC. Session 014bN6tVFhD1GEbb6ieFgKLz, branch `claude/gr
   what to type and where XayaUI's other messages go (named from `ns.MessageDest`); the first line hides it; Clear shows it again.
 - `XayaUI/AuraList.lua` (auras), `XayaUI/GameMenu.lua` + `XayaUI_Reskin/GameMenuSkin.lua` (gamemenu), `XayaUI_Chat/Probe.lua`
   (chatprobe), `XayaUI_QoL/CharacterToolkit.lua` (widthprobe; `/xui stats widthprobe` still runs; the stats help no longer names it):
-  registered through `ns.RegisterDebugCommand` (the sibling addons fall back to `ns.RegisterCommand` with a core older than 0.6.49).
+  registered through `ns.RegisterDebugCommand` (the sibling addons fall back to `ns.RegisterCommand` with a core older than 0.6.50).
 - `XayaUI/Cues.lua` `ns.ProbeMods`: prints through `ns.Print` (was `print()`), so `/xui debug mods` typed in the console prints there.
 
 ## Scope (V4: `git grep` of every reader / caller)

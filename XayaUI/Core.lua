@@ -40,7 +40,7 @@ function ns.Print(...)
     if ns._capture and not privateMsg then ns._capture[#ns._capture + 1] = text; return end   -- (DebugRecord.lua ns.CaptureOutput)
     if ns.RecordLine and not privateMsg then ns.RecordLine("msg", text) end
     -- where messages go (DebugRecord.lua, Settings > Debugging): chat, the XayaUI console window, or both. A command typed in the
-    -- console window prints there, whatever the setting (Console.lua ns.ConsoleRun sets ns.consoleRunning while it runs; core 0.6.49).
+    -- console window prints there, whatever the setting (Console.lua ns.ConsoleRun sets ns.consoleRunning while it runs; core 0.6.50).
     local dest = ns.consoleRunning and "console" or (ns.MessageDest and ns.MessageDest() or "chat")
     if dest ~= "chat" and ns.ConsoleMessage and pcall(ns.ConsoleMessage, text, false, privateMsg) and dest == "console" then return end
     print("|cff33ccffXayaUI|r: " .. text)
@@ -62,7 +62,7 @@ do
         end
         local ok, on = pcall(function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug end)
         local mine = ok and on and text:find(addonName, 1, true)
-        -- (core 0.6.49) an error while a command typed in the console window runs (Console.lua ns.ConsoleRun) is that command's:
+        -- (core 0.6.50) an error while a command typed in the console window runs (Console.lua ns.ConsoleRun) is that command's:
         -- shown in the console window, Advanced Debugging on or off
         local typed = ns.consoleRunning
         if mine or typed then
@@ -807,7 +807,7 @@ end
 
 -------------------------------------------------------------------------------
 -- Slash commands
--- core 0.6.49 (Xaya 2026-11-05: "can't some of these be consolidated into a /xui debug _____ ? this is a LOT of noise"): /xui help
+-- core 0.6.50 (Xaya 2026-11-05: "can't some of these be consolidated into a /xui debug _____ ? this is a LOT of noise"): /xui help
 -- lists only what a player uses (14 lines, was 29); the diagnostic commands are under /xui debug <name>, and /xui debug alone lists
 -- them. Their old forms (/xui status, /xui perf ...) still run, without a help line. The old /xui debug (can the settings window
 -- load) is /xui debug window.
@@ -853,7 +853,7 @@ local CORE_HELP = { "/xui (settings)", "/xui console (the XayaUI console: its me
     "/xui bug (bug report)", "/xui unlock (drag displays and groups; again to lock)", "/xui debug (diagnostic commands: lists them)" }
 
 -- one command per line (core 0.6.46; Xaya 2026-11-05: "console print is difficult to read"): the command in the theme's accent text
--- color, what it does after it. An entry that holds two commands (" | /xui ...") is split. core 0.6.49: a "|" left in the text
+-- color, what it does after it. An entry that holds two commands (" | /xui ...") is split. core 0.6.50: a "|" left in the text
 -- (option lists such as [on|off]) is printed as "/": a doubled "||" showed as "|" in chat, but the chat history window lost it and
 -- the letter after it (Xaya's screenshot of 2026-11-05: "[highlighttrail]", "statusidthprobe").
 local function PrintCommandList(header, list, prefix)

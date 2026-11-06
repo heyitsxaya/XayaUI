@@ -589,7 +589,7 @@ end
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
--- /xui debug gamemenu (core's help line covers both; core 0.6.49). The fallback is for a core older than 0.6.49.
+-- /xui debug gamemenu (core's help line covers both; core 0.6.50). The fallback is for a core older than 0.6.50.
 local registerDebug = ns.RegisterDebugCommand or ns.RegisterCommand
 registerDebug("gamemenu", function() ns.GameMenuSkin_Diagnostics() end)
 ns.RegisterSettingsPage("reskin", "gamemenu", ns.GameMenuSkin_Options)   -- the Blizzard UI Reskin tab's Esc Menu page (Options 0.6.38)

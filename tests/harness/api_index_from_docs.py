@@ -4,9 +4,7 @@ documentation 12.1.5.70688, the same documentation build_api_index.py reads from
 sessions, where that Drive folder is not reachable: without an index the harness runs with "API documentation: NOT LOADED" and
 checks no widget method or event. The output is derived data: write it outside the repository (or leave it uncommitted).
 Same shape as build_api_index.py: functions {name: {args, returns}}, events {name: [payload names]}, enums {name: [fields]},
-widgets {script object: [methods]}, tables []; plus enumValues {name: {field: value}} (2026-11-06: the stand-in numbered an enum's
-fields by their place in the list, and api.json lists them alphabetically, so 741 of 856 enums had wrong numbers in cloud runs, e.g.
-Enum.SecrecyLevel.NeverSecret = 2 instead of 0; enums is now ordered by value and world.lua reads enumValues when it is there).
+widgets {script object: [methods]}, tables [].
 Usage: python3 tests/harness/api_index_from_docs.py [out.json]   then   XUI_API_INDEX=out.json python3 tests/run_all.py"""
 import json, os, re, sys
 
@@ -37,19 +35,20 @@ def names(spec):
 
 
 docs = json.load(open(SRC, encoding="utf-8"))["docs"]
-idx = {"functions": {}, "events": {}, "enums": {}, "enumValues": {}, "widgets": {}, "tables": []}
+idx = {"functions": {}, "events": {}, "enums": {}, "widgets": {}, "tables": []}
 for name, f in docs["functions"].items():
     sig = f.get("sig", "")
     inner = sig[sig.find("(") + 1: sig.rfind(")")] if "(" in sig else ""
     idx["functions"][name] = {"args": names(inner), "returns": names(f.get("returns", ""))}
 for name, e in docs["events"].items():
     idx["events"][name] = names(e.get("payload", ""))
+# Enums keep their real values ({field: value}, ordered by value). api.json lists each enum's fields alphabetically, and world.lua
+# numbers a plain list by position, so a list here gave 741 of 856 enums the wrong numbers (Enum.SecrecyLevel.NeverSecret = 2, not 0).
 for name, fields in docs["enums"].items():
-    if isinstance(fields, dict):   # {field: value}: listed in value order, and the values themselves kept
-        idx["enums"][name] = sorted(fields, key=lambda f: (fields[f], f))
-        idx["enumValues"][name] = dict(fields)
+    if isinstance(fields, dict) and all(isinstance(v, (int, float)) for v in fields.values()):
+        idx["enums"][name] = dict(sorted(fields.items(), key=lambda kv: kv[1]))
     else:
-        idx["enums"][name] = list(fields)
+        idx["enums"][name] = list(fields.keys()) if isinstance(fields, dict) else list(fields)
 for method, entries in docs["widgetMethods"].items():
     for ent in entries:
         obj = ent.get("object")
