@@ -14,6 +14,7 @@
 --   ns.RegisterCommand(names, fn, help)       /xui <name> [args]; names is one string or a list; several handlers may share a name
 --   ns.RegisterLauncher(entry)                a row in the minimap button's quick-access list
 --   ns.RegisterSettingsPage(module, key, fn)  a page in the settings window; fn(Notify) returns an AceConfig group
+--   ns.RegisterReskin(key, apply)             a reskin of the Blizzard UI Reskin tab; apply() takes the tab's switch (core 0.6.51)
 --   ns.MODULES                                which addon owns which /xui commands, so core can say why one does nothing
 -- Every registered function is called through pcall: one feature's error never stops the next one from starting.
 -- Own code. UNTESTED in game.
@@ -185,23 +186,18 @@ end
 -- own switch for when the tab is on again. Saved only while off (CueRulesDB.reskinTabOff = true), so a profile that never touched it
 -- holds nothing. Every reskin reads it with its own switch: on = its own switch AND this one.
 function ns.ReskinTabOn() return not (type(CueRulesDB) == "table" and CueRulesDB.reskinTabOff) end
--- Set it and let each reskin that is loaded take it at once (each one's own apply: it builds, or gives Blizzard's look back).
+-- Each reskin registers its own apply (it builds, or gives Blizzard's look back) with ns.RegisterReskin(key, fn), the way features
+-- register everything else here; core only walks the list. A reskin whose addon is off is simply not in it.
+local reskins = {}
+function ns.RegisterReskin(key, apply) if type(key) == "string" and type(apply) == "function" then reskins[key] = apply end end
+-- Set it and let every registered reskin take it at once (in key order, each through pcall).
 function ns.SetReskinTab(on)
     if type(CueRulesDB) ~= "table" then return end
     CueRulesDB.reskinTabOff = (not on) and true or nil
-    local applies = {
-        ns.Chat and ns.Chat.Refresh,
-        ns.CharReskin_Apply,
-        ns.GameMenuSkin_Apply,
-        ns.Shop and ns.Shop.Apply,
-    }
-    for i = 1, 4 do
-        local fn = applies[i]
-        if type(fn) == "function" then
-            local ok, err = pcall(fn)
-            if not ok then local h = geterrorhandler and geterrorhandler(); if h then h(err) end end
-        end
-    end
+    local keys = {}
+    for k in pairs(reskins) do keys[#keys + 1] = k end
+    table.sort(keys)
+    for _, k in ipairs(keys) do Call(reskins[k]) end
 end
 
 -- Page layout for every feature tab (Xaya, 2026-11-03; QoL and Chat first, the rule for new features):

@@ -994,6 +994,7 @@ function ns.CharReskin_Apply()
     if hooked then Guard(ApplyNow) end
 end
 ns.WhenReady(function() local c = Cfg(); if On(c) then ns.CharReskin_Apply() end end)
+ns.RegisterReskin("charreskin", function() ns.CharReskin_Apply() end)   -- (the Reskin tab's switch: core ns.SetReskinTab walks these)
 
 -------------------------------------------------------------------------------
 -- Settings page: Blizzard UI Reskin > Character Pane (the switch is still called Character Reskin)

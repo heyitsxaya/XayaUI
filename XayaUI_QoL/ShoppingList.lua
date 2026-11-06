@@ -798,6 +798,7 @@ function Shop.Toggle()
     c.panel = true
     Shop.Apply()
 end
+ns.RegisterReskin("shoppinglist", function() Shop.Apply() end)   -- (the Reskin tab's switch: core ns.SetReskinTab walks these)
 function Shop.Drawn() return { panel = panel, popup = popup, layout = panel and panel.layout, buttons = btnPool, fonts = fsPool } end
 -- (read without Cfg: off, no saved table is made either, V14)
 ns.WhenReady(function() local raw = CueRulesDB and CueRulesDB.shoppingList; if type(raw) == "table" and raw.enabled == true and ns.ReskinTabOn() then Shop.Apply() end end)

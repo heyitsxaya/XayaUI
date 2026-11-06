@@ -11,8 +11,12 @@ on 2026-11-06.
 ## What was built
 - **Core `XayaUI/Modules.lua`:**
   - `ns.ReskinTabOn()` is true unless `CueRulesDB.reskinTabOff`. Saved only while off, so a profile that never unticked it holds nothing.
-  - `ns.SetReskinTab(on)` sets it, then calls each loaded reskin's own apply: `ns.Chat.Refresh`, `ns.CharReskin_Apply`,
-    `ns.GameMenuSkin_Apply` and `ns.Shop.Apply`. Each either builds or gives Blizzard's look back. An error goes to the error handler.
+  - `ns.SetReskinTab(on)` sets it, then walks the reskins registered with the new `ns.RegisterReskin(key, apply)` (Modules.lua's
+    contract: core never calls a feature by name). The Chat Panel, Character Reskin, Esc Menu look and Shopping List each register
+    their own apply at load; each apply either builds or gives Blizzard's look back. Each runs through pcall, so an error goes to the
+    error handler.
+  - First built with direct calls to the four applies. The whole-addon harness's static check failed it ("uses ns.Chat, which
+    belongs to XayaUI_Chat; go through Modules.lua instead", 4 lines) in the full suite on 78d43a8. Changed to the registry.
 - **Options:**
   - `ns.OptionsApi.AllReskinsRow` adds the tab's first row, "All reskins". It sorts first and only exists while the tab has a page.
   - Its tick box is the ordinary `xuiSwitch` box every feature row uses; the box drawing is unchanged.

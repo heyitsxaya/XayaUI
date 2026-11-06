@@ -468,7 +468,7 @@ local function Disable()
 end
 -- the switch (and every other setting on the page) calls this through re() below
 local function Apply() if SavedOn() then Enable() elseif live then Disable() end end
-ns.GameMenuSkin_Apply = Apply                                   -- (the Reskin tab's switch: core ns.SetReskinTab)
+ns.RegisterReskin("gamemenu", Apply)                            -- (the Reskin tab's switch: core ns.SetReskinTab walks these)
 ns.GameMenuSkin_Hook = function() live = true; Hook() end   -- (tests: place the hooks and let them work, as ticking the switch does)
 function ns.GameMenuSkin_Live() return live end              -- (tests)
 -- at login (XayaUI's settings are ready before this addon loads, so this runs while the file loads)

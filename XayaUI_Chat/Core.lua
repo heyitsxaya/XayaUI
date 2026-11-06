@@ -391,6 +391,8 @@ function C.Refresh()
     for _, m in ipairs(C.mods) do C.Try(m.name, m.fn, s) end
 end
 
+ns.RegisterReskin("chatpanel", function() C.Refresh() end)   -- (the Reskin tab's switch: core ns.SetReskinTab walks these)
+
 local pending
 function C.Schedule()
     if pending then return end
