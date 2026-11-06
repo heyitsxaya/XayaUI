@@ -4214,6 +4214,12 @@ function ns.FolderContainerGroup(f)
         name = function() return ns.IsGroupUnlocked and ns.IsGroupUnlocked(f) and "Lock group (stop dragging)" or "Move group on screen (drag its outline)" end,
         desc = "Shows one outline around this group's displays; drag it to set the X / Y offset below. The lock icon on the group's row in the sidebar does the same.",
         func = function() if ns.SetGroupUnlocked then ns.SetGroupUnlocked(f, not ns.IsGroupUnlocked(f)) end; Notify() end }
+    g.args.anchorTo = { type = "select", name = "Anchored to", order = 4.09, width = "full", arg = { xuiSide = true },
+        hidden = function() return not f.parent end,
+        values = { parent = "The parent group", screen = "The screen" }, sorting = { "parent", "screen" },
+        desc = "A nested group is placed from its parent group (it moves with it) or from the screen (it stays put when the parent moves). It stays inside its parent either way: the parent's opacity, scale and layer still apply.",
+        get = function() return f.cAnchorTo == "screen" and "screen" or "parent" end,
+        set = function(_, v) f.cAnchorTo = (v == "screen") and "screen" or nil; apply() end }
     g.args.rel = { type = "select", name = "Relative to", order = 4.1, width = "full", arg = { xuiSide = true }, values = RV, sorting = RELS,
         get = function() return f.cRel or "screen" end, set = function(_, v) f.cRel = (v ~= "screen") and v or nil; apply() end }
     g.args.relName = { type = "input", name = "Frame name", order = 4.2, width = "double", hidden = function() return f.cRel ~= "custom" end,

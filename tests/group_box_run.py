@@ -88,6 +88,14 @@ check("  ...and is off in Auto (it would hide everything in a 1 x 1 anchor)", no
 f.cBg, f.cBorder = nil, nil; ns.RefreshAllVisuals(); W.tick(0.3, 2)
 check("border and background off: the box hides and the watcher stops", not box:IsShown() and not ns.GroupBoxWatching())
 
+-- G8: a nested group anchored to the screen or to its parent group
+local inner = ns.NewFolder("Inner", f.id)
+local ic = ns.GroupFrame(inner)
+check("G8: a nested group is measured from its parent group (default)", ic.xuiTarget == ns.GroupFrame(f))
+inner.cAnchorTo = "screen"; ic = ns.GroupFrame(inner)
+check("  ...anchored to the screen: measured from the screen", ic.xuiTarget == UIParent)
+check("  ...and it stays inside its parent (opacity, scale, layer still apply)", ic:GetParent() == ns.GroupFrame(f))
+
 -- the Group tab
 if ns.LoadOptions then pcall(ns.LoadOptions) end; W.tick(0.1, 3)
 ns = rawget(_G, "XayaUI_NS")
@@ -98,6 +106,9 @@ CG.sizeMode.set(nil, "set")
 check("  ...shown after picking Set", CG.width.hidden() == false and CG.height.hidden() == false and CG.clip.hidden() == false)
 check("  ...Border and Background tick boxes; colours and padding appear when ticked", CG.border and CG.bg and CG.bgColor.hidden() == true
   and (function() CG.bg.set(nil, true); return CG.bgColor.hidden() == false and CG.pad.hidden() == false and CG.bgTex.hidden() == false end)())
+local ICG = ns.FolderContainerGroup(inner).args
+check("G8: Anchored to (parent group / screen) on a nested group only", ICG.anchorTo and ICG.anchorTo.hidden() == false and CG.anchorTo.hidden() == true
+  and ICG.anchorTo.get() == "screen")
 CG.bgTex.set(nil, "  130937 ")
 check("  ...a texture typed as an ID is kept as a number", f.cBgTex == 130937)
 return R

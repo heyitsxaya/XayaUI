@@ -408,7 +408,10 @@ local function Container(f)
     local pf = f.parent and ns.FolderById(f.parent)
     local parentC = pf and Container(pf) or UIParent
     if c:GetParent() ~= parentC then c:SetParent(parentC) end
-    local target = parentC
+    -- G8 (Xaya 2026-11-06: "nested groups get "anchored to: screen / parent group""): a nested group is measured from its parent group
+    -- (as before) unless it is anchored to the screen; it stays inside its parent either way (opacity, scale and layer still apply)
+    local toScreen = f.parent and f.cAnchorTo == "screen"
+    local target = toScreen and UIParent or parentC
     local rel = f.cRel
     local gname = (rel == "custom") and f.cFrame or REL_FRAMES[rel]
     local g = gname and gname ~= "" and _G[gname]
@@ -419,7 +422,13 @@ local function Container(f)
     if f.cStrata then c:SetFrameStrata(f.cStrata) end
     if (f.cLevel or 0) > 0 then c:SetFrameLevel(f.cLevel) end
     c:ClearAllPoints()
-    c:SetPoint(f.cPoint or "CENTER", target, f.cRelPoint or f.cPoint or "CENTER", (f.cX or 0) / sc, (f.cY or 0) / sc)
+    -- (anchored to the screen from inside a scaled parent: the offset is divided by the parent's scale too, so X / Y stay screen units)
+    local pScale = 1
+    if toScreen and target == UIParent and parentC ~= UIParent and parentC.GetEffectiveScale and UIParent.GetEffectiveScale then
+        local ue = UIParent:GetEffectiveScale()
+        if ue and ue > 0 then pScale = math.max(0.01, (parentC:GetEffectiveScale() or ue) / ue) end
+    end
+    c:SetPoint(f.cPoint or "CENTER", target, f.cRelPoint or f.cPoint or "CENTER", (f.cX or 0) / (sc * pScale), (f.cY or 0) / (sc * pScale))
     c.xuiTarget = target   -- what the group's X / Y is measured from (the group outline drag needs its scale)
     return c
 end

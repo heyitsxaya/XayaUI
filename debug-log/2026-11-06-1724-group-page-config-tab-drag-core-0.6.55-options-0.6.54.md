@@ -58,3 +58,9 @@ Options 0.6.54, QA B171-B185).
 - **Updated:** on every `ns.RefreshAllVisuals` (each settings change) and by the watcher.
 - **Tests:** `tests/group_box_run.py` (new, 20, real frame positions). `display_tab_run`, `layout_parity_run`, `aura_display_run`,
   `export_group_run`, `import_run`, `core_off_costs_nothing_run` and `lua_pitfalls_run` pass. QA B174.
+
+## G8: nested groups "Anchored to: the parent group / the screen"
+- `f.cAnchorTo = "screen"` (nil = the parent group, as before). The container stays a child of its parent's container (opacity,
+  scale, layer still apply) but is measured from UIParent. Its X / Y are divided by the parent's scale too, so they stay screen units.
+  A "Relative to" game frame still wins, as before.
+- The combat engine hangs its icons on `ns.GroupFrame`, so it follows; `layout_parity_run` still passes. `group_box_run` 24. QA B175.

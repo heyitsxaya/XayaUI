@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-9276df9531c316bc9eac900bc4c3fbdb  QA-CHECKLIST.md
+85b297dd4ee9421c65f848dad1d3af48  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 410cc1e26e183b9410bf509ed6e97752  ROADMAP.md
 f25f0108f6fbee67e9948a3789ca22d0  SESSION-START-SUMMARY.md
@@ -106,7 +106,7 @@ a126ef2cd2852eae4c6f9eb2cadb6e1c  XayaUI/TalentDump.lua
 9bf55354dce003634bea5d20d5bbbf58  XayaUI/Timing.lua
 a798bbc0f8b2389a2b4de9c26599d737  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
-86eee4e8b41fdb0373486fbed7abde15  XayaUI/Visual.lua
+c46753e43fdebb20cf4899bbc24f6628  XayaUI/Visual.lua
 5f60a4a3936e04065571b8a0089098b2  XayaUI/XayaUI.toc
 aa67ceca7421466d01bbf874bda53c92  XayaUI_Bonus/Calculator.lua
 7c8c4b6ef4fab8a18001668d5d23932a  XayaUI_Bonus/DataPanels.lua
@@ -207,7 +207,7 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-596d8fce22d7f0f1f9516abffde58fac  XayaUI_Options/Options.lua
+86bfaf911e80b9e6f4118425debb3576  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
 24601ef16af1a663ebc42c4dca3973c8  XayaUI_Options/Skin.lua
@@ -504,7 +504,7 @@ fe51de1c552b68fd8c3309e6c3a6871c  debug-log/2026-11-06-0520-character-pane-stat-
 0a9288836b02d9cb825e33101d8edbe7  debug-log/2026-11-06-0544-handoff-chat-session-open-items.md
 99eeff9cfe9a67e5fc08c193b088246b  debug-log/2026-11-06-0552-slash-notes-calc-bonus-0.6.17.md
 123e3c41439ee6fad0b573eb19d7f73c  debug-log/2026-11-06-0554-friends-list-ui-source-12.1.5-findings.md
-c51821ff92c042d8ee7de320e6368ab7  debug-log/2026-11-06-1724-group-page-config-tab-drag-core-0.6.55-options-0.6.54.md
+6e37e73b9064559953998ce30eb8d5b3  debug-log/2026-11-06-1724-group-page-config-tab-drag-core-0.6.55-options-0.6.54.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -515,7 +515,7 @@ d219067bc85426f02913fb1b3eece809  docs/issue-screenshots/toolkit-spells-id-place
 a2e49515e283e72fc94f220e8148b746  docs/issue-screenshots/toolkit-window-resize.png
 58ad0a99081eea454e70a353255849e5  docs/plans/AURA-PLAN.md
 2de37e534204c1536e75af8aab9d621b  docs/plans/GAMES-MODULE-2026-11-05.md
-2d38c4d0a88e5bd77dfece91b1e4f304  docs/plans/GROUP-PAGE-REQUIREMENTS-2026-11-06.md
+e2d82b0f5194102563aef7b7e8306a2c  docs/plans/GROUP-PAGE-REQUIREMENTS-2026-11-06.md
 25e9cf312a11d30076f032e0a3e750a4  docs/plans/GROUP-PAGE-REVIEW-2026-11-04.md
 380f2b16f139ddfcfc51f7af62f48176  docs/plans/IDEA-CHAT-WORD-GAME-2026-11-05.md
 e80a5c2d309d09f70935f65abd599ec3  docs/plans/IDEA-UPGRADE-OPTIONS-2026-11-05.md
@@ -646,7 +646,7 @@ f02c43c10e399a57286e1d36682f938d  tests/frame_anchor_run.py
 60c2b4ed72565803ed1036b60bc58940  tests/gamemenu_fit_run.py
 cca9d978e3b3e2e5ae5ad632f2f78020  tests/gamemenu_ratchet_run.py
 1ca7f2f5d990875bf66174004935ccde  tests/gamemenu_run.py
-5ab1275215c6518c2659314a6b9dfa60  tests/group_box_run.py
+e49807981e17f05447c306cbac63a7b4  tests/group_box_run.py
 2432f77932fc7e94d63c1f8c3f453c37  tests/harness/.gitignore
 f8b5cec9ebb759edfcdfb5fe05ec292e  tests/harness/api_index_from_docs.py
 a36a03ecc872c2cf4b1b410e1aeba87e  tests/harness/build_api_index.py

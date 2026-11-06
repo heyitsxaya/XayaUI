@@ -32,7 +32,7 @@ list. Her answers were given in the engine session's question prompts (`docs/pro
 | G5 | Size: auto (default) or set; clip and wrap as separate tick boxes; auto fits the items showing; the border follows | BUILT (branch; group_box_run 20; QA B174) | Auto-fit box (today 0 = a 1 x 1 anchor). INFERENCE: auto-fit can move rules that use corner anchors (#268): checked in tests. |
 | G6 | Strata, opacity, scale, icon size on Group | BUILT (branch, Options 0.6.54; display_tab_run; QA B171-B172) | From Display "Whole group" to Group. |
 | G7 | Align / distribute / spacing saved and kept applying | OPEN | Today one-shot buttons on Display (static groups). |
-| G8 | Nested groups: "anchored to: screen / parent group" | OPEN | Today a nested group's "Screen" means its parent. |
+| G8 | Nested groups: "anchored to: screen / parent group" | BUILT (branch; group_box_run; QA B175) | Today a nested group's "Screen" means its parent. |
 | G9 | Static groups: "Scale items to fit the box" tick box; off + box made smaller than its items: prompt "Scale the items to fit?" | OPEN | |
 | G10 | Group tab shows the WeakAuras group-tab options (her CHAT-3d); WeakAuras behaviour checked, code our own | OPEN | The checked list (debug-log 2026-11-05-2018): plain group align / distribute / space, scale, alpha, border, position; dynamic group grow, align, space, sort, limit. |
 | G11 | Group background (#372, "puts an assigned color / texture under the aura") | BUILT (branch; group_box_run; QA B174) | |
