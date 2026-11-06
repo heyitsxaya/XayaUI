@@ -2,12 +2,12 @@ a6b90f93be08b2134468e876fefd33d1  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-f66d9b66417891565776c47e1c58b8f7  QA-CHECKLIST.md
+16fbf401ad6eae457a4a2f729f186b29  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 ae35909dad7d2db6b3e50c1b0aeb96e5  ROADMAP.md
 8e26fa7260dfdd487f86249f75b6c9d2  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-bd4b2b801c8c9a2635cee28ff9e9396b  USER-GUIDE.md
+02b52faa8830531f32a78afb8cc1aaad  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 7bc5ab6899bc167c8fc5f3db72f3c9ff  XayaUI/AuraSound.lua
