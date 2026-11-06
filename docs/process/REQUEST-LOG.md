@@ -190,6 +190,17 @@ Chat 0.6.17, Reskin 0.6.3).
 | S7-3 | "are we able to retire this chat? is everything documented and anything outstanding pushed to 11-06?" | MAIN (docs) | this row; handoff sent to session 014bN6tSStpdmmCXviFAqPdQ ("Outstanding items 11-06") | Session S7 retired: nothing unpushed (S7-1 / S7-2 on `main` at 1834e68). Handed to 11-06: (a) her in-game check QA F17 (moves S7-1 / S7-2 to DONE); (b) stale comment `XayaUI_Options/Options.lua` (Tree.RowSwitch header, "Tooltips, Calculator, Utilities" get no box; Tooltips and Calculator have boxes now): fix with the next Options version bump, no behaviour change. |
 | S7-4 | "retire this chat then please" | DONE | session 014bN6tWsEQA8BZbHidBmJ1Y archived after this row | Nothing open in S7; outstanding items are with "Outstanding items 11-06" (S7-3). |
 
+## A9. Session S9 = session 014bN6tSZh6UFB2WcRuyXqBZ ("XayaUI: Patch Notes / Info pane"; branch `claude/patch-notes-info-pane`)
+
+Opened 2026-11-06 by "Outstanding items 11-06" (session 014bN6tSStpdmmCXviFAqPdQ, REQUEST-LOG #86-#88), which relayed her original
+request and her first six answers (logged there). Rows below are her messages to this session, verbatim.
+
+| # | Her words (verbatim; [screenshot]) | Status | Where / what | Notes |
+|---|---|---|---|---|
+| S9-1 | Question box answers: Help / FAQ "Info > Help (FAQ), built now (Recommended)"; pane window "Floats above, movable, Esc closes (Recommended)"; patch-notes format "1 + 3 to sanity check"; What's New "1+3 -- minor updates over the course of a few days across incremental rather than MAJOR version updates get displayed e.g. 0.7.x vs 0.8.0" | BRANCH | Options 0.6.56 on `claude/patch-notes-info-pane`: XayaUI_Options/InfoPane.lua; debug-log/2026-11-06-2135-version-pane-patch-notes-info-options-0.6.56.md; QA B197 | Sanity check done: Blizzard's own post "Hotfixes: July 22, 2024" (worldofwarcraft.blizzard.com/news/24066687): bold category labels, nested bold sub-groups, past-tense bullets, italic Developers' notes indented under their bullet. Wowhead fetch returned no post body. |
+| S9-2 | Question box answers: What's New reset "1 -- append incremental updates to the top of the list as they come in"; patch-notes format "Yes, but drop the intro line"; Readme "Shorter: sections 1, 2, 4, 5"; credits look "Move as-is for now" | BRANCH | as S9-1; PATCH-NOTES.md, docs/README-INGAME.md, tools/build_info_pane_data.py | What's New: per addon, new features only, newest on top, the list for an addon starts again at its next x.Y.0. Readme sections: What XayaUI is, Getting started, Features at a glance, Slash commands. B6 stays a separate decision. |
+| S9-3 | FAQ groups: "Rules not firing (Recommended),Auras & Cooldown Manager,What the game won't allow,Commands & reporting" | BRANCH | Info > Help (FAQ): docs/HELP-FAQ.md; ROADMAP RM-HELP-QA for dynamic Q&A | All four groups, text from USER-GUIDE.md sections 9-11 only. |
+
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
 a single instance. do this across all chats."

@@ -4999,10 +4999,8 @@ local function BuildOptions()
     -- ns.RegisterSettingsPage). An addon that is switched off registers nothing, so its tab is simply absent.
     local modTabs = ns.OptionsApi.ModuleTabs(Notify, ns.QoLOn and { allqol = allQol, allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil, allbars = allBars } or nil)
 
-    -- Addon Info is not in the tab strip: the version text in the window's bottom-left corner opens it (ns.infoOpen) and it
-    -- goes away again as soon as another tab is picked.
-    local infoGroup = ns.BuildAddonInfo and ns.BuildAddonInfo() or nil
-    if infoGroup then infoGroup.order = 8; infoGroup.hidden = function() return not ns.infoOpen end end
+    -- Addon Info and Settings > Acknowledgements moved into the version pane (InfoPane.lua, Options 0.6.56; Xaya 2026-11-06: "Both
+    -- move into the pane"): Info > Version info and Info > Credits + Acknowledgements. The version text opens the pane.
     -- Settings (skin on): its pages REPLACE the Rules / Smart Categories tabs while the toolbar's Settings button is on:
     --   Settings page = left sidebar: UI Options (Display | Rule Creation | Theme tabs), Minimap Button, Debugging
     local function SettingsOn() return (ns.SkinRows and ns.SkinRows()) and ns.pageOpen == "settings" end
@@ -5020,11 +5018,6 @@ local function BuildOptions()
     -- one top-level page with a left sidebar like the rest of the addon (UI Options, Debugging), instead of two top tabs (Xaya, 2026-11-02)
     local setPage = { type = "group", name = "Settings", order = 7, childGroups = "tree", hidden = function() return not SettingsOn() end,
         args = { ui = setUi, minimap = minimapGroup, debug = setDbg } }
-    -- credits and attribution have their own page under Settings (AddonInfo.lua; Xaya 2026-11-04), in both settings layouts
-    if ns.BuildAcknowledgements then
-        setPage.args.credits = ns.BuildAcknowledgements()
-        settings.args.credits = ns.BuildAcknowledgements()
-    end
     if minimapGroup then
         minimapGroup.order = 1.5
         settings.args.minimap = minimapGroup   -- the old single Settings tab (skin rows off) gets it too
@@ -5040,7 +5033,7 @@ local function BuildOptions()
             name = "The Esc menu's own look (the XayaUI skin) is under the Blizzard UI Reskin tab > Esc Menu." }
     end
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, recyclebin = binTab, chat = modTabs.chat, qol = modTabs.qol, bonus = modTabs.bonus, reskin = modTabs.reskin, profiles = BuildProfiles(), info = infoGroup, settings = settings, set = setPage } }
+        args = { cooldowns = track, recyclebin = binTab, chat = modTabs.chat, qol = modTabs.qol, bonus = modTabs.bonus, reskin = modTabs.reskin, profiles = BuildProfiles(), settings = settings, set = setPage } }
     pcall(ns.SmartOpen)
     pcall(ns.FeatureTreesOpen)
     pcall(ns.ApplyTreeFilter, out)
@@ -7915,7 +7908,7 @@ local function SetCollapsed(of, collapsed)
     if collapsed then
         c.hidden = {}
         for _, child in ipairs({ fr:GetChildren() }) do
-            if child ~= c.title and child ~= c.arrow and child ~= c.close and child:IsShown() then
+            if child ~= c.title and child ~= c.arrow and child ~= c.close and child ~= c.help and child:IsShown() then
                 c.hidden[#c.hidden + 1] = child
                 child:Hide()
             end
@@ -7970,6 +7963,23 @@ local function EnsureChrome(of)
         c.arrow.tex:SetPoint("CENTER", 0, 0)
         c.arrow.tex:SetTexture(ARROW_OPEN)
         c.arrow:SetScript("OnClick", function() SetCollapsed(of, not c.collapsed) end)
+
+        -- ? just left of the collapse arrow (Xaya 2026-11-06: "nest it in the title bar alongside the collapse pane and X close
+        -- button"; "help icon brings you to its location wherever its nested"): opens the version pane at Info > Help (FAQ).
+        -- Anchored to the arrow, so it follows it beside the banner when the window is collapsed.
+        c.help = CreateFrame("Button", nil, fr, "UIPanelButtonTemplate")
+        c.help:SetSize(22, 22)
+        c.help:SetPoint("RIGHT", c.arrow, "LEFT", -4, 0)
+        c.help:SetFrameLevel(fr:GetFrameLevel() + 10)
+        c.help:SetText("?")
+        c.help:SetScript("OnClick", function() if ns.InfoPane then ns.InfoPane.OpenHelp() end end)
+        c.help:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+            GameTooltip:SetText("Help")
+            GameTooltip:AddLine("Opens Help (FAQ) in the version pane (Info > Help).", 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        c.help:SetScript("OnLeave", function() GameTooltip:Hide() end)
         c.arrow:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
             GameTooltip:SetText(c.collapsed and "Expand the window" or "Collapse to the banner")
@@ -7983,7 +7993,7 @@ local function EnsureChrome(of)
         -- so it is found as that text's parent.
         c.statusbg = of.statustext and of.statustext.GetParent and of.statustext:GetParent()
         -- the version in the bottom-left corner (Xaya 2026-11-04: "addon version should be put in the bottom left") is itself the link
-        -- to Addon Info, in the active theme's accent colors (Options 0.6.39; Xaya 2026-11-05: "remove Addon Info button, make the
+        -- to the version pane (Options 0.6.56; until then Addon Info), in the active theme's accent colors (Options 0.6.39; Xaya 2026-11-05: "remove Addon Info button, make the
         -- XayaUI version text clickable instead", "colorize it to active theme colors"). Repainted when the theme changes.
         c.info = CreateFrame("Button", nil, fr)
         c.info:SetHeight(16)
@@ -8007,17 +8017,13 @@ local function EnsureChrome(of)
         c.info:SetScript("OnEnter", function(self)
             self.hover = true; self:Paint()
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:SetText("Addon Info")
-            GameTooltip:AddLine("Opens the Addon Info page: version, author, license, commands and the source code link.", 1, 1, 1, true)
+            GameTooltip:SetText("Patch Notes and Info")
+            GameTooltip:AddLine("Opens the version pane: Patch Notes (What's New and every update) and Info (version, readme, help, credits).", 1, 1, 1, true)
             GameTooltip:Show()
         end)
         c.info:SetScript("OnLeave", function(self) self.hover = false; self:Paint(); GameTooltip:Hide() end)
         c.info:Paint()
-        c.info:SetScript("OnClick", function()
-            ns.infoOpen = true; ns.pageOpen = nil
-            Notify()
-            pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "info")
-        end)
+        c.info:SetScript("OnClick", function() if ns.InfoPane then ns.InfoPane.Open() end end)
         if not ns.infoLinkThemed and ns.Theme and ns.Theme.OnResolve then
             ns.infoLinkThemed = true
             ns.Theme.OnResolve(function() local lk = ns.infoLink; if lk and lk.Paint then lk:Paint() end end)
@@ -8068,11 +8074,14 @@ local function EnsureChrome(of)
             if c.statusbg then c.statusbg:Show() end   -- the next addon to get this window keeps AceGUI's status bar
             c.close:Hide()
             c.arrow:Hide()
+            if c.help then c.help:Hide() end
+            if ns.InfoPane then ns.InfoPane.Close() end   -- the pane belongs to the settings window
             if orig then return orig(self, ...) end
         end
     end
     c.arrow:Show()
     c.close:Show()
+    if c.help then c.help:Show() end
     -- the version link (its text is c.ver) hides with the collapsed window, click area included
     if c.info then c.info:SetShown(not c.collapsed) end
     if c.ver then c.ver:SetShown(not c.collapsed) end
@@ -8102,12 +8111,6 @@ local function EnsureChrome(of)
             c.clr:ClearAllPoints(); c.clr:SetPoint("LEFT", c.delSel, "RIGHT", 12, 0)
             c.delSel:Hide(); c.clr:Hide()   -- bottom-left duplicate removed: the sidebar bar has Delete / Move to / Clear
         else c.delSel:Hide(); c.clr:Hide() end
-    end
-    -- the Addon Info page lasts only until another tab is picked
-    if ns.infoOpen then
-        local st = AceConfigDialog.GetStatusTable and AceConfigDialog:GetStatusTable(APP)
-        local tab = st and st.groups and st.groups.selected
-        if tab and tab ~= "info" then ns.infoOpen = false; Notify() end
     end
     -- Creator / Profiles / Settings pages last only until another tab is picked
     if ns.pageOpen then
