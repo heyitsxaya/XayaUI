@@ -26,6 +26,9 @@ ns = _G.XayaUI_NS or ns
 local CM = ns.CharModel
 local Shop = {}
 ns.Shop = Shop
+-- (the Dev Assist QA walkthroughs reach the Shopping List through this service: a feature is never called by name from another addon)
+if ns.Provide then ns.Provide("shoppingList", { Cfg = function() return Shop.Cfg() end, Apply = function() return Shop.Apply() end,
+    Recipes = function() return Shop.Recipes() end, Missing = function(c) return Shop.Missing(c) end }) end
 
 local function num(v) return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge end
 local function isSecret(v) return CM and CM.IsSecret and CM.IsSecret(v) end
@@ -907,7 +910,7 @@ function Shop.Toggle()
     local c = Cfg()
     if not c then return end
     if not c.enabled then c.enabled, c.panel = true, true end
-    if not ns.ReskinTabOn() then ns.Print("Shopping List: All reskins is off (Blizzard UI Reskin tab, top row); it shows once that is on again."); return end
+    if not ns.ReskinTabOn() then ns.Print("Shopping List: Blizzard UI Reskin is off (Blizzard UI Reskin > Overview); it shows once that is on again."); return end
     if panel and panel:IsShown() then panel.userHidden = true; panel:Hide(); if popup then popup:Hide() end; return end
     if panel then panel.userHidden = nil end
     c.panel = true
@@ -963,7 +966,7 @@ function ns.BuildShoppingListPage(Notify)
     args.defDiamond = DefInput("diamond", 21, "One-per-character gem (diamond)")
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
-    local switch = { type = "toggle", name = "Shopping List", desc = "Turns the shopping list on. While it is off nothing is created or read. Greyed while All reskins (the top row of this tab) is off.",
+    local switch = { type = "toggle", name = "Shopping List", desc = "Turns the shopping list on. While it is off nothing is created or read. Greyed while Blizzard UI Reskin is off (this tab's Overview).",
         disabled = function() return not ns.ReskinTabOn() end,
         get = function() return C().enabled end, set = function(_, v) C().enabled = v and true or false; Changed() end }
     local g = { type = "group", name = "Shopping List", order = 5, xuiSwitch = switch, args = args }
@@ -977,7 +980,7 @@ ns.RegisterCommand("shop", function(arg)
         local c = Cfg()
         if not c then return end
         ns.Print(("Shopping List: %s%s; panel %s; Blizzard's list restyled %s; %d to buy; tracker hooked %s."):format(c.enabled and "on" or "off",
-            ns.ReskinTabOn() and "" or " (All reskins is off in the Blizzard UI Reskin tab, so it does not show)",
+            ns.ReskinTabOn() and "" or " (Blizzard UI Reskin is off: Blizzard UI Reskin > Overview, so it does not show)",
             c.panel and "on" or "off", c.tracker and "on" or "off", #c.buy, Shop.TrackerHooked() and "yes" or "no"))
         return
     end

@@ -8,10 +8,10 @@ Every piece of addon work is multi-session (Xaya, 2026-11-04). New chat: read th
 
 | File | Role | Update when |
 |---|---|---|
-| `ROADMAP.md` | **Full tracker**: every feature, its status, its weakest point, open questions, parked and dropped items with reasons | a feature's status, scope, or decision changes |
+| `docs/ROADMAP.md` | **Full tracker**: every feature, its status, its weakest point, open questions, parked and dropped items with reasons | a feature's status, scope, or decision changes |
 | `debug-log/` | **History**: one entry per change or finding, named `YYYY-MM-DD-HHMM-topic-version.md` | every change, in the same commit |
-| `SESSION-START-SUMMARY.md` (this file) | **Cold start**: rules, active items, pending actions, how to work here | an active item or pending action changes; at the end of a session |
-| GitHub issues | one issue per feature or defect; labels `decision-needed`, `unverified-in-game`, `roadmap` | as work happens |
+| `docs/SESSION-START-SUMMARY.md` (this file) | **Cold start**: rules, active items, pending actions, how to work here | an active item or pending action changes; at the end of a session |
+| GitHub issues | one issue per feature or defect; labels `decision-needed`, `unverified-in-game`, `roadmap`, plus `type:` / `area:` / `impact:` on every issue (Xaya 2026-11-06; the skill's "Issue labels" rule) | as work happens |
 | `docs/process/VERIFICATION.md` | **How every change is checked** (rules V1-V13); `RETROSPECTIVE.md` says why each rule exists | a new kind of slip gets past |
 
 Project documents outside the repo (Claude project docs, the Drive `Feature sketches` folder) hold long specs; ROADMAP section 13 says so. They are not readable from a cloud session.
@@ -30,6 +30,8 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
   the branch, run the full suite once on the bundle, and land it on `main` once, with one report listing every request it closes
   (by REQUEST-LOG number) and every one still open. Coordinate with any other active session so there is one combined push.
 - **What's new for every new feature** (Xaya, 2026-11-06, V18): when a new feature (or a visible change) lands on `main`, send the "feature update summary" session (session_014bN6tU26cuzQ9LarKYhZQx) an itemized what's-new: what the player sees, where to find it, what is untested in game, the landing commit. That session is used only for this.
+- **Ask through the question flow** (Xaya, 2026-11-06, V19): "standing rule for the project: wherever possible, ask me questions through the question flow rather than in a long list". Use the question tool for questions to her, not a long list in a reply.
+- **In-game QA walkthroughs** (Xaya, 2026-11-06, V20): "All they should have to do is open up /xui dev qa and pick an item and have the addon walk them through steps with as limited console interaction as possible". Register a walkthrough with S3's `ns.RegisterQAWalk` for every in-game QA step, wherever possible.
 - **Off costs nothing (Xaya, 2026-11-05 15:07 UTC, her words):** "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a standing rule for all current and future feature / element builds". Applied through rule V14
   (`docs/process/VERIFICATION.md`): while a feature is off, none of its frames, events, OnUpdate, timers or hooks exist or run; strict
   "never loads" needs a LoadOnDemand addon (an enabled addon's files are always read at login), and a hook placed while on stays inert
@@ -65,7 +67,7 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 - **Personal data stays local:** personal rules, lists, and anything about other players are never in a default export.
 - **Options style:** a dropdown never takes a row alone; short labels; the explanation goes in the tooltip. Settings layout: a feature is a node in the left pane, its parts are child nodes, and a part's sections are tabs (`ns.SectionTabs`).
 - **Feature addons never get called by name from core:** they register through `XayaUI/Modules.lua` (`ns.WhenReady`, `ns.RegisterSettingsPage`, `ns.RegisterCommand`, `ns.RegisterLauncher`).
-- **"Profile"** means only the whole addon as configured (#354 is asking whether that changes).
+- **"Profile"** (Xaya, 2026-11-06, REQUEST-LOG UI-26 / UI-27, her words: "profiles is expanded as a category bucket to include all user-created customizations, settings, etc"; "individual components can be selected to toggle (review EUI and ElvUI profiling)"): a profile covers every user-created customization and setting (rules, groups, themes, settings, the whole addon), and import / export lets you tick which components to include. Before 2026-11-06 it meant only the whole addon as configured (#354).
 - **Wording to Xaya:** truth first; flag inferences; no unearned compliments; state what is not verified in game.
 - **Roadmap feature branches (Xaya, 2026-11-05, her words):** "Rough scaffolding and proposed code structure (outline only) in a
   dedicated “roadmap features: ______” brand per feature"; then "Branch, not brand". Applied as:
@@ -306,15 +308,17 @@ Proposed order (not a commitment): ROADMAP section 12.
   1. `git init`, `git remote add origin https://github.com/Gethe/wow-ui-source.git`, `git fetch --depth=30 --filter=blob:none origin live`,
      `git checkout d07eb00` ("12.1.5 (70688)", the build of Drive's `WOW-API-FULL-12.1.5.70688-*`; `297d7aa` is 70783).
   2. Concatenate `Interface/AddOns/Blizzard_APIDocumentationGenerated/*.lua` (sorted) into one `WOW-API-FULL-<anything>.txt` in its
-     own folder, with a line `-- ===== FILE: <file name>` before each file.
+     own folder, with a line `-- ===== FILE: <file name>` before each file. The source files have no trailing newline: add one after
+     each file, or each header is glued to the previous file's last line and step 3 reports 1 file / 1 unparsed (found by session
+     014bN6tUJ5JTttjgNR2yaUnU).
   3. `python3 tests/harness/build_api_index.py <that folder> tests/harness/api_index.json` (expect 622 files, 0 unparsed) and
      `python3 tests/harness/build_framexml_index.py <checkout> tests/harness/framexml_index.json` (18235 names, 232 deprecated-only).
   A full suite run then takes about 26 minutes; run it in the background on a snapshot worktree of the exact commit.
 - **Tests:** `pip install lupa`, then `XUI_API_INDEX=tests/harness/api_index.json python3 tests/run_all.py` (full) or `--quick` (no `tests/harness/api_index.json` in a cloud session: build it first with `python3 tests/harness/api_index_from_docs.py`, from the repo's own docs/reference/api/api.json; without it the harness prints "API documentation: NOT LOADED" and checks no widget method or event, so that run does not count as the full suite). On 2026-11-04 (core 0.6.11) the full suite passed: 68 groups and the whole-addon harness. Anything red is new. New feature: add `tests/<name>_run.py` (Lua 5.1 via `tests/lua51.py`); its last line must carry `FAILS: 0` or another marker `run_all.py` accepts.
-- **Every change:** bump the addon's `## Version` and `## X-Date` in its .toc; add a debug-log entry; update `USER-GUIDE.md` (its section 13 has the rules: describe behavior, not history); add QA-CHECKLIST lines for in-game checks; `git add` first, then `python3 tools/manifest.py` (it lists only tracked files), then commit.
+- **Every change:** bump the addon's `## Version` and `## X-Date` in its .toc; add a debug-log entry; update `docs/USER-GUIDE.md` (its section 13 has the rules: describe behavior, not history); add QA-CHECKLIST lines for in-game checks; `git add` first, then `python3 tools/manifest.py` (it lists only tracked files), then commit.
 - **Git:** one branch per session as assigned; push with `git push -u origin <branch>`; open a draft PR. Tag pushes and branch deletions are refused by the session's git proxy (403): do not retry; list them for Xaya. GitHub actions go through the GitHub MCP tools; `gh` only for search (`gh api -X GET search/issues -f q='repo:heyitsxaya/XayaUI is:issue ...'`).
 - **Sync beyond GitHub** (local AddOns folder, Drive copy, checksums in both): described in `debug-log/2026-11-02-handoff-*.md`. Those notes predate the 0.6.0 folder layout, so check them before following them (unverified).
 - **Game API facts:** check `docs/reference/` FIRST (Xaya's core reference, 2026-11-04: the live client's API with signatures and secret rules, and every class's talents and spells; the full private version with spell text is in Drive "Blizzard API Data"), then the 12.1.5 API documentation or an in-game probe (`XayaUI_DevAssist`, `/xuidev api` / `toolkit`) before relying on them; say which.
 
 ## 7. Key files
-`docs/process/` (verification rules, retrospective), `tools/precheck.py`, `docs/reference/` (core reference: API, talents/spells, `charges.md`, `procs.md`), `ROADMAP.md`, `USER-GUIDE.md`, `QA-CHECKLIST.md`, `README.md`, `MANIFEST.md5`, `debug-log/`, `XayaUI/Modules.lua` (feature contract), `XayaUI/Core.lua` (`ns.Print`, saved settings), `XayaUI_Options/Options.lua` (settings window), `tests/run_all.py`, `tests/harness/` (whole-addon harness), `tools/manifest.py`, `shelved/` (old QoL Elements, loaded by nothing).
+`docs/process/` (verification rules, retrospective), `tools/precheck.py`, `docs/reference/` (core reference: API, talents/spells, `charges.md`, `procs.md`), `docs/ROADMAP.md`, `docs/USER-GUIDE.md`, `docs/QA-CHECKLIST.md`, `README.md`, `MANIFEST.md5`, `debug-log/`, `XayaUI/Modules.lua` (feature contract), `XayaUI/Core.lua` (`ns.Print`, saved settings), `XayaUI_Options/Options.lua` (settings window), `tests/run_all.py`, `tests/harness/` (whole-addon harness), `tools/manifest.py`, `shelved/` (old QoL Elements, loaded by nothing).

@@ -10,7 +10,7 @@ Checks, on the real addons in the stand-in game:
   cost as the same reskins saved off by their own switches (mode "ownoff"), V14. The row boxes are greyed. Ticking "All reskins"
   starts all four; unticking it stops all four at once and keeps their own switches (on);
 - mode "ownoff": the cost baseline.
-Old code (main 0ef9cb0): no tab box, no row boxes on these pages, the tab switch does not exist: those checks fail.
+Options 0.6.55: the switch moved to the tab's Overview row (right pane) with a reload prompt; rows listed after a reload. Old code (main 0ef9cb0): no tab box, no row boxes on these pages, the tab switch does not exist: those checks fail.
 Run: python3 tests/reskin_tab_switch_run.py   (Lua 5.1 via lupa; loads the settings window)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -71,12 +71,28 @@ local function names(t)
   for _, e in ipairs(l) do out[#out + 1] = e.n end
   return table.concat(out, " | ")
 end
--- (Xaya 2026-11-06, where the tab's switch goes: "Tick box on the tab itself")
-check("the tab's rows are the reskins in name order (no extra All reskins row)", names(tab) == "Character Pane | Chat Panel | Esc Menu | Shopping List", names(tab))
-local all = ns.OptionsApi and ns.OptionsApi.TAB_SWITCHES and ns.OptionsApi.TAB_SWITCHES.reskin
-check("  ...the tab's own switch is All reskins", all ~= nil and all.name == "All reskins" and type(all.get) == "function" and type(all.set) == "function")
+-- (Options 0.6.55; Xaya 2026-11-06: "Blizzard UI Reskin is not a check box at the top level. the check box should be enable and
+-- disable in the tab itself and then after a reload individual reskin items populate"; her answer "Right pane + reload prompt")
+local function shownNames(t)
+  local l = {}
+  for _, v in pairs(t and t.args or {}) do
+    if type(v) == "table" and v.type == "group" then
+      local h = v.hidden; if type(h) == "function" then h = h() end
+      if not h then l[#l + 1] = { o = tonumber(v.order) or 0, n = v.name } end
+    end
+  end
+  table.sort(l, function(a, b) return a.o < b.o end)
+  local out = {}
+  for _, e in ipairs(l) do out[#out + 1] = e.n end
+  return table.concat(out, " | ")
+end
+check("the tab's first row is Overview, then the reskins in name order", names(tab) == "Overview | Character Pane | Chat Panel | Esc Menu | Shopping List", names(tab))
+local ov = tab.args.reskinOverview
+local all = ov and ov.args and ov.args.enable
+check("  ...the switch is on the Overview page (right pane): Enable Blizzard UI Reskin", all ~= nil and all.type == "toggle" and all.name == "Enable Blizzard UI Reskin"
+  and type(all.get) == "function" and type(all.set) == "function")
 if not all then return R end
--- the window: the tick box sits on the Blizzard UI Reskin tab button itself
+check("  ...no tab switch is defined for the tab row any more", next(ns.OptionsApi.TAB_SWITCHES) == nil)
 local ACD = LibStub("AceConfigDialog-3.0")
 local function openWin() pcall(ACD.Open, ACD, "CueRules"); W.tick(0.1, 3); pcall(ns.DecorateTrees) end
 local function tabBtns()
@@ -87,15 +103,10 @@ local function tabBtns()
   walk(ACD.OpenFrames and ACD.OpenFrames["CueRules"], 0)
   return out
 end
-local function tabBox() for _, t in ipairs(tabBtns()) do if t.value == "reskin" then return t.xuiTabBox, t end end end
 openWin()
-local tb, tbtn = tabBox()
-check("the window: a tick box on the Blizzard UI Reskin tab button, shown", tb ~= nil and tb:IsShown(), tbtn and "no box" or "no reskin tab")
-local others = 0
-for _, t in ipairs(tabBtns()) do if t.value ~= "reskin" and t.xuiTabBox and t.xuiTabBox:IsShown() then others = others + 1 end end
-check("  ...no other tab has one", others == 0, others)
-check("  ...the tab's text moves right by the box, so the box never covers the name", tbtn and tbtn.selectedTextX == (ns.OptionsApi.TAB_BOX + 2) / 2
-  and tbtn.deselectedTextX == tbtn.selectedTextX)
+local boxes = 0
+for _, t in ipairs(tabBtns()) do if t.xuiTabBox and t.xuiTabBox:IsShown() then boxes = boxes + 1 end end
+check("the window: no tab button carries a tick box (Blizzard UI Reskin included)", boxes == 0 and #tabBtns() > 0, boxes .. " of " .. #tabBtns())
 local ROWS = { charreskin = "Character Reskin", chatpanel = "Enable Chat Panel", gamemenu = "Use the XayaUI Game Menu look", shoppinglist = "Shopping List" }
 local bad = {}
 for k, nm in pairs(ROWS) do local sw = tab.args[k] and tab.args[k].xuiSwitch; if not (sw and sw.name == nm) then bad[#bad + 1] = k end end
@@ -115,21 +126,29 @@ local function fmt(s) return ("chat %s, character %s, esc menu %s, shopping %s")
 local function own() return CueRulesDB.chat2.enabled == true and CueRulesDB.characterReskin.enabled == true and CueRulesDB.ui.gm.skin == true and CueRulesDB.shoppingList.enabled == true end
 
 -- saved off at login
-check("the tab saved off: All reskins reads off, and the tab's box is unticked", all.get() == false and ns.ReskinTabOn() == false and tb and not tb:GetChecked())
+local prompts = 0
+local rawPopup = StaticPopup_Show
+StaticPopup_Show = function(...) prompts = prompts + 1 end
+check("the tab saved off: the switch reads off", all.get() == false and ns.ReskinTabOn() == false)
+check("  ...the tab lists Overview only: the reskins' rows are not listed while it was off at load", shownNames(tab) == "Overview", shownNames(tab))
 local s0 = state()
 check("  ...every reskin is off although its own switch is on", not s0.chat and not s0.char and not s0.gm and not s0.shop and own(), fmt(s0))
 check("  ...the reskins' row boxes are greyed (4 of 4)", greyed() == 4, greyed())
 
--- ticked on the tab: all four start
-tb:SetChecked(true); tb:Click("LeftButton"); W.tick(0.1, 10); pcall(ns.DecorateTrees)
+-- ticked on the Overview page: all four start, and a reload is offered
+all.set(nil, true); W.tick(0.1, 10); pcall(ns.DecorateTrees)
 local s1 = state()
-check("ticking All reskins starts every reskin whose own box is ticked", s1.chat and s1.char and s1.gm and s1.shop, fmt(s1))
+check("ticking Enable Blizzard UI Reskin starts every reskin whose own box is ticked", s1.chat and s1.char and s1.gm and s1.shop, fmt(s1))
+check("  ...and asks to reload (Reload / Later)", prompts == 1 and StaticPopupDialogs.XAYAUI_RESKIN_RELOAD ~= nil and StaticPopupDialogs.XAYAUI_RESKIN_RELOAD.button1 == "Reload"
+  and StaticPopupDialogs.XAYAUI_RESKIN_RELOAD.button2 == "Later", prompts)
+check("  ...the rows stay unlisted until the reload", shownNames(tab) == "Overview", shownNames(tab))
 check("  ...nothing is saved for it while on (a profile that never unticked it holds nothing)", CueRulesDB.reskinTabOff == nil)
 check("  ...the row boxes are no longer greyed", greyed() == 0, greyed())
-
-check("  ...the tab's box shows it ticked after the redraw", (function() local b = tabBox(); return b and b:IsShown() and b:GetChecked() and true or false end)())
+ns.OptionsApi.reskinAtLoad = ns.ReskinTabOn()   -- STAND-IN for the reload: the settings addon loads again with the switch on
+check("after the reload: the reskins' rows are listed under Overview", shownNames(tab) == "Overview | Character Pane | Chat Panel | Esc Menu | Shopping List", shownNames(tab))
 -- unticked on the tab: all four stop at once, their own switches kept
-tb = tabBox(); tb:SetChecked(false); tb:Click("LeftButton"); W.tick(0.1, 10)
+all.set(nil, false); W.tick(0.1, 10)
+StaticPopup_Show = rawPopup
 local s2 = state()
 check("unticking it stops all four at once", not s2.chat and not s2.char and not s2.gm and not s2.shop, fmt(s2))
 check("  ...and keeps each reskin's own switch (on)", own())
@@ -145,7 +164,7 @@ ns.Print = function(m) said[#said + 1] = tostring(m) end
 ns.RunCommand("chat", "on"); ns.RunCommand("reskin", "status")
 ns.Print = rawPrint
 local joined = table.concat(said, " / ")
-check("/xui chat on and /xui reskin status say All reskins is off", joined:find("All reskins", 1, true) ~= nil and select(2, joined:gsub("All reskins", "")) >= 2, joined)
+check("/xui chat on and /xui reskin status say the reskins wait on Blizzard UI Reskin, and where its switch is (Overview)", select(2, joined:gsub("Blizzard UI Reskin > Overview", "")) >= 2, joined)
 return R
 end
 '''

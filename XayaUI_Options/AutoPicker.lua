@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 -- AutoPicker.lua : auto-populate as a table you fill in before anything is made (XayaUI_Options 0.6.44; every cue type 0.6.45; exactly her
--- spec 0.6.46; rebuilt to her answers 0.6.53). Own code. UNTESTED in game.
+-- spec 0.6.46; rebuilt to her answers 0.6.53; Generate buttons 0.6.54). Own code. UNTESTED in game.
 -- Xaya, 2026-11-05: "Clicking auto-populate should pre-load into a frame below all rules that will load in a table view. Columns will be
 -- (Checkbox - clicking the header row will select all; clicking again will deselect all) | name | type (spell cd, aura, debuff) | trigger
 -- (when available / when ready (for CD); at max stacks (for CD); when present (aura / debuff); when missing (aura / debuff) | cue type |
@@ -17,6 +17,12 @@
 --   leave the table; A16 icon + name in the table only; A17 "(soonTM)"; placement "3 across, offset down, 3 across, return to center and
 --   offset up" (rows of 3 centred on the screen centre; unmoved auto-placed cues re-laid out together); "Hide / Show already generated rules (can potentially cause duplicates)": hidden by default, shown rows start unticked.
 --   Extra cues with a set-up get their own controls in the Cue set-up cell ("1 for now, flag for potential revision pending feedback").
+-- 0.6.54 (Xaya, 2026-11-06): "change auto-populate buttons to say "Generate Rules for {spec}"", "clicking these buttons should THEN generate
+--   a list below. no rules should be auto-shown without a button being clicked first", "four buttons per specialization auto-generation:
+--   "Generate All Rules for {Spec}" "Generate CD Tracking Rules for {Spec}" "Generate Aura Tracking Rules for {Spec}" "Generate Target
+--   Debuff Tracking Rules for {Spec}"; these buttons filter out what rules display below", "missing select all tick box option to select
+--   all". Her answers: built on this table; the class button gets the same four ("... for my class"); one "Select all" tick box at the
+--   top of the list (the header-row tick box stays: her earlier column spec). AP.FILTERS / AP.ButtonLabel / AP.Load(spec, filter).
 --
 -- Candidates, all read from the game:
 --   * cooldowns: the spec's learned list (ClassLearn.lua, ns.CLASS_AURA_DATA[spec]; it holds every talent cooldown, picked or not); before
@@ -54,6 +60,28 @@ AP.NOT_MADE = { bar = true, custom = true }
 AP.EXTRA = { values = { icon = "Icon", progtex = "Progress texture", texture = "Texture", text = "Text", speech = "Speech", sound = "Sound" },
              order = { "icon", "progtex", "texture", "text", "speech", "sound" } }
 AP.COMBAT = { values = { any = "Any", yes = "In combat", no = "Out of combat" }, order = { "any", "yes", "no" } }
+-- the four buttons per spec (and for the class), her labels verbatim (V16): the filter decides which rows the list below shows
+AP.FILTERS = {
+    { filter = "all",    name = "All" },
+    { filter = "cd",     name = "CD Tracking" },
+    { filter = "aura",   name = "Aura Tracking" },
+    { filter = "debuff", name = "Target Debuff Tracking" },
+}
+-- "Generate All Rules for Vengeance" / "Generate CD Tracking Rules for my class" ...: target = a spec's name, or "my class"
+function AP.ButtonLabel(filter, target)
+    for _, f in ipairs(AP.FILTERS) do
+        if f.filter == filter then
+            return "Generate " .. f.name .. " Rules for " .. tostring(target)
+        end
+    end
+end
+-- which rows a filter lets through: "all" (or nil) everything; else the rows of that kind
+function AP.FilterRows(rows, filter)
+    if filter == nil or filter == "all" then return rows end
+    local out = {}
+    for _, c in ipairs(rows or {}) do if c.kind == filter then out[#out + 1] = c end end
+    return out
+end
 -- the group each main cue goes in (the Smart Categories names: Options.lua ns.SMART_CATS; A13 OK as built)
 AP.CUE_FOLDER = { icon = "Icons", progtex = "Progress Textures", texture = "Textures", text = "Text", speech = "Speech", sound = "Sounds" }
 -- A10: a cue is named "<spell> (<cue type>)"
@@ -346,7 +374,7 @@ end
 -------------------------------------------------------------------------------
 -- the rows of a list: one spec, or "all" = every spec of your class in the game's order. Rows whose rule already exists are left out
 -- unless "Hide / Show already generated rules" is on; then they are listed unticked (Xaya: "on repopulated without selecting them").
-function AP.BuildRows(spec)
+function AP.BuildRows(spec, filter)
     local inc = not (ns.AutoCfg and ns.AutoCfg().talents == false)
     local rows, specs = {}, {}
     if spec ~= "all" then
@@ -363,7 +391,7 @@ function AP.BuildRows(spec)
         end
     end
     local out, cache = {}, {}
-    for _, c in ipairs(rows) do
+    for _, c in ipairs(AP.FilterRows(rows, filter)) do
         if AP.Generated(c, cache) then
             if AP.showMade then
                 c.generated = true
@@ -378,9 +406,10 @@ function AP.BuildRows(spec)
 end
 
 -- read once when a button is pressed (or Reload list), not on every redraw
-function AP.Load(spec)
-    local rows, specs = AP.BuildRows(spec)
-    AP.view = { spec = spec, rows = rows, specs = specs }
+function AP.Load(spec, filter)
+    filter = filter or "all"
+    local rows, specs = AP.BuildRows(spec, filter)
+    AP.view = { spec = spec, filter = filter, rows = rows, specs = specs }
     AP.msg = nil
     return AP.view
 end
@@ -670,6 +699,23 @@ end
 AP.HELP = "Tick the rules you want and set each one up. Rows marked in the Cue set-up column need a choice before they can be made.\n"
     .. "Populate makes the ticked rows into rules in Class > Spec > cue type; made rows leave the table."
 
+-- what the table says when the button pressed lists nothing. Auras and debuffs are read for the spec you are in now only, so for another
+-- spec's Aura / Target Debuff button the useful hint is to switch to it
+function AP.NoneText(view)
+    local current = ns.CurrentSpecID and ns.CurrentSpecID()
+    local f = view and view.filter
+    if (f == "aura" or f == "debuff") and view.spec ~= "all" and view.spec ~= current then
+        return "Auras and target debuffs are read from your Cooldown Manager for the spec you are in now. Switch to " .. SpecName(view.spec) .. ", then press the button again."
+    end
+    if f == "cd" then
+        return "Nothing to list yet: play this spec once (its cooldown list is read from your spellbook)."
+    end
+    if f == "aura" or f == "debuff" then
+        return "Nothing to list yet: add your auras and debuffs to the Cooldown Manager."
+    end
+    return "Nothing to list yet: play this spec once (its cooldown list is read from your spellbook), and add your auras and debuffs to the Cooldown Manager."
+end
+
 -- notify: a change that adds or removes controls (Advanced, Populate, a cue type, a set-up choice). keep: a change that shows only in
 -- controls already there (a tick, a trigger); the redraw that follows reuses the options tree (Options.lua Tree.Keep).
 function AP.Args(notify, keep)
@@ -692,11 +738,17 @@ function AP.Args(notify, keep)
     T.showMade = { type = "toggle", order = O(), width = "full", name = AP.SHOW_MADE_LABEL,
         desc = "Off (default): rows that already have a rule are left out. On: they are listed again, unticked; Populate makes a ticked one even though its rule already exists.",
         get = function() return AP.showMade and true or false end,
-        set = function(_, v) AP.showMade = v and true or nil; AP.Load(view.spec); notify() end }
+        set = function(_, v) AP.showMade = v and true or nil; AP.Load(view.spec, view.filter); notify() end }
     if #rows == 0 then
-        T.none = { type = "description", order = O(), width = "full", fontSize = "medium",
-            name = "Nothing to list yet: play this spec once (its cooldown list is read from your spellbook), and add your auras and debuffs to the Cooldown Manager." }
+        T.none = { type = "description", order = O(), width = "full", fontSize = "medium", name = AP.NoneText(view),
+            arg = { xuiKeep = true } }   -- shown as text, not folded into an info icon: it says what to do next
     else
+        -- "Select all" (Xaya, 2026-11-06: "missing select all tick box option to select all"): one tick box at the top of the list; it
+        -- ticks, then unticks, the rows shown (so a filtered list selects only its own rows)
+        T.selAll = { type = "toggle", order = O(), width = "full", name = "Select all",
+            desc = "Tick every row listed below. Click again to untick them all.",
+            get = function() return AP.AllTicked(rows) end,
+            set = function(_, v) AP.TickAll(rows, v); keep() end }
         -- header row: the tick box ticks every row; pressed again it unticks them all
         T.hOn = { type = "toggle", order = O(), width = "relative", relWidth = W.on, name = "", arg = CELL,
             desc = "Tick every row. Click again to untick them all.",
@@ -831,7 +883,7 @@ function AP.Args(notify, keep)
         end }
     T.reload = { type = "execute", order = O(), name = "Reload list", arg = { xuiCenter = true },
         desc = "Reads the list again from the game (your choices are kept).",
-        func = function() AP.Load(view.spec); notify() end }
+        func = function() AP.Load(view.spec, view.filter); notify() end }
     T.close = { type = "execute", order = O(), name = "Close", arg = { xuiCenter = true },
         desc = "Hides the table (your choices are kept).",
         func = function() AP.Close(); notify() end }

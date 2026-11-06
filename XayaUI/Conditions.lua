@@ -287,7 +287,7 @@ function ReadCooldownRaw(rule)
         local T = ns.Timing
         local ready, _, label
         if T then ready, _, label = T.CooldownEstimate(id) end
-        if not ready then r.why = "cooldown hidden in combat, no estimate yet (see /xui debug timing)"; return r end
+        if not ready then r.why = "cooldown hidden in combat, no estimate yet"; return r end
         r.onCd = GetTime() < ready
         r.readyAt, r.estimated = ready, true
         r.atMax, r.empty = not r.onCd, r.onCd
@@ -1120,7 +1120,7 @@ function ns.ApplyBuffEstimate(rule, info)
         info.buffRef = own
         if ns.statusDetail then info.buffSource = tostring(info.buffSource):gsub(" | time: .*$", "") .. " | time: " .. label end
     elseif ns.statusDetail then
-        info.buffSource = tostring(info.buffSource) .. " | no time estimate yet (see /xui debug timing)"
+        info.buffSource = tostring(info.buffSource) .. " | no time estimate yet"
     end
 end
 
@@ -1919,44 +1919,9 @@ function ns.WhyNot(info)
 end
 
 -------------------------------------------------------------------------------
--- Diagnostics for in-game testing
+-- /xui debug probe <spellID> moved to XayaUI Dev Assist (core 0.6.56; Xaya 2026-11-06, REQUEST-LOG #81: "Move all of them"):
+-- XayaUI_DevAssist/CoreDebug.lua. Without Dev Assist the command does not exist.
 -------------------------------------------------------------------------------
-local function Show(v)
-    if v == nil then return "nil" end
-    if issecret(v) then return "<SECRET>" end
-    return tostring(v)
-end
-
-function ns.Probe(spellID)
-    if not spellID then ns.Print("usage: /xui debug probe <spellID>") return end
-    ns.Print("probe spell " .. spellID
-        .. "  (auras secret now? " .. Show(C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()) .. ")")
-    local ok, cd = pcall(C_Spell.GetSpellCooldown, spellID)
-    if ok and type(cd) == "table" then
-        for _, k in ipairs({ "isActive", "isOnGCD", "isEnabled", "duration", "startTime" }) do
-            ns.Print("  cooldown." .. k .. " = " .. Show(cd[k]))
-        end
-    else
-        ns.Print("  GetSpellCooldown failed/nil")
-    end
-    local okc, ch = pcall(C_Spell.GetSpellCharges, spellID)
-    if okc and type(ch) == "table" then
-        for _, k in ipairs({ "isActive", "maxCharges", "currentCharges" }) do
-            ns.Print("  charges." .. k .. " = " .. Show(ch[k]))
-        end
-    else
-        ns.Print("  GetSpellCharges nil (not a charge spell)")
-    end
-    local present, src = ns.BuffPresent(spellID)
-    ns.Print("  as a BUFF id -> present=" .. Show(present) .. " via " .. src)
-    ns.Print("  aura reads restricted now: " .. tostring(ns.AurasRestricted())
-        .. " | this spell's aura NeverSecret: " .. tostring(ns.AuraTrackable(spellID)))
-    if C_Secrets and C_Secrets.ShouldCooldownsBeSecret then
-        local okk, cv = pcall(C_Secrets.ShouldCooldownsBeSecret)
-        ns.Print("  cooldown reads restricted now: " .. Show(okk and cv or "error"))
-    end
-end
-
 -- Same detail as /xui debug status, but written to the ring-buffer log (ns.Log) instead of chat, so it can be read
 -- from the settings window's debug console tray AFTER a fight without typing anything while in combat.
 -- The periodic in-combat snapshot ("combat tick") logs only rules whose answer changed since the last snapshot, and reads the

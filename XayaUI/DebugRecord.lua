@@ -1,64 +1,36 @@
 -------------------------------------------------------------------------------
--- DebugRecord.lua : what "Advanced Debugging" (Settings > Debugging) turns on.
--- core 0.6.20 (Xaya 2026-11-04: "enabling advanced [should] facilitate automatic tracking ... (some sort of dump file) of what you
--- would need so a user doesn't have to remember console lines", "the messages should also print to their own frame either like bug
--- sack or in their own dedicated chat panel"); core 0.6.22 (Xaya 2026-11-04: "user-readable and cpu friendly (perhaps discrete
--- functionality toggles ...) and a notation with a copy/paste file path so users know what to upload", "configurable to cover every
--- single thing you need to properly debug something from game-side").
+-- DebugRecord.lua : XayaUI's error record and the debug report (Settings > Debugging, "Advanced Debugging"; /xui report).
+-- core 0.6.56 (REQUEST-LOG #82; Xaya 2026-11-06, her words: the debug record is "only there to catch errors and bugs that might be
+-- expected within a live, user-facing version of the addon. these should have error codes built out, auto detection, and auto
+-- documenting with a simple debug report that someone can directly send to me -- either via import/export string or screenshot").
+-- Her answers (question box, 2026-11-06): default "On, errors only"; kinds "Errors + warnings only"; report "Both: string and
+-- screenshot view".
 --
---  * Where XayaUI's messages go (ns.MessageDest): "chat", "console" (the XayaUI console window, Console.lua) or "both". Default: the
---    console window while Advanced Debugging is on, chat while it is off.
---  * The record (CueRulesDB.debugRecord): kept while Advanced Debugging is on, in CATEGORIES the player switches on and off one by one
---    (DR.CATS: what each holds and what it costs). A category that is off costs nothing beyond one settings read where its lines would
---    start. Errors, combat marks and actions the game blocked are always kept. Each line reads "time  Category  what happened".
+--  * The record: XayaUI's errors and warnings, each with a code (ns.ERROR_CODES below: XUI-E001 ...), found on their own:
+--      - Lua errors raised in a XayaUI file (Core.lua chains the game's error handler: the handler set before is always called too;
+--        an error from another addon's file is not recorded);
+--      - failures XayaUI already catches (a rule, an engine step, a display, the settings window, the ESC menu: E010-E014);
+--      - warnings: an action the game blocked (W001), the combat engine's own safety stops and failed aura containers (W002-W004), a
+--        Chat Panel part that could not be applied (W005).
+--    Kept in CueRulesDB.errorLog (saved between sessions; the same list the bug report reads), newest first, one entry per code and
+--    message with a count, at most MAX_ENTRIES. On by default (Advanced Debugging); off records nothing.
+--    Cost while nothing goes wrong: none. Nothing is created per frame or per event: the error handler runs only on an error, and the
+--    one event frame (made only while Advanced Debugging is on) listens to the two events the game raises when it blocks an action.
+--  * The debug report (/xui report, and the button on Settings > Debugging): a window with a readable summary for a screenshot (codes,
+--    what happened, addon versions, game build, when) and a "Copy string" box with the same entries as one text (XUIREP1:...), which
+--    XayaUI Dev Assist reads back (/xuidev report).
+--  * Where XayaUI's messages go (ns.MessageDest): "chat", "console" (the XayaUI console window, Console.lua) or "both".
 --  * What to send (ns.SendText / ns.SavedFilePath): the saved-data files to upload and where they are, as copyable text.
---  * The game-data probe (separate developer addon, service "gameDataProbe", Modules.lua): follows Advanced Debugging when wanted.
--- Nothing here names another addon: the console window is core (Console.lua), the developer addon is a service.
+-- The detailed record (the 11 kinds of line: rules firing, snapshots, auras, game state, performance ...) is XayaUI Dev Assist's since
+-- core 0.6.56 (her answer "Errors + warnings only"): XayaUI_DevAssist/DevRecord.lua puts ns.RecordLine and the other hand-in points in
+-- place when it loads; without it they are nil, and every caller tests that first (one nil test, no text built).
 -------------------------------------------------------------------------------
 local _, ns = ...
 local issecret = ns.IsSecret or issecretvalue or function() return false end
 
-local DEFAULT_MAX = 3000
-local SIZES = { [1000] = true, [3000] = true, [10000] = true }
-
+local MAX_ENTRIES = 50   -- (her design asked for "a capped list (e.g. last 50)"; the cap is one of the questions in the report)
 local DR = {}
 ns.DebugRecordInfo = DR
-
--- The categories, in the order Settings shows them. cost: what switching it on costs, in words the player can weigh.
-DR.CATS = {
-    { key = "rules", label = "Rule", name = "Rules firing and clearing", default = true, cost = "tiny",
-      desc = "One line when a rule fires, repeats or clears, with the reason it cleared." },
-    { key = "snapshots", label = "Snapshot", name = "Rule snapshots in combat", default = true, cost = "small",
-      desc = "Every switched-on rule's answer at the start and end of each combat, and the ones that changed, every 5 seconds in combat." },
-    { key = "auras", label = "Aura", name = "Aura answers", default = true, cost = "small",
-      desc = "One line when an aura's answer (present, missing, unknown) or the source that gave it changes: the aura list, the Cooldown Manager, a proc glow, a set bonus, an estimate." },
-    { key = "triggers", label = "Trigger", name = "Trigger detail for chosen rules", default = false, cost = "small for each chosen rule",
-      desc = "For the rules you pick below: one line each time the rule's answer or any part of it changes (cooldown, aura and its source, talent, extra triggers, combination, load), with why it does not fire." },
-    { key = "displays", label = "Display", name = "Displays shown and hidden", default = false, cost = "small",
-      desc = "One line each time a rule's display appears or goes, and whether XayaUI or the combat engine draws it." },
-    { key = "glows", label = "Glow", name = "Proc glows", default = true, cost = "tiny",
-      desc = "Each proc-glow sighting used to pair a button's glow with an aura, and what the aura was at that moment." },
-    { key = "sounds", label = "Sound", name = "Sounds", default = true, cost = "tiny",
-      desc = "Each sound a rule plays (which sound, channel, volume, what the game answered) and the set-up of sounds the game plays itself." },
-    { key = "game", label = "Game", name = "Game state", default = true, cost = "tiny",
-      desc = "Login and /reload (versions, game build, screen size, UI scale), spec, talent and gear changes, zone and instance (difficulty, instance ID, map ID), boss encounters (ID, difficulty, group size, kill or wipe), Mythic+ start and end (map and level), group size, and what the game hides from addons at each combat start." },
-    { key = "engine", label = "Engine", name = "Combat engine status at combat end", default = true, cost = "tiny",
-      desc = "What /xuiengine prints, collected at the end of each combat." },
-    { key = "perf", label = "Perf", name = "Performance", default = false, cost = "a small timer on every engine step, in combat only",
-      desc = "Times XayaUI's engine during each combat and records, at its end, the cost per second (rules, displays, bars, effects), the slowest rules, memory, and the game's own per-addon CPU meter." },
-    { key = "messages", label = "Message", name = "XayaUI's messages", default = true, cost = "tiny",
-      desc = "Every message XayaUI shows you. Messages that name another player are never kept." },
-}
-local CAT = {}
-for _, c in ipairs(DR.CATS) do CAT[c.key] = c end
-
--- line kind -> category (kinds not listed are always kept while recording: error, blocked, combat, note)
-local KIND_CAT = { rule = "rules", log = "rules", snapshot = "snapshots", aura = "auras", trigger = "triggers", display = "displays",
-    glow = "glows", sound = "sounds", game = "game", session = "game", engine = "engine", perf = "perf", msg = "messages" }
-local LABEL = { rule = "Rule", log = "Rule", snapshot = "Snapshot", aura = "Aura", trigger = "Trigger", display = "Display",
-    glow = "Glow", sound = "Sound", game = "Game", session = "Session", engine = "Engine", perf = "Perf", msg = "Message",
-    error = "ERROR", blocked = "BLOCKED", combat = "Combat", note = "Note" }
-DR.KIND_CAT, DR.LABEL = KIND_CAT, LABEL
 
 local function Ui()
     if type(CueRulesDB) ~= "table" then return {} end
@@ -69,16 +41,12 @@ local function Plain(s)
     s = tostring(s or "")
     return (s:gsub("|H.-|h(.-)|h", "%1"):gsub("|T.-|t", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
 end
-local function S(v)   -- any game value as text; a hidden (secret) one says so instead of erroring
-    if v == nil then return "?" end
-    if issecret(v) then return "<hidden>" end
-    return tostring(v)
-end
-
+DR.Plain = Plain
 local function Version(name)
     local ok, v = pcall(function() return C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(name or "XayaUI", "Version") end)
-    return (ok and v) or "?"
+    return (ok and type(v) == "string" and v) or "?"
 end
+DR.Version = Version
 function ns.AdvancedDebugOn() return Ui().advancedDebug and true or false end
 
 -- "chat" | "console" | "both"
@@ -89,95 +57,113 @@ function ns.MessageDest()
     return u.advancedDebug and "console" or "chat"
 end
 
--- Is this category on? (Advanced Debugging on, the record kept, and the category on: its own setting, else its default)
-function ns.RecCatOn(key)
-    local u = Ui()
-    if not (u.advancedDebug and u.recordOff ~= true) then return false end
-    local c = u.recCats
-    -- (not `type(c) == "table" and c[key] or nil`: a stored false would turn into nil and read as the default)
-    local v
-    if type(c) == "table" then v = c[key] end
-    if v == nil then local d = CAT[key]; return d and d.default or false end
-    return v and true or false
-end
--- The category's own setting, whatever Advanced Debugging is (for the Settings tick boxes)
-function ns.RecCatSetting(key)
-    local c = Ui().recCats
-    -- (not `type(c) == "table" and c[key] or nil`: a stored false would turn into nil and read as the default)
-    local v
-    if type(c) == "table" then v = c[key] end
-    if v == nil then local d = CAT[key]; return d and d.default or false end
-    return v and true or false
-end
-function ns.SetRecCat(key, on)
-    if not CAT[key] then return end
-    local u = Ui()
-    u.recCats = type(u.recCats) == "table" and u.recCats or {}
-    if (on and true or false) == CAT[key].default then u.recCats[key] = nil else u.recCats[key] = on and true or false end
-    if next(u.recCats) == nil then u.recCats = nil end
-    if DR.SyncEvents then DR.SyncEvents() end   -- (V14: a category's events are registered only while it is on)
-end
--- presets: "light" (rules, game state, messages: the cheapest useful set), "all", "default"
-function ns.SetRecPreset(which)
-    for _, c in ipairs(DR.CATS) do
-        local on
-        if which == "all" then on = true
-        elseif which == "light" then on = (c.key == "rules" or c.key == "game" or c.key == "messages")
-        else on = c.default end
-        ns.SetRecCat(c.key, on)
-    end
-end
+-- (ns.RecordOn(kind), ns.RecordLine and the other hand-in points of the detailed record are XayaUI Dev Assist's: nil without it, and
+-- every caller tests that first. The error record below is kept while Advanced Debugging is on: ns.AdvancedDebugOn.)
 
--- Is a line of this kind kept now? (no kind: is the record on at all)
-function ns.RecordOn(kind)
-    local u = Ui()
-    if not (u.advancedDebug and u.recordOff ~= true) then return false end
-    local cat = kind and KIND_CAT[kind]
-    if not cat then return true end
-    return ns.RecCatOn(cat)
+-------------------------------------------------------------------------------
+-- The codes. One line each says what it means (the same list is in the USER-GUIDE, "Debug report").
+-------------------------------------------------------------------------------
+ns.ERROR_CODES = {
+    { code = "XUI-E001", kind = "error", folder = "XayaUI",          text = "Lua error in XayaUI (core: rules, displays, sounds, the combat engine)" },
+    { code = "XUI-E002", kind = "error", folder = "XayaUI_Options",  text = "Lua error in the settings window (XayaUI Options)" },
+    { code = "XUI-E003", kind = "error", folder = "XayaUI_Chat",     text = "Lua error in XayaUI Chat" },
+    { code = "XUI-E004", kind = "error", folder = "XayaUI_QoL",      text = "Lua error in XayaUI QoL (Character Toolkit, Shopping List, cursor)" },
+    { code = "XUI-E005", kind = "error", folder = "XayaUI_Bonus",    text = "Lua error in XayaUI Bonus Features (tooltips, notepad, data panels, calculator)" },
+    { code = "XUI-E006", kind = "error", folder = "XayaUI_Reskin",   text = "Lua error in XayaUI Blizzard Reskin" },
+    { code = "XUI-E007", kind = "error", folder = "XayaUI_DevAssist", text = "Lua error in XayaUI Dev Assist (the developer tool)" },
+    { code = "XUI-E008", kind = "error", folder = "XayaUI_Media",    text = "Lua error in XayaUI Media (the player's own pictures and sounds list)" },
+    { code = "XUI-E009", kind = "error",                              text = "Lua error in another XayaUI folder" },
+    { code = "XUI-E010", kind = "error", text = "A rule's action, sound or test failed; XayaUI caught it and the other rules kept running" },
+    { code = "XUI-E011", kind = "error", text = "An engine step failed; XayaUI caught it and the engine kept running" },
+    { code = "XUI-E012", kind = "error", text = "A display could not be drawn or refreshed; XayaUI caught it" },
+    { code = "XUI-E013", kind = "error", text = "Moving a display or group in the settings window failed; XayaUI caught it" },
+    { code = "XUI-E014", kind = "error", text = "The ESC menu button or its look failed; XayaUI caught it" },
+    { code = "XUI-W001", kind = "warning", text = "The game blocked or forbade an action of XayaUI (ADDON_ACTION_BLOCKED / ADDON_ACTION_FORBIDDEN)" },
+    { code = "XUI-W002", kind = "warning", text = "The combat engine could not set up an aura display; XayaUI draws that display itself" },
+    { code = "XUI-W003", kind = "warning", text = "Engine safety stop: Blizzard's aura containers cost too much, so only this spec's displays are drawn by the engine (lean mode)" },
+    { code = "XUI-W004", kind = "warning", text = "Engine safety stop: still too costly in lean mode, so automatic engine drawing is off until /reload" },
+    { code = "XUI-W005", kind = "warning", text = "A part of the Chat Panel could not be applied" },
+}
+local CODE, FOLDER_CODE = {}, {}
+for _, c in ipairs(ns.ERROR_CODES) do
+    CODE[c.code] = c
+    if c.folder then FOLDER_CODE[c.folder] = c.code end
 end
+function ns.ErrorCodeInfo(code) return CODE[code] end
+-- the code of a Lua error from this XayaUI folder
+function DR.CodeOfFolder(folder) return FOLDER_CODE[folder] or "XUI-E009" end
 
-function DR.MaxLines()
-    local n = tonumber(Ui().recordMax)
-    return (n and SIZES[n]) and n or DEFAULT_MAX
-end
-
-local function Rec()
+-------------------------------------------------------------------------------
+-- The list (CueRulesDB.errorLog). Entry: { code, kind = "error" | "warning", msg, stack, first, last, n, ver, combat }
+-------------------------------------------------------------------------------
+local function List()
     if type(CueRulesDB) ~= "table" then return nil end
-    local r = CueRulesDB.debugRecord
-    if type(r) ~= "table" or type(r.lines) ~= "table" then
-        r = { lines = {}, dropped = 0, started = date and date("%Y-%m-%d %H:%M:%S") or "?" }
-        CueRulesDB.debugRecord = r
+    if type(CueRulesDB.errorLog) ~= "table" then CueRulesDB.errorLog = {} end
+    return CueRulesDB.errorLog
+end
+-- every entry, newest first; an entry saved before 0.6.56 (no code) is given the code of the folder its text names
+function ns.ErrorEntries()
+    local l = List() or {}
+    for _, e in ipairs(l) do
+        if type(e) == "table" and not e.code then
+            local folder = ns.ErrorFolder and ns.ErrorFolder(e.msg, e.stack)
+            e.code = folder and DR.CodeOfFolder(folder) or "XUI-E001"
+            e.kind = "error"
+        end
     end
-    return r
+    return l
 end
-
--- kind: a short word (see LABEL); text: one line (colours are dropped). Each line reads "HH:MM:SS  Category  text".
-function ns.RecordLine(kind, text)
-    if not ns.RecordOn(kind) then return end
-    local r = Rec()
-    if not r then return end
-    local l = r.lines
-    l[#l + 1] = ("%s  %-8s %s"):format(date and date("%H:%M:%S") or "?", LABEL[kind] or tostring(kind or "?"), Plain(text))
-    local n, max = #l, DR.MaxLines()
-    if n > max + 200 then   -- trim in one pass (down to max), counting what is dropped
-        local cut = n - max
-        for i = 1, max do l[i] = l[i + cut] end
-        for i = max + 1, n do l[i] = nil end
-        r.dropped = (r.dropped or 0) + cut
+local function InCombat()
+    local ok, v = pcall(function() return UnitAffectingCombat and UnitAffectingCombat("player") end)
+    return (ok and v == true) or nil
+end
+-- One entry, or one more count on an equal one. Must never raise an error itself (it runs inside the error handler).
+local function Add(code, kind, msg, stack, folder)
+    if not ns.AdvancedDebugOn() then return end
+    local l = List()
+    if not l then return end
+    local text = Plain(msg):sub(1, 700)
+    local now = time and time() or 0
+    for i, e in ipairs(l) do
+        if type(e) == "table" and e.code == code and e.msg == text then
+            e.n = (e.n or 1) + 1; e.last = now; e.combat = e.combat or InCombat()
+            if i > 1 then table.remove(l, i); table.insert(l, 1, e) end   -- newest first
+            return e
+        end
     end
+    local e = { code = code, kind = kind, msg = text, stack = (stack and stack ~= "") and Plain(stack):sub(1, 900) or nil,
+        first = now, last = now, n = 1, ver = Version(folder or "XayaUI"), combat = InCombat() }
+    table.insert(l, 1, e)
+    while #l > MAX_ENTRIES do table.remove(l) end
+    if ns.Log then pcall(ns.Log, ("|cffff5555%s|r %s (/xui report): %s"):format(code, kind == "warning" and "warning" or "error", text:sub(1, 120))) end
+    return e
 end
-
-function ns.ClearRecord()
-    if type(CueRulesDB) == "table" then CueRulesDB.debugRecord = nil end
-    if ns.ResetRecordedAuras then ns.ResetRecordedAuras() end
+-- A Lua error. folder: the XayaUI folder it came from (Core.lua ns.ErrorFolder), or nil; code: a fixed code (E010-E014), or nil for
+-- the folder's code.
+function ns.RecordError(msg, stack, folder, code)
+    if not code then
+        folder = folder or (ns.ErrorFolder and ns.ErrorFolder(msg, stack)) or "XayaUI"
+        code = DR.CodeOfFolder(folder)
+    end
+    return Add(code, "error", msg, stack, folder)
 end
-
-function ns.RecordSummary()
-    local r = type(CueRulesDB) == "table" and CueRulesDB.debugRecord
-    if type(r) ~= "table" or type(r.lines) ~= "table" then return 0, 0, nil end
-    return #r.lines, r.dropped or 0, r.started
+-- A warning: code (XUI-W...) and one line of detail
+function ns.RecordWarn(code, detail)
+    return Add(code, "warning", (CODE[code] and CODE[code].text or code) .. (detail and detail ~= "" and (": " .. tostring(detail)) or ""), nil, nil)
 end
+-- (kept for the callers that existed before 0.6.56: Visual.lua, GameMenu.lua, Options.lua, GameMenuSkin.lua)
+function ns.CaptureError(msg, stack, code) return ns.RecordError(msg, stack, nil, code) end
+-- errors and warnings, counted: total occurrences, different entries, errors, warnings
+function ns.ErrorCount()
+    local n, err, warn = 0, 0, 0
+    local l = ns.ErrorEntries()
+    for _, e in ipairs(l) do
+        n = n + (e.n or 1)
+        if e.kind == "warning" then warn = warn + 1 else err = err + 1 end
+    end
+    return n, #l, err, warn
+end
+function ns.ClearErrorLog() if type(CueRulesDB) == "table" then CueRulesDB.errorLog = {} end end
 
 -------------------------------------------------------------------------------
 -- What to send, and where it is
@@ -197,7 +183,7 @@ function ns.SavedFilePath(fileName)
 end
 -- Every file to send: XayaUI's own, plus the developer addon's when it is installed (it says its file name through its service).
 function DR.Files()
-    local files = { { file = "XayaUI.lua", what = "your rules and settings, XayaUI's saved errors and the debug record" } }
+    local files = { { file = "XayaUI.lua", what = "your rules and settings, and XayaUI's saved errors and warnings" } }
     local svc = ns.Service and ns.Service("gameDataProbe")
     if svc and type(svc.savedFile) == "string" and svc.savedFile ~= "" then
         files[#files + 1] = { file = svc.savedFile, what = svc.savedWhat or "the developer captures (probe, data pulls)" }
@@ -208,6 +194,8 @@ function ns.SendText()
     local t = {}
     local function add(s) t[#t + 1] = s end
     add("WHAT TO SEND")
+    add("Quickest: /xui report, then send a screenshot of it, or press Copy string and paste the text to Xaya.")
+    add("The files (when Xaya asks for them):")
     add("1. Type /reload (or log out). The game writes the files only then.")
     add("2. Open this folder (copy the path, then replace <YOUR ACCOUNT FOLDER>):")
     add("   " .. ns.SavedFilePath(""))
@@ -217,28 +205,6 @@ function ns.SendText()
     add("3. Send these files to Xaya (attach them to a Discord message or a GitHub issue):")
     for _, f in ipairs(DR.Files()) do add(("   - %s  (%s)"):format(f.file, f.what)) end
     add("They hold no password, no character name, no realm and no chat text. XayaUI.lua holds your rule names and settings.")
-    return table.concat(t, "\n")
-end
-
--- The record as one readable text: what each category means, then the lines (for the "View the debug record" box).
-function ns.RecordText()
-    local n, drop, start = ns.RecordSummary()
-    local t = {}
-    local function add(s) t[#t + 1] = s end
-    add(("XayaUI debug record: %d lines since %s%s. Newest at the bottom."):format(n, tostring(start or "-"),
-        drop > 0 and (", " .. drop .. " older lines dropped") or ""))
-    add("Each line: time, what it is about, what happened. Categories:")
-    for _, c in ipairs(DR.CATS) do add(("  %-8s %s%s"):format(c.label, c.name, ns.RecCatOn(c.key) and "" or "  (off now)")) end
-    add("  ERROR    XayaUI's own Lua errors;  BLOCKED  an action the game refused XayaUI;  Combat  combat start and end;  Session  login and /reload")
-    add("")
-    local r = type(CueRulesDB) == "table" and CueRulesDB.debugRecord
-    if type(r) == "table" and type(r.lines) == "table" and #r.lines > 0 then
-        for _, l in ipairs(r.lines) do add(l) end
-    else
-        add("(empty so far: it fills as you play)")
-    end
-    add("")
-    add(ns.SendText())
     return table.concat(t, "\n")
 end
 
@@ -273,298 +239,49 @@ function ns.CaptureOutput(fn, ...)
 end
 
 -------------------------------------------------------------------------------
--- Lines other files hand in (each checks its category first, so an off category builds no text)
+-- Events (rule V14). One frame, made the first time something needs an event, holding only what is needed now:
+--   ADDON_ACTION_BLOCKED, ADDON_ACTION_FORBIDDEN  while Advanced Debugging is on (the game raises them only when it blocks an action
+--                                                 of an addon: nothing arrives while nothing goes wrong)
+--   PLAYER_REGEN_ENABLED                          only while a console window waits for the end of combat (ns.ConsoleMessage above)
+-- XayaUI Dev Assist adds its own detailed-record events through DR.extraEvents / DR.extraHandlers (XayaUI_DevAssist/DevRecord.lua).
+-- Game API (docs/reference/api/events.md): ADDON_ACTION_BLOCKED / ADDON_ACTION_FORBIDDEN (isTainted: cstring, function: cstring);
+-- widgets.md, Frame: RegisterEvent(eventName) -> registered: bool; UnregisterEvent(eventName) -> registered: bool.
 -------------------------------------------------------------------------------
--- Trigger detail for the chosen rules (Engine.lua calls this for every rule on every step: the first test is one upvalue).
-local triggerWatch = false   -- true while the category is on and at least one rule is chosen (DR.Refresh)
-local trigLast = setmetatable({}, { __mode = "k" })
-local function Focused(rule)
-    local f = Ui().recFocus
-    if type(f) ~= "table" then return false end
-    if rule.uid and f[rule.uid] then return true end
-    return rule.parentUid ~= nil and f[rule.parentUid] and true or false
-end
-local function SourceKind(src)   -- "aura API | time: ..." -> "aura API" (the part that names where the answer came from)
-    local k = tostring(src or ""):match("^([^%(:|]+)") or tostring(src)
-    return (k:gsub("%s+$", ""))
-end
-function ns.RecTrigger(rule, result, info)
-    if not triggerWatch or type(rule) ~= "table" or not Focused(rule) then return end
-    if not ns.RecCatOn("triggers") then return end
-    local i = type(info) == "table" and info or {}
-    local key = table.concat({ tostring(result), tostring(i.cdOK), tostring(i.buffOK), SourceKind(i.buffSource), tostring(i.talentOK),
-        tostring(i.extraOK), tostring(i.whenOK), tostring(i.ctxOK), tostring(i.ctxFail) }, "|")
-    if trigLast[rule] == key then return end
-    trigLast[rule] = key
-    local name = ("'%s'%s"):format(tostring(rule.name), rule.isCue and " (cue)" or (rule.parentUid and " (condition)" or ""))
-    if result then
-        ns.RecordLine("trigger", ("%s fires | aura %s via %s | cooldown %s | extra %s"):format(name, S(i.buffOK), S(i.buffSource), S(i.cdOK),
-            S(i.extraOK)))
-    else
-        local why = (ns.WhyNot and type(info) == "table") and ns.WhyNot(info) or "no answer"
-        ns.RecordLine("trigger", ("%s does not fire: %s"):format(name, why ~= "" and why or "(every part holds, but the rule did not fire)"))
-    end
-end
--- A display appeared or went (Engine.lua, only on a change).
-function ns.RecDisplay(rule, shown, byEngine)
-    if not ns.RecCatOn("displays") then return end
-    ns.RecordLine("display", ("'%s' display %s%s"):format(tostring(rule and rule.name), shown and "shown" or "hidden",
-        shown and (byEngine and " (drawn by the combat engine)" or " (drawn by XayaUI)") or ""))
-end
--- A sound a rule played (Engine.lua).
-function ns.RecSound(rule, how, result, note)
-    if not ns.RecCatOn("sounds") then return end
-    ns.RecordLine("sound", ("'%s': %s%s%s"):format(tostring(rule and rule.name), tostring(how or "?"),
-        result ~= nil and (" | the game returned " .. S(result)) or "", note and (" | " .. note) or ""))
-end
-
--------------------------------------------------------------------------------
--- The game-data probe (developer addon) follows Advanced Debugging when the player wants it
--------------------------------------------------------------------------------
-local function SyncProbe()
-    local svc = ns.Service and ns.Service("gameDataProbe")
-    if not (svc and type(svc.On) == "function" and type(svc.Active) == "function") then return end
-    local u = Ui()
-    local want = u.advancedDebug and u.debugProbe ~= false
-    local okA, active = pcall(svc.Active)
-    active = okA and active
-    if want and not active then
-        if pcall(svc.On) then u.probeByDebug = true end
-    elseif not want and active and u.probeByDebug then
-        pcall(svc.Off); u.probeByDebug = nil
-    end
-end
-ns.SyncDebugProbe = SyncProbe
-function ns.ProbeInstalled()
-    local svc = ns.Service and ns.Service("gameDataProbe")
-    return (svc and type(svc.On) == "function") and true or false
-end
-
--- Recompute what other files test on their hot paths (call after any change to the debugging settings)
-function DR.Refresh()
-    local f = Ui().recFocus
-    triggerWatch = ns.RecCatOn("triggers") and type(f) == "table" and next(f) ~= nil or false
-end
-
-local function OnList()
-    local on = {}
-    for _, c in ipairs(DR.CATS) do if ns.RecCatOn(c.key) then on[#on + 1] = c.label end end
-    return #on > 0 and table.concat(on, ", ") or "nothing but errors and combat marks"
-end
-
--- Settings > Debugging calls this after a change
-function ns.DebugSettingsChanged()
-    DR.Refresh()
-    if DR.SyncEvents then DR.SyncEvents() end
-    SyncProbe()
-    if ns.ResetRecordedAuras then ns.ResetRecordedAuras() end
-    if ns.RecordOn() then
-        ns.RecordLine("note", ("recording: %s | messages to %s | keeps %d lines | XayaUI %s"):format(OnList(), ns.MessageDest(),
-            DR.MaxLines(), Version()))
-    end
-end
-
--------------------------------------------------------------------------------
--- Game state (category "game") and the combat marks
--------------------------------------------------------------------------------
-local function Where()
-    local ok, name, itype, diffID, diffName, _, _, _, instID = pcall(GetInstanceInfo)
-    if not ok then return "?" end
-    local s = S(name)
-    if itype and not issecret(itype) and itype ~= "none" then
-        s = s .. (" (%s, %s, difficulty %s, instance %s)"):format(S(itype), S(diffName), S(diffID), S(instID))
-    end
-    local okM, map = pcall(function() return C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player") end)
-    if okM and type(map) == "number" and not issecret(map) then s = s .. ", map " .. map end
-    return s
-end
-local function Hides()
-    local function B(fn)
-        local f = C_Secrets and C_Secrets[fn]
-        if not f then return "?" end
-        local ok, v = pcall(f)
-        if not ok or issecret(v) then return "?" end
-        return v and "yes" or "no"
-    end
-    return ("the game hides auras: %s, cooldowns: %s"):format(B("ShouldAurasBeSecret"), B("ShouldCooldownsBeSecret"))
-end
-local function GroupSize()
-    local okN, n = pcall(function() return GetNumGroupMembers and GetNumGroupMembers() end)
-    local okR, raid = pcall(function() return IsInRaid and IsInRaid() end)
-    n = (okN and type(n) == "number" and not issecret(n)) and n or nil
-    return n, (okR and raid == true)
-end
-local function SessionLines(why)
-    local out = {}
-    local okB, ver, build = pcall(GetBuildInfo)
-    local client = DR.GameFolder() == "_retail_" and "live" or (DR.GameFolder() == "_beta_" and "beta" or "test realm")
-    local okL, loc = pcall(function() return GetLocale and GetLocale() end)
-    out[#out + 1] = ("%s | game %s (build %s), %s client, locale %s"):format(why, okB and S(ver) or "?", okB and S(build) or "?", client,
-        okL and S(loc) or "?")
-    local parts = {}
-    if C_AddOns and C_AddOns.GetNumAddOns and C_AddOns.GetAddOnInfo then
-        local okN, total = pcall(C_AddOns.GetNumAddOns)
-        for i = 1, (okN and tonumber(total)) or 0 do
-            local okI, name = pcall(C_AddOns.GetAddOnInfo, i)
-            if okI and type(name) == "string" and name:find("^XayaUI") then
-                local okD, _, loaded = pcall(C_AddOns.IsAddOnLoaded, name)
-                local okE, err = pcall(function() return C_AddOns.DoesAddOnHaveLoadError and C_AddOns.DoesAddOnHaveLoadError(name) end)
-                parts[#parts + 1] = ("%s %s%s%s"):format(name, Version(name), (okD and loaded) and "" or " (not loaded)",
-                    (okE and err == true) and " LOAD ERROR" or "")
-            end
-        end
-    end
-    out[#out + 1] = "XayaUI addons: " .. (#parts > 0 and table.concat(parts, ", ") or "?")
-    local okS, w, h = pcall(function() return GetPhysicalScreenSize() end)
-    local okU, sc = pcall(function() return UIParent:GetEffectiveScale() end)
-    local nr, on, nc, ncond = 0, 0, 0, 0
-    for _, r in ipairs(ns.rules or {}) do
-        if r.isCue then nc = nc + 1 elseif r.parentUid then ncond = ncond + 1 else nr = nr + 1; if r.enabled then on = on + 1 end end
-    end
-    out[#out + 1] = ("screen %sx%s, UI scale %s | rules %d (%d on), cues %d, conditions %d | spec %s"):format(okS and S(w) or "?",
-        okS and S(h) or "?", (okU and type(sc) == "number") and ("%.3f"):format(sc) or "?", nr, on, nc, ncond,
-        S(ns.CurrentSpecID and ns.CurrentSpecID()))
-    out[#out + 1] = "recording: " .. OnList()
-    return out
-end
-DR.SessionLines = SessionLines
-
-local combatN, combatT0, perfByDebug, lastGroup = 0, nil, false, nil
-local function Game(text) if ns.RecCatOn("game") then ns.RecordLine("game", text) end end
-
--- (V14: every handler checks its switch before it reads the game or builds text; the events themselves are registered only while
--- their category is on, DR.SyncEvents below)
 local handlers = {}
--- at login (not an event of this file since core 0.6.47: core's start-up frame runs it, Modules.lua ns.AtLogin, and only when Advanced
--- Debugging is on or a probe it started has to be stopped)
-function handlers.PLAYER_LOGIN()
-    DR.Refresh()
-    SyncProbe()
-end
-function handlers.PLAYER_ENTERING_WORLD(isLogin, isReload)
-    if not ns.RecordOn() then return end
-    if not ns.RecCatOn("game") then return end
-    if isLogin or isReload then
-        for _, l in ipairs(SessionLines(isLogin and "login" or "/reload")) do ns.RecordLine("session", l) end
-    end
-    Game("now in: " .. Where())
-end
-function handlers.ZONE_CHANGED_NEW_AREA()
-    if not ns.RecCatOn("game") then return end
-    Game("zone: " .. Where())
-end
-function handlers.PLAYER_SPECIALIZATION_CHANGED(unit)
-    if unit ~= nil and unit ~= "player" then return end
-    if not ns.RecCatOn("game") then return end
-    Game("specialization now " .. S(ns.CurrentSpecID and ns.CurrentSpecID()))
-end
-function handlers.TRAIT_CONFIG_UPDATED(configID)
-    if not ns.RecCatOn("game") then return end
-    Game("talents changed (talent loadout " .. S(configID) .. ")")
-end
-function handlers.PLAYER_EQUIPMENT_CHANGED(slot, hasCurrent)
-    if not ns.RecCatOn("game") then return end
-    local okI, item = pcall(function() return GetInventoryItemID and GetInventoryItemID("player", slot) end)
-    Game(("gear: slot %s now %s"):format(S(slot), (hasCurrent and okI and item) and ("item " .. S(item)) or "empty"))
-end
-function handlers.ENCOUNTER_START(id, name, diff, size)
-    if not ns.RecCatOn("game") then return end
-    Game(("boss encounter %s '%s' starts (difficulty %s, %s players)"):format(S(id), S(name), S(diff), S(size)))
-end
-function handlers.ENCOUNTER_END(id, name, diff, size, success)
-    if not ns.RecCatOn("game") then return end
-    local res = (success == 1) and "kill" or ((success == 0) and "wipe" or S(success))
-    Game(("boss encounter %s '%s' ends: %s (difficulty %s, %s players)"):format(S(id), S(name), res, S(diff), S(size)))
-end
-function handlers.CHALLENGE_MODE_START(mapID)
-    if not ns.RecCatOn("game") then return end
-    local okK, level = pcall(function() return C_ChallengeMode and C_ChallengeMode.GetActiveKeystoneInfo and C_ChallengeMode.GetActiveKeystoneInfo() end)
-    Game(("Mythic+ starts: challenge map %s, keystone level %s | %s"):format(S(mapID), okK and S(level) or "?", Where()))
-end
-function handlers.CHALLENGE_MODE_COMPLETED() Game("Mythic+ completed") end
-function handlers.GROUP_ROSTER_UPDATE()
-    if not ns.RecCatOn("game") then return end
-    local n, raid = GroupSize()
-    local k = tostring(n) .. (raid and "r" or "")
-    if k == lastGroup then return end
-    lastGroup = k
-    Game(("group: %s members%s"):format(S(n), raid and " (raid)" or ""))
-end
 local function Blocked(event, tainted, func)
-    if not ns.RecordOn() then return end
     if type(tainted) ~= "string" or issecret(tainted) or not tainted:find("^XayaUI") then return end
-    ns.RecordLine("blocked", ("the game %s %s's call to %s (%s)"):format(event == "ADDON_ACTION_FORBIDDEN" and "forbade" or "blocked",
-        tainted, S(func), event))
+    ns.RecordWarn("XUI-W001", ("the game %s %s's call to %s"):format(event == "ADDON_ACTION_FORBIDDEN" and "forbade" or "blocked",
+        tainted, (func ~= nil and not issecret(func)) and tostring(func) or "?"))
+    if ns.RecordLine then pcall(ns.RecordLine, "blocked", ("the game %s %s's call to %s (%s)"):format(event == "ADDON_ACTION_FORBIDDEN" and "forbade" or "blocked",
+        tainted, tostring(func), event)) end
 end
 function handlers.ADDON_ACTION_BLOCKED(t, f) Blocked("ADDON_ACTION_BLOCKED", t, f) end
 function handlers.ADDON_ACTION_FORBIDDEN(t, f) Blocked("ADDON_ACTION_FORBIDDEN", t, f) end
-function handlers.PLAYER_REGEN_DISABLED()
-    if ns.RecordOn() then
-        combatN = combatN + 1
-        combatT0 = GetTime and GetTime() or nil
-        ns.RecordLine("combat", ("---------- combat %d starts | %s%s ----------"):format(combatN, Where(),
-            ns.RecCatOn("game") and (" | " .. Hides()) or ""))
-        -- the engine's timer runs for this combat only, unless the player started it (/xui debug perf)
-        if ns.RecCatOn("perf") and ns.PerfCommand and not ns.perfOn then
-            ns.CaptureOutput(ns.PerfCommand, "on"); perfByDebug = true
-        end
-    end
-end
 function handlers.PLAYER_REGEN_ENABLED()
-    if ns.RecordOn() then
-        local secs = (combatT0 and GetTime) and (GetTime() - combatT0) or nil
-        ns.RecordLine("combat", ("---------- combat %d ends%s ----------"):format(combatN, secs and (" after %.0f s"):format(secs) or ""))
-        if ns.RecCatOn("engine") and ns.AuraDisplay and ns.AuraDisplay.Status then
-            for _, l in ipairs(ns.CaptureOutput(ns.AuraDisplay.Status)) do ns.RecordLine("engine", l) end
-        end
-        if ns.RecCatOn("perf") and ns.perfOn and ns.PerfCommand then
-            for _, l in ipairs(ns.CaptureOutput(ns.PerfCommand, "")) do ns.RecordLine("perf", l) end
-        end
-    end
-    local extra = perfByDebug or pendingOpen   -- (this event was registered for them too: let it go now if nothing else needs it)
-    if perfByDebug and ns.PerfCommand then ns.CaptureOutput(ns.PerfCommand, "off"); perfByDebug = false end
+    if DR.extraHandlers and DR.extraHandlers.PLAYER_REGEN_ENABLED then pcall(DR.extraHandlers.PLAYER_REGEN_ENABLED) end
     if pendingOpen then
         pendingOpen = false
         if ns.ConsoleWindow then pcall(ns.ConsoleWindow, true) end
+        DR.SyncEvents()
     end
-    if extra then DR.SyncEvents() end
 end
 DR.handlers = handlers
-
--------------------------------------------------------------------------------
--- The record's events (core 0.6.47, rule V14; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should
--- NEVER LOAD or contribute to performance cost / demand in any way"). One frame, made the first time something needs an event, holding
--- only what is switched on now:
---   blocked actions, combat start and end  while the record is kept (Advanced Debugging on and "Keep the debug record" ticked)
---   the game-state events                  while the record is kept and its "Game state" category is on
---   PLAYER_REGEN_ENABLED                   also while a performance timer started by the record, or a console window waiting for the
---                                          end of combat (message routing, ns.ConsoleMessage above), needs the end of combat
--- Advanced Debugging off: no frame and no event (the frame, once made, stays without events: the game cannot delete a frame).
--- Called at login (settings ready), after every Settings > Debugging change (ns.DebugSettingsChanged, ns.SetRecCat) and from the
--- handlers above. Game API (docs/reference/api/widgets.md, Frame): RegisterEvent(eventName) -> registered: bool;
--- UnregisterEvent(eventName) -> registered: bool.
--------------------------------------------------------------------------------
-local GAME_EVENTS = { "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_SPECIALIZATION_CHANGED", "TRAIT_CONFIG_UPDATED",
-    "PLAYER_EQUIPMENT_CHANGED", "ENCOUNTER_START", "ENCOUNTER_END", "CHALLENGE_MODE_START", "CHALLENGE_MODE_COMPLETED",
-    "GROUP_ROSTER_UPDATE" }
-local RECORD_EVENTS = { "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }
-DR.GAME_EVENTS, DR.RECORD_EVENTS = GAME_EVENTS, RECORD_EVENTS
+local RECORD_EVENTS = { "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN" }
+DR.RECORD_EVENTS = RECORD_EVENTS
 local evFrame
 local evOn = {}   -- [event] = true while registered on evFrame
 local function OnEvent(_, event, ...)
-    local h = handlers[event]
+    local h = handlers[event] or (DR.extraHandlers and DR.extraHandlers[event])
     if h then
         local ok, err = pcall(h, ...)
-        if not ok and ns.RecordLine then pcall(ns.RecordLine, "error", "debug record: " .. tostring(err)) end
+        if not ok then pcall(ns.RecordError, "debug record: " .. tostring(err), nil, "XayaUI") end
     end
 end
 local function Wanted()
     local want = {}
-    if ns.RecordOn() then
-        for _, e in ipairs(RECORD_EVENTS) do want[e] = true end
-        if ns.RecCatOn("game") then for _, e in ipairs(GAME_EVENTS) do want[e] = true end end
-    end
-    if perfByDebug or pendingOpen then want.PLAYER_REGEN_ENABLED = true end
+    if ns.AdvancedDebugOn() then for _, e in ipairs(RECORD_EVENTS) do want[e] = true end end
+    if pendingOpen then want.PLAYER_REGEN_ENABLED = true end
+    if DR.extraEvents then for e in pairs(DR.extraEvents() or {}) do want[e] = true end end
     return want
 end
 function DR.SyncEvents()
@@ -583,13 +300,159 @@ function DR.SyncEvents()
 end
 -- (tests) the events registered now, as a set
 function DR.EventsOn() local t = {}; for e in pairs(evOn) do t[e] = true end; return t end
--- at login the saved settings decide (ns.WhenReady runs at XayaUI's ADDON_LOADED, after Core.lua set the defaults); the login itself
--- (the game-data probe follows Advanced Debugging: its addon is loaded by then) only when Advanced Debugging is on, or when a probe it
--- started is still to be stopped
-if ns.WhenReady then
-    ns.WhenReady(function()
-        DR.Refresh(); DR.SyncEvents()
-        local u = Ui()
-        if (u.advancedDebug or u.probeByDebug) and ns.AtLogin then ns.AtLogin(handlers.PLAYER_LOGIN) end
-    end)
+
+-- Settings > Debugging calls this after a change (and XayaUI Dev Assist's settings after theirs)
+function ns.DebugSettingsChanged()
+    DR.SyncEvents()
+    if ns.DevRecordChanged then pcall(ns.DevRecordChanged) end   -- (XayaUI Dev Assist's detailed record and probe switch)
 end
+if ns.WhenReady then ns.WhenReady(function() DR.SyncEvents() end) end
+
+-------------------------------------------------------------------------------
+-- The debug report: the same entries as a readable summary (for a screenshot) and as one string (to paste to Xaya)
+-------------------------------------------------------------------------------
+local REPORT_PREFIX, REPORT_V = "XUIREP1", 1
+DR.REPORT_PREFIX = REPORT_PREFIX
+local function Clock(t) return (type(t) == "number" and date) and date("%m-%d %H:%M", t) or "?" end
+-- The data both views are made from (also what the string carries).
+function ns.DebugReportData()
+    local d = { v = REPORT_V, made = date and date("%Y-%m-%d %H:%M:%S") or "?", on = ns.AdvancedDebugOn(), entries = {}, addons = {} }
+    local okB, ver, build = pcall(GetBuildInfo)
+    d.game, d.build = okB and tostring(ver) or "?", okB and tostring(build) or "?"
+    local okL, loc = pcall(function() return GetLocale and GetLocale() end)
+    d.locale = okL and tostring(loc) or "?"
+    d.client = DR.GameFolder() == "_retail_" and "live" or (DR.GameFolder() == "_beta_" and "beta" or "test realm")
+    if C_AddOns and C_AddOns.GetNumAddOns and C_AddOns.GetAddOnInfo then
+        local okN, total = pcall(C_AddOns.GetNumAddOns)
+        for i = 1, (okN and tonumber(total)) or 0 do
+            local okI, name = pcall(C_AddOns.GetAddOnInfo, i)
+            if okI and type(name) == "string" and name:find("^XayaUI") then
+                local okD, _, loaded = pcall(C_AddOns.IsAddOnLoaded, name)
+                d.addons[#d.addons + 1] = { name = name, ver = Version(name), loaded = (okD and loaded) and true or false }
+            end
+        end
+    end
+    for _, e in ipairs(ns.ErrorEntries()) do
+        d.entries[#d.entries + 1] = { code = e.code, kind = e.kind, msg = tostring(e.msg or ""):sub(1, 300),
+            stack = e.stack and tostring(e.stack):sub(1, 600) or nil, first = e.first, last = e.last, n = e.n or 1, ver = e.ver,
+            combat = e.combat and true or nil }
+    end
+    return d
+end
+-- The readable summary. expanded: also each error's stack (XayaUI Dev Assist shows an imported report this way).
+function ns.DebugReportText(d, expanded)
+    d = d or ns.DebugReportData()
+    local t = {}
+    local function add(s) t[#t + 1] = s end
+    add(("XayaUI debug report  -  made %s (local time)"):format(tostring(d.made)))
+    add(("Game %s (build %s), %s client, locale %s"):format(tostring(d.game), tostring(d.build), tostring(d.client), tostring(d.locale)))
+    local a = {}
+    for _, x in ipairs(type(d.addons) == "table" and d.addons or {}) do
+        a[#a + 1] = ("%s %s%s"):format(tostring(x.name):gsub("^XayaUI_", ""), tostring(x.ver), x.loaded and "" or " (off)")
+    end
+    add("XayaUI addons: " .. (#a > 0 and table.concat(a, ", ") or "?"))
+    local entries = type(d.entries) == "table" and d.entries or {}
+    local ne, nw = 0, 0
+    for _, e in ipairs(entries) do if e.kind == "warning" then nw = nw + 1 else ne = ne + 1 end end
+    if d.on == false then add("Advanced Debugging is OFF: nothing new is recorded (Settings > Debugging).") end
+    add(("%d entr%s: %d error%s, %d warning%s (the newest %d are kept)"):format(#entries, #entries == 1 and "y" or "ies", ne,
+        ne == 1 and "" or "s", nw, nw == 1 and "" or "s", MAX_ENTRIES))
+    if #entries == 0 then add(""); add("No errors or warnings recorded.") end
+    for _, e in ipairs(entries) do
+        local info = CODE[e.code]
+        add("")
+        add(("%s  x%d  %s"):format(tostring(e.code), tonumber(e.n) or 1, info and info.text or "(unknown code)"))
+        add(("   first %s, last %s%s, version %s"):format(Clock(e.first), Clock(e.last), e.combat and ", in combat" or "", tostring(e.ver or "?")))
+        add("   " .. tostring(e.msg or ""):gsub("\n", " / "))
+        if expanded and e.stack and e.stack ~= "" then add("   stack: " .. tostring(e.stack):gsub("\n", " / ")) end
+    end
+    return table.concat(t, "\n")
+end
+-- The string: XUIREP1:<checksum>:<base64 of JSON> (Share.lua's codec; not importable as rules or a theme)
+function ns.DebugReportString(d)
+    if not (ns.Share and ns.Share.Pack) then return nil, "the share codec is not loaded" end
+    return ns.Share.Pack(REPORT_PREFIX, d or ns.DebugReportData())
+end
+-- The string back to the data (XayaUI Dev Assist's import); nil, message when it cannot be read. Only plain fields are kept.
+function ns.DebugReportRead(str)
+    if not (ns.Share and ns.Share.Unpack) then return nil, "the share codec is not loaded" end
+    local d, err = ns.Share.Unpack(str, REPORT_PREFIX)
+    if not d then return nil, err end
+    if tonumber(d.v) ~= REPORT_V then return nil, ("Unsupported debug report format (version %s)."):format(tostring(d.v)) end
+    local function str_(v, n) return type(v) == "string" and v:sub(1, n or 1000) or (type(v) == "number" and tostring(v)) or nil end
+    local out = { v = REPORT_V, made = str_(d.made, 40), game = str_(d.game, 40), build = str_(d.build, 40), locale = str_(d.locale, 10),
+        client = str_(d.client, 20), on = d.on ~= false, addons = {}, entries = {} }
+    for _, x in ipairs(type(d.addons) == "table" and d.addons or {}) do
+        if type(x) == "table" then out.addons[#out.addons + 1] = { name = str_(x.name, 60) or "?", ver = str_(x.ver, 30) or "?", loaded = x.loaded == true } end
+    end
+    for _, e in ipairs(type(d.entries) == "table" and d.entries or {}) do
+        if type(e) == "table" then
+            out.entries[#out.entries + 1] = { code = str_(e.code, 12) or "?", kind = e.kind == "warning" and "warning" or "error",
+                msg = str_(e.msg, 300) or "", stack = str_(e.stack, 600), first = tonumber(e.first), last = tonumber(e.last),
+                n = tonumber(e.n) or 1, ver = str_(e.ver, 30), combat = e.combat == true or nil }
+        end
+    end
+    return out
+end
+
+-- The window (made the first time it opens). Top: the summary, framed for a screenshot. Bottom: the string, and "Copy string".
+local win
+local function BuildWindow()
+    local f = CreateFrame("Frame", "XayaUIDebugReport", UIParent, "BackdropTemplate")
+    local M, G = ns.UI_MARGIN or 10, ns.UI_GUTTER or 10
+    f:SetSize(680, 460)
+    f:SetPoint("CENTER")
+    f:SetFrameStrata("DIALOG")
+    f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    f:SetBackdropColor(0.06, 0.06, 0.07, 0.97)
+    f:SetBackdropBorderColor(0.4, 0.4, 0.45, 1)
+    f:SetMovable(true); f:EnableMouse(true); f:RegisterForDrag("LeftButton")
+    f:SetClampedToScreen(true)
+    f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    f.title:SetPoint("TOPLEFT", M, -M)
+    f.title:SetText("XayaUI debug report")
+    f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.hint:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -4)
+    f.hint:SetPoint("RIGHT", f, "RIGHT", -(M + 24), 0)
+    f.hint:SetJustifyH("LEFT")
+    f.hint:SetText("Send Xaya a screenshot of this window, or press Copy string and paste the text to her.")
+    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", -2, -2)
+    -- the string row along the bottom: a one-line box with the string and the button
+    local copy = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    copy:SetSize(110, 24); copy:SetPoint("BOTTOMRIGHT", -M, M); copy:SetText("Copy string")
+    if ns.FlatButton then ns.FlatButton(copy, true) end
+    local sbox = CreateFrame("EditBox", nil, f, "BackdropTemplate")
+    sbox:SetHeight(24)
+    sbox:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", M, M); sbox:SetPoint("RIGHT", copy, "LEFT", -G, 0)
+    sbox:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    sbox:SetBackdropColor(0, 0, 0, 0.5); sbox:SetBackdropBorderColor(0.3, 0.3, 0.35, 1)
+    sbox:SetFontObject(ChatFontNormal); sbox:SetTextInsets(6, 6, 0, 0)
+    sbox:SetAutoFocus(false); sbox:SetMaxLetters(0)
+    sbox:SetScript("OnEscapePressed", function() f:Hide() end)
+    sbox:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
+    copy:SetScript("OnClick", function() sbox:SetFocus(); sbox:HighlightText() end)
+    f.str, f.copy = sbox, copy
+    -- the summary
+    local sf = CreateFrame("ScrollFrame", "XayaUIDebugReportScroll", f, "UIPanelScrollFrameTemplate")
+    sf:SetPoint("TOPLEFT", M, -50); sf:SetPoint("BOTTOMRIGHT", -(M + 22), M + 24 + G)
+    local eb = CreateFrame("EditBox", nil, sf)
+    eb:SetMultiLine(true); eb:SetAutoFocus(false); eb:SetFontObject(ChatFontNormal)
+    eb:SetWidth(680 - 2 * M - 30); eb:SetMaxLetters(0)
+    eb:SetScript("OnEscapePressed", function() f:Hide() end)
+    sf:SetScrollChild(eb)
+    f.text = eb
+    if UISpecialFrames then table.insert(UISpecialFrames, "XayaUIDebugReport") end
+    return f
+end
+function ns.ShowDebugReport()
+    if not CreateFrame then return end
+    win = win or BuildWindow()
+    local d = ns.DebugReportData()
+    win.text:SetText(ns.DebugReportText(d))
+    win.str:SetText(ns.DebugReportString(d) or "")
+    win:Show()
+    return win
+end
+function ns.DebugReportWindow() return win end   -- (tests)

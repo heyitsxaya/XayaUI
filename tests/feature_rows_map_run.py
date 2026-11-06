@@ -174,7 +174,8 @@ def saved_for(mode):
 
 def harness(mode):
     folders = H.find_addons()
-    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Media", "XayaUI_Bonus", "XayaUI_Options")]
+    # (core 0.6.56, REQUEST-LOG #81: /xui debug map is XayaUI Dev Assist's, so it is loaded here)
+    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Media", "XayaUI_Bonus", "XayaUI_Options", "XayaUI_DevAssist")]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     w = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
@@ -230,7 +231,7 @@ local up = counts["Character Reskin: UpdateUIPanelPositions(CharacterFrame) (wid
 local hookN = counts["Character Reskin: hook after CharacterFrame:UpdateSize"]
 check2("#30 the map report counts the Character Reskin's UpdateUIPanelPositions(CharacterFrame) and its hook after CharacterFrame:UpdateSize",
   up and up.n >= 1 and hookN and hookN.n >= 1, tostring(up and up.n) .. " / " .. tostring(hookN and hookN.n))
-local lines = ns.MapReportLines and ns.MapReportLines() or {}
+local lines = DA_MAPLINES(ns)   -- (the report's lines: XayaUI Dev Assist's MapLines, core 0.6.56)
 local s = table.concat(lines, " | ")
 check2("#30 ...and lists them in /xui debug map (world map not loaded in this stand-in: said so)",
   s:find("world map: not loaded yet", 1, true) ~= nil and s:find("XayaUI since login: Character Reskin: UpdateUIPanelPositions(CharacterFrame) (wider window) x", 1, true) ~= nil, s)
@@ -242,6 +243,9 @@ def pane():
     g = {"__file__": os.path.join(HERE, "char_pane_overlays_run.py"), "__name__": "feature_rows_map"}
     exec(compile(src[:src.index("TOTAL_N, TOTAL_F = 0, 0")], "char_pane_overlays_run.py (prelude)", "exec"), g)
     lua = g["lua_with"]("")
+    cd = open(os.path.join(HERE, "..", "XayaUI_DevAssist", "CoreDebug.lua"), encoding="utf-8").read()
+    a = cd.index("local function MapLines()"); b = cd.index("\nend\n", a) + 5
+    lua.execute("DA_MAPLINES = function(ns) " + cd[a:b] + " return MapLines() end")
     lua.execute(PANE)
     res = lua.eval("R2")
     return [(res[i][1], res[i][2]) for i in range(1, len(res) + 1)]

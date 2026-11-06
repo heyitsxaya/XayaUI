@@ -1,5 +1,6 @@
-# D4 / #115 / #309: event routing, the next-frame re-check (core 0.6.56)
+# D4 / #115 / #309: event routing, the next-frame re-check (core 0.6.58)
 
+Version note: built as core 0.6.56; it reaches main as core 0.6.58 / Options 0.6.58 (main had 0.6.57 after the 2026-11-06 bundle).
 Engine session 2. Request log E17 (#115), E59-E61 context; her answers (question prompt, 2026-11-06 ~23:15 UTC): 50 ms is not acceptable, it
 becomes part of #309 routing; "describe the difference between 1 and 3; remember performance in combat is the #1 priority"; then "either way
 reduce the ms as much as possible. avoid at all costs compromising on performance of rules while minimizing cpu and ram costs" -> option 1.
@@ -29,7 +30,7 @@ A routed re-check makes less garbage than a full step (test).
 ## Risks / to check in game
 - If the Cooldown Manager updates a hidden aura's item a frame AFTER UNIT_AURA (INFERENCE: Blizzard updates it in its own UNIT_AURA
   handler, the same frame), an aura rule reading it waits for the next aura event or the tick (as today at worst).
-- QA B199: `/xui debug perf` in a fight before / after (her in-game numbers decide; the stand-in numbers are only ratios).
+- QA B202: `/xui debug perf` in a fight before / after (her in-game numbers decide; the stand-in numbers are only ratios).
 
 ## Tests
 tests/engine_routing_run.py (9 checks; 5 fail on the old engine: no routing, the sound comes up to 50 ms later). Engine tests rerun:

@@ -2,8 +2,8 @@
 ## Title: XayaUI Options
 ## Notes: The XayaUI settings window. Loads the first time you open it (/xui, the minimap button, or the game's Options > AddOns > XayaUI), so it costs nothing until then.
 ## Author: Xaya
-## Version: 0.6.55
-## X-Date: 2026-11-05
+## Version: 0.6.58
+## X-Date: 2026-11-06
 ## Dependencies: XayaUI
 ## LoadOnDemand: 1
 ## Group: XayaUI
@@ -13,6 +13,8 @@ Libs\AceGUI-3.0\AceGUI-3.0.xml
 Libs\AceConfig-3.0\AceConfig-3.0.xml
 
 AddonInfo.lua
+InfoPaneData.lua
+InfoPane.lua
 Drafts.lua
 ImportWindow.lua
 TriggersEditor.lua

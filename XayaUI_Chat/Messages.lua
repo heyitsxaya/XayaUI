@@ -234,6 +234,90 @@ function C.CopyBox(text, title)
     copy.edit:SetFocus(); copy.edit:HighlightText()
 end
 
+-- (Chat 0.6.25; REQUEST-LOG UI-12 / UI-17, Xaya 2026-11-06: "allow a modifier selector (alt, ctrl. fn(?))"; her answer "detect
+-- available modifiers based on available keybinds not already assigned; also allow user to record and save their own keybind")
+-- The click that ignores a player is a combination written the way the game writes key bindings: modifiers in the order ALT, CTRL,
+-- SHIFT, META, then BUTTON1 / BUTTON2 / BUTTON3 (Blizzard_SharedXML/KeyCommand.lua GetBindingFullInput, wow-ui-source 297d7aa). Saved
+-- as s.ignoreCombo; nothing saved = "CTRL-BUTTON2" (Ctrl + right-click, as before). Fn is not offered: the game's API reference has no
+-- call that reads it. META (Command) only on a Mac: IsMacClient() -> isMac: bool (globals.md:367).
+local BUTTONS = { LeftButton = "BUTTON1", RightButton = "BUTTON2", MiddleButton = "BUTTON3" }
+local BUTTON_NAMES = { BUTTON1 = "left-click", BUTTON2 = "right-click", BUTTON3 = "middle-click" }
+local MOD_NAMES = { ALT = "Alt", CTRL = "Ctrl", SHIFT = "Shift", META = "Cmd" }
+function C.ComboNow(button)
+    local b = BUTTONS[button or ""]
+    if not b then return nil end
+    local function down(f) local fn = _G[f]; return type(fn) == "function" and fn() and true or false end
+    local out = ""
+    if down("IsAltKeyDown") then out = out .. "ALT-" end
+    if down("IsControlKeyDown") then out = out .. "CTRL-" end
+    if down("IsShiftKeyDown") then out = out .. "SHIFT-" end
+    if down("IsMetaKeyDown") then out = out .. "META-" end
+    return out .. b
+end
+function C.ComboName(combo)
+    if type(combo) ~= "string" then return "?" end
+    local parts = {}
+    for seg in combo:gmatch("[^%-]+") do parts[#parts + 1] = MOD_NAMES[seg] or BUTTON_NAMES[seg] or seg end
+    return table.concat(parts, " + ")
+end
+-- the action the game has bound to a combination ("" or nil = none): C_KeyBindings.GetBindingByKey(action: cstring, context:
+-- BindingContext?) -> binding: cstring (namespaces.md:2902); Blizzard passes the full input string ("CTRL-BUTTON2") as the first
+-- argument (KeyCommand.lua GetBindingFromInput). Unknown (call missing or failing) counts as unbound.
+function C.ComboBinding(combo)
+    local KB = C_KeyBindings
+    if not (KB and KB.GetBindingByKey) then return nil end
+    local ok, act = pcall(KB.GetBindingByKey, combo)
+    if ok and type(act) == "string" and act ~= "" and not issecret(act) then return act end
+    return nil
+end
+-- every right-click with one or two modifiers that has no key binding of its own
+function C.FreeCombos()
+    local mods = { "ALT", "CTRL", "SHIFT" }
+    if type(IsMacClient) == "function" and IsMacClient() then mods[#mods + 1] = "META" end
+    local list = {}
+    for i = 1, #mods do
+        list[#list + 1] = mods[i] .. "-BUTTON2"
+        for j = i + 1, #mods do list[#list + 1] = mods[i] .. "-" .. mods[j] .. "-BUTTON2" end
+    end
+    local out = {}
+    for _, c in ipairs(list) do if not C.ComboBinding(c) then out[#out + 1] = c end end
+    return out
+end
+function C.IgnoreCombo() local s = S(); return (s and type(s.ignoreCombo) == "string" and s.ignoreCombo ~= "") and s.ignoreCombo or "CTRL-BUTTON2" end
+
+-- the recorder: a small box the next modified click on it is taken from (built on first use only)
+local rec
+function C.RecordCombo(done)
+    if not rec then
+        rec = CreateFrame("Button", "XayaUIChatComboRecorder", UIParent, "BackdropTemplate")
+        rec:SetSize(320, 90); rec:SetPoint("CENTER"); rec:SetFrameStrata("DIALOG")
+        rec:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+        rec:SetBackdropColor(0.05, 0.05, 0.08, 0.96); rec:SetBackdropBorderColor(1, 0.82, 0, 1)
+        rec:RegisterForClicks("AnyUp")
+        rec.t = rec:CreateFontString(nil, "OVERLAY"); rec.t:SetFont(STANDARD_TEXT_FONT, 12, ""); rec.t:SetPoint("TOPLEFT", 10, -10); rec.t:SetPoint("BOTTOMRIGHT", -10, 10)
+        rec.t:SetJustifyH("CENTER"); rec.t:SetJustifyV("MIDDLE")
+        local x = CreateFrame("Button", nil, rec); x:SetSize(16, 16); x:SetPoint("TOPRIGHT", -3, -3)
+        x.t = x:CreateFontString(nil, "OVERLAY"); x.t:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE"); x.t:SetPoint("CENTER"); x.t:SetText("X")
+        x:SetScript("OnClick", function() rec:Hide() end)
+        rec:SetScript("OnClick", function(self, button)
+            local combo = C.ComboNow(button)
+            if not combo then return end
+            if not combo:find("-", 1, true) then
+                self.t:SetText("Hold Alt, Ctrl, Shift (or Cmd) while you click: a plain click stays the game's own.\nTry again, or X to close.")
+                return
+            end
+            local s = S(); if s then s.ignoreCombo = combo end
+            local act = C.ComboBinding(combo)
+            ns.Print("Chat Panel: ignore click set to " .. C.ComboName(combo) .. "." .. (act and (" The game also has a key binding on it (" .. act .. ").") or ""))
+            self:Hide()
+            if self.done then pcall(self.done) end
+        end)
+    end
+    rec.done = done
+    rec.t:SetText("Hold Alt, Ctrl, Shift (or Cmd on a Mac) and click here with the mouse button you want to use.\nX closes without a change.")
+    rec:Show()
+end
+
 local function OnItemRef(link, text, button)
     if not C.on.itemref then return end   -- a hook the game cannot take back: idle with both switches (or the Chat Panel) off
     if type(link) ~= "string" or issecret(link) then return end
@@ -245,13 +329,13 @@ local function OnItemRef(link, text, button)
         if url then C.CopyBox(url, "Web address: press Ctrl+C to copy it, then Escape") end
         return
     end
-    if s.ignoreClick and a == "player" and button == "RightButton" and IsControlKeyDown and IsControlKeyDown() then
+    if s.ignoreClick and a == "player" and C.ComboNow(button) == C.IgnoreCombo() then
         local name = strsplit(":", link:sub(8))
         if name and name ~= "" and not IsMe(name) and C_FriendList and C_FriendList.AddIgnore then
             pcall(C_FriendList.AddIgnore, name)
             -- (names another player: never kept in XayaUI's debug record)
             local say = ns.PrintPrivate or ns.Print
-            say("Ignoring " .. name .. " (Ctrl + right-click). Remove them in the social window's Ignore list.")
+            say("Ignoring " .. name .. " (" .. C.ComboName(C.IgnoreCombo()) .. "). Remove them in the social window's Ignore list.")
         end
     end
 end
