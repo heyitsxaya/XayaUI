@@ -348,7 +348,7 @@ A cue is a named thing that happens. Create it with **Add a cue**, then choose *
 - **Text on Icon and Texture cues** (Options 0.6.28): inside the cue's **Icon Options** / **Texture Options** box, after its art and size sections, a **Text** section holds the buff duration text, the stacks / charges count and the shield / absorb amount, each with its own on / off and style. (From 0.6.1 to 0.6.27 these were missing from Icon and Texture cues; only Text cues had them.)
 - **Show tooltip on hover** (Text, Texture, and Icon cues; set for all of a rule's display cues at once on the rule's **Display** tab): hovering the cue shows the tooltip of the spell or item it is about, which is the icon source chosen on the cue, else the rule's first trigger. Off by default. While it is on, the cue sees the mouse pointer but clicks still pass through to what is behind it. Icons drawn by XayaUI Combat Auras do not support it yet. It has its own tick box in Paste Settings (Cues > Display), so it can be copied to one rule or to every rule in a group on its own.
 
-### Bar cues (core 0.6.58 / Options 0.6.58)
+### Bar cues (core 0.6.58 / Options 0.6.59)
 
 A Bar cue draws a progress bar. **New Rule > Progress Bar** makes a rule with one; **Add a cue > Bar** adds one to any rule.
 

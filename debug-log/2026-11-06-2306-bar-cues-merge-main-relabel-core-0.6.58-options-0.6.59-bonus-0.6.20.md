@@ -1,4 +1,4 @@
-# Bar cues: main 687b624 merged in; relabelled to core 0.6.58, Options 0.6.58, Bonus 0.6.20, Dev Assist 0.7.6, QA B200-B210 / F21
+# Bar cues: main 687b624 merged in; relabelled to core 0.6.58, Options 0.6.59, Bonus 0.6.20, Dev Assist 0.7.6, QA B200-B210 / F21
 Logged 2026-11-06 23:06 UTC. Session 014bN6tX7AoZQrGX246YSXjC, branch `claude/dreamy-edison-pvb3i1` (PR #417). Nothing new for the
 player; this is the landing preparation S1 asked for (session 014bN6tWZxqCW85vMEyHdfnt: "When #417 is ready, merge main and relabel
 above those numbers and QA IDs").
@@ -11,7 +11,7 @@ above those numbers and QA IDs").
 - My root-doc edits (QA-CHECKLIST, USER-GUIDE, ROADMAP, SESSION-START-SUMMARY) followed the move to docs/ (git rename detection).
 
 ## Relabel (numbers checked against main and every branch, 23:0x UTC)
-- core 0.6.53 -> 0.6.58, Options 0.6.51 -> 0.6.58 (main 0.6.57 / 0.6.57; no branch above), Bonus 0.6.18 -> 0.6.20 (main took 0.6.19),
+- core 0.6.53 -> 0.6.58, Options 0.6.51 -> 0.6.59 (main 0.6.57; 0.6.58 is held by session 014bN6tSZh6UFB2WcRuyXqBZ's follow-up branch), Bonus 0.6.18 -> 0.6.20 (main took 0.6.19),
   Dev Assist 0.7.5 -> 0.7.6 (its generated QAWalks-Checklist.lua changed).
 - QA: B160-B167 -> B200-B207, B177-B179 -> B208-B210, F19 -> F21 (main has B160 and B177-B179 for other work, F19 / F20; the highest B
   on any branch is B199). Cross references inside the steps follow.

@@ -3885,7 +3885,7 @@ local picker = nil   -- { folder = id|nil } while the page is open
 -- (AutoPicker.lua, Options 0.6.45): Icon -> icon cue (spell icon, 64 x 64, gray while on cooldown); Texture -> texture cue; Progress
 -- Texture -> texture cue with fill and overlay, base at 0.35; Text -> text cue (the duration text, no art); Sound / Speech -> that cue.
 -- One explicit cue kind per type. Returns the cue (nil when the rule holds the most cues it may) and its kind.
--- (Progress Bar -> a Bar cue since Options 0.6.58 / core 0.6.58, RM-BARS; before, it made a Buff Bar, whose code is shelved and drew nothing)
+-- (Progress Bar -> a Bar cue since Options 0.6.59 / core 0.6.58, RM-BARS; before, it made a Buff Bar, whose code is shelved and drew nothing)
 ns.CUE_FOR_TYPE = { icon = "icon", text = "text", sound = "sound", speech = "speech", texture = "texture", progresstex = "texture", bar = "bar" }
 function ns.NewTypedCue(r, typ)
     local kind = ns.CUE_FOR_TYPE[typ] or "texture"
