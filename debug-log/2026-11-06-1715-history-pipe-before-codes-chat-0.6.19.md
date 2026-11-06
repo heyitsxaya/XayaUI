@@ -41,5 +41,10 @@ two end-to-end checks); with the fix all pass. Her two strings stay covered by t
 ## QA
 D13 (new).
 
+## Checks
+`XUI_API_INDEX=tests/harness/api_index.json python3 tests/run_all.py` on e41175a's files: ALL CHECKS PASS (API documentation loaded;
+every addon combination 0 fail). `tests/lua_pitfalls_run.py`: FAILS 0. `tools/precheck.py --base origin/main`: FAILS 0, 2 warnings (media
+lists, #333 / #290, already on `main`).
+
 ## Landing
 Held on the branch for the next bundled landing (V17); not on `main`.
