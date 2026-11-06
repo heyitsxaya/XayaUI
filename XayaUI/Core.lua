@@ -42,10 +42,8 @@ function ns.Print(...)
     -- where messages go (DebugRecord.lua, Settings > Debugging): chat, the XayaUI console window, or both. A command typed in the
     -- console window prints there, whatever the setting (Console.lua ns.ConsoleRun sets ns.consoleRunning while it runs; core 0.6.50).
     local dest = ns.consoleRunning and "console" or (ns.MessageDest and ns.MessageDest() or "chat")
-    -- (core 0.6.50; Xaya 2026-11-06, of showing them in the console window too: "yes as long as it doesn't negatively impact
-    -- performance") set to the chat window, they also show in the console window while it is open. Cost per message: one function
-    -- call and, once the window exists, one IsShown; nothing per frame, and no frame, event or timer of its own (V14).
-    if dest == "chat" and ns.ConsoleWindowOn and ns.ConsoleWindowOn() then dest = "both" end
+    -- (Xaya 2026-11-06, asked whether messages set to the chat window should also show in the open console window: "Only xui console
+    -- messages should display". So the console window shows only what is sent to it.)
     if dest ~= "chat" and ns.ConsoleMessage and pcall(ns.ConsoleMessage, text, false, privateMsg) and dest == "console" then return end
     print("|cff33ccffXayaUI|r: " .. text)
 end
@@ -73,7 +71,6 @@ do
             if mine and ns.RecordLine then pcall(ns.RecordLine, "error", text) end
             -- the same place as XayaUI's messages (DebugRecord.lua): the console window, chat, or both
             local dest = typed and "console" or (ns.MessageDest and ns.MessageDest() or "chat")
-            if dest == "chat" and ns.ConsoleWindowOn and ns.ConsoleWindowOn() then dest = "both" end   -- (as ns.Print, core 0.6.50)
             local shown = dest ~= "chat" and ns.ConsoleMessage and pcall(ns.ConsoleMessage, text, true)
             if (dest ~= "console" or not shown) and DEFAULT_CHAT_FRAME then
                 DEFAULT_CHAT_FRAME:AddMessage("|cffff5555[XayaUI Error]|r " .. text, 1, 0.35, 0.35)

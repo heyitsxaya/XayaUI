@@ -2,12 +2,12 @@ a6b90f93be08b2134468e876fefd33d1  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-139cf25fc764159aa36a49cfdf4d3503  QA-CHECKLIST.md
+bbbbf0bfa2d44d14107500ee4b640dc5  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 1fbdaeaf6a100062c43c23836d5fe8a2  ROADMAP.md
 8e26fa7260dfdd487f86249f75b6c9d2  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-a190db7a2d60a97d2fea6ce7c1e8a77b  USER-GUIDE.md
+6e35623637ce2a45a913494e7417ab59  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
 88205caf1d0b6561981c4e3740c80ca2  XayaUI/AuraList.lua
 7bc5ab6899bc167c8fc5f3db72f3c9ff  XayaUI/AuraSound.lua
@@ -21,8 +21,8 @@ e0495a5745257a858e14cbd77a715c0c  XayaUI/Combat/AuraTracker.lua
 e347531f81e7b1c81dfd3db3a4d5f6f2  XayaUI/Combat/README.md
 90a7c4511e2a3988040393f1c413a9b3  XayaUI/Compat.lua
 ebd7aa72eb0a6e85b587290f421e7741  XayaUI/Conditions.lua
-bd9a04cecd5d6125147d5db5659b4b52  XayaUI/Console.lua
-a1f6bd50f1b9ba1e5aff312ca585217a  XayaUI/Core.lua
+eb142e89a94760830c0e8ac87451605f  XayaUI/Console.lua
+1bebab16f29e62d8cbbab9f5f6b9977e  XayaUI/Core.lua
 db497422119cbfffd2eea19c785df167  XayaUI/Cues.lua
 5d1c864ae837732b1b3a035b774ab3dc  XayaUI/DebugRecord.lua
 66ebd06d977bc5fbad54749b84936cc8  XayaUI/Engine.lua
@@ -207,7 +207,7 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-0449f66258d93996dd65e4bbb7fa6013  XayaUI_Options/Options.lua
+6f6d58f8bd0ca100d2c8453c5c5cc5ba  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
 24601ef16af1a663ebc42c4dca3973c8  XayaUI_Options/Skin.lua
@@ -484,7 +484,8 @@ c54bd9d2d6be53369953c26744e65136  debug-log/2026-11-05-2141-history-whisper-tabs
 ef2aa95835015eb192e93bbbf709ddb0  debug-log/2026-11-05-2359-harness-enum-values-from-docs.md
 88f5f00dec4a853664ca0cdf2a031c12  debug-log/2026-11-06-0005-console-command-line-xui-debug-core-0.6.50.md
 bdb69546e6a7e796dfde193825b966b8  debug-log/2026-11-06-0010-harness-enum-values-cloud-index.md
-371998cc1faaaf57f8535b3ce133bea8  debug-log/2026-11-06-0044-debug-only-forms-console-mirror-core-0.6.50-options-0.6.48.md
+502e0f77758e8009048ab4cbeef767dd  debug-log/2026-11-06-0044-debug-only-forms-console-mirror-core-0.6.50-options-0.6.48.md
+c262adb6c75ab5c70439b0e42109629a  debug-log/2026-11-06-0048-console-save-only-console-messages-core-0.6.50.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -505,7 +506,7 @@ e80a5c2d309d09f70935f65abd599ec3  docs/plans/IDEA-UPGRADE-OPTIONS-2026-11-05.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 4951caf3d08972511c0552aaeba5f0f1  docs/process/ELVUI-STRUCTURE-REVIEW-2026-11-05.md
 d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
-da4898e3658c89b225e8ff65df19ccbe  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
+d0d6cfa88b6163bd4b07e0ae141beb28  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 26a30c6c53b808dbc12422b025aa395b  docs/process/VERIFICATION.md
 7af233aeafadc9bade62ce5da4b21189  docs/reference/README.md
@@ -584,7 +585,7 @@ e4f9308c54b9e7e634d6f41276ada184  tests/chat_run.py
 de8e42cd1a1c7ce6149f4c172854b190  tests/chatprobe_run.py
 c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
 77c4528b7a2dd2ec35f14acbb7abec18  tests/compact_button_width_run.py
-1b89eb360b9ab42d2b8e50a535eae8b9  tests/console_commands_run.py
+c35280d62b6df3d694c61c796eb93800  tests/console_commands_run.py
 5a5034513603092a5062a0bb8ef84779  tests/console_toggle_cost_run.py
 b8838d4363b7fe225b7b7fe641d3c249  tests/core_off_costs_nothing_run.py
 385efab273152e93a25d127204b06e1e  tests/count_gcd_run.py

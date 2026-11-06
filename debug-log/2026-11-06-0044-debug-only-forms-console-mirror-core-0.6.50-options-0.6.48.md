@@ -1,5 +1,9 @@
 # /xui debug <name> only; messages set to chat also show in the open console window (core 0.6.50, Options 0.6.48)
 Logged 2026-11-06 00:44 UTC. Session 014bN6tVFhD1GEbb6ieFgKLz, branch `claude/great-franklin-j4cahh` (on 8ae717b). Not on `main` (V16, V17).
+CORRECTED 2026-11-06 00:48 UTC (debug-log/2026-11-06-0048-console-save-only-console-messages-core-0.6.50.md): the mapping below was
+wrong. Her next message answered questions 4, 5, 7, 8, 9 of the list of nine, so this message answered questions 1-3 of that list.
+Part 2 (chat-routed messages copied into the open console) was never asked for; her answer to that question is "Only xui console
+messages should display", and it was taken out. Part 1 (old forms retired) stands: her "7. Retire".
 
 ## Xaya's answers (2026-11-06, her words; request log row 4)
 "1) let’s move to /xui debug ____ — routinely used things can maybe get shortcut commands

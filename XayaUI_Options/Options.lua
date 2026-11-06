@@ -3052,7 +3052,7 @@ local function BuildAddonSettings()
                 set = function(_, v) Ui().advancedDebug = v and true or false; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end; Notify() end },
             -- the options Advanced Debugging brings (XayaUI/DebugRecord.lua)
             msgDest = { type = "select", name = "XayaUI's messages", order = 11.1,
-                desc = "Where XayaUI's own messages and error notices appear: the main chat window, the XayaUI console window (its own movable frame, like BugSack; it keeps collecting in combat), or both. With the chat window chosen, they also show in the console window while it is open. Default: the console window while Advanced Debugging is on, chat while it is off.",
+                desc = "Where XayaUI's own messages and error notices appear: the main chat window, the XayaUI console window (its own movable frame, like BugSack; it keeps collecting in combat), or both. Default: the console window while Advanced Debugging is on, chat while it is off.",
                 values = { chat = "Chat window", console = "XayaUI console window", both = "Both" }, sorting = { "console", "chat", "both" },
                 get = function() return ns.MessageDest and ns.MessageDest() or "chat" end,
                 set = function(_, v) Ui().msgDest = v; Notify() end },

@@ -13,10 +13,13 @@ What the player sees, checked here with the real addons in the stand-in game:
      "/xui ..." and "/xayaui ..." work typed in full; another addon's slash command is refused, not run; afterwards messages go
      to chat again; a command that errors shows the error in the window and leaves nothing switched on.
   5. An empty console window says what to type and where XayaUI's other messages go; the first line hides that; Clear shows it again.
-  6. Messages set to the chat window also show in the console window while it is open (Xaya 2026-11-06: "yes as long as it doesn't
-     negatively impact performance"), and not while it is closed; with it closed, nothing of the console is called for a message.
+  6. Only what is sent to the console shows there (Xaya 2026-11-06: "Only xui console messages should display"): with messages set
+     to the chat window, a message, a private message and an error notice stay out of the open console window and its buffer; set
+     to the console window, they show there. /save typed in the console reloads the interface (Xaya 2026-11-06: "Yes, but /save
+     should trigger a reload"); /reload and other slash commands stay refused.
 Negative control: on core 0.6.48 (no command line, /xui debug was a one-line loader check, help listed 29 commands) checks in
-1, 2, 3, 4 and 5 fail; on 8ae717b (old forms still ran; chat messages never reached the console) the checks in 3 and 6 fail.
+1, 2, 3, 4 and 5 fail; on 8ae717b (old forms still ran) the checks in 3 fail; on 2e8b00a (chat messages copied into the open
+console, no /save) the checks in 6 fail.
 Run: python3 tests/console_commands_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -209,44 +212,54 @@ check("a blank line runs nothing and keeps nothing", #history == hist0 + 1, #his
 -- 5 (rest). Clear shows the hint again
 if clearBtn then clearBtn:GetScript("OnClick")(clearBtn) end
 check("Clear: the hint shows again", empty and empty:IsShown())
-check("the hint says messages set to chat also show here while it is open", empty and (empty._text or ""):find("show here too while this window is open", 1, true) ~= nil,
+check("the hint says XayaUI's other messages go to the chat window, nothing about showing here", empty and (empty._text or ""):find("go to the chat window (Settings", 1, true) ~= nil,
   empty and empty._text)
 
--- 6. messages set to the chat window also show in the open console window ----------------------------------------------------------
+-- 6. only what is sent to the console shows there; /save reloads -------------------------------------------------------------------
+local function inBuf(t) for _, l in ipairs(ns.logBuf) do if l:find(t, 1, true) then return true end end; return false end
 CueRulesDB.ui.msgDest = "chat"
 chat0, n0 = #W.printed, #(cw.log._lines or {})
-ns.Print("mirror test one")
+ns.Print("chat-only test one")
 got = lines()
-check("chat setting, window open: the message is in chat", #W.printed == chat0 + 1 and W.printed[#W.printed]:find("mirror test one", 1, true) ~= nil)
-check("chat setting, window open: ...and in the console window", #got == n0 + 1 and got[#got]:find("mirror test one", 1, true) ~= nil, got[#got])
-check("chat setting, window open: ...and in the console's buffer (Copy, bug report)", has_({ (function() local t = {}; for i, l in ipairs(ns.logBuf) do t[i] = plain(l) end; return unpack(t) end)() }, "mirror test one") ~= nil)
-check("...the console window did not take the focus or open anything else", not cmd:HasFocus())
-ns.PrintPrivate("a private mirror line")
-got = lines()
-check("a private message: shown in the open window, never kept in the buffer", has_(got, "a private mirror line") ~= nil
-  and (function() for _, l in ipairs(ns.logBuf) do if l:find("a private mirror line", 1, true) then return false end end; return true end)())
--- an error notice (Advanced Debugging on) goes the same way
+check("chat setting, window open: the message is in chat", #W.printed == chat0 + 1 and W.printed[#W.printed]:find("chat-only test one", 1, true) ~= nil)
+check("chat setting, window open: ...and NOT in the console window", has_(got, "chat-only test one") == nil and #got == n0, got[#got])
+check("chat setting, window open: ...nor in the console's buffer (Copy, bug report)", not inBuf("chat-only test one"))
+ns.PrintPrivate("a private chat-only line")
+check("chat setting: a private message stays out of the console window", has_(lines(), "a private chat-only line") == nil)
 CueRulesDB.ui.advancedDebug = true
-CueRulesDB.ui.msgDest = "chat"
-n0 = #(cw.log._lines or {})
 pcall(geterrorhandler(), "Interface/AddOns/XayaUI/Test.lua:1: a test error notice")
-got = lines()
--- (the notice line itself, "[XayaUI error] ..."; the error log's own "Lua error captured" line reaches the console through ns.Log anyway)
-check("chat setting, window open: a XayaUI error notice also shows in the console window", has_(got, "[XayaUI error] Interface/AddOns/XayaUI/Test.lua:1: a test error notice") ~= nil)
--- closed: nothing of the console is called for a message
-if ns.ConsoleWindow then ns.ConsoleWindow(false) end
-local calls = 0
-local realCM = ns.ConsoleMessage
-ns.ConsoleMessage = function(...) calls = calls + 1; return realCM(...) end
-chat0 = #W.printed
-ns.Print("mirror test two")
-ns.ConsoleMessage = realCM
-check("chat setting, window closed: the message is in chat", #W.printed == chat0 + 1)
-check("chat setting, window closed: the console is not called (no cost, nothing buffered)", calls == 0, calls)
-check("chat setting, window closed: not in the buffer", (function() for _, l in ipairs(ns.logBuf) do if l:find("mirror test two", 1, true) then return false end end; return true end)())
-if ns.ConsoleWindow then ns.ConsoleWindow(true) end
-got = lines()
-check("reopened: the message from while it was closed is not drawn (only while it is open)", has_(got, "mirror test two") == nil)
+-- (the notice line itself, "[XayaUI error] ..."; the error log's own "Lua error captured" line reaches the console through ns.Log, as before)
+check("chat setting: a XayaUI error notice stays out of the console window", has_(lines(), "[XayaUI error] Interface/AddOns/XayaUI/Test.lua:1: a test error notice") == nil)
+CueRulesDB.ui.msgDest = "console"
+ns.Print("console test one")
+check("console setting: the message shows in the console window", has_(lines(), "console test one") ~= nil)
+CueRulesDB.ui.msgDest = "chat"
+-- /save
+local reloads = 0
+local realC_UI, realReloadUI = rawget(_G, "C_UI"), rawget(_G, "ReloadUI")
+C_UI = setmetatable({ Reload = function() reloads = reloads + 1 end }, { __index = realC_UI })
+ReloadUI = function() reloads = reloads + 100 end
+local hist1 = #history
+type_("/save")
+check("typed '/save': the interface reloads, once, through C_UI.Reload", reloads == 1, reloads)
+check("typed '/save': it says so in the window", has_(lines(), "> /save") ~= nil)
+check("typed '/save': kept in the history", #history == hist1 + 1 and history[#history] == "/save", history[#history])
+type_("/SAVE")
+check("typed '/SAVE' (any case): reloads too", reloads == 2, reloads)
+C_UI = nil
+type_("/save")
+check("no C_UI.Reload: ReloadUI is used instead", reloads == 102, reloads)
+C_UI, ReloadUI = realC_UI, realReloadUI
+reloads = 0
+local realRL = SlashCmdList.RELOAD
+local rl = false
+SlashCmdList.RELOAD = function() rl = true end
+type_("/reload")
+SlashCmdList.RELOAD = realRL
+check("typed '/reload': still refused, and the refusal names /save", rl == false and reloads == 0
+  and has_(lines(), "Only XayaUI's own commands run here (and /save, which reloads the interface)") ~= nil)
+type_("/save now")
+check("typed '/save now' (more than /save): refused, no reload", reloads == 0)
 return R
 end
 '''
