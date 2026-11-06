@@ -2,10 +2,10 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-d4295158aa9bf82a5578d135f8a69810  QA-CHECKLIST.md
+ef84482678271d1a714825fecfb4a579  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 410cc1e26e183b9410bf509ed6e97752  ROADMAP.md
-f25f0108f6fbee67e9948a3789ca22d0  SESSION-START-SUMMARY.md
+0a0d02d6d8caeec3695db720c837ee8d  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 b8469358db525f5914d63a8f104612c0  USER-GUIDE.md
 06bc780dc6fe6cd89117f5b4e81bcb26  WHATS-NEW.md
@@ -143,7 +143,7 @@ e9e54b6afdaec3eaa20e255322bb0d1e  XayaUI_Bonus/TooltipsUI.lua
 57a2537a03206bdc0d113947188a6a08  XayaUI_Chat/Core.lua
 8a087c49d9bd56d9daa92cb0054f97d6  XayaUI_Chat/Fade.lua
 46e7eaa0b4e8fb149a947c1d5391305b  XayaUI_Chat/Frame.lua
-9ac8b056fe70a4aca0050113a02993cd  XayaUI_Chat/History.lua
+2fa793515bca08d11d3f482307f66e99  XayaUI_Chat/History.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 356fb84ca4d9f2b324c96e4f68c56082  XayaUI_Chat/Locate.lua
 5ffcad428d3ce5c974ae3e0b32989cbb  XayaUI_Chat/Messages.lua
@@ -153,7 +153,7 @@ b3bf7034cf1410cb58341ad814d97882  XayaUI_Chat/Probe.lua
 271385b46e5eb6735ddf1295454bc596  XayaUI_Chat/Scroll.lua
 811fd8fbb77e7068f1f88e024bf55344  XayaUI_Chat/Skin.lua
 c3443dcf8a486e540ddfeac1aae87728  XayaUI_Chat/Sounds.lua
-68bc7878befe467351529fc7476b7140  XayaUI_Chat/XayaUI_Chat.toc
+5ebac299dcfb2b8941dddf08d79a04fd  XayaUI_Chat/XayaUI_Chat.toc
 d1214a6ecb251789fe882787dce5d8ef  XayaUI_DevAssist/ApiInventory.lua
 2927a47181fd6886394e1b61d1fc0faf  XayaUI_DevAssist/AuraCatalogue.lua
 48cfc73c1cd5b513bb8d9490bca2bdae  XayaUI_DevAssist/DevAssist.lua
@@ -505,6 +505,7 @@ fe51de1c552b68fd8c3309e6c3a6871c  debug-log/2026-11-06-0520-character-pane-stat-
 0a9288836b02d9cb825e33101d8edbe7  debug-log/2026-11-06-0544-handoff-chat-session-open-items.md
 99eeff9cfe9a67e5fc08c193b088246b  debug-log/2026-11-06-0552-slash-notes-calc-bonus-0.6.17.md
 123e3c41439ee6fad0b573eb19d7f73c  debug-log/2026-11-06-0554-friends-list-ui-source-12.1.5-findings.md
+8848ada713ebc52be44305083e749b77  debug-log/2026-11-06-1715-history-pipe-before-codes-chat-0.6.19.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -526,10 +527,11 @@ c303a99e884d75226da5ecac171965bd  docs/plans/SHOPPING-LIST-REQUIREMENTS-2026-11-
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 4951caf3d08972511c0552aaeba5f0f1  docs/process/ELVUI-STRUCTURE-REVIEW-2026-11-05.md
 d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
-8d39baf114409f17d6a210122ae1e672  docs/process/REQUEST-LOG-CROSS-CHAT.md
+773db4ddd1f8cc34e2f225db1b5b4391  docs/process/OUTSTANDING-2026-11-06.md
+dfbc3ec152c030726abe2b30268ddd81  docs/process/REQUEST-LOG-CROSS-CHAT.md
 1c455e2d0e650f1d4403dd74c92e2a52  docs/process/REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-30aff827640db9417433d39e8b17f5fe  docs/process/REQUEST-LOG.md
+2a599c668e278e2a7ef3ae39fe982d94  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 4c7604ae6a9849bdbf672b7ae1d45e7d  docs/process/VERIFICATION.md
 7af233aeafadc9bade62ce5da4b21189  docs/reference/README.md
@@ -607,7 +609,7 @@ a8e5c2bbdb81d4bb1a3dffb7e6c05a9c  tests/char_toolkit_run.py
 0f46f11222291c70483718691d730c62  tests/charges_combat_run.py
 5cf4343a54631539972030d611c24a27  tests/chat_off_costs_nothing_run.py
 cbf3c82d2398010da18d49bd2ef1a940  tests/chat_pieces_run.py
-2b6b224f92b34126371c1d45ad53d874  tests/chat_run.py
+4cd8b4e14b243f0e89b277b263fb1569  tests/chat_run.py
 1c96c68b90a98f38ba83cf032d0765f6  tests/chat_world.lua
 de8e42cd1a1c7ce6149f4c172854b190  tests/chatprobe_run.py
 c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py

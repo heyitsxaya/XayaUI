@@ -30,10 +30,16 @@ local function List() return tabKey == "CONSOLE" and con or hist end
 
 -- text without colors, textures, links and name codes (what you would want to paste). Named colors (|cnNAME:) and the colored
 -- |K...|k name codes are part of the newer game's text; an unremoved color code would tint everything after it.
+-- Chat 0.6.19: "||" (the game's escape for one literal "|") is set aside BEFORE the codes are taken out, then given back as one "|".
+-- Up to 0.6.18 the codes went first, so the second "|" of a pair plus the letter after it could be read as a code and removed:
+-- "on||off||reset" came out "on|off|eset" (the /xui chat status line), "[on||none]" as "[on| one]", "a||cffff0000b" as "a|b".
+-- PIPE is byte 0xFF, which never occurs in UTF-8 text (the game's strings are UTF-8: INFERENCE, not in docs/reference).
+local PIPE = "\255"
 function C.Plain(text)
+    text = text:gsub("||", PIPE)
     text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|cn[%w_%-]+:", ""):gsub("|r", ""):gsub("|H.-|h(.-)|h", "%1"):gsub("|T.-|t", ""):gsub("|A.-|a", "")
     text = text:gsub("|K.-|k", "?"):gsub("|n", " ")
-    return (text:gsub("||", "|"))
+    return (text:gsub(PIPE, "|"))
 end
 -- text from C.Plain, ready for an edit box: every "|" doubled, so none starts a code (Chat 0.6.17; see C.History_Update)
 function C.ForEditBox(text) return (tostring(text or ""):gsub("|", "||")) end
