@@ -1,0 +1,18 @@
+-------------------------------------------------------------------------------
+-- Seed.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- The day's puzzle from the date, the same for every player, with no messages. Frame-free: tested offline.
+-------------------------------------------------------------------------------
+-- Seed.DayKey()                          "YYYY-MM-DD" from GetServerTime() (globals.md:266), read as UTC. Day boundary at a fixed
+--                                        UTC hour (which hour is open). C_DateAndTime.GetCurrentCalendarTime() is the fallback.
+-- Seed.Number(dayKey, gameID, salt)      a whole number made from the text by our own small hash (own code)
+-- Seed.PickIndex(dayKey, gameID, listSize, listVersion)
+--                                        the day's entry in a list. listVersion is part of the input: two players with different
+--                                        word-list versions would get different puzzles, so a shared result carries the version and
+--                                        the board marks a mismatch instead of comparing.
+--
+-- Why our own function and not math.random: every client must get the same number from the same day. INFERENCE (to check): the
+-- game's math.random cannot be seeded the same way on every client (math.randomseed is not in the 12.1.5 reference), so it cannot
+-- promise that. Lua 5.1 numbers are doubles, so the hash keeps every step below 2^53 to stay exact.
+--
+-- Not decided: the UTC hour the day changes; whether practice mode uses the clock (random) or a counter (repeatable).
+-------------------------------------------------------------------------------

@@ -1,0 +1,13 @@
+-------------------------------------------------------------------------------
+-- ProcRates.lua : OUTLINE ONLY (RM-RPPM, 2026-11-05). No data, no code. SOURCE UNDECIDED (question 2).
+-------------------------------------------------------------------------------
+-- One entry per proc spell:
+--   [procSpellID] = { base = <RPPM>, hasteScaled = true/false, source = "<named database or 'measured'>", checked = "<patch>" }
+-- The source and patch are shown in the hover next to the number (#290: a public database's number is used only with its name).
+--
+-- Routes (README table):
+--   named public database   filled by hand, re-checked each patch; the patch column says when
+--   client tables           ON HOLD: terms question 3b ("do not add new client-table data to shipped addon files")
+--   measured                written from Dev Assist's ProcCount results; marked "measured, N minutes, M procs"
+-- An item whose proc spell has no entry shows "not given by the game", never a guess.
+-------------------------------------------------------------------------------

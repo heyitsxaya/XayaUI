@@ -1,0 +1,9 @@
+-------------------------------------------------------------------------------
+-- Games/Snake/Snake.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- A grid snake: grow by eating, end on hitting a wall or yourself. Needs Arcade/Keys.lua (keyboard probe first).
+-------------------------------------------------------------------------------
+-- Rules (frame-free): Snake.New(cols, rows, seed), Snake.Turn(dir) (no reversing into yourself), Snake.Step() (move one cell;
+-- eat, grow, place new food on a free cell), Snake.Over().
+-- Speed: moves per second rise with length. Only the head and tail cells change per step (Arcade/Grid.lua).
+-- Modes: classic (walls), wrap-around, daily (same food sequence for everyone from the date).
+-------------------------------------------------------------------------------

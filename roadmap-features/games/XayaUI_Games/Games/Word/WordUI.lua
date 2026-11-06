@@ -1,0 +1,11 @@
+-------------------------------------------------------------------------------
+-- Games/Word/WordUI.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- The word game's board inside the games window.
+-------------------------------------------------------------------------------
+-- WordUI.Build(parent, round)   rows x letters grid, sized from round.length and round.maxGuesses
+-- WordUI.Refresh(round)         draws guesses and marks; updates the on-screen keys from WordGame.Known
+-- WordUI.ShowEnd(round)         the result, the share button (Share.lua), and the answer only after the round ends
+--
+-- Look: our own. Mark colours come from the XayaUI theme, not a copied palette, and every mark also has a shape or symbol
+-- (UI/Input.lua). Tile art, if any: Blizzard art by ID or our own (no new licence needed), never another game's.
+-------------------------------------------------------------------------------

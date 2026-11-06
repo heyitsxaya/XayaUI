@@ -1,0 +1,17 @@
+-------------------------------------------------------------------------------
+-- Arcade/Guard.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- Xaya's gates inside the addon: a game starts only from the player's own call, and never during restricted play.
+-------------------------------------------------------------------------------
+-- Guard.CanStart()   -> ok, reason. Refuses when:
+--   - the "Games" switch is off (core's setting; the addon should not even be loaded then, so this is a second check);
+--   - C_RestrictedActions.IsAddOnRestrictionActive(type) is true for Combat, Encounter, ChallengeMode or PvPMatch
+--     (Enum.AddOnRestrictionType 0-3, enums.md:497-504);
+--   - the player is in combat.
+-- While a game is open, and only then, it listens to:
+--   ADDON_RESTRICTION_STATE_CHANGED (events.md:37)   pause on Activating / Active; offer "resume" on Inactive
+--   PLAYER_REGEN_DISABLED (events.md:1206)           pause and let go of the keyboard
+--   CLIENT_SCENE_OPENED (events.md:362)              pause while one of Blizzard's own minigames is open (optional)
+-- Guard.Release()    unregisters all of the above when the game closes, so a closed game listens to nothing.
+--
+-- Open: pause or close in restricted play (feasibility question 5).
+-------------------------------------------------------------------------------
