@@ -3588,7 +3588,7 @@ function BuildClassCreator()
     end
     -- Xaya 2026-11-05: the auto-populate table (AutoPicker.lua): the list of the button pressed, ticked and set up before anything is made
     if ns.AutoPicker and ns.AutoPicker.Args then for k, v in pairs(ns.AutoPicker.Args(Notify, Tree.Keep)) do args[k] = v end end
-    return { type = "group", name = "Class/Spec Rule Creator", order = 2, hidden = ns.PageHidden("creator"), args = args }
+    return { type = "group", name = "Auto-Generate Rules", order = 2, hidden = ns.PageHidden("creator"), args = args }
 end
 end   -- do (class/spec creator)
 
@@ -4764,7 +4764,7 @@ local function BuildOptions()
     local binTab = { type = "group", name = "Recycle Bin", order = 6, hidden = ns.PageHidden("recyclebin"), args = binArgs }
     -- Class/Spec Rule Creator is the last sub-tab; Skin.lua pins it to the far right of the tab row (2026-11-01)
     local creatorTab = BuildClassCreator()
-    creatorTab.order = 9; creatorTab.hidden = nil; creatorTab.name = "Class/Spec Rule Creator"
+    creatorTab.order = 9; creatorTab.hidden = nil; creatorTab.name = "Auto-Generate Rules"   -- (Options 0.6.58, UI-45: her name; was "Class/Spec Rule Creator")
     local track = { type = "group", name = "Rules", order = 1, childGroups = "tab", args = {
         enabledTab = enabledTab, draftsTab = draftsTab, smartTab = smartTab, disabledTab = disabledTab, creatorTab = creatorTab } }
 

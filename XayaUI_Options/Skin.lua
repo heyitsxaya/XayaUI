@@ -443,37 +443,67 @@ local function TraceGroupFire(w, what)
     AddRest(w, "firetrace", function(self) rawset(self, "Fire", nil); self.xuiFireTraced = nil end)
 end
 
--- The Rules sub-tab row (Smart Categories | Enabled | Disabled | Drafts ... Class/Spec Rule Creator) in one compact layout whichever
--- sub-tab is selected (Options 0.6.39; Xaya 2026-11-05, screenshots: the tabs were compact with Smart Categories selected and stretched
--- across the row with Enabled, Disabled or Drafts selected). AceGUI's TabGroup (BuildTabs) pads every tab to fill the row once the
--- tabs take 75 % of it, measured from the text widths at that moment, so the same row came out compact or stretched. INFERENCE:
--- which sub-tab is selected moves those widths over the line (not seen in game). Here each tab gets its text width plus AceGUI's
--- own unpadded spacing (4 px, the padding it gives a row it does not stretch) and Class/Spec Rule Creator stays pinned to the far
--- right corner, away from the others (2026-11-01). Rows AceGUI wrapped stay wrapped. Other tab rows are left to AceGUI.
+-- One tab row drawn by hand (Options 0.6.55 top row; Options 0.6.58 the Rules row): each slot = { tab, x, width }; every tab H px tall,
+-- its name in the theme's font at SIZE pt with an outline (a font object per tab, so a hover or a click, which re-applies the button's
+-- font objects, keeps it); the box below starts under the row. Restored on release (SkinTabGroup's OnRelease, w.xuiTopRow).
+local function LayTabRow(w, slots, H, SIZE)
+    local hastitle = w.titletext and w.titletext:GetText() and w.titletext:GetText() ~= ""
+    local top = hastitle and 14 or 7
+    for _, sl in ipairs(slots) do
+        local tab, x, each = sl[1], sl[2], sl[3]
+        tab:ClearAllPoints()
+        tab:SetPoint("TOPLEFT", w.frame, "TOPLEFT", x, -top)
+        tab:SetSize(each, H)
+        for _, k in ipairs({ "Middle", "MiddleDisabled" }) do if tab[k] then tab[k]:SetWidth(math.max(1, each - 20)) end end
+        tab.selectedTextY, tab.deselectedTextY, tab.selectedTextX, tab.deselectedTextX = 0, 0, 0, 0
+        local fs = tab:GetFontString()
+        if fs then
+            if fs.SetWidth then fs:SetWidth(math.max(1, each - 8)) end
+            fs:ClearAllPoints(); fs:SetPoint("CENTER", tab, "CENTER", 0, 0)
+            local path = fs:GetFont()
+            local c = TC(tab.selected and "xui-tab-selected" or "xui-tab", "text", GOLD)
+            local fo = tab.xuiTopFont
+            if not fo then fo = CreateFont((tab:GetName() or "XayaUITopTab") .. "XuiTopFont"); tab.xuiTopFont = fo end
+            if path then fo:SetFont(path, SIZE, "OUTLINE") end
+            fo:SetTextColor(c[1], c[2], c[3], 1)
+            tab:SetNormalFontObject(fo); tab:SetHighlightFontObject(fo); tab:SetDisabledFontObject(fo)
+            fs:SetTextColor(c[1], c[2], c[3])
+        end
+        local tcl = tab.selected and "xui-tab-selected" or "xui-tab"
+        Flat(tab, TC(tcl, "bg", { 0.03, 0.03, 0.03, 0.7 }), TC(tcl, "border", { 0.22, 0.22, 0.22, 1 }), { 1, 1, 0, 0 })
+    end
+    w.borderoffset = top + H + 3
+    if w.border then w.border:SetPoint("TOPLEFT", 1, -w.borderoffset) end
+    if w.frame.height and w.OnHeightSet then pcall(w.OnHeightSet, w, w.frame.height) end
+    w.xuiTopRow = true
+end
+
+-- The Rules sub-tab row (Smart Categories | Enabled | Disabled | Drafts ... Auto-Generate Rules). (Options 0.6.58; REQUEST-LOG UI-43 to
+-- UI-45, Xaya 2026-11-06: "rule tabs are too tiny"; "tabs are still not reflecting proposed changes as requested in subsequent
+-- comments"; her answers "28 px, 12 pt, outlined" and, for the Creator tab, "2 + call it "Auto-Generate Rules"" (it stays apart at the
+-- far right): the other tabs share the rest of the row evenly; Auto-Generate Rules is as wide as its name at 12 pt plus 24 px (at most a
+-- third of the row), 16 px after the others. (Before: each tab as wide as its text, Options 0.6.39.)
+local SUB_TAB_H, SUB_TAB_FONT, SUB_GAP = 28, 12, 16
 local function CompactRulesTabs(w)
     if not (w and w.tabs and w.frame) then return end
-    local creator
-    for _, tab in ipairs(w.tabs) do if tab:IsShown() and tab.value == "creatorTab" then creator = tab end end
-    if not creator then return end
+    local creator, others = nil, {}
     for _, tab in ipairs(w.tabs) do
-        local fs = tab:IsShown() and tab:GetFontString()
-        if fs then
-            local name = tab.GetName and tab:GetName()
-            local left = tab.Left or tab.leftTexture or (name and _G[name .. "Left"])
-            local side = (left and left.GetWidth and 2 * (left:GetWidth() or 0)) or 0
-            local inner = (fs:GetStringWidth() or 0) + 4
-            if tab.Middle then tab.Middle:SetWidth(inner) end
-            if tab.MiddleDisabled then tab.MiddleDisabled:SetWidth(inner) end
-            local text = tab.Text or fs
-            if text.SetWidth then text:SetWidth(0) end
-            tab:SetWidth(inner + side)
-        end
+        if tab:IsShown() then if tab.value == "creatorTab" then creator = tab else others[#others + 1] = tab end end
     end
-    local top, ftop = creator:GetTop(), w.frame:GetTop()
-    if top and ftop then
-        creator:ClearAllPoints()
-        creator:SetPoint("TOPRIGHT", w.frame, "TOPRIGHT", 0, top - ftop)
-    end
+    if not creator then return end
+    local width = w.frame.width or w.frame:GetWidth() or 0
+    if width <= 0 then return end
+    local fs = creator:GetFontString()
+    local sw = (fs and fs.GetStringWidth and fs:GetStringWidth()) or 120
+    local cur
+    if fs then cur = select(2, fs:GetFont()) end
+    local cw = math.ceil(sw * SUB_TAB_FONT / math.max(1, tonumber(cur) or SUB_TAB_FONT)) + 24
+    cw = math.min(cw, math.floor(width / 3))
+    local each = (#others > 0) and ((width - cw - SUB_GAP) / #others) or 0
+    local slots = {}
+    for i, tab in ipairs(others) do slots[#slots + 1] = { tab, (i - 1) * each, each } end
+    slots[#slots + 1] = { creator, width - cw, cw }
+    LayTabRow(w, slots, SUB_TAB_H, SUB_TAB_FONT)
 end
 
 -- (Options 0.6.55; REQUEST-LOG UI-5 / UI-7; Xaya 2026-11-06: "Tabs at the highest level should be evenly distributed across the pane,
@@ -497,35 +527,10 @@ local function TopTabs(w)
     local n = #shown
     local width = w.frame.width or w.frame:GetWidth() or 0
     if n == 0 or width <= 0 then return end
-    local hastitle = w.titletext and w.titletext:GetText() and w.titletext:GetText() ~= ""
-    local top = hastitle and 14 or 7
     local each = width / n
-    for i, tab in ipairs(shown) do
-        tab:ClearAllPoints()
-        tab:SetPoint("TOPLEFT", w.frame, "TOPLEFT", (i - 1) * each, -top)
-        tab:SetSize(each, TOP_TAB_H)
-        for _, k in ipairs({ "Middle", "MiddleDisabled" }) do if tab[k] then tab[k]:SetWidth(math.max(1, each - 20)) end end
-        tab.selectedTextY, tab.deselectedTextY, tab.selectedTextX, tab.deselectedTextX = 0, 0, 0, 0
-        local fs = tab:GetFontString()
-        if fs then
-            if fs.SetWidth then fs:SetWidth(math.max(1, each - 8)) end
-            fs:ClearAllPoints(); fs:SetPoint("CENTER", tab, "CENTER", 0, 0)
-            local path = fs:GetFont()
-            local c = TC(tab.selected and "xui-tab-selected" or "xui-tab", "text", GOLD)
-            local fo = tab.xuiTopFont
-            if not fo then fo = CreateFont((tab:GetName() or "XayaUITopTab") .. "XuiTopFont"); tab.xuiTopFont = fo end
-            if path then fo:SetFont(path, TOP_TAB_FONT, "OUTLINE") end
-            fo:SetTextColor(c[1], c[2], c[3], 1)
-            tab:SetNormalFontObject(fo); tab:SetHighlightFontObject(fo); tab:SetDisabledFontObject(fo)
-            fs:SetTextColor(c[1], c[2], c[3])
-        end
-        local tcl = tab.selected and "xui-tab-selected" or "xui-tab"
-        Flat(tab, TC(tcl, "bg", { 0.03, 0.03, 0.03, 0.7 }), TC(tcl, "border", { 0.22, 0.22, 0.22, 1 }), { 1, 1, 0, 0 })
-    end
-    w.borderoffset = top + TOP_TAB_H + 3
-    if w.border then w.border:SetPoint("TOPLEFT", 1, -w.borderoffset) end
-    if w.frame.height and w.OnHeightSet then pcall(w.OnHeightSet, w, w.frame.height) end
-    w.xuiTopRow = true
+    local slots = {}
+    for i, tab in ipairs(shown) do slots[#slots + 1] = { tab, (i - 1) * each, each } end
+    LayTabRow(w, slots, TOP_TAB_H, TOP_TAB_FONT)
 end
 
 local function SkinTabGroup(w)
