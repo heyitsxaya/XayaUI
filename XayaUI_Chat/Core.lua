@@ -174,9 +174,10 @@ local function Blocked()
     if blocked == nil then blocked = C.BlockedReason() or false end
     return blocked
 end
+-- (Chat 0.6.16, S1 #48) and the Blizzard UI Reskin tab's own switch: off there turns the Chat Panel off too, its own switch kept
 function C.On()
     local s = ns.chat2
-    return s and s.enabled and not Blocked() and true or false
+    return s and s.enabled and ns.ReskinTabOn() and not Blocked() and true or false
 end
 
 function C.Frames()
@@ -406,7 +407,7 @@ function ns.Chat_OnDBReady()
     ns.chat2 = s
     -- "Cover the chat at every login" (Privacy.lua): up to Chat 0.6.13 read on the first loading screen by a frame of its own
     if ns.chatDB.privStartHidden then ns.chatDB.privOn = true end
-    if not s.enabled then return end                              -- V14: saved off, nothing more is built, registered or run
+    if not (s.enabled and ns.ReskinTabOn()) then return end       -- V14: saved off (or the Reskin tab off), nothing more is built, registered or run
     -- the privacy defaults are merged here, at the same moment as before (INFERENCE: in the game this runs while this file loads, before
     -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14)
     ns.Merge(CueRulesDB.chat, ns.CHAT_DEFAULTS)
@@ -565,7 +566,7 @@ function C.Command(arg)
     local s = ns.chat2
     if not s then ns.Print("Chat Panel: settings are not loaded yet."); return end
     if arg == "off" then s.enabled = false; C.Refresh(); ns.Print("Chat Panel OFF. Blizzard's chat is back as the game draws it.")
-    elseif arg == "on" then s.enabled = true; C.Refresh(); ns.Print("Chat Panel ON.")
+    elseif arg == "on" then s.enabled = true; C.Refresh(); ns.Print("Chat Panel ON." .. (ns.ReskinTabOn() and "" or " It shows once All reskins (Blizzard UI Reskin tab, top row) is on again."))
     elseif arg == "reset" then
         s.point, s.x, s.y, s.width, s.height = C.DEFAULTS.point, C.DEFAULTS.x, C.DEFAULTS.y, C.DEFAULTS.width, C.DEFAULTS.height
         C.Refresh(); ns.Print("Chat Panel: position and size reset.")
@@ -587,7 +588,8 @@ function C.Command(arg)
     elseif arg == "whispers" then C.WhisperReport()
     else
         local why = C.BlockedReason()
-        ns.Print((("Chat Panel: " .. (s.enabled and (why and ("blocked: " .. why) or "ON") or "OFF") .. ". /xui chat on|off|reset|move|history|wrap|indent|whispers|settings"):gsub("|", "||")))
+        local state = not s.enabled and "OFF" or (not ns.ReskinTabOn() and "OFF (All reskins is off in the Blizzard UI Reskin tab)") or (why and ("blocked: " .. why)) or "ON"
+        ns.Print((("Chat Panel: " .. state .. ". /xui chat on|off|reset|move|history|wrap|indent|whispers|settings"):gsub("|", "||")))
         local names = {}
         for k in pairs(C.applied) do names[#names + 1] = k end
         table.sort(names)

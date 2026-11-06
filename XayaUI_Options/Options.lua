@@ -58,17 +58,53 @@ function ns.OptionsApi.OpenOnSelect(tree, uv)
     end
 end
 function ns.SettingsTabOf(module) local t = ns.OptionsApi.TABS[module]; return t and t.key or "qol" end
+-- The Blizzard UI Reskin tab's first row, "All reskins" (Options 0.6.44, S1 #48; Xaya 2026-11-05: "double: both enable/disable of reskin
+-- at all; then individual toggles for individual reskins"). Its tick box (xuiSwitch, the same box as every feature row) is the tab's
+-- own switch: off turns every reskin in the tab off at once (core ns.SetReskinTab); each reskin keeps its own box on its row, greyed
+-- while this is off. Its page lists the reskins and the state of each one's own switch.
+function ns.OptionsApi.AllReskinsRow(pages, Notify)
+    local function state()
+        local list = {}
+        for key, ent in pairs(pages) do
+            local sw = type(ent) == "table" and ent.xuiSwitch
+            if key ~= "allreskin" and type(sw) == "table" and type(sw.get) == "function" then
+                local ok, on = pcall(sw.get, {})
+                list[#list + 1] = { n = tostring(ent.name), on = ok and on and true or false }
+            end
+        end
+        table.sort(list, function(a, b) return a.n < b.n end)
+        local lines = {}
+        for _, e in ipairs(list) do lines[#lines + 1] = "  " .. e.n .. ": " .. (e.on and "on" or "off") .. " (its own tick box)" end
+        return table.concat(lines, "\n")
+    end
+    return { type = "group", name = "All reskins", order = 0,
+        xuiSwitch = { type = "toggle", name = "All reskins",
+            desc = "Unticked: every reskin in this tab is off at once and Blizzard's own look is back. Each reskin keeps its own tick box for when this is ticked again.",
+            get = function() return ns.ReskinTabOn() end,
+            set = function(_, v) ns.SetReskinTab(v and true or false); if Notify then Notify() end end },
+        args = {
+            intro = { type = "description", order = 1, width = "full", fontSize = "medium", arg = { xuiKeep = true },
+                name = function()
+                    return (ns.ReskinTabOn() and "All reskins: |cff66dd66on|r. Each reskin below follows its own tick box."
+                        or "All reskins: |cffff6666off|r. Every reskin in this tab is off and Blizzard's own look shows; their own tick boxes are kept for when this is on again.")
+                        .. "\n\n" .. state()
+                end },
+        } }
+end
+
 function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
     local out = {}
     for module, tab in pairs(ns.OptionsApi.TABS) do
         local args = ns.BuildSettingsPages(module, Notify)
         if module == "qol" and qolExtra then for k, v in pairs(qolExtra) do args[k] = v end end
+        if module == "reskin" and next(args) then args.allreskin = ns.OptionsApi.AllReskinsRow(args, Notify) end
         local list = {}
         for key, ent in pairs(args) do
             local nm = ent.name
             if type(nm) == "function" then local ok, v = pcall(nm); nm = ok and v or nil end
             nm = (type(nm) == "string" and nm ~= "") and nm:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") or key
             local old = (key == "allqol" or key == "allcursor" or key == "allbars") and 1 or 0
+            if key == "allreskin" then old = -1 end   -- the Reskin tab's own switch: the first row (S1 #48)
             list[#list + 1] = { key = key, name = nm:lower(), old = old }
         end
         table.sort(list, function(a, b)

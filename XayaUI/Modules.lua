@@ -180,6 +180,30 @@ function ns.RegisterSettingsPage(module, key, build)
     pages[#pages + 1] = { module = module, key = key, build = build }
 end
 
+-- The Blizzard UI Reskin tab's own switch (S1 #48; Xaya 2026-11-05: "double: both enable/disable of reskin at all; then individual
+-- toggles for individual reskins"). Off turns every reskin off (Chat Panel, Character Pane, Esc Menu, Shopping List) and each keeps its
+-- own switch for when the tab is on again. Saved only while off (CueRulesDB.reskinTabOff = true), so a profile that never touched it
+-- holds nothing. Every reskin reads it with its own switch: on = its own switch AND this one.
+function ns.ReskinTabOn() return not (type(CueRulesDB) == "table" and CueRulesDB.reskinTabOff) end
+-- Set it and let each reskin that is loaded take it at once (each one's own apply: it builds, or gives Blizzard's look back).
+function ns.SetReskinTab(on)
+    if type(CueRulesDB) ~= "table" then return end
+    CueRulesDB.reskinTabOff = (not on) and true or nil
+    local applies = {
+        ns.Chat and ns.Chat.Refresh,
+        ns.CharReskin_Apply,
+        ns.GameMenuSkin_Apply,
+        ns.Shop and ns.Shop.Apply,
+    }
+    for i = 1, 4 do
+        local fn = applies[i]
+        if type(fn) == "function" then
+            local ok, err = pcall(fn)
+            if not ok then local h = geterrorhandler and geterrorhandler(); if h then h(err) end end
+        end
+    end
+end
+
 -- Page layout for every feature tab (Xaya, 2026-11-03; QoL and Chat first, the rule for new features):
 --   * a feature is a node in the left pane; its parts are child nodes under it (the feature's group has childGroups = "tree"),
 --     and the feature's own node shows its overview (on/off switches, a short note);

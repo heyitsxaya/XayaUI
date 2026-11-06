@@ -58,7 +58,9 @@ local function collect(g, path)
 end
 for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do collect(node(T, tab), { tab }) end
 local WANT = { "qol>chartoolkit", "qol>chartoolkit>panelPart", "qol>chartoolkit>overlayPart", "qol>chartoolkit>spells",
-  "qol>cursor>highlight", "qol>cursor>trail", "bonus>datapanels", "bonus>utilities>notepad" }
+  "qol>cursor>highlight", "qol>cursor>trail", "bonus>datapanels", "bonus>utilities>notepad",
+  -- (S1 #48, Options 0.6.44: the Blizzard UI Reskin tab: its own switch on the All reskins row, and one per reskin)
+  "reskin>allreskin", "reskin>charreskin", "reskin>chatpanel", "reskin>gamemenu", "reskin>shoppinglist" }
 for _, k in ipairs(WANT) do check("A: the row " .. k .. " has an on / off for its tick box", found[k] ~= nil) end
 check("A: no other row has one (Cursor, Tooltips, Utilities, Calculator have no single on / off)", foundN == #WANT, foundN)
 -- the switch is no longer on the pages: no toggle anywhere in the QoL / Bonus Features tabs carries a switch's name (or the old
@@ -74,7 +76,7 @@ local function toggles(g, path)
     end
   end
 end
-toggles(node(T, "qol"), "qol"); toggles(node(T, "bonus"), "bonus")
+toggles(node(T, "qol"), "qol"); toggles(node(T, "bonus"), "bonus"); toggles(node(T, "reskin"), "reskin")
 check("A: the pages no longer show those switches (Show Notepad, Enable Custom Data Panels and Bars, Character Toolkit, ...)", #left == 0, table.concat(left, "; "))
 section("A: explanations", function()
 check("A: every switch keeps the explanation its old switch had (shown on the box's hover)", (function()

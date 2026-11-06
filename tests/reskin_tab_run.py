@@ -38,9 +38,10 @@ if MODE == "all" then
   check("a top tab named Blizzard UI Reskin, after Bonus Features", tab ~= nil and tab.name == "Blizzard UI Reskin" and built.args.bonus and tab.order > built.args.bonus.order,
     tab and tab.name)
   -- (QoL 0.7.25: the Shopping List page joined the tab; Xaya 2026-11-05: "Will apply in the future to: shopping list")
-  check("  ...its pages: Character Pane, Chat Panel, Esc Menu, Shopping List (in name order)", names(tab) == "Character Pane | Chat Panel | Esc Menu | Shopping List", names(tab))
-  check("  ...each page is the real one (switches inside)", tab.args.chatpanel and tab.args.chatpanel.args.layout and tab.args.charreskin.args.enabled
-    and tab.args.gamemenu.args.skin ~= nil)
+  -- (S1 #48: "All reskins", the tab's own switch, is the first row; tests/reskin_tab_switch_run.py checks it works)
+  check("  ...its rows: All reskins, then Character Pane, Chat Panel, Esc Menu, Shopping List (in name order)", names(tab) == "All reskins | Character Pane | Chat Panel | Esc Menu | Shopping List", names(tab))
+  check("  ...each page is the real one (its switch is the tick box on its row)", tab.args.chatpanel and tab.args.chatpanel.args.layout and tab.args.charreskin.xuiSwitch
+    and tab.args.charreskin.args.chrome and tab.args.gamemenu.xuiSwitch ~= nil and tab.args.gamemenu.args.match ~= nil)
   check("the Chat tab is gone (the Chat Panel was its only page)", built.args.chat == nil)
   check("QoL no longer has the Character Reskin page; its other pages stay", built.args.qol and built.args.qol.args.charreskin == nil
     and built.args.qol.args.chartoolkit ~= nil and built.args.qol.args.cursor ~= nil)
@@ -80,7 +81,7 @@ if MODE == "all" then
   check("pages that did not move open where they were (QoL > Character Toolkit)", last() == "qol>chartoolkit", last())
   ACD.SelectGroup = realSelect
 elseif MODE == "noqolreskin" then
-  check("XayaUI_QoL and XayaUI_Reskin off: the tab keeps the Chat Panel only", tab ~= nil and names(tab) == "Chat Panel", names(tab))
+  check("XayaUI_QoL and XayaUI_Reskin off: the tab keeps the Chat Panel only (and its All reskins row)", tab ~= nil and names(tab) == "All reskins | Chat Panel", names(tab))
   local disp = built.args.set and built.args.set.args.ui and built.args.set.args.ui.args.display and built.args.set.args.ui.args.display.args or {}
   check("  ...and Display says nothing about an Esc-menu look that is not installed", disp.gm_moved == nil)
 else

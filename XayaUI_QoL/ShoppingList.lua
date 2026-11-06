@@ -64,6 +64,9 @@ local function Cfg()
     return c
 end
 Shop.Cfg = Cfg
+-- on = its own switch AND the Blizzard UI Reskin tab's switch (S1 #48: off there turns every reskin off, each keeps its own switch)
+local function On(c) return c and c.enabled and ns.ReskinTabOn() and true or false end
+Shop.On = On
 
 -- this character's history (personal data: kept in your own saved settings only)
 local function CharKey()
@@ -711,7 +714,7 @@ local trackerHooked = false
 local function RestyleTracker()
     local c = Cfg()
     local mod = _G.ProfessionsRecipeTracker
-    if not (c and c.enabled and c.tracker and type(mod) == "table") then return end
+    if not (On(c) and c.tracker and type(mod) == "table") then return end
     local label = TC("xui-label", "text", { 1, 0.82, 0, 1 })
     local text = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
     local muted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
@@ -751,12 +754,12 @@ local pending = false
 local function Refresh()
     if pending then return end
     pending = true
-    C_Timer.After(0, function() pending = false; local c = Cfg(); if c and c.enabled and panel and panel:IsShown() then Shop.Render() end end)
+    C_Timer.After(0, function() pending = false; local c = Cfg(); if On(c) and panel and panel:IsShown() then Shop.Render() end end)
 end
 function Shop.Apply()
     local c = Cfg()
     if not c then return end
-    if not c.enabled then
+    if not On(c) then
         if ev then ev:UnregisterAllEvents() end
         if panel then panel:Hide() end
         if popup then popup:Hide() end
@@ -767,7 +770,7 @@ function Shop.Apply()
         ev = CreateFrame("Frame")
         ev:SetScript("OnEvent", function(_, event, ...)
             local cc = Cfg()
-            if not (cc and cc.enabled) then return end
+            if not On(cc) then return end
             if event == "PLAYER_EQUIPMENT_CHANGED" or event == "PLAYER_ENTERING_WORLD" then Shop.Observe(cc) end
             if event == "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED" then Shop.ReadBrowse() end
             if event == "AUCTION_HOUSE_CLOSED" then browse.key, browse.results = nil, {} end
@@ -789,13 +792,15 @@ function Shop.Toggle()
     local c = Cfg()
     if not c then return end
     if not c.enabled then c.enabled, c.panel = true, true end
+    if not ns.ReskinTabOn() then ns.Print("Shopping List: All reskins is off (Blizzard UI Reskin tab, top row); it shows once that is on again."); return end
     if panel and panel:IsShown() then panel.userHidden = true; panel:Hide(); if popup then popup:Hide() end; return end
     if panel then panel.userHidden = nil end
     c.panel = true
     Shop.Apply()
 end
 function Shop.Drawn() return { panel = panel, popup = popup, layout = panel and panel.layout, buttons = btnPool, fonts = fsPool } end
-ns.WhenReady(function() local c = Cfg(); if c and c.enabled then Shop.Apply() end end)
+-- (read without Cfg: off, no saved table is made either, V14)
+ns.WhenReady(function() local raw = CueRulesDB and CueRulesDB.shoppingList; if type(raw) == "table" and raw.enabled == true and ns.ReskinTabOn() then Shop.Apply() end end)
 
 -------------------------------------------------------------------------------
 -- Settings page: Blizzard UI Reskin > Shopping List
@@ -808,8 +813,6 @@ function ns.BuildShoppingListPage(Notify)
     local args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "Your crafting shopping list: the recipes you track, with their reagents (have / need), and what is missing on your gear: an enchant on a slot that takes one, a gem for an empty socket, each with your usual choice. Click a name while the Auction House is open and it searches for it. Off by default." },
-        enabled = { type = "toggle", order = 1, width = "full", name = "Shopping List", desc = "Turns the shopping list on. While it is off nothing is created or read.",
-            get = function() return C().enabled end, set = function(_, v) C().enabled = v and true or false; Changed() end },
         panel = { type = "toggle", order = 2, width = "full", name = "XayaUI's Shopping List panel", disabled = off,
             desc = "A movable panel in the theme: Missing on your gear, To buy, and your tracked recipes. /xui shop shows or hides it.",
             get = function() return C().panel end, set = function(_, v) C().panel = v and true or false; Changed() end },
@@ -841,7 +844,12 @@ function ns.BuildShoppingListPage(Notify)
     end
     for i, slot in ipairs(SLOT_KEYS) do args["def" .. slot] = DefInput("ench:" .. slot, 10 + i, "Enchant: " .. (CM.SlotLabel(slot) == "Finger 1" and "Rings" or CM.SlotLabel(slot))) end
     args.defGem = DefInput("gem", 20, "Gem")
-    local g = { type = "group", name = "Shopping List", order = 5, args = args }
+    -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.25, S1 #48: "individual toggles for
+    -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
+    local switch = { type = "toggle", name = "Shopping List", desc = "Turns the shopping list on. While it is off nothing is created or read. Greyed while All reskins (the top row of this tab) is off.",
+        disabled = function() return not ns.ReskinTabOn() end,
+        get = function() return C().enabled end, set = function(_, v) C().enabled = v and true or false; Changed() end }
+    local g = { type = "group", name = "Shopping List", order = 5, xuiSwitch = switch, args = args }
     return ns.SectionTabs and ns.SectionTabs(g) or g
 end
 ns.RegisterSettingsPage("reskin", "shoppinglist", ns.BuildShoppingListPage)
@@ -851,7 +859,8 @@ ns.RegisterCommand("shop", function(arg)
     if arg == "status" then
         local c = Cfg()
         if not c then return end
-        ns.Print(("Shopping List: %s; panel %s; Blizzard's list restyled %s; %d to buy; tracker hooked %s."):format(c.enabled and "on" or "off",
+        ns.Print(("Shopping List: %s%s; panel %s; Blizzard's list restyled %s; %d to buy; tracker hooked %s."):format(c.enabled and "on" or "off",
+            ns.ReskinTabOn() and "" or " (All reskins is off in the Blizzard UI Reskin tab, so it does not show)",
             c.panel and "on" or "off", c.tracker and "on" or "off", #c.buy, trackerHooked and "yes" or "no"))
         return
     end

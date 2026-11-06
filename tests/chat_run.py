@@ -456,7 +456,8 @@ check("every option has name/get/set and its getters run", str(bad) == "", bad)
 shape = run("""
 local o = ns.BuildChatTab(function() end)
 local out = { o.childGroups }
-for _, k in ipairs({ 'enabled', 'theme', 'intro' }) do out[#out+1] = (o.args[k] and o.args[k].type ~= 'group') and ('top:' .. k) or ('missing:' .. k) end
+out[#out+1] = (o.xuiSwitch and o.xuiSwitch.name == 'Enable Chat Panel' and o.args.enabled == nil) and 'row:enabled' or 'missing:row-switch'   -- (Chat 0.6.16, S1 #48)
+for _, k in ipairs({ 'theme', 'intro' }) do out[#out+1] = (o.args[k] and o.args[k].type ~= 'group') and ('top:' .. k) or ('missing:' .. k) end
 local headers = 0
 local function walk(t) for _, v in pairs(t.args or {}) do if v.type == 'header' then headers = headers + 1 end if v.type == 'group' then walk(v) end end end
 walk(o)
@@ -470,7 +471,7 @@ out[#out+1] = 'privTop:' .. tostring(p.on ~= nil and p.start ~= nil and p.btn ==
 out[#out+1] = 'blocks:' .. tostring(o.args.bar.args.tab_blocksHdr ~= nil and o.args.bar.args.tab_blocksHdr.args.slot1 ~= nil and o.args.bar.args.on ~= nil)
 return table.concat(out, ' ')
 """)
-want = ["tree", "top:enabled", "top:theme", "top:intro", "headers:0", "layout:tab", "look:tab", "bar:tab", "behavior:tab", "filters:tab",
+want = ["tree", "row:enabled", "top:theme", "top:intro", "headers:0", "layout:tab", "look:tab", "bar:tab", "behavior:tab", "filters:tab",
         "history:tab", "privacy:tab", "sounds:nil", "layoutTop:true", "privOrder:true", "privTop:true", "blocks:true"]
 check("Chat Panel: parts under it, panel switches on its own page, sections as tabs (Privacy: Look, Button, Area)", str(shape).split() == want, shape)
 opened = []
