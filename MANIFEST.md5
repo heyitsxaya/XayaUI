@@ -2,12 +2,12 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-0213c44eb3e48671f8485e929033635b  QA-CHECKLIST.md
+6b334eaa61f7572867af5caefa54f676  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 ba1f5dbf3f223ecc6e5f57fd8b7ac3f6  ROADMAP.md
 119e0f05c00af580ffa6755dddcd5d89  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-35bd3aa95b68b10558bc9d7a512b9689  USER-GUIDE.md
+fc0d5088fa05b846785eb4037e8afc6d  USER-GUIDE.md
 06bc780dc6fe6cd89117f5b4e81bcb26  WHATS-NEW.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
 bf5134b45b181fdc9d83ba8478cc65aa  XayaUI/AuraList.lua
@@ -217,7 +217,7 @@ e41a8c82ba881fdbec1b353d65a44304  XayaUI_Options/Skin.lua
 c79f7aedb61981602d40ea7c1bbbe33b  XayaUI_Options/XayaUI_Options.toc
 c5fab0ea598691a041872b61a749f51c  XayaUI_QoL/CharacterModel.lua
 6c5939f65e530d14fe6e85e84a39e061  XayaUI_QoL/CharacterReskin.lua
-71a9c5e2546cef30f382de5d323903ea  XayaUI_QoL/CharacterToolkit.lua
+cc2ae8361635c8bf6b9eaaa82c735c2c  XayaUI_QoL/CharacterToolkit.lua
 852083e509ef46ba46037600b22bad6f  XayaUI_QoL/CharacterWidthProbe.lua
 ebb711c6a474f2773d4b40a0f3d79e64  XayaUI_QoL/CursorHighlight.lua
 c3617b22a301f3dc2a881c6e62360910  XayaUI_QoL/CursorTrail.lua
@@ -259,7 +259,7 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 11b0157d3de40fc0f105129847ae28b1  XayaUI_QoL/ReleaseGuard.lua
 229c9c2a9bc88903aa514d99caebee7f  XayaUI_QoL/ShoppingList.lua
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
-45a31037ecfebf07b53075eeaf0ba062  XayaUI_QoL/XayaUI_QoL.toc
+6d250a9b90fd13bf5f171290fb09a997  XayaUI_QoL/XayaUI_QoL.toc
 ab46cc74b52167a730851c49022256e1  XayaUI_Reskin/GameMenuSkin.lua
 ba561866fe377a0aa4a6984cdacdda81  XayaUI_Reskin/XayaUI_Reskin.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
@@ -513,6 +513,7 @@ f671bbba5831a0af440e1fe55319f019  debug-log/2026-11-06-2215-chat-hover-wake-opti
 4c07e61138e81217e604a652cc60f7c0  debug-log/2026-11-06-2219-chat-ignore-click-combo-chat-0.6.25.md
 f2ab2c6149d77a1489dc842a2fb341fe  debug-log/2026-11-06-2228-chat-whisper-tab-lists-chat-0.6.26.md
 2c4b405b037091f25123f450a87c575e  debug-log/2026-11-06-2253-stat-calc-proc-lines-set-armor-label-qol-0.7.35.md
+0421f816cee3ec785769ef0f75f54fde  debug-log/2026-11-06-2255-ability-scaling-columns-fold-dividers-qol-0.7.36.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -537,7 +538,7 @@ d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 8d39baf114409f17d6a210122ae1e672  docs/process/REQUEST-LOG-CROSS-CHAT.md
 1c455e2d0e650f1d4403dd74c92e2a52  docs/process/REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-583ff1d47533d0c8b898ac20f6d10193  docs/process/REQUEST-LOG.md
+acb72905551d5a821acdd401551857d7  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 4c7604ae6a9849bdbf672b7ae1d45e7d  docs/process/VERIFICATION.md
 7af233aeafadc9bade62ce5da4b21189  docs/reference/README.md
@@ -602,8 +603,8 @@ a8256603c8e3ad44a640b0927848f31a  tests/char_pane_geometry.lua
 915774a9ce37cd482ee8d01a97dc2112  tests/char_pane_overlays_run.py
 f3215c75ac1e899b565488404268c642  tests/char_pane_round_run.py
 a728b09d9b33b392ede80d974f5e1236  tests/char_reskin_run.py
-094da4d7d3c05c1912cb6ac56152fa7b  tests/char_spells_compare_run.py
-1e8b4ffbf07e03b50caa5cd909988171  tests/char_spells_run.py
+e6efd2e052ed59909ffd4caa98b17124  tests/char_spells_compare_run.py
+ea32c3bfc689c37ecccaceb986b90f6e  tests/char_spells_run.py
 75414a550d2ad68a99b8f6e9e28f5056  tests/char_stat_columns_run.py
 1f1871a2727ae2ae7488783b0a50c1cc  tests/char_stat_map_run.py
 1c7fda81c9b1f63379b9665a4aafc037  tests/char_stat_round_run.py
