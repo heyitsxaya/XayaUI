@@ -181,8 +181,8 @@ Chat 0.6.17, Reskin 0.6.3).
 
 | # | Her words (verbatim; [screenshot]) | Status | Where / what | Notes |
 |---|---|---|---|---|
-| S7-1 | "Calculator needs its own enable / disable toggle" [Bonus Features left pane: Utilities expanded, Calculator with no tick box, Notepad with a ticked box] | BRANCH | Bonus 0.6.16 on `claude/gallant-allen-gmvfr0` (PR #414); debug-log/2026-11-06-0505-calculator-on-off-bonus-0.6.16.md; QA F17 | A tick box on Calculator's row, like Notepad's; built to her answers in S7-2. |
-| S7-2 | Her answers (question box): default "On by default (Recommended)"; does off also stop `/xui calc <sum>`: "Is there a performance difference? If no, just the window"; off message "Keep as written" | BRANCH | as S7-1 | Answered in chat: no performance difference worth naming (the command exists either way to say it is off; a sum is worked out only when typed; from the code, not measured). Built: off = the window, the minimap row and the Open button; chat sums keep answering. |
+| S7-1 | "Calculator needs its own enable / disable toggle" [Bonus Features left pane: Utilities expanded, Calculator with no tick box, Notepad with a ticked box] | MAIN at 1834e68 (landed with CHAT-6) | Bonus 0.6.16 on `claude/gallant-allen-gmvfr0` (PR #414); debug-log/2026-11-06-0505-calculator-on-off-bonus-0.6.16.md; QA F17 | A tick box on Calculator's row, like Notepad's; built to her answers in S7-2. |
+| S7-2 | Her answers (question box): default "On by default (Recommended)"; does off also stop `/xui calc <sum>`: "Is there a performance difference? If no, just the window"; off message "Keep as written" | MAIN at 1834e68 | as S7-1 | Answered in chat: no performance difference worth naming (the command exists either way to say it is off; a sum is worked out only when typed; from the code, not measured). Built: off = the window, the minimap row and the Open button; chat sums keep answering. |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
