@@ -169,6 +169,12 @@ some of these be consolidated into a /xui debug _____ ? this is a LOT of noise" 
 help 14 lines, /xui debug <name>). Not on `main`; waits for her confirmations. Versions renumbered by agreement (core 0.6.50, QoL 0.7.26,
 Chat 0.6.17, Reskin 0.6.3).
 
+## A7. Session S7 = session 014bN6tWsEQA8BZbHidBmJ1Y (branch `claude/gallant-allen-gmvfr0`; Calculator on / off)
+
+| # | Her words (verbatim; [screenshot]) | Status | Where / what | Notes |
+|---|---|---|---|---|
+| S7-1 | "Calculator needs its own enable / disable toggle" [Bonus Features left pane: Utilities expanded, Calculator with no tick box, Notepad with a ticked box] | BRANCH; CONFIRM | Bonus 0.6.15 on `claude/gallant-allen-gmvfr0`; debug-log/2026-11-06-0505-calculator-on-off-bonus-0.6.15.md; QA F16 | A tick box on Calculator's row, like Notepad's. CONFIRM (V16): (1) on by default (proposed, as it always was) or off; (2) off also stops `/xui calc <sum>` chat answers (proposed, as her Notepad words "in its entirety") or only the window; (3) the off message wording. Not landed on `main` until she answers (V16, V17). |
+
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
 a single instance. do this across all chats."

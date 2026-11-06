@@ -3,7 +3,7 @@
 -- "Utilities" Group and nest Notepad and Calculator"). A group in the left pane with its tools as nodes under it, sorted by name like
 -- the tab's own pages (#274): Calculator (Calculator.lua) and Notepad (Notepad.lua). Its own page is a short overview of them. It
 -- has no on / off of its own, so its row has no tick box; Notepad's row carries the Notepad's on / off (its xuiSwitch; Bonus 0.6.14:
--- the whole feature, "Show Notepad" is on its page). Settings only:
+-- the whole feature, "Show Notepad" is on its page) and Calculator's row the Calculator's (Bonus 0.6.15). Settings only:
 -- nothing here runs outside the settings window, and nothing is created until the window draws the page.
 -- Open a tool's page with ns.OpenSettingsPage("bonus", "utilities", "<tool key>").
 -------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ function ns.BuildUtilitiesPage(Notify)
         calc.order = 1
         args.calculator = calc
         args.calcNote = { type = "description", order = 1, width = "full", fontSize = "medium",
-            name = "|cffffd100Calculator|r: a small window with a typed line and a keypad; /xui calc with a sum gives the answer in chat." }
+            name = "|cffffd100Calculator|r: a small window with a typed line and a keypad; /xui calc with a sum gives the answer in chat. The tick box next to it on the left turns it on or off." }
     end
     local notes = ns.BuildNotepadTab and ns.BuildNotepadTab(Notify) or nil
     if notes then

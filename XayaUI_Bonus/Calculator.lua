@@ -6,6 +6,11 @@
 --   * What it reads: numbers (3472, 3,472, 3.5, .5), k / m / b after a number (12k = 12,000), + - * / ^, x or the multiply sign,
 --     the divide sign, % after a number (15% = 0.15), brackets, a leading minus. Nothing else: no functions, no variables.
 -- Typed text is never run as code: the sum is read by the small parser below, never handed to loadstring or RunScript.
+--   * (Bonus 0.6.15; Xaya 2026-11-06: "Calculator needs its own enable / disable toggle") a tick box on its row in Bonus Features >
+--     Utilities turns the whole Calculator on or off, as the Notepad's does. Off: no window (an open one closes), /xui calc only says it
+--     is off (no answer in chat), no Calculator row in the minimap button's list. On by default, as it always was. Its saved sums and
+--     window position are kept. Level reached (V14): the file is read at login (Bonus is not load-on-demand); nothing of it is built,
+--     registered or run while it is off. It has no events, OnUpdate, timers or hooks at any time.
 -- Own code (no other addon's code or data); Blizzard's frame API only.
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
@@ -175,7 +180,7 @@ function ns.CalcFormat(v)
 end
 
 -------------------------------------------------------------------------------
--- Saved: CueRulesDB.calculator = { point, x, y, history = { "sum = answer", ... } }
+-- Saved: CueRulesDB.calculator = { enabled, point, x, y, history = { "sum = answer", ... } } (enabled: false = off; nil or true = on)
 -------------------------------------------------------------------------------
 local function DB()
     if type(CueRulesDB) ~= "table" then return nil end
@@ -185,6 +190,13 @@ local function DB()
     while #d.history > HISTORY_KEPT do table.remove(d.history, 1) end
     return d
 end
+
+-- on unless switched off (read without creating anything: the minimap list asks before the saved settings may exist)
+local function On()
+    local d = type(CueRulesDB) == "table" and CueRulesDB.calculator or nil
+    return not (type(d) == "table" and d.enabled == false)
+end
+ns.Calculator_IsOn = On
 
 local function Remember(line)
     local d = DB()
@@ -299,28 +311,46 @@ local function Build()
     return f
 end
 
+local OFF_TEXT = "The Calculator is off: tick it in Bonus Features > Utilities > Calculator."
+
 function ns.Calculator_Toggle()
+    if not On() then ns.Print(OFF_TEXT); return end
     local f = Build()
     if f:IsShown() then f:Hide() else f:Show(); f.edit:SetFocus() end
 end
 -- the settings page's "Open calculator" button: shows the window (never closes it) with the cursor in the typed line
 function ns.Calculator_Open()
+    if not On() then ns.Print(OFF_TEXT); return end
     local f = Build()
     f:Show(); f.edit:SetFocus()
 end
 
+-- On / off for the whole Calculator (Bonus 0.6.15): off closes the window and takes the cursor out of its line. The window, if it
+-- was ever built this session, stays as a hidden frame until /reload (the game cannot delete a frame); nothing of it runs.
+function ns.Calculator_SetEnabled(v)
+    local d = DB(); if not d then return end
+    d.enabled = v and true or false
+    if not d.enabled and frame then frame.edit:ClearFocus(); frame:Hide() end
+end
+
 -- Settings: Bonus Features > Utilities > Calculator (Bonus 0.6.11; Xaya 2026-11-05: "Under bonus features, create "Utilities" Group
--- and nest Notepad and Calculator"). What it is and how to open it, from this file's header; it has nothing to switch on or off, so
--- its row in the left pane has no tick box. Built only when the settings window draws (Utilities.lua).
+-- and nest Notepad and Calculator"). What it is and how to open it, from this file's header. Its row in the left pane carries the
+-- Calculator's on / off (xuiSwitch, Bonus 0.6.15; Options.lua Tree.RowSwitch draws the box); while it is off the Open button is greyed
+-- out. Built only when the settings window draws (Utilities.lua).
 function ns.BuildCalculatorPage()
-    return { type = "group", name = "Calculator", order = 1, args = {
+    return { type = "group", name = "Calculator", order = 1,
+      xuiSwitch = { type = "toggle", name = "Calculator",
+          desc = "Turns the Calculator on or off as a whole. Off: no window, /xui calc gives no answers, no Calculator row in the minimap button's list, and nothing of it is built or runs; your last sums are kept.",
+          get = function() return On() end, set = function(_, v) ns.Calculator_SetEnabled(v) end },
+      args = {
         about = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "A small calculator: a window with a typed line and a keypad. Enter or = works the sum out; the answer replaces the line so the next sum can build on it, and the last sums are listed above it." },
         reads = { type = "description", order = 1, width = "full", fontSize = "medium",
             name = "It reads numbers (3472, 3,472, 3.5, .5), k / m / b after a number (12k = 12,000), + - * / ^, x or the multiply sign, the divide sign, % after a number (15% = 0.15), brackets and a leading minus. Nothing else: no functions, no variables. What you type is never run as code." },
         how = { type = "description", order = 2, width = "full", fontSize = "medium",
-            name = "Open it with the button below, with /xui calc, or with Calculator in the minimap button's list. /xui calc with a sum after it gives the answer in chat: /xui calc 23,249 / 3,472 prints 23,249 / 3,472 = 6.696141." },
-        open = { type = "execute", order = 3, name = "Open calculator", func = function() ns.Calculator_Open() end },
+            name = "Open it with the button below, with /xui calc, or with Calculator in the minimap button's list. /xui calc with a sum after it gives the answer in chat: /xui calc 23,249 / 3,472 prints 23,249 / 3,472 = 6.696141. Turn the Calculator on or off with the tick box next to it on the left." },
+        open = { type = "execute", order = 3, name = "Open calculator", func = function() ns.Calculator_Open() end,
+            disabled = function() return not On() end },
     } }
 end
 ns.Calculator_Press = function(key) Build(); Press(key) end   -- (tests press keys through this)
@@ -328,6 +358,7 @@ ns.Calculator_Press = function(key) Build(); Press(key) end   -- (tests press ke
 -- /xui calc [sum]
 local function Command(arg)
     local sum = type(arg) == "string" and arg:match("^%s*(.-)%s*$") or ""
+    if not On() then ns.Print(OFF_TEXT); return end
     if sum == "" then ns.Calculator_Toggle(); return end
     local v, err = ns.CalcEval(sum)
     if not v then ns.Print(("calc: %s (%s)"):format(err, sum)); return end
@@ -342,5 +373,6 @@ if ns.RegisterCommand then
 end
 if ns.RegisterLauncher then
     ns.RegisterLauncher({ "calc", "Calculator", "Show or hide the calculator (also /xui calc)", function() ns.Calculator_Toggle() end,
-        function() return (frame and frame:IsShown()) and "on" or "off" end, order = 11 })
+        function() return (frame and frame:IsShown()) and "on" or "off" end, order = 11,
+        available = function() return On() end })   -- (Bonus 0.6.15) no row while the Calculator is off (core 0.6.49: available())
 end
