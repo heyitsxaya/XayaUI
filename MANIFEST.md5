@@ -108,8 +108,6 @@ a798bbc0f8b2389a2b4de9c26599d737  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
 418107b92033fa7474da24b1c0944249  XayaUI/Visual.lua
 bc06cd6fd6a5ce73bcad6fc6ec29c9a8  XayaUI/XayaUI.toc
-bc06cd6fd6a5ce73bcad6fc6ec29c9a8  XayaUI/XayaUI.toc
-bc06cd6fd6a5ce73bcad6fc6ec29c9a8  XayaUI/XayaUI.toc
 7de6ddcbf9085bc9d8bc3d7b0dbd95b6  XayaUI_Bonus/Calculator.lua
 7c8c4b6ef4fab8a18001668d5d23932a  XayaUI_Bonus/DataPanels.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
@@ -154,8 +152,6 @@ b3bf7034cf1410cb58341ad814d97882  XayaUI_Chat/Probe.lua
 271385b46e5eb6735ddf1295454bc596  XayaUI_Chat/Scroll.lua
 811fd8fbb77e7068f1f88e024bf55344  XayaUI_Chat/Skin.lua
 c3443dcf8a486e540ddfeac1aae87728  XayaUI_Chat/Sounds.lua
-68bc7878befe467351529fc7476b7140  XayaUI_Chat/XayaUI_Chat.toc
-68bc7878befe467351529fc7476b7140  XayaUI_Chat/XayaUI_Chat.toc
 68bc7878befe467351529fc7476b7140  XayaUI_Chat/XayaUI_Chat.toc
 d1214a6ecb251789fe882787dce5d8ef  XayaUI_DevAssist/ApiInventory.lua
 2927a47181fd6886394e1b61d1fc0faf  XayaUI_DevAssist/AuraCatalogue.lua
@@ -218,8 +214,6 @@ a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
 c5dc81b3854be5f1bda9dc20d6c7354e  XayaUI_Options/XayaUI_Options.toc
-c5dc81b3854be5f1bda9dc20d6c7354e  XayaUI_Options/XayaUI_Options.toc
-c5dc81b3854be5f1bda9dc20d6c7354e  XayaUI_Options/XayaUI_Options.toc
 5afe11f54ae24648f309bff7987178e0  XayaUI_QoL/CharacterModel.lua
 9dbb3a35e3cd11a8c3022165b31d05b7  XayaUI_QoL/CharacterReskin.lua
 71a9c5e2546cef30f382de5d323903ea  XayaUI_QoL/CharacterToolkit.lua
@@ -264,13 +258,7 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 6e3449d0cb41b7695956245493afb2db  XayaUI_QoL/ShoppingList.lua
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
 77008ac922851eab29e67b43355f786c  XayaUI_QoL/XayaUI_QoL.toc
-77008ac922851eab29e67b43355f786c  XayaUI_QoL/XayaUI_QoL.toc
-77008ac922851eab29e67b43355f786c  XayaUI_QoL/XayaUI_QoL.toc
 1533de8a8d87ff76a84a6468901e781c  XayaUI_Reskin/GameMenuSkin.lua
-1533de8a8d87ff76a84a6468901e781c  XayaUI_Reskin/GameMenuSkin.lua
-1533de8a8d87ff76a84a6468901e781c  XayaUI_Reskin/GameMenuSkin.lua
-2161069c224b3764be75ac0d011c734b  XayaUI_Reskin/XayaUI_Reskin.toc
-2161069c224b3764be75ac0d011c734b  XayaUI_Reskin/XayaUI_Reskin.toc
 2161069c224b3764be75ac0d011c734b  XayaUI_Reskin/XayaUI_Reskin.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
 6282a56ce03230e14f536fc71e16240b  debug-log/2026-11-02-0100-buff-aura-multiple-ids-0.5.55.md
@@ -616,7 +604,7 @@ cbf3c82d2398010da18d49bd2ef1a940  tests/chat_pieces_run.py
 de8e42cd1a1c7ce6149f4c172854b190  tests/chatprobe_run.py
 c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
 77c4528b7a2dd2ec35f14acbb7abec18  tests/compact_button_width_run.py
-394bb596535379f143f960738bbb2466  tests/console_commands_run.py
+faa58f1a93a8b1e515cd03e0b455abe7  tests/console_commands_run.py
 5a5034513603092a5062a0bb8ef84779  tests/console_toggle_cost_run.py
 318936c7433b87d2240e8955d3adebcb  tests/core_off_costs_nothing_run.py
 385efab273152e93a25d127204b06e1e  tests/count_gcd_run.py
