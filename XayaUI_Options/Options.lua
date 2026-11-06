@@ -2648,14 +2648,74 @@ local function BuildRule(i, rule)
             color = Col(B, "color", "Bar colour", 4.2, bon, { hidden = function() return B.colorMode ~= "fixed" end }),
             colorNow = { type = "description", order = 4.3, width = "full", fontSize = "medium", hidden = function() return B.colorMode == "fixed" end,
                 name = function()
-                    local okc, r, g, b2, a, why, t = pcall(ns.BarCueColor, rule, nil)
+                    local okc, r, g, b2, a, why, t, d = pcall(ns.BarCueColor, rule, nil)
                     if not okc then return "" end
                     local sw = ("|TInterface\\Buttons\\WHITE8X8:12:28:0:0:8:8:0:8:0:8:%d:%d:%d|t"):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b2 * 255 + 0.5))
-                    local what = (why == "tooltip") and (tostring(t) .. ", named in the tooltip")
-                        or (why == "dispel") and (tostring(t) .. ", the aura's dispel type")
+                    local st, cu = ns.BarCueStyle(rule)
+                    local what = (why == "tooltip") and (ns.BarTypeLabel(t, d, st, cu) .. ", named in the tooltip")
+                        or (why == "dispel") and (ns.BarTypeLabel(t, nil, st, cu) .. ", the aura's dispel type")
                         or "the fixed blue (no type found yet; an aura's dispel type is read while it is up)"
-                    return "Now: " .. sw .. "  " .. what .. ". Colour style: " .. (ns.BAR_STYLE_LABEL[ns.BarColorStyle()] or "") .. " (Settings > UI Options > Bar Colours)."
+                    return "Now: " .. sw .. "  " .. what .. "."
                 end },
+            -- the colour style of THIS bar (Xaya S8-10: "Cue sets it, group overrides if forcibly set")
+            styleForced = { type = "description", order = 4.4, width = "full", fontSize = "medium",
+                hidden = function() local _, _, gf = ns.BarCueStyle(rule); return B.colorMode == "fixed" or gf == nil end,
+                name = function()
+                    local st, _, gf = ns.BarCueStyle(rule)
+                    return gf and ("|cffffd100Colour style: " .. (ns.BAR_STYLE_LABEL[st] or st) .. ", forced by the group '" .. tostring(gf.name) .. "'.|r Untick 'Force on every bar in this group' on that group's Display tab to set this bar's own.") or ""
+                end },
+            style = Sel(B, "style", "Colour style", 4.5, ns.BAR_STYLE_LABEL, ns.BAR_STYLES, bon, { width = "double",
+                hidden = function() return B.colorMode == "fixed" end,
+                disabled = function() local _, _, gf = ns.BarCueStyle(rule); return gf ~= nil end,
+                desc = "Blizzard default: the game's own colours. Neon, Pastel and Muted / Dark keep each colour's family and change its saturation and brightness. Custom: pick each type's colour below." }),
+            cusMagic = { type = "color", name = "Magic", order = 4.60, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Magic", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Magic"] = { r, g, b2, 1 }; bon() end },
+            cusCurse = { type = "color", name = "Curse", order = 4.61, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Curse", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Curse"] = { r, g, b2, 1 }; bon() end },
+            cusDisease = { type = "color", name = "Disease", order = 4.62, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Disease", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Disease"] = { r, g, b2, 1 }; bon() end },
+            cusPoison = { type = "color", name = "Poison", order = 4.63, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Poison", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Poison"] = { r, g, b2, 1 }; bon() end },
+            cusBleed = { type = "color", name = "Bleed", order = 4.64, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Bleed", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Bleed"] = { r, g, b2, 1 }; bon() end },
+            cusPhysical = { type = "color", name = "Physical", order = 4.65, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Physical", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Physical"] = { r, g, b2, 1 }; bon() end },
+            cusHoly = { type = "color", name = "Holy", order = 4.66, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Holy", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Holy"] = { r, g, b2, 1 }; bon() end },
+            cusFire = { type = "color", name = "Fire", order = 4.67, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Fire", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Fire"] = { r, g, b2, 1 }; bon() end },
+            cusNature = { type = "color", name = "Nature", order = 4.68, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Nature", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Nature"] = { r, g, b2, 1 }; bon() end },
+            cusFrost = { type = "color", name = "Frost", order = 4.69, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Frost", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Frost"] = { r, g, b2, 1 }; bon() end },
+            cusShadow = { type = "color", name = "Shadow", order = 4.70, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Shadow", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Shadow"] = { r, g, b2, 1 }; bon() end },
+            cusArcane = { type = "color", name = "Arcane", order = 4.71, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Arcane", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Arcane"] = { r, g, b2, 1 }; bon() end },
             iconH = hdr("Icon and spark", 5),
             icon = Sel(B, "icon", "Icon", 5.1, { left = "Left", right = "Right", none = "None" }, { "left", "right", "none" }, bon,
                 { desc = "On a vertical bar, left is the top end and right the bottom end." }),
@@ -3150,78 +3210,6 @@ local function BuildAddonSettings()
                 sorting = { "gradient", "standard" },
                 get = function() return (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.gameMenuStyle) or "gradient" end,
                 set = function(_, v) Ui().gameMenuStyle = v; if ns.GameMenu_Repaint then ns.GameMenu_Repaint() end end },
-            -- Bar Colours (RM-BARS; Xaya 2026-11-06, REQUEST-LOG S8-3 / S8-4): the colour family a Bar cue's automatic colour is drawn in
-            barColH = { type = "header", name = "Bar Colours", order = 40 },
-            barColNote = { type = "description", order = 40.1, width = "full",
-                name = "A Bar cue on Automatic colour is coloured by the type its tooltip names (a school such as Fire or Shadow, or a dispel type such as Magic), else by the aura's dispel type, else blue. The style below sets how those type colours look." },
-            barStyle = { type = "select", name = "Colour style", order = 40.2, width = "double",
-                desc = "Blizzard default: the game's own colours. Neon, Pastel and Muted / Dark keep each colour's hue and change its saturation and brightness. Custom: pick each type's colour yourself.",
-                values = function() local vv = {}; for _, k in ipairs(ns.BAR_STYLES or {}) do vv[k] = ns.BAR_STYLE_LABEL[k] end; return vv end,
-                sorting = function() return ns.BAR_STYLES or {} end,
-                get = function() return ns.BarColorStyle and ns.BarColorStyle() or "blizzard" end,
-                set = function(_, v) if ns.SetBarColorStyle then ns.SetBarColorStyle(v) end; ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end },
-            barPreview = { type = "description", order = 40.3, width = "full", fontSize = "medium",
-                name = function()
-                    if not ns.BarTypeColor then return "" end
-                    local out = {}
-                    for _, t in ipairs(ns.BAR_TYPES or {}) do
-                        local r, g, b = ns.BarTypeColor(t)
-                        if r then
-                            out[#out + 1] = ("|TInterface\\Buttons\\WHITE8X8:12:20:0:0:8:8:0:8:0:8:%d:%d:%d|t %s"):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5), ns.BAR_TYPE_LABEL[t])
-                        else
-                            out[#out + 1] = "|cff888888" .. ns.BAR_TYPE_LABEL[t] .. " (no colour from the game: blue)|r"
-                        end
-                    end
-                    return table.concat(out, "    ")
-                end },
-            barCustomMagic = { type = "color", name = "Magic", order = 40.40, hasAlpha = false,
-                hidden = function() return not (ns.BarColorStyle and ns.BarColorStyle() == "custom") end,
-                get = function() local r, g, b = ns.BarTypeColor("Magic", "custom"); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b, 1 end,
-                set = function(_, r, g, b) ns.SetBarCustomColor("Magic", r, g, b, 1); ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end },
-            barCustomCurse = { type = "color", name = "Curse", order = 40.41, hasAlpha = false,
-                hidden = function() return not (ns.BarColorStyle and ns.BarColorStyle() == "custom") end,
-                get = function() local r, g, b = ns.BarTypeColor("Curse", "custom"); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b, 1 end,
-                set = function(_, r, g, b) ns.SetBarCustomColor("Curse", r, g, b, 1); ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end },
-            barCustomDisease = { type = "color", name = "Disease", order = 40.42, hasAlpha = false,
-                hidden = function() return not (ns.BarColorStyle and ns.BarColorStyle() == "custom") end,
-                get = function() local r, g, b = ns.BarTypeColor("Disease", "custom"); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b, 1 end,
-                set = function(_, r, g, b) ns.SetBarCustomColor("Disease", r, g, b, 1); ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end },
-            barCustomPoison = { type = "color", name = "Poison", order = 40.43, hasAlpha = false,
-                hidden = function() return not (ns.BarColorStyle and ns.BarColorStyle() == "custom") end,
-                get = function() local r, g, b = ns.BarTypeColor("Poison", "custom"); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b, 1 end,
-                set = function(_, r, g, b) ns.SetBarCustomColor("Poison", r, g, b, 1); ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end },
-            barCustomBleed = { type = "color", name = "Bleed", order = 40.44, hasAlpha = false,
-                hidden = function() return not (ns.BarColorStyle and ns.BarColorStyle() == "custom") end,
-                get = function() local r, g, b = ns.BarTypeColor("Bleed", "custom"); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b, 1 end,
-                set = function(_, r, g, b) ns.SetBarCustomColor("Bleed", r, g, b, 1); ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end },
-            barCustomPhysical = { type = "color", name = "Physical", order = 40.45, hasAlpha = false,
-                hidden = function() return not (ns.BarColorStyle and ns.BarColorStyle() == "custom") end,
-                get = function() local r, g, b = ns.BarTypeColor("Physical", "custom"); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b, 1 end,
-                set = function(_, r, g, b) ns.SetBarCustomColor("Physical", r, g, b, 1); ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end },
-            barCustomHoly = { type = "color", name = "Holy", order = 40.46, hasAlpha = false,
-                hidden = function() return not (ns.BarColorStyle and ns.BarColorStyle() == "custom") end,
-                get = function() local r, g, b = ns.BarTypeColor("Holy", "custom"); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b, 1 end,
-                set = function(_, r, g, b) ns.SetBarCustomColor("Holy", r, g, b, 1); ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end },
-            barCustomFire = { type = "color", name = "Fire", order = 40.47, hasAlpha = false,
-                hidden = function() return not (ns.BarColorStyle and ns.BarColorStyle() == "custom") end,
-                get = function() local r, g, b = ns.BarTypeColor("Fire", "custom"); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b, 1 end,
-                set = function(_, r, g, b) ns.SetBarCustomColor("Fire", r, g, b, 1); ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end },
-            barCustomNature = { type = "color", name = "Nature", order = 40.48, hasAlpha = false,
-                hidden = function() return not (ns.BarColorStyle and ns.BarColorStyle() == "custom") end,
-                get = function() local r, g, b = ns.BarTypeColor("Nature", "custom"); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b, 1 end,
-                set = function(_, r, g, b) ns.SetBarCustomColor("Nature", r, g, b, 1); ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end },
-            barCustomFrost = { type = "color", name = "Frost", order = 40.49, hasAlpha = false,
-                hidden = function() return not (ns.BarColorStyle and ns.BarColorStyle() == "custom") end,
-                get = function() local r, g, b = ns.BarTypeColor("Frost", "custom"); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b, 1 end,
-                set = function(_, r, g, b) ns.SetBarCustomColor("Frost", r, g, b, 1); ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end },
-            barCustomShadow = { type = "color", name = "Shadow", order = 40.50, hasAlpha = false,
-                hidden = function() return not (ns.BarColorStyle and ns.BarColorStyle() == "custom") end,
-                get = function() local r, g, b = ns.BarTypeColor("Shadow", "custom"); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b, 1 end,
-                set = function(_, r, g, b) ns.SetBarCustomColor("Shadow", r, g, b, 1); ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end },
-            barCustomArcane = { type = "color", name = "Arcane", order = 40.51, hasAlpha = false,
-                hidden = function() return not (ns.BarColorStyle and ns.BarColorStyle() == "custom") end,
-                get = function() local r, g, b = ns.BarTypeColor("Arcane", "custom"); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b, 1 end,
-                set = function(_, r, g, b) ns.SetBarCustomColor("Arcane", r, g, b, 1); ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end },
             sidebarSpellIcons = { type = "toggle", name = "Show a rule's spell / buff icon in the rule list", order = 23, width = "full",
                 desc = "Rules that track a spell or buff show that spell's icon in the left-hand list instead of the generic type icon. Each rule can override this in its Display Options (Sidebar icon).",
                 get = function() return ns.SidebarSpellIcons() end,

@@ -458,7 +458,7 @@ local function BarButtonInit(w, h, display, single, rec)
     local iconS, l, r = ns.BarGeometry(b, w, h)
     local texPath = ns.BarTexturePath(b)
     local cr, cg, cb, ca, why = ns.BarCueColor(display, nil)
-    local map = (why == "fallback") and ns.BarDispelColorMap and ns.BarDispelColorMap() or nil
+    local map = (why == "fallback") and ns.BarDispelColorMap and ns.BarDispelColorMap(display) or nil
     local maxApps = (src == "stacks") and ns.BarCueMax(display) or nil
     return function(btn)
         btn:SetSize(w, h)
@@ -813,7 +813,7 @@ local function BarLookKey(display)
     return "|bar|" .. table.concat({ tostring(ns.BarCueSource(display)), tostring(b.max), tostring(b.dir), tostring(b.reverse), tostring(b.texture),
         tostring(b.texFile), tostring(b.colorMode), ColorKey(b.color), tostring(b.icon), tostring(sp.enabled), tostring(sp.w), ColorKey(sp.color),
         TextKey(b.name), tostring(bo.enabled), tostring(bo.size), ColorKey(bo.color), tostring(why), ColorKey({ r, g, bl, a }),
-        ns.BarColorStyle and ns.BarColorStyle() or "", tostring(ns.barColorVersion or 0),
+        ns.BarStyleSig and ns.BarStyleSig(display) or "",
         tostring(ns.BarCueMax and ns.BarCueMax(display) or "") }, "|")
 end
 -- Everything about a display's look that is baked into its slot's buttons (an edit to any of it makes a new slot)

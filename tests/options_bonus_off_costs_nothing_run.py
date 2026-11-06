@@ -113,7 +113,7 @@ if MODE == "off" then
   ---------------------------------------------------------------------------------------------------------------------------------
   -- A. Bonus features saved off: after login, nothing of them exists or runs
   ---------------------------------------------------------------------------------------------------------------------------------
-  check("A1 all four Tooltip features saved off: no tooltip post-call is installed (10 before)", posts() == 0, posts())
+  check("A1 all five Tooltip features saved off (Type colours since Bonus 0.6.18): no tooltip post-call is installed (10 before)", posts() == 0, posts())
   check("A2 ...and Tooltips.lua / TooltipsUI.lua made no frame and registered no event", nothing(TT_) and nothing(TTUI), cost(TT_) .. " | " .. cost(TTUI))
   check("A3 ...hovering a spell runs no XayaUI code and adds no line", hoverSpell(133) == "" and idCalls == 0, idCalls)
   W.fire("PLAYER_REGEN_DISABLED"); W.fire("PLAYER_REGEN_ENABLED"); W.fire("ACTIVE_PLAYER_SPECIALIZATION_CHANGED")
@@ -148,7 +148,7 @@ if MODE == "off" then
     and (s1.COOLDOWN_VIEWER_DATA_LOADED or s1b.COOLDOWN_VIEWER_DATA_LOADED), l1 .. " | " .. l1b)
   ttSwitch("ids", false)
   idCalls = 0
-  check("B3 all four off again: hovering a spell runs no XayaUI code (the post-calls return at once) and adds no line", hoverSpell(133) == "" and idCalls == 0, idCalls)
+  check("B3 all five off again: hovering a spell runs no XayaUI code (the post-calls return at once) and adds no line", hoverSpell(133) == "" and idCalls == 0, idCalls)
   check("B4 ...and every event is let go", events(TT_) == 0, cost(TT_))
   ttSwitch("formulas", true)
   local d0 = ncalls("DoesAddOnExist", TT_)
@@ -307,7 +307,8 @@ def saved_for(mode):
     if mode == "off":
         return {"XayaUI": {"CueRulesDB": {
             "rules": rules(2), "folders": FOLDERS,
-            "tooltips": {"ids": {"enabled": False}, "ilvl": {"enabled": False}, "forces": {"enabled": False}, "formulas": {"enabled": False}},
+            "tooltips": {"ids": {"enabled": False}, "ilvl": {"enabled": False}, "forces": {"enabled": False}, "formulas": {"enabled": False},
+                         "typeColors": {"enabled": False}},   # (Bonus 0.6.18: the fifth section, Type colours)
             "dataPanels": {"general": {"enabled": False}, "bl": {"enabled": True}},
             "notepad": {"shown": False, "acceptShares": False},
             "ui": {"consoleAutoOpen": False}}}}

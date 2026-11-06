@@ -4,7 +4,8 @@
 --   a NEW Bar cue kind (beside Icon / Texture / Text); it tracks aura time left, a spell's cooldown / recharge, stacks or charges;
 --   its parts are an icon (left / right / none), a spark, name and time texts, and the stack / charge count;
 --   colour: "Read tooltip to see what type is specified" FIRST, then the game's dispel type of the aura, then a fixed blue;
---   colour styles: Blizzard default, Neon, Pastel, Muted / Dark, and Custom (a colour picker for each type);
+--   colour styles: Blizzard default, Neon, Pastel, Muted / Dark, and Custom (a colour picker for each type), set on each Bar cue; a
+--   group can force its own on every bar inside it (S8-10); type names in tooltips are title-cased and coloured (S8-10);
 --   default look: 220 x 22, black background at 20 %, 1 px black border, flat texture, horizontal, drains right to left.
 -- XayaUI draws the bar here (Visual.lua calls ns.BarCueLayout / ns.BarCueUpdate for a display whose kind is "bar"). The combat
 -- engine draws aura bars in combat through the game's own aura buttons (Combat/AuraDisplay.lua ButtonInit), using
@@ -27,7 +28,7 @@ local function clamp(x, a, b) if x < a then return a elseif x > b then return b 
 -------------------------------------------------------------------------------
 -- Defaults
 -------------------------------------------------------------------------------
-ns.BAR_CUE_VERSION = 1   -- bump when BAR_CUE_DEFAULTS gains a key, so saved bars get it once
+ns.BAR_CUE_VERSION = 2   -- bump when BAR_CUE_DEFAULTS gains a key, so saved bars get it once
 ns.BAR_FALLBACK_COLOR = { 0.25, 0.62, 1, 1 }   -- "Fixed blue" (Xaya, S8-3): XayaUI's own buff-bar blue
 ns.BAR_CUE_DEFAULTS = {
     source = "auto",      -- auto | aura | cooldown | stacks | charges   (auto: the aura when the rule watches one, else the cooldown)
@@ -37,6 +38,8 @@ ns.BAR_CUE_DEFAULTS = {
     texture = "flat",     -- flat | blizz | raid | lsm:<name> | file
     texFile = "",         -- texture = "file": a texture path or file ID
     colorMode = "auto",   -- auto (the type colour: tooltip, dispel type, fixed blue) | fixed (color below)
+    style = "blizzard",   -- the type colours' style: blizzard | neon | pastel | muted | custom (a group can force its own: BarCueStyle)
+    custom = {},          -- style = custom: [type] = { r, g, b, a }; a type never picked shows Blizzard's colour
     color = { 0.25, 0.62, 1, 1 },
     icon = "left",        -- left | right | none
     spark = { enabled = true, color = { 1, 1, 1, 0.9 }, w = 12 },
@@ -224,47 +227,54 @@ function ns.BarStyleTransform(style, r, g, b)
     return ToRGB(h, s, v)
 end
 
-local function ColorDB()
-    local ui = CueRulesDB and CueRulesDB.ui
-    return type(ui) == "table" and type(ui.barColors) == "table" and ui.barColors or nil
+-- The colour style a Bar cue uses (Xaya, S8-10: "Cue sets it, group overrides if forcibly set"): the nearest group around the cue
+-- whose "Force on every bar in this group" is ticked, else the cue's own style. Returns style, custom colours table (or nil), and the
+-- forcing group (or nil).
+function ns.BarCueStyle(cue)
+    local id, guard = cue and cue.folder, 0
+    while id and guard < 32 do
+        local f = ns.FolderById and ns.FolderById(id)
+        if not f then break end
+        if f.barStyleForce and ns.BAR_STYLE_LABEL[f.barStyle] then
+            return f.barStyle, (type(f.barCustom) == "table") and f.barCustom or nil, f
+        end
+        id, guard = f.parent, guard + 1
+    end
+    local b = ns.BarCueSettings(cue and cue.visual)
+    local st = ns.BAR_STYLE_LABEL[b.style] and b.style or "blizzard"
+    return st, (type(b.custom) == "table") and b.custom or nil, nil
 end
-function ns.BarColorStyle()
-    local d = ColorDB()
-    local s = d and d.style
-    if ns.BAR_STYLE_LABEL[s] then return s end
-    return "blizzard"
-end
--- Written only when Xaya changes it (no saved table while everything is at its default).
-function ns.SetBarColorStyle(style)
-    if not ns.BAR_STYLE_LABEL[style] then return end
-    if type(CueRulesDB) ~= "table" then return end
-    CueRulesDB.ui = CueRulesDB.ui or {}
-    CueRulesDB.ui.barColors = CueRulesDB.ui.barColors or {}
-    CueRulesDB.ui.barColors.style = style
-    ns.barColorVersion = (ns.barColorVersion or 0) + 1
-end
-function ns.SetBarCustomColor(t, r, g, b, a)
-    if not ns.BAR_TYPE_LABEL[t] or type(CueRulesDB) ~= "table" then return end
-    CueRulesDB.ui = CueRulesDB.ui or {}
-    CueRulesDB.ui.barColors = CueRulesDB.ui.barColors or {}
-    local d = CueRulesDB.ui.barColors
-    d.custom = d.custom or {}
-    d.custom[t] = { r, g, b, a or 1 }
-    ns.barColorVersion = (ns.barColorVersion or 0) + 1
-end
--- The colour a type shows in the chosen style: r, g, b, a, or nil when the game gives no colour for it (then: fixed blue).
--- Custom: the type's own picked colour; a type never picked shows Blizzard's colour.
-function ns.BarTypeColor(t, style)
-    style = style or ns.BarColorStyle()
-    if style == "custom" then
-        local d = ColorDB()
-        local c = d and type(d.custom) == "table" and d.custom[t]
+-- The colour a type shows in a style: r, g, b, a, or nil when the game gives no colour for it (then: fixed blue).
+-- Custom: the type's own picked colour (custom[type]); a type never picked shows Blizzard's colour.
+function ns.BarTypeColor(t, style, custom)
+    style = style or "blizzard"
+    if style == "custom" and type(custom) == "table" then
+        local c = custom[t]
         if type(c) == "table" and type(c[1]) == "number" then return c[1], c[2] or 0, c[3] or 0, c[4] or 1 end
     end
     local r, g, b = ns.BarBlizzardColor(t)
     if not r then return nil end
     r, g, b = ns.BarStyleTransform(style, r, g, b)
     return r, g, b, 1
+end
+local function Hex(r, g, b) return ("%02x%02x%02x"):format(math.floor(clamp(r, 0, 1) * 255 + 0.5), math.floor(clamp(g, 0, 1) * 255 + 0.5), math.floor(clamp(b, 0, 1) * 255 + 0.5)) end
+local function TitleWord(w) return w:sub(1, 1):upper() .. w:sub(2):lower() end
+-- A type written the way Xaya asked (S8-10): title case, in its colour. "Fire" -> "Fire Damage" in the Fire colour, and a dispel type
+-- in brackets after it in the dispel type's colour ("Fire Damage (Magic)"); a dispel type alone: "Magic". style / custom: the cue's.
+function ns.BarTypeLabel(t, d, style, custom)
+    local out = {}
+    if t and IS_SCHOOL[t] then
+        local r, g, b = ns.BarTypeColor(t, style, custom)
+        out[#out + 1] = r and ("|cff" .. Hex(r, g, b) .. t .. " Damage|r") or (t .. " Damage")
+    elseif t and IS_DISPEL[t] and not d then
+        d = t
+    end
+    if d and IS_DISPEL[d] then
+        local r, g, b = ns.BarTypeColor(d, style, custom)
+        local w = (#out > 0) and ("(" .. d .. ")") or d
+        out[#out + 1] = r and ("|cff" .. Hex(r, g, b) .. w .. "|r") or w
+    end
+    return table.concat(out, " ")
 end
 
 -------------------------------------------------------------------------------
@@ -291,12 +301,28 @@ function ns.BarSchoolInText(text)
         if best then return best end
     end
 end
--- The type a tooltip's lines name: the dispel type in the first line's right-hand text (aura tooltips: "Magic"), else the first
--- school named in the rest. Returns type, or nil and whether the tooltip had text to read (false = not loaded yet).
+-- The school a damage word names: the school whose name it contains earliest ("Shadowflame" -> Shadow), or nil.
+local function SchoolOfWord(word)
+    local lw, best, bestAt = word:lower(), nil, nil
+    for _, pair in ipairs(LOWER_SCHOOLS) do
+        local at = lw:find(pair[2], 1, true)
+        if at and (not bestAt or at < bestAt) then best, bestAt = pair[1], at end
+    end
+    return best
+end
+-- "<word> damage (<Dispel>)": the dispel type written in brackets right after the damage words (Xaya S8-10), or nil.
+local function BracketDispel(text, from)
+    local d = text:match("^%s*%((%a+)%)", from)
+    if d and IS_DISPEL[TitleWord(d)] then return TitleWord(d) end
+end
+-- The type a tooltip's lines name, and a dispel type written in brackets after the damage words:
+--   the dispel type in the first line's right-hand text (aura tooltips: "Magic"), else the first school named in the rest
+--   ("<word> damage", optionally followed by "(Magic)"), else a bracketed dispel type after damage words that name no school.
+-- Returns type, whether the tooltip had text to read (false = not loaded yet), the bracketed dispel type.
 function ns.BarTypeInTooltip(data)
     if type(data) ~= "table" or type(data.lines) ~= "table" then return nil, false end
     local lines = data.lines
-    local any = false
+    local any, lone = false, nil
     for i, line in ipairs(lines) do
         if type(line) == "table" then
             local l, r = Str(line.leftText), Str(line.rightText)
@@ -304,38 +330,93 @@ function ns.BarTypeInTooltip(data)
             if i == 1 then
                 if r and IS_DISPEL[r] then return r, true end
             else
-                local s = ns.BarSchoolInText(l) or ns.BarSchoolInText(r)
-                if s then return s, true end
+                for _, text in ipairs({ l or "", r or "" }) do
+                    local pos = 1
+                    while true do
+                        local st, e, word = text:find("(%a+) [Dd]amage", pos)
+                        if not st then break end
+                        local school = SchoolOfWord(word)
+                        local d = BracketDispel(text, e + 1)
+                        if school then return school, true, d end
+                        lone = lone or d
+                        pos = e + 1
+                    end
+                end
             end
         end
     end
+    if lone then return lone, true, nil end
     return nil, any and #lines > 1
 end
-local tipType = {}   -- [spellID] = type | false (read, names none). A tooltip with no text yet is not remembered.
+local tipType = {}   -- [spellID] = { t = type, d = bracketed dispel } | false (read, names none). Not remembered before the text loads.
 function ns.BarTooltipType(spellID, unit, instanceID)
     spellID = tonumber(spellID) or 0
     if spellID <= 0 then return nil end
     local known = tipType[spellID]
-    if known ~= nil then return known or nil end
+    if known ~= nil then if known then return known.t, known.d end return nil end
     local TI = rawget(_G, "C_TooltipInfo")
     if not TI then return nil end
     -- a live aura's tooltip names its dispel type (top right); read it while the game lets addon code see the aura
     if instanceID and TI.GetUnitAuraByAuraInstanceID then
         local ok, data = pcall(TI.GetUnitAuraByAuraInstanceID, unit or "player", instanceID)
         if ok then
-            local t = ns.BarTypeInTooltip(data)
-            if t then tipType[spellID] = t; return t end
+            local t, _, d = ns.BarTypeInTooltip(data)
+            if t then tipType[spellID] = { t = t, d = d }; return t, d end
         end
     end
     if not TI.GetSpellByID then return nil end
     local ok, data = pcall(TI.GetSpellByID, spellID)
     if not ok then return nil end
-    local t, read = ns.BarTypeInTooltip(data)
-    if t then tipType[spellID] = t; return t end
+    local t, read, d = ns.BarTypeInTooltip(data)
+    if t then tipType[spellID] = { t = t, d = d }; return t, d end
     if read and not instanceID then tipType[spellID] = false end
     return nil
 end
 function ns.BarForgetTooltipTypes() tipType = {} end   -- (tests, /reload-free re-read)
+
+-- The game's tooltips (XayaUI_Bonus Enhanced Tooltips; Xaya S8-10 "Also in game tooltips"): every "<word> damage" whose word names a
+-- school becomes "<Word> Damage" in that school's colour, and a dispel type in brackets right after it takes its dispel colour.
+-- wholeIsDispel: the text is the dispel type alone (an aura tooltip's top right). Blizzard's own colours, read from the game. A word
+-- right after a "|" (inside a colour code) is left alone. Returns the new text (the same text when nothing matched).
+function ns.BarColorizeTypes(text, wholeIsDispel)
+    text = Str(text)
+    if not text then return nil end
+    if wholeIsDispel then
+        if IS_DISPEL[text] then
+            local r, g, b = ns.BarTypeColor(text)   -- (not `d and ns.BarTypeColor(d)`: `and` keeps only the first value)
+            if r then return "|cff" .. Hex(r, g, b) .. text .. "|r" end
+        end
+        return text
+    end
+    if not text:find("[Dd]amage") then return text end
+    local out, pos, changed = {}, 1, false
+    while true do
+        local st, e, word = text:find("(%a+) [Dd]amage", pos)
+        if not st then break end
+        local school = (st == 1 or text:sub(st - 1, st - 1) ~= "|") and SchoolOfWord(word) or nil
+        out[#out + 1] = text:sub(pos, st - 1)
+        if school then
+            local r, g, b = ns.BarTypeColor(school)
+            local label = TitleWord(word) .. " Damage"
+            out[#out + 1] = r and ("|cff" .. Hex(r, g, b) .. label .. "|r") or label
+            pos = e + 1
+            local sp, word2, close = text:match("^(%s*)%((%a+)%)()", pos)
+            local dd = word2 and IS_DISPEL[TitleWord(word2)] and TitleWord(word2)
+            if dd then
+                local r2, g2, b2 = ns.BarTypeColor(dd)
+                out[#out + 1] = sp .. (r2 and ("|cff" .. Hex(r2, g2, b2) .. "(" .. dd .. ")|r") or ("(" .. dd .. ")"))
+                pos = close
+            end
+            changed = true
+        else
+            out[#out + 1] = text:sub(st, e)
+            pos = e + 1
+        end
+    end
+    if not changed then return text end
+    out[#out + 1] = text:sub(pos)
+    return table.concat(out)
+end
 
 -- The game's dispel type of a live aura, when addon code may read it (out of combat). nil = unknown or none.
 function ns.BarAuraDispelType(unit, instanceID)
@@ -348,45 +429,60 @@ function ns.BarAuraDispelType(unit, instanceID)
     return nil
 end
 
--- The bar's colour: r, g, b, a, and where it came from ("fixed" | "tooltip" | "dispel" | "fallback").
+-- The bar's colour: r, g, b, a, where it came from ("fixed" | "tooltip" | "dispel" | "fallback"), the type, a bracketed dispel type.
 -- Order (Xaya, S8-4 "Tooltip first"): the type the tooltip names > the game's dispel type of the aura > fixed blue.
+-- The type colours are drawn in the cue's style (ns.BarCueStyle: the cue's own, or that of a group that forces one).
 function ns.BarCueColor(cue, ref)
     local b = ns.BarCueSettings(cue and cue.visual)
     if b.colorMode == "fixed" then
         local c = b.color or ns.BAR_FALLBACK_COLOR
         return c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 1, "fixed"
     end
+    local style, custom = ns.BarCueStyle(cue)
     local spell = ns.BarCueSpell(cue)
     local src = ns.BarCueSource(cue)
     local aura = (src == "aura" or src == "stacks")
-    local t = ns.BarTooltipType(spell, ref and ref.unit, aura and ref and ref.instanceID or nil)
+    local t, d = ns.BarTooltipType(spell, ref and ref.unit, aura and ref and ref.instanceID or nil)
     if t then
-        local r, g, bl, a = ns.BarTypeColor(t)
-        if r then return r, g, bl, a, "tooltip", t end
+        local r, g, bl, a = ns.BarTypeColor(t, style, custom)
+        if r then return r, g, bl, a, "tooltip", t, d end
     end
     if aura and ref then
-        local d = ns.BarAuraDispelType(ref.unit, ref.instanceID)
-        if d then
-            local r, g, bl, a = ns.BarTypeColor(d)
-            if r then return r, g, bl, a, "dispel", d end
+        local dt = ns.BarAuraDispelType(ref.unit, ref.instanceID)
+        if dt then
+            local r, g, bl, a = ns.BarTypeColor(dt, style, custom)
+            if r then return r, g, bl, a, "dispel", dt end
         end
     end
     local c = ns.BAR_FALLBACK_COLOR
     return c[1], c[2], c[3], c[4], "fallback"
 end
--- For the combat engine's aura buttons: the dispel-type colours in the chosen style, keyed the way the game's aura button keys
--- them (Blizzard_CustomAuraButton.lua GetDispelTypeMapKey: dispelName or "None"); "None" = the fixed blue.
-function ns.BarDispelColorMap()
+-- For the combat engine's aura buttons: the dispel-type colours in the cue's style, keyed the way the game's aura button keys them
+-- (Blizzard_CustomAuraButton.lua GetDispelTypeMapKey: dispelName or "None"); "None" = the fixed blue.
+function ns.BarDispelColorMap(cue)
     if not CreateColor then return nil end
+    local style, custom = ns.BarCueStyle(cue)
     local map = {}
     for _, t in ipairs(ns.BAR_DISPEL_TYPES) do
-        local r, g, b = ns.BarTypeColor(t)
+        local r, g, b = ns.BarTypeColor(t, style, custom)
         local c = r and { r, g, b } or ns.BAR_FALLBACK_COLOR
         map[t] = CreateColor(c[1], c[2], c[3], 1)
     end
     local f = ns.BAR_FALLBACK_COLOR
     map.None = CreateColor(f[1], f[2], f[3], 1)
     return map
+end
+-- A short signature of a cue's colour style (the engine bakes the colours into its buttons: a change makes a new slot).
+function ns.BarStyleSig(cue)
+    local style, custom, f = ns.BarCueStyle(cue)
+    local p = { style, f and f.id or "" }
+    if style == "custom" and type(custom) == "table" then
+        for _, t in ipairs(ns.BAR_TYPES) do
+            local c = custom[t]
+            p[#p + 1] = type(c) == "table" and (tostring(c[1]) .. "," .. tostring(c[2]) .. "," .. tostring(c[3])) or "-"
+        end
+    end
+    return table.concat(p, ";")
 end
 
 -------------------------------------------------------------------------------
@@ -552,9 +648,8 @@ end
 
 local function Paint(fr, rule, ref)
     local r, g, b, a, why, t = ns.BarCueColor(rule, ref)
-    local ver = ns.barColorVersion or 0
-    if fr.barCR ~= r or fr.barCG ~= g or fr.barCB ~= b or fr.barCA ~= a or fr.barCV ~= ver then
-        fr.barCR, fr.barCG, fr.barCB, fr.barCA, fr.barCV = r, g, b, a, ver
+    if fr.barCR ~= r or fr.barCG ~= g or fr.barCB ~= b or fr.barCA ~= a then
+        fr.barCR, fr.barCG, fr.barCB, fr.barCA = r, g, b, a
         fr.barF:SetStatusBarColor(r, g, b, a)
     end
     fr.barColorWhy, fr.barColorType = why, t

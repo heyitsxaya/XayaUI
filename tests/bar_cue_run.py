@@ -66,7 +66,7 @@ local function near(a, b) return type(a) == "number" and type(b) == "number" and
 
 -- nothing about bars exists for a player who never adds one (V14: off costs nothing)
 check("no rule carries a bar table by default (RULE_DEFAULTS.visual has no 'bar')", ns.RULE_DEFAULTS.visual.bar == nil)
-check("no Bar colour settings are saved until changed", not (CueRulesDB.ui and CueRulesDB.ui.barColors))
+check("no global Bar colour setting exists any more (S8-10: each cue sets its style)", not (CueRulesDB.ui and CueRulesDB.ui.barColors) and ns.SetBarColorStyle == nil)
 
 -- 1. the kind and its defaults (her answers S8-2 .. S8-4)
 local hasBar = false
@@ -151,18 +151,81 @@ for _, st in ipairs({ "neon", "pastel", "muted" }) do
   check(ns.BAR_STYLE_LABEL[st] .. ": same hue, saturation / brightness moved", near(h0, h1) and moved, ("%.3f %.3f %.3f"):format(h1, s1, v1))
 end
 check("the styles are Blizzard default, Neon, Pastel, Muted / Dark, Custom", table.concat(ns.BAR_STYLES, ",") == "blizzard,neon,pastel,muted,custom")
-ns.SetBarColorStyle("custom")
-local r0 = ns.BarTypeColor("Fire")
+check("a new Bar cue's own style is Blizzard default", b.style == "blizzard" and select(1, ns.BarCueStyle(cue)) == "blizzard")
+b.style = "custom"
+local r0 = ns.BarTypeColor("Fire", "custom", b.custom)
 check("Custom with no pick yet: the type shows Blizzard's colour", near(r0, 0.9))
-ns.SetBarCustomColor("Fire", 0.1, 0.8, 0.2, 1)
+b.custom.Fire = { 0.1, 0.8, 0.2, 1 }
 TIP = { lines = { { leftText = "x" }, { leftText = "Deals 50 Fire damage." } } }
 ns.BarForgetTooltipTypes()
 step({ buffRef = ref })
-check("Custom: the picked Fire colour is drawn", rec.color and near(rec.color[1], 0.1) and near(rec.color[2], 0.8) and near(rec.color[3], 0.2))
-ns.SetBarColorStyle("neon")
+check("Custom (this cue's own picker): the picked Fire colour is drawn", rec.color and near(rec.color[1], 0.1) and near(rec.color[2], 0.8) and near(rec.color[3], 0.2))
+b.style = "neon"
 step({ buffRef = ref })
-check("switching the style repaints the bar (Neon Fire, not Custom)", rec.color and not near(rec.color[2], 0.8))
-CueRulesDB.ui.barColors = nil; ns.barColorVersion = (ns.barColorVersion or 0) + 1
+check("switching this cue's style repaints the bar (Neon Fire, not Custom)", rec.color and not near(rec.color[2], 0.8))
+
+-- 4b. the group: "Cue sets it, group overrides if forcibly set" (S8-10)
+local G = ns.NewFolder("Bars group")
+P.folder = G.id; cue.folder = G.id
+local gargs = ns.GroupDisplayArgs and ns.GroupDisplayArgs(G, function(fid) local out = {}; for _, r in ipairs(ns.rules) do if r.folder == fid then out[#out + 1] = r end end; return out end, function() end)
+local pane = gargs and gargs.barStyle
+local bst = pane and pane.args
+local function findKey(t, key) local stack = { t }; while #stack > 0 do local x = table.remove(stack); if type(x) == "table" then if x[key] then return x[key] end; for _, y in pairs(x) do if type(y) == "table" then stack[#stack + 1] = y end end end end end
+local gStyle, gForce = bst and findKey(bst, "style"), bst and findKey(bst, "force")
+check("the group's Display tab has 'Every bar: colour style' with a force tick box", gStyle ~= nil and gForce ~= nil and pane.hidden() == false)
+if gStyle and gForce then
+  check("unforced: the label says how many bars a choice changes", tostring(gStyle.name()):find("changes 1 bar", 1, true) ~= nil, gStyle.name())
+  gStyle.set({}, "pastel")
+  check("unforced: choosing Pastel writes it to every bar in the group (the cue's own style is now Pastel)", b.style == "pastel" and select(3, ns.BarCueStyle(cue)) == nil)
+  gForce.set({}, true)
+  gStyle.set({}, "muted")
+  local st, _, gf = ns.BarCueStyle(cue)
+  check("forced: the group's style (Muted) wins, the cue keeps its own (Pastel) underneath", st == "muted" and gf == G and b.style == "pastel")
+  check("forced: the label says the style is forced on the bars", tostring(gStyle.name()):find("forced on 1 bar", 1, true) ~= nil, gStyle.name())
+  step({ buffRef = ref })
+  local mr, mg, mb = ns.BarTypeColor("Fire", "muted")
+  check("forced: the bar is drawn in the group's style", rec.color and near(rec.color[1], mr) and near(rec.color[2], mg) and near(rec.color[3], mb))
+  gForce.set({}, false)
+  check("untick force: the cue's own style is back", select(1, ns.BarCueStyle(cue)) == "pastel" and G.barStyleForce == nil)
+end
+P.folder = nil; cue.folder = nil
+b.style = "blizzard"; b.custom = {}
+
+-- 4c. "<school> damage (<dispel type>)", title case, colours (S8-10)
+local t1, rd, d1 = ns.BarTypeInTooltip({ lines = { { leftText = "x" }, { leftText = "Deals 10 fire damage (magic) to all enemies." } } })
+check("a dispel type in brackets after the damage words is read with the school", t1 == "Fire" and d1 == "Magic", tostring(t1) .. "/" .. tostring(d1))
+local t2 = ns.BarTypeInTooltip({ lines = { { leftText = "x" }, { leftText = "Deals 10 Chaos damage (Curse)." } } })
+check("damage words with no school but a bracketed dispel type: that dispel type", t2 == "Curse", tostring(t2))
+check("the Now: label: 'Fire Damage' in the Fire colour, '(Magic)' in the Magic colour",
+  ns.BarTypeLabel("Fire", "Magic") == "|cffe6661aFire Damage|r |cff334df2(Magic)|r", ns.BarTypeLabel("Fire", "Magic"))
+check("game tooltip text: 'fire damage (magic)' becomes title case, each part in its colour",
+  ns.BarColorizeTypes("Deals 50 fire damage (magic) to all enemies.") == "Deals 50 |cffe6661aFire Damage|r |cff334df2(Magic)|r to all enemies.",
+  ns.BarColorizeTypes("Deals 50 fire damage (magic) to all enemies."))
+check("game tooltip text: 'Shadowflame damage' is title-cased in the Shadow colour", ns.BarColorizeTypes("10 Shadowflame damage") == "10 |cff734dd9Shadowflame Damage|r",
+  ns.BarColorizeTypes("10 Shadowflame damage"))
+check("game tooltip text: a word inside a colour code is left alone", ns.BarColorizeTypes("|cffffffffFire damage|r") == "|cffffffffFire damage|r")
+check("game tooltip text: words naming no school are unchanged", ns.BarColorizeTypes("Deals 5 Chaos damage.") == "Deals 5 Chaos damage.")
+check("an aura tooltip's top-right 'Magic' takes the Magic colour", ns.BarColorizeTypes("Magic", true) == "|cff334df2Magic|r")
+-- XayaUI_Bonus Enhanced Tooltips > Type colours: the game's own tooltip lines
+local TT = ns.TT
+if TT and TT.ColorTypes then
+  local lines = {}
+  local function fsOf(t) return { GetText = function() return t.v end, SetText = function(_, x) t.v = x end } end
+  local L1, L2, R1 = { v = "Immolation Aura" }, { v = "Deals 8 fire damage every 1 sec." }, { v = "Magic" }
+  _G.XUIBarTipTextLeft1, _G.XUIBarTipTextLeft2, _G.XUIBarTipTextRight1 = fsOf(L1), fsOf(L2), fsOf(R1)
+  local tip = { GetName = function() return "XUIBarTip" end, NumLines = function() return 2 end, AddLine = function() end, AddDoubleLine = function() end }
+  check("Type colours is on by default (its own switch on the Enhanced Tooltips page)", TT.SectionOn("typeColors"))
+  TT.OnIDData(tip, { id = 258920 }, { key = "spell", label = "Spell ID" })
+  check("a spell tooltip's 'fire damage' line is recoloured and title-cased by Enhanced Tooltips", L2.v == "Deals 8 |cffe6661aFire Damage|r every 1 sec.", L2.v)
+  check("...and the top-right dispel type takes its colour", R1.v == "|cff334df2Magic|r", R1.v)
+  TT.DB().typeColors.enabled = false
+  L2.v = "Deals 8 fire damage every 1 sec."
+  TT.OnIDData(tip, { id = 258920 }, { key = "spell", label = "Spell ID" })
+  check("Type colours off: the line is left as the game wrote it", L2.v == "Deals 8 fire damage every 1 sec.")
+  TT.DB().typeColors.enabled = true
+else
+  check("XayaUI_Bonus Enhanced Tooltips loaded (TT.ColorTypes)", false)
+end
 
 -- 5. values: reverse, direction, cooldown, stacks
 b.reverse = true; ns.RefreshVisual(cue)
@@ -235,12 +298,16 @@ if built then
   end
   local add = findAll(built, function(t) return t.name == "Add a cue" and type(t.values) == "table" end)[1]
   check("'Add a cue' lists Bar", add and add.values.bar == "Bar")
-  local st = findAll(built, function(t) return t.name == "Colour style" and type(t.values) == "function" end)[1]
-  local vals = st and st.values()
-  check("Settings > UI Options: Colour style with the five styles", vals and vals.blizzard and vals.neon and vals.pastel and vals.muted and vals.custom)
-  local pickers = findAll(built, function(t) return t.type == "color" and type(t.hidden) == "function" and type(t.set) == "function" and ns.BAR_TYPE_LABEL[t.name] ~= nil end)
-  check("Custom: a colour picker for each of the 12 types", #pickers == 12, #pickers)
-  check("the pickers show only for Custom", pickers[1] and pickers[1].hidden() == true)
+  if box then
+    local a2 = box.args.bar.args
+    check("the Bar cue has its own Colour style with the five styles", a2.style and a2.style.values.blizzard and a2.style.values.neon and a2.style.values.pastel
+      and a2.style.values.muted and a2.style.values.custom)
+    local n = 0
+    for _, t in ipairs(ns.BAR_TYPES) do if a2["cus" .. t] and a2["cus" .. t].type == "color" then n = n + 1 end end
+    check("Custom: the cue has a colour picker for each of the 12 types", n == 12, n)
+    check("the pickers show only for Custom", a2.cusFire and a2.cusFire.hidden() == true)
+  end
+  check("Settings > UI Options has no Bar Colours section any more", #findAll(built, function(t) return t.name == "Bar Colours" end) == 0)
   -- the new-rule picker's Progress Bar row makes a rule with a Bar cue (before: a shelved Buff Bar that drew nothing)
   local row = findAll(built, function(t) return type(t.name) == "string" and t.name:find("Progress Bar", 1, true)
     and (type(t.func) == "function" or (type(t.arg) == "table" and type(t.arg.xuiRow) == "function")) end)[1]
@@ -379,6 +446,9 @@ NS.AuraDisplay.Build()
     lua('BAc.visual.bar.colorMode = "fixed"; BAc.visual.bar.color = { 0.5, 0.1, 0.6, 1 }; BAc.visual.w = 222; NS.AuraDisplay.Build()')
     check("B: parity: a fixed colour is used as it is on both paths",
           lua("local b = LASTBTN(SLOT(BA)); return math.abs(b.log.bar.color[1] - 0.5) < 1e-6 and math.abs(b.log.bar.color[3] - 0.6) < 1e-6 and b.log.dispel == nil and select(5, NS.BarCueColor(BAc)) == 'fixed'"))
+    lua('TIP = nil; NS.BarForgetTooltipTypes(); BAc.visual.bar.colorMode = "auto"; BAc.visual.bar.style = "neon"; BAc.visual.w = 223; NS.AuraDisplay.Build()')
+    check("B: parity: the cue's own style reaches the game's dispel colouring (Magic in Neon)",
+          lua("local b = LASTBTN(SLOT(BA)); local m = b.log.dispelOpts and b.log.dispelOpts.customDispelColorMap.Magic; local r, g, bl = NS.BarTypeColor('Magic', 'neon'); return m and math.abs(m.r - r) < 1e-6 and math.abs(m.b - bl) < 1e-6 and math.abs(m.r - 0.2) > 1e-3"))
 
 
 def main():
