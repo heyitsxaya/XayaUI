@@ -28,7 +28,7 @@ list. Her answers were given in the engine session's question prompts (`docs/pro
 | G1 | Tabs Group, Display, Load, Config; Group opens first | BUILT (branch, WIP; display_tab_run) | Tab order and the default tab of the group page. |
 | G2 | Config: name, type, Sound Channel Override (her label), enable / disable as one toggle, Delete, New, original character / source of creation | BUILT (branch, WIP; display_tab_run) | The fields move from the Group tab to Config. "Source of creation" is new saved data: groups made before it show "not recorded". |
 | G3 | Sort beside Grow on Group (her order: Default, Expiration, Name, Important, Manual; on main since Options 0.6.50) | DONE (already beside Grow on the Group tab, main) | Sort sits beside Growth Direction. |
-| G4 | Position: "relative / point ... two columns with labels on the left and right-hand side with dropdown menus" | OPEN | Two columns, label left, dropdown right. |
+| G4 | Position: "relative / point ... two columns with labels on the left and right-hand side with dropdown menus" | BUILT (branch, WIP; display_tab_run) | Two columns, label left, dropdown right. |
 | G5 | Size: auto (default) or set; clip and wrap as separate tick boxes; auto fits the items showing; the border follows | OPEN | Auto-fit box (today 0 = a 1 x 1 anchor). INFERENCE: auto-fit can move rules that use corner anchors (#268): checked in tests. |
 | G6 | Strata, opacity, scale, icon size on Group | BUILT (branch, WIP; display_tab_run) | From Display "Whole group" to Group. |
 | G7 | Align / distribute / spacing saved and kept applying | OPEN | Today one-shot buttons on Display (static groups). |

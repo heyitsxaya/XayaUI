@@ -4177,19 +4177,22 @@ function ns.FolderContainerGroup(f)
         get = function() return f.cStrata or "inherit" end, set = function(_, v) f.cStrata = (v ~= "inherit") and v or nil; apply() end }
     g.args.level = { type = "range", name = "Z-index within the layer (0 = automatic)", order = 3.3, min = 0, max = 200, step = 1,
         get = function() return f.cLevel or 0 end, set = function(_, v) f.cLevel = (v > 0) and v or nil; apply() end }
+    -- #372: "the relative / point on the frame should both be left-hand put into two columns with labels on the left and right-hand side
+    -- with dropdown menus": each of Relative to, this group's point and the frame's point is one row, its label on the left and its
+    -- dropdown on the right (the skin's label-left mode, arg.xuiSide)
     g.args.relH = { type = "header", name = "Group position", order = 4 }
     g.args.moveOn = { type = "execute", order = 4.05, width = "double",
         name = function() return ns.IsGroupUnlocked and ns.IsGroupUnlocked(f) and "Lock group (stop dragging)" or "Move group on screen (drag its outline)" end,
         desc = "Shows one outline around this group's displays; drag it to set the X / Y offset below. The lock icon on the group's row in the sidebar does the same.",
         func = function() if ns.SetGroupUnlocked then ns.SetGroupUnlocked(f, not ns.IsGroupUnlocked(f)) end; Notify() end }
-    g.args.rel = { type = "select", name = "Relative to", order = 4.1, width = "double", values = RV, sorting = RELS,
+    g.args.rel = { type = "select", name = "Relative to", order = 4.1, width = "full", arg = { xuiSide = true }, values = RV, sorting = RELS,
         get = function() return f.cRel or "screen" end, set = function(_, v) f.cRel = (v ~= "screen") and v or nil; apply() end }
     g.args.relName = { type = "input", name = "Frame name", order = 4.2, width = "double", hidden = function() return f.cRel ~= "custom" end,
         desc = "The global name of any frame, e.g. PlayerFrame or MultiBarBottomLeft. If it does not exist the group falls back to the screen.",
         get = function() return f.cFrame or "" end, set = function(_, v) f.cFrame = (v ~= "") and v or nil; apply() end }
-    g.args.point = { type = "select", name = "This group's anchor point", order = 4.3, values = PV, sorting = POINTS,
+    g.args.point = { type = "select", name = "This group's anchor point", order = 4.3, width = "full", arg = { xuiSide = true }, values = PV, sorting = POINTS,
         get = function() return f.cPoint or "CENTER" end, set = function(_, v) f.cPoint = (v ~= "CENTER") and v or nil; apply() end }
-    g.args.relPoint = { type = "select", name = "Point on the frame it is relative to", order = 4.4, values = PV, sorting = POINTS,
+    g.args.relPoint = { type = "select", name = "Point on the frame it is relative to", order = 4.4, width = "full", arg = { xuiSide = true }, values = PV, sorting = POINTS,
         get = function() return f.cRelPoint or f.cPoint or "CENTER" end, set = function(_, v) f.cRelPoint = v; apply() end }
     g.args.x = { type = "range", name = "X offset", order = 4.5, min = -1500, max = 1500, step = 1, softMin = -600, softMax = 600,
         get = function() return f.cX or 0 end, set = function(_, v) f.cX = (v ~= 0) and v or nil; apply() end }

@@ -207,7 +207,7 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-aea2de92da3104a78372395d241d5d7c  XayaUI_Options/Options.lua
+74e15552b597f050ae2a1274ee1cc969  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
 24601ef16af1a663ebc42c4dca3973c8  XayaUI_Options/Skin.lua
@@ -514,7 +514,7 @@ d219067bc85426f02913fb1b3eece809  docs/issue-screenshots/toolkit-spells-id-place
 a2e49515e283e72fc94f220e8148b746  docs/issue-screenshots/toolkit-window-resize.png
 58ad0a99081eea454e70a353255849e5  docs/plans/AURA-PLAN.md
 2de37e534204c1536e75af8aab9d621b  docs/plans/GAMES-MODULE-2026-11-05.md
-86b26aac8964000fe467b767b090cf8b  docs/plans/GROUP-PAGE-REQUIREMENTS-2026-11-06.md
+08fbb5ef0f73578305920900e0e5d2ea  docs/plans/GROUP-PAGE-REQUIREMENTS-2026-11-06.md
 25e9cf312a11d30076f032e0a3e750a4  docs/plans/GROUP-PAGE-REVIEW-2026-11-04.md
 380f2b16f139ddfcfc51f7af62f48176  docs/plans/IDEA-CHAT-WORD-GAME-2026-11-05.md
 e80a5c2d309d09f70935f65abd599ec3  docs/plans/IDEA-UPGRADE-OPTIONS-2026-11-05.md
@@ -630,7 +630,7 @@ a988d0843e5594fd1d2e777772e4b56a  tests/devassist_instance_run.py
 beb33f9fd927428616543fd8364aa1bf  tests/devassist_probe_run.py
 47ac71881f1f70410315e6d7142277a6  tests/devassist_rename_run.py
 35083b11f4eb421e42d452fce068a8ea  tests/disabled_tree_run.py
-68a39152e0989768c731e291b52a9975  tests/display_tab_run.py
+8733250db1f432ffe3692a1b3ae1e0c1  tests/display_tab_run.py
 79340b1faeb574b0dd0dd28d6f8915e4  tests/drafts_run.py
 c368c3d4a0e31da169d5370dec0c7c3a  tests/drag_drop_run.py
 1dc5b3e89ca41f69f7eaf662e76da132  tests/engine_bench.py

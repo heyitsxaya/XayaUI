@@ -191,6 +191,8 @@ check("  ...the group type (static / dynamic) is on Config", PC and PC.ctype_1 a
 check("  ...and none of them is left on the Group tab", PG and PG.name == nil and PG.newRule == nil and PG.deleteTop == nil and PG.enableAll == nil and PG.soundChannel == nil)
 local GPC = PG and PG.container and PG.container.args
 check("Group tab: the group's opacity, scale and layer (strata) are there now", GPC and GPC.alpha and GPC.scale and GPC.strata)
+check("#372 position: Relative to and both points sit label-left, dropdown-right, one row each", GPC and GPC.rel.arg and GPC.rel.arg.xuiSide
+  and GPC.point.arg.xuiSide and GPC.relPoint.arg.xuiSide and GPC.rel.width == "full" and GPC.point.width == "full" and GPC.relPoint.width == "full")
 check("  ...and the every-display size", PG and PG.size ~= nil and PD.size == nil)
 local nf = ns.NewFolder("Origin test")
 check("a new group records who made it and how (made here, with the date)", nf.origin and nf.origin.how == "made" and type(nf.origin.at) == "number"
