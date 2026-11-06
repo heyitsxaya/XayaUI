@@ -1,4 +1,4 @@
-# Blizzard UI Reskin tab: one switch for the tab, one tick box per reskin (core 0.6.51, Options 0.6.46, Chat 0.6.18, Reskin 0.6.4, QoL 0.7.25)
+# Blizzard UI Reskin tab: one switch for the tab, one tick box per reskin (core 0.6.51, Options 0.6.47, Chat 0.6.18, Reskin 0.6.4, QoL 0.7.25)
 Logged 2026-11-06 00:35 UTC. Session branch `claude/cool-ramanujan-ewx8e5` (with the Shopping List, draft PR heyitsxaya/XayaUI#410).
 None of this has run in the game. Held from `main` until Xaya answers C12 (V16).
 
@@ -59,6 +59,7 @@ on 2026-11-06.
   local 'e' (a nil value)`. That file is not touched here. With main's harness enum fix (7426e7f) merged, it passes 20/0.
 
 ## Versions (assigned by the coordinating session, 00:25 UTC)
-- core 0.6.51, Options 0.6.46, Chat 0.6.18, Reskin 0.6.4.
+- core 0.6.51, Options 0.6.47, Chat 0.6.18, Reskin 0.6.4.
 - QoL 0.7.25: the Shopping List batch, which this rides with.
 - QA E2e. USER-GUIDE sections 0, 12 (Esc Menu, Chat Panel, Character Pane, Shopping List).
+- 00:50 UTC: Options relabelled 0.6.46 -> 0.6.47 (the coordinating session's correction: #409 took 0.6.46 at 246dc4f). Labels only.

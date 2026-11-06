@@ -58,7 +58,7 @@ function ns.OptionsApi.OpenOnSelect(tree, uv)
     end
 end
 function ns.SettingsTabOf(module) local t = ns.OptionsApi.TABS[module]; return t and t.key or "qol" end
--- The Blizzard UI Reskin tab's first row, "All reskins" (Options 0.6.46, S1 #48; Xaya 2026-11-05: "double: both enable/disable of reskin
+-- The Blizzard UI Reskin tab's first row, "All reskins" (Options 0.6.47, S1 #48; Xaya 2026-11-05: "double: both enable/disable of reskin
 -- at all; then individual toggles for individual reskins"). Its tick box (xuiSwitch, the same box as every feature row) is the tab's
 -- own switch: off turns every reskin in the tab off at once (core ns.SetReskinTab); each reskin keeps its own box on its row, greyed
 -- while this is off. Its page lists the reskins and the state of each one's own switch.
