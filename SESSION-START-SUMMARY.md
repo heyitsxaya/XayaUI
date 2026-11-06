@@ -139,7 +139,7 @@ the QA steps above in game.
 - Cursor Highlight: "right clicking mouse with the cursor shape enabled makes cursor less responsive". No cause found in the code (the
   frame takes no mouse input; one cursor read and one move per frame). Asked: which feels slow (camera turn / shape lag after release /
   clicks), which shape and style, trail on, "hide while turning" on, and whether it goes away with the shape off.
-- Fiery Brand tooltip: hide "Aura icon ID" when it equals the spell's icon, and name each aura ID's source (Bonus): her yes needed.
+- Fiery Brand tooltip: her yes (2026-11-06). Built as Bonus 0.6.13 on `claude/inspiring-mendel-8r8qao` (QA F13): each Aura ID line names its source; a spell's aura icon ID equal to its own icon is left out. Lands with the next bundled push (V17).
 - The combat-log analyser (RM-INST's "complete" part, an offline tool in `tools/`): proposed as the next large safe item; her go needed.
 - The Enchant Slots default (QoL 0.7.6) uses eight slot numbers derived from the client data: flagged against the terms question (3b).
 - Deferred / dropped by her that evening: talent window labels (#388, deferred); raid role load condition (dropped).
