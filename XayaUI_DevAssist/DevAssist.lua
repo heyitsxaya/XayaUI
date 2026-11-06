@@ -834,6 +834,7 @@ SlashCmdList["XAYAUIDEV"] = function(msg)
         local core = rawget(_G, "XayaUI_NS")
         if type(core) == "table" and core.DevAssistReportWindow then core.DevAssistReportWindow()
         else Say("reading a debug report needs XayaUI 0.6.56 or newer, switched on.") end
+    elseif cmd == "qa" then if XayaUI_DevQA then XayaUI_DevQA.Toggle() end   -- (0.7.4: the QA walkthroughs, QAWalk.lua; also /xui dev qa)
     elseif cmd == "status" then
         local nc, na, nl = GD.RecorderSummary()
         local d = DB()

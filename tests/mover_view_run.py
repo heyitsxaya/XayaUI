@@ -111,6 +111,8 @@ r3.visual.enabled = false; ns.RefreshAllVisuals(); W.tick(0.05, 2)
 check("a group with nothing on screen: its tab is invisible and not clickable", tB:GetAlpha() == 0 and not tB:IsMouseEnabled())
 -- lock
 ns.ToggleUnlock(); W.tick(0.05, 2)
+check("P5: locking after a move asks to save or cancel the moves first", ns.unlocked and W.popup == "XAYAUI_MOVER_EXIT", W.popup)
+ns.MoverExit("save"); W.tick(0.05, 2)
 check("locking hides every tab and outline", not tA:IsShown() and not tA.box:IsShown() and not tB:IsShown())
 GameTooltip:SetOwner(UIParent)   -- (clears the lines of the earlier hover)
 fr:GetScript("OnEnter")(fr)

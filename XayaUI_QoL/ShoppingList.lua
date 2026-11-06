@@ -26,6 +26,9 @@ ns = _G.XayaUI_NS or ns
 local CM = ns.CharModel
 local Shop = {}
 ns.Shop = Shop
+-- (the Dev Assist QA walkthroughs reach the Shopping List through this service: a feature is never called by name from another addon)
+if ns.Provide then ns.Provide("shoppingList", { Cfg = function() return Shop.Cfg() end, Apply = function() return Shop.Apply() end,
+    Recipes = function() return Shop.Recipes() end, Missing = function(c) return Shop.Missing(c) end }) end
 
 local function num(v) return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge end
 local function isSecret(v) return CM and CM.IsSecret and CM.IsSecret(v) end

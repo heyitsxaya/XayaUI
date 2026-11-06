@@ -1,8 +1,8 @@
 -------------------------------------------------------------------------------
 -- QAWalks-debug.lua (XayaUI Dev Assist 0.7.5): the in-game QA walkthroughs for the debug-tools round (REQUEST-LOG #81, #82; QA-CHECKLIST
 -- B180-B183, D14, E1z90, F19), written for the shared walkthrough framework (XayaUI_DevAssist/QAWalk.lua, `/xui dev qa`, standing rule
--- V20) that another branch is building. That framework is not on main yet, so this file is NOT in XayaUI_DevAssist.toc: the game never
--- reads it until the framework lands and the file is added to the toc after QAWalks.lua. Even then it does nothing without the framework.
+-- V20, built by S3). Listed in XayaUI_DevAssist.toc after QAWalks.lua (added when S3's framework merged into this round); it does
+-- nothing without the framework.
 -- Each check reads only what the addon itself sees (its lists and settings); what only a person can see (a tooltip line, a window's
 -- look) stays a manual step with its text.
 -------------------------------------------------------------------------------

@@ -445,7 +445,8 @@ function ns.Share_ApplyRules(snap, mode)
         local wrap
         if not replace and #snap.rules > 0 then
             local nm = (type(snap.name) == "string" and snap.name ~= "") and snap.name or "Import"
-            wrap = { id = NewId(used), name = ("Imported: %s (%s)"):format(nm, date and date("%Y-%m-%d %H:%M") or "") }
+            wrap = { id = NewId(used), name = ("Imported: %s (%s)"):format(nm, date and date("%Y-%m-%d %H:%M") or ""),
+                origin = { by = ns.CharacterKey and ns.CharacterKey() or nil, how = "imported", at = time and time() or nil } }
             ns.folders[#ns.folders + 1] = wrap
             counts.folders = counts.folders + 1
         end
@@ -454,6 +455,9 @@ function ns.Share_ApplyRules(snap, mode)
             if IsTbl(f) and type(f.id) == "string" then
                 local nf = ns.Copy(f)                      -- keep the group's own settings (container type, overrides, ...)
                 nf.default = nil                           -- a built-in category flag must not be duplicated here
+                -- who made it stays the exporter's record (plain text only); without one it reads "imported"
+                nf.origin = ns.CleanOrigin and ns.CleanOrigin(f.origin) or nil
+                if nf.origin then nf.origin.imported = time and time() or true else nf.origin = { how = "imported", at = time and time() or nil } end
                 nf.name = type(f.name) == "string" and f.name or "Folder"
                 nf.id = NewId(used)   -- always a fresh id of the usual form (the tree and its menus recognise groups by that form)
                 map[f.id] = nf.id

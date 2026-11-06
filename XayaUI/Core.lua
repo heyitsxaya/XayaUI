@@ -323,7 +323,23 @@ function ns.FixFolderIds()
     for _, r in ipairs(ns.rules or {}) do if r.folder and map[r.folder] then r.folder = map[r.folder] end end
     return n
 end
-function ns.NewFolder(name, parent)
+-- Where a group came from (#372 / CHAT-3d, Xaya: "config includes folder name, folder type, and original character / source of
+-- creation"): origin = { by = "Name-Realm" of the character that made it, how = "made" | "default" | "imported" | ..., at = time() }.
+-- Shown on the group page's Config tab; groups made before this have none ("not recorded").
+function ns.CharacterKey()
+    local n = UnitName and UnitName("player")
+    local r = GetRealmName and GetRealmName()
+    if type(n) ~= "string" or n == "" then return nil end
+    return (type(r) == "string" and r ~= "") and (n .. "-" .. r) or n
+end
+-- an origin read from saved or imported data: plain text only (it is shown as text), short, or nil
+function ns.CleanOrigin(o)
+    if type(o) ~= "table" then return nil end
+    local function txt(v, max) if type(v) ~= "string" then return nil end; v = v:gsub("|", ""):sub(1, max); return v ~= "" and v or nil end
+    local out = { by = txt(o.by, 64), how = txt(o.how, 24), at = (type(o.at) == "number" and o.at > 0) and math.floor(o.at) or nil }
+    return (out.by or out.how or out.at) and out or nil
+end
+function ns.NewFolder(name, parent, how)
     local id
     repeat
         id = "f" .. tostring(time()) .. tostring(math.random(1000, 9999))
@@ -331,6 +347,7 @@ function ns.NewFolder(name, parent)
         for _, x in ipairs(ns.folders) do if x.id == id then dup = true; break end end
     until not dup
     local f = { id = id, name = name or "Folder", parent = parent }   -- parent = id of the folder this one is nested in (nil = top level)
+    f.origin = { by = ns.CharacterKey(), how = how or "made", at = time and time() or nil }
     ns.folders[#ns.folders + 1] = f
     if ns.perf and ns.perf.show and debugstack then   -- /xui debug perf ui: say who created a group (finds groups that appear on their own)
         local src = (debugstack(2, 1, 0) or ""):match("([^\n]+)") or "?"
@@ -542,7 +559,7 @@ function ns.EnsureDefaultFolders(force)
             have.default = d.key
             if OLD_DEFAULT_NAMES[d.key] and have.name == OLD_DEFAULT_NAMES[d.key] then have.name = d.name end   -- renamed default
         elseif not upgrading or d.key == "hybrid" or d.key == "cursor" then
-            local nf = ns.NewFolder(d.name)
+            local nf = ns.NewFolder(d.name, nil, "default")
             nf.default = d.key
             added = added + 1
         end

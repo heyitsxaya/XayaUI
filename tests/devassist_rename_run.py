@@ -120,7 +120,8 @@ check("docs/reference/build_reference.py reads either name", "env.XayaUIDevAssis
 # 6. nothing else still points at the old folder (history in debug-log/ and the RETROSPECTIVE stays as written)
 allowed = {"XayaUI_DevAssist/DevAssist.lua", "XayaUI_DevAssist/ApiInventory.lua", "XayaUI_DevAssist/AuraCatalogue.lua", "XayaUI_DevAssist/Probe.lua",
            "XayaUI_DevAssist/FormulaCapture.lua", "XayaUI_DevAssist/XayaUI_DevAssist.toc", "XayaUI_Bonus/Tooltips.lua", "tools/formula_fit.py",
-           "docs/reference/build_reference.py", "tests/devassist_rename_run.py"}
+           "docs/reference/build_reference.py", "tests/devassist_rename_run.py",
+           "XayaUI_DevAssist/QAWalks-Checklist.lua"}   # (generated from docs/QA-CHECKLIST.md: step J12 is about the old folder)
 out = subprocess.run(["git", "grep", "-l", "XayaUI_GameDump", "--", ".", ":!debug-log", ":!docs/process/RETROSPECTIVE.md", ":!MANIFEST.md5"],
                      cwd=ROOT, capture_output=True, text=True).stdout.split()
 stray = [p for p in out if p not in allowed and not p.endswith(".md") and p != ".gitignore"]

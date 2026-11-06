@@ -24,6 +24,8 @@ ns.OptionsApi = {}
 -- applies to: chat, character pane, Esc menu. Will apply in the future to: shopping list"): every page registered under module
 -- "reskin": the Chat Panel (XayaUI_Chat), the Character Pane (XayaUI_QoL) and the Esc Menu (XayaUI_Reskin). The Chat tab is gone with
 -- it (the Chat Panel was its only page); a tab with no pages is not drawn.
+-- a group and everything in it to the Recycle Bin, by id (the Dev Assist QA walkthroughs clean up their test group with it)
+function ns.OptionsApi.DeleteFolderAll(id) if ns.DeleteFolderAllById then return ns.DeleteFolderAllById(id) end end
 ns.OptionsApi.TABS = { chat = { key = "chat", name = "Chat", order = 5 }, qol = { key = "qol", name = "QoL", order = 5.1 },
     bonus = { key = "bonus", name = "Bonus Features", order = 5.2 }, reskin = { key = "reskin", name = "Blizzard UI Reskin", order = 5.3 } }
 ns.OptionsApi.pageTab = {}   -- page key -> the top tab it is drawn in (filled by ModuleTabs), so a page that moved still opens
@@ -1320,7 +1322,7 @@ ns.PASTE_VIS = {
     vOnBar   = { "requireOnBar" },
     vHoverTip = { "hoverTip" },   -- "Show tooltip on hover" (own tick box; no longer rides along with "Texture / art")
 }
-ns.PASTE_VIS_SKIP = { text = true, count = true, absorb = true, x = true, y = true, anchor = true, anchorPlace = true }
+ns.PASTE_VIS_SKIP = { text = true, count = true, absorb = true, x = true, y = true, anchor = true, anchorPlace = true, point = true }
 ns.PASTE_TREE = {
     { "Triggers", {
         { "Cooldown trigger", {
@@ -2267,16 +2269,28 @@ local function BuildRule(i, rule)
     local ANCHOR_ORDER = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }
     local pos = {
         type = "group", inline = true, name = "Position (Offset From the Anchor)", order = 20, args = {
-            anchor = { type = "select", name = "Anchor (X / Y are measured from this point)", order = 0.5, width = "double",
-                desc = "The point of the screen, or of this rule's group container, that X and Y are measured from. Changing it keeps the display exactly where it is and recalculates X / Y. Ignored while the display is snapped to a game frame, and in dynamic groups.",
+            -- P1 (#268; Xaya 2026-11-06, her labels: "Anchor point" -> "Anchored to" -> "To <target>'s point")
+            point = { type = "select", name = "Anchor point", order = 0.4, width = "double",
+                desc = "The point of this display that is placed. Changing it keeps the display exactly where it is and recalculates X / Y. Ignored while the display is snapped to a game frame, and in dynamic groups.",
                 values = ANCHOR_VALUES, sorting = ANCHOR_ORDER,
-                get = function() return V.anchor or "CENTER" end,
-                set = function(_, val) ns.SetVisualAnchor(rule, val, nil); ns.MarkDirty(); Notify() end },
-            anchorPlace = { type = "select", name = "Place the display", order = 0.6, width = "double",
-                desc = "Inside: the display's matching point sits on the anchor, flush inside the box (bottom left anchor: the display's bottom left corner). Outside: the display's opposite point sits on the anchor, so the display lies outside the box next to that edge or corner. Center is the same either way.",
-                values = { inner = "Inside the anchor point", outer = "Outside the anchor point" }, sorting = { "inner", "outer" },
-                get = function() return V.anchorPlace == "outer" and "outer" or "inner" end,
-                set = function(_, val) ns.SetVisualAnchor(rule, nil, val); ns.MarkDirty(); Notify() end },
+                get = function() local _, f = ns.VisualPoints(rule); return f end,
+                set = function(_, val) ns.SetVisualPoints(rule, val, nil); ns.MarkDirty(); Notify() end },
+            anchoredTo = { type = "description", order = 0.45, width = "full", fontSize = "medium",
+                name = function()
+                    local kind, nm = ns.VisualAnchorTarget(rule)
+                    local what = kind == "screen" and "The screen" or kind == "frame" and (nm .. " (snapped)")
+                        or kind == "dynamic" and ("Group: " .. nm .. " (a dynamic group places its displays itself)") or ("Group: " .. nm)
+                    return "|cffffd100Anchored to:|r " .. what
+                end },
+            anchor = { type = "select", order = 0.5, width = "double",
+                name = function()
+                    local kind, nm = ns.VisualAnchorTarget(rule)
+                    return kind == "screen" and "To the screen's point" or ("To " .. nm .. "'s point")
+                end,
+                desc = "The point of what this display is anchored to (the screen, or its group's box) that X and Y are measured from. Changing it keeps the display exactly where it is and recalculates X / Y. Ignored while the display is snapped to a game frame, and in dynamic groups.",
+                values = ANCHOR_VALUES, sorting = ANCHOR_ORDER,
+                get = function() local a = ns.VisualPoints(rule); return a end,
+                set = function(_, val) ns.SetVisualPoints(rule, nil, val); ns.MarkDirty(); Notify() end },
             x = Rng(V, "x", "X", 1, -1200, 1200, 1, on),
             y = Rng(V, "y", "Y", 2, -800, 800, 1, on),
             unlock = { type = "execute", order = 3, width = "double",
@@ -2526,7 +2540,7 @@ local function BuildRule(i, rule)
     overlay.args.enabled = nil
     -- Position is its own collapsible section (between Texture and Overlay Layer), no longer inside the Texture box
     pos.args.x.order, pos.args.y.order, pos.args.unlock.order = 3, 4, 5
-    local posArgs = { anchor = pos.args.anchor, anchorPlace = pos.args.anchorPlace, x = pos.args.x, y = pos.args.y, unlock = pos.args.unlock }
+    local posArgs = { point = pos.args.point, anchoredTo = pos.args.anchoredTo, anchor = pos.args.anchor, x = pos.args.x, y = pos.args.y, unlock = pos.args.unlock }
     display.args.trigger.order = 0
     -- Color & Blend (20-29) goes to Color & Transparency; Fade / Opacity / Flash (30-39) and Glow & Outline (40-49) live under Animation Options
     -- Overlay Layer: no collapse arrow of its own any more (it sits inside Animation Options, which collapses), and it comes last,
@@ -3906,6 +3920,25 @@ function ns.FolderContainerGroup(f)
         hidden = function() return not isDyn() or sortOf() ~= "manual" end,
         desc = "Saves your settings and reloads the interface. Out of combat the new order already applies; this makes sure it is written to disk and rebuilt from scratch.",
         func = function() if ReloadUI then ReloadUI() end end }
+    -- G10 (Xaya 2026-11-06, question flow: "Limit (Recommended),Align (Recommended)"; WeakAuras' dynamic group has both, CHAT-3d)
+    g.args.limit = { type = "range", name = "Limit (show at most)", order = 2.101, min = 0, max = 40, step = 1,
+        desc = "0 = no limit. After sorting, only this many items show; the others wait and appear when a shown one goes away.",
+        hidden = function() return not isDyn() end,
+        get = function() return tonumber(f.cLimit) or 0 end, set = function(_, v) f.cLimit = (v > 0) and v or nil; apply() end }
+    g.args.align = { type = "select", name = "Align", order = 2.102, arg = { xuiSide = true },
+        desc = "When items in a row (or column) have different sizes: which side they line up on.",
+        hidden = function() return not isDyn() end,
+        values = function()
+            if growsAcross() then return { start = "Top", center = "Center", ["end"] = "Bottom" } end
+            return { start = "Left", center = "Center", ["end"] = "Right" }
+        end,
+        sorting = { "start", "center", "end" },
+        get = function()
+            if f.cAlign then return f.cAlign end
+            if ns.DynamicBlock and ns.DynamicBlock(f) then return nil end   -- (a Centered / From anchor group lines up from its corner: none picked)
+            return "center"
+        end,
+        set = function(_, v) f.cAlign = v; apply() end }
     g.args.spacing = { type = "range", name = "Spacing", order = 2.1, min = 0, max = 200, step = 1,
         desc = "Space between items, in pixels.",
         hidden = function() return not isDyn() end,
@@ -3934,29 +3967,85 @@ function ns.FolderContainerGroup(f)
         get = function() return f.cAlpha or 1 end, set = function(_, v) f.cAlpha = (v < 1) and v or nil; apply() end }
     g.args.scale = { type = "range", name = "Group scale", order = 3.01, min = 0.25, max = 3, step = 0.05,
         get = function() return f.cScale or 1 end, set = function(_, v) f.cScale = (v ~= 1) and v or nil; apply() end }
-    g.args.width = { type = "range", name = "Container width (0 = no fixed size)", order = 3.05, min = 0, max = 1500, step = 1,
-        get = function() return f.cW or 0 end, set = function(_, v) f.cW = (v > 0) and v or nil; apply() end }
-    g.args.height = { type = "range", name = "Container height (0 = no fixed size)", order = 3.06, min = 0, max = 1500, step = 1,
-        get = function() return f.cH or 0 end, set = function(_, v) f.cH = (v > 0) and v or nil; apply() end }
-    g.args.clip = { type = "toggle", name = "Clip contents to the container size (hide anything outside it)", order = 3.07, width = "full",
+    -- Size (G5; Xaya 2026-11-06: "size = auto or set + clip / wrap tick boxes; auto fits the showing items, border follows"). Auto (the
+    -- default) fits what is showing; Set gives the box a width and height, and only then can it clip. Wrap is the dynamic group's
+    -- "Wrap into rows / columns" tick box above.
+    local function setSize() return ns.GroupSizeMode and ns.GroupSizeMode(f) == "set" end
+    g.args.sizeMode = { type = "select", name = "Size", order = 3.04, width = "full", arg = { xuiSide = true },
+        values = { auto = "Auto (fits what is showing)", set = "Set (width and height below)" }, sorting = { "auto", "set" },
+        desc = "Auto: the group's box (its border and background) fits the items that are showing, and follows as they come and go. Set: the box has the width and height you give it; it can clip what falls outside it.",
+        get = function() return ns.GroupSizeMode and ns.GroupSizeMode(f) or "auto" end,
+        set = function(_, v) if ns.SetGroupSizeMode then ns.SetGroupSizeMode(f, v) end; apply() end }
+    -- G9 (Xaya 2026-11-06: "Toggle + ask on resize"): with the tick box off, making a static group's box smaller than its items asks
+    -- once "Scale the items to fit?" (Yes ticks it); asked again only after the items fit again
+    local function askFit()
+        if f.cFit or f.cType == "dynamic" or not ns.GroupFitNeeded then return end
+        ns.fitAsked = ns.fitAsked or setmetatable({}, { __mode = "k" })
+        if ns.GroupFitNeeded(f) >= 1 then ns.fitAsked[f] = nil; return end
+        if ns.fitAsked[f] then return end
+        ns.fitAsked[f] = true
+        StaticPopupDialogs["XAYAUI_GROUP_FIT"] = StaticPopupDialogs["XAYAUI_GROUP_FIT"] or {
+            text = "%s", button1 = YES or "Yes", button2 = NO or "No", timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
+            OnAccept = function(self, data) if data and data.cb then data.cb() end end }
+        local dlg = StaticPopup_Show("XAYAUI_GROUP_FIT", "Scale the items to fit?", nil, { cb = function() f.cFit = true; apply() end })
+        if dlg and dlg.SetFrameStrata then dlg:SetFrameStrata("TOOLTIP") end
+    end
+    g.args.width = { type = "range", name = "Width", order = 3.05, min = 1, max = 1500, step = 1, hidden = function() return not setSize() end,
+        get = function() return f.cW or 1 end, set = function(_, v) f.cW = math.max(1, v); apply(); askFit() end }
+    g.args.height = { type = "range", name = "Height", order = 3.06, min = 1, max = 1500, step = 1, hidden = function() return not setSize() end,
+        get = function() return f.cH or 1 end, set = function(_, v) f.cH = math.max(1, v); apply(); askFit() end }
+    g.args.fit = { type = "toggle", name = "Scale items to fit the box", order = 3.065, width = "full",
+        hidden = function() return not setSize() or isDyn() end,
+        desc = "Shrinks everything in this group (never enlarges it) so its displays fit inside the width and height above. The box keeps its size; the saved X / Y and sizes of the displays do not change.",
+        get = function() return f.cFit and true or false end, set = function(_, v) f.cFit = v and true or nil; apply() end }
+    g.args.clip = { type = "toggle", name = "Clip (hide anything outside the box)", order = 3.07, width = "full", hidden = function() return not setSize() end,
         get = function() return f.cClip and true or false end, set = function(_, v) f.cClip = v and true or nil; apply() end }
+    -- Border and background (G5 "border follows", G11 #372 "a property for group display: background (puts an assigned color /
+    -- texture under the aura)"; WeakAuras' group tab has a border, CHAT-3d)
+    local function col(key, dflt) return function() local c = f[key] or dflt; return c[1], c[2], c[3], c[4] end end
+    local function setCol(key) return function(_, r, gg, b, a) f[key] = { r, gg, b, a }; apply() end end
+    g.args.boxH = { type = "header", name = "Border and background", order = 3.08 }
+    g.args.border = { type = "toggle", name = "Border", order = 3.081, get = function() return f.cBorder and true or false end,
+        set = function(_, v) f.cBorder = v and true or nil; apply() end }
+    g.args.borderColor = { type = "color", name = "Border colour", order = 3.082, hasAlpha = true, hidden = function() return not f.cBorder end,
+        get = col("cBdColor", { 0.6, 0.6, 0.65, 1 }), set = setCol("cBdColor") }
+    g.args.bg = { type = "toggle", name = "Background", order = 3.083, get = function() return f.cBg and true or false end,
+        set = function(_, v) f.cBg = v and true or nil; apply() end }
+    g.args.bgColor = { type = "color", name = "Background colour", order = 3.084, hasAlpha = true, hidden = function() return not f.cBg end,
+        get = col("cBgColor", { 0, 0, 0, 0.45 }), set = setCol("cBgColor") }
+    g.args.bgTex = { type = "input", name = "Background texture (file path or ID; empty = the colour only)", order = 3.085, width = "full",
+        hidden = function() return not f.cBg end,
+        get = function() return f.cBgTex and tostring(f.cBgTex) or "" end,
+        set = function(_, v) v = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", ""); f.cBgTex = (v ~= "") and (tonumber(v) or v) or nil; apply() end }
+    g.args.pad = { type = "range", name = "Padding around the items", order = 3.086, min = 0, max = 40, step = 1,
+        hidden = function() return not (f.cBorder or f.cBg) end,
+        get = function() return tonumber(f.cPad) or 4 end, set = function(_, v) f.cPad = v; apply() end }
     g.args.strata = { type = "select", name = "Layer (strata)", order = 3.2, values = SV, sorting = STRATA,
         get = function() return f.cStrata or "inherit" end, set = function(_, v) f.cStrata = (v ~= "inherit") and v or nil; apply() end }
     g.args.level = { type = "range", name = "Z-index within the layer (0 = automatic)", order = 3.3, min = 0, max = 200, step = 1,
         get = function() return f.cLevel or 0 end, set = function(_, v) f.cLevel = (v > 0) and v or nil; apply() end }
+    -- #372: "the relative / point on the frame should both be left-hand put into two columns with labels on the left and right-hand side
+    -- with dropdown menus": each of Relative to, this group's point and the frame's point is one row, its label on the left and its
+    -- dropdown on the right (the skin's label-left mode, arg.xuiSide)
     g.args.relH = { type = "header", name = "Group position", order = 4 }
     g.args.moveOn = { type = "execute", order = 4.05, width = "double",
         name = function() return ns.IsGroupUnlocked and ns.IsGroupUnlocked(f) and "Lock group (stop dragging)" or "Move group on screen (drag its outline)" end,
         desc = "Shows one outline around this group's displays; drag it to set the X / Y offset below. The lock icon on the group's row in the sidebar does the same.",
         func = function() if ns.SetGroupUnlocked then ns.SetGroupUnlocked(f, not ns.IsGroupUnlocked(f)) end; Notify() end }
-    g.args.rel = { type = "select", name = "Relative to", order = 4.1, width = "double", values = RV, sorting = RELS,
+    g.args.anchorTo = { type = "select", name = "Anchored to", order = 4.09, width = "full", arg = { xuiSide = true },
+        hidden = function() return not f.parent end,
+        values = { parent = "The parent group", screen = "The screen" }, sorting = { "parent", "screen" },
+        desc = "A nested group is placed from its parent group (it moves with it) or from the screen (it stays put when the parent moves). It stays inside its parent either way: the parent's opacity, scale and layer still apply.",
+        get = function() return f.cAnchorTo == "screen" and "screen" or "parent" end,
+        set = function(_, v) f.cAnchorTo = (v == "screen") and "screen" or nil; apply() end }
+    g.args.rel = { type = "select", name = "Relative to", order = 4.1, width = "full", arg = { xuiSide = true }, values = RV, sorting = RELS,
         get = function() return f.cRel or "screen" end, set = function(_, v) f.cRel = (v ~= "screen") and v or nil; apply() end }
     g.args.relName = { type = "input", name = "Frame name", order = 4.2, width = "double", hidden = function() return f.cRel ~= "custom" end,
         desc = "The global name of any frame, e.g. PlayerFrame or MultiBarBottomLeft. If it does not exist the group falls back to the screen.",
         get = function() return f.cFrame or "" end, set = function(_, v) f.cFrame = (v ~= "") and v or nil; apply() end }
-    g.args.point = { type = "select", name = "This group's anchor point", order = 4.3, values = PV, sorting = POINTS,
+    g.args.point = { type = "select", name = "This group's anchor point", order = 4.3, width = "full", arg = { xuiSide = true }, values = PV, sorting = POINTS,
         get = function() return f.cPoint or "CENTER" end, set = function(_, v) f.cPoint = (v ~= "CENTER") and v or nil; apply() end }
-    g.args.relPoint = { type = "select", name = "Point on the frame it is relative to", order = 4.4, values = PV, sorting = POINTS,
+    g.args.relPoint = { type = "select", name = "Point on the frame it is relative to", order = 4.4, width = "full", arg = { xuiSide = true }, values = PV, sorting = POINTS,
         get = function() return f.cRelPoint or f.cPoint or "CENTER" end, set = function(_, v) f.cRelPoint = v; apply() end }
     g.args.x = { type = "range", name = "X offset", order = 4.5, min = -1500, max = 1500, step = 1, softMin = -600, softMax = 600,
         get = function() return f.cX or 0 end, set = function(_, v) f.cX = (v ~= 0) and v or nil; apply() end }
@@ -3965,84 +4054,40 @@ function ns.FolderContainerGroup(f)
     return g
 end
 
--- Static group tools: Align, Distribute and Space the displays inside the group by editing their own X / Y.
+-- Static group arrangement (G7; Xaya 2026-11-06: "align / distribute / spacing saved and kept applying"; a dragged display: "Arrangement
+-- wins"). One choice per direction is saved on the group (f.cArrX / f.cArrY / f.cArrGap) and core applies it again whenever a display in
+-- the group changes (ns.ApplyGroupArrangement). The values keep the names of the former one-time buttons.
 -- ns function (not a local) to stay under Lua's 200-locals-per-chunk limit.
 function ns.FolderArrangeGroup(f)
-    local gap = 8
-    local function items()
-        local l = {}
-        for _, r in ipairs(FolderRules(f.id)) do
-            local v = r.visual
-            if type(v) == "table" and v.enabled then l[#l + 1] = r end
-        end
-        return l
-    end
-    local function R(n) return math.floor(n + 0.5) end
-    local function done(n, what)
-        for _, r in ipairs(items()) do pcall(ns.RefreshVisual, r) end
+    local X = { none = "None", left = "Align left", center = "Align center", right = "Align right", distribute = "Distribute horizontally", space = "Space horizontally" }
+    local Y = { none = "None", top = "Align top", middle = "Align middle", bottom = "Align bottom", distribute = "Distribute vertically", space = "Space vertically" }
+    local function apply()
+        ns.ApplyGroupArrangement(f)
         ns.MarkDirty(); Notify()
-        ns.Print(("%s: %d display(s) in group '%s'"):format(what, n, tostring(f.name)))
     end
-    local function Act(what, fn)
-        local l = items()
-        if #l < 2 then ns.Print("a group needs at least two displays to " .. what:lower()); return end
-        -- the tools work on center offsets; each display's own anchor is converted in and out so mixed anchors line up correctly
-        for _, r in ipairs(l) do local cx, cy = ns.VisualCenterOffset(r); r.visual.x, r.visual.y = cx, cy end
-        fn(l)
-        for _, r in ipairs(l) do ns.SetVisualCenterOffset(r, r.visual.x, r.visual.y) end
-        done(#l, what)
-    end
-    local function dims(r) local v = r.visual; return tonumber(v.x) or 0, tonumber(v.y) or 0, tonumber(v.w) or 0, tonumber(v.h) or 0 end
-    local function alignX(mode) Act("Align", function(l)
-        local lo, hi = math.huge, -math.huge
-        for _, r in ipairs(l) do local x, _, w = dims(r); lo = math.min(lo, x - w / 2); hi = math.max(hi, x + w / 2) end
-        for _, r in ipairs(l) do local _, _, w = dims(r)
-            r.visual.x = R(mode == "left" and lo + w / 2 or mode == "right" and hi - w / 2 or (lo + hi) / 2) end
-    end) end
-    local function alignY(mode) Act("Align", function(l)
-        local top, bot = -math.huge, math.huge
-        for _, r in ipairs(l) do local _, y, _, h = dims(r); top = math.max(top, y + h / 2); bot = math.min(bot, y - h / 2) end
-        for _, r in ipairs(l) do local _, _, _, h = dims(r)
-            r.visual.y = R(mode == "top" and top - h / 2 or mode == "bottom" and bot + h / 2 or (top + bot) / 2) end
-    end) end
-    local function distribute(horiz) Act("Distribute", function(l)
-        table.sort(l, function(a, b) local ax, ay = dims(a); local bx, by = dims(b); if horiz then return ax < bx end return ay > by end)
-        local n = #l
-        local ax, ay = dims(l[1]); local bx, by = dims(l[n])
-        for i, r in ipairs(l) do
-            if horiz then r.visual.x = R(ax + (bx - ax) * (i - 1) / (n - 1)) else r.visual.y = R(ay + (by - ay) * (i - 1) / (n - 1)) end
-        end
-    end) end
-    local function space(horiz) Act("Space", function(l)
-        table.sort(l, function(a, b) local ax, ay = dims(a); local bx, by = dims(b); if horiz then return ax < bx end return ay > by end)
-        local cur
-        for i, r in ipairs(l) do
-            local x, y, w, h = dims(r)
-            if horiz then
-                if i == 1 then cur = x + w / 2 else r.visual.x = R(cur + gap + w / 2); cur = r.visual.x + w / 2 end
-            else
-                if i == 1 then cur = y - h / 2 else r.visual.y = R(cur - gap - h / 2); cur = r.visual.y - h / 2 end
-            end
-        end
-    end) end
-    local function B(order, name, fn) return { type = "execute", order = order, width = 1.1, name = name, func = fn } end
     return { type = "group", inline = true, order = 5.45, name = "Align & Arrange (Static Group)",
         hidden = function() return f.cType == "dynamic" or not ns.KindHas({ folder = f.id }, "visual") end,
         args = {
             note = { type = "description", order = 0, width = "full", fontSize = "small",
-                name = "Group tools: these edit the X / Y of the displays inside this group (and nested groups) so they line up, spread out evenly, or sit a fixed gap apart. Use Unlock visuals to see the result." },
-            l = B(1, "Align left", function() alignX("left") end), c = B(2, "Align center", function() alignX("center") end), r = B(3, "Align right", function() alignX("right") end),
-            t = B(4, "Align top", function() alignY("top") end), m = B(5, "Align middle", function() alignY("middle") end), b = B(6, "Align bottom", function() alignY("bottom") end),
-            dh = B(7, "Distribute horizontally", function() distribute(true) end), dv = B(8, "Distribute vertically", function() distribute(false) end),
-            gap = { type = "range", order = 9, width = "double", name = "Gap for Space (pixels)", min = 0, max = 200, step = 1,
-                get = function() return gap end, set = function(_, v) gap = v end },
-            sh = B(10, "Space horizontally", function() space(true) end), sv = B(11, "Space vertically", function() space(false) end),
+                name = "Kept for this group: its displays (not those of nested groups) stay lined up this way. A display you drag, nudge, add or resize goes back into line; pick None to place them freely." },
+            arrX = { type = "select", order = 1, name = "Horizontal", values = X,
+                sorting = { "none", "left", "center", "right", "distribute", "space" }, arg = { xuiSide = true },
+                get = function() return f.cArrX or "none" end,
+                set = function(_, v) f.cArrX = (v ~= "none") and v or nil; apply() end },
+            arrY = { type = "select", order = 2, name = "Vertical", values = Y,
+                sorting = { "none", "top", "middle", "bottom", "distribute", "space" }, arg = { xuiSide = true },
+                get = function() return f.cArrY or "none" end,
+                set = function(_, v) f.cArrY = (v ~= "none") and v or nil; apply() end },
+            gap = { type = "range", order = 3, width = "double", name = "Gap for Space (pixels)", min = 0, max = 200, step = 1,
+                hidden = function() return f.cArrX ~= "space" and f.cArrY ~= "space" end,
+                get = function() return f.cArrGap or 8 end,
+                set = function(_, v) f.cArrGap = (v ~= 8) and v or nil; apply() end },
         } }
 end
 
 local function FolderSoundGroup(f)
     return {
-        type = "group", inline = true, order = 5.6, name = "Sound Channel for This Group",
+        type = "group", inline = true, order = 5.6, name = "Sound Channel Override",   -- (her label, #372)
         hidden = function() return ns.RuleKind({ folder = f.id }) == "display" end,
         args = {
             note = { type = "description", order = 0, width = "full", fontSize = "small",
@@ -4137,26 +4182,51 @@ local function BuildFolder(k, f)
         return t
     end
     local container = g.args.container
-    local dispFromContainer = {}
-    if container and container.args then
-        for _, k in ipairs({ "alpha", "scale", "strata", "level" }) do   -- position (relative to, anchor, X / Y) stays on the Group tab with the container
-            if container.args[k] then dispFromContainer[k] = container.args[k]; container.args[k] = nil end
-        end
-    end
     local isVisual = function() return ns.KindHas({ folder = f.id }, "visual") end
+    -- Config (#372; Xaya 2026-11-06: "tabs Group | Display | Load | Config (Group first)", "Delete / New / Enable on Config"; CHAT-3d:
+    -- "config includes folder name, folder type, and original character / source of creation. Also includes enable/disable toggle"):
+    -- the name, the type, one Enabled toggle (it replaces Enable all / Disable all), the Sound Channel Override, New, Delete and where
+    -- the group came from. Opacity, scale and layer stay on the Group tab with the container now ("strata / opacity / scale on Group").
+    local configArgs = take({ "name", "newRule", "newSub", "deleteTop", "deleteAllTop", "soundChannel" })
+    take({ "enableAll", "disableAll" })
+    if configArgs.name then configArgs.name.order = 1 end
+    for k, o in pairs({ newRule = 6, newSub = 6.1, deleteTop = 7, deleteAllTop = 7.1 }) do if configArgs[k] then configArgs[k].order = o end end
+    if configArgs.soundChannel then configArgs.soundChannel.order = 5 end
+    configArgs.enabled = { type = "toggle", order = 1.5, width = "full", name = "Enabled",
+        desc = "Ticked: every rule in this group and its nested groups is on. Unticking switches them all off (ticking again switches them all on).",
+        get = function()
+            local any = false
+            for _, r in ipairs(FolderRules(f.id)) do any = true; if not r.enabled then return false end end
+            return any
+        end,
+        set = function(_, v) for _, r in ipairs(FolderRules(f.id)) do r.enabled = v and true or false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end }
+    if container and container.args then
+        local any = false
+        for k, v in pairs(container.args) do
+            if type(k) == "string" and k:match("^ctype_") then configArgs[k] = v; container.args[k] = nil; v.order = 2 + (v.order % 1); v.hidden = function() return not isVisual() end; any = true end
+        end
+        if any then configArgs.typeHdr = { type = "header", order = 2, name = "Group type", hidden = function() return not isVisual() end } end
+    end
+    configArgs.origin = { type = "description", order = 8, width = "full", fontSize = "medium",
+        name = function()
+            local o = ns.CleanOrigin and ns.CleanOrigin(f.origin)
+            if not o then return "Made by: not recorded (this group is older than the record)." end
+            local how = ({ made = "made here", default = "a built-in category", imported = "imported" })[o.how or ""] or tostring(o.how or "made")
+            local when = (o.at and date) and date("%Y-%m-%d", o.at) or nil
+            return ("Made by: %s (%s%s)"):format(o.by or "unknown character", how, when and (", " .. when) or "")
+        end }
     local groupArgs = g.args
-    local dispArgs = take({ "arrange", "pausePv" })
-    if dispArgs.arrange then dispArgs.arrange.order = 9 end
+    local dispArgs = take({ "pausePv" })   -- (Align & Arrange stays on the Group tab: Xaya 2026-11-06, "Move to Group tab")
     -- Xaya, 2026-11-04: "Pause preview animations" belongs on the Display tab (as on a rule's Display tab), not on the Group tab
     if dispArgs.pausePv then dispArgs.pausePv.order = 0.5 end
-    -- 0.6.4 (#341, group display): the group as a whole first, then every display cue inside, edited live (DisplayTab.lua)
-    dispArgs.placement = { type = "group", inline = true, order = 1, name = "Whole group: opacity, scale & layer", args = dispFromContainer }
     dispArgs.note = { type = "description", order = 0, width = "full", fontSize = "small",
-        name = "The group's own opacity, scale, and layer apply to everything inside it on top of each display's own settings. Below them, the settings of every display cue in this group and its nested groups. The group's position, type, and container are on the Group tab." }
+        name = "The settings of every display cue in this group and its nested groups. The group's own position, size, opacity, scale, layer and Align & Arrange are on the Group tab; its name, type and Enabled switch on the Config tab." }
     if ns.GroupDisplayArgs then for k, v in pairs(ns.GroupDisplayArgs(f, FolderRules, Notify)) do dispArgs[k] = v end end
+    -- "icon size on Group" (Xaya 2026-11-06): the every-display size section moves to the Group tab
+    if dispArgs.size then groupArgs.size = dispArgs.size; dispArgs.size = nil; groupArgs.size.order = 5.45 end
     local loadArgs = { override = take({ "loadOverride" }).loadOverride, conds = ns.FolderLoadConditions(f) }
     local lock = function() return ns.IsEditLocked({ folder = f.id }) end
-    ns.LockArgs(groupArgs, lock); ns.LockArgs(dispArgs, lock); ns.LockArgs(loadArgs, lock)
+    ns.LockArgs(groupArgs, lock); ns.LockArgs(dispArgs, lock); ns.LockArgs(loadArgs, lock); ns.LockArgs(configArgs, lock)
     -- A group page can't use AceConfig's own tabs (its rules and nested groups are the tree children below it), so the tab strip
     -- is a row of buttons and each tab's content is an unframed box shown only while its tab is picked.
     ns.folderTab = ns.folderTab or setmetatable({}, { __mode = "k" })
@@ -4184,9 +4254,11 @@ local function BuildFolder(k, f)
         tabGroup = Tab("group", "Group", 0.01),
         tabDisplay = Tab("display", "Display", 0.02, function() return not isVisual() end),
         tabLoad = Tab("load", "Load", 0.03),
+        tabConfig = Tab("config", "Config", 0.04),
         pageGroup = Page("group", groupArgs),
         pageDisplay = Page("display", dispArgs),
         pageLoad = Page("load", loadArgs),
+        pageConfig = Page("config", configArgs),
     }
     return g
 end
@@ -5351,6 +5423,7 @@ function drag.ClearMarks()
     if drag.line then pcall(drag.line.Hide, drag.line); drag.line = nil end
 end
 local function StartDrag(button)
+    if drag.obj then return end   -- (already dragging: the press watcher below and the game's OnDragStart can both start one)
     local last = LastKey(button.uniquevalue) or ""
     local kind, obj, label
     local n = last:match("^rule(%d+)$")
@@ -5452,7 +5525,36 @@ local function StopDrag(button)
     ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()   -- the on-screen preview / dynamic groups lay out in rule order: redo it now
     ns.SelectKeep(kind == "rule" and RulePath(obj) or FolderPath(obj))
 end
-ns.DragForTest = { start = StartDrag, stop = StopDrag, zone = drag.DropZone, target = DropTarget, state = drag }   -- tests/drag_drop_run.py
+-- #343 (Xaya 2026-11-06: the broken drag is "rule rows in the sidebar"; pressing a row and dragging does "Nothing at all"): the game's
+-- own OnDragStart never reached the rows in her game (the cause was not found offline: the rows are registered for dragging and nothing
+-- covers them). So the drag no longer depends on it: a left press on a row arms a watcher; once the mouse has moved DRAG_PX pixels with
+-- the button still held, the drag starts; releasing the button drops it (wherever the mouse is). OnDragStart / OnDragStop stay as a
+-- second way in (StartDrag / StopDrag ignore a second start or stop). A press that does not move is a plain click, as before.
+drag.DRAG_PX = 6
+function drag.Arm(button)
+    if drag.obj or not GetCursorPosition then return end
+    local x0, y0 = GetCursorPosition()
+    local sc = (UIParent and UIParent.GetEffectiveScale and UIParent:GetEffectiveScale()) or 1
+    drag.watch = drag.watch or CreateFrame("Frame")
+    local w = drag.watch
+    w.btn, w.x0, w.y0, w.sc = button, x0, y0, sc
+    w:SetScript("OnUpdate", function(self)
+        local ok, err = pcall(function()
+            local held = IsMouseButtonDown and IsMouseButtonDown("LeftButton")
+            if not held then
+                self:SetScript("OnUpdate", nil)
+                if drag.obj then StopDrag(self.btn) end
+                return
+            end
+            if not drag.obj then
+                local x, y = GetCursorPosition()
+                if math.abs(x - self.x0) + math.abs(y - self.y0) >= drag.DRAG_PX * self.sc then StartDrag(self.btn) end
+            end
+        end)
+        if not ok then self:SetScript("OnUpdate", nil); drag.fail(err) end
+    end)
+end
+ns.DragForTest = { start = StartDrag, stop = StopDrag, zone = drag.DropZone, target = DropTarget, state = drag, arm = drag.Arm }   -- tests/drag_drop_run.py
 
 -------------------------------------------------------------------------------
 -- Reorder arrows: small up / down triangles at the left of every rule and folder row under All Rules.
@@ -6713,6 +6815,7 @@ local function DecorateButton(button)
         button:RegisterForDrag("LeftButton")
         button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         button:HookScript("OnClick", function(self, mouse) ns.Trace("click"); if mouse == "RightButton" then ShowRowMenu(self) else ns.MultiClick(self, mouse) end end)
+        button:HookScript("OnMouseDown", function(self, mouse) if mouse == "LeftButton" then local ok, e = pcall(drag.Arm, self); if not ok then drag.fail(e) end end end)   -- #343
         button:HookScript("OnDragStart", function(self) local ok, e = pcall(StartDrag, self); if not ok then drag.fail(e) end end)
         button:HookScript("OnDragStop", function(self) local ok, e = pcall(StopDrag, self); if not ok then drag.fail(e) end end)
     end

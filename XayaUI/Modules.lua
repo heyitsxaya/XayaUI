@@ -459,6 +459,13 @@ function ns.Service(name) return services[name] end
 -- Is XayaUI Dev Assist (the separate developer addon, folder XayaUI_DevAssist) loaded? It sets ns.devAssistLoaded when its first file
 -- runs (core 0.6.56; REQUEST-LOG #81: the developer tools are there, and the Aura ID "via ..." text shows only while it is on).
 function ns.DevAssistOn() return ns.devAssistLoaded == true end
+-- /xui dev qa: the QA walkthroughs live in the developer add-on, which registers its own "dev" handler. While that add-on is off, this
+-- says how to get them (core finds the add-on only through its service, "gameDataProbe": core 0.6.55)
+ns.RegisterCommand({ "dev", "qa", "qatest" }, function()   -- (/xui qa test and /xui qatest: Xaya's aliases, FUS-9)
+    if not services.gameDataProbe and ns.Print then
+        ns.Print("the QA walkthroughs are part of XayaUI Dev Assist: switch it on in the AddOns list (character select or Esc > AddOns), then /reload and type /xui dev qa again.")
+    end
+end)
 
 -------------------------------------------------------------------------------
 -- 9. The world map report: /xui debug map (core 0.6.49; REQUEST-LOG #30, Xaya 2026-11-05: "map eclipses full screen" [the Silvermoon

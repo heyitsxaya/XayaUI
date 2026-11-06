@@ -399,26 +399,70 @@ local function DynAncestor(folderId)
         id, guard = f.parent, guard + 1
     end
 end
+-- G9 (Xaya 2026-11-06, static group scaling: "Toggle + ask on resize"): with "Scale items to fit the box" ticked, a static group with a
+-- set size scales what is inside it down (never up) so its displays fit the box. The box keeps its size on screen: the container is
+-- scaled by the factor and made larger by the same factor. Measured from the saved X / Y and sizes of the group's own displays, from
+-- the box's centre (INFERENCE: displays anchored to a corner of the box are measured the same way, so for them the fit is approximate).
+local FIT_PTS = { TOPLEFT = { 0, 1 }, TOP = { 0.5, 1 }, TOPRIGHT = { 1, 1 }, LEFT = { 0, 0.5 }, CENTER = { 0.5, 0.5 }, RIGHT = { 1, 0.5 },
+    BOTTOMLEFT = { 0, 0 }, BOTTOM = { 0.5, 0 }, BOTTOMRIGHT = { 1, 0 } }
+local function ItemsExtent(f)
+    local ex, ey, n = 0, 0, 0
+    local W, Hh = math.max(1, f.cW or 1), math.max(1, f.cH or 1)
+    for _, r in ipairs(ns.rules or {}) do
+        local v = r.visual
+        if r.folder == f.id and type(v) == "table" and v.enabled and not (v.snap and v.snap.target) then
+            local w, h = math.max(8, v.w or 128), math.max(8, v.h or 128)
+            local a, fp = ns.VisualPoints(r)
+            local PA, PF = FIT_PTS[a] or FIT_PTS.CENTER, FIT_PTS[fp] or FIT_PTS.CENTER
+            local cx = (v.x or 0) - (PF[1] - 0.5) * w + (PA[1] - 0.5) * W
+            local cy = (v.y or 0) - (PF[2] - 0.5) * h + (PA[2] - 0.5) * Hh
+            ex = math.max(ex, math.abs(cx) + w / 2); ey = math.max(ey, math.abs(cy) + h / 2); n = n + 1
+        end
+    end
+    return ex, ey, n
+end
+function ns.GroupFitNeeded(f)   -- the factor the items need to fit the set box (1 = they fit), whatever the tick box says
+    if not f or f.cType == "dynamic" or ns.GroupSizeMode(f) ~= "set" then return 1 end
+    local ex, ey, n = ItemsExtent(f)
+    if n == 0 then return 1 end
+    local W, Hh = math.max(1, f.cW or 1), math.max(1, f.cH or 1)
+    local k = 1
+    if ex > 0 then k = math.min(k, (W / 2) / ex) end
+    if ey > 0 then k = math.min(k, (Hh / 2) / ey) end
+    return math.max(0.05, k)
+end
+function ns.GroupFitScale(f) return (f and f.cFit) and ns.GroupFitNeeded(f) or 1 end
 local function Container(f)
     local c = containers[f.id]
     if not c then c = CreateFrame("Frame", nil, UIParent); c:SetSize(1, 1); containers[f.id] = c end
-    c:SetSize(math.max(1, f.cW or 1), math.max(1, f.cH or 1))
-    if c.SetClipsChildren then c:SetClipsChildren(f.cClip and true or false) end
+    local fit = f.cFit and ns.GroupFitScale(f) or 1   -- (V14: nothing is measured unless the tick box is on)
+    c:SetSize(math.max(1, f.cW or 1) / fit, math.max(1, f.cH or 1) / fit)
+    -- clip only with a set size (G5: in Auto the container is the 1 x 1 anchor, clipping it would hide everything)
+    if c.SetClipsChildren then c:SetClipsChildren((f.cClip and ns.GroupSizeMode(f) == "set") and true or false) end
     local pf = f.parent and ns.FolderById(f.parent)
     local parentC = pf and Container(pf) or UIParent
     if c:GetParent() ~= parentC then c:SetParent(parentC) end
-    local target = parentC
+    -- G8 (Xaya 2026-11-06: "nested groups get "anchored to: screen / parent group""): a nested group is measured from its parent group
+    -- (as before) unless it is anchored to the screen; it stays inside its parent either way (opacity, scale and layer still apply)
+    local toScreen = f.parent and f.cAnchorTo == "screen"
+    local target = toScreen and UIParent or parentC
     local rel = f.cRel
     local gname = (rel == "custom") and f.cFrame or REL_FRAMES[rel]
     local g = gname and gname ~= "" and _G[gname]
     if g and g.GetCenter and g ~= c then target = g end
-    local sc = math.max(0.1, f.cScale or 1)
+    local sc = math.max(0.1, f.cScale or 1) * fit
     c:SetScale(sc)
     c:SetAlpha(f.cAlpha or 1)
     if f.cStrata then c:SetFrameStrata(f.cStrata) end
     if (f.cLevel or 0) > 0 then c:SetFrameLevel(f.cLevel) end
     c:ClearAllPoints()
-    c:SetPoint(f.cPoint or "CENTER", target, f.cRelPoint or f.cPoint or "CENTER", (f.cX or 0) / sc, (f.cY or 0) / sc)
+    -- (anchored to the screen from inside a scaled parent: the offset is divided by the parent's scale too, so X / Y stay screen units)
+    local pScale = 1
+    if toScreen and target == UIParent and parentC ~= UIParent and parentC.GetEffectiveScale and UIParent.GetEffectiveScale then
+        local ue = UIParent:GetEffectiveScale()
+        if ue and ue > 0 then pScale = math.max(0.01, (parentC:GetEffectiveScale() or ue) / ue) end
+    end
+    c:SetPoint(f.cPoint or "CENTER", target, f.cRelPoint or f.cPoint or "CENTER", (f.cX or 0) / (sc * pScale), (f.cY or 0) / (sc * pScale))
     c.xuiTarget = target   -- what the group's X / Y is measured from (the group outline drag needs its scale)
     return c
 end
@@ -534,6 +578,13 @@ local function TimeLeftOf(owner)
     if type(e) == "number" and not issecretvalue(e) and e > 0 then return e - GetTime() end
 end
 
+-- G10 Align: where an item sits across its line (lo..hi on the cross axis, t = its thickness). start = top (rows) / left (columns),
+-- end = bottom / right, center = the middle
+local function CrossAlign(mode, rows, lo, hi, t)
+    if mode == "start" then return rows and (hi - t / 2) or (lo + t / 2) end
+    if mode == "end" then return rows and (lo + t / 2) or (hi - t / 2) end
+    return (lo + hi) / 2
+end
 local function LayoutDynamic(df)
     if not df then return end
     -- One slot per RULE (the rule is the container of its cues), in the rule's own list order: the order of the sidebar, which the
@@ -548,7 +599,7 @@ local function LayoutDynamic(df)
     end
     for _, r in ipairs(ns.rules or {}) do
         local fr = frames[r]
-        if fr and fr:IsShown() and ((r.folder and DynAncestor(r.folder) == df)
+        if fr and (fr:IsShown() or fr.xuiLimited) and ((r.folder and DynAncestor(r.folder) == df)
             or (r.cursorConv and ns.CursorReminderFolder and ns.CursorReminderFolder() == df)) then
             local owner = (r.parentUid and byUid[r.parentUid]) or r
             local it = byOwner[owner]
@@ -587,6 +638,22 @@ local function LayoutDynamic(df)
             local n = #items
             for i = 1, math.floor(n / 2) do items[i], items[n - i + 1] = items[n - i + 1], items[i] end
         end
+    end
+    do   -- G10 Limit (Xaya 2026-11-06: "Limit"): after sorting only the first N show; the rest wait (hidden, marked) until there is room
+        local lim = tonumber(df.cLimit) or 0
+        local keep = {}
+        for i, it in ipairs(items) do
+            local over = lim > 0 and i > lim
+            local function set(fr)
+                if over then if fr:IsShown() then fr:Hide() end; fr.xuiLimited = true
+                elseif fr.xuiLimited then fr.xuiLimited = nil; fr:Show() end
+            end
+            set(it.fr)
+            for _, ef in ipairs(it.extra or {}) do set(ef) end
+            if not over then keep[#keep + 1] = it end
+        end
+        items = keep
+        if #items == 0 then return end
     end
     local dir = df.cGrowth or "RIGHT"
     local blk = ns.DynamicBlock(df)   -- Centered / From anchor point: one block, laid out like Blizzard's flow (see above)
@@ -643,7 +710,13 @@ local function LayoutDynamic(df)
             for _, it in ipairs(ln) do
                 local px, py   -- the item's own corner point
                 if horiz then px, py = ox + main * sx, oy + cross * sy else px, py = ox + cross * sx, oy + main * sy end
-                Put(it, px - cv[1] * it.w, py - cv[2] * it.h)
+                local cx, cy = px - cv[1] * it.w, py - cv[2] * it.h
+                if df.cAlign then   -- G10 Align: across the line, by its top / centre / bottom (rows) or left / centre / right (columns)
+                    local a, b = cross, cross + thick[li]
+                    if horiz then cy = CrossAlign(df.cAlign, true, math.min(oy + a * sy, oy + b * sy), math.max(oy + a * sy, oy + b * sy), it.h)
+                    else cx = CrossAlign(df.cAlign, false, math.min(ox + a * sx, ox + b * sx), math.max(ox + a * sx, ox + b * sx), it.w) end
+                end
+                Put(it, cx, cy)
                 main = main + (horiz and it.w or it.h) + sp
             end
             cross = cross + thick[li] + sp
@@ -667,6 +740,10 @@ local function LayoutDynamic(df)
             elseif dir == "LEFT" then x = -p; y = -co * cs
             elseif dir == "DOWN" then y = -p; x = co * cs
             elseif dir == "UP" then y = p; x = co * cs end
+            if df.cAlign then   -- G10 Align (default: centred on the line, as before)
+                if horiz then y = CrossAlign(df.cAlign, true, y - cross / 2, y + cross / 2, it.h)
+                else x = CrossAlign(df.cAlign, false, x - cross / 2, x + cross / 2, it.w) end
+            end
             Put(it, x, y)
         end
         crossOff = crossOff + cross + sp
@@ -675,6 +752,23 @@ end
 
 -- The draggable outline for an unlocked group: fitted around the group's shown displays, drags the GROUP (its X / Y), not the displays.
 local groupHandles = {}
+-- Group size (G5; Xaya 2026-11-06: "size = auto or set + clip / wrap tick boxes; auto fits the showing items, border follows").
+-- Auto: the container stays the 1 x 1 anchor it is with no size (cW / cH nil, exactly as "0 = no fixed size" was, so the combat
+-- engine and the layout read it unchanged); the set numbers wait in cSetW / cSetH. Set: cW / cH are the box.
+function ns.GroupSizeMode(f)
+    if f.cSize == "set" or f.cSize == "auto" then return f.cSize end
+    return ((f.cW or 0) > 0 or (f.cH or 0) > 0) and "set" or "auto"
+end
+function ns.SetGroupSizeMode(f, mode)
+    if mode == "auto" then
+        if (f.cW or 0) > 0 then f.cSetW = f.cW end
+        if (f.cH or 0) > 0 then f.cSetH = f.cH end
+        f.cW, f.cH, f.cSize = nil, nil, "auto"
+    else
+        f.cW, f.cH = f.cW or f.cSetW or 200, f.cH or f.cSetH or 100
+        f.cSize = "set"
+    end
+end
 local function GroupBounds(f)
     local l, b, r, t
     local us = UIParent:GetEffectiveScale()
@@ -691,6 +785,79 @@ local function GroupBounds(f)
     end
     return l, b, r, t
 end
+-- The group's box (G5 / G11; #372 "puts an assigned color / texture under the aura"; the WeakAuras group-tab border, CHAT-3d): a
+-- border and / or a background behind the group's items. Auto size: it hugs what is showing now (GroupBounds) plus padding and
+-- follows as items come and go; Set size: it is the container's box. Off (neither border nor background): nothing is made (V14), and
+-- the watcher that follows Auto boxes runs only while one such box exists.
+local boxes, boxWatch = {}, nil
+local function BoxOn(f) return (f.cBorder or f.cBg) and true or false end
+function ns.GroupBox(f) return f and boxes[f.id] or nil end
+function ns.UpdateGroupBox(f)
+    local b = boxes[f.id]
+    if not BoxOn(f) then if b then b:Hide() end; return end
+    local c = containers[f.id]
+    if not b then
+        b = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+        if b.EnableMouse then b:EnableMouse(false) end
+        b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(b)
+        boxes[f.id] = b
+    end
+    local pad = tonumber(f.cPad) or 4
+    b:ClearAllPoints()
+    if ns.GroupSizeMode(f) == "set" and c then
+        if b:GetParent() ~= c then b:SetParent(c) end
+        b:SetPoint("TOPLEFT", c, "TOPLEFT", -pad, pad); b:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", pad, -pad)
+    else
+        if b:GetParent() ~= UIParent then b:SetParent(UIParent) end
+        local l, bt, r, t = GroupBounds(f)
+        if not l then b:Hide(); return end
+        b:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - pad, bt - pad)
+        b:SetSize((r - l) + 2 * pad, (t - bt) + 2 * pad)
+    end
+    if c then
+        if c.GetFrameStrata then b:SetFrameStrata(c:GetFrameStrata()) end
+        if c.GetFrameLevel then b:SetFrameLevel(math.max(0, c:GetFrameLevel())) end
+    end
+    local bg = f.cBgColor or { 0, 0, 0, 0.45 }
+    if f.cBg then
+        local tex = f.cBgTex
+        if type(tex) == "string" and tex ~= "" or type(tex) == "number" then b.bg:SetTexture(tex); b.bg:SetVertexColor(bg[1] or 1, bg[2] or 1, bg[3] or 1, bg[4] or 1)
+        else b.bg:SetColorTexture(bg[1] or 0, bg[2] or 0, bg[3] or 0, bg[4] or 0.45) end
+        b.bg:Show()
+    else b.bg:Hide() end
+    if b.SetBackdrop then
+        if f.cBorder then
+            local bd = f.cBdColor or { 0.6, 0.6, 0.65, 1 }
+            b:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = math.max(1, tonumber(f.cBdSize) or 1) })
+            b:SetBackdropBorderColor(bd[1] or 1, bd[2] or 1, bd[3] or 1, bd[4] or 1)
+        else b:SetBackdrop(nil) end
+    end
+    b:Show()
+end
+function ns.UpdateGroupBoxes()
+    local anyAuto = false
+    for _, f in ipairs(ns.folders or {}) do
+        if BoxOn(f) or boxes[f.id] then pcall(ns.UpdateGroupBox, f) end
+        if BoxOn(f) and ns.GroupSizeMode(f) == "auto" then anyAuto = true end
+    end
+    if anyAuto then
+        if not boxWatch then
+            boxWatch = CreateFrame("Frame")
+            boxWatch.t = 0
+            boxWatch:SetScript("OnUpdate", function(self, e)
+                self.t = self.t + (e or 0)
+                if self.t < 0.2 then return end
+                self.t = 0
+                local still = false
+                for _, f in ipairs(ns.folders or {}) do
+                    if BoxOn(f) and ns.GroupSizeMode(f) == "auto" then still = true; pcall(ns.UpdateGroupBox, f) end
+                end
+                if not still then self:SetScript("OnUpdate", nil); boxWatch = nil end
+            end)
+        end
+    elseif boxWatch then boxWatch:SetScript("OnUpdate", nil); boxWatch = nil end
+end
+function ns.GroupBoxWatching() return boxWatch ~= nil end   -- (tests)
 -- Right-click on the outline: type the group's X / Y, or center it on the screen on one axis or both ("center" = the outline's middle on the
 -- screen's middle). X / Y are the same numbers as the group's X / Y offset options.
 local posPopup
@@ -812,7 +979,7 @@ local function SideOf(gl, gb, gr, gt, tl, tb, tr, tt)
     local v = (gy > tt) and "TOP" or ((gy < tb) and "BOTTOM" or "")
     return h, v
 end
-local OPP = { LEFT = "RIGHT", RIGHT = "LEFT", TOP = "BOTTOM", BOTTOM = "TOP", [""] = "" }
+local SIDE_OPP = { LEFT = "RIGHT", RIGHT = "LEFT", TOP = "BOTTOM", BOTTOM = "TOP", [""] = "" }   -- (sides only; OPP above has the corners: #268 outer anchors read that one)
 local function PointXY(fr, pt)   -- a frame's point, in screen pixels
     local l, b, r, t = ScreenRect(fr)
     if not l then return nil end
@@ -855,7 +1022,7 @@ function ns.AnchorGroupToFrame(fo, target, name)
     if not (gl and tl) then return false end
     local h, v = SideOf(gl, gb, gr, gt, tl, tb, tr, tt)
     local rel = (v .. h ~= "") and (v .. h) or "CENTER"
-    local own = (OPP[v] .. OPP[h] ~= "") and (OPP[v] .. OPP[h]) or "CENTER"
+    local own = (SIDE_OPP[v] .. SIDE_OPP[h] ~= "") and (SIDE_OPP[v] .. SIDE_OPP[h]) or "CENTER"
     Reanchor(fo, function() fo.cRel, fo.cFrame, fo.cPoint, fo.cRelPoint = "custom", name, own, rel end, own)
     return true, own, rel
 end
@@ -986,6 +1153,8 @@ local function GroupHandle(f)
         if btn ~= "LeftButton" then return end
         local fo = ns.FolderById(self.fid)
         if not fo then return end
+        if ns.MoverSelect and not ns.IsMoverTempLocked(fo) then ns.MoverSelect("group", fo) end
+        if ns.IsMoverTempLocked(fo) then return end   -- (locked for now: the tag still opens the settings, but does not drag)
         local cx, cy = GetCursorPosition()
         self.drag = { cx = cx, cy = cy, x = fo.cX or 0, y = fo.cY or 0 }
     end)
@@ -1102,6 +1271,23 @@ local function GroupTag(f)
     t.box:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     t.box:SetBackdropBorderColor(1, 0.6, 0.1, 0.35)
     t.fid = f.id
+    -- P5: the lock icon locks this group for now (no save): its displays let the mouse through to what is under them
+    t.lock = CreateFrame("Button", nil, t)
+    t.lock:SetSize(TAG_H - 2, TAG_H - 2); t.lock:SetPoint("RIGHT", -2, 0)
+    t.lock.tex = t.lock:CreateTexture(nil, "OVERLAY"); t.lock.tex:SetAllPoints()
+    t.lock.tex:SetTexture("Interface\\PetBattles\\PetBattle-LockIcon")
+    t.lock:SetScript("OnClick", function()
+        local fo = ns.FolderById(t.fid)
+        if fo then ns.SetMoverTempLock(fo, not ns.IsMoverTempLocked(fo)) end
+    end)
+    t.lock:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(ns.IsMoverTempLocked(ns.FolderById(t.fid)) and "Unlock this group" or "Lock this group for now", 1, 0.82, 0)
+        GameTooltip:AddLine("While locked its displays cannot be dragged and the mouse reaches what is under them. Nothing is saved; it ends when you leave the mover view.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    t.lock:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     local function Lit(on) t.box:SetBackdropBorderColor(1, 0.6, 0.1, on and 1 or 0.35) end
     t:SetScript("OnEnter", function(self) self.hovered = true; Lit(true); TagTooltip(self) end)
     t:SetScript("OnLeave", function(self)
@@ -1149,8 +1335,10 @@ local function GroupTag(f)
             return
         end
         self:SetAlpha(1); self:EnableMouse(true)
-        self.label:SetText(tostring(fo.name))
-        self:SetSize(math.max(40, (self.label:GetStringWidth() or 40) + 8), TAG_H)
+        local locked = ns.IsMoverTempLocked(fo)
+        self.label:SetText(tostring(fo.name) .. (locked and " (locked)" or ""))
+        self.lock.tex:SetDesaturated(not locked); self.lock.tex:SetAlpha(locked and 1 or 0.6)
+        self:SetSize(math.max(40, (self.label:GetStringWidth() or 40) + 8 + TAG_H), TAG_H)
         self:ClearAllPoints()
         self:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - TAG_PAD, top + TAG_PAD + 1 + FolderDepth(fo) * (TAG_H + 1))
         self.box:ClearAllPoints()
@@ -1278,9 +1466,15 @@ end
 -- display's OPPOSITE point there, so the display sits outside the box. Ignored while snapped to a Blizzard frame and in dynamic groups.
 local ANCH = { TOPLEFT = { 0, 1 }, TOP = { 0.5, 1 }, TOPRIGHT = { 1, 1 }, LEFT = { 0, 0.5 }, CENTER = { 0.5, 0.5 }, RIGHT = { 1, 0.5 },
     BOTTOMLEFT = { 0, 0 }, BOTTOM = { 0.5, 0 }, BOTTOMRIGHT = { 1, 0 } }
+-- P1 (#268, Xaya 2026-11-06: "separate points"; labels "Anchor point" -> "Anchored to" -> "To <target>'s point"): v.point is the
+-- display's own point, chosen on its own. Older saves have none: their display point follows v.anchor (inner) or its opposite (outer).
 local function AnchorPts(v)   -- the point on the parent, the point on the display
     local a = ANCH[v.anchor] and v.anchor or "CENTER"
+    if ANCH[v.point] then return a, v.point end
     return a, (v.anchorPlace == "outer") and OPP[a] or a
+end
+function ns.VisualPoints(rule)   -- (the target's point, the display's own point) as used now
+    return AnchorPts(rule and rule.visual or {})
 end
 local function VisDims(rule)   -- display size and parent size, in the parent's units
     local v = rule.visual
@@ -1304,6 +1498,35 @@ function ns.SetVisualCenterOffset(rule, cx, cy)
     v.x = math.floor(cx + (F[1] - 0.5) * w - (A[1] - 0.5) * pw + 0.5)
     v.y = math.floor(cy + (F[2] - 0.5) * h - (A[2] - 0.5) * ph + 0.5)
 end
+-- P1: set the display's own point ("Anchor point") and / or the target's point ("To <target>'s point") separately; the display stays
+-- exactly where it is (X / Y are recalculated). Once either is set this way the two points are independent (inner / outer no longer apply).
+function ns.SetVisualPoints(rule, selfPoint, targetPoint)
+    local v = rule and rule.visual
+    if not v then return end
+    local cx, cy = ns.VisualCenterOffset(rule)
+    local a, f = AnchorPts(v)
+    v.point = ANCH[selfPoint] and selfPoint or f
+    v.anchor = ANCH[targetPoint] and targetPoint or a
+    if v.anchor == "CENTER" then v.anchor = nil end
+    v.anchorPlace = nil
+    ns.SetVisualCenterOffset(rule, cx, cy)
+    ns.RefreshVisual(rule)
+    ns.Fire("CONFIG_CHANGED")
+end
+-- what the display is anchored to, for the "Anchored to" line: kind ("frame" / "group" / "screen") and a name
+function ns.VisualAnchorTarget(rule)
+    local v = rule and rule.visual
+    if not v then return "screen", "the screen" end
+    if v.snap and SnapFrame(v) then
+        if v.snap.target == "custom" then return "frame", tostring(v.snap.frame or "a game frame") end
+        for _, t in ipairs(SNAP_TARGETS) do if t.key == v.snap.target then return "frame", t.label end end
+        return "frame", "a game frame"
+    end
+    local _, dyn = ParentFor(rule)
+    local f = dyn or (rule.folder and ns.FolderById(rule.folder))
+    if f then return dyn and "dynamic" or "group", tostring(f.name or "its group") end
+    return "screen", "the screen"
+end
 -- change the anchor and / or inner-outer; X / Y are recalculated so the display stays exactly where it is
 function ns.SetVisualAnchor(rule, anchor, place)
     local v = rule.visual
@@ -1315,7 +1538,89 @@ function ns.SetVisualAnchor(rule, anchor, place)
     ns.RefreshVisual(rule)
     ns.Fire("CONFIG_CHANGED")
 end
-local function Place(fr, rule, parent)
+-- G7 (Xaya 2026-11-06: "align / distribute / spacing saved and kept applying"; when one display is dragged: "Arrangement wins"):
+-- a static group can keep one arrangement per direction: f.cArrX = left / center / right / distribute / space, f.cArrY = top / middle /
+-- bottom / distribute / space, f.cArrGap = the gap for space. It is applied again whenever one of its displays is refreshed,
+-- dragged or nudged, so a dragged display goes back into line and a new or resized one joins it. It works on the displays directly in
+-- the group (each nested group keeps its own) that are not snapped to a game frame; dynamic groups place their displays themselves.
+-- ns.ArrangeList is also what the one-shot Align / Distribute / Space buttons use.
+local Place   -- (defined below; the arrangement places frames with it)
+local function ArrDims(r) local v = r.visual; return tonumber(v.x) or 0, tonumber(v.y) or 0, math.max(8, tonumber(v.w) or 128), math.max(8, tonumber(v.h) or 128) end
+local function ArrR(n) return math.floor(n + 0.5) end
+function ns.ArrangeList(l, xMode, yMode, gap)
+    if #l < 2 or not (xMode or yMode) then return false end
+    gap = tonumber(gap) or 8
+    for _, r in ipairs(l) do local cx, cy = ns.VisualCenterOffset(r); r.visual.x, r.visual.y = cx, cy end
+    local function sorted(horiz)
+        local t = {}
+        for i, r in ipairs(l) do t[i] = r end
+        table.sort(t, function(a, b)
+            local ax, ay = ArrDims(a); local bx, by = ArrDims(b)
+            if horiz then if ax ~= bx then return ax < bx end else if ay ~= by then return ay > by end end
+            return tostring(a.name) < tostring(b.name)   -- (a fixed order for ties, so applying again changes nothing)
+        end)
+        return t
+    end
+    if xMode == "left" or xMode == "center" or xMode == "right" then
+        local lo, hi = math.huge, -math.huge
+        for _, r in ipairs(l) do local x, _, w = ArrDims(r); lo = math.min(lo, x - w / 2); hi = math.max(hi, x + w / 2) end
+        for _, r in ipairs(l) do local _, _, w = ArrDims(r)
+            r.visual.x = ArrR(xMode == "left" and lo + w / 2 or xMode == "right" and hi - w / 2 or (lo + hi) / 2) end
+    elseif xMode == "distribute" then
+        local t = sorted(true)
+        local a, b = ArrDims(t[1]), ArrDims(t[#t])
+        for i, r in ipairs(t) do r.visual.x = ArrR(a + (b - a) * (i - 1) / (#t - 1)) end
+    elseif xMode == "space" then
+        local t, cur = sorted(true)
+        for i, r in ipairs(t) do
+            local x, _, w = ArrDims(r)
+            if i == 1 then cur = x + w / 2 else r.visual.x = ArrR(cur + gap + w / 2); cur = r.visual.x + w / 2 end
+        end
+    end
+    if yMode == "top" or yMode == "middle" or yMode == "bottom" then
+        local top, bot = -math.huge, math.huge
+        for _, r in ipairs(l) do local _, y, _, h = ArrDims(r); top = math.max(top, y + h / 2); bot = math.min(bot, y - h / 2) end
+        for _, r in ipairs(l) do local _, _, _, h = ArrDims(r)
+            r.visual.y = ArrR(yMode == "top" and top - h / 2 or yMode == "bottom" and bot + h / 2 or (top + bot) / 2) end
+    elseif yMode == "distribute" then
+        local t = sorted(false)
+        local _, a = ArrDims(t[1]); local _, b = ArrDims(t[#t])
+        for i, r in ipairs(t) do r.visual.y = ArrR(a + (b - a) * (i - 1) / (#t - 1)) end
+    elseif yMode == "space" then
+        local t, cur = sorted(false)
+        for i, r in ipairs(t) do
+            local _, y, _, h = ArrDims(r)
+            if i == 1 then cur = y - h / 2 else r.visual.y = ArrR(cur - gap - h / 2); cur = r.visual.y - h / 2 end
+        end
+    end
+    for _, r in ipairs(l) do ns.SetVisualCenterOffset(r, r.visual.x, r.visual.y) end
+    return true
+end
+local arranging = false
+function ns.GroupArrangement(f) return f and (f.cArrX or f.cArrY) and f.cType ~= "dynamic" and true or false end
+function ns.ApplyGroupArrangement(f)
+    if arranging or not ns.GroupArrangement(f) then return false end
+    local l = {}
+    for _, r in ipairs(ns.rules or {}) do
+        local v = r.visual
+        if r.folder == f.id and type(v) == "table" and v.enabled and not (v.snap and v.snap.target) then l[#l + 1] = r end
+    end
+    if #l < 2 then return false end
+    arranging = true
+    local ok = pcall(ns.ArrangeList, l, f.cArrX, f.cArrY, f.cArrGap)
+    for _, r in ipairs(l) do
+        local fr = frames[r]
+        if fr then pcall(Place, fr, r, (ParentFor(r))) end
+    end
+    arranging = false
+    return ok
+end
+local function ArrangeAfter(rule)   -- the display's group keeps an arrangement: put it (and its neighbours) back in line
+    if arranging or not (rule and rule.folder) then return end
+    local f = ns.FolderById(rule.folder)
+    if f and ns.GroupArrangement(f) then ns.ApplyGroupArrangement(f) end
+end
+function Place(fr, rule, parent)   -- (the local declared above the arrangement)
     local v = rule.visual
     local g = SnapFrame(v)
     fr:ClearAllPoints()
@@ -1341,6 +1646,7 @@ local function CommitDrag(rule, fr, useSnap)
     ns.SetVisualCenterOffset(rule, cox, coy)
     Place(fr, rule, parent)
     if dyn then LayoutDynamic(dyn) end
+    ArrangeAfter(rule)   -- G7: "arrangement wins"
     ns.Fire("CONFIG_CHANGED")
 end
 -- a display snapped to a frame picked on screen: the side and alignment nearest to where the display is now (SNAP_POS keys)
@@ -1633,7 +1939,8 @@ local function GetFrame(rule)
         if GameTooltip and GameTooltip.GetOwner and GameTooltip:GetOwner() == self then GameTooltip:Hide() end
     end)
     fr:SetScript("OnDragStart", function(self)
-        if not Unl(rule) then return end
+        if not Unl(rule) or (ns.MoverTempLocked and ns.MoverTempLocked(rule)) then return end
+        if ns.MoverSelect then ns.MoverSelect("display", rule) end   -- (P4: the arrow keys nudge what was last dragged or clicked)
         self.wasDragged, self.dragStoppedAt = true, nil
         -- a paired aura rides along: anchor it to this one at its current offset for the length of the drag
         local o = pairOf[rule]
@@ -1693,6 +2000,7 @@ local function GetFrame(rule)
         end
         if button == "LeftButton" then
             ns.SelectVisual(rule)
+            if ns.MoverSelect then ns.MoverSelect("display", rule) end
             if ns.EditRule then ns.EditRule(rule) end
         elseif button == "RightButton" then
             ns.SelectVisual(rule)
@@ -1922,7 +2230,7 @@ function ns.RefreshVisual(rule)
     if fr:GetParent() ~= parent then fr:SetParent(parent) end
     ApplyStrata(fr, rule.folder)
     Place(fr, rule, parent)
-    if dyn then LayoutDynamic(dyn) end
+    if dyn then LayoutDynamic(dyn) else ArrangeAfter(rule) end   -- (G7: a new or resized display joins its group's line)
     fr.baseAlpha = v.alpha or 1
     fr:SetAlpha(fr.baseAlpha)
     fr.tex:SetBlendMode(v.additive and "ADD" or "BLEND")
@@ -1992,9 +2300,10 @@ function ns.RefreshVisual(rule)
     fr.label:SetText(rule.name)
     -- "Show tooltip on hover" needs the frame to see the mouse; clicks still pass through to whatever is behind it unless unlocked for moving
     local tip = v.hoverTip and true or false
-    fr:EnableMouse(Unl(rule) or tip)
+    local movable = Unl(rule) and not (ns.MoverTempLocked and ns.MoverTempLocked(rule))   -- (a group locked for now from its mover tag: P5)
+    fr:EnableMouse(movable or tip)
     if tip then
-        pcall(fr.SetMouseClickEnabled, fr, Unl(rule) and true or false)
+        pcall(fr.SetMouseClickEnabled, fr, movable and true or false)
         pcall(fr.SetMouseMotionEnabled, fr, true)
     elseif fr.SetMouseClickEnabled then
         pcall(fr.SetMouseClickEnabled, fr, true)
@@ -2590,6 +2899,8 @@ function ns.SetVisualShown(rule, shown)
     end
     if comp or fr.comp then SetCompanionShown(fr, rule, comp) end
     if not want then StopCdBind(fr) end   -- a hidden display's cooldown countdown stops updating
+    if not want then fr.xuiLimited = nil end   -- (G10 Limit: no longer waiting for room)
+    if want and fr.xuiLimited then return end   -- (still waiting: the group's layout shows it when there is room)
     if fr:IsShown() == want then return end
     fr:SetShown(want)
     QueueLayout(rule.folder and DynAncestor(rule.folder))
@@ -2623,13 +2934,212 @@ function ns.RefreshAllVisuals()
         end
     end
     if ns.unlocked then ns.RefreshGroupTags() end   -- a group made or changed while everything is unlocked gets its mover-view tag
+    pcall(ns.UpdateGroupBoxes)   -- the groups' border / background boxes (G5 / G11)
 end
 
+-------------------------------------------------------------------------------
+-- Mover session (P4 / P5; Xaya 2026-11-06, her words: "arrow-key nudges yes; moves held until Save"; "lock icon in mover tool allows for
+-- a temporary lock to account for potentially multiple rule groups stacked on top of each other; does not force a save. exiting out of
+-- mover mode first creates a prompt to cancel or commit move changes. create a temp layout in drafts in case of game crash or something
+-- which auto-deletes after a user clicked save").
+-- - Opening the mover view (/xui unlock) keeps every display's and group's position aside (the draft, CueRulesDB.moverDraft). Moves
+--   show at once; leaving the mover view with any move asks "Save moves" (the draft is deleted) or "Cancel moves" (all go back).
+-- - The game writes saved data only at logout, /reload, a disconnect or quitting (not at a crash). So the draft covers a /reload or a
+--   logout without Save: at the next login a prompt offers to keep or undo those moves. After a crash nothing of the session was
+--   written: the last saved layout is what loads (the moves are lost, the layout is not damaged).
+-- - The lock icon on a group's mover tag locks that group for now: its displays let the mouse through (to reach what is under them)
+--   and its tag does not drag. It saves nothing and ends with the mover view.
+-- - Arrow keys nudge the display or group last clicked or dragged in the mover view by 1 pixel (Shift: 10). Not in combat.
+-------------------------------------------------------------------------------
+local mover = { tempLock = {}, sel = nil }
+local R_KEYS = { "x", "y", "anchor", "point", "anchorPlace" }
+local F_KEYS = { "cX", "cY", "cRel", "cPoint", "cRelPoint", "cFrame", "cAnchorTo" }
+local function Copy(t) if type(t) ~= "table" then return t end local o = {}; for k, v in pairs(t) do o[k] = Copy(v) end; return o end
+local function Same(a, b)
+    if type(a) ~= "table" or type(b) ~= "table" then return a == b end
+    for k, v in pairs(a) do if not Same(v, b[k]) then return false end end
+    for k in pairs(b) do if a[k] == nil then return false end end
+    return true
+end
+local function TakeDraft()
+    local d = { at = time and time() or 0, rules = {}, folders = {} }
+    for i, r in ipairs(ns.rules or {}) do
+        local v = r.visual
+        if type(v) == "table" then
+            local e = { i = i, n = tostring(r.name), snap = Copy(v.snap) }
+            for _, k in ipairs(R_KEYS) do e[k] = v[k] end
+            d.rules[#d.rules + 1] = e
+        end
+    end
+    for _, f in ipairs(ns.folders or {}) do
+        if f.id then
+            local e = {}
+            for _, k in ipairs(F_KEYS) do e[k] = f[k] end
+            d.folders[tostring(f.id)] = e
+        end
+    end
+    return d
+end
+local function DraftRule(e)   -- the rule a draft entry is about (same place in the list and same name), or nil
+    local r = ns.rules and ns.rules[e.i]
+    if r and tostring(r.name) == e.n and type(r.visual) == "table" then return r end
+end
+-- what moved since the draft was taken: a list of { kind = "display" / "group", obj, entry }
+function ns.MoverChanges(d)
+    d = d or (CueRulesDB and CueRulesDB.moverDraft)
+    local out = {}
+    if type(d) ~= "table" then return out end
+    for _, e in ipairs(d.rules or {}) do
+        local r = DraftRule(e)
+        if r then
+            local v, moved = r.visual, not Same(r.visual.snap, e.snap)
+            for _, k in ipairs(R_KEYS) do if v[k] ~= e[k] then moved = true end end
+            if moved then out[#out + 1] = { kind = "display", obj = r, entry = e } end
+        end
+    end
+    for fid, e in pairs(d.folders or {}) do
+        local f = ns.FolderById(fid) or ns.FolderById(tonumber(fid))
+        if f then
+            for _, k in ipairs(F_KEYS) do if f[k] ~= e[k] then out[#out + 1] = { kind = "group", obj = f, entry = e }; break end end
+        end
+    end
+    return out
+end
+local function Restore(d)
+    for _, c in ipairs(ns.MoverChanges(d)) do
+        if c.kind == "display" then
+            local v = c.obj.visual
+            for _, k in ipairs(R_KEYS) do v[k] = c.entry[k] end
+            v.snap = Copy(c.entry.snap)
+        else
+            for _, k in ipairs(F_KEYS) do c.obj[k] = c.entry[k] end
+            pcall(Container, c.obj)
+        end
+    end
+end
+local function EndSession(save)
+    local d = CueRulesDB and CueRulesDB.moverDraft
+    if d and not save then Restore(d) end
+    if CueRulesDB then CueRulesDB.moverDraft = nil end
+    wipe(mover.tempLock); mover.sel = nil
+    if ns.MarkDirty then ns.MarkDirty() end
+    ns.Fire("CONFIG_CHANGED")
+end
+function ns.MoverTempLocked(rule)   -- the display sits in a group locked for now from the mover tag's lock icon
+    if not (ns.unlocked and rule and rule.folder and next(mover.tempLock)) then return false end
+    for fid in pairs(mover.tempLock) do if InFolder(rule.folder, fid) then return true end end
+    return false
+end
+function ns.SetMoverTempLock(f, on)
+    if not f then return end
+    mover.tempLock[f.id] = on and true or nil
+    if mover.sel and mover.sel.kind == "group" and mover.sel.obj == f and on then mover.sel = nil end
+    for _, r in ipairs(ns.rules or {}) do
+        if r.visual and frames[r] and InFolder(r.folder, f.id) then pcall(ns.RefreshVisual, r) end
+    end
+end
+function ns.IsMoverTempLocked(f) return f and mover.tempLock[f.id] and true or false end
+function ns.MoverSelect(kind, obj) if ns.unlocked and obj then mover.sel = { kind = kind, obj = obj } end end
+function ns.MoverSelection() return mover.sel end
+-- P4: move the selected display or group by dx / dy pixels (its own units)
+function ns.MoverNudge(dx, dy)
+    local s = mover.sel
+    if not (ns.unlocked and s) then return false end
+    if InCombatLockdown and InCombatLockdown() then return false end
+    if s.kind == "group" then
+        if mover.tempLock[s.obj.id] then return false end
+        s.obj.cX = (s.obj.cX or 0) + dx; s.obj.cY = (s.obj.cY or 0) + dy
+        GroupPosChanged(s.obj)
+    else
+        local r = s.obj
+        if not (r.visual and frames[r]) or ns.MoverTempLocked(r) then return false end
+        r.visual.x = (r.visual.x or 0) + dx; r.visual.y = (r.visual.y or 0) + dy
+        local parent, dyn = ParentFor(r)
+        Place(frames[r], r, parent)
+        if dyn then LayoutDynamic(dyn) else ArrangeAfter(r) end
+        ns.Fire("CONFIG_CHANGED")
+    end
+    return true
+end
+local NUDGE = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 0 } }
+local function KeyFrame()   -- made on the first opening of the mover view (V14); shown only while it is open
+    if mover.keys then return mover.keys end
+    local k = CreateFrame("Frame", "XayaUIMoverKeys", UIParent)
+    k:EnableKeyboard(true)
+    k:SetScript("OnKeyDown", function(self, key)
+        local n = NUDGE[key]
+        local used = n and not (InCombatLockdown and InCombatLockdown()) and mover.sel ~= nil
+        if not (InCombatLockdown and InCombatLockdown()) and self.SetPropagateKeyboardInput then
+            pcall(self.SetPropagateKeyboardInput, self, not used)   -- every other key still reaches the game
+        end
+        if used then
+            local step = (IsShiftKeyDown and IsShiftKeyDown()) and 10 or 1
+            ns.MoverNudge(n[1] * step, n[2] * step)
+        end
+    end)
+    mover.keys = k
+    return k
+end
+function ns.MoverKeyFrame() return mover.keys end
+local function PromptAndThen(which, text, onSave, onCancel)
+    StaticPopupDialogs[which] = StaticPopupDialogs[which] or {
+        -- (no hide on Escape: an Escape must never throw moves away; the two buttons are her two choices)
+        text = "%s", button1 = "Save moves", button2 = "Cancel moves", timeout = 0, whileDead = true, hideOnEscape = false,
+        preferredIndex = 3,
+        OnAccept = function(self, data) if data and data.save then data.save() end end,
+        OnCancel = function(self, data, reason) if reason ~= "clicked" then return end if data and data.cancel then data.cancel() end end,
+    }
+    local dlg = StaticPopup_Show(which, text, nil, { save = onSave, cancel = onCancel })
+    if dlg and dlg.SetFrameStrata then dlg:SetFrameStrata("TOOLTIP") end
+    mover.prompt = which
+end
+function ns.MoverPromptShown() return mover.prompt end
+local function Lock()
+    ns.unlocked = false
+    for r in pairs(pairOf) do ns.ClearPair(r) end
+    if mover.keys then mover.keys:Hide() end
+    ns.Print("visuals locked.")
+    ns.RefreshAllVisuals()
+    ns.RefreshGroupTags()
+    if ns.QoL_RefreshAll then ns.QoL_RefreshAll() end
+    if ns.Bars_RefreshAll then ns.Bars_RefreshAll() end
+end
+-- leave the mover view: Save keeps the moves, Cancel puts every display and group back where it was when the view opened
+function ns.MoverExit(choice)
+    mover.prompt = nil
+    if choice == "save" or choice == "cancel" then EndSession(choice == "save") end
+    if ns.unlocked then Lock() end
+end
+-- at login: a draft left by a /reload or logout without Save
+function ns.MoverCheckDraft()
+    local d = CueRulesDB and CueRulesDB.moverDraft
+    if not d or ns.unlocked then return end
+    local n = #ns.MoverChanges(d)
+    if n == 0 then CueRulesDB.moverDraft = nil; return end
+    local when = (date and d.at and d.at > 0) and date("%Y-%m-%d %H:%M", d.at) or "earlier"
+    PromptAndThen("XAYAUI_MOVER_DRAFT", ("XayaUI: the mover view was left without Save (%s): %d display(s) or group(s) were moved. Keep these moves?"):format(when, n),
+        function() mover.prompt = nil; EndSession(true) end,
+        function() mover.prompt = nil; EndSession(false); ns.RefreshAllVisuals() end)
+end
+if ns.AtLogin then ns.AtLogin(function() ns.MoverCheckDraft() end) end   -- (Modules.lua; absent where Visual.lua is loaded on its own)
+
 function ns.ToggleUnlock()
-    ns.unlocked = not ns.unlocked
-    if not ns.unlocked then for r in pairs(pairOf) do ns.ClearPair(r) end end
-    ns.Print(ns.unlocked and "visuals UNLOCKED: drag them, then /xui unlock again to lock. Hover a display or a group's name tab to see what it is; click it to open its settings."
-        or "visuals locked.")
+    if ns.unlocked then
+        -- P5: leaving the mover view with moves asks first
+        local n = #ns.MoverChanges()
+        if n > 0 then
+            PromptAndThen("XAYAUI_MOVER_EXIT", ("You moved %d display(s) or group(s) in the mover view. Save the moves, or cancel them (everything goes back to where it was)?"):format(n),
+                function() ns.MoverExit("save") end, function() ns.MoverExit("cancel") end)
+            return
+        end
+        ns.MoverExit("save")
+        return
+    end
+    if CueRulesDB then CueRulesDB.moverDraft = TakeDraft() end
+    wipe(mover.tempLock); mover.sel = nil
+    KeyFrame():Show()
+    ns.unlocked = true
+    ns.Print("visuals UNLOCKED: drag them, then /xui unlock again to lock (you are asked to save or cancel the moves). Arrow keys nudge the display or group you last clicked (Shift: 10 pixels). Hover a display or a group's name tab to see what it is; click it to open its settings; the lock on a group's tab locks it for now.")
     ns.RefreshAllVisuals()
     ns.RefreshGroupTags()
     if ns.QoL_RefreshAll then ns.QoL_RefreshAll() end
