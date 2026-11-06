@@ -230,7 +230,7 @@ Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default
   Notepad off, sharing included; your notes are kept. **Show Notepad**, `/xui notes` and the box's x still show and hide it.
 - **Calculator switch** (Bonus 0.6.16). The Calculator (Bonus Features > Utilities > Calculator) has its own tick box, on by
   default. Off, its window does not open and its minimap row is gone; `/xui calc <sum>` still answers in chat.
-- **`/notes` and `/calc`** (Bonus 0.6.17). Two short commands: `/notes` opens the Notepad (only while the Notepad is on) and `/calc`
+- **`/notes` and `/calc`** (Bonus 0.6.17). Two short commands: `/notes` shows or hides the Notepad like `/xui notes` (only while the Notepad is on) and `/calc`
   does what `/xui calc` does. If another addon already owns either word, XayaUI leaves it alone and the `/xui` forms still work.
   After you turn the Notepad off, `/notes` stays until `/reload` and only says the Notepad is off.
 - **Clearer Aura ID lines on tooltips** (Bonus 0.6.13, 0.6.15). On spell tooltips, an aura icon ID that is the same as the spell's
