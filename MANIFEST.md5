@@ -97,7 +97,7 @@ b228da60bb797fd046561b1594b799ca  XayaUI/SetBonusAuras.lua
 9966ecc7520f3978efc33a1e1af4efe2  XayaUI/Sound.lua
 a126ef2cd2852eae4c6f9eb2cadb6e1c  XayaUI/TalentDump.lua
 7d0e35ac661d1db2569cdea98562ba17  XayaUI/TextureList.lua
-3b94eb126368408e96a3fcc4eaecf229  XayaUI/Theme.lua
+cb47de4f1e21b9293deec64a71ed19cb  XayaUI/Theme.lua
 1a9977d3db7e5c98a37c0cb53b0b582c  XayaUI/Timing.lua
 1711e7b9399691380e465fdd706015a6  XayaUI/Triggers.lua
 583adcd77845b2b2ad8f3df3874a99c0  XayaUI/UserMedia.lua
@@ -153,7 +153,7 @@ d580499354412d7ae85a86c9eed84350  XayaUI_DevAssist/AuraIDProbe.lua
 b5a92ec17bc645db493b24f51b63147f  XayaUI_DevAssist/CharacterWidthProbe.lua
 58798882f2e26d77fd1cbc47b9534d89  XayaUI_DevAssist/ChatProbe.lua
 99575fd704c73272159989066ebf574a  XayaUI_DevAssist/CoreDebug.lua
-ba9b1b2d350099f573c5f6c00c99c6b6  XayaUI_DevAssist/DevAssist.lua
+a1e66048ea78ec3887bbe58cb169386e  XayaUI_DevAssist/DevAssist.lua
 03bcf4441d5d619908eb2c887baa7dba  XayaUI_DevAssist/DevRecord.lua
 4f406e5f61d664082acd91fcb9dcafdd  XayaUI_DevAssist/FORMULA-CAPTURE-WALKTHROUGH.md
 540e759425acffdcd2e04155ed259ae3  XayaUI_DevAssist/FormulaCapture.lua
@@ -210,7 +210,7 @@ ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
 1ec606b0294fb9269437805f84f9100f  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
-a2c7ecb8996d64407b463561570ce33a  XayaUI_Options/Skin.lua
+698b1e49e7529074690943b260ccf6c9  XayaUI_Options/Skin.lua
 eac6760f4421c937a3ce3171912561df  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
 c79f7aedb61981602d40ea7c1bbbe33b  XayaUI_Options/XayaUI_Options.toc
@@ -507,9 +507,10 @@ fe51de1c552b68fd8c3309e6c3a6871c  debug-log/2026-11-06-0520-character-pane-stat-
 99eeff9cfe9a67e5fc08c193b088246b  debug-log/2026-11-06-0552-slash-notes-calc-bonus-0.6.17.md
 123e3c41439ee6fad0b573eb19d7f73c  debug-log/2026-11-06-0554-friends-list-ui-source-12.1.5-findings.md
 577c899f5a71f8d9ae48c68ae8dafcc2  debug-log/2026-11-06-0616-auto-populate-answers-options-0.6.53-core-0.6.52.md
+bcbf971ed2693812286a40635b15e630  debug-log/2026-11-06-0705-sidebar-rows-regrow-options-0.6.52-core-0.6.54.md
 0c84a8d78ac8855a1968a038ad62926a  debug-log/2026-11-06-1807-debug-tools-to-devassist-error-codes-core-0.6.56.md
-fd242be0a866def0264776c9f13668c5  docs/QA-CHECKLIST.md
-3293fed1d8ce80dbe90eeb96172c09ea  docs/ROADMAP.md
+177d26f2b3b6d474706aee495148c0a1  docs/QA-CHECKLIST.md
+66de3d61728cea6959636348897cc2df  docs/ROADMAP.md
 abe8b58ac451c20b6287e70180258313  docs/SESSION-START-SUMMARY.md
 4e6eddaf3155b3a765dc766a206d0c83  docs/USER-GUIDE.md
 06bc780dc6fe6cd89117f5b4e81bcb26  docs/WHATS-NEW.md
@@ -537,10 +538,11 @@ c303a99e884d75226da5ecac171965bd  docs/plans/SHOPPING-LIST-REQUIREMENTS-2026-11-
 d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 326414f64ffdd852cc9d0be3f2163f07  docs/process/QUESTIONS-engine-session.md
 aedf5da75a8a82cfacc2ae71b49d19f9  docs/process/REQUEST-LOG-CROSS-CHAT.md
+73cc522e33eac291f5a18cb3cb13c6e8  docs/process/REQUEST-LOG-session-014bN6tSs9peLMW4F93tnQcj.md
 1c455e2d0e650f1d4403dd74c92e2a52  docs/process/REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md
 542e01b6df294c1be5ba6bab4a46728a  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-11b17d177b335d5b43368efdafd2f4ee  docs/process/REQUEST-LOG.md
+503a6be3da43702b5999d625ce2f362c  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 fc9ae6bece5db2731de3bf3b926c8c0c  docs/process/VERIFICATION.md
 7af233aeafadc9bade62ce5da4b21189  docs/reference/README.md
@@ -632,7 +634,7 @@ e78532613d70ebbdcc90fcfb23c97f0a  tests/cue_fire_run.py
 dd665e9accfdaf1a4488086f855742a2  tests/cue_sound_guard_run.py
 e72897e247fb535d4756722cd9f5aad7  tests/cue_volume_run.py
 86b0502bac93727dda27759b8516b6ff  tests/cursor_trail_cost_run.py
-01d4ec634aff5f50470bfd80dfd2a3b2  tests/cursor_ui_themes_run.py
+cafe909a0096f5993f25573a8c89a00b  tests/cursor_ui_themes_run.py
 432c5d0891956b679cc61ce0a5fc49c5  tests/debug_record_engine_run.py
 9c4a2eb2501458437fc7abbb9d9849aa  tests/debug_record_run.py
 c135893b4f8ae3d58b00fd2be6d813af  tests/delete_keeps_rule_run.py
@@ -676,7 +678,7 @@ a86f56d3d0f0e1ed426ca5decffcbdbf  tests/harness/run.py
 6e92b8201fedcf5655092b9bd49106ef  tests/load_ids_options_run.py
 be2a40ff7d3167cccf271f960e0f70a1  tests/load_ids_run.py
 77132f082006e60b78f5bbdc7cc3c57f  tests/lua51.py
-fb351c854fb47dee0e181ce1c3821350  tests/lua_pitfalls_run.py
+9ea525ecdbe994c51ae0a5a95c356296  tests/lua_pitfalls_run.py
 f19616c7613194a3b65115c2c4405087  tests/minimap_run.py
 adb52b5f86b97b5ac549353e59d97f36  tests/modules_run.py
 6ad4b6d2b5aa5998a397aa381d3de5ba  tests/mover_click_run.py
@@ -696,6 +698,7 @@ c60fc0af61b41509cb3f736457a4e59e  tests/release_guard_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py
 a7a9f991777bc6b3ff0c21af327b23d4  tests/shopping_list_run.py
 033cc3815741ca63d85f3a67a2bd0409  tests/sidebar_name_room_run.py
+d3e43ebe0b0c51a82085916ade221862  tests/sidebar_rows_regrow_run.py
 6b019cf04e226afb424ae7c56530c454  tests/sidebar_switches_run.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
 2d82e30f220e19a9dfd2d9165907881f  tests/slash_words_run.py

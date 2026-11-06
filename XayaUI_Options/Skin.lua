@@ -821,10 +821,14 @@ local function SkinTree(w)
             local avail = realH - reserve - TopPad(self) - 6
             local lines = math.max(1, self.xuiLines or math.floor((avail - 10) / 18))
             local total, cnt = run(lines)
-            -- grow while there is spare room and more rows exist than are drawn (a scrollbar max above 0 means rows are left over)
+            -- grow while there is spare room and more rows exist than are drawn. (Options 0.6.52) Before, this asked the scroll bar
+            -- with `local _, mx = self.scrollbar and self.scrollbar:GetMinMaxValues()`: an `and` keeps only a call's first value, so mx
+            -- was always nil and this loop never ran. The remembered count could then only shrink: one refresh that measured little
+            -- room (the window redrawn after a change in the right-hand pane, a short window) left the sidebar at a few rows for good
+            -- (Insivius: "will not show more than 4 lines"; Xaya: "clicking options in the right hand side panel still consistently
+            -- drops elements"). self.lines is AceGUI's list of every row the tree has now (RefreshTree builds it first).
             for _ = 1, 3 do
-                local _, mx = self.scrollbar and self.scrollbar:GetMinMaxValues()
-                if cnt > 0 and total < avail - 40 and (mx or 0) > 0 then
+                if cnt > 0 and total < avail - 40 and #(self.lines or {}) > cnt then
                     lines = lines + math.max(1, math.floor((avail - total) / (total / cnt)))
                     total, cnt = run(lines)
                 else break end
@@ -864,6 +868,7 @@ local function SkinTree(w)
     end
     OnRelease(w, function(self)
         self.xuiFadeTok = nil; self.xuiLastSel = nil
+        self.xuiLines = nil   -- (Options 0.6.52) AceGUI hands this widget to the next tree: it must not start from this tree's row count
         if self.xuiFadeFrame then self.xuiFadeFrame:SetScript("OnUpdate", nil) end
         if self.content and self.content.SetAlpha then self.content:SetAlpha(1) end
         if self.xuiSearchBox then self.xuiSearchBox:Hide() end

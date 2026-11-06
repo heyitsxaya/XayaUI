@@ -417,7 +417,8 @@ function GD.CaptureCharacter()
     c.class, c.classID, c.level = token, classID, UnitLevel("player")
     local si = GetSpecialization and GetSpecialization()
     if si then c.specID, c.specName = GetSpecializationInfo(si) end
-    local avg, eq = GetAverageItemLevel and GetAverageItemLevel()
+    local avg, eq   -- (Dev Assist 0.7.3) was `GetAverageItemLevel and GetAverageItemLevel()`: the `and` kept only the first value, so eq was always nil
+    if GetAverageItemLevel then avg, eq = GetAverageItemLevel() end
     c.ilvl, c.ilvlEquipped = avg, eq
     if C_ClassTalents and C_ClassTalents.GetActiveHeroTalentSpec then
         local okH, h = pcall(C_ClassTalents.GetActiveHeroTalentSpec)
