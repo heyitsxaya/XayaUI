@@ -8,7 +8,9 @@
 --   * Formatting (toolbar underlined-A button, off by default): a format bar (heading, bullet, checkbox, colors, spell icon) and a formatted view.
 --     Markup is plain text: '# heading', '- bullet', '[ ] / [x] checkbox', |cffRRGGBBtext|r colors, {spell:ID} icon + name.
 --   * Toolbar: at the top, bottom, left, or right of the box; always visible, or only while the mouse is over the box.
---   * Open / close: /xui notepad, the x on the box, or the tick box on its row in Bonus Features > Utilities. Whether it is open is remembered.
+--   * On / off (Bonus 0.6.14; Xaya 2026-11-06: "It should only enable or disable notepad functionality in its entirety"): the tick box on
+--     its row in Bonus Features > Utilities. Off: nothing of the Notepad is built or runs, its sharing included (V14).
+--   * Open / close (while it is on): /xui notepad, the x on the box, or "Show Notepad" on its page. Whether it is open is remembered.
 --   * Drag the title bar to move, drag the bottom-right corner to resize. "Lock" stops both.
 -- Own code, written against Blizzard's frame API only (no other addon's code or data). UNTESTED in game.
 -------------------------------------------------------------------------------
@@ -28,6 +30,7 @@ local BIG_DROP = 20                    -- characters removed in one edit that sa
 local MAX_TRASH = 30
 
 ns.NOTEPAD_DEFAULTS = {
+    enabled = true,          -- (Bonus 0.6.14) the feature as a whole; on by default as it always was (question to Xaya)
     shown = false,
     locked = false,
     anchor = "CENTER", x = 300, y = 0,
@@ -49,6 +52,9 @@ ns.NOTEPAD_DEFAULTS = {
 }
 
 local function DB() return ns.notepadDB end
+-- (Bonus 0.6.14) the Notepad feature is on (its row's tick box)
+local function On() local db = ns.notepadDB; return (db and db.enabled ~= false) and true or false end
+ns.Notepad_On = On
 local function InCombat() return (InCombatLockdown and InCombatLockdown()) or (UnitAffectingCombat and UnitAffectingCombat("player")) end
 
 -------------------------------------------------------------------------------
@@ -437,6 +443,7 @@ local function BuildPopup()
 end
 
 function ns.Notepad_ToggleRestore()
+    if not On() then return end
     local p = BuildPopup()
     if p:IsShown() then p:Hide(); return end
     p:ClearAllPoints()
@@ -711,7 +718,7 @@ ApplyMode = function()
 end
 
 function ns.Notepad_ToggleList()
-    if not frame then return end
+    if not frame or not On() then return end
     mode.list = not mode.list
     if mode.list then Flush() end
     ApplyMode()
@@ -985,8 +992,14 @@ end
 
 function ns.Notepad_Refresh()
     local db = DB(); if not db then return end
-    WatchEvents(db.shown)
-    if not db.shown then if frame then frame:Hide() end return end
+    -- (Bonus 0.6.14, V14) the Notepad switched off: its box and its Restore list are hidden, its events let go, nothing more runs
+    local show = On() and db.shown and true or false
+    WatchEvents(show)
+    if not show then
+        if frame then frame:Hide() end
+        if not On() and popup then popup:Hide() end
+        return
+    end
     local f = Build()
     f:SetFrameStrata(db.strata or "MEDIUM")
     f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
@@ -1017,7 +1030,7 @@ function ns.Notepad_Refresh()
 end
 
 function ns.Notepad_SetShown(v)
-    local db = DB(); if not db then return end
+    local db = DB(); if not db or not On() then return end
     db.shown = v and true or false
     if not db.shown then Flush() end
     ns.Notepad_Refresh()
@@ -1026,14 +1039,28 @@ end
 
 function ns.Notepad_Toggle()
     local db = DB(); if not db then ns.Print("Notepad is not ready yet."); return end
+    if not On() then ns.Print("Notepad is off: tick it in Bonus Features > Utilities > Notepad."); return end
     ns.Notepad_SetShown(not db.shown)
     if db.shown and frame and not mode.list and not mode.view then frame.eb:SetFocus() end
 end
 
+-- (Bonus 0.6.14; Xaya 2026-11-06, about the Notepad's tick box: "It should only enable or disable notepad functionality in its
+-- entirety") on / off for the whole feature: off hides the box and every window of it, lets go of its events and of shared notes
+-- (NotepadShare_Sync), and nothing of it is built until it is on again (V14). Its notes are kept.
+function ns.Notepad_SetEnabled(v)
+    local db = DB(); if not db then return end
+    db.enabled = v and true or false
+    if not db.enabled then Flush() end
+    ns.Notepad_Refresh()
+    if ns.NotepadShare_Sync then ns.NotepadShare_Sync() end
+    if ns.Notepad_Changed then ns.Notepad_Changed() end
+end
+
 -------------------------------------------------------------------------------
 -- options page: Bonus Features > Utilities > "Notepad" (a part of the Utilities node since Bonus 0.6.11: Utilities.lua)
--- "Show Notepad" is the tick box on this page's row in the left pane (xuiSwitch; Xaya 2026-11-05: "move all enable/disable toggles
--- onto the sidebar instead"), the same set as the page's old switch.
+-- The tick box on this page's row in the left pane (xuiSwitch; Xaya 2026-11-05: "move all enable/disable toggles onto the sidebar
+-- instead") turns the Notepad on or off as a whole (Bonus 0.6.14); "Show Notepad" (the box shown or not) is back on the page, as it was
+-- before Bonus 0.6.11. While the Notepad is off every control of the page is greyed out (nothing of it may be opened or run).
 -------------------------------------------------------------------------------
 function ns.BuildNotepadTab(Notify)
     local db = DB()
@@ -1041,18 +1068,22 @@ function ns.BuildNotepadTab(Notify)
     ns.Notepad_Changed = function() if Notify then Notify() end end
     local function g(k) return function() return db[k] end end
     local function s(k) return function(_, v) db[k] = v; ns.Notepad_Refresh() end end
+    local function off() return db.enabled == false end
     return { type = "group", name = "Notepad", order = 11,
-      xuiSwitch = { type = "toggle", name = "Show Notepad", desc = "Opens or closes the notepad box (also the x on the box, and /xui notepad).",
-          get = g("shown"), set = function(_, v) ns.Notepad_SetShown(v) end },
+      xuiSwitch = { type = "toggle", name = "Notepad",
+          desc = "Turns the Notepad on or off as a whole. Off: no box, no list or Restore window, no sharing, and nothing of it is built or runs; your notes are kept.",
+          get = function() return db.enabled ~= false end, set = function(_, v) ns.Notepad_SetEnabled(v) end },
       args = {
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "A small floating box for typed reminders. It holds any number of notes, and nothing you type is lost: your text is saved as you type, earlier versions of each note are kept automatically, and deleted notes go to a trash. The history (clock) button on the toolbar (or the button below) opens the Restore list, and the list button shows all your notes at once. Open or close the box with the tick box next to Notepad on the left, with the x on it, or with /xui notepad." },
-        lock = { type = "toggle", order = 2, name = "Lock position and size", desc = "Also the Lock button on the box's title bar.", get = g("locked"), set = s("locked") },
-        fmt = { type = "toggle", order = 2.5, name = "Formatting tools", desc = "Adds a format bar (heading, bullet, checkbox, colors, spell icon) and a formatted view. Also the underlined-A button on the toolbar. Notes stay plain text: the formatting is markup you can read and edit.",
+            name = "A small floating box for typed reminders. It holds any number of notes, and nothing you type is lost: your text is saved as you type, earlier versions of each note are kept automatically, and deleted notes go to a trash. The history (clock) button on the toolbar (or the button below) opens the Restore list, and the list button shows all your notes at once. Turn the Notepad on or off with the tick box next to it on the left; open or close the box with Show Notepad below, the x on it, or /xui notepad." },
+        show = { type = "toggle", order = 1, name = "Show Notepad", desc = "Opens or closes the notepad box (also the x on the box, and /xui notepad).",
+            get = g("shown"), set = function(_, v) ns.Notepad_SetShown(v) end, disabled = off },
+        lock = { type = "toggle", order = 2, name = "Lock position and size", desc = "Also the Lock button on the box's title bar.", get = g("locked"), set = s("locked"), disabled = off },
+        fmt = { type = "toggle", order = 2.5, disabled = off, name = "Formatting tools", desc = "Adds a format bar (heading, bullet, checkbox, colors, spell icon) and a formatted view. Also the underlined-A button on the toolbar. Notes stay plain text: the formatting is markup you can read and edit.",
             get = g("format"), set = function(_, v) db.format = v and true or false; if not db.format then mode.view = false end; ns.Notepad_Refresh() end },
-        list = { type = "execute", order = 2.6, name = "Show / hide the list of all notes", desc = "Also the list button on the toolbar.", func = function() ns.Notepad_ToggleList() end },
-        restore = { type = "execute", order = 3, name = "Open Restore list", desc = "Earlier versions of the current note, and deleted notes.", func = function() ns.Notepad_ToggleRestore() end },
-        share = { type = "group", name = "Share, export, and import", order = 3.5, inline = true, args = {
+        list = { type = "execute", order = 2.6, name = "Show / hide the list of all notes", desc = "Also the list button on the toolbar.", func = function() ns.Notepad_ToggleList() end, disabled = off },
+        restore = { type = "execute", order = 3, name = "Open Restore list", desc = "Earlier versions of the current note, and deleted notes.", func = function() ns.Notepad_ToggleRestore() end, disabled = off },
+        share = { type = "group", name = "Share, export, and import", order = 3.5, inline = true, disabled = off, args = {
             note = { type = "description", order = 0, width = "full", name = "The menu (three lines) button on the toolbar shares the current note to chat for other XayaUI users, or exports and imports notes as text you can copy and paste." },
             accept = { type = "toggle", order = 1, name = "Accept notes shared by other XayaUI users", width = "double",
                 desc = "A shared note never saves by itself: a small window offers it and you choose Save or Dismiss. Off: nothing listens for shared notes. Once it was on, the game keeps XayaUI's message name registered until you /reload; nothing of it runs.",
@@ -1061,28 +1092,28 @@ function ns.BuildNotepadTab(Notify)
             exp = { type = "execute", order = 3, name = "Export notes...", func = function() if ns.NotepadShare_OpenIO then ns.NotepadShare_OpenIO("all") end end },
             imp = { type = "execute", order = 4, name = "Import notes...", func = function() if ns.NotepadShare_OpenIO then ns.NotepadShare_OpenIO("import") end end },
         } },
-        tbar = { type = "group", name = "Toolbar", order = 4, inline = true, args = {
+        tbar = { type = "group", name = "Toolbar", order = 4, inline = true, disabled = off, args = {
             on = { type = "toggle", order = 1, name = "Show toolbar", desc = "New, duplicate, delete, previous, next, history/restore, list, formatting, and share / import / export (More) buttons.", get = g("toolbar"), set = s("toolbar") },
             hover = { type = "toggle", order = 2, name = "Only show on mouseover", desc = "The toolbar stays hidden until the mouse is over the box (or you are typing in it). Its space stays reserved so the text does not jump.",
-                disabled = function() return not db.toolbar end, get = g("toolbarHover"), set = s("toolbarHover") },
-            pos = { type = "select", order = 3, name = "Toolbar position", disabled = function() return not db.toolbar end,
+                disabled = function() return off() or not db.toolbar end, get = g("toolbarHover"), set = s("toolbarHover") },
+            pos = { type = "select", order = 3, name = "Toolbar position", disabled = function() return off() or not db.toolbar end,
                 values = { TOP = "Top", BOTTOM = "Bottom", LEFT = "Left", RIGHT = "Right" }, sorting = { "TOP", "BOTTOM", "LEFT", "RIGHT" },
                 get = g("toolbarPos"), set = s("toolbarPos") },
             lines = { type = "toggle", order = 3.5, name = "Use simple line icons", width = "double",
                 desc = "Draws the toolbar icons as plain lines instead of using the icon images. Try this if the image icons do not show.",
-                disabled = function() return not db.toolbar end, get = g("iconLines"), set = s("iconLines") },
+                disabled = function() return off() or not db.toolbar end, get = g("iconLines"), set = s("iconLines") },
         } },
-        hist = { type = "group", name = "Versions", order = 5, inline = true, args = {
+        hist = { type = "group", name = "Versions", order = 5, inline = true, disabled = off, args = {
             max = { type = "range", order = 1, name = "Earlier versions kept per note", desc = "A version is saved when you pause typing, and always right before a large amount of text is removed. Oldest versions drop off first.",
                 min = 5, max = 50, step = 1, get = g("maxHistory"), set = function(_, v) db.maxHistory = v end },
         } },
-        combat = { type = "group", name = "Combat", order = 6, inline = true, args = {
+        combat = { type = "group", name = "Combat", order = 6, inline = true, disabled = off, args = {
             hide = { type = "toggle", order = 1, name = "Hide in combat", get = g("hideInCombat"), set = s("hideInCombat") },
             drop = { type = "toggle", order = 2, name = "Release the keyboard when combat starts",
                 desc = "While you are typing in the box, your keybinds do not work. With this on, entering combat takes the cursor out of the box so they do.",
                 get = g("dropFocusInCombat"), set = s("dropFocusInCombat") },
         } },
-        look = { type = "group", name = "Look", order = 7, inline = true, args = {
+        look = { type = "group", name = "Look", order = 7, inline = true, disabled = off, args = {
             font = { type = "select", order = 1, name = "Font",
                 values = function() local v = ns.FontList(); return v end, sorting = function() local _, o = ns.FontList(); return o end,
                 get = g("font"), set = s("font") },
@@ -1092,7 +1123,7 @@ function ns.BuildNotepadTab(Notify)
                 values = { BACKGROUND = "Background", LOW = "Low", MEDIUM = "Medium", HIGH = "High", DIALOG = "Dialog" },
                 sorting = { "BACKGROUND", "LOW", "MEDIUM", "HIGH", "DIALOG" }, get = g("strata"), set = s("strata") },
         } },
-        reset = { type = "group", name = "Reset", order = 8, inline = true, args = {
+        reset = { type = "group", name = "Reset", order = 8, inline = true, disabled = off, args = {
             pos = { type = "execute", order = 1, name = "Reset position and size",
                 func = function() db.anchor, db.x, db.y, db.w, db.h = "CENTER", 300, 0, 280, 220; ns.Notepad_Refresh() end },
             clear = { type = "execute", order = 2, name = "Clear the current note", confirm = true, confirmText = "Clear the text of the current note? The old text stays in its version list (the history button).",
@@ -1111,5 +1142,6 @@ end
 ns.WhenReady(ns.Notepad_OnDBReady)
 ns.RegisterCommand({ "notes", "notepad", "note" }, function() ns.Notepad_Toggle() end, "/xui notes (show / hide the notepad)")
 ns.RegisterLauncher({ "notes", "Notes", "Show or hide the notepad (also /xui notes)", function() ns.Notepad_Toggle() end,
-    function() local d = ns.notepadDB; return d and d.shown and "on" or "off" end, order = 10 })
+    function() local d = ns.notepadDB; return d and d.shown and "on" or "off" end, order = 10,
+    available = function() return On() end })   -- (Bonus 0.6.14) no row while the Notepad is off (core 0.6.49: available())
 -- its settings page is a part of Bonus Features > Utilities (registered by Utilities.lua, Bonus 0.6.11), not a page of its own

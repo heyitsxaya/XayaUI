@@ -40,6 +40,12 @@ ns.WhenReady(ns.Minimap_OnDBReady)
 -- leaves no dead button. Row = { key, label, tooltip, action, optional state text, order = n }. Core adds only Settings.
 ns.RegisterLauncher({ "settings", "Settings", "Open the XayaUI settings window", function() if ns.ToggleUI then ns.ToggleUI() end end, order = 20 })
 local function Shown(db, key) return db.entries[key] ~= false end
+-- (core 0.6.49) an entry whose feature is switched off (its available() says false) has no row; read each time the list opens
+local function Available(e)
+    if type(e.available) ~= "function" then return true end
+    local ok, v = pcall(e.available)
+    return ok and v ~= false and v ~= nil
+end
 
 -- What the override text means: "" -> built-in icon; digits -> a file ID; "spell:ID" -> that spell's icon; a bare name (no slash) ->
 -- Interface\Icons\<name>; anything else -> used as a texture path as typed. Returns the texture and a short note for the options page.
@@ -100,7 +106,7 @@ local function ClosePopup() if popup then popup:Hide() end; if catcher then catc
 local function Visible()
     local db = DB(); local out = {}
     if not db then return out end
-    for _, e in ipairs(ns.Launchers()) do if Shown(db, e[1]) then out[#out + 1] = e end end
+    for _, e in ipairs(ns.Launchers()) do if Shown(db, e[1]) and Available(e) then out[#out + 1] = e end end
     return out
 end
 
@@ -280,6 +286,7 @@ function ns.BuildMinimapTab(Notify)
     }
     for i, e in ipairs(ns.Launchers()) do
         args.entries.args[e[1]] = { type = "toggle", order = i, name = e[2], desc = e[3],
+            hidden = function() return not Available(e) end,   -- (core 0.6.49: its feature is off)
             get = function() return Shown(DB(), e[1]) end,
             set = function(_, v) DB().entries[e[1]] = v and true or false; ns.Minimap_Refresh() end }
     end
