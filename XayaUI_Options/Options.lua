@@ -3395,7 +3395,7 @@ function BuildClassCreator()
     local function shown() return not creatorOpen end
     local args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Press a spec's Auto-populate button (or the one for your whole class) to load its cooldowns, auras and target debuffs in a table below. Tick the ones you want, set each one's trigger, cue and combat load, then press Populate: each becomes a rule with its cue, in Class > Spec > cue type." },
+            name = "Press one of a spec's Generate buttons (or one of the buttons for your whole class) to load the cooldowns, auras or target debuffs it names in a table below. Tick the ones you want, set each one's trigger, cue and combat load, then press Populate: each becomes a rule with its cue, in Class > Spec > cue type." },
         apHdr = { type = "header", order = 0.1, name = "Auto-populate my class / spec" },
         apInfo = { type = "description", order = 0.2, width = "full", fontSize = "medium",
             name = function()
@@ -3407,12 +3407,9 @@ function BuildClassCreator()
             set = function(_, v)
                 ns.AutoCfg().talents = v and true or false; ns.MarkDirty()
                 local AP = ns.AutoPicker
-                if AP and AP.view then AP.Load(AP.view.spec) end   -- the table shown follows the option at once
+                if AP and AP.view then AP.Load(AP.view.spec, AP.view.filter) end   -- the table shown follows the option at once
                 Notify()
             end },
-        apClass = { type = "execute", order = 0.58, width = 1.6, xuiCenter = true, name = "Auto-populate for my class (all specs)",
-            desc = "Loads the list for every spec of your class into the table below (nothing is made yet).",
-            func = function() ns.AutoPicker.Load("all"); Notify() end },
         -- "All talents (every class and spec)" (the talent scan) moved to Settings > UI Options > Rule Creation (Options 0.6.40; Xaya,
         -- 2026-11-05: "scan belongs in Settings"): BuildAddonSettings, rules.args.talHdr.
         -- the "Add Vengeance DH test rules" button is gone: every class and spec is supported by the auto-populate above (Xaya, 2026-11-01)
@@ -3426,17 +3423,27 @@ function BuildClassCreator()
         close = { type = "execute", order = 7, width = "half", name = "Hide list", hidden = shown,
             func = function() creatorOpen = false; Notify() end },
     }
-    -- one button per spec of the player's class, each with the spec's own icon (specs come from the game, so any class works)
+    -- Xaya, 2026-11-06: four buttons per spec (All / CD Tracking / Aura Tracking / Target Debuff Tracking) and the same four for the whole
+    -- class; each loads its own list into the table below and nothing is listed before one is pressed. Spec buttons keep the spec's own
+    -- icon (specs come from the game, so any class works). Width 3.0 (about 460 px; ESTIMATE from the old 1.6-wide button, about 246 px in her screenshot) holds the longest label, a Target Debuff label with an 11-letter spec; buttons wrap to the next line when the pane is narrow.
+    local FILTER_DESC = { all = "cooldowns, auras and target debuffs", cd = "cooldowns", aura = "auras on you", debuff = "target debuffs" }
+    local function GenButtons(prefix, base, target, icon, specID)
+        for j, f in ipairs(ns.AutoPicker.FILTERS) do
+            args[prefix .. f.filter] = { type = "execute", order = base + j * 0.001, width = 3.0, xuiCenter = true,
+                name = (icon and ("|T" .. icon .. ":16|t ") or "") .. ns.AutoPicker.ButtonLabel(f.filter, target),
+                desc = "Lists the " .. FILTER_DESC[f.filter] .. " of " .. (specID == "all" and "every spec of your class" or (tostring(target) .. " (" .. (UnitClass("player") or "your class") .. ")"))
+                    .. " in the table below (nothing is made yet).",
+                func = function() ns.AutoPicker.Load(specID, f.filter); Notify() end }
+        end
+    end
     for i = 1, (GetNumSpecializations and GetNumSpecializations() or 0) do
         local sid, sname, _, sicon = GetSpecializationInfo(i)
         if sid then
+            GenButtons("apSpec" .. i, 0.47 + i * 0.01, sname, sicon, sid)
             args["apBrk" .. i] = { type = "description", order = 0.47 + i * 0.01 + 0.005, width = "full", fontSize = "small", name = " " }
-            args["apSpec" .. i] = { type = "execute", order = 0.47 + i * 0.01, width = 1.6, xuiCenter = true,
-                name = (sicon and ("|T" .. sicon .. ":16|t ") or "") .. "Auto-populate " .. tostring(sname),
-                desc = "Loads the list for " .. tostring(sname) .. " (" .. (UnitClass("player") or "your class") .. ") into the table below, whichever spec you are in now (nothing is made yet).",
-                func = function() ns.AutoPicker.Load(sid); Notify() end }
         end
     end
+    GenButtons("apClass", 0.58, "my class", nil, "all")
     for i, a in ipairs(VDH_AURAS) do
         local o = 100 + i * 3
         args["pick_" .. a.key] = { type = "toggle", order = o, width = 1.3, name = a.name, hidden = shown,
