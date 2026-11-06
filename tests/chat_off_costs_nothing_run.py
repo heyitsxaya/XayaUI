@@ -206,8 +206,10 @@ check("B3 Chat Bar off: no Chat Bar frame exists", run("return _G.XayaUIChatBar 
 ev = both(run, "EVENTS")
 check("B4 history, tab sounds, whisper overrides and wake-on-message off: no chat message event registered for them",
       n(run, "BUSEVENTS") == 0, both(run, "BUSEVENTS"))
-check("B4b (as before) the Chat Panel's own /xui chat whispers counters listen to the four whisper events while it is on",
-      n(run, "DIAGFRAMES") == 1, n(run, "DIAGFRAMES"))
+# (Chat 0.6.20, REQUEST-LOG #81: /xui chat whispers and its counters are XayaUI Dev Assist's, which this test does not load; tests/
+# devassist_debug_tools_run.py runs the report with it. Without it no frame of the Chat Panel listens to the whisper events.)
+check("B4b without XayaUI Dev Assist no Chat Panel frame counts whispers (the /xui chat whispers counters are Dev Assist's)",
+      n(run, "DIAGFRAMES") == 0, n(run, "DIAGFRAMES"))
 s0 = run("return SNAP()")
 run("SAY('hello there'); W.fireEvent('CHAT_MSG_WHISPER', 'hi', 'Kai-R'); W.fireEvent('CHAT_MSG_PARTY', 'pull', 'Tank-R')")
 d = run("return DELTA(...)", s0)

@@ -390,6 +390,15 @@ note = str(L.eval("NS.TriggerCombatNote({}, 'x', { type = 'buffAura', spellID = 
 check("glow confirmed: the line says the aura is read from its proc glow in combat", "present from its proc glow" in note, note)
 
 # ---------------------------------------------------------------- Advanced Debugging record (core 0.6.20): aura answers as they change
+# (core 0.6.56, REQUEST-LOG #82: the detailed record, "Aura answers" among its kinds, is XayaUI Dev Assist's; it is loaded here as the
+# game would load it, after XayaUI, into XayaUI's namespace. Without it, Conditions.lua's hand-in point does nothing: checked below.)
+L.execute(r'''
+CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.advancedDebug = true; CueRulesDB.debugRecord = nil
+AURAS[8802] = nil; BP2(8802); AURAS[8802] = { spellId = 8802, auraInstanceID = 882, applications = 0, expirationTime = 0, duration = 0 }; BP2(8802)
+''')
+check("without XayaUI Dev Assist: no aura line is recorded (players keep only errors and warnings)", L.eval("CueRulesDB.debugRecord == nil"))
+L.execute("XayaUI_NS = NS")
+load(open(os.path.join(ROOT, "XayaUI_DevAssist", "DevRecord.lua"), encoding="utf-8").read(), "XayaUI_DevAssist/DevRecord.lua", ns)
 L.execute(r'''
 COMBAT = false; CueRulesDB.debugRecord = nil
 CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.advancedDebug = true

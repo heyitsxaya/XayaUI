@@ -2,8 +2,8 @@
 ## Title: XayaUI Chat
 ## Notes: XayaUI's chat: the Chat Panel (Blizzard's chat windows restyled in place), the Chat Bar, message filters and sounds, history, and the privacy cover. Needs XayaUI.
 ## Author: Xaya
-## Version: 0.6.18
-## X-Date: 2026-11-05
+## Version: 0.6.20
+## X-Date: 2026-11-06
 ## Dependencies: XayaUI
 ## OptionalDeps: LibSharedMedia-3.0, XayaUI_Media
 ## Group: XayaUI
@@ -22,4 +22,3 @@ History.lua
 Sounds.lua
 Options.lua
 Privacy.lua
-Probe.lua

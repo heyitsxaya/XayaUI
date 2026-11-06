@@ -750,54 +750,6 @@ function M.BuildRows()
     return rows, pending
 end
 
--------------------------------------------------------------------------------
--- Slash: /xui debug model ...
--------------------------------------------------------------------------------
-local function P(...) if ns.Print then ns.Print(...) else print(...) end end
 
-local function Explain(id)
-    local r = M.Resolve(id)
-    local nm = M.SpellName(id) or ("spell " .. id)
-    P(string.format("%s (%d): %s", nm, id, r.seconds and string.format("%.1f s [%s, %s confidence]", r.seconds, r.source, r.confidence) or "no duration known"))
-    if r.castID and r.castID ~= id then P("  cast by spell " .. r.castID .. " (" .. (M.SpellName(r.castID) or "?") .. ")") end
-    if r.base then P(string.format("  text says %.1f s; model %.1f s", r.base, r.modeled or r.base)) end
-    for _, m in ipairs(r.listed or {}) do
-        P(string.format("  %s [%s] %s %s%.1f%s -- \"%s\"", m.baked and "already in the text" or ("NOT modeled (" .. (m.conditional or ""):gsub("%s+$", "") .. ")"),
-            m.kind, m.srcName, m.amount >= 0 and "+" or "", m.amount, m.op == "pct" and "%" or " s", m.sentence:sub(1, 130)))
-    end
-    for _, n in ipairs(r.notes or {}) do P("  note: " .. n) end
-end
-
-function ns.ModelCommand(arg)
-    arg = (arg or ""):gsub("^%s+", ""):gsub("%s+$", "")
-    local cmd, rest = arg:match("^(%S+)%s*(.-)$")
-    cmd = cmd and cmd:lower() or ""
-    if cmd == "" or cmd == "status" then
-        if not ctx.sig then M.Refresh() end
-        local p = Profile(false)
-        local n = 0; if p and p.entries then for _ in pairs(p.entries) do n = n + 1 end end
-        P(string.format("combat tracking model | %s | loadout %s | presence estimate %s | setup %s | learned entries %d",
-            ctx.key or "?", ctx.sig or "?", M.PresenceEnabled() and "ON" or "OFF", (p and p.setupDone) and "done" or "NOT done (/xui debug model setup)", n))
-        P(string.format("  casts readable %d, secret %d | windows opened %d, skipped %d | estimates served %d | learned this session %d",
-            stats.castsReadable, stats.castsSecret, stats.windowsOpened, stats.windowsSkipped, stats.estimatesServed, stats.learned))
-        P("  /xui debug model <spellID> | setup | on | off | override <spellID> <seconds|clear> | rescan")
-    elseif cmd == "setup" then
-        if ns.AuraSetup_Open then ns.AuraSetup_Open() else P("setup window is not loaded") end
-    elseif cmd == "on" or cmd == "off" then
-        M.SetSetting("presence", cmd == "on"); P("presence estimate " .. cmd:upper())
-    elseif cmd == "rescan" then
-        M.ClearTextCache(); M.Refresh(); P("rescanned loadout: " .. tostring(ctx.sig))
-    elseif cmd == "override" then
-        local id, v = rest:match("^(%d+)%s+(%S+)")
-        id = tonumber(id)
-        if not id then P("usage: /xui debug model override <spellID> <seconds|clear>"); return end
-        if v == "clear" then M.SetOverride(id, nil); P("override cleared for " .. id)
-        elseif tonumber(v) then M.SetOverride(id, tonumber(v)); P("override " .. id .. " = " .. v .. " s")
-        else P("usage: /xui debug model override <spellID> <seconds|clear>") end
-    elseif tonumber(cmd) then
-        if not ctx.sig then M.Refresh() end
-        Explain(tonumber(cmd))
-    else
-        P("unknown /xui debug model command")
-    end
-end
+-- /xui debug model moved to XayaUI Dev Assist (core 0.6.56; REQUEST-LOG #81, XayaUI_DevAssist/CoreDebug.lua): it reads M.ctx,
+-- M.stats and M.Profile.

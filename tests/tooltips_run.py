@@ -42,12 +42,15 @@ function reset() lines = {} end
 ''')
 
 L.execute("XayaUI_NS = {}; CueRulesDB = {}")
-for f in ("XayaUI/Modules.lua","XayaUI_Bonus/Tooltips.lua","XayaUI/AuraSources.lua","XayaUI_Bonus/TooltipsUI.lua"):   # 0.5.108: core contract + the embedded-aura reader now in core
+# (Bonus 0.6.18 / Dev Assist 0.7.5, REQUEST-LOG #81: /xuitt is XayaUI Dev Assist's, XayaUI_DevAssist/CoreDebug.lua, loaded last as the game
+# loads it)
+for f in ("XayaUI/Modules.lua","XayaUI_Bonus/Tooltips.lua","XayaUI/AuraSources.lua","XayaUI_Bonus/TooltipsUI.lua","XayaUI_DevAssist/CoreDebug.lua"):   # 0.5.108: core contract + the embedded-aura reader now in core
     L.eval('function(src,n) return (load(src,n)) end')(open(os.path.join(ROOT, f)).read(), f)("XayaUI", L.eval("XayaUI_NS"))
 # AuraSources is core and always loaded in game; these checks test Tooltips alone, so keep only its embedded-aura reader (0.5.108)
 L.execute("REAL_AS = XayaUI_NS.AuraSources; XayaUI_NS.AuraSources = { EmbeddedAuras = REAL_AS.EmbeddedAuras, NestedType = REAL_AS.NestedType }")
-# Bonus 0.6.15: aura sources show only while Advanced Debugging is on (core ns.AdvancedDebugOn, on by default in the game); on here
-L.execute("XayaUI_NS.AdvancedDebugOn = function() return true end")
+# Bonus 0.6.18: aura sources show only while XayaUI Dev Assist is loaded (core ns.DevAssistOn; Xaya 2026-11-06 "Tooltip, Dev Assist on");
+# on here (tests/tooltip_aura_source_run.py checks it off)
+L.execute("XayaUI_NS.DevAssistOn = function() return true end")
 fails=0
 def check(n,c):
     global fails
