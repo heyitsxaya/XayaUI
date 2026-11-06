@@ -371,7 +371,7 @@ function ns.HasOutcomes(rule)
 end
 
 
--- One line saying WHY a rule or outcome does / does not fire right now (used by /xui status).
+-- One line saying WHY a rule or outcome does / does not fire right now (used by /xui debug status).
 function ns.ExplainRule(rule, ctx)
     local function tv(v) return v == true and "true" or (v == false and "false" or "UNKNOWN") end
     local p = rule.parentUid and ns.FindParentRule(rule) or rule

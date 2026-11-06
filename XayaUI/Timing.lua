@@ -105,7 +105,7 @@ function T.AuraEstimate(id, detectedAt, frame)
     local dur, how = L and L[id], "measured"
     if not (type(dur) == "number" and dur > 0) and w and w.dur then dur, how = w.dur, "from the spell text" end
     if not (type(dur) == "number" and dur > 0) then return nil end
-    -- (the readable label is only built for /xui status and snapshots: no string per aura per step in combat)
+    -- (the readable label is only built for /xui debug status and snapshots: no string per aura per step in combat)
     return start + dur, dur, ns.statusDetail and string.format("estimate: %s + %s %.1fs", label, how, dur) or "estimate"
 end
 

@@ -104,7 +104,7 @@ lua("SP[43266].cd = false")
 lua("COMBAT = false; SPELL(152280, 2); OVR[43265] = 152280; T = T + 1; WATCH()")
 lua("COMBAT = true; T = T + 1; CAST(152280); SP[152280].cur = 1; SP[152280].recharging = true")
 check("replacement spell read (its charges), its cast counted: 1", ev("COUNT(DND)") == 1 and ev("CD(DND).readID") == 152280, (ev("COUNT(DND)"), ev("CD(DND).readID")))
-check("  ...and /xui status says which spell was read", "reading 152280" in str(ev("CD(DND).why")), ev("CD(DND).why"))
+check("  ...and /xui debug status says which spell was read", "reading 152280" in str(ev("CD(DND).why")), ev("CD(DND).why"))
 lua("OVR[43265] = nil")
 
 # --- 5. 3 charges ---
