@@ -285,7 +285,7 @@ Opened by the coordinating session "Outstanding items 11-06" (session_014bN6tSSt
 | UI-28 | Her answer (question box), Chat Data Panel left / right strip size: "snap to chat window height" | BRANCH (claude/ui-bugs-focused 9d4af25, Chat 0.6.23; QA D16) | UI-10 | The strip is as tall as the chat window; its width asked next. |
 | UI-29 | Her answer (question box), strip width: "Slider 40-200, default 90" | BRANCH (claude/ui-bugs-focused 9d4af25, Chat 0.6.23; QA D16) | UI-10 / UI-28 | Built as answered: a width slider shown only for Left / Right. |
 
-## A10. Session S8 = session 014bN6tUPG6SDvkoa3i3tMu5 (was headed A8 on its branch; renamed in the 23:00 bundle because the UI bugs session also uses A8) (branch `claude/determined-cerf-981pn8`; "Xaya UI Reskin elements")
+## A11. Session S8 = session 014bN6tUPG6SDvkoa3i3tMu5 (was headed A8 on its branch; renamed A11 in the 23:00 bundle: A8 is the UI bugs session, A10 the Outstanding items session) (branch `claude/determined-cerf-981pn8`; "Xaya UI Reskin elements")
 
 | # | Her words (verbatim; [screenshot]) | Status | Where / what | Notes |
 |---|---|---|---|---|
