@@ -19,7 +19,7 @@
 --   your gear         the Stat Calculator's model (CharacterModel.lua): CM.SlotInfo (link, enchanted, gems per socket, empty sockets),
 --                     CM.SlotEnchant (the enchant's name from the tooltip), CM.EnchantSlots (the slots that take an enchant).
 --   history           the game keeps none: XayaUI counts what it sees on your gear (this character only), from the first look.
--- NOT RUN IN GAME when written (QA E1z60-E1z63).
+-- NOT RUN IN GAME when written (QA E2a-E2d).
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns

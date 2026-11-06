@@ -753,7 +753,7 @@ Blizzard's character window in XayaUI's look (XayaUI QoL 0.7.14). The window wor
 
 ### 12.12c Shopping List
 
-Your crafting shopping list (XayaUI QoL 0.7.24): the recipes you track in your profession window, with their reagents, and what is missing on your gear. Off by default; while off nothing is created or read.
+Your crafting shopping list (XayaUI QoL 0.7.25): the recipes you track in your profession window, with their reagents, and what is missing on your gear. Off by default; while off nothing is created or read.
 - **XayaUI's Shopping List panel** (movable; `/xui shop` shows or hides it):
   - **Missing on your gear:** each slot that takes an enchant (the Character Toolkit's enchant slots) whose item has none, and each item with empty sockets, with one suggestion each: your own default for that slot, else the enchant (gem) XayaUI has seen most on it on this character (the most recent if tied). What you wear when you switch it on counts from the first look; the game itself keeps no such history. "Other" lists what you used before, what is in your bags and, while the Auction House is open, what it has for that slot (a click on "List what the Auction House has"); click one to use it now, or "Default" to make it your default. "+ Add" puts the suggestion in To buy.
   - **To buy:** what you added, with how many you have against how many you need (x removes a line).
