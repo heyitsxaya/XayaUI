@@ -406,7 +406,7 @@ function ns.BuildChatTab(Notify)
 
     -- The Chat Panel node: its own page holds the panel-wide switches (moved from the top of Layout); the parts are nodes under it,
     -- and each part's header sections become tabs.
-    -- "Enable Chat Panel" is the tick box on this page's row in the left pane (xuiSwitch; Chat 0.6.16, S1 #48: "individual toggles
+    -- "Enable Chat Panel" is the tick box on this page's row in the left pane (xuiSwitch; Chat 0.6.18, S1 #48: "individual toggles
     -- for individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
     local switch = layout.args.enabled
     switch.order, switch.width = nil, nil

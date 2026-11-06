@@ -59,7 +59,7 @@ ns.GameMenuSkin_Cfg = Cfg
 
 -- The saved switch, read without filling in the defaults (Cfg does that): V14, a look that is off builds no data either.
 local function Saved() local ui = CueRulesDB and CueRulesDB.ui; local gm = ui and ui.gm; return type(gm) == "table" and gm or nil end
--- (and the Blizzard UI Reskin tab's own switch: off there turns this look off too; Reskin 0.6.3, S1 #48)
+-- (and the Blizzard UI Reskin tab's own switch: off there turns this look off too; Reskin 0.6.4, S1 #48)
 local function SavedOn() local gm = Saved(); return gm and gm.skin and ns.ReskinTabOn() and true or false end
 function ns.GameMenuSkin_Active() return SavedOn() and not diag.failed end
 function ns.GameMenuSkin_MatchReal() local gm = Saved(); return not (gm and gm.matchReal == false) end
@@ -583,7 +583,7 @@ function ns.GameMenuSkin_Options(Notify)
         reset = { type = "execute", order = 50, name = "Reset Game Menu settings", disabled = off,
             func = function() Ui().gm = nil; Cfg().skin = true; re() end },
     }
-    -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; Reskin 0.6.3, S1 #48: "individual toggles for
+    -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; Reskin 0.6.4, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
     local switch = { type = "toggle", name = "Use the XayaUI Game Menu look", get = g("skin"), set = s("skin"),
         disabled = function() return not ns.ReskinTabOn() end,

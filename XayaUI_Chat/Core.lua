@@ -174,7 +174,7 @@ local function Blocked()
     if blocked == nil then blocked = C.BlockedReason() or false end
     return blocked
 end
--- (Chat 0.6.16, S1 #48) and the Blizzard UI Reskin tab's own switch: off there turns the Chat Panel off too, its own switch kept
+-- (Chat 0.6.18, S1 #48) and the Blizzard UI Reskin tab's own switch: off there turns the Chat Panel off too, its own switch kept
 function C.On()
     local s = ns.chat2
     return s and s.enabled and ns.ReskinTabOn() and not Blocked() and true or false

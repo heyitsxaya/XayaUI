@@ -180,7 +180,7 @@ function ns.RegisterSettingsPage(module, key, build)
     pages[#pages + 1] = { module = module, key = key, build = build }
 end
 
--- The Blizzard UI Reskin tab's own switch (S1 #48; Xaya 2026-11-05: "double: both enable/disable of reskin at all; then individual
+-- The Blizzard UI Reskin tab's own switch (core 0.6.51, S1 #48; Xaya 2026-11-05: "double: both enable/disable of reskin at all; then individual
 -- toggles for individual reskins"). Off turns every reskin off (Chat Panel, Character Pane, Esc Menu, Shopping List) and each keeps its
 -- own switch for when the tab is on again. Saved only while off (CueRulesDB.reskinTabOff = true), so a profile that never touched it
 -- holds nothing. Every reskin reads it with its own switch: on = its own switch AND this one.

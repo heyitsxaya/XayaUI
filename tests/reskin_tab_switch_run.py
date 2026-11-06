@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The Blizzard UI Reskin tab's own switch and one tick box per reskin (S1 #48; Xaya 2026-11-05, asked whether the Reskin tab's
 switches get the left-pane treatment: "double: both enable/disable of reskin at all; then individual toggles for individual reskins").
-Core 0.6.50 (ns.ReskinTabOn / ns.SetReskinTab), Options 0.6.44 (the "All reskins" row), Chat 0.6.16, Reskin 0.6.3, QoL 0.7.25.
+Core 0.6.51 (ns.ReskinTabOn / ns.SetReskinTab), Options 0.6.46 (the "All reskins" row), Chat 0.6.18, Reskin 0.6.4, QoL 0.7.25.
 Checks, on the real addons in the stand-in game:
 - the tab's first row is "All reskins" and carries the tab's switch; each reskin's own on / off is the tick box on its row
   (Character Pane, Chat Panel, Esc Menu, Shopping List), no longer on its page;
