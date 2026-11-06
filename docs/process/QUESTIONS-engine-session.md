@@ -241,5 +241,5 @@ Your sentence: "this _____ requires blizzard's cooldown manager to track it befo
   are applied after enabling / disabling."
 - Restated design (Release Guard gets rule-style Load conditions replacing Raids only / Raids and dungeons / Everywhere; default in an
   instance, type Raid, 20+ in group; no "driven by a rule / own Load" setting): "It belongs in "Raid Tools" under rules for now".
-- Where "Raid Tools" goes: "A group in the sidebar" (a fixed "Raid Tools" entry in the Rules sidebar, like a Smart Category, with Release
+- Where "Raid Tools" goes: "A group in the sidebar". Correction (her next message): "Sorry, “Raid Rules”" — the group is named "Raid Rules" (a fixed "Raid Tools" entry in the Rules sidebar, like a Smart Category, with Release
   Guard inside it as an item to click and edit).
