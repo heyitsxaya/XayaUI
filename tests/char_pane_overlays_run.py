@@ -16,6 +16,7 @@
 #   B. the wider window off (Blizzard's width): the reproduction (the labels lie over the model) and everything else still holding;
 #   C. every enchant name of this expansion at the wider width; the extra width at 120 and 300;
 #   D. the window's sizing: tabs, the stats pane, combat (nothing changes in combat; the model and main hand go back), the end of combat;
+#   G. (QoL 0.7.33) widen, then narrow: laid out again on the next frame (Insivius's report); /xui reskin status "Size change";
 #   E. sockets, the toolkit's marks and the Gear tab's count (QoL 0.7.19); /xui reskin status;
 #   F. every combination of the switches; G. V14: off costs nothing.
 # Run from the repo root: python3 tests/char_pane_overlays_run.py   Needs: pip install lupa.
@@ -654,6 +655,58 @@ rc.enabled = false; ns.CharReskin_Apply()
 local still = 0
 for _, i in ipairs(listening) do for _ in pairs(created[i].events) do still = still + 1 end end
 check("V14: the reskin listens to item changes while its item level is on; switched off, its event frame listens to nothing", #listening == 1 and still == 0, #listening .. " / " .. still)
+''')
+
+# G. (QoL 0.7.33) Insivius via Xaya: "Text breaks if you make the window wider and then bring it back down"; her answer "Fix + diagnostic".
+# The stand-in computes positions at once, so a widen (300) and back (42) gives the clean layout (checked first). The STAND-IN below for
+# the inferred live-client behaviour (INFERENCE, not seen in the game): right after the size change, the slots', model's and Inset's
+# positions still read as the 300 px window's until the next frame. Negative control: the "next frame" check fails on QoL 0.7.32.
+lua = lua_with(r'''
+local tk = ns.CharToolkit_Cfg()
+tk.enchantSlots = { [1] = true, [3] = true, [5] = true, [7] = true, [8] = true, [9] = true, [11] = true, [12] = true, [16] = true, [17] = true }
+tk.enchantSlotsSet = true
+''')
+run(lua, r'''
+ns.FireReady()
+rc, tk = ns.CharReskin_Cfg(), ns.CharToolkit_Cfg()
+rc.enabled, rc.chrome, rc.ilvl, rc.enchants, rc.gems, rc.stats = true, false, true, true, true, true
+tk.enabled, tk.overlays, tk.panel = true, true, false
+CharacterFrame:Show(); PaperDollFrame:Show()
+ns.CharToolkit_Apply(); ns.CharReskin_Apply()
+CharacterModelScene.ControlFrame:Hide()
+local function SNAP()
+  local out = {}
+  for _, name in ipairs(ALL) do
+    for i, f in ipairs(rowsOf(name)) do
+      local r = RECT(f); local fs = f.text
+      out[#out + 1] = ("%s#%d %.1f %.1f %.1f %.1f %.1f %s [%s]"):format(name, i, r and r.l or -1, r and r.t or -1, r and (r.r - r.l) or -1,
+        r and (r.t - r.b) or -1, fs.w or -1, tostring(fs.font and fs.font[2]), table.concat(seenLines(fs), " / "))
+    end
+  end
+  return table.concat(out, "\n"), #out
+end
+rc.widePx = 42; ns.CharReskin_Apply()
+local REF, nRef = SNAP()
+rc.widePx = 300; ns.CharReskin_Apply(); rc.widePx = 42; ns.CharReskin_Apply()
+check(("G. widen to 300 px and back to 42 in the stand-in (positions read at once): the same %d rows as before (guard)"):format(nRef), SNAP() == REF)
+rc.widePx = 300; ns.CharReskin_Apply()
+local realRECT, frozen = RECT, {}
+frozen[CharacterModelScene] = realRECT(CharacterModelScene); frozen[CharacterFrame.Inset] = realRECT(CharacterFrame.Inset)
+for _, n in ipairs(ALL) do local b = _G["Character" .. n]; frozen[b] = realRECT(b) end
+RECT = function(o, depth) if frozen and frozen[o] then return frozen[o] end return realRECT(o, depth) end
+local queued, realAfter = {}, C_Timer.After
+C_Timer.After = function(d, fn) queued[#queued + 1] = fn end
+rc.widePx = 42; ns.CharReskin_Apply()
+local STALE = SNAP()
+frozen = nil; RECT = realRECT; C_Timer.After = realAfter   -- the next frame
+for _, fn in ipairs(queued) do fn() end
+check("G. (stand-in) back to 42 with the positions of the 300 px window read in that moment: the text is laid out for the wider window (guard: the stand-in bites)", STALE ~= REF)
+check("G. on the next frame the blocks are laid out again: the same rows, text, widths and places as the clean 42 px layout", SNAP() == REF, #queued .. " queued")
+printed = {}
+ns.RunCommand("reskin", "status")
+local said = table.concat(printed, "\n")
+check("G. /xui reskin status says the size changed and that the positions read in the two passes differed (and by how much)",
+  said:find("Size change: the window's size changed; the positions read right after it differed by", 1, true) ~= nil, said:match("Size change[^\n]*"))
 ''')
 
 lua = lua_with(r'''

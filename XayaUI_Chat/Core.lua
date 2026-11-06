@@ -352,6 +352,7 @@ function C.Teardown()
         if tab then
             if tab._xuiH and tab.SetHeight then pcall(tab.SetHeight, tab, tab._xuiH); tab._xuiH = nil end
             if tab.xuiBg then tab.xuiBg:Hide() end
+            if C.RestoreTabText then pcall(C.RestoreTabText, tab) end   -- (Chat 0.6.20) the name's own anchors back
         end
     end
     if C.unlocked and C.ToggleMover then C.ToggleMover() end
