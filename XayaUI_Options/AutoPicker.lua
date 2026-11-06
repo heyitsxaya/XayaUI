@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- AutoPicker.lua : auto-populate as a table you fill in before anything is made (XayaUI_Options 0.6.44; every cue type 0.6.45). Own code. UNTESTED in game.
+-- AutoPicker.lua : auto-populate as a table you fill in before anything is made (XayaUI_Options 0.6.44; every cue type 0.6.45; exactly her spec 0.6.46). Own code. UNTESTED in game.
 -- Xaya, 2026-11-05 (first version, 0.6.42): "Auto-populate rules should also provide support for target debuffs - you should be able to
 -- also customize auto-populate rule behavior to auto-populate with only specific, selected auto rules and choose their primary cue type
 -- (speech to text, icon, progress texture, progress bar) on a case-by-case basis".
@@ -20,9 +20,11 @@
 --     describing them). Its aura ID is its first linkedSpellIDs entry (else its spellID). The Cooldown Manager answers for the spec you
 --     are in now only, so auras and debuffs are listed for that spec only.
 -- Choices per spec and row (CueRulesDB.ui.auto.picks[specID][key]): ticked, trigger, main cue, combat load, extra cues (Advanced).
--- Nothing is made until "Make the ticked rules" is pressed. Rules go into <Class> > <Spec> > <cue type>, named after the spell. A rule
--- already in that group with the same trigger (same spell / aura and the same state) is skipped, so pressing Make again adds only what
--- is new.
+-- Nothing is made until "Make the ticked rules" is pressed. Rules go into <Class> > <Spec> > <cue type>, named after the spell (her
+-- "class >> specialization >> cue type >> name"; that the last step is the rule's name is waiting for her confirmation). A rule already in
+-- that group with the same trigger (same spell / aura and the same state) is skipped, so pressing Make again adds only what is new.
+-- V16 (Xaya, 2026-11-05: "do not guess and implement without providing proposals around that guess with confirmation"): her columns,
+-- labels and order are built exactly; every addition is a proposal listed in debug-log/2026-11-06-*-auto-populate-*.md, not built.
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
@@ -31,12 +33,10 @@ local issecret = issecretvalue or function() return false end
 local AP = {}
 ns.AutoPicker = AP
 
-AP.PAGE = 40   -- rows per page: every row is 6-7 controls, and the settings window redraws them on every click (#309, Xaya: performance)
-
 AP.TYPE = { cd = "Spell CD", aura = "Aura", debuff = "Debuff" }
 -- trigger choices per type
 AP.TRIG = {
-    cd = { values = { ready = "When ready", max = "At max stacks" }, order = { "ready", "max" } },
+    cd = { values = { ready = "When available / when ready", max = "At max stacks" }, order = { "ready", "max" } },   -- her labels, verbatim (V16)
     aura = { values = { present = "When present", missing = "When missing" }, order = { "present", "missing" } },
 }
 AP.TRIG.debuff = AP.TRIG.aura
@@ -111,8 +111,9 @@ end
 function AP.CdmDebuffs() return AP.CdmAuras().debuff end
 
 -- every candidate for one spec: { key, kind = "cd" | "aura" | "debuff", id, cdmID, name, icon, talent, spec }. Auras and debuffs only
--- for the spec you are in now. includeUnpicked = false leaves out talent cooldowns you have not picked, read for the current spec only:
--- the game answers "known" for the spec you are in (IsPlayerSpell), so every talent of another spec would read as not picked.
+-- for the spec you are in now. includeUnpicked = false leaves out talent cooldowns the game reads as not picked, for every spec, as the
+-- one-click auto-populate did. (Reading it for the current spec only is a proposal waiting for Xaya, V16: the game answers "known" for
+-- the spec you are in, so another spec's talents all read as not picked.)
 function AP.Candidates(specID, includeUnpicked)
     local out, seen = {}, {}
     local function add(c)
@@ -124,7 +125,7 @@ function AP.Candidates(specID, includeUnpicked)
     local current = ns.CurrentSpecID and ns.CurrentSpecID()
     local isCurrent = specID ~= nil and specID == current
     local function talentOff(id, talent)
-        return talent and includeUnpicked == false and isCurrent and ns.ReadTalentKnown and ns.ReadTalentKnown(id) == false
+        return talent and includeUnpicked == false and ns.ReadTalentKnown and ns.ReadTalentKnown(id) == false
     end
     local data = specID and ns.CLASS_AURA_DATA and ns.CLASS_AURA_DATA[specID]
     if data and type(data.entries) == "table" then
@@ -177,11 +178,11 @@ function AP.BuildRows(spec)
     return rows, specs
 end
 
--- the list shown in the pane (this session only): { spec = specID | "all", rows, specs, page }. Read once when a button is pressed (and
--- on Reload list), not on every redraw.
+-- the list shown in the pane (this session only): { spec = specID | "all", rows, specs }. Read once when a button is pressed, not on
+-- every redraw.
 function AP.Load(spec)
     local rows, specs = AP.BuildRows(spec)
-    AP.view = { spec = spec, rows = rows, specs = specs, page = 1 }
+    AP.view = { spec = spec, rows = rows, specs = specs }
     AP.msg = nil
     return AP.view
 end
@@ -199,20 +200,16 @@ local function Picks(specID)
     return a.picks[k]
 end
 AP.Picks = Picks
--- one row's choices, filled with defaults: not ticked; When ready / When present; Icon; combat Any; no extra cues. A target debuff
--- with a speech or sound cue defaults to When missing (a reminder to put it back up). 0.6.42 saved a debuff's "when" (on / missing):
--- still read.
+-- one row's choices, filled with defaults: not ticked, and the first choice of each of her columns (When available / when ready or
+-- When present; Icon; Any); no extra cues. Other defaults are proposals waiting for Xaya (V16). 0.6.42 saved a debuff's "when"
+-- (on / missing): still read.
 function AP.Choice(c)
     local p = Picks(c.spec)[c.key] or {}
     local cue = AP.CUES.values[p.cue or ""] and p.cue or "icon"
     local tv = AP.TRIG[c.kind].values
     local trig = tv[p.trig or ""] and p.trig or nil
     if not trig and c.kind == "debuff" and (p.when == "missing" or p.when == "on") then trig = (p.when == "missing") and "missing" or "present" end
-    if not trig then
-        if c.kind == "cd" then trig = "ready"
-        elseif c.kind == "debuff" and (cue == "speech" or cue == "sound") then trig = "missing"
-        else trig = "present" end
-    end
+    if not trig then trig = AP.TRIG[c.kind].order[1] end
     local combat = AP.COMBAT.values[p.combat or ""] and p.combat or "any"
     return p.on == true, trig, cue, combat, (type(p.xc) == "table") and p.xc or nil
 end
@@ -286,33 +283,12 @@ local function Have(folder)
     return keys, shown
 end
 
--- what a speech cue says (Xaya can change the text on the cue afterwards)
-local function SpeechText(c, trig)
-    if c.kind == "cd" then return c.name .. " ready" end
-    if trig == "missing" then return c.name .. " missing" end
-    return c.name
-end
-local CUE_SUFFIX = { icon = " (icon)", progtex = " (progress texture)", texture = " (texture)", text = " (text)", speech = " (speech)", sound = " (sound)" }
--- one cue of a rule, set up as "+ New rule" sets up that type (Options.lua ns.NewTypedCue), then for the spell: a speech cue says
--- "<name> ready" / "<name> missing" / the name; a sound cue starts with the game's raid warning sound (the default of Core.lua
--- ns.SeedRules) so it is heard before Xaya picks her own; a texture or progress texture starts with the spell's own icon as its art
--- (as a file, so it still counts as a texture, not an icon); shown cues are laid out in rows of 8 from the screen's centre.
-local function AddCue(r, c, kind, trig, slot)
+-- one cue of a rule, set up exactly as "+ New rule" sets up that type (Options.lua ns.NewTypedCue) and nothing more (V16). What a
+-- speech cue says, a sound cue's sound, a texture's art, where shown cues sit and the cues' names are proposals waiting for Xaya.
+local function AddCue(r, kind)
     if not ns.NewTypedCue then return nil end
     local cue = ns.NewTypedCue(r, CUE_TYPE[kind] or "icon")
-    if not cue then return nil end
-    cue.name = c.name .. (CUE_SUFFIX[kind] or "")
-    if kind == "speech" then
-        cue.sound.value = SpeechText(c, trig)
-    elseif kind == "sound" then
-        local kit = SOUNDKIT and SOUNDKIT.RAID_WARNING
-        if kit then cue.sound.source, cue.sound.value = "kit", tostring(kit) end
-    else
-        local v = cue.visual
-        v.x, v.y = ((slot % 8) - 3.5) * 72, -120 - 72 * math.floor(slot / 8)
-        if (kind == "texture" or kind == "progtex") and c.icon then v.kind, v.tex = "file", tostring(c.icon) end
-        pcall(ns.RefreshVisual, cue)
-    end
+    if cue then pcall(ns.RefreshVisual, cue) end
     return cue
 end
 
@@ -339,8 +315,7 @@ function AP.Make(view)
             local ps = perSpec[c.spec]
             if not ps then
                 local specF = SubFolder(classF, SpecName(c.spec))
-                local _, shown = Have(specF)
-                ps = { folder = specF, slot = shown, made = 0, cueF = {} }
+                ps = { folder = specF, made = 0, cueF = {} }
                 perSpec[c.spec] = ps
                 specOrder[#specOrder + 1] = c.spec
             end
@@ -378,9 +353,7 @@ function AP.Make(view)
                 for _, k in ipairs(AP.EXTRA.order) do
                     if t.xc and t.xc[k] and k ~= cue then kinds[#kinds + 1] = k end
                 end
-                for _, k in ipairs(kinds) do
-                    if AddCue(r, c, k, trig, ps.slot) and k ~= "speech" and k ~= "sound" then ps.slot = ps.slot + 1 end
-                end
+                for _, k in ipairs(kinds) do AddCue(r, k) end
                 cf.keys[key] = true
                 made = made + 1
                 ps.made = ps.made + 1
@@ -415,8 +388,12 @@ local CELL = { xuiCell = true }
 local CELL_DD = { xuiCell = true, xuiTextLeft = true }
 local function Gold(s) return "|cffffd100" .. s .. "|r" end
 
--- notify: a change that adds or removes controls (page, Advanced, Make). keep: a change that shows only in controls already there (a
--- tick, a choice); the redraw that follows reuses the options tree (Options.lua Tree.Keep), so a click does not rebuild every rule list.
+-- notify: a change that adds or removes controls (Advanced, Make). keep: a change that shows only in controls already there (a tick, a
+-- choice); the redraw that follows reuses the options tree (Options.lua Tree.Keep), so a click does not rebuild every rule list.
+-- Built exactly as Xaya specified (V16): a frame below the buttons; a header row (tick box | Name | Type | Trigger | Cue type | Combat
+-- load); one row per rule offered; at the bottom an Advanced button (Extra cues). Beyond that only what the table cannot work without:
+-- the button that makes the ticked rows and its result line, and a line when there is nothing to list. Everything else (paging, a
+-- title, help text, reload / close buttons, spec names in the all-specs list) is a proposal waiting for her.
 function AP.Args(notify, keep)
     notify = notify or function() end
     keep = keep or function() end
@@ -429,100 +406,73 @@ function AP.Args(notify, keep)
     local W = {}
     for _, cdef in ipairs(cols) do W[cdef[1]] = cdef[2] end
     local T = {}
-    local title = (view.spec == "all") and ("all specs of " .. tostring((UnitClass and UnitClass("player")) or "your class")) or SpecName(view.spec)
-    args.apTable = { type = "group", inline = true, order = 0.7, name = ("Auto-populate: %s  |cffaaaaaa(%d offered)|r"):format(title, #rows), args = T }
-    T.info = { type = "description", order = 0, width = "full", fontSize = "medium",
-        name = "Tick the rules you want, set each one's trigger, cue and combat load, then press Make the ticked rules. Nothing is made before that. "
-            .. "Rules go into " .. Gold("Class > Spec > cue type") .. ", named after the spell. Auras and target debuffs come from your Cooldown "
-            .. "Manager, which answers for the spec you are in now only; other specs list their cooldowns. In combat the game hides most auras: "
-            .. "an aura or debuff rule works there only while it is in your Cooldown Manager (the rule's Display tab says when it is not). "
-            .. "Progress bar and Custom are not available yet." }
+    -- the frame: a one-space name, because AceConfigDialog draws a group with an empty name as a plain group with no box
+    -- (AceConfigDialog-3.0.lua:1135-1140); a space keeps the box and shows no title text
+    args.apTable = { type = "group", inline = true, order = 0.7, name = " ", args = T }
     if #rows == 0 then
         T.none = { type = "description", order = 1, width = "full", fontSize = "medium",
             name = "Nothing to list yet: play this spec once (its cooldown list is read from your spellbook), and add your auras and debuffs to the Cooldown Manager." }
-    else
-        -- header row: the tick box ticks every row of the list (all pages); pressed again it unticks them all
-        T.hOn = { type = "toggle", order = 1, width = "relative", relWidth = W.on, name = "", arg = CELL,
-            desc = "Tick every row of this list (all pages). Click again to untick them all.",
-            get = function() return AP.AllTicked(rows) end,
-            set = function(_, v) AP.TickAll(rows, v); keep() end }
-        local heads = { nm = "Name", ty = "Type", tr = "Trigger", cu = "Cue type", cb = "Combat load", xc = "Extra cues" }
-        for k, cdef in ipairs(cols) do
-            if cdef[1] ~= "on" then
-                T["h" .. cdef[1]] = { type = "description", order = 1 + k * 0.01, width = "relative", relWidth = cdef[2], fontSize = "medium",
-                    name = Gold(heads[cdef[1]]), arg = CELL }
-            end
-        end
-        local pages = math.ceil(#rows / AP.PAGE)
-        local page = math.max(1, math.min(view.page or 1, pages))
-        view.page = page
-        local first, last = (page - 1) * AP.PAGE + 1, math.min(#rows, page * AP.PAGE)
-        local lastSpec
-        for i = first, last do
-            local c = rows[i]
-            local o = 2 + i * 0.001
-            if view.spec == "all" and c.spec ~= lastSpec then   -- a spec's first row on the page: its name above it
-                T["sp" .. i] = { type = "description", order = o - 0.0005, width = "full", fontSize = "medium", name = Gold(SpecName(c.spec)) }
-            end
-            lastSpec = c.spec
-            T["r" .. i .. "on"] = { type = "toggle", order = o, width = "relative", relWidth = W.on, name = "", arg = CELL,
-                desc = AP.TYPE[c.kind] .. ", " .. ((c.kind == "cd") and "spell " or "aura ") .. c.id
-                    .. ((c.cdmID and (" (Cooldown Manager: " .. c.cdmID .. ")")) or "")
-                    .. (c.talent and ". A talent: the rule loads only while you have it." or ""),
-                get = function() local on = AP.Choice(c); return on end,
-                set = function(_, v) AP.SetChoice(c, "on", v and true or nil); keep() end }
-            T["r" .. i .. "nm"] = { type = "description", order = o + 0.0001, width = "relative", relWidth = W.nm, fontSize = "medium", arg = CELL,
-                name = (c.icon and ("|T" .. c.icon .. ":16|t ") or "") .. c.name }
-            T["r" .. i .. "ty"] = { type = "description", order = o + 0.0002, width = "relative", relWidth = W.ty, fontSize = "medium", arg = CELL,
-                name = "|cffaaaaaa" .. AP.TYPE[c.kind] .. "|r" }
-            local tdef = AP.TRIG[c.kind]
-            T["r" .. i .. "tr"] = { type = "select", order = o + 0.0003, width = "relative", relWidth = W.tr, name = "", arg = CELL_DD,
-                values = tdef.values, sorting = tdef.order,
-                desc = (c.kind == "cd") and "When ready: a charge is up (the spell can be cast). At max stacks: every charge is back. For a spell without charges both are the same."
-                    or ("When present: the rule is true while the " .. ((c.kind == "aura") and "aura is on you." or "debuff is on your target.") .. " When missing: while it is not (a reminder)."),
-                get = function() local _, trig = AP.Choice(c); return trig end,
-                set = function(_, v) AP.SetChoice(c, "trig", v); keep() end }
-            T["r" .. i .. "cu"] = { type = "select", order = o + 0.0004, width = "relative", relWidth = W.cu, name = "", arg = CELL_DD,
-                values = AP.CUES.values, sorting = AP.CUES.order,
-                desc = "The rule's main cue, and the group it goes in. Progress bar and Custom are not available yet: a row ticked with one is not made.",
-                get = function() local _, _, cue = AP.Choice(c); return cue end,
-                set = function(_, v) AP.SetChoice(c, "cue", v); keep() end }
-            T["r" .. i .. "cb"] = { type = "select", order = o + 0.0005, width = "relative", relWidth = W.cb, name = "", arg = CELL_DD,
-                values = AP.COMBAT.values, sorting = AP.COMBAT.order,
-                desc = "When the rule loads: any time, only in combat, or only out of combat.",
-                get = function() local _, _, _, cb = AP.Choice(c); return cb end,
-                set = function(_, v) AP.SetChoice(c, "combat", v); keep() end }
-            if adv then
-                T["r" .. i .. "xc"] = { type = "multiselect", dialogControl = "Dropdown", order = o + 0.0006, width = "relative", relWidth = W.xc, name = "", arg = CELL_DD,
-                    values = AP.EXTRA.values, sorting = AP.EXTRA.order,
-                    desc = "More cues for this rule beside its main one (the main cue is not added twice).",
-                    get = function(_, k) local _, _, _, _, xc = AP.Choice(c); return (xc and xc[k]) and true or false end,
-                    set = function(_, k, v) AP.SetExtra(c, k, v); keep() end }
-            end
-        end
-        if pages > 1 then
-            T.pgPrev = { type = "execute", order = 8, name = "< Previous", arg = { xuiCenter = true }, disabled = (page <= 1),
-                func = function() view.page = page - 1; notify() end }
-            T.pgText = { type = "description", order = 8.01, width = "relative", relWidth = 0.3, fontSize = "medium", arg = { xuiCenter = true },
-                name = ("  Rows %d-%d of %d"):format(first, last, #rows) }
-            T.pgNext = { type = "execute", order = 8.02, name = "Next >", arg = { xuiCenter = true }, disabled = (page >= pages),
-                func = function() view.page = page + 1; notify() end }
-        end
-        T.adv = { type = "execute", order = 9, name = adv and "Hide advanced" or "Advanced", arg = { xuiCenter = true },
-            desc = "Advanced adds an Extra cues column: more cues for a rule beside its main one.",
-            func = function() AP.adv = not AP.adv; notify() end }
-        T.make = { type = "execute", order = 9.01, name = "Make the ticked rules", arg = { xuiCenter = true },
-            func = function()
-                local _, _, _, m = AP.Make(view)
-                AP.msg = m
-                if ns.Print then ns.Print("auto-populate: " .. m) end
-                notify()
-            end }
+        return args
     end
-    T.refresh = { type = "execute", order = 9.02, name = "Reload list", arg = { xuiCenter = true },
-        desc = "Reads the list from the game again (after a spec change, new talents, or a change in your Cooldown Manager). Your choices are kept.",
-        func = function() local p = view.page; AP.Load(view.spec); AP.view.page = p; notify() end }
-    T.close = { type = "execute", order = 9.03, name = "Close", arg = { xuiCenter = true }, func = function() AP.Close(); notify() end }
+    -- header row: the tick box ticks every row; pressed again it unticks them all
+    T.hOn = { type = "toggle", order = 1, width = "relative", relWidth = W.on, name = "", arg = CELL,
+        desc = "Tick every row. Click again to untick them all.",
+        get = function() return AP.AllTicked(rows) end,
+        set = function(_, v) AP.TickAll(rows, v); keep() end }
+    local heads = { nm = "Name", ty = "Type", tr = "Trigger", cu = "Cue type", cb = "Combat load", xc = "Extra cues" }
+    for k, cdef in ipairs(cols) do
+        if cdef[1] ~= "on" then
+            T["h" .. cdef[1]] = { type = "description", order = 1 + k * 0.01, width = "relative", relWidth = cdef[2], fontSize = "medium",
+                name = Gold(heads[cdef[1]]), arg = CELL }
+        end
+    end
+    for i, c in ipairs(rows) do
+        local o = 2 + i * 0.001
+        T["r" .. i .. "on"] = { type = "toggle", order = o, width = "relative", relWidth = W.on, name = "", arg = CELL,
+            desc = AP.TYPE[c.kind] .. ", " .. ((c.kind == "cd") and "spell " or "aura ") .. c.id
+                .. ((c.cdmID and (" (Cooldown Manager: " .. c.cdmID .. ")")) or "")
+                .. (c.talent and ". A talent: the rule loads only while you have it." or ""),
+            get = function() local on = AP.Choice(c); return on end,
+            set = function(_, v) AP.SetChoice(c, "on", v and true or nil); keep() end }
+        T["r" .. i .. "nm"] = { type = "description", order = o + 0.0001, width = "relative", relWidth = W.nm, fontSize = "medium", arg = CELL,
+            name = (c.icon and ("|T" .. c.icon .. ":16|t ") or "") .. c.name }
+        T["r" .. i .. "ty"] = { type = "description", order = o + 0.0002, width = "relative", relWidth = W.ty, fontSize = "medium", arg = CELL,
+            name = "|cffaaaaaa" .. AP.TYPE[c.kind] .. "|r" }
+        local tdef = AP.TRIG[c.kind]
+        T["r" .. i .. "tr"] = { type = "select", order = o + 0.0003, width = "relative", relWidth = W.tr, name = "", arg = CELL_DD,
+            values = tdef.values, sorting = tdef.order,
+            desc = (c.kind == "cd") and "When available / when ready: a charge is up (the spell can be cast). At max stacks: every charge is back. For a spell without charges both are the same."
+                or ("When present: the rule is true while the " .. ((c.kind == "aura") and "aura is on you." or "debuff is on your target.") .. " When missing: while it is not."),
+            get = function() local _, trig = AP.Choice(c); return trig end,
+            set = function(_, v) AP.SetChoice(c, "trig", v); keep() end }
+        T["r" .. i .. "cu"] = { type = "select", order = o + 0.0004, width = "relative", relWidth = W.cu, name = "", arg = CELL_DD,
+            values = AP.CUES.values, sorting = AP.CUES.order,
+            desc = "The rule's main cue, and the group it goes in. Progress bar and Custom are not available yet: a row ticked with one is not made.",
+            get = function() local _, _, cue = AP.Choice(c); return cue end,
+            set = function(_, v) AP.SetChoice(c, "cue", v); keep() end }
+        T["r" .. i .. "cb"] = { type = "select", order = o + 0.0005, width = "relative", relWidth = W.cb, name = "", arg = CELL_DD,
+            values = AP.COMBAT.values, sorting = AP.COMBAT.order,
+            desc = "When the rule loads: any time, only in combat, or only out of combat.",
+            get = function() local _, _, _, cb = AP.Choice(c); return cb end,
+            set = function(_, v) AP.SetChoice(c, "combat", v); keep() end }
+        if adv then
+            T["r" .. i .. "xc"] = { type = "multiselect", dialogControl = "Dropdown", order = o + 0.0006, width = "relative", relWidth = W.xc, name = "", arg = CELL_DD,
+                values = AP.EXTRA.values, sorting = AP.EXTRA.order,
+                desc = "More cues for this rule beside its main one (the main cue is not added twice).",
+                get = function(_, k) local _, _, _, _, xc = AP.Choice(c); return (xc and xc[k]) and true or false end,
+                set = function(_, k, v) AP.SetExtra(c, k, v); keep() end }
+        end
+    end
+    T.adv = { type = "execute", order = 9, name = "Advanced", arg = { xuiCenter = true },
+        desc = "Shows or hides the Extra cues column: more cues for a rule beside its main one.",
+        func = function() AP.adv = not AP.adv; notify() end }
+    T.make = { type = "execute", order = 9.01, name = "Make the ticked rules", arg = { xuiCenter = true },
+        func = function()
+            local _, _, _, m = AP.Make(view)
+            AP.msg = m
+            if ns.Print then ns.Print("auto-populate: " .. m) end
+            notify()
+        end }
     T.msg = { type = "description", order = 9.1, width = "full", fontSize = "medium",
         hidden = function() return not AP.msg end, name = function() return AP.msg or "" end }
     return args

@@ -19,7 +19,7 @@ import run as H  # noqa: E402
 LUA = r'''
 return function(W, L)
 local R = {}
-local function check(name, ok) R[#R + 1] = { name, ok and true or false } end
+local function check(name, ok, extra) R[#R + 1] = { name .. ((ok or extra == nil) and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 10)
 local ns = rawget(_G, "XayaUI_NS")
@@ -69,16 +69,17 @@ check("all specs: every spec's rows, spec by spec", #all == 9 and all[1].spec ==
 ns.AutoCfg().talents = false
 local noTal = AP.BuildRows(SPEC)
 local noTalOther = AP.BuildRows(577)
-check("'Include talents I have not picked' off: an unpicked talent of the spec you are in is left out, another spec's is kept",
-  #noTal == 6 and (function() for _, c in ipairs(noTal) do if c.id == 204021 and c.kind == "cd" then return false end end return true end)() and #noTalOther == 2)
+check("'Include talents I have not picked' off: unpicked talent cooldowns are left out, for every spec, as the one-click auto-populate did",
+  #noTal == 6 and (function() for _, c in ipairs(noTal) do if c.id == 204021 and c.kind == "cd" then return false end end return true end)() and #noTalOther == 1)
 ns.AutoCfg().talents = true
 
 -- defaults
 local on, trig, cue, combat, xc = AP.Choice(by["cd:187827"])
-check("defaults: not ticked, cooldown 'When ready', Icon, combat Any, no extra cues", on == false and trig == "ready" and cue == "icon" and combat == "any" and xc == nil)
-check("defaults: an aura and a debuff are 'When present'", select(2, AP.Choice(by["au:187827"])) == "present" and select(2, AP.Choice(by["db:207771"])) == "present")
+check("defaults: not ticked, and the first choice of each of her columns: 'When available / when ready', Icon, Any; no extra cues",
+  on == false and trig == "ready" and cue == "icon" and combat == "any" and xc == nil)
+check("defaults: an aura and a debuff are 'When present' (her first choice)", select(2, AP.Choice(by["au:187827"])) == "present" and select(2, AP.Choice(by["db:207771"])) == "present")
 AP.SetChoice(by["db:204596"], "cue", "speech")
-check("defaults: a debuff with a speech cue is 'When missing' (a reminder)", select(2, AP.Choice(by["db:204596"])) == "missing")
+check("defaults: the trigger does not change with the cue (no guessed link, V16)", select(2, AP.Choice(by["db:204596"])) == "present")
 AP.Picks(SPEC)["db:207771"] = { when = "missing" }
 check("a debuff's 'missing' saved by the 0.6.42 picker is still read", select(2, AP.Choice(by["db:207771"])) == "missing")
 AP.Picks(SPEC)["db:207771"] = nil
@@ -100,12 +101,18 @@ a.apSpec2.func()
 check("a spec button loads that spec's list and makes nothing", AP.view and AP.view.spec == 581 and #AP.view.rows == 7 and #ns.rules == 0)
 a.apTalents.set(nil, false)
 local nOff = AP.view and #AP.view.rows
-a.apTalents.set(nil, true)
+a.apTalents.set(nil, true)   -- (581 has one unpicked talent cooldown here)
 check("turning 'Include talents I have not picked' off updates the table shown", nOff == 6 and AP.view and #AP.view.rows == 7)
 a = creator()
 local T = a.apTable and a.apTable.args or {}
-check("the table is a framed box below the buttons, named after the spec", a.apTable and a.apTable.inline == true and a.apTable.order > a.apClass.order
-  and tostring(a.apTable.name):find("Vengeance", 1, true) ~= nil)
+check("the table is a frame below the buttons", a.apTable and a.apTable.inline == true and a.apTable.order > a.apClass.order)
+local extras = {}
+for k, o in pairs(T) do
+  if not (k:match("^r%d+%a%a$") or k == "hOn" or k:match("^h%a%a$") or k == "adv" or k == "make" or k == "msg") then extras[#extras + 1] = k end
+end
+table.sort(extras)
+check("nothing she did not specify is in the table (V16): no title, help text, paging, reload / close buttons or spec rows; only the header, the rows, Advanced, Make and its result line",
+  #extras == 0 and a.apTable.name == " " and T.adv and T.adv.name == "Advanced", table.concat(extras, ","))
 check("header row: a tick box and Name | Type | Trigger | Cue type | Combat load", T.hOn and T.hOn.type == "toggle" and T.hnm and T.hty and T.htr and T.hcu and T.hcb
   and T.hnm.name:find("Name", 1, true) and T.hty.name:find("Type", 1, true) and T.htr.name:find("Trigger", 1, true)
   and T.hcu.name:find("Cue type", 1, true) and T.hcb.name:find("Combat load", 1, true) and T.hxc == nil)
@@ -120,8 +127,8 @@ check("every row is one table row: its columns add up to the pane's width, the h
 check("row cells: tick box, name, type (Spell CD / Aura / Debuff), trigger, cue, combat load", T.r1on.type == "toggle" and T.r1nm.name:find("Spell 187827", 1, true)
   and T.r1ty.name:find("Spell CD", 1, true) and T.r4ty.name:find("Aura", 1, true) and T.r6ty.name:find("Debuff", 1, true)
   and T.r1tr.type == "select" and T.r1cu.type == "select" and T.r1cb.type == "select" and T.r1xc == nil)
-check("trigger choices: a cooldown 'When ready' / 'At max stacks'; an aura or debuff 'When present' / 'When missing'",
-  T.r1tr.values.ready == "When ready" and T.r1tr.values.max == "At max stacks" and T.r1tr.values.present == nil
+check("trigger choices in her words: a cooldown 'When available / when ready' / 'At max stacks'; an aura or debuff 'When present' / 'When missing'",
+  T.r1tr.values.ready == "When available / when ready" and T.r1tr.values.max == "At max stacks" and T.r1tr.values.present == nil
   and T.r4tr.values.present == "When present" and T.r4tr.values.missing == "When missing" and T.r6tr.values.missing == "When missing" and T.r4tr.values.ready == nil)
 local nCue = 0
 for _ in pairs(T.r1cu.values) do nCue = nCue + 1 end
@@ -145,7 +152,7 @@ T.hOn.set(nil, false)
 local anyOn = false
 for _, c in ipairs(AP.view.rows) do if AP.Choice(c) then anyOn = true end end
 check("clicking it again unticks them all", not anyOn and T.hOn.get() == false)
--- a click in a row reuses the window's tree (keep), Advanced and paging rebuild it (notify)
+-- a click in a row reuses the window's tree (keep), Advanced rebuilds it (notify)
 local nKeep, nNotify = 0, 0
 local T2 = AP.Args(function() nNotify = nNotify + 1 end, function() nKeep = nKeep + 1 end).apTable.args
 T2.r2on.set(nil, true); T2.r2tr.set(nil, "max"); T2.r2cu.set(nil, "speech"); T2.r2cb.set(nil, "yes")
@@ -158,14 +165,7 @@ a = creator(); T = a.apTable.args
 check("Advanced adds an Extra cues column (header and every row), and the rows still add up to the pane's width", T.hxc and T.hxc.name:find("Extra cues", 1, true)
   and T.r1xc and T.r1xc.type == "multiselect" and T.r1xc.values.speech and T.r1xc.values.sound and T.r1xc.values.text and T.r1xc.values.texture
   and T.r1xc.values.bar == nil and T.r1xc.values.custom == nil and math.abs(rowSum(1) - 1) < 1e-6)
--- paging
-AP.PAGE = 3
-a = creator(); T = a.apTable.args
-check("a long list is shown a page at a time", T.r1on and T.r3on and T.r4on == nil and T.pgNext and T.pgPrev and T.pgPrev.disabled == true)
-if T.pgNext then T.pgNext.func() end
-a = creator(); T = a.apTable.args
-check("Next shows the next rows", T.r4on and T.r6on and T.r1on == nil and T.r7on == nil)
-AP.PAGE = 40
+check("Advanced keeps its name and shows every row (no paging)", T.adv.name == "Advanced" and T.r1on and T.r7on and T.r8on == nil)
 
 -- make: choices per row
 for _, c in ipairs(AP.view.rows) do by[c.key] = c end
@@ -176,7 +176,7 @@ set("au:187827", "on", true); set("au:187827", "trig", "missing"); set("au:18782
 set("au:203819", "on", true); set("au:203819", "cue", "texture")
 set("db:207771", "on", true); set("db:207771", "trig", "missing"); AP.SetExtra(by["db:207771"], "speech", true); AP.SetExtra(by["db:207771"], "icon", true)
 AP.SetExtra(by["db:207771"], "text", true)
-set("db:204596", "on", true); set("db:204596", "cue", "sound"); set("db:204596", "trig", "present")   -- (a sound cue alone would default to When missing)
+set("db:204596", "on", true); set("db:204596", "cue", "sound")
 set("cd:6789", "on", true); set("cd:6789", "cue", "bar")
 local made, skipped, notMade, msg = AP.Make()
 check("made 6 rules; the progress bar row is not made and the message says why", made == 6 and skipped == 0 and notMade == 1 and tostring(msg):find("Progress bar", 1, true))
@@ -201,17 +201,17 @@ check("debuff 'When missing': a Target Debuff trigger on the target, not on it, 
   and row1(dMiss).cdmID == 204021 and row1(dMiss).unit == "target" and row1(dOn).state == "yes")
 local function kinds(r) local t = {}; for _, c in ipairs(cues[r.uid] or {}) do t[#t + 1] = (c.cueKind == "texture" and c.visual.fill and c.visual.fill.enabled) and "progtex" or c.cueKind end; table.sort(t); return table.concat(t, ",") end
 local function cueOf(r, kind) for _, c in ipairs(cues[r.uid] or {}) do if c.cueKind == kind then return c end end end
-check("main cues: icon / speech '<name> ready' / progress texture / texture / sound with a sound picked", kinds(meta) == "icon" and kinds(brand) == "speech"
-  and cues[brand.uid][1].sound.value == brand.name .. " ready" and kinds(aura) == "progtex" and kinds(tex) == "texture" and kinds(dOn) == "sound"
-  and cues[dOn.uid][1].sound.source == "kit" and cues[dOn.uid][1].sound.value ~= "")
+check("main cues: icon / speech / progress texture / texture / sound", kinds(meta) == "icon" and kinds(brand) == "speech"
+  and kinds(aura) == "progtex" and kinds(tex) == "texture" and kinds(dOn) == "sound")
+check("nothing guessed in the cues (V16): speech says nothing yet, no sound is picked, no art is picked (as '+ New rule' starts them)",
+  cues[brand.uid][1].sound.value == "" and cues[brand.uid][1].sound.source == "tts" and (cues[dOn.uid][1].sound.value or "") == "")
 local ic, pt, tx = cueOf(meta, "icon"), cueOf(aura, "texture"), cueOf(tex, "texture")
 check("each cue starts as '+ New rule' starts that type: icon = spell icon 64 x 64, gray on cooldown", ic and ic.visual.kind == "spellicon" and ic.visual.w == 64 and ic.visual.desatOnCD == true)
-check("progress texture = a texture cue that fills, with its overlay and the base at 0.35, showing the spell's own icon art",
-  pt and pt.visual.fill.enabled == true and pt.visual.overlay.enabled == true and pt.visual.texAlpha == 0.35 and pt.visual.kind == "file" and pt.visual.tex == "136243")
-check("texture = a texture cue with the spell's icon art (a file, so it counts as a texture, not an icon)", tx and tx.visual.kind == "file" and tx.visual.tex == "136243"
-  and not tx.visual.fill.enabled and ns.SmartMatch(tx, "smart_tex") == true and ns.SmartMatch(tx, "smart_icon") == false)
+check("progress texture = a texture cue that fills, with its overlay and the base at 0.35, no art yet (as '+ New rule')",
+  pt and pt.visual.fill.enabled == true and pt.visual.overlay.enabled == true and pt.visual.texAlpha == 0.35 and pt.visual.kind == nil)
+check("texture = a texture cue, no art yet, not filled (as '+ New rule')", tx and tx.visual.kind == nil and not tx.visual.fill.enabled)
 check("extra cues (Advanced) are added beside the main one, the main one not twice: icon + speech + text", kinds(dMiss) == "icon,speech,text"
-  and cueOf(dMiss, "speech").sound.value == dMiss.name .. " missing" and cueOf(dMiss, "text").visual.text.enabled == true and cueOf(dMiss, "text").visual.texAlpha == 0)
+  and cueOf(dMiss, "text").visual.text.enabled == true and cueOf(dMiss, "text").visual.texAlpha == 0)
 -- groups: class > spec > cue type
 local function F(id) for _, f in ipairs(ns.folders) do if f.id == id then return f end end end
 local function path(r) local t, f = {}, F(r.folder); while f do table.insert(t, 1, f.name); f = f.parent and F(f.parent) end; return table.concat(t, " > ") end

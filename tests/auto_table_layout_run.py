@@ -57,6 +57,8 @@ local function measure(label, cols)
   if not hdr then return end
   local content = hdr.frame:GetParent()
   local box = content:GetParent()   -- the framed box the player sees (AceGUI InlineGroup border)
+  local grp = hdr.parent
+  check(label .. ": the table sits in a frame (a box), as she asked", grp and grp.type == "InlineGroup", grp and grp.type)
   local cl, cr = content:GetLeft(), content:GetRight()
   local br = box:GetRight()
   local function mid(f) return f:GetTop() - f:GetHeight() / 2 end
