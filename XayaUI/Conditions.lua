@@ -1386,7 +1386,10 @@ end
 function ns.CheckTalents(rule)
     local mode = rule.talentMode
     if mode == nil or mode == "" or mode == "none" then return true, "no talent requirement" end
-    local list = rule.talents or {}
+    -- #2 (core 0.6.56; Xaya: three-click toggle Known / Not known / not set): an entry set to "none" (not set) has no bearing (#18); a
+    -- saved entry without a state keeps reading as Known, as before
+    local list = {}
+    for _, t in ipairs(rule.talents or {}) do if type(t) == "table" and t.state ~= "none" then list[#list + 1] = t end end
     if #list == 0 then return true, "no talents added" end
     local anyTrue, anyNil, allTrue = false, false, true
     local parts = {}

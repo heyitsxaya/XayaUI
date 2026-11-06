@@ -284,7 +284,7 @@ local function EnsureToolbar(of)
         local rb = ToolButton(bar, "Interface\\AddOns\\XayaUI\\Media\\UI\\xui_recyclebin.tga", "Recycle Bin", function() if ns.UI and ns.UI.RecycleBin then ns.UI.RecycleBin() end end)
         rb:SetPoint("LEFT", ex, "RIGHT", 14, 0)
         -- no Cursor button here: the Cursor options live only on the QoL tab (Xaya, 2026-11-01)
-        local lk = ToolButton(bar, "Interface\\PetBattles\\PetBattle-LockIcon", "Lock Positions", function()
+        local lk = ToolButton(bar, "Interface\\AddOns\\XayaUI\\Media\\UI\\xui_lock.tga", "Lock Positions", function()
             if ns.ToggleUnlock then ns.ToggleUnlock() end
             if ns.UI and ns.UI.Notify then ns.UI.Notify() end
         end)
@@ -592,7 +592,7 @@ local function EnsureTreeSearch(w)
         sb:SetPoint("TOPRIGHT", w.treeframe, "TOPRIGHT", -12, -14)
         w.xuiSearchBox = sb
     end
-    -- multi-select bar: while rules are selected it replaces the search box with "Delete N" / "Clear" right where the list is
+    -- multi-select bar: while rules are selected it replaces the search box with "Delete (N)" / "Move (N)" / "Deselect (N)" right where the list is
     local nSel = (has and ns.MultiCount and ns.MultiCount()) or 0
     local bar = w.xuiSelBar
     if has and not bar and w.treeframe then
@@ -602,10 +602,10 @@ local function EnsureTreeSearch(w)
         bar:SetPoint("TOPLEFT", w.treeframe, "TOPLEFT", 12, -13)
         bar:SetPoint("TOPRIGHT", w.treeframe, "TOPRIGHT", -12, -13)
         bar.clr = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
-        bar.clr:SetSize(58, 22); bar.clr:SetPoint("RIGHT", 0, 0); bar.clr:SetText("Clear")
+        bar.clr:SetSize(84, 22); bar.clr:SetPoint("RIGHT", 0, 0)
         bar.clr:SetScript("OnClick", function() if ns.MultiClear then ns.MultiClear() end end)
         bar.mv = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
-        bar.mv:SetSize(64, 22); bar.mv:SetPoint("RIGHT", bar.clr, "LEFT", -4, 0); bar.mv:SetText("Move to...")
+        bar.mv:SetSize(70, 22); bar.mv:SetPoint("RIGHT", bar.clr, "LEFT", -4, 0)
         bar.mv:SetScript("OnClick", function(self) if ns.MultiMoveMenu then ns.MultiMoveMenu(self) end end)
         bar.del = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
         bar.del:SetHeight(22); bar.del:SetPoint("LEFT", 0, 0); bar.del:SetPoint("RIGHT", bar.mv, "LEFT", -4, 0)
@@ -632,7 +632,12 @@ local function EnsureTreeSearch(w)
             end
         end
         bar:SetShown(nSel > 0)
-        if nSel > 0 then bar.del:SetText(("Delete %d"):format(nSel)) end
+        -- Xaya, 2026-11-06: "clear should be "Deselect (#)"", "Delete should have (#) and Move to should be relabeled to say Move / Move (#)"
+        if nSel > 0 then
+            bar.del:SetText(("Delete (%d)"):format(nSel))
+            bar.mv:SetText(("Move (%d)"):format(nSel))
+            bar.clr:SetText(("Deselect (%d)"):format(nSel))
+        end
     end
     if sb then sb:SetShown(has and nSel == 0); RestoreSearchFocus() end
 end

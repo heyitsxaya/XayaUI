@@ -67,6 +67,7 @@ Issue numbers refer to this repository. Small interface tweaks, wording changes,
 | #196 | Type a sound file path directly | Unclear | |
 | #249 | Every color picker supports transparency | Open | |
 | #318 | Dynamic groups: items per row or column and which side extra rows go | Built (0.5.104), issue open | |
+| E53 (engine log) | Linked displays: a "link as pair" sub-option that mirrors horizontally (moving one display's X moves its partner to the same X with the opposite sign) | Idea (Xaya 2026-11-06: "roadmap idea, nonessential for now") | Builds on "Link N Selected" (Options 0.6.55). Not built. |
 
 ## 3. Class, spec, and talent data
 

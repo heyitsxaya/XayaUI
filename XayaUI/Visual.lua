@@ -12,6 +12,21 @@ ns.unlocked = false
 ns.moveUnlocked = {}   -- per-rule "movement unlocked" (session only); set from the lock icon on the sidebar rows
 local function Unl(rule) return (ns.unlocked or ns.moveUnlocked[rule]) and true or false end
 function ns.IsMoveUnlocked(rule) return Unl(rule) end
+-- D7 (core 0.6.56; Xaya 2026-11-06, her answer "Accept 1-3" + preview "Still works"): a rule that is switched off, or a cue of one, costs
+-- nothing: the engine skips it after a one-time clean-up (Engine.lua Step), it never gets a display frame and its frame is freed when it is
+-- switched off (here), and the Disabled tab still lists it. Only a preview (the sidebar eye) draws it, and only while previewed.
+-- parents: optional uid -> parent map (built once by callers that walk every rule; FindParentRule is a scan outside an engine step).
+function ns.RuleOff(rule, parents)
+    if not rule then return true end
+    if not rule.enabled then return true end
+    local uid = rule.parentUid
+    if type(uid) == "string" and uid ~= "" then
+        local p
+        if parents then p = parents[uid] elseif ns.FindParentRule then p = ns.FindParentRule(rule) end
+        if p and not p.enabled then return true end
+    end
+    return false
+end
 -- Group movement (session only): unlocking a GROUP row shows one draggable outline around the whole group instead of unlocking
 -- (and making selectable) every display inside it. ns.groupUnlocked[folderId] = true while that group is unlocked.
 ns.groupUnlocked = {}
@@ -2223,6 +2238,7 @@ function ns.ShowCueTooltip(rule, fr)
 end
 
 function ns.RefreshVisual(rule)
+    if not ns.IsPreview(rule, "visual") and ns.RuleOff(rule) then ns.DropVisual(rule); return end   -- D7: a switched-off rule gets no frame
     local v = rule.visual
     local fr = GetFrame(rule)
     fr:SetSize(math.max(8, v.w or 128), math.max(8, v.h or 128))
@@ -2881,6 +2897,7 @@ end
 
 function ns.SetVisualShown(rule, shown)
     local pv = ns.IsPreview(rule, "visual")
+    if not pv and ns.RuleOff(rule) then ns.DropVisual(rule); return end   -- D7: switched off: no frame (an existing one is freed)
     local want, comp = nil, false
     if not rule.visual.enabled and not pv then
         want = false
@@ -2917,13 +2934,38 @@ function ns.SetMoveUnlocked(objs, on)
     end
 end
 
+-- Closing the settings window ends everything it started on screen (core 0.6.56; Xaya, 2026-11-06: "typing /xui and closing the menu does
+-- not turn off previews -- this is a high priority issue, as it indicates that the addon is still running its options pane indirectly in
+-- some way. this should not happen"). Up to now only the eye / headphone previews ended; the sidebar's per-rule and per-group movement
+-- unlocks (sample displays with their boxes and names), the preview pause and an unlock made with the window's Lock Positions button stayed.
+function ns.EndWindowState()
+    if ns.ClearPreview and ns.AnyPreview and ns.AnyPreview() then ns.ClearPreview() end
+    if ns.previewPaused and ns.SetPreviewPaused then ns.SetPreviewPaused(false) end
+    local rules = {}
+    for r in pairs(ns.moveUnlocked) do rules[#rules + 1] = r end
+    if #rules > 0 then ns.SetMoveUnlocked(rules, false) end
+    local fids = {}
+    for fid in pairs(ns.groupUnlocked) do fids[#fids + 1] = fid end
+    for _, fid in ipairs(fids) do
+        local f = ns.FolderById and ns.FolderById(fid)
+        if f then ns.SetGroupUnlocked(f, false) else ns.groupUnlocked[fid] = nil end
+    end
+    if ns.unlocked and ns.unlockedByWindow then ns.ToggleUnlock() end
+    ns.unlockedByWindow = nil
+    if ns.MarkDirty then ns.MarkDirty() end
+end
+
 -- Each rule is refreshed on its own (one broken display cannot stop the rest). A rule whose display is switched off and that
 -- has no frame yet gets none: sound-only cues and conditions no longer each carry a full display frame in memory.
 local refreshErrSeen = setmetatable({}, { __mode = "k" })
 function ns.RefreshAllVisuals()
     if ns.SyncCueFolders then pcall(ns.SyncCueFolders) end   -- a cue's group is its parent rule's group (Cues.lua)
+    local parents = {}   -- D7: uid -> parent, built once for this pass
+    for _, r in ipairs(ns.rules or {}) do if r.uid and not r.parentUid then parents[r.uid] = r end end
     for _, r in ipairs(ns.rules or {}) do
-        if frames[r] or (r.visual and r.visual.enabled) or ns.IsPreview(r, "visual") then
+        if not ns.IsPreview(r, "visual") and ns.RuleOff(r, parents) then
+            if frames[r] then ns.DropVisual(r) end   -- switched off: freed, never rebuilt
+        elseif frames[r] or (r.visual and r.visual.enabled) or ns.IsPreview(r, "visual") then
             local ok, err = pcall(ns.RefreshVisual, r)
             if ok then ok, err = pcall(ns.SetVisualShown, r, ns.runtime and ns.runtime[r] and ns.runtime[r].visualWanted) end
             if not ok and not refreshErrSeen[r] then
@@ -3139,6 +3181,9 @@ function ns.ToggleUnlock()
     wipe(mover.tempLock); mover.sel = nil
     KeyFrame():Show()
     ns.unlocked = true
+    -- remembered so closing the settings window ends an unlock made while it was open (its Lock Positions button), not one typed as
+    -- /xui unlock with the window closed (engine core 0.6.56, ns.EndWindowState); locking clears paired auras in Lock()
+    ns.unlockedByWindow = ns.optionsShown and true or nil
     ns.Print("visuals UNLOCKED: drag them, then /xui unlock again to lock (you are asked to save or cancel the moves). Arrow keys nudge the display or group you last clicked (Shift: 10 pixels). Hover a display or a group's name tab to see what it is; click it to open its settings; the lock on a group's tab locks it for now.")
     ns.RefreshAllVisuals()
     ns.RefreshGroupTags()

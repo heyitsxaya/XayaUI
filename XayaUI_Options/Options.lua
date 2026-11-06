@@ -244,8 +244,6 @@ local CD_ORDER = { "none", "hasCharge", "ready", "notReady", "empty" }
 local BUFF_VALUES = { none = "(none - ignore buff)", missing = "Buff is MISSING", present = "Buff is present" }
 local BUFF_ORDER = { "none", "missing", "present" }
 local TRI_ORDER = { "none", "yes", "no" }
-local TALENT_STATE = { known = "must be KNOWN", notKnown = "must NOT be known" }
-local TALENT_STATE_ORDER = { "known", "notKnown" }
 local TALENT_MODE_USED = { all = "ALL listed talents must match", any = "ANY one listed talent is enough" }
 local TALENT_MODE_USED_ORDER = { "all", "any" }
 local TALENT_MODE = { none = "(none - ignore talents)", all = "ALL listed talents must match", any = "ANY one listed talent is enough" }
@@ -1849,7 +1847,23 @@ local function BuildRule(i, rule)
                 id = { type = "input", name = "Spell ID", order = 1, width = "half",
                     get = function() return tostring(t.id) end,
                     set = function(_, v) t.id = tonumber(v) or 0; Changed(rule); Notify() end },
-                state = Sel(t, "state", "Requirement", 2, TALENT_STATE, TALENT_STATE_ORDER, on),
+                -- #2 (Xaya: "three-click toggle (Known green / Not known red / not set)"): the same click pattern as the load conditions
+                -- below: click once Known (green), again Not known (red), a third time not set (no bearing on loading)
+                state = { type = "toggle", tristate = true, order = 2, width = 1.2, name = function()
+                        if t.state == "none" then return "Not set" end
+                        if t.state == "notKnown" then return "|cffff5555Not known|r" end
+                        return "|cff55ff55Known|r"
+                    end,
+                    desc = "Click: Known (green) -> Not known (red) -> Not set (this talent has no bearing on loading) -> Known.",
+                    get = function()
+                        if t.state == "none" then return false end
+                        if t.state == "notKnown" then return nil end
+                        return true
+                    end,
+                    set = function(_, v)
+                        if v == true then t.state = "known" elseif v == nil then t.state = "notKnown" else t.state = "none" end
+                        Changed(rule); Notify()
+                    end },
                 remove = { type = "execute", name = "Remove", order = 3, width = "half",
                     func = function() table.remove(rule.talents, j); Changed(rule); Notify() end },
             },
@@ -5063,26 +5077,25 @@ end
 -- Rows map to objects by their tree key: all / f<id> (folder) / rule<n>; allbars / bar<n>.
 -- Preview is temporary: it never edits a rule, and it clears when the window closes.
 -------------------------------------------------------------------------------
-local EYE_ATLASES = { "socialqueuing-icon-eye" }
-local EYE_FILE = "Interface\\Icons\\INV_Misc_Eye_01"
-local HEAD_ATLASES = { "voicechat-icon-headphone-on" }
-local HEAD_FILE = "Interface\\Common\\VoiceChat-Speaker"
-
-local function AtlasOK(n)
-    local ok, info = false, nil   -- (C_Texture checked first: indexing a missing table is outside the pcall)
-    if C_Texture and C_Texture.GetAtlasInfo then ok, info = pcall(C_Texture.GetAtlasInfo, n) end
-    return ok and info and true or false
-end
-local function ApplyIcon(tex, atlases, file)
-    for _, a in ipairs(atlases) do
-        if AtlasOK(a) then tex:SetAtlas(a); return "atlas " .. a end
-    end
-    tex:SetTexture(file)
-    return "file " .. file
+-- Our own icons (Xaya, 2026-11-06: "change the audio preview icon to JUST a headphone icon please", "instead of gold, do a slash through to
+-- indicate it being off", "do the same with the eye so it's clearer and our own icon please"; her pick "Yes, slash and dimmed"): a plain
+-- eye / headphone while the preview is on, the same with a slash while it is off (and dimmed as before). Drawn for XayaUI (Media\UI).
+local UI_MEDIA = "Interface\\AddOns\\XayaUI\\Media\\UI\\"
+ns.PREVIEW_ICONS = {
+    visual = { on = UI_MEDIA .. "xui_eye.tga", off = UI_MEDIA .. "xui_eye_off.tga" },
+    sound = { on = UI_MEDIA .. "xui_headphone.tga", off = UI_MEDIA .. "xui_headphone_off.tga" },
+}
+-- the picture a preview toggle shows: the plain icon while its preview is on (st 1) or partly on (st 0.5), the slashed one while off (st 0)
+-- the movement lock / mover (Xaya, 2026-11-06: "change lock icon to be simpler and flatter"; "use the more common color choice for the
+-- lock and use the less common color for the mover icon (also flatten)": a white lock, a gold four-way arrow; own drawings)
+ns.LOCK_ICON, ns.MOVE_ICON = UI_MEDIA .. "xui_lock.tga", UI_MEDIA .. "xui_move.tga"
+function ns.PreviewIcon(kind, st)
+    local ic = ns.PREVIEW_ICONS[kind == "visual" and "visual" or "sound"]
+    return (st == 0) and ic.off or ic.on
 end
 function ns.OptionsApi.IconReport()
-    local function chk(list, file) for _, a in ipairs(list) do if AtlasOK(a) then return "atlas " .. a end end return "file " .. file end
-    ns.Print("eye icon: " .. chk(EYE_ATLASES, EYE_FILE) .. " | headphone icon: " .. chk(HEAD_ATLASES, HEAD_FILE))
+    local I = ns.PREVIEW_ICONS
+    ns.Print("eye icon: " .. I.visual.on .. " (off: " .. I.visual.off .. ") | headphone icon: " .. I.sound.on .. " (off: " .. I.sound.off .. ")")
 end
 
 -- Returns visualObjs, soundObjs for a tree row (either may be nil)
@@ -5133,6 +5146,13 @@ local function Resolve(uv)
         for _, r in ipairs(ns.rules or {}) do l[#l + 1] = r end
         l = ns.PvFilter(l, uv, true)
         return l, l
+    elseif last == "loaded" or last == "notloaded" then
+        -- Xaya, 2026-11-06: "loaded does not have an eye icon next to it to preview every loaded + enabled rule; not loaded also has the
+        -- same problem": the root's eye previews every rule in that list (PvFilter keeps the rules whose scope is that list: enabled and
+        -- loaded / enabled and not loaded). The eye only: she asked for no headphone there.
+        local l = {}
+        for _, r in ipairs(ns.rules or {}) do l[#l + 1] = r end
+        return ns.PvFilter(l, last, true), nil
     elseif last == "allbars" then
         local l = {}
         for _, b in ipairs(ns.bars or {}) do l[#l + 1] = b end
@@ -5232,7 +5252,7 @@ local function MakeToggle(button, kind)
     b.tex = b:CreateTexture(nil, "ARTWORK")
     b.tex:SetAllPoints()
     b.kind = kind
-    if kind == "visual" then ApplyIcon(b.tex, EYE_ATLASES, EYE_FILE) else ApplyIcon(b.tex, HEAD_ATLASES, HEAD_FILE) end
+    b.tex:SetTexture(ns.PreviewIcon(kind, 0))
     b:SetScript("OnClick", function(self)
         local objs = self.objs
         if not objs or #objs == 0 then return end
@@ -5974,6 +5994,10 @@ local function RowMenu(button, root)
         root:CreateButton(rule.enabled and "Disable" or "Enable", function()
             rule.enabled = not rule.enabled; pcall(ns.RefreshVisual, rule); ns.MarkDirty(); Notify()
         end)
+        if ns.MultiHas and ns.MultiHas(rule) and ns.MultiCount() > 1 and #ns.MultiLinkTargets() >= 2 then
+            local n, linked = ns.MultiCount(), ns.MultiLinked()
+            root:CreateButton(linked and ("Unlink " .. n .. " Selected") or ("Link " .. n .. " Selected (move together)"), function() ns.MultiLink(not linked) end)
+        end
         AddMoveMenu(root, rule, "rule")
         root:CreateDivider()
         root:CreateButton("Delete", function() AskConfirm("Delete the rule '" .. tostring(rule.name) .. "'? " .. ns.RecycleBinNote(), function() DeleteRule(rule) end) end)
@@ -6461,7 +6485,7 @@ function ns.PaintSide(button, rules, vis, folder)
         b.xuiOn, b.xuiObjs = (n == #vis), vis
         b.xuiMoveFolder = folder
         if folder and ns.IsGroupUnlocked then n = ns.IsGroupUnlocked(folder) and #vis or 0; b.xuiOn = (n == #vis) end
-        b.tex:SetTexture(n == 0 and "Interface\\PetBattles\\PetBattle-LockIcon" or "Interface\\CURSOR\\UI-Cursor-Move")
+        b.tex:SetTexture(n == 0 and ns.LOCK_ICON or ns.MOVE_ICON)   -- our own flat icons (Xaya 2026-11-06: white lock, gold mover)
         b.tex:SetAlpha(n == 0 and 0.85 or (n == #vis and 1 or 0.6))
         b:ClearAllPoints(); b:SetPoint("RIGHT", button, "RIGHT", -off, button.xuiTwoRow and -9 or 0)
         b:Show()
@@ -6609,6 +6633,38 @@ do
     function ns.MultiCount() local n = 0; for _ in pairs(sel) do n = n + 1 end; return n end
     function ns.MultiReset() wipe(sel); anchor = nil end
     function ns.MultiHas(rule) return sel[rule] and true or false end
+    -- "Link N Selected (move together)" (Xaya, 2026-11-06: "linking aura functionality not possible in the drop down menu"; her answer
+    -- "Link N selected"). A link joins displays (Visual.lua ns.LinkAura: dragging one moves the others), so the selected rules' displays
+    -- are linked: each rule's display cues (ns.PreviewTargets), or the rule itself when it draws its own display.
+    function ns.MultiLinkTargets()
+        local out, seen = {}, {}
+        for _, r in ipairs(ns.rules or {}) do   -- list order, so the result does not depend on table order
+            if sel[r] then
+                for _, t in ipairs((ns.PreviewTargets and ns.PreviewTargets(r)) or { r }) do
+                    if not seen[t] and t.visual and t.visual.enabled then seen[t] = true; out[#out + 1] = t end
+                end
+            end
+        end
+        return out
+    end
+    function ns.MultiLinked()
+        local t = ns.MultiLinkTargets()
+        if #t < 2 then return false end
+        local id = t[1].link
+        if not id then return false end
+        for _, o in ipairs(t) do if o.link ~= id then return false end end
+        return true
+    end
+    function ns.MultiLink(on)
+        local t = ns.MultiLinkTargets()
+        if on then
+            for i = 2, #t do ns.LinkAura(t[i], t[1]) end
+        else
+            for _, o in ipairs(t) do ns.UnlinkAura(o) end
+        end
+        ns.MarkDirty(); Notify()
+        ns.Print(on and ("linked %d display(s): dragging one moves them all (Shift-drag: one alone)"):format(#t) or "unlinked the selected displays")
+    end
     -- move every selected rule into group fid (nil = top level)
     function ns.MultiMove(fid)
         local fo = fid and FolderById(fid)
@@ -6829,10 +6885,11 @@ local function DecorateButton(button)
     if level < 1 then level = 1 end
     local canExpand = button.toggle and button.toggle:IsShown() and true or false
     local hasIcons = (vis and #vis > 0) or (snd and #snd > 0)
-    -- top-level roots (All Rules / Loaded / Not Loaded) carry no eye or headphone; their lock icons stay
+    -- top-level roots (All Rules / Disabled / Smart Categories) carry no eye or headphone; their lock icons stay. Loaded and Not Loaded
+    -- carry the eye (Resolve above; Xaya 2026-11-06)
     do
         local rootKey = tostring(button.uniquevalue or ""):match("([^\001]+)$")
-        if rootKey == "all" or rootKey == "loaded" or rootKey == "notloaded" or rootKey == "disabled" or rootKey == "smart" then hasIcons = false end
+        if rootKey == "all" or rootKey == "disabled" or rootKey == "smart" then hasIcons = false end
     end
     if button.text then
         button.text:SetWordWrap(false)
@@ -6926,6 +6983,7 @@ local function DecorateButton(button)
             if button.xuiTwoRow then b:SetPoint("RIGHT", button, "RIGHT", -4, 9)   -- first row: the preview button at the right edge
             else b:SetPoint("RIGHT", button, "RIGHT", -sx, 0) end
             local st = GroupState(objs, kind)
+            b.tex:SetTexture(ns.PreviewIcon(kind, st))   -- off: the slashed icon (still dimmed below)
             b.tex:SetDesaturated(st == 0)
             b.tex:SetAlpha(st == 1 and 1 or (st == 0.5 and 0.7 or 0.35))
             b:Show()
@@ -8138,7 +8196,9 @@ function Tree.Closed()
     driver:SetScript("OnUpdate", nil)
     acc, sigAcc = 0, 0
     Tree.last, Tree.keep = nil, nil   -- the kept tree is let go
-    if ns.AnyPreview() then ns.ClearPreview() end   -- previews are temporary: they end with the window
+    ns.optionsShown = nil
+    -- previews, the sidebar's movement unlocks, the preview pause and a window-made unlock end with the window (core ns.EndWindowState)
+    if ns.EndWindowState then ns.EndWindowState() elseif ns.AnyPreview() then ns.ClearPreview() end
     if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
     if ns.SaveBarUpdate then ns.SaveBarUpdate(nil) end
     Tree.PlaceTray(nil, nil, nil)
@@ -8173,6 +8233,7 @@ function Tree.Tick(_, e)
 end
 function Tree.DriverStart()
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    if of and of.frame and of.frame:IsShown() then ns.optionsShown = true end
     if of and of.frame and of.frame:IsShown() and not driver:GetScript("OnUpdate") then driver:SetScript("OnUpdate", Tree.Tick) end
 end
 
