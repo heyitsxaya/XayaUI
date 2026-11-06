@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""The Rules sub-tab row keeps one compact layout whichever sub-tab is selected (Options 0.6.39; Xaya 2026-11-05, four screenshots:
-with Smart Categories selected the tabs were compact and Class/Spec Rule Creator sat at the right; with Enabled, Disabled or Drafts
-selected they were stretched across the row). AceGUI's TabGroup pads every tab to fill the row once the tabs take 75 % of it.
-Checks, for each sub-tab selected and for a row narrow enough that AceGUI would stretch it: every tab is its text plus the same small
-gap (no fill padding), the tabs keep the same widths and places, and Class/Spec Rule Creator stays pinned to the right edge.
-Limits of the stand-in: its tab labels measure 0 px wide, so selecting a sub-tab never changes any width here and the in-game trigger
-is not reproduced; the narrow row reproduces the mechanism (AceGUI's stretch) and the old code fails there (the gap grows).
+"""The Rules sub-tab row (Options 0.6.60; REQUEST-LOG UI-43 to UI-45, Xaya 2026-11-06: "rule tabs are too tiny"; "tabs are still not
+reflecting proposed changes as requested in subsequent comments"; her answers "28 px, 12 pt, outlined" and "2 + call it "Auto-Generate
+Rules""), and a page's section tabs (UI-48, her answer "24 px, 11 pt, even row"; the empty box of a switched-off page, UI-46 / UI-48).
+(Before, Options 0.6.39: every Rules tab as wide as its text; this file kept its name.)
+Checks, for each Rules sub-tab selected and for a narrow row (where AceGUI would stretch the tabs): Smart Categories, Enabled,
+Disabled, Drafts share the row evenly from its left edge; Auto-Generate Rules sits apart at the far right (16 px after the others);
+every tab 28 px tall with its name at 12 pt, outlined; the same widths and places whichever sub-tab is selected.
+Section tabs (Bonus Features > Data Panels): while Data Panels is off, no tab and no fill under the page (only its one sentence);
+while on, its tabs share the row evenly, 24 px tall, 11 pt, outlined.
+Limits of the stand-in: its tab labels measure 0 px wide (Auto-Generate Rules' width is then the 24 px padding, which the check allows);
+its buttons keep no font object, so the size is read from the tab's name text itself (what the player sees).
 Run: python3 tests/rules_subtabs_compact_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa; slow)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -40,24 +44,38 @@ local function layout(w)
   for _, t in ipairs(w.tabs) do
     if t:IsShown() then
       local tw = t:GetFontString():GetStringWidth()
-      out[#out + 1] = { text = t:GetFontString():GetText(), value = t.value, w = t:GetWidth(), gap = t:GetWidth() - tw, x = (t:GetLeft() or 0) - fl, tab = t }
+      out[#out + 1] = { text = t:GetFontString():GetText() or t:GetText(), value = t.value, w = t:GetWidth(), gap = t:GetWidth() - tw, x = (t:GetLeft() or 0) - fl, tab = t }
     end
   end
   return out
 end
-local function compact(lay)
-  local g = lay[1] and lay[1].gap
-  for _, e in ipairs(lay) do if math.abs(e.gap - g) > 0.5 then return false, ("%s gap %.1f vs %s %.1f"):format(e.text, e.gap, lay[1].text, g) end end
-  return true
-end
-local function pinned(w)
-  for _, t in ipairs(w.tabs) do
-    if t:IsShown() and t.value == "creatorTab" then
-      local p, rel, rp = t:GetPoint(1)
-      return p == "TOPRIGHT" and rel == w.frame and rp == "TOPRIGHT" and math.abs((t:GetRight() or 0) - (w.frame:GetRight() or 0)) < 0.5
+local function sizeOK(lay, H, PT)
+  for _, e in ipairs(lay) do
+    local t = e.tab
+    local fs = t:GetFontString()
+    local _, size, flags = fs:GetFont()
+    if math.abs(t:GetHeight() - H) > 0.5 or tonumber(size) ~= PT or not tostring(flags or ""):find("OUTLINE", 1, true) then
+      return false, ("%s: %.0f px, %s pt, %s"):format(tostring(e.text), t:GetHeight(), tostring(size), tostring(flags))
     end
   end
-  return false
+  return true
+end
+-- Smart Categories .. Drafts even and side by side from the left edge; Auto-Generate Rules at the right edge, 16 px after them
+local function rulesRow(w, lay)
+  local W0 = w.frame.width or w.frame:GetWidth()
+  local others, cr = {}, nil
+  for _, e in ipairs(lay) do if e.value == "creatorTab" then cr = e else others[#others + 1] = e end end
+  if not cr or #others ~= 4 then return false, "tabs: " .. #others .. (cr and " + creator" or " no creator") end
+  for i, e in ipairs(others) do
+    if math.abs(e.w - others[1].w) > 0.5 or math.abs(e.x - (i - 1) * others[1].w) > 0.5 then
+      return false, ("%s %.1f wide at %.1f (first %.1f)"):format(tostring(e.text), e.w, e.x, others[1].w)
+    end
+  end
+  local lastR = others[4].x + others[4].w
+  if math.abs(cr.x + cr.w - W0) > 0.5 then return false, ("creator ends at %.1f, row %.1f"):format(cr.x + cr.w, W0) end
+  if math.abs(cr.x - lastR - 16) > 0.5 then return false, ("gap before creator %.1f"):format(cr.x - lastR) end
+  if cr.text ~= "Auto-Generate Rules" then return false, tostring(cr.text) end
+  return true
 end
 local first
 for _, sub in ipairs({ "smartTab", "enabledTab", "disabledTab", "draftsTab" }) do
@@ -66,37 +84,69 @@ for _, sub in ipairs({ "smartTab", "enabledTab", "disabledTab", "draftsTab" }) d
   check(sub .. " selected: the Rules sub-tab row is drawn", w ~= nil)
   if not w then return R end
   local lay = layout(w)
-  local ok, why = compact(lay)
-  check(sub .. " selected: every tab is its text plus the same gap (none stretched to fill the row)", ok, why)
-  check(sub .. " selected: Class/Spec Rule Creator pinned to the right edge", pinned(w))
+  local ok, why = rulesRow(w, lay)
+  check(sub .. " selected: four tabs share the row evenly, Auto-Generate Rules apart at the far right", ok, why)
+  ok, why = sizeOK(lay, 28, 12)
+  check(sub .. " selected: every tab 28 px tall, its name 12 pt outlined", ok, why)
   if not first then first = lay
   else
     local same, why2 = #lay == #first, ""
     for i, e in ipairs(lay) do
       local f = first[i]
-      if not f or e.value ~= f.value or math.abs(e.w - f.w) > 0.5 or (e.value ~= "creatorTab" and math.abs(e.x - f.x) > 0.5) then
+      if not f or e.value ~= f.value or math.abs(e.w - f.w) > 0.5 or math.abs(e.x - f.x) > 0.5 then
         same = false; why2 = ("%s: %.1f wide at %.1f vs %.1f at %.1f"):format(tostring(e.text), e.w, e.x, f and f.w or -1, f and f.x or -1)
       end
     end
     check(sub .. " selected: the same widths and places as with Smart Categories selected", same, why2)
   end
 end
--- a row narrow enough that AceGUI pads the tabs (they take more than 75 % of it): still compact
+-- a row narrow enough that AceGUI pads the tabs to fill it: the same layout, recomputed for the width
 local w = findRow(ACD.OpenFrames["CueRules"])
-local total = 0
-for _, e in ipairs(layout(w)) do total = total + e.w end
-w:SetWidth(math.floor(total * 0.9)); W.tick(0.05, 3)   -- tabs over 75 % of the row: AceGUI pads them to fill it
-local lay = layout(w)
-local ok, why = compact(lay)
-local g0 = first[1].gap   -- the gap around the text when AceGUI does not stretch the row (the wide window above)
-local g1 = lay[1] and lay[1].gap or -1
-check("narrow row (tabs over 75 % of it): still compact, the same gap as an unstretched row", ok and math.abs(g1 - g0) < 0.5,
-  (why or "") .. (" gap %.1f, unstretched %.1f"):format(g1, g0))
-check("narrow row: Class/Spec Rule Creator still pinned right", pinned(w))
-W.tick(0.3, 2)
-lay = layout(w)
-ok, why = compact(lay)
-check("narrow row, after the next skin pass: still compact", ok and lay[1] and math.abs(lay[1].gap - g0) < 0.5, why)
+w:SetWidth(math.floor((w.frame.width or w.frame:GetWidth()) * 0.6)); W.tick(0.3, 3)
+local ok, why = rulesRow(w, layout(w))
+check("narrow row: four even tabs, Auto-Generate Rules apart at the far right", ok, why)
+
+-- section tabs: Bonus Features > Data Panels (off by default)
+local function findTabs(root, pred)
+  if not root then return nil end
+  if root.type == "TabGroup" and root.tabs and pred(root) then return root end
+  for _, c in ipairs(root.children or {}) do local f = findTabs(c, pred); if f then return f end end
+end
+local function dpTabs()
+  return findTabs(ACD.OpenFrames["CueRules"], function(tg)
+    local u = tg:GetUserDataTable(); local p = u and u.path
+    return p and p[1] == "bonus" and p[#p] == "datapanels" end)
+end
+CueRulesDB.dataPanels.general.enabled = false
+ACD:SelectGroup("CueRules", "bonus", "datapanels"); W.tick(0.3, 3)
+local tg = dpTabs()
+local shownN = 0
+for _, t in ipairs(tg and tg.tabs or {}) do if t:IsShown() then shownN = shownN + 1 end end
+local fillA = 1
+if tg and tg.border then
+  local tex = tg.border.xuiFill or tg.border.xuiPaneFill
+  if tex and tex.GetVertexColor then fillA = select(4, tex:GetVertexColor()) or 1 end
+  if not tex then local bc = tg.border.GetBackdropColor and { tg.border:GetBackdropColor() }; fillA = bc and bc[4] or 1 end
+end
+check("Data Panels off: no section tab and no fill under the page (UI-46 / UI-48)", tg ~= nil and shownN == 0 and (fillA or 0) < 0.01,
+  ("tabs %d, fill alpha %s"):format(shownN, tostring(fillA)))
+local said = {}
+local function texts(x) if not x then return end
+  if x.type == "Label" and x.label then said[#said + 1] = x.label:GetText() end
+  for _, c in ipairs(x.children or {}) do texts(c) end end
+texts(ACD.OpenFrames["CueRules"])
+check("  ...the page shows its one sentence", table.concat(said, " | "):find("Info panels for the screen.", 1, true) ~= nil, table.concat(said, " | "):sub(1, 200))
+CueRulesDB.dataPanels.general.enabled = true
+ACD:SelectGroup("CueRules", "bonus", "datapanels"); W.tick(0.3, 3)
+tg = dpTabs()
+local lay = tg and layout(tg) or {}
+local even = #lay > 0
+for i, e in ipairs(lay) do if math.abs(e.w - lay[1].w) > 0.5 or math.abs(e.x - (i - 1) * lay[1].w) > 0.5 then even = false end end
+local W1 = tg and (tg.frame.width or tg.frame:GetWidth()) or 0
+check("Data Panels on: its section tabs share the row evenly, edge to edge", even and math.abs(#lay * (lay[1] and lay[1].w or 0) - W1) < 1,
+  ("%d tabs, row %.1f"):format(#lay, W1))
+ok, why = sizeOK(lay, 24, 11)
+check("  ...24 px tall, 11 pt outlined", #lay > 0 and ok, why)
 return R
 end
 '''

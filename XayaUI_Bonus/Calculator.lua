@@ -341,7 +341,7 @@ end
 -- out. Built only when the settings window draws (Utilities.lua).
 function ns.BuildCalculatorPage()
     return { type = "group", name = "Calculator", order = 1,
-      xuiSwitch = { type = "toggle", name = "Calculator",
+      xuiSwitch = { type = "toggle", name = "Calculator", tip = "A small calculator: a window with a typed line and a keypad.",
           desc = "Turns the Calculator's window on or off. Off: no window and no Calculator row in the minimap button's list, and the window is never built; /xui calc with a sum still gives the answer in chat. Your last sums are kept.",
           get = function() return On() end, set = function(_, v) ns.Calculator_SetEnabled(v) end },
       args = {

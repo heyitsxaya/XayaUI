@@ -71,6 +71,14 @@ check("A: the switches' names: Enhanced Tooltips, Notepad, Calculator, Tooltip l
   and found["bonus>utilities>notepad"] and found["bonus>utilities>notepad"].name == "Notepad"
   and found["bonus>utilities>calculator"] and found["bonus>utilities>calculator"].name == "Calculator"
   and found["qol>chartoolkit>tipsPart"] and found["qol>chartoolkit>tipsPart"].name == "Tooltip lines")
+-- (Options 0.6.58, REQUEST-LOG UI-42; Xaya 2026-11-06: "hovering over this should not show "off" by default. all should just show a
+-- one-sentence description and an enabled/disabled status") every switch has its one sentence (tip), never an "Off ..." text
+for _, k in ipairs(WANT) do
+  local sw = found[k]; local t = sw and sw.tip
+  local one = type(t) == "string" and t ~= "" and t:match("[%.!?]$") ~= nil and not t:sub(1, -2):find("[%.!?]%s") and not t:find("^Off")
+    and not t:find("Off:", 1, true)
+  check("A: the row " .. k .. "'s switch has a one-sentence description for its hover (no \"Off\" text)", one, t)
+end
 -- the switch is no longer on the pages: no toggle anywhere in the QoL / Bonus Features tabs carries a switch's name (or the old
 -- overview switches' names)
 local names = { ["panel"] = true, ["cursor highlight"] = true, ["gradient cursor trail"] = true, ["tooltip lines"] = true }
@@ -233,16 +241,17 @@ do
     and r.xuiTextR == t.xuiTextR and r.xuiTextR == 4, tostring(r and r.xuiTextL) .. "/" .. tostring(r and r.xuiTextR) .. " vs " .. tostring(t and t.xuiTextL) .. "/" .. tostring(t and t.xuiTextR))
   check("A: the box ends before the name starts (no overlap, V11)", x and ox + x:GetWidth() <= r.xuiTextL - 2, tostring(ox) .. "+" .. tostring(x and x:GetWidth()) .. " vs " .. tostring(r.xuiTextL))
 end
-check("A: the box's hover says what it does (the switch's name and explanation)", (function()
+check("A: the box's hover: the feature's name, one sentence, Enabled / Disabled; no \"Off\" text (UI-42)", (function()
   local said = {}
   local tip = GameTooltip
   local oS, oA = tip.SetText, tip.AddLine
-  tip.SetText = function(self, t) said[#said + 1] = t; return oS(self, t) end
+  tip.SetText = function(self, t) said = { t }; return oS(self, t) end
   tip.AddLine = function(self, t, ...) said[#said + 1] = t; return oA(self, t, ...) end
   local f = bD:GetScript("OnEnter"); if f then f(bD) end
   tip.SetText, tip.AddLine = oS, oA
   local s = table.concat(said, " | ")
-  return s:find("Enable Data Panels", 1, true) ~= nil and s:find("Master switch", 1, true) ~= nil, s
+  local want = CueRulesDB.dataPanels and CueRulesDB.dataPanels.general and CueRulesDB.dataPanels.general.enabled and "Enabled" or "Disabled"
+  return #said == 3 and said[1] == "Data Panels" and said[2] == "Info panels for the screen." and said[3] == want and not s:find("Off", 1, true), s
 end)())
 
 -- (Bonus 0.6.14) the Notepad's box is the whole feature: shown first with Show Notepad (its page), then the row unticked and ticked

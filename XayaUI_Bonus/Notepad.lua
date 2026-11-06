@@ -1071,7 +1071,7 @@ function ns.BuildNotepadTab(Notify)
     local function s(k) return function(_, v) db[k] = v; ns.Notepad_Refresh() end end
     local function off() return db.enabled == false end
     return { type = "group", name = "Notepad", order = 11,
-      xuiSwitch = { type = "toggle", name = "Notepad",
+      xuiSwitch = { type = "toggle", name = "Notepad", tip = "A small floating box for typed reminders.",
           desc = "Turns the Notepad on or off as a whole. Off: no box, no list or Restore window, no sharing, and nothing of it is built or runs; your notes are kept.",
           get = function() return db.enabled ~= false end, set = function(_, v) ns.Notepad_SetEnabled(v) end },
       args = {

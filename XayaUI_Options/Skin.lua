@@ -407,7 +407,7 @@ local function PaneDivider(w)
     d:ClearAllPoints()
     d:SetPoint("TOPLEFT", tf, "TOPRIGHT", 0, 0)
     d:SetPoint("BOTTOMLEFT", tf, "BOTTOMRIGHT", 0, 0)
-    d:SetWidth(1)
+    d:SetWidth(ns.Style.divider.size)
     d:Show()
 end
 
@@ -443,7 +443,7 @@ local function TraceGroupFire(w, what)
     AddRest(w, "firetrace", function(self) rawset(self, "Fire", nil); self.xuiFireTraced = nil end)
 end
 
--- One tab row drawn by hand (Options 0.6.55 top row; Options 0.6.58 the Rules row): each slot = { tab, x, width }; every tab H px tall,
+-- One tab row drawn by hand (Options 0.6.55 top row; Options 0.6.60 the Rules row): each slot = { tab, x, width }; every tab H px tall,
 -- its name in the theme's font at SIZE pt with an outline (a font object per tab, so a hover or a click, which re-applies the button's
 -- font objects, keeps it); the box below starts under the row. Restored on release (SkinTabGroup's OnRelease, w.xuiTopRow).
 local function LayTabRow(w, slots, H, SIZE)
@@ -467,6 +467,7 @@ local function LayTabRow(w, slots, H, SIZE)
             if path then fo:SetFont(path, SIZE, "OUTLINE") end
             fo:SetTextColor(c[1], c[2], c[3], 1)
             tab:SetNormalFontObject(fo); tab:SetHighlightFontObject(fo); tab:SetDisabledFontObject(fo)
+            if path then fs:SetFont(path, SIZE, "OUTLINE") end   -- (the shown name at once, before the button re-applies its object)
             fs:SetTextColor(c[1], c[2], c[3])
         end
         local tcl = tab.selected and "xui-tab-selected" or "xui-tab"
@@ -478,12 +479,12 @@ local function LayTabRow(w, slots, H, SIZE)
     w.xuiTopRow = true
 end
 
--- The Rules sub-tab row (Smart Categories | Enabled | Disabled | Drafts ... Auto-Generate Rules). (Options 0.6.58; REQUEST-LOG UI-43 to
+-- The Rules sub-tab row (Smart Categories | Enabled | Disabled | Drafts ... Auto-Generate Rules). (Options 0.6.60; REQUEST-LOG UI-43 to
 -- UI-45, Xaya 2026-11-06: "rule tabs are too tiny"; "tabs are still not reflecting proposed changes as requested in subsequent
 -- comments"; her answers "28 px, 12 pt, outlined" and, for the Creator tab, "2 + call it "Auto-Generate Rules"" (it stays apart at the
 -- far right): the other tabs share the rest of the row evenly; Auto-Generate Rules is as wide as its name at 12 pt plus 24 px (at most a
 -- third of the row), 16 px after the others. (Before: each tab as wide as its text, Options 0.6.39.)
-local SUB_TAB_H, SUB_TAB_FONT, SUB_GAP = 28, 12, 16
+local SUB_TAB_H, SUB_TAB_FONT, SUB_GAP = ns.Style.tabSub.h, ns.Style.tabSub.font, ns.Style.tabSub.apartGap   -- (core ns.Style, UI-47)
 local function CompactRulesTabs(w)
     if not (w and w.tabs and w.frame) then return end
     local creator, others = nil, {}
@@ -511,7 +512,7 @@ end
 -- The window's top tab row (Rules, QoL, Bonus Features, Blizzard UI Reskin): every tab the same width, side by side with no overlap,
 -- filling the row edge to edge; 32 px tall; the name in the theme's font at 14 pt with an outline (one font object per tab, so a hover
 -- or a click, which re-applies the button's font objects, keeps it). The box below starts under the taller row.
-local TOP_TAB_H, TOP_TAB_FONT = 32, 14
+local TOP_TAB_H, TOP_TAB_FONT = ns.Style.tabTop.h, ns.Style.tabTop.font   -- (core ns.Style, UI-47)
 local function IsTopRow(w)
     local T = ns.OptionsApi and ns.OptionsApi.TABS
     if not (T and w and w.tabs) then return false end
@@ -520,6 +521,23 @@ local function IsTopRow(w)
     end
     return false
 end
+-- (Options 0.6.60; REQUEST-LOG UI-47 / UI-48, her answer for tabs inside a page: "24 px, 11 pt, even row") every other tab row (a
+-- page's section tabs, the rule editor's tabs): even widths, ns.Style.tabSection. A row too crowded for that (under 60 px a tab) keeps
+-- AceGUI's own layout, so no name is cut.
+local SECTION_MIN_W = ns.Style.tabSection.minW
+local function SectionTabs(w)
+    if not (w and w.frame and w.tabs) then return end
+    local shown = {}
+    for _, tab in ipairs(w.tabs) do if tab:IsShown() then shown[#shown + 1] = tab end end
+    local n = #shown
+    local width = w.frame.width or w.frame:GetWidth() or 0
+    if n == 0 or width <= 0 or width / n < SECTION_MIN_W then return end
+    local each = width / n
+    local slots = {}
+    for i, tab in ipairs(shown) do slots[#slots + 1] = { tab, (i - 1) * each, each } end
+    LayTabRow(w, slots, ns.Style.tabSection.h, ns.Style.tabSection.font)
+end
+
 local function TopTabs(w)
     if not (w and w.frame and IsTopRow(w)) then return end
     local shown = {}
@@ -533,9 +551,24 @@ local function TopTabs(w)
     LayTabRow(w, slots, TOP_TAB_H, TOP_TAB_FONT)
 end
 
+-- which layout a tab row gets: the window's top row, the Rules row (it holds Auto-Generate Rules), or a section row
+function ns.SkinTabRow(w)
+    if IsTopRow(w) then return TopTabs(w) end
+    for _, tab in ipairs(w.tabs or {}) do if tab:IsShown() and tab.value == "creatorTab" then return CompactRulesTabs(w) end end
+    return SectionTabs(w)
+end
+
 local function SkinTabGroup(w)
     TraceGroupFire(w, "tab")
     do local pb = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 }); PaneFill(w.border, { pb[1], pb[2], pb[3], A() * 0.6 }) end
+    -- (Options 0.6.60; UI-46 "clicking on a deactivated item should just show the summary without a nested box"; UI-48 "If the item is
+    -- not enabled no additional fill should exist") a tab container with no tab shown (a switched-off feature hides its section tabs;
+    -- AceConfigDialog still draws the empty container): no fill and no border, so the page shows its summary only
+    do
+        local any = false
+        for _, tab in ipairs(w.tabs or {}) do if tab:IsShown() then any = true; break end end
+        if not any then PaneFill(w.border, { 0, 0, 0, 0 }) end
+    end
     for _, tab in ipairs(w.tabs or {}) do
         if tab:IsShown() then
             for _, k in ipairs({ "Left", "Middle", "Right", "LeftDisabled", "MiddleDisabled", "RightDisabled" }) do
@@ -556,16 +589,14 @@ local function SkinTabGroup(w)
         w.xuiCompactOrig = orig
         w.BuildTabs = function(self, ...)
             local r = orig(self, ...)
-            pcall(CompactRulesTabs, self)
-            pcall(TopTabs, self)
+            pcall(ns.SkinTabRow, self)
             return r
         end
         AddRest(w, "compacttabs", function(self)
             if self.xuiCompactOrig then self.BuildTabs = self.xuiCompactOrig; self.xuiCompactOrig = nil end
         end)
     end
-    CompactRulesTabs(w)
-    pcall(TopTabs, w)
+    pcall(ns.SkinTabRow, w)
     OnRelease(w, function(self)
         if self.xuiTopRow then
             self.xuiTopRow = nil
@@ -1329,8 +1360,22 @@ local function SkinInline(w)
         if box then Flat(w.border, { 0.04, 0.04, 0.04, math.min(1, A() * 0.5 + 0.10) }, { 0.3, 0.3, 0.3, 1 }) else FlatHide(w.border) end
     else
         if w.border then FlatHide(w.border) end
-        do local pb, pd = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 }), TC("xui-pane", "border", { 0.25, 0.25, 0.25, 1 }); PaneColors(w.border, { pb[1], pb[2], pb[3], A() * 0.5 }, pd) end
+        -- (Options 0.6.60; UI-47 / UI-48, her answer for titled groups inside a page: "First try unbordered boxes (darker blocks) and
+        -- dividing lines") the group's darker fill without a border line, and a dividing line along the block's top edge
+        do local pb = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 }); PaneFill(w.border, { pb[1], pb[2], pb[3], A() * 0.5 }) end
+        if w.border and w.border.CreateTexture then
+            local ln = w.xuiTopLine
+            if not ln then ln = w.border:CreateTexture(nil, "ARTWORK"); w.xuiTopLine = ln end
+            local c = TC("xui-pane", "border", { 0.25, 0.25, 0.25, 1 })
+            ln:SetColorTexture(c[1], c[2], c[3], 1)
+            ln:ClearAllPoints()
+            ln:SetPoint("TOPLEFT", w.border, "TOPLEFT", 0, 0); ln:SetPoint("TOPRIGHT", w.border, "TOPRIGHT", 0, 0)
+            ln:SetHeight(ns.Style.divider.size)
+            ln:Show()
+            AddRest(w, "topline", function(self) if self.xuiTopLine then self.xuiTopLine:Hide() end end)
+        end
     end
+    if (flat or box) and w.xuiTopLine then w.xuiTopLine:Hide() end
     local title = w.titletext and w.titletext:GetText()
     if opt and opt.xuiInfo and title and title ~= "" and ns.GetInfoIcon then
         local ic = ns.GetInfoIcon(w.frame)
@@ -1804,7 +1849,7 @@ end
 -- column gutter afterwards.
 ns.H3_SIZE = 16   -- the single header size (Heading widgets and collapsible section headers)
 ns.H2_SIZE = 14   -- inside trigger / cue / condition panes: "Description" and every yellow field label ("Sound", "State", "IF", "THEN") use this size
-ns.BODY_INDENT = 20   -- trigger / cue / condition panes: the header sits flush left and everything under it is indented by this much
+ns.BODY_INDENT = ns.Style.bodyIndent   -- (core ns.Style, UI-47; trigger / cue / condition panes: the header sits flush left and everything under it is indented by this much
 local NOFLEX = { Icon = true, Label = true, InteractiveLabel = true, Heading = true, ColorPicker = true, Image = true }
 local GAP = ns.UI_GUTTER or 10   -- gutter between two controls on a row (#351: every row, not only rows that stretch a control)
 local GRID_GAP = 30   -- gutter between the two columns of the grid (wide, so the two columns read as separate)

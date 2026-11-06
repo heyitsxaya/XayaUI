@@ -966,7 +966,7 @@ function ns.BuildShoppingListPage(Notify)
     args.defDiamond = DefInput("diamond", 21, "One-per-character gem (diamond)")
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
-    local switch = { type = "toggle", name = "Shopping List", desc = "Turns the shopping list on. While it is off nothing is created or read. Greyed while Blizzard UI Reskin is off (this tab's Overview).",
+    local switch = { type = "toggle", name = "Shopping List", tip = "Your crafting shopping list: tracked recipes' reagents and the enchants and gems missing on your gear.", desc = "Turns the shopping list on. While it is off nothing is created or read. Greyed while Blizzard UI Reskin is off (this tab's Overview).",
         disabled = function() return not ns.ReskinTabOn() end,
         get = function() return C().enabled end, set = function(_, v) C().enabled = v and true or false; Changed() end }
     local g = { type = "group", name = "Shopping List", order = 5, xuiSwitch = switch, args = args }

@@ -180,7 +180,7 @@ function ns.BuildReleaseGuardPage(Notify)
     local isOff = function() return not C().enabled end
     return {
         type = "group", name = "Release Guard", order = 5,
-        xuiSwitch = { type = "toggle", name = "Release Guard",
+        xuiSwitch = { type = "toggle", name = "Release Guard", tip = "A black box over the death window's Release Spirit button, so a misclick does not release you.",
             desc = "A black box over the death window's Release Spirit button. While it is off nothing is created or listened to; once it has been on, a /reload removes its hook fully (while off it does nothing).",
             get = function() return C().enabled and true or false end,
             set = function(_, v) C().enabled = v and true or false; Changed() end },

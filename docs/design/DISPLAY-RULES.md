@@ -7,7 +7,7 @@ location if they aren't already. / refactor all code appropriately. / priority: 
 - Her own words behind each rule, with sources: [DISPLAY-RULINGS.md](DISPLAY-RULINGS.md) (row numbers in brackets below, e.g. [3.9]).
 - A rule here is either **RULED** (her words or her pick in a question box) or **PROPOSED** (waiting for her yes, never built before
   it, V16). Anything still open in the logs is not a rule (DISPLAY-RULINGS section 18).
-- The numbers live in code in one place: core `ns.Style` (section C). A window or page never repeats a number that is there.
+- The numbers live in code in one place: core `ns.Style` (`XayaUI/Modules.lua`, section 0; section C here). A window or page never repeats a number that is there.
 - When she rules something new: add the ruling to DISPLAY-RULINGS.md, the rule here, and the value to `ns.Style`, in the same commit.
 
 ## A. Rules (RULED)
@@ -67,12 +67,20 @@ answer moves it to section A.
 
 | # | Display type | What differs today | Proposal | Status |
 |---|---|---|---|---|
-| G1 | Section tabs inside a page (third level, e.g. Shopping List: Your defaults / History) | small Blizzard-sized tabs, each as wide as its text | RULED [UI-48]: "24 px, 11 pt, even row" (outlined, as the other rows) | to build |
-| G2 | The box under a page's section tabs (bordered, own scroll bar) | a nested box inside the right pane | RULED [UI-48]: "If the item is not enabled no additional fill should exist"; while on: a fill without a border (INFERENCE, to be seen by her) | to build |
-| G3 | Titled boxes inside a page (e.g. "Whisper sound overrides", "Tab 1: General") | bordered box per group | RULED [UI-48]: "First try unbordered boxes (darker blocks) and dividing lines" | to build, then her look |
-| G4 | Text inputs (e.g. "Enchant: Head") | each input stretches the full row | RULED [UI-48]: "Half width, two per row" | to build |
+| G1 | Section tabs inside a page (third level, e.g. Shopping List: Your defaults / History) | small Blizzard-sized tabs, each as wide as its text | RULED [UI-48]: "24 px, 11 pt, even row" (outlined, as the other rows) | built (Options 0.6.60), not seen by her |
+| G2 | The box under a page's section tabs (bordered, own scroll bar) | a nested box inside the right pane | RULED [UI-48]: "If the item is not enabled no additional fill should exist"; while on: a fill without a border (INFERENCE, to be seen by her) | built (Options 0.6.60), not seen by her |
+| G3 | Titled boxes inside a page (e.g. "Whisper sound overrides", "Tab 1: General") | bordered box per group | RULED [UI-48]: "First try unbordered boxes (darker blocks) and dividing lines" | built (Options 0.6.60), waiting for her look |
+| G4 | Text inputs (e.g. "Enchant: Head") | each input stretches the full row | RULED [UI-48]: "Half width, two per row" | built (Options 0.6.60): no width, "full" and "double" inputs; not seen by her |
 
-## C. The values (code: core `ns.Style`, `XayaUI/Style.lua`)
+### Session choices made while building section B (each listed for her look; none is a ruling)
+| # | Where | Choice | Why |
+|---|---|---|---|
+| S1 | Section tabs | a row with under 60 px per tab keeps AceGUI's own layout (`tabSection.minW`) | so no tab name is cut off |
+| S2 | Auto-Generate Rules | its name's width at 12 pt + 24 px, at most a third of the row | her answer fixed its place, not its width |
+| S3 | Off page with all its text inside tabs (Data Panels, Enhanced Tooltips) | shows the switch's one sentence | otherwise the page would be blank ("just show the summary") |
+| S4 | Text inputs drawn by their own widget (spell search and the like) | keep their own size | they are search boxes with their own layout, not plain text lines |
+
+## C. The values (code: core `ns.Style`, `XayaUI/Modules.lua` section 0)
 Every window and page reads these; nothing repeats them. Values marked (session) were chosen by a session, not by her.
 
 | Key | Value | From |
@@ -84,7 +92,8 @@ Every window and page reads these; nothing repeats them. Values marked (session)
 | nest.level (WeakAuras) | 8 | [2.7] |
 | switch.size | 16 (session) | |
 | grey | 0.5, 0.5, 0.5 (session) | [3.8] |
-| divider.alpha | 1 px, theme pane border colour (session) | [6.3, 6.6] |
+| divider.size | 1 px, theme pane border colour (session) | [6.3, 6.6] |
 | bodyIndent (trigger / cue / condition panes) | 20 (session) | |
 | tabSection.h, tabSection.font, tabSection.outline | 24, 11, true | [UI-48] |
+| tabSection.minW | 60 (session) | S1 |
 | input.width | half the row (two per row) | [UI-48] |

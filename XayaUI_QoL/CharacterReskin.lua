@@ -1447,6 +1447,7 @@ function ns.BuildCharReskinPage(Notify)
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
     local switch = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends). Greyed while Blizzard UI Reskin is off (this tab's Overview).")
+    switch.tip = "Blizzard's character window in XayaUI's look."
     switch.disabled = function() return not ns.ReskinTabOn() end
     return {
         type = "group", name = "Character Pane", order = 4, childGroups = "tree", xuiSwitch = switch,
