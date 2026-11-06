@@ -41,6 +41,7 @@ Read `SESSION-START-SUMMARY.md` first in a new session.
   the branch, run the full suite once on the bundle, and land it on `main` once, with one report listing every request it closes
   (by REQUEST-LOG number) and every one still open. Coordinate with any other active session so there is one combined push.
 - **What's new for every new feature** (Xaya, 2026-11-06, V18): when a new feature (or a visible change) lands on `main`, send the "feature update summary" session (session_014bN6tU26cuzQ9LarKYhZQx) an itemized what's-new: what the player sees, where to find it, what is untested in game, the landing commit. That session is used only for this.
+- **Ask through the question flow** (Xaya, 2026-11-06, V19): "standing rule for the project: wherever possible, ask me questions through the question flow rather than in a long list". Use the question tool for questions to her, not a long list in a reply.
 - **Off costs nothing** (Xaya, 2026-11-05, her words): "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a standing rule for all current and future feature / element builds". Rule V14 in `docs/process/VERIFICATION.md` says how it is
   applied and checked, and the two limits the game sets (files of an enabled addon are always read; hooks stay until /reload).
 - **Work the backlog, never idle** (Xaya, 2026-11-04): "for the time being, as long as there are features or overt bugs in any of the core
