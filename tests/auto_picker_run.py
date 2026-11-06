@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline test (XayaUI_Options 0.6.44): auto-populate as a table (AutoPicker.lua, Skin.lua table cells). Xaya, 2026-11-05:
+"""Offline test (XayaUI_Options 0.6.44-0.6.45): auto-populate as a table (AutoPicker.lua, Skin.lua table cells). Xaya, 2026-11-05:
 "Clicking auto-populate should pre-load into a frame below all rules that will load in a table view. Columns will be (Checkbox - clicking
 the header row will select all; clicking again will deselect all) | name | type (spell cd, aura, debuff) | trigger (when available /
 when ready (for CD); at max stacks (for CD); when present (aura / debuff); when missing (aura / debuff) | cue type | combat load (any, in
@@ -123,8 +123,17 @@ check("row cells: tick box, name, type (Spell CD / Aura / Debuff), trigger, cue,
 check("trigger choices: a cooldown 'When ready' / 'At max stacks'; an aura or debuff 'When present' / 'When missing'",
   T.r1tr.values.ready == "When ready" and T.r1tr.values.max == "At max stacks" and T.r1tr.values.present == nil
   and T.r4tr.values.present == "When present" and T.r4tr.values.missing == "When missing" and T.r6tr.values.missing == "When missing" and T.r4tr.values.ready == nil)
-check("cue choices: Icon, Progress texture, Progress bar (not yet), Speech, Sound", T.r1cu.values.icon and T.r1cu.values.progtex and T.r1cu.values.speech
-  and T.r1cu.values.sound and tostring(T.r1cu.values.bar):find("not yet", 1, true))
+local nCue = 0
+for _ in pairs(T.r1cu.values) do nCue = nCue + 1 end
+local kindsListed = true
+for _, k in ipairs(ns.CUE_KINDS) do   -- every cue kind the addon has (Cues.lua)
+  local key = k
+  if not T.r1cu.values[key] then kindsListed = false end
+end
+check("cue choices (Xaya 2026-11-06: ALL cue types the addon supports): every cue kind (sound, speech, text, texture, icon, custom) plus Progress texture and Progress bar",
+  kindsListed and nCue == 8 and T.r1cu.values.progtex == "Progress texture" and T.r1cu.values.texture == "Texture" and T.r1cu.values.text == "Text"
+  and tostring(T.r1cu.values.bar):find("not yet", 1, true) and tostring(T.r1cu.values.custom):find("not yet", 1, true)
+  and #T.r1cu.sorting == 8 and T.r1cu.sorting[1] == "icon")
 check("combat load choices: Any, In combat, Out of combat", T.r1cb.values.any == "Any" and T.r1cb.values.yes == "In combat" and T.r1cb.values.no == "Out of combat")
 -- header tick box: ticks every row; again: unticks them all
 check("header box starts unticked", T.hOn.get() == false)
@@ -147,7 +156,8 @@ T2.adv.func()
 check("Advanced rebuilds the window", nNotify == 1 and AP.adv == true)
 a = creator(); T = a.apTable.args
 check("Advanced adds an Extra cues column (header and every row), and the rows still add up to the pane's width", T.hxc and T.hxc.name:find("Extra cues", 1, true)
-  and T.r1xc and T.r1xc.type == "multiselect" and T.r1xc.values.speech and T.r1xc.values.sound and T.r1xc.values.bar == nil and math.abs(rowSum(1) - 1) < 1e-6)
+  and T.r1xc and T.r1xc.type == "multiselect" and T.r1xc.values.speech and T.r1xc.values.sound and T.r1xc.values.text and T.r1xc.values.texture
+  and T.r1xc.values.bar == nil and T.r1xc.values.custom == nil and math.abs(rowSum(1) - 1) < 1e-6)
 -- paging
 AP.PAGE = 3
 a = creator(); T = a.apTable.args
@@ -163,11 +173,13 @@ local function set(key, field, v) AP.SetChoice(by[key], field, v) end
 set("cd:187827", "on", true)                                                          -- icon, When ready, any
 set("cd:204021", "on", true)                                                          -- speech, At max stacks, in combat (set above)
 set("au:187827", "on", true); set("au:187827", "trig", "missing"); set("au:187827", "cue", "progtex"); set("au:187827", "combat", "no")
+set("au:203819", "on", true); set("au:203819", "cue", "texture")
 set("db:207771", "on", true); set("db:207771", "trig", "missing"); AP.SetExtra(by["db:207771"], "speech", true); AP.SetExtra(by["db:207771"], "icon", true)
+AP.SetExtra(by["db:207771"], "text", true)
 set("db:204596", "on", true); set("db:204596", "cue", "sound"); set("db:204596", "trig", "present")   -- (a sound cue alone would default to When missing)
 set("cd:6789", "on", true); set("cd:6789", "cue", "bar")
 local made, skipped, notMade, msg = AP.Make()
-check("made 5 rules; the progress bar row is not made and the message says why", made == 5 and skipped == 0 and notMade == 1 and tostring(msg):find("Progress bar", 1, true))
+check("made 6 rules; the progress bar row is not made and the message says why", made == 6 and skipped == 0 and notMade == 1 and tostring(msg):find("Progress bar", 1, true))
 local parents, cues = {}, {}
 for _, r in ipairs(ns.rules) do if r.isCue then cues[r.parentUid] = cues[r.parentUid] or {}; table.insert(cues[r.parentUid], r) else parents[#parents + 1] = r end end
 local function find(test) for _, r in ipairs(parents) do if test(r) then return r end end end
@@ -177,34 +189,45 @@ local brand = find(function(r) return r.spellID == 204021 and r.useCooldown end)
 local aura = find(function(r) return r.useBuff and r.buffID == 187827 end)
 local dMiss = find(function(r) local x = row1(r); return x and x.spellID == 207771 end)
 local dOn = find(function(r) local x = row1(r); return x and x.spellID == 204596 end)
-check("5 rules, named after the spell, and none for unticked rows or the progress bar row", #parents == 5 and meta and brand and aura and dMiss and dOn
-  and meta.name == "Spell 187827" and find(function(r) return r.spellID == 6789 end) == nil and find(function(r) return r.buffID == 203819 end) == nil)
-if not (meta and brand and aura and dMiss and dOn) then return R end
+local tex = find(function(r) return r.useBuff and r.buffID == 203819 end)
+check("6 rules, named after the spell, and none for unticked rows or the progress bar row", #parents == 6 and meta and brand and aura and dMiss and dOn and tex
+  and meta.name == "Spell 187827" and find(function(r) return r.spellID == 6789 end) == nil)
+if not (meta and brand and aura and dMiss and dOn and tex) then return R end
 check("'When ready' is the cooldown state 'has a charge'; 'At max stacks' is 'fully ready'", meta.cdState == "hasCharge" and brand.cdState == "ready" and meta.useCooldown == true)
 check("combat load: Any leaves it blank, In combat = yes, Out of combat = no", meta.load.combat == nil and brand.load.combat == "yes" and aura.load.combat == "no")
 check("every rule loads only on its spec; a talent cooldown only while the talent is known", meta.load.specs["581"] == true and brand.talentMode == "all" and brand.talents[1].id == 204021)
 check("aura 'When missing': a Buff / Aura trigger for the aura, state missing", aura.buffState == "missing" and aura.cdState == "none")
 check("debuff 'When missing': a Target Debuff trigger on the target, not on it, with the Cooldown Manager ID", row1(dMiss).type == "targetDebuff" and row1(dMiss).state == "no"
   and row1(dMiss).cdmID == 204021 and row1(dMiss).unit == "target" and row1(dOn).state == "yes")
-local function kinds(r) local t = {}; for _, c in ipairs(cues[r.uid] or {}) do t[#t + 1] = (c.cueKind == "icon" and c.visual.fill and c.visual.fill.enabled) and "progtex" or c.cueKind end; table.sort(t); return table.concat(t, ",") end
-check("main cues: icon / speech '<name> ready' / progress texture / sound with a sound picked", kinds(meta) == "icon" and kinds(brand) == "speech"
-  and cues[brand.uid][1].sound.value == brand.name .. " ready" and kinds(aura) == "progtex" and kinds(dOn) == "sound"
+local function kinds(r) local t = {}; for _, c in ipairs(cues[r.uid] or {}) do t[#t + 1] = (c.cueKind == "texture" and c.visual.fill and c.visual.fill.enabled) and "progtex" or c.cueKind end; table.sort(t); return table.concat(t, ",") end
+local function cueOf(r, kind) for _, c in ipairs(cues[r.uid] or {}) do if c.cueKind == kind then return c end end end
+check("main cues: icon / speech '<name> ready' / progress texture / texture / sound with a sound picked", kinds(meta) == "icon" and kinds(brand) == "speech"
+  and cues[brand.uid][1].sound.value == brand.name .. " ready" and kinds(aura) == "progtex" and kinds(tex) == "texture" and kinds(dOn) == "sound"
   and cues[dOn.uid][1].sound.source == "kit" and cues[dOn.uid][1].sound.value ~= "")
-check("extra cues (Advanced) are added beside the main one, the main one not twice", kinds(dMiss) == "icon,speech"
-  and (function() for _, c in ipairs(cues[dMiss.uid]) do if c.cueKind == "speech" then return c.sound.value == dMiss.name .. " missing" end end end)())
+local ic, pt, tx = cueOf(meta, "icon"), cueOf(aura, "texture"), cueOf(tex, "texture")
+check("each cue starts as '+ New rule' starts that type: icon = spell icon 64 x 64, gray on cooldown", ic and ic.visual.kind == "spellicon" and ic.visual.w == 64 and ic.visual.desatOnCD == true)
+check("progress texture = a texture cue that fills, with its overlay and the base at 0.35, showing the spell's own icon art",
+  pt and pt.visual.fill.enabled == true and pt.visual.overlay.enabled == true and pt.visual.texAlpha == 0.35 and pt.visual.kind == "file" and pt.visual.tex == "136243")
+check("texture = a texture cue with the spell's icon art (a file, so it counts as a texture, not an icon)", tx and tx.visual.kind == "file" and tx.visual.tex == "136243"
+  and not tx.visual.fill.enabled and ns.SmartMatch(tx, "smart_tex") == true and ns.SmartMatch(tx, "smart_icon") == false)
+check("extra cues (Advanced) are added beside the main one, the main one not twice: icon + speech + text", kinds(dMiss) == "icon,speech,text"
+  and cueOf(dMiss, "speech").sound.value == dMiss.name .. " missing" and cueOf(dMiss, "text").visual.text.enabled == true and cueOf(dMiss, "text").visual.texAlpha == 0)
 -- groups: class > spec > cue type
 local function F(id) for _, f in ipairs(ns.folders) do if f.id == id then return f end end end
 local function path(r) local t, f = {}, F(r.folder); while f do table.insert(t, 1, f.name); f = f.parent and F(f.parent) end; return table.concat(t, " > ") end
 check("rules sit in Class > Spec > cue type", path(meta) == "Demon Hunter > Vengeance > Icons" and path(brand) == "Demon Hunter > Vengeance > Speech"
-  and path(aura) == "Demon Hunter > Vengeance > Progress Textures" and path(dOn) == "Demon Hunter > Vengeance > Sounds" and path(dMiss) == "Demon Hunter > Vengeance > Icons")
+  and path(aura) == "Demon Hunter > Vengeance > Progress Textures" and path(dOn) == "Demon Hunter > Vengeance > Sounds" and path(dMiss) == "Demon Hunter > Vengeance > Icons"
+  and path(tex) == "Demon Hunter > Vengeance > Textures")
 -- engine: no target here, so the debuff is not on it
 local ctx = ns.ReadContext()
 local ok1, r1 = pcall(ns.Evaluate, dMiss, ctx)
 local ok2, r2 = pcall(ns.Evaluate, dOn, ctx)
 check("engine: with no target, 'When missing' is true and 'When present' is false", ok1 and ok2 and r1 == true and r2 == false)
 local n0 = #ns.rules
-made, skipped = AP.Make()
-check("Make again makes nothing twice (5 skipped)", made == 0 and skipped == 5 and #ns.rules == n0)
+set("cd:6789", "cue", "custom")
+made, skipped, notMade, msg = AP.Make()
+check("Make again makes nothing twice (6 skipped); a row ticked with Custom is not made either, and the message says so",
+  made == 0 and skipped == 6 and notMade == 1 and #ns.rules == n0 and tostring(msg):find("Custom", 1, true))
 -- all specs: one button, every spec's list, rules in each spec's group
 a = creator(); a.apClass.func()
 check("the class button loads every spec's list", AP.view.spec == "all" and #AP.view.rows == 9)
@@ -215,6 +238,29 @@ for _, r in ipairs(ns.rules) do if r.spellID == 195072 and not r.isCue then rush
 check("a rule from another spec goes into that spec's group and loads on that spec", made == 1 and rush and path(rush) == "Demon Hunter > Havoc > Icons" and rush.load.specs["577"] == true)
 AP.Close()
 check("Close removes the table", creator().apTable == nil)
+-- "+ New rule" > Progress Texture / Icon / Text still set their cue up the same way (the set-up is shared: ns.NewTypedCue)
+local function findKey(t, key, depth)
+  if type(t) ~= "table" or depth > 30 then return nil end
+  if t.args and t.args[key] then return t.args[key] end
+  for _, v in pairs(t.args or {}) do local f = findKey(v, key, depth + 1); if f then return f end end
+end
+local built = ns.BuildOptionsTable()
+local newOK, why = true, ""
+for key, test in pairs({
+    pickProg = function(c) return c.cueKind == "texture" and c.visual.fill.enabled == true and c.visual.overlay.enabled == true and c.visual.texAlpha == 0.35 and c.visual.kind == nil end,
+    pickIcon = function(c) return c.cueKind == "icon" and c.visual.kind == "spellicon" and c.visual.w == 64 and c.visual.desatOnCD == true end,
+    pickText = function(c) return c.cueKind == "text" and c.visual.text.enabled == true and c.visual.texAlpha == 0 end }) do
+  local e = findKey(built, key, 0)
+  local before = #ns.rules
+  local okF, errF = true, nil
+  local run = e and (e.func or (type(e.arg) == "table" and e.arg.xuiRow))   -- a skinned row runs arg.xuiRow (Skin.lua), a plain one its func
+  if run then okF, errF = pcall(run) end
+  if not run then why = why .. "(no " .. key .. ") " elseif not okF then why = why .. "(" .. key .. " error " .. tostring(errF):sub(1, 120) .. ") " end
+  local cue
+  for i = before + 1, #ns.rules do if ns.rules[i].isCue then cue = ns.rules[i] end end
+  if not (cue and test(cue)) then newOK = false; why = why .. key .. " " end
+end
+check("'+ New rule' Progress Texture / Icon / Text still start their cue as before (texture cue with fill + overlay at 0.35, no art; spell icon 64 px; text)" .. (newOK and "" or ("  [" .. why .. "]")), newOK)
 
 -- the skin: a table row on one line that fills the pane; the next row starts a new line
 local function Cell(rw)

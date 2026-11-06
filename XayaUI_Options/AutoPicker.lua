@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- AutoPicker.lua : auto-populate as a table you fill in before anything is made (XayaUI_Options 0.6.44). Own code. UNTESTED in game.
+-- AutoPicker.lua : auto-populate as a table you fill in before anything is made (XayaUI_Options 0.6.44; every cue type 0.6.45). Own code. UNTESTED in game.
 -- Xaya, 2026-11-05 (first version, 0.6.42): "Auto-populate rules should also provide support for target debuffs - you should be able to
 -- also customize auto-populate rule behavior to auto-populate with only specific, selected auto rules and choose their primary cue type
 -- (speech to text, icon, progress texture, progress bar) on a case-by-case basis".
@@ -41,11 +41,20 @@ AP.TRIG = {
 }
 AP.TRIG.debuff = AP.TRIG.aura
 local CD_STATE = { ready = "hasCharge", max = "ready" }   -- Conditions.lua CheckCooldownState: hasCharge = a charge is up, ready = all of them
-AP.CUES = { values = { icon = "Icon", progtex = "Progress texture", bar = "Progress bar (not yet)", speech = "Speech", sound = "Sound" },
-            order = { "icon", "progtex", "bar", "speech", "sound" } }
-AP.EXTRA = { values = { icon = "Icon", progtex = "Progress texture", speech = "Speech", sound = "Sound" } }
+-- Every cue type the addon has (Xaya, 2026-11-06: "ALL cue types that are supported by the addon need to be included in this dropdown
+-- menu"): the cue kinds (Cues.lua ns.CUE_KINDS: sound, speech, text, texture, icon, custom) and the "+ New rule" types built on them
+-- (Progress Texture = a texture cue with fill; Progress Bar). Two are listed but not made, and say so: Progress bar (its display, the
+-- buff bars, is shelved: shelved/Bars.lua) and Custom (a custom cue does nothing yet: OutcomesEditor.lua, "not available yet").
+AP.CUES = { values = { icon = "Icon", progtex = "Progress texture", bar = "Progress bar (not yet)", texture = "Texture", text = "Text",
+                       speech = "Speech", sound = "Sound", custom = "Custom (not yet)" },
+            order = { "icon", "progtex", "bar", "texture", "text", "speech", "sound", "custom" } }
+AP.NOT_MADE = { bar = true, custom = true }
+AP.EXTRA = { values = { icon = "Icon", progtex = "Progress texture", texture = "Texture", text = "Text", speech = "Speech", sound = "Sound" },
+             order = { "icon", "progtex", "texture", "text", "speech", "sound" } }
 AP.COMBAT = { values = { any = "Any", yes = "In combat", no = "Out of combat" }, order = { "any", "yes", "no" } }
-AP.CUE_FOLDER = { icon = "Icons", progtex = "Progress Textures", bar = "Progress Bars", speech = "Speech", sound = "Sounds" }
+-- the group each main cue goes in (the Smart Categories names where there is one: Options.lua ns.SMART_CATS)
+AP.CUE_FOLDER = { icon = "Icons", progtex = "Progress Textures", texture = "Textures", text = "Text", speech = "Speech", sound = "Sounds" }
+local CUE_TYPE = { icon = "icon", progtex = "progresstex", texture = "texture", text = "text", speech = "speech", sound = "sound" }   -- ns.NewTypedCue
 
 local function Readable(v) return v ~= nil and not issecret(v) end
 local function SpellName(id)
@@ -283,11 +292,14 @@ local function SpeechText(c, trig)
     if trig == "missing" then return c.name .. " missing" end
     return c.name
 end
-local CUE_SUFFIX = { icon = " (icon)", progtex = " (progress texture)", speech = " (speech)", sound = " (sound)" }
--- one cue of a rule. A sound cue starts with the game's raid warning sound, the default the addon's seed rules use (Core.lua
--- ns.SeedRules), so it is heard before Xaya picks her own.
+local CUE_SUFFIX = { icon = " (icon)", progtex = " (progress texture)", texture = " (texture)", text = " (text)", speech = " (speech)", sound = " (sound)" }
+-- one cue of a rule, set up as "+ New rule" sets up that type (Options.lua ns.NewTypedCue), then for the spell: a speech cue says
+-- "<name> ready" / "<name> missing" / the name; a sound cue starts with the game's raid warning sound (the default of Core.lua
+-- ns.SeedRules) so it is heard before Xaya picks her own; a texture or progress texture starts with the spell's own icon as its art
+-- (as a file, so it still counts as a texture, not an icon); shown cues are laid out in rows of 8 from the screen's centre.
 local function AddCue(r, c, kind, trig, slot)
-    local cue = ns.NewCueRule and ns.NewCueRule(r, (kind == "progtex") and "icon" or kind)
+    if not ns.NewTypedCue then return nil end
+    local cue = ns.NewTypedCue(r, CUE_TYPE[kind] or "icon")
     if not cue then return nil end
     cue.name = c.name .. (CUE_SUFFIX[kind] or "")
     if kind == "speech" then
@@ -297,18 +309,14 @@ local function AddCue(r, c, kind, trig, slot)
         if kit then cue.sound.source, cue.sound.value = "kit", tostring(kit) end
     else
         local v = cue.visual
-        v.w, v.h = 48, 48
-        v.x, v.y = ((slot % 8) - 3.5) * 52, -120 - 52 * math.floor(slot / 8)
-        if kind == "progtex" then
-            if type(v.fill) ~= "table" then v.fill = { enabled = false, reverse = false, min = 0, max = 1 } end
-            v.fill.enabled = true
-        end
+        v.x, v.y = ((slot % 8) - 3.5) * 72, -120 - 72 * math.floor(slot / 8)
+        if (kind == "texture" or kind == "progtex") and c.icon then v.kind, v.tex = "file", tostring(c.icon) end
         pcall(ns.RefreshVisual, cue)
     end
     return cue
 end
 
--- Makes the ticked rows of a list. Returns made, skipped (already there), notMade (progress bar: not available yet), message.
+-- Makes the ticked rows of a list. Returns made, skipped (already there), notMade (progress bar / custom: not available yet), message.
 function AP.Make(view)
     view = view or AP.view
     if not view then return 0, 0, 0, "Press an Auto-populate button first." end
@@ -324,7 +332,7 @@ function AP.Make(view)
     local perSpec, specOrder = {}, {}
     for _, t in ipairs(todo) do
         local c, trig, cue = t.c, t.trig, t.cue
-        if cue == "bar" then
+        if AP.NOT_MADE[cue] then
             notMade = notMade + 1
         else
             classF = classF or TopFolder(className)
@@ -367,7 +375,7 @@ function AP.Make(view)
                 end
                 ns.rules[#ns.rules + 1] = r
                 local kinds = { cue }
-                for _, k in ipairs({ "icon", "progtex", "speech", "sound" }) do
+                for _, k in ipairs(AP.EXTRA.order) do
                     if t.xc and t.xc[k] and k ~= cue then kinds[#kinds + 1] = k end
                 end
                 for _, k in ipairs(kinds) do
@@ -389,7 +397,7 @@ function AP.Make(view)
     end
     local msg = ("Made %d rule(s)%s."):format(made, (#where > 0) and (" in " .. table.concat(where, ", ")) or "")
     if skipped > 0 then msg = msg .. (" %d already there with the same trigger were skipped."):format(skipped) end
-    if notMade > 0 then msg = msg .. (" %d ticked with \"Progress bar\" were not made: that display does not exist yet."):format(notMade) end
+    if notMade > 0 then msg = msg .. (" %d ticked with \"Progress bar\" or \"Custom\" were not made: those are not available yet."):format(notMade) end
     return made, skipped, notMade, msg
 end
 
@@ -428,7 +436,7 @@ function AP.Args(notify, keep)
             .. "Rules go into " .. Gold("Class > Spec > cue type") .. ", named after the spell. Auras and target debuffs come from your Cooldown "
             .. "Manager, which answers for the spec you are in now only; other specs list their cooldowns. In combat the game hides most auras: "
             .. "an aura or debuff rule works there only while it is in your Cooldown Manager (the rule's Display tab says when it is not). "
-            .. "Progress bar is not available yet." }
+            .. "Progress bar and Custom are not available yet." }
     if #rows == 0 then
         T.none = { type = "description", order = 1, width = "full", fontSize = "medium",
             name = "Nothing to list yet: play this spec once (its cooldown list is read from your spellbook), and add your auras and debuffs to the Cooldown Manager." }
@@ -476,7 +484,7 @@ function AP.Args(notify, keep)
                 set = function(_, v) AP.SetChoice(c, "trig", v); keep() end }
             T["r" .. i .. "cu"] = { type = "select", order = o + 0.0004, width = "relative", relWidth = W.cu, name = "", arg = CELL_DD,
                 values = AP.CUES.values, sorting = AP.CUES.order,
-                desc = "The rule's main cue, and the group it goes in. Progress bar is not available yet: a row ticked with it is not made.",
+                desc = "The rule's main cue, and the group it goes in. Progress bar and Custom are not available yet: a row ticked with one is not made.",
                 get = function() local _, _, cue = AP.Choice(c); return cue end,
                 set = function(_, v) AP.SetChoice(c, "cue", v); keep() end }
             T["r" .. i .. "cb"] = { type = "select", order = o + 0.0005, width = "relative", relWidth = W.cb, name = "", arg = CELL_DD,
@@ -486,7 +494,7 @@ function AP.Args(notify, keep)
                 set = function(_, v) AP.SetChoice(c, "combat", v); keep() end }
             if adv then
                 T["r" .. i .. "xc"] = { type = "multiselect", dialogControl = "Dropdown", order = o + 0.0006, width = "relative", relWidth = W.xc, name = "", arg = CELL_DD,
-                    values = AP.EXTRA.values,
+                    values = AP.EXTRA.values, sorting = AP.EXTRA.order,
                     desc = "More cues for this rule beside its main one (the main cue is not added twice).",
                     get = function(_, k) local _, _, _, _, xc = AP.Choice(c); return (xc and xc[k]) and true or false end,
                     set = function(_, k, v) AP.SetExtra(c, k, v); keep() end }

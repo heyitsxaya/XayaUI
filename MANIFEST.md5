@@ -2,12 +2,12 @@ a6b90f93be08b2134468e876fefd33d1  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-521e3812444d11dadb51afb7d1975f55  QA-CHECKLIST.md
+d73d1682bc3006d33c23a29e991c313e  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 af70051b991ea3877b4fb5f1a2002ba5  ROADMAP.md
 a6c8563ae6634980667f161e253e2470  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-b355e49718f59f77a7033cdab087eb6d  USER-GUIDE.md
+99aff00b4868d8683a800332085c3535  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 7bc5ab6899bc167c8fc5f3db72f3c9ff  XayaUI/AuraSound.lua
@@ -168,7 +168,7 @@ efec3fcde487dd92bc91fc15f730a5b2  XayaUI_Media/Update-UserMedia.py
 04f439ec9494222ba90b878bd119dd63  XayaUI_Media/UserMedia.lua
 2529f9852549e926a22e6f2f403678e0  XayaUI_Media/XayaUI_Media.toc
 7e817818685adac25b2bbe98ea028ce5  XayaUI_Options/AddonInfo.lua
-2bd20752e03f534536dafe068a3e790b  XayaUI_Options/AutoPicker.lua
+188f53f7f5f92236e5ac4d4b9a49b1de  XayaUI_Options/AutoPicker.lua
 37c8005a72a320488742e734838a1a8e  XayaUI_Options/DisplayTab.lua
 d6254cdbc4c4e62855c3d5ec727d3373  XayaUI_Options/Drafts.lua
 659930de4dfc6f25822d9a3575c1f350  XayaUI_Options/ImportWindow.lua
@@ -207,13 +207,13 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-b8cfb0f1c56fd5e5e6205f4f0f41ee80  XayaUI_Options/Options.lua
+5b7b641d15c694cb5e81330bd84eb353  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
 1c24bd3527cdc72dc795492251e9d2e8  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
-62524671f2b29787d5eb186a46b2925b  XayaUI_Options/XayaUI_Options.toc
+6025b5fbf4033207e2322d0981bd8a56  XayaUI_Options/XayaUI_Options.toc
 8897e9f93e07cb25c86ada18db710435  XayaUI_QoL/CharacterModel.lua
 e749a32e8be4a4be5939c561b27b5111  XayaUI_QoL/CharacterReskin.lua
 11a679ac1e6fc9faf3d91b274135fab9  XayaUI_QoL/CharacterToolkit.lua
@@ -478,6 +478,7 @@ cb6bc1c05e9d53be747ebd894280764b  debug-log/2026-11-05-2018-xaya-decisions-bars-
 dca56bc491930fdda05fb77349398fe2  debug-log/2026-11-05-2046-auto-populate-picker-options-0.6.42.md
 0c93fe0cae7e2e8d9c550a1497cd4331  debug-log/2026-11-05-2122-cooldown-manager-warnings-core-0.6.48-options-0.6.43.md
 22e8f4cc3b2e265dbebc8d539d9bb3cc  debug-log/2026-11-05-2157-auto-populate-table-options-0.6.44.md
+837bb26c655ad30d3de19734aaaf267f  debug-log/2026-11-06-0015-auto-populate-every-cue-type-options-0.6.45.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -550,7 +551,8 @@ f3dca8a8e18dd9682701196827a9cb2c  tests/art_rows_run.py
 b96c22f839c7166fa44cc33ca05b7b78  tests/aura_gaps_run.py
 80c84f1f7ef017e7f04a6c3be28a3910  tests/aura_sources_run.py
 f115df38e9fbc8e0ce989f9a4184ef18  tests/auras_cmd_run.py
-f9644aeeb89a1feb116cc9a78e01c8de  tests/auto_picker_run.py
+cd41168852a76aa85b2cc03661b171f0  tests/auto_picker_run.py
+697a867ceb6fff0caac70038cfe7ca3d  tests/auto_table_layout_run.py
 85b42e051f93867990bead97395d8ac3  tests/build_content_run.py
 a48d4b3a546f29c2dbd4fdfb8bc661c4  tests/build_set_auras_run.py
 65503283e0c12a3b57ecfe5ae496b507  tests/calculator_run.py

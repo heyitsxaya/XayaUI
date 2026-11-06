@@ -3546,6 +3546,27 @@ function ns.SmartAny(rule)
 end
 
 local picker = nil   -- { folder = id|nil } while the page is open
+-- The first set-up of a rule type's cue, shared by the "+ New rule" type list (CreateRuleOfType below) and the auto-populate table
+-- (AutoPicker.lua, Options 0.6.45): Icon -> icon cue (spell icon, 64 x 64, gray while on cooldown); Texture -> texture cue; Progress
+-- Texture -> texture cue with fill and overlay, base at 0.35; Text -> text cue (the duration text, no art); Sound / Speech -> that cue.
+-- One explicit cue kind per type. Returns the cue (nil when the rule holds the most cues it may) and its kind.
+ns.CUE_FOR_TYPE = { icon = "icon", text = "text", sound = "sound", speech = "speech", texture = "texture", progresstex = "texture" }
+function ns.NewTypedCue(r, typ)
+    local kind = ns.CUE_FOR_TYPE[typ] or "texture"
+    r.uid = r.uid or ns.NewUID()
+    local cue = ns.NewCueRule(r, kind)
+    if cue then
+        local v = cue.visual
+        if kind ~= "icon" and ns.Val(v.kind) == "spellicon" then v.kind = nil end   -- only an Icon row may start as a spell icon
+        if typ == "icon" then v.kind = "spellicon"; v.w, v.h = 64, 64; v.desatOnCD = true
+        elseif typ == "progresstex" then
+            v.fill.enabled = true
+            v.overlay.enabled = true      -- progress textures are two-layered by default: base (reduced opacity below) + overlay (full)
+            v.texAlpha = 0.35              -- reduced base opacity; ratio to Overlay opacity (1) is preserved while locked (see ProgLocked)
+        elseif typ == "text" then v.text.enabled = true; v.texAlpha = 0 end
+    end
+    return cue, kind
+end
 local function CreateRuleOfType(typ, fid)
     local r = ns.NewRule()
     r.name = ""   -- new rules are not auto-named: the sidebar row opens a name box for it instead
@@ -3557,22 +3578,9 @@ local function CreateRuleOfType(typ, fid)
     elseif typ then
         -- the chosen type becomes the rule's first cue (Cues tab), already set up for that type; the rule itself shows / plays nothing
         r.visual.enabled, r.sound.enabled = false, false
-        -- one explicit cue kind per picker row: Icon -> icon cue, Texture / Progress Texture -> texture cue, Text -> text cue, Sound -> sound cue
-        local CUE_FOR_TYPE = { icon = "icon", text = "text", sound = "sound", texture = "texture", progresstex = "texture" }
-        local kind = CUE_FOR_TYPE[typ] or "texture"
-        r.uid = r.uid or ns.NewUID()
-        local cue = ns.NewCueRule(r, kind)
+        -- one explicit cue kind per picker row (ns.NewTypedCue above, shared with the auto-populate table)
+        local cue, kind = ns.NewTypedCue(r, typ)
         if ns.Log then ns.Log("new rule: picker row '%s' -> cue kind '%s' (cue made: %s)", tostring(typ), kind, tostring(cue ~= nil)) end
-        if cue then
-            local v = cue.visual
-            if kind ~= "icon" and ns.Val(v.kind) == "spellicon" then v.kind = nil end   -- only an Icon row may start as a spell icon
-            if typ == "icon" then v.kind = "spellicon"; v.w, v.h = 64, 64; v.desatOnCD = true
-            elseif typ == "progresstex" then
-                v.fill.enabled = true
-                v.overlay.enabled = true      -- progress textures are two-layered by default: base (reduced opacity below) + overlay (full)
-                v.texAlpha = 0.35              -- reduced base opacity; ratio to Overlay opacity (1) is preserved while locked (see ProgLocked)
-            elseif typ == "text" then v.text.enabled = true; v.texAlpha = 0 end
-        end
     end
     ns.pendingRename = r
     if ns.DraftNew then ns.DraftNew(r) end   -- never saved yet: Save changes keeps it, closing the window first moves it to Drafts
