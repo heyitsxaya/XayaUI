@@ -15,7 +15,7 @@ local PIECES = {
     { key = "tabs",     label = "Tab row",              get = function() return C.TabsArea() end,  color = { 0.4, 0.8, 1 } },
     { key = "text",     label = "Chat text",            get = function() return C.TextArea() end,  color = { 0.5, 1, 0.5 } },
     { key = "input",    label = "Input line",           get = function() return C.InputArea() end, color = { 1, 0.85, 0.3 } },
-    { key = "bar",      label = "Chat Bar",             get = function() return C.Bar() end,       color = { 1, 0.5, 1 } },
+    { key = "bar",      label = "Chat Data Panel",      get = function() return C.Bar() end,       color = { 1, 0.5, 1 } },
     { key = "strip",    label = "Blizzard button strip", get = function() local cf = Cf(); return cf and C.ButtonFrameOf(cf) end, color = { 1, 0.5, 0.3 } },
     { key = "social",   label = "Social button",        get = function() return _G.QuickJoinToastButton end, color = { 1, 0.5, 0.3 } },
     { key = "scroll",   label = "Scroll bar",           get = function() local cf = Shown(); return cf and cf.ScrollBar end, color = { 1, 0.5, 0.3 } },

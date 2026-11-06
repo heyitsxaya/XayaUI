@@ -569,7 +569,7 @@ run("C.ToggleMover()")
 # ---- Locate ("show me where it is") -------------------------------------------------------------------------------------------
 run("C.Locate(nil, 5)")
 lab = run("local out={} for k,o in pairs(W.objects()) do if o._kind=='Frame' and o.label and o.label._text and o:IsShown() then out[#out+1]=o.label._text end end table.sort(out) return table.concat(out,'|')")
-check("Locate outlines every piece, labeling hidden ones", "Tab row" in str(lab) and "Chat Bar" in str(lab) and "Blizzard button strip (hidden)" in str(lab) and "Social button (hidden)" in str(lab), lab)
+check("Locate outlines every piece, labeling hidden ones", "Tab row" in str(lab) and "Chat Data Panel" in str(lab) and "Blizzard button strip (hidden)" in str(lab) and "Social button (hidden)" in str(lab), lab)
 W.now += 6; W.update(0.1, 2)
 lab2 = run("local out={} for k,o in pairs(W.objects()) do if o._kind=='Frame' and o.label and o.label._text and o:IsShown() then out[#out+1]=o.label._text end end return #out")
 check("outlines disappear after the time is up", int(lab2) == 0, lab2)

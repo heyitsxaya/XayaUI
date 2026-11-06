@@ -105,16 +105,26 @@ function C.Layout()
     if not (s and container) then return end
     local W, H = Clamp(s.width, MIN_W, MAX_W, 440), Clamp(s.height, MIN_H, MAX_H, 230)
     local barOn = s.barOn and true or false
-    local bh = barOn and Clamp(s.barH, 14, 60, 22) or 0
+    -- (Chat 0.6.23; REQUEST-LOG UI-10 / UI-28 / UI-29, Xaya 2026-11-06: the Chat Data Panel "assigned to the left or right-hand side",
+    -- her answers "Vertical strip beside chat", "snap to chat window height", "Slider 40-200, default 90") Left / Right: a strip as tall
+    -- as the chat window, s.barW wide (40-200, default 90), its blocks stacked top to bottom; the block grows by its width
+    local side = (s.barSide == "LEFT" or s.barSide == "RIGHT") and s.barSide or nil
+    local bh = barOn and (side and Clamp(s.barW, 40, 200, 90) or Clamp(s.barH, 14, 60, 22)) or 0
     local gap = barOn and Clamp(s.barGap, 0, 20, 2) or 0
     local below = (s.barSide ~= "TOP")
     if barOn then BuildBar() end
     container:ClearAllPoints()
     container:SetPoint(s.point or "BOTTOMLEFT", UIParent, s.point or "BOTTOMLEFT", tonumber(s.x) or 24, tonumber(s.y) or 90)
-    container:SetSize(W, H + bh + gap)
+    if side then container:SetSize(W + bh + gap, H) else container:SetSize(W, H + bh + gap) end
 
     pane:ClearAllPoints()
     if bar then bar:ClearAllPoints() end
+    if side then
+        local near, far = (side == "LEFT") and "LEFT" or "RIGHT", (side == "LEFT") and "RIGHT" or "LEFT"
+        pane:SetPoint("TOP" .. far, container, "TOP" .. far, 0, 0); pane:SetPoint("BOTTOM" .. far, container, "BOTTOM" .. far, 0, 0)
+        pane:SetWidth(W)
+        if bar then bar:SetPoint("TOP" .. near, container, "TOP" .. near, 0, 0); bar:SetPoint("BOTTOM" .. near, container, "BOTTOM" .. near, 0, 0) end
+    else
     -- (Chat 0.6.22; REQUEST-LOG UI-20, Xaya 2026-11-06: "pressing the collapse button should collapse the chat data bar down, not pull
     -- the chat up to it") collapsed, a bar placed above the chat drops to the block's bottom edge (where the chat's bottom was); the
     -- block's place on screen does not change
@@ -125,9 +135,10 @@ function C.Layout()
         pane:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0); pane:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0)
         if bar then bar:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0); bar:SetPoint("TOPRIGHT", container, "TOPRIGHT", 0, 0) end
     end
+    end
     pane:SetHeight(H)
     if bar then
-        bar:SetHeight(math.max(1, bh))
+        if side then bar:SetWidth(math.max(1, bh)) else bar:SetHeight(math.max(1, bh)) end
         bar:SetShown(barOn)
     end
 
@@ -149,7 +160,8 @@ function C.Layout()
     -- the arrow: first thing in the bar; with the bar off it hangs under the pane's corner (the pane is invisible while collapsed)
     BuildArrow()
     arrow:ClearAllPoints()
-    if barOn then arrow:SetPoint("LEFT", bar, "LEFT", 0, 0)
+    if barOn and side then arrow:SetPoint("TOP", bar, "TOP", 0, 0)   -- (Chat 0.6.23) a strip beside the chat: the arrow on top of it
+    elseif barOn then arrow:SetPoint("LEFT", bar, "LEFT", 0, 0)
     else arrow:SetPoint("TOPLEFT", container, "BOTTOMLEFT", 0, -2) end
     arrow:SetShown(true)
     local collapsed = s.collapsed and true or false
@@ -522,9 +534,10 @@ local function BuildMover()
         cx, cy = cx / sc, cy / sc
         local l, b = container:GetLeft(), container:GetBottom()
         if type(l) ~= "number" then return end
-        local extra = s.barOn and (Clamp(s.barH, 14, 60, 22) + Clamp(s.barGap, 0, 20, 2)) or 0
-        s.width = math.floor(Clamp(cx - l, MIN_W, MAX_W, s.width) + 0.5)
-        s.height = math.floor(Clamp(cy - b - extra, MIN_H, MAX_H, s.height) + 0.5)
+        local vside = s.barOn and (s.barSide == "LEFT" or s.barSide == "RIGHT")
+        local extra = s.barOn and ((vside and Clamp(s.barW, 40, 200, 90) or Clamp(s.barH, 14, 60, 22)) + Clamp(s.barGap, 0, 20, 2)) or 0
+        s.width = math.floor(Clamp(cx - l - (vside and extra or 0), MIN_W, MAX_W, s.width) + 0.5)
+        s.height = math.floor(Clamp(cy - b - (vside and 0 or extra), MIN_H, MAX_H, s.height) + 0.5)
         C.Layout()
     end)
     mover.grip = grip
