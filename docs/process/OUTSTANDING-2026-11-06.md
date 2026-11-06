@@ -111,8 +111,8 @@ These rows still read open or BRANCH, but `main` already carries the work. Not e
 - S3 log R61, R62, R64 (C8, C9, C10, C12), R66 read BRANCH: landed on `main` at d2ccacd (QoL 0.7.32). Its header still says `main` = `0ef9cb0`.
 - GitHub: 258 open issues; many describe work since landed (for example #380, #378, #381, #273, #351). They were not re-checked one by one. A triage pass is its own task.
 
-## 7. Handed over by retired chats (received 2026-11-06 17:06-17:08 UTC)
-Six chats sent their outstanding items here at Xaya's request. Each claim below was checked against `main` `22abdeb` where marked "checked"; the rest is the sending session's word.
+## 7. Handed over by retired chats (received 2026-11-06 17:06-17:09 UTC)
+Seven chats sent their outstanding items here at Xaya's request. Each claim below was checked against `main` `22abdeb` where marked "checked"; the rest is the sending session's word.
 
 | From | Item | Status here |
 |---|---|---|
@@ -127,7 +127,11 @@ Six chats sent their outstanding items here at Xaya's request. Each claim below 
 | same | TIPS-3 (IDs shown three times; another addon), TIPS-1 (next tooltip work a-d), TIPS-23 (.gitignore goal) | Already in section 1. |
 | same | TIPS-10/12 spell database: pipeline on `main` (`/xuiformula`, `tools/formula_fit.py --emit`); no capture run | Waits on her: the walkthrough (about 5 min per spec / talent setup) and the SavedVariables file. |
 | same | Formula lines (Bonus 0.6.2) not checked in game; Windows installer `tools/qa-installer/Link-XayaUI.bat` never run; her `Install-XayaUI.ps1` failure cause not found | In-game / on-her-PC checks (section 2). |
-| same | Harness has no C_Texture stand-in | **Moot**: the Options code checks `C_Texture` before use (`XayaUI_Options/Options.lua:5240-5241`, checked); the 11-04 harness failure was fixed that way. |
+| "Whispers tabs and UI overlap bugs" (014bN6tUJ5JTttjgNR2yaUnU) | QA D4k: chat scroll pieces on every tab, back-to-newest arrow, tab list above the privacy button (Chat 0.6.12, on `main`) | In-game check for her. |
+| same | WHISP-1 / QA D4l whisper tabs: root cause still open (the tab is the game's own, `FCF_OpenTemporaryWindow`) | In-game for her (section 2), exact steps: New Whispers = New Tab, `/reload`, `/console scriptErrors 1`, get a whisper, then the full `/xui chat whispers` output and any Lua error. Since Chat 0.6.14 its counters run only while the Chat Panel is on. No fix before that output. |
+| same | Branch `claude/clever-noether-0o0uuj` fully merged (head f3df397) | Her action: delete it on GitHub (the session proxy refuses deletions). |
+| same | Harness note: the API doc files have no trailing newline | **Done here**: added to SESSION-START-SUMMARY.md section 6, step 2. |
+| "Advanced tooltips" | Harness has no C_Texture stand-in | **Moot**: the Options code checks `C_Texture` before use (`XayaUI_Options/Options.lua:5240-5241`, checked); the 11-04 harness failure was fixed that way. |
 
 ---
 

@@ -306,7 +306,9 @@ Proposed order (not a commitment): ROADMAP section 12.
   1. `git init`, `git remote add origin https://github.com/Gethe/wow-ui-source.git`, `git fetch --depth=30 --filter=blob:none origin live`,
      `git checkout d07eb00` ("12.1.5 (70688)", the build of Drive's `WOW-API-FULL-12.1.5.70688-*`; `297d7aa` is 70783).
   2. Concatenate `Interface/AddOns/Blizzard_APIDocumentationGenerated/*.lua` (sorted) into one `WOW-API-FULL-<anything>.txt` in its
-     own folder, with a line `-- ===== FILE: <file name>` before each file.
+     own folder, with a line `-- ===== FILE: <file name>` before each file. The source files have no trailing newline: add one after
+     each file, or each header is glued to the previous file's last line and step 3 reports 1 file / 1 unparsed (found by session
+     014bN6tUJ5JTttjgNR2yaUnU).
   3. `python3 tests/harness/build_api_index.py <that folder> tests/harness/api_index.json` (expect 622 files, 0 unparsed) and
      `python3 tests/harness/build_framexml_index.py <checkout> tests/harness/framexml_index.json` (18235 names, 232 deprecated-only).
   A full suite run then takes about 26 minutes; run it in the background on a snapshot worktree of the exact commit.
