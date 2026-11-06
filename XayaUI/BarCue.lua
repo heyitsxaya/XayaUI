@@ -528,42 +528,16 @@ function ns.BarBlizzardAtlases()
     end
     return out
 end
--- XayaUI's own bar art (Xaya S8-12 "Add XayaUI's own bar art"): the "[Bar Fills]" pictures of LocalGraphics.lua whose name says they
--- are a fill ("..._Fill", "...-fill", "...BarHorizontal"); sparks, frames, backgrounds and flashes are not bar fills. These files are
--- listed from XayaUI\Media\Graphics on Xaya's install; the repository does not hold them (issue #333), so on another install they draw
--- nothing until they are added.
-function ns.BarXayaFills()
-    local out = {}
-    for _, g in ipairs(ns.LocalGraphics or {}) do
-        local label, path = g[1], g[2]
-        if type(label) == "string" and type(path) == "string" then
-            local nm = label:match("^%[Bar Fills%]%s*(.+)$")
-            local l = nm and nm:lower()
-            if l and (l:find("_fill$") or l:find("%-fill$") or l:find("barhorizontal$")) then out[#out + 1] = { nm, path } end
-        end
-    end
-    return out
-end
--- XayaUI's bar fills offered to every addon that reads LibSharedMedia "statusbar" (S8-12), as "XayaUI <name>". Once per session.
-local lsmDone
-function ns.BarRegisterLSM()
-    if lsmDone then return 0 end
-    local lsm = LibStub and LibStub("LibSharedMedia-3.0", true)
-    if not lsm then return 0 end
-    lsmDone = true
-    local n = 0
-    for _, e in ipairs(ns.BarXayaFills()) do
-        if pcall(lsm.Register, lsm, "statusbar", "XayaUI " .. e[1], e[2]) then n = n + 1 end
-    end
-    return n
-end
-if ns.AtLogin then ns.AtLogin(function() pcall(ns.BarRegisterLSM) end) end
+-- SCAFFOLD, NOT LIVE (ROADMAP RM-BARFILLS; Xaya 2026-11-06, REQUEST-LOG S8-13: "if these are the addon's own options, these should be
+-- treated as a roadmap feature that require their own design solves -- punt them out for now and just leave a scaffold note that it
+-- will be live later"). XayaUI's own bar-fill textures (the "[Bar Fills]" pictures LocalGraphics.lua lists from XayaUI\Media\Graphics,
+-- not in the public download: issue #333) are planned as "XayaUI: <name>" entries in the Bar texture list, possibly shared with other
+-- addons through LibSharedMedia "statusbar". Open design questions are in the ROADMAP row. Nothing of it runs or is listed today.
 
 local function Norm(p) return type(p) == "string" and p:gsub("/", "\\"):lower() or tostring(p) end
--- The Bar texture list: XayaUI's three (Flat, Blizzard, Raid frame), the game's power-bar art, XayaUI's bar fills, every
--- LibSharedMedia status-bar texture, your own file. A texture already listed (same file) is listed once (Xaya S8-12 "Fix
--- duplicates": LibSharedMedia's own defaults are the same game files as Flat / Blizzard / Raid frame, and XayaUI's fills are
--- registered there too).
+-- The Bar texture list: XayaUI's three (Flat, Blizzard, Raid frame), the game's power-bar art, every LibSharedMedia status-bar
+-- texture, your own file. A texture already listed (same file) is listed once (Xaya S8-12 "Fix duplicates": LibSharedMedia's own
+-- defaults are the same game files as Flat / Blizzard / Raid frame). XayaUI's own bar fills: not yet (scaffold note above).
 function ns.BarTextureList()
     local values, order, seen = {}, {}, {}
     local function add(key, label, path)
@@ -576,7 +550,6 @@ function ns.BarTextureList()
     end
     for _, k in ipairs(BUILTIN_ORDER) do add(k, BUILTIN_TEX[k][1], BUILTIN_TEX[k][2]) end
     for _, e in ipairs(ns.BarBlizzardAtlases()) do add("atlas:" .. e[2], "Blizzard power: " .. e[1], "atlas:" .. e[2]) end
-    for _, e in ipairs(ns.BarXayaFills()) do add("gfx:" .. e[2], "XayaUI: " .. e[1], e[2]) end
     local lsm = LibStub and LibStub("LibSharedMedia-3.0", true)
     if lsm then
         local names = {}
@@ -601,8 +574,6 @@ function ns.BarTexturePath(b)
     if type(key) == "string" then
         local atlas = key:match("^atlas:(.+)$")
         if atlas then return atlas end   -- (SetStatusBarTexture takes an atlas name, as Blizzard's own unit frames call it)
-        local gfx = key:match("^gfx:(.+)$")
-        if gfx then return gfx end
     end
     local n = type(key) == "string" and key:match("^lsm:(.+)$")
     local lsm = n and LibStub and LibStub("LibSharedMedia-3.0", true)

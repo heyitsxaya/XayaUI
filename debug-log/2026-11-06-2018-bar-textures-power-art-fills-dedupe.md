@@ -39,3 +39,11 @@ Logged 2026-11-06 20:18 UTC. Session 014bN6tX7AoZQrGX246YSXjC, branch `claude/dr
 ## Not verified
 - In game: that SetStatusBarTexture with these atlas names draws them stretched as a bar fill in our StatusBar (Blizzard's own unit
   frames do exactly this, so INFERENCE: yes); which XayaUI fill files exist on her install.
+
+## Update 2026-11-06 20:47 UTC: XayaUI's own fills taken out (REQUEST-LOG S8-13)
+Xaya (question box), on sharing the fills: "if these are the addon's own options, these should be treated as a roadmap feature that
+require their own design solves -- punt them out for now and just leave a scaffold note that it will be live later". So:
+`ns.BarXayaFills`, `ns.BarRegisterLSM` and its login hook, the "gfx:" list entries and texture keys are removed; `BarCue.lua` keeps a
+"SCAFFOLD, NOT LIVE" note; ROADMAP RM-BARFILLS holds the design questions. Decision 3 above is moot. The duplicate fix and the game's
+power-bar art stay. `tests/bar_cue_run.py`: 98 checks, 0 failed; its two new checks ("not live": nothing registered, no "XayaUI:"
+entry) fail on 9758ee0's BarCue.lua.

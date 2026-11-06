@@ -2637,7 +2637,7 @@ local function BuildRule(i, rule)
             dir = Sel(B, "dir", "Drains toward", 3.1, DIR, DIR_ORDER, bon, { width = "double" }),
             reverse = Tog(B, "reverse", "Fill up instead of draining", 3.2, bon, { width = "double", desc = "Time bars only. A stacks / charges bar always fills by the count." }),
             texture = { type = "select", name = "Bar texture", order = 3.3, width = "double",
-                desc = "Flat, Blizzard and Raid frame; the game's own power-bar art (Blizzard power: ...); XayaUI's bar fills (XayaUI: ...); every status-bar texture other addons share through LibSharedMedia; or your own file. A texture is listed once. Power-bar art and XayaUI's fills are already coloured: the bar colour tints them (Colour = Fixed, white, shows them as drawn).",
+                desc = "Flat, Blizzard and Raid frame; the game's own power-bar art (Blizzard power: ...); every status-bar texture other addons share through LibSharedMedia; or your own file. A texture is listed once. Power-bar art is already coloured: the bar colour tints it (Colour = Fixed, white, shows it as drawn).",
                 values = function() local vv = ns.BarTextureList(); return vv end,
                 sorting = function() local _, o = ns.BarTextureList(); return o end,
                 get = function() return B.texture or "flat" end, set = function(_, x) B.texture = x; bon() end },
