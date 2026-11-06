@@ -167,3 +167,20 @@ Your sentence: "this _____ requires blizzard's cooldown manager to track it befo
 - B3: "Blizzard's Cooldown Manager does not offer in-combat tracking for this aura for your current spec. Rule might not work reliably."
   Note: "(EUI allows you to add extra things to track via custom aura bars -- we can figure out workarounds like overlaying textures on
   them and setting the actual bars to zero, ex)".
+- B4: explore the EUI-style workaround (custom aura bars, textures overlaid, bars set to zero): a proposal first.
+- C1: "determine performance cost first".
+- D1: "customized" -> "force user choice like with other cue customizations".
+- D2: "a spell as not known currently due to talents must have the load condition talent known baked in. this is true for all
+  talent-dependent or -modified abilities".
+- D3: "allow for the option of speech channel override but otherwise allow sounds to be set to their own channel (generally SFX)";
+  told speech cannot take a channel: no speech override (no emulation); sound cues get their own channel, SFX by default.
+- D4: 50 ms not acceptable -> part of #309 routing.
+- D5: "unknown, push to progress bar cues session".
+- D7: "1 unless 2 has more performance cost" (engine skips disabled rules; no frame; Disabled tab still lists them).
+- D8: hide as a ghost; load "configurable, by default raid only"; look: "black box over the "release" button that says "NO RELEASE"
+  (customizable); also allow cycling through flavor texts (configurable) "BAD MONKEY," "death comes for us all," "NOPE," "Disagree,"
+  "WTB Rez"".
+- D6: #268 separate points; #61 lasting anchor (as built); #343 rule rows in the sidebar; arrow-key nudges yes; moves held until Save.
+- #334 files: both (quieter copies + slider moved to Settings).
+- #278 item 2: "requires further testing in game -- refer to EUI codebase to see how you can manually add buff tracking through his
+  cooldown manager".
