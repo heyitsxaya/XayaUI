@@ -14,6 +14,7 @@
 --   ns.RegisterCommand(names, fn, help)       /xui <name> [args]; names is one string or a list; several handlers may share a name
 --   ns.RegisterLauncher(entry)                a row in the minimap button's quick-access list
 --   ns.RegisterSettingsPage(module, key, fn)  a page in the settings window; fn(Notify) returns an AceConfig group
+--   ns.RegisterReskin(key, apply)             a reskin of the Blizzard UI Reskin tab; apply() takes the tab's switch (core 0.6.51)
 --   ns.MODULES                                which addon owns which /xui commands, so core can say why one does nothing
 -- Every registered function is called through pcall: one feature's error never stops the next one from starting.
 -- Own code. UNTESTED in game.
@@ -210,6 +211,25 @@ function ns.RegisterSettingsPage(module, key, build)
         if p.key == key then pages[i] = { module = module, key = key, build = build }; return end
     end
     pages[#pages + 1] = { module = module, key = key, build = build }
+end
+
+-- The Blizzard UI Reskin tab's own switch (core 0.6.51, S1 #48; Xaya 2026-11-05: "double: both enable/disable of reskin at all; then individual
+-- toggles for individual reskins"). Off turns every reskin off (Chat Panel, Character Pane, Esc Menu, Shopping List) and each keeps its
+-- own switch for when the tab is on again. Saved only while off (CueRulesDB.reskinTabOff = true), so a profile that never touched it
+-- holds nothing. Every reskin reads it with its own switch: on = its own switch AND this one.
+function ns.ReskinTabOn() return not (type(CueRulesDB) == "table" and CueRulesDB.reskinTabOff) end
+-- Each reskin registers its own apply (it builds, or gives Blizzard's look back) with ns.RegisterReskin(key, fn), the way features
+-- register everything else here; core only walks the list. A reskin whose addon is off is simply not in it.
+local reskins = {}
+function ns.RegisterReskin(key, apply) if type(key) == "string" and type(apply) == "function" then reskins[key] = apply end end
+-- Set it and let every registered reskin take it at once (in key order, each through pcall).
+function ns.SetReskinTab(on)
+    if type(CueRulesDB) ~= "table" then return end
+    CueRulesDB.reskinTabOff = (not on) and true or nil
+    local keys = {}
+    for k in pairs(reskins) do keys[#keys + 1] = k end
+    table.sort(keys)
+    for _, k in ipairs(keys) do Call(reskins[k]) end
 end
 
 -- Page layout for every feature tab (Xaya, 2026-11-03; QoL and Chat first, the rule for new features):

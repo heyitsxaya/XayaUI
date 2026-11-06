@@ -197,6 +197,11 @@ check("wrap: the count is saved", fG.cWrapN == 9)
 fG.cGrowth = "DOWN"
 check("wrap: growing down it reads 'Wrap into columns' / 'Items per column' / 'New columns go'", CG.wrapOn.name() == "Wrap into columns" and CG.wrapN.name() == "Items per column" and CG.wrapDir.name() == "New columns go")
 CG.wrapOn.set(nil, false)
+-- (Options 0.6.50; Xaya 2026-11-04: "a sort order option for rules in a dynamic group: default, expiration, name, important, manual")
+check("sort: the dynamic group's Sort lists her five in her order, with her words (Default, Expiration, Name, Important, Manual)",
+  CG.sort and table.concat(CG.sort.sorting, ",") == "default,expiration,name,important,manual"
+  and CG.sort.values.default == "Default" and CG.sort.values.expiration == "Expiration" and CG.sort.values.name == "Name"
+  and CG.sort.values.important == "Important" and CG.sort.values.manual == "Manual")
 check("wrap: unticking removes the wrap", fG.cWrapN == nil and CG.wrapN.hidden() == true)
 check("layout dropdowns no longer take a whole row each (no 'double' width)", CG.growth.width == nil and CG.sort.width == nil and CG.wrapDir.width == nil)
 -- Rules sub-tabs (Xaya, 0.6.4): Smart Categories | Enabled | Disabled | Drafts, Enabled opens by default, the last one is remembered

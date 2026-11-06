@@ -3,7 +3,7 @@
 Xaya, 2026-11-05: "XUI Console does nothing and has no input options" (screenshot: an empty console window, four buttons, nothing to
 type in), and of the /xui help list: "can't some of these be consolidated into a /xui debug _____ ? this is a LOT of noise" (29 lines).
 What the player sees, checked here with the real addons in the stand-in game:
-  1. /xui help lists the player's commands (16 lines): /xui debug, and the two shortcuts /xui status and /xui auras (Xaya 2026-11-06),
+  1. /xui help lists the player's commands (17 lines with the Shopping List's /xui shop): /xui debug, and the two shortcuts /xui status and /xui auras (Xaya 2026-11-06),
      no other diagnostic command; pipes in it are doubled ("||", shown as "|"; she chose "Back to '|'" over "[on/off]").
   2. /xui debug lists every diagnostic command as "/xui debug <name>"; each listed name runs; an unknown one says so and lists them;
      the loader check is /xui debug loader (was window: "Rename it" -> "/xui debug loader").
@@ -51,7 +51,9 @@ for i = 2, #help do
   if p:gsub("||", ""):find("|", 1, true) then pipe = p end
 end
 check("help: a header with the count, then that many lines", help[1] == ("commands (%d):"):format(#help - 1), help[1])
-check("help: 16 lines (it was 29)", #help - 1 == 16, #help - 1)
+-- (QoL 0.7.32 adds the Shopping List's /xui shop, a player command: 16 + 1)
+check("help: 17 lines (it was 29; 16 plus the Shopping List's /xui shop)", #help - 1 == 17, #help - 1)
+check("help: /xui shop is listed", (function() for _, c in ipairs(cmds) do if c == "/xui shop" then return true end end end)() == true, table.concat(cmds, " "))
 local diag = { "status", "probe", "debuffs", "perf", "timing", "seed", "talents", "model", "tracker", "loc", "media", "gamemenu",
   "auras", "chatprobe", "mods", "groups", "icons" }
 local SHORT = { status = true, auras = true }
