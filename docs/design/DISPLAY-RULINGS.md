@@ -202,6 +202,8 @@ Conventions:
 | 10.9 | Q-box C8 (Professions restyle): "For now colors only but build with the awareness the whole tracking container will be treated with restyling soon" | S3 R64 | |
 | 10.10 | Lock / mover colours: see 4.4 | E52 | |
 | 10.11 | "all cursor trail based themes should have gradient borders that reflect the cursor gradient. this gradient should be reversible in direction."; "more color variety should also be included across the themes to encompass more of the original gradient" | NB-9, NB-10 | OPEN / CONFIRM (not rules yet: section 18) |
+| 10.12 | "Note theme has to tie into the skin.lua in some way" | LOG UI-49 | read as: the settings window's look (colours, font, text size) comes from the theme; the session's reading |
+| 10.13 | Q-box, tab colours: "Advanced customization opens up them and more as options, but by default they are not offered" | LOG UI-50 | "and more" read as the class overrides (INFERENCE) |
 
 ## 11. Fonts and text sizes
 
@@ -214,6 +216,7 @@ Conventions:
 | 11.5 | "Stat calculator default width can be increased to cleanly fit all columns with default selected user font up to 450px" | XC CHAT-4 | |
 | 11.6 | "character pane text should be configurable within a narrow range to improve llegibility" | NB-13 | roadmap (next week) |
 | 11.7 | "console print is difficult to read" | LOG #12 | fix (one command per line) was the session's (interpretation) |
+| 11.8 | Q-box, tab sizes and the theme's text size: "Scale with theme (Recommended)" (her sizes are Medium; Small / Large scale tab text and height alike) | LOG UI-50 | |
 
 ## 12. Page structure (feature / parts / sections; what goes where)
 

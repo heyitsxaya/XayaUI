@@ -307,6 +307,12 @@ function ns.OptionsApi.NoteNameL(button)
 end
 -- an unticked feature's row (or a part of one) shows its name in grey
 ns.OptionsApi.GREY = ns.Style.grey   -- (core ns.Style, UI-47)
+-- (Options 0.6.60; UI-49 "theme has to tie into the skin.lua in some way") the grey is the theme's Muted text colour ("Hints and
+-- disabled items"); ns.Style.grey only when the theme is missing
+function ns.OptionsApi.Muted()
+    local TH = ns.Theme
+    return (TH and TH.Col) and TH.Col("xui-text-muted", "text", ns.OptionsApi.GREY) or ns.OptionsApi.GREY
+end
 function ns.OptionsApi.RowOff(button)
     local tree, user = ns.OptionsApi.FeatureRow(button)
     if not tree then return false end
@@ -331,7 +337,7 @@ function ns.OptionsApi.GreyRow(button)
     if not (fs and ns.OptionsApi.RowOff(button)) then return end
     local t = fs:GetText()
     if type(t) == "string" and t:find("|c", 1, true) then fs:SetText((t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))) end
-    local c = ns.OptionsApi.GREY
+    local c = ns.OptionsApi.Muted()
     fs:SetTextColor(c[1], c[2], c[3])
 end
 
@@ -6787,7 +6793,9 @@ function Tree.SwitchTip(box)
     GameTooltip:SetText(tostring(val(g and g.name) or val(sw.name) or ""))
     local t = Tree.OneSentence(sw, info)
     if t ~= "" then GameTooltip:AddLine(t, 1, 1, 1, true) end
-    if on then GameTooltip:AddLine("Enabled", 0.3, 1, 0.3) else GameTooltip:AddLine("Disabled", 0.6, 0.6, 0.6) end
+    -- the status in theme colours (UI-49): Enabled in the theme's body text, Disabled in its muted text
+    local c = on and ((ns.Theme and ns.Theme.Col) and ns.Theme.Col("xui-text", "text", { 1, 1, 1, 1 }) or { 1, 1, 1, 1 }) or ns.OptionsApi.Muted()
+    GameTooltip:AddLine(on and "Enabled" or "Disabled", c[1], c[2], c[3])
     GameTooltip:Show()
 end
 -- Called by DecorateButton for every row (toggleCfg: the row already has a ROW_TOGGLES box; x0: where the row's arrow slot starts;

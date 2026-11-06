@@ -112,7 +112,7 @@ function ns.SkinPlainButton(b, primary)
         HideRegions(b, nil)
         local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(0) end
         local fs = b:GetFontString(); if fs then fs:ClearAllPoints(); fs:SetPoint("CENTER") end
-        b:HookScript("OnEnter", function(self) local f = self:GetFontString(); if f and self.xuiFlatBtn then f:SetTextColor(1, 1, 1) end end)
+        b:HookScript("OnEnter", function(self) local f = self:GetFontString(); if f and self.xuiFlatBtn then local c = TC("xui-list-selected", "text", { 1, 1, 1, 1 }); f:SetTextColor(c[1], c[2], c[3]) end end)
         b:HookScript("OnLeave", function(self)
             local f = self:GetFontString()
             if f and self.xuiFlatBtn then local c = self.xuiBtnText or GOLD; f:SetTextColor(c[1], c[2], c[3]) end
@@ -447,6 +447,11 @@ end
 -- its name in the theme's font at SIZE pt with an outline (a font object per tab, so a hover or a click, which re-applies the button's
 -- font objects, keeps it); the box below starts under the row. Restored on release (SkinTabGroup's OnRelease, w.xuiTopRow).
 local function LayTabRow(w, slots, H, SIZE)
+    -- (Options 0.6.60; REQUEST-LOG UI-50, her answer "Scale with theme": her sizes are the theme's Medium text size; Small / Large
+    -- scale the tab's height and its name by the same factor, Theme.Scale(): 0.88 / 1 / 1.15)
+    local sc = (TH and TH.Scale and TH.Scale()) or 1
+    H = math.floor(H * sc + 0.5)
+    SIZE = math.floor(SIZE * sc * 10 + 0.5) / 10
     local hastitle = w.titletext and w.titletext:GetText() and w.titletext:GetText() ~= ""
     local top = hastitle and 14 or 7
     for _, sl in ipairs(slots) do
@@ -460,7 +465,11 @@ local function LayTabRow(w, slots, H, SIZE)
         if fs then
             if fs.SetWidth then fs:SetWidth(math.max(1, each - 8)) end
             fs:ClearAllPoints(); fs:SetPoint("CENTER", tab, "CENTER", 0, 0)
-            local path = fs:GetFont()
+            -- (Options 0.6.60; UI-49 "theme has to tie into the skin.lua") the theme's font when one is set (Theme > Font), else the font
+            -- the tab already has; a theme font file that will not load (new fonts need a game restart) falls back the same way
+            local path = TH and TH.FontPath and TH.FontPath()
+            if path then local ok, res = pcall(fs.SetFont, fs, path, SIZE, "OUTLINE"); if not ok or res == false then path = nil end end
+            path = path or fs:GetFont()
             local c = TC(tab.selected and "xui-tab-selected" or "xui-tab", "text", GOLD)
             local fo = tab.xuiTopFont
             if not fo then fo = CreateFont((tab:GetName() or "XayaUITopTab") .. "XuiTopFont"); tab.xuiTopFont = fo end
@@ -498,7 +507,8 @@ local function CompactRulesTabs(w)
     local sw = (fs and fs.GetStringWidth and fs:GetStringWidth()) or 120
     local cur
     if fs then cur = select(2, fs:GetFont()) end
-    local cw = math.ceil(sw * SUB_TAB_FONT / math.max(1, tonumber(cur) or SUB_TAB_FONT)) + 24
+    local tf = SUB_TAB_FONT * ((TH and TH.Scale and TH.Scale()) or 1)   -- (UI-50: the name's size at the theme's text size)
+    local cw = math.ceil(sw * tf / math.max(1, tonumber(cur) or tf)) + 24
     cw = math.min(cw, math.floor(width / 3))
     local each = (#others > 0) and ((width - cw - SUB_GAP) / #others) or 0
     local slots = {}
@@ -741,7 +751,7 @@ local function EnsureTreeSearch(w)
                     HideRegions(b, nil)
                     local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(0) end
                     local fs = b:GetFontString(); if fs then fs:ClearAllPoints(); fs:SetPoint("CENTER") end
-                    b:HookScript("OnEnter", function(self) local f = self:GetFontString(); if f then f:SetTextColor(1, 1, 1) end end)
+                    b:HookScript("OnEnter", function(self) local f = self:GetFontString(); if f then local c = HoverCol(); f:SetTextColor(c[1], c[2], c[3]) end end)
                     b:HookScript("OnLeave", function(self) local f = self:GetFontString(); if f then f:SetTextColor(GOLD[1], GOLD[2], GOLD[3]) end end)
                 end
                 local cl = (key == "del") and "xui-button-primary" or "xui-button"
@@ -985,7 +995,7 @@ local function SkinTree(w)
         local ht = b:GetHighlightTexture()
         if ht then
             if not b.xuiHT then b.xuiHT = { ht:GetTexture(), { ht:GetVertexColor() }, ht:GetBlendMode() } end
-            ht:SetTexture(WHITE8); ht:SetVertexColor(0.75, 0.25, 1, 0.35); ht:SetBlendMode("BLEND")
+            ht:SetTexture(WHITE8); do local c = TC("xui-list-selected", "bg", { 0.75, 0.25, 1, 1 }); ht:SetVertexColor(c[1], c[2], c[3], 0.35) end; ht:SetBlendMode("BLEND")
             -- AceGUI's highlight texture is both the mouse-over and the "selected" bar: neither is wanted (the selected row gets
             -- its own gradient or text color from Options.lua)
             ht:SetAlpha(0)
@@ -1038,11 +1048,11 @@ local function MakeAction(f, key)
             b.xuiCopyLines = {}
             local function square(x, y, sz, fill)
                 if fill then
-                    local f0 = b:CreateTexture(nil, "ARTWORK", nil, 1); f0:SetColorTexture(0.06, 0.06, 0.06, 1)
+                    local f0 = b:CreateTexture(nil, "ARTWORK", nil, 1); do local c = TC("xui-window", "bg", { 0.06, 0.06, 0.06, 1 }); f0:SetColorTexture(c[1], c[2], c[3], 1) end
                     f0:SetPoint("TOPLEFT", b, "CENTER", x, y); f0:SetSize(sz, sz)
                 end
                 local function line(px, py, w, h)
-                    local t = b:CreateTexture(nil, "ARTWORK", nil, 2); t:SetColorTexture(1, 0.82, 0, 1)
+                    local t = b:CreateTexture(nil, "ARTWORK", nil, 2); do local c = TC("xui-button", "text", GOLD); t:SetColorTexture(c[1], c[2], c[3], 1) end
                     t:SetPoint("TOPLEFT", b, "CENTER", px, py); t:SetSize(w, h)
                     b.xuiCopyLines[#b.xuiCopyLines + 1] = t
                 end
@@ -1103,10 +1113,10 @@ local function PaintNameEdit(w, arg)
         eb:SetFontObject(GameFontHighlight)
         eb.bg = eb:CreateTexture(nil, "BACKGROUND"); eb.bg:SetAllPoints(); eb.bg:SetColorTexture(0, 0, 0, 0)
         eb.line = eb:CreateTexture(nil, "ARTWORK"); eb.line:SetPoint("BOTTOMLEFT"); eb.line:SetPoint("BOTTOMRIGHT"); eb.line:SetHeight(1)
-        eb.line:SetColorTexture(0.35, 0.35, 0.35, 0.8)
-        eb:SetScript("OnEnter", function(self) self.bg:SetColorTexture(0.1, 0.1, 0.1, 0.9) end)
+        do local c = TC("xui-pane", "border", { 0.35, 0.35, 0.35, 1 }); eb.line:SetColorTexture(c[1], c[2], c[3], 0.8) end
+        eb:SetScript("OnEnter", function(self) local c = TC("xui-pane", "bg", { 0.1, 0.1, 0.1, 1 }); self.bg:SetColorTexture(c[1], c[2], c[3], 0.9) end)
         eb:SetScript("OnLeave", function(self) if not self:HasFocus() then self.bg:SetColorTexture(0, 0, 0, 0) end end)
-        eb:SetScript("OnEditFocusGained", function(self) self.bg:SetColorTexture(0, 0, 0, 1); self:HighlightText() end)
+        eb:SetScript("OnEditFocusGained", function(self) local c = TC("xui-window", "bg", { 0, 0, 0, 1 }); self.bg:SetColorTexture(c[1], c[2], c[3], 1); self:HighlightText() end)
         eb:SetScript("OnEscapePressed", function(self) self.xuiCancel = true; self:ClearFocus() end)
         eb:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
         eb:SetScript("OnEditFocusLost", function(self)
@@ -1117,13 +1127,13 @@ local function PaintNameEdit(w, arg)
         end)
         f.xuiNameEB = eb
         f.xuiNameHint = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        f.xuiNameHint:SetTextColor(0.45, 0.45, 0.45)
+        do local c = TC("xui-text-muted", "text", { 0.45, 0.45, 0.45, 1 }); f.xuiNameHint:SetTextColor(c[1], c[2], c[3]) end
     end
     eb.xuiSpec = ed
     eb:SetFrameLevel(f:GetFrameLevel() + 3)
     eb:ClearAllPoints()
     if ed.title then   -- number is the header title; this box (the optional name) goes beneath it, smaller and gray
-        eb:SetHeight(16); eb:SetFontObject(GameFontNormalSmall); eb:SetTextColor(0.65, 0.65, 0.65)
+        eb:SetHeight(16); eb:SetFontObject(GameFontNormalSmall); do local c = TC("xui-text-muted", "text", { 0.65, 0.65, 0.65, 1 }); eb:SetTextColor(c[1], c[2], c[3]) end
         -- start under the title TEXT: the title is "<arrow glyph>  Trigger 1:  Cooldown", so measure the glyph and its spaces
         local pre = 0
         do
@@ -1147,13 +1157,13 @@ local function PaintNameEdit(w, arg)
         eb:SetPoint("TOPLEFT", f, "TOPLEFT", f.xuiTitleX or (pre - (tonumber(arg and arg.xuiHeadOut) or 0)), -(3 + ns.H3_SIZE + 7)); eb:SetWidth(220)
         if not f.xuiNamePH then
             f.xuiNamePH = eb:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-            f.xuiNamePH:SetPoint("LEFT", eb, "LEFT", 0, 0); f.xuiNamePH:SetTextColor(0.4, 0.4, 0.4); f.xuiNamePH:SetText("name (optional)")
+            f.xuiNamePH:SetPoint("LEFT", eb, "LEFT", 0, 0); do local c = TC("xui-text-muted", "text", { 0.4, 0.4, 0.4, 1 }); f.xuiNamePH:SetTextColor(c[1], c[2], c[3]) end; f.xuiNamePH:SetText("name (optional)")
             eb:HookScript("OnTextChanged", function(self) if f.xuiNamePH then f.xuiNamePH:SetShown(self:GetText() == "" and not self:HasFocus()) end end)
             eb:HookScript("OnEditFocusGained", function() f.xuiNamePH:Hide() end)
             eb:HookScript("OnEditFocusLost", function(self) f.xuiNamePH:SetShown(self:GetText() == "") end)
         end
     else
-        eb:SetHeight(22); eb:SetFontObject(GameFontHighlight); eb:SetTextColor(1, 1, 1); eb:SetTextInsets(6, 6, 0, 0)
+        eb:SetHeight(22); eb:SetFontObject(GameFontHighlight); do local c = TC("xui-text", "text", { 1, 1, 1, 1 }); eb:SetTextColor(c[1], c[2], c[3]) end; eb:SetTextInsets(6, 6, 0, 0)
         eb:SetPoint("LEFT", f, "LEFT", f.xuiTitleX or (30 - (tonumber(arg and arg.xuiHeadOut) or 0)), 0); eb:SetWidth(220)
         if f.xuiNamePH then f.xuiNamePH:Hide() end
     end
@@ -1183,7 +1193,7 @@ local function MakeChevron(f)
     b.tex:SetPoint("CENTER"); b.tex:SetSize(16, 16)
     b:SetScript("OnClick", function(self) local w = self.xuiW; if w and w.Fire then w:Fire("OnClick", "LeftButton") end end)
     b:SetScript("OnEnter", function(self)
-        self.tex:SetVertexColor(1, 1, 0.6)
+        do local c = TC("xui-label", "text", { 1, 1, 0.6, 1 }); self.tex:SetVertexColor(c[1], c[2], c[3]) end
         GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(self.xuiOpen and "Collapse" or "Expand")
         GameTooltip:AddLine("Never changes any setting.", 1, 1, 1, true); GameTooltip:Show()
     end)
@@ -1211,7 +1221,7 @@ local function SkinButton(w)
             local font, size, flags = fs:GetFont()
             w.xuiFont = { font, size, flags }
             fs:SetFont(font, ns.H3_SIZE, flags)
-            fs:SetTextColor(1, 1, 1)
+            do local c = TC("xui-heading", "text", { 1, 1, 1, 1 }); fs:SetTextColor(c[1], c[2], c[3]) end
         end
         local arrowL = arg and arg.xuiArrowLeft and type(arg.xuiArrow) == "function"
         local subTxt = arg and type(arg.xuiSub) == "function" and select(2, pcall(arg.xuiSub)) or nil
@@ -1228,7 +1238,7 @@ local function SkinButton(w)
             if not f.xuiSubFS then f.xuiSubFS = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall") end
             local sf = f.xuiSubFS
             sf:ClearAllPoints(); sf:SetPoint("TOPLEFT", f, "TOPLEFT", lx, -3 - ns.H3_SIZE - 4)
-            sf:SetTextColor(0.6, 0.6, 0.6); sf:SetJustifyH("LEFT"); sf:SetText(subTxt); sf:Show()
+            do local c = TC("xui-text-muted", "text", { 0.6, 0.6, 0.6, 1 }); sf:SetTextColor(c[1], c[2], c[3]) end; sf:SetJustifyH("LEFT"); sf:SetText(subTxt); sf:Show()
         elseif f.xuiSubFS then f.xuiSubFS:Hide() end
         local wantH = subTxt and (ns.H3_SIZE + 30) or 24
         if math.abs((f:GetHeight() or 0) - wantH) > 0.5 and (subTxt or w.xuiSubH) then
@@ -1243,7 +1253,7 @@ local function SkinButton(w)
             at:ClearAllPoints()
             if arrowL then at:SetPoint("LEFT", f, "LEFT", 2, 0) else at:SetPoint("RIGHT", f, "RIGHT", -8, 0) end
             at:SetTexture((okOpen and open) and "Interface\\Buttons\\Arrow-Down-Up" or "Interface\\ChatFrame\\ChatFrameExpandArrow")
-            at:SetVertexColor(0.8, 0.5, 1); at:Show()
+            do local c = TC("xui-popup", "border", { 0.8, 0.5, 1, 1 }); at:SetVertexColor(c[1], c[2], c[3]) end; at:Show()
         elseif f.xuiArrowTex then f.xuiArrowTex:Hide() end
         if chev then
             local b = f.xuiChevBtn or MakeChevron(f)
@@ -1313,7 +1323,7 @@ local function SkinButton(w)
         end
         if fs then
             TF(fs)
-            if f:IsEnabled() then local c = TC(bcl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]) else fs:SetTextColor(0.5, 0.5, 0.5) end
+            if f:IsEnabled() then local c = TC(bcl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]) else local m = TC("xui-text-muted", "text", { 0.5, 0.5, 0.5, 1 }); fs:SetTextColor(m[1], m[2], m[3]) end
             LightFont(f, fs, TC(bcl, "text", GOLD))
         end
     end
@@ -1423,7 +1433,7 @@ local function SkinRow(w, fn)
     f:SetScript("OnMouseUp", function(_, btn) if btn == "LeftButton" then fn() end end)
     if not f.xuiHL then
         f.xuiHL = f:CreateTexture(nil, "HIGHLIGHT")
-        f.xuiHL:SetAllPoints(); f.xuiHL:SetColorTexture(1, 0.82, 0, 0.12)
+        f.xuiHL:SetAllPoints(); do local c = TC("xui-label", "text", GOLD); f.xuiHL:SetColorTexture(c[1], c[2], c[3], 0.12) end
     end
     f.xuiHL:Show()
     Flat(f, { 0.04, 0.04, 0.04, 0.35 + A() * 0.4 }, { 0, 0, 0, 0 })   -- fill only: no outline around each row
@@ -1718,7 +1728,7 @@ local function ToggleInfoPop(ic)
         infoPop = CreateFrame("Frame", "XayaUIInfoPopup", UIParent, "BackdropTemplate")
         infoPop:SetFrameStrata("TOOLTIP"); infoPop:SetClampedToScreen(true); infoPop:EnableMouse(true)
         infoPop:SetBackdrop({ bgFile = WHITE8, edgeFile = WHITE8, edgeSize = 1, insets = { left = 1, right = 1, top = 1, bottom = 1 } })
-        infoPop:SetBackdropColor(0.04, 0.04, 0.05, 0.97); infoPop:SetBackdropBorderColor(0.8, 0.5, 1, 1)
+        do local bg, bd = TC("xui-popup", "bg", { 0.04, 0.04, 0.05, 1 }), TC("xui-popup", "border", { 0.8, 0.5, 1, 1 }); infoPop:SetBackdropColor(bg[1], bg[2], bg[3], 0.97); infoPop:SetBackdropBorderColor(bd[1], bd[2], bd[3], 1) end
         infoPop.title = infoPop:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         infoPop.title:SetPoint("TOPLEFT", 10, -8); infoPop.title:SetJustifyH("LEFT")
         infoPop.text = infoPop:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -2314,11 +2324,11 @@ local function Walk(w, depth)
             pf:SetFrameStrata("TOOLTIP")
             if pf.SetBackdrop then pf:SetBackdrop(nil) end
             local bg = pf:CreateTexture(nil, "BACKGROUND", nil, -8)
-            bg:SetAllPoints(); bg:SetColorTexture(0.05, 0.05, 0.06, 1)
+            bg:SetAllPoints(); do local c = TC("xui-window", "bg", { 0.05, 0.05, 0.06, 1 }); bg:SetColorTexture(c[1], c[2], c[3], 1) end
             local edge = CreateFrame("Frame", nil, pf, "BackdropTemplate")
             edge:SetAllPoints(); edge:SetFrameLevel(pf:GetFrameLevel())
             edge:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-            edge:SetBackdropBorderColor(0.4, 0.4, 0.45, 1)
+            do local c = TC("xui-pane", "border", { 0.4, 0.4, 0.45, 1 }); edge:SetBackdropBorderColor(c[1], c[2], c[3], 1) end
         end
     elseif t == "Heading" then
         -- a header with arg.xuiCollapse gets the open / close button at its LEFT, before the title (0.6.4: was a red + / - at the far right),
@@ -2335,7 +2345,7 @@ local function Walk(w, depth)
                     b.tex = b:CreateTexture(nil, "ARTWORK"); b.tex:SetPoint("CENTER"); b.tex:SetSize(16, 16)
                     b:SetScript("OnClick", function(self) if self.fn then self.fn() end end)
                     b:SetScript("OnEnter", function(self)
-                        self.tex:SetVertexColor(1, 1, 0.6)
+                        do local c = TC("xui-label", "text", { 1, 1, 0.6, 1 }); self.tex:SetVertexColor(c[1], c[2], c[3]) end
                         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
                         GameTooltip:SetText("Collapse or expand this section")
                         GameTooltip:AddLine("Only hides the options below; nothing is changed.", 1, 1, 1, true)

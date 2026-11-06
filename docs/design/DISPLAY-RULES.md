@@ -60,6 +60,13 @@ location if they aren't already. / refactor all code appropriately. / priority: 
 1. Theme colours throughout; text in the theme's font [10.1, 10.2].
 2. Text must be legible; nothing "way too tiny" [11.1].
 3. Docked chat tabs: one height and style for every tab; colours from the addon override or Blizzard's [11.4, 10.5].
+4. The settings window's look comes from the theme: every colour is a theme colour (the off grey is the theme's Muted text, the hover's
+   Enabled / Disabled its Body / Muted text), names are in the theme's font, and sizes follow its text size [10.12]. `ns.Style` holds
+   structure (sizes, gaps, indents); the theme holds the look.
+5. The px / pt values in section C are the theme's Medium text size; Small and Large scale tab heights and names alike (x0.88 / x1.15)
+   [11.8].
+6. Theme page: an "Advanced customization" switch, off by default, offers the parked colours (tabs, tree bars) and the class overrides;
+   while off they are neither offered nor applied [10.13].
 
 ## B. Gaps found in the audit (PROPOSED: each waits for her answer)
 Filled in as the tab-by-tab audit (UI-47 step 3) finds display types with no ruling. Each gap is asked through the question flow; the
@@ -81,7 +88,8 @@ answer moves it to section A.
 | S4 | Text inputs drawn by their own widget (spell search and the like) | keep their own size | they are search boxes with their own layout, not plain text lines |
 
 ## C. The values (code: core `ns.Style`, `XayaUI/Modules.lua` section 0)
-Every window and page reads these; nothing repeats them. Values marked (session) were chosen by a session, not by her.
+Every window and page reads these; nothing repeats them. Values marked (session) were chosen by a session, not by her. The px / pt values
+are at the theme's Medium text size (A8.5). The grey is only the fallback when the theme is missing (A8.4).
 
 | Key | Value | From |
 |---|---|---|

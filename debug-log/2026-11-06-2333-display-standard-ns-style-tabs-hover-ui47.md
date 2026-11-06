@@ -51,3 +51,21 @@ Session 014bN6tV7oStjTuVPEJbytBJ, branch `claude/ui-bugs-focused`. Nothing here 
 
 ## QA
 B213 to B218.
+
+## Follow-up: UI-49 / UI-50 (theme ties into Skin.lua)
+UI-49 (verbatim): "Note theme has to tie into the skin.lua in some way". Her answers (UI-50): tab sizes "Scale with theme
+(Recommended)"; tab colours "Advanced customization opens up them and more as options, but by default they are not offered".
+- Tab rows: names in the theme's font (Theme.FontPath, falling back to the tab's font if the file will not load); height and name size
+  times Theme.Scale() (Small 0.88 / Medium 1 / Large 1.15); her px / pt values are the Medium ones.
+- Off grey (left-pane names) = the theme's Muted text (ns.OptionsApi.Muted; ns.Style.grey only without a theme); the switch hover's
+  Enabled / Disabled in the theme's Body / Muted text (was fixed green / grey).
+- Skin.lua: 22 lines painting a live look with colours written as numbers were found and now take a theme class colour (hover text, row highlight, copy-button art,
+  name-box line / hint / placeholder / hover / focus, sub-heading text and arrow, disabled-button grey, toolbar highlight, info popup,
+  dropdown list panel and edge, collapse-button hover tint), the old numbers as the fallback; the 9 numeric colours left give a widget's own look
+  back on release / leave or un-tint (listed in tests/display_standard_run.py RESTORES).
+- Theme (core Theme.lua): T.Advanced() / T.Parked(key); a parked token's saved colour applies only while Advanced customization is on.
+  ThemeEditor: the switch (CueRulesDB.ui.themeAdvanced, off by default); parked colours and the class overrides listed but hidden
+  while it is off. "and more" read as the class overrides (INFERENCE).
+- Tests: display_standard_run 4-6 (Muted grey follows the theme; Advanced customization offered / applied; no numeric colour in
+  Skin.lua outside the restores: the previous Skin.lua has 22); rules_subtabs_compact_run: theme font on the Rules tabs, Large = 32 px /
+  13.8 pt. QA B219-B221.

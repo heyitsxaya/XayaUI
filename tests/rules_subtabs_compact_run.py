@@ -54,7 +54,7 @@ local function sizeOK(lay, H, PT)
     local t = e.tab
     local fs = t:GetFontString()
     local _, size, flags = fs:GetFont()
-    if math.abs(t:GetHeight() - H) > 0.5 or tonumber(size) ~= PT or not tostring(flags or ""):find("OUTLINE", 1, true) then
+    if math.abs(t:GetHeight() - H) > 0.5 or math.abs((tonumber(size) or 0) - PT) > 0.01 or not tostring(flags or ""):find("OUTLINE", 1, true) then
       return false, ("%s: %.0f px, %s pt, %s"):format(tostring(e.text), t:GetHeight(), tostring(size), tostring(flags))
     end
   end
@@ -106,6 +106,33 @@ w:SetWidth(math.floor((w.frame.width or w.frame:GetWidth()) * 0.6)); W.tick(0.3,
 local ok, why = rulesRow(w, layout(w))
 check("narrow row: four even tabs, Auto-Generate Rules apart at the far right", ok, why)
 
+-- UI-49 ("theme has to tie into the skin.lua"): with a theme font set, the tab names are in it
+do
+  local TH = ns.Theme
+  local orig = TH and TH.FontPath
+  if TH then TH.FontPath = function() return "Interface\\AddOns\\XayaUI\\Media\\Fonts\\XuiTest.ttf" end end
+  ACD:SelectGroup("CueRules", "cooldowns", "enabledTab"); W.tick(0.3, 3)
+  local rw = findRow(ACD.OpenFrames["CueRules"])
+  local all, why = rw ~= nil, ""
+  for _, e in ipairs(rw and layout(rw) or {}) do
+    local p = e.tab:GetFontString():GetFont()
+    if p ~= "Interface\\AddOns\\XayaUI\\Media\\Fonts\\XuiTest.ttf" then all = false; why = tostring(e.text) .. ": " .. tostring(p) end
+  end
+  if TH then TH.FontPath = orig end
+  check("theme font set: every Rules sub-tab name is in the theme's font (UI-49)", all, why)
+end
+-- UI-50 (her answer "Scale with theme"): theme text size Large (1.15) scales the Rules tabs' height and name: 28 -> 32 px, 12 -> 13.8 pt
+do
+  CueRulesDB.theme = CueRulesDB.theme or {}
+  local keep = CueRulesDB.theme.size
+  CueRulesDB.theme.size = "L"
+  ACD:SelectGroup("CueRules", "cooldowns", "draftsTab"); W.tick(0.3, 3)
+  local rw = findRow(ACD.OpenFrames["CueRules"])
+  local ok2, why2 = sizeOK(rw and layout(rw) or {}, 32, 13.8)
+  check("theme text size Large: Rules tabs 32 px, names 13.8 pt (UI-50)", rw ~= nil and ok2, why2)
+  CueRulesDB.theme.size = keep
+  ACD:SelectGroup("CueRules", "cooldowns", "smartTab"); W.tick(0.3, 3)
+end
 -- section tabs: Bonus Features > Data Panels (off by default)
 local function findTabs(root, pred)
   if not root then return nil end

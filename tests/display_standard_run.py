@@ -8,7 +8,10 @@ Checks, on the real addons in the stand-in game (options tree only, nothing draw
     cannot drift apart);
   2 her answer for text inputs (UI-48, "Half width, two per row"): every one-line text input in every tab is half the row unless the
     module gave it a narrower width; multi-line boxes stay full; none is left stretching the row;
-  3 every left-pane switch (xuiSwitch) in every feature tab has a one-sentence hover text without "Off" (UI-42).
+  3 every left-pane switch (xuiSwitch) in every feature tab has a one-sentence hover text without "Off" (UI-42);
+  4 UI-49 ("Note theme has to tie into the skin.lua in some way"): the off grey comes from the theme's Muted text colour;
+  5 UI-50: the Theme page's Advanced customization switch (off by default) offers and applies the parked tab colours and class overrides;
+  6 UI-49: Skin.lua sets no colour as numbers except where it gives a widget's own look back (listed restores).
 Negative control: on main 687b624 (core 0.6.57) checks 1 to 3 fail (no ns.Style, full-row inputs, no hover sentences).
 Run: python3 tests/display_standard_run.py   (Lua 5.1 via lupa)."""
 import os, re, sys
@@ -95,6 +98,45 @@ local function sws(g, path, depth)
 end
 for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do sws(T and T.args and T.args[tab], tab, 0) end
 check("3: every left-pane switch has a one-sentence hover without \"Off\" (" .. sw .. " switches)", sw > 0 and #miss == 0, table.concat(miss, " | "):sub(1, 400))
+-- 4 (UI-49 "theme has to tie into the skin.lua") the off grey is the theme's Muted text colour, and follows it when it changes
+local TH = ns.Theme
+local okM = false
+if TH and TH.cur and ns.OptionsApi and ns.OptionsApi.Muted then
+  local keep = TH.cur.textMuted
+  TH.cur.textMuted = { 0.11, 0.22, 0.33, 1 }
+  local c = ns.OptionsApi.Muted()
+  okM = math.abs(c[1] - 0.11) < 0.001 and math.abs(c[2] - 0.22) < 0.001 and math.abs(c[3] - 0.33) < 0.001
+  TH.cur.textMuted = keep
+end
+check("4: a switched-off row's grey is the theme's Muted text colour (and follows a theme change)", okM)
+-- 5 (UI-50, her answer: "Advanced customization opens up them and more as options, but by default they are not offered")
+local adv, tabSw, ovr
+local function find(g, depth)
+  if type(g) ~= "table" or depth > 14 then return end
+  for k, o in pairs(type(g.args) == "table" and g.args or {}) do
+    if type(o) == "table" then
+      if o.type == "toggle" and o.name == "Advanced customization" then adv = o end
+      if k == "tok_tabBg" then tabSw = o end
+      if k == "overrides" and o.type == "group" then ovr = o end
+      if o.type == "group" then find(o, depth + 1) end
+    end
+  end
+end
+find(T, 0)
+local function hid(o) local h = o and o.hidden; if type(h) == "function" then return h({}) and true or false end return h and true or false end
+check("5: the Theme page has an Advanced customization switch, off by default", adv ~= nil and adv.get({}) == false)
+check("5: ...off: the tab colours and the class overrides are not offered", tabSw ~= nil and hid(tabSw) and ovr ~= nil and hid(ovr))
+CueRulesDB.theme = CueRulesDB.theme or {}; CueRulesDB.theme.tokens = CueRulesDB.theme.tokens or {}
+CueRulesDB.theme.tokens.tabBg = { 0.9, 0.1, 0.1, 1 }
+TH.Resolve()
+local offC = TH.Col("xui-tab", "bg")
+check("5: ...off: a saved tab colour does not apply (the look as before)", math.abs(offC[1] - 0.9) > 0.01, offC[1])
+if adv then adv.set({}, true) end
+local onC = TH.Col("xui-tab", "bg")
+check("5: on: the tab colours and class overrides are offered, and the saved tab colour applies", tabSw ~= nil and not hid(tabSw)
+  and ovr ~= nil and not hid(ovr) and math.abs(onC[1] - 0.9) < 0.01, onC[1])
+if adv then adv.set({}, false) end
+CueRulesDB.theme.tokens.tabBg = nil; TH.Resolve()
 return R
 end
 '''
@@ -131,7 +173,37 @@ def parse_want():
     return out
 
 
+# UI-49 ("Note theme has to tie into the skin.lua in some way"): Skin.lua paints with theme colours (TC(...), with the old colour only as
+# the fallback). A colour written as numbers is allowed only where the skin gives Blizzard's / the widget's own look back (a release or
+# leave restore) or for a neutral un-tint (1, 1, 1); those lines are listed here. Any other numeric colour is a theme bypass.
+RESTORES = [
+    "f:SetBackdropColor(0, 0, 0, 1); f:SetBackdropBorderColor(1, 1, 1, 1)",         # window frame given back on release
+    "self.titletext:SetTextColor(1, 0.82, 0); TR(self.titletext)",                   # AceGUI title colour given back on release
+    "fr.xuiTitleBar:SetColorTexture(0.13, 0.13, 0.13, 1)",                           # first paint, the theme colour is set on the next line
+    "self.tex:SetVertexColor(1, 1, 1); GameTooltip:Hide()",                         # un-tint on leave
+    "b.tex:SetVertexColor(1, 1, 1)",                                                 # un-tint
+    "ht:SetVertexColor(1, 1, 1); ht:SetAlpha(1)",                                    # highlight given back on release
+    "self.text:SetTextColor(1, 0.82, 0); self.xuiFont = nil",                         # heading colour given back on release
+    "T:SetVertexColor(1, 1, 1, 1)",                                                  # icon un-tint / given back
+    "self.text:SetTextColor(1, 1, 1); self.text:SetShadowOffset(1, -1)",             # text given back on release
+]
+
+
+def theme_bypasses():
+    src = open(os.path.join(ROOT, "XayaUI_Options", "Skin.lua"), encoding="utf-8").read().splitlines()
+    pat = re.compile(r"(SetColorTexture|SetTextColor|SetVertexColor|SetBackdropColor|SetBackdropBorderColor)\(\s*[0-9.]")
+    bad = []
+    for n, line in enumerate(src, 1):
+        if line.strip().startswith("--") or not pat.search(line):
+            continue
+        rest = pat.sub("", line)
+        if all(t not in line for t in RESTORES) and not re.search(r"\(\s*0,\s*0,\s*0,\s*0\s*\)", line):
+            bad.append("%d: %s" % (n, line.strip()[:90]))
+    return bad
+
+
 def main():
+    bypass = theme_bypasses()
     want = parse_want()
     folders = H.find_addons()
     enabled = [n for n in folders if n != "XayaUI_DevAssist"]
@@ -150,6 +222,10 @@ def main():
         print(("PASS " if ok else "FAIL ") + name)
         if not ok:
             bad += 1
+    ok = not bypass
+    print(("PASS " if ok else "FAIL ") + "6: Skin.lua paints with theme colours: no numeric colour outside the listed restores (UI-49)"
+          + ("" if ok else "  [" + " | ".join(bypass)[:600] + "]"))
+    bad += 0 if ok else 1
     if len(want) < 10:
         print("FAIL section C of DISPLAY-RULES.md: fewer value rows than the 10 written there (%d)" % len(want))
         bad += 1

@@ -48,6 +48,11 @@ T.TOKENS = {
 -- See the project doc "XAYAUI-THEME-REVIEW-LATER".
 T.SHOW_OVERRIDES = false
 T.PARKED = { tabBg = true, tabBorder = true, tabSelBg = true, tabSelBorder = true, treeBar = true }   -- windowBg, paneBg, text un-parked 2026-11-01 (light mode / custom themes)
+-- (core 0.6.59; REQUEST-LOG UI-50, her answer: "Advanced customization opens up them and more as options, but by default they are
+-- not offered") the Theme page's Advanced customization switch (CueRulesDB.ui.themeAdvanced, off by default): on, the parked tokens
+-- and the class overrides are offered and a parked token's own colour applies; off, they are neither offered nor applied.
+function T.Advanced() local u = CueRulesDB and CueRulesDB.ui; return (u and u.themeAdvanced) == true end
+function T.Parked(key) return (key and T.PARKED[key] and not T.Advanced()) and true or false end
 T.TOKEN = {}
 for _, t in ipairs(T.TOKENS) do T.TOKEN[t[1]] = t end
 
@@ -350,7 +355,7 @@ function T.Resolve()
     local cur = {}
     for _, t in ipairs(T.TOKENS) do
         local k = t[1]
-        local v = (th and not T.PARKED[k] and th.tokens[k]) or pal[k] or t[4]
+        local v = (th and not T.Parked(k) and th.tokens[k]) or pal[k] or t[4]
         cur[k] = Copy4(v)
     end
     T.cur = cur
@@ -367,7 +372,7 @@ function T.Col(class, prop, fallback)
     local def = T.CLASS[class]
     local tok = def and def[3][prop]
     local o = th and th.classes and th.classes[class] and th.classes[class][prop]
-    if type(o) == "table" and not (tok and T.PARKED[tok]) then return Copy4(o) end
+    if type(o) == "table" and not (tok and T.Parked(tok)) then return Copy4(o) end
     if tok and T.cur[tok] then return Copy4(T.cur[tok]) end
     return fallback and Copy4(fallback) or { 1, 1, 1, 1 }
 end
