@@ -95,6 +95,8 @@ How it works: XayaUI keeps a number for each rule in the group, and the game's a
 
 **Closing the window ends what it started (core 0.6.56):** closing the settings window (its Close button, Escape or `/xui` again) ends every preview, the preview pause, every rule or group unlocked from the sidebar, and an unlock made with the window's **Lock Positions** button. An unlock you typed as `/xui unlock` while the window was closed stays until you lock it again.
 
+**Switched-off rules cost nothing (core 0.6.56):** a rule you switch off (and its cues) is skipped by the engine and has no display frame; the frame is freed the moment you switch it off. It stays listed under Rules > Disabled, and its eye in the sidebar still previews it (the preview draws it only while it is on). The unlock view does not show switched-off rules: switch one on to place it.
+
 **Selecting several rules:** Ctrl+click rows to select them (Shift+click selects a range). The bar above the list then reads **Delete (N)**, **Move (N)** and **Deselect (N)**. Right-clicking a selected row also offers **Link N Selected (move together)**: their displays are linked, so dragging one on screen moves the others (Shift-drag moves one alone). On linked rules the same line reads **Unlink N Selected**.
 
 **Sidebar width:** the sidebar widens by itself when a nested rule or group would have less than about 80 px for its name (up to the width the window allows); drag its edge to make it wider still. Hovering a row shows its full name.

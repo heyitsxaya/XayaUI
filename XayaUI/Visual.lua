@@ -12,6 +12,21 @@ ns.unlocked = false
 ns.moveUnlocked = {}   -- per-rule "movement unlocked" (session only); set from the lock icon on the sidebar rows
 local function Unl(rule) return (ns.unlocked or ns.moveUnlocked[rule]) and true or false end
 function ns.IsMoveUnlocked(rule) return Unl(rule) end
+-- D7 (core 0.6.56; Xaya 2026-11-06, her answer "Accept 1-3" + preview "Still works"): a rule that is switched off, or a cue of one, costs
+-- nothing: the engine skips it after a one-time clean-up (Engine.lua Step), it never gets a display frame and its frame is freed when it is
+-- switched off (here), and the Disabled tab still lists it. Only a preview (the sidebar eye) draws it, and only while previewed.
+-- parents: optional uid -> parent map (built once by callers that walk every rule; FindParentRule is a scan outside an engine step).
+function ns.RuleOff(rule, parents)
+    if not rule then return true end
+    if not rule.enabled then return true end
+    local uid = rule.parentUid
+    if type(uid) == "string" and uid ~= "" then
+        local p
+        if parents then p = parents[uid] elseif ns.FindParentRule then p = ns.FindParentRule(rule) end
+        if p and not p.enabled then return true end
+    end
+    return false
+end
 -- Group movement (session only): unlocking a GROUP row shows one draggable outline around the whole group instead of unlocking
 -- (and making selectable) every display inside it. ns.groupUnlocked[folderId] = true while that group is unlocked.
 ns.groupUnlocked = {}
@@ -1946,6 +1961,7 @@ function ns.ShowCueTooltip(rule, fr)
 end
 
 function ns.RefreshVisual(rule)
+    if not ns.IsPreview(rule, "visual") and ns.RuleOff(rule) then ns.DropVisual(rule); return end   -- D7: a switched-off rule gets no frame
     local v = rule.visual
     local fr = GetFrame(rule)
     fr:SetSize(math.max(8, v.w or 128), math.max(8, v.h or 128))
@@ -2603,6 +2619,7 @@ end
 
 function ns.SetVisualShown(rule, shown)
     local pv = ns.IsPreview(rule, "visual")
+    if not pv and ns.RuleOff(rule) then ns.DropVisual(rule); return end   -- D7: switched off: no frame (an existing one is freed)
     local want, comp = nil, false
     if not rule.visual.enabled and not pv then
         want = false
@@ -2663,8 +2680,12 @@ end
 local refreshErrSeen = setmetatable({}, { __mode = "k" })
 function ns.RefreshAllVisuals()
     if ns.SyncCueFolders then pcall(ns.SyncCueFolders) end   -- a cue's group is its parent rule's group (Cues.lua)
+    local parents = {}   -- D7: uid -> parent, built once for this pass
+    for _, r in ipairs(ns.rules or {}) do if r.uid and not r.parentUid then parents[r.uid] = r end end
     for _, r in ipairs(ns.rules or {}) do
-        if frames[r] or (r.visual and r.visual.enabled) or ns.IsPreview(r, "visual") then
+        if not ns.IsPreview(r, "visual") and ns.RuleOff(r, parents) then
+            if frames[r] then ns.DropVisual(r) end   -- switched off: freed, never rebuilt
+        elseif frames[r] or (r.visual and r.visual.enabled) or ns.IsPreview(r, "visual") then
             local ok, err = pcall(ns.RefreshVisual, r)
             if ok then ok, err = pcall(ns.SetVisualShown, r, ns.runtime and ns.runtime[r] and ns.runtime[r].visualWanted) end
             if not ok and not refreshErrSeen[r] then
