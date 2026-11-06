@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalk.lua (XayaUI_DevAssist 0.7.4): in-game QA walkthroughs, /xui dev qa (also /xuidev qa)
+-- QAWalk.lua (XayaUI_DevAssist 0.7.7): in-game QA walkthroughs, /xui dev qa (also /xuidev qa)
 -- Xaya 2026-11-06 (standing rule): "For all things you need me to debug or QA in game — wherever possible, design and implement a test
 -- script or walkthrough that fires in the game side so it removes all friction for a less technical friend. All they should have to do
 -- is open up /xui dev qa and pick an item and have the addon walk them through steps with as limited console interaction as possible".
@@ -13,6 +13,10 @@
 -- Back. The end screen: a summary, Screenshot (the game's own screenshot key action), Export code (a text code to paste into chat),
 -- Import code (paste a code someone sent: their results show here), Run again. Every result is kept in XayaUIDevAssistDB.qa.
 -- No names or realms are stored or exported. V14: nothing is built until the window opens. UNTESTED IN GAME.
+-- Pre-fill (Dev Assist 0.7.7; Xaya 2026-11-06, REQUEST-LOG A14 CHATREV-6: "ensure qa has a handler that can automatically generate an
+-- answer", and her answer on how: "Pre-fill, I confirm"): a walkthrough registered with prefill = true offers the addon's own verdict on
+-- one button, "Accept: Pass" / "Accept: Fail", which records it with the check's note. Nothing is recorded without that click; Pass /
+-- Fail / Skip still work. No Accept when the check could not run, or on a step marked noVerdict = true (a question for the person).
 -------------------------------------------------------------------------------
 local QA = { walks = {}, list = {} }
 XayaUI_DevQA = QA
@@ -167,6 +171,7 @@ local function Build()
     W.check = W:CreateFontString(nil, "OVERLAY", "GameFontNormal"); W.check:SetPoint("BOTTOMLEFT", 14, 112); W.check:SetWidth(630); W.check:SetJustifyH("LEFT")
     W.doIt = Btn(W, "Do it for me", 120, function() QA.DoSetup() end); W.doIt:SetPoint("BOTTOMLEFT", 14, 82)
     W.recheck = Btn(W, "Check again", 110, function() QA.RunCheck() end); W.recheck:SetPoint("LEFT", W.doIt, "RIGHT", 8, 0)
+    W.accept = Btn(W, "Accept", 150, function() QA.Accept() end); W.accept:SetPoint("BOTTOMRIGHT", -14, 82)
     W.noteLabel = W:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); W.noteLabel:SetPoint("BOTTOMLEFT", 14, 62); W.noteLabel:SetText("Note (optional): what did you see?")
     W.note = CreateFrame("EditBox", nil, W, "InputBoxTemplate"); W.note:SetSize(620, 20); W.note:SetPoint("BOTTOMLEFT", 20, 38); W.note:SetAutoFocus(false)
     W.pass = Btn(W, "Pass", 90, function() QA.Answer("P") end); W.pass:SetPoint("BOTTOMRIGHT", -14, 10)
@@ -188,7 +193,7 @@ local function Build()
     W.importGo = Btn(W, "Show these results", 140, function() QA.FinishImport() end); W.importGo:SetPoint("BOTTOMRIGHT", -14, 40)
     W:Hide()
 end
-local STEP_WIDGETS = { "stepNo", "textScroll", "check", "doIt", "recheck", "noteLabel", "note", "pass", "fail", "skip", "back", "toList" }
+local STEP_WIDGETS = { "stepNo", "textScroll", "check", "doIt", "recheck", "accept", "noteLabel", "note", "pass", "fail", "skip", "back", "toList" }
 local END_WIDGETS = { "summary", "shot", "export", "import", "again", "code", "codeLabel", "importGo" }
 local function ShowOnly(list)
     local want = {}
@@ -238,9 +243,26 @@ function QA.RunCheck()
     local st = def and def.steps[run.i]
     if not (st and st.check) then W.check:SetText(""); return end
     local ok, good, note = pcall(st.check)
+    run.suggest = nil
+    W.accept:Hide()
     if not ok then W.check:SetText("|cffffaa00The addon could not check this one itself (" .. Clean(good, 120) .. "). Look and decide.|r")
+    elseif def.prefill and not st.noVerdict then
+        -- pre-fill: the verdict waits on the Accept button; the person's click records it
+        run.suggest = { r = good and "P" or "F", note = Clean("addon: " .. tostring(note or ""), 160) }
+        W.check:SetText((good and "|cff60ff60The addon says Pass:|r " or "|cffff6060The addon says Fail:|r ") .. Clean(note or "", 300)
+            .. "  |cff999999(Accept records it; or press Pass / Fail yourself)|r")
+        W.accept:SetText(good and "Accept: Pass" or "Accept: Fail")
+        W.accept:Show()
     elseif good then W.check:SetText("|cff60ff60Looks right to the addon:|r " .. Clean(note or "", 300) .. "  |cff999999(you still decide)|r")
     else W.check:SetText("|cffff6060Looks wrong to the addon:|r " .. Clean(note or "", 300) .. "  |cff999999(you still decide)|r") end
+end
+-- the Accept button: records the addon's verdict (pre-fill walkthroughs only); the person's own note, if typed, is kept
+function QA.Accept()
+    local sg = run and run.suggest
+    if not sg then return end
+    local typed = Clean(W.note:GetText(), 160)
+    if typed == "" then W.note:SetText(sg.note) end
+    QA.Answer(sg.r)
 end
 function QA.DoSetup()
     local def = run and QA.walks[run.id]
@@ -260,6 +282,7 @@ function ShowStep()
     W.textChild:SetHeight(math.max(10, (W.text.GetStringHeight and W.text:GetStringHeight() or 0) + 4)); W.textScroll:SetVerticalScroll(0)
     W.doIt:SetShown(st.setup ~= nil)
     W.recheck:SetShown(st.check ~= nil)
+    W.accept:Hide(); run.suggest = nil
     W.back:SetEnabled(run.i > 1)
     W.note:SetText(run.steps[run.i] and run.steps[run.i].note or "")
     W.check:SetText(st.check and "|cff999999The addon checks this step when you press Check again (or after Do it for me).|r" or "")
