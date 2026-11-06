@@ -406,7 +406,13 @@ function ns.BuildChatTab(Notify)
 
     -- The Chat Panel node: its own page holds the panel-wide switches (moved from the top of Layout); the parts are nodes under it,
     -- and each part's header sections become tabs.
-    local overview = { blocked = layout.args.blocked, intro = layout.args.intro, enabled = layout.args.enabled, theme = layout.args.theme }
+    -- "Enable Chat Panel" is the tick box on this page's row in the left pane (xuiSwitch; Chat 0.6.18, S1 #48: "individual toggles
+    -- for individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
+    local switch = layout.args.enabled
+    switch.order, switch.width = nil, nil
+    switch.disabled = function() return not ns.ReskinTabOn() end
+    switch.desc = switch.desc .. " Greyed while All reskins (the top row of this tab) is off."
+    local overview = { blocked = layout.args.blocked, intro = layout.args.intro, theme = layout.args.theme }
     layout.args.blocked, layout.args.intro, layout.args.enabled, layout.args.theme = nil, nil, nil, nil
     local parts = { layout = layout, look = look, bar = bar, behavior = behavior, filters = filters, history = history, sounds = sounds, privacy = privacy }
     for key, part in pairs(parts) do
@@ -415,7 +421,7 @@ function ns.BuildChatTab(Notify)
     end
     -- Privacy's tabs in the order Xaya named them: Look, Button, then Area and behavior
     if privacy and privacy.args and privacy.args.tab_btnHdr then privacy.args.tab_btnHdr.order = 20 end
-    return { type = "group", name = "Chat Panel", order = 1, childGroups = "tree", args = overview }
+    return { type = "group", name = "Chat Panel", order = 1, childGroups = "tree", xuiSwitch = switch, args = overview }
 end
 
 -------------------------------------------------------------------------------

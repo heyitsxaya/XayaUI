@@ -1,14 +1,14 @@
 # What's new in XayaUI
 
-**DRAFT (2026-11-06, not final).** Section 1 covers what is on `main` up to QoL 0.7.28. The last part of the character pane round
-(the character window's customisable stats list, Extra height and the "NO RELEASE" release cover, expected as QoL 0.7.31) is not
-on `main` yet and is not described here; it is added when it lands. Section 2's 24-hour window is checked again at that time.
+**2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
+Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
+before that landing (2026-11-05 07:16 UTC to 2026-11-06 07:16 UTC).
 
 **Nothing on this page has been tested in game yet.** Every item below was built and checked with XayaUI's automated tests only.
 Where the game may behave differently from the tests, the item says so.
 
-Versions on `main` when this was written (main c82aea5): XayaUI 0.6.50, Options 0.6.48, QoL 0.7.30, Bonus Features 0.6.15,
-Chat 0.6.17, Reskin 0.6.3.
+Versions on `main` when this was written (main d2ccacd): XayaUI 0.6.51, Options 0.6.50, QoL 0.7.32, Bonus Features 0.6.17,
+Chat 0.6.18, Reskin 0.6.4.
 
 ---
 
@@ -18,7 +18,8 @@ Two parts: the **Character Reskin** (Blizzard's character window in XayaUI's loo
 character window). Both are off until you turn them on.
 
 ### Character window (Character Reskin)
-Turn it on: **Blizzard UI Reskin > Character Pane** (the switch is called Character Reskin), or `/xui reskin on`.
+Turn it on: the tick box on the **Character Pane** row of the Blizzard UI Reskin tab (the switch is called Character Reskin;
+greyed while the tab's **All reskins** box is unticked), or `/xui reskin on`.
 `/xui reskin status` reports what it is doing; `/xui reskin options` opens its settings. Every part below has its own switch.
 
 - **Solid background.** The whole window, the stats list and the added width included, gets a solid fill in your theme's window
@@ -40,7 +41,18 @@ Turn it on: **Blizzard UI Reskin > Character Pane** (the switch is called Charac
   list, 582 with it, where Blizzard's are 338 and 540). The model stays its size and centred. When a slot's text has too little room
   beside the model, it runs over the model's edges rather than disappearing (QoL 0.7.28); raise Extra width to keep it clear of the
   model (240 fits every enchant name of this expansion). Long lines that still do not fit are cut at a word with "...": hover for
-  the whole line. The width changes only out of combat.
+  the whole line. The width changes only out of combat; a change made in a fight applies when the fight ends.
+- **Extra height (QoL 0.7.31).** A slider under Extra width: 0 to 300 px, default 0 (Blizzard's height). The window grows that much
+  taller, the gaps between the slots grow evenly, the model gets taller (its width stays), the weapons move down with the bottom of
+  the window, and each slot's enchant, embellishment and gem lines may use the extra room. Changes apply out of combat; a change
+  made in a fight applies when it ends.
+- **Full stat list (QoL 0.7.31).** The character window's stats pane can show every line of the Stat Calculator's Character Stats:
+  the headings Core Stats, Primary, General, Offensive, Defensive, Secondaries and Tertiaries and every stat under them, each name
+  in its stat colour, with the same numbers the Stat Calculator shows (numbers you typed there are left out). Hover a line for the
+  Stat Calculator's hover. On with the reskin, every line shown to start with. Arrange it on **Character Pane > Stat list**: per
+  stat Show, Up / Down (its place in its group), Shows (Percent, Rating, or Both as "528 / 22.48%", for secondary and tertiary
+  stats), Name, Colour and Default colour; per heading Name and Colour; and **Reset the list**. Turn the part off ("Full stat
+  list") for Blizzard's own list.
 - **Upgrade fix (QoL 0.7.27).** If you used QoL 0.7.21-0.7.23, your window kept those versions' 240 px extra width. It now changes
   once to the new 42 px default; any other width you chose is kept.
 - **Stats list styling.** Theme-coloured headers with a thin rule, muted labels, and a faint stripe on every other row.
@@ -123,18 +135,52 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
   **QoL > Character Toolkit > Tooltip lines**; while it is off, nothing of it runs.
 
 **Settings summary**
-- Blizzard UI Reskin > Character Pane: every Character Reskin switch, Background opacity, Extra width.
+- Blizzard UI Reskin > Character Pane: every Character Reskin switch, Background opacity, Extra width, Extra height.
+- Blizzard UI Reskin > Character Pane > Stat list: the full stat list's lines, order, names and colours.
 - QoL > Character Toolkit (tick box in the left pane), with Panel, Slot Overlays, Spell Math and Tooltip lines under it.
 - Panel > Layout: side, detail level, rating lines, text size, Gear Summary style, background, Smaller / Larger height, Reset size.
 
+### Also in this round: Release Guard (QoL 0.7.31)
+Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default, and while off nothing of it loads or listens).
+- When you die, a black box covers the death window's **Release Spirit** button so a misclick does not release you. It reads
+  **NO RELEASE** (you can change the text), with a flavour line under it that changes each death: to start, "BAD MONKEY",
+  "death comes for us all", "NOPE", "Disagree", "WTB Rez" (edit the list; one per line, each on or off).
+- Hold the click-through key (Shift to start; Ctrl or Alt in settings) and the box steps aside so your click reaches Release; let go
+  and it is back. It hides once you are a ghost or the window closes.
+- Where it works: raids only to start, or raids and dungeons, or everywhere.
+- It never presses Release for you; it only covers the button.
+- **Not yet tested in game:** whether the death window always comes through the way XayaUI watches for it (a backup check covers
+  it).
+
 ---
 
-## 2. Other new features (draft window: landed on `main` from 2026-11-05 about 14:00 UTC to 2026-11-06 05:45 UTC)
+## 2. Other new features (landed on `main` from 2026-11-05 07:16 UTC to 2026-11-06 07:16 UTC)
 
 - **Blizzard UI Reskin settings tab** (Options 0.6.38). Every reskin now has one home: a Blizzard UI Reskin tab with Chat Panel,
   Character Pane and Esc Menu. The old Chat tab is gone. The old shortcuts still open the moved pages: `/xui chat settings`,
   `/xui reskin options`, and the Chat Panel's own settings buttons. The XayaUI button in the Esc menu stays under
   Settings > UI Options > Display.
+- **All reskins, and a tick box per reskin** (XayaUI 0.6.51, Options 0.6.50, Chat 0.6.18, Reskin 0.6.4). The Blizzard UI Reskin
+  tab button has its own tick box, **All reskins**: untick it and every reskin in the tab is off at once, with Blizzard's own look
+  back. Each reskin (Chat Panel, Character Pane, Esc Menu, Shopping List) has its own tick box on its row in the left pane, greyed
+  while All reskins is off. All reskins is on unless you untick it.
+- **Shopping List** (QoL 0.7.32). Off by default; turn it on with the tick box on the Shopping List row of the Blizzard UI Reskin
+  tab. `/xui shop` shows or hides the panel (`/xui shop options`, `/xui shop status`).
+  - **Missing on your gear:** each enchantable slot without an enchant and each empty socket, with one suggestion each (your own
+    default for that slot, else what XayaUI has seen you use most on it). "Other" shows what you used before, what is in your bags
+    and, while the Auction House is open, what it has. "+ Add" puts a suggestion in To buy.
+  - **To buy:** what you added, with have / need.
+  - **Your tracked recipes:** each with its reagents and have / need, counted the way Blizzard's tracker counts them. Finished lines
+    are ticked and dimmed. The x on a recipe stops tracking it. Once every reagent is in your bags, it asks whether to stop tracking
+    (**Stop** / **Keep**).
+  - **The one-per-character gem:** when you are not wearing one, the first empty socket asks for it; the other sockets ask for
+    your normal gem.
+  - **Click a name** while the Auction House is open to search for it there; Shift-click links the item.
+  - Blizzard's own Professions list in the objective tracker takes your theme's colours.
+  - Settings: **Your defaults** (one per enchantable slot and one for gems) and **History** (forget what this character used;
+    empty To buy).
+- **Dynamic group Sort list reordered** (Options 0.6.50). The group's Sort choices are now listed Default, Expiration, Name,
+  Important, Manual. Manual is still the default.
 - **Tick boxes in the left pane** (Options 0.6.40). In QoL and Bonus Features, each feature's on / off is a tick box beside its name
   in the left pane; hover it for what it does.
 - **Bonus Features > Utilities** (Options 0.6.40). Notepad and Calculator are grouped under a new Utilities entry.
@@ -148,8 +194,8 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
   Addon Info button: click it to open Addon Info; it uses your theme colours. The Rules sub-tab row stays compact instead of
   stretching across the row.
 - **`/xui help` is readable and shorter** (XayaUI 0.6.46, 0.6.50). One command per line, with the command in your theme's
-  accent colour. Since XayaUI 0.6.50 it lists 16 lines instead of 29: only the commands a player uses, with option lists such
-  as [on|off].
+  accent colour. Since XayaUI 0.6.50 it is much shorter: only the commands a player uses (17 lines with the Shopping List's
+  `/xui shop`; it was 29), with option lists such as [on|off].
 - **Type commands in the console** (XayaUI 0.6.50). Open the console with `/xui console`; the line along its bottom takes any
   XayaUI command, with or without `/xui` (for example "debug status"). Press Enter: the command is echoed in grey and its output
   prints in the console. Up and Down bring back earlier commands. `/save` and `/reload` reload the interface; any other game or
@@ -182,15 +228,17 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
   the whole feature on or off (Bonus Features > Enhanced Tooltips; on by default).
 - **Notepad whole-feature switch** (Bonus 0.6.14). The Notepad's tick box (Bonus Features > Utilities > Notepad) turns the whole
   Notepad off, sharing included; your notes are kept. **Show Notepad**, `/xui notes` and the box's x still show and hide it.
+- **Calculator switch** (Bonus 0.6.16). The Calculator (Bonus Features > Utilities > Calculator) has its own tick box, on by
+  default. Off, its window does not open and its minimap row is gone; `/xui calc <sum>` still answers in chat.
+- **`/notes` and `/calc`** (Bonus 0.6.17). Two short commands: `/notes` opens the Notepad (only while the Notepad is on) and `/calc`
+  does what `/xui calc` does. If another addon already owns either word, XayaUI leaves it alone and the `/xui` forms still work.
+  After you turn the Notepad off, `/notes` stays until `/reload` and only says the Notepad is off.
 - **Clearer Aura ID lines on tooltips** (Bonus 0.6.13, 0.6.15). On spell tooltips, an aura icon ID that is the same as the spell's
   own icon is no longer repeated. While **Advanced Debugging** is on (Settings > Debugging; it is on by default), each Aura ID line
   ends in grey with where the ID was found ("via this tooltip", "via Cooldown Manager", "via your casts", "via buff on you",
   "via recorded earlier").
 - **`/xui debug map`** (XayaUI 0.6.49; it now prints in the console, like every `/xui debug` command). A report command for the full-screen world map problem: it prints the map's state so the
   cause can be found. It does not fix the problem yet.
-
-**Not on `main` yet, so not listed above:** the Shopping List, the per-reskin switches in the Blizzard UI Reskin tab ("All
-reskins" and one tick box per reskin) and the dynamic group Sort order (all on another session's branch, PR #410).
 
 **Version numbers:** two different changes on `main` carry the label Options 0.6.41 (the "switched-off features cost nothing"
 work and the auto-rule picker; two sessions numbered them at the same time). They are listed as they are; history is not
