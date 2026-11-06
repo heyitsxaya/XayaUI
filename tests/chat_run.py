@@ -164,6 +164,21 @@ W.mouseX, W.mouseY = cr[0] + 10, cr[1] + 10
 W.update(0.2, 10)
 check("fade: mouse over wakes it", pane.GetAlpha(pane) > 0.95, pane.GetAlpha(pane))
 W.mouseX, W.mouseY = -5, -5
+# (Chat 0.6.24; REQUEST-LOG UI-11, Xaya: "mouse hover over should also allow for chat to reappear if this option is selected", her
+# answer "Its own tick box") "The mouse over the chat brings it back": on by default (above); unticked, the mouse does not wake it.
+# Negative control: the unticked check and the option check fail on Chat 0.6.23.
+run("ns.chat2.fadeHover=false")
+W.update(0.5, 12)
+check("fade, hover unticked: faded again after idle", pane.GetAlpha(pane) < 0.05, pane.GetAlpha(pane))
+W.mouseX, W.mouseY = cr[0] + 10, cr[1] + 10
+W.update(0.2, 10)
+check("fade, hover unticked: the mouse over the chat does NOT bring it back", pane.GetAlpha(pane) < 0.05, pane.GetAlpha(pane))
+hov = lua.eval("function(ns) local t = ns.BuildChatTab(function() end); local found; local function f(g, d) for k, v in pairs(g.args or {}) do if k == 'hoverWake' and type(v) == 'table' and v.type == 'toggle' then found = v end; if type(v) == 'table' and v.type == 'group' and d < 5 then f(v, d + 1) end end end; f(t, 0); return found end")(W.ns)
+check("fade: the option reads 'The mouse over the chat brings it back' and is ticked when nothing is saved",
+      hov is not None and hov.name == "The mouse over the chat brings it back" and lua.eval("function(o, ns) ns.chat2.fadeHover = nil; return o.get() end")(hov, W.ns) == True,
+      hov.name if hov is not None else None)
+run("ns.chat2.fadeHover=nil")
+W.mouseX, W.mouseY = -5, -5
 run("ns.chat2.fadeOn=false; C.Schedule()")
 W.flush(); W.update(0.2, 10)
 check("fade off: opaque again", pane.GetAlpha(pane) > 0.99, pane.GetAlpha(pane))
@@ -237,6 +252,36 @@ check("ctrl+right-click ignores the player", "Spammer-Realm" in [str(x) for x in
 run("_G.SetItemRef('player:Xaya', 'x', 'RightButton')")
 check("never ignores yourself", len(list(W.ignored.values())) == 1)
 W.ctrl = False
+# (Chat 0.6.25; REQUEST-LOG UI-12 / UI-17: "allow a modifier selector (alt, ctrl. fn(?))"; her answer "detect available modifiers
+# based on available keybinds not already assigned; also allow user to record and save their own keybind")
+# Stand-in game: Alt / Shift / Meta keys and C_KeyBindings.GetBindingByKey (ALT-BUTTON2 bound to a stand-in action). Negative control:
+# every check below fails on Chat 0.6.24 except those marked (guard).
+run("""_G.IsAltKeyDown = function() return W.alt and true or false end
+_G.IsShiftKeyDown = function() return W.shift and true or false end
+_G.IsMetaKeyDown = function() return false end
+_G.IsMacClient = function() return false end
+_G.C_KeyBindings = { GetBindingByKey = function(k) if k == 'ALT-BUTTON2' then return 'STANDIN_ACTION' end return '' end }""".replace("W.alt", "W_alt").replace("W.shift", "W_shift"))
+free = lua.eval("function(C) return table.concat(C.FreeCombos and C.FreeCombos() or {}, ',') end")(C)
+check("the picker lists the right-clicks with no key binding: Ctrl, Shift and the pairs, not Alt (bound in the stand-in)",
+      free == "ALT-CTRL-BUTTON2,ALT-SHIFT-BUTTON2,CTRL-BUTTON2,CTRL-SHIFT-BUTTON2,SHIFT-BUTTON2", free)
+names = lua.eval("function(C) return C.ComboName('ALT-CTRL-BUTTON2') .. ' / ' .. C.ComboName('SHIFT-BUTTON1') end")(C)
+check("  ...named for the player: 'Alt + Ctrl + right-click', 'Shift + left-click'", names == "Alt + Ctrl + right-click / Shift + left-click", names)
+run("ns.chat2.ignoreCombo = 'SHIFT-BUTTON2'")
+n0 = len(list(W.ignored.values()))
+run("_G.W_shift = false; W.ctrl = true; _G.SetItemRef('player:Other-Realm', 'x', 'RightButton'); W.ctrl = false")
+check("with Shift + right-click chosen, Ctrl + right-click no longer ignores", len(list(W.ignored.values())) == n0)
+run("_G.W_shift = true; _G.SetItemRef('player:Other-Realm', 'x', 'RightButton'); _G.W_shift = false")
+check("  ...Shift + right-click does", "Other-Realm" in [str(x) for x in W.ignored.values()], list(W.ignored.values()))
+# the recorder: a plain click is refused; Alt + middle-click is saved (and said to be unbound)
+run("ns.chat2.ignoreCombo = nil; C.RecordCombo(function() end)")
+rec = L.XayaUIChatCopy and L.XayaUIChatComboRecorder
+rec = L.XayaUIChatComboRecorder
+run("local r = _G.XayaUIChatComboRecorder; r._scripts.OnClick(r, 'LeftButton')")
+check("recorder: a plain click is refused (nothing saved)", lua.eval("function(ns) return ns.chat2.ignoreCombo end")(ns) is None)
+run("_G.W_alt = true; local r = _G.XayaUIChatComboRecorder; r._scripts.OnClick(r, 'MiddleButton'); _G.W_alt = false")
+check("recorder: Alt + middle-click is saved", lua.eval("function(ns) return ns.chat2.ignoreCombo end")(ns) == "ALT-BUTTON3")
+check("recorder: Ctrl + right-click stays the choice when nothing is saved (guard)", lua.eval("function(C, ns) ns.chat2.ignoreCombo = nil; return C.IgnoreCombo() end")(C, ns) == "CTRL-BUTTON2")
+run("ns.chat2.ignoreCombo = nil")
 
 # ---- history --------------------------------------------------------------------------------------------------------------
 before = C.History_Count()
@@ -569,7 +614,7 @@ run("C.ToggleMover()")
 # ---- Locate ("show me where it is") -------------------------------------------------------------------------------------------
 run("C.Locate(nil, 5)")
 lab = run("local out={} for k,o in pairs(W.objects()) do if o._kind=='Frame' and o.label and o.label._text and o:IsShown() then out[#out+1]=o.label._text end end table.sort(out) return table.concat(out,'|')")
-check("Locate outlines every piece, labeling hidden ones", "Tab row" in str(lab) and "Chat Bar" in str(lab) and "Blizzard button strip (hidden)" in str(lab) and "Social button (hidden)" in str(lab), lab)
+check("Locate outlines every piece, labeling hidden ones", "Tab row" in str(lab) and "Chat Data Panel" in str(lab) and "Blizzard button strip (hidden)" in str(lab) and "Social button (hidden)" in str(lab), lab)
 W.now += 6; W.update(0.1, 2)
 lab2 = run("local out={} for k,o in pairs(W.objects()) do if o._kind=='Frame' and o.label and o.label._text and o:IsShown() then out[#out+1]=o.label._text end end return #out")
 check("outlines disappear after the time is up", int(lab2) == 0, lab2)

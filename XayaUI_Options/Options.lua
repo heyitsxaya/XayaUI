@@ -67,12 +67,53 @@ function ns.SettingsTabOf(module) local t = ns.OptionsApi.TABS[module]; return t
 -- Painted by ns.OptionsApi.PaintTabSwitches on every decorate pass (each redraw, and the window's 0.25 s tick), so a re-layout of the
 -- tab row by AceGUI (a resize, a tab switch) is followed within a quarter second. The tab is made wider by the box, and its text moves
 -- right by the same amount, so the box never covers the name. Other tabs have no box (a recycled tab button hides its own).
-ns.OptionsApi.TAB_SWITCHES = {
-    reskin = { name = "All reskins",
-        desc = "Unticked: every reskin in this tab is off at once and Blizzard's own look is back. Each reskin keeps its own tick box (its row in the left pane, greyed while this is off) for when this is ticked again.",
-        get = function() return ns.ReskinTabOn() end,
-        set = function(v) ns.SetReskinTab(v and true or false) end },
-}
+-- (Options 0.6.55; REQUEST-LOG UI-5 / UI-7; Xaya 2026-11-06: "Blizzard UI Reskin is not a check box at the top level. the check box
+-- should be enable and disable in the tab itself and then after a reload individual reskin items populate", her answer "Right pane +
+-- reload prompt".) The tab button carries no box any more (this table is empty; PaintTabSwitch hides a box a recycled button had).
+-- The switch is the first row of the tab, Overview (ns.OptionsApi.ReskinOverview below): ticking or unticking it switches every reskin
+-- at once as before (core ns.SetReskinTab) and asks "Reload now?"; the reskins' own rows are listed only when the switch was on when
+-- this settings addon loaded (it loads on the first open after a login or /reload), so they appear after a reload.
+ns.OptionsApi.TAB_SWITCHES = {}
+ns.OptionsApi.reskinAtLoad = ns.ReskinTabOn and ns.ReskinTabOn() or false   -- the switch as it was when this addon loaded
+ns.OptionsApi.RESKIN_SWITCH = "Enable Blizzard UI Reskin"
+function ns.OptionsApi.ReskinOverview(args)
+    for key, page in pairs(args) do
+        if type(page) == "table" then
+            local old = page.hidden
+            page.hidden = function(...)
+                if not ns.OptionsApi.reskinAtLoad then return true end
+                if type(old) == "function" then return old(...) end
+                return old
+            end
+        end
+    end
+    args.reskinOverview = { type = "group", name = "Overview", order = 0, args = {
+        enable = { type = "toggle", order = 1, width = "full", name = ns.OptionsApi.RESKIN_SWITCH,
+            desc = "Every reskin in this tab at once. Unticked: every reskin is off and Blizzard's own look is back; each keeps its own tick box for when this is ticked again. The reskins are listed in this tab after a reload.",
+            get = function() return ns.ReskinTabOn() end,
+            set = function(_, v)
+                ns.SetReskinTab(v and true or false)
+                if ns.OptionsApi.ReloadPrompt then ns.OptionsApi.ReloadPrompt() end
+            end },
+        note = { type = "description", order = 2, width = "full", fontSize = "medium",
+            name = function()
+                local now = ns.ReskinTabOn()
+                if now ~= ns.OptionsApi.reskinAtLoad then return "Changed: /reload to list the reskins as they are now." end
+                return now and "The reskins are in the rows under Overview." or "Tick it, then /reload: the reskins are listed under Overview."
+            end },
+    } }
+end
+-- "Reload now?" (Reload / Later). C_UI.Reload (no arguments, no returns; ReloadUI if it is missing, as Console.lua does);
+-- StaticPopupDialogs / StaticPopup_Show: Blizzard's FrameXML globals, checked before use.
+function ns.OptionsApi.ReloadPrompt()
+    if type(StaticPopupDialogs) ~= "table" or type(StaticPopup_Show) ~= "function" then return end
+    if not StaticPopupDialogs.XAYAUI_RESKIN_RELOAD then
+        StaticPopupDialogs.XAYAUI_RESKIN_RELOAD = { text = "Blizzard UI Reskin: reload now to list the reskins as they are now?",
+            button1 = "Reload", button2 = "Later", OnAccept = function() local r = (C_UI and C_UI.Reload) or ReloadUI; if type(r) == "function" then r() end end,
+            timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3 }
+    end
+    StaticPopup_Show("XAYAUI_RESKIN_RELOAD")
+end
 ns.OptionsApi.TAB_BOX = 14   -- the tick box's size on the tab
 function ns.OptionsApi.PaintTabSwitches(root)
     local function walk(w, d)
@@ -146,12 +187,13 @@ function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
     for module, tab in pairs(ns.OptionsApi.TABS) do
         local args = ns.BuildSettingsPages(module, Notify)
         if module == "qol" and qolExtra then for k, v in pairs(qolExtra) do args[k] = v end end
+        if module == "reskin" and next(args) then pcall(ns.OptionsApi.ReskinOverview, args) end
         local list = {}
         for key, ent in pairs(args) do
             local nm = ent.name
             if type(nm) == "function" then local ok, v = pcall(nm); nm = ok and v or nil end
             nm = (type(nm) == "string" and nm ~= "") and nm:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") or key
-            local old = (key == "allqol" or key == "allcursor" or key == "allbars") and 1 or 0
+            local old = (key == "allqol" or key == "allcursor" or key == "allbars") and 1 or (key == "reskinOverview" and -1) or 0
             list[#list + 1] = { key = key, name = nm:lower(), old = old }
         end
         table.sort(list, function(a, b)
@@ -170,9 +212,97 @@ function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
             end
         end
         ns.OptionsApi.featureParents[module] = parents
+        for _, ent in pairs(args) do if type(ent) == "table" and ent.type == "group" then pcall(ns.OptionsApi.GreyWhileOff, ent, {}) end end
         if next(args) then out[tab.key] = { type = "group", name = tab.name, order = tab.order, childGroups = "tree", args = args } end
     end
     return out
+end
+
+-- (Options 0.6.55; REQUEST-LOG UI-5 / UI-8; Xaya 2026-11-06: "all options that are deselected should grey out to indicate they are
+-- disabled", her answer "Left pane + their settings".) While a feature's switch (group.xuiSwitch) is off, every setting on its pages
+-- and on its parts' pages is greyed (AceConfig "disabled"; the controls cannot be changed), and a part's own switch is greyed too.
+-- The pages stay open to look at: a non-inline group is never disabled itself (AceConfigDialog would grey and lock its left-pane
+-- row). A "disabled" given as a handler method name (a string) is left as it is (it cannot be wrapped here).
+function ns.OptionsApi.GreyWhileOff(g, offs)
+    local sw = g.xuiSwitch
+    local mine = offs
+    if type(sw) == "table" and type(sw.get) == "function" then
+        if #offs > 0 then ns.OptionsApi.WrapDisabled(sw, offs) end
+        mine = {}
+        for i, f in ipairs(offs) do mine[i] = f end
+        mine[#mine + 1] = function(info) local ok, v = pcall(sw.get, info); return ok and not v end
+    end
+    for _, o in pairs(type(g.args) == "table" and g.args or {}) do
+        if type(o) == "table" then
+            if o.type == "group" and not o.inline then ns.OptionsApi.GreyWhileOff(o, mine)
+            elseif #mine > 0 then
+                ns.OptionsApi.WrapDisabled(o, mine)
+                if o.type == "group" then ns.OptionsApi.GreyWhileOff(o, mine) end
+            end
+        end
+    end
+end
+function ns.OptionsApi.WrapDisabled(o, offs)
+    local old = o.disabled
+    if type(old) == "string" or o.xuiGreyWrapped then return end
+    o.xuiGreyWrapped = true
+    o.disabled = function(info, ...)
+        for _, off in ipairs(offs) do if off(info) then return true end end
+        if type(old) == "function" then return old(info, ...) end
+        return old
+    end
+end
+-- the row of a feature tab's left pane (the tab's own tree), its tree and its user data; nil for every other tree
+function ns.OptionsApi.FeatureRow(button)
+    local tree = button and button.obj
+    local user = tree and tree.GetUserDataTable and tree:GetUserDataTable()
+    local path = user and user.path
+    if type(path) ~= "table" or #path ~= 1 or not ns.OptionsApi.TABS[path[1] or ""] then return nil end
+    return tree, user
+end
+-- (UI-5 / UI-8: "all options under a given section should be appropriately nested", her answer "Parent's name + 8 px") a part's row
+-- starts 8 px right of where its parent's name starts (each name's left inset is noted as it is drawn; parents are drawn first)
+function ns.OptionsApi.NestX(button, level, x0)
+    if level < 2 then return x0 end
+    local tree = ns.OptionsApi.FeatureRow(button)
+    local parent = tree and tostring(button.uniquevalue or ""):match("^(.+)\001[^\001]+$")
+    local pl = parent and tree.xuiNameL and tree.xuiNameL[parent]
+    return pl and (pl + 8) or x0
+end
+function ns.OptionsApi.NoteNameL(button)
+    local tree = ns.OptionsApi.FeatureRow(button)
+    if not (tree and button.xuiTextL) then return end
+    tree.xuiNameL = tree.xuiNameL or {}
+    tree.xuiNameL[tostring(button.uniquevalue or "")] = button.xuiTextL
+end
+-- an unticked feature's row (or a part of one) shows its name in grey
+ns.OptionsApi.GREY = { 0.5, 0.5, 0.5 }
+function ns.OptionsApi.RowOff(button)
+    local tree, user = ns.OptionsApi.FeatureRow(button)
+    if not tree then return false end
+    local g = user.option
+    local info = { user.path[1] }
+    local segs = {}
+    for seg in tostring(button.uniquevalue or ""):gmatch("[^\001]+") do segs[#segs + 1] = seg end
+    for _, seg in ipairs(segs) do
+        g = type(g) == "table" and type(g.args) == "table" and g.args[seg] or nil
+        if type(g) ~= "table" then return false end
+        info[#info + 1] = seg
+        local sw = g.xuiSwitch
+        if type(sw) == "table" and type(sw.get) == "function" then
+            local ok, v = pcall(sw.get, info)
+            if ok and not v then return true end
+        end
+    end
+    return false
+end
+function ns.OptionsApi.GreyRow(button)
+    local fs = button and button.text
+    if not (fs and ns.OptionsApi.RowOff(button)) then return end
+    local t = fs:GetText()
+    if type(t) == "string" and t:find("|c", 1, true) then fs:SetText((t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))) end
+    local c = ns.OptionsApi.GREY
+    fs:SetTextColor(c[1], c[2], c[3])
 end
 
 -- The options tree drawn last, kept for a redraw that changes nothing in it (Options 0.6.39; Xaya 2026-11-05: "console toggle has a
@@ -6529,7 +6659,7 @@ local ROW_TOGGLES = {
 -- would give a toggle at that place (path, then "xuiSwitch"). The box's tooltip is the switch's name and desc. A click on the box
 -- is the box's own: it never selects or opens the row (the game hands a click to the topmost mouse-enabled frame under the cursor,
 -- and the box sits above the row; INFERENCE, standard behaviour the rule rows' eye / lock buttons rely on too, not stated in the
--- API documentation). Rows whose page has no single on / off (Tooltips, Calculator, Utilities) get no box.
+-- API documentation). Rows whose page has no single on / off (Utilities, Cursor) get no box.
 -- Where the box sits (#369: a row's name room is precious): every row keeps a 16 px slot left of its name for the open / close
 -- arrow, empty on a row without parts; the box takes that slot, so it costs those names nothing. On a row that has parts (Character
 -- Toolkit) the box sits right after the arrow slot and only that row's name moves right by the box's width; it stays there while
@@ -6910,6 +7040,7 @@ local function DecorateButton(button)
     -- left gutter (4px wider than before). Root headers and first-level groups start at the same x (flush with the sidebar wall);
     -- each deeper level steps in by 8px as before.
     local x0 = (level <= 1) and 6 or (8 * level - 9)
+    x0 = ns.OptionsApi.NestX(button, level, x0)   -- (Options 0.6.55) a feature tab's part: its parent's name + 8 px
     ns.PaintReorder(button, level, x0)
     if button.xuiReorderOn then x0 = x0 + ns.REORDER_W + 11 end   -- chevron and text sit right of the arrows
     if button.toggle then
@@ -7034,6 +7165,7 @@ local function DecorateButton(button)
         end
         if button.text then button.text:SetPoint("LEFT", button, "LEFT", x0 + lead + iconSlots + 3, note and 8 or 2) end
         button.xuiTextL = x0 + lead + iconSlots + 3   -- #369: the name's left inset (Skin.lua ns.EnsureNameRoom)
+        ns.OptionsApi.NoteNameL(button)
         if note then
             if not button.xuiSub then
                 button.xuiSub = button:CreateFontString(nil, "OVERLAY")
@@ -7069,6 +7201,7 @@ end
 -- A decoration error must never abort AceGUI's tree layout (that blanks the whole window). Errors are kept, printed once per kind.
 function ns.SafeDecorate(b)
     local ok, err = pcall(DecorateButton, b)
+    if ok then ok, err = pcall(ns.OptionsApi.GreyRow, b) end   -- (Options 0.6.55) after every colour the row gets
     if not ok then
         ns.lastTreeErr = tostring(err)
         if not ns.treeErrShown or ns.treeErrShown ~= ns.lastTreeErr then
