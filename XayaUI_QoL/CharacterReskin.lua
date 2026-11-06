@@ -43,13 +43,13 @@ local CM = ns.CharModel
 -- (QoL 0.7.24) extra width 42 px by default (Xaya 2026-11-06: "Push to 380px before stats pane and request feedback confirmation":
 -- Blizzard's PANEL_DEFAULT_WIDTH 338 -> 380 without the stats pane, CHARACTERFRAME_EXPANDED_WIDTH 540 -> 582 with it); the setting
 -- now reaches 0 (it started at 120); a saved number is kept as it is.
--- (QoL 0.7.30) tallPx: the Extra height (Xaya 2026-11-06: "character pane option should also allow for extra height"; her answer "either
+-- (QoL 0.7.31) tallPx: the Extra height (Xaya 2026-11-06: "character pane option should also allow for extra height"; her answer "either
 -- one", built as "Spread the slots"; REQUEST-LOG #72-#73), 0 by default: nothing changes until she moves it. statList: the stats pane shows
 -- every line of the Stat Calculator's Character Stats (her words #70-#71; her answer "Everything on": every line shown to start with).
 local DEFAULTS = { enabled = false, chrome = true, ilvl = true, enchants = true, gems = true, stats = true, wide = true, widePx = 42, bgAlpha = 0.95,
     tallPx = 0, statList = true }
 local LIMITS = { widePx = { 0, 300 }, bgAlpha = { 0.5, 1 }, tallPx = { 0, 300 } }
--- the stat list's own choices (QoL 0.7.30; her answer "Show / hide each stat, Order, % / rating / both, Groups and colours"), by Character
+-- the stat list's own choices (QoL 0.7.31; her answer "Show / hide each stat, Order, % / rating / both, Groups and colours"), by Character
 -- Stats key: statHide[key] = true (hidden), statOrder[group key] = { stat keys }, statMode[key] = "percent" | "rating" | "both",
 -- statName[key] / groupName[group key] = text, statColor[key] / groupColor[group key] = { r, g, b }
 local LIST_TABLES = { "statHide", "statOrder", "statMode", "statName", "statColor", "groupName", "groupColor" }
@@ -308,7 +308,7 @@ local function LabelBoxes(g, name, r)
         return { box }
     end
     local left, m = LEFT_SLOTS[name], g.model
-    -- (QoL 0.7.30) with Extra height the slots are further apart: a block may use half the gap above and below its slot (not above the
+    -- (QoL 0.7.31) with Extra height the slots are further apart: a block may use half the gap above and below its slot (not above the
     -- first slot of a column or below its last)
     local eg = (ns.CharReskin_TallGap and ns.CharReskin_TallGap() or 0) / 2
     local box = { t = r.t + SLOT_PAD + ((name == "HeadSlot" or name == "HandsSlot") and 0 or eg),
@@ -814,7 +814,7 @@ local function WaitForCombatEnd(on)
     wide.pending = on or nil
 end
 
--- The extra height (QoL 0.7.30; Xaya 2026-11-06: "character pane option should also allow for extra height"; her answer "either one", built
+-- The extra height (QoL 0.7.31; Xaya 2026-11-06: "character pane option should also allow for extra height"; her answer "either one", built
 -- as "Spread the slots"; REQUEST-LOG #72-#73). With the wider window on and Extra height above 0, out of combat only (as the width): the
 -- window is that much taller (CharacterFrame:SetHeight, widgets.md SetHeight(height: uiUnit)); each slot of the two columns after the
 -- first hangs from the one above it (PaperDollFrame.xml: TOPLEFT of the slot above's BOTTOMLEFT, 0, -4), so each of the 7 gaps of a
@@ -911,7 +911,7 @@ local function ApplyWide(c)
             WaitForCombatEnd(true)
             diag.wide = "waits for the end of combat"
         elseif wide.px ~= c.widePx or (tall.applied and tall.px or 0) ~= (c.tallPx or 0) then
-            WaitForCombatEnd(true)   -- (QoL 0.7.30) a width or height set in combat: applied when the fight ends
+            WaitForCombatEnd(true)   -- (QoL 0.7.31) a width or height set in combat: applied when the fight ends
             diag.tall = "waits for the end of combat"
         end
         return
@@ -1010,7 +1010,7 @@ local function StyleStats()
 end
 
 -------------------------------------------------------------------------------
--- The full stat list (QoL 0.7.30; Xaya 2026-11-06, her words: "missing details about about all possible stats / the ability to customize
+-- The full stat list (QoL 0.7.31; Xaya 2026-11-06, her words: "missing details about about all possible stats / the ability to customize
 -- how to display stats in the primary character window"; her answers: stats "2 but customizable and prettified with colors" (option 2:
 -- exactly the lines of the Stat Calculator's Character Stats, Core Stats / Secondaries / Tertiaries); customise "Show / hide each stat,
 -- Order, % / rating / both, Groups and colours"; default "Everything on"; REQUEST-LOG #70, #71, #74).
@@ -1255,7 +1255,7 @@ local function ApplyNow()
     ApplyWide(c)
     UpdateSlots(c)
     if c.stats then StyleStats() end
-    if c.statList then UpdateStatList(c) end   -- (QoL 0.7.30) our full stat list over Blizzard's pane
+    if c.statList then UpdateStatList(c) end   -- (QoL 0.7.31) our full stat list over Blizzard's pane
     SetEvents(c)
     SetThemeListener(true)
     diag.applied = true
@@ -1286,7 +1286,7 @@ local function Hook()
             hooksecurefunc("PaperDollFrame_UpdateStats", function()
                 local c = Cfg()
                 if Active() and c.stats then Guard(StyleStats) end
-                if Active() and c.statList then QueueStatList() end   -- (QoL 0.7.30; at most once per frame)
+                if Active() and c.statList then QueueStatList() end   -- (QoL 0.7.31; at most once per frame)
             end)
         end
         if type(_G.PanelTemplates_SetTab) == "function" then
@@ -1331,7 +1331,7 @@ function ns.BuildCharReskinPage(Notify)
             disabled = disabled, get = function() return C()[key] end,
             set = function(_, v) local lim = LIMITS[key]; C()[key] = math.max(lim[1], math.min(lim[2], tonumber(v) or DEFAULTS[key])); Changed() end }
     end
-    -- (QoL 0.7.30) the full stat list's own page (her answer "Show / hide each stat, Order, % / rating / both, Groups and colours"): every
+    -- (QoL 0.7.31) the full stat list's own page (her answer "Show / hide each stat, Order, % / rating / both, Groups and colours"): every
     -- group heading and stat line of Character Stats as the game gives them for this character now (other classes' resources differ)
     local listOff = function() return isOff() or not C().statList end
     local groups = ns.CharReskin_ListModel()
@@ -1412,7 +1412,7 @@ function ns.BuildCharReskinPage(Notify)
             wide = T("wide", 7, "Wider window (room for the enchant names)", "Makes the character window wider on its Character tab and centres the model, so the enchant, embellishment and gem lines sit between the slots and the model instead of over it (where the extra width leaves too little room beside the model, they run over its sides: nothing is hidden). Changed only out of combat; switching tabs gives Blizzard's width on the other tabs. Off: Blizzard's width (the lines then lie over the model's sides); once it has been on, a /reload removes its two hooks fully (while off they do nothing).", "full", isOff),
             widePx = R("widePx", 8, "Extra width", "How much wider than Blizzard's window, in pixels (default 42: 338 -> 380 without the stats pane, 540 -> 582 with it). Each side of the model gets half.", 0, 300, 1, false,
                 function() return isOff() or not C().wide end),
-            -- (QoL 0.7.30; Xaya: "character pane option should also allow for extra height"; her answer "either one": spread the slots)
+            -- (QoL 0.7.31; Xaya: "character pane option should also allow for extra height"; her answer "either one": spread the slots)
             tallPx = R("tallPx", 8.5, "Extra height", "How much taller than Blizzard's window, in pixels (default 0: Blizzard's height). The two slot columns spread out evenly over it (the same extra gap between every two slots), the model grows taller with them, the weapons move down, and each slot's enchant, embellishment and gem lines may use the extra room. Changed only out of combat, as the width.", 0, 300, 1, false,
                 function() return isOff() or not C().wide end),
             bgAlpha = R("bgAlpha", 9, "Background opacity", "How solid the window's background is (50% to 100%).", 0.5, 1, 0.05, true, isOff),

@@ -1,6 +1,6 @@
-# Character window: full stat list and Extra height, QoL 0.7.30 (REQUEST-LOG #70-#74)
+# Character window: full stat list and Extra height, QoL 0.7.31 (REQUEST-LOG #70-#74)
 Logged 2026-11-06 05:20 UTC. Session S1 (worker), local branch `s1-pane` from `origin/claude/adoring-hawking-wyda59` at e52ee1d (QoL 0.7.28
-items 1-12 merged, request log #74). Not pushed. Nothing here has run in the game. Versions: QoL 0.7.30 (0.7.29 is S3's; the highest QoL
+items 1-12 merged, request log #74). Not pushed. Nothing here has run in the game. Versions: QoL 0.7.31 (0.7.29 is S3's, 0.7.30 is reserved for S6 by the coordinator; the highest QoL
 on any origin branch was 0.7.29); QA E1z80-E1z81 (E1z78 was the highest on any origin branch). Core, Options, Bonus not changed.
 
 ## By REQUEST-LOG number (her words verbatim in docs/process/REQUEST-LOG.md)

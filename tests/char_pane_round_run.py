@@ -1,4 +1,4 @@
-# Stub test for the character window round of 2026-11-06 (XayaUI_QoL 0.7.30; REQUEST-LOG #70-#74). Xaya's words (verbatim in the log):
+# Stub test for the character window round of 2026-11-06 (XayaUI_QoL 0.7.31; REQUEST-LOG #70-#74). Xaya's words (verbatim in the log):
 #   #70: "missing details about about all possible stats / the ability to customize how to display stats in the primary character window";
 #   #71: her answers: stats "2 but customizable and prettified with colors" (option 2: the lines of the Stat Calculator's Character Stats);
 #        customise "Show / hide each stat, Order, % / rating / both, Groups and colours"; #74: default "Everything on".
