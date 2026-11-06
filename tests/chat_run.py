@@ -461,7 +461,8 @@ check("every option has name/get/set and its getters run", str(bad) == "", bad)
 shape = run("""
 local o = ns.BuildChatTab(function() end)
 local out = { o.childGroups }
-for _, k in ipairs({ 'enabled', 'theme', 'intro' }) do out[#out+1] = (o.args[k] and o.args[k].type ~= 'group') and ('top:' .. k) or ('missing:' .. k) end
+out[#out+1] = (o.xuiSwitch and o.xuiSwitch.name == 'Enable Chat Panel' and o.args.enabled == nil) and 'row:enabled' or 'missing:row-switch'   -- (Chat 0.6.18, S1 #48)
+for _, k in ipairs({ 'theme', 'intro' }) do out[#out+1] = (o.args[k] and o.args[k].type ~= 'group') and ('top:' .. k) or ('missing:' .. k) end
 local headers = 0
 local function walk(t) for _, v in pairs(t.args or {}) do if v.type == 'header' then headers = headers + 1 end if v.type == 'group' then walk(v) end end end
 walk(o)
@@ -475,7 +476,7 @@ out[#out+1] = 'privTop:' .. tostring(p.on ~= nil and p.start ~= nil and p.btn ==
 out[#out+1] = 'blocks:' .. tostring(o.args.bar.args.tab_blocksHdr ~= nil and o.args.bar.args.tab_blocksHdr.args.slot1 ~= nil and o.args.bar.args.on ~= nil)
 return table.concat(out, ' ')
 """)
-want = ["tree", "top:enabled", "top:theme", "top:intro", "headers:0", "layout:tab", "look:tab", "bar:tab", "behavior:tab", "filters:tab",
+want = ["tree", "row:enabled", "top:theme", "top:intro", "headers:0", "layout:tab", "look:tab", "bar:tab", "behavior:tab", "filters:tab",
         "history:tab", "privacy:tab", "sounds:nil", "layoutTop:true", "privOrder:true", "privTop:true", "blocks:true"]
 check("Chat Panel: parts under it, panel switches on its own page, sections as tabs (Privacy: Look, Button, Area)", str(shape).split() == want, shape)
 opened = []
@@ -794,6 +795,29 @@ check("console: system messages tagged", "System You are now Away: AFK" in str(r
 check("console: protected text listed as protected, never printed", "[protected message]" in str(r.console) and "<<secret>>" not in str(r.console), r.console)
 check("console: kept out of the All tab", "426.0" not in str(r.all) and "AFK" not in str(r.all), r.all)
 check("console: the setting off keeps nothing", bool(r.offKeepsNothing))
+# Chat 0.6.17 (Xaya 2026-11-06: fix the history window's "|" in this update): a printed "||" (the game's escape for one "|") lost the "|"
+# and sometimes the letter after it in the history window ("[highlighttrail]", "statusidthprobe" in her screenshot). The window's edit
+# box now gets every literal pipe doubled; C.History_Lines (what search reads) keeps one.
+r = run("""
+local out = {}
+print("|cff33ccffXayaUI|r:   |cffffffff/xui cursor [highlight||trail]|r  cursor settings; /xui stats [on||off||options||status]")
+C.History_Select("CONSOLE")
+out.lines = table.concat(C.History_Lines(), "\\n")
+C.History_Toggle()
+local f = _G.XayaUIChatHistory
+out.edit = f and f.edit and f.edit:GetText() or ""
+f.search:SetText("on||off"); f.search:GetScript("OnTextChanged")(f.search)
+out.found = table.concat(C.History_Lines(), "\\n")
+f.search:SetText(""); f.search:GetScript("OnTextChanged")(f.search)
+C.History_Toggle()
+C.History_Select("ALL")
+return out
+""")
+check("history '|': the lines (search, copy) read one '|': [highlight|trail], [on|off|options|status]",
+      "[highlight|trail]" in str(r.lines) and "[on|off|options|status]" in str(r.lines), r.lines)
+check("history '|': the edit box gets each '|' doubled, so none starts a code (shown as one '|')",
+      "[highlight||trail]" in str(r.edit) and "[on||off||options||status]" in str(r.edit) and "[highlight|trail]" not in str(r.edit), r.edit)
+check("history '|': a search typed with '|' (the box gives it back doubled) finds the line", "[on|off|options|status]" in str(r.found), r.found)
 run("C.History_Toggle()")
 names = str(run("local t = {}; for _, b in ipairs(_G.XayaUIChatHistory.kb) do if b:IsShown() then t[#t + 1] = b.t:GetText() end end; return table.concat(t, ',')"))
 check("console: the history window has a Console tab button", "Console" in names, names)

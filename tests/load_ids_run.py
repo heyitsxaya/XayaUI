@@ -126,7 +126,7 @@ check("the memo string changes with the map, instance, difficulty, size and enco
         return true"""))
 check("the old rows still work beside the new lists (open world ticked, a zone list that matches)",
       lua("return (loads(R({ mode = 'all', instanceTypes = { none = true }, mapIDs = { ['20'] = true } }))) and not (loads(R({ mode = 'all', instanceTypes = { raid = true }, mapIDs = { ['20'] = true } })))"))
-check("/xui status prints the place values (map, instance, difficulty, size, encounter)",
+check("/xui debug status prints the place values (map, instance, difficulty, size, encounter)",
       lua("""local out = {}; local keep = NS.Print; NS.Print = function(t) out[#out + 1] = t end
         NS.rules = { R({ mode = 'all' }) }; NS.Evaluate = NS.Evaluate or function() return true, {} end
         pcall(NS.PrintStatus); NS.Print = keep

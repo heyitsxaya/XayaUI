@@ -118,7 +118,7 @@ local STATE_ORDER = { "alive", "vehicle", "pvp", "pet", "moving", "afk", "target
 
 -- Loss of control (stun, fear, root, silence ...) on YOU, from C_LossOfControl. true / false / nil (unreadable: API missing, secret values).
 -- locType names are Blizzard's own strings; the wiki only documents "SCHOOL_INTERRUPT" as an example, so the sets below are the
--- names the default Loss of Control frame uses and are NOT confirmed against the live game (use /xui loc to see what the game reports).
+-- names the default Loss of Control frame uses and are NOT confirmed against the live game (use /xui debug loc to see what the game reports).
 local LOC_SETS = {
     stunned = { STUN = true, STUN_MECHANIC = true },
     incapacitated = { FEAR = true, FEAR_MECHANIC = true, CHARM = true, CONFUSE = true, DISORIENT = true, POSSESS = true },
@@ -142,7 +142,7 @@ function ns.PlayerHasLossOfControl(what)
     end
     return false
 end
--- /xui loc: prints what the game reports right now (to learn the real locType names)
+-- /xui debug loc: prints what the game reports right now (to learn the real locType names)
 function ns.ProbeLossOfControl()
     local LOC = C_LossOfControl
     if not (LOC and LOC.GetActiveLossOfControlDataCount) then ns.Print("loss of control: API missing"); return end
@@ -273,7 +273,7 @@ Add("cooldown", {
         { key = "cdTimeOp", kind = "select", label = "Seconds left", width = "normal", default = "any", required = false,
           vals = { values = { any = "Any", [">="] = "At least", ["<="] = "At most", ["="] = "Exactly", [">"] = "More than", ["<"] = "Less than" },
                    order = { "any", ">=", "<=", "=", ">", "<" } },
-          desc = "Only true while the cooldown has this much time left. Exact when the game shows it; in combat the duration engine's estimate (see /xui timing); with no estimate yet the trigger is unknown." },
+          desc = "Only true while the cooldown has this much time left. Exact when the game shows it; in combat the duration engine's estimate (see /xui debug timing); with no estimate yet the trigger is unknown." },
         { key = "cdTimeSec", kind = "number", label = "Seconds", required = false, showIf = function(t) return t.cdTimeOp ~= nil and t.cdTimeOp ~= "any" end },
         { key = "cdChargeOp", kind = "select", label = "Charges", width = "normal", default = "any", required = false,
           vals = { values = { any = "Any", [">="] = "At least", ["<="] = "At most", ["="] = "Exactly", [">"] = "More than", ["<"] = "Less than" },
@@ -709,7 +709,7 @@ Add("buffAura", {
         { key = "state", kind = "select", label = "State", required = true, vals = YN("Buff is present", "Buff is MISSING") },
         { key = "timeOp", kind = "select", label = "Seconds left", width = "normal", default = "any", required = false, showIf = function(t) return t.state ~= "no" end,
           vals = { values = { any = "Any time left", [">="] = "At least", ["<="] = "At most", [">"] = "More than", ["<"] = "Less than" }, order = { "any", ">=", "<=", ">", "<" } },
-          desc = "Only true while the buff has this much time left. In combat the time is exact when the game shows it, otherwise the duration engine's estimate (see /xui timing); with no estimate yet the trigger is unknown." },
+          desc = "Only true while the buff has this much time left. In combat the time is exact when the game shows it, otherwise the duration engine's estimate (see /xui debug timing); with no estimate yet the trigger is unknown." },
         { key = "timeSec", kind = "number", label = "Seconds", required = false, showIf = function(t) return t.state ~= "no" and TimeOn(t) end },
     },
     check = function(t)
@@ -757,9 +757,9 @@ function ns.TriggerAuraNumbers(t)
 end
 
 -- 13. Player State
--- /xui debuffs [target|focus]: shows exactly what the game lets us read about your debuffs on that unit right now.
+-- /xui debug debuffs [target|focus]: shows exactly what the game lets us read about your debuffs on that unit right now.
 -- Fallback net for "a debuff I put on the target": look the aura up BY NAME with the engine-enforced ownership filter.
--- Returns "found" | "none" | "secret" | "error: <text>". Whether it works in combat is what /xui debuffs reports.
+-- Returns "found" | "none" | "secret" | "error: <text>". Whether it works in combat is what /xui debug debuffs reports.
 function ns.TargetAuraByName(unit, id)
     if not (C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName and C_Spell and C_Spell.GetSpellName) then return "api missing" end
     local okn, nm = pcall(C_Spell.GetSpellName, id)
@@ -772,7 +772,7 @@ function ns.TargetAuraByName(unit, id)
     return "none"
 end
 function ns.ProbeDebuffs(arg)
-    -- "/xui debuffs", "/xui debuffs focus", "/xui debuffs 204598", "/xui debuffs target 204598"
+    -- "/xui debug debuffs", "/xui debug debuffs focus", "/xui debug debuffs 204598", "/xui debug debuffs target 204598"
     local word, num = tostring(arg or ""):match("^%s*(%a*)%s*(%d*)")
     if word == "" and num == "" then num = tostring(arg or ""):match("(%d+)") or "" end
     local unit = (word == "focus") and "focus" or "target"
@@ -791,7 +791,7 @@ function ns.ProbeDebuffs(arg)
         end
     end)
     if not ok then ns.Print("  the call failed: " .. tostring(err)) end
-    ns.Print("  by-name lookup: use /xui debuffs <unit> <spellID>  ->  " .. (ns.probeDebuffID and tostring(ns.TargetAuraByName(unit, ns.probeDebuffID)) or "give a spell ID, e.g. /xui debuffs target 204598"))
+    ns.Print("  by-name lookup: use /xui debug debuffs <unit> <spellID>  ->  " .. (ns.probeDebuffID and tostring(ns.TargetAuraByName(unit, ns.probeDebuffID)) or "give a spell ID, e.g. /xui debug debuffs target 204598"))
 end
 
 -- 3b. Target Debuff (yours)
@@ -860,7 +860,7 @@ Add("targetDebuff", {
         local function Absent(src) rowAura[t] = { tick = ns.tickID, present = false }; return YesNo(t, false), src end
         if found == true then return Found() end
         -- Cooldown Manager fallback, POSITIVE answers only: Blizzard marks a Cooldown Manager icon as aura-driven with plain
-        -- (non-secret) fields, which stay readable in combat. Unverified for target debuffs; see /xui probe <id>.
+        -- (non-secret) fields, which stay readable in combat. Unverified for target debuffs; see /xui debug probe <id>.
         -- true = icon active, false = an icon exists and is inactive, nil = no icon / unreadable. Only icons count.
         local function CdmState(i)
             if not i or i == 0 or not ns.CDMFrameState then return nil end
@@ -869,7 +869,7 @@ Add("targetDebuff", {
             return pr
         end
         -- Only when the aura list could NOT be read cleanly (a complete readable list is trusted over the icon). The icon is the
-        -- TARGET's debuff (Blizzard's buff viewer rebinds on target change; /xui probe shows unit=target), so focus never uses it.
+        -- TARGET's debuff (Blizzard's buff viewer rebinds on target change; /xui debug probe shows unit=target), so focus never uses it.
         -- Seen in game 2026-10-30: debuff up -> iid=secret unit=target; debuff gone -> iid=nil unit=nil (one sample each).
         if (found ~= false or sawHidden) and unit == "target" then
             local ca, cb = CdmState(id), CdmState(tonumber(t.cdmID))
@@ -918,7 +918,7 @@ Add("playerState", {
 -- 13b. Loss of control on YOU, each effect separately, with seconds left (#155, #278 item 5; 0.6.4).
 -- C_LossOfControl.GetActiveLossOfControlData(index) has no secrecy flag in the 12.1.5 docs; GetActiveLossOfControlDataByUnit is secret for
 -- anyone but you, so there is no target / focus version. The effect names (locType) are Blizzard's own strings and are NOT listed in the docs:
--- the sets below are the names the game's own loss-of-control alert uses, not confirmed in game (/xui loc prints what the game reports).
+-- the sets below are the names the game's own loss-of-control alert uses, not confirmed in game (/xui debug loc prints what the game reports).
 -- "Any effect" counts every effect, including names this list does not know. Seconds left: the effect's timeRemaining, or its duration
 -- object (GetActiveLossOfControlDuration) when that is readable.
 local LOC_EFFECTS = {
@@ -962,7 +962,7 @@ local function LossOfControlNow()
 end
 Add("lossOfControl", {
     label = "Loss of control on you", group = "Player",
-    note = "True while one of the ticked effects is on you. The effect names are the game's own and are not documented: if a tick box never reacts, use /xui loc while the effect is on you and report what it prints. 'Any effect' also catches names this list does not know.",
+    note = "True while one of the ticked effects is on you. The effect names are the game's own and are not documented: if a tick box never reacts, use /xui debug loc while the effect is on you and report what it prints. 'Any effect' also catches names this list does not know.",
     new = { state = "yes", any = true },
     combat = "loc",
     fields = {
@@ -1052,7 +1052,7 @@ function ns.CheckExtraTriggers(rule)
     local anyTrue, anyFalse, anyNil = false, false, false
     local firstWhy
     local rows = {}   -- rows[i] = true / false / nil (unknown) for additional trigger i; outcomes read this
-    local whys = {}   -- whys[i] = the trigger's own explanation (shown by /xui status)
+    local whys = {}   -- whys[i] = the trigger's own explanation (shown by /xui debug status)
     for i, t in ipairs(list) do
         local r, d = ns.CheckTrigger(t)
         rows[i] = r

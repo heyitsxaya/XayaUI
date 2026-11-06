@@ -4,6 +4,10 @@
 --    collecting lines while the options window is closed and during combat (the log buffer lives in Core.lua and never depends on the window).
 --  * The error log: XayaUI's own Lua errors are kept (de-duplicated, saved between sessions) so they can be shared.
 --  * The bug report: version, game build, recent errors and console lines as plain text, with no character name, realm, or rule contents.
+--  * The command line (core 0.6.50; Xaya 2026-11-05: "XUI Console does nothing and has no input options"): a line at the bottom of the
+--    console window runs any /xui command (typed with or without "/xui"); what it prints shows in the window, whatever "XayaUI's
+--    messages" (Settings > Debugging) is set to. Up / Down bring back this session's commands. While the window has no lines, a hint
+--    says what to type and where XayaUI's other messages go.
 -- Opened with /xui console and /xui bug, and from Settings > Debugging. Not run in game when written (2026-11-01).
 local addonName, ns = ...
 
@@ -182,6 +186,26 @@ local win
 local winShown = false   -- the window is up (OnShow / OnHide); while not, ns.ConsoleSink draws nothing
 local drawnSerial = 0    -- ns.logSerial when the window was last up to date (Core.lua counts every line put in ns.logBuf)
 local held = {}          -- { serial, line }: private lines that came while it was closed (they are never in ns.logBuf)
+-- the hint shown while the window has no lines (core 0.6.50): what to type, and where XayaUI's other messages go
+local DEST_WORDS = { chat = "the chat window", console = "this window", both = "this window and the chat window" }
+local function HintText()
+    local d = ns.MessageDest and ns.MessageDest() or "chat"
+    return "Nothing here yet. Type a XayaUI command in the line below and press Enter: help lists them, debug lists the diagnostic ones."
+        .. " What a command prints shows here.\n\nXayaUI's other messages go to " .. (DEST_WORDS[d] or DEST_WORDS.chat)
+        .. " (Settings > Debugging > XayaUI's messages)."
+end
+-- every line the window draws goes through here: the first one hides the hint
+-- (Xaya 2026-11-06, of the hint: "yes as long as it doesn't negatively impact performance": its state is one local, so a drawn line
+-- costs one boolean test, no widget call; nothing of it exists until the window is first opened)
+local hintUp = false
+local function SetHint(on)
+    hintUp = on and true or false
+    if on then win.empty:SetText(HintText()); win.empty:Show() else win.empty:Hide() end
+end
+local function Draw(line)
+    win.log:AddMessage(line)
+    if hintUp then SetHint(false) end
+end
 -- the window opens again: draw what it missed, in the order it came
 local function CatchUp()
     winShown = true
@@ -193,11 +217,12 @@ local function CatchUp()
         local n = #buf
         for i = math.max(1, n - missed + 1), n do
             local serial = now - (n - i)   -- (buf[n] is line number `now`; a trim only drops lines from the front)
-            while held[h] and held[h][1] < serial do win.log:AddMessage(held[h][2]); h = h + 1 end
-            win.log:AddMessage(buf[i])
+            while held[h] and held[h][1] < serial do Draw(held[h][2]); h = h + 1 end
+            Draw(buf[i])
         end
     end
-    while held[h] do win.log:AddMessage(held[h][2]); h = h + 1 end
+    while held[h] do Draw(held[h][2]); h = h + 1 end
+    if hintUp then SetHint(true) end   -- (the text again: the setting may have changed while it was closed)
     if #held > 0 then held = {} end
     drawnSerial = now
 end
@@ -215,7 +240,8 @@ local function BuildWindow()
     local c = Ui().console or {}
     -- (420 px at least: the title and the four buttons share the top row, a gutter between each; #351 phase 2)
     local M, G = ns.UI_MARGIN, ns.UI_GUTTER
-    f:SetSize(math.max(420, tonumber(c.w) or 460), tonumber(c.h) or 300)
+    -- (160 px tall at least: the top row, the command line and the hint fit; core 0.6.50)
+    f:SetSize(math.max(420, tonumber(c.w) or 460), math.max(160, tonumber(c.h) or 300))
     f:SetPoint(c.point or "RIGHT", UIParent, c.rel or "RIGHT", tonumber(c.x) or -20, tonumber(c.y) or 0)
     f:SetFrameStrata("MEDIUM")
     f:SetClampedToScreen(true)
@@ -223,7 +249,7 @@ local function BuildWindow()
     f:SetBackdropColor(0.05, 0.05, 0.06, 0.92)
     f:SetBackdropBorderColor(0.3, 0.3, 0.35, 1)
     f:SetMovable(true); f:SetResizable(true); f:EnableMouse(true); f:RegisterForDrag("LeftButton")
-    pcall(f.SetResizeBounds, f, 420, 120, 900, 900)
+    pcall(f.SetResizeBounds, f, 420, 160, 900, 900)
     f:SetScript("OnDragStart", f.StartMoving)
     f:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); SavePos() end)
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -240,15 +266,47 @@ local function BuildWindow()
     x:SetScript("OnClick", function() ns.ConsoleWindow(false) end)
     local bug = Btn("Bug report", 70, function() ns.ShowBugReport() end)
     bug:SetPoint("TOPRIGHT", f, "TOPRIGHT", -(2 + 20 + G), -M)   -- a gutter left of the close button (2 px from the edge, 20 wide)
-    local clr = Btn("Clear", 44, function() f.log:Clear(); if ns.logBuf then wipe(ns.logBuf) end end)
+    local clr = Btn("Clear", 44, function()
+        f.log:Clear(); if ns.logBuf then wipe(ns.logBuf) end
+        SetHint(true)
+    end)
     clr:SetPoint("RIGHT", bug, "LEFT", -G, 0)
     local cp = Btn("Copy", 44, function() ns.CopyConsole() end)
     cp:SetPoint("RIGHT", clr, "LEFT", -G, 0)
     -- the files to send and the folder they are in, as copyable text (DebugRecord.lua ns.SendText)
     local send = Btn("What to send", 84, function() if ns.SendText then ns.ShowCopyBox("XayaUI: what to send", ns.SendText()) end end)
     send:SetPoint("RIGHT", cp, "LEFT", -G, 0)
+    -- the command line along the bottom, clear of the resize grip in the corner (2 px from the edges, 16 px; a gutter between)
+    local CMD_H = 20
+    local cmd = CreateFrame("EditBox", nil, f, "BackdropTemplate")
+    cmd:SetHeight(CMD_H)
+    cmd:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", M, M); cmd:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -(2 + 16 + G), M)
+    cmd:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    cmd:SetBackdropColor(0, 0, 0, 0.5)
+    cmd:SetBackdropBorderColor(0.3, 0.3, 0.35, 1)
+    cmd:SetFontObject(ChatFontNormal); cmd:SetTextInsets(6, 6, 0, 0)
+    cmd:SetAutoFocus(false); cmd:SetMaxLetters(255)
+    -- Up / Down bring back earlier commands: the edit box's own history (AddHistoryLine, SetHistoryLines, SetAltArrowKeyMode are
+    -- SimpleEditBoxAPI in docs/reference/api/widgets.md; that the arrows walk it with alt-arrow mode off is INFERENCE from the chat
+    -- edit box, not documented there; if they do not, typing and Enter still work)
+    cmd:SetAltArrowKeyMode(false); cmd:SetHistoryLines(30)
+    cmd.hint = cmd:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    cmd.hint:SetPoint("LEFT", cmd, "LEFT", 6, 0); cmd.hint:SetPoint("RIGHT", cmd, "RIGHT", -6, 0)
+    cmd.hint:SetJustifyH("LEFT"); cmd.hint:SetWordWrap(false)
+    cmd.hint:SetText("Type a command, Enter to run it (help, debug, debug status)")
+    local function HintShown() cmd.hint:SetShown(cmd:GetText() == "" and not cmd:HasFocus()) end
+    cmd:SetScript("OnEditFocusGained", HintShown)
+    cmd:SetScript("OnEditFocusLost", HintShown)
+    cmd:SetScript("OnTextChanged", HintShown)
+    cmd:SetScript("OnEnterPressed", function(self)
+        local t = self:GetText() or ""
+        self:SetText("")
+        if ns.ConsoleRun(t) then self:AddHistoryLine(t) end   -- (the line keeps the focus, ready for the next command)
+    end)
+    cmd:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    f.cmd = cmd
     f.log = CreateFrame("ScrollingMessageFrame", nil, f)
-    f.log:SetPoint("TOPLEFT", M, -(M + 18 + G)); f.log:SetPoint("BOTTOMRIGHT", -M, M)
+    f.log:SetPoint("TOPLEFT", M, -(M + 18 + G)); f.log:SetPoint("BOTTOMRIGHT", -M, M + CMD_H + G)
     f.log:SetFontObject(GameFontHighlightSmall)
     f.log:SetJustifyH("LEFT"); f.log:SetMaxLines(350); f.log:SetFading(false); f.log:SetInsertMode("BOTTOM")
     f.log:EnableMouseWheel(true)
@@ -260,8 +318,12 @@ local function BuildWindow()
     grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
     grip:SetScript("OnMouseDown", function() f:StartSizing("BOTTOMRIGHT") end)
     grip:SetScript("OnMouseUp", function() f:StopMovingOrSizing(); SavePos() end)
-    for _, line in ipairs(ns.logBuf or {}) do f.log:AddMessage(line) end
+    f.empty = f.log:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")   -- (the log area's own text: shown only while it is empty)
+    f.empty:SetPoint("TOPLEFT", f.log, "TOPLEFT", 0, 0); f.empty:SetPoint("TOPRIGHT", f.log, "TOPRIGHT", 0, 0)
+    f.empty:SetJustifyH("LEFT"); f.empty:SetJustifyV("TOP"); f.empty:SetWordWrap(true)
     win = f
+    SetHint(true)
+    for _, line in ipairs(ns.logBuf or {}) do Draw(line) end
     f:SetScript("OnShow", CatchUp)
     f:SetScript("OnHide", function() winShown = false; drawnSerial = ns.logSerial or 0 end)
     winShown, drawnSerial = true, ns.logSerial or 0
@@ -273,7 +335,7 @@ end
 -- lines of ns.logBuf it missed (CatchUp) and the private lines (ns.PrintPrivate, never in ns.logBuf) that came while it was closed.
 function ns.ConsoleSink(line, private)
     if not win then return end
-    if winShown then win.log:AddMessage(line)
+    if winShown then Draw(line)
     elseif private then
         held[#held + 1] = { ns.logSerial or 0, line }
         if #held > 100 then table.remove(held, 1) end
@@ -296,6 +358,63 @@ function ns.ConsoleWindow(show, fromSettings)
     if not fromSettings then ns.Fire("CONFIG_CHANGED", "view") end
 end
 function ns.ConsoleWindowOn() return (win and win:IsShown()) and true or false end
+
+-- Run what was typed in the console's command line (core 0.6.50). "/xui debug status", "/xayaui debug status" and "debug status" all
+-- run /xui debug status; /save and /reload reload the interface; any other slash command, the game's or another addon's, is not run
+-- (only XayaUI's own handler is called). The typed line is echoed into the
+-- window; what the command prints goes to the window (ns.consoleRunning, read by Core.lua ns.Print), whatever "XayaUI's messages"
+-- says. Messages a command prints later (after a timer, at the end of combat) go where the setting says. Returns true when a
+-- command ran (the edit box keeps it in its history).
+-- Run fn(...) with what it prints going to the console window, whatever "XayaUI's messages" says (ns.consoleRunning, read by Core.lua
+-- ns.Print and its error handler). open: open the window first if it is closed (any /xui debug command; Xaya 2026-11-06: "Debug cmds
+-- open console"). An error goes to the game's error handler while ns.consoleRunning is still set: XayaUI's handler (Core.lua) shows it
+-- in the window and keeps it for the bug report, and BugSack or the game's error frame still get it; a feature's command reaches the
+-- same handler from Modules.lua's own pcall. Messages printed later (after a timer, at the end of combat) go where the setting says.
+function ns.RunInConsole(open, fn, ...)
+    if open and not ns.ConsoleWindowOn() then ns.ConsoleWindow(true) end
+    local prev, args, n = ns.consoleRunning, { ... }, select("#", ...)
+    ns.consoleRunning = true
+    xpcall(function() fn(unpack(args, 1, n)) end, function(e) local h = geterrorhandler and geterrorhandler(); if h then pcall(h, e) end end)
+    ns.consoleRunning = prev
+end
+-- a line of the console's own (the typed command, a refusal): kept in ns.logBuf like a message, drawn in the window and the settings
+-- window's strip, not put in chat or the debug record
+local function Put(line)
+    ns.LogAppend(line)
+    if ns.Fire then ns.Fire("LOG", line) end
+    ns.ConsoleSink(line)
+end
+function ns.ConsoleRun(text)
+    text = tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if text == "" then return false end
+    local low, body = text:lower(), nil
+    for _, p in ipairs({ "/xui", "/xayaui" }) do
+        if low == p then body = "" elseif low:sub(1, #p + 1) == p .. " " then body = text:sub(#p + 2) end
+        if body then break end
+    end
+    -- (Xaya 2026-11-06, of refusing other slash commands here: "Yes, but /save should trigger a reload"; of /reload: "Both work")
+    -- /save and /reload reload the interface,
+    -- which is when the game writes the saved settings to disk. C_UI.Reload is documented (docs/reference/api/namespaces.md, C_UI:
+    -- "`C_UI.Reload()`", no flags, no returns); ReloadUI, the older global XayaUI already calls from buttons, if it is missing.
+    -- INFERENCE (not documented): an addon may call it from a key press in its own edit box, as the game's own reload buttons do.
+    if low == "/save" or low == "/reload" then
+        Put("|cff888888> " .. low .. "|r  reloading the interface (that writes your settings to disk)")
+        local reload = (C_UI and C_UI.Reload) or ReloadUI
+        if type(reload) == "function" then reload() end
+        return true
+    end
+    if not body and text:sub(1, 1) == "/" then
+        Put("|cffff5555Only XayaUI's own commands run here|r (and /save or /reload, which reload the interface). Type them with or without /xui, "
+            .. "for example: help, debug, debug status.")
+        return false
+    end
+    body = (body or text):gsub("^%s+", "")
+    Put("|cff888888> /xui " .. body .. "|r")   -- the typed line, as the console's own record of what ran
+    local run = SlashCmdList and SlashCmdList["XAYAUI"]
+    if type(run) ~= "function" then return false end
+    ns.RunInConsole(false, run, body)
+    return true
+end
 
 -- reopened at login when it was open at logout. V14: decided when the saved settings are ready; a window saved closed makes no frame
 -- and waits for nothing (core's start-up frame runs it at PLAYER_LOGIN, Modules.lua ns.AtLogin; this file had its own frame for it).

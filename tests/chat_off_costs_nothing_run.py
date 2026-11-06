@@ -86,6 +86,7 @@ function NFILTERS() local n = 0; for _, l in pairs(W.filters) do n = n + #l end;
 function THEMEL() return #ns.Theme._listeners - W.coreThemeListeners end
 function FIND(name)            -- an option of the Chat Panel's settings page, by its label (the switch Xaya clicks)
   local o = ns.BuildChatTab(function() end)
+  if o.xuiSwitch and o.xuiSwitch.name == name then return o.xuiSwitch end   -- (Chat 0.6.18, S1 #48: "Enable Chat Panel" is the row's tick box)
   local function walk(t)
     for _, v in pairs(t.args or {}) do
       if type(v) == "table" then

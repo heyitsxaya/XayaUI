@@ -392,7 +392,7 @@ local function PaneColors(frame, bg, border)
     if frame and frame.SetBackdropColor then frame:SetBackdropColor(bg[1], bg[2], bg[3], bg[4]); frame:SetBackdropBorderColor(border[1], border[2], border[3], 1) end
 end
 
--- /xui perf: time every pane / tab switch (OnGroupSelected) so the slow or late step can be named
+-- /xui debug perf: time every pane / tab switch (OnGroupSelected) so the slow or late step can be named
 local function TraceGroupFire(w, what)
     if w.xuiFireTraced then return end
     w.xuiFireTraced = true

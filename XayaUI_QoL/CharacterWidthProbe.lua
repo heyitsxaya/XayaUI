@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- CharacterWidthProbe.lua : /xui stats widthprobe [px | off] (XayaUI QoL 0.7.12). An in-game test, run only when typed, for the planned
+-- CharacterWidthProbe.lua : /xui debug widthprobe [px | off] (XayaUI QoL 0.7.12). An in-game test, run only when typed, for the planned
 -- QoL Character Reskin's "wider character viewport" (Xaya, 2026-11-04, her answer to plan question 5: "a wider character viewport").
 -- The plan (docs/plans/STAT-CALCULATOR-REDESIGN-2026-11-04.md) says a probe comes before anything is built, because changing a UI
 -- panel's width from addon code may taint the game's panel placement (INFERENCE; not checked). This file only measures; it builds
@@ -51,7 +51,7 @@ function ns.CharWidthProbe_Run(arg)
         Say(("off. %d blocked-action message%s while it ran. Please /reload now, then report what you saw."):format(probe.blocked, probe.blocked == 1 and "" or "s"))
         return
     end
-    if probe.on then Say("already running; /xui stats widthprobe off first."); return end
+    if probe.on then Say("already running; /xui debug widthprobe off first."); return end
     -- (QoL 0.7.22) the Character Reskin's "Wider window" is built on what this probe tested; the two would widen the window twice
     if ns.CharReskin_WideOn and ns.CharReskin_WideOn() then
         Say("the Character Reskin's wider window is on (Blizzard UI Reskin > Character Pane); turn it off there first."); return
@@ -94,5 +94,5 @@ function ns.CharWidthProbe_Run(arg)
     Say("2) With it open, press P (spellbook) and N (talents): do they sit beside it without overlapping?")
     Say("3) Fight a training dummy; open and close your bags, the spellbook and the map in combat; leave combat.")
     Say("4) Watch chat for 'width probe: ADDON_ACTION_...' lines or Blizzard's 'Interface action failed because of an AddOn'.")
-    Say("5) Switching the window's tabs puts Blizzard's width back (expected). Then type /xui stats widthprobe off and /reload.")
+    Say("5) Switching the window's tabs puts Blizzard's width back (expected). Then type /xui debug widthprobe off and /reload.")
 end

@@ -14,6 +14,7 @@
 --   ns.RegisterCommand(names, fn, help)       /xui <name> [args]; names is one string or a list; several handlers may share a name
 --   ns.RegisterLauncher(entry)                a row in the minimap button's quick-access list
 --   ns.RegisterSettingsPage(module, key, fn)  a page in the settings window; fn(Notify) returns an AceConfig group
+--   ns.RegisterReskin(key, apply)             a reskin of the Blizzard UI Reskin tab; apply() takes the tab's switch (core 0.6.51)
 --   ns.MODULES                                which addon owns which /xui commands, so core can say why one does nothing
 -- Every registered function is called through pcall: one feature's error never stops the next one from starting.
 -- Own code. UNTESTED in game.
@@ -102,20 +103,47 @@ end
 
 function ns.CommandHelp() return helpText end
 
+-- 2b. /xui debug <name> [args] (core 0.6.50; Xaya 2026-11-05: "can't some of these be consolidated into a /xui debug _____ ? this is a
+-- LOT of noise"). Diagnostic commands live under /xui debug, so /xui help lists only what a player uses. /xui debug <name> is the only
+-- way to run one (Xaya 2026-11-06: "let's move to /xui debug ____"; the old /xui <name> forms were taken out the same day).
+-- help: one string or a list of strings, each "name [args] (what it does)", without "/xui debug".
+local debugCommands, debugHelp = {}, {}
+function ns.RegisterDebugCommand(names, fn, help)
+    if type(fn) ~= "function" then return end
+    if type(names) == "string" then names = { names } end
+    for _, n in ipairs(names) do
+        n = tostring(n):lower()
+        debugCommands[n] = debugCommands[n] or {}
+        table.insert(debugCommands[n], fn)
+    end
+    if type(help) == "string" then help = { help } end
+    for _, h in ipairs(type(help) == "table" and help or {}) do
+        if type(h) == "string" and h ~= "" then debugHelp[#debugHelp + 1] = h end
+    end
+end
+function ns.RunDebugCommand(cmd, arg)
+    local list = debugCommands[cmd]
+    if not list then return false end
+    for _, fn in ipairs(list) do Call(fn, arg) end
+    return true
+end
+function ns.DebugCommandHelp() return debugHelp end
+
 -------------------------------------------------------------------------------
 -- 3. Which addon owns what. Only used for messages and the Addon Info status list; nothing here is called.
 -------------------------------------------------------------------------------
 ns.MODULES = {
-    { addon = "XayaUI_Chat",    title = "XayaUI Chat",            commands = { "chat", "panel", "chatprobe", "privacy" } },
-    { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor" } },
+    { addon = "XayaUI_Chat",    title = "XayaUI Chat",            commands = { "chat", "panel", "privacy" }, debug = { "chatprobe" } },
+    { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor" }, debug = { "widthprobe" } },
     { addon = "XayaUI_Bonus",   title = "XayaUI Bonus Features",  commands = { "notes", "notepad", "note", "data" } },
     { addon = "XayaUI_Reskin",  title = "XayaUI Blizzard Reskin", commands = {} },
     { addon = "XayaUI_Options", title = "XayaUI Options",         commands = {} },
 }
 
-function ns.ModuleOfCommand(cmd)
+-- isDebug: look in the /xui debug names (m.debug) instead of the /xui names (core 0.6.50)
+function ns.ModuleOfCommand(cmd, isDebug)
     for _, m in ipairs(ns.MODULES) do
-        for _, c in ipairs(m.commands) do if c == cmd then return m end end
+        for _, c in ipairs((isDebug and m.debug or m.commands) or {}) do if c == cmd then return m end end
     end
 end
 
@@ -133,9 +161,10 @@ end
 
 -- One line explaining why a command did nothing. Until a feature has moved out of the XayaUI folder its addon does not exist yet,
 -- so "missing" there means the feature's own file failed to load.
-function ns.ModuleMissingText(cmd)
-    local m = ns.ModuleOfCommand(cmd)
+function ns.ModuleMissingText(cmd, isDebug)
+    local m = ns.ModuleOfCommand(cmd, isDebug)
     if not m then return nil end
+    if isDebug then cmd = "debug " .. cmd end
     local state = ns.ModuleState(m.addon)
     if state == "disabled" then
         return ("/xui %s is part of %s, which is switched off. Turn it on in the game's AddOns list, then /reload."):format(cmd, m.title)
@@ -182,6 +211,25 @@ function ns.RegisterSettingsPage(module, key, build)
         if p.key == key then pages[i] = { module = module, key = key, build = build }; return end
     end
     pages[#pages + 1] = { module = module, key = key, build = build }
+end
+
+-- The Blizzard UI Reskin tab's own switch (core 0.6.51, S1 #48; Xaya 2026-11-05: "double: both enable/disable of reskin at all; then individual
+-- toggles for individual reskins"). Off turns every reskin off (Chat Panel, Character Pane, Esc Menu, Shopping List) and each keeps its
+-- own switch for when the tab is on again. Saved only while off (CueRulesDB.reskinTabOff = true), so a profile that never touched it
+-- holds nothing. Every reskin reads it with its own switch: on = its own switch AND this one.
+function ns.ReskinTabOn() return not (type(CueRulesDB) == "table" and CueRulesDB.reskinTabOff) end
+-- Each reskin registers its own apply (it builds, or gives Blizzard's look back) with ns.RegisterReskin(key, fn), the way features
+-- register everything else here; core only walks the list. A reskin whose addon is off is simply not in it.
+local reskins = {}
+function ns.RegisterReskin(key, apply) if type(key) == "string" and type(apply) == "function" then reskins[key] = apply end end
+-- Set it and let every registered reskin take it at once (in key order, each through pcall).
+function ns.SetReskinTab(on)
+    if type(CueRulesDB) ~= "table" then return end
+    CueRulesDB.reskinTabOff = (not on) and true or nil
+    local keys = {}
+    for k in pairs(reskins) do keys[#keys + 1] = k end
+    table.sort(keys)
+    for _, k in ipairs(keys) do Call(reskins[k]) end
 end
 
 -- Page layout for every feature tab (Xaya, 2026-11-03; QoL and Chat first, the rule for new features):
@@ -315,7 +363,7 @@ local function RegisterBlizzardPanel()
     sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
     sub:SetWidth(560)
     sub:SetJustifyH("LEFT")
-    sub:SetText("Sound cues and on-screen alerts driven by rules: buff, cooldown, talent, and conditions.\nSlash commands: /xui (or /xayaui)  |  /xui status  |  /xui probe <spellID>  |  /xui unlock")
+    sub:SetText("Sound cues and on-screen alerts driven by rules: buff, cooldown, talent, and conditions.\nSlash commands: /xui (or /xayaui)  |  /xui debug status  |  /xui debug probe <spellID>  |  /xui unlock")
     local btn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     btn:SetSize(200, 28)
     btn:SetPoint("TOPLEFT", sub, "BOTTOMLEFT", 0, -20)
