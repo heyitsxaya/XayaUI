@@ -1,0 +1,40 @@
+-------------------------------------------------------------------------------
+-- Games.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- Start-up, saved table, the list of games, opening and closing, what happens in combat.
+-------------------------------------------------------------------------------
+-- Namespace: one with core, as the other feature addons do (XayaUI_Bonus/Calculator.lua: ns = _G.XayaUI_NS or ns).
+--
+-- Saved table XayaUIGamesDB (account-wide; its own table so it never joins a profile export):
+--   version                    schema number; a migration step per version, as core does
+--   settings                   combat behaviour (plan question 6), the default share channel, sounds on / off
+--   stats[gameID][modeID]      played, won, current and best streak, guesses-per-win counts
+--   daily[dayKey][gameID]      the player's own daily result (so a daily is played once)
+--   friends[dayKey][name]      friends' results received by message: LOCAL ONLY, never exported, with a "Clear" control
+--   packs[packID]              community puzzle packs the player accepted (Packs/)
+--
+-- The list of games (each game file adds itself):
+--   Games.Register(def)        def = { id, title, modes = {...}, NewSession(mode, seed), BuildUI(parent, session) }
+--   Games.List()               for the window's game list
+--
+-- Opening:
+--   Games.Open(gameID, modeID) called by core's load-on-demand hook (CORE-HOOK.md) after it loads this addon, by the minimap
+--                              row, and by /xui games
+--   Games.Close()              also lets go of the keyboard (UI/Input.lua)
+--
+-- /xui games commands (ns.RegisterCommand): games (open), games stats, games share, games import, games clear-friends.
+-- Settings page (ns.RegisterSettingsPage): combat behaviour, share channel, friends' results on / off, installed packs.
+--
+-- Events:
+--   PLAYER_REGEN_DISABLED      always let go of the keyboard; then hide, close or leave open (question 6)
+--   PLAYER_REGEN_ENABLED       show again if it was hidden for combat
+--   (addon messages are handled in Comms.lua)
+--
+-- Gates (Xaya, 2026-11-05; ARCADE-FEASIBILITY.md section 2):
+--   1. its own folder, switchable in the AddOns list;
+--   2. core's "Games" switch (off by default) must be on, or this addon is never loaded (CORE-HOOK.md);
+--   3. it loads only on the player's click or command; with no game open it runs nothing: no OnUpdate, no timers, no events;
+--   4. a game starts and keeps running only outside restricted play (Arcade/Guard.lua).
+--
+-- Open points: the addon and table names (question 3); whether a game in progress survives a /reload (proposed: daily yes,
+-- live versus no).
+-------------------------------------------------------------------------------

@@ -1,0 +1,18 @@
+-------------------------------------------------------------------------------
+-- TooltipsRPPM.lua : OUTLINE ONLY (RM-RPPM, 2026-11-05). No code. Proposed, not decided (used if question 1 = tooltip).
+-- One extra line on item tooltips for an item with a proc.
+-------------------------------------------------------------------------------
+-- Hook: the item handler Bonus already registers through TooltipDataProcessor.AddTooltipPostCall (XayaUI_Bonus/Tooltips.lua:658-666),
+-- not a second hook.
+--
+-- Steps:
+--   1. Find the proc line: a tooltip data line of type Enum.TooltipDataLineType.ItemSpellTriggerOnProc (= 46, enums.md:12670).
+--   2. Proc spell ID: UNKNOWN ROUTE. A line's fields are undocumented; C_Item.GetItemSpell (namespaces.md:2792) gives one spell,
+--      probably the on-use one (INFERENCE). Settle it with the planned /xuidev tooltips capture before building.
+--   3. Look up ProcRates; no entry gives "not given by the game".
+--   4. Haste: read out of combat only (GetHaste, globals.md:185, SecretWhenUnitStatsRestricted). In combat, show the base rate only.
+--   5. Add the line, for example at 20% haste: "Procs: 2.0 per min base, about 2.4 at your haste (estimate), one every ~25 s"
+--      (2.0 x 1.20 = 2.4; 60 / 2.4 = 25). The source and patch
+--      go in the hover or on Shift.
+-- Switch: Settings > Tooltips > "Proc rates" (off or on by default: to be decided).
+-------------------------------------------------------------------------------

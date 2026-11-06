@@ -1,0 +1,35 @@
+-------------------------------------------------------------------------------
+-- Comms.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- Addon messages between players: live versus / co-op and shared daily results. Stage 2-3 of the plan; stage 1 needs none of it.
+-------------------------------------------------------------------------------
+-- Calls (12.1.5 reference, docs/reference/api/):
+--   C_ChatInfo.RegisterAddonMessagePrefix(prefix) -> RegisterAddonMessagePrefixResult (namespaces.md:840; enums.md:11106:
+--     Success, DuplicatePrefix, InvalidPrefix, MaxPrefixes)
+--   C_ChatInfo.SendAddonMessage(prefix, message, chatType?, target?) -> SendAddonMessageResult · SecretArguments=NotAllowed (:844)
+--   event CHAT_MSG_ADDON (prefix, text, channel, sender, target, ...) (events.md:278)
+--   C_BattleNet.SendGameData(gameAccountID, prefix, data) -> SendAddonMessageResult (namespaces.md:551)
+--   event BN_CHAT_MSG_ADDON (prefix, text, channel, senderID) (events.md:185)
+--
+-- Comms.Send(kind, fields, channel, target)   PARTY / RAID / GUILD / WHISPER, or a Battle.net friend
+-- Comms.On(kind, fn)                           a handler per message kind
+-- A send queue paces messages. What each result does (enums.md:11728-11743):
+--   Success                                    next message
+--   AddonMessageThrottle, ChannelThrottle      wait, then retry the same message
+--   AddOnMessageLockdown                       hold everything and tell the player that live play is paused. WHEN the game
+--                                              locks messages down is not in the reference: probe in game before stage 3.
+--   NotInGroup, NotInGuild, TargetOffline      drop it and say why
+--   InvalidPrefix, InvalidMessage, InvalidChatType, InvalidChannel, TargetRequired, GeneralError
+--                                              drop it and log it (Advanced Debugging)
+--
+-- Message outline (one line each; the field separator and size limit are to be fixed once the game's limits are looked up):
+--   HELLO   protocol version, addon version
+--   INVITE  gameID, modeID, dayKey or seed, word-list version
+--   ACCEPT / DECLINE / BYE
+--   ROW     marks only (right place / in word / not in word), never the letters, so watching gives nothing away
+--   DONE    guesses used, seconds, won or not
+--   RESULT  a daily result for the friends' board
+--
+-- Received text is data: split and length-checked, every field checked for type and range, unknown kinds and versions ignored,
+-- never run as code. Every received field is pcall'd and checked with issecretvalue (standing rule).
+-- Not looked up yet: the message size limit and the send rate allowed; whether WHISPER reaches players on other realms.
+-------------------------------------------------------------------------------

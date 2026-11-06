@@ -1,0 +1,15 @@
+-------------------------------------------------------------------------------
+-- ProcCount.lua : OUTLINE ONLY (RM-RPPM, 2026-11-05). No code. Only if question 2 = "measured".
+-- NOTE: XayaUI_DevAssist/ is another session's area (SESSION-START-SUMMARY section 4); agree with it before building.
+-------------------------------------------------------------------------------
+-- /xuidev procs <itemID or spellID>   counts the proc's applications against time with the item equipped, from the aura log
+--                                     that already exists (no second recorder)
+-- Result: procs seen, minutes watched, the observed rate and how far it can be off (it grows smaller with more procs), and the
+-- player's haste at the time. Saved to the player's file, not the repo.
+--
+-- Limits:
+--   - aura data in combat is secret (Dev Assist probe findings, 2026-11-04: UNIT_AURA payload secret in combat), so in-combat
+--     procs may not be countable;
+--   - an observed rate includes how often chances happen, so it is not the base RPPM;
+--   - turning it into a base rate needs the rules (haste scaling), and those are only partly public.
+-------------------------------------------------------------------------------

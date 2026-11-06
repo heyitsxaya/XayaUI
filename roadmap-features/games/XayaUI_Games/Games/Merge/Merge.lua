@@ -1,0 +1,8 @@
+-------------------------------------------------------------------------------
+-- Games/Merge/Merge.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- Sliding merge: slide every tile one way; two equal tiles that meet merge into one. Own name and look.
+-------------------------------------------------------------------------------
+-- Rules (frame-free): Merge.New(size, seed), Merge.Slide(dir) (each tile merges at most once per slide; a new tile appears only
+-- if something moved), Merge.Over() (no slide changes the board).
+-- Input: arrow keys, or a mouse drag in a direction (mouse-only play needs no keyboard probe).
+-------------------------------------------------------------------------------

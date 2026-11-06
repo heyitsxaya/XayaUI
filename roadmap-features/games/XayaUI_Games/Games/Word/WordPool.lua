@@ -1,0 +1,34 @@
+-------------------------------------------------------------------------------
+-- Games/Word/WordPool.lua : OUTLINE ONLY (RM-GAMES). No code. Proposed, not decided.
+-- Xaya, 2026-11-05: "For wordle: wow trivia edition (uses words from in-wow)". Replaces the static word list (Words_enUS.lua).
+-- The words are read from the game client at runtime: no word list ships in the repo, and the client gives the player's own
+-- language for free.
+-------------------------------------------------------------------------------
+-- Categories and their sources (12.1.5 reference; every call pcall'd, every answer checked with issecretvalue):
+--   Zone       C_Map.GetMapChildrenInfo(top, Enum.UIMapType.Zone, true) -> .name   (namespaces.md; MayReturnNothing)
+--              "top": walk C_Map.GetMapInfo(...).parentMapID up from any map until mapType is Cosmic (enums.md:13973), so no map
+--              ID is written into the code
+--   Dungeon    the same call with Enum.UIMapType.Dungeon
+--   Race       C_CreatureInfo.GetRaceInfo(raceID) for raceID = 1, 2, ... until a run of empty answers
+--   Class      C_CreatureInfo.GetClassInfo(classID), the same way
+--   Spec       GetSpecializationInfoByID (not in the generated documentation; core's ClassLearn.lua:51 already calls it in pcall)
+--   Mount      C_MountJournal.GetMountIDs() + C_MountJournal.GetMountInfoByID(id) -> name
+--   Faction    C_Reputation.GetFactionDataByID(id), probed over a range (cost to be measured)
+--   Not used:  the player's own spellbook, owned mounts or pets. They differ per character, so friends would not get the same
+--              daily word.
+--
+-- WordPool.Build(categories)   runs in a coroutine, a few milliseconds per frame, the first time the word game opens (cost to be
+--                              measured). The result is kept only for the session: not saved, never in the repo (Blizzard text
+--                              stays out of the repo).
+-- WordPool.Clean(name)         keeps a name only if it suits the board. Open (question W1):
+--                              single words only, or several words with fixed gaps; apostrophes and hyphens removed or shown as
+--                              fixed; length range (e.g. 4 to 10 letters).
+--                              Letters are split as UTF-8 characters, not bytes (accented letters in other client languages).
+--                              The reference has no UTF-8 helper, so this needs a small splitter of our own.
+-- WordPool.Answers(category)   sorted by the game's own ID, so the same day's seed picks the same answer on every client of the
+--                              same language and patch.
+--
+-- Daily sameness: the same patch and language give the same pool. INFERENCE: the map tree and the mount journal are the same
+-- for every character. Check in game whether GetMountIDs lists every mount or only those this character can see. Friends playing
+-- in another client language get different words; a shared result shows the language and is compared only within it.
+-------------------------------------------------------------------------------

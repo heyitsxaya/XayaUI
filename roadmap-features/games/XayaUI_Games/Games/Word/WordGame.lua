@@ -1,0 +1,24 @@
+-------------------------------------------------------------------------------
+-- Games/Word/WordGame.lua : OUTLINE ONLY (RM-GAMES, 2026-11-05). No code. Proposed, not decided.
+-- The word game's rules. No frames and no game API, so the Lua 5.1 tests run it offline (like XayaUI_QoL/CharacterModel.lua).
+-- Own name, own look, own word list: not Wordle's (plan section 2).
+-------------------------------------------------------------------------------
+-- WordGame.NewRound(answer, opts)   opts = { length, maxGuesses, hard }  ->  round
+-- WordGame.Check(round, guess)      -> ok, reason   (reason: wrong length, not letters, not in the allowed list, hard-mode hint
+--                                                   not reused)
+-- WordGame.Mark(answer, guess)      -> a mark per letter: RIGHT_PLACE, IN_WORD, NOT_IN_WORD
+--   Repeated letters: first mark every letter in the right place, then mark IN_WORD only while that letter still has unmatched
+--   copies in the answer. Example: answer with one E, guess with two E's: only one E gets a mark.
+-- WordGame.Apply(round, guess)      records the guess and its marks; sets round.finished / round.won
+-- WordGame.Known(round)             what is known about each letter, for the on-screen keys
+--
+-- WoW trivia answers (WordPool.lua) change the rules in three ways:
+--   - the length differs per answer, so the board is sized per round;
+--   - letters are UTF-8 characters, not bytes;
+--   - fixed characters (a space, an apostrophe, if kept) are shown from the start and are not guessed.
+-- Which guesses are accepted is open (question W3): any letters, or only names in the pool of that length. A pool may hold few
+-- names of a given length, which would make "pool only" too easy.
+--
+-- round = { answer, length, maxGuesses, hard, guesses = {}, marks = {}, finished, won, startedAt }
+-- The answer never leaves this file in a message (Comms sends marks only).
+-------------------------------------------------------------------------------
