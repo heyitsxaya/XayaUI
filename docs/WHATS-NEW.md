@@ -1,6 +1,6 @@
 # What's new in XayaUI
 
-**Updated 2026-11-06 evening:** sections 3 to 5 (below) cover the debug round, the group page / QA round and the auto-populate buttons that landed after this page was first written.
+**Updated 2026-11-06 evening:** sections 3 to 6 (below) cover the debug round, the group page / QA round, the auto-populate buttons and the engine session's changes that landed after this page was first written.
 
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
 Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
@@ -338,9 +338,38 @@ feature in section 2. **Not tested in game.**
   beside Select all, keep the spec icon on spec buttons, name the pressed button in the table title (still "Auto-populate: <Spec>"),
   and the empty-list wording.
 
-*Not in this list yet:* the rest of that landing's changes (Chat 0.6.25, Bonus 0.6.19, Reskin 0.6.6 and the other sessions' parts of
-Options 0.6.57 and core 0.6.57: the Info pane / Patch Notes, chat changes, the settings window look, the engine session's work). Their sessions send their own notes;
-they are added here only once they arrive and are checked against `main`.
+## 6. Auto-populate table, Cooldown Manager wording, window close, sidebar look and more (engine session; main 687b624)
+
+From engine session 2 (core 0.6.57, Options 0.6.57). Not seen in game yet.
+
+- **Auto-populate table** (Rules > Class/Spec Rule Creator; works with the buttons in section 5). A titled table with two help lines.
+  - Rows are grouped under Spell CD, Aura and Debuff, A to Z, each group with its own tick box. The all-specs list has a Spec column,
+    and each name shows the spell's icon.
+  - A **Cue set-up** column: Speech has a "Customize" box that opens a typing window; Sound and pictures have a picker you must choose
+    from.
+  - A row that could not be finished stays in the table, with the popup "error issue making the following rules: [...]". Rows that
+    were made leave the table.
+  - On-screen cues are placed in rows of 3, centred on the screen: centre, below, above.
+  - A switch, "Hide / Show already generated rules (can potentially cause duplicates)".
+  - Buttons: Advanced, Populate, Reload list, Close.
+- **Cooldown Manager warning wording.** "This aura (name) requires Blizzard's Cooldown Manager ..." and, where the game offers no
+  tracking in combat for your spec: "Blizzard's Cooldown Manager does not offer in-combat tracking for this aura for your current spec.
+  Rule might not work reliably."
+- **Closing the settings window ends everything it had open:** every preview, sidebar movement unlock, group unlock, preview pause and
+  window-made unlock. This fixes previews staying on screen after the window closed.
+- **Sidebar look.** XayaUI's own eye and headphone icons (slashed and dimmed when off); a flat white padlock and a gold move arrow; an
+  eye on Loaded and Not Loaded; "Delete (N)", "Move (N)" and "Deselect (N)" buttons; and "Link N Selected (move together)" in the
+  right-click menu.
+- **Switched-off rules cost nothing.** No engine work and no display frame for a rule that is off. Preview still works; the rule is
+  not shown in the unlock view.
+- **New trigger choice:** Player State "Dead, not released".
+- **Talents in a rule's Load tab** click through Known (green), Not known (red) and Not set.
+- **New Sound cues start on the SFX channel.**
+- *Coming next, not on `main` yet:* a per-spec aura and debuff learner, a change so sounds play one frame after the event (measured
+  in the test setup only), and a structure fix.
+
+*Not in this list yet:* Chat 0.6.25, Bonus 0.6.19, Reskin 0.6.6, and the Info pane / Patch Notes, chat changes and settings window look from
+other sessions. Their sessions send their own notes; they are added here only once they arrive and are checked against `main`.
 
 **Version numbers:** two different changes on `main` carry the label Options 0.6.41 (the "switched-off features cost nothing"
 work and the auto-rule picker; two sessions numbered them at the same time). They are listed as they are; history is not
