@@ -43,6 +43,9 @@ only, not game events. Issue #298: duplicated scans cost frame rate.
    description box" (core ns.InfoBox). TRIAL: only Bonus Features > Utilities > Calculator until she confirms it ("try this out for
    one text-heavy segment and confirm POC before proceeding for all").
 
-## C. Order of work (cleanup session's plan; tested work goes to main at once)
-1. These standards (this file) and the shared helpers.
-2. Call sites moved one addon per landing, only after bundle-2300 and the other open branches are on main, so nothing conflicts.
+## C. Order of work (her answer, CLEAN-9 / UI-55: "Baseline, refactor, test"; tested work goes to main at once)
+1. These standards (this file) and the tooltip trial (section B4) go on now.
+2. Baseline: the performance-test session's per-addon numbers (one M+ key, or its offline audit, if no key run is possible).
+3. Refactor (section A), only once the baseline exists and bundle-2300 is on main: the costliest addon in the baseline first, then
+   one addon per landing. The shared services' interface goes to the performance-test session before the first conversion.
+4. Test: each converted addon re-measured against the baseline.
