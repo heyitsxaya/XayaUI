@@ -1,6 +1,0 @@
-# Second Buff / Aura trigger can be added again (XayaUI 0.5.76, fork: main, issue #288)
-Logged 2026-11-02 23:15 UTC.
-
-Xaya: "you should still be allowed to add another aura trigger"; a tester posted "Can no longer track multiple buffs" (Add a trigger list showed Aura: Target Debuff etc. but no Buff / Aura). Cause: 0.5.55 (#264) set hideFromMenu on the buffAura row; extra aura IDs on the built-in trigger are ANY-of only, so ALL-of buffs became impossible to build. Fix: Triggers.lua AddChoices offers buffAura (label "Buff / Aura (another)") whenever ns.BuffUsed(rule); the first aura still goes to the built-in section. Saved rules, the Duplicate icon, and evaluation are unchanged. USER-GUIDE.md section on several auras updated. Verified: Lua syntax check only. Not tested in game.
-
-Release note: the first push carried this fix as 0.5.75 (commit 5b08562). Another session had meanwhile put its own local-only "0.5.75" on Xaya's machine (23:07-23:11: Drafts.lua ns.DraftBarText plus a draft-description block, one Options.lua hunk using it, one USER-GUIDE.md line). Those files were folded in UNCHANGED (not reviewed beyond a Lua syntax check) and everything is released as 0.5.76. That session did not log a GitHub issue for its change; none was created here. Also fixed: the 0.5.74 debug log carried a misdated 2026-11-03 file name; it is now 2026-11-02-2345-... .
