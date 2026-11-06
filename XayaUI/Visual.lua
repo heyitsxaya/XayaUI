@@ -2658,6 +2658,9 @@ end
 -- not turn off previews -- this is a high priority issue, as it indicates that the addon is still running its options pane indirectly in
 -- some way. this should not happen"). Up to now only the eye / headphone previews ended; the sidebar's per-rule and per-group movement
 -- unlocks (sample displays with their boxes and names), the preview pause and an unlock made with the window's Lock Positions button stayed.
+local windowOpen = false   -- the settings window is open (told by XayaUI_Options: ns.SetWindowOpen)
+function ns.SetWindowOpen(on) windowOpen = on and true or false end
+function ns.WindowOpen() return windowOpen end
 function ns.EndWindowState()
     if ns.ClearPreview and ns.AnyPreview and ns.AnyPreview() then ns.ClearPreview() end
     if ns.previewPaused and ns.SetPreviewPaused then ns.SetPreviewPaused(false) end
@@ -2702,7 +2705,7 @@ function ns.ToggleUnlock()
     ns.unlocked = not ns.unlocked
     -- remembered so closing the settings window ends an unlock made while it was open (its Lock Positions button), not one typed as
     -- /xui unlock with the window closed (core 0.6.56, ns.EndWindowState below)
-    ns.unlockedByWindow = (ns.unlocked and ns.optionsShown) and true or nil
+    ns.unlockedByWindow = (ns.unlocked and ns.WindowOpen()) and true or nil
     if not ns.unlocked then for r in pairs(pairOf) do ns.ClearPair(r) end end
     ns.Print(ns.unlocked and "visuals UNLOCKED: drag them, then /xui unlock again to lock. Hover a display or a group's name tab to see what it is; click it to open its settings."
         or "visuals locked.")

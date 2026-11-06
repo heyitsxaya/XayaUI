@@ -113,7 +113,7 @@ a126ef2cd2852eae4c6f9eb2cadb6e1c  XayaUI/TalentDump.lua
 9bf55354dce003634bea5d20d5bbbf58  XayaUI/Timing.lua
 b68747a7b10f183b9e3d5e4dfd818adf  XayaUI/Triggers.lua
 3b3219e167bfb0f8f8a4c3e873943dc4  XayaUI/UserMedia.lua
-b38027013fb9aae68df000de1bd945d5  XayaUI/Visual.lua
+74c120f820e87605d540dd40dc241707  XayaUI/Visual.lua
 858362d49c73c19d7fe4d9ed18bb1064  XayaUI/XayaUI.toc
 aa67ceca7421466d01bbf874bda53c92  XayaUI_Bonus/Calculator.lua
 7c8c4b6ef4fab8a18001668d5d23932a  XayaUI_Bonus/DataPanels.lua
@@ -214,7 +214,7 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-9003ac05f1f141f90cec3e8cb90bd39e  XayaUI_Options/Options.lua
+b118192924ff7379a9b8e84a25f4d1c1  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
 b62da2000da00c135f16e8aff9ba30a7  XayaUI_Options/Skin.lua
@@ -545,7 +545,7 @@ d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 dfcbabf9d31c1dd77c47bb51963267db  docs/process/QUESTIONS-engine-session.md
 8d39baf114409f17d6a210122ae1e672  docs/process/REQUEST-LOG-CROSS-CHAT.md
 1c455e2d0e650f1d4403dd74c92e2a52  docs/process/REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md
-464423c7fb4d67b104141acdce9d4ea3  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
+112ffdf669e4184081dafaa4aeaef3f8  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
 22a88c5b8a98d63334dbe14a57337056  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
@@ -723,7 +723,7 @@ eccba8875a1faeb20465640570668d83  tests/trigger_parity_run.py
 954f5d392c2645e127aac5f1239ed70d  tests/unset_load_no_bearing_run.py
 7bdbd8daaa8aaab8b1a64cdbc9a0b436  tests/usage_check.lua
 06abd3bc39893cbb62c55a168ba32788  tests/usage_run.py
-62c2eb68162863eb079b8f633ba53198  tests/window_close_ends_state_run.py
+3e0210174ac87f2614926b6ca3f66859  tests/window_close_ends_state_run.py
 da76e46324134f12c93e5a987a10280e  tests/window_footer_run.py
 480b49a29f06991788f1bff461d947fd  tests/window_margins_run.py
 964ab86ead726b28b2d24bc02c0cd0c9  tests/xui_help_lines_run.py
