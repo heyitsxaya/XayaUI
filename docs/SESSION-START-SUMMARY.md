@@ -67,7 +67,7 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 - **Personal data stays local:** personal rules, lists, and anything about other players are never in a default export.
 - **Options style:** a dropdown never takes a row alone; short labels; the explanation goes in the tooltip. Settings layout: a feature is a node in the left pane, its parts are child nodes, and a part's sections are tabs (`ns.SectionTabs`).
 - **Feature addons never get called by name from core:** they register through `XayaUI/Modules.lua` (`ns.WhenReady`, `ns.RegisterSettingsPage`, `ns.RegisterCommand`, `ns.RegisterLauncher`).
-- **"Profile"** means only the whole addon as configured (#354 is asking whether that changes).
+- **"Profile"** (Xaya, 2026-11-06, REQUEST-LOG UI-26 / UI-27, her words: "profiles is expanded as a category bucket to include all user-created customizations, settings, etc"; "individual components can be selected to toggle (review EUI and ElvUI profiling)"): a profile covers every user-created customization and setting (rules, groups, themes, settings, the whole addon), and import / export lets you tick which components to include. Before 2026-11-06 it meant only the whole addon as configured (#354).
 - **Wording to Xaya:** truth first; flag inferences; no unearned compliments; state what is not verified in game.
 - **Roadmap feature branches (Xaya, 2026-11-05, her words):** "Rough scaffolding and proposed code structure (outline only) in a
   dedicated “roadmap features: ______” brand per feature"; then "Branch, not brand". Applied as:
