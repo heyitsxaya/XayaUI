@@ -4275,7 +4275,7 @@ end
 
 local function FolderSoundGroup(f)
     return {
-        type = "group", inline = true, order = 5.6, name = "Sound Channel for This Group",
+        type = "group", inline = true, order = 5.6, name = "Sound Channel Override",   -- (her label, #372)
         hidden = function() return ns.RuleKind({ folder = f.id }) == "display" end,
         args = {
             note = { type = "description", order = 0, width = "full", fontSize = "small",
@@ -4370,26 +4370,52 @@ local function BuildFolder(k, f)
         return t
     end
     local container = g.args.container
-    local dispFromContainer = {}
-    if container and container.args then
-        for _, k in ipairs({ "alpha", "scale", "strata", "level" }) do   -- position (relative to, anchor, X / Y) stays on the Group tab with the container
-            if container.args[k] then dispFromContainer[k] = container.args[k]; container.args[k] = nil end
-        end
-    end
     local isVisual = function() return ns.KindHas({ folder = f.id }, "visual") end
+    -- Config (#372; Xaya 2026-11-06: "tabs Group | Display | Load | Config (Group first)", "Delete / New / Enable on Config"; CHAT-3d:
+    -- "config includes folder name, folder type, and original character / source of creation. Also includes enable/disable toggle"):
+    -- the name, the type, one Enabled toggle (it replaces Enable all / Disable all), the Sound Channel Override, New, Delete and where
+    -- the group came from. Opacity, scale and layer stay on the Group tab with the container now ("strata / opacity / scale on Group").
+    local configArgs = take({ "name", "newRule", "newSub", "deleteTop", "deleteAllTop", "soundChannel" })
+    take({ "enableAll", "disableAll" })
+    if configArgs.name then configArgs.name.order = 1 end
+    for k, o in pairs({ newRule = 6, newSub = 6.1, deleteTop = 7, deleteAllTop = 7.1 }) do if configArgs[k] then configArgs[k].order = o end end
+    if configArgs.soundChannel then configArgs.soundChannel.order = 5 end
+    configArgs.enabled = { type = "toggle", order = 1.5, width = "full", name = "Enabled",
+        desc = "Ticked: every rule in this group and its nested groups is on. Unticking switches them all off (ticking again switches them all on).",
+        get = function()
+            local any = false
+            for _, r in ipairs(FolderRules(f.id)) do any = true; if not r.enabled then return false end end
+            return any
+        end,
+        set = function(_, v) for _, r in ipairs(FolderRules(f.id)) do r.enabled = v and true or false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end }
+    if container and container.args then
+        local any = false
+        for k, v in pairs(container.args) do
+            if type(k) == "string" and k:match("^ctype_") then configArgs[k] = v; container.args[k] = nil; v.order = 2 + (v.order % 1); v.hidden = function() return not isVisual() end; any = true end
+        end
+        if any then configArgs.typeHdr = { type = "header", order = 2, name = "Group type", hidden = function() return not isVisual() end } end
+    end
+    configArgs.origin = { type = "description", order = 8, width = "full", fontSize = "medium",
+        name = function()
+            local o = ns.CleanOrigin and ns.CleanOrigin(f.origin)
+            if not o then return "Made by: not recorded (this group is older than the record)." end
+            local how = ({ made = "made here", default = "a built-in category", imported = "imported" })[o.how or ""] or tostring(o.how or "made")
+            local when = (o.at and date) and date("%Y-%m-%d", o.at) or nil
+            return ("Made by: %s (%s%s)"):format(o.by or "unknown character", how, when and (", " .. when) or "")
+        end }
     local groupArgs = g.args
     local dispArgs = take({ "arrange", "pausePv" })
     if dispArgs.arrange then dispArgs.arrange.order = 9 end
     -- Xaya, 2026-11-04: "Pause preview animations" belongs on the Display tab (as on a rule's Display tab), not on the Group tab
     if dispArgs.pausePv then dispArgs.pausePv.order = 0.5 end
-    -- 0.6.4 (#341, group display): the group as a whole first, then every display cue inside, edited live (DisplayTab.lua)
-    dispArgs.placement = { type = "group", inline = true, order = 1, name = "Whole group: opacity, scale & layer", args = dispFromContainer }
     dispArgs.note = { type = "description", order = 0, width = "full", fontSize = "small",
-        name = "The group's own opacity, scale, and layer apply to everything inside it on top of each display's own settings. Below them, the settings of every display cue in this group and its nested groups. The group's position, type, and container are on the Group tab." }
+        name = "The settings of every display cue in this group and its nested groups. The group's own position, size, opacity, scale and layer are on the Group tab; its name, type and Enabled switch on the Config tab." }
     if ns.GroupDisplayArgs then for k, v in pairs(ns.GroupDisplayArgs(f, FolderRules, Notify)) do dispArgs[k] = v end end
+    -- "icon size on Group" (Xaya 2026-11-06): the every-display size section moves to the Group tab
+    if dispArgs.size then groupArgs.size = dispArgs.size; dispArgs.size = nil; groupArgs.size.order = 5.45 end
     local loadArgs = { override = take({ "loadOverride" }).loadOverride, conds = ns.FolderLoadConditions(f) }
     local lock = function() return ns.IsEditLocked({ folder = f.id }) end
-    ns.LockArgs(groupArgs, lock); ns.LockArgs(dispArgs, lock); ns.LockArgs(loadArgs, lock)
+    ns.LockArgs(groupArgs, lock); ns.LockArgs(dispArgs, lock); ns.LockArgs(loadArgs, lock); ns.LockArgs(configArgs, lock)
     -- A group page can't use AceConfig's own tabs (its rules and nested groups are the tree children below it), so the tab strip
     -- is a row of buttons and each tab's content is an unframed box shown only while its tab is picked.
     ns.folderTab = ns.folderTab or setmetatable({}, { __mode = "k" })
@@ -4417,9 +4443,11 @@ local function BuildFolder(k, f)
         tabGroup = Tab("group", "Group", 0.01),
         tabDisplay = Tab("display", "Display", 0.02, function() return not isVisual() end),
         tabLoad = Tab("load", "Load", 0.03),
+        tabConfig = Tab("config", "Config", 0.04),
         pageGroup = Page("group", groupArgs),
         pageDisplay = Page("display", dispArgs),
         pageLoad = Page("load", loadArgs),
+        pageConfig = Page("config", configArgs),
     }
     return g
 end

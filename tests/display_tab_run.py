@@ -176,8 +176,28 @@ TG.func()
 -- Xaya 2026-11-04: "Pause preview animations" moves from the Group tab to the Display tab
 local PG = GP and GP.args.pageGroup.args
 check("pause preview: the tick box is on the group's Display tab, near the top", PD ~= nil and PD.pausePv ~= nil and PD.pausePv.type == "toggle"
-  and PD.pausePv.name == "Pause preview animations" and PD.pausePv.order < PD.placement.order)
-check("pause preview: the Group tab no longer has it", PG and PG.pausePv == nil and PG.name ~= nil)
+  and PD.pausePv.name == "Pause preview animations" and PD.pausePv.order < 1)
+check("pause preview: the Group tab no longer has it", PG and PG.pausePv == nil)
+-- Group page round (Options, Xaya 2026-11-06: "tabs Group | Display | Load | Config (Group first)", "Delete / New / Enable on Config",
+-- "strata / opacity / scale on Group", "icon size on Group"; CHAT-3d: "config includes folder name, folder type, and original
+-- character / source of creation. Also includes enable/disable toggle")
+local TC = GP and GP.args.tabConfig
+check("group page tabs: Group | Display | Load | Config, in that order", TC and TC.arg and TC.arg.xuiTab == true and TG.order < TD.order and TD.order < TL.order and TL.order < TC.order)
+local PC = GP and GP.args.pageConfig and GP.args.pageConfig.args
+check("Config: name, Enabled toggle, Sound Channel Override, + New rule, + Nested group, Delete, where it came from", PC and PC.name and PC.enabled
+  and PC.enabled.type == "toggle" and PC.soundChannel and PC.soundChannel.name == "Sound Channel Override" and PC.newRule and PC.newSub and PC.deleteTop
+  and PC.origin and PC.enableAll == nil and PC.disableAll == nil)
+check("  ...the group type (static / dynamic) is on Config", PC and PC.ctype_1 and PC.ctype_2 and PC.typeHdr)
+check("  ...and none of them is left on the Group tab", PG and PG.name == nil and PG.newRule == nil and PG.deleteTop == nil and PG.enableAll == nil and PG.soundChannel == nil)
+local GPC = PG and PG.container and PG.container.args
+check("Group tab: the group's opacity, scale and layer (strata) are there now", GPC and GPC.alpha and GPC.scale and GPC.strata)
+check("  ...and the every-display size", PG and PG.size ~= nil and PD.size == nil)
+local nf = ns.NewFolder("Origin test")
+check("a new group records who made it and how (made here, with the date)", nf.origin and nf.origin.how == "made" and type(nf.origin.at) == "number"
+  and (nf.origin.by == nil or type(nf.origin.by) == "string"))
+check("  ...an origin read from other data is plain text only (no colour or link codes)", ns.CleanOrigin({ by = "|cffff0000Evil|r-Realm", how = "made" }).by == "cffff0000Evilr-Realm"
+  and ns.CleanOrigin({ by = 5 }) == nil and ns.CleanOrigin("x") == nil)
+check("Config: who made it (a group from before the record says so)", type(PC.origin.name()) == "string" and PC.origin.name():find("Made by", 1, true) ~= nil, PC.origin.name())
 local pvBefore = ns.previewPaused
 local PV = PD and PD.pausePv
 if PV then PV.set(nil, true) end
@@ -254,7 +274,7 @@ check("drafts: the switch turns them off again; stored drafts stay listed", ns.D
 check("settings: the finer draft settings gray out while drafts are off (delete confirm stays usable for leftovers)", SR.draftsMax.disabled() == true and SR.draftsConfirmDiscard.disabled() == true and SR.draftsCloseNotice.disabled() == true and SR.draftsConfirmDelete.disabled == nil)
 CueRulesDB.drafts = {}
 CueRulesDB.ui.draftsMax = nil
-check("group page Display tab has the whole-group section and every-display sections, no Apply Text panel", PD and PD.placement and PD.size and PD.textDur and PD.textCnt and PD.textAbs and PD.applyText == nil)
+check("group page Display tab has the every-display sections (size now on Group), no Apply Text panel, no whole-group box", PD and PD.placement == nil and PD.textDur and PD.textCnt and PD.textAbs and PD.applyText == nil)
 return R
 end
 '''
