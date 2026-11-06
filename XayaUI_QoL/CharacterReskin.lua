@@ -1444,7 +1444,7 @@ function ns.BuildCharReskinPage(Notify)
     end
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
-    local switch = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends). Greyed while All reskins (the top row of this tab) is off.")
+    local switch = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends). Greyed while Blizzard UI Reskin is off (this tab's Overview).")
     switch.disabled = function() return not ns.ReskinTabOn() end
     return {
         type = "group", name = "Character Pane", order = 4, childGroups = "tree", xuiSwitch = switch,
@@ -1475,11 +1475,11 @@ ns.RegisterCommand("reskin", function(arg)
     arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     local c = Cfg()
     if not c then return end
-    if arg == "on" then c.enabled = true; ns.CharReskin_Apply(); ns.Print("Character Reskin on." .. (ns.ReskinTabOn() and "" or " It shows once All reskins (Blizzard UI Reskin tab, top row) is on again.")); return end
+    if arg == "on" then c.enabled = true; ns.CharReskin_Apply(); ns.Print("Character Reskin on." .. (ns.ReskinTabOn() and "" or " It shows once Blizzard UI Reskin is on again (Blizzard UI Reskin > Overview, then /reload).")); return end
     if arg == "off" then c.enabled = false; ns.CharReskin_Apply(); ns.Print("Character Reskin off."); return end
     if arg == "status" or arg == "" then
         ns.Print(("Character Reskin: %s%s%s; %d Blizzard regions faded, %d slots%s."):format(c.enabled and "on" or "off",
-            ns.ReskinTabOn() and "" or " (All reskins is off in the Blizzard UI Reskin tab, so it does not show)",
+            ns.ReskinTabOn() and "" or " (Blizzard UI Reskin is off: Blizzard UI Reskin > Overview, so it does not show)",
             diag.failed and " (stopped after an error)" or "", diag.faded, diag.slots, diag.lastError and (", last error: " .. diag.lastError) or ""))
         ns.Print(("Wider window: %s."):format(c.wide and tostring(diag.wide) or "switched off"))
         ns.Print(("Size change: %s."):format(diag.relayout or "none seen since login"))

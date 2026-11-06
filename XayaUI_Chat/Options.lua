@@ -411,7 +411,7 @@ function ns.BuildChatTab(Notify)
     local switch = layout.args.enabled
     switch.order, switch.width = nil, nil
     switch.disabled = function() return not ns.ReskinTabOn() end
-    switch.desc = switch.desc .. " Greyed while All reskins (the top row of this tab) is off."
+    switch.desc = switch.desc .. " Greyed while Blizzard UI Reskin is off (this tab's Overview)."
     local overview = { blocked = layout.args.blocked, intro = layout.args.intro, theme = layout.args.theme }
     layout.args.blocked, layout.args.intro, layout.args.enabled, layout.args.theme = nil, nil, nil, nil
     local parts = { layout = layout, look = look, bar = bar, behavior = behavior, filters = filters, history = history, sounds = sounds, privacy = privacy }

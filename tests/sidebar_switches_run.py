@@ -85,7 +85,7 @@ local function toggles(g, path)
   end
 end
 toggles(node(T, "qol"), "qol"); toggles(node(T, "bonus"), "bonus"); toggles(node(T, "reskin"), "reskin")
-check("A: the pages no longer show those switches (Enable Custom Data Panels and Bars, Character Toolkit, Tooltip lines, the reskins' own switches, ...)", #left == 0, table.concat(left, "; "))
+check("A: the pages no longer show those switches (Enable Data Panels, Character Toolkit, Tooltip lines, the reskins' own switches, ...)", #left == 0, table.concat(left, "; "))
 section("A: explanations", function()
 check("A: every switch keeps the explanation its old switch had (shown on the box's hover)", (function()
   for _, k in ipairs({ "qol>chartoolkit", "qol>cursor>highlight", "qol>cursor>trail", "bonus>datapanels" }) do
@@ -216,7 +216,7 @@ section("A: Bonus Features", function()
 local bN, bD = box("bonus", "utilities\001notepad"), box("bonus", "datapanels")
 check("A: Notepad's row has a tick box, ticked like its setting (the Notepad on, its box hidden)", bN ~= nil and bN:GetChecked() == true
   and CueRulesDB.notepad.enabled == true and CueRulesDB.notepad.shown == false)
-check("A: Custom Data Panels and Bars' row has a tick box, unticked like the master switch", bD ~= nil and bD:GetChecked() == false and CueRulesDB.dataPanels.general.enabled == false)
+check("A: Data Panels' row has a tick box, unticked like the master switch", bD ~= nil and bD:GetChecked() == false and CueRulesDB.dataPanels.general.enabled == false)
 check("A: Enhanced Tooltips' row has a tick box, ticked (on by default); none on Utilities", box("bonus", "tooltips") ~= nil
   and box("bonus", "tooltips"):GetChecked() == true and box("bonus", "utilities") == nil
   and row("bonus", "tooltips") ~= nil and row("bonus", "utilities") ~= nil)
@@ -242,7 +242,7 @@ check("A: the box's hover says what it does (the switch's name and explanation)"
   local f = bD:GetScript("OnEnter"); if f then f(bD) end
   tip.SetText, tip.AddLine = oS, oA
   local s = table.concat(said, " | ")
-  return s:find("Enable Custom Data Panels and Bars", 1, true) ~= nil and s:find("Master switch", 1, true) ~= nil, s
+  return s:find("Enable Data Panels", 1, true) ~= nil and s:find("Master switch", 1, true) ~= nil, s
 end)())
 
 -- (Bonus 0.6.14) the Notepad's box is the whole feature: shown first with Show Notepad (its page), then the row unticked and ticked
@@ -292,7 +292,7 @@ do
   check("B: Bonus Features has a Utilities row with Calculator and Notepad under it", u and c and n and u.level == 1 and c.level == 2 and n.level == 2)
   local t = tree("bonus"); local order = {}
   for _, b in ipairs(t.buttons) do if b:IsShown() then order[#order + 1] = tostring(b.uniquevalue):gsub("\001", ">") end end
-  check("B: the rows read Custom Data Panels and Bars, Enhanced Tooltips, Utilities > Calculator, Notepad (by name, #274); no Notepad row of its own",
+  check("B: the rows read Data Panels, Enhanced Tooltips, Utilities > Calculator, Notepad (by name, #274); no Notepad row of its own",
     table.concat(order, ",") == "datapanels,tooltips,utilities,utilities>calculator,utilities>notepad", table.concat(order, ","))
   local up = node(ns.BuildOptionsTable(), "bonus", "utilities")
   check("B: Utilities' own page is an overview of its tools", up and up.args.calcNote and up.args.calcNote.name:find("Calculator", 1, true)
@@ -379,6 +379,79 @@ W.tick(0.05, 20)
 check("C: the button still runs the scan: every class read (13 in the stand-in)", type(XayaUITalentDB) == "table" and (function()
   local n = 0; for _ in pairs(XayaUITalentDB.classes or {}) do n = n + 1 end; return n == 13 end)())
 check("C: ...its result shows under the button, and the last-scan line now names the scan", said("talent scan done: 13 classes") and said("Last talent scan"))
+end)
+-- G, Options 0.6.55 (REQUEST-LOG UI-5 to UI-8, Xaya 2026-11-06; her words in the log): top tabs "evenly distributed across the pane,
+-- wider, and thicker" (her answer "32 px, 14 pt, outlined"); "replace the visual of the two column pane boxed display with a clean
+-- divider line and remove the frames" ("Borders go, fills stay"); "appropriately nested" ("Parent's name + 8 px"); "all options that
+-- are deselected should grey out" ("Left pane + their settings"). Negative control: every G check fails on Options 0.6.50 (main 22abdeb).
+section("G: the window's look (Options 0.6.55)", function()
+ns.pageOpen = nil; ns.infoOpen = false
+ACD:SelectGroup("CueRules", "bonus", "tooltips"); settle()
+local top = findW(root(), function(w)
+  if w.type ~= "TabGroup" then return false end
+  for _, t in ipairs(w.tabs or {}) do if t:IsShown() and t.value == "qol" then return true end end
+  return false end)
+check("G: the window's top tab row is found", top ~= nil)
+if top then
+  local shown = {}
+  for _, t in ipairs(top.tabs) do if t:IsShown() then shown[#shown + 1] = t end end
+  local fw = top.frame.width or top.frame:GetWidth()
+  local each, bad = fw / #shown, {}
+  for i, t in ipairs(shown) do
+    local _, rel, _, x = t:GetPoint(1)
+    if math.abs(t:GetWidth() - each) > 0.5 or math.abs((x or -1) - (i - 1) * each) > 0.5 or rel ~= top.frame then bad[#bad + 1] = tostring(t.value) .. " w" .. tostring(t:GetWidth()) .. " x" .. tostring(x) end
+  end
+  check(("G: the %d top tabs share the row evenly, edge to edge, no overlap"):format(#shown), #shown >= 4 and #bad == 0, table.concat(bad, "; "))
+  local hBad, fBad = {}, {}
+  for _, t in ipairs(shown) do
+    if math.abs(t:GetHeight() - 32) > 0.01 then hBad[#hBad + 1] = tostring(t.value) .. " " .. tostring(t:GetHeight()) end
+    local fo = t.xuiTopFont
+    local size, flags
+    if fo then _, size, flags = fo:GetFont() end
+    if not (fo and size == 14 and tostring(flags):find("OUTLINE", 1, true)) then fBad[#fBad + 1] = tostring(t.value) .. " " .. tostring(size) .. " " .. tostring(flags) end
+  end
+  check("G: ...each 32 px tall", #hBad == 0, table.concat(hBad, "; "))
+  check("G: ...each name 14 pt, outlined", #fBad == 0, table.concat(fBad, "; "))
+  check("G: ...the box below starts under the taller row", top.borderoffset == 7 + 32 + 3 or top.borderoffset == 14 + 32 + 3, top.borderoffset)
+end
+local t = tree("bonus")
+if t then
+  local _, _, _, la = t.treeframe:GetBackdropBorderColor()
+  local _, _, _, lf = t.treeframe:GetBackdropColor()
+  local _, _, _, ra = t.border:GetBackdropBorderColor()
+  local _, _, _, rf = t.border:GetBackdropColor()
+  check("G: the left and right panes have no border line; their fills stay", la == 0 and ra == 0 and lf > 0 and rf > 0, ("left %s/%s right %s/%s"):format(la, lf, ra, rf))
+  local d = t.xuiDivider
+  local p, rel, rp
+  if d then p, rel, rp = d:GetPoint(1) end
+  check("G: ...one 1 px divider line along the left pane's right edge", d ~= nil and d:IsShown() and d:GetWidth() == 1 and rel == t.treeframe and rp == "TOPRIGHT",
+    d and ("%s rel=%s rp=%s w=%s shown=%s"):format(tostring(p), tostring(rel == t.treeframe), tostring(rp), tostring(d:GetWidth()), tostring(d:IsShown())) or "none")
+  if top then local _, _, _, ta = top.border:GetBackdropBorderColor(); check("G: ...and the tab row's box has no border line either", ta == 0, ta) end
+end
+-- nesting: Calculator and Notepad under Utilities
+local u, c = row("bonus", "utilities"), row("bonus", "utilities\001calculator")
+local cb = c and c.xuiSwitchBox
+local cx
+if cb then _, _, _, cx = cb:GetPoint(1) end
+check("G: a part's row starts 8 px right of where its parent's name starts (Calculator's box under Utilities)", u and u.xuiTextL and cx == u.xuiTextL + 8,
+  ("Utilities name at %s, Calculator row %s box %s shown %s at %s"):format(tostring(u and u.xuiTextL), tostring(c ~= nil), tostring(cb ~= nil), tostring(cb and cb:IsShown()), tostring(cx)))
+-- greying: Notepad off, then on
+click("bonus", "utilities\001notepad", false)
+local n = row("bonus", "utilities\001notepad")
+local r1, g1, b1 = -1, -1, -1
+if n then r1, g1, b1 = n.text:GetTextColor() end
+local np = node(ns.BuildOptionsTable(), "bonus", "utilities", "notepad")
+local leaf
+for k, v in pairs(np and np.args or {}) do if type(v) == "table" and v.type ~= "group" and v.type ~= "description" and type(v.disabled) == "function" then leaf = k; break end end
+local function dis() local v = np.args[leaf]; return v.disabled({ "bonus", "utilities", "notepad", leaf }) and true or false end
+check("G: Notepad unticked: its row name is grey", n ~= nil and math.abs(r1 - 0.5) < 0.01 and math.abs(g1 - 0.5) < 0.01 and math.abs(b1 - 0.5) < 0.01, tostring(r1) .. "," .. tostring(g1) .. "," .. tostring(b1))
+check("G: ...and its settings are greyed (cannot be changed): " .. tostring(leaf), leaf ~= nil and dis() == true)
+click("bonus", "utilities\001notepad", true)
+n = row("bonus", "utilities\001notepad")
+local r2 = 0.5
+if n then r2 = n.text:GetTextColor() end
+check("G: Notepad ticked: its name is not grey, its settings can be changed", n and math.abs(r2 - 0.5) > 0.01 and leaf ~= nil and dis() == false, tostring(r2))
+check("G: Bonus Features' first row reads Data Panels", row("bonus", "datapanels") ~= nil and node(ns.BuildOptionsTable(), "bonus", "datapanels").name == "Data Panels")
 end)
 end)
 if not okAll then check("the test ran to its end (a Lua error stopped it)", false, errAll) end
