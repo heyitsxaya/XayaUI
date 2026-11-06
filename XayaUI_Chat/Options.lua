@@ -288,7 +288,30 @@ function ns.BuildChatTab(Notify)
         word = tog("Match whole words only", "spamWord", 22, "'gold' would then not match 'golden'."),
         stats = { type = "description", order = 23, width = "full", name = function() return "Hidden this session: " .. tostring(C.stats.suppressed) end },
         clickHdr = hdr("Quick ignore", 30),
-        click = tog("Ctrl + right-click a player's name in chat to ignore them", "ignoreClick", 31),
+        click = tog("Click a player's name in chat to ignore them", "ignoreClick", 31, "With the click chosen below (Ctrl + right-click unless you change it)."),
+        -- (Chat 0.6.25; UI-12 / UI-17) the click: a right-click with modifiers the game has no key binding for, or one you record
+        clickCombo = { type = "select", name = "Click", order = 32, width = "normal",
+            desc = "Right-click combinations the game has no key binding for (checked each time this list opens). Record your own with the button beside it.",
+            hidden = function() return not S().ignoreClick end,
+            values = function()
+                local v = {}
+                for _, c in ipairs(C.FreeCombos and C.FreeCombos() or {}) do v[c] = C.ComboName(c) end
+                local cur = C.IgnoreCombo and C.IgnoreCombo()
+                if cur and not v[cur] then v[cur] = C.ComboName(cur) .. ((C.ComboBinding(cur) and " (also a key binding)") or " (recorded)") end
+                return v
+            end,
+            get = function() return C.IgnoreCombo and C.IgnoreCombo() end,
+            set = function(_, v) local s2 = ns.chat2; if s2 then s2.ignoreCombo = v end; Re() end },
+        clickRec = { type = "execute", name = "Record your own", order = 33, width = "normal",
+            desc = "Opens a small box: hold Alt, Ctrl, Shift (or Cmd on a Mac) and click it with the mouse button you want. At least one of those keys is needed.",
+            hidden = function() return not S().ignoreClick end,
+            func = function() if C.RecordCombo then C.RecordCombo(function() Re() end) end end },
+        clickNow = { type = "description", order = 34, width = "full", hidden = function() return not S().ignoreClick end,
+            name = function()
+                local cur = C.IgnoreCombo and C.IgnoreCombo() or "CTRL-BUTTON2"
+                local act = C.ComboBinding and C.ComboBinding(cur)
+                return "Now: " .. C.ComboName(cur) .. " on a player's name." .. (act and ("  |cffff8a3dThe game also has a key binding on it (" .. act .. ").|r") or "")
+            end },
         linkHdr = hdr("Links", 40),
         links = tog("Make web addresses clickable", "links", 41, "Click one to open a box with the address selected; press Ctrl+C to copy it."),
         linkCol = col3("Link color", "link", 42),

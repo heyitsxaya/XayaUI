@@ -252,6 +252,36 @@ check("ctrl+right-click ignores the player", "Spammer-Realm" in [str(x) for x in
 run("_G.SetItemRef('player:Xaya', 'x', 'RightButton')")
 check("never ignores yourself", len(list(W.ignored.values())) == 1)
 W.ctrl = False
+# (Chat 0.6.25; REQUEST-LOG UI-12 / UI-17: "allow a modifier selector (alt, ctrl. fn(?))"; her answer "detect available modifiers
+# based on available keybinds not already assigned; also allow user to record and save their own keybind")
+# Stand-in game: Alt / Shift / Meta keys and C_KeyBindings.GetBindingByKey (ALT-BUTTON2 bound to a stand-in action). Negative control:
+# every check below fails on Chat 0.6.24 except those marked (guard).
+run("""_G.IsAltKeyDown = function() return W.alt and true or false end
+_G.IsShiftKeyDown = function() return W.shift and true or false end
+_G.IsMetaKeyDown = function() return false end
+_G.IsMacClient = function() return false end
+_G.C_KeyBindings = { GetBindingByKey = function(k) if k == 'ALT-BUTTON2' then return 'STANDIN_ACTION' end return '' end }""".replace("W.alt", "W_alt").replace("W.shift", "W_shift"))
+free = lua.eval("function(C) return table.concat(C.FreeCombos and C.FreeCombos() or {}, ',') end")(C)
+check("the picker lists the right-clicks with no key binding: Ctrl, Shift and the pairs, not Alt (bound in the stand-in)",
+      free == "ALT-CTRL-BUTTON2,ALT-SHIFT-BUTTON2,CTRL-BUTTON2,CTRL-SHIFT-BUTTON2,SHIFT-BUTTON2", free)
+names = lua.eval("function(C) return C.ComboName('ALT-CTRL-BUTTON2') .. ' / ' .. C.ComboName('SHIFT-BUTTON1') end")(C)
+check("  ...named for the player: 'Alt + Ctrl + right-click', 'Shift + left-click'", names == "Alt + Ctrl + right-click / Shift + left-click", names)
+run("ns.chat2.ignoreCombo = 'SHIFT-BUTTON2'")
+n0 = len(list(W.ignored.values()))
+run("_G.W_shift = false; W.ctrl = true; _G.SetItemRef('player:Other-Realm', 'x', 'RightButton'); W.ctrl = false")
+check("with Shift + right-click chosen, Ctrl + right-click no longer ignores", len(list(W.ignored.values())) == n0)
+run("_G.W_shift = true; _G.SetItemRef('player:Other-Realm', 'x', 'RightButton'); _G.W_shift = false")
+check("  ...Shift + right-click does", "Other-Realm" in [str(x) for x in W.ignored.values()], list(W.ignored.values()))
+# the recorder: a plain click is refused; Alt + middle-click is saved (and said to be unbound)
+run("ns.chat2.ignoreCombo = nil; C.RecordCombo(function() end)")
+rec = L.XayaUIChatCopy and L.XayaUIChatComboRecorder
+rec = L.XayaUIChatComboRecorder
+run("local r = _G.XayaUIChatComboRecorder; r._scripts.OnClick(r, 'LeftButton')")
+check("recorder: a plain click is refused (nothing saved)", lua.eval("function(ns) return ns.chat2.ignoreCombo end")(ns) is None)
+run("_G.W_alt = true; local r = _G.XayaUIChatComboRecorder; r._scripts.OnClick(r, 'MiddleButton'); _G.W_alt = false")
+check("recorder: Alt + middle-click is saved", lua.eval("function(ns) return ns.chat2.ignoreCombo end")(ns) == "ALT-BUTTON3")
+check("recorder: Ctrl + right-click stays the choice when nothing is saved (guard)", lua.eval("function(C, ns) ns.chat2.ignoreCombo = nil; return C.IgnoreCombo() end")(C, ns) == "CTRL-BUTTON2")
+run("ns.chat2.ignoreCombo = nil")
 
 # ---- history --------------------------------------------------------------------------------------------------------------
 before = C.History_Count()
