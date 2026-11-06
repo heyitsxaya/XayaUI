@@ -1,0 +1,12 @@
+-------------------------------------------------------------------------------
+-- Kicks.lua : OUTLINE ONLY (RM-MPLUS, 2026-11-06). No code. Proposed, not decided. Open questions: ../README.md section 4.
+-- Group interrupts. Her words: "group interrupt + cc tracking"; "communicate somehow even if the interrupt does not succeed".
+-- Mine: UNIT_SPELLCAST_SUCCEEDED for "player" (events.md:1649) with a spell ID in SpellLists' interrupt list -> Comms KICK
+--   (spell, time). Sent whether it landed or not (her point: the cooldown is spent either way). Probe P2: is the ID readable in a key?
+-- Did it land: UNIT_SPELLCAST_INTERRUPTED carries interruptedBy (events.md:1641) but is SecretWhenUnitSpellCastRestricted, and the
+--   combat log cannot be registered (warcraft.wiki.gg, Patch 12.0.0/API changes). So "landed" is shown only when readable; else
+--   "used" only. Never "missed" on a guess.
+-- The group's: from Comms KICK; each player's interrupt ready / on cooldown, from the spell's base cooldown (where from: SpellLists).
+-- Players without XayaUI: not seen (no route). The tracker says "no data" for them, not "ready".
+-- Rotation helpers (who kicks next) are not in her words: not proposed.
+-------------------------------------------------------------------------------
