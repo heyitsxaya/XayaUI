@@ -179,6 +179,142 @@ from the scan). This is the highest-leverage group: restyling a template once re
 | 3.43 | Help, report-player, colour picker | `Blizzard_HelpFrame`; `Blizzard_ReportFrame`; `Blizzard_ColorPickerFrame` | always | A |
 | 3.44 | Pet battle interface | `Blizzard_PetBattleUI` | always | A by scan (large: 3,799 lines) |
 
+## 6b. Xaya's own list (2026-11-06, REQUEST-LOG S8-2), matched to the source
+
+Her message: "things I can think of", 36 items, plus two screenshots.
+- **Screenshot 1:** Blizzard's Edit Mode frame list, with Frames / Combat / Misc tick boxes.
+- **Screenshot 2:** the minimap tracking menu (Auctioneer … Warband Completed Quests).
+
+The ticks in screenshot 1 are her in-game Edit Mode visibility settings; I have **not** read them as reskin picks. Her items are
+quoted exactly. "Row" points to the list above; **new** means a row this section adds.
+
+| # | Her words | What it is in 12.1.5 | Row | Tier | Note |
+|---|---|---|---|---|---|
+| L1 | "esc menu" | `GameMenuFrame` | 0.1 | B | Already built (Reskin 0.6.4). |
+| L2 | "options menu" | Blizzard's Settings window, `SettingsPanel` (`Blizzard_SettingsPanel.xml:4`) | 3.34 | B | **CONFIRM (Q7):** Blizzard's Settings window, or XayaUI's own options window (already in the XayaUI theme)? |
+| L3 | "shop" | `Blizzard_StoreUI`, `Blizzard_CatalogShop` | 8 | **X** | **Cannot be reskinned:** it runs in Blizzard's secure environment (`UseSecureEnvironment: 1`). Only the Shop *button* (micro menu, Esc menu) can be. |
+| L4 | "action bars" | `Blizzard_ActionBar` | 2.1 | C | |
+| L5 | "frames + buttons controllable by edit mode" | the 27 `Enum.EditModeSystem` values (`docs/reference/api/enums.md:4849`) | see table 6c | mixed | Every Edit Mode entry in her screenshot is in table 6c. |
+| L6 | "minimap (two options: square or circle)" | `MinimapCluster`, `Minimap` | 2.19 | A | Exact: a Shape setting with **Square** and **Circle**. The shape is set with `Minimap:SetMaskTexture(asset)` (`api.json`, MinimapFrameAPI; not IsProtectedFunction). Facts: a square map shows more ground in its corners. Minimap-button addons ask `GetMinimapShape()` for the shape (XayaUI's own button does, `XayaUI/MinimapButton.lua:95`), so a square skin also has to answer "SQUARE" there (INFERENCE: other addons follow the same convention). |
+| L7 | "macros" | `Blizzard_MacroUI` | 3.31 | A | |
+| L8 | "native damage meters (?)" | `Blizzard_DamageMeter`; Edit Mode system `DamageMeter` = 23 | 2.16 | B | Yes, it exists in 12.1.5. |
+| L9 | "bags" | `ContainerFrame` (bags) and `BagsBar` (bag buttons, `MainMenuBarBagButtons.xml:44`) | 3.1, 2.7 | A / B | |
+| L10 | "toolbars" | not clear | — | — | **CONFIRM (Q6):** which bars? See Q6. |
+| L11 | "calendar (+ minimap calendar button)" | `Blizzard_Calendar`; `GameTimeFrame` (`Blizzard_Minimap/Mainline/GameTime.xml:3`) | 3.30 + **new 2.31** | B; A | |
+| L12 | "tracking button and options" | `Minimap.Tracking.Button` (`Minimap.xml:51-79`, a DropdownButton) and its menu (Blizzard_Menu) | **new 2.32** + 1.7 | A; B | The menu in screenshot 2 is Blizzard's shared dropdown menu, so its look comes with 1.7 unless only this menu is restyled. |
+| L13 | "map frame" | `WorldMapFrame`, `QuestMapFrame` | 3.12 | B | |
+| L14 | "mail + mail button" | `Blizzard_MailFrame`; minimap mail icon `MailFrame` (`Minimap.xml:92`) | 3.6 + **new 2.33** | A | |
+| L15 | "great vault" | `Blizzard_WeeklyRewards` | 3.22 | A | |
+| L16 | "adventure guide" | `Blizzard_EncounterJournal` | 3.28 | B | One window. |
+| L17 | "dungeon journal" | the Dungeons / Raids tabs of the same Adventure Guide window | 3.28 | B | **CONFIRM (Q9):** one reskin for the whole window, or separate tick boxes? |
+| L18 | "talents" | `Blizzard_PlayerSpells` (Talents tab) | 3.23 | B | Talents and spellbook are one window with tabs in 12.1.5. |
+| L19 | "spellbook" | `Blizzard_PlayerSpells` (Spellbook tab) | 3.23 | B | |
+| L20 | "professions" | `Blizzard_Professions` | 3.24 | B | |
+| L21 | "crafting" | not clear | 3.24 | B | **CONFIRM (Q8):** the crafting-orders window (`Blizzard_ProfessionsCustomerOrders`) or the Recipes / crafting page of the Professions window? |
+| L22 | "guild" | Communities window: `ToggleGuildFrame` opens it when `C_Club.IsEnabled()` (`Blizzard_Game/Mainline/Game.lua:1-14`); guild bank and guild control are separate | 3.16, 3.17 | B; A | |
+| L23 | "communities" | `Blizzard_Communities` | 3.16 | B | The same window as "guild". |
+| L24 | "achievements" | `Blizzard_AchievementUI` | 3.29 | B | |
+| L25 | "catalyst frame" | `ItemInteractionFrame` (`Blizzard_ItemInteractionUI.xml:5`, `PortraitFrameTemplate`) | 3.37 | A | INFERENCE that the Catalyst uses this frame: its Lua names the catalyst, but I did not see it open in game. |
+| L26 | "gem socketing" | `Blizzard_ItemSocketingUI` | 3.37 | A | |
+| L27 | "item upgrading (crests upgrader)" | `Blizzard_ItemUpgradeUI` | 3.37 | A | |
+| L28 | "loot window" | `LootFrame`; Edit Mode system `LootFrame` = 10 | 2.26 | B | |
+| L29 | "loot roll / need, greed, transmog" | `GroupLootFrame` | 2.26 | B | |
+| L30 | "ready check frame" | FrameXML `ReadyCheck` | 2.27 | A | |
+| L31 | "micro bar / micro menu" | `MicroMenuContainer` (`MicroMenuContainer.xml:11`) | 2.6 | A | |
+| L32 | "auction house" | `Blizzard_AuctionHouseUI` | 3.25 | B | |
+| L33 | "addon list" | `Blizzard_AddOnList` | 3.34 | B | |
+| L34 | "inspect frame" | `Blizzard_InspectUI` | 3.36 | A | |
+| L35 | "friends list" | `Blizzard_FriendsFrame` / `Blizzard_SocialUI` | 0.5, 3.14 | B | Which list her client shows is still asked (CHAT-5). |
+| L36 | "trade" | `TradeFrame` | 3.5 | A | |
+
+### 6c. Edit Mode frames (her L5 and screenshot 1)
+
+| Edit Mode name in her screenshot | `Enum.EditModeSystem` | Frame / folder | Row | Tier |
+|---|---|---|---|---|
+| Target and Focus, Pet Frame, Party Frames, Boss Frames, Raid Frames, Arena Frames | UnitFrame = 3 | `Blizzard_UnitFrame`, `Blizzard_CompactRaidFrames` | 2.8, 2.10 | C (aura icons X, 2.9) |
+| Buffs and Debuffs | AuraFrame = 6 | `Blizzard_BuffFrame` | 2.14 | A by scan |
+| External Defensives | (an aura frame) | `Blizzard_BuffFrame/ExternalDefensivesFrame.xml` | **new 2.34** | A by scan |
+| Cast Bar | CastBar = 1 | `CastingBarFrame` | 2.13 | A by scan |
+| Stance Bar, Pet Bar, Possess Bar | ActionBar = 0 | `Blizzard_ActionBar` (`PossessActionBar.xml`) | 2.1 | C |
+| Totem bar (in the enum, not in her screenshot) | TotemActionBar = 25 | `Blizzard_UnitFrame/Mainline/TotemFrame.xml` | **new 2.35** | C (INFERENCE: totem buttons are clickable to dismiss) |
+| Extra Abilities | ExtraAbilities = 5 | `Blizzard_ZoneAbility` + extra action button | 2.3 | C |
+| Encounter Bar | EncounterBar = 4 | encounter power bar (`Blizzard_UIWidgets`) | 2.28 | B |
+| Cooldown Manager | CooldownViewer = 20 | `Blizzard_CooldownViewer` | 2.15 | B |
+| Personal Resource… | PersonalResourceDisplay = 21 | `Blizzard_PersonalResourceDisplay` | 2.12 | A by scan |
+| Boss Warnings | EncounterEvents = 22 | `Blizzard_EncounterWarnings`, `Blizzard_EncounterTimeline` | 2.17 | B / A |
+| Damage Meter | DamageMeter = 23 | `Blizzard_DamageMeter` | 2.16 | B |
+| Loss of Control | LossOfControl = 26 | `Blizzard_FrameXML/LossOfControlFrame.xml` | **new 2.36** | A (INFERENCE) |
+| Talking Head | TalkingHeadFrame = 7 | `TalkingHeadUI.xml` | 2.25 | A |
+| Status Bar 2 | StatusTrackingBar = 15 | `StatusTrackingBarManager` | 2.5 | A |
+| Vehicle Exit Button | VehicleLeaveButton = 9 | the vehicle leave button (`Blizzard_ActionBar`, INFERENCE on the folder) | **new 2.37** | A (INFERENCE) |
+| HUD Tooltip | HudTooltip = 11 | `GameTooltip` (its default place) | 1.10 | A |
+| Equipment Durability | DurabilityFrame = 16 | `Blizzard_DurabilityFrame` | 2.22 | A |
+| Duration Bars | TimerBars = 17 | `Blizzard_MirrorTimer` (breath, fatigue) | 2.21 | A |
+| Vehicle Seats | VehicleSeatIndicator = 18 | `Blizzard_UIPanels_Game/Shared/VehicleSeatIndicator.xml` | **new 2.38** | A (INFERENCE: clicking a seat switches seats, which may make it C) |
+| Archaeology Bar | ArchaeologyBar = 19 | `Blizzard_ArchaeologyUI` dig-site progress bar | **new 2.39** | A |
+| Loot Window | LootFrame = 10 | `LootFrame` | 2.26 | B |
+| Raid Warnings | RaidWarning = 24 | `Blizzard_RaidWarning` | 2.18 | A |
+| (not in her screenshot) Minimap, Chat, Objective Tracker, Micro Menu, Bags | Minimap = 2, ChatFrame = 8, ObjectiveTracker = 12, MicroMenu = 13, Bags = 14 | as rows | 2.19, 0.2, 0.4, 2.6, 2.7 | as rows |
+
+**New rows this section adds to the HUD list (section 5):**
+
+| # | Element | Where | Tier |
+|---|---|---|---|
+| 2.31 | Minimap calendar button | `GameTimeFrame` | A |
+| 2.32 | Minimap tracking button | `Minimap.Tracking.Button` | A |
+| 2.33 | Minimap mail icon | `Minimap…MailFrame` | A |
+| 2.34 | External defensives | `ExternalDefensivesFrame` | A by scan |
+| 2.35 | Totem bar | `TotemFrame` | C (INFERENCE) |
+| 2.36 | Loss of control alert | `LossOfControlFrame` | A (INFERENCE) |
+| 2.37 | Vehicle exit button | vehicle leave button | A (INFERENCE) |
+| 2.38 | Vehicle seats | `VehicleSeatIndicator` | A or C (INFERENCE) |
+| 2.39 | Archaeology progress bar | dig-site progress bar | A |
+
+The list now has 93 + 9 = **102 rows**.
+
+**Her 36 items, by outcome:**
+
+| Outcome | Items | Count |
+|---|---|---|
+| Already built | L1 | 1 |
+| Cannot be reskinned | L3 shop | 1 |
+| Need her answer first | L2, L10, L17, L21 | 4 |
+| Can be reskinned as listed | the rest | 30 |
+
+1 + 1 + 4 + 30 = 36.
+
+### 6d. Her second list (2026-11-06, REQUEST-LOG S8-3)
+
+| # | Her words | What it is in 12.1.5 | Row | Tier | Note |
+|---|---|---|---|---|---|
+| M1 | "quest tracker" | `ObjectiveTrackerFrame`, the quest section | 0.4 | B | It is the same frame as M3. **CONFIRM (Q11):** one tick box for the whole tracker, or a tick box per section (quests, world quests, achievements, professions, …)? |
+| M2 | "group finder" | `PVEFrame` (`Blizzard_GroupFinder/Mainline/PVEFrame.xml`) | 3.18 | B | |
+| M3 | "objectives pane" | `ObjectiveTrackerFrame` | 0.4 | B | Already planned (RM-OBJECTIVES). |
+| M4 | "raid frames" | `CompactRaidFrames` | 2.10 | C | Also in her first list (Edit Mode). |
+| M5 | "party frames" | `PartyFrame`, compact party frames | 2.8, 2.10 | C | Also in her first list (Edit Mode). |
+| M6 | "chat bubbles" | `Blizzard_ChatBubble` | 2.29 | A outside forbidden areas | Some bubbles are forbidden (`GetAllChatBubbles(includeForbidden)`); INFERENCE: the ones in dungeons and raids, which would keep Blizzard's look there. |
+| M7 | "menus" | right-click and dropdown menus (`Blizzard_Menu`, `WowStyle1DropdownTemplate`) | 1.7 | B | **CONFIRM (Q12):** are "menus" these right-click / dropdown menus? (The Esc menu and micro menu are already L1 and L31.) |
+| M8 | "skyriding" | **I cannot confirm the frame from the source.** No 12.1.5 frame is named for skyriding, dragonriding or vigor: those names appear only in mounts, tutorials and race-map code. INFERENCE: the vigor display is a UI widget of type FillUpFrames (`Blizzard_UIWidgetTemplateFillUpFrames.lua`, `Enum.UIWidgetVisualizationType.FillUpFrames` = 24) in the power-bar widget area. | **new 2.41** | B (widgets) | **Needs her help (Q13):** a screenshot of the skyriding display, or `/fstack` over it, names the frame. |
+| M9 | "bnet alert toasts + popups" | Toasts: `BNToastFrame` and `TimeAlertFrame` (`Blizzard_BNet/BNet.xml:3, 83`), both built on `SocialToastTemplate` (`Blizzard_SocialToast/SocialToast.xml:44`). Popups: Blizzard's pop-up dialogs. | **new 2.40** + 1.11 | A | INFERENCE: Battle.net invite / request popups use the shared StaticPopup dialogs (1.11). |
+
+**New rows:**
+
+| # | Element | Where | Tier |
+|---|---|---|---|
+| 2.40 | Battle.net toasts (friend online, time alert) | `BNToastFrame`, `TimeAlertFrame` | A |
+| 2.41 | Skyriding display | not confirmed (see M8) | B (INFERENCE) |
+
+The list now has 102 + 2 = **104 rows**.
+
+**Her 9 items, by outcome:**
+
+| Outcome | Items | Count |
+|---|---|---|
+| Can be reskinned as listed | M2, M3, M4, M5, M6, M9 | 6 |
+| Need her answer | M1 / M3 one box or several (Q11), M7 (Q12), M8 (Q13) | 3 |
+
+6 + 3 = 9. M3 counts once; Q11 only asks whether it gets one tick box or several.
+
 ## 7. Older-expansion windows (on demand; low use, B unless stated)
 
 These are all still in 12.1.5 and could be reskinned, but they serve old content:
@@ -216,6 +352,14 @@ mode, PTR feedback, commentator / spectator mode.
 | Q3 | One look or many? | (a) Everything follows the XayaUI theme (one accent, one font). (b) Each reskin has its own colours, like the Esc menu's "Use these colours" option. |
 | Q4 | Combat HUD (tier C: action bars, unit frames, raid frames, nameplates)? | Include, with an in-game taint check per element first, or leave them out. |
 | Q5 | A global font change (1.14)? | It also changes text in other addons that use Blizzard's font objects. Include or not. |
+| Q6 | Her "toolbars" (L10): which bars? | (a) The bag bar (2.7). (b) The XP / reputation status bars (2.5). (c) The stance, pet and possess bars (part of 2.1). (d) Something else she names. |
+| Q7 | Her "options menu" (L2): which window? | (a) Blizzard's Settings window (Esc > Options). (b) XayaUI's own settings window. (c) Both. |
+| Q8 | Her "crafting" (L21): which window? | (a) The crafting-orders window. (b) The Recipes / crafting page of the Professions window. (c) Both. |
+| Q9 | "adventure guide" and "dungeon journal" (L16, L17) are one Blizzard window: one tick box or two? | (a) One "Adventure Guide" reskin. (b) Two tick boxes. |
+| Q10 | Her list has 36 items; the source list has 102 rows. What happens to the rows she did not name (for example cast bars, nameplates, tooltips, the shared building blocks)? | (a) Her list is the scope, and the rest stays as candidates. (b) Everything reskinnable is in scope. |
+| Q11 | Quest tracker / objectives pane (M1, M3) are one Blizzard frame: one tick box or several? | (a) One "Objective Tracker" reskin. (b) One tick box per section. |
+| Q12 | "menus" (M7) | (a) Right-click and dropdown menus. (b) Something else she names. |
+| Q13 | "skyriding" (M8) | A screenshot or `/fstack` name of the display she means. |
 
 Each new reskin would get a row with its own tick box under the existing Blizzard UI Reskin tab, under "All reskins" (C12). Under
 V14 it does nothing until that box is ticked, and an on-demand window's skin waits for that window's `ADDON_LOADED`.

@@ -36,3 +36,24 @@ version bump and no QA step (there is nothing to check in game yet).
 ## Not verified
 Any in-game behaviour, and in particular whether art changes on protected frames taint in combat. The tiers come from text markers,
 so a frame that inherits a secure template from another folder can be under-tiered.
+
+## Update 2026-11-06 ~21:20 UTC: her list (S8-2)
+- Her 36 items and the Edit Mode screenshot are mapped in sections 6b and 6c of the plan doc. Every item points to a frame in the
+  12.1.5 source or to `Enum.EditModeSystem` (27 values, `docs/reference/api/enums.md:4849`).
+- Checked in the source:
+  - minimap: tracking button `Minimap.xml:51-79`, mail icon `:92`, calendar button `GameTime.xml:3`;
+  - `Minimap:SetMaskTexture` (api.json, MinimapFrameAPI, not protected);
+  - guild opens Communities (`Game.lua:1-14`);
+  - Catalyst frame `ItemInteractionFrame`;
+  - External Defensives `Blizzard_BuffFrame/ExternalDefensivesFrame.xml`;
+  - Possess bar `PossessActionBar.xml`; Totem `TotemFrame.xml`; Vehicle seats `VehicleSeatIndicator.xml`;
+  - Loss of Control `Blizzard_FrameXML/LossOfControlFrame.xml`.
+- The shop is X (`UseSecureEnvironment`).
+- 9 rows added (2.31-2.39); the list now has 102 rows.
+
+## Update: her second list (S8-3)
+- The 9 items are mapped in plan section 6d.
+- Battle.net toasts: `BNToastFrame` and `TimeAlertFrame`, at `Blizzard_BNet/BNet.xml:3, 83`, built on `SocialToastTemplate`.
+- Skyriding: no frame in 12.1.5 is named for skyriding, dragonriding or vigor. A search hits only mounts, tutorials, map race pins
+  and trait code. INFERENCE: it is a FillUpFrames UI widget. Her screenshot or `/fstack` is needed to confirm.
+- The list now has 104 rows.
