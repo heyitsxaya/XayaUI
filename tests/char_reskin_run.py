@@ -200,6 +200,21 @@ check("  ...the wider window has its switch (on by default), its extra width (0-
 CueRulesDB.characterReskin.widePx, CueRulesDB.characterReskin.bgAlpha = 5000, 0.1
 local cl = ns.CharReskin_Cfg()
 check("  ...a saved value out of range is brought back inside it (300 px, 50%)", cl.widePx == 300 and cl.bgAlpha == 0.5, cl.widePx .. " " .. cl.bgAlpha)
+
+-- 11. (QoL 0.7.27) an install that ran QoL 0.7.21-0.7.23 (REQUEST-LOG #58-#59; Xaya 2026-11-06: "surely this isn't 380px?") ---------
+-- those versions saved their default extra width, 240, into the settings; 0.7.24 kept every saved number, so her window stayed 578 wide
+local function upgraded(saved) CueRulesDB.characterReskin = saved; return ns.CharReskin_Cfg() end
+local u = upgraded({ enabled = true, chrome = true, wide = true, widePx = 240, bgAlpha = 0.95 })   -- 0.7.22's saved table: no marker
+check("upgrade from 0.7.22-0.7.23: the saved old default 240 becomes 42 (380 / 582), once", u.widePx == 42 and u.widePxTo42 == true
+  and u.enabled == true and u.bgAlpha == 0.95, tostring(u.widePx) .. " " .. tostring(u.widePxTo42))
+u.widePx = 240
+check("  ...a 240 picked after that stays 240 (the step runs once per install)", ns.CharReskin_Cfg().widePx == 240, ns.CharReskin_Cfg().widePx)
+local o = upgraded({ enabled = true, wide = true, widePx = 200 })
+check("  ...any other saved number stays as it was (200)", o.widePx == 200 and o.widePxTo42 == true, o.widePx)
+local f = upgraded(nil)
+check("  ...a fresh install gets 42 and the marker", f.widePx == 42 and f.widePxTo42 == true, f.widePx)
+local b = upgraded({ enabled = true, wide = true, widePx = "240" })
+check("  ...a 240 saved as text counts too", b.widePx == 42, tostring(b.widePx))
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__GEOM__", P("tests/char_pane_geometry.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
    .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua"))
    .replace("__RS__", P("XayaUI_QoL/CharacterReskin.lua")))
