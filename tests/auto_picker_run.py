@@ -124,7 +124,7 @@ end
 local hs = (T.hOn and T.hnm and T.hty and T.htr and T.hcu and T.hcb) and (T.hOn.relWidth + T.hnm.relWidth + T.hty.relWidth + T.htr.relWidth + T.hcu.relWidth + T.hcb.relWidth) or 0
 check("every row is one table row: its columns add up to the pane's width, the header's too", math.abs(rowSum(1) - 1) < 1e-6 and math.abs(rowSum(7) - 1) < 1e-6 and math.abs(hs - 1) < 1e-6
   and T.r1on.arg.xuiCell and T.r1tr.arg.xuiCell)
-check("row cells: tick box, name, type (Spell CD / Aura / Debuff), trigger, cue, combat load", T.r1on.type == "toggle" and T.r1nm.name:find("Spell 187827", 1, true)
+check("row cells: tick box, name (the name only, no icon: V16), type (Spell CD / Aura / Debuff), trigger, cue, combat load", T.r1on.type == "toggle" and T.r1nm.name == "Spell 187827"
   and T.r1ty.name:find("Spell CD", 1, true) and T.r4ty.name:find("Aura", 1, true) and T.r6ty.name:find("Debuff", 1, true)
   and T.r1tr.type == "select" and T.r1cu.type == "select" and T.r1cb.type == "select" and T.r1xc == nil)
 check("trigger choices in her words: a cooldown 'When available / when ready' / 'At max stacks'; an aura or debuff 'When present' / 'When missing'",

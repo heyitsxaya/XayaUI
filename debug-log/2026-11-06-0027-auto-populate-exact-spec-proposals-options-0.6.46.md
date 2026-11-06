@@ -59,6 +59,13 @@ Measured against V16 ("an extra element ... is a defect. Anything not specified 
 - P13. Cue-type group names: Icons, Progress Textures, Textures, Text, Speech, Sounds (the Smart Categories names).
 - P14. After Make, keep the ticks (as now) or untick the rows that were made.
 - P15. Progress bar: needs a design first (RM-BARS, the WeakAuras reference she named). Until then it is listed "(not yet)".
+- P16. A spell icon beside each name in the Name column. Built in 0.6.42-0.6.46. Removed, because S1's cross-chat review (2026-11-06,
+  item B1) flagged it as an addition.
+- P17. Progress bar and Custom: the addon does not support them yet. Choices:
+  - list them, marked "(not yet)", and do not make them (as built now; the marker stops a pick that silently makes nothing);
+  - list them without the marker;
+  - leave them out until they exist.
+  Her words were "ALL cue types that are supported by the addon".
 - Capability limit (not a proposal): auras and debuffs are listed for the spec you are in only. The core debuff / aura learner already
   proposed (E24 in the request log) would remove this limit.
 

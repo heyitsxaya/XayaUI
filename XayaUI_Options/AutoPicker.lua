@@ -435,7 +435,7 @@ function AP.Args(notify, keep)
             get = function() local on = AP.Choice(c); return on end,
             set = function(_, v) AP.SetChoice(c, "on", v and true or nil); keep() end }
         T["r" .. i .. "nm"] = { type = "description", order = o + 0.0001, width = "relative", relWidth = W.nm, fontSize = "medium", arg = CELL,
-            name = (c.icon and ("|T" .. c.icon .. ":16|t ") or "") .. c.name }
+            name = c.name }   -- her "name" column: the name only (a spell icon beside it is proposal P16, V16)
         T["r" .. i .. "ty"] = { type = "description", order = o + 0.0002, width = "relative", relWidth = W.ty, fontSize = "medium", arg = CELL,
             name = "|cffaaaaaa" .. AP.TYPE[c.kind] .. "|r" }
         local tdef = AP.TRIG[c.kind]

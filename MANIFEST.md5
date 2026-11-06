@@ -168,7 +168,7 @@ efec3fcde487dd92bc91fc15f730a5b2  XayaUI_Media/Update-UserMedia.py
 04f439ec9494222ba90b878bd119dd63  XayaUI_Media/UserMedia.lua
 2529f9852549e926a22e6f2f403678e0  XayaUI_Media/XayaUI_Media.toc
 7e817818685adac25b2bbe98ea028ce5  XayaUI_Options/AddonInfo.lua
-581db3e4ff86ced933f8efec60d21b40  XayaUI_Options/AutoPicker.lua
+d2b2befcff141a1455a7246eceb4d31a  XayaUI_Options/AutoPicker.lua
 37c8005a72a320488742e734838a1a8e  XayaUI_Options/DisplayTab.lua
 d6254cdbc4c4e62855c3d5ec727d3373  XayaUI_Options/Drafts.lua
 659930de4dfc6f25822d9a3575c1f350  XayaUI_Options/ImportWindow.lua
@@ -484,7 +484,7 @@ c54bd9d2d6be53369953c26744e65136  debug-log/2026-11-05-2141-history-whisper-tabs
 22e8f4cc3b2e265dbebc8d539d9bb3cc  debug-log/2026-11-05-2157-auto-populate-table-options-0.6.44.md
 ef2aa95835015eb192e93bbbf709ddb0  debug-log/2026-11-05-2359-harness-enum-values-from-docs.md
 837bb26c655ad30d3de19734aaaf267f  debug-log/2026-11-06-0015-auto-populate-every-cue-type-options-0.6.45.md
-8ffac1c4e2e4a34e7f2ae3d6d6823b0e  debug-log/2026-11-06-0027-auto-populate-exact-spec-proposals-options-0.6.46.md
+3daec1a76560e1545b3258cd15c476ce  debug-log/2026-11-06-0027-auto-populate-exact-spec-proposals-options-0.6.46.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -505,7 +505,7 @@ e80a5c2d309d09f70935f65abd599ec3  docs/plans/IDEA-UPGRADE-OPTIONS-2026-11-05.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 4951caf3d08972511c0552aaeba5f0f1  docs/process/ELVUI-STRUCTURE-REVIEW-2026-11-05.md
 d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
-0d70529bd40b52d8a8adf7fc8cdfb351  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
+0f7331f909b585bcb2f42f577fd0ec11  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 26a30c6c53b808dbc12422b025aa395b  docs/process/VERIFICATION.md
 7af233aeafadc9bade62ce5da4b21189  docs/reference/README.md
@@ -560,7 +560,7 @@ f3dca8a8e18dd9682701196827a9cb2c  tests/art_rows_run.py
 b96c22f839c7166fa44cc33ca05b7b78  tests/aura_gaps_run.py
 80c84f1f7ef017e7f04a6c3be28a3910  tests/aura_sources_run.py
 f115df38e9fbc8e0ce989f9a4184ef18  tests/auras_cmd_run.py
-dde3205586e6f3dbca1fa1d7563ad649  tests/auto_picker_run.py
+b6a2cabd2ed1d953ec7ff6a3d8943d23  tests/auto_picker_run.py
 1dce77748a6ffa451ee7788748604e1b  tests/auto_table_layout_run.py
 85b42e051f93867990bead97395d8ac3  tests/build_content_run.py
 a48d4b3a546f29c2dbd4fdfb8bc661c4  tests/build_set_auras_run.py
