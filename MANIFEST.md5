@@ -141,7 +141,7 @@ ded1de1be47477a60c0740ef7769629d  XayaUI_Bonus/Media/UI/Notepad/src/plus.svg
 3a37261e12b91d6cb3d67fe5c00118ee  XayaUI_Bonus/Utilities.lua
 b3f68ecf79cc88ba7a4f6e34f93459c3  XayaUI_Bonus/XayaUI_Bonus.toc
 ceb797d1b4fa5f81e39fe65e4420e315  XayaUI_Chat/Bar.lua
-2ac544b3b95b0664ec25c8a483432e36  XayaUI_Chat/Core.lua
+04c76afa8255cabf6837494a4b0ca68c  XayaUI_Chat/Core.lua
 ed794d04c6709f11bc22bddee51ac7f5  XayaUI_Chat/Fade.lua
 9f39b63b03d2fb3b059ce091d59f2ee0  XayaUI_Chat/Frame.lua
 600c24a2ee533d80917bef683542d51c  XayaUI_Chat/History.lua
@@ -153,7 +153,7 @@ f6c480eb35711c29f3bd5494db67d973  XayaUI_Chat/Options.lua
 271385b46e5eb6735ddf1295454bc596  XayaUI_Chat/Scroll.lua
 a5942eeea7535b00862d884eecdf2910  XayaUI_Chat/Skin.lua
 c3443dcf8a486e540ddfeac1aae87728  XayaUI_Chat/Sounds.lua
-932c501bd3c3bb06c4657b360909a872  XayaUI_Chat/XayaUI_Chat.toc
+3d6f740f75f23134cb9d0d5c39684459  XayaUI_Chat/XayaUI_Chat.toc
 d1214a6ecb251789fe882787dce5d8ef  XayaUI_DevAssist/ApiInventory.lua
 2927a47181fd6886394e1b61d1fc0faf  XayaUI_DevAssist/AuraCatalogue.lua
 d580499354412d7ae85a86c9eed84350  XayaUI_DevAssist/AuraIDProbe.lua
@@ -542,6 +542,7 @@ f671bbba5831a0af440e1fe55319f019  debug-log/2026-11-06-2215-chat-hover-wake-opti
 f2ab2c6149d77a1489dc842a2fb341fe  debug-log/2026-11-06-2228-chat-whisper-tab-lists-chat-0.6.26.md
 2c4b405b037091f25123f450a87c575e  debug-log/2026-11-06-2253-stat-calc-proc-lines-set-armor-label-qol-0.7.35.md
 0421f816cee3ec785769ef0f75f54fde  debug-log/2026-11-06-2255-ability-scaling-columns-fold-dividers-qol-0.7.36.md
+064774082fccf68102056cb6ecc1bbd7  debug-log/2026-11-06-2256-panel-command-text-chat-0.6.27.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
 91b22c183af0f3db13cf7d3de2dc05e7  docs/QA-CHECKLIST.md
 016d704744f94668de6d3e58e201e3ce  docs/README-INGAME.md
