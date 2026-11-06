@@ -46,13 +46,19 @@ local function fill(dst, src)
 end
 
 -- Saved data: XayaUI's CueRulesDB.tooltips when integrated, XayaUITooltipsDB.tooltips alone. Call after login.
+-- The defaults are filled in once per saved table (Bonus 0.6.12): up to 0.6.11 every call, so every tooltip, ran the recursive merge.
+local filled
 function TT.DB()
     local root
     if integrated then CueRulesDB = CueRulesDB or {}; root = CueRulesDB
     else XayaUITooltipsDB = XayaUITooltipsDB or {}; root = XayaUITooltipsDB end
-    root.tooltips = root.tooltips or {}
-    fill(root.tooltips, TT.DEFAULTS)
-    return root.tooltips
+    local t = root.tooltips
+    if t ~= nil and t == filled then return t end
+    t = t or {}
+    root.tooltips = t
+    fill(t, TT.DEFAULTS)
+    filled = t
+    return t
 end
 
 -- key = settings key, enum = Enum.TooltipDataType member, label = text on the tooltip line, name = options label
@@ -500,6 +506,7 @@ function TT.AuraReport(id)
     local ver = C_AddOns and C_AddOns.GetAddOnMetadata and select(2, pcall(C_AddOns.GetAddOnMetadata, "XayaUI_Bonus", "Version"))
     local inCombat = InCombatLockdown and InCombatLockdown() and true or false
     P(("spell %d (%s); XayaUI Bonus %s; in combat: %s"):format(id, tostring(SpellNameOf(id) or "?"), tostring(ver or "?"), inCombat and "yes" or "no"))
+    if not TT.watching and TT.ResetCooldownLinks then TT.ResetCooldownLinks() end   -- (no spec-change event while IDs and Formulas are off)
     local link = TT.CooldownLinks()[id]
     if link then
         local t = {}
@@ -554,6 +561,24 @@ local function Release()
     if ClearInspectPlayer and not (InspectFrame and InspectFrame.IsShown and InspectFrame:IsShown()) then pcall(ClearInspectPlayer) end
 end
 
+-- INSPECT_READY is registered only while one of our inspect requests waits for its answer (Bonus 0.6.12, V14)
+local inspectWatch
+local function WatchInspect(on)
+    if on then
+        if not inspectWatch then
+            inspectWatch = CreateFrame("Frame")
+            inspectWatch:SetScript("OnEvent", function(_, _, guid) TT.OnInspectReady(guid) end)
+        end
+        inspectWatch:RegisterEvent("INSPECT_READY")
+    elseif inspectWatch then
+        inspectWatch:UnregisterEvent("INSPECT_READY")
+    end
+end
+function TT.DropInspect()   -- the item level line was switched off (TT.Sync): no request is left waiting
+    if pending then pending = nil; Release() end
+    WatchInspect(false)
+end
+
 local function MayInspect(unit)
     if InCombatLockdown and InCombatLockdown() then return false end
     if InspectFrame and InspectFrame.IsShown and InspectFrame:IsShown() then return false end
@@ -582,18 +607,21 @@ function TT.IlvlLine(tooltip, unit)
         return
     end
     if pending and now - pending.t < 3 then return end              -- one request at a time
-    if pending then pending = nil; Release() end                     -- the last one never answered (the server throttles silently)
+    if pending then pending = nil; Release(); WatchInspect(false) end   -- the last one never answered (the server throttles silently)
     if now - lastAsk < 1.5 or (retryAfter[guid] or 0) > now then return end
     if not MayInspect(unit) then return end
     pending, lastAsk, retryAfter[guid] = { guid = guid, unit = unit, t = now }, now, now + 30
+    WatchInspect(true)
     pcall(NotifyInspect, unit)
     if hit then AddLine(tooltip, "Item level:", ("%.1f (old)"):format(hit.ilvl)) end
 end
 
 function TT.OnInspectReady(guid)
-    if not pending or pending.guid ~= guid then return end            -- not our request (the Inspect window, another addon): leave it
+    if not pending then WatchInspect(false) return end
+    if pending.guid ~= guid then return end                           -- not our request (the Inspect window, another addon): leave it
     local unit = pending.unit
     pending = nil
+    WatchInspect(false)
     local ok, ilvl = pcall(function() return C_PaperDollInfo.GetInspectItemLevel(unit) end)
     if ok and readable(ilvl) and type(ilvl) == "number" and ilvl > 0 then
         cache[guid] = { ilvl = ilvl, t = Now() }
@@ -652,22 +680,65 @@ function TT.OnUnitData(tooltip, data)
     pcall(TT.ForcesLine, tooltip, unit)
 end
 
+-- V14 "off costs nothing" (Bonus 0.6.12; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or
+-- contribute to performance cost / demand in any way"). TT.on caches "at least one of IDs, Item level, Enemy forces, Formulas is on"; it
+-- is set by TT.Sync, which runs at login and after every switch on the Tooltips page. With all four off nothing is installed: no tooltip
+-- post-call, no frame, no event. The post-calls are placed the first time one of the four is on; the game offers no way to take them
+-- back (INFERENCE: TooltipDataProcessor is Blizzard's own Lua, not in the 12.1.5 API documentation in docs/reference/api, and no removal
+-- call is documented there), so once placed they stay until /reload and return at once while TT.on is false.
+TT.on = false
+function TT.AnyOn()
+    local db = TT.DB()
+    return (db.ids.enabled or db.ilvl.enabled or db.forces.enabled or db.formulas.enabled) and true or false
+end
 local hooked
 function TT.Init()
     if hooked then return end
     if type(TooltipDataProcessor) ~= "table" or type(TooltipDataProcessor.AddTooltipPostCall) ~= "function" then return end
     if type(Enum) ~= "table" or type(Enum.TooltipDataType) ~= "table" then return end
     hooked = true
+    TT.on = TT.AnyOn()
     for _, kind in ipairs(TT.ID_KINDS) do
         local t = Enum.TooltipDataType[kind.enum]
-        if t then TooltipDataProcessor.AddTooltipPostCall(t, function(tooltip, data) pcall(TT.OnIDData, tooltip, data, kind) end) end
+        if t then TooltipDataProcessor.AddTooltipPostCall(t, function(tooltip, data) if TT.on then pcall(TT.OnIDData, tooltip, data, kind) end end) end
     end
     if Enum.TooltipDataType.Unit then
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tooltip, data) pcall(TT.OnUnitData, tooltip, data) end)
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tooltip, data) if TT.on then pcall(TT.OnUnitData, tooltip, data) end end)
     end
-    local f = CreateFrame("Frame")
-    f:RegisterEvent("INSPECT_READY")
-    f:SetScript("OnEvent", function(_, _, guid) TT.OnInspectReady(guid) end)
+end
+
+-- The spec / talent / combat-end / Cooldown Manager events (TooltipsUI.lua) are needed only by the IDs (the Cooldown Manager's aura
+-- links) and the Formulas (talent match, your class's observed data); registered only while one of those two is on.
+local watch
+local function OnWatch(_, event)
+    if event ~= "PLAYER_REGEN_ENABLED" then
+        TT.talentHash = nil                                     -- talents or spec changed: match observed data again
+        if TT.ResetCooldownLinks then TT.ResetCooldownLinks() end   -- and read the Cooldown Manager's aura links again
+    end
+    -- observed formulas: your own class's data folder only, loaded out of combat; talent changes reset the talent match
+    if TT.LoadClassData and TT.DB().formulas.enabled then pcall(TT.LoadClassData) end
+end
+TT.WATCH_EVENTS = { "ACTIVE_PLAYER_SPECIALIZATION_CHANGED", "TRAIT_CONFIG_UPDATED", "PLAYER_REGEN_ENABLED", "COOLDOWN_VIEWER_DATA_LOADED",
+    "COOLDOWN_VIEWER_TABLE_HOTFIXED" }
+function TT.Sync()
+    local db = TT.DB()
+    local on = TT.AnyOn()
+    TT.on = on
+    if on then TT.Init() end
+    if not db.ilvl.enabled then TT.DropInspect() end
+    local want = (db.ids.enabled or db.formulas.enabled) and true or false
+    if want then
+        if not watch then watch = CreateFrame("Frame"); watch:SetScript("OnEvent", OnWatch) end
+        for _, e in ipairs(TT.WATCH_EVENTS) do watch:RegisterEvent(e) end
+    elseif watch then
+        watch:UnregisterAllEvents()
+    end
+    if not TT.watching and want then   -- (while the events were let go, a spec change was not seen: read both again)
+        TT.talentHash = nil
+        if TT.ResetCooldownLinks then TT.ResetCooldownLinks() end
+    end
+    TT.watching = want
+    if db.formulas.enabled and TT.LoadClassData then pcall(TT.LoadClassData) end
 end
 
 -------------------------------------------------------------------------------

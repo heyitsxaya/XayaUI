@@ -21,7 +21,9 @@ local TAG = { CHAT_MSG_SAY = "Say", CHAT_MSG_YELL = "Yell", CHAT_MSG_EMOTE = "Em
     CHAT_MSG_WHISPER = "From", CHAT_MSG_WHISPER_INFORM = "To", CHAT_MSG_BN_WHISPER = "From", CHAT_MSG_BN_WHISPER_INFORM = "To", CHAT_MSG_CHANNEL = "Channel" }
 
 local hist, con = {}, {}                  -- chat messages; console lines (print output and system messages)
-local tabKey, query = "ALL", ""          -- tabKey: "ALL", "CONSOLE" or a chat window number
+local tabKey, query = "ALL", ""          -- tabKey: "ALL", "CONSOLE", "WHISPERS", a whisper key ("W:name" / "B:id") or a chat window number
+local explicitKey                         -- a tab asked for by C.History_Select (a Chat Bar block) before the window opens
+local wname = {}                          -- whisper key -> the name its tab shows (Chat 0.6.15)
 local shown = { [hist] = 0, [con] = 0 }  -- per list: how many entries the snapshot in the window already holds
 local frame
 local function List() return tabKey == "CONSOLE" and con or hist end
@@ -57,7 +59,7 @@ local function Windows()                  -- { {id=, name=} } for the tabs worth
     local out = {}
     for _, f in ipairs(C.Frames()) do
         local id = f.GetID and f:GetID()
-        if id then
+        if id and not f.isTemporary then
             local name, shown, docked
             if _G.GetChatWindowInfo then local n, _, _, _, _, _, sh, _, dk = _G.GetChatWindowInfo(id); name, shown, docked = n, sh, dk end
             if not name or name == "" then local tab = C.TabOf(f); local fs = tab and (tab.Text or _G[C.NameOf(tab) .. "Text"]); name = fs and fs.GetText and fs:GetText() or nil end
@@ -71,7 +73,8 @@ C.History_Windows = Windows
 function C.History_Lines()
     local out, q = {}, query:lower()
     for _, e in ipairs(List()) do
-        if tabKey == "ALL" or tabKey == "CONSOLE" or (e.frames and e.frames[tabKey]) then
+        if tabKey == "ALL" or tabKey == "CONSOLE" or (e.frames and e.frames[tabKey]) or (tabKey == "WHISPERS" and e.wkey)
+            or (e.wkey and e.wkey == tabKey) then
             local body = e.text and C.Plain(e.text) or "[protected message]"
             local line = ("[%s] %s%s%s"):format(date("%H:%M:%S", e.t), e.tag and (e.tag .. " ") or "", e.who and (e.who .. ": ") or "", body)
             if q == "" or line:lower():find(q, 1, true) then out[#out + 1] = line end
@@ -96,7 +99,61 @@ local function Keep(list, e)
     end
 end
 
-C.OnMessage(function(event, text, author, _, _, _, _, _, _, channelBase)
+-- Whisper tabs (Chat 0.6.15, Xaya 2026-11-05: the history "should also include whisper windows as individual tabs if selected as an
+-- option in either blizzard native social options or when toggled within the addon"; "Our own switch should default to the current
+-- interface selection in blizzard OR bundle all whispers into a consolidated tab"). Setting histWhispers:
+--   "game" (default): follow the game's Options > Social > New Whispers (CVar whisperMode): "New Tab" or "Both" -> one tab per
+--                     conversation; "In-line" (or unreadable) -> no whisper tabs (whispers stay in the chat tabs that show them);
+--   "one":            every whisper in one "Whispers" tab.
+-- A conversation is keyed by the other person: a character by "name-realm", lowercased ("W:ann-realm"; a name without a realm is on
+-- your realm, see CharKey); a Battle.net friend by the message's Battle.net ID ("B:id"). Own code. UNTESTED in game.
+local WHISPER_EV = { CHAT_MSG_WHISPER = "W", CHAT_MSG_WHISPER_INFORM = "W", CHAT_MSG_BN_WHISPER = "B", CHAT_MSG_BN_WHISPER_INFORM = "B" }
+function C.History_WhisperMode()
+    local s = S()
+    if s and s.histWhispers == "one" then return "one" end
+    local get = (_G.C_CVar and _G.C_CVar.GetCVar) or _G.GetCVar
+    if get then
+        local ok, v = pcall(get, "whisperMode")
+        if ok and type(v) == "string" and not issecret(v) and (v == "popout" or v == "popout_and_inline") then return "each" end
+    end
+    return "none"
+end
+-- the realm part as the game writes it in "Name-Realm" (no spaces), lowercased for the key
+local function RealmKey(r) return (r:gsub("[%s]", "")):lower() end
+local function OwnRealm()
+    local get = _G.GetNormalizedRealmName
+    if type(get) ~= "function" then return nil end
+    local ok, r = pcall(get)
+    if ok and type(r) == "string" and not issecret(r) and r ~= "" then return r end
+    return nil
+end
+-- Chat 0.6.16 (Xaya: "Server / realm names are typically only dropped in cases where the realm is identical to the player's"): a
+-- name with no realm is on your realm, so it gets your realm; "Name-Realm" keeps its own. Two people of the same name on different
+-- realms get two tabs. The tab shows the name alone for your realm, "Name-Realm" for another.
+local function CharKey(name)
+    if type(name) ~= "string" or issecret(name) or name == "" then return nil end
+    local short, realm = name:match("^([^%-]+)%-(.+)$")
+    if not short then short = name end
+    local own = OwnRealm()
+    realm = realm or own
+    if not realm then return "W:" .. short:lower(), short end   -- your realm unreadable: the name alone
+    local label = (own and RealmKey(realm) == RealmKey(own)) and short or (short .. "-" .. realm)
+    return "W:" .. short:lower() .. "-" .. RealmKey(realm), label
+end
+local function BNKey(id)
+    if type(id) ~= "number" or issecret(id) then return nil end
+    local label = "Battle.net friend"
+    local get = _G.C_BattleNet and _G.C_BattleNet.GetAccountInfoByID
+    if get then
+        local ok, info = pcall(get, id)
+        local tag = ok and type(info) == "table" and info.battleTag
+        if type(tag) == "string" and not issecret(tag) and tag ~= "" then label = (tag:gsub("#.*$", "")) end
+    end
+    return "B:" .. id, label
+end
+C.History_CharKey, C.History_BNKey = CharKey, BNKey
+
+C.OnMessage(function(event, text, author, _, _, _, _, _, _, channelBase, _, _, _, bnID)
     local s = S()
     if not (s and s.histOn) then return end
     local tag = TAG[event]
@@ -111,6 +168,12 @@ C.OnMessage(function(event, text, author, _, _, _, _, _, _, channelBase)
         end
     end
     if type(author) == "string" and not issecret(author) then e.who = (author:gsub("%-.+$", "")) end
+    local wk = WHISPER_EV[event]
+    if wk then
+        local key, label
+        if wk == "W" then key, label = CharKey(author) else key, label = BNKey(bnID) end
+        if key then e.wkey = key; wname[key] = label end
+    end
     if type(text) == "string" and not issecret(text) then e.text = text else C.stats.protected = C.stats.protected + 1 end
     Keep(hist, e)
 end, function(s) return s.histOn and C.MSG_ALL or nil end)   -- V14: no chat message reaches the history while "Keep recent messages" is off
@@ -202,10 +265,21 @@ end
 
 local function RebuildTabButtons()
     for _, b in ipairs(frame.kb) do b:Hide() end
-    local list = { { id = "ALL", name = "All" } }
+    -- order (Chat 0.6.15): the chat tabs, the whisper tabs, Console, then All last (Xaya: "All" is not the default pane)
+    local list = {}
     for _, w in ipairs(Windows()) do list[#list + 1] = w end
+    local mode = C.History_WhisperMode()
+    if mode == "one" then
+        list[#list + 1] = { id = "WHISPERS", name = "Whispers" }
+    elseif mode == "each" then
+        local seen = {}
+        for _, e in ipairs(hist) do
+            if e.wkey and not seen[e.wkey] then seen[e.wkey] = true; list[#list + 1] = { id = e.wkey, name = wname[e.wkey] or "Whisper" } end
+        end
+    end
     local s = S()
     if s and s.histConsole ~= false then list[#list + 1] = { id = "CONSOLE", name = "Console" } end
+    list[#list + 1] = { id = "ALL", name = "All" }
     for i, w in ipairs(list) do
         local b = frame.kb[i]
         if not b then
@@ -218,11 +292,10 @@ local function RebuildTabButtons()
         b:SetWidth(math.max(44, math.ceil((b.t:GetStringWidth() or 40)) + 18))
         b:Show()
     end
-    if tabKey ~= "ALL" then
-        local ok = false
-        for _, w in ipairs(list) do if w.id == tabKey then ok = true end end
-        if not ok then tabKey = "ALL" end
-    end
+    local ok = false
+    for _, w in ipairs(list) do if w.id == tabKey then ok = true end end
+    if not ok then tabKey = list[1].id end   -- the first chat tab (was "All" before Chat 0.6.15)
+    frame.tabList = list
 end
 
 UpdateStatus = function()
@@ -256,7 +329,11 @@ local function Build()
     frame:SetScript("OnDragStart", function(self) self:StartMoving() end)
     frame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); Save() end)
     frame:SetScript("OnSizeChanged", function() Relayout() end)
-    frame:SetScript("OnShow", function() RebuildTabButtons(); Relayout(); C.History_Update() end)
+    -- each open shows the chat tab you are on (Chat 0.6.15, Xaya: "active tab, yes"), unless a Chat Bar block asked for one
+    frame:SetScript("OnShow", function()
+        if explicitKey then tabKey = explicitKey; explicitKey = nil else tabKey = C.History_ActiveKey() end
+        RebuildTabButtons(); Relayout(); C.History_Update()
+    end)
 
     local title = frame:CreateFontString(nil, "OVERLAY"); title:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE"); title:SetPoint("TOPLEFT", 12, -10)
     title:SetText("Chat history")
@@ -348,7 +425,30 @@ function C.History_Toggle()
 end
 function C.History_Count() return #hist end
 function C.History_ConsoleCount() return #con end
-function C.History_Select(key) tabKey = key or "ALL" end   -- a Chat Bar block can open the pane on a given tab
+-- a Chat Bar block (or a test) can pick a tab: at once while the window is open, else for its next open
+function C.History_Select(key)
+    if key == nil then return end
+    tabKey = key
+    if frame and frame:IsShown() then explicitKey = nil else explicitKey = key end
+end
+
+-- the history tab that matches the chat tab you are on: a chat window's number; for one of the game's whisper windows, its
+-- conversation's tab ("each") or the Whispers tab ("one"), else the first chat tab (RebuildTabButtons falls back to it)
+function C.History_ActiveKey()
+    local f = C.ScrollTarget and C.ScrollTarget()
+    if type(f) ~= "table" then return nil end
+    if f.isTemporary then
+        local mode = C.History_WhisperMode()
+        if mode == "one" then return "WHISPERS" end
+        if mode == "each" then
+            local ct, tgt = f.chatType, f.chatTarget
+            if ct == "WHISPER" then return (CharKey(tgt)) end
+            if ct == "BN_WHISPER" then return (BNKey(tonumber(tgt))) end
+        end
+        return nil
+    end
+    return f.GetID and f:GetID() or nil
+end
 
 -- the small button in the pane's corner
 local btn

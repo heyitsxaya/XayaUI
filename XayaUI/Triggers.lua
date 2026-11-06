@@ -1370,7 +1370,7 @@ local function Secrecy(fnName, id)
     local fn = C_Secrets and C_Secrets[fnName]
     if not (fn and Enum and Enum.SecrecyLevel) then return nil end
     local ok, lv = pcall(fn, id)
-    if not ok or issecret(lv) then return nil end
+    if not ok or lv == nil or issecret(lv) then return nil end   -- no answer = not judged (never guessed as hidden)
     if lv == Enum.SecrecyLevel.NeverSecret then return "never" end
     if lv == Enum.SecrecyLevel.AlwaysSecret then return "always" end
     return "context"
@@ -1459,6 +1459,64 @@ function ns.TriggerCombatNote(rule, tok, row)
         return ns.SetPiecesNote and ns.SetPiecesNote() or nil
     end
     return nil
+end
+-- Cooldown Manager limits (Xaya 2026-11-05: "Wherever there are limits to aura/debuff tracking that are detectable by the addon, create an
+-- error message in the relevant display pane or rule display tab"): every aura or debuff this rule follows that the game hides in combat
+-- (C_Secrets.GetSpellAuraSecrecy is not NeverSecret) and that Blizzard's Cooldown Manager does not track now (no icon of it in a shown
+-- viewer, ns.FindCDMFrame), and that no trusted proc glow stands in for. A secrecy level the game will not give is not judged (nothing is
+-- guessed). Each entry: { kind = "aura" | "debuff", id, name, offered }. offered: the Cooldown Manager offers it for the spec you are in
+-- (its catalogue, ns.AuraCatalogue in AuraList.lua): true = it can be added there; false = not offered, so it cannot be followed in
+-- combat at all; nil = the catalogue could not be read.
+function ns.CdmNeeds(rule)
+    local out, seen = {}, {}
+    if type(rule) ~= "table" then return out end
+    local cat = ns.AuraCatalogue and ns.AuraCatalogue()
+    if type(cat) ~= "table" or next(cat) == nil then cat = nil end
+    local function consider(kind, id, cdmID)
+        id = tonumber(id) or 0
+        cdmID = tonumber(cdmID)
+        if id <= 0 or seen[kind .. id] then return end
+        local lv = Secrecy("GetSpellAuraSecrecy", id)
+        if lv == nil or lv == "never" then return end
+        if InCDM(id) or (cdmID and InCDM(cdmID)) then return end
+        if kind == "aura" then
+            local gi = ns.ProcGlowInfo and ns.ProcGlowInfo(id)
+            if gi and gi.trusted then return end
+        end
+        seen[kind .. id] = true
+        local offered
+        if cat then offered = (cat[id] ~= nil) or (cdmID ~= nil and cat[cdmID] ~= nil) end
+        local okN, nm = pcall(C_Spell.GetSpellName, id)
+        out[#out + 1] = { kind = kind, id = id, name = (okN and type(nm) == "string" and not issecret(nm)) and nm or nil, offered = offered }
+    end
+    if ns.BuffUsed and ns.BuffUsed(rule) then
+        consider("aura", rule.buffID)
+        for _, a in ipairs(type(rule.buffAlt) == "table" and rule.buffAlt or {}) do consider("aura", a) end
+    end
+    for _, row in ipairs((type(rule.extra) == "table" and type(rule.extra.list) == "table") and rule.extra.list or {}) do
+        if type(row) == "table" then
+            local def = TYPES[row.type]
+            local kind = def and def.combat
+            if kind == "aura" then
+                consider("aura", row.spellID)
+                for _, a in ipairs(type(row.alt) == "table" and row.alt or {}) do consider("aura", a) end
+            elseif kind == "debuff" then
+                consider("debuff", row.spellID, row.cdmID)
+            end
+        end
+    end
+    return out
+end
+-- The message for one entry of ns.CdmNeeds (the first sentence is Xaya's wording).
+function ns.CdmNeedText(e)
+    local what = (e.kind == "debuff") and "debuff" or "aura"
+    local label = (e.name and (e.name .. ", ") or "") .. tostring(e.id)
+    if e.offered == false then
+        return ("This %s (%s) cannot be tracked in combat: the game hides it there, and Blizzard's Cooldown Manager does not offer it for "
+            .. "your current spec."):format(what, label)
+    end
+    return ("This %s (%s) requires Blizzard's Cooldown Manager to track it before it can be tracked by the addon. In the Cooldown "
+        .. "Manager's settings, move it to Tracked Buffs or Tracked Bars (the game hides it in combat, encounters, Mythic+ and PvP)."):format(what, label)
 end
 -- One line for the whole rule (#21 part 1): which of its triggers may be unknown in combat, from the per-trigger notes above.
 -- A trigger with no note (Spell Known, Resource ...) is not judged; equipment (Tier Set Pieces) is readable.
