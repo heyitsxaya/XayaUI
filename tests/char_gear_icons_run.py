@@ -62,8 +62,8 @@ check("  ...a texture the game has not sent yet is left empty", it.icons[3].tex 
 -- 2. The panel -----------------------------------------------------------------------------------------------------------------
 local d = render("gear")
 local hs = texts(d, "header")
-check("Gear tab headers: Equipped, Compare, Summary, Durability and repair (QoL 0.7.14: the per-slot list became the comparison)",
-  table.concat(hs, "|") == "- Equipped|- Compare|- Summary|- Durability and repair", table.concat(hs, "|"))
+check("Gear tab headers: Equipped, Compare (QoL 0.7.14: the per-slot list became the comparison; QoL 0.7.23: the Summary moved to the Stats tab, Durability and repair is gone)",
+  table.concat(hs, "|") == "- Equipped|- Compare", table.concat(hs, "|"))
 local ib = shownIcons(d)
 check("three icons drawn", #ib == 3, #ib)
 for _, b in ipairs(ib) do b.tex.SetTexture = function(self, t) self.texture = t end end
@@ -94,9 +94,9 @@ IsShiftKeyDown = function() return false end
 ib[3].scripts.OnClick(ib[3])
 check("plain click: picks the slot for the comparison (Main Hand), no chat link", CM.gearSlot == 16 and #modClicks == 1, CM.gearSlot)
 d = render("gear"); hs = texts(d, "header")
-check("  ...the Compare section names the slot", hs[2] == "- Compare: Main Hand", hs[2])
+check("  ...the Compare section names the slot (QoL 0.7.24: \"Main-hand\")", hs[2] == "- Compare: Main-hand", hs[2])
 ib = shownIcons(d)
-check("  ...and its icon is marked", ib[3].selected == true and ib[1].selected ~= true and ib[3].sel and ib[3].sel:IsShown())
+check("  ...and its icon is marked (QoL 0.7.24: a highlight frame around its box)", ib[3].selected == true and ib[1].selected ~= true and ib[3].selEdges[1]:IsShown() and not ib[1].selEdges[1]:IsShown())
 CM.gearSlot = nil; d = render("gear"); ib = shownIcons(d)
 -- the hit areas of the line rows do not cover the icons
 local cover = false

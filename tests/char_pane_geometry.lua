@@ -66,6 +66,8 @@ function geom(o)
   rawset(o, "SetAtlas", function(self, a) self.atlas = a end)
   rawset(o, "GetStringHeight", function(self) return #seenLines(self) * lineH(sizeOf(self)) end)
   rawset(o, "GetStringWidth", function(self) local m = 0; for _, l in ipairs(seenLines(self)) do m = math.max(m, #l * CHAR_W(sizeOf(self))) end; return m end)
+  -- (QoL 0.7.24) the text's width on one line, whatever the font string's width (widgets.md:1463), by the same estimate
+  rawset(o, "GetUnboundedStringWidth", function(self) return #tostring(self.text or "") * CHAR_W(sizeOf(self)) end)
   rawset(o, "CreateFontString", function(self) local f = mk("FS"); f.text = ""; f.font = { "Fonts\\FRIZQT__.TTF", 12, "" }; f.parent = self
     regionsOf[self] = regionsOf[self] or {}; table.insert(regionsOf[self], f); return f end)
   rawset(o, "CreateTexture", function(self) local t = mk("Texture"); t.parent = self; regionsOf[self] = regionsOf[self] or {}; table.insert(regionsOf[self], t); return t end)

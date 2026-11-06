@@ -806,6 +806,8 @@ SlashCmdList["XAYAUI"] = function(msg)
     local cmd, arg = msg:match("^(%S*)%s*(.-)$")
     if cmd == "" or cmd == "config" or cmd == "options" then
         ns.ToggleUI()   -- loads XayaUI_Options on first use (Modules.lua section 7)
+    elseif cmd == "debug" and arg:match("^map") then
+        if ns.MapReport then ns.MapReport() end   -- (core 0.6.49; Modules.lua section 9: the world map report, REQUEST-LOG #30)
     elseif cmd == "debug" then
         local function yn(v) return v and "yes" or "NO" end
         ns.Print(("debug: ToggleUI=%s rules=%s AceConfigDialog=%s AceConfigRegistry=%s AceGUI=%s"):format(

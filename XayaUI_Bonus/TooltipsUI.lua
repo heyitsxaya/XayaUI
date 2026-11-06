@@ -21,7 +21,7 @@ function ns.BuildTooltipsTab(Notify)
                  get = get(path), set = set(path), disabled = disabled }
     end
     -- (V14, Bonus 0.6.12) said under each of the four main switches
-    local OFF = " With IDs, Item level, Enemy forces and Formulas all off, nothing of the tooltip features is installed or runs. Once one was on, its tooltip hooks stay until you /reload but do nothing."
+    local OFF = " With Enhanced Tooltips off (the tick box on its row on the left), or IDs, Item level, Enemy forces and Formulas all off, nothing of the tooltip features is installed or runs. Once one was on, its tooltip hooks stay until you /reload but do nothing."
     local idsOff = function() return not TT.DB().ids.enabled end
     local ids = {
         enabled = toggle(1, "Show IDs on tooltips", "Master switch for the ID lines below." .. OFF, { "ids", "enabled" }),
@@ -32,8 +32,13 @@ function ns.BuildTooltipsTab(Notify)
     for i, kind in ipairs(TT.ID_KINDS) do
         ids[kind.key] = toggle(10 + i, kind.name, nil, { "ids", kind.key }, idsOff)
     end
+    -- (Bonus 0.6.14; Xaya 2026-11-06: "yes, give an enable / disable "Enhanced Tooltips" as a feature") the feature's master switch is
+    -- the tick box on its row in the left pane (xuiSwitch, as every other feature's); the four section switches stay on the page
     return {
-        type = "group", name = "Tooltips", order = 2, childGroups = "tab",
+        type = "group", name = "Enhanced Tooltips", order = 2, childGroups = "tab",
+        xuiSwitch = { type = "toggle", name = "Enhanced Tooltips",
+            desc = "Turns the enhanced tooltips on or off as a whole (IDs, Item level, Enemy forces, Formulas). Off: nothing of them is installed or runs, whatever their own switches say; their settings are kept. Once it was on, its tooltip hooks stay until you /reload but do nothing.",
+            get = get({ "enabled" }), set = set({ "enabled" }) },
         args = {
             ids = { type = "group", name = "IDs", order = 1, args = ids },
             ilvl = { type = "group", name = "Item level", order = 2, args = {

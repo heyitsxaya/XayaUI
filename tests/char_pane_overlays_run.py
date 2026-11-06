@@ -6,10 +6,11 @@
 # embellishment does". Her settings: Character Reskin on, Clean window off, Item level / Enchants / Stat list / Gems on; the Character
 # Toolkit on with its Slot Overlays. Her width probe (2026-11-05): "120 px wider (540 -> 660) ... all ok".
 # Checks what the player sees, in Blizzard's real window geometry (tests/char_pane_geometry.lua, from the live 12.1.5 XML):
-#   A. her settings with the wider window (on by default, 240 px): the window, the model whole and centred, the stats pane placed; one
+#   A0. (QoL 0.7.24) the default extra width 42 px (380 / 582): widths, nothing over the model, what her 12 slots show there;
+#   A. her settings with the wider window (on by default; extra width set to 240 px): the window, the model whole and centred, the stats pane placed; one
 #      item level per slot (none on the shirt; XayaUI's hidden where another addon's text shows the same number); each slot's block
 #      (enchant, embellishment, gems): the whole enchant name, wrapped, every line within its width, inside its band, none over the
-#      model or its camera buttons, none over a slot, an item level, the weapon art or another row; gem icons 12-14 px with the gem's
+#      model or its camera buttons, none over a slot, an item level, the weapon art or another row; gem icons 16 px (12 where 16 does not fit) with the gem's
 #      name, the empty socket's type; hover texts from the game's data only; the solid background, also after the window reopens;
 #   B. the wider window off (Blizzard's width): the reproduction (the labels lie over the model) and everything else still holding;
 #   C. every enchant name of this expansion at the wider width; the extra width at 120 and 300;
@@ -247,10 +248,50 @@ CharacterFrame:Show(); PaperDollFrame:Show()
 ns.CharToolkit_Apply(); ns.CharReskin_Apply()
 CharacterModelScene.ControlFrame:Hide()
 
+-- A0. (QoL 0.7.24) the default extra width: 42 px (Xaya 2026-11-06: "Push to 380px before stats pane and request feedback
+-- confirmation"; Blizzard's PANEL_DEFAULT_WIDTH 338, CHARACTERFRAME_EXPANDED_WIDTH 540). What her 12 slots' blocks show there.
+do
+  local cf = CharacterFrame
+  local w582 = cf.w
+  STATS_OPEN = false; cf:UpdateSize()
+  local w380 = cf.w
+  STATS_OPEN = true; cf:UpdateSize()
+  check("A0. the default extra width is 42 px: the window is 380 wide without the stats pane (Blizzard 338) and 582 with it (Blizzard 540)",
+    ns.CHARRESKIN_DEFAULTS.widePx == 42 and rc.widePx == 42 and w380 == 380 and w582 == 582 and cf.w == 582, w380 .. " / " .. w582)
+  local model, head, hands = RECT(CharacterModelScene), RECT(CharacterHeadSlot), RECT(CharacterHandsSlot)
+  check("(guard, V11)   ...the model keeps its width (231 x 320) and sits centred between the slot columns (28 / 29 px each side)",
+    math.abs(model.r - model.l - 231) < 0.01 and math.abs((model.l - head.r) - (hands.l - model.r)) <= 1.01 and model.l - head.r >= 28,
+    rstr(model) .. " head.r " .. head.r .. " hands.l " .. hands.l)
+  local out, overModel, nrows = layoutProblems(false, true)
+  check("(guard, V11) A0. at 380 / 582 no row of any block lies over the 3D model, and none goes toward the middle (the 0.7.19 layout is only for Blizzard's width)",
+    #overModel == 0, list(overModel))
+  check("(guard, V11)   ...each row inside its slot's band and the window; no two overlap; none covers a slot, an item level or the weapon art", #out == 0, list(out))
+  CharacterModelScene.ControlFrame:Show()
+  local outC = layoutProblems(true, true)
+  check("(guard, V11)   ...with the camera buttons shown: none meets them", #outC == 0, list(outC))
+  CharacterModelScene.ControlFrame:Hide()
+  -- what she sees on her 12 slots with a block (enchant, embellishment, gems): drawn whole, cut at a word, or not drawn (no room)
+  local HER12 = { "HeadSlot", "NeckSlot", "ShoulderSlot", "ChestSlot", "WristSlot", "WaistSlot", "LegsSlot", "FeetSlot", "Finger0Slot",
+    "Finger1Slot", "MainHandSlot", "SecondaryHandSlot" }
+  local whole, cut, none = {}, {}, {}
+  for _, name in ipairs(HER12) do
+    local L = _G["Character" .. name].xuiLabel
+    if not L or #rowsOf(name) == 0 then none[#none + 1] = name elseif L.cut then cut[#cut + 1] = name else whole[#whole + 1] = name end
+  end
+  A0_COUNTS = ("whole %d (%s); cut %d (%s); not drawn %d (%s)"):format(#whole, table.concat(whole, ","), #cut, table.concat(cut, ","), #none, table.concat(none, ","))
+  check("A0. her 12 slots at 380: the two weapons' blocks whole (room under the side columns); the other ten have about 18 px beside the model, so none of their words fits and they are not drawn (reported to Xaya)",
+    #whole == 2 and whole[1] == "MainHandSlot" and whole[2] == "SecondaryHandSlot" and #cut == 0 and #none == 10, A0_COUNTS)
+  local mhs = sockets("MainHandSlot")
+  check("  ...the main hand's empty socket shows at 16 px with its type (her answer: \"16 px\")", #mhs == 1 and mhs[1].bg.w == 16 and mhs[1].bg.h == 16
+    and TXT(mhs[1]) == "Prismatic Socket", #mhs == 1 and (mhs[1].bg.w .. " " .. TXT(mhs[1])) or #mhs)
+end
+-- the rest of A: the extra width set to 240 (the room every block of hers needs; the 0.7.22 checks)
+rc.widePx = 240; ns.CharReskin_Apply()
+
 -- A. her settings, the wider window ----------------------------------------------------------------------------------------------
 local cf, inset, model = CharacterFrame, RECT(CharacterFrame.Inset), RECT(CharacterModelScene)
 local win, head, hands, stats = RECT(cf), RECT(CharacterHeadSlot), RECT(CharacterHandsSlot), RECT(cf.InsetRight)
-check("A. the wider window is on by default with the reskin: 240 px wider on the Character tab with the stats pane (540 -> 780), the game asked to place its panels again",
+check("A. the wider window is on by default with the reskin; extra width set to 240: 240 px wider on the Character tab with the stats pane (540 -> 780), the game asked to place its panels again",
   rc.wide == true and cf.w == 780 and panelCalls >= 1, cf.w .. " / " .. panelCalls)
 check("  ...the model keeps its width (231 x 320), whole inside the window, centred between the slot columns (127 / 128 px each side)",
   math.abs(model.r - model.l - 231) < 0.01 and math.abs(model.t - model.b - 320) < 0.01 and inside(model, inset)
@@ -288,10 +329,17 @@ local nb, ra = sockets("NeckSlot"), sockets("Finger0Slot")
 local function icon(f) return f and f.bg and f.bg.w or 0 end
 local small = {}
 for _, name in ipairs(ALL) do for i, f in ipairs(sockets(name)) do if icon(f) < 12 or (f.bg.h or 0) < 12 then small[#small + 1] = name .. "#" .. i .. " " .. icon(f) end end end
-local fourteen = 0
-for _, name in ipairs(ALL) do for _, f in ipairs(sockets(name)) do if icon(f) == 14 then fourteen = fourteen + 1 end end end
-check("A. gem / socket icons 12-14 px (the game's own is 11; her pane: \"much too small\"), 14 where the block fits it",
-  #small == 0 and fourteen > 0, table.concat(small, " ") .. " / 14 px: " .. fourteen)
+-- (QoL 0.7.24; her answer 2026-11-06: "16 px") 16 px where the block fits it, 12 only where 16 does not fit (her rings: three rows each)
+local sizesBy = {}
+for _, name in ipairs(ALL) do for _, f in ipairs(sockets(name)) do sizesBy[#sizesBy + 1] = name .. "=" .. icon(f) end end
+local SIXTEEN = { HeadSlot = true, NeckSlot = true, WristSlot = true, WaistSlot = true, MainHandSlot = true }
+local wrong = {}
+for _, name in ipairs(ALL) do for _, f in ipairs(sockets(name)) do
+  local want = SIXTEEN[name] and 16 or ((name == "Finger0Slot" or name == "Finger1Slot") and 12 or -1)
+  if icon(f) ~= want or (f.bg.h or 0) ~= want then wrong[#wrong + 1] = name .. "=" .. icon(f) end
+end end
+check("A. gem / socket icons 16 px (her answer \"16 px\"; the game's own is 11): head, neck, wrist, waist, main hand; 12 px only on the two rings, where three rows do not fit at 16",
+  #small == 0 and #wrong == 0 and #sizesBy == 10, table.concat(wrong, " ") .. " / " .. table.concat(sizesBy, " "))
 check("  ...a name line per socketed gem: the neck's two (\"Flawless Masterful Amethyst\", \"Flawless Quick Garnet\"), with their icons",
   #nb == 2 and TXT(nb[1]) == "Flawless Masterful Amethyst" and TXT(nb[2]) == "Flawless Quick Garnet"
   and nb[1].gem.shown and nb[1].gem.tex == 9002 and nb[2].gem.tex == 9003, #nb == 2 and (TXT(nb[1]) .. " | " .. TXT(nb[2])) or #nb)
@@ -324,10 +372,20 @@ local embT = emb and emb.shown and emb.text.text
 local eh = emb and hover(emb) or ""
 local plain = {}
 for _, name in ipairs(ALL) do local f = _G["Character" .. name].xuiEmbRow; if name ~= "WristSlot" and f and f.shown then plain[#plain + 1] = name end end
-check("A. the embellished bracers show \"Embellished (1/2)\" (worn / the game's own limit from its line); no other item shows one (the trinket's Equip line alone is not one)",
-  embT == "Embellished (1/2)" and #plain == 0, tostring(embT) .. " / " .. table.concat(plain, " "))
-check("  ...hover it: the game's line, the item's Equip line as the game gives it, how many are worn",
-  eh == EMB_LINE .. " | " .. EMB_EFFECT .. " | 1 of 2 embellished items worn.", eh)
+-- (QoL 0.7.24; Xaya: "put Embellished - Name: ______ and a line break before the description of the embellishment. Detect if it is (1/2)
+-- or (2/2)"; "pane line says embellished (2/2): name — the rest goes in tooltip")
+check("A. the embellished bracers' pane line reads exactly \"Embellished (1/2): Bracers\" (worn / the game's own limit; the item's name); no other item shows one",
+  embT == "Embellished (1/2): Bracers" and #plain == 0, tostring(embT) .. " / " .. table.concat(plain, " "))
+check("  ...hover it: \"Embellished - Name: Bracers\", then on the next line the description as the game gives it (nothing else)",
+  eh == "Embellished - Name: Bracers | " .. EMB_EFFECT, eh)
+TIP[12] = { { type = 0, leftText = EMB_LINE }, { type = 45, leftText = EMB_EFFECT } }   -- a second embellished item (Ring B): 2 of 2
+ns.CharReskin_Apply()
+local emb2 = CharacterWristSlot.xuiEmbRow
+check("  ...two embellished items worn: \"Embellished (2/2): <name>\" on each", emb2 and emb2.text.text == "Embellished (2/2): Bracers"
+  and CharacterFinger1Slot.xuiEmbRow and CharacterFinger1Slot.xuiEmbRow.shown and CharacterFinger1Slot.xuiEmbRow.text.text == "Embellished (2/2): Ring B",
+  tostring(emb2 and emb2.text.text) .. " / " .. tostring(CharacterFinger1Slot.xuiEmbRow and CharacterFinger1Slot.xuiEmbRow.text.text))
+TIP[12] = { { type = 15, leftText = "Enchanted: " .. ENCH[12] } }
+ns.CharReskin_Apply()
 -- the background
 local own = PARTS()
 local bg = own.bg or {}
@@ -388,7 +446,12 @@ check("B. wider window switched off (from 780): Blizzard's width back (540), the
 local lpB = labelProblems()
 local outB, overB = layoutProblems(false, false)
 check("B. the reproduction (her report): at Blizzard's width the enchant rows lie over the model (the columns are 7-8 px from it)", #overB > 0, #overB)
-check("  ...everything else holds: the whole names, wrapped; every row inside its band, its side of the window, no overlaps", #lpB == 0 and #outB == 0, list(lpB) .. list(outB))
+-- (QoL 0.7.24) the wrist's block (No enchant, "Embellished (1/2): Bracers", its socket) no longer fits beside the weapons at Blizzard's
+-- width (59 px): its pane line now carries the item's name, so it is not drawn there (never cut in a word or over the weapons)
+local lpB2 = {}
+for _, p in ipairs(lpB) do if p ~= "WristSlot missing" then lpB2[#lpB2 + 1] = p end end
+check("  ...everything else holds: the whole names, wrapped; every row inside its band, its side of the window, no overlaps (the wrist's block is not drawn: it does not fit)",
+  #lpB2 == 0 and #outB == 0 and #rowsOf("WristSlot") == 0, list(lpB2) .. list(outB) .. " wrist rows " .. #rowsOf("WristSlot"))
 CharacterModelScene.ControlFrame:Show()
 local outB2 = layoutProblems(true, false)
 local hidB = {}
@@ -475,9 +538,9 @@ local gm = ns.CharToolkit_Model("gear")
 local function grow(key) for _, r in ipairs(gm) do if r.key == key then return r end end end
 local amulet = grow("gc_sockets")
 CM.gearSlot = nil
-gm = ns.CharToolkit_Model("gear")
+gm = ns.CharToolkit_Model("stats")   -- (QoL 0.7.23: the Summary is on the Stats tab, Character Stats > Gear Summary)
 local sum = grow("gearSum_sockets")
-check("E. Gear tab: the amulet (both sockets filled) has no Empty sockets row; the Summary counts 3 (bracers, Ring A, Glaive A)",
+check("E. Gear tab: the amulet (both sockets filled) has no Empty sockets row; the Gear Summary (Stats tab since QoL 0.7.23) counts 3 (bracers, Ring A, Glaive A)",
   amulet == nil and sum and sum.cells[1] == "3", (amulet and table.concat(amulet.cells, "|") or "none") .. " / " .. (sum and sum.cells[1] or "none"))
 -- the window open but a slot without a position on the first pass (INFERENCE: possible in the frame it opens): laid out on a retry
 local realGetLeft, realAfter, nextFrame = CharacterHeadSlot.GetLeft, C_Timer.After, false
@@ -567,8 +630,8 @@ check("V14: the wider window off at login: the window's UpdateSize not hooked, t
   and WIDE().ev == nil and CharacterFrame.w == 540, ("%s %d %d %s %d"):format(tostring(CharacterFrame.UpdateSize == updateSize),
   hooksFrom("UpdateSize", "CharacterReskin.lua"), pdHooksFrom("CharacterReskin.lua"), tostring(WIDE().ev), CharacterFrame.w))
 local rc = ns.CharReskin_Cfg(); rc.wide = true; ns.CharReskin_Apply()
-check("  ...switched on: one hook on UpdateSize and one on the Character tab, wider (780); off again: Blizzard's width, the hooks return at once (a /reload removes them)",
-  hooksFrom("UpdateSize", "CharacterReskin.lua") == 1 and pdHooksFrom("CharacterReskin.lua") == 1 and CharacterFrame.w == 780 and (function()
+check("  ...switched on: one hook on UpdateSize and one on the Character tab, wider (582, the default +42); off again: Blizzard's width, the hooks return at once (a /reload removes them)",
+  hooksFrom("UpdateSize", "CharacterReskin.lua") == 1 and pdHooksFrom("CharacterReskin.lua") == 1 and CharacterFrame.w == 582 and (function()
     rc.wide = false; ns.CharReskin_Apply(); local w1 = CharacterFrame.w; CharacterFrame:UpdateSize(); return w1 == 540 and CharacterFrame.w == 540 end)(), CharacterFrame.w)
 -- the toolkit is on, its slot overlays off: it does not hook the slot buttons
 local hooksOff = hooksFrom("PaperDollItemSlotButton_Update", "CharacterToolkit.lua")
