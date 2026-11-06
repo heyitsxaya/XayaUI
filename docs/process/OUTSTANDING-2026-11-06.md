@@ -111,8 +111,8 @@ These rows still read open or BRANCH, but `main` already carries the work. Not e
 - S3 log R61, R62, R64 (C8, C9, C10, C12), R66 read BRANCH: landed on `main` at d2ccacd (QoL 0.7.32). Its header still says `main` = `0ef9cb0`.
 - GitHub: 258 open issues; many describe work since landed (for example #380, #378, #381, #273, #351). They were not re-checked one by one. A triage pass is its own task.
 
-## 7. Handed over by retired chats (received 2026-11-06 17:06-17:13 UTC)
-Eleven chats sent their outstanding items here at Xaya's request. Each claim below was checked against `main` `22abdeb` where marked "checked"; the rest is the sending session's word.
+## 7. Handed over by retired chats (received 2026-11-06 17:06-17:56 UTC)
+Twelve chats sent their outstanding items here at Xaya's request. Each claim below was checked against `main` `22abdeb` where marked "checked"; the rest is the sending session's word.
 
 | From | Item | Status here |
 |---|---|---|
@@ -142,6 +142,7 @@ Eleven chats sent their outstanding items here at Xaya's request. Each claim bel
 | S2 "Outstanding build item selection" (014bN6tSy3HbUDWYQsk69naX) | Nothing unpushed (PR #386 merged). **Ownership moved here**: `XayaUI_DevAssist/` and QA section J; the version / QA number registry. Request rows S2-33..S2-35 added to REQUEST-LOG.md section A2. | See the registry below. |
 | same | **Combined landing #409 + #417 + #418** (her "Wait, land all three"): no lander named yet. #418's session is archived (no live owner; its last full suite was cee59cf, before `main` 22abdeb). #409: S2 says no open questions (her placement answer given), but the PR title still reads "proposals P1-P15 await her": **check before landing**. #417: blocked on her 9 choices (its request-log row S8-5). | Her decision: who lands the three, once all are ready (ask through the question flow, V19). The lander sets one version per addon on the merged commit and runs the full suite and `precheck --base origin/main` on it. |
 | same | In-game checks for her: F13 / F16 (Aura ID "via ..." lines only with Advanced Debugging on); E1y (cursor trail cost and feel; dot spacing 0.25 open until she plays); B98 (XayaUI_Options memory after `/xui` and a search, was 521.4 MB); J13-J15 (`/xuidev instance`); F6 (calculator); E1s (Enchant Slots default); Fiery Brand 207771 vs 207744 (cast on a dummy out of combat, then `/xuidev auras`) | Section 2. |
+| "Bonus Features" S7 (014bN6tWsEQA8BZbHidBmJ1Y) | Calculator on / off (Bonus 0.6.16) and `/notes` `/calc` (0.6.17) on `main` (1834e68); S7-3 logged on `main` 0ba4d47 | In-game check for her: **F17**; then S7-1 / S7-2 go to DONE. Owned here: at the next Options version bump, the `Tree.RowSwitch` header comment in `XayaUI_Options/Options.lua` (about line 6639) should read "(Utilities, Cursor)" instead of "(Tooltips, Calculator, Utilities)" (no behaviour change). |
 
 **Version and QA number registry** (handed over by S2; taken on open branches beyond `main` core 0.6.51 / Options 0.6.50 / QoL 0.7.32 / Bonus 0.6.17 / QA B158 / F17; re-check branch .toc files before giving out a number, two clashes happened today):
 
