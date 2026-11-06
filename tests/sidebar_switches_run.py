@@ -58,13 +58,16 @@ local function collect(g, path)
 end
 for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do collect(node(T, tab), { tab }) end
 -- (QoL 0.7.24 / Bonus 0.6.14: qol>chartoolkit>tipsPart, Xaya #46 "Assume yes for now"; bonus>tooltips, #45 "Enhanced Tooltips";
--- bonus>utilities>notepad is the whole Notepad now, #47; QoL 0.7.31: qol>releaseguard, the Release Guard's own row, REQUEST-LOG #75)
+-- bonus>utilities>notepad is the whole Notepad now, #47; QoL 0.7.31: qol>releaseguard, the Release Guard's own row, REQUEST-LOG #75;
+-- bonus>utilities>calculator, Bonus 0.6.16: "Calculator needs its own enable / disable toggle")
 local WANT = { "qol>chartoolkit", "qol>chartoolkit>panelPart", "qol>chartoolkit>overlayPart", "qol>chartoolkit>spells",
-  "qol>chartoolkit>tipsPart", "qol>cursor>highlight", "qol>cursor>trail", "qol>releaseguard", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad" }
+  "qol>chartoolkit>tipsPart", "qol>cursor>highlight", "qol>cursor>trail", "qol>releaseguard", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad",
+  "bonus>utilities>calculator" }
 for _, k in ipairs(WANT) do check("A: the row " .. k .. " has an on / off for its tick box", found[k] ~= nil) end
-check("A: no other row has one (Cursor, Utilities, Calculator have no single on / off)", foundN == #WANT, foundN)
-check("A: the switches' names: Enhanced Tooltips, Notepad, Tooltip lines (her words)", found["bonus>tooltips"] and found["bonus>tooltips"].name == "Enhanced Tooltips"
+check("A: no other row has one (Cursor, Utilities have no single on / off)", foundN == #WANT, foundN)
+check("A: the switches' names: Enhanced Tooltips, Notepad, Calculator, Tooltip lines (her words)", found["bonus>tooltips"] and found["bonus>tooltips"].name == "Enhanced Tooltips"
   and found["bonus>utilities>notepad"] and found["bonus>utilities>notepad"].name == "Notepad"
+  and found["bonus>utilities>calculator"] and found["bonus>utilities>calculator"].name == "Calculator"
   and found["qol>chartoolkit>tipsPart"] and found["qol>chartoolkit>tipsPart"].name == "Tooltip lines")
 -- the switch is no longer on the pages: no toggle anywhere in the QoL / Bonus Features tabs carries a switch's name (or the old
 -- overview switches' names)
@@ -212,9 +215,11 @@ local bN, bD = box("bonus", "utilities\001notepad"), box("bonus", "datapanels")
 check("A: Notepad's row has a tick box, ticked like its setting (the Notepad on, its box hidden)", bN ~= nil and bN:GetChecked() == true
   and CueRulesDB.notepad.enabled == true and CueRulesDB.notepad.shown == false)
 check("A: Custom Data Panels and Bars' row has a tick box, unticked like the master switch", bD ~= nil and bD:GetChecked() == false and CueRulesDB.dataPanels.general.enabled == false)
-check("A: Enhanced Tooltips' row has a tick box, ticked (on by default); none on Utilities or Calculator", box("bonus", "tooltips") ~= nil
+check("A: Enhanced Tooltips' row has a tick box, ticked (on by default); none on Utilities", box("bonus", "tooltips") ~= nil
   and box("bonus", "tooltips"):GetChecked() == true and box("bonus", "utilities") == nil
-  and box("bonus", "utilities\001calculator") == nil and row("bonus", "tooltips") ~= nil and row("bonus", "utilities") ~= nil)
+  and row("bonus", "tooltips") ~= nil and row("bonus", "utilities") ~= nil)
+check("A: Calculator's row has a tick box, ticked (on by default, as it always was)", box("bonus", "utilities\001calculator") ~= nil
+  and box("bonus", "utilities\001calculator"):GetChecked() == true)
 do
   local r, t, x = row("bonus", "datapanels"), row("bonus", "tooltips"), bD
   local p, rel, rp, ox
@@ -250,6 +255,19 @@ click("bonus", "utilities\001notepad", true)
 check("A: Notepad box ticked: on again, the box shows as saved", CueRulesDB.notepad.enabled == true and _G.XayaUINotepad:IsShown())
 oneRedraw("A: Notepad box ticked")
 ns.Notepad_SetShown(false); settle()
+-- (Bonus 0.6.16) the Calculator's box: the whole Calculator; shown first, then the row unticked and ticked
+ns.Calculator_Open(); settle()
+check("A: Calculator: the window opens while it is on", _G.XayaUICalculator ~= nil and _G.XayaUICalculator:IsShown())
+check("A: Calculator: the box is clickable", click("bonus", "utilities\001calculator", false))
+check("A: Calculator box unticked: off, its window closed", CueRulesDB.calculator.enabled == false and not _G.XayaUICalculator:IsShown())
+check("A: ...the row was not selected (Enhanced Tooltips is still open)", selected("bonus") == "tooltips", tostring(selected("bonus")))
+oneRedraw("A: Calculator box unticked")
+check("A: ...and the redrawn box shows it unticked", box("bonus", "utilities\001calculator") and box("bonus", "utilities\001calculator"):GetChecked() == false)
+ns.Calculator_Open(); settle()
+check("A: Calculator off: opening it does nothing", not _G.XayaUICalculator:IsShown())
+click("bonus", "utilities\001calculator", true)
+check("A: Calculator box ticked: on again (the window stays closed until opened)", CueRulesDB.calculator.enabled == true and not _G.XayaUICalculator:IsShown())
+oneRedraw("A: Calculator box ticked")
 click("bonus", "tooltips", false)
 check("A: Enhanced Tooltips box unticked: the feature is off (nothing of it runs)", CueRulesDB.tooltips.enabled == false and ns.TT.on == false)
 oneRedraw("A: Enhanced Tooltips box unticked")
