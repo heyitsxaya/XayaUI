@@ -11,7 +11,7 @@ Every piece of addon work is multi-session (Xaya, 2026-11-04). New chat: read th
 | `ROADMAP.md` | **Full tracker**: every feature, its status, its weakest point, open questions, parked and dropped items with reasons | a feature's status, scope, or decision changes |
 | `debug-log/` | **History**: one entry per change or finding, named `YYYY-MM-DD-HHMM-topic-version.md` | every change, in the same commit |
 | `SESSION-START-SUMMARY.md` (this file) | **Cold start**: rules, active items, pending actions, how to work here | an active item or pending action changes; at the end of a session |
-| GitHub issues | one issue per feature or defect; labels `decision-needed`, `unverified-in-game`, `roadmap` | as work happens |
+| GitHub issues | one issue per feature or defect; labels `decision-needed`, `unverified-in-game`, `roadmap`, plus `type:` / `area:` / `impact:` on every issue (Xaya 2026-11-06; the skill's "Issue labels" rule) | as work happens |
 | `docs/process/VERIFICATION.md` | **How every change is checked** (rules V1-V13); `RETROSPECTIVE.md` says why each rule exists | a new kind of slip gets past |
 
 Project documents outside the repo (Claude project docs, the Drive `Feature sketches` folder) hold long specs; ROADMAP section 13 says so. They are not readable from a cloud session.
