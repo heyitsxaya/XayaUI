@@ -2,12 +2,12 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-f135313f22a52069a3f781dbf7c7e315  QA-CHECKLIST.md
+76db8a8633494a882a2bb63dd00f02cd  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 6388e5710be433673f12516d5df50ef4  ROADMAP.md
 7b14e6ac857f1076bcea7daf8f75c2f5  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-11ff721c04a8067b7f03004f8fc4dd02  USER-GUIDE.md
+d65d278edb6c8b5f142f54b02c4b6ffc  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 7bc5ab6899bc167c8fc5f3db72f3c9ff  XayaUI/AuraSound.lua
@@ -215,7 +215,7 @@ b2c1cb89c4059e3f328552f4253f4abc  XayaUI_Options/Skin.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
 9deba865f9f13fa2908fdf3c9660ff76  XayaUI_Options/XayaUI_Options.toc
 5afe11f54ae24648f309bff7987178e0  XayaUI_QoL/CharacterModel.lua
-9645637a9f8d2f66c8cfca1c55484d7f  XayaUI_QoL/CharacterReskin.lua
+705a8236836508501bc87cd05b9b36c2  XayaUI_QoL/CharacterReskin.lua
 e09391bfe0780667957723b786ebc33c  XayaUI_QoL/CharacterToolkit.lua
 fae7bc31b6882b6f239ac5b9b44c30a7  XayaUI_QoL/CharacterWidthProbe.lua
 ebb711c6a474f2773d4b40a0f3d79e64  XayaUI_QoL/CursorHighlight.lua
@@ -256,7 +256,7 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 08343552c22eb2676c663b0576e218c3  XayaUI_QoL/Media/Cursor/RingThick.tga
 054aa82635cfab8851fded7704d8f102  XayaUI_QoL/Media/Cursor/Sparkle.tga
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
-d5ba767b1836f929c362ba624fc6249f  XayaUI_QoL/XayaUI_QoL.toc
+8e6d10fdef73534bb2267bc36aea1154  XayaUI_QoL/XayaUI_QoL.toc
 0cbd928905ac0eab849ee9980104c182  XayaUI_Reskin/GameMenuSkin.lua
 06f2a3cddc2e2e1d64917b3ffff9689c  XayaUI_Reskin/XayaUI_Reskin.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
@@ -490,6 +490,7 @@ ef2aa95835015eb192e93bbbf709ddb0  debug-log/2026-11-05-2359-harness-enum-values-
 8672d383a4690ca2e7d5678e62390ac3  debug-log/2026-11-06-0400-character-width-upgrade-qol-0.7.27.md
 5d218f7c42e73e577b2e2e2e026e3ff1  debug-log/2026-11-06-0409-tooltip-aura-source-debug-only-bonus-0.6.15.md
 5198473bdf9b295c6432636b81ef4b5c  debug-log/2026-11-06-0435-stat-calculator-round-qol-0.7.28.md
+6e62fdbfbc1ce836e0ed776ed25130b3  debug-log/2026-11-06-0520-character-pane-stat-list-extra-height-qol-0.7.30.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -511,7 +512,7 @@ e80a5c2d309d09f70935f65abd599ec3  docs/plans/IDEA-UPGRADE-OPTIONS-2026-11-05.md
 4951caf3d08972511c0552aaeba5f0f1  docs/process/ELVUI-STRUCTURE-REVIEW-2026-11-05.md
 d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 544369ba5f2fb2b6f2e2cdabc4dfeb65  docs/process/REQUEST-LOG-CROSS-CHAT.md
-513a5160a0bb3496df79398feb6ecca6  docs/process/REQUEST-LOG.md
+f515a5026870863cc651c0024e7fb9b5  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 90936a78a2724875d4e7d1118d31997a  docs/process/VERIFICATION.md
 7af233aeafadc9bade62ce5da4b21189  docs/reference/README.md
@@ -574,6 +575,7 @@ cf33f2ac50cae55ac12c54e77e08d483  tests/cdm_warn_run.py
 cda349c3ef803b71feabaa33f9103c43  tests/char_gear_icons_run.py
 a8256603c8e3ad44a640b0927848f31a  tests/char_pane_geometry.lua
 21e5d5972dc466e53a0876893c6b5b80  tests/char_pane_overlays_run.py
+85693d11482d2bc2d96ef52f7b57e6eb  tests/char_pane_round_run.py
 2659a8158f774e4fa567f8cc27caf80a  tests/char_reskin_run.py
 7567822fe4aa3f5f75bcff323914773f  tests/char_spells_compare_run.py
 1e8b4ffbf07e03b50caa5cd909988171  tests/char_spells_run.py
