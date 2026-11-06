@@ -113,15 +113,43 @@ def check_versions(changed_paths, toc_now, toc_base):
 
 
 QA_ID = re.compile(r"\*\*([A-Z][0-9]+[a-z]?)\.\*\*")
+QA_PATH = "docs/QA-CHECKLIST.md"   # (moved from the repository root on 2026-11-06, REQUEST-LOG #81 / FUS-6)
 
 
 def check_qa_ids(text):
+    if text is None:   # (a moved or renamed checklist must not pass unchecked)
+        return ["%s not found: the QA step IDs could not be checked" % QA_PATH], []
     seen, errs = {}, []
     for m in QA_ID.finditer(text or ""):
         seen[m.group(1)] = seen.get(m.group(1), 0) + 1
     for k, n in sorted(seen.items()):
         if n > 1:
-            errs.append("QA-CHECKLIST.md: step %s is used %d times (step IDs must be unique)" % (k, n))
+            errs.append("%s: step %s is used %d times (step IDs must be unique)" % (QA_PATH, k, n))
+    return errs, []
+
+
+# The documents moved from the repository root into docs/ (Xaya 2026-11-06, FUS-6: "All but README, THIRD_PARTY"). A reference to one of
+# them by its old root path (the name with no "docs/" in front) points at a file that is no longer there. debug-log/ is history and the
+# verbatim session request logs quote Xaya's own words: both are left as written.
+MOVED_DOCS = ("WHATS-NEW.md", "USER-GUIDE.md", "QA-CHECKLIST.md", "ROADMAP.md", "SESSION-START-SUMMARY.md")
+OLD_DOC_PATH = re.compile(r"(?<![\w/.-])(" + "|".join(re.escape(n) for n in MOVED_DOCS) + r")")
+# (the checker and its own test hold the old names on purpose)
+DOC_PATH_SKIP = re.compile(r"^(debug-log/|docs/process/REQUEST-LOG-session-|MANIFEST\.md5$|tools/precheck\.py$|tests/precheck_run\.py$)")
+TEXT_EXT = (".md", ".lua", ".py", ".toc", ".txt", ".sh", ".json", ".xml", ".yml", ".yaml")
+
+
+def check_doc_paths(files):
+    """files: list of (path, text). Every mention of a moved document must name it by its path under docs/ (docs/USER-GUIDE.md)."""
+    errs = []
+    for path, text in files:
+        if DOC_PATH_SKIP.match(path) or not path.endswith(TEXT_EXT) or text is None:
+            continue
+        for i, line in enumerate(text.splitlines(), 1):
+            for m in OLD_DOC_PATH.finditer(line):
+                errs.append("%s:%d names %s by its old root path; it is docs/%s now" % (path, i, m.group(1), m.group(1)))
+    for n in MOVED_DOCS:
+        if not any(p == "docs/" + n for p, _ in files):
+            errs.append("docs/%s is not in the repository" % n)
     return errs, []
 
 
@@ -181,7 +209,7 @@ def main():
     tracked = git("ls-files").splitlines()
     results = []
     logs = [(n, read_text("debug-log/" + n)) for n in sorted(os.listdir(os.path.join(ROOT, "debug-log"))) if n.endswith(".md")]
-    logs.append(("SESSION-START-SUMMARY.md", read_text("SESSION-START-SUMMARY.md")))
+    logs.append(("docs/SESSION-START-SUMMARY.md", read_text("docs/SESSION-START-SUMMARY.md")))
     results.append(("debug-log times", check_log_times(logs, now)))
     results.append(("manifest", check_manifest(tracked, read_text("MANIFEST.md5"), read_bytes)))
     results.append(("untracked files", check_untracked(git("status", "--porcelain", "--untracked-files=all").splitlines())))
@@ -192,7 +220,8 @@ def main():
         return r.stdout if r.returncode == 0 else None
 
     results.append(("versions", check_versions(changed, toc_versions(read_text), toc_versions(base_reader))))
-    results.append(("QA step IDs", check_qa_ids(read_text("QA-CHECKLIST.md"))))
+    results.append(("QA step IDs", check_qa_ids(read_text(QA_PATH))))
+    results.append(("moved documents", check_doc_paths([(p, read_text(p)) for p in tracked])))
     tests = []
     for n in sorted(os.listdir(os.path.join(ROOT, "tests"))):
         if not n.endswith("_run.py"):

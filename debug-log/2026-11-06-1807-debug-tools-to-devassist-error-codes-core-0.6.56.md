@@ -79,3 +79,12 @@ V14 level: Dev Assist off = its code is never read (strict); core's DebugRecord.
 B180-B183, D14, E1z90, F19 (QA-CHECKLIST); a note at the top says older steps that use a developer command need Dev Assist on; B157, F13,
 F16 annotated. In-game walkthrough definitions for S3's framework: `XayaUI_DevAssist/QAWalks-debug.lua`, NOT in the toc until that
 framework lands. Not tested in game.
+
+## Root documents moved into docs/ (FUS-6, her answer "All but README, THIRD_PARTY")
+Done last, after merging `claude/feature-update-summary` at 2c5ccc6 (docs only; no WHATS-NEW reorganisation there). `git mv` of
+WHATS-NEW.md, USER-GUIDE.md, QA-CHECKLIST.md, ROADMAP.md, SESSION-START-SUMMARY.md into `docs/`. Every reference rewritten to the
+`docs/` path (`git grep` of each name: SKILL.md, VERIFICATION.md, REQUEST-LOG.md, REQUEST-LOG-CROSS-CHAT.md, two plans, the ElvUI review,
+the summary and the roadmap themselves, tools/precheck.py, tests/precheck_run.py). Left as written: debug-log/ (history) and the
+verbatim session request logs (her own words). New precheck group "moved documents" fails on any old root path elsewhere and on a
+missing docs/ file; the QA-ID check now fails when the checklist is not found (it passed silently on a missing file). tests/precheck_run.py
+has six new checks for it (they fail on the old precheck: no check_doc_paths, and check_qa_ids(None) passed).

@@ -2,7 +2,7 @@
 
 Xaya, 2026-11-05 (her words): "Additional feature / roadmap option (load on demand only) LFG simulator and Wordle with friends, different game modes, puzzle modes, community submitted games."
 
-Status: **Candidate**. No code written. One row in `ROADMAP.md` section 9 points here. On purpose, nothing about it goes into `SESSION-START-SUMMARY.md` (see 1.1). Read this file only when the work starts.
+Status: **Candidate**. No code written. One row in `docs/ROADMAP.md` section 9 points here. On purpose, nothing about it goes into `docs/SESSION-START-SUMMARY.md` (see 1.1). Read this file only when the work starts.
 
 ## 1. How the request was read
 
