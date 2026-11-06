@@ -578,6 +578,13 @@ local function TimeLeftOf(owner)
     if type(e) == "number" and not issecretvalue(e) and e > 0 then return e - GetTime() end
 end
 
+-- G10 Align: where an item sits across its line (lo..hi on the cross axis, t = its thickness). start = top (rows) / left (columns),
+-- end = bottom / right, center = the middle
+local function CrossAlign(mode, rows, lo, hi, t)
+    if mode == "start" then return rows and (hi - t / 2) or (lo + t / 2) end
+    if mode == "end" then return rows and (lo + t / 2) or (hi - t / 2) end
+    return (lo + hi) / 2
+end
 local function LayoutDynamic(df)
     if not df then return end
     -- One slot per RULE (the rule is the container of its cues), in the rule's own list order: the order of the sidebar, which the
@@ -592,7 +599,7 @@ local function LayoutDynamic(df)
     end
     for _, r in ipairs(ns.rules or {}) do
         local fr = frames[r]
-        if fr and fr:IsShown() and ((r.folder and DynAncestor(r.folder) == df)
+        if fr and (fr:IsShown() or fr.xuiLimited) and ((r.folder and DynAncestor(r.folder) == df)
             or (r.cursorConv and ns.CursorReminderFolder and ns.CursorReminderFolder() == df)) then
             local owner = (r.parentUid and byUid[r.parentUid]) or r
             local it = byOwner[owner]
@@ -631,6 +638,22 @@ local function LayoutDynamic(df)
             local n = #items
             for i = 1, math.floor(n / 2) do items[i], items[n - i + 1] = items[n - i + 1], items[i] end
         end
+    end
+    do   -- G10 Limit (Xaya 2026-11-06: "Limit"): after sorting only the first N show; the rest wait (hidden, marked) until there is room
+        local lim = tonumber(df.cLimit) or 0
+        local keep = {}
+        for i, it in ipairs(items) do
+            local over = lim > 0 and i > lim
+            local function set(fr)
+                if over then if fr:IsShown() then fr:Hide() end; fr.xuiLimited = true
+                elseif fr.xuiLimited then fr.xuiLimited = nil; fr:Show() end
+            end
+            set(it.fr)
+            for _, ef in ipairs(it.extra or {}) do set(ef) end
+            if not over then keep[#keep + 1] = it end
+        end
+        items = keep
+        if #items == 0 then return end
     end
     local dir = df.cGrowth or "RIGHT"
     local blk = ns.DynamicBlock(df)   -- Centered / From anchor point: one block, laid out like Blizzard's flow (see above)
@@ -687,7 +710,13 @@ local function LayoutDynamic(df)
             for _, it in ipairs(ln) do
                 local px, py   -- the item's own corner point
                 if horiz then px, py = ox + main * sx, oy + cross * sy else px, py = ox + cross * sx, oy + main * sy end
-                Put(it, px - cv[1] * it.w, py - cv[2] * it.h)
+                local cx, cy = px - cv[1] * it.w, py - cv[2] * it.h
+                if df.cAlign then   -- G10 Align: across the line, by its top / centre / bottom (rows) or left / centre / right (columns)
+                    local a, b = cross, cross + thick[li]
+                    if horiz then cy = CrossAlign(df.cAlign, true, math.min(oy + a * sy, oy + b * sy), math.max(oy + a * sy, oy + b * sy), it.h)
+                    else cx = CrossAlign(df.cAlign, false, math.min(ox + a * sx, ox + b * sx), math.max(ox + a * sx, ox + b * sx), it.w) end
+                end
+                Put(it, cx, cy)
                 main = main + (horiz and it.w or it.h) + sp
             end
             cross = cross + thick[li] + sp
@@ -711,6 +740,10 @@ local function LayoutDynamic(df)
             elseif dir == "LEFT" then x = -p; y = -co * cs
             elseif dir == "DOWN" then y = -p; x = co * cs
             elseif dir == "UP" then y = p; x = co * cs end
+            if df.cAlign then   -- G10 Align (default: centred on the line, as before)
+                if horiz then y = CrossAlign(df.cAlign, true, y - cross / 2, y + cross / 2, it.h)
+                else x = CrossAlign(df.cAlign, false, x - cross / 2, x + cross / 2, it.w) end
+            end
             Put(it, x, y)
         end
         crossOff = crossOff + cross + sp
@@ -2897,6 +2930,8 @@ function ns.SetVisualShown(rule, shown)
     end
     if comp or fr.comp then SetCompanionShown(fr, rule, comp) end
     if not want then StopCdBind(fr) end   -- a hidden display's cooldown countdown stops updating
+    if not want then fr.xuiLimited = nil end   -- (G10 Limit: no longer waiting for room)
+    if want and fr.xuiLimited then return end   -- (still waiting: the group's layout shows it when there is room)
     if fr:IsShown() == want then return end
     fr:SetShown(want)
     QueueLayout(rule.folder and DynAncestor(rule.folder))
@@ -3117,7 +3152,7 @@ function ns.MoverCheckDraft()
         function() mover.prompt = nil; EndSession(true) end,
         function() mover.prompt = nil; EndSession(false); ns.RefreshAllVisuals() end)
 end
-ns.AtLogin(function() ns.MoverCheckDraft() end)
+if ns.AtLogin then ns.AtLogin(function() ns.MoverCheckDraft() end) end   -- (Modules.lua; absent where Visual.lua is loaded on its own)
 
 function ns.ToggleUnlock()
     if ns.unlocked then

@@ -122,3 +122,87 @@ QA.Register("shopping-list", { title = "Shopping List: panel, stop-tracking ques
     { text = "If any of your gear has an empty socket and you wear no Eversong Diamond (or this expansion's one-per-character gem):\n\n|cffffd100Expect:|r the first empty socket's line reads \"<slot>: <diamond> (one per character)\" or \"one-per-character gem (none worn)\"; its |cffffd100Other|r list shows only such gems and has a Default button.\n\nNo empty socket: press Skip.",
         check = function() local S = Shop(); if not S then return false, "XayaUI QoL is off" end; local d = 0; for _, m in ipairs(S.Missing(S.Cfg())) do if m.kind == "diamond" then d = d + 1 end end; return true, d > 0 and "a one-per-character gem line is there" or "no one-per-character gem line (none needed, or the game does not mark the gem: say so in the note)" end },
 } })
+
+-- B177-B179c (core 0.6.55, Options 0.6.54): display points, the mover view's held moves, a group's saved arrangement, Scale items to
+-- fit, and a dynamic group's Limit / Align. Each makes "QA test group" (static or dynamic as needed) and deletes it at the end.
+local function Samples(f)
+    local ns, out = NS(), {}
+    for _, r in ipairs(ns.rules or {}) do if f and r.folder == f.id then out[#out + 1] = r end end
+    return out
+end
+local function OpenRule(r)
+    local ns = NS()
+    if r and ns.LoadOptions and ns.LoadOptions() and ns.OptionsApi and ns.OptionsApi.EditRule then ns.OptionsApi.EditRule(r) end
+end
+local function Refresh() local ns = NS(); if ns.RefreshAllVisuals then pcall(ns.RefreshAllVisuals) end end
+
+QA.Register("display-points", { title = "A display's two points: Anchor point / Anchored to / To ...'s point", qa = "B177", order = 114, steps = {
+    { text = "Press |cffffd100Do it for me|r: a QA test group with a set size (300 x 120) and two sample displays is made, and the first sample's settings open.\n\n|cffffd100Expect:|r in its Position section: |cffffd100Anchor point|r, a line |cffffd100Anchored to: Group: QA test group|r, then |cffffd100To QA test group's point|r. There is no \"Place the display\" any more.",
+        setup = function()
+            local ns = NS(); local f = MakeTestGroup(true)
+            if ns.SetGroupSizeMode then ns.SetGroupSizeMode(f, "set") end; f.cW, f.cH, f.cBorder = 300, 120, true
+            Refresh(); OpenRule(Samples(f)[1])
+        end,
+        check = function() local ns = NS(); local r = Samples(TestGroup())[1]; if not (r and ns.VisualAnchorTarget) then return false, "no sample display" end
+            local kind, nm = ns.VisualAnchorTarget(r); return kind == "group", "anchored to: " .. tostring(nm) end },
+    { text = "Set |cffffd100Anchor point|r to Bottom left, then |cffffd100To QA test group's point|r to Right. (Or press |cffffd100Do it for me|r.)\n\n|cffffd100Expect:|r the display does not move when either changes. Then set X and Y to 0: its bottom left corner sits on the middle of the group box's right edge (the box has a border).",
+        setup = function() local ns = NS(); local r = Samples(TestGroup())[1]; if r and ns.SetVisualPoints then ns.SetVisualPoints(r, "BOTTOMLEFT", "RIGHT") end end,
+        check = function() local ns = NS(); local r = Samples(TestGroup())[1]; if not r then return false, "no sample display" end
+            local a, p = ns.VisualPoints(r); return a == "RIGHT" and p == "BOTTOMLEFT", ("anchor point %s, to the group's %s"):format(tostring(p), tostring(a)) end },
+    Cleanup(),
+} })
+
+QA.Register("mover-session", { title = "Mover view: arrow keys, the lock icon, Save / Cancel moves", qa = "B178", order = 115, steps = {
+    { text = "Press |cffffd100Do it for me|r: a QA test group with two sample displays is made and the mover view opens (/xui unlock).\n\n|cffffd100Expect:|r the chat line mentions the arrow keys and the lock; the group has a name tab with a small lock at its right.",
+        setup = function() local ns = NS(); MakeTestGroup(true); if not ns.unlocked and ns.ToggleUnlock then ns.ToggleUnlock() end end,
+        check = function() local ns = NS(); return ns.unlocked == true, ns.unlocked and "the mover view is open" or "the mover view is closed" end },
+    { text = "Click |cffffd100QA sample 1|r on screen (it may open its settings; that is fine), then press the Right arrow 5 times and Shift + Up once.\n\n|cffffd100Expect:|r it moves 5 pixels right and 10 up; your character does not turn or move while you do it.",
+        check = function() local r = Samples(TestGroup())[1]; if not r then return false, "no sample display" end
+            return (r.visual.x or 0) ~= -60 or (r.visual.y or 0) ~= 0, ("QA sample 1 is at X %s, Y %s (it started at -60, 0)"):format(tostring(r.visual.x), tostring(r.visual.y)) end },
+    { text = "Click the lock on the group's name tab.\n\n|cffffd100Expect:|r the tab says \"(locked)\"; the sample displays cannot be dragged and the mouse reaches whatever is under them. Click the lock again to unlock.",
+        check = function() local ns = NS(); local f = TestGroup(); return true, (f and ns.IsMoverTempLocked and ns.IsMoverTempLocked(f)) and "the group is locked for now" or "the group is not locked (fine if you unlocked it again)" end },
+    { text = "Type |cffffd100/xui unlock|r (or press |cffffd100Do it for me|r).\n\n|cffffd100Expect:|r a question \"You moved ... display(s) or group(s) ...\" with |cffffd100Save moves|r and |cffffd100Cancel moves|r; Escape does not close it. Press |cffffd100Cancel moves|r: QA sample 1 jumps back to where it was.",
+        setup = function() local ns = NS(); if ns.unlocked and ns.ToggleUnlock then ns.ToggleUnlock() end end,
+        check = function() local r = Samples(TestGroup())[1]; return r and r.visual.x == -60 and r.visual.y == 0, r and ("QA sample 1 is at X %s, Y %s"):format(tostring(r.visual.x), tostring(r.visual.y)) or "no sample display" end },
+    Cleanup(),
+} })
+
+QA.Register("group-arrange", { title = "A group that keeps its arrangement (Align top + Space)", qa = "B179", order = 116, steps = {
+    { text = "Press |cffffd100Do it for me|r: a QA test group with two sample displays is made, its Group tab opens, and Align & Arrange is set to |cffffd100Space horizontally|r and |cffffd100Align top|r.\n\n|cffffd100Expect:|r on the Group tab (not on Display) Align & Arrange shows those two choices; the samples sit in a row, tops level, 8 pixels apart.",
+        setup = function() local ns = NS(); local f = MakeTestGroup(true); f.cArrX, f.cArrY = "space", "top"; if ns.ApplyGroupArrangement then ns.ApplyGroupArrangement(f) end; Refresh(); OpenGroup(f) end,
+        check = function() local s = Samples(TestGroup()); if #s < 2 then return false, "no samples" end
+            return s[1].visual.y == s[2].visual.y, ("Y of the samples: %s and %s"):format(tostring(s[1].visual.y), tostring(s[2].visual.y)) end },
+    { text = "/xui unlock, drag one sample away and let go.\n\n|cffffd100Expect:|r it goes back into the row. Lock again (Cancel or Save, either is fine). Then pick |cffffd100None|r for both choices, unlock and drag: now it stays where you drop it." },
+    Cleanup(),
+} })
+
+QA.Register("group-fit", { title = "Scale items to fit the box (and the question on resize)", qa = "B179b", order = 117, steps = {
+    { text = "Press |cffffd100Do it for me|r: a QA test group is made with two samples 120 pixels apart, a set size of 400 x 120 and a border; its Group tab opens.\n\n|cffffd100Expect:|r below Width and Height a tick box |cffffd100Scale items to fit the box|r (unticked).",
+        setup = function() local ns = NS(); local f = MakeTestGroup(true); if ns.SetGroupSizeMode then ns.SetGroupSizeMode(f, "set") end; f.cW, f.cH, f.cBorder = 400, 120, true; Refresh(); OpenGroup(f) end,
+        check = function() local f = TestGroup(); return f and not f.cFit, f and (f.cFit and "ticked" or "unticked") or "no test group" end },
+    { text = "Drag the |cffffd100Width|r slider down to about 100.\n\n|cffffd100Expect:|r once, a question \"Scale the items to fit?\" with Yes / No (sliding further does not ask again). Press |cffffd100Yes|r: the tick box is ticked and both samples shrink to fit inside the border; the border keeps the width you set.",
+        check = function() local ns = NS(); local f = TestGroup(); if not f then return false, "no test group" end
+            return f.cFit == true, ("ticked: %s; scale used: %.2f"):format(tostring(f.cFit == true), ns.GroupFitScale and ns.GroupFitScale(f) or 1) end },
+    Cleanup(),
+} })
+
+QA.Register("dynamic-limit-align", { title = "Dynamic group: Limit and Align", qa = "B179c", order = 118, steps = {
+    { text = "Press |cffffd100Do it for me|r: the QA test group becomes a dynamic group (growing Right) with three samples, the third smaller; its Group tab opens.\n\n|cffffd100Expect:|r |cffffd100Limit (show at most)|r and |cffffd100Align|r beside Sort and Spacing; the three samples in a row, the small one centred.",
+        setup = function()
+            local ns = NS(); local f = MakeTestGroup(true); f.cType, f.cGrowth = "dynamic", "RIGHT"
+            local s = Samples(f)
+            if #s < 3 then
+                local r = ns.NewRule(); r.name = "QA sample 3"; r.folder = f.id; r.enabled = true
+                r.visual = r.visual or {}; r.visual.enabled = true; r.visual.w, r.visual.h = 64, 32
+                ns.NormalizeRule(r); ns.rules[#ns.rules + 1] = r
+                if ns.SetPreview then ns.SetPreview({ r }, "visual", true) end
+            end
+            Refresh(); OpenGroup(f)
+        end,
+        check = function() local f = TestGroup(); return f and f.cType == "dynamic" and #Samples(f) >= 3, f and ("%s group, %d samples"):format(tostring(f.cType or "static"), #Samples(f)) or "no test group" end },
+    { text = "Set |cffffd100Align|r to Top, then Bottom.\n\n|cffffd100Expect:|r Top: the small sample's top is level with the others' tops; Bottom: its bottom is level with theirs. (If the samples look the same size, the check below still says which Align is set.)",
+        check = function() local f = TestGroup(); return f and f.cAlign ~= nil, f and ("Align: %s"):format(tostring(f.cAlign or "center (default)")) or "no test group" end },
+    { text = "Set |cffffd100Limit (show at most)|r to 2.\n\n|cffffd100Expect:|r only the first two samples show; set it back to 0 and all three show again.",
+        check = function() local f = TestGroup(); return f ~= nil, f and ("Limit: %s"):format(tostring(f.cLimit or "none")) or "no test group" end },
+    Cleanup(),
+} })

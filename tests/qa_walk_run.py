@@ -97,6 +97,24 @@ local br = QA.DB().results["chk-bugs"]
 check("  ...each answer is saved with its checklist item (steps shift when the list changes)", br and br.steps[1].k == QA.walks["chk-bugs"].steps[1].key and br.steps[1].k:find("^bug%d+$"), br and br.steps[1].k)
 local bk = QA.ImportCode(QA.ExportCode("chk-bugs"))
 check("  ...and the export code carries it", bk and bk.steps[1].k == br.steps[1].k and bk.steps[2].k == br.steps[2].k, bk and bk.steps[1].k)
+-- this round's hand-written walkthroughs (B177-B179c): every Do it for me and check runs without an error, and the last step cleans up
+for _, id in ipairs({ "display-points", "mover-session", "group-arrange", "group-fit", "dynamic-limit-align" }) do
+  local def = QA.walks[id]
+  local okAll, why = def ~= nil, "not registered"
+  if def then
+    QA.Start(id)
+    for _ = 1, #def.steps do
+      local ok, err = pcall(function() QA.DoSetup(); W.tick(0.1, 2); QA.RunCheck() end)
+      if not ok then okAll, why = false, err; break end
+      QA.Answer("S")
+    end
+    if ns.unlocked then ns.MoverExit("cancel") end
+    local left = false
+    for _, f in ipairs(ns.folders) do if f.name == "QA test group" then left = true end end
+    if okAll and left then okAll, why = false, "the QA test group is still there" end
+  end
+  check("walkthrough " .. id .. ": every step's Do it for me and check run, and it cleans up", okAll, why)
+end
 -- list status after a run
 QA.Toggle(); QA.Toggle()
 local gp

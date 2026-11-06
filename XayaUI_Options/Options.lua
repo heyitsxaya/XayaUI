@@ -4153,6 +4153,21 @@ function ns.FolderContainerGroup(f)
         hidden = function() return not isDyn() or sortOf() ~= "manual" end,
         desc = "Saves your settings and reloads the interface. Out of combat the new order already applies; this makes sure it is written to disk and rebuilt from scratch.",
         func = function() if ReloadUI then ReloadUI() end end }
+    -- G10 (Xaya 2026-11-06, question flow: "Limit (Recommended),Align (Recommended)"; WeakAuras' dynamic group has both, CHAT-3d)
+    g.args.limit = { type = "range", name = "Limit (show at most)", order = 2.101, min = 0, max = 40, step = 1,
+        desc = "0 = no limit. After sorting, only this many items show; the others wait and appear when a shown one goes away.",
+        hidden = function() return not isDyn() end,
+        get = function() return tonumber(f.cLimit) or 0 end, set = function(_, v) f.cLimit = (v > 0) and v or nil; apply() end }
+    g.args.align = { type = "select", name = "Align", order = 2.102, arg = { xuiSide = true },
+        desc = "When items in a row (or column) have different sizes: which side they line up on.",
+        hidden = function() return not isDyn() end,
+        values = function()
+            if growsAcross() then return { start = "Top", center = "Center", ["end"] = "Bottom" } end
+            return { start = "Left", center = "Center", ["end"] = "Right" }
+        end,
+        sorting = { "start", "center", "end" },
+        get = function() return f.cAlign or ((ns.DynamicBlock and ns.DynamicBlock(f)) and nil or "center") end,
+        set = function(_, v) f.cAlign = v; apply() end }
     g.args.spacing = { type = "range", name = "Spacing", order = 2.1, min = 0, max = 200, step = 1,
         desc = "Space between items, in pixels.",
         hidden = function() return not isDyn() end,
@@ -4430,12 +4445,11 @@ local function BuildFolder(k, f)
             return ("Made by: %s (%s%s)"):format(o.by or "unknown character", how, when and (", " .. when) or "")
         end }
     local groupArgs = g.args
-    local dispArgs = take({ "arrange", "pausePv" })
-    if dispArgs.arrange then dispArgs.arrange.order = 9 end
+    local dispArgs = take({ "pausePv" })   -- (Align & Arrange stays on the Group tab: Xaya 2026-11-06, "Move to Group tab")
     -- Xaya, 2026-11-04: "Pause preview animations" belongs on the Display tab (as on a rule's Display tab), not on the Group tab
     if dispArgs.pausePv then dispArgs.pausePv.order = 0.5 end
     dispArgs.note = { type = "description", order = 0, width = "full", fontSize = "small",
-        name = "The settings of every display cue in this group and its nested groups. The group's own position, size, opacity, scale and layer are on the Group tab; its name, type and Enabled switch on the Config tab." }
+        name = "The settings of every display cue in this group and its nested groups. The group's own position, size, opacity, scale, layer and Align & Arrange are on the Group tab; its name, type and Enabled switch on the Config tab." }
     if ns.GroupDisplayArgs then for k, v in pairs(ns.GroupDisplayArgs(f, FolderRules, Notify)) do dispArgs[k] = v end end
     -- "icon size on Group" (Xaya 2026-11-06): the every-display size section moves to the Group tab
     if dispArgs.size then groupArgs.size = dispArgs.size; dispArgs.size = nil; groupArgs.size.order = 5.45 end
