@@ -1,6 +1,6 @@
 # What's new in XayaUI
 
-**Updated 2026-11-06 evening:** sections 3 and 4 (below) cover the debug round and the group page / QA round that landed after this page was first written.
+**Updated 2026-11-06 evening:** sections 3 to 5 (below) cover the debug round, the group page / QA round and the auto-populate buttons that landed after this page was first written.
 
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
 Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
@@ -314,6 +314,29 @@ appeared at core 0.6.55-0.6.56 / Options 0.6.54-0.6.55). Nothing here has been r
 - The list holds every open QA checklist item and every open unverified bug, in this order: open bugs, looks-and-layout items, combat
   displays, urgent items, then the rest by section (34 walkthroughs, 330 items, regenerated from `docs/QA-CHECKLIST.md`).
   With Dev Assist off, all three commands say to switch it on.
+
+## 5. Auto-populate buttons (landed on `main` with the same evening landing, main 687b624; Options 0.6.57)
+
+From the session that built it (PR #425; built as Options 0.6.54, shows as 0.6.57). It changes the "Choose which auto rules to make"
+feature in section 2. **Not tested in game.**
+
+- **Where:** Rules > Class/Spec Rule Creator, under "Auto-populate my class / spec".
+- **Four buttons per spec,** worded exactly: "Generate All Rules for <Spec>", "Generate CD Tracking Rules for <Spec>", "Generate Aura
+  Tracking Rules for <Spec>" and "Generate Target Debuff Tracking Rules for <Spec>". The whole class has the same four, ending "for my
+  class". The old "Auto-populate <spec>" and "Auto-populate for my class (all specs)" buttons are gone.
+- **The button filters the table below it.** Nothing is listed until you press one. All = cooldowns, auras and target debuffs; CD
+  Tracking = cooldowns only; Aura Tracking = auras on you only; Target Debuff Tracking = target debuffs only. Nothing is made until you
+  press **Populate** (as before).
+- **Select all:** a tick box above the table's header row ticks or unticks the rows shown only, so after a filtered button it selects
+  only that kind. The header-row tick box is still there too.
+- **Reload list,** the "Hide / Show already generated rules" switch and "Include talents I have not picked" keep the filter you chose.
+- **A spec you are not in:** the Aura and Target Debuff buttons list nothing and say: "Auras and target debuffs are read from your
+  Cooldown Manager for the spec you are in now. Switch to <Spec>, then press the button again." (the Cooldown Manager answers for the
+  current spec only). Empty-list messages now show as text instead of hiding behind the (i) icon.
+- *Developers' notes:* the button width (3.0) is an estimate: check that no label is cut off and how the buttons wrap. The aura and
+  debuff lists rely on an inference about the Cooldown Manager's fields. Not yet asked of Xaya: whether to keep the header-row tick box
+  beside Select all, keep the spec icon on spec buttons, name the pressed button in the table title (still "Auto-populate: <Spec>"),
+  and the empty-list wording.
 
 *Not in this list yet:* the rest of that landing's changes (Chat 0.6.25, Bonus 0.6.19, Reskin 0.6.6 and the other sessions' parts of
 Options 0.6.57 and core 0.6.57: the Info pane / Patch Notes, chat changes, the settings window look, the engine session's work). Their sessions send their own notes;
