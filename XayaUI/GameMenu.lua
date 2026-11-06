@@ -38,6 +38,7 @@ local function OpenXayaUI()
         if InCombatLockdown() then
             pcall(GameMenuFrame.Hide, GameMenuFrame)
         else
+            if ns.MapTrace then ns.MapTrace("core: HideUIPanel(GameMenuFrame)") end
             pcall(HideUIPanel, GameMenuFrame)
         end
     end

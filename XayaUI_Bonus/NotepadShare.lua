@@ -451,7 +451,10 @@ local function BuildShare()
     return f
 end
 
+-- (Bonus 0.6.14) nothing of the sharing opens while the Notepad is off (ns.Notepad_On, Notepad.lua)
+local function NotepadOn() return ns.Notepad_On == nil or ns.Notepad_On() end
 function ns.NotepadShare_OpenShare()
+    if not NotepadOn() then return end
     local f = BuildShare()
     local av = Available()
     local ok = false
@@ -540,6 +543,7 @@ local function BuildIO()
 end
 
 function ns.NotepadShare_OpenIO(mode)
+    if not NotepadOn() then return end
     local f = BuildIO()
     f:Show(); f:SetMode(mode == "import" and "import" or (mode == "all" and "all" or "one"))
 end
@@ -550,6 +554,7 @@ end
 local menu, catcher
 function ns.NotepadShare_Menu(owner)
     if menu and menu:IsShown() then menu:Hide(); catcher:Hide() return end
+    if not NotepadOn() then return end
     if not menu then
         catcher = CreateFrame("Button", nil, UIParent)
         catcher:SetAllPoints(UIParent); catcher:SetFrameStrata("FULLSCREEN"); catcher:Hide()
@@ -603,7 +608,17 @@ WaitCombat = function(on)
 end
 function ns.NotepadShare_Sync()
     local db = DB()
-    accepting = (db and db.acceptShares) and true or false
+    -- (Bonus 0.6.14) the Notepad off: no shared note is listened for, whatever "Accept notes shared" says, and its windows close
+    accepting = (db and db.acceptShares and db.enabled ~= false) and true or false
+    if db and db.enabled == false then
+        for _, name in ipairs({ "XayaUINoteOffer", "XayaUINoteShare", "XayaUINoteIO" }) do
+            local f = _G[name]
+            if f and f.Hide then f:Hide() end
+        end
+        if menu and menu:IsShown() then menu:Hide(); catcher:Hide() end
+        wipe(pending)
+        WaitCombat(false)
+    end
     if accepting then
         if not prefixDone and C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
             prefixDone = pcall(C_ChatInfo.RegisterAddonMessagePrefix, PREFIX)

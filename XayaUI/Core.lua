@@ -308,7 +308,7 @@ function ns.NewFolder(name, parent)
     until not dup
     local f = { id = id, name = name or "Folder", parent = parent }   -- parent = id of the folder this one is nested in (nil = top level)
     ns.folders[#ns.folders + 1] = f
-    if ns.perf and ns.perf.show and debugstack then   -- /xui perf: say who created a group (finds groups that appear on their own)
+    if ns.perf and ns.perf.show and debugstack then   -- /xui debug perf ui: say who created a group (finds groups that appear on their own)
         local src = (debugstack(2, 1, 0) or ""):match("([^\n]+)") or "?"
         print("|cffffd100XayaUI|r group created: '" .. tostring(f.name) .. "' by " .. src)
     end
@@ -774,7 +774,7 @@ f:SetScript("OnEvent", function(_, event, name)
 end)
 
 -------------------------------------------------------------------------------
--- Seed rules (Xaya's Vengeance DH test set). Usage: /xui seed
+-- Seed rules (Xaya's Vengeance DH test set). Usage: /xui debug seed
 -------------------------------------------------------------------------------
 function ns.SeedRules()
     local kit = SOUNDKIT and SOUNDKIT.RAID_WARNING and tostring(SOUNDKIT.RAID_WARNING) or ""
@@ -846,6 +846,9 @@ local CORE_DEBUG = {
         ns.Print("debug: settings window " .. (ns.Options and "loaded" or ("not loaded yet (" .. ns.ModuleState(ns.OPTIONS_ADDON) .. ")")))
     end, "window (whether the settings window can load)" },
     { "seed", function() if ns.rules then ns.SeedRules() end end, "seed (add three Vengeance Demon Hunter test rules)" },
+    -- (core 0.6.49, another session: Modules.lua section 9, REQUEST-LOG #30 "map eclipses full screen"; moved into this list when
+    -- main was merged into core 0.6.50)
+    { "map", function() if ns.MapReport then ns.MapReport() end end, "map (why the world map opens full screen: its settings and size)" },
 }
 local coreDebug = {}
 for _, d in ipairs(CORE_DEBUG) do coreDebug[d[1]] = d[2] end

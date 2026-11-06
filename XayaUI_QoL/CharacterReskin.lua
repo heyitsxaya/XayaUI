@@ -40,8 +40,11 @@ ns = _G.XayaUI_NS or ns
 local CM = ns.CharModel
 
 -- booleans are switches; numbers are the wider window's extra width (px) and the background's opacity (0.5 - 1)
-local DEFAULTS = { enabled = false, chrome = true, ilvl = true, enchants = true, gems = true, stats = true, wide = true, widePx = 240, bgAlpha = 0.95 }
-local LIMITS = { widePx = { 120, 300 }, bgAlpha = { 0.5, 1 } }
+-- (QoL 0.7.24) extra width 42 px by default (Xaya 2026-11-06: "Push to 380px before stats pane and request feedback confirmation":
+-- Blizzard's PANEL_DEFAULT_WIDTH 338 -> 380 without the stats pane, CHARACTERFRAME_EXPANDED_WIDTH 540 -> 582 with it); the setting
+-- now reaches 0 (it started at 120); a saved number is kept as it is.
+local DEFAULTS = { enabled = false, chrome = true, ilvl = true, enchants = true, gems = true, stats = true, wide = true, widePx = 42, bgAlpha = 0.95 }
+local LIMITS = { widePx = { 0, 300 }, bgAlpha = { 0.5, 1 } }
 local GOOD, WARN = { 0.5, 1, 0.5, 1 }, { 1, 0.56, 0.25, 1 }   -- the Character Toolkit's good / warn tones
 ns.CHARRESKIN_DEFAULTS = DEFAULTS
 local function Cfg()
@@ -203,7 +206,7 @@ end
 -- bottom between the columns; the game's own socket display (11 px sockets, 7 px beside the slot) shows only for Timerunning characters.
 -- Our layout (QoL 0.7.22):
 --   * beside each slot, toward the model, a block of rows: the enchant (its own name, without the "Enchant <slot> - " every enchant
---     name starts with), the embellishment, then one row per socket: a 14 px icon (12 when the block does not fit otherwise) and the
+--     name starts with), the embellishment, then one row per socket: a 16 px icon (12 when the block does not fit otherwise) and the
 --     gem's name, or the socket's type when it is empty. The block stays inside its slot's band (the slot plus half the 4 px gap above
 --     and below it, so two blocks never overlap), 6 px from the slot;
 --   * with the wider window the block ends 4 px before the model scene, so nothing lies over the model or its camera buttons; at
@@ -221,9 +224,14 @@ local FRIZ = "Fonts\\FRIZQT__.TTF"
 local GUT = ns.UI_GUTTER or 10
 local SLOT_PAD = 2                          -- half the 4 px between two slots: a slot's band reaches this far above and below it
 local BLOCK_OFF, MODEL_GAP = 6, 4           -- the block starts 6 px from the slot and ends 4 px before the model scene
-local MIN_COL = 40                          -- narrower than this beside the model (Blizzard's width): the 0.7.19 layout, toward the middle
+local MIN_COL = 40                          -- narrower than this beside the model at Blizzard's width: the 0.7.19 layout, toward the middle
+-- (QoL 0.7.24) with the wider window on, a block never goes toward the middle (over the model), however narrow its room beside the
+-- model is: at the default +42 px (380 / 582) that room is about 18 px, so a block narrows, steps its font down, cuts at a word and
+-- packs its gems as icons as before, and one that still does not fit is not drawn (its slot's item tooltip still has it). Xaya will
+-- give feedback on the 380 px window (REQUEST-LOG #56).
 local ROW_GAP, ICON_GAP, COMPACT_GAP = 1, 3, 2
-local ICON_SIZES = { 14, 12 }               -- the gem / socket icon (the game's own socket is 11 px; Xaya: "much too small")
+local ICON_SIZES = { 16, 12 }               -- the gem / socket icon (the game's own socket is 11 px; Xaya: "much too small"; QoL 0.7.24,
+                                            -- her answer 2026-11-06: "16 px"; 12 only where a block does not fit at 16)
 local CAM_TOP, CAM_H, CAM_W = 10, 32, 2 + 5 * (32 - 6)   -- the camera buttons, all five shown (the widest they get)
 local ART_X, ART_TOP, ART_BOTTOM = 10, 8, 9 -- the weapon slots' frame art past the slot (Char-BottomSlot 42 x 53 at -4, 8; side pieces 6-7)
 local LABEL_SIZES = { 10, 9, 8 }
@@ -287,12 +295,15 @@ local function LabelBoxes(g, name, r)
     end
     local left, m = LEFT_SLOTS[name], g.model
     local box = { t = r.t + SLOT_PAD, b = r.b - SLOT_PAD }
+    local wideOn = m and ns.CharReskin_WideOn and ns.CharReskin_WideOn()
     if left then
         box.l = r.r + BLOCK_OFF
-        box.r = (m and m.l - MODEL_GAP - box.l >= MIN_COL) and (m.l - MODEL_GAP) or (g.mid - GUT / 2)
+        box.r = (m and (wideOn or m.l - MODEL_GAP - box.l >= MIN_COL)) and (m.l - MODEL_GAP) or (g.mid - GUT / 2)
+        if box.r - box.l < 1 then return {} end
     else
         box.r = r.l - BLOCK_OFF
-        box.l = (m and box.r - (m.r + MODEL_GAP) >= MIN_COL) and (m.r + MODEL_GAP) or (g.mid + GUT / 2)
+        box.l = (m and (wideOn or box.r - (m.r + MODEL_GAP) >= MIN_COL)) and (m.r + MODEL_GAP) or (g.mid + GUT / 2)
+        if box.r - box.l < 1 then return {} end
     end
     local w = g.weap
     if not (w and Overlaps(box, w)) then return { box } end
@@ -304,12 +315,27 @@ local function LabelBoxes(g, name, r)
     return out
 end
 
-local function Measure(fs, text, size, w)
+-- (QoL 0.7.24) every word must fit the width: at the 380 px window the room beside the model is about 18 px, and a word wider than
+-- its line would run past it (the game truncates it). GetUnboundedStringWidth() -> width · SecretWhenAnchoringSecret (widgets.md:1463):
+-- the text's width on one line, whatever the font string's width. Without it (or a secret answer) the word does not count as fitting.
+local function WordsFit(fs, text, w)
+    if type(fs.GetUnboundedStringWidth) ~= "function" then return true end
+    local ok = true
+    for wd in tostring(text):gmatch("%S+") do
+        fs:SetText(wd)
+        local ww = fs:GetUnboundedStringWidth()
+        if CM.IsSecret(ww) or not num(ww) or ww > w + 0.5 then ok = false; break end
+    end
+    fs:SetText(text)
+    return ok
+end
+local function Measure(fs, text, size, w, words)
     SetSize(fs, size)
     fs:SetWidth(w)
     fs:SetText(text)
     local h = fs:GetStringHeight()
     if CM.IsSecret(h) or not num(h) then return nil end
+    if words and not WordsFit(fs, text, w) then return nil end
     return h
 end
 
@@ -372,6 +398,11 @@ local function SetBlockAlpha(btn, a) for _, f in ipairs(BlockRows(btn)) do f:Set
 -- oneLine: each row cut to one line at a word; compact: the sockets as icons in one row, no names.
 local function Fit(box, items, size, S, oneLine, compact)
     local rows, off, sockOff = {}, 0, nil
+    if compact then   -- (QoL 0.7.24) the icons in one row must fit the box's width too (they never run over the model)
+        local n = 0
+        for _, it in ipairs(items) do if it.socket then n = n + 1 end end
+        if n > 0 and n * S + (n - 1) * COMPACT_GAP > box.r - box.l + 0.01 then return nil end
+    end
     for i, it in ipairs(items) do
         local gap = (i > 1) and ROW_GAP or 0
         if compact and it.socket then
@@ -382,17 +413,17 @@ local function Fit(box, items, size, S, oneLine, compact)
             if w < 12 then return nil end
             local fs, text, h = it.row.text, it.text, 0
             if text ~= "" then
-                h = Measure(fs, text, size, w)
+                h = Measure(fs, text, size, w, not oneLine)
                 if not h then return nil end
                 if oneLine then
                     local one = Measure(fs, "Ag", size, w)
                     if not one then return nil end
-                    if h > one + 0.5 then
+                    if h > one + 0.5 or not WordsFit(fs, text, w) then
                         local words, cutOk = {}, false
                         for wd in it.text:gmatch("%S+") do words[#words + 1] = wd end
                         for k = #words - 1, 1, -1 do
                             local cut = table.concat(words, " ", 1, k) .. "..."
-                            local hc = Measure(fs, cut, size, w)
+                            local hc = Measure(fs, cut, size, w, true)
                             if hc and hc <= one + 0.5 then text, h, cutOk = cut, hc, true; break end
                         end
                         if not cutOk then return nil end
@@ -549,13 +580,20 @@ local function BlockItems(btn, slot, info, tip, c)
         if it then it.row = row("xuiEnchantRow"); items[#items + 1] = it end
         local e = tip and tip.embellished
         if e then
+            -- (QoL 0.7.24; Xaya 2026-11-05: "put Embellished - Name: ______ and a line break before the description of the embellishment.
+            -- Detect if it is (1/2) or (2/2) embellishments on the character"; 2026-11-06: "pane line says embellished (2/2): name — the
+            -- rest goes in tooltip"). The pane line "Embellished (n/limit): <name>"; the hover "Embellished - Name: <name>", then on the
+            -- next line the description as the game gives it (the item's Use / Equip / proc lines). <name>: the item's own name from its
+            -- link (GetInventoryItemLink); no documented call or tooltip line type names the embellishment itself (CM.SlotTip), so the
+            -- name shown is the embellished item's (question to Xaya in the debug log of QoL 0.7.24).
             local n = EmbCount()
-            local lines = { { e.line, EMB_COL } }
+            local name = CM.LinkName and CM.LinkName(info.link) or nil
+            local lines = { { "Embellished - Name: " .. (name or "?"), EMB_COL } }
             for _, l in ipairs(tip.effects or {}) do lines[#lines + 1] = { l, EFFECT_COL } end
             if #lines == 1 then lines[2] = { NO_EFFECT_TEXT, GREY } end
-            lines[#lines + 1] = { e.max and ("%d of %d embellished items worn."):format(n, e.max) or ("%d embellished items worn."):format(n), GREY }
             local r = row("xuiEmbRow"); btn.xuiEmb = r.text
-            items[#items + 1] = { text = e.max and ("Embellished (%d/%d)"):format(n, e.max) or "Embellished", col = EMB_COL, tip = lines, row = r }
+            local head = e.max and ("Embellished (%d/%d)"):format(n, e.max) or "Embellished"
+            items[#items + 1] = { text = head .. ": " .. (name or "?"), col = EMB_COL, tip = lines, row = r }
         end
     end
     if c.gems and info.gems then
@@ -763,6 +801,7 @@ local function RestoreWide()
     PutBack(m, mh)
     wide.applied = false
     -- Blizzard's own sizing puts the width and the Inset back (as the probe's "off"); without it, the width the window had before
+    if ns.MapTrace then ns.MapTrace("Character Reskin: CharacterFrame:UpdateSize (wider window off)") end
     if type(cf.UpdateSize) == "function" then pcall(cf.UpdateSize, cf)
     else
         local DW, RO, BO = _G.PANEL_DEFAULT_WIDTH, _G.PANEL_INSET_RIGHT_OFFSET, _G.PANEL_INSET_BOTTOM_OFFSET
@@ -806,7 +845,10 @@ local function ApplyWide(c)
     m:ClearAllPoints(); m:SetPoint(wide.mp[1], wide.mp[2], wide.mp[3], wide.mp[4] + half, wide.mp[5])
     mh:ClearAllPoints(); mh:SetPoint(wide.hp[1], wide.hp[2], wide.hp[3], wide.hp[4] + half, wide.hp[5])
     wide.applied, wide.moved, wide.base, wide.px, wide.setW = true, true, base, px, base + px
-    if changed and type(UpdateUIPanelPositions) == "function" then pcall(UpdateUIPanelPositions, cf) end
+    if changed and type(UpdateUIPanelPositions) == "function" then
+        if ns.MapTrace then ns.MapTrace("Character Reskin: UpdateUIPanelPositions(CharacterFrame) (wider window)") end
+        pcall(UpdateUIPanelPositions, cf)
+    end
     diag.wide = ("on, %d px wider (%d -> %d)"):format(px, math.floor(base + 0.5), math.floor(base + px + 0.5))
 end
 
@@ -827,6 +869,7 @@ HookWide = function()
     -- post-hooks; they return at once while the reskin or the wider window is off (a /reload removes them)
     if type(hooksecurefunc) == "function" and type(cf.UpdateSize) == "function" then
         hooksecurefunc(cf, "UpdateSize", function()
+            if ns.MapTrace then ns.MapTrace("Character Reskin: hook after CharacterFrame:UpdateSize") end
             wide.reset = true
             local c = Cfg()
             if c and Active() and c.wide then Guard(WideAndSlots) end
@@ -1017,11 +1060,11 @@ function ns.BuildCharReskinPage(Notify)
             enabled = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends).", "full"),
             chrome = T("chrome", 2, "Clean window", "Blizzard's frame art goes: no portrait or stone frame, no backdrop picture behind the model; a thin border, the theme's pane colour behind the stat list, theme-coloured title and tabs; the slots lose their frame art. Off: Blizzard's art over XayaUI's solid background.", "full", isOff),
             ilvl = T("ilvl", 3, "Item level on each slot", "One item level per slot, coloured by its upgrade track (Veteran green, Champion blue, Hero purple, Myth orange, Explorer / Adventurer grey; the game's quality colours) and brighter with each upgrade step. Items without a track show their quality colour. The Character Toolkit's slot overlays leave out their own item level while this is on, and XayaUI's stays hidden on a slot where another addon already shows the same number (/xui reskin status names it).", "full", isOff),
-            enchants = T("enchants", 4, "Enchants beside the slots", "The enchant's name beside each slot, toward the model (without the \"Enchant <slot> - \" the game puts before every enchant's name), wrapped; \"No enchant\" in orange on a slot that takes one (the Character Toolkit's enchant slots); \"Embellished (worn / limit)\" on an embellished item. Hover a line: the whole line and what it does, as far as the game gives it.", "full", isOff),
-            gems = T("gems", 5, "Gems and sockets beside the slots", "One row per socket under the enchant: the gem's icon (14 px) and its name, or the empty socket's type in orange. Hover a gem for its tooltip. The Character Toolkit's slot overlays leave out their empty-socket mark while this is on.", "full", isOff),
+            enchants = T("enchants", 4, "Enchants beside the slots", "The enchant's name beside each slot, toward the model (without the \"Enchant <slot> - \" the game puts before every enchant's name), wrapped; \"No enchant\" in orange on a slot that takes one (the Character Toolkit's enchant slots); \"Embellished (worn / limit): <item name>\" on an embellished item (its hover: \"Embellished - Name: <item name>\", then what it does as the game words it). Hover a line: the whole line and what it does, as far as the game gives it.", "full", isOff),
+            gems = T("gems", 5, "Gems and sockets beside the slots", "One row per socket under the enchant: the gem's icon (16 px; 12 on a slot where 16 does not fit) and its name, or the empty socket's type in orange. Hover a gem for its tooltip. The Character Toolkit's slot overlays leave out their empty-socket mark while this is on.", "full", isOff),
             stats = T("stats", 6, "Stat list", "The stat list's headers, labels and values in the theme's colours, with a faint stripe on every other row instead of Blizzard's art.", "full", isOff),
             wide = T("wide", 7, "Wider window (room for the enchant names)", "Makes the character window wider on its Character tab and centres the model, so the enchant, embellishment and gem lines sit between the slots and the model instead of over it. Changed only out of combat; switching tabs gives Blizzard's width on the other tabs. Off: Blizzard's width (the lines then lie over the model's sides); once it has been on, a /reload removes its two hooks fully (while off they do nothing).", "full", isOff),
-            widePx = R("widePx", 8, "Extra width", "How much wider than Blizzard's window, in pixels (your in-game test used 120). Each side of the model gets half.", 120, 300, 20, false,
+            widePx = R("widePx", 8, "Extra width", "How much wider than Blizzard's window, in pixels (default 42: 338 -> 380 without the stats pane, 540 -> 582 with it). Each side of the model gets half.", 0, 300, 1, false,
                 function() return isOff() or not C().wide end),
             bgAlpha = R("bgAlpha", 9, "Background opacity", "How solid the window's background is (50% to 100%).", 0.5, 1, 0.05, true, isOff),
         },

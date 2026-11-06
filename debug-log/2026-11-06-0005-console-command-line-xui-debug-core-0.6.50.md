@@ -71,7 +71,7 @@ session 014bN6tSy3HbUDWYQsk69naX, checked against the remote). `main` 7426e7f me
 - "`SetAltArrowKeyMode(altMode: bool = false)` · SecretArguments=AllowedWhenUntainted · SimpleEditBoxAPI"
 - "`HasFocus()` → `hasFocus: bool` · ChecksForbiddenAspects=[{'Argument': 'self', 'Aspect': 'ForbiddenAspect.QueryFocus'}] · SimpleEditBoxAPI"
 - No secret values are passed (the typed text is the player's). INFERENCE: that Up / Down walk the history lines with alt-arrow mode off
-  is how the game's chat edit box behaves; it is not stated in the docs. If it does not happen, typing and Enter are unaffected (QA B150
+  is how the game's chat edit box behaves; it is not stated in the docs. If it does not happen, typing and Enter are unaffected (QA B155
   asks). The OnEnterPressed / OnEscapePressed / OnEditFocusGained / OnEditFocusLost / OnTextChanged scripts are not in docs/reference
   (scripts are not listed there); they are the ones the copy box and the chat history search box already use.
 - `geterrorhandler`, `xpcall`: as the existing error handler uses them. `ScrollingMessageFrame:GetNumMessages` was not used (a Lua mixin
@@ -90,7 +90,7 @@ session 014bN6tSy3HbUDWYQsk69naX, checked against the remote). `main` 7426e7f me
   debug). `tests/window_margins_run.py` (V11) passes with the command line and hint (the hint first overlapped the log frame as a window
   region; it is now the log frame's own text). Also run: debug_record_run, char_toolkit_run, gamemenu_run, char_width_probe_run,
   console_toggle_cost_run; `lua_pitfalls_run` FAILS: 0. Full suite: see the commit / reply.
-- Nothing was run in game. QA B150 (console line), B151 (help and /xui debug).
+- Nothing was run in game. QA B155 (console line), B156 (help and /xui debug).
 
 ## Decisions for Xaya (V12; not built)
 1. The old forms (`/xui status`, `/xui chatprobe` ...) still run, unlisted. Keep them, or make `/xui debug <name>` the only form?

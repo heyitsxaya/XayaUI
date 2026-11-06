@@ -74,7 +74,7 @@ check("debug: a header with the count", dbg[1] ~= nil and dbg[1]:match("^debug c
 check("debug: every line is '/xui debug <name> ...'", badLine == nil, badLine)
 local missing = {}
 for _, d in ipairs(diag) do if not names[d] then missing[#missing + 1] = d end end
-for _, d in ipairs({ "window", "widthprobe" }) do if not names[d] then missing[#missing + 1] = d end end
+for _, d in ipairs({ "window", "widthprobe", "map" }) do if not names[d] then missing[#missing + 1] = d end end
 check("debug: lists every diagnostic command (core and the features')", #missing == 0, table.concat(missing, ", "))
 local dpipe
 for i = 1, #dbg do if plain(dbg[i]):find("|", 1, true) then dpipe = dbg[i] end end

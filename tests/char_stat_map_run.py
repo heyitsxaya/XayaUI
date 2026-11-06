@@ -6,6 +6,8 @@
 # stats coloured), #387 (a changed stat shows what it changes). Requirements: docs/plans/STAT-CALCULATOR-REQUIREMENTS-2026-11-04.md B3-B7.
 # QoL 0.7.20 (Xaya 2026-11-05): the column heads end with Change, "» Ability Scaling" (was "Abilities with your number"), and every
 # ability list is one nested line per ability (sub() below); the panel's drawing of it: tests/char_stat_columns_run.py.
+# QoL 0.7.23 (Xaya 2026-11-05): one Character Stats section (its tree: tests/char_stat_window_run.py); the weapon card became Attack
+# Speed, Weapon DPS and Damage; Block is always listed. The checks below follow the new keys and say so where they changed.
 # Run from the repo root: python3 tests/char_stat_map_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
 # Spell IDs 9101-9103 and their texts are TEST STAND-INS.
 import os, sys
@@ -60,8 +62,8 @@ end
 
 -- 1. The tab and its cards ---------------------------------------------------------------------------------------------------
 local d = render()
-check("Stats tab = the stat map: Primary stats, Secondary stats, Tertiary stats, Offense (what feeds it), Defense (what feeds it)",
-  table.concat(texts(d, "header"), "|") == "- Primary stats|- Secondary stats|- Tertiary stats|- Offense (what feeds it)|- Defense (what feeds it)", table.concat(texts(d, "header"), "|"))
+check("Stats tab = the stat map: Character Stats, Stat Weights (QoL 0.7.23)",
+  table.concat(texts(d, "header"), "|") == "- Character Stats|- Stat Weights", table.concat(texts(d, "header"), "|"))
 check("no Show: % button (#382: it did nothing)", not XayaUICharacterToolkit.modeBtn.shown)
 check("the Agility card: 2,637, its box holds the number itself", card("map_primary").value == "2,637" and d.boxes["sv:primary"] and d.boxes["sv:primary"].text == "2637", d.boxes["sv:primary"] and d.boxes["sv:primary"].text)
 check("  » Attack power: value +2,637, Pt value 1.00 (1 Agility = 1.00 attack power), no note", cells("map_primary", "» Attack power") == "+2,637|1.00|", cells("map_primary", "» Attack power"))
@@ -95,17 +97,17 @@ check("Defense: Parry 14.01%, from Critical Strike +10.15% (note before DR); Arm
 check("Offense: Attack Power 3,472, from Agility +2,637, » Damage per second +992.0 (3,472 / 3.5)", card("map_ap").value == "3,472"
   and line("map_ap", "From Agility") == "+2,637" and line("map_ap", "» Damage per second") == "+992.0", tostring(card("map_ap") and card("map_ap").value) .. " " .. tostring(line("map_ap", "» Damage per second")))
 check("  Spell Power 500 (GetSpellBonusDamage, lowest school)", card("map_sp") and card("map_sp").value == "500")
-check("  Main hand 8,138 - 8,945, speed 2.00 s from Haste, » Damage per second 4,270.7 ((8,138.2 + 8,944.6) / 2 / 2.00)", card("map_weapon").value == "8,138 - 8,945"
-  and line("map_weapon", "Speed, from Haste") == "2.00 s" and line("map_weapon", "» Damage per second") == "4,270.7", tostring(line("map_weapon", "» Damage per second")))
+check("  Damage 8,138 - 8,945, Attack Speed 2.00 s, Weapon DPS 4,270.7 ((8,138.2 + 8,944.6) / 2 / 2.00) (QoL 0.7.23: three lines, was one Main hand card)",
+  card("map_damage").value == "8,138 - 8,945" and card("map_aspeed").value == "2.00 s" and card("map_wdps").value == "4,270.7", tostring(card("map_wdps") and card("map_wdps").value))
 check("  Global cooldown 1.16 s, from Haste 29.25% (note haste when read), unhasted 1.50 s (estimate; the rating for -0.01 s in its note)", card("map_gcd").value == "1.16 s"
   and cells("map_gcd", "From Haste") == "29.25%||haste when read" and line("map_gcd", "Unhasted (estimate)") == "1.50 s"
   and (select(2, line("map_gcd", "Unhasted (estimate)")).note or ""):find("^[%d,]+ more haste rating for %-0%.01 s$") ~= nil, cells("map_gcd", "Unhasted (estimate)"))
-check("  #379: 'Speed, from Haste' and the GCD's 'From Haste' use haste's colour", select(2, line("map_weapon", "Speed, from Haste")).labelColor == CM.STAT_COLORS.haste
-  and select(2, line("map_gcd", "From Haste")).labelColor == CM.STAT_COLORS.haste)
+check("  #379: the GCD's 'From Haste' uses haste's colour", select(2, line("map_gcd", "From Haste")).labelColor == CM.STAT_COLORS.haste)
 check("  no ranged weapon, no regen (Fury 0/s): no cards for them", card("map_ranged") == nil and card("map_regen") == nil)
 check("Defense > Armor: armor for the next 1% and base, buffs and talents", (line("map_armor", "Armor for the next 1%") or ""):match("^%d") ~= nil
   and line("map_armor", "Base, buffs and talents") == "5,685", tostring(line("map_armor", "Armor for the next 1%")) .. " / " .. tostring(line("map_armor", "Base, buffs and talents")))
-check("  no shield, no block: no Block card; no stagger", card("map_block") == nil and card("map_stagger") == nil)
+check("  no shield: Block 0.00% (QoL 0.7.23: always listed, her list names it), no » lines; no stagger", card("map_block") and card("map_block").value == "0.00%"
+  and #card("map_block").pairs == 0 and card("map_stagger") == nil, card("map_block") and card("map_block").value)
 local gb, gs, sh = GetBlockChance, GetShieldBlock, C_PaperDollInfo.OffhandHasShield
 GetBlockChance = function() return 25 end; GetShieldBlock = function() return 3000 end; C_PaperDollInfo.OffhandHasShield = function() return true end
 d = render()
@@ -159,8 +161,8 @@ ns.CharToolkit_SetInput("sv:haste", tostring(CM.svBase.haste + 300))
 d = render()
 check("type 300 more haste: Infernal Strike's recharge 9.6 s -> less (estimate, its text names Haste)",
   (sub("map_haste", "» Abilities (their text names Haste)") or ""):find("^Infernal Strike=9%.6 s %-> %d%.%d s recharge$") ~= nil, sub("map_haste", "» Abilities (their text names Haste)"))
-check("type 300 more haste: weapon speed 2.00 s -> faster (note: estimate), GCD 1.16 s -> less", (cells("map_weapon", "Speed, from Haste") or ""):find("^2%.00 s %-> 1%.%d%d s||estimate$") ~= nil
-  and (card("map_gcd").value or ""):find("^1%.16 s %-> 1%.%d%d s") ~= nil, tostring(cells("map_weapon", "Speed, from Haste")) .. " / " .. tostring(card("map_gcd").value))
+check("type 300 more haste: Attack Speed 2.00 s -> faster (note: estimate), GCD 1.16 s -> less", (card("map_aspeed").value or ""):find("^2%.00 s %-> 1%.%d%d s$") ~= nil
+  and card("map_aspeed").note == "estimate" and (card("map_gcd").value or ""):find("^1%.16 s %-> 1%.%d%d s") ~= nil, tostring(card("map_aspeed").value) .. " / " .. tostring(card("map_gcd").value))
 ns.CharToolkit_SetInput("sv:haste", "")
 ns.CharToolkit_SetInput("sv:crit", ""); ns.CharToolkit_SetInput("sv:mastery", "997"); ns.CharToolkit_SetInput("sv:primary", "")
 d = render()
@@ -213,11 +215,12 @@ local okH = pcall(function() local u = UnitName; UnitName = function() return "S
   render(); UnitName = u; issecretvalue = function() return false end end)
 check("  ...a secret name is left out, not shown or compared", okH and P.hName.text == "", P.hName.text)
 render()
--- the grip: drag to 500 x 450, the size is kept, the content reflows to 480
+-- the grip: drag to 500 x 450, the size is kept, the content reflows to 480 (QoL 0.7.23: the width in c.size, the height is the
+-- current Min / Max mode's, here the smaller one)
 check("grip: a corner grip at the bottom right", P.grip and P.grip.pts and P.grip.pts[1] and P.grip.pts[1][1] == "BOTTOMRIGHT")
 P:SetSize(500, 450)
 P.grip.scripts.OnMouseUp(P.grip)
-check("  ...the dragged size is kept (500 x 450)", c.size and c.size.w == 500 and c.size.h == 450, c.size and (c.size.w .. "x" .. c.size.h))
+check("  ...the dragged size is kept (500 x 450: the width, and the smaller height)", c.size and c.size.w == 500 and c.heightSmall == 450 and c.sizeMode == "small", c.size and (c.size.w .. "x" .. c.heightSmall))
 local d4 = drawn()
 check("  ...the content reflows to the new width (480) and the panel keeps the height", L0.content == 480 and P.w == 500 and P.h == 450, L0.content)
 local okW, whyW = layoutOK(d4)
@@ -225,14 +228,15 @@ check("  ...everything still inside the width, no overlaps", okW, whyW)
 check("  ...the tab row spans the new width (3 tabs of 160)", math.abs(P.tabs[1].w - 158) < 0.01, P.tabs[1].w)
 P:SetSize(2000, 50)
 P.grip.scripts.OnMouseUp(P.grip)
-check("  ...kept within its limits (760 x 300)", c.size.w == L0.maxW and c.size.h == L0.minH, c.size.w .. "x" .. c.size.h)
+check("  ...kept within its limits (760 x 300)", c.size.w == L0.maxW and c.heightSmall == L0.minH, c.size.w .. "x" .. c.heightSmall)
 P:SetSize(300, 2000)
 P.grip.scripts.OnMouseUp(P.grip)
-check("  ...and the smallest / tallest it may be (340 x 1100)", c.size.w == L0.minW and c.size.h == L0.maxH, c.size.w .. "x" .. c.size.h)
+check("  ...and the smallest / tallest it may be (340 x 1100)", c.size.w == L0.minW and c.heightSmall == L0.maxH, c.size.w .. "x" .. c.heightSmall)
 local page = ns.BuildCharToolkitPage(function() end)
 page.args.panelPart.args.layout.args.resetSize.func()
 render()
-check("settings: Reset size goes back to the default width (430 of content since QoL 0.7.21) and the height follows the content again", c.size == nil and L0.content == 430, L0.content)
+check("settings: Reset size goes back to the default width (430 of content since QoL 0.7.21) and the two heights (440, 760; QoL 0.7.23)", c.size == nil and L0.content == 430
+  and c.heightSmall == 440 and c.heightLarge == 760 and P.h == 440, L0.content)
 c.size = { w = "wide" }
 check("a broken saved size is dropped", ns.CharToolkit_Cfg().size == nil)
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))

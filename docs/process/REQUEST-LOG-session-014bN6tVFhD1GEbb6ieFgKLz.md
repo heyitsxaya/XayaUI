@@ -5,7 +5,7 @@ Kept on this session's branch (`claude/great-franklin-j4cahh`, PR heyitsxaya/Xay
 Same columns and statuses as that file. The rules V15-V17 reached this session from S1's message at 2026-11-06 00:18 UTC, after the
 work below was built; they were read on S1's branch (2b4bdb2), not yet on `main`.
 
-Status as of 2026-11-06 00:48 UTC. `main` = `7426e7f` (merged into this branch). This branch: core 0.6.50, Options 0.6.48, Chat 0.6.17,
+Status as of 2026-11-06 01:51 UTC. `main` = `5490478` (merged into this branch). This branch: core 0.6.50, Options 0.6.48, Chat 0.6.17,
 QoL 0.7.26, Reskin 0.6.3 (built as 0.6.49 / 0.6.16 / 0.7.23 in 4a1727d, relabelled: those numbers were taken). NOT on `main`: held for Xaya's
 confirmations (V16) and one landing with the other sessions' core work (V17).
 

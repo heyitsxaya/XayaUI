@@ -31,7 +31,7 @@ stated to her for correction.
    console window is open (`ns.ConsoleWindowOn`), it becomes "both" for that message. Cost (her condition): per message, one function
    call and one IsShown once the window exists; no frame, event, timer or per-frame work (V14); while the window is closed nothing of
    the console is called (tested). Messages are not buffered while it is closed (only while it is open, as asked). The console's empty
-   hint and the "XayaUI's messages" tooltip (Options 0.6.48) say so. QA B152.
+   hint and the "XayaUI's messages" tooltip (Options 0.6.48) say so. QA B157.
 3. /xui auras (her 3): examples of both cases sent to her; no change.
 
 ## Scope (V4)
@@ -50,4 +50,4 @@ readers are as listed in the 0005 entry; only `ns.Print` and the error handler m
   nothing buffered, nothing drawn on reopening. Negative control: on 8ae717b 17 of the 72 fail (sections 3 and 6).
 - Also passing: xui_help_lines, auras_cmd, char_width_probe, charges_combat, chatprobe, debug_record, engine_text, gamemenu, load_ids,
   options_bonus_off_costs_nothing, sidebar_switches, timing, modules, char_toolkit; `lua_pitfalls_run` FAILS: 0. Full suite: see the reply.
-- Not run in game. QA B151 (rewritten for the old forms), B152 (new).
+- Not run in game. QA B156 (rewritten for the old forms), B157 (new).

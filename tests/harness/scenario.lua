@@ -87,7 +87,7 @@ local commands = { "debug status", "debug", "debug icons", "debug debuffs", "deb
   "debug timing", "debug perf", "debug perf on", "debug perf off", "debug perf ui", "debug perf ui", "unlock", "unlock", "debug media",
   "console", "console", "bug", "chat", "chat status", "chat wrap", "chat history", "chat history", "chat move", "chat move", "panel", "debug chatprobe",
   "privacy", "privacy", "data", "notes", "notes", "debug gamemenu", "cursor", "cursor highlight", "cursor trail", "chat settings", "panel",
-  "debug window", "debug auras", "debug widthprobe off", "status", "debug nosuch", "nonsense-command" }
+  "debug window", "debug auras", "debug widthprobe off", "debug map", "status", "debug nosuch", "nonsense-command" }
 S.commands = 0
 local xui = SlashCmdList and SlashCmdList["XAYAUI"]
 if xui then
