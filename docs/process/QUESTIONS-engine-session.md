@@ -231,3 +231,5 @@ Your sentence: "this _____ requires blizzard's cooldown manager to track it befo
 - #278 items 5/6: "1 + review EUI CDM manager buff tracking" = build the "CC on target / focus" shortcut (her own CC as Target Debuff rules,
   grouped by effect) + the in-game QA step, and review how EllesmereUI's Cooldown Manager handling adds buff tracking (behaviour only; never
   copy code, data or text).
+- #278 shortcut: told the game data gives no effect type (stun / slow / root) for a debuff -> "Skip the shortcut". Kept: the in-game QA step
+  and the EllesmereUI Cooldown Manager review (behaviour only).
