@@ -187,6 +187,19 @@ check("after Blizzard's layout: its header art faded, header and recipe in the t
   ProfessionsRecipeTracker.Header.Background.alpha == 0 and ProfessionsRecipeTracker.Header.Text.color and block.HeaderText.color
   and line1.Text.color[1] < 0.7 and line2.Text.color[1] > 0.9 and ProfessionsRecipeTracker.layouts >= 1)
 
+-- C8 (Xaya 2026-11-06: "For now colors only but build with the awareness the whole tracking container will be treated with restyling
+-- soon"): one restyler for any section of the objective tracker; only the Professions section is listed for now
+check("C8: the restyled sections are a list, with only Blizzard's Professions section in it for now", #Shop.TRACKER_MODULES == 1
+  and Shop.TRACKER_MODULES[1].global == "ProfessionsRecipeTracker" and Shop.TRACKER_MODULES[1].switch == "tracker")
+local qline = { Text = fs(), Icon = mk("Texture") }; qline.Icon.shown = false
+local qblock = { HeaderText = fs(), ForEachUsedLine = function(self, fn) fn(qline) end }
+local quests = { Header = { Background = mk("Texture"), Text = fs() }, EnumerateActiveBlocks = function(self, fn) fn(qblock) end }
+quests.Header.Background.SetAlpha = function(self, a) self.alpha = a end
+Shop.RestyleModule(quests)
+check("  ...the same restyler takes another section of the tracker (a quest section built like Blizzard's) without new code",
+  quests.Header.Background.alpha == 0 and quests.Header.Text.color and qblock.HeaderText.color and qline.Text.color and qline.Text.color[1] > 0.9,
+  ("alpha %s, header %s, block %s, line %s"):format(tostring(quests.Header.Background.alpha), tostring(quests.Header.Text.color ~= nil), tostring(qblock.HeaderText.color ~= nil), tostring(qline.Text.color and qline.Text.color[1])))
+
 -- 9. Layout bounds (V11) -------------------------------------------------------------------------------------------------------
 Shop.Render(); d = Shop.Drawn()
 local W = ns.SHOPPING_LAYOUT.content
@@ -197,6 +210,54 @@ for _, r in ipairs(d.panel.layout) do if r.kind ~= "hit" then t[#t + 1] = r end 
 for i = 1, #t do for j = i + 1, #t do local a, b = t[i], t[j]
   if a.x < b.x + b.w and b.x < a.x + a.w and a.y < b.y + b.h and b.y < a.y + a.h then ok, why = false, tostring(a.text) .. " / " .. tostring(b.text) end end end
 check("layout: inside the width, no two texts or buttons overlap", ok, why)
+
+-- 9b. Her answers of 2026-11-06 ------------------------------------------------------------------------------------------------
+-- C9: "Stay dimmed, allow user to "clear" manually — prompt user after all reagents are found in bag if they want to stop tracking"
+untracked = nil
+C_TradeSkillUI.SetRecipeTracked = function(id, tracked, recraft) untracked = { id, tracked, recraft }; if not tracked then TRACKED[recraft and true or false] = {} end end
+local function recSec() for _, sec in ipairs(Shop.Build(c)) do if sec.recipeID == 501 then return sec end end end
+check("C9: a reagent short: no question", recSec() and recSec().rows[1].key ~= "rec501:ask")
+check("  ...the recipe's header has its own x (stop tracking it)", recSec() and recSec().clear and recSec().clear.recipeID == 501)
+COUNT[7002] = 2   -- 3 + 2 = 5 / 5: every required reagent is in the bags
+check("  ...every reagent in the bags: 'All reagents are in your bags. Stop tracking it?' at the top of the recipe", recSec() and recSec().rows[1].key == "rec501:ask"
+  and recSec().rows[1].label:find("Stop tracking it?", 1, true) ~= nil)
+Shop.Render(); d = Shop.Drawn()
+local keep = button("Keep", "rec501:ask")
+check("  ...with Stop and Keep buttons", button("Stop", "rec501:ask") ~= nil and keep ~= nil)
+if keep then keep.scripts.OnClick(keep) end
+check("  ...Keep: not asked again", recSec() and recSec().rows[1].key ~= "rec501:ask")
+COUNT[7002] = 1; Shop.Build(c); COUNT[7002] = 2
+check("  ...short again, then complete again: asked again", recSec() and recSec().rows[1].key == "rec501:ask")
+Shop.Render(); d = Shop.Drawn()
+local stop = button("Stop", "rec501:ask")
+if stop then stop.scripts.OnClick(stop) end
+check("  ...Stop: the game's own call lets the recipe go (Blizzard's tracker too)", untracked and untracked[1] == 501 and untracked[2] == false and untracked[3] == false)
+check("  ...and it leaves the panel", recSec() == nil)
+TRACKED[false] = { 501 }; COUNT[7002] = 1; untracked = nil
+Shop.Render(); d = Shop.Drawn()
+local hx; for _, b in ipairs(d.buttons) do if b.shown and b.text and b.text.text == "x" and b.hint and b.hint:find("Stop tracking", 1, true) then hx = b end end
+check("  ...the header's x stops tracking it by hand", hx ~= nil and (function() hx.scripts.OnClick(hx); return untracked and untracked[1] == 501 and untracked[2] == false end)())
+TRACKED[false] = { 501 }
+
+-- C10: "1 as long as prismatic / diamond is always considered (only one is ever possible to equip so its missing is always a default
+-- recommendation)". The game says which gem is one-per-character (unique-equipped, limit 1).
+NAMES[8100] = "Powerful Eversong Diamond"; CLASS[8100] = { 3, 9 }; COUNT[8100] = 0
+C_Item.GetItemUniquenessByID = function(id) if id == 8100 then return true, "Eversong Diamond", 1, 5 end; return false end
+local miss2 = Shop.Missing(c)
+local function find2(kind, slot) for _, m in ipairs(miss2) do if m.kind == kind and m.slot == slot then return m end end end
+check("C10: none worn: the helm's one empty socket gets the one-per-character gem", find2("diamond", 1) ~= nil and find2("diamond", 1).count == 1)
+check("  ...so that socket is not also asked for your other gem", find2("gem", 1) == nil)
+check("  ...none seen yet: no suggestion (Select other)", find2("diamond", 1).sug == nil)
+h.gems[8100] = { n = 2, last = 5, name = "Powerful Eversong Diamond" }
+check("  ...seen on your gear before: it is suggested", Shop.DiamondSuggestion(c) and Shop.DiamondSuggestion(c).name == "Powerful Eversong Diamond")
+check("  ...and never as your normal gem", Shop.GemSuggestion(c) and Shop.GemSuggestion(c).name ~= "Powerful Eversong Diamond")
+check("  ...Select other for it lists only one-per-character gems", has(Shop.Options(c, "diamond"), "Powerful Eversong Diamond") and has(Shop.Options(c, "diamond"), "Deadly Peridot") == nil)
+Shop.Render(); d = Shop.Drawn()
+check("  ...the panel: 'Head: Powerful Eversong Diamond (one per character)' with 0 / 1", texts():find("Head: Powerful Eversong Diamond (one per character)", 1, true) ~= nil, texts())
+SOCKETS.Ring = { 8100 }
+miss2 = Shop.Missing(c)
+check("  ...one worn (in the ring): the helm's socket asks for your normal gem again", find2("diamond", 1) == nil and find2("gem", 1) ~= nil)
+SOCKETS.Ring = { 8001 }; C_Item.GetItemUniquenessByID = nil; h.gems[8100] = nil
 
 -- 10. Settings and off again ---------------------------------------------------------------------------------------------------
 local page = ns.BuildShoppingListPage(function() end)

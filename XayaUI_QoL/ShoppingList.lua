@@ -158,11 +158,42 @@ function Shop.EnchantSuggestion(c, slot)
     local best, id = MostUsed(Shop.History(c).ench[SlotKey(slot)])
     if best and best.name then return { name = best.name, enchantID = id, src = "used", count = best.n } end
 end
+-- The one-per-character gem (C10, Xaya 2026-11-06: "1 as long as prismatic / diamond is always considered (only one is ever possible to
+-- equip so its missing is always a default recommendation)"): a gem whose unique-equipped limit is 1, read from the game
+-- (C_Item.GetItemUniquenessByID -> isUnique, limitCategoryName, limitCategoryCount; namespaces.md:2797). No names or IDs ship.
+-- INFERENCE until seen in game: this expansion's Eversong Diamonds carry that limit (the client data shows them as a gem kind of their
+-- own, subclass Other, epic). A gem the game has not sent yet reads as not one (asked again next time, not remembered).
+local oneOf = {}
+function Shop.CanReadUniqueness() return (C_Item and C_Item.GetItemUniquenessByID) and true or false end
+function Shop.IsOneOfGem(itemID)
+    if not num(itemID) then return false end
+    if oneOf[itemID] ~= nil then return oneOf[itemID] end
+    if not Shop.CanReadUniqueness() then return false end
+    local ok, isUnique, _, count = pcall(C_Item.GetItemUniquenessByID, itemID)
+    if not ok or isUnique == nil then return false end
+    local v = (isUnique == true and num(count) and count == 1) and true or false
+    oneOf[itemID] = v
+    return v
+end
+local function GemsOf(per, wantOneOf)
+    local t = {}
+    for id, r in pairs(per or {}) do if Shop.IsOneOfGem(id) == wantOneOf then t[id] = r end end
+    return t
+end
+-- the one-per-character gem: picked for now, else the one you used most (it has no default of its own: one gem default, C10)
+function Shop.DiamondSuggestion(c)
+    if picks.diamond then return picks.diamond end
+    local best, id = MostUsed(GemsOf(Shop.History(c).gems, true))
+    if best then
+        local name = best.name or (C_Item and C_Item.GetItemNameByID and R(C_Item.GetItemNameByID, id))
+        if type(name) == "string" then return { name = name, itemID = id, src = "used", count = best.n } end
+    end
+end
 function Shop.GemSuggestion(c)
     if picks.gem then return picks.gem end
     local d = c.defaults.gem
     if type(d) == "table" and type(d.name) == "string" and d.name ~= "" then return { name = d.name, itemID = d.itemID, src = "default" } end
-    local best, id = MostUsed(Shop.History(c).gems)
+    local best, id = MostUsed(GemsOf(Shop.History(c).gems, false))
     if best then
         local name = best.name or (C_Item and C_Item.GetItemNameByID and R(C_Item.GetItemNameByID, id))
         if type(name) == "string" then return { name = name, itemID = id, src = "used", count = best.n } end
@@ -171,19 +202,36 @@ end
 
 -- What is missing on your gear: a slot that takes an enchant (the Character Toolkit's enchant slots) whose item has none; an item
 -- with empty sockets.
+-- The one-per-character gem (C10): when none is in your sockets, the first empty socket gets it and the rest get your gem.
 function Shop.Missing(c)
     local out = {}
     local tk = ns.CharToolkit_Cfg and ns.CharToolkit_Cfg() or nil
     local wanted = CM.EnchantSlots(tk)
+    local infos, oneOfWorn, firstEmpty = {}, false, nil
     for _, s in ipairs(CM.SLOTS) do
         local slot = s[1]
         local info = CM.SlotInfo(slot)
+        infos[slot] = info
+        if info then
+            for _, g in ipairs(info.gems or {}) do if Shop.IsOneOfGem(g.gemID) then oneOfWorn = true end end
+            if not firstEmpty and num(info.sockets) and info.sockets > 0 then firstEmpty = slot end
+        end
+    end
+    local wantOneOf = Shop.CanReadUniqueness() and not oneOfWorn
+    for _, s in ipairs(CM.SLOTS) do
+        local slot = s[1]
+        local info = infos[slot]
         if info then
             if wanted[slot] and info.enchanted == false then
                 out[#out + 1] = { kind = "enchant", slot = slot, label = CM.SlotLabel(slot), sug = Shop.EnchantSuggestion(c, slot) }
             end
             if num(info.sockets) and info.sockets > 0 then
-                out[#out + 1] = { kind = "gem", slot = slot, label = CM.SlotLabel(slot), count = info.sockets, sug = Shop.GemSuggestion(c) }
+                local n = info.sockets
+                if wantOneOf and slot == firstEmpty then
+                    out[#out + 1] = { kind = "diamond", slot = slot, label = CM.SlotLabel(slot), count = 1, sug = Shop.DiamondSuggestion(c) }
+                    n = n - 1
+                end
+                if n > 0 then out[#out + 1] = { kind = "gem", slot = slot, label = CM.SlotLabel(slot), count = n, sug = Shop.GemSuggestion(c) } end
             end
         end
     end
@@ -292,6 +340,16 @@ function Shop.Recipes()
     return out
 end
 
+-- Stop tracking a recipe (C9, Xaya 2026-11-06: "Stay dimmed, allow user to "clear" manually — prompt user after all reagents are found
+-- in bag if they want to stop tracking"). The game's own call: Blizzard's tracker lets it go too (namespaces.md:4957).
+function Shop.Untrack(recipeID, recraft)
+    if not (num(recipeID) and C_TradeSkillUI and C_TradeSkillUI.SetRecipeTracked) then return false end
+    return pcall(C_TradeSkillUI.SetRecipeTracked, recipeID, false, recraft and true or false)
+end
+-- "Keep" on the question: not asked again for that recipe until it is short of a reagent again (this session)
+local asked = {}
+Shop.asked = asked
+
 -------------------------------------------------------------------------------
 -- The Auction House (S8, S9)
 -------------------------------------------------------------------------------
@@ -311,7 +369,7 @@ Shop.browse = browse
 function Shop.Browse(key)
     if not (Shop.AHOpen() and C_AuctionHouse and C_AuctionHouse.SendBrowseQuery) then return false end
     local filters = {}
-    if key == "gem" then filters[1] = { classID = ITEM_CLASS_GEM }
+    if key == "gem" or key == "diamond" then filters[1] = { classID = ITEM_CLASS_GEM }
     else
         local slot = tonumber(key:match("^ench:(%d+)$"))
         for _, sub in ipairs(Shop.ENH_SUBCLASS[slot or 0] or {}) do filters[#filters + 1] = { classID = ITEM_CLASS_ENH, subClassID = sub } end
@@ -340,8 +398,8 @@ function Shop.Options(c, key)
     local out, seen = {}, {}
     local function add(o) local k = o.itemID or o.name; if k and not seen[k] then seen[k] = true; out[#out + 1] = o end end
     local h = Shop.History(c)
-    if key == "gem" then
-        for id, r in pairs(h.gems) do
+    if key == "gem" or key == "diamond" then
+        for id, r in pairs(GemsOf(h.gems, key == "diamond")) do
             local nm = r.name or (C_Item.GetItemNameByID and R(C_Item.GetItemNameByID, id))
             if type(nm) == "string" then add({ name = nm, itemID = id, src = ("used %dx"):format(r.n or 0) }) end
         end
@@ -351,12 +409,18 @@ function Shop.Options(c, key)
     end
     table.sort(out, function(a, b) return a.name < b.name end)
     local subs = {}
-    if key ~= "gem" then for _, sub in ipairs(Shop.ENH_SUBCLASS[tonumber(key:match("^ench:(%d+)$")) or 0] or {}) do subs[sub] = true end end
+    local gemKey = key == "gem" or key == "diamond"
+    if not gemKey then for _, sub in ipairs(Shop.ENH_SUBCLASS[tonumber(key:match("^ench:(%d+)$")) or 0] or {}) do subs[sub] = true end end
     for _, it in ipairs(Shop.BagItems()) do
-        local fits = (key == "gem" and it.classID == ITEM_CLASS_GEM) or (key ~= "gem" and it.classID == ITEM_CLASS_ENH and subs[it.subclassID])
+        local fits = (gemKey and it.classID == ITEM_CLASS_GEM and (key ~= "diamond" or Shop.IsOneOfGem(it.itemID)))
+            or (not gemKey and it.classID == ITEM_CLASS_ENH and subs[it.subclassID])
         if fits and it.name then add({ name = it.name, itemID = it.itemID, link = it.link, src = ("in bags %d"):format(it.count) }) end
     end
-    if browse.key == key then for _, r in ipairs(browse.results) do add({ name = r.name, itemID = r.itemID, src = "Auction House" }) end end
+    if browse.key == key then
+        for _, r in ipairs(browse.results) do
+            if key ~= "diamond" or Shop.IsOneOfGem(r.itemID) then add({ name = r.name, itemID = r.itemID, src = "Auction House" }) end
+        end
+    end
     return out
 end
 
@@ -384,7 +448,7 @@ function Shop.Build(c)
     -- Missing on your gear
     local miss = { key = "missing", title = "Missing on your gear", rows = {} }
     for _, m in ipairs(Shop.Missing(c)) do
-        local key = (m.kind == "gem") and "gem" or ("ench:" .. SlotKey(m.slot))
+        local key = (m.kind == "gem" or m.kind == "diamond") and m.kind or ("ench:" .. SlotKey(m.slot))
         local row = { key = "miss" .. m.kind .. m.slot, actions = { other = key } }
         if m.kind == "enchant" then
             row.label = m.label .. ": no enchant"
@@ -399,6 +463,20 @@ function Shop.Build(c)
             else
                 row.right, row.tone = "nothing used yet", "mute"
                 row.tip = { ("Your %s has no enchant. XayaUI has not seen an enchant on this slot yet: use Select other, or set a default in the settings."):format(m.label) }
+            end
+        elseif m.kind == "diamond" then
+            row.label = m.label .. ": one-per-character gem (none worn)"
+            local why = "Only one of these gems can be worn at a time, and none is in your sockets, so one empty socket gets it."
+            if m.sug then
+                local have = Shop.Have(m.sug.itemID, m.sug.name, bag)
+                row.label, row.search, row.itemID = ("%s: %s (one per character)"):format(m.label, m.sug.name), m.sug.name, m.sug.itemID
+                row.right, row.tone = ("%d / 1"):format(have), have >= 1 and "good" or "warn"
+                row.actions.add = { name = m.sug.name, itemID = m.sug.itemID, need = 1, key = key }
+                row.tip = { why, ("Suggested: %s (%s)."):format(m.sug.name, m.sug.src == "picked" and "picked for now" or ("you used it " .. (m.sug.count or 1) .. "x")),
+                    "Click the name: the Auction House searches for it when it is open." }
+            else
+                row.right, row.tone = "none seen yet", "warn"
+                row.tip = { why, "XayaUI has not seen one in your sockets yet: use Select other (your bags, or the Auction House when it is open)." }
             end
         else
             local need = m.count
@@ -431,7 +509,15 @@ function Shop.Build(c)
     secs[#secs + 1] = buy
     -- Tracked recipes
     for _, rec in ipairs(Shop.Recipes()) do
-        local s = { key = "rec" .. rec.recipeID .. (rec.recraft and "r" or ""), title = rec.name, rows = {}, recipeID = rec.recipeID }
+        local s = { key = "rec" .. rec.recipeID .. (rec.recraft and "r" or ""), title = rec.name, rows = {}, recipeID = rec.recipeID,
+            clear = { recipeID = rec.recipeID, recraft = rec.recraft } }
+        local complete = #rec.lines > 0
+        for _, l in ipairs(rec.lines) do if not l.done then complete = false end end
+        if not complete then asked[s.key] = nil
+        elseif asked[s.key] ~= "keep" then
+            s.rows[1] = { key = s.key .. ":ask", label = "All reagents are in your bags. Stop tracking it?", tone = "good", note = true,
+                actions = { stop = { recipeID = rec.recipeID, recraft = rec.recraft }, keep = s.key } }
+        end
         for j, l in ipairs(rec.lines) do
             s.rows[#s.rows + 1] = { key = s.key .. ":" .. j, label = l.name, search = l.itemID and l.name or nil, itemID = l.itemID,
                 right = ("%d / %d"):format(l.have, l.need), tone = l.done and "good" or nil, done = l.done,
@@ -550,7 +636,11 @@ function Shop.Render()
     local rowH = size + 6
     for _, sec in ipairs(Shop.Build(c)) do
         if y > 0 then y = y + 6 end
-        Place(FS(), 0, y, W, size + 1, sec.title, cLabel)
+        Place(FS(), 0, y, sec.clear and (W - 22) or W, size + 1, sec.title, cLabel)
+        if sec.clear then
+            local cl = sec.clear
+            SmallButton(W - 18, y, 18, size + 2, "x", "Stop tracking this recipe (Blizzard's tracker lets it go too).", function() Shop.Untrack(cl.recipeID, cl.recraft); Shop.Render() end)
+        end
         local rule = panel.rules[sec.key]
         if not rule then rule = content:CreateTexture(nil, "ARTWORK"); panel.rules[sec.key] = rule end
         rule:ClearAllPoints(); rule:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -(y + size + 3)); rule:SetSize(W, 1)
@@ -558,6 +648,13 @@ function Shop.Render()
         y = y + size + 6
         for _, r in ipairs(sec.rows) do
             local right = W
+            if r.actions and r.actions.stop then
+                local st, key = r.actions.stop, r.actions.keep
+                SmallButton(right - BTN_W, y, BTN_W, rowH - 2, "Keep", "Keep tracking it (not asked again until a reagent is short again).", function() asked[key] = "keep"; Shop.Render() end, r)
+                right = right - BTN_W - 4
+                SmallButton(right - BTN_W, y, BTN_W, rowH - 2, "Stop", "Stop tracking this recipe (Blizzard's tracker lets it go too).", function() Shop.Untrack(st.recipeID, st.recraft); asked[key] = nil; Shop.Render() end, r)
+                right = right - BTN_W - 4
+            end
             if r.actions and r.actions.remove then
                 local i = r.actions.remove
                 SmallButton(right - 18, y, 18, rowH - 2, "x", "Remove from the list", function() Shop.RemoveToBuy(c, i); Shop.Render() end, r)
@@ -575,7 +672,7 @@ function Shop.Render()
             end
             local rw = r.right and 54 or 0
             if r.right then Place(FS(), right - rw, y + 2, rw, size - 1, r.right, Tone(r.tone, cText), "RIGHT"); right = right - rw - 4 end
-            local col = r.note and Tone("mute") or (r.done and Tone("mute") or cText)
+            local col = r.note and Tone(r.tone or "mute", cText) or (r.done and Tone("mute") or cText)
             Place(FS(), 4, y + 2, math.max(20, right - 4), size, (r.done and "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t " or "") .. tostring(r.label), col)
             if not r.note then
                 local nb = Btn()   -- the name's click area
@@ -617,7 +714,7 @@ function OpenPopup(key, anchor)
     popup:ClearAllPoints(); popup:SetPoint("TOPLEFT", panel, "TOPRIGHT", 4, 0)
     local bgc = TC("xui-window", "bg", { 0.04, 0.04, 0.06, 1 }); popup.bg:SetColorTexture(bgc[1], bgc[2], bgc[3], 0.97)
     local slot = tonumber(key:match("^ench:(%d+)$"))
-    popup.title:SetText(slot and ("Other enchants: " .. CM.SlotLabel(slot)) or "Other gems")
+    popup.title:SetText(slot and ("Other enchants: " .. CM.SlotLabel(slot)) or (key == "diamond" and "One-per-character gems" or "Other gems"))
     local opts = Shop.Options(c, key)
     local y = 32
     for i, o in ipairs(opts) do
@@ -647,6 +744,7 @@ function OpenPopup(key, anchor)
             picks[key] = nil
             Shop.Render()
         end)
+        r.def:SetShown(key ~= "diamond")   -- (one gem default, C10: the one-per-character gem follows your picks and what you used)
         r:Show()
         y = y + 20
     end
@@ -709,12 +807,19 @@ end
 -- Blizzard's Professions section restyled (S3): after each layout the tracker's own lines are recoloured in the theme. A post-hook
 -- (hooksecurefunc) on the module's EndLayout; Blizzard's code runs unchanged. Off: nothing is recoloured, and Blizzard's next layout
 -- puts its own colours back.
+-- Built for the whole objective tracker (C8, Xaya 2026-11-06: "For now colors only but build with the awareness the whole tracking
+-- container will be treated with restyling soon"): RestyleModule works on any section of Blizzard's objective tracker (each one is a
+-- module with Header, EnumerateActiveBlocks, a block's ForEachUsedLine and EndLayout: Blizzard_ObjectiveTracker), and
+-- Shop.TRACKER_MODULES says which sections are restyled and which switch each follows. Only the Professions section is in it now; the
+-- objective pane reskin (RM-OBJECTIVES) adds the others there, with their own switch, without a second copy of this code.
 -------------------------------------------------------------------------------
-local trackerHooked = false
-local function RestyleTracker()
-    local c = Cfg()
-    local mod = _G.ProfessionsRecipeTracker
-    if not (On(c) and c.tracker and type(mod) == "table") then return end
+Shop.TRACKER_MODULES = {
+    { global = "ProfessionsRecipeTracker", switch = "tracker" },   -- Blizzard_ProfessionsRecipeTracker.lua
+}
+local hookedModules = {}
+local function ModuleOn(c, m) return On(c) and c[m.switch] == true end
+local function RestyleModule(mod)
+    if type(mod) ~= "table" then return end
     local label = TC("xui-label", "text", { 1, 0.82, 0, 1 })
     local text = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
     local muted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
@@ -728,7 +833,7 @@ local function RestyleTracker()
             if block.HeaderText and block.HeaderText.SetTextColor then block.HeaderText:SetTextColor(text[1], text[2], text[3], 1) end
             if block.ForEachUsedLine then
                 block:ForEachUsedLine(function(line)
-                    local met = line.Icon and line.Icon.IsShown and line.Icon:IsShown()
+                    local met = line.Icon and line.Icon.IsShown and line.Icon:IsShown()   -- the tick a finished line shows
                     local col = met and muted or text
                     if line.Text and line.Text.SetTextColor then line.Text:SetTextColor(col[1], col[2], col[3], 1) end
                 end)
@@ -736,15 +841,23 @@ local function RestyleTracker()
         end)
     end
 end
+Shop.RestyleModule = RestyleModule
+local function RestyleTracker()
+    local c = Cfg()
+    for _, m in ipairs(Shop.TRACKER_MODULES) do if ModuleOn(c, m) then RestyleModule(_G[m.global]) end end
+end
 Shop.RestyleTracker = RestyleTracker
 local function HookTracker()
-    if trackerHooked then return end
-    local mod = _G.ProfessionsRecipeTracker
-    if type(mod) ~= "table" or type(mod.EndLayout) ~= "function" or type(hooksecurefunc) ~= "function" then return end
-    hooksecurefunc(mod, "EndLayout", function() RestyleTracker() end)
-    trackerHooked = true
+    if type(hooksecurefunc) ~= "function" then return end
+    for _, m in ipairs(Shop.TRACKER_MODULES) do
+        local mod = _G[m.global]
+        if not hookedModules[m.global] and type(mod) == "table" and type(mod.EndLayout) == "function" then
+            hooksecurefunc(mod, "EndLayout", function(self) if ModuleOn(Cfg(), m) then RestyleModule(self) end end)
+            hookedModules[m.global] = true
+        end
+    end
 end
-function Shop.TrackerHooked() return trackerHooked end
+function Shop.TrackerHooked() return hookedModules.ProfessionsRecipeTracker == true end
 
 -------------------------------------------------------------------------------
 -- On / off (V14: nothing exists while off)
@@ -862,7 +975,7 @@ ns.RegisterCommand("shop", function(arg)
         if not c then return end
         ns.Print(("Shopping List: %s%s; panel %s; Blizzard's list restyled %s; %d to buy; tracker hooked %s."):format(c.enabled and "on" or "off",
             ns.ReskinTabOn() and "" or " (All reskins is off in the Blizzard UI Reskin tab, so it does not show)",
-            c.panel and "on" or "off", c.tracker and "on" or "off", #c.buy, trackerHooked and "yes" or "no"))
+            c.panel and "on" or "off", c.tracker and "on" or "off", #c.buy, Shop.TrackerHooked() and "yes" or "no"))
         return
     end
     Shop.Toggle()

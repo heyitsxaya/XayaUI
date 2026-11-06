@@ -52,3 +52,32 @@ verbatim; the objective pane reskin is the new row RM-OBJECTIVES.
   lua_pitfalls (81 files): 0 failed.
 
 - 2026-11-06 04:25 UTC: relabelled QoL 0.7.25 -> 0.7.29 (main reached 0.7.27 with S1's landings; S1's next bundle is 0.7.28). Labels only.
+
+## Her answers of 2026-11-06 (C1-C12), and what changed
+- C1, C2, C4, C5, C6, C7, C11: confirmed as built.
+- **C8** "For now colors only but build with the awareness the whole tracking container will be treated with restyling soon": the
+  restyle is now one function for any section of the objective tracker (`Shop.RestyleModule`), driven by the list
+  `Shop.TRACKER_MODULES`. Only the Professions section is in it, with its own switch. The objective pane reskin (RM-OBJECTIVES) adds
+  sections there. Test: the same function restyles a quest-shaped section without new code.
+- **C9** "Stay dimmed, allow user to "clear" manually — prompt user after all reagents are found in bag if they want to stop
+  tracking":
+  - each tracked recipe's title has an x (`Shop.Untrack` -> `C_TradeSkillUI.SetRecipeTracked(id, false, isRecraft)`,
+    namespaces.md:4957, not protected);
+  - once every required reagent is in the bags, a question row with Stop / Keep sits at the top of the recipe;
+  - Keep is remembered for the session until a reagent is short again.
+  - INFERENCE: the question shows in XayaUI's panel only; with the panel switched off (Blizzard's list restyle alone) nothing asks.
+- **C10** "1 as long as prismatic / diamond is always considered (only one is ever possible to equip so its missing is always a
+  default recommendation)":
+  - Which gems are one-per-character is read from the game: `C_Item.GetItemUniquenessByID` (namespaces.md:2797), unique with a limit
+    of 1. No names or IDs ship.
+  - The client reference data (build 12.1.5.70783, read here, not shipped) lists this expansion's Eversong Diamonds as a gem kind of
+    their own (subclass 9, epic). That they carry a limit of 1 is an INFERENCE until seen in game (QA E2h).
+  - When none is worn, the first empty socket asks for one: the one picked this session, else the most used. It has no default of its
+    own: her "1" is the one gem default. The other sockets ask for the normal gem, whose most-used choice now leaves the
+    one-per-character gems out.
+  - Select other for it lists only such gems: history, bags, and the Auction House's gems filtered.
+- **C12** "Tick box on the tab itself": see `debug-log/2026-11-06-0035-...` (Options).
+- **C3** "1 but let's see what's possible to pull from profession api details + auction house listings to see if we can compile a
+  complete list of current-expansion / current gear enchantments from in-game calls (developer mode only)": name matching stays.
+  The research is in the requirements doc, row S12 (a proposal, not built).
+- Tests: `shopping_list_run` 66 checks (19 new for C8, C9, C10), 0 failed. QA E2g, E2h.

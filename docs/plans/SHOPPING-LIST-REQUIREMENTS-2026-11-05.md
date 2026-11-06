@@ -48,6 +48,10 @@ marked OPEN is built, tested and checked against this list (the rule Xaya set fo
 | S9 | "Clicking the name of the gem or item in the pane should autopopulate the auction house search if auction house pane is open" | built (QoL 0.7.29, branch; tests pass, not run in game: QA E2c) | Every item / reagent / suggestion name in the panel: a click puts it in the Auction House search and searches when the Auction House is open (on its Buy tab); otherwise a click shows the item's tooltip and shift-click links it as usual. |
 | S10 | "Show + add to list" | built (QoL 0.7.29, branch; tests pass, not run in game: QA E2c) | "+ Add" on a suggestion puts it in the panel's "To buy" list (name, need, have from your bags); removable; done when you have enough. |
 | S11 | "we're also going to reskin the objective pane" | PLANNED (roadmap RM-OBJECTIVES) | The whole objective tracker in the theme; the Professions section (S3) is its first part. |
+| S12 | C3, 2026-11-06: "let's see what's possible to pull from profession api details + auction house listings to see if we can compile a complete list of current-expansion / current gear enchantments from in-game calls (developer mode only)" | RESEARCHED, proposal (not built; needs her yes, V16) | See "S12: what the game can give" below. |
+| S13 | C9: "Stay dimmed, allow user to "clear" manually — prompt user after all reagents are found in bag if they want to stop tracking" | built (QoL 0.7.29, branch; tests pass, not run in game: QA E2g) | An x on each recipe's title stops tracking it; once every reagent is in the bags, "All reagents are in your bags. Stop tracking it?" with Stop / Keep. |
+| S14 | C10: "1 as long as prismatic / diamond is always considered (only one is ever possible to equip so its missing is always a default recommendation)" | built (QoL 0.7.29, branch; tests pass, not run in game: QA E2h) | The one-per-character gem (unique-equipped, limit 1, read from the game) is asked for on the first empty socket when none is worn. |
+| S15 | C8: "For now colors only but build with the awareness the whole tracking container will be treated with restyling soon" | built (QoL 0.7.29, branch; tests pass) | One restyle for any objective-tracker section (`Shop.TRACKER_MODULES`), Professions only for now. |
 
 ## Decisions made by Claude (labelled; she can overrule)
 - Per character (her answer did not name per-spec; per character was the recommended option and she chose the default-plus-choice
@@ -56,3 +60,38 @@ marked OPEN is built, tested and checked against this list (the rule Xaya set fo
   "reskin" like the Character Pane.
 - The enchant to buy is found by its name (the enchant's tooltip name, e.g. "Amani Mastery", matches its scroll "Enchant Ring - Amani
   Mastery"): the bag count and the Auction House search use that name. INFERENCE until seen in game; said in its hover.
+
+## Her answers to C1-C12 (2026-11-06, verbatim in docs/process/REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md, R64)
+C1, C2, C4, C5, C6, C7 and C11 confirmed as built. C3, C8, C9, C10 and C12 changed or added work: rows S12-S15 above, and the Reskin
+tab's switch on the tab itself (C12).
+
+## S12: what the game can give for a complete list of this expansion's enchants (research, 2026-11-06)
+Sources: the repo's API reference (`docs/reference/api`, build 12.1.5) and Blizzard's UI code as already cited in this doc.
+Nothing here was tried in game.
+
+- **From Enchanting itself:**
+  - With an Enchanting window open (your own, or a linked one), `C_TradeSkillUI.GetAllRecipeIDs` lists every recipe of that
+    profession, learned or not. It is "not in the generated documentation" (namespaces.md:4839): it exists, but its exact return
+    needs an in-game check.
+  - `C_TradeSkillUI.GetRecipeInfo(id)` gives name, categoryID, learned (namespaces.md:4887). `GetChildProfessionInfos()` /
+    `GetProfessionChildSkillLineID()` give the expansion's own skill line ("Midnight Enchanting"), which keeps the list to this
+    expansion.
+  - `GetRecipeOutputItemData(id)` gives the scroll's itemID (namespaces.md:4894). `C_Item.GetItemInfo(scroll)` gives classID 8 and
+    the subclass (= the slot, the numbers this module already ships) plus expansionID.
+  - Result: every enchant this expansion's Enchanting can make, per slot, with its scroll. Each scroll is an exact item ID, so
+    counting "have" no longer needs the name match.
+  - Limit: only while a profession window is open. For a character without Enchanting, it needs another player's linked profession.
+    INFERENCE: a linked window lists the same recipes.
+- **From the Auction House:** the browse this module already sends (class 8 + slot subclass; gems class 3) returns every scroll / gem
+  listed right now. Each item's expansionID (`C_Item.GetItemInfo`) keeps this expansion's. It shows what is sold, not everything that
+  exists: a scroll nobody lists is missing.
+- **Gems:** the same two routes, with Jewelcrafting (class 3).
+- **"Developer mode only":** a capture command (for example `/xuidev enchants`) writes what it read to saved data. The list is built
+  from it offline and checked, and ships only after her yes (her terms answer of 2026-11-05: "option a" = data built from in-game
+  reads, a future enhancement). Dev Assist (`XayaUI_DevAssist/`) belongs to another session (PR #386): the capture goes there by
+  agreement, or into this module behind a developer switch.
+- **Proposal for her yes:**
+  1. a Dev Assist capture of Enchanting + Jewelcrafting recipes (when their window is open) and of the Auction House's lists;
+  2. a script that turns the capture into a per-slot list of scroll / gem item IDs for this expansion;
+  3. the Shopping List uses that list for "have" (exact IDs) and for Select other ("every enchant for this slot"), falling back to
+     the name match when the list has no entry.

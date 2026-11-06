@@ -2,12 +2,12 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-a6a86cf0399aaf41cc2808d4f9a76106  QA-CHECKLIST.md
+cd9d123667d3437755e5a74bd8b6d836  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 b3cf84a4b95bfaaea9720d1309900428  ROADMAP.md
 5bfe2afe526ca0b3e5374a6393067959  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-fd7256ae07d8e59e408d0c9ff8a8d2b7  USER-GUIDE.md
+96ce89e7064a622fb72e5cbec248589d  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 7bc5ab6899bc167c8fc5f3db72f3c9ff  XayaUI/AuraSound.lua
@@ -255,7 +255,7 @@ adf8cff0618432b3e10ee3d3091c09c1  XayaUI_QoL/Media/Cursor/HLRing_19.tga
 f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 08343552c22eb2676c663b0576e218c3  XayaUI_QoL/Media/Cursor/RingThick.tga
 054aa82635cfab8851fded7704d8f102  XayaUI_QoL/Media/Cursor/Sparkle.tga
-2e7377fb05152f61d3d095a0fefaa7ee  XayaUI_QoL/ShoppingList.lua
+1f3643426c57e7924e9c459de3c7034a  XayaUI_QoL/ShoppingList.lua
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
 549d5632bbd9bbe3c5f510790bc754e1  XayaUI_QoL/XayaUI_QoL.toc
 f7f13a23309ba36e18a76d7f819e0321  XayaUI_Reskin/GameMenuSkin.lua
@@ -484,7 +484,7 @@ a74c9d31e5676786851ceffb82455e9e  debug-log/2026-11-05-2052-stat-calculator-wind
 0c93fe0cae7e2e8d9c550a1497cd4331  debug-log/2026-11-05-2122-cooldown-manager-warnings-core-0.6.48-options-0.6.43.md
 c54bd9d2d6be53369953c26744e65136  debug-log/2026-11-05-2141-history-whisper-tabs-by-realm-chat-0.6.16.md
 49b6d67ac86ded58efbb6ff030ac02ff  debug-log/2026-11-05-2154-stat-calculator-spells-compare-qol-0.7.24.md
-465a7d42562af513d82843dde6512b46  debug-log/2026-11-05-2158-shopping-list-qol-0.7.29.md
+e3e73df2fa7b3cbaace54a74357d815e  debug-log/2026-11-05-2158-shopping-list-qol-0.7.29.md
 65e98302446bfa395c9a204c4d1d1131  debug-log/2026-11-05-2356-request-log-protocol-and-load-cost-measurements.md
 ef2aa95835015eb192e93bbbf709ddb0  debug-log/2026-11-05-2359-harness-enum-values-from-docs.md
 7783c66365647d780c7c4fe802eea40e  debug-log/2026-11-06-0032-tooltip-aura-source-and-icon-bonus-0.6.13.md
@@ -506,7 +506,7 @@ a2e49515e283e72fc94f220e8148b746  docs/issue-screenshots/toolkit-window-resize.p
 e80a5c2d309d09f70935f65abd599ec3  docs/plans/IDEA-UPGRADE-OPTIONS-2026-11-05.md
 633d429f2013d7a9d9bf59092db3bb6d  docs/plans/INSTANCE-CAPTURE-2026-11-04.md
 9a907df3961024106bb6ae03b230abf3  docs/plans/REFERENCE-SCREENS-AND-FEASIBILITY-2026-11-04.md
-3a9cbedc27de996d2ffbb7aa73914118  docs/plans/SHOPPING-LIST-REQUIREMENTS-2026-11-05.md
+bc05267f980270ee0ac3deb864f7088f  docs/plans/SHOPPING-LIST-REQUIREMENTS-2026-11-05.md
 0d9591958c2388041894092b0921d397  docs/plans/STAT-CALCULATOR-REDESIGN-2026-11-04.md
 08487822040dfba940699388dc7a08e8  docs/plans/STAT-CALCULATOR-REQUIREMENTS-2026-11-04.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
@@ -661,7 +661,7 @@ c41c52d02e5112eb8c21794ea85c0b18  tests/recycle_bin_run.py
 7122b20e5206f3b97c395d01daa7837a  tests/rule_search_run.py
 04c191fed34aa1a531e52ce2d67d48a7  tests/rules_subtabs_compact_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py
-cef78910852293ef68894c9cbb356fbb  tests/shopping_list_run.py
+43f83babdbab2e61eaf78a6a083539bb  tests/shopping_list_run.py
 033cc3815741ca63d85f3a67a2bd0409  tests/sidebar_name_room_run.py
 736ed0b9c01d9793415156a355cfc9ab  tests/sidebar_switches_run.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
