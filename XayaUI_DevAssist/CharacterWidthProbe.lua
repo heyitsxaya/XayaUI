@@ -18,8 +18,9 @@
 -- the game raises (events.md:34-35: isTainted, function), which is what taint would show as. "off" puts the window back through
 -- Blizzard's own UpdateSize and restores the model and the slot. A /reload clears anything left.
 -------------------------------------------------------------------------------
-local _, ns = ...
-ns = _G.XayaUI_NS or ns
+-- (Dev Assist 0.7.5: moved here from XayaUI_QoL; REQUEST-LOG #81. Registered as /xui debug widthprobe by CoreDebug.lua.)
+local ns = rawget(_G, "XayaUI_NS")
+if type(ns) ~= "table" then return end
 
 local probe = { on = false, blocked = 0 }
 ns.CharWidthProbe = probe   -- for the tests
@@ -53,7 +54,8 @@ function ns.CharWidthProbe_Run(arg)
     end
     if probe.on then Say("already running; /xui debug widthprobe off first."); return end
     -- (QoL 0.7.22) the Character Reskin's "Wider window" is built on what this probe tested; the two would widen the window twice
-    if ns.CharReskin_WideOn and ns.CharReskin_WideOn() then
+    local wide = ns.Service and ns.Service("characterReskin")   -- (XayaUI QoL's, through the service list)
+    if wide and wide.WideOn and wide.WideOn() then
         Say("the Character Reskin's wider window is on (Blizzard UI Reskin > Character Pane); turn it off there first."); return
     end
     if InCombatLockdown and InCombatLockdown() then Say("not in combat: try again out of combat."); return end

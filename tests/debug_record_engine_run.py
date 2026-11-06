@@ -2,7 +2,7 @@
 cpu friendly (perhaps discrete functionality toggles ...)", "configurable to cover every single thing you need to properly debug
 something from game-side").
 
-Runs XayaUI's real core files through the real engine step (Engine.lua Step) against stand-in game calls, with Advanced Debugging on,
+Runs XayaUI's real core files (and, since core 0.6.56, XayaUI Dev Assist's DevRecord.lua, where these lines are kept) through the real engine step (Engine.lua Step) against stand-in game calls, with Advanced Debugging on,
 and checks what lands in the record: rules firing and clearing, snapshots, sounds (which sound, channel, the game's answer), trigger
 detail for a chosen rule (once per change), displays shown and hidden, and that an aura whose answer did not change costs no string work.
 Spell / aura IDs are stand-ins. Run: python3 tests/debug_record_engine_run.py   (needs: pip install lupa)"""
@@ -41,6 +41,13 @@ for f in toc:
         load(open(os.path.join(ROOT, "XayaUI", f), encoding="utf-8").read(), f, ns)
     except Exception as e:
         failed.append((f, str(e)[:200]))
+# (core 0.6.56, REQUEST-LOG #82: these kinds of line are XayaUI Dev Assist's; it is loaded as the game loads it, after XayaUI, finding
+# XayaUI by its shared namespace. Without it no such line exists: tests/devassist_debug_tools_run.py.)
+L.execute("XayaUI_NS = NS")
+try:
+    load(open(os.path.join(ROOT, "XayaUI_DevAssist", "DevRecord.lua"), encoding="utf-8").read(), "XayaUI_DevAssist/DevRecord.lua", ns)
+except Exception as e:
+    failed.append(("XayaUI_DevAssist/DevRecord.lua", str(e)[:200]))
 
 fails = []
 def check(name, ok, extra=""):

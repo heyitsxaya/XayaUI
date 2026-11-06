@@ -1007,6 +1007,8 @@ HookWide = function()
     end
 end
 function ns.CharReskin_WideOn() return (wide.applied or wide.moved) and true or false end
+-- (QoL 0.7.33) XayaUI Dev Assist's /xui debug widthprobe asks this (it refuses while the wider window is on), through the service list
+ns.Provide("characterReskin", { WideOn = function() return ns.CharReskin_WideOn() end })
 
 -------------------------------------------------------------------------------
 -- The stat list (Blizzard's CharacterStatsPane)

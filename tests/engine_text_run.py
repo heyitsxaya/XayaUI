@@ -159,6 +159,11 @@ load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name)
 ns = L.eval("{}"); L.globals().NS = ns
 for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI/Compat.lua", "XayaUI/Conditions.lua", "XayaUI/Timing.lua", "XayaUI/Triggers.lua", "XayaUI/Outcomes.lua", "XayaUI/Cues.lua", "XayaUI/Actions.lua", "XayaUI/Sound.lua", "XayaUI/Visual.lua", "XayaUI/Engine.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
+# (core 0.6.56, REQUEST-LOG #81: /xui debug timing, the coverage report, is XayaUI Dev Assist's: the real function from
+# XayaUI_DevAssist/CoreDebug.lua, set where the test calls it)
+_cd = open(os.path.join(ROOT, "XayaUI_DevAssist", "CoreDebug.lua"), encoding="utf-8").read()
+_a = _cd.index("local TIME_REFS"); _b = _cd.index("local function TimingReport()"); _c = _cd.index("\nend\n", _b) + 5
+L.execute("local ns = NS\n" + _cd[_a:_c] + "\nNS.Timing.Report = TimingReport\n")
 L.execute(r'''
 local ns = NS
 ns.Print = function() end

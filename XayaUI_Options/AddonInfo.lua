@@ -1,5 +1,7 @@
 -------------------------------------------------------------------------------
--- AddonInfo.lua : the "Addon Info" top-level tab (version, last-updated date, credits).
+-- AddonInfo.lua : what the version pane's Info tab shows on Version info and Credits + Acknowledgements (InfoPane.lua draws it).
+-- Until Options 0.6.56 this was the "Addon Info" page (opened by the version text) and Settings > Acknowledgements; Xaya 2026-11-06:
+-- "Both move into the pane" (Addon Info -> Info > Version info; Acknowledgements -> Info > Credits + Acknowledgements, "Move as-is").
 --
 -- Version  = "## Version" in XayaUI.toc (read live, so it can never disagree with the toc).
 -- Updated  = "## X-Date" in XayaUI.toc (YYYY-MM-DD). The game has no built-in "last updated" field: bump X-Date by hand
@@ -19,7 +21,6 @@ local function Meta(field)
     return nil
 end
 
-local PURPLE, GREY, END = "|cffcc80ff", "|cff999999", "|r"   -- PURPLE = the same purple as the selected-tab outline
 local REPO_URL = "https://github.com/heyitsxaya/XayaUI"
 
 -- WHEN QoL ELEMENTS COMES BACK (QoL.lua, CursorTracker.lua, CursorReminders.lua, Bars.lua; see .gitignore): add this back to
@@ -77,84 +78,31 @@ local CREDITS = {
     } },
 }
 
--- One credit = one square box of full-width rows (title, who, note, then one row per link). No columns.
-local function AddCredit(body, j, e)
-    local rows = {
-        t = { type = "description", order = 1, width = "full", fontSize = "medium", name = PURPLE .. e.name .. END },
-        w = { type = "description", order = 2, width = "full", fontSize = "medium", name = e.who },
-    }
-    if e.note and e.note ~= "" then
-        rows.n = { type = "description", order = 3, width = "full", fontSize = "medium", name = GREY .. e.note .. END }
-    end
-    for k, l in ipairs(e.links or {}) do
-        rows["l" .. k] = { type = "input", order = 10 + k, width = "full", name = l[1],
-            desc = "Click the box, press Ctrl+A, then Ctrl+C to copy this link.",
-            get = function() return l[2] end, set = function() end }
-    end
-    body["e" .. j] = { type = "group", inline = true, name = "", order = j * 2, arg = { xuiBox = true }, args = rows }
-    body["g" .. j] = { type = "description", order = j * 2 + 1, width = "full", name = " ", fontSize = "small" }
-end
-
--- Collapsible category: header with the arrow on the RIGHT (drawn by Skin.lua from arg.xuiArrow), open by default, session-only.
-local shut = {}
-local function Pane(id, title, count, sub, order, entries)
-    local body = {}
-    body.sub = { type = "description", order = 0, width = "full", fontSize = "medium", name = GREY .. sub .. END }
-    for j, e in ipairs(entries) do AddCredit(body, j, e) end
-    return { type = "group", inline = true, name = "", order = order, args = {
-        hdr = { type = "execute", order = 1, width = "full",
-            arg = { xuiLeft = true, xuiArrow = function() return not shut[id] end },
-            name = function() return PURPLE .. title .. END .. "   " .. GREY .. "(" .. count .. ")" .. END end,
-            desc = "Expand or collapse this section. Collapsing never changes any setting.",
-            func = function()
-                shut[id] = (not shut[id]) or nil
-                if ns.UI and ns.UI.Notify then ns.UI.Notify() end
-            end },
-        body = { type = "group", inline = true, name = "", order = 2, arg = { xuiFlat = true },
-            hidden = function() return shut[id] and true or false end, args = body },
-    } }
-end
-
--- Credits and attribution, on their own page under Settings (Xaya 2026-11-04: "acknowledgements still needs to be put into
--- settings into its own tab"); Addon Info points there.
-function ns.BuildAcknowledgements()
-    local args = {
-        creditsH1 = { type = "description", order = 10, width = "full", fontSize = "large", arg = { xuiH1 = 26 },
-            name = PURPLE .. "Credits and attribution" .. END },
-        creditsRule = { type = "header", order = 10.5, name = "" },
-        creditsIntro = { type = "description", order = 11, width = "full", fontSize = "medium",
-            name = "XayaUI stands on other people's work. Everything below is credited as precisely as this project's own records allow; where a name is not on record, that is stated rather than guessed." },
+-- Info > Credits + Acknowledgements, as blocks for InfoPane.lua: the same heading, intro, collapsible sections (title, count, arrow
+-- on the right, open by default, session-only) and one square box per credit (title, who, note, one copyable box per link) as the
+-- Settings > Acknowledgements page had (Xaya 2026-11-06: "Move as-is for now"; the B6 styling proposal stays a separate decision).
+function ns.CreditsBlocks()
+    local out = {
+        { "h1", "Credits and attribution" },
+        { "rule" },
+        { "p", "XayaUI stands on other people's work. Everything below is credited as precisely as this project's own records allow; where a name is not on record, that is stated rather than guessed." },
     }
     for i, sec in ipairs(CREDITS) do
-        args["sec" .. i] = Pane("info" .. i, sec.title, #sec.entries, sec.sub, 20 + i * 10, sec.entries)
+        out[#out + 1] = { "section", "info" .. i, sec.title, #sec.entries, sec.sub, sec.entries }
     end
-    return { type = "group", name = "Acknowledgements", order = 9,
-        args = { page = { type = "group", inline = true, name = "", order = 1, arg = { xuiFlat = true }, args = args } } }
+    return out
 end
 
-function ns.BuildAddonInfo()
-    local args = {
-        intro = { type = "description", order = 0, width = "full", fontSize = "large",
-            name = function()
-                return PURPLE .. "XayaUI" .. END .. "   v" .. (Meta("Version") or "?")
-            end },
-        updated = { type = "description", order = 1, width = "full", fontSize = "medium",
-            name = function()
-                return PURPLE .. "Last updated:" .. END .. " " .. (Meta("X-Date") or "unknown (add '## X-Date: YYYY-MM-DD' to XayaUI.toc)")
-            end },
-        author = { type = "description", order = 2, width = "full", fontSize = "medium",
-            name = function() return PURPLE .. "Author:" .. END .. " " .. (Meta("Author") or "Xaya") end },
-        license = { type = "description", order = 3, width = "full", fontSize = "medium",
-            name = PURPLE .. "License:" .. END .. " GPL-3.0-or-later for XayaUI's own code. Bundled libraries and any media keep their own licenses (listed in Settings > Acknowledgements)." },
-        cmds = { type = "description", order = 4, width = "full", fontSize = "medium",
-            name = PURPLE .. "Commands:" .. END .. " /xui or /xayaui" },
-        repo = { type = "input", order = 5, width = "full", name = "Source code (click the box, Ctrl+A, Ctrl+C)",
-            get = function() return REPO_URL end, set = function() end },
-        howto = { type = "description", order = 6, width = "full", fontSize = "small",
-            name = GREY .. "Version and date are read from XayaUI.toc (## Version and ## X-Date). Update both when you ship a change." .. END },
-        creditsWhere = { type = "description", order = 10, width = "full", fontSize = "medium",
-            name = PURPLE .. "Credits and attribution:" .. END .. " Settings > Acknowledgements." },
+-- Info > Version info: what the Addon Info page showed, with the credits line pointing to its new place.
+function ns.VersionInfoBlocks()
+    return {
+        { "h1", "XayaUI   v" .. (Meta("Version") or "?") },
+        { "kv", "Last updated:", Meta("X-Date") or "unknown (add '## X-Date: YYYY-MM-DD' to XayaUI.toc)" },
+        { "kv", "Author:", Meta("Author") or "Xaya" },
+        { "kv", "License:", "GPL-3.0-or-later for XayaUI's own code. Bundled libraries and any media keep their own licenses (listed in Info > Credits + Acknowledgements)." },
+        { "kv", "Commands:", "/xui or /xayaui" },
+        { "input", "Source code (click the box, Ctrl+A, Ctrl+C)", REPO_URL },
+        { "small", "Version and date are read from XayaUI.toc (## Version and ## X-Date). Update both when you ship a change." },
+        { "kv", "Credits and attribution:", "Info > Credits + Acknowledgements." },
     }
-    return { type = "group", name = "Addon Info", order = 6.5,
-        args = { page = { type = "group", inline = true, name = "", order = 1, arg = { xuiFlat = true }, args = args } } }
 end

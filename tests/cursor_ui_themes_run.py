@@ -2,7 +2,7 @@
 """Cursor trail colors <-> UI themes (core 0.6.46, QoL 0.7.17). Xaya, 2026-11-05: "map cursor theme colors to UI themes and provide
 them as theming options as well".
 Loads the real addons in the stand-in game (tests/harness, Lua 5.1 via lupa) and checks what the player sees:
-  1. Settings > Theme lists one "Cursor trail: <name>" theme per Gradient Cursor Trail gradient (Theme and Start from lists); picking
+  1. Settings > Theme lists one "<name>" theme (core 0.6.54: no "Cursor trail:" prefix) per Gradient Cursor Trail gradient (Theme and Start from lists); picking
      one gives ns.Theme.cur the colors derived by the documented rule (re-computed here in Python from the gradients as they were in
      CursorTrail.lua at b8017df: parity, V5), every other token keeps the XUI default, and every text token reads at 4.5:1 or better
      (WCAG 2.x contrast, computed here) on the window background and on the backgrounds it is drawn on.
@@ -405,8 +405,8 @@ def evaluate(folders):
     # 1. the Theme page lists the cursor themes, in the gradient order, after the color blind ones and before Custom
     vals, srt = R.get("baseValues") or {}, R.get("baseSorting") or []
     for k in ORDER:
-        check("Theme page lists \"Cursor trail: %s\"" % PRESETS[k][0], vals.get("cursor_" + k) == "Cursor trail: " + PRESETS[k][0], vals.get("cursor_" + k))
-        check("Start from (Custom) lists \"Cursor trail: %s\"" % PRESETS[k][0], (R.get("underValues") or {}).get("cursor_" + k) == "Cursor trail: " + PRESETS[k][0])
+        check("Theme page lists \"%s\" (no \"Cursor trail:\" prefix, core 0.6.54)" % PRESETS[k][0], vals.get("cursor_" + k) == PRESETS[k][0], vals.get("cursor_" + k))
+        check("Start from (Custom) lists \"%s\"" % PRESETS[k][0], (R.get("underValues") or {}).get("cursor_" + k) == PRESETS[k][0])
     want_order = ["default", "class", "light", "colorblind", "protan", "tritan"] + ["cursor_" + k for k in ORDER] + ["custom"]
     check("Theme page order: built-ins, the nine cursor themes in the trail's order, then Custom", srt[:len(want_order)] == want_order, srt)
     check("Start from order ends with the cursor themes", (R.get("underSorting") or [])[-9:] == ["cursor_" + k for k in ORDER], R.get("underSorting"))
@@ -518,7 +518,7 @@ def evaluate(folders):
     fel = palette(PRESETS["fel"][1])
     check("QoL off: the saved Cursor trail: Fel theme resolves to its colors", R2.get("base") == "cursor_fel" and cur2 and all(close(cur2.get(t), fel[t]) for t in fel),
           (R2.get("base"), {t: fmt(cur2.get(t)) for t in ("accent", "label")}))
-    check("QoL off: the Theme page lists the cursor themes", all((R2.get("baseValues") or {}).get("cursor_" + k) == "Cursor trail: " + PRESETS[k][0] for k in ORDER))
+    check("QoL off: the Theme page lists the cursor themes", all((R2.get("baseValues") or {}).get("cursor_" + k) == PRESETS[k][0] for k in ORDER))
     cv = {t: col(v) for t, v in (R2.get("curVapor") or {}).items()}
     vap = palette(PRESETS["vapor"][1])
     check("QoL off: picking Cursor trail: Vaporwave works", cv and all(close(cv.get(t), vap[t]) for t in vap))

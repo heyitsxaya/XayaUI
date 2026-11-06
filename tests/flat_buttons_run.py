@@ -53,6 +53,8 @@ check("the settings addon provides the buttonSkin service", 'ns.Provide("buttonS
 KEEP = {   # file name -> reason the button keeps Blizzard's look
     ("Modules.lua", "btn"): "the 'Open XayaUI' button inside Blizzard's own Settings panel matches that panel",
     ("Options.lua", "c.arrow"): "the window's collapse button pairs with Blizzard's close X in the title ribbon",
+    ("Options.lua", "c.help"): "the window's ? sits beside the collapse button and the close X in the title ribbon, same look (Options 0.6.56)",
+    ("InfoPane.lua", "b"): "the version pane's title-bar ? and collapse buttons (TitleButton) pair with its close X, as in the settings window",
 }
 STYLED = re.compile(r"FlatButton|SkinPlainButton|xuiFlatBtn")
 for path in sorted(glob.glob(os.path.join(ROOT, "XayaUI*", "**", "*.lua"), recursive=True)):

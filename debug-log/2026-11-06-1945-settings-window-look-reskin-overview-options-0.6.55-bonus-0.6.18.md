@@ -29,4 +29,4 @@ Logged 2026-11-06 19:45 UTC. Session 014bN6tV7oStjTuVPEJbytBJ, branch `claude/ui
 - Stand-in limits: the harness's SetNormalFontObject is a no-op, so the font object on the button is not checked, only its font.
 
 ## QA
-B186-B190, F20 (F18 and F19 were taken).
+B186-B198, F20 (F18 and F19 were taken).

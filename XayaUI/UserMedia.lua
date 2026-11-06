@@ -28,17 +28,7 @@ function ns.MergeUserMedia()
     end
 end
 
-function ns.UserMediaReport()
-    local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("XayaUI_Media")) or (IsAddOnLoaded and IsAddOnLoaded("XayaUI_Media"))
-    if not loaded then
-        ns.Print("XayaUI_Media is not loaded. Install the folder Interface\\AddOns\\XayaUI_Media and make sure it is enabled in the AddOns list, then /reload.")
-        return
-    end
-    ns.MergeUserMedia()
-    local m = _G.XayaUI_UserMedia
-    ns.Print(("XayaUI_Media loaded: %d pictures, %d sounds listed in its UserMedia.lua (files themselves are not checked; a missing picture draws blank)."):format(
-        m and #(m.graphics or {}) or 0, m and #(m.sounds or {}) or 0))
-end
+-- (/xui debug media, the report of what XayaUI_Media lists, moved to XayaUI Dev Assist: core 0.6.56, REQUEST-LOG #81)
 
 -- #333: LocalGraphics.lua lists pictures that exist only on Xaya's machine (extracted art, kept out of git), so every other player saw
 -- blank rows in the art picker. Each folder of that list is checked once per session, like the sound list (Sound.lua): two

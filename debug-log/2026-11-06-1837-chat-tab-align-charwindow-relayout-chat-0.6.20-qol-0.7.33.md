@@ -17,7 +17,7 @@ Nothing here has run in the game.
   (stand-in: -2 vs -5 from the tab's centre). Confirmed difference.
 - General's lower name in her screenshot: no cause found. No XayaUI code moves a tab's name; Blizzard's chat code does not call
   PanelTemplates_SelectTab (which lowers a selected tab's text elsewhere); FCFTab_UpdateColors only colours. INFERENCE: an anchor set by
-  something not read here. The fix re-anchors every docked tab's name, so an anchor cause is covered; another cause is not. QA D14 asks
+  something not read here. The fix re-anchors every docked tab's name, so an anchor cause is covered; another cause is not. QA D19 asks
   for `/xui debug chatprobe` if it persists (the probe lists ChatFrame1Tab's anchors).
 - Change: StyleTabs anchors every docked tab's name at the template's place (CENTER 0, -5); a whisper tab (it has `conversationIcon`)
   keeps its left alignment at the same x (24 = Left's right edge + 10) and gets the same height. The game's anchors are saved on the
@@ -42,4 +42,4 @@ Nothing here has run in the game.
   status check fail; pass now. char_reskin 51, char_pane_round 27, char_width_probe 20, reskin_tab 22, reskin_tab_switch 24: all pass.
 
 ## QA
-D14 (chat tabs), E1z83 (character window, and the Size change line that settles the inference).
+D19 (chat tabs), E1z83 (character window, and the Size change line that settles the inference).

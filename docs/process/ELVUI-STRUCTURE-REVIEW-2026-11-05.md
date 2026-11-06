@@ -218,7 +218,7 @@ Written 2026-11-05. Read-only review. Nothing in `/home/user/XayaUI` or in the E
   2026-11-05 (same debug log, §1).
 
 ### B4. Saved settings
-- **One account-wide table, `CueRulesDB`.** Nothing is saved per character (`SESSION-START-SUMMARY.md` §3). "Profile" means the whole
+- **One account-wide table, `CueRulesDB`.** Nothing is saved per character (`docs/SESSION-START-SUMMARY.md` §3). "Profile" means the whole
   addon, and whether that changes is open in #354.
 - **Defaults are written into the saved data** by `Merge` (`XayaUI/Core.lua` 113, 723-746) or by each feature's `Cfg()`. This works
   against V14's "no data built for it" for features that are off (the core 0.6.47 log, item 4, notes it for the minimap).

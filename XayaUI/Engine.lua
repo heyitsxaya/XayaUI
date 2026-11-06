@@ -29,7 +29,8 @@ local function ReportRuleError(rule, rt, err)
     if rt.vErrored then return end
     rt.vErrored = true
     ns.Print("rule '" .. tostring(rule.name) .. "' error (the other rules keep running): " .. tostring(err))
-    if ns.CaptureError then pcall(ns.CaptureError, "XayaUI rule: " .. tostring(err)) end
+    -- (core 0.6.56; REQUEST-LOG #82: recorded with its code, XUI-E010, in the debug report; DebugRecord.lua)
+    if ns.RecordError then pcall(ns.RecordError, "XayaUI rule '" .. tostring(rule.name) .. "': " .. tostring(err), nil, "XayaUI", "XUI-E010") end
 end
 
 -- Actions and sounds run guarded per rule: one failing action can neither stop the step nor block the other rules.
@@ -154,9 +155,16 @@ local function StepPreview(rule, rt, now)
     end
 end
 
-local function StepRule(rule, ctx, now)
+local function StepRule(rule, ctx, now, off)
     local rt = RT(rule)
-    if rule.enabled then StepEnabled(rule, rt, ctx, now) else StepDisabled(rule, rt) end
+    if not off then
+        rt.offDone = nil
+        StepEnabled(rule, rt, ctx, now)
+    else
+        StepDisabled(rule, rt)
+        -- D7: cleaned up once; from then on Step skips it, unless it is being previewed (the step after a preview ends hides it again)
+        rt.offDone = not (ns.IsPreview(rule, "visual") or ns.IsPreview(rule, "sound")) or nil
+    end
     StepPreview(rule, rt, now)
 end
 
@@ -172,9 +180,16 @@ local function Step()
     ns.tickID = (ns.tickID or 0) + 1
     local now = GetTime()
     -- every rule runs on its own: bad data in one can never delay or block the others
+    -- D7 (core 0.6.56): a switched-off rule (or a cue of one) is skipped once it has been cleaned up: no runtime record is made for a rule
+    -- that was never on, and nothing of it runs per step, unless it is previewed
+    local pvV, pvS = ns.previewSets and ns.previewSets.visual, ns.previewSets and ns.previewSets.sound
     for _, rule in ipairs(ns.rules) do
-        local ok, err = pcall(StepRule, rule, ctx, now)
-        if not ok then ReportRuleError(rule, RT(rule), err) end
+        local off = ns.RuleOff(rule)
+        local rt0 = off and ns.runtime[rule]
+        if not off or (rt0 and not rt0.offDone) or (pvV and pvV[rule]) or (pvS and pvS[rule]) then
+            local ok, err = pcall(StepRule, rule, ctx, now, off)
+            if not ok then ReportRuleError(rule, RT(rule), err) end
+        end
     end
     if ns.Bars_Update then
         local pb = perf.on and debugprofilestop()
@@ -349,7 +364,7 @@ local function SafeStep()
         if err ~= lastStepErr then
             lastStepErr = err
             if ns.Print then ns.Print("engine step error (the engine keeps running): " .. err) end
-            if ns.CaptureError then pcall(ns.CaptureError, "XayaUI engine: " .. err) end
+            if ns.RecordError then pcall(ns.RecordError, "XayaUI engine: " .. err, nil, "XayaUI", "XUI-E011") end   -- (DebugRecord.lua)
         end
     end
 end

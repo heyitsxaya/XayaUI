@@ -14,5 +14,4 @@ CharacterModel.lua
 CharacterToolkit.lua
 CharacterReskin.lua
 ShoppingList.lua
-CharacterWidthProbe.lua
 ReleaseGuard.lua

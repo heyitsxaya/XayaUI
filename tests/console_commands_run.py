@@ -43,6 +43,7 @@ local function run(s) return ns.CaptureOutput(function() SlashCmdList.XAYAUI(s) 
 
 -- 1. /xui help --------------------------------------------------------------------------------------------------------------------
 local help = run("help")
+local helpText_ = plain(table.concat(help, "\n")):find("/xui report  debug report: XayaUI's errors and warnings with their codes, to send to Xaya", 1, true)
 local cmds, pipe = {}, nil
 for i = 2, #help do
   local p = plain(help[i])
@@ -51,8 +52,9 @@ for i = 2, #help do
   if p:gsub("||", ""):find("|", 1, true) then pipe = p end
 end
 check("help: a header with the count, then that many lines", help[1] == ("commands (%d):"):format(#help - 1), help[1])
--- (QoL 0.7.32 adds the Shopping List's /xui shop, a player command: 16 + 1)
-check("help: 17 lines (it was 29; 16 plus the Shopping List's /xui shop)", #help - 1 == 17, #help - 1)
+-- (QoL 0.7.32 adds the Shopping List's /xui shop, a player command: 16 + 1; core 0.6.56 adds /xui report, REQUEST-LOG #82: + 1)
+check("help: 18 lines (it was 29; 16 plus the Shopping List's /xui shop and /xui report)", #help - 1 == 18, #help - 1)
+check("help: /xui report is listed (core 0.6.56)", helpText_ ~= nil)
 check("help: /xui shop is listed", (function() for _, c in ipairs(cmds) do if c == "/xui shop" then return true end end end)() == true, table.concat(cmds, " "))
 local diag = { "status", "probe", "debuffs", "perf", "timing", "seed", "talents", "model", "tracker", "loc", "media", "gamemenu",
   "auras", "chatprobe", "mods", "groups", "icons" }
@@ -85,14 +87,20 @@ end
 check("debug: a header with the count", dbg[1] ~= nil and dbg[1]:match("^debug commands %((%d+)%)") ~= nil
   and tonumber(dbg[1]:match("%((%d+)%)")) == #dbg - 1, dbg[1])
 check("debug: every line is '/xui debug <name> ...'", badLine == nil, badLine)
-local missing = {}
-for _, d in ipairs(diag) do if not names[d] then missing[#missing + 1] = d end end
-for _, d in ipairs({ "loader", "widthprobe", "map" }) do if not names[d] then missing[#missing + 1] = d end end
-check("debug: lists every diagnostic command (core and the features')", #missing == 0, table.concat(missing, ", "))
+-- (core 0.6.56, REQUEST-LOG #81: without XayaUI Dev Assist, which this test leaves off, only the player's diagnostics exist: status,
+-- perf (the engine meter), talents, loader and auras; every developer one is Dev Assist's, tests/devassist_debug_tools_run.py)
+local missing, extra = {}, {}
+local PLAYER = { status = true, perf = true, talents = true, loader = true, auras = true }
+for d in pairs(PLAYER) do if not names[d] then missing[#missing + 1] = d end end
+for n in pairs(names) do if not PLAYER[n] then extra[#extra + 1] = n end end
+table.sort(extra)
+check("debug: lists the player's diagnostic commands (status, perf, talents, loader, auras)", #missing == 0, table.concat(missing, ", "))
+check("debug: no developer diagnostic without XayaUI Dev Assist", #extra == 0, table.concat(extra, ", "))
+check("debug: perf lists only the engine meter (perf ui is Dev Assist's)", not plain(table.concat(dbg, "\n")):find("perf ui", 1, true))
 local dpipe
 for i = 1, #dbg do if plain(dbg[i]):gsub("||", ""):find("|", 1, true) then dpipe = dbg[i] end end
 check("debug: every '|' doubled, none left single", dpipe == nil, dpipe)
-check("debug: option lists read [target|focus] again", plain(table.concat(dbg, "\n")):find("debuffs [target||focus] [spellID]", 1, true) ~= nil)
+check("debug: option lists read [on|off] again", plain(table.concat(dbg, "\n")):find("perf [on||off]", 1, true) ~= nil)
 -- each listed name runs (the stand-in game answers what it can; no Lua error, never "no debug command")
 local errs0 = #W.errors
 local notRun = {}
@@ -120,20 +128,15 @@ for _, old in ipairs({ "perf", "loc", "gamemenu", "chatprobe", "probe 203720", "
   local out = run(old)
   ns.CharWidthProbe_Run = realProbe
   local isHelp = out[1] == help[1] and #out == helpLines
-  -- (a /xui stats word it does not know toggles the panel, as before; it must not start the width probe)
-  if old == "stats widthprobe" then isHelp = realProbe ~= nil and probeCalls == 0 end
+  -- (a /xui stats word it does not know toggles the panel, as before; it must not start the width probe, which is XayaUI Dev Assist's
+  -- since core 0.6.56 and so not there at all in this test)
+  if old == "stats widthprobe" then isHelp = probeCalls == 0 end
   check(("old form /xui %s no longer runs (prints /xui help)"):format(old), isHelp and (ns.rules and #ns.rules or 0) == before, out[1])
 end
 check("/xui debug status still runs", (function() local o = run("debug status"); return o[1] ~= nil and o[1] ~= help[1] end)())
--- a feature's debug command whose addon is off: worded as /xui debug <name> (Modules.lua ns.ModuleMissingText(cmd, true))
-local realState = ns.ModuleState
-ns.ModuleState = function(a) if a == "XayaUI_Chat" then return "disabled" end return realState(a) end
-local realRun = ns.RunDebugCommand
-ns.RunDebugCommand = function(c, a) if c == "chatprobe" then return false end return realRun(c, a) end
+-- (core 0.6.56, REQUEST-LOG #81) without XayaUI Dev Assist, /xui debug chatprobe does not exist: it says so and lists the commands
 local off = run("debug chatprobe")
-ns.ModuleState, ns.RunDebugCommand = realState, realRun
-check("/xui debug chatprobe with XayaUI Chat off says so, as /xui debug chatprobe", off[1] ~= nil
-  and off[1]:find("/xui debug chatprobe is part of XayaUI Chat, which is switched off", 1, true) ~= nil, off[1])
+check("/xui debug chatprobe without XayaUI Dev Assist: there is no such command", off[1] == 'there is no debug command "chatprobe".', off[1])
 local offTop = run("chatprobe")
 check("/xui chatprobe (old form) is not reported as 'never registered'", offTop[1] == help[1], offTop[1])
 

@@ -26,7 +26,7 @@ now = datetime.datetime(2026, 11, 4, 6, 0)
 expect("log name in the future", P.check_log_times([("2026-11-04-0640-x.md", "")], now), 1)
 expect("Logged line in the future", P.check_log_times([("2026-11-04-0500-x.md", "Logged 2026-11-04 07:10 UTC.")], now), 1)
 expect("24:00 rejected", P.check_log_times([("2026-11-02-2400-x.md", "")], now), 1)
-expect("summary updated in the future", P.check_log_times([("SESSION-START-SUMMARY.md", "Last updated 2026-11-04 07:00 UTC by")], now), 1)
+expect("summary updated in the future", P.check_log_times([("docs/SESSION-START-SUMMARY.md", "Last updated 2026-11-04 07:00 UTC by")], now), 1)
 expect("past log passes", P.check_log_times([("2026-11-04-0550-x.md", "Logged 2026-11-04 05:50 UTC.")], now), 0)
 expect("within slack passes", P.check_log_times([("2026-11-04-0605-x.md", "")], now), 0)
 
@@ -64,6 +64,16 @@ src = 'local t = { "Interface\\\\AddOns\\\\XayaUI\\\\Media\\\\Graphics\\\\Mine.t
 expect("missing media warned", P.check_media_lists([("XayaUI/LocalGraphics.lua", src)], {"xayaui/media/graphics/here.tga"}), 0, 1)
 expect("all media present", P.check_media_lists([("XayaUI/LocalGraphics.lua", src)],
                                                 {"xayaui/media/graphics/here.tga", "xayaui/media/graphics/mine.tga"}), 0, 0)
+
+# the documents moved into docs/ (2026-11-06, REQUEST-LOG #81 / FUS-6): an old root path anywhere but the history is an error; the
+# checklist must be found for its IDs to be checked
+ALL = [("docs/" + n, "") for n in P.MOVED_DOCS]
+expect("moved docs: docs/ paths pass", P.check_doc_paths(ALL + [("tools/x.py", 'read("docs/QA-CHECKLIST.md")'), ("README.md", "see `docs/USER-GUIDE.md`")]), 0)
+expect("moved docs: an old root path in a tool fails", P.check_doc_paths(ALL + [("tools/x.py", 'read("QA-CHECKLIST.md")')]), 1)
+expect("moved docs: an old root path in a doc link fails", P.check_doc_paths(ALL + [("README.md", "[guide](USER-GUIDE.md) and ROADMAP.md")]), 2)
+expect("moved docs: debug-log history is left as written", P.check_doc_paths(ALL + [("debug-log/2026-11-01-0000-x.md", "USER-GUIDE.md")]), 0)
+expect("moved docs: a document missing from docs/ fails", P.check_doc_paths(ALL[1:]), 1)
+expect("QA IDs: a missing checklist is an error, not a pass", P.check_qa_ids(None), 1)
 
 print("%d checks  FAILS: %d" % (checks, fails))
 sys.exit(1 if fails else 0)
