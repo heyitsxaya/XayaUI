@@ -23,7 +23,7 @@ It checks this at the default size, with Advanced, and with the window 200 px na
 - Found while measuring: AceGUI's own InlineGroup lays its content out 1 px wider than its content frame (`content.width = width - 20`,
   border inset 1 px, AceGUIContainer-InlineGroup.lua). That is stock behaviour, and it stays inside the box's 10 px padding. The test
   allows 1 px there.
-- Not measurable offline: whether a long value is cut inside its closed dropdown. The stand-in measures text by character count. QA B150
+- Not measurable offline: whether a long value is cut inside its closed dropdown. The stand-in measures text by character count. QA B151
   asks for a screenshot.
 
 ## 2. Every cue type
@@ -49,4 +49,4 @@ It checks this at the default size, with Advanced, and with the window 200 px na
 - `tests/auto_picker_run.py`: 52 checks (every cue kind listed; the shared set-up per type; texture art and Smart Categories; text cue;
   extra text cue; Textures group; Custom not made). With 1ebba9a's code it fails 9 checks.
 - `tests/auto_table_layout_run.py` (new): 20 checks, with the negative controls above.
-- Nothing was run in game. QA B150-B154.
+- Nothing was run in game. QA B151-B155.

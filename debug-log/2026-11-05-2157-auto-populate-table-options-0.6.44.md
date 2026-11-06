@@ -43,7 +43,7 @@ of the spec options; all pulls the list for all specs".
 - Auras and debuffs of other specs are not listed: the Cooldown Manager answers for the active spec. Learning them per spec would be a
   core change (ClassLearn.lua), the same one as the debuff learner Xaya has not answered yet (core 0.6.49 proposal).
 - Closed dropdowns may cut long values ("Out of combat") at the default window width; the open list shows them in full. Not measured in
-  game (B150 asks for a screenshot).
+  game (B151 asks for a screenshot).
 - Nothing was run in game.
 
 ## Verification
@@ -54,4 +54,4 @@ of the spec options; all pulls the list for all specs".
 - Negative controls: on main's code the test fails at its first check; with the new AutoPicker / Options but main's Skin.lua the three
   skin checks fail.
 - compact_button_width, flex_dropdown, rules_subtabs_compact (layout), lua_pitfalls, cdm_warn, display_tab: see the commit's run.
-- USER-GUIDE 12.1 rewritten; QA B150-B153 (B146 / B147 marked superseded).
+- USER-GUIDE 12.1 rewritten; QA B151-B154 (B146 / B147 marked superseded).

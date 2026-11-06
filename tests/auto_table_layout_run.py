@@ -8,7 +8,7 @@ AceGUI placed: the header row shows the column names in her order (Name | Type |
 on one line with its cells left to right under their column names, rows stack without overlapping, nothing runs past the pane's right
 edge; the same with Advanced's Extra cues column and in a narrower window.
 Limits of the stand-in: text is measured by character count, not by the game's font, so this cannot say whether a long value is cut
-inside its dropdown (QA B150 asks for a screenshot).
+inside its dropdown (QA B151 asks for a screenshot).
 Run: python3 tests/auto_table_layout_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa; slow)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

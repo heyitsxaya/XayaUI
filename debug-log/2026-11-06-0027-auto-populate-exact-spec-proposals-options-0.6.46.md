@@ -40,7 +40,7 @@ Measured against V16 ("an extra element ... is a defect. Anything not specified 
 - P1. "class » specialization » cue type » name": the last step read as the rule's own name (the spell's name) inside the cue-type
   group. Other reading: one group per name.
 - P2. Pages of 40 rows. Every row is 6-7 controls, and the window redraws all of them on each click. INFERENCE, not measured in game:
-  an all-specs list of ~200 rows could make each click slow. QA B153 asks for `/xui perf` numbers.
+  an all-specs list of ~200 rows could make each click slow. QA B154 asks for `/xui perf` numbers.
 - P3. A frame title ("Auto-populate: <Spec> (<N> offered)") and a two-line help text.
 - P4. "Reload list" and "Close" buttons.
 - P5. In the all-specs list, the spec's name above its rows, or a Spec column. Without either, rows of different specs look alike.
