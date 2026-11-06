@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-584e775a2876f6ffd280d32e505852d5  QA-CHECKLIST.md
+c090e0059ebd6fdb94764ea180166a5f  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 6388e5710be433673f12516d5df50ef4  ROADMAP.md
 5bfe2afe526ca0b3e5374a6393067959  SESSION-START-SUMMARY.md
@@ -485,11 +485,11 @@ c54bd9d2d6be53369953c26744e65136  debug-log/2026-11-05-2141-history-whisper-tabs
 49b6d67ac86ded58efbb6ff030ac02ff  debug-log/2026-11-05-2154-stat-calculator-spells-compare-qol-0.7.24.md
 65e98302446bfa395c9a204c4d1d1131  debug-log/2026-11-05-2356-request-log-protocol-and-load-cost-measurements.md
 ef2aa95835015eb192e93bbbf709ddb0  debug-log/2026-11-05-2359-harness-enum-values-from-docs.md
-4fd1dcd1d9aea3b382fa3b204e566df2  debug-log/2026-11-06-0005-console-command-line-xui-debug-core-0.6.50.md
+c0fc6e0579b76db84c8e09cc477e891b  debug-log/2026-11-06-0005-console-command-line-xui-debug-core-0.6.50.md
 bdb69546e6a7e796dfde193825b966b8  debug-log/2026-11-06-0010-harness-enum-values-cloud-index.md
 7783c66365647d780c7c4fe802eea40e  debug-log/2026-11-06-0032-tooltip-aura-source-and-icon-bonus-0.6.13.md
-c9d994aef6f2b127412b2e8b8888a7d8  debug-log/2026-11-06-0044-debug-only-forms-console-mirror-core-0.6.50-options-0.6.48.md
-f0396f7aa3fe98238d04a3711792bd19  debug-log/2026-11-06-0048-console-save-only-console-messages-core-0.6.50.md
+552fe101b20b7fb1190383a2c69b2b84  debug-log/2026-11-06-0044-debug-only-forms-console-mirror-core-0.6.50-options-0.6.48.md
+cdd375e8fd192ce310da4594190c313c  debug-log/2026-11-06-0048-console-save-only-console-messages-core-0.6.50.md
 4d0a7e49d961b781138460bedf3945d2  debug-log/2026-11-06-0115-bundle-corrections-qol-0.7.24-core-0.6.49-bonus-0.6.14.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
