@@ -6,7 +6,7 @@
 --
 -- Every number comes from the one model in CharacterModel.lua (the game's own reads; what the game does not give is marked, never
 -- guessed; secret values show as "hidden in combat"). This file only draws it:
---   Tabs: Stats | Gear | Spells (the Sheet tab was removed in QoL 0.7.14: the character window itself is restyled instead,
+--   Tabs: Stats | Gear | Ability Scaling (the Spells tab until QoL 0.7.28; the Sheet tab was removed in QoL 0.7.14: the character window itself is restyled instead,
 --   QoL Character Reskin; the What If tab in 0.7.14: its numbers are the stat map's boxes, its item compare the Gear comparison).
 --   Stats is the stat map: one card per stat with a box holding the number itself (the Change column, far right, QoL 0.7.20) and
 --   what it feeds, "now -> with your number"; an ability list is one nested line per ability.
@@ -31,6 +31,11 @@
 --   Defense / Utility), its spell data button is a real button centred above the sections (at most 250 wide), and each spell is a row
 --   of columns: Spell Name (Spell ID under it) | % PSV ("1 Agility = N" under it) | Talent Modifiers | Computed Value (her answer
 --   2026-11-06: "Fourth column - computed Value"); "Usable now" is gone.
+--   QoL 0.7.28 (Xaya 2026-11-06, REQUEST-LOG #60-#64): the Spells tab is the Ability Scaling tab (her answer "Spells tab -> Ability
+--   Scaling"); no stray Refresh row in its lists; no column head is cut (widths from the heads as the game measures them); Stat Weights
+--   titles centred, cells from their column's left edge, T/L in two lines; a typed number's new value, with its sign, under the value in
+--   the accent colour (no "now -> then" on the Stats tab); Primary / General / Offensive / Defensive are bucket bars and every Stats line
+--   is indented by its depth (one step); the Gear Summary is at the top of the Stats tab as a graphic in a chosen style.
 --   Gear: the selected equipped item's box is highlighted (a click on it again lets it go); the items you own for the slot are icons
 --   (click to pick, several at once, up to 3; the box shows the last one's name); one "Changes" section (Stat | Pt value | Equipped |
 --   each picked item, DR threshold and true / lost rating under each secondary that changes, Stat effects, Spell Changes, on-use and
@@ -65,7 +70,8 @@ ns.CHARTOOLKIT_DEFAULTS = {
     panelOpen = true,      -- the panel's open / closed state, kept for the next time (QoL 0.7.23; Xaya: "remember the last-left state")
     sizeMode = "small",    -- small | large: the Min / Max button's two heights (QoL 0.7.23)
     heightSmall = 440, heightLarge = 760,
-    tab = "stats",         -- the panel tab last shown
+    tab = "stats",         -- the panel tab last shown ("spells" is the Ability Scaling tab since QoL 0.7.28)
+    gearSumStyle = "bars", -- the Gear Summary's look (QoL 0.7.28): bars | tiles | stacked | columns | share | table (CM.GEAR_SUM_STYLES)
     whatIf = 0,            -- (the All ratings amount; removed in QoL 0.7.23, always 0)
     whatIfStats = {},      -- What If: rating added to one stat, by stat key
     valueMode = "percent", -- rating lines show their percent or their rating
@@ -126,6 +132,7 @@ local function Cfg()
     if c.tab == "defense" or c.tab == "offense" then c.spellFilter = c.tab; c.tab = "spells" end
     if not CM.TAB_OK[c.tab] then c.tab = "stats" end
     c.spellFilter = CM.FilterOf(c)
+    c.gearSumStyle = CM.GearSumStyle(c)
     c.spellsAll = c.spellsAll == true
     c.whatIf = 0   -- (QoL 0.7.23; Xaya 2026-11-05: "remove "all ratings" as an entry option": a saved amount no longer applies)
     for _, k in ipairs({ "whatIfStats", "lineModes", "collapsed", "enchantSlots" }) do
@@ -189,9 +196,14 @@ ns.CharToolkit_ItemStats = function(link) return CM.ItemStats(link) end
 function ns.CharToolkit_TooltipLines(it, mode)
     local out = {}
     local v, tone = CM.ValueFor(it, mode)
-    out[#out + 1] = { it.label or "", CM.PairText({ value = v or "", per = it.per }), tone, title = true }
+    out[#out + 1] = { it.label or "", CM.PairText({ value = v or "", per = it.per, perPoint = it.perPoint, perText = it.perText }), tone, title = true }
+    -- (QoL 0.7.28) a typed number's new value, with its sign, on the line under the value it changes, in the accent colour
+    if it.newValue then out[#out + 1] = { "", it.newValue, "change" } end
     for _, p in ipairs(it.pairs or {}) do
-        if not CM.NoteOnly(p) then out[#out + 1] = { CM.PairLabel(p), CM.PairText(p, true), p.tone } end   -- (nested: indented)
+        if not CM.NoteOnly(p) then
+            out[#out + 1] = { CM.PairLabel(p), CM.PairText(p, true), p.tone }   -- (nested: indented)
+            if p.newValue then out[#out + 1] = { "", p.newValue, "change" } end
+        end
     end
     if #(it.tip or {}) > 0 then
         out[#out + 1] = { " " }
@@ -216,8 +228,18 @@ local function TC(class, prop, fb)
     return fb
 end
 local TONES = { good = { 0.5, 1, 0.5, 1 }, warn = { 1, 0.56, 0.25, 1 } }
+-- the theme's accent colour (core's resolved "accent" token, ns.Theme.cur.accent, as core's game menu and the cursor highlight read it;
+-- XayaUI's default accent when the theme is missing). QoL 0.7.28: the new value a typed number gives (tone "change") and the bucket bars.
+local function Accent()
+    local T = ns.Theme
+    local c = T and T.cur and T.cur.accent
+    if type(c) == "table" and num(c[1]) and num(c[2]) and num(c[3]) then return { c[1], c[2], c[3], c[4] or 1 } end
+    return { 0.75, 0.25, 1, 1 }
+end
+ns.CharToolkit_Accent = Accent   -- (tests)
 local function ToneColor(tone, fb)
     if tone == "mute" then return TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 }) end
+    if tone == "change" then return Accent() end
     return TONES[tone] or fb
 end
 local function FontPath(fs)
@@ -250,6 +272,19 @@ local function Docked() local cf = _G.CharacterFrame; return cf and cf.IsShown a
 -- pools: font strings, line buttons (hover / click), header buttons, edit boxes (What If)
 local fsPool, btnPool, hdrPool, boxes = {}, {}, {}, {}
 local nFS, nBtn, nHdr
+-- (QoL 0.7.28) flat textures for the bucket bars and the Gear Summary's graphics, pooled like the font strings (made while the panel draws)
+local texPool, nTex = {}, 0
+local function Tex()
+    nTex = nTex + 1
+    local t = texPool[nTex]
+    if not t then
+        t = content:CreateTexture(nil, "ARTWORK")
+        texPool[nTex] = t
+    end
+    t:ClearAllPoints()
+    t:Show()
+    return t
+end
 local function FS()
     nFS = nFS + 1
     local f = fsPool[nFS]
@@ -464,14 +499,18 @@ local function IconBtn()
         b.tex:SetPoint("TOPLEFT", b, "TOPLEFT", 1, -1); b.tex:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -1, 1)
         if b.tex.SetTexCoord then b.tex:SetTexCoord(0.07, 0.93, 0.07, 0.93) end
         local hl = b:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(b); hl:SetColorTexture(1, 1, 1, 0.15)
-        -- the selected box (QoL 0.7.24; Xaya: "should highlight the box to indicate its selection"): a 2 px frame in the theme's accent
-        -- colour just outside the icon (the item level under it sits 3 px down to clear it)
+        -- the selected box (QoL 0.7.24; Xaya: "should highlight the box to indicate its selection"). QoL 0.7.28 (Xaya 2026-11-06: "gear
+        -- pane request for gear highlight dropped"; REQUEST-LOG #68): the 0.7.24 frame was painted in the selected TAB's background colour
+        -- (theme class xui-tab-selected, token tabSelBg), which the class theme makes the class colour x 0.28 (Theme.lua: pal.tabSelBg),
+        -- a near-black tint on the panel's dark window, 2 px wide outside the icon: there, but not visible. Now: SEL_EDGE px (thicker
+        -- than the 1 px quality border) in the theme's ACCENT colour (Accent(): the bright "accent" token), on the button's top draw
+        -- layer (OVERLAY, sublevel 7) over the icon and its quality border, inside the button's edges (nothing under it moves).
         b.selEdges = {}
-        for i, e in ipairs({ { "TOPLEFT", -2, 2, "TOPRIGHT", 2, 2, 0 }, { "BOTTOMLEFT", -2, -2, "BOTTOMRIGHT", 2, -2, 0 },
-            { "TOPLEFT", -2, 2, "BOTTOMLEFT", -2, -2, 1 }, { "TOPRIGHT", 2, 2, "BOTTOMRIGHT", 2, -2, 1 } }) do
-            local t = b:CreateTexture(nil, "OVERLAY")
-            t:SetPoint(e[1], b, e[1], e[2], e[3]); t:SetPoint(e[4], b, e[4], e[5], e[6])
-            if e[7] == 1 then t:SetWidth(2) else t:SetHeight(2) end
+        local SEL_EDGE = 3
+        for i, e in ipairs({ { "TOPLEFT", "TOPRIGHT", 0 }, { "BOTTOMLEFT", "BOTTOMRIGHT", 0 }, { "TOPLEFT", "BOTTOMLEFT", 1 }, { "TOPRIGHT", "BOTTOMRIGHT", 1 } }) do
+            local t = b:CreateTexture(nil, "OVERLAY", nil, 7)
+            t:SetPoint(e[1], b, e[1], 0, 0); t:SetPoint(e[2], b, e[2], 0, 0)
+            if e[3] == 1 then t:SetWidth(SEL_EDGE) else t:SetHeight(SEL_EDGE) end
             t:Hide()
             b.selEdges[i] = t
         end
@@ -860,6 +899,86 @@ local function PlaceFS(f, x, y, w, size, text, col, justify, wrap, kind)
     Rec(kind or "text", x, y, w, h, text, size)
     return h
 end
+-- (QoL 0.7.28) a text with line breaks ("T: 1,430\nL: 12.2"): each line its own font string, one under the other; returns the height
+local function PlaceLines(x, y, w, size, text, col, justify, kind)
+    local h, first = 0, true
+    for line in (tostring(text or "") .. "\n"):gmatch("(.-)\n") do
+        if not first then h = h + 1 end
+        h = h + PlaceFS(FS(), x, y + h, w, size, line, col, justify, true, kind)
+        first = false
+    end
+    return h
+end
+-- a filled rectangle at x, y (from the content's top left) in a colour; kept as a "fill" record for the tests
+local function PlaceTex(x, y, w, h, col, alpha, kind, text)
+    local t = Tex()
+    t:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
+    t:SetSize(math.max(1, w), math.max(1, h))
+    t:SetColorTexture(col[1], col[2], col[3], alpha or col[4] or 1)
+    Rec(kind or "fill", x, y, math.max(1, w), math.max(1, h), text)
+    return t
+end
+
+-- The width a text takes on one line at a text size, measured by the game (QoL 0.7.28; in game "Rating (P / %)" wrapped, "DR Thres..."
+-- and "Comput..." were cut, because the widths came from a fixed estimate of 0.55 x size per character). FontString:GetUnboundedStringWidth
+-- () -> width: uiUnit (SecretWhenAnchoringSecret, widgets.md:1463), with GetStringWidth() (widgets.md:1458) as the fallback, on one hidden
+-- font string of the panel in the panel's font. INFERENCE (not documented): a hidden font string measures like a shown one. A missing,
+-- secret or zero answer for a non-empty text falls back to the old estimate.
+local measureFS
+local function TextW(text, size)
+    text = tostring(text or "")
+    if text == "" then return 0 end
+    if not measureFS then
+        measureFS = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        measureFS:Hide()
+    end
+    SetFont(measureFS, size, "")
+    if measureFS.SetWordWrap then measureFS:SetWordWrap(false) end
+    measureFS:SetText(text)
+    local w = measureFS.GetUnboundedStringWidth and measureFS:GetUnboundedStringWidth() or nil
+    if not num(w) or (isSecret and isSecret(w)) or w <= 0 then w = measureFS.GetStringWidth and measureFS:GetStringWidth() or nil end
+    if not num(w) or (isSecret and isSecret(w)) or w <= 0 then w = #text * size * 0.55 end
+    return math.ceil(w) + 1
+end
+ns.CharToolkit_TextW = TextW   -- (tests)
+-- the widest word of a text (a column narrower than this would cut that word: the game wraps only at spaces)
+local function WordW(text, size)
+    local m = 0
+    for word in tostring(text or ""):gmatch("%S+") do m = math.max(m, TextW(word, size)) end
+    return m
+end
+-- Column widths that fit `avail` (QoL 0.7.28). Each column c = { min, line, want }: every column gets its min first (the widest word of
+-- its title and cells: nothing is cut), then each title on one line (line), then each column's wanted width (its widest cell: want),
+-- smallest need first, while there is room; what is left goes to column `rest`. Only when even the mins do not fit (the narrowest panel
+-- at the largest text sizes) are the columns scaled down to fit.
+local function FitCols(cols, avail, rest)
+    local w, used = {}, 0
+    for i, c in ipairs(cols) do w[i] = c.min or 0; used = used + w[i] end
+    for _, lvl in ipairs({ "line", "want" }) do
+        local order = {}
+        for i, c in ipairs(cols) do
+            local need = math.max(0, (c[lvl] or 0) - w[i])
+            if need > 0 then order[#order + 1] = { i, need } end
+        end
+        table.sort(order, function(a, b) if a[2] ~= b[2] then return a[2] < b[2] end; return a[1] < b[1] end)
+        local short = false
+        for _, o in ipairs(order) do
+            local give = math.min(o[2], math.max(0, avail - used))
+            w[o[1]] = w[o[1]] + give
+            used = used + give
+            if give < o[2] then short = true end
+        end
+        if short then break end
+    end
+    if rest and avail > used then w[rest] = w[rest] + (avail - used); used = avail end
+    if used > avail and used > 0 then
+        local f = avail / used
+        for i = 1, #w do w[i] = w[i] * f end
+    end
+    for i = 1, #w do w[i] = math.floor(w[i]) end
+    return w
+end
+ns.CharToolkit_FitCols = FitCols   -- (tests)
 
 -- The stat grid (QoL 0.7.15; Xaya 2026-11-05: "do multiple columns: for cleaner presentation * Stat | Current Value | Pt Value | etc";
 -- before, each line was label | value with the Pt value and the note glued into the value, "+2,671  (1 = 1.00)"). Every Stats-tab
@@ -886,15 +1005,68 @@ local GRID_RAT, GRID_VAL, GRID_PER, GRID_BOX = 80, 98, 56, 44
 -- Rating column's room ("now -> then" fits on one line); Stat and Pt value keep their x, the note runs to the right edge
 local GRID_STAT_KEEP = 86   -- QoL 0.7.21: below the default width Rating gives up its room first (down to 36, its 0.7.20 width; "528 +172"
                             -- then wraps inside its cell) so Stat keeps 86 as long as it can and the narrowest panel (340) still fits
-local function GridCols(hasBox)
-    local rat = math.max(36, math.min(GRID_RAT, W - (GRID_VAL + GRID_PER + GRID_BOX + 4 * GUT) - GRID_STAT_KEEP))
-    local fixed = rat + GRID_VAL + GRID_PER + GRID_BOX + 4 * GUT
-    local g = { rat = rat, val = GRID_VAL, per = GRID_PER, box = GRID_BOX }
-    g.stat = math.max(40, W - fixed)
+-- QoL 0.7.28 (Xaya 2026-11-06, her words: "all currently nested influence callouts should be put into a column of their own for
+-- readability and vertical line reduction (e.g. agility influences [ ... ]"; her answers "Names only, values on hover" and, for the
+-- "From Agility" / "From Mastery" lines, "Same Influences column"; REQUEST-LOG #66-#67): a sixth column, Influences, between Pt value and
+-- Change. The widths are measured like the Stat Weights pane's (TextW, FitCols): every head on one line where the width allows and never
+-- cut, then the ratings, values and Pt values on one line; Influences takes the rest after the Stat column has room for its widest word.
+-- (The constants above were the fixed widths of QoL 0.7.20 - 0.7.24.)
+local INDENT   -- (set below, with the indentation rule)
+-- what a line under a card is in the grid: "infl" (a "»" line: what the stat feeds), "feed" (a "From <stat>" line: what feeds it; not
+-- "From rating", the card's own rating, which stays a line), else nil (a line of its own: Diminishing returns, Off hand, ...)
+local function InflKind(p)
+    local l = tostring(p and p.label or "")
+    if l:find("^» ") then return "infl", (l:gsub("^» ", "")) end
+    local who = l:match("^From (.+)$")
+    if who and who ~= "rating" and not who:find("^the item") then return "feed", "from " .. who end
+end
+ns.CharToolkit_InflKind = InflKind   -- (tests)
+local function GridCols(hasBox, items, size)
+    size = size or 11
+    local hs = size - 1
+    local function S(t) return { min = WordW(t, hs), line = TextW(t, hs), want = TextW(t, hs) } end
+    local spec = { S("Stat"), S("Rating"), S("Current value"), S("Pt value"), S("Influences") }
+    local ind = INDENT or 12
+    spec[1].min, spec[1].line = spec[1].min + ind, spec[1].line + ind
+    local anyR = false
+    local function Cells(i, text, sz)
+        text = tostring(text or "")
+        if text == "" then return end
+        spec[i].min = math.max(spec[i].min, WordW(text, sz))
+        spec[i].want = math.max(spec[i].want, TextW(text, sz))
+    end
+    for _, it in ipairs(items or {}) do
+        if it.kind == "input" or it.kind == "stat" or it.kind == "rating" then
+            spec[1].min = math.max(spec[1].min, ind + WordW(it.label, size))
+            if (it.ratingText or "") ~= "" then anyR = true; Cells(2, it.ratingText, size) end
+            Cells(3, CM.ValueFor(it, nil), size); Cells(3, it.newValue, size); Cells(4, it.per, size)
+            local psz = it.bigPairs and size or size - 1
+            for _, p in ipairs(it.pairs or {}) do
+                local k, name = InflKind(p)
+                if k then
+                    spec[5].min = math.max(spec[5].min, WordW(name .. ",", psz))   -- (with the comma that follows it)
+                    spec[5].want = math.max(spec[5].want, TextW(name .. ",", psz))
+                elseif not p.nested then
+                    Cells(3, p.value, psz); Cells(3, p.newValue, psz); Cells(4, p.per, psz)
+                end
+            end
+        end
+    end
+    local g = { box = (hasBox == false) and 0 or math.max(GRID_BOX, TextW("Change", hs)) }
+    if not anyR or hasBox == false then spec[2] = { min = 0, line = 0, want = 0 }
+    else spec[2].line = math.max(spec[2].line, spec[2].want) end   -- (her 0.7.21 "528 +172" on one line: kept before the other cells)
+    spec[4].line = math.max(spec[4].line, spec[4].want)   -- (and "46.0 / 1%": the rating per 1% on one line, #382)
+    local gaps = (spec[2].want > 0 and 4 or 3) * GUT + ((g.box > 0) and GUT or 0)
+    -- the Influences column's want is not asked for here: what is left is shared after the other columns' wants
+    local inflWant = spec[5].want
+    spec[5].want = spec[5].line
+    local w = FitCols(spec, W - g.box - gaps, 5)
+    g.stat, g.rat, g.val, g.per, g.iw = w[1], w[2], w[3], w[4], w[5]
+    g.inflWant = inflWant
     g.rx = g.stat + GUT
-    g.vx = g.rx + rat + GUT
-    if hasBox == false then g.rat, g.box, g.vx, g.val = 0, 0, g.rx, GRID_VAL + rat + GUT end
+    g.vx = g.rx + ((g.rat > 0) and (g.rat + GUT) or 0)
     g.px = g.vx + g.val + GUT
+    g.ix = g.px + g.per + GUT
     g.label = g.vx - GUT
     g.cx = W - g.box   -- Change: the box, the last cell of its row
     return g
@@ -920,7 +1092,13 @@ local function GridLine(g, y, o)
     local hasV, hasP = (o.value or "") ~= "", (o.per or "") ~= ""
     if o.boxH then h = math.max(h, o.boxH) end
     if hasR then h = math.max(h, PlaceFS(FS(), g.rx, y, g.rat, o.size, o.rating, o.ratingCol, "RIGHT", true, K("rating"))) end
-    if hasV then h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, o.size, o.value, o.valueCol, "RIGHT", true, K("value"))) end
+    if hasV or o.newValue then
+        local vh = hasV and PlaceFS(FS(), g.vx, y, g.val, o.size, o.value, o.valueCol, "RIGHT", true, K("value")) or o.size
+        -- (QoL 0.7.28; Xaya: "input changes should show changed values underneath them in a color change with a +/- before"; her answer
+        -- "New value with sign") a typed number's new value, with its sign, under the current value, in the theme's accent colour
+        if o.newValue then vh = vh + 1 + PlaceFS(FS(), g.vx, y + vh + 1, g.val, o.size, o.newValue, Accent(), "RIGHT", true, K("change")) end
+        h = math.max(h, vh)
+    end
     if hasP then h = math.max(h, PlaceFS(FS(), g.px, y, g.per, o.size, o.per, o.perCol, "RIGHT", true, K("per"))) end
     return h
 end
@@ -954,21 +1132,33 @@ end
 
 -- a grid section's lines (sec.grid: the stat map's sections, the Gear comparison's "What it changes"); returns the y under them.
 -- QoL 0.7.23: Character Stats' headings (kind "subhead": level 1 at x 0, level 2 one indent in) and its Gear Summary table.
+-- QoL 0.7.28 (Xaya 2026-11-06, her words: "General Stats is not appropriately flagged as Category-level Stat bucket, nor is Offensive nor
+-- Defensive"; her answer: "bucket bar, with the following note: currently indentations are all over the place. be sure to review all
+-- elements nested under each bucket and make sure indentations follow sub- and sub-sub- nesting rules"): Primary, General, Offensive and
+-- Defensive are bucket bars (a thin band in the theme's accent colour across the pane with the bucket's name on it), and every line's
+-- left edge is its nesting depth times ONE step (INDENT): depth 0 the headings (Core Stats, Secondaries, Tertiaries) and the bucket bars,
+-- depth 1 a stat (Agility, Health, Attack Power, Critical Strike) and the "Stat" column head over them, depth 2 its lines ("» Attack
+-- power", "From Agility", "Off hand"), depth 3 a line nested under one of those (an ability under "» Abilities (their text names Haste)").
+-- Before: the level-2 headings sat at 8, the stats at 0 (left of their heading), their lines at 12 and 24.
+INDENT = 12
+local BUCKET_ALPHA = 0.35   -- the bucket bar's band: the accent colour at this opacity, so its name (body text colour) reads on it
+ns.CHARTOOLKIT_INDENT = INDENT   -- (tests)
 local function RenderGrid(c, items, y, hasBox)
     local size = c.fontSize
     local cText = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
     local cMuted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
     local short = c.detail == "short"
-    local g = GridCols(hasBox)
+    local g = GridCols(hasBox, items, size)
     for _, it in ipairs(items) do
         local top = y
         if it.kind == "colhead" and not it.cmp then
             local cs, hs = it.cols or {}, size - 1
-            local h = PlaceFS(FS(), 0, y, g.stat, hs, cs[1] or "", cMuted, "LEFT", true, "colhead")
+            local h = PlaceFS(FS(), INDENT, y, g.stat - INDENT, hs, cs[1] or "", cMuted, "LEFT", true, "colhead")
             if (cs[2] or "") ~= "" and g.rat > 0 then h = math.max(h, PlaceFS(FS(), g.rx, y, g.rat, hs, cs[2], cMuted, "RIGHT", true, "colhead")) end
             h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, hs, cs[3] or "", cMuted, "RIGHT", true, "colhead"))
             h = math.max(h, PlaceFS(FS(), g.px, y, g.per, hs, cs[4] or "", cMuted, "RIGHT", true, "colhead"))
             if (cs[5] or "") ~= "" and g.box > 0 then h = math.max(h, PlaceFS(FS(), g.cx, y, g.box, hs, cs[5], cMuted, "LEFT", true, "colhead")) end
+            if (cs[6] or "") ~= "" then h = math.max(h, PlaceFS(FS(), g.ix, y, g.iw, hs, cs[6], cMuted, "LEFT", true, "colhead")) end
             local hb = Btn()   -- hover: what each column holds
             hb.item = it
             hb:ClearAllPoints()
@@ -985,10 +1175,18 @@ local function RenderGrid(c, items, y, hasBox)
             -- General, Offensive, Defensive) one indent in; a little room above each but the first
             local l1 = it.level == 1
             if it ~= items[1] then y = y + (l1 and 4 or 2) end
-            local x = l1 and 0 or 8
-            local h = PlaceFS(FS(), x, y, W - x, l1 and size or size - 1, it.label, l1 and TC("xui-label", "text", { 1, 0.82, 0, 1 }) or cText,
-                "LEFT", true, "subhead")
-            y = y + h + 3
+            if l1 then
+                local h = PlaceFS(FS(), 0, y, W, size, it.label, TC("xui-label", "text", { 1, 0.82, 0, 1 }), "LEFT", true, "subhead")
+                y = y + h + 3
+            else
+                -- a bucket bar (depth 0): the band across the pane's width, the bucket's name on it
+                local th = TextW(it.label, size - 1)
+                local lines = math.max(1, math.ceil(th / math.max(1, W - 8)))
+                local bh = lines * (size - 1) + 4
+                PlaceTex(0, y, W, bh, Accent(), BUCKET_ALPHA, "bucketbar", it.label)
+                PlaceFS(FS(), 4, y + 2, W - 8, size - 1, it.label, cText, "LEFT", true, "subhead")
+                y = y + bh + 3
+            end
         elseif it.kind == "note" then
             local h = PlaceFS(FS(), 0, y, W, size, it.label, it.minor and cMuted or cText, "LEFT", true, "label")
             y = y + h + 5
@@ -1011,47 +1209,80 @@ local function RenderGrid(c, items, y, hasBox)
                 eb.xuiUsed = true
                 Rec("input", g.cx, y, g.box, size + 6, it.input, size)
             end
-            local h = GridLine(g, y, { x0 = 0, label = it.label, labelCol = it.labelColor or (it.minor and cMuted or cText), size = size,
+            local h = GridLine(g, y, { x0 = INDENT, label = it.label, labelCol = it.labelColor or (it.minor and cMuted or cText), size = size,
                 rating = it.ratingText, ratingCol = cText,
-                value = v, valueCol = ToneColor(tone, cText), per = it.per, perCol = cText, box = boxed, boxH = boxH })
-            y = y + h + 2
-            local headEnd = y
+                value = v, valueCol = ToneColor(tone, cText), per = it.per, perCol = cText, box = boxed, boxH = boxH, newValue = it.newValue })
             -- the lines under it: one size smaller and muted, except a card that asks for full-size ones (#378: "way too tiny")
             local big = it.bigPairs == true
             local psz, pcol = big and size or size - 1, big and cText or cMuted
+            -- (QoL 0.7.28) what the stat feeds ("»" lines) and what feeds it ("From <stat>") are names in the Influences column on the card's
+            -- own row, comma-separated, wrapping inside the column ("Names only, values on hover"); a line nested under a "»" line goes in
+            -- that name's hover. Every other line stays a line of its own under the card (depth 2).
+            local infl, rows, last = {}, {}, nil
             for _, p in ipairs(it.pairs or {}) do
                 if (not short or p.short) and not CM.NoteOnly(p) then
-                    local pv = (p.value ~= nil) and tostring(p.value) or ""
-                    -- a nested line (one ability under its "»" line, QoL 0.7.20) sits one indent deeper than the "»" lines
-                    local ph = GridLine(g, y, { x0 = p.nested and 24 or 12, label = p.label, labelCol = p.labelColor or pcol, size = psz, value = pv,
-                        valueCol = ToneColor(p.tone, cText), per = p.per, perCol = pcol, kind = "pair" })
-                    y = y + ph + 1
+                    local k, name = InflKind(p)
+                    if k then
+                        last = { kind = k, name = name, p = p, nested = {} }
+                        infl[#infl + 1] = last
+                    elseif p.nested and last then
+                        last.nested[#last.nested + 1] = p
+                    else
+                        last = nil
+                        rows[#rows + 1] = p
+                    end
                 end
             end
-            -- the hover (where the numbers come from): a card with a box keeps its box clickable, so its hover is its line up to the
-            -- box (name, rating, value, Pt value) and the lines under it; any other card hovers as a whole
-            if boxed then
-                local lb = Btn()
-                lb.item = it
-                lb:ClearAllPoints()
-                lb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top)
-                lb:SetSize(g.cx - GUT, size + 6)
-                Rec("hit", 0, top, g.cx - GUT, size + 6, it.key)
-                if y > headEnd then
-                    local pb = Btn()
-                    pb.item = it
-                    pb:ClearAllPoints()
-                    pb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -headEnd)
-                    pb:SetSize(W, y - headEnd)
-                    Rec("hit", 0, headEnd, W, y - headEnd, it.key)
+            local ih, nameBtns = 0, {}
+            if #infl > 0 then
+                local fx, fy, lineMax = 0, y, 0
+                local sp = math.max(3, TextW(" ", psz) - 1)
+                for i, e in ipairs(infl) do
+                    local text = e.name .. ((i < #infl) and "," or "")
+                    local tw = math.min(g.iw, TextW(text, psz) + 1)
+                    if fx > 0 and fx + tw > g.iw then fx = 0; fy = fy + lineMax + 1; lineMax = 0 end
+                    local nh = PlaceFS(FS(), g.ix + fx, fy, tw, psz, text, e.p.labelColor or pcol, "LEFT", true, (e.kind == "feed") and "feed" or "infl")
+                    lineMax = math.max(lineMax, nh)
+                    local p = e.p
+                    nameBtns[#nameBtns + 1] = { x = g.ix + fx, y = fy, w = tw, h = nh, item = { kind = "infl", key = it.key .. ":" .. tostring(p.label),
+                        label = p.label, value = p.value, per = p.per, perPoint = p.perPoint, perText = p.perText, newValue = p.newValue, tone = p.tone,
+                        pairs = e.nested, tip = {} } }
+                    fx = fx + tw + sp
                 end
-            else
+                ih = fy + lineMax - y
+            end
+            y = y + math.max(h, ih) + 2
+            local headEnd = y
+            for _, p in ipairs(rows) do
+                local pv = (p.value ~= nil) and tostring(p.value) or ""
+                local ph = GridLine(g, y, { x0 = 2 * INDENT, label = p.label, labelCol = p.labelColor or pcol, size = psz, value = pv,
+                    valueCol = ToneColor(p.tone, cText), per = p.per, perCol = pcol, kind = "pair", newValue = p.newValue })
+                y = y + ph + 1
+            end
+            -- the hover (where the numbers come from): the card's row up to the Influences column (a box stays clickable), the lines
+            -- under it, and each name in Influences on its own: that line's value, Pt value and, with a typed number, the new value
+            local lb = Btn()
+            lb.item = it
+            lb:ClearAllPoints()
+            lb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top)
+            lb:SetSize(g.ix - GUT, headEnd - top)
+            Rec("hit", 0, top, g.ix - GUT, headEnd - top, it.key)
+            if y > headEnd then
+                local pb = Btn()
+                pb.item = it
+                pb:ClearAllPoints()
+                pb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -headEnd)
+                pb:SetSize(W, y - headEnd)
+                Rec("hit", 0, headEnd, W, y - headEnd, it.key)
+            end
+            for _, nb in ipairs(nameBtns) do
                 local b = Btn()
-                b.item = it
+                b.item = nb.item
                 b:ClearAllPoints()
-                b:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top)
-                b:SetSize(W, math.max(1, y - top))
-                Rec("hit", 0, top, W, y - top, it.key)
+                b:SetPoint("TOPLEFT", content, "TOPLEFT", nb.x, -nb.y)
+                b:SetSize(nb.w, nb.h)
+                if b.SetFrameLevel and lb.GetFrameLevel then b:SetFrameLevel((lb:GetFrameLevel() or 1) + 1) end
+                Rec("hit", nb.x, nb.y, nb.w, nb.h, nb.item.key)
             end
             y = y + 4
         end
@@ -1059,21 +1290,54 @@ local function RenderGrid(c, items, y, hasBox)
     return y
 end
 
--- The Stat Weights pane (QoL 0.7.23): Stat | Rating (P / %) | PPP | DR Threshold | T/L Rating | Influences. Fixed widths for the four
--- number columns, the Stat column takes the rest; Influences is a column of its own once the panel is wide enough (content 560 or
--- wider), else it goes under its row, from one indent in to the right edge. Every cell wraps inside its column. A row's hover is the
--- whole row: "{stat} increases / decreases {other stat} by {amount}", one line per influence (CM: it.tip).
-local WT_RAT, WT_PPP, WT_DR, WT_TL, WT_STAT_WIDE, WT_WIDE = 72, 54, 48, 64, 90, 560
-local function WeightCols()
-    local g = { rat = WT_RAT, ppp = WT_PPP, dr = WT_DR, tl = WT_TL }
-    local fixed = WT_RAT + WT_PPP + WT_DR + WT_TL + 4 * GUT
-    g.wide = W >= WT_WIDE
-    g.stat = g.wide and WT_STAT_WIDE or math.max(30, W - fixed)
+-- The Stat Weights pane (QoL 0.7.23): Stat | Rating (P / %) | PPP | DR Threshold | T/L Rating | Influences. Influences is a column of
+-- its own once the panel is wide enough (content 560 or wider), else it goes under its row, from one indent in to the right edge. Every
+-- cell wraps inside its column. A row's hover is the whole row: "{stat} increases / decreases {other stat} by {amount}", one line per
+-- influence (CM: it.tip).
+-- QoL 0.7.28 (Xaya 2026-11-06, her words: "center columns under stat weights and make sure titles do not get clipped; numbers should be
+-- left-aligned; T/L rating should be T: # [line break] L: "; her answer "Titles centred over columns"; in game "Rating (P / %)" wrapped
+-- and "DR Thres..." was cut at the default width): the widths come from the titles and cells as the game measures them (TextW), not
+-- from fixed numbers: every column is at least as wide as the widest word of its title and cells (nothing is cut), then wide enough
+-- for its title on one line, then for its widest cell (FitCols); the Stat column (narrow panel) or Influences (wide panel) takes the
+-- rest. Titles are centred over their columns; every cell starts at its column's left edge; the T/L cell is two lines.
+local WT_WIDE = 560
+local WT_TITLES = { "Stat", "Rating (P / %)", "PPP", "DR Threshold", "T/L Rating", "Influences" }
+local function WeightCols(items, size)
+    size = size or 11
+    local hs = size - 1
+    local titles = WT_TITLES
+    for _, it in ipairs(items or {}) do if it.kind == "weighthead" and type(it.cols) == "table" then titles = it.cols end end
+    local g = { wide = W >= WT_WIDE, titles = titles }
+    local n = g.wide and 6 or 5
+    local spec = {}
+    for i = 1, n do
+        local t = titles[i] or ""
+        spec[i] = { min = WordW(t, hs), line = TextW(t, hs), want = TextW(t, hs) }
+    end
+    local function Cell(i, text, sz)
+        for line in (tostring(text or "") .. "\n"):gmatch("(.-)\n") do
+            spec[i].min = math.max(spec[i].min, WordW(line, sz))
+            spec[i].want = math.max(spec[i].want, TextW(line, sz))
+        end
+    end
+    for _, it in ipairs(items or {}) do
+        if it.kind ~= "weighthead" then
+            Cell(1, it.label, size)
+            local cs = it.cells or {}
+            for j = 1, 4 do Cell(j + 1, cs[j], size) end
+            if it.pppDR then Cell(3, it.pppDR, size - 1) end
+            if g.wide then spec[6].min = math.max(spec[6].min, WordW(it.influences, size - 1)) end
+        end
+    end
+    local w = FitCols(spec, W - (n - 1) * GUT, g.wide and 6 or 1)
+    g.w = w
+    g.stat, g.rat, g.ppp, g.dr, g.tl = w[1], w[2], w[3], w[4], w[5]
     g.rx = g.stat + GUT
-    g.px = g.rx + WT_RAT + GUT
-    g.dx = g.px + WT_PPP + GUT
-    g.tx = g.dx + WT_DR + GUT
-    if g.wide then g.ix = g.tx + WT_TL + GUT; g.iw = W - g.ix else g.ix = 12; g.iw = W - 12 end
+    g.px = g.rx + g.rat + GUT
+    g.dx = g.px + g.ppp + GUT
+    g.tx = g.dx + g.dr + GUT
+    if g.wide then g.ix = g.tx + g.tl + GUT; g.iw = w[6] else g.ix = 12; g.iw = W - 12 end
+    g.xs = { 0, g.rx, g.px, g.dx, g.tx, g.wide and g.ix or nil }
     return g
 end
 ns.CharToolkit_WeightCols = WeightCols   -- (tests)
@@ -1081,17 +1345,15 @@ local function RenderWeights(c, items, y)
     local size = c.fontSize
     local cText = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
     local cMuted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
-    local g = WeightCols()
+    local g = WeightCols(items, size)
     for _, it in ipairs(items) do
         local top = y
         if it.kind == "weighthead" then
             local cs, hs = it.cols or {}, size - 1
-            local h = PlaceFS(FS(), 0, y, g.stat, hs, cs[1], cMuted, "LEFT", true, "wcolhead")
-            h = math.max(h, PlaceFS(FS(), g.rx, y, g.rat, hs, cs[2], cMuted, "RIGHT", true, "wcolhead"))
-            h = math.max(h, PlaceFS(FS(), g.px, y, g.ppp, hs, cs[3], cMuted, "RIGHT", true, "wcolhead"))
-            h = math.max(h, PlaceFS(FS(), g.dx, y, g.dr, hs, cs[4], cMuted, "RIGHT", true, "wcolhead"))
-            h = math.max(h, PlaceFS(FS(), g.tx, y, g.tl, hs, cs[5], cMuted, "RIGHT", true, "wcolhead"))
-            if g.wide then h = math.max(h, PlaceFS(FS(), g.ix, y, g.iw, hs, cs[6], cMuted, "LEFT", true, "wcolhead")) end
+            local h = 0
+            for i = 1, (g.wide and 6 or 5) do
+                h = math.max(h, PlaceFS(FS(), g.xs[i], y, g.w[i], hs, cs[i] or "", cMuted, "CENTER", true, "wcolhead"))
+            end
             local hb = Btn()
             hb.item = it
             hb:ClearAllPoints()
@@ -1102,12 +1364,12 @@ local function RenderWeights(c, items, y)
         else
             local cs = it.cells or {}
             local h = PlaceFS(FS(), 0, y, g.stat, size, it.label, it.labelColor or cText, "LEFT", true, "wlabel")
-            h = math.max(h, PlaceFS(FS(), g.rx, y, g.rat, size, cs[1] or "", cText, "RIGHT", true, "wrating"))
-            local ph = PlaceFS(FS(), g.px, y, g.ppp, size, cs[2] or "", cText, "RIGHT", true, "wppp")
-            if it.pppDR then ph = ph + 1 + PlaceFS(FS(), g.px, y + ph + 1, g.ppp, size - 1, it.pppDR, ToneColor("warn", cMuted), "RIGHT", true, "wpppdr") end
+            h = math.max(h, PlaceLines(g.rx, y, g.rat, size, cs[1] or "", cText, "LEFT", "wrating"))
+            local ph = PlaceLines(g.px, y, g.ppp, size, cs[2] or "", cText, "LEFT", "wppp")
+            if it.pppDR then ph = ph + 1 + PlaceFS(FS(), g.px, y + ph + 1, g.ppp, size - 1, it.pppDR, ToneColor("warn", cMuted), "LEFT", true, "wpppdr") end
             h = math.max(h, ph)
-            h = math.max(h, PlaceFS(FS(), g.dx, y, g.dr, size, cs[3] or "", cText, "RIGHT", true, "wdr"))
-            h = math.max(h, PlaceFS(FS(), g.tx, y, g.tl, size, cs[4] or "", cText, "RIGHT", true, "wtl"))
+            h = math.max(h, PlaceLines(g.dx, y, g.dr, size, cs[3] or "", cText, "LEFT", "wdr"))
+            h = math.max(h, PlaceLines(g.tx, y, g.tl, size, cs[4] or "", cText, "LEFT", "wtl"))
             if g.wide then
                 h = math.max(h, PlaceFS(FS(), g.ix, y, g.iw, size - 1, it.influences or "", cMuted, "LEFT", true, "winfl"))
             else
@@ -1126,16 +1388,41 @@ local function RenderWeights(c, items, y)
     return y
 end
 
--- The Spells tab's spell table (QoL 0.7.24; Xaya 2026-11-05: "add columns to help clarity in info displays: Spell Name (spell id
--- underneath) | % PSV (underneath each entry show "1 agility = {value}") | Talent Modifiers"; her answer 2026-11-06: "Fourth column -
--- computed Value"): exactly Spell Name | % PSV | Talent Modifiers | Computed Value. Under the name its "Spell ID: N"; per number of the
--- description: its percent in % PSV with "1 <primary stat> = <value>" under it, and the number itself (38,011) in Computed Value on the
--- same line. Nothing else is drawn in the table (the hover keeps the rest). Widths: Computed Value eight characters at the text size
--- (0.55 x size each: "123,456"), Spell Name 27% and Talent Modifiers 22% of the content, % PSV the rest (141 at the default 450 panel,
--- so "355.6% of attack power" fits one line at size 11). Every cell wraps in its column (the head "Computed Value" too).
-local function SpellCols(size)
-    local g = { val = math.ceil(size * 0.55 * 8), name = math.floor(W * 0.27), tm = math.floor(W * 0.22) }
-    g.psv = W - g.name - g.val - g.tm - 3 * GUT
+-- The Ability Scaling tab's spell table (the Spells tab until QoL 0.7.28; QoL 0.7.24; Xaya 2026-11-05: "add columns to help clarity in
+-- info displays: Spell Name (spell id underneath) | % PSV (underneath each entry show "1 agility = {value}") | Talent Modifiers"; her
+-- answer 2026-11-06: "Fourth column - computed Value"): exactly Spell Name | % PSV | Talent Modifiers | Computed Value. Under the name its
+-- "Spell ID: N"; per number of the description: its percent in % PSV with "1 <primary stat> = <value>" under it, and the number itself
+-- (38,011) in Computed Value on the same line. Nothing else is drawn in the table (the hover keeps the rest).
+-- QoL 0.7.28: (Xaya 2026-11-06: "refresh spell data still present") the section's action item (the Refresh spell data button above the
+-- table) is no longer drawn as a row under the head: since 0.7.24 only the plain sections left it out, and this table drew every item
+-- that was not a spell as a line, the action item too. (Her "Comput..." cut: no head may be cut) the widths come from the heads and
+-- the values as the game measures them (TextW, FitCols): every head fits its column on one line where the width allows, and never
+-- loses a word; then the percents and the values fit on one line; Spell Name takes the rest (Talent Modifiers up to 22% of it). Under the
+-- percents, one line per other stat that changes the number (Versatility, Mastery: CM SpellItem, her answer "Only stats that change the
+-- number"); under the first Computed Value, the new value a typed number gives, with its sign, in the accent colour (as on the Stats tab).
+local SPELL_HEADS = { "Spell Name", "% PSV", "Talent Modifiers", "Computed Value" }
+local function SpellCols(size, items)
+    local hs = size - 1
+    local spec = {}
+    for i, t in ipairs(SPELL_HEADS) do spec[i] = { min = WordW(t, hs), line = TextW(t, hs), want = TextW(t, hs) } end
+    for _, it in ipairs(items or {}) do
+        local r = it.row
+        for _, e in ipairs(r and r.entries or {}) do
+            spec[4].min = math.max(spec[4].min, TextW(e.value, size), TextW(e.newValue, size))
+            spec[4].want = math.max(spec[4].want, spec[4].min)
+            spec[2].want = math.max(spec[2].want, TextW(e.pct, size), TextW(e.per, hs))
+        end
+        for _, sm in ipairs(r and r.statMods or {}) do spec[2].want = math.max(spec[2].want, TextW(sm, hs)) end
+    end
+    -- heads on one line first, then the percents and values on one line; Spell Name takes the rest, and gives Talent Modifiers what it
+    -- has beyond 27% of the content until Talent Modifiers has 22% (their shares before QoL 0.7.28)
+    local w = FitCols(spec, W - 3 * GUT, 1)
+    local nameKeep, tmWant = math.floor(W * 0.27), math.floor(W * 0.22)
+    if w[1] > nameKeep and w[3] < tmWant then
+        local move = math.min(w[1] - nameKeep, tmWant - w[3])
+        w[1], w[3] = w[1] - move, w[3] + move
+    end
+    local g = { name = w[1], psv = w[2], tm = w[3], val = w[4] }
     g.px = g.name + GUT
     g.tx = g.px + g.psv + GUT
     g.vx = g.tx + g.tm + GUT
@@ -1144,19 +1431,19 @@ end
 ns.CharToolkit_SpellCols = SpellCols   -- (tests)
 local SPELL_HEAD = { kind = "spellhead", key = "spellCols", label = "Columns", value = "", pairs = {}, tip = {
     "Spell Name: the spell, and its spell ID under it.",
-    "% PSV: each number in the spell's description as a percent of your attack power (spell power for Intellect specs), and under it what one point of your primary stat adds to it.",
+    "% PSV: each number in the spell's description as a percent of your attack power (spell power for Intellect specs), and under it what one point of your primary stat adds to it; then the other stats that change the number (Versatility; Mastery where your mastery's own text names the spell or its school).",
     "Talent Modifiers: the talents you picked whose own text names the spell.",
-    "Computed Value: the number itself, as the game computes it in the spell's description (durations, distances and counts left out)." } }
+    "Computed Value: the number itself, as the game computes it in the spell's description (durations, distances and counts left out); under the first one, the new value a number typed on the Stats tab gives, with its sign." } }
 local function RenderSpells(c, items, y)
     local size = c.fontSize
     local cText = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
     local cMuted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
-    local g = SpellCols(size)
+    local g = SpellCols(size, items)
     local hs = size - 1
-    local h = PlaceFS(FS(), 0, y, g.name, hs, "Spell Name", cMuted, "LEFT", true, "spellhead")
-    h = math.max(h, PlaceFS(FS(), g.px, y, g.psv, hs, "% PSV", cMuted, "LEFT", true, "spellhead"))
-    h = math.max(h, PlaceFS(FS(), g.tx, y, g.tm, hs, "Talent Modifiers", cMuted, "LEFT", true, "spellhead"))
-    h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, hs, "Computed Value", cMuted, "RIGHT", true, "spellhead"))
+    local h = PlaceFS(FS(), 0, y, g.name, hs, SPELL_HEADS[1], cMuted, "LEFT", true, "spellhead")
+    h = math.max(h, PlaceFS(FS(), g.px, y, g.psv, hs, SPELL_HEADS[2], cMuted, "LEFT", true, "spellhead"))
+    h = math.max(h, PlaceFS(FS(), g.tx, y, g.tm, hs, SPELL_HEADS[3], cMuted, "LEFT", true, "spellhead"))
+    h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, hs, SPELL_HEADS[4], cMuted, "RIGHT", true, "spellhead"))
     local hb = Btn()
     hb.item = SPELL_HEAD
     hb:ClearAllPoints(); hb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y); hb:SetSize(W, h + 1)
@@ -1164,7 +1451,9 @@ local function RenderSpells(c, items, y)
     y = y + h + 4
     for _, it in ipairs(items) do
         local top = y
-        if it.row then
+        if it.kind == "action" then
+            -- (QoL 0.7.28) the Configure / Refresh spell data item is the button above the sections: no row here
+        elseif it.row then
             local r = it.row
             local hn = PlaceFS(FS(), 0, y, g.name, size, it.label, it.labelColor or cText, "LEFT", true, "spellname")
             hn = hn + 1 + PlaceFS(FS(), 0, y + hn + 1, g.name, hs, r.idText, cMuted, "LEFT", true, "spellid")
@@ -1174,7 +1463,11 @@ local function RenderSpells(c, items, y)
                 local hp = PlaceFS(FS(), g.px, ey, g.psv, size, e.pct, cText, "LEFT", true, "spellpct")
                 if e.per then hp = hp + 1 + PlaceFS(FS(), g.px, ey + hp + 1, g.psv, hs, e.per, cMuted, "LEFT", true, "spellper") end
                 local hv = PlaceFS(FS(), g.vx, ey, g.val, size, e.value, cText, "RIGHT", true, "spellvalue")
+                if e.newValue then hv = hv + 1 + PlaceFS(FS(), g.vx, ey + hv + 1, g.val, size, e.newValue, Accent(), "RIGHT", true, "spellchange") end
                 hm = hm + math.max(hv, hp) + 2
+            end
+            for _, sm in ipairs(r.statMods or {}) do
+                hm = hm + PlaceFS(FS(), g.px, y + hm, g.psv, hs, sm, cMuted, "LEFT", true, "spellstat") + 1
             end
             local mods = (#(r.mods or {}) > 0) and table.concat(r.mods, ", ") or (r.notPicked and "" or "none")
             local ht = 0
@@ -1188,11 +1481,13 @@ local function RenderSpells(c, items, y)
             local vh = (v ~= "") and PlaceFS(FS(), lw, y, W - lw, size, v, ToneColor(it.tone, cMuted), "RIGHT", true, "value") or 0
             y = y + math.max(lh, vh) + 1
         end
-        local b = Btn()
-        b.item = it
-        b:ClearAllPoints(); b:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top); b:SetSize(W, math.max(1, y - top))
-        Rec("hit", 0, top, W, y - top, it.key)
-        y = y + 4
+        if it.kind ~= "action" then
+            local b = Btn()
+            b.item = it
+            b:ClearAllPoints(); b:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top); b:SetSize(W, math.max(1, y - top))
+            Rec("hit", 0, top, W, y - top, it.key)
+            y = y + 4
+        end
     end
     return y
 end
@@ -1276,6 +1571,166 @@ local function RenderMulti(c, items, y)
     return y
 end
 
+-- The Gear Summary (QoL 0.7.28; Xaya 2026-11-06, her words: "Gear Summary should be at the top of the pane in a prettified graphic of
+-- sorts"; her answer: "provide all three visual options this round for me to consider; volunteer more if possible"): the Stats tab's
+-- first section, drawn in the style chosen on the settings page (Panel > Layout > Gear Summary style; CM.GEAR_SUM_STYLES):
+--   Split bars (the default; DECISION, the first design she was shown): one bar per stat in its colour, as long as the character's
+--     rating (the longest bar fills the room), the part from gear solid, the part from elsewhere lighter; "544 (gear 489 +55)" at its end;
+--   Stat tiles: a tile per stat, its name in its colour, the total large, "gear 489" and "+55" small under it; tiles wrap to more rows;
+--   One stacked bar: one bar split by each stat's share of the ratings listed, in the stats' colours; a legend "Crit 544 (489 +55)";
+--   Columns (volunteered): one upright column per stat, gear solid at the bottom, elsewhere lighter on top, the total above, the name under;
+--   Gear share (volunteered): one full-width bar per stat, the gear part's share solid, the rest lighter, "90% gear (489 of 544)";
+--   Table: the table as before (Gear | Character | Elsewhere).
+-- Only flat textures and font strings (no art files), the theme's colours and the stat colours (CM.STAT_COLORS). A stat the game hides
+-- right now (in combat) and the empty sockets are a line under the graphic. Each stat hovers with its three numbers.
+local GS_LIGHT = 0.4   -- the lighter part (elsewhere): the stat colour at this opacity
+local function SBig(v) return ((v or 0) >= 0 and "+" or "") .. CM.Big(v or 0) end
+local function RenderGearSum(c, sec, y)
+    local size = c.fontSize
+    local cText = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
+    local cMuted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
+    local style = sec.style or CM.GEAR_SUM_DEFAULT
+    local head, sockets, shown, hidden = nil, nil, {}, {}
+    for _, it in ipairs(sec.items) do
+        if it.kind == "colhead" then head = it
+        elseif it.sockets then sockets = it
+        elseif it.stat then
+            if it.hidden or not num(it.char) then hidden[#hidden + 1] = it else shown[#shown + 1] = it end
+        end
+    end
+    local function Hover(it, x, top, w, h)
+        local b = Btn()
+        b.item = it
+        b:ClearAllPoints(); b:SetPoint("TOPLEFT", content, "TOPLEFT", x, -top); b:SetSize(math.max(1, w), math.max(1, h))
+        Rec("hit", x, top, math.max(1, w), math.max(1, h), it.key)
+    end
+    local function Col(r) return r.labelColor or cText end
+    local function Share(r) if r.char <= 0 then return 1 end; return math.min(1, math.max(0, r.gear / r.char)) end
+    if style == "table" then
+        if head then y = CmpHead(head, y, size, cMuted) + 2 end
+        for _, it in ipairs(sec.items) do if it.kind == "cmprow" then y = CmpRow(it, y, size, cText) end end
+        return y
+    end
+    local maxC = 0
+    for _, r in ipairs(shown) do maxC = math.max(maxC, r.char) end
+    if style == "bars" or style == "share" then
+        local nameW = 0
+        for _, r in ipairs(shown) do nameW = math.max(nameW, TextW(r.label, size)) end
+        nameW = math.min(nameW, math.floor(W * 0.4))
+        local function Nums(r)
+            if style == "share" then return ("%d%% gear (%s of %s)"):format(math.floor(Share(r) * 100 + 0.5), CM.Big(r.gear), CM.Big(r.char)) end
+            return ("%s (gear %s%s)"):format(CM.Big(r.char), CM.Big(r.gear), (r.diff or 0) ~= 0 and (" " .. SBig(r.diff)) or "")
+        end
+        local numW = 0
+        for _, r in ipairs(shown) do numW = math.max(numW, TextW(Nums(r), size - 1)) end
+        local bx = nameW + GUT
+        local barMax = W - bx - GUT - numW
+        local under = barMax < 40   -- too narrow for the numbers beside the bar: they go under it
+        if under then barMax = W - bx end
+        local bh = math.max(6, size - 2)
+        for _, r in ipairs(shown) do
+            local top = y
+            local lh = PlaceFS(FS(), 0, y, nameW, size, r.label, Col(r), "LEFT", true, "gslabel")
+            local len = barMax
+            if style == "bars" then len = (maxC > 0) and math.max(1, math.floor(barMax * r.char / maxC)) or 1 end
+            local solid = math.floor(len * Share(r) + 0.5)
+            local by = y + math.floor((size - bh) / 2)
+            if solid > 0 then PlaceTex(bx, by, solid, bh, Col(r), 1, "gsbar", r.label) end
+            if len - solid > 0 then PlaceTex(bx + solid, by, len - solid, bh, Col(r), GS_LIGHT, "gsbar", r.label) end
+            local nh
+            if under then nh = size + 1 + PlaceFS(FS(), bx, y + size + 1, W - bx, size - 1, Nums(r), cMuted, "LEFT", true, "gsnum")
+            else
+                local nx = bx + len + GUT
+                nh = PlaceFS(FS(), nx, y, W - nx, size - 1, Nums(r), cMuted, "LEFT", true, "gsnum")
+            end
+            y = y + math.max(lh, nh, size) + 3
+            Hover(r, 0, top, W, y - top)
+        end
+    elseif style == "tiles" then
+        local pad, tw = 4, 0
+        local function Diff(r) return SBig(r.diff or 0) end
+        for _, r in ipairs(shown) do
+            tw = math.max(tw, TextW(r.label, size - 1), TextW(CM.Big(r.char), size + 4), TextW("gear " .. CM.Big(r.gear), size - 2), TextW(Diff(r), size - 2))
+        end
+        tw = math.min(W, tw + 2 * pad)
+        local per = math.max(1, math.floor((W + GUT) / (tw + GUT)))
+        local th = pad + (size - 1) + 2 + (size + 4) + 2 + (size - 2) + 1 + (size - 2) + pad
+        local bg = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 })
+        for i, r in ipairs(shown) do
+            local col, row = (i - 1) % per, math.floor((i - 1) / per)
+            local x, ty = col * (tw + GUT), y + row * (th + GUT)
+            PlaceTex(x, ty, tw, th, bg, 0.9, "gstile", r.label)
+            local ly = ty + pad
+            ly = ly + PlaceFS(FS(), x + pad, ly, tw - 2 * pad, size - 1, r.label, Col(r), "CENTER", true, "gstname") + 2
+            ly = ly + PlaceFS(FS(), x + pad, ly, tw - 2 * pad, size + 4, CM.Big(r.char), cText, "CENTER", true, "gsttotal") + 2
+            ly = ly + PlaceFS(FS(), x + pad, ly, tw - 2 * pad, size - 2, "gear " .. CM.Big(r.gear), cMuted, "CENTER", true, "gstgear") + 1
+            PlaceFS(FS(), x + pad, ly, tw - 2 * pad, size - 2, Diff(r), cMuted, "CENTER", true, "gstdiff")
+            Hover(r, x, ty, tw, th)
+        end
+        if #shown > 0 then y = y + math.ceil(#shown / per) * (th + GUT) end
+    elseif style == "stacked" then
+        local total = 0
+        for _, r in ipairs(shown) do total = total + math.max(0, r.char) end
+        if total > 0 then
+            local bh = size + 4
+            local x = 0
+            local list = {}
+            for _, r in ipairs(shown) do if r.char > 0 then list[#list + 1] = r end end
+            for i, r in ipairs(list) do
+                local w = (i == #list) and (W - x) or math.floor(W * r.char / total + 0.5)
+                if w > 0 then PlaceTex(x, y, w, bh, Col(r), 1, "gsseg", r.short) end
+                x = x + w
+            end
+            if head then Hover(head, 0, y, W, bh) end
+            y = y + bh + 4
+            local lx, sw = 0, math.max(6, size - 3)
+            for _, r in ipairs(list) do
+                local text = ("%s %s (%s %s)"):format(r.short, CM.Big(r.char), CM.Big(r.gear), SBig(r.diff or 0))
+                local tw = math.min(TextW(text, size - 1), W - sw - 3)
+                local ew = sw + 3 + tw
+                if lx > 0 and lx + ew > W then lx = 0; y = y + size + 3 end
+                PlaceTex(lx, y + math.floor((size - 1 - sw) / 2), sw, sw, Col(r), 1, "gsswatch", r.short)
+                PlaceFS(FS(), lx + sw + 3, y, tw, size - 1, text, Col(r), "LEFT", true, "gslegend")
+                Hover(r, lx, y, ew, size)
+                lx = lx + ew + GUT
+            end
+            y = y + size + 3
+        end
+    elseif style == "columns" then
+        local n = #shown
+        if n > 0 then
+            local cw = 16
+            for _, r in ipairs(shown) do cw = math.max(cw, TextW(r.short, size - 1), TextW(CM.Big(r.char), size - 1)) end
+            local per = math.max(1, math.min(n, math.floor((W + GUT) / (cw + GUT))))
+            local slot = math.floor(W / per)
+            local ch = 4 * size   -- the chart's height
+            local rowH = (size - 1) + 2 + ch + 2 + (size - 1) + 4
+            for i, r in ipairs(shown) do
+                local col, row = (i - 1) % per, math.floor((i - 1) / per)
+                local sx, ty = col * slot, y + row * rowH
+                PlaceFS(FS(), sx, ty, slot, size - 1, CM.Big(r.char), cText, "CENTER", true, "gsctotal")
+                local bw = math.max(4, math.min(cw, slot - 6))
+                local bxx = sx + math.floor((slot - bw) / 2)
+                local bTop = ty + (size - 1) + 2
+                local hgt = (maxC > 0) and math.max(1, math.floor(ch * r.char / maxC)) or 1
+                local solid = math.floor(hgt * Share(r) + 0.5)
+                if hgt - solid > 0 then PlaceTex(bxx, bTop + ch - hgt, bw, hgt - solid, Col(r), GS_LIGHT, "gscol", r.short) end
+                if solid > 0 then PlaceTex(bxx, bTop + ch - solid, bw, solid, Col(r), 1, "gscol", r.short) end
+                PlaceFS(FS(), sx, bTop + ch + 2, slot, size - 1, r.short, Col(r), "CENTER", true, "gscname")
+                Hover(r, sx, ty, slot, rowH - 4)
+            end
+            y = y + math.ceil(n / per) * rowH
+        end
+    end
+    for _, r in ipairs(hidden) do
+        y = y + PlaceFS(FS(), 0, y, W, size - 1, r.label .. ": " .. tostring((r.cells and r.cells[2]) or ""), cMuted, "LEFT", true, "gshidden") + 2
+    end
+    if sockets then
+        y = y + PlaceFS(FS(), 0, y, W, size - 1, "Empty sockets: " .. tostring(sockets.sockets), ToneColor("warn", cText), "LEFT", true, "gssockets") + 2
+    end
+    return y
+end
+
 -- detail tabs: sections with headers; a grid section draws its lines in columns (RenderGrid), any other each line as label | value
 -- with its pairs under it
 local function RenderSections(c, m, tab, y0)
@@ -1309,7 +1764,9 @@ local function RenderSections(c, m, tab, y0)
             h.line:SetColorTexture(cLine[1], cLine[2], cLine[3], 0.8)
             Rec("header", 0, y, W, size + 7, (folded and "+ " or "- ") .. sec.title, size + 1)
             y = y + size + 9
-            if not folded and sec.weights then
+            if not folded and sec.gearsum then
+                y = RenderGearSum(c, sec, y)
+            elseif not folded and sec.weights then
                 y = RenderWeights(c, sec.items, y)
             elseif not folded and sec.spells then
                 y = RenderSpells(c, sec.items, y)
@@ -1343,9 +1800,9 @@ local function RenderSections(c, m, tab, y0)
                             b.tex:SetTexture(ic.tex or QUESTION_MARK)
                             local bc = ic.color or cLine
                             b.border:SetColorTexture(bc[1], bc[2], bc[3], 1)
-                            -- the selected box: the slot being compared, a picked bag item (QoL 0.7.24: a 2 px frame in the theme's
-                            -- accent colour around the icon; before, a mark under the item level). The quality border stays.
-                            local acc = TC("xui-tab-selected", "bg", { 0.55, 0.3, 0.8, 1 })
+                            -- the selected box: the slot being compared, a picked bag item (QoL 0.7.24; QoL 0.7.28: a 3 px frame in the
+                            -- theme's accent colour over the icon's edges, see IconBtn). The quality border stays.
+                            local acc = Accent()   -- (QoL 0.7.28: was the selected tab's dark background colour)
                             for _, e in ipairs(b.selEdges or {}) do
                                 if ic.selected then e:SetColorTexture(acc[1], acc[2], acc[3], 1); e:Show() else e:Hide() end
                             end
@@ -1588,7 +2045,7 @@ function ns.CharToolkit_Render()
         b.text:SetText(b.label)
         Paint(b.text, TC(cls, "text", on and { 1, 1, 1, 1 } or { 1, 0.82, 0, 1 }))
     end
-    nFS, nBtn, nHdr, nIcon = 0, 0, 0, 0
+    nFS, nBtn, nHdr, nIcon, nTex = 0, 0, 0, 0, 0
     for _, eb in pairs(boxes) do eb.xuiUsed = false end
     local m = CM.Build(c, c.tab)
     panel.model = m
@@ -1597,6 +2054,7 @@ function ns.CharToolkit_Render()
     else HideSpellBar(); y = RenderSections(c, m, c.tab) end
     for i = nIcon + 1, #iconBtns do iconBtns[i]:Hide(); iconBtns[i].slot, iconBtns[i].link, iconBtns[i].cand = nil, nil, nil end
     for i = nFS + 1, #fsPool do fsPool[i]:Hide() end
+    for i = nTex + 1, #texPool do texPool[i]:Hide() end
     for i = nBtn + 1, #btnPool do btnPool[i]:Hide(); btnPool[i].item = nil end
     for i = nHdr + 1, #hdrPool do hdrPool[i]:Hide() end
     for _, eb in pairs(boxes) do if not eb.xuiUsed then eb:Hide() end end
@@ -1612,7 +2070,7 @@ function ns.CharToolkit_Drawn()
     if not panel then return nil end
     return { model = panel.model, layout = panel.layoutRecs, modeText = panel.modeText, sizeText = panel.sizeText, buttons = btnPool, headers = hdrPool, boxes = boxes,
         fonts = fsPool, icons = iconBtns, spellBtn = panel.spellBtn, filterIcon = panel.filterIcon, filterMenu = panel.filterMenu,
-        menuRecs = panel.menuRecs }
+        menuRecs = panel.menuRecs, textures = texPool }
 end
 
 -------------------------------------------------------------------------------
@@ -2108,6 +2566,17 @@ function ns.BuildCharToolkitPage(Notify)
                 heightLarge = { type = "range", order = 5.7, name = "Larger height", min = MIN_H, max = MAX_H, step = 10,
                     desc = "The panel's height after the Max button. Dragging the corner while it is large sets this too.",
                     get = function() return C().heightLarge end, set = function(_, v) C().heightLarge = v; Changed() end },
+                -- (QoL 0.7.28; Xaya 2026-11-06: "provide all three visual options this round for me to consider; volunteer more if
+                -- possible") how the Stats tab's Gear Summary is drawn
+                gearSumStyle = { type = "select", order = 5.8, name = "Gear Summary style",
+                    values = (function() local t = {}; for _, st in ipairs(CM.GEAR_SUM_STYLES) do t[st[1]] = st[2] end; return t end)(),
+                    sorting = (function() local t = {}; for _, st in ipairs(CM.GEAR_SUM_STYLES) do t[#t + 1] = st[1] end; return t end)(),
+                    desc = (function()
+                        local t = { "How the Gear Summary at the top of the Stats tab is drawn." }
+                        for _, st in ipairs(CM.GEAR_SUM_STYLES) do t[#t + 1] = st[2] .. ": " .. st[3] end
+                        return table.concat(t, "\n")
+                    end)(),
+                    get = function() return CM.GearSumStyle(C()) end, set = function(_, v) C().gearSumStyle = v; Changed() end },
                 opacity = { type = "range", order = 6, name = "Background", min = 0, max = 1, step = 0.05, isPercent = true,
                     desc = "Opacity of the panel's background. Colors and font follow the XayaUI theme.",
                     get = function() return C().opacity end, set = function(_, v) C().opacity = v; Changed() end },
