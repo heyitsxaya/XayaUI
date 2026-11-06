@@ -2637,6 +2637,27 @@ function ns.SetMoveUnlocked(objs, on)
     end
 end
 
+-- Closing the settings window ends everything it started on screen (core 0.6.56; Xaya, 2026-11-06: "typing /xui and closing the menu does
+-- not turn off previews -- this is a high priority issue, as it indicates that the addon is still running its options pane indirectly in
+-- some way. this should not happen"). Up to now only the eye / headphone previews ended; the sidebar's per-rule and per-group movement
+-- unlocks (sample displays with their boxes and names), the preview pause and an unlock made with the window's Lock Positions button stayed.
+function ns.EndWindowState()
+    if ns.ClearPreview and ns.AnyPreview and ns.AnyPreview() then ns.ClearPreview() end
+    if ns.previewPaused and ns.SetPreviewPaused then ns.SetPreviewPaused(false) end
+    local rules = {}
+    for r in pairs(ns.moveUnlocked) do rules[#rules + 1] = r end
+    if #rules > 0 then ns.SetMoveUnlocked(rules, false) end
+    local fids = {}
+    for fid in pairs(ns.groupUnlocked) do fids[#fids + 1] = fid end
+    for _, fid in ipairs(fids) do
+        local f = ns.FolderById and ns.FolderById(fid)
+        if f then ns.SetGroupUnlocked(f, false) else ns.groupUnlocked[fid] = nil end
+    end
+    if ns.unlocked and ns.unlockedByWindow then ns.ToggleUnlock() end
+    ns.unlockedByWindow = nil
+    if ns.MarkDirty then ns.MarkDirty() end
+end
+
 -- Each rule is refreshed on its own (one broken display cannot stop the rest). A rule whose display is switched off and that
 -- has no frame yet gets none: sound-only cues and conditions no longer each carry a full display frame in memory.
 local refreshErrSeen = setmetatable({}, { __mode = "k" })
@@ -2658,6 +2679,9 @@ end
 
 function ns.ToggleUnlock()
     ns.unlocked = not ns.unlocked
+    -- remembered so closing the settings window ends an unlock made while it was open (its Lock Positions button), not one typed as
+    -- /xui unlock with the window closed (core 0.6.56, ns.EndWindowState below)
+    ns.unlockedByWindow = (ns.unlocked and ns.optionsShown) and true or nil
     if not ns.unlocked then for r in pairs(pairOf) do ns.ClearPair(r) end end
     ns.Print(ns.unlocked and "visuals UNLOCKED: drag them, then /xui unlock again to lock. Hover a display or a group's name tab to see what it is; click it to open its settings."
         or "visuals locked.")
