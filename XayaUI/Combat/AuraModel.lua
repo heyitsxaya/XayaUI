@@ -751,7 +751,7 @@ function M.BuildRows()
 end
 
 -------------------------------------------------------------------------------
--- Slash: /xui model ...
+-- Slash: /xui debug model ...
 -------------------------------------------------------------------------------
 local function P(...) if ns.Print then ns.Print(...) else print(...) end end
 
@@ -777,10 +777,10 @@ function ns.ModelCommand(arg)
         local p = Profile(false)
         local n = 0; if p and p.entries then for _ in pairs(p.entries) do n = n + 1 end end
         P(string.format("combat tracking model | %s | loadout %s | presence estimate %s | setup %s | learned entries %d",
-            ctx.key or "?", ctx.sig or "?", M.PresenceEnabled() and "ON" or "OFF", (p and p.setupDone) and "done" or "NOT done (/xui model setup)", n))
+            ctx.key or "?", ctx.sig or "?", M.PresenceEnabled() and "ON" or "OFF", (p and p.setupDone) and "done" or "NOT done (/xui debug model setup)", n))
         P(string.format("  casts readable %d, secret %d | windows opened %d, skipped %d | estimates served %d | learned this session %d",
             stats.castsReadable, stats.castsSecret, stats.windowsOpened, stats.windowsSkipped, stats.estimatesServed, stats.learned))
-        P("  /xui model <spellID> | setup | on | off | override <spellID> <seconds|clear> | rescan")
+        P("  /xui debug model <spellID> | setup | on | off | override <spellID> <seconds|clear> | rescan")
     elseif cmd == "setup" then
         if ns.AuraSetup_Open then ns.AuraSetup_Open() else P("setup window is not loaded") end
     elseif cmd == "on" or cmd == "off" then
@@ -790,14 +790,14 @@ function ns.ModelCommand(arg)
     elseif cmd == "override" then
         local id, v = rest:match("^(%d+)%s+(%S+)")
         id = tonumber(id)
-        if not id then P("usage: /xui model override <spellID> <seconds|clear>"); return end
+        if not id then P("usage: /xui debug model override <spellID> <seconds|clear>"); return end
         if v == "clear" then M.SetOverride(id, nil); P("override cleared for " .. id)
         elseif tonumber(v) then M.SetOverride(id, tonumber(v)); P("override " .. id .. " = " .. v .. " s")
-        else P("usage: /xui model override <spellID> <seconds|clear>") end
+        else P("usage: /xui debug model override <spellID> <seconds|clear>") end
     elseif tonumber(cmd) then
         if not ctx.sig then M.Refresh() end
         Explain(tonumber(cmd))
     else
-        P("unknown /xui model command")
+        P("unknown /xui debug model command")
     end
 end

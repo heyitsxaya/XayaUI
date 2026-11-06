@@ -2,7 +2,7 @@
 -- XayaUITalentDB (own SavedVariable, so profile exports stay small). It uses the same Blizzard calls the talent window's
 -- "view another spec" feature and LibTalentTree use (C_ClassTalents.InitializeViewLoadout + C_Traits), so it follows whatever the
 -- current patch ships. There is no static talent list in the addon on purpose: no public static list matches Midnight.
--- UNTESTED IN GAME (written 2026-11-01 from the LibTalentTree-1.0 call sequence): run /xui talents and report what it prints.
+-- UNTESTED IN GAME (written 2026-11-01 from the LibTalentTree-1.0 call sequence): run /xui debug talents and report what it prints.
 -- Stored per class: specs = { [specID] = name }, nodes = { [nodeID] = { t = node type, max = max ranks, choice = true when the node is a
 --   pick-one, scope = "class" | "spec" | "hero" (class/spec is INFERRED from how many specs see the node), hero = subTreeID, specs = {[specID]=true},
 --   e = { { entry, spell, name, passive = true|nil, cd = base cooldown seconds|nil, sub = subTreeID (hero tree pick) } } } }
@@ -120,7 +120,7 @@ function ns.TalentStatus()
     return ("Last talent scan %s (build %s): %d classes, %d nodes."):format(db.built or "?", tostring(db.build), nC, nN)
 end
 
--- /xui talents            scan everything, /xui talents status   last scan, /xui talents <text>   find talents by name in the last scan
+-- /xui debug talents            scan everything, /xui debug talents status   last scan, /xui debug talents <text>   find talents by name in the last scan
 function ns.TalentCommand(arg)
     arg = (arg or ""):match("^%s*(.-)%s*$")
     if arg == "" then
@@ -129,7 +129,7 @@ function ns.TalentCommand(arg)
     elseif arg == "status" then ns.Print(ns.TalentStatus())
     else
         local db, hits = XayaUITalentDB, 0
-        if not (db and db.classes) then ns.Print("No talent scan saved yet - run /xui talents first."); return end
+        if not (db and db.classes) then ns.Print("No talent scan saved yet - run /xui debug talents first."); return end
         for _, c in pairs(db.classes) do
             for _, n in pairs(c.nodes) do
                 for _, e in ipairs(n.e) do

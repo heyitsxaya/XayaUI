@@ -117,8 +117,8 @@ check("hidden cooldown: speech at 3 s left on the crossing frame", t2 is not Non
 
 # 4. the coverage report says how each rule gets its time
 lua('PRINTED = {}; NS.Print = function(m) PRINTED[#PRINTED + 1] = m end; NS.Timing.Report()')
-check("/xui timing: both rules covered, with their sources", lua("local a, b = false, false; for _, l in ipairs(PRINTED) do if l:find('Anti%-Magic Shell') and l:find('measured 5.0s') then a = true end if l:find('Death Strike') and l:find('measured 12.0s') then b = true end end return a and b and PRINTED[1]:find('2 rules covered') ~= nil"),
+check("/xui debug timing: both rules covered, with their sources", lua("local a, b = false, false; for _, l in ipairs(PRINTED) do if l:find('Anti%-Magic Shell') and l:find('measured 5.0s') then a = true end if l:find('Death Strike') and l:find('measured 12.0s') then b = true end end return a and b and PRINTED[1]:find('2 rules covered') ~= nil"),
       lua("return table.concat(PRINTED, ' || ')"))
 lua('CueRulesDB.learnedAuraDur[48707] = nil; PRINTED = {}; NS.Timing.Report()')
-check("/xui timing: an unmeasured aura is flagged with the one fix", lua("for _, l in ipairs(PRINTED) do if l:find('^  !') and l:find('out of combat to measure') then return true end end return false"))
+check("/xui debug timing: an unmeasured aura is flagged with the one fix", lua("for _, l in ipairs(PRINTED) do if l:find('^  !') and l:find('out of combat to measure') then return true end end return false"))
 print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)

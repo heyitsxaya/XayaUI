@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Chat/Probe.lua : /xui chatprobe. Stage S0 of the Chat Panel rebuild.
+-- Chat/Probe.lua : /xui debug chatprobe. Stage S0 of the Chat Panel rebuild.
 -- READ ONLY. It never moves, hides, shows, re-parents or styles anything. It looks at Blizzard's chat as it is right now and writes
 -- what it finds to CueRulesDB.chatProbe (saved when you /reload or log out), so the rebuild is built on the real frame names and
 -- anchors instead of guesses. It also prints the frames sitting in the top-left corner of the screen (to name the floating button).
@@ -252,7 +252,7 @@ local function Run()
     return #lines, topLeft
 end
 
--- /xui chatprobe
+-- /xui debug chatprobe
 function ns.ChatProbe()
     local ok, count, topLeft = pcall(Run)
     if not ok then
@@ -276,4 +276,9 @@ end
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
-ns.RegisterCommand("chatprobe", function() ns.ChatProbe() end, "/xui chatprobe (read-only chat frame report)")
+-- /xui debug chatprobe (core 0.6.50 runs diagnostics only there). The fallback (/xui chatprobe) is for a core older than 0.6.50.
+if ns.RegisterDebugCommand then
+    ns.RegisterDebugCommand("chatprobe", function() ns.ChatProbe() end, "chatprobe (read-only chat frame report)")
+else
+    ns.RegisterCommand("chatprobe", function() ns.ChatProbe() end, "/xui debug chatprobe (read-only chat frame report)")
+end

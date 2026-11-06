@@ -7,8 +7,8 @@ on `main` yet and is not described here; it is added when it lands. Section 2's 
 **Nothing on this page has been tested in game yet.** Every item below was built and checked with XayaUI's automated tests only.
 Where the game may behave differently from the tests, the item says so.
 
-Versions on `main` when this was written: XayaUI 0.6.49, Options 0.6.43, QoL 0.7.28, Bonus Features 0.6.15, Chat 0.6.16,
-Reskin 0.6.2.
+Versions on `main` when this was written (main c82aea5): XayaUI 0.6.50, Options 0.6.48, QoL 0.7.30, Bonus Features 0.6.15,
+Chat 0.6.17, Reskin 0.6.3.
 
 ---
 
@@ -129,10 +129,12 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
 
 ---
 
-## 2. Other new features (draft window: landed on `main` from 2026-11-05 about 14:00 UTC to 2026-11-06 05:30 UTC)
+## 2. Other new features (draft window: landed on `main` from 2026-11-05 about 14:00 UTC to 2026-11-06 05:45 UTC)
 
 - **Blizzard UI Reskin settings tab** (Options 0.6.38). Every reskin now has one home: a Blizzard UI Reskin tab with Chat Panel,
-  Character Pane and Esc Menu. The old Chat tab is gone; old links still open the moved pages.
+  Character Pane and Esc Menu. The old Chat tab is gone. The old shortcuts still open the moved pages: `/xui chat settings`,
+  `/xui reskin options`, and the Chat Panel's own settings buttons. The XayaUI button in the Esc menu stays under
+  Settings > UI Options > Display.
 - **Tick boxes in the left pane** (Options 0.6.40). In QoL and Bonus Features, each feature's on / off is a tick box beside its name
   in the left pane; hover it for what it does.
 - **Bonus Features > Utilities** (Options 0.6.40). Notepad and Calculator are grouped under a new Utilities entry.
@@ -145,14 +147,31 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
   settings no longer pause while the whole window rebuilds. The version text at the bottom of the settings window replaces the
   Addon Info button: click it to open Addon Info; it uses your theme colours. The Rules sub-tab row stays compact instead of
   stretching across the row.
-- **`/xui help` is readable** (XayaUI 0.6.46). One command per line, with the command in your theme's accent colour.
+- **`/xui help` is readable and shorter** (XayaUI 0.6.46, 0.6.50). One command per line, with the command in your theme's
+  accent colour. Since XayaUI 0.6.50 it lists 16 lines instead of 29: only the commands a player uses, with option lists such
+  as [on|off].
+- **Type commands in the console** (XayaUI 0.6.50). Open the console with `/xui console`; the line along its bottom takes any
+  XayaUI command, with or without `/xui` (for example "debug status"). Press Enter: the command is echoed in grey and its output
+  prints in the console. Up and Down bring back earlier commands. `/save` and `/reload` reload the interface; any other game or
+  addon slash command is refused with a red line. An empty console says what to type and where your other XayaUI messages go.
+  **Not yet tested in game:** whether Up / Down recall works, and whether `/save` and `/reload` work there without a
+  "blocked" message.
+- **All diagnostic commands under `/xui debug`** (XayaUI 0.6.50). Type `/xui debug` for the list (status, perf, timing, map,
+  loader and more). Any `/xui debug` command opens the console and prints there, even when typed in the normal chat box.
+  `/xui debug window` is renamed `/xui debug loader` (it says whether the settings window's code can load, for when `/xui`
+  will not open it). The old short forms such as `/xui perf` no longer run; they print `/xui help` instead. Two shortcuts stay:
+  `/xui status` (every rule's answer right now, and why) and `/xui auras` (aura IDs, and whether XayaUI can follow them in
+  combat) print in chat.
+- **Chat history shows "|" correctly** (Chat 0.6.17). Lines containing "|" now show every pipe and letter (before, a pipe and
+  sometimes the next letter went missing), and searching for text with "|" finds them. **Not yet tested in game:** whether
+  copying such a line pastes one "|" or two.
 - **Cursor colours as UI themes** (XayaUI 0.6.46, QoL 0.7.17). Each Gradient Cursor Trail gradient is also a UI theme in
   Settings > Theme ("Cursor trail: <name>"). The trail can follow your UI theme ("Match the UI theme"), and the Cursor Highlight
   can use your theme's accent colour.
 - **Chat history: opens where you are; whisper tabs** (Chat 0.6.15, 0.6.16). The history window opens on the chat tab you are on,
   with All moved to the end. Whisper conversations get their own tabs, following the game's New Whispers setting, or all in one
   Whispers tab (History > Whisper tabs). People with the same name on different realms get separate tabs.
-- **Choose which auto rules to make** (Options; see the note in the report). Rules > Class/Spec Rule Creator > **Choose which rules
+- **Choose which auto rules to make** (Options 0.6.41; see the note on version numbers below). Rules > Class/Spec Rule Creator > **Choose which rules
   to make** lists your spec's cooldowns and target debuffs. Tick only the ones you want, pick each one's main cue (Speech, Icon or
   Progress texture; Progress bar is not available yet), choose On the target or Missing from target for debuffs, then
   **Make the ticked rules**. Your choices are kept per spec.
@@ -167,9 +186,12 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
   own icon is no longer repeated. While **Advanced Debugging** is on (Settings > Debugging; it is on by default), each Aura ID line
   ends in grey with where the ID was found ("via this tooltip", "via Cooldown Manager", "via your casts", "via buff on you",
   "via recorded earlier").
-- **`/xui debug map`** (XayaUI 0.6.49). A report command for the full-screen world map problem: it prints the map's state so the
+- **`/xui debug map`** (XayaUI 0.6.49; it now prints in the console, like every `/xui debug` command). A report command for the full-screen world map problem: it prints the map's state so the
   cause can be found. It does not fix the problem yet.
 
-**Not on `main` yet, so not listed above:** Shopping List (only planned), the per-reskin switches in the Blizzard UI Reskin tab
-(on another session's branch), and the console's command line and `/xui debug` grouping (on another session's branch, waiting for
-your confirmation).
+**Not on `main` yet, so not listed above:** the Shopping List, the per-reskin switches in the Blizzard UI Reskin tab ("All
+reskins" and one tick box per reskin) and the dynamic group Sort order (all on another session's branch, PR #410).
+
+**Version numbers:** two different changes on `main` carry the label Options 0.6.41 (the "switched-off features cost nothing"
+work and the auto-rule picker; two sessions numbered them at the same time). They are listed as they are; history is not
+renumbered.

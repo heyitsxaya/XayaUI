@@ -35,6 +35,8 @@ function C.Plain(text)
     text = text:gsub("|K.-|k", "?"):gsub("|n", " ")
     return (text:gsub("||", "|"))
 end
+-- text from C.Plain, ready for an edit box: every "|" doubled, so none starts a code (Chat 0.6.17; see C.History_Update)
+function C.ForEditBox(text) return (tostring(text or ""):gsub("|", "||")) end
 
 -- which chat windows (tabs) show this message right now. Channel messages go by the channel's name, everything else by message group.
 function C.Shows(f, group, channelBase)
@@ -71,7 +73,8 @@ end
 C.History_Windows = Windows
 
 function C.History_Lines()
-    local out, q = {}, query:lower()
+    -- (the search box gives a typed "|" back doubled, as the game's edit boxes do: INFERENCE; matched against C.Plain's single "|")
+    local out, q = {}, (query:gsub("||", "|")):lower()
     for _, e in ipairs(List()) do
         if tabKey == "ALL" or tabKey == "CONSOLE" or (e.frames and e.frames[tabKey]) or (tabKey == "WHISPERS" and e.wkey)
             or (e.wkey and e.wkey == tabKey) then
@@ -412,7 +415,11 @@ function C.History_Update()
     end
     frame.live.t:SetText((st and st.histLive) and "Live: on" or "Live: off")
     frame.search.hint:SetShown((frame.search:GetText() or "") == "")
-    frame.text = table.concat(C.History_Lines(), "\n")
+    -- (Chat 0.6.17; Xaya 2026-11-06: fix it "in this update") C.Plain gives one "|" per literal pipe; handed to the edit box like that,
+    -- a "|" followed by a letter is read as the start of a code ("|t", "|w") and the "|", sometimes with the letter, disappears (her
+    -- screenshot of 2026-11-05: "[highlighttrail]", "statusidthprobe"). The edit box gets every pipe doubled, which it shows as one.
+    -- INFERENCE (the game's escape rules are not in docs/reference): "||" shows as "|" in an edit box, as it does in chat; QA D12.
+    frame.text = C.ForEditBox(table.concat(C.History_Lines(), "\n"))
     frame.edit:SetText(frame.text)
     shown[List()] = #List()
     UpdateStatus()

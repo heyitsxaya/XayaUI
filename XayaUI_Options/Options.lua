@@ -1542,7 +1542,7 @@ local function BuildRule(i, rule)
             cdTimeOp = Sel(rule, "cdTimeOp", "Seconds left", 4.6, ns.CMP_OPS and ns.CMP_OPS.values or { any = "Any" }, ns.CMP_OPS and ns.CMP_OPS.order or { "any" },
                 function() Changed(rule); Notify() end,
                 { get = function() return rule.cdTimeOp or "any" end,
-                  desc = "Only true while the cooldown has this much time left. Exact when the game shows it; in combat the duration engine's estimate (/xui timing); with no estimate yet the trigger is unknown." }),
+                  desc = "Only true while the cooldown has this much time left. Exact when the game shows it; in combat the duration engine's estimate (/xui debug timing); with no estimate yet the trigger is unknown." }),
             cdTimeSec = { type = "input", name = "Seconds", order = 4.61, width = "half",
                 hidden = function() return not ns.CooldownUsed(rule) or not rule.cdTimeOp or rule.cdTimeOp == "any" end,
                 get = function() return rule.cdTimeSec ~= nil and tostring(rule.cdTimeSec) or "" end,
@@ -1565,7 +1565,7 @@ local function BuildRule(i, rule)
                 function() Changed(rule); Notify() end,
                 { get = function() return rule.buffTimeOp or "any" end,
                   hidden = function() return not ns.BuffUsed(rule) or rule.buffState ~= "present" end,
-                  desc = "Only true while the buff has this much time left. In combat the time is exact when the game shows it, otherwise the duration engine's estimate (/xui timing); with no estimate yet the trigger is unknown and the rule waits." }),
+                  desc = "Only true while the buff has this much time left. In combat the time is exact when the game shows it, otherwise the duration engine's estimate (/xui debug timing); with no estimate yet the trigger is unknown and the rule waits." }),
             buffTimeSec = { type = "input", name = "Seconds", order = 11.2, width = "half",
                 hidden = function() return not ns.BuffUsed(rule) or rule.buffState ~= "present" or not rule.buffTimeOp or rule.buffTimeOp == "any" end,
                 get = function() return rule.buffTimeSec ~= nil and tostring(rule.buffTimeSec) or "" end,
@@ -2985,7 +2985,7 @@ local function BuildAddonSettings()
                 func = function() Ui().paneW = 0; Ui().paneH = 0; if ns.ApplyPaneSize then ns.ApplyPaneSize() end; Notify() end },
             menuBtnHeader = { type = "header", name = "Menu button (ESC menu)", order = 23.5 },
             gameMenuButton = { type = "toggle", name = "Show a XayaUI button in the Game Menu (ESC menu)", order = 24, width = "full",
-                desc = "Adds a XayaUI entry to the ESC menu that opens this window. Off: the entry is removed the next time the menu opens. Also: /xui gamemenu prints diagnostics.",
+                desc = "Adds a XayaUI entry to the ESC menu that opens this window. Off: the entry is removed the next time the menu opens. Also: /xui debug gamemenu prints diagnostics.",
                 get = function() return not (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.hideGameMenuButton) end,
                 set = function(_, v) Ui().hideGameMenuButton = (not v) or nil; if ns.GameMenu_OnOptionChanged then ns.GameMenu_OnOptionChanged() end end },
             gameMenuStyle = { type = "select", name = "Menu button style", order = 24.1, width = "double",
@@ -3032,7 +3032,7 @@ local function BuildAddonSettings()
             -- the rule editor's talent requirement lists every spec and hero tree from it. The last message stays under the button.
             talHdr = { type = "header", name = "All talents (every class and spec)", order = 30 },
             talInfo = { type = "description", order = 30.1, width = "full", fontSize = "medium",
-                name = function() return (ns.TalentStatus and ns.TalentStatus() or "") .. " Reads every class, spec, and hero talent tree from the game (not from a fixed list), so it follows the current patch. In chat: /xui talents, /xui talents status, /xui talents <name>." end },
+                name = function() return (ns.TalentStatus and ns.TalentStatus() or "") .. " Reads every class, spec, and hero talent tree from the game (not from a fixed list), so it follows the current patch. In chat: /xui debug talents, /xui debug talents status, /xui debug talents <name>." end },
             talScan = { type = "execute", order = 30.2, width = "double", name = "Scan all talents now",
                 func = function()
                     if not ns.ScanAllTalents then return end
@@ -7238,7 +7238,7 @@ function SX.OwnedItems()
 end
 
 -- Class-scoped, typo-tolerant candidates. Sets ("talent", "cd", "aura", "any") hold every spell of the player's class that fits the kind:
--- the current build's talents + the last /xui talents scan (all specs and hero trees) + the class data (cooldowns, buffs, procs, debuffs of
+-- the current build's talents + the last /xui debug talents scan (all specs and hero trees) + the class data (cooldowns, buffs, procs, debuffs of
 -- every spec) + the spellbook. Every ID is kept, so a name shared by a talent, its buff and its debuff lists all of them, each labelled.
 function SX.Norm(t)
     t = tostring(t or ""):lower():gsub("['\226\128\153]", ""):gsub("%p", " "):gsub("%s+", " ")
@@ -7476,7 +7476,7 @@ local function SP_Render()
     local msg = ""
     local S, smax = (SP.kind == "item") and SX.II or SI, (SP.kind == "item") and SX.II_MAX or SI_MAX
     if S.running then msg = ("Indexing %s names... %d%%  "):format(SP.kind == "item" and "item" or "spell", math.floor(S.nextId / smax * 100)) end
-    if SP.kind == "talent" and not (XayaUITalentDB and XayaUITalentDB.classes) then msg = msg .. "Your current build only; /xui talents adds every spec.  " end
+    if SP.kind == "talent" and not (XayaUITalentDB and XayaUITalentDB.classes) then msg = msg .. "Your current build only; /xui debug talents adds every spec.  " end
     if SP.kind == "aura" and ns.AuraSources then
         local pr = ns.AuraSources.Progress()
         if pr then msg = msg .. ("Finding what applies each aura... %d%%  "):format(math.floor(pr * 100)) end
@@ -7742,7 +7742,7 @@ function ns.DecorateTrees(root)
 end
 -- decorate right after every (re)draw of the window, so left-aligned headers do not flash centered before the next 0.25 s pass
 do
-    -- /xui perf: trace of what happens after a click, in FRAMES. Anything that lands on a later frame than the click is a visible
+    -- /xui debug perf: trace of what happens after a click, in FRAMES. Anything that lands on a later frame than the click is a visible
     -- intermediate state (the cause of a blink), so the trace shows exactly which step is late.
     -- The frame counter runs only while tracing is on (V14, Options 0.6.41; it counted every frame from the first opening before).
     local fno, fclick = 0, 0
@@ -7752,7 +7752,7 @@ do
         tf = tf or CreateFrame("Frame")
         if not tf:GetScript("OnUpdate") then
             tf:SetScript("OnUpdate", function(self)
-                if not (ns.perf and ns.perf.show) then self:SetScript("OnUpdate", nil) return end   -- /xui perf off: the counter stops
+                if not (ns.perf and ns.perf.show) then self:SetScript("OnUpdate", nil) return end   -- /xui debug perf off: the counter stops
                 fno = fno + 1
             end)
         end
