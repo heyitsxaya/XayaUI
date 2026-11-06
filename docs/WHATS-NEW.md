@@ -1,5 +1,7 @@
 # What's new in XayaUI
 
+**Updated 2026-11-06 evening:** section 3 (below) covers the debug round that landed after this page was first written.
+
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
 Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
 before that landing (2026-11-05 07:16 UTC to 2026-11-06 07:16 UTC).
@@ -244,11 +246,37 @@ Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default
   does what `/xui calc` does. If another addon already owns either word, XayaUI leaves it alone and the `/xui` forms still work.
   After you turn the Notepad off, `/notes` stays until `/reload` and only says the Notepad is off.
 - **Clearer Aura ID lines on tooltips** (Bonus 0.6.13, 0.6.15). On spell tooltips, an aura icon ID that is the same as the spell's
-  own icon is no longer repeated. While **Advanced Debugging** is on (Settings > Debugging; it is on by default), each Aura ID line
+  own icon is no longer repeated. (Since the later landing in section 3 the source text shows only while XayaUI Dev Assist is enabled,
+  not under Advanced Debugging.) While **Advanced Debugging** was on (it was on by default), each Aura ID line
   ends in grey with where the ID was found ("via this tooltip", "via Cooldown Manager", "via your casts", "via buff on you",
   "via recorded earlier").
 - **`/xui debug map`** (XayaUI 0.6.49; it now prints in the console, like every `/xui debug` command). A report command for the full-screen world map problem: it prints the map's state so the
   cause can be found. It does not fix the problem yet.
+
+## 3. Developer tools moved to Dev Assist, and the debug report (landed on `main` 2026-11-06 evening, main 687b624)
+
+From the debug round (request log FUS-1 to FUS-5, her answers in the question box). Nothing here has been tested in game yet.
+
+- **Developer tools now live in XayaUI Dev Assist.** These commands exist only while the Dev Assist addon is installed and enabled:
+  `/xui debug` probe, timing, model, tracker, mods, groups, icons, media, seed, map, gamemenu, chatprobe, widthprobe, perf ui, debuffs
+  and loc; `/xuitt` probe, lines and aura; `/xui chat` wrap, indent and whispers; `/xuiskin pad` and `/xuiskin alpha`; and
+  `/xuiengine` auto, on, off and reset. Without Dev Assist they are not there. (`/xui debug seed` adds three test rules to your own rules,
+  which is why players should not have it.)
+- **What players keep:** `/xui debug perf`, `/xui debug loader`, `/xui status`, `/xui auras`, `/xuiskin` (turns the window skin off),
+  and `/xuiengine full` and `refresh`.
+- **Tooltip "via ..." source text** (the grey "via this tooltip", "via Cooldown Manager" and so on at the end of an Aura ID line) now
+  shows only while XayaUI Dev Assist is enabled.
+- **Combat Tracking Setup moved** from the Debugging page to Settings > UI Options > Rule Creation.
+- **Error codes and a debug report.** XayaUI now records only errors and warnings, each with a code (XUI-E...), and only when they
+  happen, so it costs nothing otherwise. `/xui report` opens a readable summary you can screenshot, with a **Copy** string you can send.
+  Dev Assist reads that string back with `/xuidev report`. The detailed record kinds (rule snapshots, aura answers, and so on) now live in
+  Dev Assist.
+- **Documents moved.** The project documents (this page, the user guide, the QA checklist, the roadmap and the session summary) are in
+  `docs/`; README and THIRD_PARTY stay at the root.
+
+*Not in this list yet:* the rest of that landing's changes (core 0.6.57, Options 0.6.57, Chat 0.6.25, QoL 0.7.34, Bonus 0.6.19, Reskin 0.6.6,
+Dev Assist 0.7.5: the Info pane / Patch Notes, chat changes, the settings window look and more). Their sessions send their own notes;
+they are added here only once they arrive and are checked against `main`.
 
 **Version numbers:** two different changes on `main` carry the label Options 0.6.41 (the "switched-off features cost nothing"
 work and the auto-rule picker; two sessions numbered them at the same time). They are listed as they are; history is not

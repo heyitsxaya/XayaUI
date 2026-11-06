@@ -17,6 +17,14 @@ _cues = open(os.path.join(ROOT, "XayaUI", "Cues.lua"), encoding="utf-8").read()
 _m = _re.search(r"^function ns\.CueGated\(p, cue\)\n.*?^end\n", _cues, _re.S | _re.M)
 assert _m, "ns.CueGated not found in Cues.lua"
 CUE_GATED_LUA = "[==[" + "local ns = NS\n" + _m.group(0) + "]==]"
+# (core 0.6.56, REQUEST-LOG #81: /xuiengine auto / on / off / reset are XayaUI Dev Assist's. This test loads them the way Dev Assist
+# registers them: the real functions from XayaUI_DevAssist/CoreDebug.lua, into a stand-in of Modules.lua's ns.RegisterSubcommand.)
+_cd = open(os.path.join(ROOT, "XayaUI_DevAssist", "CoreDebug.lua"), encoding="utf-8").read()
+_a = _cd.index("local function EngineAuto(rest)"); _b = _cd.index("-- Registration: XayaUI's lists")
+ENGINE_SUBS_LUA = "[==[" + "local ns = NS\n" + _cd[_a:_b] + """
+ns.RegisterSubcommand("xuiengine", "auto", EngineAuto); ns.RegisterSubcommand("xuiengine", "on", EngineGroup("on"))
+ns.RegisterSubcommand("xuiengine", "off", EngineGroup("off")); ns.RegisterSubcommand("xuiengine", "reset", EngineGroup("reset"))
+""" + "]==]"
 L.execute(r'''
 -- ---- generic frame stand-in ----
 local function proxyFrame(kind)
@@ -182,7 +190,15 @@ _G.NS = ns
 assert(loadstring(CUE_GATED_SRC))()   -- the real ns.CueGated from Cues.lua (which cues a condition decides), not a copy
 local f = assert(loadfile(AURA_DISPLAY_PATH))
 f("XayaUI_CombatEngine", ns)
-'''.replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI", "Combat", "AuraDisplay.lua")).replace("'", '"')).replace("CUE_GATED_SRC", CUE_GATED_LUA))
+do   -- the stand-in of Modules.lua's subcommand list, and Dev Assist's /xuiengine words in it
+    local subs = {}
+    ns.RegisterSubcommand = function(slash, name, fn) subs[slash .. " " .. name] = fn end
+    ns.RunSubcommand = function(slash, w, a) local fn = subs[slash .. " " .. tostring(w)]; if not fn then return false end; fn(a); return true end
+    ns.SubcommandList = function() return "" end
+    ns.DevAssistOn = function() return true end
+    assert(loadstring(ENGINE_SUBS_SRC))()
+end
+'''.replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI", "Combat", "AuraDisplay.lua")).replace("'", '"')).replace("CUE_GATED_SRC", CUE_GATED_LUA).replace("ENGINE_SUBS_SRC", ENGINE_SUBS_LUA))
 
 
 fails = []

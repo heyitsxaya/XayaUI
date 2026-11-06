@@ -704,7 +704,44 @@ local function QueueDupCheck(c)
     C_Timer.After(0, function() if Active() then Guard(RecheckDup) else dupPending = false end end)
 end
 
-local function UpdateSlots(c)
+-- (QoL 0.7.33; Insivius via Xaya: "Text breaks if you make the window wider and then bring it back down"; her answer "Fix + diagnostic",
+-- REQUEST-LOG UI-4.) In the test stand-in a widen (120, 300 px) and back to 42 gives exactly the same blocks, so the layout keeps no state
+-- between widths. INFERENCE, not seen in the game: right after the window's width or height changes, the live client may still report
+-- the old positions to GetLeft / GetRight in that same moment, so the blocks are sized for the wider window. So whenever the window's size
+-- is changed (here or by Blizzard's UpdateSize), the slots are laid out once more on the next frame, and /xui reskin status says whether the positions the
+-- two passes read differed (that answer settles the inference). Runs only while the reskin and a slot part are on (V14: nothing while off).
+local relayout = { pending = false }
+local function GeoKey(g)
+    if not g then return nil end
+    return { g.colL, g.colR, g.mid, g.model and g.model.l or 0, g.model and g.model.r or 0, g.weap and g.weap.l or 0, g.weap and g.weap.r or 0 }
+end
+local function MaxDiff(a, b)
+    if not (a and b) then return nil end
+    local d = 0
+    for i = 1, #a do d = math.max(d, math.abs((a[i] or 0) - (b[i] or 0))) end
+    return d
+end
+local UpdateSlots
+local function QueueRelayout(c)
+    if not relayout.want then return end
+    if relayout.pending or not (c and (c.enchants or c.gems)) or not (C_Timer and C_Timer.After) then return end
+    relayout.want, relayout.pending = false, true
+    local before = GeoKey(Geometry())
+    C_Timer.After(0, function()
+        relayout.pending = false
+        if not Active() then return end
+        local d = MaxDiff(before, GeoKey(Geometry()))
+        if not d then diag.relayout = "the window's size changed; positions not readable in one of the two passes"
+        elseif d > 0.5 then diag.relayout = ("the window's size changed; the positions read right after it differed by %.1f px from the next frame's: laid out again"):format(d)
+        else diag.relayout = "the window's size changed; the same positions in both passes (laid out again anyway)" end
+        local c2 = Cfg()
+        if c2 and (c2.enchants or c2.gems) then Guard(UpdateSlots, c2) end
+    end)
+end
+-- the window's width or height was changed by this file or by Blizzard's UpdateSize: the next slot layout queues a second pass
+local function SizeChanged() relayout.want = true end
+
+UpdateSlots = function(c)
     local n, labels, cut, cam, socks = 0, 0, 0, 0, 0
     diag.noGeometry = false
     -- every equipped item's tooltip first (the embellishment line counts them), only while the enchant part is on
@@ -735,6 +772,7 @@ local function UpdateSlots(c)
         retries = retries + 1
         C_Timer.After(0, function() local c2 = Cfg(); if Active() and (c2.enchants or c2.gems) then Guard(UpdateSlots, c2) end end)
     elseif not diag.noGeometry then retries = 0 end
+    QueueRelayout(c)
 end
 
 -- for /xui reskin status
@@ -851,6 +889,7 @@ local function RestoreTall()
     if tall.baseH and type(cf) == "table" then cf:SetHeight(tall.baseH) end
     if tall.modelH and type(m) == "table" and m.SetHeight then m:SetHeight(tall.modelH) end
     tall.applied, tall.gap, tall.px = false, 0, 0
+    SizeChanged()
 end
 local function ApplyTall(c, cf, m)
     local px = (c and c.tallPx) or 0
@@ -869,6 +908,7 @@ local function ApplyTall(c, cf, m)
     end
     cf:SetHeight(tall.baseH + px)
     m:SetHeight(tall.modelH + px)
+    if tall.px ~= px or not tall.applied then SizeChanged() end
     tall.applied, tall.gap, tall.px = true, gap, px
     diag.tall = ("on, %d px taller (%d -> %d); each gap between two slots %.1f px wider"):format(px, math.floor(tall.baseH + 0.5), math.floor(tall.baseH + px + 0.5), gap)
 end
@@ -881,6 +921,7 @@ local function RestoreWide()
     PutBack(m, mh)
     RestoreTall()
     wide.applied = false
+    SizeChanged()
     -- Blizzard's own sizing puts the width and the Inset back (as the probe's "off"); without it, the width the window had before
     if ns.MapTrace then ns.MapTrace("Character Reskin: CharacterFrame:UpdateSize (wider window off)") end
     if type(cf.UpdateSize) == "function" then pcall(cf.UpdateSize, cf)
@@ -924,7 +965,7 @@ local function ApplyWide(c)
     local half = math.floor(px / 2)
     local base = reset and w or wide.base
     local changed = reset or wide.px ~= px
-    if changed then cf:SetWidth(base + px) end
+    if changed then cf:SetWidth(base + px); SizeChanged() end
     cf.Inset:SetPoint("BOTTOMRIGHT", cf, "BOTTOMLEFT", DW + RO + px, BO)
     m:ClearAllPoints(); m:SetPoint(wide.mp[1], wide.mp[2], wide.mp[3], wide.mp[4] + half, wide.mp[5])
     mh:ClearAllPoints(); mh:SetPoint(wide.hp[1], wide.hp[2], wide.hp[3], wide.hp[4] + half, wide.hp[5])
@@ -956,6 +997,7 @@ HookWide = function()
         hooksecurefunc(cf, "UpdateSize", function()
             if ns.MapTrace then ns.MapTrace("Character Reskin: hook after CharacterFrame:UpdateSize") end
             wide.reset = true
+            SizeChanged()
             local c = Cfg()
             if c and Active() and c.wide then Guard(WideAndSlots) end
         end)
@@ -965,6 +1007,8 @@ HookWide = function()
     end
 end
 function ns.CharReskin_WideOn() return (wide.applied or wide.moved) and true or false end
+-- (QoL 0.7.33) XayaUI Dev Assist's /xui debug widthprobe asks this (it refuses while the wider window is on), through the service list
+ns.Provide("characterReskin", { WideOn = function() return ns.CharReskin_WideOn() end })
 
 -------------------------------------------------------------------------------
 -- The stat list (Blizzard's CharacterStatsPane)
@@ -1402,7 +1446,7 @@ function ns.BuildCharReskinPage(Notify)
     end
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
-    local switch = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends). Greyed while All reskins (the top row of this tab) is off.")
+    local switch = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends). Greyed while Blizzard UI Reskin is off (this tab's Overview).")
     switch.disabled = function() return not ns.ReskinTabOn() end
     return {
         type = "group", name = "Character Pane", order = 4, childGroups = "tree", xuiSwitch = switch,
@@ -1433,13 +1477,14 @@ ns.RegisterCommand("reskin", function(arg)
     arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     local c = Cfg()
     if not c then return end
-    if arg == "on" then c.enabled = true; ns.CharReskin_Apply(); ns.Print("Character Reskin on." .. (ns.ReskinTabOn() and "" or " It shows once All reskins (Blizzard UI Reskin tab, top row) is on again.")); return end
+    if arg == "on" then c.enabled = true; ns.CharReskin_Apply(); ns.Print("Character Reskin on." .. (ns.ReskinTabOn() and "" or " It shows once Blizzard UI Reskin is on again (Blizzard UI Reskin > Overview, then /reload).")); return end
     if arg == "off" then c.enabled = false; ns.CharReskin_Apply(); ns.Print("Character Reskin off."); return end
     if arg == "status" or arg == "" then
         ns.Print(("Character Reskin: %s%s%s; %d Blizzard regions faded, %d slots%s."):format(c.enabled and "on" or "off",
-            ns.ReskinTabOn() and "" or " (All reskins is off in the Blizzard UI Reskin tab, so it does not show)",
+            ns.ReskinTabOn() and "" or " (Blizzard UI Reskin is off: Blizzard UI Reskin > Overview, so it does not show)",
             diag.failed and " (stopped after an error)" or "", diag.faded, diag.slots, diag.lastError and (", last error: " .. diag.lastError) or ""))
         ns.Print(("Wider window: %s."):format(c.wide and tostring(diag.wide) or "switched off"))
+        ns.Print(("Size change: %s."):format(diag.relayout or "none seen since login"))
         ns.Print(("Extra height: %s; full stat list: %s."):format((c.wide and c.tallPx > 0) and tostring(diag.tall or "waits for the window") or "off",
             c.statList and tostring(diag.statList or "drawn when the stats pane shows") or "off"))
         ns.Print(("Slot blocks: %d (%d cut to fit, %d hidden while the camera buttons show); sockets drawn: %d; embellished items: %d."):format(
