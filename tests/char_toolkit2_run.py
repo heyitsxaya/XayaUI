@@ -53,7 +53,7 @@ local function linesHave(lines, s) for _, l in ipairs(lines) do if tostring(l):f
 local d = render("stats")
 local hs = texts(d, "header")
 -- (QoL 0.7.23: one Character Stats section, its parts drawn as headings inside it, and the Stat Weights pane; tests/char_stat_window_run.py)
-check("Stats tab (the stat map): headers Character Stats, Stat Weights", table.concat(hs, "|") == "- Character Stats|- Stat Weights", table.concat(hs, " | "))
+check("Stats tab (the stat map): headers Gear Summary (QoL 0.7.28: first), Character Stats, Stat Weights", table.concat(hs, "|") == "- Gear Summary|- Character Stats|- Stat Weights", table.concat(hs, " | "))
 -- QoL 0.7.7: Defense and Offense are the Spells tab's filters now (a saved "defense" / "offense" tab opens Spells with that filter);
 -- QoL 0.7.14: the filters filter spells only; the stat sections they drew are on the stat map (Offense / Defense, what feeds it)
 d = render("defense"); hs = texts(d, "header")
@@ -68,7 +68,7 @@ check("Gear tab: Equipped (icons), Compare (QoL 0.7.14: the comparison replaces 
   table.concat(hs, "|") == "- Equipped|- Compare", table.concat(hs, "|"))
 d = render("whatif"); hs = texts(d, "header")
 check("a saved What If tab opens Stats (QoL 0.7.14: its numbers are the map's boxes, its item compare is on Gear)", c.tab == "stats"
-  and hs[1] == "- Character Stats", c.tab .. " " .. tostring(hs[1]))
+  and hs[2] == "- Character Stats", c.tab .. " " .. tostring(hs[2]))
 d = render("stats")
 check("a stat line: label on the left, its value on the right of the same row", valueOf(d, "Critical Strike") == "22.48%", valueOf(d, "Critical Strike"))
 local h = headerFor(d, "map_character")
@@ -223,7 +223,9 @@ local function layoutOK(d)
   end
   -- no two text elements overlap (same y range and overlapping x range)
   local t = {}
-  for _, r in ipairs(d.layout) do if r.kind ~= "hit" and r.kind ~= "cell" then t[#t + 1] = r end end
+  -- (QoL 0.7.28: a bucket bar's band and the Gear Summary's bars and tiles are drawn behind their text)
+  local FILL = { hit = true, cell = true, bucketbar = true, gsbar = true, gstile = true, gsseg = true, gscol = true, gsswatch = true }
+  for _, r in ipairs(d.layout) do if not FILL[r.kind] then t[#t + 1] = r end end
   for i = 1, #t do for j = i + 1, #t do
     local a, bb = t[i], t[j]
     if a.x < bb.x + bb.w and bb.x < a.x + a.w and a.y < bb.y + bb.h and bb.y < a.y + a.h then
@@ -256,10 +258,12 @@ check("panel height stays within the character window", XayaUICharacterToolkit.h
 
 -- 7. Your numbers (the stat map's boxes; the What If tab before QoL 0.7.14) and the Gear comparison ------------------------------
 local function card(key) return CM.Build(c, "stats").byKey[key] end
-local function mline(key, label) local it = card(key); for _, pp in ipairs(it and it.pairs or {}) do if pp.label == label then return pp.value end end end
+-- (QoL 0.7.28: a typed number's value is the current one with newValue, the new one with its sign, under it: "now => +then")
+local function mline(key, label) local it = card(key); for _, pp in ipairs(it and it.pairs or {}) do if pp.label == label then return pp.newValue and (pp.value .. " => " .. pp.newValue) or pp.value end end end
+local function cval(key) local it = card(key); return it and (it.newValue and (it.value .. " => " .. it.newValue) or it.value) end
 ns.CharToolkit_SetInput("crit", "852")
-check("crit +852: 22.48% -> 41.00%, from rating +11.48% -> +30.00% (the stand-in threshold)", card("map_crit").value == "22.48% -> 41.00%"
-  and mline("map_crit", "From rating") == "+11.48% -> +30.00%", mline("map_crit", "From rating"))
+check("crit +852: 22.48% with +41.00% under it, from rating +11.48% with +30.00% (the stand-in threshold)", cval("map_crit") == "22.48% => +41.00%"
+  and mline("map_crit", "From rating") == "+11.48% => +30.00%", mline("map_crit", "From rating"))
 -- (QoL 0.7.15: the rating lost is the line's value, the thresholds its note)
 local function mnote(key, label) local it = card(key); for _, pp in ipairs(it and it.pairs or {}) do if pp.label == label then return pp.note end end end
 check("  ...the threshold it reaches is named (in the line's note)", (mnote("map_crit", "Diminishing returns") or ""):find("your numbers cross 1", 1, true) ~= nil, mnote("map_crit", "Diminishing returns"))
@@ -268,16 +272,16 @@ d = render("stats")
 check("  ...the crit box holds the number itself (528 + 852 = 1380)", d.boxes["sv:crit"] and d.boxes["sv:crit"].text == "1380" and d.boxes["sv:crit"]:IsShown())
 check("  ...its box hides on other tabs", (function() local d2 = render("gear"); local hidden = not d2.boxes["sv:crit"]:IsShown(); render("stats"); return hidden end)())
 ns.CharToolkit_SetInput("crit", "1000")
-check("crit +1000: thresholds apply (148 points past 1,380 count 90%)", mline("map_crit", "From rating") == ("+11.48%% -> +%.2f%%"):format(30 + 148 / 46 * 0.9), mline("map_crit", "From rating"))
+check("crit +1000: thresholds apply (148 points past 1,380 count 90%)", mline("map_crit", "From rating") == ("+11.48%% => +%.2f%%"):format(30 + 148 / 46 * 0.9), mline("map_crit", "From rating"))
 ns.CharToolkit_SetInput("mastery", "100")
 local mFrom = mline("map_mastery", "From rating") or ""
-local m0, m1 = mFrom:match("^%+([%d%.]+)%% %-> %+([%d%.]+)%%$")
+local m0, m1 = mFrom:match("^%+([%d%.]+)%% => %+([%d%.]+)%%$")
 check("mastery +100: through the mastery factor (+6.09%, shown values rounded)", m0 and math.abs((tonumber(m1) - tonumber(m0)) - 6.09) < 0.011, mFrom)
 ns.CharToolkit_SetInput("crit", "-1000")
-check("crit -1000: stops at 0 rating (+11.48% -> +0.00%)", mline("map_crit", "From rating") == "+11.48% -> +0.00%", mline("map_crit", "From rating"))
+check("crit -1000: stops at 0 rating (+11.48% with -0.00% under it: lower, so a minus, then the new value)", mline("map_crit", "From rating") == "+11.48% => -0.00%", mline("map_crit", "From rating"))
 ns.CharToolkit_SetInput("crit", "852")
 d = render("stats")
-check("Stats tab: crit +852 = +18.52%: 22.48% -> 41.00%", valueOf(d, "Critical Strike") == "22.48% -> 41.00%", valueOf(d, "Critical Strike"))
+check("Stats tab: crit +852 = +18.52%: 22.48%, and +41.00% drawn under it", valueOf(d, "Critical Strike") == "22.48%" and hasText(d, "change", "+41.00%") ~= nil, valueOf(d, "Critical Strike"))
 -- (QoL 0.7.23; Xaya 2026-11-05: "remove "all ratings" as an entry option")
 ns.CharToolkit_SetInput("all", "100")
 d = render("stats")
@@ -658,8 +662,8 @@ ns.CharToolkit_SetInput("sv:primary", tostring(CM.svBase.primary + 100))
 prim = CM.Build(c, "stats").byKey.map_primary
 local apLine, armorLine
 for _, pp in ipairs(prim.pairs or {}) do if pp.label == "» Attack power" then apLine = pp end; if pp.label == "» Armor" then armorLine = pp end end
-check("  ...+100 Agility shows its attack power through the game's GetAttackPowerForStat", c.whatIfPrimary == 100 and apLine and tostring(apLine.value):find(" -> ", 1, true) ~= nil, apLine and apLine.value)
-check("  ...and the armor it gives through the mastery text, in the short view too", armorLine ~= nil and tostring(armorLine.value):find(" -> ", 1, true) ~= nil and armorLine.short == true, armorLine and armorLine.value)
+check("  ...+100 Agility shows its attack power through the game's GetAttackPowerForStat (QoL 0.7.28: the new value with its sign)", c.whatIfPrimary == 100 and apLine and apLine.newValue ~= nil and apLine.newValue:find("^%+") ~= nil, apLine and apLine.newValue)
+check("  ...and the armor it gives through the mastery text, in the short view too", armorLine ~= nil and armorLine.newValue ~= nil and armorLine.short == true, armorLine and armorLine.newValue)
 ns.CharToolkit_SetInput("sv:primary", "")''')
 total_n += r[0]; total_fails += r[1]
 print("%d checks, %d failed" % (total_n, total_fails))

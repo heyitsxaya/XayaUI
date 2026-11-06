@@ -16,6 +16,10 @@
 # effectiveness (with its sources on hover); no All ratings, no durability or repair anywhere; the Gear Summary on the Stats tab; the Stat
 # Weights rows, cells, influences and their hover sentences; layout at the panel widths and text sizes; off at login: nothing exists.
 # Negative control (V1): every check here fails on QoL 0.7.22's files (the session branch at 0f05ad6), except those marked "(guard)".
+# QoL 0.7.28 (Xaya 2026-11-06, REQUEST-LOG #60-#64): the Gear Summary is the Stats tab's first section (drawn as Split bars by default;
+# the Table style keeps the table); Primary / General / Offensive / Defensive are bucket bars (a band at x 0, the name on it); the T/L
+# cell is two lines ("T: 1,200", then "L: 0.0"). The checks below follow that and say so; the new behaviour itself is checked, with its
+# negative controls, in tests/char_stat_round_run.py.
 # Run from the repo root: python3 tests/char_stat_window_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
 # Every number is a TEST STAND-IN (the world's Vengeance figures); the item texts below are stand-ins written for this test.
 import os, sys
@@ -210,6 +214,7 @@ local function cellsAt(d, i)
   for j = i + 1, #d.layout do
     local r = d.layout[j]
     if LINE_START[r.kind] and r.kind ~= "cmpcell" then break end
+    if out[r.kind] and r.kind == "wtl" then out.wtl2 = out.wtl2 or r end   -- (QoL 0.7.28: the T/L cell's second line)
     out[r.kind] = out[r.kind] or r
   end
   return out
@@ -217,15 +222,18 @@ end
 local function lineOf(d, kind, text) local _, i = find(d, kind, text); if i then return cellsAt(d, i) end; return {} end
 local function T(r) return r and tostring(r.text) or "nil" end
 local d = render()
-checkp("the Stats tab: one Character Stats section, then the Stat Weights pane (two headers, in that order)", function()
-  return texts(d, "header") == "- Character Stats|- Stat Weights", texts(d, "header") end)
-checkp("Character Stats' headings in order: Core Stats, Primary, General, Offensive, Defensive, Secondaries, Tertiaries, Gear Summary", function()
-  return texts(d, "subhead") == "Core Stats|Primary|General|Offensive|Defensive|Secondaries|Tertiaries|Gear Summary", texts(d, "subhead") end)
-checkp("  ...Core Stats, Secondaries, Tertiaries, Gear Summary at the left edge; Primary, General, Offensive, Defensive one indent in (under Core Stats)", function()
-  if #recs(d, "subhead") ~= 8 then return false, #recs(d, "subhead") .. " headings" end
+checkp("the Stats tab: the Gear Summary (QoL 0.7.28: first), one Character Stats section, then the Stat Weights pane (three headers, in that order)", function()
+  return texts(d, "header") == "- Gear Summary|- Character Stats|- Stat Weights", texts(d, "header") end)
+checkp("Character Stats' headings in order: Core Stats, Primary, General, Offensive, Defensive, Secondaries, Tertiaries (QoL 0.7.28: the Gear Summary is its own section)", function()
+  return texts(d, "subhead") == "Core Stats|Primary|General|Offensive|Defensive|Secondaries|Tertiaries", texts(d, "subhead") end)
+checkp("  ...Core Stats, Secondaries, Tertiaries at the left edge; Primary, General, Offensive, Defensive bucket bars (QoL 0.7.28: a band at x 0 across the width, the name on it)", function()
+  if #recs(d, "subhead") ~= 7 then return false, #recs(d, "subhead") .. " headings" end
   for _, r in ipairs(recs(d, "subhead")) do
     local l2 = r.text == "Primary" or r.text == "General" or r.text == "Offensive" or r.text == "Defensive"
-    if (l2 and r.x ~= 8) or (not l2 and r.x ~= 0) then return false, r.text .. " x " .. r.x end
+    if l2 then
+      local bar = find(d, "bucketbar", r.text)
+      if not (bar and bar.x == 0 and bar.w == LAY.content and r.y >= bar.y and r.y + r.h <= bar.y + bar.h) then return false, r.text .. " has no bar under it" end
+    elseif r.x ~= 0 then return false, r.text .. " x " .. r.x end
   end
   return true end)
 -- the lines under each heading (the card lines, kind "label", between one heading and the next)
@@ -249,10 +257,12 @@ checkp("Defensive: Armor, Dodge, Parry, Block (Block listed with no shield: 0.00
 checkp("Secondaries: Critical Strike, Haste, Mastery, Versatility, with their boxes (Change) as before", function()
   return g.Secondaries == "Critical Strike|Haste|Mastery|Versatility" and d.boxes["sv:crit"] and d.boxes["sv:crit"]:IsShown(), g.Secondaries end)
 checkp("Tertiaries: Avoidance, Leech, Speed", function() return g.Tertiaries == "Avoidance|Leech|Speed", g.Tertiaries end)
-checkp("Gear Summary (moved from the Gear tab): Critical Strike, Haste, Mastery, Versatility, Empty sockets", function()
-  return g["Gear Summary"] == "Critical Strike|Haste|Mastery|Versatility|Empty sockets", g["Gear Summary"] end)
+checkp("Gear Summary (moved from the Gear tab; QoL 0.7.28: its own section at the top, Split bars): Critical Strike, Haste, Mastery, Versatility, then Empty sockets", function()
+  local sockets = recs(d, "gssockets")[1]
+  return texts(d, "gslabel") == "Critical Strike|Haste|Mastery|Versatility" and sockets ~= nil and tostring(sockets.text):find("^Empty sockets: %d") ~= nil, texts(d, "gslabel") end)
+c.gearSumStyle = "table"; d = render()
 checkp("  ...as a table: Gear | Character | Elsewhere heads under the heading, Critical Strike 400 | 528 | +128 in their cells", function()
-  local sh = find(d, "subhead", "Gear Summary")
+  local sh = find(d, "header", "- Gear Summary")
   local hg, hc, he = find(d, "colhead", "Gear"), find(d, "colhead", "Character"), find(d, "colhead", "Elsewhere")
   local row
   for i, r in ipairs(d.layout) do if r.kind == "label" and r.text == "Critical Strike" and r.y > sh.y then row = i; break end end
@@ -260,6 +270,7 @@ checkp("  ...as a table: Gear | Character | Elsewhere heads under the heading, C
   for j = row + 1, row + 3 do if d.layout[j].kind == "cmpcell" then cells[#cells + 1] = d.layout[j] end end
   return hg.y > sh.y and hg.x < hc.x and hc.x < he.x and #cells == 3 and cells[1].text == "400" and cells[2].text == "528" and cells[3].text == "+128"
     and cells[1].x == hg.x and cells[3].x == he.x, #cells end)
+c.gearSumStyle = nil; d = render()
 checkp("  ...and the Gear tab has no Summary any more (Equipped, Compare)", function()
   local dg = render("gear"); local hs = texts(dg, "header"); d = render(); return hs == "- Equipped|- Compare", hs end)
 checkp("(guard) the column heads stay: Stat | Current value | Pt value | Change under Core Stats; Rating too under Secondaries", function()
@@ -356,10 +367,10 @@ checkp("its column heads (narrow panel): Stat | Rating (P / %) | PPP | DR Thresh
 checkp("its rows: Agility, Stamina, Critical Strike, Haste, Mastery, Versatility, Avoidance, Leech, Speed", function()
   return texts(d, "wlabel") == "Agility|Stamina|Critical Strike|Haste|Mastery|Versatility|Avoidance|Leech|Speed", texts(d, "wlabel") end)
 local gcdAmt, asAmt = ("%.2f"):format(1.16 * 1.2925 - 1.16), ("%.2f"):format(2.0 * 1.2925 - 2.0)
-checkp("Haste: 1,200 / 29.25% | 46.0 / 1% | 1,380 | T: 1,200 / L: 0.0 (her example row's columns)", function()
+checkp("Haste: 1,200 / 29.25% | 46.0 / 1% | 1,380 | T: 1,200 [line break] L: 0.0 (her example row's columns; QoL 0.7.28: T/L in two lines)", function()
   local r = wrow(d, "Haste")
-  return T(r.wrating) == "1,200 / 29.25%" and T(r.wppp) == "46.0 / 1%" and T(r.wdr) == "1,380" and T(r.wtl) == "T: 1,200 / L: 0.0",
-    T(r.wrating) .. " | " .. T(r.wppp) .. " | " .. T(r.wdr) .. " | " .. T(r.wtl) end)
+  return T(r.wrating) == "1,200 / 29.25%" and T(r.wppp) == "46.0 / 1%" and T(r.wdr) == "1,380" and T(r.wtl) == "T: 1,200" and T(r.wtl2) == "L: 0.0",
+    T(r.wrating) .. " | " .. T(r.wppp) .. " | " .. T(r.wdr) .. " | " .. T(r.wtl) .. " / " .. T(r.wtl2) end)
 checkp("  ...Influences: GCD (-" .. gcdAmt .. " s), Attack Speed (-" .. asAmt .. " s)", function()
   return T(wrow(d, "Haste").winfl) == ("Influences: GCD (-%s s), Attack Speed (-%s s)"):format(gcdAmt, asAmt), T(wrow(d, "Haste").winfl) end)
 local function hover(dd, key)
@@ -369,9 +380,9 @@ end
 checkp("  ...hovering the row: \"Haste decreases Global cooldown by " .. gcdAmt .. " s\" and \"Haste decreases Attack Speed by " .. asAmt .. " s\"", function()
   local h = hover(d, "w_haste")
   return h:find("Haste decreases Global cooldown by " .. gcdAmt .. " s", 1, true) ~= nil and h:find("Haste decreases Attack Speed by " .. asAmt .. " s", 1, true) ~= nil, h end)
-checkp("Critical Strike: 528 / 22.48% | 46.0 / 1% | 1,380 | T: 528 / L: 0.0 | Influences: Parry (+10.15%)", function()
+checkp("Critical Strike: 528 / 22.48% | 46.0 / 1% | 1,380 | T: 528 [line break] L: 0.0 | Influences: Parry (+10.15%)", function()
   local r = wrow(d, "Critical Strike")
-  return T(r.wrating) == "528 / 22.48%" and T(r.wppp) == "46.0 / 1%" and T(r.wdr) == "1,380" and T(r.wtl) == "T: 528 / L: 0.0"
+  return T(r.wrating) == "528 / 22.48%" and T(r.wppp) == "46.0 / 1%" and T(r.wdr) == "1,380" and T(r.wtl) == "T: 528" and T(r.wtl2) == "L: 0.0"
     and T(r.winfl) == "Influences: Parry (+10.15%)", T(r.winfl) end)
 checkp("  ...hover: \"Critical Strike increases Parry by 10.15%\"", function() return hover(d, "w_crit"):find("Critical Strike increases Parry by 10.15%", 1, true) ~= nil end)
 checkp("Agility: 2,637, no rating columns (no diminishing returns); Influences: Attack Power (+2,637), Dodge (+5.00%), Armor (+2,684)", function()
@@ -387,10 +398,10 @@ checkp("Versatility: hover \"Versatility decreases Damage taken by 1.30%\" and \
 checkp("the column head's hover says what each column holds (PPP: points per percent)", function() return hover(d, "weights_cols"):find("PPP: points per percent", 1, true) ~= nil end)
 ratings[18] = 1500
 d = render()
-checkp("past a threshold (1,500 haste): PPP 46.0 / 1% with the DR rate under it (DR: 51.1 / 1%), DR Threshold 1,380 (passed), T: 1,488 / L: 12.0", function()
+checkp("past a threshold (1,500 haste): PPP 46.0 / 1% with the DR rate under it (DR: 51.1 / 1%), DR Threshold 1,380 (passed), T: 1,488 [line break] L: 12.0", function()
   local r = wrow(d, "Haste")
   return T(r.wppp) == "46.0 / 1%" and T(r.wpppdr) == "DR: 51.1 / 1%" and r.wpppdr.y > r.wppp.y and r.wpppdr.x == r.wppp.x and T(r.wdr) == "1,380 (passed)"
-    and T(r.wtl) == "T: 1,488 / L: 12.0", T(r.wpppdr) .. " | " .. T(r.wdr) .. " | " .. T(r.wtl) end)
+    and T(r.wtl) == "T: 1,488" and T(r.wtl2) == "L: 12.0" and r.wtl2.y > r.wtl.y, T(r.wpppdr) .. " | " .. T(r.wdr) .. " | " .. T(r.wtl) end)
 ratings[18] = 1200
 CM.gcd = nil
 d = render()
@@ -428,7 +439,9 @@ local function layoutOK(dd)
     if r.x < 0 or r.x + r.w > W + 0.01 or r.w <= 0 then return false, r.kind .. " " .. tostring(r.text) .. " x=" .. r.x .. " w=" .. r.w end
   end
   local t = {}
-  for _, r in ipairs(dd.layout) do if r.kind ~= "hit" then t[#t + 1] = r end end
+  -- (QoL 0.7.28: a bucket bar's band and the Gear Summary's bars and tiles are drawn behind their text)
+  local FILL = { hit = true, bucketbar = true, gsbar = true, gstile = true, gsseg = true, gscol = true, gsswatch = true }
+  for _, r in ipairs(dd.layout) do if not FILL[r.kind] then t[#t + 1] = r end end
   for i = 1, #t do for j = i + 1, #t do
     local a, bb = t[i], t[j]
     if a.x < bb.x + bb.w and bb.x < a.x + a.w and a.y < bb.y + bb.h and bb.y < a.y + a.h then
@@ -445,7 +458,7 @@ for _, pw in ipairs({ 340, 450, 583, 584, 760 }) do
     c.fontSize = fs; c.size = { w = pw }
     local dd = render()
     checkp(("(V11) Stats tab, panel %d wide, text size %d: Character Stats and Stat Weights inside the width, no overlaps"):format(pw, fs),
-      function() local ok, why = layoutOK(dd); return ok and #recs(dd, "wlabel") == 9 and #recs(dd, "subhead") == 8, why or #recs(dd, "wlabel") end)
+      function() local ok, why = layoutOK(dd); return ok and #recs(dd, "wlabel") == 9 and #recs(dd, "subhead") == 7, why or #recs(dd, "wlabel") end)
   end
 end
 c.fontSize = 11; c.size = nil
