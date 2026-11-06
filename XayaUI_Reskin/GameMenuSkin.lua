@@ -10,10 +10,10 @@
 --     mouse: a click lands on the real button under the pointer and runs its own action. No lookup, so no way to run another action.
 --     Hover / pressed looks are read from the real button (polled). The XayaUI row is the real slot GameMenu.lua adds to the menu.
 --   * OWN LAYOUT (old behavior): our own sizes and spacing; a click finds the real button by its text and calls :Click(). If it cannot
---     be found with the same text, NOTHING is clicked (and /xui gamemenu says why) instead of running some other entry.
+--     be found with the same text, NOTHING is clicked (and /xui debug gamemenu says why) instead of running some other entry.
 -- Safety: default OFF. Any error while building turns the skin off for the session and gives Blizzard's menu back (alpha 1).
 -- Group gaps (Options / Shop | addons | ... | Log Out / Exit | Return) are read from where Blizzard laid its entries out.
--- UNTESTED in game: the first check is /xui gamemenu (it lists what the menu exposes).
+-- UNTESTED in game: the first check is /xui debug gamemenu (it lists what the menu exposes).
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns
@@ -519,7 +519,7 @@ function ns.GameMenuSkin_Options(Notify)
     end
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "XayaUI's own look for the ESC menu. It draws its own look over Blizzard's menu and never edits the buttons other UI addons restyle. If something goes wrong the skin turns itself off and Blizzard's menu comes back. Off by default; /xui gamemenu shows what the menu exposes." },
+            name = "XayaUI's own look for the ESC menu. It draws its own look over Blizzard's menu and never edits the buttons other UI addons restyle. If something goes wrong the skin turns itself off and Blizzard's menu comes back. Off by default; /xui debug gamemenu shows what the menu exposes." },
         skin = { type = "toggle", order = 1, width = "full", name = "Use the XayaUI Game Menu look", get = g("skin"), set = s("skin"),
             desc = "Off: nothing of the look is made or runs. Switched off after it was on, Blizzard's menu comes back at once; the look's hooks on the menu stay until you /reload but do nothing." },
         match = { type = "toggle", order = 2, width = "full", name = "Match Blizzard's button positions (recommended)", disabled = off,
@@ -589,5 +589,7 @@ end
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
-ns.RegisterCommand("gamemenu", function() ns.GameMenuSkin_Diagnostics() end)
+-- /xui debug gamemenu (core's help line covers both; core 0.6.50). The fallback is for a core older than 0.6.50.
+local registerDebug = ns.RegisterDebugCommand or ns.RegisterCommand
+registerDebug("gamemenu", function() ns.GameMenuSkin_Diagnostics() end)
 ns.RegisterSettingsPage("reskin", "gamemenu", ns.GameMenuSkin_Options)   -- the Blizzard UI Reskin tab's Esc Menu page (Options 0.6.38)

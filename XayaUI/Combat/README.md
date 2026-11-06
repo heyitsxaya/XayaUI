@@ -9,7 +9,7 @@ In-combat aura tracking for XayaUI. It is a folder of the core addon: `XayaUI.to
 - `AuraModel.lua`: timing model (cast-anchored duration estimates, learned durations).
 - `AuraTracker.lua`: evidence ranking for aura state when the game hides auras in combat.
 - `AuraSetup.lua`: first-run "Combat Tracking Setup" window.
-- `AuraIDProbe.lua`: diagnostic probe (`/xui probe ids`), records UNIT_AURA flag stream and casts.
+- `AuraIDProbe.lua`: diagnostic probe (`/xui debug probe ids`), records UNIT_AURA flag stream and casts.
 - `AuraDisplay.lua`: draws every aura display through Blizzard's own secure aura container so time and stacks show in combat (since 0.4.0): buff rules in dynamic groups as one container per group, every other buff rule as a single slot on XayaUI's own icon, and "Target Debuff (yours)" rules outside dynamic groups as a single slot on the target / focus. Automatic, no tag and no switch. Takes a display only when it can show it faithfully (shown while the aura is up; load and talent settings are followed live); everything else stays with XayaUI and `/xuiengine` names it with the reason. Positions come from XayaUI's own frames and layout rule (tests/layout_parity_run.py checks it). Performance guard on this addon plus Blizzard's container code: first lean mode (current spec only), then off. Ships no spell data and never edits a rule. Needs XayaUI 0.5.93 or later. Design and risks: GitHub issues #280, #308, #310, #311.
 
 ## How it loads (since XayaUI 0.5.95 / engine 0.4.1)

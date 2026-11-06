@@ -1174,7 +1174,7 @@ function ns.RefreshGroupTags()
 end
 function ns.GroupTagFor(fid) return groupTags[fid] end   -- (tests)
 
--- /xui groups: what each group holds and where its displays really hang, so "the group setting does nothing" can be told apart from
+-- /xui debug groups: what each group holds and where its displays really hang, so "the group setting does nothing" can be told apart from
 -- "the display is not attached to the group". Read-only.
 function ns.ProbeGroups()
     ns.Print("group probe: every group with displays, its settings, and each display's attachment")
@@ -2138,7 +2138,7 @@ end
 -- combat), and one aura's own amount (AuraData.points) is readable only out of combat. A secret number can be drawn (SetText and
 -- the game's number helpers accept it from addon code) but never compared, so "hide when zero" uses the game's
 -- C_StringUtil.TruncateWhenZero ("" for zero). That helper cannot abbreviate: with BOTH "abbreviate" and "hide when zero" on, a
--- secret amount is abbreviated and a zero shows as "0" (no game helper does both; stated in /xui timing and the user guide).
+-- secret amount is abbreviated and a zero shows as "0" (no game helper does both; stated in /xui debug timing and the user guide).
 local function ReadAbsorb(ab, ref)
     local val
     if ns.Val(ab.source) == "aura" then
@@ -2676,7 +2676,7 @@ function ns.DropVisual(rule)
     end
 end
 
--- /xui mods: what is really on a cue's frame right now (so a modifier that "does not apply" can be traced: data -> condition -> merged mods -> frame).
+-- /xui debug mods: what is really on a cue's frame right now (so a modifier that "does not apply" can be traced: data -> condition -> merged mods -> frame).
 function ns.VisualDebug(rule)
     local fr = frames[rule]
     if not fr then return nil end

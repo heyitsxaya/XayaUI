@@ -1,10 +1,10 @@
 -------------------------------------------------------------------------------
--- AuraList.lua : /xui auras (core 0.6.6). Restores #335, which was described as built in 0.6.2 but never reached main.
+-- AuraList.lua : /xui debug auras (core 0.6.6). Restores #335, which was described as built in 0.6.2 but never reached main.
 --
---   /xui auras [target|focus|pet] [debuffs]   every aura on the unit, one line each, out of restricted content: name, spell ID,
+--   /xui debug auras [target|focus|pet] [debuffs]   every aura on the unit, one line each, out of restricted content: name, spell ID,
 --                                             stacks, time left of the total, who cast it, and three facts that decide whether
 --                                             XayaUI can follow that aura in combat
---   /xui auras <spellID or spell name>        the same three facts for one spell; works anywhere, in combat too (no live aura read)
+--   /xui debug auras <spellID or spell name>        the same three facts for one spell; works anywhere, in combat too (no live aura read)
 --
 -- The three facts, all read from the game:
 --   readable in combat   C_Secrets.GetSpellAuraSecrecy: NeverSecret = yes; otherwise the aura is secret in combat, encounters,
@@ -136,7 +136,7 @@ local function FactsLine(f)
 end
 
 -------------------------------------------------------------------------------
--- /xui auras
+-- /xui debug auras
 -------------------------------------------------------------------------------
 local UNITS = { target = true, focus = true, pet = true, player = true }
 
@@ -197,17 +197,17 @@ function ns.AurasCommand(arg)
     -- one spell: the facts only (works in combat)
     if #rest > 0 then
         local id = ResolveSpell(table.concat(rest, " "))
-        if not id then ns.Print("/xui auras: no spell found for \"" .. table.concat(rest, " ") .. "\". Use a spell ID, a known spell name, or a spell link."); return end
+        if not id then ns.Print("/xui debug auras: no spell found for \"" .. table.concat(rest, " ") .. "\". Use a spell ID, a known spell name, or a spell link."); return end
         ns.Print(("%s (ID %d): %s"):format(SpellName(id), id, FactsLine(ns.AuraFacts(id))))
         return
     end
-    if not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then ns.Print("/xui auras: this game version has no aura list call."); return end
+    if not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then ns.Print("/xui debug auras: this game version has no aura list call."); return end
     if unit ~= "player" then
         local okE, exists = Call(UnitExists, unit)
-        if not (okE and exists) then ns.Print("/xui auras: no " .. unit .. "."); return end
+        if not (okE and exists) then ns.Print("/xui debug auras: no " .. unit .. "."); return end
     end
     if ns.AurasRestricted and ns.AurasRestricted() then
-        ns.Print("/xui auras: the game hides aura details from addons right now (combat, an encounter, Mythic+ or PvP). Run it again outside, or use /xui auras <spell ID> for one spell's facts.")
+        ns.Print("/xui debug auras: the game hides aura details from addons right now (combat, an encounter, Mythic+ or PvP). Run it again outside, or use /xui debug auras <spell ID> for one spell's facts.")
         return
     end
     local lines, n = {}, 0
@@ -235,13 +235,15 @@ function ns.AurasCommand(arg)
         end
     end
     local kind = filter == "HARMFUL" and "debuffs" or "buffs"
-    if n == 0 and #lines == 0 then ns.Print(("/xui auras: no %s on %s."):format(kind, unit)); return end
-    ns.Print(("/xui auras: %d %s on %s (copy an ID into a rule's Buff / Aura trigger):"):format(n, kind, unit))
+    if n == 0 and #lines == 0 then ns.Print(("/xui debug auras: no %s on %s."):format(kind, unit)); return end
+    ns.Print(("/xui debug auras: %d %s on %s (copy an ID into a rule's Buff / Aura trigger):"):format(n, kind, unit))
     for _, l in ipairs(lines) do ns.Print(l) end
 end
 
-ns.RegisterCommand("auras", ns.AurasCommand,
-    "/xui auras [target|focus|pet] [debuffs] (aura IDs + whether XayaUI can follow them in combat) | /xui auras <spellID> (one spell, works in combat)")
+-- core 0.6.50: a diagnostic command, /xui debug auras (Modules.lua ns.RegisterDebugCommand); /xui auras is its shortcut, printed in
+-- chat (Core.lua SHORTCUTS; Xaya 2026-11-06)
+ns.RegisterDebugCommand("auras", ns.AurasCommand,
+    { "auras [target|focus|pet] [debuffs] (aura IDs, and whether XayaUI can follow them in combat)", "auras <spellID> (one spell; works in combat)" })
 
 -- the catalogue follows spec and talent changes
 local ev = CreateFrame("Frame")
