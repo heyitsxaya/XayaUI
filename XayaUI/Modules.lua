@@ -102,12 +102,39 @@ end
 
 function ns.CommandHelp() return helpText end
 
+-- 2b. /xui debug <name> [args] (core 0.6.49; Xaya 2026-11-05: "can't some of these be consolidated into a /xui debug _____ ? this is a
+-- LOT of noise"). Diagnostic commands live under /xui debug, so /xui help lists only what a player uses. A diagnostic command is also
+-- registered under its old name (/xui chatprobe still runs), without a /xui help line, so run sheets and habits keep working.
+-- help: one string or a list of strings, each "name [args] (what it does)", without "/xui debug".
+local debugCommands, debugHelp = {}, {}
+function ns.RegisterDebugCommand(names, fn, help)
+    if type(fn) ~= "function" then return end
+    if type(names) == "string" then names = { names } end
+    for _, n in ipairs(names) do
+        n = tostring(n):lower()
+        debugCommands[n] = debugCommands[n] or {}
+        table.insert(debugCommands[n], fn)
+    end
+    ns.RegisterCommand(names, fn)   -- the old /xui <name> form; no help line
+    if type(help) == "string" then help = { help } end
+    for _, h in ipairs(type(help) == "table" and help or {}) do
+        if type(h) == "string" and h ~= "" then debugHelp[#debugHelp + 1] = h end
+    end
+end
+function ns.RunDebugCommand(cmd, arg)
+    local list = debugCommands[cmd]
+    if not list then return false end
+    for _, fn in ipairs(list) do Call(fn, arg) end
+    return true
+end
+function ns.DebugCommandHelp() return debugHelp end
+
 -------------------------------------------------------------------------------
 -- 3. Which addon owns what. Only used for messages and the Addon Info status list; nothing here is called.
 -------------------------------------------------------------------------------
 ns.MODULES = {
     { addon = "XayaUI_Chat",    title = "XayaUI Chat",            commands = { "chat", "panel", "chatprobe", "privacy" } },
-    { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor" } },
+    { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor", "widthprobe" } },
     { addon = "XayaUI_Bonus",   title = "XayaUI Bonus Features",  commands = { "notes", "notepad", "note", "data" } },
     { addon = "XayaUI_Reskin",  title = "XayaUI Blizzard Reskin", commands = {} },
     { addon = "XayaUI_Options", title = "XayaUI Options",         commands = {} },

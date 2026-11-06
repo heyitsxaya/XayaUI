@@ -58,7 +58,8 @@ UnitExists = function(u) return u == "target" end
 assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__AL__))("XayaUI", ns)
 
-check("registered as /xui auras with help text", ns.RunCommand("auras", "") and (function() for _, h in ipairs(ns.CommandHelp()) do if h:find("/xui auras", 1, true) then return true end end end)())
+-- (core 0.6.49: a diagnostic command, listed by /xui debug; /xui auras still runs)
+check("registered as /xui auras, listed under /xui debug", ns.RunCommand("auras", "") and ns.RunDebugCommand("auras", "") and (function() for _, h in ipairs(ns.DebugCommandHelp()) do if h:find("auras [target", 1, true) then return true end end end)())
 check("header: 3 buffs on player", any("3 buffs on player"), last(6))
 check("line: name, ID, stacks, time of total, caster", any("Divine Arbiter  ID 111  x3  12.5 / 30 s  [you]"))
 check("one stack is not printed as x1/x0", any("Immolation Aura  ID 222  4.0 / 6 s  [you]"))

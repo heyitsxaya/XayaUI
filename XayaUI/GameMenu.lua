@@ -365,4 +365,4 @@ end
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
-ns.RegisterCommand("gamemenu", function() ns.GameMenu_Diagnostics() end, "/xui gamemenu (ESC menu diagnostics)")
+ns.RegisterDebugCommand("gamemenu", function() ns.GameMenu_Diagnostics() end, "gamemenu (the ESC menu button and skin)")   -- (core 0.6.49: under /xui debug)

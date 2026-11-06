@@ -250,13 +250,7 @@ end
 local pendingOpen = false
 function ns.ConsoleMessage(text, isError, private)
     local line = (isError and "|cffff5555[XayaUI error]|r " or "|cff33ccffXayaUI|r: ") .. tostring(text)
-    local b = (not private) and ns.logBuf or nil
-    if b then
-        b[#b + 1] = line
-        ns.logSerial = (ns.logSerial or 0) + 1   -- (Console.lua: which lines a closed console window has not drawn yet)
-        local n = #b
-        if n > 350 then for i = 1, 300 do b[i] = b[n - 300 + i] end; for i = 301, n do b[i] = nil end end
-    end
+    if not private then ns.LogAppend(line) end   -- (Core.lua: ns.logBuf, trimmed to its last 300 lines past 350)
     if ns.Fire then ns.Fire("LOG", line) end
     if ns.ConsoleSink then ns.ConsoleSink(line, private) end
     if ns.MessageDest() == "console" and Ui().consoleAutoOpen ~= false and ns.ConsoleWindowOn and not ns.ConsoleWindowOn() then

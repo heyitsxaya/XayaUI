@@ -240,8 +240,9 @@ function ns.AurasCommand(arg)
     for _, l in ipairs(lines) do ns.Print(l) end
 end
 
-ns.RegisterCommand("auras", ns.AurasCommand,
-    "/xui auras [target|focus|pet] [debuffs] (aura IDs + whether XayaUI can follow them in combat) | /xui auras <spellID> (one spell, works in combat)")
+-- core 0.6.49: a diagnostic command, listed by /xui debug (Modules.lua ns.RegisterDebugCommand); /xui auras still runs
+ns.RegisterDebugCommand("auras", ns.AurasCommand,
+    { "auras [target/focus/pet] [debuffs] (aura IDs, and whether XayaUI can follow them in combat)", "auras <spellID> (one spell; works in combat)" })
 
 -- the catalogue follows spec and talent changes
 local ev = CreateFrame("Frame")
