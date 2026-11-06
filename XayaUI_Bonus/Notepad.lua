@@ -1053,7 +1053,7 @@ function ns.Notepad_SetEnabled(v)
     if not db.enabled then Flush() end
     ns.Notepad_Refresh()
     if ns.NotepadShare_Sync then ns.NotepadShare_Sync() end
-    if ns.Utilities_SyncSlash then ns.Utilities_SyncSlash() end   -- (Bonus 0.6.16) /notes, only once it is on (Utilities.lua)
+    if ns.Utilities_SyncSlash then ns.Utilities_SyncSlash() end   -- (Bonus 0.6.17) /notes, only once it is on (Utilities.lua)
     if ns.Notepad_Changed then ns.Notepad_Changed() end
 end
 

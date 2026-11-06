@@ -1,4 +1,4 @@
-# Test for XayaUI_Bonus 0.6.16 /notes and /calc (CHAT-6, Xaya 2026-11-05: "Is it possible for /notes /calc to be commands that the
+# Test for XayaUI_Bonus 0.6.17 /notes and /calc (CHAT-6, Xaya 2026-11-05: "Is it possible for /notes /calc to be commands that the
 # addon recognizes and accepts in the console to open the notes and calculator respectively?"), run in Lua 5.1 with stand-in game tables.
 # What it checks (outcomes: what a typed word reaches, resolved the way the chat box looks a word up in SlashCmdList):
 #   - both words free, Notepad on: /notes shows / hides the Notepad, /calc alone toggles the calculator, /calc 2+2 passes the sum on;
