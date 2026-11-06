@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-90bdeb5d8706a6534dd98afab83751e2  QA-CHECKLIST.md
+0213c44eb3e48671f8485e929033635b  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 ba1f5dbf3f223ecc6e5f57fd8b7ac3f6  ROADMAP.md
 119e0f05c00af580ffa6755dddcd5d89  SESSION-START-SUMMARY.md
@@ -215,7 +215,7 @@ e41a8c82ba881fdbec1b353d65a44304  XayaUI_Options/Skin.lua
 7568f4d9e51e3453058f3ce084d89d4a  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
 c79f7aedb61981602d40ea7c1bbbe33b  XayaUI_Options/XayaUI_Options.toc
-5afe11f54ae24648f309bff7987178e0  XayaUI_QoL/CharacterModel.lua
+c5fab0ea598691a041872b61a749f51c  XayaUI_QoL/CharacterModel.lua
 6c5939f65e530d14fe6e85e84a39e061  XayaUI_QoL/CharacterReskin.lua
 71a9c5e2546cef30f382de5d323903ea  XayaUI_QoL/CharacterToolkit.lua
 852083e509ef46ba46037600b22bad6f  XayaUI_QoL/CharacterWidthProbe.lua
@@ -259,7 +259,7 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 11b0157d3de40fc0f105129847ae28b1  XayaUI_QoL/ReleaseGuard.lua
 229c9c2a9bc88903aa514d99caebee7f  XayaUI_QoL/ShoppingList.lua
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
-9a5cb29f499ef081c5ec0d491c242087  XayaUI_QoL/XayaUI_QoL.toc
+45a31037ecfebf07b53075eeaf0ba062  XayaUI_QoL/XayaUI_QoL.toc
 ab46cc74b52167a730851c49022256e1  XayaUI_Reskin/GameMenuSkin.lua
 ba561866fe377a0aa4a6984cdacdda81  XayaUI_Reskin/XayaUI_Reskin.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
@@ -512,6 +512,7 @@ f3043a92ce27aaf875034cfae9345c16  debug-log/2026-11-06-2214-chat-data-panel-left
 f671bbba5831a0af440e1fe55319f019  debug-log/2026-11-06-2215-chat-hover-wake-option-chat-0.6.24.md
 4c07e61138e81217e604a652cc60f7c0  debug-log/2026-11-06-2219-chat-ignore-click-combo-chat-0.6.25.md
 f2ab2c6149d77a1489dc842a2fb341fe  debug-log/2026-11-06-2228-chat-whisper-tab-lists-chat-0.6.26.md
+2c4b405b037091f25123f450a87c575e  debug-log/2026-11-06-2253-stat-calc-proc-lines-set-armor-label-qol-0.7.35.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -536,7 +537,7 @@ d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 8d39baf114409f17d6a210122ae1e672  docs/process/REQUEST-LOG-CROSS-CHAT.md
 1c455e2d0e650f1d4403dd74c92e2a52  docs/process/REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-89a3c618d2a465e0e7eacc912b97b820  docs/process/REQUEST-LOG.md
+583ff1d47533d0c8b898ac20f6d10193  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 4c7604ae6a9849bdbf672b7ae1d45e7d  docs/process/VERIFICATION.md
 7af233aeafadc9bade62ce5da4b21189  docs/reference/README.md
@@ -601,13 +602,13 @@ a8256603c8e3ad44a640b0927848f31a  tests/char_pane_geometry.lua
 915774a9ce37cd482ee8d01a97dc2112  tests/char_pane_overlays_run.py
 f3215c75ac1e899b565488404268c642  tests/char_pane_round_run.py
 a728b09d9b33b392ede80d974f5e1236  tests/char_reskin_run.py
-7567822fe4aa3f5f75bcff323914773f  tests/char_spells_compare_run.py
+094da4d7d3c05c1912cb6ac56152fa7b  tests/char_spells_compare_run.py
 1e8b4ffbf07e03b50caa5cd909988171  tests/char_spells_run.py
 75414a550d2ad68a99b8f6e9e28f5056  tests/char_stat_columns_run.py
-317d97c7dd7abeec6651c4fb394341df  tests/char_stat_map_run.py
+1f1871a2727ae2ae7488783b0a50c1cc  tests/char_stat_map_run.py
 1c7fda81c9b1f63379b9665a4aafc037  tests/char_stat_round_run.py
 9b4193e0d1e614fa12e04348dd3e0bab  tests/char_stat_window_run.py
-07b0146f69e580b375eb198f12b34d54  tests/char_toolkit2_run.py
+6b8d6959f64e1849631b04d9e438fc22  tests/char_toolkit2_run.py
 a8e5c2bbdb81d4bb1a3dffb7e6c05a9c  tests/char_toolkit_run.py
 89838d7d9ca1deabb0a3654cb4a560da  tests/char_toolkit_world.lua
 1eb3d1f21eeeb4599682800a327ae453  tests/char_width_probe_run.py

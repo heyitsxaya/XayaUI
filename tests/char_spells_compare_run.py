@@ -453,11 +453,33 @@ checkp("  ...effects: the equipped ring's proc line, New Ring's Use line, Big Cr
   for _, r in ipairs(recs(d, "mnote")) do t[#t + 1] = r.text end
   local s = table.concat(t, " / ")
   return find(d, "msubhead", "On-use and proc effects") ~= nil
-    and s:find("Equipped: Your attacks have a chance to grant 500 Haste for 10 sec.", 1, true) ~= nil
-    and s:find("New Ring: Use: Gain a shield absorbing 20,000 damage. (2 Min Cooldown)", 1, true) ~= nil
-    and s:find("Big Crit Ring: none", 1, true) ~= nil and s:find("Big Crit Ring: loses the equipped item's effect", 1, true) ~= nil
+    -- (QoL 0.7.35, UI-34 / UI-35: "Equipped: <item>" / "Compared: <item>", a line break, then the game's line)
+    and s:find("Equipped: Ring\nYour attacks have a chance to grant 500 Haste for 10 sec.", 1, true) ~= nil
+    and s:find("Compared: New Ring\nUse: Gain a shield absorbing 20,000 damage. (2 Min Cooldown)", 1, true) ~= nil
+    and s:find("Compared: Big Crit Ring\nnone", 1, true) ~= nil and s:find("Big Crit Ring: loses the equipped item's effect", 1, true) ~= nil
     and s:find("New Ring: a different effect", 1, true) ~= nil, s
 end)
+-- (QoL 0.7.35; UI-35 / UI-38: "guillotine and a weapon share a set, and this should be indicated as part of the comparison"; her
+-- answer "Set line under each item"). Stand-in: the equipped Ring and the main-hand Glaive in set 600 "Test Set", New Ring in it too,
+-- Big Crit Ring not. Negative control: fails on QoL 0.7.34 (no set lines).
+do
+  local saveInfo, saveSet = C_Item.GetItemInfo, C_Item.GetItemSetInfo
+  C_Item.GetItemInfo = function(x)
+    if type(x) == "string" and (x:find("[Ring]", 1, true) or x == GEAR[16] or x:find("[New Ring]", 1, true)) then
+      return "n", x, 4, 90, 1, "Armor", "Misc", 1, "INVTYPE_FINGER", 0, 0, 4, 0, 1, 11, 600
+    end
+    return saveInfo(x)
+  end
+  C_Item.GetItemSetInfo = function(id) if id == 600 then return "Test Set" end end
+  ns.CharToolkit_Render(); local d2 = drawn()
+  local t = {}
+  for _, r in ipairs(recs(d2, "mnote")) do t[#t + 1] = r.text end
+  local s2 = table.concat(t, " / ")
+  check("set: under the equipped item, \"Set: Test Set (with Glaive)\"; New Ring \"Also in Test Set\"; Big Crit Ring \"Not in Test Set: replacing the equipped item breaks the set\"",
+    s2:find("Set: Test Set (with Glaive)", 1, true) ~= nil and s2:find("Also in Test Set", 1, true) ~= nil
+    and s2:find("Not in Test Set: replacing the equipped item breaks the set", 1, true) ~= nil, s2)
+  C_Item.GetItemInfo, C_Item.GetItemSetInfo = saveInfo, saveSet
+end
 checkp("  ...RPPM: the line reads exactly \"RPPM not given by the game\" (no documented source gives it), and no RPPM number anywhere", function()
   local said, num = false, false
   for _, r in ipairs(d.layout) do
