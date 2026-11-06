@@ -99,6 +99,9 @@ function ns.NewCueRule(parent, kind)
     n.sound.enabled = (kind == "sound" or kind == "speech")
     n.visual.enabled = (kind ~= "sound" and kind ~= "speech" and kind ~= "custom")
     if kind == "speech" then n.sound.source, n.sound.value = "tts", "" end   -- a speech cue is a sound whose source is text-to-speech
+    -- D3 / #375 (core 0.6.56; Xaya: "allow sounds to be set to their own channel (generally SFX)"): a new Sound cue starts on the SFX
+    -- channel (changeable on the cue); speech has no channel (C_VoiceChat.SpeakText takes none). Cues made before keep theirs (blank = Master).
+    if kind == "sound" then n.sound.channel = "SFX" end
     n.visual.trigger = "condition"
     if kind == "icon" then n.visual.kind = "spellicon" end
     ns.rules[#ns.rules + 1] = n
