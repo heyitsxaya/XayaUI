@@ -6,7 +6,7 @@
 --   * What it reads: numbers (3472, 3,472, 3.5, .5), k / m / b after a number (12k = 12,000), + - * / ^, x or the multiply sign,
 --     the divide sign, % after a number (15% = 0.15), brackets, a leading minus. Nothing else: no functions, no variables.
 -- Typed text is never run as code: the sum is read by the small parser below, never handed to loadstring or RunScript.
---   * (Bonus 0.6.15; Xaya 2026-11-06: "Calculator needs its own enable / disable toggle") a tick box on its row in Bonus Features >
+--   * (Bonus 0.6.16; Xaya 2026-11-06: "Calculator needs its own enable / disable toggle") a tick box on its row in Bonus Features >
 --     Utilities turns the Calculator's window on or off. Off: no window (an open one closes), /xui calc alone only says it is off, no
 --     Calculator row in the minimap button's list; /xui calc <sum> still answers in chat (Xaya 2026-11-06, asked whether off should
 --     stop it too: "Is there a performance difference? If no, just the window" -- there is none: the command is registered either way
@@ -327,7 +327,7 @@ function ns.Calculator_Open()
     f:Show(); f.edit:SetFocus()
 end
 
--- On / off for the whole Calculator (Bonus 0.6.15): off closes the window and takes the cursor out of its line. The window, if it
+-- On / off for the whole Calculator (Bonus 0.6.16): off closes the window and takes the cursor out of its line. The window, if it
 -- was ever built this session, stays as a hidden frame until /reload (the game cannot delete a frame); nothing of it runs.
 function ns.Calculator_SetEnabled(v)
     local d = DB(); if not d then return end
@@ -337,7 +337,7 @@ end
 
 -- Settings: Bonus Features > Utilities > Calculator (Bonus 0.6.11; Xaya 2026-11-05: "Under bonus features, create "Utilities" Group
 -- and nest Notepad and Calculator"). What it is and how to open it, from this file's header. Its row in the left pane carries the
--- Calculator's on / off (xuiSwitch, Bonus 0.6.15; Options.lua Tree.RowSwitch draws the box); while it is off the Open button is greyed
+-- Calculator's on / off (xuiSwitch, Bonus 0.6.16; Options.lua Tree.RowSwitch draws the box); while it is off the Open button is greyed
 -- out. Built only when the settings window draws (Utilities.lua).
 function ns.BuildCalculatorPage()
     return { type = "group", name = "Calculator", order = 1,
@@ -375,5 +375,5 @@ end
 if ns.RegisterLauncher then
     ns.RegisterLauncher({ "calc", "Calculator", "Show or hide the calculator (also /xui calc)", function() ns.Calculator_Toggle() end,
         function() return (frame and frame:IsShown()) and "on" or "off" end, order = 11,
-        available = function() return On() end })   -- (Bonus 0.6.15) no row while the Calculator is off (core 0.6.49: available())
+        available = function() return On() end })   -- (Bonus 0.6.16) no row while the Calculator is off (core 0.6.49: available())
 end

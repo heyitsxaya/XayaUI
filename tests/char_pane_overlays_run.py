@@ -6,7 +6,8 @@
 # embellishment does". Her settings: Character Reskin on, Clean window off, Item level / Enchants / Stat list / Gems on; the Character
 # Toolkit on with its Slot Overlays. Her width probe (2026-11-05): "120 px wider (540 -> 660) ... all ok".
 # Checks what the player sees, in Blizzard's real window geometry (tests/char_pane_geometry.lua, from the live 12.1.5 XML):
-#   A0. (QoL 0.7.24) the default extra width 42 px (380 / 582): widths, nothing over the model, what her 12 slots show there;
+#   A0. (QoL 0.7.24) the default extra width 42 px (380 / 582): widths, what her 12 slots show there (QoL 0.7.28: all drawn, over the
+#       model's sides where there is no room beside it; her answer "Over the model");
 #   A. her settings with the wider window (on by default; extra width set to 240 px): the window, the model whole and centred, the stats pane placed; one
 #      item level per slot (none on the shirt; XayaUI's hidden where another addon's text shows the same number); each slot's block
 #      (enchant, embellishment, gems): the whole enchant name, wrapped, every line within its width, inside its band, none over the
@@ -263,8 +264,11 @@ do
     math.abs(model.r - model.l - 231) < 0.01 and math.abs((model.l - head.r) - (hands.l - model.r)) <= 1.01 and model.l - head.r >= 28,
     rstr(model) .. " head.r " .. head.r .. " hands.l " .. hands.l)
   local out, overModel, nrows = layoutProblems(false, true)
-  check("(guard, V11) A0. at 380 / 582 no row of any block lies over the 3D model, and none goes toward the middle (the 0.7.19 layout is only for Blizzard's width)",
-    #overModel == 0, list(overModel))
+  -- (QoL 0.7.28; Xaya at 0.7.27: "character pane now missing all previous information around gems, enchangs, embellishments, etc"; her
+  -- answer "Over the model"; REQUEST-LOG #69 / #71) at 380 the blocks beside the head ... rings run toward the middle, over the model's
+  -- sides, as at Blizzard's width; before, none was allowed there and they were not drawn
+  check("A0. at 380 / 582 the blocks with no room beside the model run over its sides (her answer \"Over the model\"; 0.7.24-0.7.27 kept them off it and hid them)",
+    #overModel > 0, nrows)
   check("(guard, V11)   ...each row inside its slot's band and the window; no two overlap; none covers a slot, an item level or the weapon art", #out == 0, list(out))
   CharacterModelScene.ControlFrame:Show()
   local outC = layoutProblems(true, true)
@@ -279,8 +283,8 @@ do
     if not L or #rowsOf(name) == 0 then none[#none + 1] = name elseif L.cut then cut[#cut + 1] = name else whole[#whole + 1] = name end
   end
   A0_COUNTS = ("whole %d (%s); cut %d (%s); not drawn %d (%s)"):format(#whole, table.concat(whole, ","), #cut, table.concat(cut, ","), #none, table.concat(none, ","))
-  check("A0. her 12 slots at 380: the two weapons' blocks whole (room under the side columns); the other ten have about 18 px beside the model, so none of their words fits and they are not drawn (reported to Xaya)",
-    #whole == 2 and whole[1] == "MainHandSlot" and whole[2] == "SecondaryHandSlot" and #cut == 0 and #none == 10, A0_COUNTS)
+  check("A0. her 12 slots at 380: every block is drawn (QoL 0.7.28: none hidden for lack of room; at 0.7.24-0.7.27 ten were not drawn), at most cut at a word",
+    #none == 0 and #whole + #cut == 12, A0_COUNTS)
   local mhs = sockets("MainHandSlot")
   check("  ...the main hand's empty socket shows at 16 px with its type (her answer: \"16 px\")", #mhs == 1 and mhs[1].bg.w == 16 and mhs[1].bg.h == 16
     and TXT(mhs[1]) == "Prismatic Socket", #mhs == 1 and (mhs[1].bg.w .. " " .. TXT(mhs[1])) or #mhs)

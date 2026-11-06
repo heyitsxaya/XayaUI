@@ -58,7 +58,7 @@ local function collect(g, path)
 end
 for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do collect(node(T, tab), { tab }) end
 -- (QoL 0.7.24 / Bonus 0.6.14: qol>chartoolkit>tipsPart, Xaya #46 "Assume yes for now"; bonus>tooltips, #45 "Enhanced Tooltips";
--- bonus>utilities>notepad is the whole Notepad now, #47; bonus>utilities>calculator, Bonus 0.6.15: "Calculator needs its own
+-- bonus>utilities>notepad is the whole Notepad now, #47; bonus>utilities>calculator, Bonus 0.6.16: "Calculator needs its own
 -- enable / disable toggle")
 local WANT = { "qol>chartoolkit", "qol>chartoolkit>panelPart", "qol>chartoolkit>overlayPart", "qol>chartoolkit>spells",
   "qol>chartoolkit>tipsPart", "qol>cursor>highlight", "qol>cursor>trail", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad",
@@ -255,7 +255,7 @@ click("bonus", "utilities\001notepad", true)
 check("A: Notepad box ticked: on again, the box shows as saved", CueRulesDB.notepad.enabled == true and _G.XayaUINotepad:IsShown())
 oneRedraw("A: Notepad box ticked")
 ns.Notepad_SetShown(false); settle()
--- (Bonus 0.6.15) the Calculator's box: the whole Calculator; shown first, then the row unticked and ticked
+-- (Bonus 0.6.16) the Calculator's box: the whole Calculator; shown first, then the row unticked and ticked
 ns.Calculator_Open(); settle()
 check("A: Calculator: the window opens while it is on", _G.XayaUICalculator ~= nil and _G.XayaUICalculator:IsShown())
 check("A: Calculator: the box is clickable", click("bonus", "utilities\001calculator", false))

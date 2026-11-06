@@ -46,6 +46,8 @@ for f in ("XayaUI/Modules.lua","XayaUI_Bonus/Tooltips.lua","XayaUI/AuraSources.l
     L.eval('function(src,n) return (load(src,n)) end')(open(os.path.join(ROOT, f)).read(), f)("XayaUI", L.eval("XayaUI_NS"))
 # AuraSources is core and always loaded in game; these checks test Tooltips alone, so keep only its embedded-aura reader (0.5.108)
 L.execute("REAL_AS = XayaUI_NS.AuraSources; XayaUI_NS.AuraSources = { EmbeddedAuras = REAL_AS.EmbeddedAuras, NestedType = REAL_AS.NestedType }")
+# Bonus 0.6.15: aura sources show only while Advanced Debugging is on (core ns.AdvancedDebugOn, on by default in the game); on here
+L.execute("XayaUI_NS.AdvancedDebugOn = function() return true end")
 fails=0
 def check(n,c):
     global fails

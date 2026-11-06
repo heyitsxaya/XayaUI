@@ -6,7 +6,7 @@
 #   - every way a sum can be wrong gives a reason, never a Lua error, and typed text is never run as code;
 #   - /xui calc <sum> prints "sum = answer"; /xui calc alone shows / hides the window; the keypad builds a sum and = works it out;
 #   - the keypad fits inside the window (V11); history keeps the last 10; Escape closes it; no global written by Calculator.lua;
-#   - (Bonus 0.6.15, Xaya 2026-11-06: "Calculator needs its own enable / disable toggle") the settings row's switch: on by default;
+#   - (Bonus 0.6.16, Xaya 2026-11-06: "Calculator needs its own enable / disable toggle") the settings row's switch: on by default;
 #     off closes the window, /xui calc alone only says it is off, the minimap list leaves the Calculator row out and the page's Open
 #     button is greyed out; /xui calc <sum> still answers in chat (her answer: "just the window"); saved sums are kept; switched off
 #     at login, no window is built whichever way it is asked for.

@@ -1,4 +1,4 @@
-# Calculator on / off tick box (Bonus 0.6.15)
+# Calculator on / off tick box (Bonus 0.6.16)
 
 Session 014bN6tWsEQA8BZbHidBmJ1Y, branch `claude/gallant-allen-gmvfr0`, 2026-11-06 05:05 UTC. UNTESTED IN GAME.
 
@@ -17,7 +17,7 @@ tick box, Notepad with a ticked box]. REQUEST-LOG section A7, row S7-1.
   - the page's "Open calculator" button is greyed out.
   Saved sums and the window's position are kept.
 - `XayaUI_Bonus/Utilities.lua`: overview line and header comment mention the Calculator's box.
-- `XayaUI_Bonus/XayaUI_Bonus.toc`: 0.6.14 -> 0.6.15.
+- `XayaUI_Bonus/XayaUI_Bonus.toc`: 0.6.15 -> 0.6.16 (renumbered at the merge with main: S2's Aura ID change, 547e6e8, took 0.6.15).
 
 ## Her answers (question box, 2026-11-06 ~05:15 UTC; REQUEST-LOG S7-2)
 1. Default: "On by default (Recommended)".
@@ -51,4 +51,4 @@ without a box; left alone so that Options needs no version bump while other sess
 - `tests/sidebar_switches_run.py`: Calculator is in the list of rows with a switch; its drawn row has a ticked box; unticking it in
   the left pane switches the Calculator off and closes its window without selecting the row, with one redraw; ticking it turns it on.
   92 checks, 0 failed.
-- QA-CHECKLIST F16.
+- QA-CHECKLIST F17 (F16 is S2's).

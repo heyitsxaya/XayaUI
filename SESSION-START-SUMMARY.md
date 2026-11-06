@@ -135,13 +135,13 @@ whispers` built to collect the facts (QA D4l; `debug-log/2026-11-04-2344-chat-pi
 Waiting on Xaya: the `/xui chat whispers` output after a whisper (D4l); task 43 (Stat Calculator questions and issues #377 #379 #381 #382 #383 #387), task 46 (the width probe in game),
 the QA steps above in game.
 
-**Open with Xaya from session 014bN6tSy3HbUDWYQsk69naX (PR #386), asked 2026-11-04 evening, unanswered:**
+**Open with Xaya from session 014bN6tSy3HbUDWYQsk69naX (PR #386, merged), asked 2026-11-04 evening; answers of 2026-11-06 noted per item:**
 - Cursor Highlight: "right clicking mouse with the cursor shape enabled makes cursor less responsive". No cause found in the code (the
   frame takes no mouse input; one cursor read and one move per frame). Asked: which feels slow (camera turn / shape lag after release /
   clicks), which shape and style, trail on, "hide while turning" on, and whether it goes away with the shape off.
-- Fiery Brand tooltip: her yes (2026-11-06). Built as Bonus 0.6.13 on `claude/inspiring-mendel-8r8qao` (QA F13): each Aura ID line names its source; a spell's aura icon ID equal to its own icon is left out. Lands with the next bundled push (V17).
-- The combat-log analyser (RM-INST's "complete" part, an offline tool in `tools/`): proposed as the next large safe item; her go needed.
-- The Enchant Slots default (QoL 0.7.6) uses eight slot numbers derived from the client data: flagged against the terms question (3b).
+- Fiery Brand tooltip: her yes (2026-11-06); on `main` 5490478 (Bonus 0.6.13 content, QA F13). Her follow-up (2026-11-06): "only offer this if debugging mode is enabled": the "via ..." source text shows only while Advanced Debugging is on (Bonus 0.6.15, QA F16, branch `claude/inspiring-mendel-8r8qao`, for the next combined push).
+- The combat-log analyser (RM-INST's "complete" part, an offline tool in `tools/`): her answer 2026-11-06 "Not now" (stays on the roadmap, not built).
+- The Enchant Slots default (QoL 0.7.6): her answers 2026-11-06 "Keep legs flagged" (after the recipe check) and, on the terms question, "Slot numbers are fine". Closed.
 - Deferred / dropped by her that evening: talent window labels (#388, deferred); raid role load condition (dropped).
 
 **Three Claude sessions work in parallel (2026-11-04 evening, coordinated by send_message):**
