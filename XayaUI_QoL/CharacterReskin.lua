@@ -51,6 +51,13 @@ local function Cfg()
     if not CueRulesDB then return nil end
     local c = CueRulesDB.characterReskin
     if type(c) ~= "table" then c = {}; CueRulesDB.characterReskin = c end
+    -- (QoL 0.7.27) once per install: QoL 0.7.21-0.7.23 saved their default extra width, 240, into the settings, so the 0.7.24 default
+    -- (42: 380 / 582) never reached an install that had run them (Xaya 2026-11-06: "surely this isn't 380px?", REQUEST-LOG #58-#59;
+    -- her answer: a saved 240, the old default, becomes 42 once; any other saved number stays; a 240 picked after this stays too)
+    if c.widePxTo42 == nil then
+        if tonumber(c.widePx) == 240 then c.widePx = 42 end
+        c.widePxTo42 = true
+    end
     for k, v in pairs(DEFAULTS) do
         if type(v) == "boolean" then
             if c[k] == nil then c[k] = v end
