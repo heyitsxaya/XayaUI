@@ -184,3 +184,15 @@ Your sentence: "this _____ requires blizzard's cooldown manager to track it befo
 - #334 files: both (quieter copies + slider moved to Settings).
 - #278 item 2: "requires further testing in game -- refer to EUI codebase to see how you can manually add buff tracking through his
   cooldown manager".
+- #23: "Rules that would only track something if a talent is known should be talent dependent loads and not fire if the talent is
+  [NOT] selected" (confirmed: load only while the talent is picked).
+- #18: "If instance type is not specified, it has no bearing on the rule loading and firing and should not be considered. This is true
+  for all options that are not outright specified in some way".
+- #2: three-click toggle (Known green / Not known red / not set).
+- #278 items 5 / 6: "This is not true. I can track sigil of chains slow on an enemy as well as sigil of silence and sigil of misery.
+  Nova and imprison also track. Reevaluate this" -> re-check in code and game before any proposal.
+- A12: fit contents.
+- Group page (for the Options session): tabs Group | Display | Load | Config (Group first); Sort beside Grow on Group; size = auto or
+  set + clip / wrap tick boxes; auto fits the showing items, border follows; strata / opacity / scale on Group; align / distribute /
+  spacing saved and kept applying; Delete / New / Enable on Config; nested groups get "anchored to: screen / parent group"; static
+  group scaling: "Toggle / prompt"; icon size on Group; position / growth / size on Group (no "Group Display" rename).
