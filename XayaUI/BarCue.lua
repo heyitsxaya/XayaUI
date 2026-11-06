@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 -- BarCue.lua : the Bar cue kind (ROADMAP RM-BARS).
--- Xaya 2026-11-06, "Time to build progress bar cues!", and her answers (docs/process/REQUEST-LOG.md S7-1 .. S7-4):
+-- Xaya 2026-11-06, "Time to build progress bar cues!", and her answers (docs/process/REQUEST-LOG.md S8-1 .. S8-4):
 --   a NEW Bar cue kind (beside Icon / Texture / Text); it tracks aura time left, a spell's cooldown / recharge, stacks or charges;
 --   its parts are an icon (left / right / none), a spark, name and time texts, and the stack / charge count;
 --   colour: "Read tooltip to see what type is specified" FIRST, then the game's dispel type of the aura, then a fixed blue;
@@ -28,7 +28,7 @@ local function clamp(x, a, b) if x < a then return a elseif x > b then return b 
 -- Defaults
 -------------------------------------------------------------------------------
 ns.BAR_CUE_VERSION = 1   -- bump when BAR_CUE_DEFAULTS gains a key, so saved bars get it once
-ns.BAR_FALLBACK_COLOR = { 0.25, 0.62, 1, 1 }   -- "Fixed blue" (Xaya, S7-3): XayaUI's own buff-bar blue
+ns.BAR_FALLBACK_COLOR = { 0.25, 0.62, 1, 1 }   -- "Fixed blue" (Xaya, S8-3): XayaUI's own buff-bar blue
 ns.BAR_CUE_DEFAULTS = {
     source = "auto",      -- auto | aura | cooldown | stacks | charges   (auto: the aura when the rule watches one, else the cooldown)
     max = 0,              -- stacks / charges bar: the full value (0 = what the game says: max stacks / max charges)
@@ -73,7 +73,7 @@ function ns.InitBarCue(cue)
     v.kind = "bar"
     v.w, v.h = 220, 22
     v.keepAspect = false
-    v.bg = { enabled = true, color = { 0, 0, 0, 0.2 } }          -- "Background 20%" (Xaya, S7-4)
+    v.bg = { enabled = true, color = { 0, 0, 0, 0.2 } }          -- "Background 20%" (Xaya, S8-4)
     v.border = { enabled = true, size = 1, color = { 0, 0, 0, 1 } }
     v.text = v.text or {}
     v.text.enabled, v.text.anchor, v.text.x, v.text.y, v.text.size = true, "RIGHT", -4, 0, 12
@@ -270,7 +270,7 @@ end
 -------------------------------------------------------------------------------
 -- The type a tooltip names
 -------------------------------------------------------------------------------
--- English words only: on another client language nothing matches and the bar falls back (stated to Xaya, S7-4).
+-- English words only: on another client language nothing matches and the bar falls back (stated to Xaya, S8-4).
 local LOWER_SCHOOLS = {}
 for _, s in ipairs(ns.BAR_SCHOOLS) do LOWER_SCHOOLS[#LOWER_SCHOOLS + 1] = { s, s:lower() } end
 local function Str(x)
@@ -278,7 +278,7 @@ local function Str(x)
     return x
 end
 -- The school named first in a text: each "<word> damage" in order; a word names the school whose name it contains earliest
--- ("Shadowflame damage" -> Shadow: the first school named, Xaya S7-4).
+-- ("Shadowflame damage" -> Shadow: the first school named, Xaya S8-4).
 function ns.BarSchoolInText(text)
     text = Str(text)
     if not text then return nil end
@@ -349,7 +349,7 @@ function ns.BarAuraDispelType(unit, instanceID)
 end
 
 -- The bar's colour: r, g, b, a, and where it came from ("fixed" | "tooltip" | "dispel" | "fallback").
--- Order (Xaya, S7-4 "Tooltip first"): the type the tooltip names > the game's dispel type of the aura > fixed blue.
+-- Order (Xaya, S8-4 "Tooltip first"): the type the tooltip names > the game's dispel type of the aura > fixed blue.
 function ns.BarCueColor(cue, ref)
     local b = ns.BarCueSettings(cue and cue.visual)
     if b.colorMode == "fixed" then

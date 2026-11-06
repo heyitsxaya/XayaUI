@@ -58,6 +58,87 @@ function ns.OptionsApi.OpenOnSelect(tree, uv)
     end
 end
 function ns.SettingsTabOf(module) local t = ns.OptionsApi.TABS[module]; return t and t.key or "qol" end
+-- The Blizzard UI Reskin tab's own switch (Options 0.6.50, S1 #48; Xaya 2026-11-05: "double: both enable/disable of reskin at all; then
+-- individual toggles for individual reskins"; 2026-11-06, where it goes: "Tick box on the tab itself"). A tick box on the tab button
+-- in the window's top tab row. Unticked, every reskin in the tab is off at once (core ns.SetReskinTab); each reskin keeps its own box on
+-- its row in the left pane, greyed while this is off.
+-- Painted by ns.OptionsApi.PaintTabSwitches on every decorate pass (each redraw, and the window's 0.25 s tick), so a re-layout of the
+-- tab row by AceGUI (a resize, a tab switch) is followed within a quarter second. The tab is made wider by the box, and its text moves
+-- right by the same amount, so the box never covers the name. Other tabs have no box (a recycled tab button hides its own).
+ns.OptionsApi.TAB_SWITCHES = {
+    reskin = { name = "All reskins",
+        desc = "Unticked: every reskin in this tab is off at once and Blizzard's own look is back. Each reskin keeps its own tick box (its row in the left pane, greyed while this is off) for when this is ticked again.",
+        get = function() return ns.ReskinTabOn() end,
+        set = function(v) ns.SetReskinTab(v and true or false) end },
+}
+ns.OptionsApi.TAB_BOX = 14   -- the tick box's size on the tab
+function ns.OptionsApi.PaintTabSwitches(root)
+    local function walk(w, d)
+        if not w or d > 3 then return end
+        if w.type == "TabGroup" and w.tabs then
+            for _, tab in ipairs(w.tabs) do ns.OptionsApi.PaintTabSwitch(tab) end
+        end
+        for _, c in ipairs(w.children or {}) do walk(c, d + 1) end
+    end
+    walk(root, 0)
+end
+function ns.OptionsApi.PaintTabSwitch(tab)
+    local sw = tab:IsShown() and ns.OptionsApi.TAB_SWITCHES[tab.value or ""]
+    local box = tab.xuiTabBox
+    local fs = tab.GetFontString and tab:GetFontString()
+    if not sw then
+        if box then box:Hide() end
+        if tab.xuiTabShift then   -- this button showed a box for another tab group before: its text goes back to AceGUI's place
+            tab.selectedTextX, tab.deselectedTextX, tab.xuiTabShift = nil, nil, nil
+        end
+        return
+    end
+    local W = ns.OptionsApi.TAB_BOX
+    if not box then
+        box = CreateFrame("CheckButton", nil, tab, "UICheckButtonTemplate")
+        box:SetSize(W, W)
+        box:EnableMouse(true)   -- the box takes the click, not the tab under it
+        box:SetScript("OnClick", function(self)
+            local s = ns.OptionsApi.TAB_SWITCHES[(self:GetParent() or {}).value or ""]
+            if not s then return end
+            local ok, err = pcall(s.set, self:GetChecked() and true or false)
+            if not ok then local h = geterrorhandler and geterrorhandler(); if h then h(err) end end
+            if ns.Fire then ns.Fire("CONFIG_CHANGED") end   -- a redraw (the window's Notify): the reskins' row boxes repaint, greyed or not
+        end)
+        box:SetScript("OnEnter", function(self)
+            local s = ns.OptionsApi.TAB_SWITCHES[(self:GetParent() or {}).value or ""]
+            if not s then return end
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
+            GameTooltip:SetText(s.name)
+            GameTooltip:AddLine(s.desc, 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        box:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        tab.xuiTabBox = box
+    end
+    box:SetFrameLevel(tab:GetFrameLevel() + 3)
+    local ok, on = pcall(sw.get)
+    box:SetChecked((ok and on) and true or false)
+    -- room for the box: the tab grows by it (AceGUI sized it to its text) and the text moves right by half of it (it is centred)
+    local shift = W + 2
+    local tw = fs and fs.GetStringWidth and fs:GetStringWidth() or 0
+    local need = tw + 26 + shift
+    local cur = tab:GetWidth() or 0
+    if cur < need then
+        local grow = need - cur
+        tab:SetWidth(need)
+        for _, k in ipairs({ "Middle", "MiddleDisabled" }) do local t = tab[k]; if t and t.GetWidth then t:SetWidth((t:GetWidth() or 0) + grow) end end
+    end
+    tab.selectedTextX, tab.deselectedTextX, tab.xuiTabShift = shift / 2, shift / 2, true
+    if fs then
+        fs:ClearAllPoints()
+        fs:SetPoint("CENTER", tab, "CENTER", shift / 2, tab.selected and (tab.selectedTextY or -3) or (tab.deselectedTextY or 2))
+    end
+    box:ClearAllPoints()
+    box:SetPoint("LEFT", tab, "LEFT", 11, tab.selected and -3 or 1)
+    box:Show()
+end
+
 function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
     local out = {}
     for module, tab in pairs(ns.OptionsApi.TABS) do
@@ -2519,7 +2600,7 @@ local function BuildRule(i, rule)
         }, function() return (T.enabled or C.enabled or AB.enabled) and true or false end),
         sound = Banner("sound", "Sound", 3, soundEnable, soundBody, function() return rule.sound.enabled and true or false end),
     } }
-    -- A Bar cue's own options (BarCue.lua; RM-BARS, Xaya 2026-11-06, docs/process/REQUEST-LOG.md S7-1 .. S7-4). Built only for a Bar cue.
+    -- A Bar cue's own options (BarCue.lua; RM-BARS, Xaya 2026-11-06, docs/process/REQUEST-LOG.md S8-1 .. S8-4). Built only for a Bar cue.
     local barArgs, barTextArgs
     if V.kind == "bar" and ns.BarCueSettings then
         local B = ns.BarCueSettings(V)
@@ -3069,7 +3150,7 @@ local function BuildAddonSettings()
                 sorting = { "gradient", "standard" },
                 get = function() return (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.gameMenuStyle) or "gradient" end,
                 set = function(_, v) Ui().gameMenuStyle = v; if ns.GameMenu_Repaint then ns.GameMenu_Repaint() end end },
-            -- Bar Colours (RM-BARS; Xaya 2026-11-06, REQUEST-LOG S7-3 / S7-4): the colour family a Bar cue's automatic colour is drawn in
+            -- Bar Colours (RM-BARS; Xaya 2026-11-06, REQUEST-LOG S8-3 / S8-4): the colour family a Bar cue's automatic colour is drawn in
             barColH = { type = "header", name = "Bar Colours", order = 40 },
             barColNote = { type = "description", order = 40.1, width = "full",
                 name = "A Bar cue on Automatic colour is coloured by the type its tooltip names (a school such as Fire or Shadow, or a dispel type such as Magic), else by the aura's dispel type, else blue. The style below sets how those type colours look." },
@@ -4187,8 +4268,9 @@ function ns.FolderContainerGroup(f)
     -- (ns.GroupSortOf in Visual.lua; saved as cSort = nil for Manual, plus cSortRev; old "asc" / "desc" read as Name / Name reversed)
     local function sortOf() if ns.GroupSortOf then return ns.GroupSortOf(f) end return "manual", false end
     g.args.sort = { type = "select", name = "Sort", order = 2.05, hidden = function() return not isDyn() end,
-        values = { manual = "Manual (your order)", default = "Default", expiration = "Expiration", name = "Name", important = "Important" },
-        sorting = { "manual", "default", "expiration", "name", "important" },
+        -- (Options 0.6.50: her list as she wrote it, in her order and with her words; S1's cross-chat review B5)
+        values = { manual = "Manual", default = "Default", expiration = "Expiration", name = "Name", important = "Important" },
+        sorting = { "default", "expiration", "name", "important", "manual" },
         desc = "Manual: the order of the rules in this group in the sidebar (arrows or drag); each icon keeps its own size and look, and an aura that appears takes its place between the others, also in combat.\nDefault, Expiration, Name, Important: the game's own sorts (Important puts the auras the game marks important first).",
         get = function() return (sortOf()) end,
         set = function(_, v) local _, rev = sortOf(); f.cSort = (v ~= "manual") and v or nil; f.cSortRev = rev or nil; apply() end }
@@ -7874,7 +7956,7 @@ end
 
 function ns.DecorateTrees(root)
     root = root or (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP])
-    if root then pcall(Walk, root, 0) end
+    if root then pcall(Walk, root, 0); pcall(ns.OptionsApi.PaintTabSwitches, root) end
 end
 -- decorate right after every (re)draw of the window, so left-aligned headers do not flash centered before the next 0.25 s pass
 do

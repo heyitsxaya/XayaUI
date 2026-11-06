@@ -481,7 +481,7 @@ local function EmbedCue(pg, og, rule, k)
                 flat("txt", 3, parts.textBody)
             elseif rule.cueKind == "bar" then
                 -- a Bar cue (RM-BARS, Xaya 2026-11-06): its parts are the bar (size, what it tracks, fill, colour, icon, spark, background),
-                -- then its texts (name, time, stacks / charges count: her list, S7-2), then Position
+                -- then its texts (name, time, stacks / charges count: her list, S8-2), then Position
                 box("bar", 3, "Bar Options", parts.barArgs)
                 local tb = parts.textBody or {}
                 box("bartext", 3.5, "Text: name, time, stacks / charges", { name = parts.barTextArgs and parts.barTextArgs.name, dur = tb.dur, cnt = tb.cnt })

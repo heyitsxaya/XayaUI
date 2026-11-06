@@ -43,8 +43,16 @@ local CM = ns.CharModel
 -- (QoL 0.7.24) extra width 42 px by default (Xaya 2026-11-06: "Push to 380px before stats pane and request feedback confirmation":
 -- Blizzard's PANEL_DEFAULT_WIDTH 338 -> 380 without the stats pane, CHARACTERFRAME_EXPANDED_WIDTH 540 -> 582 with it); the setting
 -- now reaches 0 (it started at 120); a saved number is kept as it is.
-local DEFAULTS = { enabled = false, chrome = true, ilvl = true, enchants = true, gems = true, stats = true, wide = true, widePx = 42, bgAlpha = 0.95 }
-local LIMITS = { widePx = { 0, 300 }, bgAlpha = { 0.5, 1 } }
+-- (QoL 0.7.31) tallPx: the Extra height (Xaya 2026-11-06: "character pane option should also allow for extra height"; her answer "either
+-- one", built as "Spread the slots"; REQUEST-LOG #72-#73), 0 by default: nothing changes until she moves it. statList: the stats pane shows
+-- every line of the Stat Calculator's Character Stats (her words #70-#71; her answer "Everything on": every line shown to start with).
+local DEFAULTS = { enabled = false, chrome = true, ilvl = true, enchants = true, gems = true, stats = true, wide = true, widePx = 42, bgAlpha = 0.95,
+    tallPx = 0, statList = true }
+local LIMITS = { widePx = { 0, 300 }, bgAlpha = { 0.5, 1 }, tallPx = { 0, 300 } }
+-- the stat list's own choices (QoL 0.7.31; her answer "Show / hide each stat, Order, % / rating / both, Groups and colours"), by Character
+-- Stats key: statHide[key] = true (hidden), statOrder[group key] = { stat keys }, statMode[key] = "percent" | "rating" | "both",
+-- statName[key] / groupName[group key] = text, statColor[key] / groupColor[group key] = { r, g, b }
+local LIST_TABLES = { "statHide", "statOrder", "statMode", "statName", "statColor", "groupName", "groupColor" }
 local GOOD, WARN = { 0.5, 1, 0.5, 1 }, { 1, 0.56, 0.25, 1 }   -- the Character Toolkit's good / warn tones
 ns.CHARRESKIN_DEFAULTS = DEFAULTS
 local function Cfg()
@@ -58,6 +66,7 @@ local function Cfg()
         if tonumber(c.widePx) == 240 then c.widePx = 42 end
         c.widePxTo42 = true
     end
+    for _, k in ipairs(LIST_TABLES) do if type(c[k]) ~= "table" then c[k] = {} end end
     for k, v in pairs(DEFAULTS) do
         if type(v) == "boolean" then
             if c[k] == nil then c[k] = v end
@@ -299,7 +308,11 @@ local function LabelBoxes(g, name, r)
         return { box }
     end
     local left, m = LEFT_SLOTS[name], g.model
-    local box = { t = r.t + SLOT_PAD, b = r.b - SLOT_PAD }
+    -- (QoL 0.7.31) with Extra height the slots are further apart: a block may use half the gap above and below its slot (not above the
+    -- first slot of a column or below its last)
+    local eg = (ns.CharReskin_TallGap and ns.CharReskin_TallGap() or 0) / 2
+    local box = { t = r.t + SLOT_PAD + ((name == "HeadSlot" or name == "HandsSlot") and 0 or eg),
+        b = r.b - SLOT_PAD - ((name == "WristSlot" or name == "Trinket1Slot") and 0 or eg) }
     -- (QoL 0.7.28; Xaya 2026-11-06 at 0.7.27's 380 px window: "character pane now missing all previous information around gems,
     -- enchangs, embellishments, etc"; her answer "Over the model"; REQUEST-LOG #69 / #71) the 0.7.24 rule that a block never goes over
     -- the model with the wider window on is undone: whenever the room beside the model is narrower than MIN_COL, the block runs toward
@@ -801,12 +814,72 @@ local function WaitForCombatEnd(on)
     wide.pending = on or nil
 end
 
+-- The extra height (QoL 0.7.31; Xaya 2026-11-06: "character pane option should also allow for extra height"; her answer "either one", built
+-- as "Spread the slots"; REQUEST-LOG #72-#73). With the wider window on and Extra height above 0, out of combat only (as the width): the
+-- window is that much taller (CharacterFrame:SetHeight, widgets.md SetHeight(height: uiUnit)); each slot of the two columns after the
+-- first hangs from the one above it (PaperDollFrame.xml: TOPLEFT of the slot above's BOTTOMLEFT, 0, -4), so each of the 7 gaps of a
+-- column grows by px / 7 and the columns spread evenly over the added height; the model scene is px taller (its width stays: the game
+-- fits the character inside it, INFERENCE); the weapon row hangs from the bottom (BOTTOMLEFT 130, 16), so it moves down with the window.
+-- A slot anchored otherwise, or a protected frame (or a secret answer), is left alone and nothing of the height changes (fail safe).
+-- 0 gives Blizzard's layout exactly (every anchor and size put back).
+local TALL_COLS = { { "HeadSlot", "NeckSlot", "ShoulderSlot", "BackSlot", "ChestSlot", "ShirtSlot", "TabardSlot", "WristSlot" },
+    { "HandsSlot", "WaistSlot", "LegsSlot", "FeetSlot", "Finger0Slot", "Finger1Slot", "Trinket0Slot", "Trinket1Slot" } }
+local tall = { applied = false, gap = 0 }
+ns.CharReskinTall = tall   -- (for the tests)
+function ns.CharReskin_TallGap() return tall.applied and tall.gap or 0 end
+local function TallAnchors()
+    if tall.pts then return tall.pts end
+    local pts = {}
+    for _, col in ipairs(TALL_COLS) do
+        for i = 2, #col do
+            local b, prev = _G["Character" .. col[i]], _G["Character" .. col[i - 1]]
+            local pt = PointOf(b, "TOPLEFT")
+            if not (pt and pt[2] == prev and pt[3] == "BOTTOMLEFT" and NotProtected(b)) then return nil end
+            pts[col[i]] = pt
+        end
+    end
+    tall.pts = pts
+    return pts
+end
+local function RestoreTall()
+    if not tall.applied then return end
+    local cf, m = _G.CharacterFrame, _G.CharacterModelScene
+    for name, pt in pairs(tall.pts or {}) do
+        local b = _G["Character" .. name]
+        if type(b) == "table" and NotProtected(b) then b:ClearAllPoints(); b:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+    end
+    if tall.baseH and type(cf) == "table" then cf:SetHeight(tall.baseH) end
+    if tall.modelH and type(m) == "table" and m.SetHeight then m:SetHeight(tall.modelH) end
+    tall.applied, tall.gap, tall.px = false, 0, 0
+end
+local function ApplyTall(c, cf, m)
+    local px = (c and c.tallPx) or 0
+    if px <= 0 then RestoreTall(); diag.tall = "off (0)"; return end
+    local pts = TallAnchors()
+    if not (pts and NotProtected(cf) and NotProtected(m)) then diag.tall = "the slots are anchored differently or protected: Blizzard's height"; return end
+    if not tall.applied then
+        local h, mh = cf:GetHeight(), m:GetHeight()
+        if CM.IsSecret(h) or CM.IsSecret(mh) or not num(h) or not num(mh) then return end
+        tall.baseH, tall.modelH = h, mh
+    end
+    local gap = px / 7
+    for name, pt in pairs(pts) do
+        local b = _G["Character" .. name]
+        b:ClearAllPoints(); b:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5] - gap)
+    end
+    cf:SetHeight(tall.baseH + px)
+    m:SetHeight(tall.modelH + px)
+    tall.applied, tall.gap, tall.px = true, gap, px
+    diag.tall = ("on, %d px taller (%d -> %d); each gap between two slots %.1f px wider"):format(px, math.floor(tall.baseH + 0.5), math.floor(tall.baseH + px + 0.5), gap)
+end
+
 local function RestoreWide()
-    if not (wide.applied or wide.moved) then return end
+    if not (wide.applied or wide.moved or tall.applied) then return end
     local cf, m, mh = WideFrames()
     if not cf then wide.applied, wide.moved = false, false; return end
     if InCombat() then WaitForCombatEnd(true); return end
     PutBack(m, mh)
+    RestoreTall()
     wide.applied = false
     -- Blizzard's own sizing puts the width and the Inset back (as the probe's "off"); without it, the width the window had before
     if ns.MapTrace then ns.MapTrace("Character Reskin: CharacterFrame:UpdateSize (wider window off)") end
@@ -837,6 +910,9 @@ local function ApplyWide(c)
             wide.applied = false
             WaitForCombatEnd(true)
             diag.wide = "waits for the end of combat"
+        elseif wide.px ~= c.widePx or (tall.applied and tall.px or 0) ~= (c.tallPx or 0) then
+            WaitForCombatEnd(true)   -- (QoL 0.7.31) a width or height set in combat: applied when the fight ends
+            diag.tall = "waits for the end of combat"
         end
         return
     end
@@ -858,6 +934,7 @@ local function ApplyWide(c)
         pcall(UpdateUIPanelPositions, cf)
     end
     diag.wide = ("on, %d px wider (%d -> %d)"):format(px, math.floor(base + 0.5), math.floor(base + px + 0.5))
+    ApplyTall(c, cf, m)
 end
 
 local function WideAndSlots()
@@ -933,10 +1010,201 @@ local function StyleStats()
 end
 
 -------------------------------------------------------------------------------
+-- The full stat list (QoL 0.7.31; Xaya 2026-11-06, her words: "missing details about about all possible stats / the ability to customize
+-- how to display stats in the primary character window"; her answers: stats "2 but customizable and prettified with colors" (option 2:
+-- exactly the lines of the Stat Calculator's Character Stats, Core Stats / Secondaries / Tertiaries); customise "Show / hide each stat,
+-- Order, % / rating / both, Groups and colours"; default "Everything on"; REQUEST-LOG #70, #71, #74).
+-------------------------------------------------------------------------------
+-- Our own frames over Blizzard's stats pane (a scroll frame, child of CharacterStatsPane, so it shows and hides with the pane; an opaque
+-- fill in the theme's pane colour under it, so Blizzard's rows neither show nor take the mouse). Blizzard's frames are not changed. The
+-- numbers are the Character Toolkit model's (CM.Build "stats", with the Stat Calculator's typed numbers left out, as the character
+-- window's own stat tooltips read them): no new game call. Every group heading (Core Stats, Primary, General, Offensive, Defensive,
+-- Secondaries, Tertiaries) and every stat line of Character Stats, in her order and colours: a stat's name in its stat colour (the
+-- Stat Calculator's), headings in the label colour, unless she picked others. A rating stat shows its percent, its rating, or both
+-- ("528 / 22.48%", the Stat Weights' "Rating (P / %)" form). Hover a line: the Stat Calculator's hover for it. Built only while the
+-- reskin and this part are on (V14); redrawn after Blizzard's PaperDollFrame_UpdateStats (the hook the stat list already has), at
+-- most once per frame. Plain frames only (nothing protected): it works in and out of combat; values the game hides show "hidden in combat".
+local LIST_CLEAN = { whatIf = 0, whatIfStats = {}, whatIfPrimary = false, detail = "all", collapsed = {} }
+local LIST_ROW, LIST_HEAD, LIST_SIZE, LIST_PAD = 14, 17, 11, 4
+local RATING_STAT = { map_crit = true, map_haste = true, map_mastery = true, map_vers = true, map_avoidance = true, map_leech = true, map_speed2 = true }
+-- the groups and their stat lines as Character Stats has them now: { { key, label, level, stats = { item, ... } } }, and the items by key
+function ns.CharReskin_ListModel()
+    if not (CM and CM.Build) then return {}, {} end
+    local ok, m = pcall(CM.Build, LIST_CLEAN, "stats")
+    if not ok or type(m) ~= "table" then return {}, {} end
+    local groups, items, cur = {}, {}, nil
+    for _, sec in ipairs(m.sections or {}) do
+        if sec.key == "map_character" then
+            for _, it in ipairs(sec.items) do
+                if it.kind == "subhead" then
+                    cur = { key = it.key, label = it.label, level = it.level, stats = {} }
+                    groups[#groups + 1] = cur
+                elseif cur and (it.kind == "input" or it.kind == "stat" or it.kind == "rating") then
+                    cur.stats[#cur.stats + 1] = it
+                    items[it.key] = it
+                end
+            end
+        end
+    end
+    return groups, items
+end
+-- a group's stat keys in her order: the saved order (keys the list still has), then any new ones in Character Stats' order
+function ns.CharReskin_ListOrder(c, g)
+    local out, seen, have = {}, {}, {}
+    for _, it in ipairs(g.stats) do have[it.key] = true end
+    for _, k in ipairs((c and c.statOrder and c.statOrder[g.key]) or {}) do if have[k] and not seen[k] then out[#out + 1] = k; seen[k] = true end end
+    for _, it in ipairs(g.stats) do if not seen[it.key] then out[#out + 1] = it.key; seen[it.key] = true end end
+    return out
+end
+function ns.CharReskin_HasRating(key) return RATING_STAT[key] == true end
+-- the value a line shows in its mode
+function ns.CharReskin_ListValue(c, it)
+    local v = tostring(it.value or "")
+    if RATING_STAT[it.key] and num(it.absolute) and not it.hidden and v ~= "" then
+        local mode = (c and c.statMode and c.statMode[it.key]) or "percent"
+        if mode == "rating" then return CM.Big(it.absolute) end
+        if mode == "both" then return CM.Big(it.absolute) .. " / " .. v end
+    end
+    return v
+end
+local function ListColor(t, fb) if type(t) == "table" and num(t[1]) and num(t[2]) and num(t[3]) then return { t[1], t[2], t[3], 1 } end; return fb end
+local listPending = false
+local function UpdateStatList(c)
+    local pane = _G.CharacterStatsPane
+    if type(pane) ~= "table" or not pane.CreateTexture then return end
+    local L = own.statList
+    if not L then
+        L = Own(CreateFrame("ScrollFrame", nil, pane))
+        L:SetAllPoints(pane)
+        if L.SetFrameLevel and pane.GetFrameLevel then L:SetFrameLevel((pane:GetFrameLevel() or 1) + 10) end
+        L:EnableMouse(true)
+        if L.EnableMouseWheel then L:EnableMouseWheel(true) end
+        L.fill = L:CreateTexture(nil, "BACKGROUND"); L.fill:SetAllPoints(L)
+        L.content = CreateFrame("Frame", nil, L)
+        L.content:SetSize(1, 1)
+        if L.SetScrollChild then L:SetScrollChild(L.content) end
+        L:SetScript("OnMouseWheel", function(self, d)
+            local cur = (self.GetVerticalScroll and self:GetVerticalScroll()) or 0
+            local maxS = math.max(0, (self.contentH or 0) - ((self.GetHeight and self:GetHeight()) or 0))
+            if self.SetVerticalScroll then self:SetVerticalScroll(math.max(0, math.min(maxS, cur - d * LIST_ROW * 2))) end
+        end)
+        L.fs, L.btns, L.rules = {}, {}, {}
+        own.statList = L
+    end
+    local pbg = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 })
+    L.fill:SetColorTexture(pbg[1], pbg[2], pbg[3], 1)
+    local w = (L.GetWidth and L:GetWidth()) or 0
+    if not num(w) or w <= 0 then w = (pane.GetWidth and pane:GetWidth()) or 190 end
+    L.content:SetWidth(w)
+    local label = TC("xui-label", "text", { 1, 0.82, 0, 1 })
+    local text = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
+    local line = TC("xui-window", "border", { 0.35, 0.35, 0.4, 1 })
+    local nFs, nBtn, nRule = 0, 0, 0
+    local function FS(x, y, width, s, col, justify, size)
+        nFs = nFs + 1
+        local f = L.fs[nFs]
+        if not f then f = L.content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); L.fs[nFs] = f end
+        SetSize(f, size or LIST_SIZE, "")
+        f:ClearAllPoints(); f:SetPoint("TOPLEFT", L.content, "TOPLEFT", x, -y); f:SetWidth(width)
+        if f.SetJustifyH then f:SetJustifyH(justify or "LEFT") end
+        if f.SetWordWrap then f:SetWordWrap(true) end
+        f:SetText(s or ""); f:SetTextColor(col[1], col[2], col[3], col[4] or 1); f:Show()
+        local h = f.GetStringHeight and f:GetStringHeight() or LIST_SIZE
+        return (num(h) and h > 0) and h or LIST_SIZE, f
+    end
+    local recs = {}
+    local groups = ns.CharReskin_ListModel()
+    local items = {}
+    for _, g in ipairs(groups) do for _, it in ipairs(g.stats) do items[it.key] = it end end
+    local y = LIST_PAD
+    for _, g in ipairs(groups) do
+        local keys = {}
+        for _, k in ipairs(ns.CharReskin_ListOrder(c, g)) do if not c.statHide[k] then keys[#keys + 1] = k end end
+        -- a heading shows when it has a line to show under it (Core Stats: when one of its four groups has one)
+        local show = #keys > 0
+        if g.key == "sub_core" then
+            show = false
+            for _, g2 in ipairs(groups) do
+                if g2.level == 2 then for _, k in ipairs(ns.CharReskin_ListOrder(c, g2)) do if not c.statHide[k] then show = true end end end
+            end
+        end
+        if show then
+            local name = (c.groupName[g.key] and c.groupName[g.key] ~= "") and c.groupName[g.key] or g.label
+            local col = ListColor(c.groupColor[g.key], label)
+            local x = (g.level == 2) and 6 or LIST_PAD
+            local h, f = FS(x, y + 2, w - x - LIST_PAD, name, col, "LEFT", g.level == 2 and LIST_SIZE or LIST_SIZE + 1)
+            nRule = nRule + 1
+            local r = L.rules[nRule]
+            if not r then r = L.content:CreateTexture(nil, "ARTWORK"); L.rules[nRule] = r end
+            r:ClearAllPoints(); r:SetPoint("TOPLEFT", L.content, "TOPLEFT", x, -(y + 2 + h + 1)); r:SetSize(math.max(1, w - x - LIST_PAD), 1)
+            r:SetColorTexture(line[1], line[2], line[3], 0.8); r:Show()
+            recs[#recs + 1] = { kind = "group", key = g.key, text = name, color = col, x = x, y = y, fs = f }
+            y = y + math.max(LIST_HEAD, h + 5)
+            for _, k in ipairs(keys) do
+                local it = items[k]
+                local sname = (c.statName[k] and c.statName[k] ~= "") and c.statName[k] or it.label
+                local scol = ListColor(c.statColor[k], it.labelColor or text)
+                local lw = math.floor((w - 2 * LIST_PAD - 10) * 0.58)
+                local lx = 10
+                local lh, lf = FS(lx, y, lw, sname, scol, "LEFT")
+                local val = ns.CharReskin_ListValue(c, it)
+                local vh, vf = FS(lx + lw + 4, y, w - (lx + lw + 4) - LIST_PAD, val, (it.hidden or it.tone == "mute") and TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 }) or text, "RIGHT")
+                local rowH = math.max(LIST_ROW, lh + 2, vh + 2)
+                nBtn = nBtn + 1
+                local b = L.btns[nBtn]
+                if not b then
+                    b = CreateFrame("Button", nil, L.content)
+                    b:EnableMouse(true)
+                    local hl = b:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(b); hl:SetColorTexture(1, 1, 1, 0.06)
+                    b:SetScript("OnEnter", function(self)
+                        if not (GameTooltip and self.item) then return end
+                        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                        GameTooltip:AddLine(self.name or "", 1, 1, 1)
+                        local lines = ns.CharToolkit_TooltipLines and ns.CharToolkit_TooltipLines(self.item) or {}
+                        for i, l in ipairs(lines) do
+                            if i > 1 then
+                                if l[2] ~= nil and GameTooltip.AddDoubleLine then GameTooltip:AddDoubleLine(l[1], l[2], 0.75, 0.75, 0.8, 0.95, 0.95, 0.95)
+                                else GameTooltip:AddLine(l[1], 0.85, 0.85, 0.85, true) end
+                            end
+                        end
+                        GameTooltip:Show()
+                    end)
+                    b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+                    b:SetScript("OnMouseWheel", function(_, d) local sc = L:GetScript("OnMouseWheel"); if sc then sc(L, d) end end)
+                    L.btns[nBtn] = b
+                end
+                b.item, b.name = it, sname
+                b:ClearAllPoints(); b:SetPoint("TOPLEFT", L.content, "TOPLEFT", 0, -y); b:SetSize(w, rowH); b:Show()
+                recs[#recs + 1] = { kind = "stat", key = k, text = sname, value = val, color = scol, x = lx, y = y, w = lw, h = rowH, fs = lf, vfs = vf }
+                y = y + rowH
+            end
+            y = y + 3
+        end
+    end
+    for i = nFs + 1, #L.fs do L.fs[i]:Hide() end
+    for i = nBtn + 1, #L.btns do L.btns[i]:Hide(); L.btns[i].item = nil end
+    for i = nRule + 1, #L.rules do L.rules[i]:Hide() end
+    L.content:SetHeight(math.max(1, y))
+    L.contentH, L.recs = y, recs
+    L:Show()
+    diag.statList = ("%d lines shown"):format(#recs)
+end
+local function HideStatList() if own.statList then own.statList:Hide() end end
+local function QueueStatList()
+    if listPending then return end
+    listPending = true
+    local function run() listPending = false; local c = Cfg(); if c and Active() and c.statList then Guard(UpdateStatList, c) end end
+    if C_Timer and C_Timer.After then C_Timer.After(0, run) else run() end
+end
+function ns.CharReskin_StatListRecs() return own.statList and own.statList:IsShown() and own.statList.recs or nil end   -- (tests)
+
+-------------------------------------------------------------------------------
 -- On / off
 -------------------------------------------------------------------------------
 local hooked = false
-Active = function() local c = Cfg(); return c and c.enabled and not diag.failed end
+-- on = its own switch AND the Blizzard UI Reskin tab's switch (QoL 0.7.32, S1 #48: off there turns every reskin off)
+local function On(c) return c and c.enabled and ns.ReskinTabOn() and true or false end
+Active = function() local c = Cfg(); return On(c) and not diag.failed end
 function ns.CharReskin_Active() return Active() == true end
 -- the Character Toolkit's slot overlays leave out their item level while this draws one (one number per slot: her screenshot had two)
 function ns.CharReskin_DrawsIlvl() local c = Cfg(); return (Active() and c.ilvl == true) and true or false end
@@ -989,6 +1257,7 @@ local function ApplyNow()
     ApplyWide(c)
     UpdateSlots(c)
     if c.stats then StyleStats() end
+    if c.statList then UpdateStatList(c) end   -- (QoL 0.7.31) our full stat list over Blizzard's pane
     SetEvents(c)
     SetThemeListener(true)
     diag.applied = true
@@ -1016,7 +1285,11 @@ local function Hook()
             end)
         end
         if type(_G.PaperDollFrame_UpdateStats) == "function" then
-            hooksecurefunc("PaperDollFrame_UpdateStats", function() local c = Cfg(); if Active() and c.stats then Guard(StyleStats) end end)
+            hooksecurefunc("PaperDollFrame_UpdateStats", function()
+                local c = Cfg()
+                if Active() and c.stats then Guard(StyleStats) end
+                if Active() and c.statList then QueueStatList() end   -- (QoL 0.7.31; at most once per frame)
+            end)
         end
         if type(_G.PanelTemplates_SetTab) == "function" then
             hooksecurefunc("PanelTemplates_SetTab", function(frame) local c = Cfg(); if frame == _G.CharacterFrame and Active() and c.chrome then Guard(StyleTabs) end end)
@@ -1039,10 +1312,11 @@ end
 function ns.CharReskin_Apply()
     local c = Cfg()
     if not c then return end
-    if c.enabled then Hook() end
+    if On(c) then Hook() end
     if hooked then Guard(ApplyNow) end
 end
-ns.WhenReady(function() local c = Cfg(); if c and c.enabled then ns.CharReskin_Apply() end end)
+ns.WhenReady(function() local c = Cfg(); if On(c) then ns.CharReskin_Apply() end end)
+ns.RegisterReskin("charreskin", function() ns.CharReskin_Apply() end)   -- (the Reskin tab's switch: core ns.SetReskinTab walks these)
 
 -------------------------------------------------------------------------------
 -- Settings page: Blizzard UI Reskin > Character Pane (the switch is still called Character Reskin)
@@ -1060,12 +1334,82 @@ function ns.BuildCharReskinPage(Notify)
             disabled = disabled, get = function() return C()[key] end,
             set = function(_, v) local lim = LIMITS[key]; C()[key] = math.max(lim[1], math.min(lim[2], tonumber(v) or DEFAULTS[key])); Changed() end }
     end
+    -- (QoL 0.7.31) the full stat list's own page (her answer "Show / hide each stat, Order, % / rating / both, Groups and colours"): every
+    -- group heading and stat line of Character Stats as the game gives them for this character now (other classes' resources differ)
+    local listOff = function() return isOff() or not C().statList end
+    local groups = ns.CharReskin_ListModel()
+    local function Col(t) if type(t) == "table" then return t[1], t[2], t[3], 1 end end
+    local listArgs = {
+        intro = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = "Every line of the Stat Calculator's Character Stats in the character window's stats pane (its own list over Blizzard's), coloured. For each stat: show or hide it, move it up or down in its group, show its percent, its rating or both (the secondary and tertiary stats), and its name and colour; for each group: its heading's name and colour. An empty name or \"Default colour\" gives the Stat Calculator's back." },
+        reset = { type = "execute", order = 1, name = "Reset the list", disabled = listOff,
+            desc = "Every stat shown again, in Character Stats' order, as a percent, with its own name and colour; every heading's own name and colour.",
+            func = function() local c = C(); for _, k in ipairs(LIST_TABLES) do c[k] = {} end; Changed() end },
+    }
+    for gi, g in ipairs(groups) do
+        local gk = g.key
+        listArgs["g" .. gi] = { type = "group", inline = true, order = gi * 100, name = function() local n = C().groupName[gk]; return (n and n ~= "") and n or g.label end,
+            args = {
+                name = { type = "input", order = 1, name = "Heading", disabled = listOff, desc = "The heading's text (empty: '" .. g.label .. "').",
+                    get = function() return C().groupName[gk] or "" end, set = function(_, v) v = tostring(v or ""); C().groupName[gk] = (v ~= "") and v or nil; Changed() end },
+                color = { type = "color", order = 2, name = "Colour", disabled = listOff,
+                    get = function() local t = C().groupColor[gk]; if t then return Col(t) end; local l = TC("xui-label", "text", { 1, 0.82, 0, 1 }); return l[1], l[2], l[3], 1 end,
+                    set = function(_, r, gg, b) C().groupColor[gk] = { r, gg, b }; Changed() end },
+                plain = { type = "execute", order = 3, name = "Default colour", width = "half", disabled = listOff,
+                    func = function() C().groupColor[gk] = nil; Changed() end },
+            } }
+        for i = 1, #g.stats do
+            local function Key() return ns.CharReskin_ListOrder(C(), g)[i] end
+            local function Item() local k = Key(); for _, it in ipairs(g.stats) do if it.key == k then return it end end end
+            local function Move(d)
+                local c = C()
+                local list = ns.CharReskin_ListOrder(c, g)
+                local j = i + d
+                if j < 1 or j > #list then return end
+                list[i], list[j] = list[j], list[i]
+                c.statOrder[gk] = list
+                Changed()
+            end
+            listArgs["g" .. gi .. "s" .. i] = { type = "group", inline = true, order = gi * 100 + i,
+                name = function() local it = Item(); if not it then return "" end; local n = C().statName[it.key]; return "    " .. ((n and n ~= "") and n or it.label) end,
+                args = {
+                    show = { type = "toggle", order = 1, name = "Show", width = "half", disabled = listOff,
+                        get = function() local k = Key(); return k and not C().statHide[k] end,
+                        set = function(_, v) local k = Key(); if k then C().statHide[k] = (not v) and true or nil; Changed() end end },
+                    mode = { type = "select", order = 2, name = "Shows", disabled = listOff,
+                        values = { percent = "Percent", rating = "Rating", both = "Both (rating / percent)" }, sorting = { "percent", "rating", "both" },
+                        hidden = function() return not ns.CharReskin_HasRating(Key()) end,
+                        get = function() return C().statMode[Key()] or "percent" end,
+                        set = function(_, v) local k = Key(); if k then C().statMode[k] = (v ~= "percent") and v or nil; Changed() end end },
+                    up = { type = "execute", order = 3, name = "Up", width = "half", disabled = function() return listOff() or i == 1 end, func = function() Move(-1) end },
+                    down = { type = "execute", order = 4, name = "Down", width = "half", disabled = function() return listOff() or i == #g.stats end, func = function() Move(1) end },
+                    name = { type = "input", order = 5, name = "Name", disabled = listOff,
+                        get = function() local k = Key(); return (k and C().statName[k]) or "" end,
+                        set = function(_, v) local k = Key(); if k then v = tostring(v or ""); C().statName[k] = (v ~= "") and v or nil; Changed() end end },
+                    color = { type = "color", order = 6, name = "Colour", disabled = listOff,
+                        get = function()
+                            local k, it = Key(), Item()
+                            local t = k and C().statColor[k]
+                            if t then return Col(t) end
+                            local d = (it and it.labelColor) or TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
+                            return d[1], d[2], d[3], 1
+                        end,
+                        set = function(_, r, gg, b) local k = Key(); if k then C().statColor[k] = { r, gg, b }; Changed() end end },
+                    plain = { type = "execute", order = 7, name = "Default colour", width = "half", disabled = listOff,
+                        func = function() local k = Key(); if k then C().statColor[k] = nil; Changed() end end },
+                } }
+        end
+    end
+    -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
+    -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
+    local switch = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends). Greyed while All reskins (the top row of this tab) is off.")
+    switch.disabled = function() return not ns.ReskinTabOn() end
     return {
-        type = "group", name = "Character Pane", order = 4,
+        type = "group", name = "Character Pane", order = 4, childGroups = "tree", xuiSwitch = switch,
         args = {
+            statListPage = { type = "group", name = "Stat list", order = 50, hidden = isOff, args = listArgs },
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "Blizzard's character window in XayaUI's look: a solid background, a clean flat window, one item level per slot coloured by its upgrade track, the enchant, embellishment and gems beside each slot (hover any of them), a wider window that gives them room beside the model, and a tidy stat list. The window works as before, in and out of combat. Off by default." },
-            enabled = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends).", "full"),
             chrome = T("chrome", 2, "Clean window", "Blizzard's frame art goes: no portrait or stone frame, no backdrop picture behind the model; a thin border, the theme's pane colour behind the stat list, theme-coloured title and tabs; the slots lose their frame art. Off: Blizzard's art over XayaUI's solid background.", "full", isOff),
             ilvl = T("ilvl", 3, "Item level on each slot", "One item level per slot, coloured by its upgrade track (Veteran green, Champion blue, Hero purple, Myth orange, Explorer / Adventurer grey; the game's quality colours) and brighter with each upgrade step. Items without a track show their quality colour. The Character Toolkit's slot overlays leave out their own item level while this is on, and XayaUI's stays hidden on a slot where another addon already shows the same number (/xui reskin status names it).", "full", isOff),
             enchants = T("enchants", 4, "Enchants beside the slots", "The enchant's name beside each slot, toward the model (without the \"Enchant <slot> - \" the game puts before every enchant's name), wrapped; \"No enchant\" in orange on a slot that takes one (the Character Toolkit's enchant slots); \"Embellished (worn / limit): <item name>\" on an embellished item (its hover: \"Embellished - Name: <item name>\", then what it does as the game words it). Hover a line: the whole line and what it does, as far as the game gives it.", "full", isOff),
@@ -1074,7 +1418,11 @@ function ns.BuildCharReskinPage(Notify)
             wide = T("wide", 7, "Wider window (room for the enchant names)", "Makes the character window wider on its Character tab and centres the model, so the enchant, embellishment and gem lines sit between the slots and the model instead of over it (where the extra width leaves too little room beside the model, they run over its sides: nothing is hidden). Changed only out of combat; switching tabs gives Blizzard's width on the other tabs. Off: Blizzard's width (the lines then lie over the model's sides); once it has been on, a /reload removes its two hooks fully (while off they do nothing).", "full", isOff),
             widePx = R("widePx", 8, "Extra width", "How much wider than Blizzard's window, in pixels (default 42: 338 -> 380 without the stats pane, 540 -> 582 with it). Each side of the model gets half.", 0, 300, 1, false,
                 function() return isOff() or not C().wide end),
+            -- (QoL 0.7.31; Xaya: "character pane option should also allow for extra height"; her answer "either one": spread the slots)
+            tallPx = R("tallPx", 8.5, "Extra height", "How much taller than Blizzard's window, in pixels (default 0: Blizzard's height). The two slot columns spread out evenly over it (the same extra gap between every two slots), the model grows taller with them, the weapons move down, and each slot's enchant, embellishment and gem lines may use the extra room. Changed only out of combat, as the width.", 0, 300, 1, false,
+                function() return isOff() or not C().wide end),
             bgAlpha = R("bgAlpha", 9, "Background opacity", "How solid the window's background is (50% to 100%).", 0.5, 1, 0.05, true, isOff),
+            statList = T("statList", 6.5, "Full stat list (every Character Stats line)", "The stats pane shows every line of the Stat Calculator's Character Stats, Core Stats (Primary, General, Offensive, Defensive), Secondaries and Tertiaries, with each stat's name in its colour, on a list of XayaUI's own over Blizzard's. Choose what shows, the order, percent / rating / both, names and colours on its Stat list page. Off: Blizzard's own list.", "full", isOff),
         },
     }
 end
@@ -1085,12 +1433,15 @@ ns.RegisterCommand("reskin", function(arg)
     arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     local c = Cfg()
     if not c then return end
-    if arg == "on" then c.enabled = true; ns.CharReskin_Apply(); ns.Print("Character Reskin on."); return end
+    if arg == "on" then c.enabled = true; ns.CharReskin_Apply(); ns.Print("Character Reskin on." .. (ns.ReskinTabOn() and "" or " It shows once All reskins (Blizzard UI Reskin tab, top row) is on again.")); return end
     if arg == "off" then c.enabled = false; ns.CharReskin_Apply(); ns.Print("Character Reskin off."); return end
     if arg == "status" or arg == "" then
-        ns.Print(("Character Reskin: %s%s; %d Blizzard regions faded, %d slots%s."):format(c.enabled and "on" or "off",
+        ns.Print(("Character Reskin: %s%s%s; %d Blizzard regions faded, %d slots%s."):format(c.enabled and "on" or "off",
+            ns.ReskinTabOn() and "" or " (All reskins is off in the Blizzard UI Reskin tab, so it does not show)",
             diag.failed and " (stopped after an error)" or "", diag.faded, diag.slots, diag.lastError and (", last error: " .. diag.lastError) or ""))
         ns.Print(("Wider window: %s."):format(c.wide and tostring(diag.wide) or "switched off"))
+        ns.Print(("Extra height: %s; full stat list: %s."):format((c.wide and c.tallPx > 0) and tostring(diag.tall or "waits for the window") or "off",
+            c.statList and tostring(diag.statList or "drawn when the stats pane shows") or "off"))
         ns.Print(("Slot blocks: %d (%d cut to fit, %d hidden while the camera buttons show); sockets drawn: %d; embellished items: %d."):format(
             diag.labels or 0, diag.cut or 0, diag.camHit or 0, diag.sockets or 0, diag.embellished or 0))
         -- (QoL 0.7.19) who else draws text on the slots: Xaya's screenshot of 2026-11-05 had a second item level on every slot

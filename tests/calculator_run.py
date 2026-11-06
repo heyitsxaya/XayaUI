@@ -5,7 +5,11 @@
 #   - answers written with commas and at most 6 decimals (expected values worked out in Python, not by the code under test);
 #   - every way a sum can be wrong gives a reason, never a Lua error, and typed text is never run as code;
 #   - /xui calc <sum> prints "sum = answer"; /xui calc alone shows / hides the window; the keypad builds a sum and = works it out;
-#   - the keypad fits inside the window (V11); history keeps the last 10; Escape closes it; no global written by Calculator.lua.
+#   - the keypad fits inside the window (V11); history keeps the last 10; Escape closes it; no global written by Calculator.lua;
+#   - (Bonus 0.6.16, Xaya 2026-11-06: "Calculator needs its own enable / disable toggle") the settings row's switch: on by default;
+#     off closes the window, /xui calc alone only says it is off, the minimap list leaves the Calculator row out and the page's Open
+#     button is greyed out; /xui calc <sum> still answers in chat (her answer: "just the window"); saved sums are kept; switched off
+#     at login, no window is built whichever way it is asked for.
 # Deliberate breaks (MUTATIONS) each must make at least one check fail. The last line carries FAILS: <n>.
 # Run from the repo root: python3 tests/calculator_run.py   Needs: pip install lupa.
 import os, sys, time
@@ -157,12 +161,62 @@ SECTION("keypad", function()
   check("history keeps the last 10", #CueRulesDB.calculator.history == 10 and CueRulesDB.calculator.history[10] == "15+0 = 15")
 end)
 
+SECTION("on / off", function()
+  local f = CALCFRAME
+  local page = ns.BuildCalculatorPage()
+  local sw = page.xuiSwitch
+  check("switch: the Calculator page carries an on / off for its row's tick box, named Calculator", type(sw) == "table" and sw.name == "Calculator"
+    and type(sw.get) == "function" and type(sw.set) == "function")
+  check("switch: on by default (as it always was)", sw.get() == true and LAUNCHERS.calc.available() == true and not page.args.open.disabled())
+  COMMANDS.calc("")
+  check("switch: (shown before switching off)", f:IsShown())
+  local kept = #CueRulesDB.calculator.history
+  sw.set(nil, false)
+  check("off: the window closes", not f:IsShown())
+  check("off: the tick box reads off", sw.get() == false and CueRulesDB.calculator.enabled == false)
+  check("off: no Calculator row in the minimap button's list", LAUNCHERS.calc.available() == false)
+  check("off: the page's Open button is greyed out", page.args.open.disabled() == true)
+  PRINTED = {}
+  COMMANDS.calc("")
+  check("off: /xui calc alone does not open it and says it is off", not f:IsShown() and PRINTED[1] == "The Calculator is off: tick it in Bonus Features > Utilities > Calculator.", PRINTED[1])
+  COMMANDS.calc("2+2")
+  check("off: /xui calc <sum> still answers in chat (Xaya: \"just the window\")", PRINTED[2] == "2+2 = 4" and not f:IsShown(), PRINTED[2])
+  ns.Calculator_Open(); ns.Calculator_Toggle(); LAUNCHERS.calc[4]()
+  check("off: the settings button, the toggle and the minimap action open nothing", not f:IsShown())
+  check("off: the saved sums are kept (plus the chat sum)", #CueRulesDB.calculator.history == math.min(kept + 1, 10) and kept > 0)
+  sw.set(nil, true)
+  check("on again: the switch, the minimap row and the Open button come back", sw.get() == true and LAUNCHERS.calc.available() == true and not page.args.open.disabled())
+  COMMANDS.calc("")
+  check("on again: /xui calc alone opens the window", f:IsShown())
+end)
+
 SECTION("safety", function()
   check("no global written by Calculator.lua", #CALC_GLOBALS == 0, table.concat(CALC_GLOBALS, ","))
 end)
 '''
 
+OFF_AT_LOGIN = r'''
+CueRulesDB = { calculator = { enabled = false, history = { "1+1 = 2" } } }
+SECTION("off at login", function()
+  local chunk = assert(loadstring_real_for_test(CALC_SRC, "@Calculator.lua"))
+  chunk("XayaUI_Bonus", XayaUI_NS)
+  local before = #FRAMES
+  PRINTED = {}
+  COMMANDS.calc(""); COMMANDS.calc("3*3"); XayaUI_NS.Calculator_Open(); XayaUI_NS.Calculator_Toggle(); LAUNCHERS.calc[4]()
+  check("off at login (V14): asked for every way, no frame of it is created", #FRAMES == before, #FRAMES - before)
+  check("off at login: /xui calc 3*3 still answers in chat", PRINTED[2] == "3*3 = 9", PRINTED[2])
+  check("off at login: no Calculator row in the minimap list", LAUNCHERS.calc.available() == false)
+  check("off at login: the saved sums are kept", #CueRulesDB.calculator.history == 2 and CueRulesDB.calculator.history[1] == "1+1 = 2")
+end)
+'''
+
 MUTATIONS = [
+    ("the switch does nothing", [("    d.enabled = v and true or false\n", "")]),
+    ("off does not close the window", [("    if not d.enabled and frame then frame.edit:ClearFocus(); frame:Hide() end\n", "")]),
+    ("off also stops chat sums", [('    local v, err = ns.CalcEval(sum)\n    if not v then ns.Print(("calc:', '    if not On() then ns.Print(OFF_TEXT); return end\n    local v, err = ns.CalcEval(sum)\n    if not v then ns.Print(("calc:')]),
+    ("Toggle ignores off", [("function ns.Calculator_Toggle()\n    if not On() then ns.Print(OFF_TEXT); return end\n", "function ns.Calculator_Toggle()\n")]),
+    ("the minimap row stays while off", [("        available = function() return On() end })", "        available = function() return true end })")]),
+    ("Open ignores off", [("function ns.Calculator_Open()\n    if not On() then ns.Print(OFF_TEXT); return end\n", "function ns.Calculator_Open()\n")]),
     ("no divide-by-zero check", [('                if r == 0 then error({ msg = "cannot divide by zero" }) end\n', "")]),
     ("minus binds tighter than ^", [("        local v = postfix()\n        if peek() == \"^\" then take(); v = v ^ unary() end",
                                      "        local v = postfix()\n        if peek() == \"^\" then take(); v = v ^ postfix() end")]),
@@ -186,7 +240,22 @@ def run(src):
     order = [lua.eval("ORDER")[i] for i in range(1, int(lua.eval("#ORDER")) + 1)]
     res = {n: bool(lua.eval("RESULTS")[n]) for n in order}
     errs = [lua.eval("SECTION_ERRORS")[i] for i in range(1, int(lua.eval("#SECTION_ERRORS")) + 1)]
-    txt = {n: lua.eval("FAILTXT")[n] for n in order if not res[n]}
+    # V14: saved off at login; every way of asking for it builds nothing (a fresh Lua state)
+    lua2 = LuaRuntime()
+    lua2.globals().CALC_SRC = src
+    try:
+        lua2.execute("loadstring_real_for_test = loadstring\n" + WORLD + OFF_AT_LOGIN)
+        for i in range(1, int(lua2.eval("#ORDER")) + 1):
+            n = lua2.eval("ORDER")[i]
+            order.append(n)
+            res[n] = bool(lua2.eval("RESULTS")[n])
+        errs += [lua2.eval("SECTION_ERRORS")[i] for i in range(1, int(lua2.eval("#SECTION_ERRORS")) + 1)]
+    except Exception as e:
+        errs.append("off-at-login scenario: %s" % e)
+    txt = {}
+    for n in order:
+        if not res[n]:
+            txt[n] = lua.eval("FAILTXT")[n] if lua.eval("FAILTXT")[n] is not None else lua2.eval("FAILTXT")[n]
     return res, order, errs, txt
 
 

@@ -29,6 +29,7 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 - **One bundled landing, no piecemeal pushes** (Xaya, 2026-11-05, her words): "all of these unless otherwise specified should have been bundled in with the core update. do a proper fix without pushing in piecemeal -- it creates more back-and-forth noise that is unnecessary" Collect the work for a round of her requests on
   the branch, run the full suite once on the bundle, and land it on `main` once, with one report listing every request it closes
   (by REQUEST-LOG number) and every one still open. Coordinate with any other active session so there is one combined push.
+- **What's new for every new feature** (Xaya, 2026-11-06, V18): when a new feature (or a visible change) lands on `main`, send the "feature update summary" session (session_014bN6tU26cuzQ9LarKYhZQx) an itemized what's-new: what the player sees, where to find it, what is untested in game, the landing commit. That session is used only for this.
 - **Off costs nothing (Xaya, 2026-11-05 15:07 UTC, her words):** "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a standing rule for all current and future feature / element builds". Applied through rule V14
   (`docs/process/VERIFICATION.md`): while a feature is off, none of its frames, events, OnUpdate, timers or hooks exist or run; strict
   "never loads" needs a LoadOnDemand addon (an enabled addon's files are always read at login), and a hook placed while on stays inert
@@ -164,8 +165,8 @@ the QA steps above in game.
 
 Backlog in Xaya's priority order (work the first one not blocked; see the rule in section 2):
 - A. **Progress bars as a display kind**: BUILT 2026-11-06 by session 014bN6tX7AoZQrGX246YSXjC on `claude/dreamy-edison-pvb3i1`
-  (core 0.6.53 / Options 0.6.51, `XayaUI/BarCue.lua`, QA B160-B167, debug-log 2026-11-06-0615). Her answers: REQUEST-LOG S7-1 to S7-4.
-  Waits on: landing on `main` with the next bundle, her CONFIRM items (S7-5), and in-game checks (engine bars, dispel colouring).
+  (core 0.6.53 / Options 0.6.51, `XayaUI/BarCue.lua`, QA B160-B167, debug-log 2026-11-06-0615). Her answers: REQUEST-LOG S8-1 to S8-4.
+  Waits on: landing on `main` with the next bundle, her CONFIRM items (S8-5), and in-game checks (engine bars, dispel colouring).
 - B. **Spell trigger options:** B1-B3 done (count GCD, remaining / charge comparisons, lockout). Open: exact spell ID (memo key and
   charge-watcher design first), track auto / charges / cooldown, track if not known. Not blocked.
 - C. **Load conditions:** done on rules (core 0.6.28) and groups (core 0.6.33). Raid role (MT / MA) dropped (Xaya, 2026-11-04:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Bar cues (ROADMAP RM-BARS). Xaya 2026-11-06: "Time to build progress bar cues!" and her answers (docs/process/REQUEST-LOG.md
-S7-1 .. S7-4): a new Bar cue kind; tracks aura time left, spell cooldown / recharge, stacks, charges; parts: icon (left / right /
+S8-1 .. S8-4): a new Bar cue kind; tracks aura time left, spell cooldown / recharge, stacks, charges; parts: icon (left / right /
 none), spark, name + time texts, stack / charge count; colour = the type the tooltip names FIRST, then the game's dispel type, then a
 fixed blue; colour styles Blizzard default / Neon / Pastel / Muted / Custom (a picker per type); default 220 x 22, background 20 %,
 1 px border, flat texture, horizontal, drains right to left.
@@ -68,7 +68,7 @@ local function near(a, b) return type(a) == "number" and type(b) == "number" and
 check("no rule carries a bar table by default (RULE_DEFAULTS.visual has no 'bar')", ns.RULE_DEFAULTS.visual.bar == nil)
 check("no Bar colour settings are saved until changed", not (CueRulesDB.ui and CueRulesDB.ui.barColors))
 
--- 1. the kind and its defaults (her answers S7-2 .. S7-4)
+-- 1. the kind and its defaults (her answers S8-2 .. S8-4)
 local hasBar = false
 for _, k in ipairs(ns.CUE_KINDS) do if k == "bar" then hasBar = true end end
 check("Bar is a cue kind, labelled 'Bar'", hasBar and ns.CUE_KIND_LABEL.bar == "Bar")
@@ -106,7 +106,7 @@ local function step(info) fr.barCR = nil; rec.color = nil; ns.UpdateVisualText(c
 local now = GetTime()
 local ref = { unit = "player", expiration = now + 5, duration = 10 }
 
--- 3. colour (S7-4 "Tooltip first": tooltip type > the aura's dispel type > fixed blue)
+-- 3. colour (S8-4 "Tooltip first": tooltip type > the aura's dispel type > fixed blue)
 TIP = { lines = { { leftText = "Demon Spikes" }, { leftText = "Deals 50 Fire damage to attackers." } } }
 ns.BarForgetTooltipTypes()
 step({ buffRef = ref })
