@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline test (XayaUI_Options 0.6.44-0.6.45; rebuilt to her answers 0.6.53): auto-populate as a table (AutoPicker.lua, Skin.lua table cells). Xaya, 2026-11-05:
+"""Offline test (XayaUI_Options 0.6.44-0.6.45; rebuilt to her answers 0.6.53; Generate buttons 0.6.54): auto-populate as a table (AutoPicker.lua, Skin.lua table cells). Xaya, 2026-11-05:
 "Clicking auto-populate should pre-load into a frame below all rules that will load in a table view. Columns will be (Checkbox - clicking
 the header row will select all; clicking again will deselect all) | name | type (spell cd, aura, debuff) | trigger (when available /
 when ready (for CD); at max stacks (for CD); when present (aura / debuff); when missing (aura / debuff) | cue type | combat load (any, in
@@ -111,8 +111,8 @@ local function creator()
   return G and G.args or {}
 end
 local a = creator()
-check("no table before a button is pressed", a.apTable == nil and a.apSpec1 ~= nil and a.apSpec2 ~= nil and a.apClass ~= nil)
-a.apSpec2.func()
+check("no table before a button is pressed", a.apTable == nil and a.apSpec1all ~= nil and a.apSpec2all ~= nil and a.apClassall ~= nil and AP.view == nil)
+a.apSpec2all.func()
 check("a spec button loads that spec's list and makes nothing", AP.view and AP.view.spec == 581 and #AP.view.rows == 7 and #ns.rules == 0)
 a.apTalents.set(nil, false)
 local nOff = AP.view and #AP.view.rows
@@ -120,16 +120,16 @@ a.apTalents.set(nil, true)
 check("turning 'Include talents I have not picked' off updates the table shown", nOff == 6 and AP.view and #AP.view.rows == 7)
 a = creator()
 local T = a.apTable and a.apTable.args or {}
-check("the table is a frame below the buttons", a.apTable and a.apTable.inline == true and a.apTable.order > a.apClass.order)
+check("the table is a frame below the buttons", a.apTable and a.apTable.inline == true and a.apTable.order > a.apClassdebuff.order)
 check("A3: the frame's title and her accepted two-line help text", a.apTable.name == "Auto-populate: Vengeance" and T.help
   and T.help.name == "Tick the rules you want and set each one up. Rows marked in the Cue set-up column need a choice before they can be made.\nPopulate makes the ticked rows into rules in Class > Spec > cue type; made rows leave the table." and T.help.arg and T.help.arg.xuiKeep == true, tostring(a.apTable.name) .. " | " .. tostring(T.help and T.help.name) .. " | " .. tostring(T.help and T.help.type))
 local extras = {}
 for k in pairs(T) do
   if not (k:match("^r%d+%a%a$") or k:match("^r%d+su%d$") or k == "hOn" or k:match("^h%a%a$") or k:match("^b%a+On$") or k:match("^b%a+Nm$")
-          or k == "adv" or k == "make" or k == "reload" or k == "close" or k == "msg" or k == "help" or k == "showMade") then extras[#extras + 1] = k end
+          or k == "adv" or k == "make" or k == "reload" or k == "close" or k == "msg" or k == "help" or k == "showMade" or k == "selAll") then extras[#extras + 1] = k end
 end
 table.sort(extras)
-check("nothing she did not ask for is in the table (V16): title, help, her Hide / Show switch, header, bucket headers, rows, Advanced | Populate | Reload list | Close and the result line only",
+check("nothing she did not ask for is in the table (V16): title, help, her Hide / Show switch, her Select all tick box (2026-11-06), header, bucket headers, rows, Advanced | Populate | Reload list | Close and the result line only",
   #extras == 0, table.concat(extras, ","))
 check("A4 / A9: the buttons in one row at the bottom: Advanced | Populate | Reload list | Close", T.adv.name == "Advanced" and T.make.name == "Populate"
   and T.reload.name == "Reload list" and T.close.name == "Close" and T.adv.order < T.make.order and T.make.order < T.reload.order and T.reload.order < T.close.order
@@ -328,7 +328,7 @@ check("that Populate left the cue moved by hand where it was, and laid out the 4
   xy(cueOf(tex, "texture")) == "500,300" and #AP.UnmovedPlaced() == 5 and xy(pt) == "0,0", xy(cueOf(tex, "texture")) .. " " .. #AP.UnmovedPlaced() .. " " .. xy(pt))
 T.showMade.set(nil, false)
 -- all specs: one button, every spec's list, rules in each spec's group
-a = creator(); a.apClass.func()
+a = creator(); a.apClassall.func()
 a = creator(); T = a.apTable.args
 check("the class button loads every spec's list (rows already made left out) with a Spec column after Name, and its own title", AP.view.spec == "all" and #AP.view.rows == 3
   and T.hsp and T.hsp.name:find("Spec", 1, true) and T.hnm.order < T.hsp.order and T.hsp.order < T.hty.order and T.r1sp and a.apTable.name == "Auto-populate: Demon Hunter (all specs)",
@@ -340,6 +340,66 @@ for _, r in ipairs(ns.rules) do if r.spellID == 195072 and not r.isCue then rush
 check("a rule from another spec goes into that spec's group and loads on that spec", made == 1 and rush and path(rush) == "Demon Hunter > Havoc > Icons" and rush.load.specs["577"] == true)
 T.close.func()
 check("Close removes the table", creator().apTable == nil and AP.view == nil)
+
+-- 0.6.54 (Xaya, 2026-11-06): four buttons per spec, each filters the list; the class gets the same four; a Select all tick box
+a = creator()
+local function lbl(k) return (a[k] and a[k].name or ""):gsub("|T[^|]*|t ", "") end
+check("GEN-3: four buttons per spec with her labels, verbatim (Vengeance, 581)",
+  lbl("apSpec2all") == "Generate All Rules for Vengeance" and lbl("apSpec2cd") == "Generate CD Tracking Rules for Vengeance"
+  and lbl("apSpec2aura") == "Generate Aura Tracking Rules for Vengeance" and lbl("apSpec2debuff") == "Generate Target Debuff Tracking Rules for Vengeance",
+  lbl("apSpec2all") .. " | " .. lbl("apSpec2debuff"))
+check("GEN-3: the same four for Havoc (577)", lbl("apSpec1all") == "Generate All Rules for Havoc" and lbl("apSpec1debuff") == "Generate Target Debuff Tracking Rules for Havoc")
+check("GEN-1: no button still says Auto-populate", (function() for k, v in pairs(a) do if type(v) == "table" and v.type == "execute" and tostring(v.name):find("Auto-populate", 1, true) then return false end end return true end)())
+check("the class gets the same four (her answer): 'my class'",
+  lbl("apClassall") == "Generate All Rules for my class" and lbl("apClasscd") == "Generate CD Tracking Rules for my class"
+  and lbl("apClassaura") == "Generate Aura Tracking Rules for my class" and lbl("apClassdebuff") == "Generate Target Debuff Tracking Rules for my class")
+check("GEN-2: nothing is listed before a button is pressed (no table, no view)", a.apTable == nil and AP.view == nil)
+local function kinds(v) local t = {}; for _, c in ipairs(v.rows) do t[c.kind] = (t[c.kind] or 0) + 1 end return (t.cd or 0) .. "/" .. (t.aura or 0) .. "/" .. (t.debuff or 0) end
+-- the stand-in list for 581: made rows are left out, so reset to a clean slate first
+ns.rules, ns.folders = {}, {}
+a.apSpec2all.func(); local kAll = kinds(AP.view)
+a.apSpec2cd.func(); local kCd = kinds(AP.view); local okCd = AP.view.filter == "cd"
+a.apSpec2aura.func(); local kAu = kinds(AP.view)
+a.apSpec2debuff.func(); local kDb = kinds(AP.view)
+check("GEN-3: All lists cooldowns, auras and debuffs (3 / 2 / 2)", kAll == "3/2/2", kAll)
+check("GEN-3: CD Tracking lists the cooldowns only", okCd and kCd == "3/0/0", kCd)
+check("GEN-3: Aura Tracking lists the auras only", kAu == "0/2/0", kAu)
+check("GEN-3: Target Debuff Tracking lists the debuffs only", kDb == "0/0/2", kDb)
+a.apSpec2cd.func(); a = creator()
+check("a filtered list shows only its own rows, and its title is unchanged", a.apTable and a.apTable.args.r1on and not a.apTable.args.r4on and a.apTable.name == "Auto-populate: Vengeance")
+-- another spec: auras and debuffs are read for the spec you are in only
+a.apSpec1aura.func(); a = creator()
+check("another spec's Aura button lists nothing and says to switch to that spec", AP.view.spec == 577 and #AP.view.rows == 0
+  and a.apTable.args.none and a.apTable.args.none.name:find("Switch to Havoc", 1, true) and not a.apTable.args.selAll,
+  tostring(AP.view.spec) .. " rows=" .. #AP.view.rows .. " keys=" .. (function() local t = {}; for k in pairs(a.apTable and a.apTable.args or {}) do t[#t + 1] = k end table.sort(t) return table.concat(t, ",") end)())
+a.apSpec1cd.func(); a = creator()
+check("another spec's CD button lists that spec's cooldowns", #AP.view.rows == 2 and AP.view.filter == "cd")
+a.apClassall.func(); a = creator()
+check("the class All button lists every spec's rows, the class CD button only the cooldowns", AP.view.spec == "all" and #AP.view.rows == 9
+  and (function() a.apClasscd.func(); return #AP.view.rows == 5 and AP.view.filter == "cd" end)(), #AP.view.rows)
+-- V11 (ESTIMATE: 154 px per width unit from the old 1.6-wide button, about 246 px in her screenshot; 7 px per character plus 16 icon and 24 padding)
+local longest = AP.ButtonLabel("debuff", "Beast Mastery")
+local btnW = (a.apSpec2debuff.width or 0) * 154
+check("V11: every Generate button is as wide as its longest label needs (estimate)", #longest * 7 + 16 + 24 <= btnW and a.apSpec2all.width == a.apClassdebuff.width,
+  #longest * 7 + 40 .. " px needed, " .. btnW .. " px given")
+-- Reload list and the talents switch keep the filter
+a.apSpec2aura.func(); a = creator(); a.apTable.args.reload.func()
+check("Reload list keeps the filter", AP.view.filter == "aura" and kinds(AP.view) == "0/2/0", kinds(AP.view))
+creator().apTalents.set(nil, false); creator().apTalents.set(nil, true)
+check("the talents switch keeps the filter", AP.view.filter == "aura" and kinds(AP.view) == "0/2/0", kinds(AP.view))
+-- Select all: one tick box at the top of the list; it ticks and unticks the rows shown only
+a.apSpec2cd.func(); a = creator(); T = a.apTable.args
+check("Select all: a tick box named 'Select all', above the header row", T.selAll and T.selAll.type == "toggle" and T.selAll.name == "Select all" and T.selAll.order < T.hOn.order and T.selAll.order > T.showMade.order)
+T.selAll.set(nil, true)
+check("Select all ticks every row shown (the 3 cooldowns)", AP.AllTicked(AP.view.rows) and T.selAll.get() == true)
+a.apSpec2debuff.func(); a = creator(); T = a.apTable.args
+check("... and not the rows of another filter (the debuffs stay unticked)", not AP.AllTicked(AP.view.rows) and T.selAll.get() == false)
+T.selAll.set(nil, true); T.selAll.set(nil, false)
+check("Select all again unticks them all", (function() for _, c in ipairs(AP.view.rows) do if AP.Choice(c) then return false end end return true end)())
+check("Select all, the header tick box and the bucket boxes agree", (function() T.selAll.set(nil, true); return T.hOn.get() == true and T["bdebuffOn"].get() == true end)())
+T.selAll.set(nil, false)
+AP.Close()
+
 -- "+ New rule" > Progress Texture / Icon / Text still set their cue up the same way (the set-up is shared: ns.NewTypedCue)
 local function findKey(t, key, depth)
   if type(t) ~= "table" or depth > 30 then return nil end
