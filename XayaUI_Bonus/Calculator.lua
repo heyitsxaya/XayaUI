@@ -319,7 +319,7 @@ function ns.BuildCalculatorPage()
         reads = { type = "description", order = 1, width = "full", fontSize = "medium",
             name = "It reads numbers (3472, 3,472, 3.5, .5), k / m / b after a number (12k = 12,000), + - * / ^, x or the multiply sign, the divide sign, % after a number (15% = 0.15), brackets and a leading minus. Nothing else: no functions, no variables. What you type is never run as code." },
         how = { type = "description", order = 2, width = "full", fontSize = "medium",
-            name = "Open it with the button below, with /xui calc, or with Calculator in the minimap button's list. /xui calc with a sum after it gives the answer in chat: /xui calc 23,249 / 3,472 prints 23,249 / 3,472 = 6.696141." },
+            name = "Open it with the button below, with /calc or /xui calc, or with Calculator in the minimap button's list. A sum after the command gives the answer in chat: /calc 23,249 / 3,472 prints 23,249 / 3,472 = 6.696141. (/calc is left to another addon if one already uses it; /xui calc always works.)" },
         open = { type = "execute", order = 3, name = "Open calculator", func = function() ns.Calculator_Open() end },
     } }
 end
@@ -337,6 +337,7 @@ local function Command(arg)
     ns.Print(("%s = %s"):format(sum, answer))
 end
 
+ns.Calculator_Command = Command   -- (Bonus 0.6.16) also /calc, registered by Utilities.lua when the word is free
 if ns.RegisterCommand then
     ns.RegisterCommand({ "calc", "calculator" }, Command, "/xui calc [sum] (a sum: the answer in chat; nothing: show / hide the calculator)")
 end
