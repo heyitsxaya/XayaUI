@@ -167,15 +167,55 @@ local function StepRule(rule, ctx, now, off)
     StepPreview(rule, rt, now)
 end
 
+-- D4 / #309 event routing (core 0.6.56; Xaya 2026-11-06: "either way reduce the ms as much as possible. avoid at all costs compromising on
+-- performance of rules while minimizing cpu and ram costs"). A cooldown event re-checks only the rules that read cooldowns, a player
+-- aura event only the rules that read your auras, on the very next frame (no 50 ms gap). Every other event, and the 0.2 s tick, steps
+-- every rule as before. A plain tick (no event pending) skips a rule that reads only your auras when an aura event already re-checked
+-- it since the last full step (an aura change always comes with UNIT_AURA; a time-left threshold forces a full step through Timing.lua).
+-- What a rule reads (its own triggers, or its parent's for a cue / condition): "cd", "aura", "other" (anything else: tick + events).
+local depCache, depVer = setmetatable({}, { __mode = "k" }), nil
+local CD_ROWS = { cooldown = true, actionUsable = true, globalCooldown = true }
+local function Deps(rule)
+    if depVer ~= ns.configVersion then depVer = ns.configVersion; for k in pairs(depCache) do depCache[k] = nil end end
+    local d = depCache[rule]
+    if d then return d end
+    local r = rule
+    if rule.parentUid and ns.FindParentRule then r = ns.FindParentRule(rule) or rule end
+    d = {}
+    if r.useCooldown and (tonumber(r.spellID) or 0) ~= 0 then d.cd = true end
+    if r.useBuff and (tonumber(r.buffID) or 0) ~= 0 then d.aura = true end
+    local list = type(r.extra) == "table" and type(r.extra.list) == "table" and r.extra.list or nil
+    for _, t in ipairs(list or {}) do
+        if type(t) == "table" then
+            if CD_ROWS[t.type] then d.cd = true elseif t.type == "buffAura" then d.aura = true else d.other = true end
+        end
+    end
+    if not (d.cd or d.aura or d.other) then d.other = true end   -- reads nothing routed (load, talents ...): tick + events, as before
+    d.auraOnly = d.aura and not d.cd and not d.other or nil
+    depCache[rule] = d
+    return d
+end
+ns.EngineDeps = Deps   -- (tests)
+local routed = {}            -- buckets waiting for their next-frame re-check: routed.cd, routed.aura
+local auraCheckedAt = setmetatable({}, { __mode = "k" })   -- rule -> GetTime() of its last aura-routed re-check
+local stepFilter, stepSkipFresh   -- set for one Step call
+local routedFilter = {}           -- reused for every routed re-check (no table per frame)
+local lastCtx                     -- the last full step's context, reused by routed re-checks
+local lastFullAt                  -- GetTime() of the last full step
+
 local function Step()
     if not ns.rules then return end
-    if barsDirty then
+    local filter, skipFresh = stepFilter, stepSkipFresh
+    if barsDirty and not filter then
         barsDirty = false
         local need = false
         for _, r in ipairs(ns.rules) do if r.enabled and r.visual and r.visual.requireOnBar then need = true; break end end
         if need and ns.RefreshActionBarSpells then ns.RefreshActionBarSpells() end
     end
-    local ctx = ns.ReadContext()
+    -- a routed re-check reuses the last full step's context (load facts change through events that step everything, or at the tick), so
+    -- no context table is made per routed frame
+    local ctx = (filter and lastCtx) or ns.ReadContext()
+    if not filter then lastCtx = ctx end
     ns.tickID = (ns.tickID or 0) + 1
     local now = GetTime()
     -- every rule runs on its own: bad data in one can never delay or block the others
@@ -186,10 +226,24 @@ local function Step()
         local off = ns.RuleOff(rule)
         local rt0 = off and ns.runtime[rule]
         if not off or (rt0 and not rt0.offDone) or (pvV and pvV[rule]) or (pvS and pvS[rule]) then
-            local ok, err = pcall(StepRule, rule, ctx, now, off)
-            if not ok then ReportRuleError(rule, RT(rule), err) end
+            local go = true
+            if filter then
+                local d = Deps(rule)
+                go = (filter.cd and d.cd) or (filter.aura and d.aura) or false
+                if go and filter.aura and d.aura then auraCheckedAt[rule] = now end
+            elseif skipFresh and not off then
+                local d = Deps(rule)
+                local at = d.auraOnly and auraCheckedAt[rule]
+                if at and lastFullAt and at > lastFullAt then go = false end   -- re-checked by an aura event since the last full step
+            end
+            if go then
+                local ok, err = pcall(StepRule, rule, ctx, now, off)
+                if not ok then ReportRuleError(rule, RT(rule), err) end
+            end
         end
     end
+    if filter then return end   -- a routed re-check: the bars and the rest wait for the next full step
+    lastFullAt = now
     if ns.Bars_Update then
         local pb = perf.on and debugprofilestop()
         local okb, errb = pcall(ns.Bars_Update)
@@ -351,6 +405,9 @@ f:SetScript("OnEvent", function(_, event)
     end
     if event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" or event == "PLAYER_SPECIALIZATION_CHANGED" or event == "UPDATE_SHAPESHIFT_FORM"
         or event == "ACTIONBAR_SLOT_CHANGED" or event == "UPDATE_BONUS_ACTIONBAR" or event == "ACTIONBAR_PAGE_CHANGED" then barsDirty = true end
+    -- D4: cooldown and player-aura events re-check only the rules that read them, on the next frame (no full step)
+    if event == "SPELL_UPDATE_COOLDOWN" or event == "SPELL_UPDATE_CHARGES" then routed.cd = true; return end
+    if event == "UNIT_AURA" then routed.aura = true; return end
     dirty = true
 end)
 -- A failing step must never stop the engine or flood the error window: it is caught here, reported once per distinct
@@ -374,9 +431,20 @@ f:SetScript("OnUpdate", function(_, elapsed)
     -- a time-left threshold ("2 s left") is crossed on this frame: step now, not at the next tick (Timing.lua deadlines)
     if Timing and GetTime() >= Timing.NextDeadline() then dirty, forceNow = true, true; Timing.ClearDeadline() end
     if acc >= TICK or (dirty and (forceNow or sinceStep >= MIN_GAP)) then
+        -- a plain tick (nothing changed, no aura event waiting) may skip aura rules an aura event just re-checked
+        stepSkipFresh = not dirty and not routed.aura
         dirty, forceNow = false, false
         acc, sinceStep = 0, 0
+        routed.cd, routed.aura = nil, nil   -- a full step covers them
         SafeStep()
+        stepSkipFresh = nil
+    elseif routed.cd or routed.aura then
+        -- D4: the rules that read what changed, this frame (at most once per frame); the full step keeps its own pace
+        routedFilter.cd, routedFilter.aura = routed.cd, routed.aura
+        stepFilter = routedFilter
+        routed.cd, routed.aura = nil, nil
+        SafeStep()
+        stepFilter = nil
     end
     if inCombat then
         snapAcc = snapAcc + elapsed

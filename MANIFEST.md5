@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-91a617a5964551d6b42a54b50a5d0baa  QA-CHECKLIST.md
+5203d93bbbf7849a28c2aa3203696b4c  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 1349642586deb40cd2d03db22168ce28  ROADMAP.md
 f25f0108f6fbee67e9948a3789ca22d0  SESSION-START-SUMMARY.md
@@ -26,7 +26,7 @@ e347531f81e7b1c81dfd3db3a4d5f6f2  XayaUI/Combat/README.md
 dce0c976aa2a3a88c2faed9501c1cbf8  XayaUI/Core.lua
 9b887752218d927faaf0276c619bb37d  XayaUI/Cues.lua
 5d1c864ae837732b1b3a035b774ab3dc  XayaUI/DebugRecord.lua
-725097af3e94b6acb446f963d0fbe5d9  XayaUI/Engine.lua
+6c2e836828043dc4bef2252c07b23b32  XayaUI/Engine.lua
 0dbc83b479d995e68a6ce232bfa955f4  XayaUI/GameMenu.lua
 453fb0aae7a7f04befc588dd6046a438  XayaUI/Libs/LibStub/LibStub.lua
 15f96f4257c78c0e1bb0ed30e72c0103  XayaUI/Libs/LibStub/LibStub.toc
@@ -522,6 +522,7 @@ da470104d689cf5e1d8deeb827454ffc  debug-log/2026-11-06-2120-issue-18-unset-load-
 5686539801c178c90198f860292e84ea  debug-log/2026-11-06-2122-talent-three-click-toggle-core-0.6.56-options-0.6.55.md
 f78442a38ba111ed1437e5c542a01534  debug-log/2026-11-06-2123-sound-cue-sfx-channel-core-0.6.56.md
 3e1c00a01f3378e151d0cca06b523e2b  debug-log/2026-11-06-2230-c1-spec-aura-learner-core-0.6.56.md
+3302f92b60a4208d137c641c976ee2e6  debug-log/2026-11-06-2247-d4-event-routing-core-0.6.56.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -547,7 +548,7 @@ d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 f057f7212267aabd551a1ca79b40569c  docs/process/QUESTIONS-engine-session.md
 8d39baf114409f17d6a210122ae1e672  docs/process/REQUEST-LOG-CROSS-CHAT.md
 1c455e2d0e650f1d4403dd74c92e2a52  docs/process/REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md
-8330c59648378c74f4f1069f258697ee  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
+1bd6358b7e9a3dfb4bf29eb8ddc910e9  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
 22a88c5b8a98d63334dbe14a57337056  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
@@ -658,6 +659,7 @@ beb33f9fd927428616543fd8364aa1bf  tests/devassist_probe_run.py
 c368c3d4a0e31da169d5370dec0c7c3a  tests/drag_drop_run.py
 1dc5b3e89ca41f69f7eaf662e76da132  tests/engine_bench.py
 8363bfc20282f173bb23c1db7fc4c9f7  tests/engine_garbage_run.py
+59077ed714d9439e77b471e8133cc427  tests/engine_routing_run.py
 9aa5354c2bf9c78cf8b46e32d9142dff  tests/engine_text_run.py
 91e69f1cabaacf58537aa37237ffb06c  tests/export_group_run.py
 6b2939dc372abffc54e1ef9558012d7b  tests/feature_rows_map_run.py
