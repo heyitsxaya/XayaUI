@@ -1,4 +1,4 @@
-# Stub test for Chat/Probe.lua (/xui chatprobe, Chat Panel rebuild stage S0): it must read only, survive broken frames,
+# Stub test for Chat/Probe.lua (/xui debug chatprobe, Chat Panel rebuild stage S0): it must read only, survive broken frames,
 # find the top-left floating button, find frames anchored to chat, and never record message text.
 # Run from the repo root: python3 tests/chatprobe_run.py   Needs: pip install lupa. Stand-in frames; checks logic, not the real game.
 import os

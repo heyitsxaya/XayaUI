@@ -1,4 +1,4 @@
-# Blizzard UI Reskin tab: one switch for the tab, one tick box per reskin (core 0.6.51, Options 0.6.47, Chat 0.6.18, Reskin 0.6.4, QoL 0.7.29)
+# Blizzard UI Reskin tab: one switch for the tab, one tick box per reskin (core 0.6.51, Options 0.6.50, Chat 0.6.18, Reskin 0.6.4, QoL 0.7.32)
 Logged 2026-11-06 00:35 UTC. Session branch `claude/cool-ramanujan-ewx8e5` (with the Shopping List, draft PR heyitsxaya/XayaUI#410).
 None of this has run in the game. Held from `main` until Xaya answers C12 (V16).
 
@@ -63,12 +63,12 @@ on 2026-11-06.
   local 'e' (a nil value)`. That file is not touched here. With main's harness enum fix (7426e7f) merged, it passes 20/0.
 
 ## Versions (assigned by the coordinating session, 00:25 UTC)
-- core 0.6.51, Options 0.6.47, Chat 0.6.18, Reskin 0.6.4.
-- QoL 0.7.29: the Shopping List batch, which this rides with.
+- core 0.6.51, Options 0.6.50, Chat 0.6.18, Reskin 0.6.4.
+- QoL 0.7.32: the Shopping List batch, which this rides with.
 - QA E2e. USER-GUIDE sections 0, 12 (Esc Menu, Chat Panel, Character Pane, Shopping List).
 - 00:50 UTC: Options relabelled 0.6.46 -> 0.6.47 (the coordinating session's correction: #409 took 0.6.46 at 246dc4f). Labels only.
 
-## Also in Options 0.6.47: the dynamic group's Sort list in her order (S1's cross-chat review B5)
+## Also in Options 0.6.50: the dynamic group's Sort list in her order (S1's cross-chat review B5)
 - Her words (2026-11-04, debug-log 2026-11-04-0350): "make sure to provide a sort order option for rules in a dynamic group: default,
   expiration, name, important, manual (organize the group and force-save with a reload)".
 - Main listed "Manual (your order)" first. Now the list is Default, Expiration, Name, Important, Manual, with her words.
@@ -77,7 +77,7 @@ on 2026-11-06.
 - Test: `tests/display_tab_run.py` gains one check (76 checks, 0 failed). It fails on the old list (1 failed).
 - QA E2f.
 
-- 2026-11-06 04:25 UTC: relabelled QoL 0.7.25 -> 0.7.29 (main reached 0.7.27 with S1's landings; S1's next bundle is 0.7.28). Labels only.
+- 2026-11-06 04:25 UTC: relabelled QoL 0.7.25 -> 0.7.32 (main reached 0.7.27 with S1's landings; S1's next bundle is 0.7.28). Labels only.
 
 ## Her answer on C12 (2026-11-06): "Tick box on the tab itself"
 - The "All reskins" row is gone. The tab's switch is now a tick box on the Blizzard UI Reskin tab button (`ns.OptionsApi.TAB_SWITCHES`,
@@ -90,3 +90,5 @@ on 2026-11-06.
   look of that was not checked.
 - Tests: `reskin_tab_switch_run` (24) clicks the real box in the opened window; `reskin_tab_run` (22) and `sidebar_switches_run`
   (88) no longer expect the row.
+
+- 2026-11-06 06:10 UTC: relabelled Options 0.6.47 -> 0.6.50 and QoL 0.7.29 -> 0.7.32 (main reached Options 0.6.48 / QoL 0.7.30 with great-franklin; 0.6.49 and 0.7.31 are taken on other branches). Labels only.

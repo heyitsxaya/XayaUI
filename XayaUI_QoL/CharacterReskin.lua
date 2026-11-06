@@ -7,7 +7,7 @@
 -- ELSE"; "GIVE ME A PRETTY VERSION OF THE CHARACTER SHEET"; "THIS window needs to look beautiful and CLEAN"; "prettify the character
 -- window" (her screenshot: two item-level numbers per slot); "ilvl colored based on ilv tier (track ... AND upgrade tier (color
 -- gradient))"; "enchants + gems should show to the side of the character pane". Requirements: docs/plans/STAT-CALCULATOR-REQUIREMENTS-
--- 2026-11-04.md, rows A1-A7 (A6, the wider window, built in QoL 0.7.22 after her /xui stats widthprobe result; A8, the compact stat
+-- 2026-11-04.md, rows A1-A7 (A6, the wider window, built in QoL 0.7.22 after her /xui debug widthprobe result; A8, the compact stat
 -- tooltips, is the Character Toolkit's tooltip lines).
 -- Xaya, 2026-11-05 (QoL 0.7.22): "complete the entire character pane issue now and make sure the reskin of the character pane is also
 -- solved -- the current invisible background is not good"; "gemstone display is much too small and doesn't show the gem name
@@ -734,7 +734,7 @@ local function OtherText()
 end
 
 -------------------------------------------------------------------------------
--- The wider window (QoL 0.7.22, requirement A6; Xaya's in-game /xui stats widthprobe of 2026-11-05: "width probe: on, 120 px wider (540
+-- The wider window (QoL 0.7.22, requirement A6; Xaya's in-game /xui debug widthprobe of 2026-11-05: "width probe: on, 120 px wider (540
 -- -> 660). window width ok, inset edge ok, model width ok, main hand slot ok, panel placement ok", no ADDON_ACTION line)
 -------------------------------------------------------------------------------
 -- The same calls the probe made (CharacterWidthProbe.lua), out of combat only, with the character window open on its Character tab:
@@ -936,7 +936,7 @@ end
 -- On / off
 -------------------------------------------------------------------------------
 local hooked = false
--- on = its own switch AND the Blizzard UI Reskin tab's switch (QoL 0.7.29, S1 #48: off there turns every reskin off)
+-- on = its own switch AND the Blizzard UI Reskin tab's switch (QoL 0.7.32, S1 #48: off there turns every reskin off)
 local function On(c) return c and c.enabled and ns.ReskinTabOn() and true or false end
 Active = function() local c = Cfg(); return On(c) and not diag.failed end
 function ns.CharReskin_Active() return Active() == true end
@@ -1063,7 +1063,7 @@ function ns.BuildCharReskinPage(Notify)
             disabled = disabled, get = function() return C()[key] end,
             set = function(_, v) local lim = LIMITS[key]; C()[key] = math.max(lim[1], math.min(lim[2], tonumber(v) or DEFAULTS[key])); Changed() end }
     end
-    -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.29, S1 #48: "individual toggles for
+    -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
     local switch = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends). Greyed while All reskins (the top row of this tab) is off.")
     switch.disabled = function() return not ns.ReskinTabOn() end

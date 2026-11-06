@@ -2,7 +2,8 @@
 """/xui help prints one command per line (core 0.6.46; Xaya 2026-11-05: "console print is difficult to read": the whole command list
 was one line joined by " | ", unreadable in the console window and the chat history's Console tab). Checks the printed lines: a
 header with the count, then every command on its own line starting with /xui, the command colored and closed, what it does after it,
-literal pipes doubled (the game shows "||" as "|"), and no line holding two commands.
+literal pipes doubled ("||", shown as "|"; core 0.6.50 printed "/" for a while, Xaya 2026-11-06 chose "Back to '|'" and the chat
+history window shows them right since Chat 0.6.17), and no line holding two commands. (core 0.6.50 moved the diagnostic commands under /xui debug: tests/console_commands_run.py.)
 Run: python3 tests/xui_help_lines_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -20,8 +21,8 @@ local out = ns.CaptureOutput(function() SlashCmdList.XAYAUI("help") end)
 local nCmd = 0
 for _, l in ipairs(out) do if l:find("/xui", 1, true) then nCmd = nCmd + 1 end end
 check("a header line with the count", out[1] and out[1]:match("^commands %((%d+)%):$") ~= nil and tonumber(out[1]:match("%((%d+)%)")) == #out - 1, out[1])
-check("more than a dozen commands, one per line", #out - 1 > 12 and nCmd == #out - 1, ("%d lines, %d with /xui"):format(#out - 1, nCmd))
-local two, uncolored, unclosed, badPipe, statusLine, consoleLine = nil, nil, nil, nil, nil, nil
+check("ten or more commands, one per line", #out - 1 >= 10 and nCmd == #out - 1, ("%d lines, %d with /xui"):format(#out - 1, nCmd))
+local two, uncolored, unclosed, badPipe, debugLine, consoleLine = nil, nil, nil, nil, nil, nil
 for i = 2, #out do
   local l = out[i]
   local _, n = l:gsub("/xui ", "")
@@ -31,14 +32,14 @@ for i = 2, #out do
   if not l:find("|r", 1, true) then unclosed = l end
   local stripped = l:gsub("^  |cff%x%x%x%x%x%x", ""):gsub("|r", "", 1)
   if stripped:gsub("||", ""):find("|", 1, true) then badPipe = l end
-  if l:find("/xui status|r", 1, true) then statusLine = l end
-  if l:find("/xui console|r  event log window", 1, true) then consoleLine = l end
+  if l:find("/xui debug|r  diagnostic commands", 1, true) then debugLine = l end
+  if l:find("/xui console|r  the XayaUI console", 1, true) then consoleLine = l end
 end
 check("no line holds two commands (the old ' | ' join)", two == nil, two)
 check("every line starts with the colored command", uncolored == nil, uncolored)
 check("every color is closed", unclosed == nil, unclosed)
 check("literal pipes are doubled, color codes are not", badPipe == nil, badPipe)
-check("a command with no description is just the command", statusLine ~= nil)
+check("/xui debug is listed with what it does", debugLine ~= nil)
 check("the description follows its command without the brackets", consoleLine ~= nil)
 return R
 end

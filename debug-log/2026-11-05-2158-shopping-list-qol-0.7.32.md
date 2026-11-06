@@ -1,4 +1,4 @@
-# Shopping List: XayaUI's panel, Blizzard's Professions list restyled, enchant and gem suggestions (XayaUI_QoL 0.7.29; fork: main)
+# Shopping List: XayaUI's panel, Blizzard's Professions list restyled, enchant and gem suggestions (XayaUI_QoL 0.7.32; fork: main)
 Logged 2026-11-05 21:58 UTC. Session `014bN6tStyDJVemzE9tX7F38`, branch `claude/cool-ramanujan-ewx8e5` restarted from main 0ef9cb0.
 Nothing here has run in the game.
 
@@ -32,7 +32,7 @@ verbatim; the objective pane reskin is the new row RM-OBJECTIVES.
   (used before, bags, the Auction House's browse for that slot) with "Default"; Blizzard's Professions section recoloured after its
   layout (a `hooksecurefunc` post-hook on `ProfessionsRecipeTracker.EndLayout`); settings page Blizzard UI Reskin > Shopping List
   (module "reskin"); `/xui shop [options|status]`. Off by default; while off nothing is created, registered or hooked (V14).
-- `XayaUI_QoL.toc` 0.7.29 (0.7.23 and 0.7.24 belong to other sessions; 0.7.29 was assigned to this batch by them); USER-GUIDE 0 and 12.12c; QA E2a-E2d; ROADMAP RM-SHOP
+- `XayaUI_QoL.toc` 0.7.32 (0.7.23 and 0.7.24 belong to other sessions; 0.7.32 was assigned to this batch by them); USER-GUIDE 0 and 12.12c; QA E2a-E2d; ROADMAP RM-SHOP
   (in progress), RM-OBJECTIVES (planned); requirements S1-S10 built, S11 planned.
 
 ## Limits and inferences
@@ -51,7 +51,7 @@ verbatim; the objective pane reskin is the new row RM-OBJECTIVES.
 - char_reskin, char_toolkit, char_toolkit2, char_stat_map, char_spells, char_gear_icons, modules, window_margins, options_layout_v11,
   lua_pitfalls (81 files): 0 failed.
 
-- 2026-11-06 04:25 UTC: relabelled QoL 0.7.25 -> 0.7.29 (main reached 0.7.27 with S1's landings; S1's next bundle is 0.7.28). Labels only.
+- 2026-11-06 04:25 UTC: relabelled QoL 0.7.25 -> 0.7.32 (main reached 0.7.27 with S1's landings; S1's next bundle is 0.7.28). Labels only.
 
 ## Her answers of 2026-11-06 (C1-C12), and what changed
 - C1, C2, C4, C5, C6, C7, C11: confirmed as built.
@@ -90,3 +90,5 @@ verbatim; the objective pane reskin is the new row RM-OBJECTIVES.
 - C10, a default for the one-per-character gem: "Give the diamond a default too". Built: `defaults.diamond`. The suggestion order is
   picked for now, then the default, then the most used. Select other's Default button works for it, and the settings' Your defaults
   tab has "One-per-character gem (diamond)". Tests: shopping_list_run 69 (3 new), 0 failed.
+
+- 2026-11-06 06:10 UTC: relabelled Options 0.6.47 -> 0.6.50 and QoL 0.7.29 -> 0.7.32 (main reached Options 0.6.48 / QoL 0.7.30 with great-franklin; 0.6.49 and 0.7.31 are taken on other branches). Labels only.

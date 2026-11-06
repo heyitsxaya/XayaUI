@@ -152,7 +152,10 @@ elseif MODE == "defaults" then
   check("#30 ...UIParent's size and scale, Blizzard's panel slots", s:find("map: UIParent: shown true, size ", 1, true) ~= nil and s:find("map: Blizzard's panel slots: fullscreen", 1, true) ~= nil, s)
   check("#30 ...and which XayaUI calls into Blizzard's panel layout ran since login (none here: no Character Reskin loaded)",
     s:find("map: XayaUI calls into Blizzard's panel layout since login: none", 1, true) ~= nil, s)
-  check("(as before) #30 ...plain /xui debug still gives core's own report", (function() ns._capture = {}; pcall(SlashCmdList.XAYAUI, "debug"); local t = table.concat(ns._capture, " | "); ns._capture = nil
+  -- (core 0.6.50 merged in: plain /xui debug lists the diagnostic commands, map among them; core's loader report is /xui debug loader)
+  check("#30 ...plain /xui debug lists /xui debug map and does not run the report", (function() ns._capture = {}; pcall(SlashCmdList.XAYAUI, "debug"); local t = table.concat(ns._capture, " | "); ns._capture = nil
+    return t:find("/xui debug map", 1, true) ~= nil and not t:find("map: world map:", 1, true) end)())
+  check("#30 ...core's own loader report is /xui debug loader, without the map report", (function() ns._capture = {}; pcall(SlashCmdList.XAYAUI, "debug loader"); local t = table.concat(ns._capture, " | "); ns._capture = nil
     return t:find("debug: ToggleUI=", 1, true) ~= nil and not t:find("map:", 1, true) end)())
 end
 return R
