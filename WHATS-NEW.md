@@ -163,20 +163,25 @@ Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default
 - **All reskins, and a tick box per reskin** (XayaUI 0.6.51, Options 0.6.50, Chat 0.6.18, Reskin 0.6.4). The Blizzard UI Reskin
   tab button has its own tick box, **All reskins**: untick it and every reskin in the tab is off at once, with Blizzard's own look
   back. Each reskin (Chat Panel, Character Pane, Esc Menu, Shopping List) has its own tick box on its row in the left pane, greyed
-  while All reskins is off. All reskins is on unless you untick it.
+  while All reskins is off and keeping its own state. All reskins is on unless you untick it. With it off, nothing of any reskin
+  loads at login, and `/xui chat` and `/xui reskin status` say that All reskins is off.
 - **Shopping List** (QoL 0.7.32). Off by default; turn it on with the tick box on the Shopping List row of the Blizzard UI Reskin
   tab. `/xui shop` shows or hides the panel (`/xui shop options`, `/xui shop status`).
   - **Missing on your gear:** each enchantable slot without an enchant and each empty socket, with one suggestion each (your own
     default for that slot, else what XayaUI has seen you use most on it). "Other" shows what you used before, what is in your bags
     and, while the Auction House is open, what it has. "+ Add" puts a suggestion in To buy.
-  - **To buy:** what you added, with have / need.
+  - **To buy:** what you added, with have / need; x removes a line.
   - **Your tracked recipes:** each with its reagents and have / need, counted the way Blizzard's tracker counts them. Finished lines
     are ticked and dimmed. The x on a recipe stops tracking it. Once every reagent is in your bags, it asks whether to stop tracking
     (**Stop** / **Keep**).
-  - **The one-per-character gem:** when you are not wearing one, the first empty socket asks for it; the other sockets ask for
-    your normal gem.
+  - **The one-per-character gem** (such as this expansion's diamonds): when you are not wearing one, the first empty socket asks
+    for it; the other sockets ask for your normal gem. Which gems count is read from the game (unique-equipped, limit 1):
+    **not yet confirmed in game.**
+  - Enchants you add are counted by the enchant scrolls in your bags whose name holds the enchant's name: **not yet confirmed in
+    game.**
   - **Click a name** while the Auction House is open to search for it there; Shift-click links the item.
-  - Blizzard's own Professions list in the objective tracker takes your theme's colours.
+  - Blizzard's own Professions list in the objective tracker takes your theme's colours (its own switch: "Restyle Blizzard's
+    Professions list"). The rest of the objective tracker is unchanged for now.
   - Settings: **Your defaults** (one per enchantable slot and one for gems) and **History** (forget what this character used;
     empty To buy).
 - **Dynamic group Sort list reordered** (Options 0.6.50). The group's Sort choices are now listed Default, Expiration, Name,
