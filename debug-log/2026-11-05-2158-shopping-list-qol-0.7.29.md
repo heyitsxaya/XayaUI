@@ -81,3 +81,12 @@ verbatim; the objective pane reskin is the new row RM-OBJECTIVES.
   complete list of current-expansion / current gear enchantments from in-game calls (developer mode only)": name matching stays.
   The research is in the requirements doc, row S12 (a proposal, not built).
 - Tests: `shopping_list_run` 66 checks (19 new for C8, C9, C10), 0 failed. QA E2g, E2h.
+
+## Her follow-up answers (2026-11-06, question prompts)
+- C3 proposal (developer capture of Enchanting / Jewelcrafting recipes and Auction House lists): "Not now — either wait for direct
+  request or set for next week development after token reset (Wednesday)". Not built. A reminder is scheduled in this session for
+  Wednesday 2026-11-11.
+- C9, where the stop-tracking question shows: "Panel only is fine". As built.
+- C10, a default for the one-per-character gem: "Give the diamond a default too". Built: `defaults.diamond`. The suggestion order is
+  picked for now, then the default, then the most used. Select other's Default button works for it, and the settings' Your defaults
+  tab has "One-per-character gem (diamond)". Tests: shopping_list_run 69 (3 new), 0 failed.

@@ -251,9 +251,24 @@ check("  ...none seen yet: no suggestion (Select other)", find2("diamond", 1).su
 h.gems[8100] = { n = 2, last = 5, name = "Powerful Eversong Diamond" }
 check("  ...seen on your gear before: it is suggested", Shop.DiamondSuggestion(c) and Shop.DiamondSuggestion(c).name == "Powerful Eversong Diamond")
 check("  ...and never as your normal gem", Shop.GemSuggestion(c) and Shop.GemSuggestion(c).name ~= "Powerful Eversong Diamond")
+c.defaults.diamond = { name = "Stoic Eversong Diamond", itemID = 8101 }
+check("  ...your own default for it wins (her answer: \"Give the diamond a default too\")", Shop.DiamondSuggestion(c) and Shop.DiamondSuggestion(c).name == "Stoic Eversong Diamond"
+  and Shop.DiamondSuggestion(c).src == "default")
+c.defaults.diamond = nil
 check("  ...Select other for it lists only one-per-character gems", has(Shop.Options(c, "diamond"), "Powerful Eversong Diamond") and has(Shop.Options(c, "diamond"), "Deadly Peridot") == nil)
 Shop.Render(); d = Shop.Drawn()
 check("  ...the panel: 'Head: Powerful Eversong Diamond (one per character)' with 0 / 1", texts():find("Head: Powerful Eversong Diamond (one per character)", 1, true) ~= nil, texts())
+Shop.OpenPopup("diamond", nil)
+local dpop = rawget(_G, "XayaUIShoppingListOther")
+local drow
+for _, r in ipairs(dpop and dpop.rows or {}) do if r.shown and r.def and r.text and r.text.text == "Powerful Eversong Diamond" then drow = r end end
+if drow and drow.def.scripts.OnClick then drow.def.scripts.OnClick(drow.def) end
+check("  ...its Select other has a Default button that makes it your default", c.defaults.diamond and c.defaults.diamond.name == "Powerful Eversong Diamond"
+  and Shop.DiamondSuggestion(c).src == "default")
+c.defaults.diamond = nil
+check("  ...and the settings page a box for it", (function() local pg = ns.BuildShoppingListPage(function() end)
+  for _, t in pairs(pg.args) do if type(t) == "table" and t.args and t.args.defDiamond then return true end end; return pg.args.defDiamond ~= nil end)())
+if dpop then dpop:Hide() end
 SOCKETS.Ring = { 8100 }
 miss2 = Shop.Missing(c)
 check("  ...one worn (in the ring): the helm's socket asks for your normal gem again", find2("diamond", 1) == nil and find2("gem", 1) ~= nil)

@@ -180,9 +180,12 @@ local function GemsOf(per, wantOneOf)
     for id, r in pairs(per or {}) do if Shop.IsOneOfGem(id) == wantOneOf then t[id] = r end end
     return t
 end
--- the one-per-character gem: picked for now, else the one you used most (it has no default of its own: one gem default, C10)
+-- the one-per-character gem: picked for now, else your default for it, else the one you used most (2026-11-06, her answer: "Give the
+-- diamond a default too")
 function Shop.DiamondSuggestion(c)
     if picks.diamond then return picks.diamond end
+    local d = c.defaults.diamond
+    if type(d) == "table" and type(d.name) == "string" and d.name ~= "" then return { name = d.name, itemID = d.itemID, src = "default" } end
     local best, id = MostUsed(GemsOf(Shop.History(c).gems, true))
     if best then
         local name = best.name or (C_Item and C_Item.GetItemNameByID and R(C_Item.GetItemNameByID, id))
@@ -472,11 +475,11 @@ function Shop.Build(c)
                 row.label, row.search, row.itemID = ("%s: %s (one per character)"):format(m.label, m.sug.name), m.sug.name, m.sug.itemID
                 row.right, row.tone = ("%d / 1"):format(have), have >= 1 and "good" or "warn"
                 row.actions.add = { name = m.sug.name, itemID = m.sug.itemID, need = 1, key = key }
-                row.tip = { why, ("Suggested: %s (%s)."):format(m.sug.name, m.sug.src == "picked" and "picked for now" or ("you used it " .. (m.sug.count or 1) .. "x")),
+                row.tip = { why, ("Suggested: %s (%s)."):format(m.sug.name, m.sug.src == "default" and "your default" or (m.sug.src == "picked" and "picked for now" or ("you used it " .. (m.sug.count or 1) .. "x"))),
                     "Click the name: the Auction House searches for it when it is open." }
             else
                 row.right, row.tone = "none seen yet", "warn"
-                row.tip = { why, "XayaUI has not seen one in your sockets yet: use Select other (your bags, or the Auction House when it is open)." }
+                row.tip = { why, "XayaUI has not seen one in your sockets yet: use Select other (your bags, or the Auction House when it is open), or set a default for it in the settings." }
             end
         else
             local need = m.count
@@ -744,7 +747,6 @@ function OpenPopup(key, anchor)
             picks[key] = nil
             Shop.Render()
         end)
-        r.def:SetShown(key ~= "diamond")   -- (one gem default, C10: the one-per-character gem follows your picks and what you used)
         r:Show()
         y = y + 20
     end
@@ -958,6 +960,7 @@ function ns.BuildShoppingListPage(Notify)
     end
     for i, slot in ipairs(SLOT_KEYS) do args["def" .. slot] = DefInput("ench:" .. slot, 10 + i, "Enchant: " .. (CM.SlotLabel(slot) == "Finger 1" and "Rings" or CM.SlotLabel(slot))) end
     args.defGem = DefInput("gem", 20, "Gem")
+    args.defDiamond = DefInput("diamond", 21, "One-per-character gem (diamond)")
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.29, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
     local switch = { type = "toggle", name = "Shopping List", desc = "Turns the shopping list on. While it is off nothing is created or read. Greyed while All reskins (the top row of this tab) is off.",
