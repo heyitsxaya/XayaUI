@@ -115,7 +115,10 @@ function C.Layout()
 
     pane:ClearAllPoints()
     if bar then bar:ClearAllPoints() end
-    if below then
+    -- (Chat 0.6.22; REQUEST-LOG UI-20, Xaya 2026-11-06: "pressing the collapse button should collapse the chat data bar down, not pull
+    -- the chat up to it") collapsed, a bar placed above the chat drops to the block's bottom edge (where the chat's bottom was); the
+    -- block's place on screen does not change
+    if below or s.collapsed then
         pane:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0); pane:SetPoint("TOPRIGHT", container, "TOPRIGHT", 0, 0)
         if bar then bar:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0); bar:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0) end
     else
@@ -150,9 +153,9 @@ function C.Layout()
     else arrow:SetPoint("TOPLEFT", container, "BOTTOMLEFT", 0, -2) end
     arrow:SetShown(true)
     local collapsed = s.collapsed and true or false
-    -- the chevron points the way the chat goes when it collapses: toward the bar (a bar off counts as below the pane)
-    local lower = below or not barOn
-    DrawArrow((lower and collapsed) or ((not lower) and not collapsed))
+    -- the chevron: down while the chat shows (collapsing takes it down to the bar's place at the bottom), up while it is hidden
+    -- (it comes back above the bar) (Chat 0.6.22, UI-20; before: toward a bar above the chat)
+    DrawArrow(collapsed)
     pane:SetShown(not collapsed)
     if mover then mover:ClearAllPoints(); mover:SetAllPoints(container) end
     C.Anchor()

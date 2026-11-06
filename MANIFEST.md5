@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-e3089cb038269c21bbd2885233e20dc5  QA-CHECKLIST.md
+1b918afd8950597c753e51b6cf3ef944  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 ba1f5dbf3f223ecc6e5f57fd8b7ac3f6  ROADMAP.md
 f25f0108f6fbee67e9948a3789ca22d0  SESSION-START-SUMMARY.md
@@ -142,7 +142,7 @@ e9e54b6afdaec3eaa20e255322bb0d1e  XayaUI_Bonus/TooltipsUI.lua
 6e76b1c2978989769c7457380c8e4115  XayaUI_Chat/Bar.lua
 21b1c7fd2590dba1531302d2a1e5a565  XayaUI_Chat/Core.lua
 8a087c49d9bd56d9daa92cb0054f97d6  XayaUI_Chat/Fade.lua
-46e7eaa0b4e8fb149a947c1d5391305b  XayaUI_Chat/Frame.lua
+76fbbd57904c6495127b93e887cb56d9  XayaUI_Chat/Frame.lua
 9ac8b056fe70a4aca0050113a02993cd  XayaUI_Chat/History.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 356fb84ca4d9f2b324c96e4f68c56082  XayaUI_Chat/Locate.lua
@@ -153,7 +153,7 @@ b3bf7034cf1410cb58341ad814d97882  XayaUI_Chat/Probe.lua
 271385b46e5eb6735ddf1295454bc596  XayaUI_Chat/Scroll.lua
 a5942eeea7535b00862d884eecdf2910  XayaUI_Chat/Skin.lua
 c3443dcf8a486e540ddfeac1aae87728  XayaUI_Chat/Sounds.lua
-453431777b3f29c0732676cde1f3ace5  XayaUI_Chat/XayaUI_Chat.toc
+cd6a6eb49cd63e024ab90f3381f1a001  XayaUI_Chat/XayaUI_Chat.toc
 d1214a6ecb251789fe882787dce5d8ef  XayaUI_DevAssist/ApiInventory.lua
 2927a47181fd6886394e1b61d1fc0faf  XayaUI_DevAssist/AuraCatalogue.lua
 48cfc73c1cd5b513bb8d9490bca2bdae  XayaUI_DevAssist/DevAssist.lua
@@ -507,6 +507,7 @@ fe51de1c552b68fd8c3309e6c3a6871c  debug-log/2026-11-06-0520-character-pane-stat-
 123e3c41439ee6fad0b573eb19d7f73c  debug-log/2026-11-06-0554-friends-list-ui-source-12.1.5-findings.md
 829571da8333daaf162b1137913b341c  debug-log/2026-11-06-1837-chat-tab-align-charwindow-relayout-chat-0.6.20-qol-0.7.33.md
 caacc83d18a3f0c7cbf94886cde1ad0e  debug-log/2026-11-06-1945-settings-window-look-reskin-overview-options-0.6.55-bonus-0.6.18.md
+e914f73febc514d6b619ce7fb742b91f  debug-log/2026-11-06-2050-chat-collapse-bar-drops-down-chat-0.6.22.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -531,7 +532,7 @@ d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 8d39baf114409f17d6a210122ae1e672  docs/process/REQUEST-LOG-CROSS-CHAT.md
 1c455e2d0e650f1d4403dd74c92e2a52  docs/process/REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-55be79bcdbb29be8b4a3c0f4155b6a86  docs/process/REQUEST-LOG.md
+162da1364f1a6bd370a81bbea75e3313  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 4c7604ae6a9849bdbf672b7ae1d45e7d  docs/process/VERIFICATION.md
 7af233aeafadc9bade62ce5da4b21189  docs/reference/README.md
@@ -607,6 +608,7 @@ a8e5c2bbdb81d4bb1a3dffb7e6c05a9c  tests/char_toolkit_run.py
 89838d7d9ca1deabb0a3654cb4a560da  tests/char_toolkit_world.lua
 1eb3d1f21eeeb4599682800a327ae453  tests/char_width_probe_run.py
 0f46f11222291c70483718691d730c62  tests/charges_combat_run.py
+b5fba1aa0deaaf3049d15fa46843378c  tests/chat_collapse_bar_run.py
 5cf4343a54631539972030d611c24a27  tests/chat_off_costs_nothing_run.py
 cbf3c82d2398010da18d49bd2ef1a940  tests/chat_pieces_run.py
 2b6b224f92b34126371c1d45ad53d874  tests/chat_run.py
