@@ -3708,7 +3708,7 @@ local function CreateRuleOfType(typ, fid)
         -- the chosen type becomes the rule's first cue (Cues tab), already set up for that type; the rule itself shows / plays nothing
         r.visual.enabled, r.sound.enabled = false, false
         -- one explicit cue kind per picker row: Icon -> icon cue, Texture / Progress Texture -> texture cue, Text -> text cue, Sound -> sound cue
-        -- (Progress Bar -> a Bar cue since Options 0.6.49 / core 0.6.51; before, it made a Buff Bar, whose code is shelved and drew nothing)
+        -- (Progress Bar -> a Bar cue since Options 0.6.51 / core 0.6.53; before, it made a Buff Bar, whose code is shelved and drew nothing)
         local CUE_FOR_TYPE = { icon = "icon", text = "text", sound = "sound", texture = "texture", progresstex = "texture", bar = "bar" }
         local kind = CUE_FOR_TYPE[typ] or "texture"
         r.uid = r.uid or ns.NewUID()

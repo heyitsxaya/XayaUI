@@ -164,7 +164,7 @@ the QA steps above in game.
 
 Backlog in Xaya's priority order (work the first one not blocked; see the rule in section 2):
 - A. **Progress bars as a display kind**: BUILT 2026-11-06 by session 014bN6tX7AoZQrGX246YSXjC on `claude/dreamy-edison-pvb3i1`
-  (core 0.6.51 / Options 0.6.49, `XayaUI/BarCue.lua`, QA B159-B166, debug-log 2026-11-06-0615). Her answers: REQUEST-LOG S7-1 to S7-4.
+  (core 0.6.53 / Options 0.6.51, `XayaUI/BarCue.lua`, QA B160-B167, debug-log 2026-11-06-0615). Her answers: REQUEST-LOG S7-1 to S7-4.
   Waits on: landing on `main` with the next bundle, her CONFIRM items (S7-5), and in-game checks (engine bars, dispel colouring).
 - B. **Spell trigger options:** B1-B3 done (count GCD, remaining / charge comparisons, lockout). Open: exact spell ID (memo key and
   charge-watcher design first), track auto / charges / cooldown, track if not known. Not blocked.
