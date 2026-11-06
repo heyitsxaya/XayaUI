@@ -8,6 +8,10 @@
 # ability list is one nested line per ability (sub() below); the panel's drawing of it: tests/char_stat_columns_run.py.
 # QoL 0.7.23 (Xaya 2026-11-05): one Character Stats section (its tree: tests/char_stat_window_run.py); the weapon card became Attack
 # Speed, Weapon DPS and Damage; Block is always listed. The checks below follow the new keys and say so where they changed.
+# QoL 0.7.28 (Xaya 2026-11-06, REQUEST-LOG #60-#64): the Gear Summary is the tab's first section; "» Abilities (per 100)" and
+# "» Ability Scaling" left the Stats tab (her answer "Both lists"; the scaling is on the Ability Scaling tab, checked here too); a typed
+# number no longer makes "now -> then": the value stays the current one and newValue holds the new one with its sign (her answer "New
+# value with sign"); the checks below say so where they changed (the drawing: tests/char_stat_round_run.py).
 # Run from the repo root: python3 tests/char_stat_map_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
 # Spell IDs 9101-9103 and their texts are TEST STAND-INS.
 import os, sys
@@ -47,6 +51,13 @@ local function card(key) return drawn().model.byKey[key] end
 local function line(key, label) local it = card(key); for _, p in ipairs(it and it.pairs or {}) do if p.label == label then return p.value, p end end end
 -- QoL 0.7.15 (columns): a map line's three cells, "value|Pt value|note"
 local function cells(key, label) local v, p = line(key, label); if not p then return nil end; return tostring(v or "") .. "|" .. tostring(p.per or "") .. "|" .. tostring(p.note or "") end
+-- QoL 0.7.28: what a line shows with a typed number: "value => new value with its sign" (the panel draws the second under the first)
+local function shows(key, label)
+  local v, p
+  if label then v, p = line(key, label) else p = card(key); v = p and p.value end
+  if not p then return nil end
+  return tostring(v or "") .. " => " .. tostring(p.newValue or "")
+end
 -- QoL 0.7.20 (Xaya 2026-11-05: "ability names should be nested under abilities"): the nested lines right after a "»" line, each
 -- "label=value" (a nested line has no Pt value or note), joined with "; "; nil when the "»" line is missing
 local function sub(key, label)
@@ -62,24 +73,24 @@ end
 
 -- 1. The tab and its cards ---------------------------------------------------------------------------------------------------
 local d = render()
-check("Stats tab = the stat map: Character Stats, Stat Weights (QoL 0.7.23)",
-  table.concat(texts(d, "header"), "|") == "- Character Stats|- Stat Weights", table.concat(texts(d, "header"), "|"))
+check("Stats tab = the stat map: Gear Summary (QoL 0.7.28: first), Character Stats, Stat Weights (QoL 0.7.23)",
+  table.concat(texts(d, "header"), "|") == "- Gear Summary|- Character Stats|- Stat Weights", table.concat(texts(d, "header"), "|"))
 check("no Show: % button (#382: it did nothing)", not XayaUICharacterToolkit.modeBtn.shown)
 check("the Agility card: 2,637, its box holds the number itself", card("map_primary").value == "2,637" and d.boxes["sv:primary"] and d.boxes["sv:primary"].text == "2637", d.boxes["sv:primary"] and d.boxes["sv:primary"].text)
 check("  » Attack power: value +2,637, Pt value 1.00 (1 Agility = 1.00 attack power), no note", cells("map_primary", "» Attack power") == "+2,637|1.00|", cells("map_primary", "» Attack power"))
 check("  » Dodge +5.00% (the game's figure from Agility)", line("map_primary", "» Dodge") == "+5.00%", line("map_primary", "» Dodge"))
 check("  » Armor through the mastery text (2,637 x 101.8%): value +2,684, Pt value 1.02, note 101.8% of Agility, mastery",
   cells("map_primary", "» Armor") == "+2,684|1.02|101.8% of Agility, mastery", cells("map_primary", "» Armor"))
-check("  » Abilities (per 100): Fracture +200 and Infernal Strike +100 (first number / attack power x 100), each on its own nested line, Demon Spikes left out (no damage)",
-  cells("map_primary", "» Abilities (per 100)") == "||" and sub("map_primary", "» Abilities (per 100)") == "Fracture=+200; Infernal Strike=+100",
-  tostring(cells("map_primary", "» Abilities (per 100)")) .. " / " .. tostring(sub("map_primary", "» Abilities (per 100)")))
+check("  (QoL 0.7.28, her answer \"Both lists\") no » Abilities (per 100) on the Agility card any more, and no ability nested under it",
+  line("map_primary", "» Abilities (per 100)") == nil and line("map_primary", "Fracture") == nil and line("map_primary", "Infernal Strike") == nil,
+  tostring((line("map_primary", "» Abilities (per 100)"))))
 check("the Stamina card: » Health value 1,476,516, Pt value 21.20", cells("map_stamina", "» Health") == "1,476,516|21.20|", cells("map_stamina", "» Health"))
 -- crit: rating, percent, per 1% side by side; parry from crit with the crit rating per 1% parry (her question)
 check("Critical Strike card: 22.48%, its box 528, 46.0 / 1% in its own column", card("map_crit").value == "22.48%" and d.boxes["sv:crit"].text == "528" and card("map_crit").per == "46.0 / 1%")
 check("  » Parry: value +10.15%, Pt value 52.0 / 1% (52.0 crit rating = 1% parry), note before DR", cells("map_crit", "» Parry") == "+10.15%|52.0 / 1%|before DR", cells("map_crit", "» Parry"))
 check("  ...its words for the one-column readers: 52.0 crit rating = 1% parry", CM.PairText(select(2, line("map_crit", "» Parry"))) == "+10.15%  (52.0 crit rating = 1% parry); before DR", CM.PairText(select(2, line("map_crit", "» Parry"))))
-check("  column heads (QoL 0.7.20): Primary Stat | Current value | Pt value | Change; Secondary Stat | Rating | Current value | Pt value | Change",
-  table.concat(texts(d, "colhead"), "|"):find("^Stat|Current value|Pt value|Change|Stat|Rating|Current value|Pt value|Change|") ~= nil, table.concat(texts(d, "colhead"), "|"))
+check("  column heads (QoL 0.7.20): Primary Stat | Current value | Pt value | Change | Influences (QoL 0.7.28; drawn between Pt value and Change); Secondary Stat | Rating | Current value | Pt value | Change | Influences",
+  table.concat(texts(d, "colhead"), "|"):find("^Stat|Current value|Pt value|Change|Influences|Stat|Rating|Current value|Pt value|Change|Influences|") ~= nil, table.concat(texts(d, "colhead"), "|"))
 check("  ...the crit card's rating for the Rating column: 528 (as text)", card("map_crit").ratingText == "528", card("map_crit").ratingText)
 -- mastery: armor from mastery and armor per 1% mastery (her question)
 check("Mastery card: » Armor value +2,684, note 101.8% of Agility", cells("map_mastery", "» Armor") == "+2,684||101.8% of Agility", cells("map_mastery", "» Armor"))
@@ -134,40 +145,50 @@ check("#379: Defense's 'From Critical Strike' uses crit's colour", select(2, lin
 ns.CharToolkit_SetInput("sv:crit", "700")
 d = render()
 check("type 700 crit: the amount is +172, the box shows 700", c.whatIfStats.crit == 172 and d.boxes["sv:crit"].text == "700", c.whatIfStats.crit)
-check("  crit 22.48% -> 26.22%", card("map_crit").value == "22.48% -> 26.22%", card("map_crit").value)
-check("  parry from crit +10.15% -> +13.46%", (line("map_crit", "» Parry") or ""):find("+10.15% -> +13.46%", 1, true) == 1, line("map_crit", "» Parry"))
-check("  Defense > Parry: from Critical Strike +10.15% -> +13.46% (note before DR)", cells("map_parry", "From Critical Strike") == "+10.15% -> +13.46%||before DR", cells("map_parry", "From Critical Strike"))
+check("  crit 22.48% with +26.22% under it (QoL 0.7.28: no \"now -> then\")", shows("map_crit") == "22.48% => +26.22%", shows("map_crit"))
+check("  parry from crit +10.15% with +13.46% under it", shows("map_crit", "» Parry") == "+10.15% => +13.46%", shows("map_crit", "» Parry"))
+check("  Defense > Parry: from Critical Strike +10.15% with +13.46% under it (note before DR)", cells("map_parry", "From Critical Strike") == "+10.15%||before DR"
+  and shows("map_parry", "From Critical Strike") == "+10.15% => +13.46%", shows("map_parry", "From Critical Strike"))
 ns.CharToolkit_SetInput("sv:mastery", "1200")
 d = render()
-check("type 1,200 mastery: 88.69% -> 101.05%, armor from Agility grows in step (+2,684 -> +3,058)", card("map_mastery").value == "88.69% -> 101.05%"
-  and (line("map_mastery", "» Armor") or ""):find("+2,684 -> +3,058", 1, true) == 1, line("map_mastery", "» Armor"))
+check("type 1,200 mastery: 88.69% with +101.05% under it, armor from Agility grows in step (+2,684 with +3,058 under it)", shows("map_mastery") == "88.69% => +101.05%"
+  and shows("map_mastery", "» Armor") == "+2,684 => +3,058", shows("map_mastery", "» Armor"))
 ns.CharToolkit_SetInput("sv:primary", "2737")
 d = render()
-check("type 2,737 Agility: attack power +2,637 -> +2,737, armor +2,684 -> +3,174 (both changes)", (line("map_primary", "» Attack power") or ""):find("+2,637 -> +2,737", 1, true) == 1
-  and (line("map_primary", "» Armor") or ""):find("+2,684 -> +3,174", 1, true) == 1, line("map_primary", "» Armor"))
-check("  » Ability Scaling (QoL 0.7.20; was 'Abilities with your number'): Fracture 6,944 -> 7,144, Infernal Strike 3,472 -> 3,572 (x 3,572 / 3,472 attack power), each on its own nested line",
-  cells("map_primary", "» Ability Scaling") == "||" and sub("map_primary", "» Ability Scaling") == "Fracture=6,944 -> 7,144; Infernal Strike=3,472 -> 3,572"
-  and line("map_primary", "» Abilities with your number") == nil, sub("map_primary", "» Ability Scaling"))
-check("  ...its nested lines carry its tone (good: the numbers grow), its hover says Ability Scaling", select(2, line("map_primary", "Fracture")) ~= nil
-  and (function() local n = 0; for _, pp in ipairs(card("map_primary").pairs) do if pp.nested and pp.tone == "good" then n = n + 1 end end; return n == 2 end)()
-  and tipHas(card("map_primary"), "Ability Scaling: ") and not tipHas(card("map_primary"), "with your number:"))
+check("type 2,737 Agility: attack power +2,637 with +2,737 under it, armor +2,684 with +3,174 under it (both changes)", shows("map_primary", "» Attack power") == "+2,637 => +2,737"
+  and shows("map_primary", "» Armor") == "+2,684 => +3,174" and shows("map_primary") == "2,637 => +2,737", shows("map_primary", "» Armor"))
+check("  (QoL 0.7.28) no » Ability Scaling on the Stats tab (its numbers are on the Ability Scaling tab), no nested ability line, no Ability Scaling hover",
+  line("map_primary", "» Ability Scaling") == nil and line("map_primary", "Fracture") == nil and line("map_primary", "» Abilities with your number") == nil
+  and not tipHas(card("map_primary"), "Ability Scaling") and not tipHas(card("map_primary"), "Abilities: "), sub("map_primary", "» Ability Scaling"))
+check("  ...the Ability Scaling tab carries it: Fracture 6,944 with +7,144 under it, Infernal Strike 3,472 with +3,572 (x 3,572 / 3,472 attack power)",
+  (function()
+    local adv = c.advanced
+    c.advanced = true
+    local m = CM.Build(c, "spells")
+    c.advanced = adv
+    local f, i = m.byKey.spell9101, m.byKey.spell9102
+    return f and i and f.row.entries[1].value == "6,944" and f.row.entries[1].newValue == "+7,144" and i.row.entries[1].value == "3,472" and i.row.entries[1].newValue == "+3,572"
+  end)())
 check("  without a changed number there is no such line", (function() ns.CharToolkit_SetInput("sv:primary", ""); local v = CM.Build(c, "stats").byKey.map_primary; ns.CharToolkit_SetInput("sv:primary", "2737")
   for _, pp in ipairs(v.pairs) do if pp.label == "» Ability Scaling" or pp.label == "» Abilities with your number" then return false end end; return true end)())
 check("  dodge with your numbers is not given by the game: said in the note, not guessed", cells("map_primary", "» Dodge") == "+5.00%||with your numbers: not given by the game", cells("map_primary", "» Dodge"))
-check("  Defense > Armor shows the new total and damage reduction", (card("map_armor").value or ""):find(" -> ", 1, true) ~= nil and (line("map_armor", "» Damage reduction") or ""):find(" -> ", 1, true) ~= nil)
-check("  Offense > Attack Power 3,472 -> 3,572, from Agility +2,637 -> +2,737, DPS +992.0 -> +1,020.6", card("map_ap").value == "3,472 -> 3,572"
-  and line("map_ap", "From Agility") == "+2,637 -> +2,737" and line("map_ap", "» Damage per second") == "+992.0 -> +1,020.6", tostring(card("map_ap").value) .. " " .. tostring(line("map_ap", "» Damage per second")))
+check("  Defense > Armor shows the new total and damage reduction (each under the current one, with its sign)", card("map_armor").newValue ~= nil
+  and (card("map_armor").newValue):find("^%+") ~= nil and select(2, line("map_armor", "» Damage reduction")).newValue ~= nil
+  and not (card("map_armor").value or ""):find(" -> ", 1, true), tostring(card("map_armor").newValue))
+check("  Offense > Attack Power 3,472 with +3,572 under it, from Agility +2,637 with +2,737, DPS +992.0 with +1,020.6", shows("map_ap") == "3,472 => +3,572"
+  and shows("map_ap", "From Agility") == "+2,637 => +2,737" and shows("map_ap", "» Damage per second") == "+992.0 => +1,020.6", tostring(shows("map_ap")) .. " " .. tostring(shows("map_ap", "» Damage per second")))
 ns.CharToolkit_SetInput("sv:haste", tostring(CM.svBase.haste + 300))
 d = render()
-check("type 300 more haste: Infernal Strike's recharge 9.6 s -> less (estimate, its text names Haste)",
-  (sub("map_haste", "» Abilities (their text names Haste)") or ""):find("^Infernal Strike=9%.6 s %-> %d%.%d s recharge$") ~= nil, sub("map_haste", "» Abilities (their text names Haste)"))
-check("type 300 more haste: Attack Speed 2.00 s -> faster (note: estimate), GCD 1.16 s -> less", (card("map_aspeed").value or ""):find("^2%.00 s %-> 1%.%d%d s$") ~= nil
-  and card("map_aspeed").note == "estimate" and (card("map_gcd").value or ""):find("^1%.16 s %-> 1%.%d%d s") ~= nil, tostring(card("map_aspeed").value) .. " / " .. tostring(card("map_gcd").value))
+check("type 300 more haste: Infernal Strike's recharge 9.6 s with a lower one under it (-N.N s recharge; estimate, its text names Haste)",
+  (shows("map_haste", "Infernal Strike") or ""):find("^9%.6 s recharge => %-%d%.%d s recharge$") ~= nil, shows("map_haste", "Infernal Strike"))
+check("type 300 more haste: Attack Speed 2.00 s with -1.NN s under it (note: estimate), GCD 1.16 s with a lower one", (shows("map_aspeed") or ""):find("^2%.00 s => %-1%.%d%d s$") ~= nil
+  and card("map_aspeed").note == "estimate" and (shows("map_gcd") or ""):find("^1%.16 s => %-1%.%d%d s$") ~= nil
+  and (shows("map_haste", "» Global cooldown") or ""):find("^1%.16 s => %-1%.%d%d s$") ~= nil, tostring(shows("map_aspeed")) .. " / " .. tostring(shows("map_gcd")) .. " / " .. tostring(shows("map_haste", "» Global cooldown")))
 ns.CharToolkit_SetInput("sv:haste", "")
 ns.CharToolkit_SetInput("sv:crit", ""); ns.CharToolkit_SetInput("sv:mastery", "997"); ns.CharToolkit_SetInput("sv:primary", "")
 d = render()
 check("an empty box, or your own number, goes back to yours", c.whatIfStats.crit == nil and c.whatIfStats.mastery == nil and c.whatIfPrimary == nil and card("map_crit").value == "22.48%")
-check("the map and What If share the amounts (What If's crit box)", (function() ns.CharToolkit_SetInput("crit", "50"); local v = CM.Build(c, "stats").byKey.map_crit.value; ns.CharToolkit_SetInput("crit", "0"); return v end)() == "22.48% -> 23.57%")
+check("the map and What If share the amounts (What If's crit box)", (function() ns.CharToolkit_SetInput("crit", "50"); local it = CM.Build(c, "stats").byKey.map_crit; ns.CharToolkit_SetInput("crit", "0"); return it.value .. " => " .. tostring(it.newValue) end)() == "22.48% => +23.57%")
 
 -- 3. Layout (V11) and secrets ----------------------------------------------------------------------------------------------
 ns.CharToolkit_SetInput("sv:crit", "700"); ns.CharToolkit_SetInput("sv:primary", "2737")
@@ -177,7 +198,9 @@ local function layoutOK(dd)
     if r.x < 0 or r.x + r.w > W + 0.01 or r.w <= 0 then return false, r.kind .. " " .. tostring(r.text) end
   end
   local t = {}
-  for _, r in ipairs(dd.layout) do if r.kind ~= "hit" and r.kind ~= "cell" then t[#t + 1] = r end end
+  -- (QoL 0.7.28: a bucket bar's band and the Gear Summary's bars and tiles are drawn behind their text)
+  local FILL = { hit = true, cell = true, bucketbar = true, gsbar = true, gstile = true, gsseg = true, gscol = true, gsswatch = true }
+  for _, r in ipairs(dd.layout) do if not FILL[r.kind] then t[#t + 1] = r end end
   for i = 1, #t do for j = i + 1, #t do
     local a, bb = t[i], t[j]
     if a.x < bb.x + bb.w and bb.x < a.x + a.w and a.y < bb.y + bb.h and bb.y < a.y + a.h then return false, a.kind .. " '" .. tostring(a.text) .. "' / " .. bb.kind .. " '" .. tostring(bb.text) .. "'" end

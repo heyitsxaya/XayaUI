@@ -232,10 +232,8 @@ local GUT = ns.UI_GUTTER or 10
 local SLOT_PAD = 2                          -- half the 4 px between two slots: a slot's band reaches this far above and below it
 local BLOCK_OFF, MODEL_GAP = 6, 4           -- the block starts 6 px from the slot and ends 4 px before the model scene
 local MIN_COL = 40                          -- narrower than this beside the model at Blizzard's width: the 0.7.19 layout, toward the middle
--- (QoL 0.7.24) with the wider window on, a block never goes toward the middle (over the model), however narrow its room beside the
--- model is: at the default +42 px (380 / 582) that room is about 18 px, so a block narrows, steps its font down, cuts at a word and
--- packs its gems as icons as before, and one that still does not fit is not drawn (its slot's item tooltip still has it). Xaya will
--- give feedback on the 380 px window (REQUEST-LOG #56).
+-- (QoL 0.7.24 kept a block beside the model with the wider window on, hiding it when it did not fit; QoL 0.7.28 undoes that, her
+-- answer "Over the model": below MIN_COL the block runs toward the middle at any width, see LabelBoxes.)
 local ROW_GAP, ICON_GAP, COMPACT_GAP = 1, 3, 2
 local ICON_SIZES = { 16, 12 }               -- the gem / socket icon (the game's own socket is 11 px; Xaya: "much too small"; QoL 0.7.24,
                                             -- her answer 2026-11-06: "16 px"; 12 only where a block does not fit at 16)
@@ -302,14 +300,17 @@ local function LabelBoxes(g, name, r)
     end
     local left, m = LEFT_SLOTS[name], g.model
     local box = { t = r.t + SLOT_PAD, b = r.b - SLOT_PAD }
-    local wideOn = m and ns.CharReskin_WideOn and ns.CharReskin_WideOn()
+    -- (QoL 0.7.28; Xaya 2026-11-06 at 0.7.27's 380 px window: "character pane now missing all previous information around gems,
+    -- enchangs, embellishments, etc"; her answer "Over the model"; REQUEST-LOG #69 / #71) the 0.7.24 rule that a block never goes over
+    -- the model with the wider window on is undone: whenever the room beside the model is narrower than MIN_COL, the block runs toward
+    -- the middle, over the model's sides, at any window width (the 0.7.19 layout), so no block is hidden for lack of room
     if left then
         box.l = r.r + BLOCK_OFF
-        box.r = (m and (wideOn or m.l - MODEL_GAP - box.l >= MIN_COL)) and (m.l - MODEL_GAP) or (g.mid - GUT / 2)
+        box.r = (m and m.l - MODEL_GAP - box.l >= MIN_COL) and (m.l - MODEL_GAP) or (g.mid - GUT / 2)
         if box.r - box.l < 1 then return {} end
     else
         box.r = r.l - BLOCK_OFF
-        box.l = (m and (wideOn or box.r - (m.r + MODEL_GAP) >= MIN_COL)) and (m.r + MODEL_GAP) or (g.mid + GUT / 2)
+        box.l = (m and box.r - (m.r + MODEL_GAP) >= MIN_COL) and (m.r + MODEL_GAP) or (g.mid + GUT / 2)
         if box.r - box.l < 1 then return {} end
     end
     local w = g.weap
@@ -1070,7 +1071,7 @@ function ns.BuildCharReskinPage(Notify)
             enchants = T("enchants", 4, "Enchants beside the slots", "The enchant's name beside each slot, toward the model (without the \"Enchant <slot> - \" the game puts before every enchant's name), wrapped; \"No enchant\" in orange on a slot that takes one (the Character Toolkit's enchant slots); \"Embellished (worn / limit): <item name>\" on an embellished item (its hover: \"Embellished - Name: <item name>\", then what it does as the game words it). Hover a line: the whole line and what it does, as far as the game gives it.", "full", isOff),
             gems = T("gems", 5, "Gems and sockets beside the slots", "One row per socket under the enchant: the gem's icon (16 px; 12 on a slot where 16 does not fit) and its name, or the empty socket's type in orange. Hover a gem for its tooltip. The Character Toolkit's slot overlays leave out their empty-socket mark while this is on.", "full", isOff),
             stats = T("stats", 6, "Stat list", "The stat list's headers, labels and values in the theme's colours, with a faint stripe on every other row instead of Blizzard's art.", "full", isOff),
-            wide = T("wide", 7, "Wider window (room for the enchant names)", "Makes the character window wider on its Character tab and centres the model, so the enchant, embellishment and gem lines sit between the slots and the model instead of over it. Changed only out of combat; switching tabs gives Blizzard's width on the other tabs. Off: Blizzard's width (the lines then lie over the model's sides); once it has been on, a /reload removes its two hooks fully (while off they do nothing).", "full", isOff),
+            wide = T("wide", 7, "Wider window (room for the enchant names)", "Makes the character window wider on its Character tab and centres the model, so the enchant, embellishment and gem lines sit between the slots and the model instead of over it (where the extra width leaves too little room beside the model, they run over its sides: nothing is hidden). Changed only out of combat; switching tabs gives Blizzard's width on the other tabs. Off: Blizzard's width (the lines then lie over the model's sides); once it has been on, a /reload removes its two hooks fully (while off they do nothing).", "full", isOff),
             widePx = R("widePx", 8, "Extra width", "How much wider than Blizzard's window, in pixels (default 42: 338 -> 380 without the stats pane, 540 -> 582 with it). Each side of the model gets half.", 0, 300, 1, false,
                 function() return isOff() or not C().wide end),
             bgAlpha = R("bgAlpha", 9, "Background opacity", "How solid the window's background is (50% to 100%).", 0.5, 1, 0.05, true, isOff),
