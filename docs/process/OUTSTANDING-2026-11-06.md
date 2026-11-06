@@ -111,6 +111,24 @@ These rows still read open or BRANCH, but `main` already carries the work. Not e
 - S3 log R61, R62, R64 (C8, C9, C10, C12), R66 read BRANCH: landed on `main` at d2ccacd (QoL 0.7.32). Its header still says `main` = `0ef9cb0`.
 - GitHub: 258 open issues; many describe work since landed (for example #380, #378, #381, #273, #351). They were not re-checked one by one. A triage pass is its own task.
 
+## 7. Handed over by retired chats (received 2026-11-06 17:06-17:08 UTC)
+Six chats sent their outstanding items here at Xaya's request. Each claim below was checked against `main` `22abdeb` where marked "checked"; the rest is the sending session's word.
+
+| From | Item | Status here |
+|---|---|---|
+| "Attribution pane styling" (014bN6tXAHaczRsBX4wyBunJ) | Credits pane restyle: gutter +10 px, "Credits and attribution" as h1, subheaders h2, one square-cornered box per section with rows only, background 10 % less transparent | Same as **B6** (section 1). Its blocker ("code not found") is resolved: the pane is `XayaUI_Options/AddonInfo.lua` (checked). New CONFIRM points for her: (a) gutter = the pane's outer padding; (b) "10 % less transparent" = background alpha +0.10; (c) what h1 / h2 look like (font sizes). |
+| "Repository push check" (014bN6tSeFBsvYBzTaNndPGE) | Nothing to push. Asks whether the Recycle Bin branch `claude/magical-cray-jmspwv` is merged, superseded or pending | It is open draft PR #92 (section 3); HIEFF-3 deferred the recycle bin. Keep or close: her call. `wip/notepad-icons` ("paused, untested") is not reviewed: added as unknown. |
+| "xui chat indentation / wrapping" (014bN6tVUUALYM7nWYh9SuGx) | #346 chat left gap (fix in Chat 0.6.6, 39f37ad; still open on GitHub, checked); scroll bar vs history button (Chat 0.6.8); QA D4b-D4e | In-game checks for her (section 2): #346 on a build ≥ 0.6.6, ideally with `/xui chat indent` output, then close #346. Unconfirmed lead: Edit Mode clamp insets push ChatFrame1 right near the screen edge. |
+| "Character window stat display improvements" (014bN6tVdvvFNcwwRRBHuqTv) | QA E1d2 (does the game's rating converter apply diminishing returns?); DECISIONS-2026-11-04 "Character Toolkit" questions; about 24 stat calls added in QoL 0.6.2 not checked against the 12.1.5 docs | In-game check (E1d2) and decisions for her; the unchecked calls are owned work (S1). New, never tracked: (1) **proposal**: two decimals on Blizzard's own character stats (22.48 % instead of 22 %), by hooking PaperDollFrame_SetLabelAndText: CONFIRM, not built; (2) her "~16.1 mastery rating per 1 %" vs her screenshot 997 / 60.69 = 16.43: where 16.1 came from is unknown (CHARWIN-1 quotes 16.1 without this note); (3) SESSION-START-SUMMARY.md line 280 still says "Character Toolkit (QoL 0.7.0-0.7.1)" (checked): stale. |
+| "Last chat visibility" (014bN6tWzNXK37yGSNX83DuV) | (1) "the growth should also be informed by anchor placement in the parent group container" | **Closed**: MAIN in core 0.6.7 (HIEFF-D6, debug-log 2026-11-04-0425; checked). |
+| same | (2) The "XayaUI High-Effort Build" / Combat Engine chat (014bN6tUvbkCv9Ha9VgNF4Xa) still RUNNING, about 635k tokens of context, cost field about $437.57 (the sender's get_session reading, not re-checked) | **Her decision**: stop or archive that chat. Its PR #363 has had no activity since 11-04. |
+| same | (3) Whether a chat uses credits or the plan limit is account-wide, not per chat | INFERENCE by the sender; no official source found. Not verified here. What a fresh chat does change is the cached context re-read each turn. |
+| "Advanced tooltips" (014bN6tX5U6xmoaSMwjbFPZx) | TIPS-30/31 Aura ID in combat (Bonus 0.6.4): she runs `/xuitt aura 203720` and `/xuitt aura 258920` in and out of combat. Demon Spikes buff ID 203819 unconfirmed | In-game check for her (section 2). Two earlier "fixed" claims were made without checking in combat: verify before claiming. |
+| same | TIPS-3 (IDs shown three times; another addon), TIPS-1 (next tooltip work a-d), TIPS-23 (.gitignore goal) | Already in section 1. |
+| same | TIPS-10/12 spell database: pipeline on `main` (`/xuiformula`, `tools/formula_fit.py --emit`); no capture run | Waits on her: the walkthrough (about 5 min per spec / talent setup) and the SavedVariables file. |
+| same | Formula lines (Bonus 0.6.2) not checked in game; Windows installer `tools/qa-installer/Link-XayaUI.bat` never run; her `Install-XayaUI.ps1` failure cause not found | In-game / on-her-PC checks (section 2). |
+| same | Harness has no C_Texture stand-in | **Moot**: the Options code checks `C_Texture` before use (`XayaUI_Options/Options.lua:5240-5241`, checked); the 11-04 harness failure was fixed that way. |
+
 ---
 
 ## Process and analysis (how this list was made)
