@@ -84,13 +84,21 @@ check("the service says the new saved file, the name, and opens the window",
       'savedFile = "XayaUI_DevAssist.lua"' in probe and 'name = "XayaUI Dev Assist"' in probe and "Open = function() if GD and GD.Toggle then GD.Toggle() end end" in probe)
 opts = open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
 check("Settings opens it through the service, not through the old global", "_G.XayaUIGameDump" not in opts and "svc.Open()" in opts and 'name = "Open Dev Assist"' in opts)
+import re
 core = "".join(open(os.path.join(ROOT, "XayaUI", f), encoding="utf-8").read() for f in os.listdir(os.path.join(ROOT, "XayaUI")) if f.endswith(".lua"))
-check("core names neither the old nor the new folder (it uses the service)", "XayaUI_GameDump" not in core and "XayaUI_DevAssist" not in core and "XayaUIDevAssist" not in core)
+# (core 0.6.56: comments may say where a moved command went, XayaUI_DevAssist/CoreDebug.lua, and the error-code table maps an error
+# raised in that folder to XUI-E007; neither calls the addon. Comments and that one data line are left out of this check.)
+code = re.sub(r"--[^\n]*", "", core).replace('folder = "XayaUI_DevAssist"', "")
+check("core names neither the old nor the new folder in its code (it uses the service)", "XayaUI_GameDump" not in core and "XayaUI_DevAssist" not in code and "XayaUIDevAssist" not in code)
 
 # 4. the toc
 toc = open(os.path.join(DA, "XayaUI_DevAssist.toc"), encoding="utf-8").read()
 listed = [l.strip() for l in toc.splitlines() if l.strip() and not l.startswith("#")]
 on_disk = sorted(f for f in os.listdir(DA) if f.endswith(".lua"))
+# (Dev Assist 0.7.5: QAWalks-*.lua are walkthroughs for the shared QA framework, QAWalk.lua, on another branch; until that file is here
+# they stay out of the toc on purpose, so the game never reads them)
+if "QAWalk.lua" not in on_disk:
+    on_disk = [f for f in on_disk if not f.startswith("QAWalks-")]
 _ver = re.search(r"^## Version: (\d+)\.(\d+)\.(\d+)\s*$", toc, re.M)   # 0.7.0 or later (0.7.1: instance, stats, tooltips)
 check("toc: title, version 0.7.0 or later, saved table XayaUIDevAssistDB", "## Title: XayaUI Dev Assist" in toc and _ver is not None
       and tuple(int(x) for x in _ver.groups()) >= (0, 7, 0) and "## SavedVariables: XayaUIDevAssistDB" in toc)
@@ -112,7 +120,8 @@ check("docs/reference/build_reference.py reads either name", "env.XayaUIDevAssis
 # 6. nothing else still points at the old folder (history in debug-log/ and the RETROSPECTIVE stays as written)
 allowed = {"XayaUI_DevAssist/DevAssist.lua", "XayaUI_DevAssist/ApiInventory.lua", "XayaUI_DevAssist/AuraCatalogue.lua", "XayaUI_DevAssist/Probe.lua",
            "XayaUI_DevAssist/FormulaCapture.lua", "XayaUI_DevAssist/XayaUI_DevAssist.toc", "XayaUI_Bonus/Tooltips.lua", "tools/formula_fit.py",
-           "docs/reference/build_reference.py", "tests/devassist_rename_run.py"}
+           "docs/reference/build_reference.py", "tests/devassist_rename_run.py",
+           "XayaUI_DevAssist/QAWalks-Checklist.lua"}   # (generated from docs/QA-CHECKLIST.md: step J12 is about the old folder)
 out = subprocess.run(["git", "grep", "-l", "XayaUI_GameDump", "--", ".", ":!debug-log", ":!docs/process/RETROSPECTIVE.md", ":!MANIFEST.md5"],
                      cwd=ROOT, capture_output=True, text=True).stdout.split()
 stray = [p for p in out if p not in allowed and not p.endswith(".md") and p != ".gitignore"]

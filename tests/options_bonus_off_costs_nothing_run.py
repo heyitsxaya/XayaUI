@@ -3,7 +3,7 @@
 disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a
 standing rule for all current and future feature / element builds".
 Features: the settings window's driver and /xui debug perf frame counter (Options.lua), the debug console strip (Options.lua), "Use drafts"
-(Drafts.lua), the four Tooltip features (Tooltips.lua, TooltipsUI.lua), Custom Data Panels and Bars (DataPanels.lua), "Show Notepad",
+(Drafts.lua), the four Tooltip features (Tooltips.lua, TooltipsUI.lua), Data Panels (DataPanels.lua), "Show Notepad",
 its formatting tools and toolbar (Notepad.lua), "Accept notes shared by other XayaUI users" and the share pump (NotepadShare.lua), and the
 Calculator (Calculator.lua).
 Per feature: saved off at login -> no frame, event, OnUpdate, tooltip post-call or timer of it exists or runs; switched on through its
@@ -113,13 +113,13 @@ if MODE == "off" then
   ---------------------------------------------------------------------------------------------------------------------------------
   -- A. Bonus features saved off: after login, nothing of them exists or runs
   ---------------------------------------------------------------------------------------------------------------------------------
-  check("A1 all five Tooltip features saved off (Type colours since Bonus 0.6.18): no tooltip post-call is installed (10 before)", posts() == 0, posts())
+  check("A1 all five Tooltip features saved off (Type colours since Bonus 0.6.20): no tooltip post-call is installed (10 before)", posts() == 0, posts())
   check("A2 ...and Tooltips.lua / TooltipsUI.lua made no frame and registered no event", nothing(TT_) and nothing(TTUI), cost(TT_) .. " | " .. cost(TTUI))
   check("A3 ...hovering a spell runs no XayaUI code and adds no line", hoverSpell(133) == "" and idCalls == 0, idCalls)
   W.fire("PLAYER_REGEN_DISABLED"); W.fire("PLAYER_REGEN_ENABLED"); W.fire("ACTIVE_PLAYER_SPECIALIZATION_CHANGED")
   check("A4 ...combat end and a spec change do not look for the class's formula data addon (Formulas off)", ncalls("DoesAddOnExist", TT_) == 0,
     ncalls("DoesAddOnExist", TT_))
-  check("A5 Custom Data Panels and Bars saved off (a panel enabled under it): DataPanels.lua made no frame, event or OnUpdate", nothing(DP), cost(DP))
+  check("A5 Data Panels saved off (a panel enabled under it): DataPanels.lua made no frame, event or OnUpdate", nothing(DP), cost(DP))
   check("A6 Notepad saved hidden: no Notepad box (about 34 frames before) and no event of Notepad.lua", rawget(_G, "XayaUINotepad") == nil and nothing(NP), cost(NP))
   refreshes = 0
   W.fire("PLAYER_REGEN_DISABLED"); W.fire("PLAYER_REGEN_ENABLED")
@@ -158,7 +158,7 @@ if MODE == "off" then
   local d1 = ncalls("DoesAddOnExist", TT_)
   W.fire("PLAYER_REGEN_ENABLED"); W.fire("TRAIT_CONFIG_UPDATED")
   check("B6 ...off again: combat end and a talent change look for nothing", ncalls("DoesAddOnExist", TT_) == d1 and events(TT_) == 0, cost(TT_))
-  -- B7-B10 Custom Data Panels and Bars (its tick box on the Bonus Features row)
+  -- B7-B10 Data Panels (its tick box on the Bonus Features row)
   dpTab().xuiSwitch.set({}, true); W.tick(0.1, 5)
   local bl = rawget(_G, "XayaUIDataPanel_bl")
   local _, l7, s7 = events(DP)
@@ -308,7 +308,7 @@ def saved_for(mode):
         return {"XayaUI": {"CueRulesDB": {
             "rules": rules(2), "folders": FOLDERS,
             "tooltips": {"ids": {"enabled": False}, "ilvl": {"enabled": False}, "forces": {"enabled": False}, "formulas": {"enabled": False},
-                         "typeColors": {"enabled": False}},   # (Bonus 0.6.18: the fifth section, Type colours)
+                         "typeColors": {"enabled": False}},   # (Bonus 0.6.20: the fifth section, Type colours)
             "dataPanels": {"general": {"enabled": False}, "bl": {"enabled": True}},
             "notepad": {"shown": False, "acceptShares": False},
             "ui": {"consoleAutoOpen": False}}}}

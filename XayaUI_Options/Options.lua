@@ -24,6 +24,8 @@ ns.OptionsApi = {}
 -- applies to: chat, character pane, Esc menu. Will apply in the future to: shopping list"): every page registered under module
 -- "reskin": the Chat Panel (XayaUI_Chat), the Character Pane (XayaUI_QoL) and the Esc Menu (XayaUI_Reskin). The Chat tab is gone with
 -- it (the Chat Panel was its only page); a tab with no pages is not drawn.
+-- a group and everything in it to the Recycle Bin, by id (the Dev Assist QA walkthroughs clean up their test group with it)
+function ns.OptionsApi.DeleteFolderAll(id) if ns.DeleteFolderAllById then return ns.DeleteFolderAllById(id) end end
 ns.OptionsApi.TABS = { chat = { key = "chat", name = "Chat", order = 5 }, qol = { key = "qol", name = "QoL", order = 5.1 },
     bonus = { key = "bonus", name = "Bonus Features", order = 5.2 }, reskin = { key = "reskin", name = "Blizzard UI Reskin", order = 5.3 } }
 ns.OptionsApi.pageTab = {}   -- page key -> the top tab it is drawn in (filled by ModuleTabs), so a page that moved still opens
@@ -65,12 +67,53 @@ function ns.SettingsTabOf(module) local t = ns.OptionsApi.TABS[module]; return t
 -- Painted by ns.OptionsApi.PaintTabSwitches on every decorate pass (each redraw, and the window's 0.25 s tick), so a re-layout of the
 -- tab row by AceGUI (a resize, a tab switch) is followed within a quarter second. The tab is made wider by the box, and its text moves
 -- right by the same amount, so the box never covers the name. Other tabs have no box (a recycled tab button hides its own).
-ns.OptionsApi.TAB_SWITCHES = {
-    reskin = { name = "All reskins",
-        desc = "Unticked: every reskin in this tab is off at once and Blizzard's own look is back. Each reskin keeps its own tick box (its row in the left pane, greyed while this is off) for when this is ticked again.",
-        get = function() return ns.ReskinTabOn() end,
-        set = function(v) ns.SetReskinTab(v and true or false) end },
-}
+-- (Options 0.6.55; REQUEST-LOG UI-5 / UI-7; Xaya 2026-11-06: "Blizzard UI Reskin is not a check box at the top level. the check box
+-- should be enable and disable in the tab itself and then after a reload individual reskin items populate", her answer "Right pane +
+-- reload prompt".) The tab button carries no box any more (this table is empty; PaintTabSwitch hides a box a recycled button had).
+-- The switch is the first row of the tab, Overview (ns.OptionsApi.ReskinOverview below): ticking or unticking it switches every reskin
+-- at once as before (core ns.SetReskinTab) and asks "Reload now?"; the reskins' own rows are listed only when the switch was on when
+-- this settings addon loaded (it loads on the first open after a login or /reload), so they appear after a reload.
+ns.OptionsApi.TAB_SWITCHES = {}
+ns.OptionsApi.reskinAtLoad = ns.ReskinTabOn and ns.ReskinTabOn() or false   -- the switch as it was when this addon loaded
+ns.OptionsApi.RESKIN_SWITCH = "Enable Blizzard UI Reskin"
+function ns.OptionsApi.ReskinOverview(args)
+    for key, page in pairs(args) do
+        if type(page) == "table" then
+            local old = page.hidden
+            page.hidden = function(...)
+                if not ns.OptionsApi.reskinAtLoad then return true end
+                if type(old) == "function" then return old(...) end
+                return old
+            end
+        end
+    end
+    args.reskinOverview = { type = "group", name = "Overview", order = 0, args = {
+        enable = { type = "toggle", order = 1, width = "full", name = ns.OptionsApi.RESKIN_SWITCH,
+            desc = "Every reskin in this tab at once. Unticked: every reskin is off and Blizzard's own look is back; each keeps its own tick box for when this is ticked again. The reskins are listed in this tab after a reload.",
+            get = function() return ns.ReskinTabOn() end,
+            set = function(_, v)
+                ns.SetReskinTab(v and true or false)
+                if ns.OptionsApi.ReloadPrompt then ns.OptionsApi.ReloadPrompt() end
+            end },
+        note = { type = "description", order = 2, width = "full", fontSize = "medium",
+            name = function()
+                local now = ns.ReskinTabOn()
+                if now ~= ns.OptionsApi.reskinAtLoad then return "Changed: /reload to list the reskins as they are now." end
+                return now and "The reskins are in the rows under Overview." or "Tick it, then /reload: the reskins are listed under Overview."
+            end },
+    } }
+end
+-- "Reload now?" (Reload / Later). C_UI.Reload (no arguments, no returns; ReloadUI if it is missing, as Console.lua does);
+-- StaticPopupDialogs / StaticPopup_Show: Blizzard's FrameXML globals, checked before use.
+function ns.OptionsApi.ReloadPrompt()
+    if type(StaticPopupDialogs) ~= "table" or type(StaticPopup_Show) ~= "function" then return end
+    if not StaticPopupDialogs.XAYAUI_RESKIN_RELOAD then
+        StaticPopupDialogs.XAYAUI_RESKIN_RELOAD = { text = "Blizzard UI Reskin: reload now to list the reskins as they are now?",
+            button1 = "Reload", button2 = "Later", OnAccept = function() local r = (C_UI and C_UI.Reload) or ReloadUI; if type(r) == "function" then r() end end,
+            timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3 }
+    end
+    StaticPopup_Show("XAYAUI_RESKIN_RELOAD")
+end
 ns.OptionsApi.TAB_BOX = 14   -- the tick box's size on the tab
 function ns.OptionsApi.PaintTabSwitches(root)
     local function walk(w, d)
@@ -144,12 +187,13 @@ function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
     for module, tab in pairs(ns.OptionsApi.TABS) do
         local args = ns.BuildSettingsPages(module, Notify)
         if module == "qol" and qolExtra then for k, v in pairs(qolExtra) do args[k] = v end end
+        if module == "reskin" and next(args) then pcall(ns.OptionsApi.ReskinOverview, args) end
         local list = {}
         for key, ent in pairs(args) do
             local nm = ent.name
             if type(nm) == "function" then local ok, v = pcall(nm); nm = ok and v or nil end
             nm = (type(nm) == "string" and nm ~= "") and nm:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") or key
-            local old = (key == "allqol" or key == "allcursor" or key == "allbars") and 1 or 0
+            local old = (key == "allqol" or key == "allcursor" or key == "allbars") and 1 or (key == "reskinOverview" and -1) or 0
             list[#list + 1] = { key = key, name = nm:lower(), old = old }
         end
         table.sort(list, function(a, b)
@@ -168,9 +212,97 @@ function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
             end
         end
         ns.OptionsApi.featureParents[module] = parents
+        for _, ent in pairs(args) do if type(ent) == "table" and ent.type == "group" then pcall(ns.OptionsApi.GreyWhileOff, ent, {}) end end
         if next(args) then out[tab.key] = { type = "group", name = tab.name, order = tab.order, childGroups = "tree", args = args } end
     end
     return out
+end
+
+-- (Options 0.6.55; REQUEST-LOG UI-5 / UI-8; Xaya 2026-11-06: "all options that are deselected should grey out to indicate they are
+-- disabled", her answer "Left pane + their settings".) While a feature's switch (group.xuiSwitch) is off, every setting on its pages
+-- and on its parts' pages is greyed (AceConfig "disabled"; the controls cannot be changed), and a part's own switch is greyed too.
+-- The pages stay open to look at: a non-inline group is never disabled itself (AceConfigDialog would grey and lock its left-pane
+-- row). A "disabled" given as a handler method name (a string) is left as it is (it cannot be wrapped here).
+function ns.OptionsApi.GreyWhileOff(g, offs)
+    local sw = g.xuiSwitch
+    local mine = offs
+    if type(sw) == "table" and type(sw.get) == "function" then
+        if #offs > 0 then ns.OptionsApi.WrapDisabled(sw, offs) end
+        mine = {}
+        for i, f in ipairs(offs) do mine[i] = f end
+        mine[#mine + 1] = function(info) local ok, v = pcall(sw.get, info); return ok and not v end
+    end
+    for _, o in pairs(type(g.args) == "table" and g.args or {}) do
+        if type(o) == "table" then
+            if o.type == "group" and not o.inline then ns.OptionsApi.GreyWhileOff(o, mine)
+            elseif #mine > 0 then
+                ns.OptionsApi.WrapDisabled(o, mine)
+                if o.type == "group" then ns.OptionsApi.GreyWhileOff(o, mine) end
+            end
+        end
+    end
+end
+function ns.OptionsApi.WrapDisabled(o, offs)
+    local old = o.disabled
+    if type(old) == "string" or o.xuiGreyWrapped then return end
+    o.xuiGreyWrapped = true
+    o.disabled = function(info, ...)
+        for _, off in ipairs(offs) do if off(info) then return true end end
+        if type(old) == "function" then return old(info, ...) end
+        return old
+    end
+end
+-- the row of a feature tab's left pane (the tab's own tree), its tree and its user data; nil for every other tree
+function ns.OptionsApi.FeatureRow(button)
+    local tree = button and button.obj
+    local user = tree and tree.GetUserDataTable and tree:GetUserDataTable()
+    local path = user and user.path
+    if type(path) ~= "table" or #path ~= 1 or not ns.OptionsApi.TABS[path[1] or ""] then return nil end
+    return tree, user
+end
+-- (UI-5 / UI-8: "all options under a given section should be appropriately nested", her answer "Parent's name + 8 px") a part's row
+-- starts 8 px right of where its parent's name starts (each name's left inset is noted as it is drawn; parents are drawn first)
+function ns.OptionsApi.NestX(button, level, x0)
+    if level < 2 then return x0 end
+    local tree = ns.OptionsApi.FeatureRow(button)
+    local parent = tree and tostring(button.uniquevalue or ""):match("^(.+)\001[^\001]+$")
+    local pl = parent and tree.xuiNameL and tree.xuiNameL[parent]
+    return pl and (pl + 8) or x0
+end
+function ns.OptionsApi.NoteNameL(button)
+    local tree = ns.OptionsApi.FeatureRow(button)
+    if not (tree and button.xuiTextL) then return end
+    tree.xuiNameL = tree.xuiNameL or {}
+    tree.xuiNameL[tostring(button.uniquevalue or "")] = button.xuiTextL
+end
+-- an unticked feature's row (or a part of one) shows its name in grey
+ns.OptionsApi.GREY = { 0.5, 0.5, 0.5 }
+function ns.OptionsApi.RowOff(button)
+    local tree, user = ns.OptionsApi.FeatureRow(button)
+    if not tree then return false end
+    local g = user.option
+    local info = { user.path[1] }
+    local segs = {}
+    for seg in tostring(button.uniquevalue or ""):gmatch("[^\001]+") do segs[#segs + 1] = seg end
+    for _, seg in ipairs(segs) do
+        g = type(g) == "table" and type(g.args) == "table" and g.args[seg] or nil
+        if type(g) ~= "table" then return false end
+        info[#info + 1] = seg
+        local sw = g.xuiSwitch
+        if type(sw) == "table" and type(sw.get) == "function" then
+            local ok, v = pcall(sw.get, info)
+            if ok and not v then return true end
+        end
+    end
+    return false
+end
+function ns.OptionsApi.GreyRow(button)
+    local fs = button and button.text
+    if not (fs and ns.OptionsApi.RowOff(button)) then return end
+    local t = fs:GetText()
+    if type(t) == "string" and t:find("|c", 1, true) then fs:SetText((t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))) end
+    local c = ns.OptionsApi.GREY
+    fs:SetTextColor(c[1], c[2], c[3])
 end
 
 -- The options tree drawn last, kept for a redraw that changes nothing in it (Options 0.6.39; Xaya 2026-11-05: "console toggle has a
@@ -242,8 +374,6 @@ local CD_ORDER = { "none", "hasCharge", "ready", "notReady", "empty" }
 local BUFF_VALUES = { none = "(none - ignore buff)", missing = "Buff is MISSING", present = "Buff is present" }
 local BUFF_ORDER = { "none", "missing", "present" }
 local TRI_ORDER = { "none", "yes", "no" }
-local TALENT_STATE = { known = "must be KNOWN", notKnown = "must NOT be known" }
-local TALENT_STATE_ORDER = { "known", "notKnown" }
 local TALENT_MODE_USED = { all = "ALL listed talents must match", any = "ANY one listed talent is enough" }
 local TALENT_MODE_USED_ORDER = { "all", "any" }
 local TALENT_MODE = { none = "(none - ignore talents)", all = "ALL listed talents must match", any = "ANY one listed talent is enough" }
@@ -373,6 +503,21 @@ local function EnsureTextures()
         local gw = math.min(ns.TEX_PICK_ICON * 2, math.max(8, math.floor(ns.TEX_PICK_ICON * (g[3] or 1) / math.max(1, g[4] or 1) + 0.5)))   -- keep the picture's proportions
         texValues[g[2]] = PickRow(g[2], gw, g[1])
         texSorting[#texSorting + 1] = g[2]
+    end
+end
+
+-- the sound and art lists, for the auto-populate table's Cue set-up column (AutoPicker.lua, Options 0.6.53): the same lists the cue
+-- editor offers, and the same way a picked art is applied (ns.ApplyArtPick, used by the editor's "Or pick art" below)
+function ns.SoundChoices() EnsureSounds(); return soundList, soundValues, soundSorting end
+function ns.TexChoices() EnsureTextures(); return texValues, texSorting end
+function ns.ApplyArtPick(V, k)
+    if k == "0" then V.tex = "" else V.kind, V.tex = "file", k end
+    local follows = (tonumber(V.iconW) or 0) <= 0 and (tonumber(V.iconH) or 0) <= 0
+    for _, g in ipairs(ns.LocalGraphics or {}) do   -- art that follows the display: shape the display like the picture (capped at 256)
+        if follows and g[2] == k then
+            local sc = math.min(1, 256 / math.max(g[3], g[4]))
+            V.w, V.h = math.max(8, math.floor(g[3] * sc)), math.max(8, math.floor(g[4] * sc))
+        end
     end
 end
 
@@ -1305,7 +1450,7 @@ ns.PASTE_VIS = {
     vOnBar   = { "requireOnBar" },
     vHoverTip = { "hoverTip" },   -- "Show tooltip on hover" (own tick box; no longer rides along with "Texture / art")
 }
-ns.PASTE_VIS_SKIP = { text = true, count = true, absorb = true, x = true, y = true, anchor = true, anchorPlace = true }
+ns.PASTE_VIS_SKIP = { text = true, count = true, absorb = true, x = true, y = true, anchor = true, anchorPlace = true, point = true }
 ns.PASTE_TREE = {
     { "Triggers", {
         { "Cooldown trigger", {
@@ -1623,7 +1768,7 @@ local function BuildRule(i, rule)
             cdTimeOp = Sel(rule, "cdTimeOp", "Seconds left", 4.6, ns.CMP_OPS and ns.CMP_OPS.values or { any = "Any" }, ns.CMP_OPS and ns.CMP_OPS.order or { "any" },
                 function() Changed(rule); Notify() end,
                 { get = function() return rule.cdTimeOp or "any" end,
-                  desc = "Only true while the cooldown has this much time left. Exact when the game shows it; in combat the duration engine's estimate (/xui debug timing); with no estimate yet the trigger is unknown." }),
+                  desc = "Only true while the cooldown has this much time left. Exact when the game shows it; in combat the duration engine's estimate; with no estimate yet the trigger is unknown." }),
             cdTimeSec = { type = "input", name = "Seconds", order = 4.61, width = "half",
                 hidden = function() return not ns.CooldownUsed(rule) or not rule.cdTimeOp or rule.cdTimeOp == "any" end,
                 get = function() return rule.cdTimeSec ~= nil and tostring(rule.cdTimeSec) or "" end,
@@ -1646,7 +1791,7 @@ local function BuildRule(i, rule)
                 function() Changed(rule); Notify() end,
                 { get = function() return rule.buffTimeOp or "any" end,
                   hidden = function() return not ns.BuffUsed(rule) or rule.buffState ~= "present" end,
-                  desc = "Only true while the buff has this much time left. In combat the time is exact when the game shows it, otherwise the duration engine's estimate (/xui debug timing); with no estimate yet the trigger is unknown and the rule waits." }),
+                  desc = "Only true while the buff has this much time left. In combat the time is exact when the game shows it, otherwise the duration engine's estimate; with no estimate yet the trigger is unknown and the rule waits." }),
             buffTimeSec = { type = "input", name = "Seconds", order = 11.2, width = "half",
                 hidden = function() return not ns.BuffUsed(rule) or rule.buffState ~= "present" or not rule.buffTimeOp or rule.buffTimeOp == "any" end,
                 get = function() return rule.buffTimeSec ~= nil and tostring(rule.buffTimeSec) or "" end,
@@ -1832,7 +1977,23 @@ local function BuildRule(i, rule)
                 id = { type = "input", name = "Spell ID", order = 1, width = "half",
                     get = function() return tostring(t.id) end,
                     set = function(_, v) t.id = tonumber(v) or 0; Changed(rule); Notify() end },
-                state = Sel(t, "state", "Requirement", 2, TALENT_STATE, TALENT_STATE_ORDER, on),
+                -- #2 (Xaya: "three-click toggle (Known green / Not known red / not set)"): the same click pattern as the load conditions
+                -- below: click once Known (green), again Not known (red), a third time not set (no bearing on loading)
+                state = { type = "toggle", tristate = true, order = 2, width = 1.2, name = function()
+                        if t.state == "none" then return "Not set" end
+                        if t.state == "notKnown" then return "|cffff5555Not known|r" end
+                        return "|cff55ff55Known|r"
+                    end,
+                    desc = "Click: Known (green) -> Not known (red) -> Not set (this talent has no bearing on loading) -> Known.",
+                    get = function()
+                        if t.state == "none" then return false end
+                        if t.state == "notKnown" then return nil end
+                        return true
+                    end,
+                    set = function(_, v)
+                        if v == true then t.state = "known" elseif v == nil then t.state = "notKnown" else t.state = "none" end
+                        Changed(rule); Notify()
+                    end },
                 remove = { type = "execute", name = "Remove", order = 3, width = "half",
                     func = function() table.remove(rule.talents, j); Changed(rule); Notify() end },
             },
@@ -2076,14 +2237,7 @@ local function BuildRule(i, rule)
                 sorting = function() EnsureTextures(); return texSorting end,
                 get = function() if V.kind == "file" then return tostring(V.tex) end end,
                 set = function(_, k)
-                    if k == "0" then V.tex = "" else V.kind, V.tex = "file", k end
-                    local follows = (tonumber(V.iconW) or 0) <= 0 and (tonumber(V.iconH) or 0) <= 0
-                    for _, g in ipairs(ns.LocalGraphics or {}) do   -- art that follows the display: shape the display like the picture (capped at 256)
-                        if follows and g[2] == k then
-                            local sc = math.min(1, 256 / math.max(g[3], g[4]))
-                            V.w, V.h = math.max(8, math.floor(g[3] * sc)), math.max(8, math.floor(g[4] * sc))
-                        end
-                    end
+                    ns.ApplyArtPick(V, k)   -- shared with the auto-populate table's picture picker
                     Changed(rule); Notify()
                 end },
             sizeH = { type = "header", name = "Size & Orientation", order = 10 },
@@ -2259,16 +2413,28 @@ local function BuildRule(i, rule)
     local ANCHOR_ORDER = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }
     local pos = {
         type = "group", inline = true, name = "Position (Offset From the Anchor)", order = 20, args = {
-            anchor = { type = "select", name = "Anchor (X / Y are measured from this point)", order = 0.5, width = "double",
-                desc = "The point of the screen, or of this rule's group container, that X and Y are measured from. Changing it keeps the display exactly where it is and recalculates X / Y. Ignored while the display is snapped to a game frame, and in dynamic groups.",
+            -- P1 (#268; Xaya 2026-11-06, her labels: "Anchor point" -> "Anchored to" -> "To <target>'s point")
+            point = { type = "select", name = "Anchor point", order = 0.4, width = "double",
+                desc = "The point of this display that is placed. Changing it keeps the display exactly where it is and recalculates X / Y. Ignored while the display is snapped to a game frame, and in dynamic groups.",
                 values = ANCHOR_VALUES, sorting = ANCHOR_ORDER,
-                get = function() return V.anchor or "CENTER" end,
-                set = function(_, val) ns.SetVisualAnchor(rule, val, nil); ns.MarkDirty(); Notify() end },
-            anchorPlace = { type = "select", name = "Place the display", order = 0.6, width = "double",
-                desc = "Inside: the display's matching point sits on the anchor, flush inside the box (bottom left anchor: the display's bottom left corner). Outside: the display's opposite point sits on the anchor, so the display lies outside the box next to that edge or corner. Center is the same either way.",
-                values = { inner = "Inside the anchor point", outer = "Outside the anchor point" }, sorting = { "inner", "outer" },
-                get = function() return V.anchorPlace == "outer" and "outer" or "inner" end,
-                set = function(_, val) ns.SetVisualAnchor(rule, nil, val); ns.MarkDirty(); Notify() end },
+                get = function() local _, f = ns.VisualPoints(rule); return f end,
+                set = function(_, val) ns.SetVisualPoints(rule, val, nil); ns.MarkDirty(); Notify() end },
+            anchoredTo = { type = "description", order = 0.45, width = "full", fontSize = "medium",
+                name = function()
+                    local kind, nm = ns.VisualAnchorTarget(rule)
+                    local what = kind == "screen" and "The screen" or kind == "frame" and (nm .. " (snapped)")
+                        or kind == "dynamic" and ("Group: " .. nm .. " (a dynamic group places its displays itself)") or ("Group: " .. nm)
+                    return "|cffffd100Anchored to:|r " .. what
+                end },
+            anchor = { type = "select", order = 0.5, width = "double",
+                name = function()
+                    local kind, nm = ns.VisualAnchorTarget(rule)
+                    return kind == "screen" and "To the screen's point" or ("To " .. nm .. "'s point")
+                end,
+                desc = "The point of what this display is anchored to (the screen, or its group's box) that X and Y are measured from. Changing it keeps the display exactly where it is and recalculates X / Y. Ignored while the display is snapped to a game frame, and in dynamic groups.",
+                values = ANCHOR_VALUES, sorting = ANCHOR_ORDER,
+                get = function() local a = ns.VisualPoints(rule); return a end,
+                set = function(_, val) ns.SetVisualPoints(rule, nil, val); ns.MarkDirty(); Notify() end },
             x = Rng(V, "x", "X", 1, -1200, 1200, 1, on),
             y = Rng(V, "y", "Y", 2, -800, 800, 1, on),
             unlock = { type = "execute", order = 3, width = "double",
@@ -2518,7 +2684,7 @@ local function BuildRule(i, rule)
     overlay.args.enabled = nil
     -- Position is its own collapsible section (between Texture and Overlay Layer), no longer inside the Texture box
     pos.args.x.order, pos.args.y.order, pos.args.unlock.order = 3, 4, 5
-    local posArgs = { anchor = pos.args.anchor, anchorPlace = pos.args.anchorPlace, x = pos.args.x, y = pos.args.y, unlock = pos.args.unlock }
+    local posArgs = { point = pos.args.point, anchoredTo = pos.args.anchoredTo, anchor = pos.args.anchor, x = pos.args.x, y = pos.args.y, unlock = pos.args.unlock }
     display.args.trigger.order = 0
     -- Color & Blend (20-29) goes to Color & Transparency; Fade / Opacity / Flash (30-39) and Glow & Outline (40-49) live under Animation Options
     -- Overlay Layer: no collapse arrow of its own any more (it sits inside Animation Options, which collapses), and it comes last,
@@ -3202,7 +3368,7 @@ local function BuildAddonSettings()
                 func = function() Ui().paneW = 0; Ui().paneH = 0; if ns.ApplyPaneSize then ns.ApplyPaneSize() end; Notify() end },
             menuBtnHeader = { type = "header", name = "Menu button (ESC menu)", order = 23.5 },
             gameMenuButton = { type = "toggle", name = "Show a XayaUI button in the Game Menu (ESC menu)", order = 24, width = "full",
-                desc = "Adds a XayaUI entry to the ESC menu that opens this window. Off: the entry is removed the next time the menu opens. Also: /xui debug gamemenu prints diagnostics.",
+                desc = "Adds a XayaUI entry to the ESC menu that opens this window. Off: the entry is removed the next time the menu opens.",
                 get = function() return not (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.hideGameMenuButton) end,
                 set = function(_, v) Ui().hideGameMenuButton = (not v) or nil; if ns.GameMenu_OnOptionChanged then ns.GameMenu_OnOptionChanged() end end },
             gameMenuStyle = { type = "select", name = "Menu button style", order = 24.1, width = "double",
@@ -3259,12 +3425,22 @@ local function BuildAddonSettings()
             talMsg = { type = "description", order = 30.3, width = "full", fontSize = "medium",
                 name = function() return ns.OptionsApi.talentScanMsg or "" end,
                 hidden = function() return not ns.OptionsApi.talentScanMsg end },
+            -- Combat Tracking Setup (Options 0.6.55; Xaya 2026-11-06, REQUEST-LOG #81: "Rule Creation"; it was on Settings > Debugging)
+            auraSetup = { type = "group", inline = true, name = "Combat Tracking Setup", order = 40, args = {
+                asText = { type = "description", order = 1, fontSize = "medium",
+                    name = "Scans YOUR class, spec and talents, reads the game's own spell text, and learns real buff durations from your own casts out of combat. Works for every class. Runs once per spec, and any time you change talents or gear." },
+                asOpen = { type = "execute", name = "Open Combat Tracking Setup", order = 2, width = "double",
+                    func = function() if ns.AuraSetup_Open then ns.AuraSetup_Open() else ns.Print("combat tracking setup is not loaded") end end },
+                asPresence = { type = "toggle", name = "Estimate buffs the game hides in combat (from your own casts)", order = 3, width = "full",
+                    get = function() return ns.AuraModel and ns.AuraModel.PresenceEnabled() end,
+                    set = function(_, v) if ns.AuraModel then ns.AuraModel.SetSetting("presence", v and true or false) end end },
+            } },
         } },
         theme = { type = "group", name = "Theme", order = 1.5, args = ns.Theme and ns.Theme.BuildArgs(Repaint) or {} },
         debug = { type = "group", name = "Debugging", order = 2, args = {
             debugHeader = { type = "header", name = "Debugging", order = 10 },
             advancedDebug = { type = "toggle", name = "Advanced Debugging (recommended)", order = 11, width = "full",
-                desc = "Records automatically what is needed to find a problem, so you never have to type a debug command or remember a chat line. Choose below what is recorded: each kind of line has its own switch and says what it costs. The record is saved with your settings (written at /reload or logout); \"What to send\" below says which file to send and where it is. Also sends XayaUI's messages to the console window instead of chat (change that below).",
+                desc = "On (default): XayaUI records its own errors and warnings by itself, each with a code, so you never have to type a debug command or remember a chat line. It does work only when an error happens: nothing is recorded or run while everything works. The debug report below (/xui report) shows them for a screenshot and as a string to send to Xaya. Also sends XayaUI's messages to the console window instead of chat (change that below). Off: nothing is recorded.",
                 get = function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug and true or false end,
                 set = function(_, v) Ui().advancedDebug = v and true or false; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end; Notify() end },
             -- the options Advanced Debugging brings (XayaUI/DebugRecord.lua)
@@ -3278,88 +3454,24 @@ local function BuildAddonSettings()
                 hidden = function() return not (ns.MessageDest and ns.MessageDest() == "console") end,
                 get = function() return Ui().consoleAutoOpen ~= false end,
                 set = function(_, v) if v then Ui().consoleAutoOpen = nil else Ui().consoleAutoOpen = false end end },
-            recordOn = { type = "toggle", name = "Keep the debug record", order = 11.3, width = "full",
-                desc = "On (default with Advanced Debugging): the lines chosen below are kept. Off: nothing is recorded (messages still go where chosen above).",
-                hidden = function() return not Ui().advancedDebug end,
-                get = function() return Ui().recordOff ~= true end,
-                set = function(_, v) Ui().recordOff = (not v) and true or nil; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end; Notify() end },
-            recWhat = { type = "group", inline = true, name = "What to record", order = 11.4,
-                hidden = function() return not (Ui().advancedDebug and Ui().recordOff ~= true) end,
-                args = (function()
-                    local a = {
-                        recIntro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                            name = "Each switch adds one kind of line; one that is off costs nothing. XayaUI's own errors, combat start and end, and any action the game blocked are always kept. The cost is in grey." },
-                        presetLight = { type = "execute", name = "Light set", order = 90, width = "normal",
-                            desc = "Only rules firing and clearing, game state and messages: the cheapest record that still says what happened.",
-                            func = function() if ns.SetRecPreset then ns.SetRecPreset("light"); ns.DebugSettingsChanged() end; Notify() end },
-                        presetAll = { type = "execute", name = "Everything", order = 91, width = "normal",
-                            desc = "Every kind of line, including trigger detail (for the rules chosen above), displays and performance timing.",
-                            func = function() if ns.SetRecPreset then ns.SetRecPreset("all"); ns.DebugSettingsChanged() end; Notify() end },
-                        presetDefault = { type = "execute", name = "Defaults", order = 92, width = "normal",
-                            func = function() if ns.SetRecPreset then ns.SetRecPreset("default"); ns.DebugSettingsChanged() end; Notify() end },
-                        recordMax = { type = "select", name = "Lines kept", order = 95,
-                            desc = "The newest lines are kept; older ones are dropped and counted. More lines make a bigger saved file.",
-                            values = { [1000] = "1000", [3000] = "3000 (default)", [10000] = "10000 (a bigger file)" }, sorting = { 1000, 3000, 10000 },
-                            get = function() local n = tonumber(Ui().recordMax); return (n == 1000 or n == 10000) and n or 3000 end,
-                            set = function(_, v) v = tonumber(v); Ui().recordMax = (v == 1000 or v == 10000) and v or nil end },
-                        recFocus = { type = "multiselect", name = "Rules for trigger detail", order = 4.5, width = "full", dialogControl = "Dropdown",
-                            desc = "The rules whose every trigger change is recorded (their cues and conditions too). Pick only the rules you are looking into.",
-                            hidden = function() return not (ns.RecCatSetting and ns.RecCatSetting("triggers")) end,
-                            values = function()
-                                local v = {}
-                                for _, r in ipairs(ns.rules or {}) do
-                                    if not r.isCue and not r.parentUid then
-                                        if not r.uid and ns.NewUID then r.uid = ns.NewUID() end
-                                        if r.uid then v[r.uid] = tostring(r.name or "?") end
-                                    end
-                                end
-                                return v
-                            end,
-                            get = function(_, key) local f = Ui().recFocus; return type(f) == "table" and f[key] and true or false end,
-                            set = function(_, key, val)
-                                local u = Ui()
-                                u.recFocus = type(u.recFocus) == "table" and u.recFocus or {}
-                                u.recFocus[key] = val and true or nil
-                                if next(u.recFocus) == nil then u.recFocus = nil end
-                                if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end
-                            end },
-                    }
-                    for i, c in ipairs((ns.DebugRecordInfo and ns.DebugRecordInfo.CATS) or {}) do
-                        local key = c.key
-                        a["cat_" .. key] = { type = "toggle", order = i, width = "full",
-                            name = c.name .. "  |cff888888(" .. c.cost .. ")|r", desc = c.desc,
-                            get = function() return ns.RecCatSetting and ns.RecCatSetting(key) or false end,
-                            set = function(_, v) if ns.SetRecCat then ns.SetRecCat(key, v); ns.DebugSettingsChanged() end; Notify() end }
-                        if key == "triggers" then a.recFocus.order = i + 0.5 end
-                    end
-                    return a
-                end)() },
-            debugProbe = { type = "toggle", name = "Also run the game-data probe (XayaUI Dev Assist)", order = 11.5, width = "full",
-                desc = "The separate XayaUI Dev Assist addon is installed: switch its event probe on together with Advanced Debugging (it records what the game lets addons read, for the run sheet in docs/process). It goes off again with Advanced Debugging if this switched it on.",
-                hidden = function() return not (Ui().advancedDebug and ns.ProbeInstalled and ns.ProbeInstalled()) end,
-                get = function() return Ui().debugProbe ~= false end,
-                set = function(_, v) if v then Ui().debugProbe = nil else Ui().debugProbe = false end; if ns.SyncDebugProbe then ns.SyncDebugProbe() end end },
-            recordInfo = { type = "description", order = 11.6, width = "full", fontSize = "medium",
-                hidden = function() return not Ui().advancedDebug end,
-                name = function()
-                    local n, drop, start = 0, 0, nil
-                    if ns.RecordSummary then n, drop, start = ns.RecordSummary() end
-                    if n == 0 then return "Debug record: empty so far (it fills as you play)." end
-                    return ("Debug record: %d lines since %s%s. It holds rule names, spell IDs and XayaUI's messages; no character name or realm. Messages that name another player are shown but never kept."):format(
-                        n, tostring(start), drop > 0 and (" (" .. drop .. " older lines dropped)") or "")
-                end },
-            recordView = { type = "execute", name = "View the debug record", order = 11.7,
-                hidden = function() return not Ui().advancedDebug end,
-                desc = "Opens the whole record as text you can read and copy: what each kind of line means, the lines (newest at the bottom), and what to send.",
-                func = function() if ns.RecordText and ns.ShowCopyBox then ns.ShowCopyBox("XayaUI debug record", ns.RecordText()) end end },
-            recordClear = { type = "execute", name = "Clear the debug record", order = 11.8,
-                hidden = function() return not Ui().advancedDebug end,
-                confirm = true, confirmText = "Delete every line of the debug record?",
-                func = function() if ns.ClearRecord then ns.ClearRecord() end; Notify() end },
+            -- (Options 0.6.55; REQUEST-LOG #82) the debug report: XayaUI's errors and warnings with their codes (core DebugRecord.lua). The
+            -- detailed record (11 kinds of line, its switches, view and clear) is XayaUI Dev Assist's since core 0.6.56: its settings show
+            -- under "Dev Assist (separate tool)" below while it is loaded.
+            report = { type = "group", inline = true, name = "Debug report", order = 11.3, args = {
+                repText = { type = "description", order = 1, width = "full", fontSize = "medium",
+                    name = function()
+                        local total, kinds, nErr, nWarn = 0, 0, 0, 0
+                        if ns.ErrorCount then total, kinds, nErr, nWarn = ns.ErrorCount() end
+                        return ("XayaUI records its own errors and warnings, each with a code, only when one happens (nothing is recorded or run while everything works). Now: %d error%s and %d warning%s (%d times in all). The debug report shows them for a screenshot, and as one string to copy and send to Xaya. Also: /xui report."):format(
+                            nErr or 0, nErr == 1 and "" or "s", nWarn or 0, nWarn == 1 and "" or "s", total or 0)
+                    end },
+                repOpen = { type = "execute", name = "Open the debug report", order = 2, width = "double",
+                    func = function() if ns.ShowDebugReport then ns.ShowDebugReport() end end },
+            } },
             send = { type = "group", inline = true, name = "What to send", order = 11.9, args = {
                 sendText = { type = "description", order = 1, width = "full", fontSize = "medium",
                     name = "1. Type /reload (or log out): the game writes the files only then.  2. Open the folder below (copy the path, then replace <YOUR ACCOUNT FOLDER> with your account's folder inside WTF\\Account, often a number such as 12345678#1; if there are several, use the one with the newest XayaUI.lua).  3. Send the files below to Xaya. They hold no password, character name, realm or chat text; XayaUI.lua holds your rule names and settings." },
-                sendCore = { type = "input", name = "XayaUI.lua: your rules, settings, saved errors and the debug record  (click, Ctrl+A, Ctrl+C)", order = 2, width = "full",
+                sendCore = { type = "input", name = "XayaUI.lua: your rules, settings, and saved errors and warnings  (click, Ctrl+A, Ctrl+C)", order = 2, width = "full",
                     get = function() return ns.SavedFilePath and ns.SavedFilePath("XayaUI.lua") or "" end,
                     set = function() end },
                 sendDev = { type = "input", order = 3, width = "full",
@@ -3409,15 +3521,6 @@ local function BuildAddonSettings()
                     confirmText = "Clear XayaUI's saved Lua errors?",
                     func = function() if ns.ClearErrorLog then ns.ClearErrorLog() end; Notify() end },
             } },
-            auraSetup = { type = "group", inline = true, name = "Combat Tracking Setup", order = 29, args = {
-                asText = { type = "description", order = 1, fontSize = "medium",
-                    name = "Scans YOUR class, spec and talents, reads the game's own spell text, and learns real buff durations from your own casts out of combat. Works for every class. Runs once per spec, and any time you change talents or gear." },
-                asOpen = { type = "execute", name = "Open Combat Tracking Setup", order = 2, width = "double",
-                    func = function() if ns.AuraSetup_Open then ns.AuraSetup_Open() else ns.Print("combat tracking setup is not loaded") end end },
-                asPresence = { type = "toggle", name = "Estimate buffs the game hides in combat (from your own casts)", order = 3, width = "full",
-                    get = function() return ns.AuraModel and ns.AuraModel.PresenceEnabled() end,
-                    set = function(_, v) if ns.AuraModel then ns.AuraModel.SetSetting("presence", v and true or false) end end },
-            } },
             -- the separate developer addon (XayaUI Dev Assist), reached through its "gameDataProbe" service (Modules.lua contract)
             gameDump = { type = "group", inline = true, name = "Dev Assist (separate tool)", order = 30,
                 hidden = function() local svc = ns.Service and ns.Service("gameDataProbe"); return not (svc and type(svc.Open) == "function") end, args = {
@@ -3430,6 +3533,12 @@ local function BuildAddonSettings()
                         else ns.Print("XayaUI Dev Assist is not loaded. Enable it in the AddOns list, then /reload.") end
                     end },
             } },
+            -- (Options 0.6.55; REQUEST-LOG #81, #82) XayaUI Dev Assist's own settings: the game-data probe switch and the detailed debug
+            -- record. Its code registers them (ns.RegisterSettingsPage("debugging", ...), XayaUI_DevAssist/DevRecord.lua); without it,
+            -- nothing of them exists here.
+            devPages = { type = "group", inline = true, name = "Dev Assist settings", order = 31,
+                hidden = function() return not (ns.DevAssistOn and ns.DevAssistOn()) end,
+                args = ns.BuildSettingsPages and ns.BuildSettingsPages("debugging", Notify) or {} },
         } },
     } }
 end
@@ -3552,21 +3661,20 @@ function BuildClassCreator()
     local function shown() return not creatorOpen end
     local args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Pick a class / spec set, tick the auras to track, and XayaUI makes a skeleton rule for each one: it watches for the aura being present, and shows or plays nothing yet. Set what each rule does afterwards under Smart Categories." },
+            name = "Press one of a spec's Generate buttons (or one of the buttons for your whole class) to load the cooldowns, auras or target debuffs it names in a table below. Tick the ones you want, set each one's trigger, cue and combat load, then press Populate: each becomes a rule with its cue, in Class > Spec > cue type." },
         apHdr = { type = "header", order = 0.1, name = "Auto-populate my class / spec" },
         apInfo = { type = "description", order = 0.2, width = "full", fontSize = "medium",
             name = function()
                 local specID = ns.CurrentSpecID and ns.CurrentSpecID()
                 local okS, _, specName = pcall(GetSpecializationInfoByID, specID or 0)
-                return "Detected: |cffffd100" .. (UnitClass("player") or "?") .. " - " .. ((okS and specName) or "unknown spec") .. "|r. It makes one skeleton rule (cooldown ready) per spellbook or talent cooldown of that spec, read from this game client (the addon remembers each spec once you have played it), sorted into Defensive / Offensive / Utility / Unsorted inside the static group '<Class> <Spec> - autorule population' by the name list for that spec, and flags each rule (kind, role, talent, charges). The window jumps to the new group." end },
+                return "Detected: |cffffd100" .. (UnitClass("player") or "?") .. " - " .. ((okS and specName) or "unknown spec") .. "|r. Cooldowns are read from this game client (the addon remembers each spec once you have played it); auras and target debuffs from your Cooldown Manager, for the spec you are in now. Nothing is made until you press Populate under the table." end },
         apTalents = { type = "toggle", order = 0.3, width = "full", name = "Include talents I have not picked (rule only loads when the talent is known)",
             get = function() return ns.AutoCfg().talents ~= false end,
-            set = function(_, v) ns.AutoCfg().talents = v and true or false; ns.MarkDirty(); Notify() end },
-        apClass = { type = "execute", order = 0.58, width = 1.6, xuiCenter = true, name = "Auto-populate for my class (all specs)",
-            desc = "Runs the auto-populate for every spec of your class in one go.",
-            func = function()
-                local _, m = ns.ClassAutoPopulateAllSpecs(ns.AutoCfg().talents ~= false)
-                creatorMsg = m; ns.Print("auto-populate: " .. tostring(m)); Notify()
+            set = function(_, v)
+                ns.AutoCfg().talents = v and true or false; ns.MarkDirty()
+                local AP = ns.AutoPicker
+                if AP and AP.view then AP.Load(AP.view.spec, AP.view.filter) end   -- the table shown follows the option at once
+                Notify()
             end },
         -- "All talents (every class and spec)" (the talent scan) moved to Settings > UI Options > Rule Creation (Options 0.6.40; Xaya,
         -- 2026-11-05: "scan belongs in Settings"): BuildAddonSettings, rules.args.talHdr.
@@ -3581,20 +3689,27 @@ function BuildClassCreator()
         close = { type = "execute", order = 7, width = "half", name = "Hide list", hidden = shown,
             func = function() creatorOpen = false; Notify() end },
     }
-    -- one button per spec of the player's class, each with the spec's own icon (specs come from the game, so any class works)
+    -- Xaya, 2026-11-06: four buttons per spec (All / CD Tracking / Aura Tracking / Target Debuff Tracking) and the same four for the whole
+    -- class; each loads its own list into the table below and nothing is listed before one is pressed. Spec buttons keep the spec's own
+    -- icon (specs come from the game, so any class works). Width 3.0 (about 460 px; ESTIMATE from the old 1.6-wide button, about 246 px in her screenshot) holds the longest label, a Target Debuff label with an 11-letter spec; buttons wrap to the next line when the pane is narrow.
+    local FILTER_DESC = { all = "cooldowns, auras and target debuffs", cd = "cooldowns", aura = "auras on you", debuff = "target debuffs" }
+    local function GenButtons(prefix, base, target, icon, specID)
+        for j, f in ipairs(ns.AutoPicker.FILTERS) do
+            args[prefix .. f.filter] = { type = "execute", order = base + j * 0.001, width = 3.0, xuiCenter = true,
+                name = (icon and ("|T" .. icon .. ":16|t ") or "") .. ns.AutoPicker.ButtonLabel(f.filter, target),
+                desc = "Lists the " .. FILTER_DESC[f.filter] .. " of " .. (specID == "all" and "every spec of your class" or (tostring(target) .. " (" .. (UnitClass("player") or "your class") .. ")"))
+                    .. " in the table below (nothing is made yet).",
+                func = function() ns.AutoPicker.Load(specID, f.filter); Notify() end }
+        end
+    end
     for i = 1, (GetNumSpecializations and GetNumSpecializations() or 0) do
         local sid, sname, _, sicon = GetSpecializationInfo(i)
         if sid then
+            GenButtons("apSpec" .. i, 0.47 + i * 0.01, sname, sicon, sid)
             args["apBrk" .. i] = { type = "description", order = 0.47 + i * 0.01 + 0.005, width = "full", fontSize = "small", name = " " }
-            args["apSpec" .. i] = { type = "execute", order = 0.47 + i * 0.01, width = 1.6, xuiCenter = true,
-                name = (sicon and ("|T" .. sicon .. ":16|t ") or "") .. "Auto-populate " .. tostring(sname),
-                desc = "Makes the skeleton rules for " .. tostring(sname) .. " (" .. (UnitClass("player") or "your class") .. "), whichever spec you are in now.",
-                func = function()
-                    local _, m = ns.ClassAutoPopulateSpec(sid, ns.AutoCfg().talents ~= false)
-                    creatorMsg = m; ns.Print("auto-populate: " .. tostring(m)); Notify()
-                end }
         end
     end
+    GenButtons("apClass", 0.58, "my class", nil, "all")
     for i, a in ipairs(VDH_AURAS) do
         local o = 100 + i * 3
         args["pick_" .. a.key] = { type = "toggle", order = o, width = 1.3, name = a.name, hidden = shown,
@@ -3607,8 +3722,8 @@ function BuildClassCreator()
         args["st_" .. a.key] = { type = "description", order = o + 2, width = 1.5, fontSize = "medium", hidden = shown,
             name = function() return AuraStatus(a) end }
     end
-    -- Xaya 2026-11-05: choose which auto rules to make (cooldowns and target debuffs) and each one's main cue (AutoPicker.lua)
-    if ns.AutoPicker and ns.AutoPicker.Args then for k, v in pairs(ns.AutoPicker.Args(Notify)) do args[k] = v end end
+    -- Xaya 2026-11-05: the auto-populate table (AutoPicker.lua): the list of the button pressed, ticked and set up before anything is made
+    if ns.AutoPicker and ns.AutoPicker.Args then for k, v in pairs(ns.AutoPicker.Args(Notify, Tree.Keep)) do args[k] = v end end
     return { type = "group", name = "Class/Spec Rule Creator", order = 2, hidden = ns.PageHidden("creator"), args = args }
 end
 end   -- do (class/spec creator)
@@ -3766,6 +3881,28 @@ function ns.SmartAny(rule)
 end
 
 local picker = nil   -- { folder = id|nil } while the page is open
+-- The first set-up of a rule type's cue, shared by the "+ New rule" type list (CreateRuleOfType below) and the auto-populate table
+-- (AutoPicker.lua, Options 0.6.45): Icon -> icon cue (spell icon, 64 x 64, gray while on cooldown); Texture -> texture cue; Progress
+-- Texture -> texture cue with fill and overlay, base at 0.35; Text -> text cue (the duration text, no art); Sound / Speech -> that cue.
+-- One explicit cue kind per type. Returns the cue (nil when the rule holds the most cues it may) and its kind.
+-- (Progress Bar -> a Bar cue since Options 0.6.58 / core 0.6.58, RM-BARS; before, it made a Buff Bar, whose code is shelved and drew nothing)
+ns.CUE_FOR_TYPE = { icon = "icon", text = "text", sound = "sound", speech = "speech", texture = "texture", progresstex = "texture", bar = "bar" }
+function ns.NewTypedCue(r, typ)
+    local kind = ns.CUE_FOR_TYPE[typ] or "texture"
+    r.uid = r.uid or ns.NewUID()
+    local cue = ns.NewCueRule(r, kind)
+    if cue then
+        local v = cue.visual
+        if kind ~= "icon" and ns.Val(v.kind) == "spellicon" then v.kind = nil end   -- only an Icon row may start as a spell icon
+        if typ == "icon" then v.kind = "spellicon"; v.w, v.h = 64, 64; v.desatOnCD = true
+        elseif typ == "progresstex" then
+            v.fill.enabled = true
+            v.overlay.enabled = true      -- progress textures are two-layered by default: base (reduced opacity below) + overlay (full)
+            v.texAlpha = 0.35              -- reduced base opacity; ratio to Overlay opacity (1) is preserved while locked (see ProgLocked)
+        elseif typ == "text" then v.text.enabled = true; v.texAlpha = 0 end
+    end
+    return cue, kind
+end
 local function CreateRuleOfType(typ, fid)
     local r = ns.NewRule()
     r.name = ""   -- new rules are not auto-named: the sidebar row opens a name box for it instead
@@ -3777,23 +3914,9 @@ local function CreateRuleOfType(typ, fid)
     elseif typ then
         -- the chosen type becomes the rule's first cue (Cues tab), already set up for that type; the rule itself shows / plays nothing
         r.visual.enabled, r.sound.enabled = false, false
-        -- one explicit cue kind per picker row: Icon -> icon cue, Texture / Progress Texture -> texture cue, Text -> text cue, Sound -> sound cue
-        -- (Progress Bar -> a Bar cue since Options 0.6.51 / core 0.6.53; before, it made a Buff Bar, whose code is shelved and drew nothing)
-        local CUE_FOR_TYPE = { icon = "icon", text = "text", sound = "sound", texture = "texture", progresstex = "texture", bar = "bar" }
-        local kind = CUE_FOR_TYPE[typ] or "texture"
-        r.uid = r.uid or ns.NewUID()
-        local cue = ns.NewCueRule(r, kind)
+        -- one explicit cue kind per picker row (ns.NewTypedCue above, shared with the auto-populate table)
+        local cue, kind = ns.NewTypedCue(r, typ)
         if ns.Log then ns.Log("new rule: picker row '%s' -> cue kind '%s' (cue made: %s)", tostring(typ), kind, tostring(cue ~= nil)) end
-        if cue then
-            local v = cue.visual
-            if kind ~= "icon" and ns.Val(v.kind) == "spellicon" then v.kind = nil end   -- only an Icon row may start as a spell icon
-            if typ == "icon" then v.kind = "spellicon"; v.w, v.h = 64, 64; v.desatOnCD = true
-            elseif typ == "progresstex" then
-                v.fill.enabled = true
-                v.overlay.enabled = true      -- progress textures are two-layered by default: base (reduced opacity below) + overlay (full)
-                v.texAlpha = 0.35              -- reduced base opacity; ratio to Overlay opacity (1) is preserved while locked (see ProgLocked)
-            elseif typ == "text" then v.text.enabled = true; v.texAlpha = 0 end
-        end
     end
     ns.pendingRename = r
     if ns.DraftNew then ns.DraftNew(r) end   -- never saved yet: Save changes keeps it, closing the window first moves it to Drafts
@@ -3915,200 +4038,9 @@ local function AutoPreview()
     return line
 end
 
--- Class / spec auto-populate (Class/Spec Rule Creator tab): one skeleton rule per cooldown spell of the current spec, sorted into
--- Defensive / Offensive / Utility folders inside one parent folder "<Class> <Spec> - autorule population". The sorting tables are
--- curated by spell NAME (never by ID, so no ID is guessed; a name that is not in the spellbook is simply never matched). Spells
--- that are not in the spec's table go to "Unsorted". Only cooldown spells are found (auras cannot be listed from the spellbook).
-local SPEC_SORT = {
-    -- Demon Hunter / Vengeance. Curated by Claude from general class knowledge, NOT checked against game data: edit freely.
-    [581] = {
-        Defensive = { "Demon Spikes", "Fiery Brand", "Metamorphosis", "Darkness", "Soul Barrier", "Blur", "Netherwalk" },
-        Offensive = { "Fel Devastation", "Soul Carver", "The Hunt", "Sigil of Flame", "Immolation Aura", "Fracture", "Soul Cleave", "Spirit Bomb", "Throw Glaive", "Felblade" },
-        Utility   = { "Sigil of Misery", "Sigil of Chains", "Sigil of Silence", "Chaos Nova", "Disrupt", "Imprison", "Consume Magic", "Torment", "Infernal Strike", "Vengeful Retreat", "Spectral Sight", "Glide" },
-    },
-}
-function ns.AutoPopulateSpellbook(includeUnpicked)   -- fallback: spellbook cooldowns only (a spec ClassLearn.lua has not learned yet)
-    local specID = ns.CurrentSpecID and ns.CurrentSpecID()
-    if not specID then return false, "Could not read your specialization right now." end
-    local className = UnitClass("player") or "Class"
-    local okS, _, specName = pcall(GetSpecializationInfoByID, specID)
-    if not okS or not specName then specName = "spec " .. tostring(specID) end
-    local ok, list = pcall(ns.CollectCooldownSpells, 0, includeUnpicked)
-    if not ok or type(list) ~= "table" or #list == 0 then return false, "Found no cooldown spells in your spellbook right now." end
-    local parentName = className .. " " .. specName .. " - autorule population"
-    local parent
-    for _, f in ipairs(ns.folders) do if not f.parent and f.name == parentName then parent = f; break end end
-    parent = parent or ns.NewFolder(parentName)
-    local function Sub(name)
-        for _, f in ipairs(ns.folders) do if f.parent == parent.id and f.name == name then return f end end
-        return ns.NewFolder(name, parent.id)
-    end
-    Sub("Defensive"); Sub("Offensive"); Sub("Utility")
-    local lookup, curated = {}, SPEC_SORT[specID]
-    if curated then for folder, names in pairs(curated) do for _, n in ipairs(names) do lookup[n:lower()] = folder end end end
-    local have = {}
-    for _, r in ipairs(FolderRules(parent.id)) do if (tonumber(r.spellID) or 0) ~= 0 then have[r.spellID] = true end end
-    local made, skipped, counts = 0, 0, {}
-    for _, sp in ipairs(list) do
-        if have[sp.id] then skipped = skipped + 1
-        else
-            local fname = lookup[(sp.name or ""):lower()] or "Unsorted"
-            local dest = Sub(fname)
-            local r = ns.NewRule()
-            r.name, r.folder, r.spellID = sp.name, dest.id, sp.id
-            r.useCooldown = true
-            r.cdState, r.buffState, r.talentMode = "ready", "none", "none"
-            if sp.talent then r.talents, r.talentMode = { { id = sp.id, state = "known" } }, "all" end
-            r.load.specs = { [tostring(specID)] = true }
-            ns.rules[#ns.rules + 1] = r
-            have[sp.id] = true
-            made = made + 1; counts[fname] = (counts[fname] or 0) + 1
-        end
-    end
-    if made > 0 then ns.MarkDirty(); ns.Fire("CONFIG_CHANGED") end
-    local parts = {}
-    for _, k in ipairs({ "Defensive", "Offensive", "Utility", "Unsorted" }) do if counts[k] then parts[#parts + 1] = k .. " " .. counts[k] end end
-    local msg = ("%s: added %d rule(s) (%s); %d already there."):format(parentName, made, #parts > 0 and table.concat(parts, ", ") or "none", skipped)
-    if not curated then msg = msg .. " There is no curated Defensive / Offensive / Utility list for this spec yet, so everything went to Unsorted." end
-    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(parent))   -- show the new group right away
-    return true, msg
-end
-
--- Data-driven auto-populate (ClassLearn.lua: the cooldown list learned from this game client for each spec you have played). One skeleton rule per entry of the
--- CURRENT spec, in  "<Class> <Spec> - autorule population" > Cooldowns | Auras | Procs > Defensive | Offensive | Utility | Unsorted.
--- Every rule is also FLAGGED on the rule itself so it can be sorted later: r.autoKind ("cd" | "aura" | "proc"), r.autoRole, r.autoFlags
--- (talent, hero, glow, charges, rt, inferred, midnight) and r.autoSrc. Target debuffs are in the data and flagged "debuff" but get NO rule:
--- the rule engine only reads auras on YOU. IDs are checked against the live game; ones that no longer exist are skipped and counted.
-do   -- block-scoped: Options.lua's main chunk is close to Lua's 200-local limit
-local KIND_FOLDER = { cd = "Cooldowns", aura = "Auras", proc = "Procs" }
-local function AutoPopulateData(specID, data, includeUnpicked)
-    local className = UnitClass("player") or data.class or "Class"
-    local okS, _, specName = pcall(GetSpecializationInfoByID, specID)
-    if not okS or not specName then specName = data.spec or ("spec " .. tostring(specID)) end
-    local parentName = className .. " " .. specName .. " - autorule population"
-    local parent
-    for _, f in ipairs(ns.folders) do if not f.parent and f.name == parentName then parent = f; break end end
-    parent = parent or ns.NewFolder(parentName)
-    local function Sub(name, pid)
-        for _, f in ipairs(ns.folders) do if f.parent == pid and f.name == name then return f end end
-        return ns.NewFolder(name, pid)
-    end
-    local have = { cd = {}, buff = {} }
-    for _, r in ipairs(FolderRules(parent.id)) do
-        if r.autoKind == "aura" or r.autoKind == "proc" then
-            if (tonumber(r.buffID) or 0) ~= 0 then have.buff[r.buffID] = true end
-        elseif (tonumber(r.spellID) or 0) ~= 0 then have.cd[r.spellID] = true end   -- cooldown rules, including ones from the old spellbook path
-    end
-    local cdName, dataCd = {}, {}
-    for _, e in ipairs(data.entries) do if e.kind == "cd" then cdName[e.name] = true; dataCd[e.id] = true end end
-    local counts, made, skipped, gone, noCd, talentOff, debuffs, extra = {}, 0, 0, 0, 0, 0, 0, 0
-    local function Put(kind, role, r)
-        local kf = Sub(KIND_FOLDER[kind], parent.id)
-        r.folder = Sub(role, kf.id).id
-        r.load.specs = { [tostring(specID)] = true }
-        ns.rules[#ns.rules + 1] = r
-        made = made + 1
-        local k = KIND_FOLDER[kind] .. "/" .. role
-        counts[k] = (counts[k] or 0) + 1
-    end
-    for _, e in ipairs(data.entries) do
-        if e.kind == "debuff" then debuffs = debuffs + 1
-        else
-            local okN, nm = pcall(C_Spell.GetSpellName, e.id)
-            if not okN or not nm then gone = gone + 1
-            else
-                local fl = {}
-                for _, k in ipairs({ "talent", "hero", "glow", "charges", "rt", "totem", "selfBuff", "inferred" }) do if e[k] then fl[#fl + 1] = k end end
-                if e.mn then fl[#fl + 1] = "midnight" end
-                local function Tag(r)
-                    r.autoKind, r.autoRole, r.autoFlags, r.autoSrc = e.kind, e.role, table.concat(fl, ","), "learned from this client"
-                end
-                if e.kind == "cd" then
-                    if have.cd[e.id] then skipped = skipped + 1
-                    elseif e.talent and not includeUnpicked and ns.ReadTalentKnown(e.id) == false then talentOff = talentOff + 1
-                    else
-                        local base = ns.BaseCooldownSec and ns.BaseCooldownSec(e.id) or 0
-                        if base <= 0 and not e.charges then noCd = noCd + 1   -- no cooldown to watch: a "ready" rule would always be true
-                        else
-                            local r = ns.NewRule()
-                            r.name, r.spellID, r.useCooldown = nm, e.id, true
-                            r.cdState, r.buffState, r.talentMode = "ready", "none", "none"
-                            if e.talent then r.talents, r.talentMode = { { id = e.id, state = "known" } }, "all" end
-                            Tag(r); Put("cd", e.role, r); have.cd[e.id] = true
-                        end
-                    end
-                else   -- aura / proc: a buff on you
-                    if have.buff[e.id] then skipped = skipped + 1
-                    else
-                        local r = ns.NewRule()
-                        r.name = cdName[nm] and (nm .. (e.kind == "proc" and " (proc)" or " (aura)")) or nm
-                        r.buffID, r.useBuff, r.buffState = e.id, true, "present"
-                        r.cdState, r.talentMode = "none", "none"
-                        Tag(r); Put(e.kind, e.role, r); have.buff[e.id] = true
-                    end
-                end
-            end
-        end
-    end
-    -- spellbook cooldowns the data does not list (new patch spells, off-list talents) still come in, flagged "spellbook"
-    local ok, list = pcall(ns.CollectCooldownSpells, 0, includeUnpicked)
-    if ok and type(list) == "table" then
-        local lookup = {}
-        for folder, names in pairs(SPEC_SORT[specID] or {}) do for _, n in ipairs(names) do lookup[n:lower()] = folder end end
-        for _, sp in ipairs(list) do
-            if not dataCd[sp.id] and not have.cd[sp.id] then
-                local r = ns.NewRule()
-                r.name, r.spellID, r.useCooldown = sp.name, sp.id, true
-                r.cdState, r.buffState, r.talentMode = "ready", "none", "none"
-                if sp.talent then r.talents, r.talentMode = { { id = sp.id, state = "known" } }, "all" end
-                r.autoKind, r.autoRole, r.autoFlags, r.autoSrc = "cd", lookup[(sp.name or ""):lower()] or "Unsorted", "spellbook" .. (sp.talent and ",talent" or ""), "spellbook scan"
-                Put("cd", r.autoRole, r); have.cd[sp.id] = true; extra = extra + 1
-            end
-        end
-    end
-    if made > 0 then ns.MarkDirty(); ns.Fire("CONFIG_CHANGED") end
-    local keys = {}
-    for k in pairs(counts) do keys[#keys + 1] = k end
-    table.sort(keys)
-    local parts = {}
-    for _, k in ipairs(keys) do parts[#parts + 1] = k .. " " .. counts[k] end
-    local msg = ("%s: added %d rule(s) (%s); %d already there."):format(parentName, made, #parts > 0 and table.concat(parts, ", ") or "none", skipped)
-    if extra > 0 then msg = msg .. (" %d of them are spellbook cooldowns the data did not list."):format(extra) end
-    if gone > 0 then msg = msg .. (" %d data entries skipped: no such spell in this game version."):format(gone) end
-    if noCd > 0 then msg = msg .. (" %d abilities skipped: no cooldown to watch."):format(noCd) end
-    if talentOff > 0 then msg = msg .. (" %d talent cooldowns skipped (talent not picked, option off)."):format(talentOff) end
-    if debuffs > 0 then msg = msg .. (" %d target debuffs are listed in the data but no rules were made (rules only read auras on you)."):format(debuffs) end
-    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(parent))
-    return true, msg
-end
-function ns.ClassAutoPopulate(includeUnpicked)
-    local specID = ns.CurrentSpecID and ns.CurrentSpecID()
-    local data = specID and ns.CLASS_AURA_DATA and ns.CLASS_AURA_DATA[specID]
-    if data then return AutoPopulateData(specID, data, includeUnpicked) end
-    return ns.AutoPopulateSpellbook(includeUnpicked)
-end
--- One chosen spec of the player's class (any spec, not only the active one). Needs the spec to have been learned (played once); the spellbook fallback only knows the active spec.
-function ns.ClassAutoPopulateSpec(specID, includeUnpicked)
-    local data = specID and ns.CLASS_AURA_DATA and ns.CLASS_AURA_DATA[specID]
-    if data then return AutoPopulateData(specID, data, includeUnpicked) end
-    if specID == (ns.CurrentSpecID and ns.CurrentSpecID()) then return ns.AutoPopulateSpellbook(includeUnpicked) end
-    return false, "That spec has not been learned yet: switch to it once (the addon reads its spellbook and talents a few seconds after you log in or change spec), then try again."
-end
--- Every spec of the player's class, one after another (specs without data are named in the summary, not silently skipped).
-function ns.ClassAutoPopulateAllSpecs(includeUnpicked)
-    local made, skipped = 0, {}
-    for i = 1, (GetNumSpecializations and GetNumSpecializations() or 0) do
-        local id, name = GetSpecializationInfo(i)
-        if id then
-            local ok = ns.ClassAutoPopulateSpec(id, includeUnpicked)
-            if ok then made = made + 1 else skipped[#skipped + 1] = tostring(name) end
-        end
-    end
-    local msg = ("Auto-populated %d spec(s) of %s."):format(made, UnitClass("player") or "your class")
-    if #skipped > 0 then msg = msg .. " Not learned yet (play each once): " .. table.concat(skipped, ", ") .. "." end
-    return made > 0, msg
-end
-end   -- do
+-- The class / spec auto-populate (one skeleton rule per cooldown, made at once, in "<Class> <Spec> - autorule population" >
+-- Defensive / Offensive / Utility / Unsorted) was replaced in Options 0.6.44 by the table in AutoPicker.lua: the spec buttons on the
+-- Class/Spec Rule Creator page load a list you tick and set up first (Xaya, 2026-11-05). Rules made by the old buttons are kept as they are.
 
 ns.UI.NewRule = function() StartNewRule(nil) end
 local function PickType(typ)
@@ -4271,6 +4203,25 @@ function ns.FolderContainerGroup(f)
         hidden = function() return not isDyn() or sortOf() ~= "manual" end,
         desc = "Saves your settings and reloads the interface. Out of combat the new order already applies; this makes sure it is written to disk and rebuilt from scratch.",
         func = function() if ReloadUI then ReloadUI() end end }
+    -- G10 (Xaya 2026-11-06, question flow: "Limit (Recommended),Align (Recommended)"; WeakAuras' dynamic group has both, CHAT-3d)
+    g.args.limit = { type = "range", name = "Limit (show at most)", order = 2.101, min = 0, max = 40, step = 1,
+        desc = "0 = no limit. After sorting, only this many items show; the others wait and appear when a shown one goes away.",
+        hidden = function() return not isDyn() end,
+        get = function() return tonumber(f.cLimit) or 0 end, set = function(_, v) f.cLimit = (v > 0) and v or nil; apply() end }
+    g.args.align = { type = "select", name = "Align", order = 2.102, arg = { xuiSide = true },
+        desc = "When items in a row (or column) have different sizes: which side they line up on.",
+        hidden = function() return not isDyn() end,
+        values = function()
+            if growsAcross() then return { start = "Top", center = "Center", ["end"] = "Bottom" } end
+            return { start = "Left", center = "Center", ["end"] = "Right" }
+        end,
+        sorting = { "start", "center", "end" },
+        get = function()
+            if f.cAlign then return f.cAlign end
+            if ns.DynamicBlock and ns.DynamicBlock(f) then return nil end   -- (a Centered / From anchor group lines up from its corner: none picked)
+            return "center"
+        end,
+        set = function(_, v) f.cAlign = v; apply() end }
     g.args.spacing = { type = "range", name = "Spacing", order = 2.1, min = 0, max = 200, step = 1,
         desc = "Space between items, in pixels.",
         hidden = function() return not isDyn() end,
@@ -4299,29 +4250,85 @@ function ns.FolderContainerGroup(f)
         get = function() return f.cAlpha or 1 end, set = function(_, v) f.cAlpha = (v < 1) and v or nil; apply() end }
     g.args.scale = { type = "range", name = "Group scale", order = 3.01, min = 0.25, max = 3, step = 0.05,
         get = function() return f.cScale or 1 end, set = function(_, v) f.cScale = (v ~= 1) and v or nil; apply() end }
-    g.args.width = { type = "range", name = "Container width (0 = no fixed size)", order = 3.05, min = 0, max = 1500, step = 1,
-        get = function() return f.cW or 0 end, set = function(_, v) f.cW = (v > 0) and v or nil; apply() end }
-    g.args.height = { type = "range", name = "Container height (0 = no fixed size)", order = 3.06, min = 0, max = 1500, step = 1,
-        get = function() return f.cH or 0 end, set = function(_, v) f.cH = (v > 0) and v or nil; apply() end }
-    g.args.clip = { type = "toggle", name = "Clip contents to the container size (hide anything outside it)", order = 3.07, width = "full",
+    -- Size (G5; Xaya 2026-11-06: "size = auto or set + clip / wrap tick boxes; auto fits the showing items, border follows"). Auto (the
+    -- default) fits what is showing; Set gives the box a width and height, and only then can it clip. Wrap is the dynamic group's
+    -- "Wrap into rows / columns" tick box above.
+    local function setSize() return ns.GroupSizeMode and ns.GroupSizeMode(f) == "set" end
+    g.args.sizeMode = { type = "select", name = "Size", order = 3.04, width = "full", arg = { xuiSide = true },
+        values = { auto = "Auto (fits what is showing)", set = "Set (width and height below)" }, sorting = { "auto", "set" },
+        desc = "Auto: the group's box (its border and background) fits the items that are showing, and follows as they come and go. Set: the box has the width and height you give it; it can clip what falls outside it.",
+        get = function() return ns.GroupSizeMode and ns.GroupSizeMode(f) or "auto" end,
+        set = function(_, v) if ns.SetGroupSizeMode then ns.SetGroupSizeMode(f, v) end; apply() end }
+    -- G9 (Xaya 2026-11-06: "Toggle + ask on resize"): with the tick box off, making a static group's box smaller than its items asks
+    -- once "Scale the items to fit?" (Yes ticks it); asked again only after the items fit again
+    local function askFit()
+        if f.cFit or f.cType == "dynamic" or not ns.GroupFitNeeded then return end
+        ns.fitAsked = ns.fitAsked or setmetatable({}, { __mode = "k" })
+        if ns.GroupFitNeeded(f) >= 1 then ns.fitAsked[f] = nil; return end
+        if ns.fitAsked[f] then return end
+        ns.fitAsked[f] = true
+        StaticPopupDialogs["XAYAUI_GROUP_FIT"] = StaticPopupDialogs["XAYAUI_GROUP_FIT"] or {
+            text = "%s", button1 = YES or "Yes", button2 = NO or "No", timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
+            OnAccept = function(self, data) if data and data.cb then data.cb() end end }
+        local dlg = StaticPopup_Show("XAYAUI_GROUP_FIT", "Scale the items to fit?", nil, { cb = function() f.cFit = true; apply() end })
+        if dlg and dlg.SetFrameStrata then dlg:SetFrameStrata("TOOLTIP") end
+    end
+    g.args.width = { type = "range", name = "Width", order = 3.05, min = 1, max = 1500, step = 1, hidden = function() return not setSize() end,
+        get = function() return f.cW or 1 end, set = function(_, v) f.cW = math.max(1, v); apply(); askFit() end }
+    g.args.height = { type = "range", name = "Height", order = 3.06, min = 1, max = 1500, step = 1, hidden = function() return not setSize() end,
+        get = function() return f.cH or 1 end, set = function(_, v) f.cH = math.max(1, v); apply(); askFit() end }
+    g.args.fit = { type = "toggle", name = "Scale items to fit the box", order = 3.065, width = "full",
+        hidden = function() return not setSize() or isDyn() end,
+        desc = "Shrinks everything in this group (never enlarges it) so its displays fit inside the width and height above. The box keeps its size; the saved X / Y and sizes of the displays do not change.",
+        get = function() return f.cFit and true or false end, set = function(_, v) f.cFit = v and true or nil; apply() end }
+    g.args.clip = { type = "toggle", name = "Clip (hide anything outside the box)", order = 3.07, width = "full", hidden = function() return not setSize() end,
         get = function() return f.cClip and true or false end, set = function(_, v) f.cClip = v and true or nil; apply() end }
+    -- Border and background (G5 "border follows", G11 #372 "a property for group display: background (puts an assigned color /
+    -- texture under the aura)"; WeakAuras' group tab has a border, CHAT-3d)
+    local function col(key, dflt) return function() local c = f[key] or dflt; return c[1], c[2], c[3], c[4] end end
+    local function setCol(key) return function(_, r, gg, b, a) f[key] = { r, gg, b, a }; apply() end end
+    g.args.boxH = { type = "header", name = "Border and background", order = 3.08 }
+    g.args.border = { type = "toggle", name = "Border", order = 3.081, get = function() return f.cBorder and true or false end,
+        set = function(_, v) f.cBorder = v and true or nil; apply() end }
+    g.args.borderColor = { type = "color", name = "Border colour", order = 3.082, hasAlpha = true, hidden = function() return not f.cBorder end,
+        get = col("cBdColor", { 0.6, 0.6, 0.65, 1 }), set = setCol("cBdColor") }
+    g.args.bg = { type = "toggle", name = "Background", order = 3.083, get = function() return f.cBg and true or false end,
+        set = function(_, v) f.cBg = v and true or nil; apply() end }
+    g.args.bgColor = { type = "color", name = "Background colour", order = 3.084, hasAlpha = true, hidden = function() return not f.cBg end,
+        get = col("cBgColor", { 0, 0, 0, 0.45 }), set = setCol("cBgColor") }
+    g.args.bgTex = { type = "input", name = "Background texture (file path or ID; empty = the colour only)", order = 3.085, width = "full",
+        hidden = function() return not f.cBg end,
+        get = function() return f.cBgTex and tostring(f.cBgTex) or "" end,
+        set = function(_, v) v = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", ""); f.cBgTex = (v ~= "") and (tonumber(v) or v) or nil; apply() end }
+    g.args.pad = { type = "range", name = "Padding around the items", order = 3.086, min = 0, max = 40, step = 1,
+        hidden = function() return not (f.cBorder or f.cBg) end,
+        get = function() return tonumber(f.cPad) or 4 end, set = function(_, v) f.cPad = v; apply() end }
     g.args.strata = { type = "select", name = "Layer (strata)", order = 3.2, values = SV, sorting = STRATA,
         get = function() return f.cStrata or "inherit" end, set = function(_, v) f.cStrata = (v ~= "inherit") and v or nil; apply() end }
     g.args.level = { type = "range", name = "Z-index within the layer (0 = automatic)", order = 3.3, min = 0, max = 200, step = 1,
         get = function() return f.cLevel or 0 end, set = function(_, v) f.cLevel = (v > 0) and v or nil; apply() end }
+    -- #372: "the relative / point on the frame should both be left-hand put into two columns with labels on the left and right-hand side
+    -- with dropdown menus": each of Relative to, this group's point and the frame's point is one row, its label on the left and its
+    -- dropdown on the right (the skin's label-left mode, arg.xuiSide)
     g.args.relH = { type = "header", name = "Group position", order = 4 }
     g.args.moveOn = { type = "execute", order = 4.05, width = "double",
         name = function() return ns.IsGroupUnlocked and ns.IsGroupUnlocked(f) and "Lock group (stop dragging)" or "Move group on screen (drag its outline)" end,
         desc = "Shows one outline around this group's displays; drag it to set the X / Y offset below. The lock icon on the group's row in the sidebar does the same.",
         func = function() if ns.SetGroupUnlocked then ns.SetGroupUnlocked(f, not ns.IsGroupUnlocked(f)) end; Notify() end }
-    g.args.rel = { type = "select", name = "Relative to", order = 4.1, width = "double", values = RV, sorting = RELS,
+    g.args.anchorTo = { type = "select", name = "Anchored to", order = 4.09, width = "full", arg = { xuiSide = true },
+        hidden = function() return not f.parent end,
+        values = { parent = "The parent group", screen = "The screen" }, sorting = { "parent", "screen" },
+        desc = "A nested group is placed from its parent group (it moves with it) or from the screen (it stays put when the parent moves). It stays inside its parent either way: the parent's opacity, scale and layer still apply.",
+        get = function() return f.cAnchorTo == "screen" and "screen" or "parent" end,
+        set = function(_, v) f.cAnchorTo = (v == "screen") and "screen" or nil; apply() end }
+    g.args.rel = { type = "select", name = "Relative to", order = 4.1, width = "full", arg = { xuiSide = true }, values = RV, sorting = RELS,
         get = function() return f.cRel or "screen" end, set = function(_, v) f.cRel = (v ~= "screen") and v or nil; apply() end }
     g.args.relName = { type = "input", name = "Frame name", order = 4.2, width = "double", hidden = function() return f.cRel ~= "custom" end,
         desc = "The global name of any frame, e.g. PlayerFrame or MultiBarBottomLeft. If it does not exist the group falls back to the screen.",
         get = function() return f.cFrame or "" end, set = function(_, v) f.cFrame = (v ~= "") and v or nil; apply() end }
-    g.args.point = { type = "select", name = "This group's anchor point", order = 4.3, values = PV, sorting = POINTS,
+    g.args.point = { type = "select", name = "This group's anchor point", order = 4.3, width = "full", arg = { xuiSide = true }, values = PV, sorting = POINTS,
         get = function() return f.cPoint or "CENTER" end, set = function(_, v) f.cPoint = (v ~= "CENTER") and v or nil; apply() end }
-    g.args.relPoint = { type = "select", name = "Point on the frame it is relative to", order = 4.4, values = PV, sorting = POINTS,
+    g.args.relPoint = { type = "select", name = "Point on the frame it is relative to", order = 4.4, width = "full", arg = { xuiSide = true }, values = PV, sorting = POINTS,
         get = function() return f.cRelPoint or f.cPoint or "CENTER" end, set = function(_, v) f.cRelPoint = v; apply() end }
     g.args.x = { type = "range", name = "X offset", order = 4.5, min = -1500, max = 1500, step = 1, softMin = -600, softMax = 600,
         get = function() return f.cX or 0 end, set = function(_, v) f.cX = (v ~= 0) and v or nil; apply() end }
@@ -4330,84 +4337,40 @@ function ns.FolderContainerGroup(f)
     return g
 end
 
--- Static group tools: Align, Distribute and Space the displays inside the group by editing their own X / Y.
+-- Static group arrangement (G7; Xaya 2026-11-06: "align / distribute / spacing saved and kept applying"; a dragged display: "Arrangement
+-- wins"). One choice per direction is saved on the group (f.cArrX / f.cArrY / f.cArrGap) and core applies it again whenever a display in
+-- the group changes (ns.ApplyGroupArrangement). The values keep the names of the former one-time buttons.
 -- ns function (not a local) to stay under Lua's 200-locals-per-chunk limit.
 function ns.FolderArrangeGroup(f)
-    local gap = 8
-    local function items()
-        local l = {}
-        for _, r in ipairs(FolderRules(f.id)) do
-            local v = r.visual
-            if type(v) == "table" and v.enabled then l[#l + 1] = r end
-        end
-        return l
-    end
-    local function R(n) return math.floor(n + 0.5) end
-    local function done(n, what)
-        for _, r in ipairs(items()) do pcall(ns.RefreshVisual, r) end
+    local X = { none = "None", left = "Align left", center = "Align center", right = "Align right", distribute = "Distribute horizontally", space = "Space horizontally" }
+    local Y = { none = "None", top = "Align top", middle = "Align middle", bottom = "Align bottom", distribute = "Distribute vertically", space = "Space vertically" }
+    local function apply()
+        ns.ApplyGroupArrangement(f)
         ns.MarkDirty(); Notify()
-        ns.Print(("%s: %d display(s) in group '%s'"):format(what, n, tostring(f.name)))
     end
-    local function Act(what, fn)
-        local l = items()
-        if #l < 2 then ns.Print("a group needs at least two displays to " .. what:lower()); return end
-        -- the tools work on center offsets; each display's own anchor is converted in and out so mixed anchors line up correctly
-        for _, r in ipairs(l) do local cx, cy = ns.VisualCenterOffset(r); r.visual.x, r.visual.y = cx, cy end
-        fn(l)
-        for _, r in ipairs(l) do ns.SetVisualCenterOffset(r, r.visual.x, r.visual.y) end
-        done(#l, what)
-    end
-    local function dims(r) local v = r.visual; return tonumber(v.x) or 0, tonumber(v.y) or 0, tonumber(v.w) or 0, tonumber(v.h) or 0 end
-    local function alignX(mode) Act("Align", function(l)
-        local lo, hi = math.huge, -math.huge
-        for _, r in ipairs(l) do local x, _, w = dims(r); lo = math.min(lo, x - w / 2); hi = math.max(hi, x + w / 2) end
-        for _, r in ipairs(l) do local _, _, w = dims(r)
-            r.visual.x = R(mode == "left" and lo + w / 2 or mode == "right" and hi - w / 2 or (lo + hi) / 2) end
-    end) end
-    local function alignY(mode) Act("Align", function(l)
-        local top, bot = -math.huge, math.huge
-        for _, r in ipairs(l) do local _, y, _, h = dims(r); top = math.max(top, y + h / 2); bot = math.min(bot, y - h / 2) end
-        for _, r in ipairs(l) do local _, _, _, h = dims(r)
-            r.visual.y = R(mode == "top" and top - h / 2 or mode == "bottom" and bot + h / 2 or (top + bot) / 2) end
-    end) end
-    local function distribute(horiz) Act("Distribute", function(l)
-        table.sort(l, function(a, b) local ax, ay = dims(a); local bx, by = dims(b); if horiz then return ax < bx end return ay > by end)
-        local n = #l
-        local ax, ay = dims(l[1]); local bx, by = dims(l[n])
-        for i, r in ipairs(l) do
-            if horiz then r.visual.x = R(ax + (bx - ax) * (i - 1) / (n - 1)) else r.visual.y = R(ay + (by - ay) * (i - 1) / (n - 1)) end
-        end
-    end) end
-    local function space(horiz) Act("Space", function(l)
-        table.sort(l, function(a, b) local ax, ay = dims(a); local bx, by = dims(b); if horiz then return ax < bx end return ay > by end)
-        local cur
-        for i, r in ipairs(l) do
-            local x, y, w, h = dims(r)
-            if horiz then
-                if i == 1 then cur = x + w / 2 else r.visual.x = R(cur + gap + w / 2); cur = r.visual.x + w / 2 end
-            else
-                if i == 1 then cur = y - h / 2 else r.visual.y = R(cur - gap - h / 2); cur = r.visual.y - h / 2 end
-            end
-        end
-    end) end
-    local function B(order, name, fn) return { type = "execute", order = order, width = 1.1, name = name, func = fn } end
     return { type = "group", inline = true, order = 5.45, name = "Align & Arrange (Static Group)",
         hidden = function() return f.cType == "dynamic" or not ns.KindHas({ folder = f.id }, "visual") end,
         args = {
             note = { type = "description", order = 0, width = "full", fontSize = "small",
-                name = "Group tools: these edit the X / Y of the displays inside this group (and nested groups) so they line up, spread out evenly, or sit a fixed gap apart. Use Unlock visuals to see the result." },
-            l = B(1, "Align left", function() alignX("left") end), c = B(2, "Align center", function() alignX("center") end), r = B(3, "Align right", function() alignX("right") end),
-            t = B(4, "Align top", function() alignY("top") end), m = B(5, "Align middle", function() alignY("middle") end), b = B(6, "Align bottom", function() alignY("bottom") end),
-            dh = B(7, "Distribute horizontally", function() distribute(true) end), dv = B(8, "Distribute vertically", function() distribute(false) end),
-            gap = { type = "range", order = 9, width = "double", name = "Gap for Space (pixels)", min = 0, max = 200, step = 1,
-                get = function() return gap end, set = function(_, v) gap = v end },
-            sh = B(10, "Space horizontally", function() space(true) end), sv = B(11, "Space vertically", function() space(false) end),
+                name = "Kept for this group: its displays (not those of nested groups) stay lined up this way. A display you drag, nudge, add or resize goes back into line; pick None to place them freely." },
+            arrX = { type = "select", order = 1, name = "Horizontal", values = X,
+                sorting = { "none", "left", "center", "right", "distribute", "space" }, arg = { xuiSide = true },
+                get = function() return f.cArrX or "none" end,
+                set = function(_, v) f.cArrX = (v ~= "none") and v or nil; apply() end },
+            arrY = { type = "select", order = 2, name = "Vertical", values = Y,
+                sorting = { "none", "top", "middle", "bottom", "distribute", "space" }, arg = { xuiSide = true },
+                get = function() return f.cArrY or "none" end,
+                set = function(_, v) f.cArrY = (v ~= "none") and v or nil; apply() end },
+            gap = { type = "range", order = 3, width = "double", name = "Gap for Space (pixels)", min = 0, max = 200, step = 1,
+                hidden = function() return f.cArrX ~= "space" and f.cArrY ~= "space" end,
+                get = function() return f.cArrGap or 8 end,
+                set = function(_, v) f.cArrGap = (v ~= 8) and v or nil; apply() end },
         } }
 end
 
 local function FolderSoundGroup(f)
     return {
-        type = "group", inline = true, order = 5.6, name = "Sound Channel for This Group",
+        type = "group", inline = true, order = 5.6, name = "Sound Channel Override",   -- (her label, #372)
         hidden = function() return ns.RuleKind({ folder = f.id }) == "display" end,
         args = {
             note = { type = "description", order = 0, width = "full", fontSize = "small",
@@ -4502,26 +4465,51 @@ local function BuildFolder(k, f)
         return t
     end
     local container = g.args.container
-    local dispFromContainer = {}
-    if container and container.args then
-        for _, k in ipairs({ "alpha", "scale", "strata", "level" }) do   -- position (relative to, anchor, X / Y) stays on the Group tab with the container
-            if container.args[k] then dispFromContainer[k] = container.args[k]; container.args[k] = nil end
-        end
-    end
     local isVisual = function() return ns.KindHas({ folder = f.id }, "visual") end
+    -- Config (#372; Xaya 2026-11-06: "tabs Group | Display | Load | Config (Group first)", "Delete / New / Enable on Config"; CHAT-3d:
+    -- "config includes folder name, folder type, and original character / source of creation. Also includes enable/disable toggle"):
+    -- the name, the type, one Enabled toggle (it replaces Enable all / Disable all), the Sound Channel Override, New, Delete and where
+    -- the group came from. Opacity, scale and layer stay on the Group tab with the container now ("strata / opacity / scale on Group").
+    local configArgs = take({ "name", "newRule", "newSub", "deleteTop", "deleteAllTop", "soundChannel" })
+    take({ "enableAll", "disableAll" })
+    if configArgs.name then configArgs.name.order = 1 end
+    for k, o in pairs({ newRule = 6, newSub = 6.1, deleteTop = 7, deleteAllTop = 7.1 }) do if configArgs[k] then configArgs[k].order = o end end
+    if configArgs.soundChannel then configArgs.soundChannel.order = 5 end
+    configArgs.enabled = { type = "toggle", order = 1.5, width = "full", name = "Enabled",
+        desc = "Ticked: every rule in this group and its nested groups is on. Unticking switches them all off (ticking again switches them all on).",
+        get = function()
+            local any = false
+            for _, r in ipairs(FolderRules(f.id)) do any = true; if not r.enabled then return false end end
+            return any
+        end,
+        set = function(_, v) for _, r in ipairs(FolderRules(f.id)) do r.enabled = v and true or false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end }
+    if container and container.args then
+        local any = false
+        for k, v in pairs(container.args) do
+            if type(k) == "string" and k:match("^ctype_") then configArgs[k] = v; container.args[k] = nil; v.order = 2 + (v.order % 1); v.hidden = function() return not isVisual() end; any = true end
+        end
+        if any then configArgs.typeHdr = { type = "header", order = 2, name = "Group type", hidden = function() return not isVisual() end } end
+    end
+    configArgs.origin = { type = "description", order = 8, width = "full", fontSize = "medium",
+        name = function()
+            local o = ns.CleanOrigin and ns.CleanOrigin(f.origin)
+            if not o then return "Made by: not recorded (this group is older than the record)." end
+            local how = ({ made = "made here", default = "a built-in category", imported = "imported" })[o.how or ""] or tostring(o.how or "made")
+            local when = (o.at and date) and date("%Y-%m-%d", o.at) or nil
+            return ("Made by: %s (%s%s)"):format(o.by or "unknown character", how, when and (", " .. when) or "")
+        end }
     local groupArgs = g.args
-    local dispArgs = take({ "arrange", "pausePv" })
-    if dispArgs.arrange then dispArgs.arrange.order = 9 end
+    local dispArgs = take({ "pausePv" })   -- (Align & Arrange stays on the Group tab: Xaya 2026-11-06, "Move to Group tab")
     -- Xaya, 2026-11-04: "Pause preview animations" belongs on the Display tab (as on a rule's Display tab), not on the Group tab
     if dispArgs.pausePv then dispArgs.pausePv.order = 0.5 end
-    -- 0.6.4 (#341, group display): the group as a whole first, then every display cue inside, edited live (DisplayTab.lua)
-    dispArgs.placement = { type = "group", inline = true, order = 1, name = "Whole group: opacity, scale & layer", args = dispFromContainer }
     dispArgs.note = { type = "description", order = 0, width = "full", fontSize = "small",
-        name = "The group's own opacity, scale, and layer apply to everything inside it on top of each display's own settings. Below them, the settings of every display cue in this group and its nested groups. The group's position, type, and container are on the Group tab." }
+        name = "The settings of every display cue in this group and its nested groups. The group's own position, size, opacity, scale, layer and Align & Arrange are on the Group tab; its name, type and Enabled switch on the Config tab." }
     if ns.GroupDisplayArgs then for k, v in pairs(ns.GroupDisplayArgs(f, FolderRules, Notify)) do dispArgs[k] = v end end
+    -- "icon size on Group" (Xaya 2026-11-06): the every-display size section moves to the Group tab
+    if dispArgs.size then groupArgs.size = dispArgs.size; dispArgs.size = nil; groupArgs.size.order = 5.45 end
     local loadArgs = { override = take({ "loadOverride" }).loadOverride, conds = ns.FolderLoadConditions(f) }
     local lock = function() return ns.IsEditLocked({ folder = f.id }) end
-    ns.LockArgs(groupArgs, lock); ns.LockArgs(dispArgs, lock); ns.LockArgs(loadArgs, lock)
+    ns.LockArgs(groupArgs, lock); ns.LockArgs(dispArgs, lock); ns.LockArgs(loadArgs, lock); ns.LockArgs(configArgs, lock)
     -- A group page can't use AceConfig's own tabs (its rules and nested groups are the tree children below it), so the tab strip
     -- is a row of buttons and each tab's content is an unframed box shown only while its tab is picked.
     ns.folderTab = ns.folderTab or setmetatable({}, { __mode = "k" })
@@ -4549,9 +4537,11 @@ local function BuildFolder(k, f)
         tabGroup = Tab("group", "Group", 0.01),
         tabDisplay = Tab("display", "Display", 0.02, function() return not isVisual() end),
         tabLoad = Tab("load", "Load", 0.03),
+        tabConfig = Tab("config", "Config", 0.04),
         pageGroup = Page("group", groupArgs),
         pageDisplay = Page("display", dispArgs),
         pageLoad = Page("load", loadArgs),
+        pageConfig = Page("config", configArgs),
     }
     return g
 end
@@ -5129,10 +5119,8 @@ local function BuildOptions()
     -- ns.RegisterSettingsPage). An addon that is switched off registers nothing, so its tab is simply absent.
     local modTabs = ns.OptionsApi.ModuleTabs(Notify, ns.QoLOn and { allqol = allQol, allcursor = (ns.CursorTrackerGroup and ns.CursorTrackerGroup(Notify)) or nil, allbars = allBars } or nil)
 
-    -- Addon Info is not in the tab strip: the version text in the window's bottom-left corner opens it (ns.infoOpen) and it
-    -- goes away again as soon as another tab is picked.
-    local infoGroup = ns.BuildAddonInfo and ns.BuildAddonInfo() or nil
-    if infoGroup then infoGroup.order = 8; infoGroup.hidden = function() return not ns.infoOpen end end
+    -- Addon Info and Settings > Acknowledgements moved into the version pane (InfoPane.lua, Options 0.6.56; Xaya 2026-11-06: "Both
+    -- move into the pane"): Info > Version info and Info > Credits + Acknowledgements. The version text opens the pane.
     -- Settings (skin on): its pages REPLACE the Rules / Smart Categories tabs while the toolbar's Settings button is on:
     --   Settings page = left sidebar: UI Options (Display | Rule Creation | Theme tabs), Minimap Button, Debugging
     local function SettingsOn() return (ns.SkinRows and ns.SkinRows()) and ns.pageOpen == "settings" end
@@ -5150,11 +5138,6 @@ local function BuildOptions()
     -- one top-level page with a left sidebar like the rest of the addon (UI Options, Debugging), instead of two top tabs (Xaya, 2026-11-02)
     local setPage = { type = "group", name = "Settings", order = 7, childGroups = "tree", hidden = function() return not SettingsOn() end,
         args = { ui = setUi, minimap = minimapGroup, debug = setDbg } }
-    -- credits and attribution have their own page under Settings (AddonInfo.lua; Xaya 2026-11-04), in both settings layouts
-    if ns.BuildAcknowledgements then
-        setPage.args.credits = ns.BuildAcknowledgements()
-        settings.args.credits = ns.BuildAcknowledgements()
-    end
     if minimapGroup then
         minimapGroup.order = 1.5
         settings.args.minimap = minimapGroup   -- the old single Settings tab (skin rows off) gets it too
@@ -5170,7 +5153,7 @@ local function BuildOptions()
             name = "The Esc menu's own look (the XayaUI skin) is under the Blizzard UI Reskin tab > Esc Menu." }
     end
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, recyclebin = binTab, chat = modTabs.chat, qol = modTabs.qol, bonus = modTabs.bonus, reskin = modTabs.reskin, profiles = BuildProfiles(), info = infoGroup, settings = settings, set = setPage } }
+        args = { cooldowns = track, recyclebin = binTab, chat = modTabs.chat, qol = modTabs.qol, bonus = modTabs.bonus, reskin = modTabs.reskin, profiles = BuildProfiles(), settings = settings, set = setPage } }
     pcall(ns.SmartOpen)
     pcall(ns.FeatureTreesOpen)
     pcall(ns.ApplyTreeFilter, out)
@@ -5361,26 +5344,25 @@ end
 -- Rows map to objects by their tree key: all / f<id> (folder) / rule<n>; allbars / bar<n>.
 -- Preview is temporary: it never edits a rule, and it clears when the window closes.
 -------------------------------------------------------------------------------
-local EYE_ATLASES = { "socialqueuing-icon-eye" }
-local EYE_FILE = "Interface\\Icons\\INV_Misc_Eye_01"
-local HEAD_ATLASES = { "voicechat-icon-headphone-on" }
-local HEAD_FILE = "Interface\\Common\\VoiceChat-Speaker"
-
-local function AtlasOK(n)
-    local ok, info = false, nil   -- (C_Texture checked first: indexing a missing table is outside the pcall)
-    if C_Texture and C_Texture.GetAtlasInfo then ok, info = pcall(C_Texture.GetAtlasInfo, n) end
-    return ok and info and true or false
-end
-local function ApplyIcon(tex, atlases, file)
-    for _, a in ipairs(atlases) do
-        if AtlasOK(a) then tex:SetAtlas(a); return "atlas " .. a end
-    end
-    tex:SetTexture(file)
-    return "file " .. file
+-- Our own icons (Xaya, 2026-11-06: "change the audio preview icon to JUST a headphone icon please", "instead of gold, do a slash through to
+-- indicate it being off", "do the same with the eye so it's clearer and our own icon please"; her pick "Yes, slash and dimmed"): a plain
+-- eye / headphone while the preview is on, the same with a slash while it is off (and dimmed as before). Drawn for XayaUI (Media\UI).
+local UI_MEDIA = "Interface\\AddOns\\XayaUI\\Media\\UI\\"
+ns.PREVIEW_ICONS = {
+    visual = { on = UI_MEDIA .. "xui_eye.tga", off = UI_MEDIA .. "xui_eye_off.tga" },
+    sound = { on = UI_MEDIA .. "xui_headphone.tga", off = UI_MEDIA .. "xui_headphone_off.tga" },
+}
+-- the picture a preview toggle shows: the plain icon while its preview is on (st 1) or partly on (st 0.5), the slashed one while off (st 0)
+-- the movement lock / mover (Xaya, 2026-11-06: "change lock icon to be simpler and flatter"; "use the more common color choice for the
+-- lock and use the less common color for the mover icon (also flatten)": a white lock, a gold four-way arrow; own drawings)
+ns.LOCK_ICON, ns.MOVE_ICON = UI_MEDIA .. "xui_lock.tga", UI_MEDIA .. "xui_move.tga"
+function ns.PreviewIcon(kind, st)
+    local ic = ns.PREVIEW_ICONS[kind == "visual" and "visual" or "sound"]
+    return (st == 0) and ic.off or ic.on
 end
 function ns.OptionsApi.IconReport()
-    local function chk(list, file) for _, a in ipairs(list) do if AtlasOK(a) then return "atlas " .. a end end return "file " .. file end
-    ns.Print("eye icon: " .. chk(EYE_ATLASES, EYE_FILE) .. " | headphone icon: " .. chk(HEAD_ATLASES, HEAD_FILE))
+    local I = ns.PREVIEW_ICONS
+    ns.Print("eye icon: " .. I.visual.on .. " (off: " .. I.visual.off .. ") | headphone icon: " .. I.sound.on .. " (off: " .. I.sound.off .. ")")
 end
 
 -- Returns visualObjs, soundObjs for a tree row (either may be nil)
@@ -5431,6 +5413,13 @@ local function Resolve(uv)
         for _, r in ipairs(ns.rules or {}) do l[#l + 1] = r end
         l = ns.PvFilter(l, uv, true)
         return l, l
+    elseif last == "loaded" or last == "notloaded" then
+        -- Xaya, 2026-11-06: "loaded does not have an eye icon next to it to preview every loaded + enabled rule; not loaded also has the
+        -- same problem": the root's eye previews every rule in that list (PvFilter keeps the rules whose scope is that list: enabled and
+        -- loaded / enabled and not loaded). The eye only: she asked for no headphone there.
+        local l = {}
+        for _, r in ipairs(ns.rules or {}) do l[#l + 1] = r end
+        return ns.PvFilter(l, last, true), nil
     elseif last == "allbars" then
         local l = {}
         for _, b in ipairs(ns.bars or {}) do l[#l + 1] = b end
@@ -5525,7 +5514,7 @@ local function MakeToggle(button, kind)
     b.tex = b:CreateTexture(nil, "ARTWORK")
     b.tex:SetAllPoints()
     b.kind = kind
-    if kind == "visual" then ApplyIcon(b.tex, EYE_ATLASES, EYE_FILE) else ApplyIcon(b.tex, HEAD_ATLASES, HEAD_FILE) end
+    b.tex:SetTexture(ns.PreviewIcon(kind, 0))
     b:SetScript("OnClick", function(self)
         local objs = self.objs
         if not objs or #objs == 0 then return end
@@ -5709,6 +5698,7 @@ function drag.ClearMarks()
     if drag.line then pcall(drag.line.Hide, drag.line); drag.line = nil end
 end
 local function StartDrag(button)
+    if drag.obj then return end   -- (already dragging: the press watcher below and the game's OnDragStart can both start one)
     local last = LastKey(button.uniquevalue) or ""
     local kind, obj, label
     local n = last:match("^rule(%d+)$")
@@ -5791,7 +5781,7 @@ drag.fail = function(err)
     if dragFrame then dragFrame:Hide(); dragFrame:SetScript("OnUpdate", nil) end
     drag.ClearMarks()
     ns.Print("moving a row failed and was cancelled: " .. tostring(err))
-    if ns.CaptureError then pcall(ns.CaptureError, "XayaUI move: " .. tostring(err), debugstack and debugstack(2) or "") end
+    if ns.CaptureError then pcall(ns.CaptureError, "XayaUI move: " .. tostring(err), debugstack and debugstack(2) or "", "XUI-E013") end
     pcall(Notify)
 end
 local function StopDrag(button)
@@ -5810,7 +5800,36 @@ local function StopDrag(button)
     ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()   -- the on-screen preview / dynamic groups lay out in rule order: redo it now
     ns.SelectKeep(kind == "rule" and RulePath(obj) or FolderPath(obj))
 end
-ns.DragForTest = { start = StartDrag, stop = StopDrag, zone = drag.DropZone, target = DropTarget, state = drag }   -- tests/drag_drop_run.py
+-- #343 (Xaya 2026-11-06: the broken drag is "rule rows in the sidebar"; pressing a row and dragging does "Nothing at all"): the game's
+-- own OnDragStart never reached the rows in her game (the cause was not found offline: the rows are registered for dragging and nothing
+-- covers them). So the drag no longer depends on it: a left press on a row arms a watcher; once the mouse has moved DRAG_PX pixels with
+-- the button still held, the drag starts; releasing the button drops it (wherever the mouse is). OnDragStart / OnDragStop stay as a
+-- second way in (StartDrag / StopDrag ignore a second start or stop). A press that does not move is a plain click, as before.
+drag.DRAG_PX = 6
+function drag.Arm(button)
+    if drag.obj or not GetCursorPosition then return end
+    local x0, y0 = GetCursorPosition()
+    local sc = (UIParent and UIParent.GetEffectiveScale and UIParent:GetEffectiveScale()) or 1
+    drag.watch = drag.watch or CreateFrame("Frame")
+    local w = drag.watch
+    w.btn, w.x0, w.y0, w.sc = button, x0, y0, sc
+    w:SetScript("OnUpdate", function(self)
+        local ok, err = pcall(function()
+            local held = IsMouseButtonDown and IsMouseButtonDown("LeftButton")
+            if not held then
+                self:SetScript("OnUpdate", nil)
+                if drag.obj then StopDrag(self.btn) end
+                return
+            end
+            if not drag.obj then
+                local x, y = GetCursorPosition()
+                if math.abs(x - self.x0) + math.abs(y - self.y0) >= drag.DRAG_PX * self.sc then StartDrag(self.btn) end
+            end
+        end)
+        if not ok then self:SetScript("OnUpdate", nil); drag.fail(err) end
+    end)
+end
+ns.DragForTest = { start = StartDrag, stop = StopDrag, zone = drag.DropZone, target = DropTarget, state = drag, arm = drag.Arm }   -- tests/drag_drop_run.py
 
 -------------------------------------------------------------------------------
 -- Reorder arrows: small up / down triangles at the left of every rule and folder row under All Rules.
@@ -6237,6 +6256,10 @@ local function RowMenu(button, root)
         root:CreateButton(rule.enabled and "Disable" or "Enable", function()
             rule.enabled = not rule.enabled; pcall(ns.RefreshVisual, rule); ns.MarkDirty(); Notify()
         end)
+        if ns.MultiHas and ns.MultiHas(rule) and ns.MultiCount() > 1 and #ns.MultiLinkTargets() >= 2 then
+            local n, linked = ns.MultiCount(), ns.MultiLinked()
+            root:CreateButton(linked and ("Unlink " .. n .. " Selected") or ("Link " .. n .. " Selected (move together)"), function() ns.MultiLink(not linked) end)
+        end
         AddMoveMenu(root, rule, "rule")
         root:CreateDivider()
         root:CreateButton("Delete", function() AskConfirm("Delete the rule '" .. tostring(rule.name) .. "'? " .. ns.RecycleBinNote(), function() DeleteRule(rule) end) end)
@@ -6724,7 +6747,7 @@ function ns.PaintSide(button, rules, vis, folder)
         b.xuiOn, b.xuiObjs = (n == #vis), vis
         b.xuiMoveFolder = folder
         if folder and ns.IsGroupUnlocked then n = ns.IsGroupUnlocked(folder) and #vis or 0; b.xuiOn = (n == #vis) end
-        b.tex:SetTexture(n == 0 and "Interface\\PetBattles\\PetBattle-LockIcon" or "Interface\\CURSOR\\UI-Cursor-Move")
+        b.tex:SetTexture(n == 0 and ns.LOCK_ICON or ns.MOVE_ICON)   -- our own flat icons (Xaya 2026-11-06: white lock, gold mover)
         b.tex:SetAlpha(n == 0 and 0.85 or (n == #vis and 1 or 0.6))
         b:ClearAllPoints(); b:SetPoint("RIGHT", button, "RIGHT", -off, button.xuiTwoRow and -9 or 0)
         b:Show()
@@ -6761,7 +6784,7 @@ local ROW_TOGGLES = {
 -- would give a toggle at that place (path, then "xuiSwitch"). The box's tooltip is the switch's name and desc. A click on the box
 -- is the box's own: it never selects or opens the row (the game hands a click to the topmost mouse-enabled frame under the cursor,
 -- and the box sits above the row; INFERENCE, standard behaviour the rule rows' eye / lock buttons rely on too, not stated in the
--- API documentation). Rows whose page has no single on / off (Tooltips, Calculator, Utilities) get no box.
+-- API documentation). Rows whose page has no single on / off (Utilities, Cursor) get no box.
 -- Where the box sits (#369: a row's name room is precious): every row keeps a 16 px slot left of its name for the open / close
 -- arrow, empty on a row without parts; the box takes that slot, so it costs those names nothing. On a row that has parts (Character
 -- Toolkit) the box sits right after the arrow slot and only that row's name moves right by the box's width; it stays there while
@@ -6872,6 +6895,38 @@ do
     function ns.MultiCount() local n = 0; for _ in pairs(sel) do n = n + 1 end; return n end
     function ns.MultiReset() wipe(sel); anchor = nil end
     function ns.MultiHas(rule) return sel[rule] and true or false end
+    -- "Link N Selected (move together)" (Xaya, 2026-11-06: "linking aura functionality not possible in the drop down menu"; her answer
+    -- "Link N selected"). A link joins displays (Visual.lua ns.LinkAura: dragging one moves the others), so the selected rules' displays
+    -- are linked: each rule's display cues (ns.PreviewTargets), or the rule itself when it draws its own display.
+    function ns.MultiLinkTargets()
+        local out, seen = {}, {}
+        for _, r in ipairs(ns.rules or {}) do   -- list order, so the result does not depend on table order
+            if sel[r] then
+                for _, t in ipairs((ns.PreviewTargets and ns.PreviewTargets(r)) or { r }) do
+                    if not seen[t] and t.visual and t.visual.enabled then seen[t] = true; out[#out + 1] = t end
+                end
+            end
+        end
+        return out
+    end
+    function ns.MultiLinked()
+        local t = ns.MultiLinkTargets()
+        if #t < 2 then return false end
+        local id = t[1].link
+        if not id then return false end
+        for _, o in ipairs(t) do if o.link ~= id then return false end end
+        return true
+    end
+    function ns.MultiLink(on)
+        local t = ns.MultiLinkTargets()
+        if on then
+            for i = 2, #t do ns.LinkAura(t[i], t[1]) end
+        else
+            for _, o in ipairs(t) do ns.UnlinkAura(o) end
+        end
+        ns.MarkDirty(); Notify()
+        ns.Print(on and ("linked %d display(s): dragging one moves them all (Shift-drag: one alone)"):format(#t) or "unlinked the selected displays")
+    end
     -- move every selected rule into group fid (nil = top level)
     function ns.MultiMove(fid)
         local fo = fid and FolderById(fid)
@@ -7071,6 +7126,7 @@ local function DecorateButton(button)
         button:RegisterForDrag("LeftButton")
         button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         button:HookScript("OnClick", function(self, mouse) ns.Trace("click"); if mouse == "RightButton" then ShowRowMenu(self) else ns.MultiClick(self, mouse) end end)
+        button:HookScript("OnMouseDown", function(self, mouse) if mouse == "LeftButton" then local ok, e = pcall(drag.Arm, self); if not ok then drag.fail(e) end end end)   -- #343
         button:HookScript("OnDragStart", function(self) local ok, e = pcall(StartDrag, self); if not ok then drag.fail(e) end end)
         button:HookScript("OnDragStop", function(self) local ok, e = pcall(StopDrag, self); if not ok then drag.fail(e) end end)
     end
@@ -7091,10 +7147,11 @@ local function DecorateButton(button)
     if level < 1 then level = 1 end
     local canExpand = button.toggle and button.toggle:IsShown() and true or false
     local hasIcons = (vis and #vis > 0) or (snd and #snd > 0)
-    -- top-level roots (All Rules / Loaded / Not Loaded) carry no eye or headphone; their lock icons stay
+    -- top-level roots (All Rules / Disabled / Smart Categories) carry no eye or headphone; their lock icons stay. Loaded and Not Loaded
+    -- carry the eye (Resolve above; Xaya 2026-11-06)
     do
         local rootKey = tostring(button.uniquevalue or ""):match("([^\001]+)$")
-        if rootKey == "all" or rootKey == "loaded" or rootKey == "notloaded" or rootKey == "disabled" or rootKey == "smart" then hasIcons = false end
+        if rootKey == "all" or rootKey == "disabled" or rootKey == "smart" then hasIcons = false end
     end
     if button.text then
         button.text:SetWordWrap(false)
@@ -7108,6 +7165,7 @@ local function DecorateButton(button)
     -- left gutter (4px wider than before). Root headers and first-level groups start at the same x (flush with the sidebar wall);
     -- each deeper level steps in by 8px as before.
     local x0 = (level <= 1) and 6 or (8 * level - 9)
+    x0 = ns.OptionsApi.NestX(button, level, x0)   -- (Options 0.6.55) a feature tab's part: its parent's name + 8 px
     ns.PaintReorder(button, level, x0)
     if button.xuiReorderOn then x0 = x0 + ns.REORDER_W + 11 end   -- chevron and text sit right of the arrows
     if button.toggle then
@@ -7188,6 +7246,7 @@ local function DecorateButton(button)
             if button.xuiTwoRow then b:SetPoint("RIGHT", button, "RIGHT", -4, 9)   -- first row: the preview button at the right edge
             else b:SetPoint("RIGHT", button, "RIGHT", -sx, 0) end
             local st = GroupState(objs, kind)
+            b.tex:SetTexture(ns.PreviewIcon(kind, st))   -- off: the slashed icon (still dimmed below)
             b.tex:SetDesaturated(st == 0)
             b.tex:SetAlpha(st == 1 and 1 or (st == 0.5 and 0.7 or 0.35))
             b:Show()
@@ -7231,6 +7290,7 @@ local function DecorateButton(button)
         end
         if button.text then button.text:SetPoint("LEFT", button, "LEFT", x0 + lead + iconSlots + 3, note and 8 or 2) end
         button.xuiTextL = x0 + lead + iconSlots + 3   -- #369: the name's left inset (Skin.lua ns.EnsureNameRoom)
+        ns.OptionsApi.NoteNameL(button)
         if note then
             if not button.xuiSub then
                 button.xuiSub = button:CreateFontString(nil, "OVERLAY")
@@ -7266,6 +7326,7 @@ end
 -- A decoration error must never abort AceGUI's tree layout (that blanks the whole window). Errors are kept, printed once per kind.
 function ns.SafeDecorate(b)
     local ok, err = pcall(DecorateButton, b)
+    if ok then ok, err = pcall(ns.OptionsApi.GreyRow, b) end   -- (Options 0.6.55) after every colour the row gets
     if not ok then
         ns.lastTreeErr = tostring(err)
         if not ns.treeErrShown or ns.treeErrShown ~= ns.lastTreeErr then
@@ -8040,7 +8101,7 @@ local function SetCollapsed(of, collapsed)
     if collapsed then
         c.hidden = {}
         for _, child in ipairs({ fr:GetChildren() }) do
-            if child ~= c.title and child ~= c.arrow and child ~= c.close and child:IsShown() then
+            if child ~= c.title and child ~= c.arrow and child ~= c.close and child ~= c.help and child:IsShown() then
                 c.hidden[#c.hidden + 1] = child
                 child:Hide()
             end
@@ -8095,6 +8156,23 @@ local function EnsureChrome(of)
         c.arrow.tex:SetPoint("CENTER", 0, 0)
         c.arrow.tex:SetTexture(ARROW_OPEN)
         c.arrow:SetScript("OnClick", function() SetCollapsed(of, not c.collapsed) end)
+
+        -- ? just left of the collapse arrow (Xaya 2026-11-06: "nest it in the title bar alongside the collapse pane and X close
+        -- button"; "help icon brings you to its location wherever its nested"): opens the version pane at Info > Help (FAQ).
+        -- Anchored to the arrow, so it follows it beside the banner when the window is collapsed.
+        c.help = CreateFrame("Button", nil, fr, "UIPanelButtonTemplate")
+        c.help:SetSize(22, 22)
+        c.help:SetPoint("RIGHT", c.arrow, "LEFT", -4, 0)
+        c.help:SetFrameLevel(fr:GetFrameLevel() + 10)
+        c.help:SetText("?")
+        c.help:SetScript("OnClick", function() if ns.InfoPane then ns.InfoPane.OpenHelp() end end)
+        c.help:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+            GameTooltip:SetText("Help")
+            GameTooltip:AddLine("Opens Help (FAQ) in the version pane (Info > Help).", 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        c.help:SetScript("OnLeave", function() GameTooltip:Hide() end)
         c.arrow:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
             GameTooltip:SetText(c.collapsed and "Expand the window" or "Collapse to the banner")
@@ -8108,7 +8186,7 @@ local function EnsureChrome(of)
         -- so it is found as that text's parent.
         c.statusbg = of.statustext and of.statustext.GetParent and of.statustext:GetParent()
         -- the version in the bottom-left corner (Xaya 2026-11-04: "addon version should be put in the bottom left") is itself the link
-        -- to Addon Info, in the active theme's accent colors (Options 0.6.39; Xaya 2026-11-05: "remove Addon Info button, make the
+        -- to the version pane (Options 0.6.56; until then Addon Info), in the active theme's accent colors (Options 0.6.39; Xaya 2026-11-05: "remove Addon Info button, make the
         -- XayaUI version text clickable instead", "colorize it to active theme colors"). Repainted when the theme changes.
         c.info = CreateFrame("Button", nil, fr)
         c.info:SetHeight(16)
@@ -8132,17 +8210,13 @@ local function EnsureChrome(of)
         c.info:SetScript("OnEnter", function(self)
             self.hover = true; self:Paint()
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:SetText("Addon Info")
-            GameTooltip:AddLine("Opens the Addon Info page: version, author, license, commands and the source code link.", 1, 1, 1, true)
+            GameTooltip:SetText("Patch Notes and Info")
+            GameTooltip:AddLine("Opens the version pane: Patch Notes (What's New and every update) and Info (version, readme, help, credits).", 1, 1, 1, true)
             GameTooltip:Show()
         end)
         c.info:SetScript("OnLeave", function(self) self.hover = false; self:Paint(); GameTooltip:Hide() end)
         c.info:Paint()
-        c.info:SetScript("OnClick", function()
-            ns.infoOpen = true; ns.pageOpen = nil
-            Notify()
-            pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "info")
-        end)
+        c.info:SetScript("OnClick", function() if ns.InfoPane then ns.InfoPane.Open() end end)
         if not ns.infoLinkThemed and ns.Theme and ns.Theme.OnResolve then
             ns.infoLinkThemed = true
             ns.Theme.OnResolve(function() local lk = ns.infoLink; if lk and lk.Paint then lk:Paint() end end)
@@ -8193,11 +8267,14 @@ local function EnsureChrome(of)
             if c.statusbg then c.statusbg:Show() end   -- the next addon to get this window keeps AceGUI's status bar
             c.close:Hide()
             c.arrow:Hide()
+            if c.help then c.help:Hide() end
+            if ns.InfoPane then ns.InfoPane.Close() end   -- the pane belongs to the settings window
             if orig then return orig(self, ...) end
         end
     end
     c.arrow:Show()
     c.close:Show()
+    if c.help then c.help:Show() end
     -- the version link (its text is c.ver) hides with the collapsed window, click area included
     if c.info then c.info:SetShown(not c.collapsed) end
     if c.ver then c.ver:SetShown(not c.collapsed) end
@@ -8227,12 +8304,6 @@ local function EnsureChrome(of)
             c.clr:ClearAllPoints(); c.clr:SetPoint("LEFT", c.delSel, "RIGHT", 12, 0)
             c.delSel:Hide(); c.clr:Hide()   -- bottom-left duplicate removed: the sidebar bar has Delete / Move to / Clear
         else c.delSel:Hide(); c.clr:Hide() end
-    end
-    -- the Addon Info page lasts only until another tab is picked
-    if ns.infoOpen then
-        local st = AceConfigDialog.GetStatusTable and AceConfigDialog:GetStatusTable(APP)
-        local tab = st and st.groups and st.groups.selected
-        if tab and tab ~= "info" then ns.infoOpen = false; Notify() end
     end
     -- Creator / Profiles / Settings pages last only until another tab is picked
     if ns.pageOpen then
@@ -8390,7 +8461,9 @@ function Tree.Closed()
     driver:SetScript("OnUpdate", nil)
     acc, sigAcc = 0, 0
     Tree.last, Tree.keep = nil, nil   -- the kept tree is let go
-    if ns.AnyPreview() then ns.ClearPreview() end   -- previews are temporary: they end with the window
+    ns.optionsShown = nil
+    -- previews, the sidebar's movement unlocks, the preview pause and a window-made unlock end with the window (core ns.EndWindowState)
+    if ns.EndWindowState then ns.EndWindowState() elseif ns.AnyPreview() then ns.ClearPreview() end
     if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
     if ns.SaveBarUpdate then ns.SaveBarUpdate(nil) end
     Tree.PlaceTray(nil, nil, nil)
@@ -8425,6 +8498,7 @@ function Tree.Tick(_, e)
 end
 function Tree.DriverStart()
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    if of and of.frame and of.frame:IsShown() then ns.optionsShown = true end
     if of and of.frame and of.frame:IsShown() and not driver:GetScript("OnUpdate") then driver:SetScript("OnUpdate", Tree.Tick) end
 end
 

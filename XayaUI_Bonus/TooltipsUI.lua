@@ -65,7 +65,7 @@ function ns.BuildTooltipsTab(Notify)
                     function() return not TT.DB().formulas.enabled end),
                 note = { type = "description", order = 9, name = "Built only from numbers the game reports while you play. Blizzard's own spell coefficients are not readable by addons." },
             } },
-            -- (Bonus 0.6.18; Xaya 2026-11-06, REQUEST-LOG S8-10) damage school and dispel type words coloured
+            -- (Bonus 0.6.20; Xaya 2026-11-06, REQUEST-LOG S8-10) damage school and dispel type words coloured
             typeColors = { type = "group", name = "Type colours", order = 5, args = {
                 enabled = toggle(1, "Colour damage schools and dispel types", "On spell and aura tooltips: \"fire damage\" becomes \"Fire Damage\" in the game's Fire colour, a dispel type in brackets after it (\"(Magic)\") or at an aura tooltip's top right in its dispel colour. The game's own colours. English game text only." .. OFF, { "typeColors", "enabled" }),
             } },
@@ -82,14 +82,8 @@ else
     boot:SetScript("OnEvent", function(self) self:UnregisterAllEvents(); TT.Sync() end)
 end
 
-SLASH_XUITT1 = "/xuitt"
-SlashCmdList.XUITT = function(msg)
-    msg = (msg or ""):lower()
-    if msg:find("probe") then TT.Probe()
-    elseif msg:find("^%s*aura") then TT.AuraReport(tonumber(msg:match("aura%s+(%d+)")))
-    elseif msg:find("lines") then TT.DumpLines()
-    else print("XayaUI Tooltips: /xuitt aura [spellID] (what each aura source says), /xuitt probe (point at a unit first), /xuitt lines (raw lines of the tooltip under the mouse)") end
-end
+-- /xuitt (aura, probe, lines: developer reports) is XayaUI Dev Assist's since Bonus 0.6.18 (REQUEST-LOG #81, Xaya 2026-11-06: "Move all
+-- of them"; XayaUI_DevAssist/CoreDebug.lua). Without Dev Assist the command does not exist.
 
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.

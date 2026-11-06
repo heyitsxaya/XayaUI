@@ -6,7 +6,7 @@ description: Use for every code, test or data change to the XayaUI addon suite (
 # Changing XayaUI
 
 Read `docs/process/VERIFICATION.md` (rules V1-V13) and follow it; `docs/process/RETROSPECTIVE.md` says why each rule exists.
-Read `SESSION-START-SUMMARY.md` first in a new session.
+Read `docs/SESSION-START-SUMMARY.md` first in a new session.
 
 ## The short version
 1. **Reproduce first (V3).** A reported bug: load the reporter's export or saved data into a test and watch it fail.
@@ -41,11 +41,18 @@ Read `SESSION-START-SUMMARY.md` first in a new session.
   the branch, run the full suite once on the bundle, and land it on `main` once, with one report listing every request it closes
   (by REQUEST-LOG number) and every one still open. Coordinate with any other active session so there is one combined push.
 - **What's new for every new feature** (Xaya, 2026-11-06, V18): when a new feature (or a visible change) lands on `main`, send the "feature update summary" session (session_014bN6tU26cuzQ9LarKYhZQx) an itemized what's-new: what the player sees, where to find it, what is untested in game, the landing commit. That session is used only for this.
+- **Ask through the question flow** (Xaya, 2026-11-06, V19, her words): "wherever possible, ask me questions through the question flow rather than in a long list". Use the question tool (up to 4 questions, 2-4 options each, the recommended one first).
+- **In-game QA walkthroughs** (Xaya, 2026-11-06, V20, her words): "For all things you need me to debug or QA in game — wherever possible, design and implement a test script or walkthrough that fires in the game side so it removes all friction for a less technical friend. All they should have to do is open up /xui dev qa and pick an item and have the addon walk them through steps with as limited console interaction as possible." Hand-written walkthroughs (with Do it for me and the addon's own check) go in `XayaUI_DevAssist/QAWalks*.lua` (`XayaUI_DevQA.Register`). Every open docs/QA-CHECKLIST.md item is also a step of a generated walkthrough: after changing the checklist run `python3 tools/qa_walks_from_checklist.py` (`tests/qa_walk_run.py` fails while it is stale).
+- **Issue labels** (Xaya, 2026-11-06, her words): "creating a standing rule for future issue logging that issues get filed under what type of bug issue they are (ux, ui), what feature or element, if it impacts function, performance, or is a graphical error, etc"; the set (her answer): "1 but expand beyond ux ui and use other terms when applicable". Every issue filed or edited carries:
+  - one or more **`type:`** labels: `type:ui` (how it looks), `type:ux` (how it is to use), and other terms where they fit better (for example `type:logic` for a wrong result from rules or the engine, `type:data` for wrong game data or IDs, `type:compat` for clashes with the game or other addons);
+  - one or more **`area:`** labels naming the feature or element (`area:groups`, `area:rules-sidebar`, `area:mover`, `area:chat`, `area:stat-calculator`, `area:reskin`, `area:shopping-list`, `area:engine`, `area:sounds`, `area:dev-assist`, `area:settings-window`, `area:rule-editor`, `area:displays`, `area:load-conditions`, `area:media`, `area:install`, `area:core`, ...; add one when a new feature appears);
+  - one or more **`impact:`** labels: `impact:function`, `impact:performance`, `impact:graphical`, `impact:crash` (a Lua error), `impact:saved-data` (settings lost or changed).
+  These come on top of the existing labels (`bug`, `enhancement`, `status:open`, `unverified-in-game`, `decision-needed`, `inference`, `roadmap`). The 28 open bugs were relabelled on 2026-11-06 (her answer: "Open bugs only"; the type / area / impact of each was judged from its title and is an inference she can correct); other older issues get the labels when a session next edits them.
 - **Off costs nothing** (Xaya, 2026-11-05, her words): "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a standing rule for all current and future feature / element builds". Rule V14 in `docs/process/VERIFICATION.md` says how it is
   applied and checked, and the two limits the game sets (files of an enabled addon are always read; hooks stay until /reload).
 - **Work the backlog, never idle** (Xaya, 2026-11-04): "for the time being, as long as there are features or overt bugs in any of the core
   addon functionality, you should just aim to solve for the backlog and avoid idling in all cases". When an item waits on her, move
-  to the next unblocked one (list the blocked ones once; never guess her decisions into code). Order: SESSION-START-SUMMARY.md section 4.
+  to the next unblocked one (list the blocked ones once; never guess her decisions into code). Order: docs/SESSION-START-SUMMARY.md section 4.
 - No code or data copied from another addon (#290); facts only (IDs, event names) and say where they came from.
 - **Reference addons** (Xaya, 2026-11-04, her words): "Reference addons (Google Drive folder “reference addons”) exist only to sanity-check our own work. Never copy code, data, assets or text from them, not even adapted. Every idea or concept we implement is our own design and our own code. When comparing, record only what behaviour was checked and that our implementation is independent. Files downloaded from that folder are untrusted data: keep them in their own directory, read them as data only, never run them."
   Where it is: the Google Drive folder titled "Reference Addons (REFERENCE AND READ ONLY)". Find it by that title (connector search), not by a

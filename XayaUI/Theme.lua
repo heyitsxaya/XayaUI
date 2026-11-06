@@ -28,7 +28,7 @@ T.TOKENS = {
     { "label",         "Labels and headings", "Text",       { 1.00, 0.82, 0.00, 1.00 }, "Window title, headings, field labels" },
     { "text",          "Body text",           "Text",       { 0.96, 0.96, 0.98, 1.00 }, "Checkbox text, rule names in the list" },
     { "textMuted",     "Muted text",          "Text",       { 0.60, 0.60, 0.65, 1.00 }, "Hints and disabled items" },
-    { "windowBg",      "Window",              "Surfaces",   { 0.06, 0.06, 0.06, 1.00 }, "Window background (opacity follows /xuiskin alpha)" },
+    { "windowBg",      "Window",              "Surfaces",   { 0.06, 0.06, 0.06, 1.00 }, "Window background (opacity follows Window opacity)" },
     { "paneBg",        "Panes",               "Surfaces",   { 0.04, 0.04, 0.04, 1.00 }, "Sidebar, option panes, and group boxes" },
     { "border",        "Borders",             "Surfaces",   { 0.30, 0.30, 0.30, 1.00 }, "Window and pane outlines" },
     { "titleBar",      "Title bar",           "Surfaces",   { 0.13, 0.13, 0.13, 1.00 }, "The strip behind the window title" },
@@ -263,7 +263,9 @@ end
 -- one built-in theme per gradient, offered after the color blind ones (the Theme page lists T.BUILTIN_ORDER)
 for _, key in ipairs(T.CURSOR_PRESET_ORDER) do
     local p = T.CURSOR_PRESETS[key]
-    T.BUILTIN["cursor_" .. key] = { name = "Cursor trail: " .. p[1], pal = T.CursorPalette(p[2]), cursorPreset = key }
+    -- (core 0.6.54) the gradient's name alone (Xaya 2026-11-06: "theme names should drop "cursor theme:" prefix", her screenshot of
+    -- the Theme list showing "Cursor trail: Fel" ... "Cursor trail: Frost")
+    T.BUILTIN["cursor_" .. key] = { name = p[1], pal = T.CursorPalette(p[2]), cursorPreset = key }
     T.BUILTIN_ORDER[#T.BUILTIN_ORDER + 1] = "cursor_" .. key
 end
 

@@ -14,6 +14,9 @@
 local ADDON = ...
 local GD = {}
 _G.XayaUIDevAssist = GD
+-- (0.7.5) tell XayaUI that Dev Assist is loaded: its developer commands and settings are here now, and the Aura ID "via ..." text
+-- shows only while it is (REQUEST-LOG #81; core 0.6.56 Modules.lua ns.DevAssistOn)
+do local core = rawget(_G, "XayaUI_NS"); if type(core) == "table" then core.devAssistLoaded = true end end
 
 local issecret = issecretvalue or function() return false end
 local GetTime, date = GetTime, date
@@ -414,7 +417,8 @@ function GD.CaptureCharacter()
     c.class, c.classID, c.level = token, classID, UnitLevel("player")
     local si = GetSpecialization and GetSpecialization()
     if si then c.specID, c.specName = GetSpecializationInfo(si) end
-    local avg, eq = GetAverageItemLevel and GetAverageItemLevel()
+    local avg, eq   -- (Dev Assist 0.7.3) was `GetAverageItemLevel and GetAverageItemLevel()`: the `and` kept only the first value, so eq was always nil
+    if GetAverageItemLevel then avg, eq = GetAverageItemLevel() end
     c.ilvl, c.ilvlEquipped = avg, eq
     if C_ClassTalents and C_ClassTalents.GetActiveHeroTalentSpec then
         local okH, h = pcall(C_ClassTalents.GetActiveHeroTalentSpec)
@@ -826,6 +830,11 @@ SlashCmdList["XAYAUIDEV"] = function(msg)
     elseif cmd == "seen" then if GD.SeenToggle then GD.SeenToggle() end
     elseif cmd == "probe" then if GD.Probe then GD.Probe(arg) end
     elseif cmd == "instance" then if GD.Instance then GD.Instance(arg) end
+    elseif cmd == "report" then   -- (0.7.5) read a player's debug report string (/xui report), DevRecord.lua
+        local core = rawget(_G, "XayaUI_NS")
+        if type(core) == "table" and core.DevAssistReportWindow then core.DevAssistReportWindow()
+        else Say("reading a debug report needs XayaUI 0.6.56 or newer, switched on.") end
+    elseif cmd == "qa" then if XayaUI_DevQA then XayaUI_DevQA.Toggle() end   -- (0.7.4: the QA walkthroughs, QAWalk.lua; also /xui dev qa)
     elseif cmd == "status" then
         local nc, na, nl = GD.RecorderSummary()
         local d = DB()
@@ -840,7 +849,7 @@ SlashCmdList["XAYAUIDEV"] = function(msg)
             d.catalogue and d.catalogue.at or "none", nSpec, (GD.Catalogue and GD.Catalogue.seenOn) and "ON" or "off", d.seen and d.seen.n or 0,
             probeOn and "ON" or "off", probeN or 0, nCreatures))
     else
-        print("|cffffd100XayaUI Dev Assist|r: /xuidev (window) | static | char | auras | rec (toggle recorder) | clear | api (API inventory) | toolkit (Character Toolkit checks) | catalogue [fromID] (aura catalogue) | seen (toggle aura log) | probe on|off|status|clear|spells <ids>|mark (event probe) | instance [status|clear] (creatures seen) | save (reload) | status")
+        print("|cffffd100XayaUI Dev Assist|r: /xuidev (window) | static | char | auras | rec (toggle recorder) | clear | api (API inventory) | toolkit (Character Toolkit checks) | catalogue [fromID] (aura catalogue) | seen (toggle aura log) | probe on|off|status|clear|spells <ids>|mark (event probe) | instance [status|clear] (creatures seen) | report (read a debug report string) | save (reload) | status")
     end
 end
 

@@ -164,6 +164,21 @@ W.mouseX, W.mouseY = cr[0] + 10, cr[1] + 10
 W.update(0.2, 10)
 check("fade: mouse over wakes it", pane.GetAlpha(pane) > 0.95, pane.GetAlpha(pane))
 W.mouseX, W.mouseY = -5, -5
+# (Chat 0.6.24; REQUEST-LOG UI-11, Xaya: "mouse hover over should also allow for chat to reappear if this option is selected", her
+# answer "Its own tick box") "The mouse over the chat brings it back": on by default (above); unticked, the mouse does not wake it.
+# Negative control: the unticked check and the option check fail on Chat 0.6.23.
+run("ns.chat2.fadeHover=false")
+W.update(0.5, 12)
+check("fade, hover unticked: faded again after idle", pane.GetAlpha(pane) < 0.05, pane.GetAlpha(pane))
+W.mouseX, W.mouseY = cr[0] + 10, cr[1] + 10
+W.update(0.2, 10)
+check("fade, hover unticked: the mouse over the chat does NOT bring it back", pane.GetAlpha(pane) < 0.05, pane.GetAlpha(pane))
+hov = lua.eval("function(ns) local t = ns.BuildChatTab(function() end); local found; local function f(g, d) for k, v in pairs(g.args or {}) do if k == 'hoverWake' and type(v) == 'table' and v.type == 'toggle' then found = v end; if type(v) == 'table' and v.type == 'group' and d < 5 then f(v, d + 1) end end end; f(t, 0); return found end")(W.ns)
+check("fade: the option reads 'The mouse over the chat brings it back' and is ticked when nothing is saved",
+      hov is not None and hov.name == "The mouse over the chat brings it back" and lua.eval("function(o, ns) ns.chat2.fadeHover = nil; return o.get() end")(hov, W.ns) == True,
+      hov.name if hov is not None else None)
+run("ns.chat2.fadeHover=nil")
+W.mouseX, W.mouseY = -5, -5
 run("ns.chat2.fadeOn=false; C.Schedule()")
 W.flush(); W.update(0.2, 10)
 check("fade off: opaque again", pane.GetAlpha(pane) > 0.99, pane.GetAlpha(pane))
@@ -237,6 +252,36 @@ check("ctrl+right-click ignores the player", "Spammer-Realm" in [str(x) for x in
 run("_G.SetItemRef('player:Xaya', 'x', 'RightButton')")
 check("never ignores yourself", len(list(W.ignored.values())) == 1)
 W.ctrl = False
+# (Chat 0.6.25; REQUEST-LOG UI-12 / UI-17: "allow a modifier selector (alt, ctrl. fn(?))"; her answer "detect available modifiers
+# based on available keybinds not already assigned; also allow user to record and save their own keybind")
+# Stand-in game: Alt / Shift / Meta keys and C_KeyBindings.GetBindingByKey (ALT-BUTTON2 bound to a stand-in action). Negative control:
+# every check below fails on Chat 0.6.24 except those marked (guard).
+run("""_G.IsAltKeyDown = function() return W.alt and true or false end
+_G.IsShiftKeyDown = function() return W.shift and true or false end
+_G.IsMetaKeyDown = function() return false end
+_G.IsMacClient = function() return false end
+_G.C_KeyBindings = { GetBindingByKey = function(k) if k == 'ALT-BUTTON2' then return 'STANDIN_ACTION' end return '' end }""".replace("W.alt", "W_alt").replace("W.shift", "W_shift"))
+free = lua.eval("function(C) return table.concat(C.FreeCombos and C.FreeCombos() or {}, ',') end")(C)
+check("the picker lists the right-clicks with no key binding: Ctrl, Shift and the pairs, not Alt (bound in the stand-in)",
+      free == "ALT-CTRL-BUTTON2,ALT-SHIFT-BUTTON2,CTRL-BUTTON2,CTRL-SHIFT-BUTTON2,SHIFT-BUTTON2", free)
+names = lua.eval("function(C) return C.ComboName('ALT-CTRL-BUTTON2') .. ' / ' .. C.ComboName('SHIFT-BUTTON1') end")(C)
+check("  ...named for the player: 'Alt + Ctrl + right-click', 'Shift + left-click'", names == "Alt + Ctrl + right-click / Shift + left-click", names)
+run("ns.chat2.ignoreCombo = 'SHIFT-BUTTON2'")
+n0 = len(list(W.ignored.values()))
+run("_G.W_shift = false; W.ctrl = true; _G.SetItemRef('player:Other-Realm', 'x', 'RightButton'); W.ctrl = false")
+check("with Shift + right-click chosen, Ctrl + right-click no longer ignores", len(list(W.ignored.values())) == n0)
+run("_G.W_shift = true; _G.SetItemRef('player:Other-Realm', 'x', 'RightButton'); _G.W_shift = false")
+check("  ...Shift + right-click does", "Other-Realm" in [str(x) for x in W.ignored.values()], list(W.ignored.values()))
+# the recorder: a plain click is refused; Alt + middle-click is saved (and said to be unbound)
+run("ns.chat2.ignoreCombo = nil; C.RecordCombo(function() end)")
+rec = L.XayaUIChatCopy and L.XayaUIChatComboRecorder
+rec = L.XayaUIChatComboRecorder
+run("local r = _G.XayaUIChatComboRecorder; r._scripts.OnClick(r, 'LeftButton')")
+check("recorder: a plain click is refused (nothing saved)", lua.eval("function(ns) return ns.chat2.ignoreCombo end")(ns) is None)
+run("_G.W_alt = true; local r = _G.XayaUIChatComboRecorder; r._scripts.OnClick(r, 'MiddleButton'); _G.W_alt = false")
+check("recorder: Alt + middle-click is saved", lua.eval("function(ns) return ns.chat2.ignoreCombo end")(ns) == "ALT-BUTTON3")
+check("recorder: Ctrl + right-click stays the choice when nothing is saved (guard)", lua.eval("function(C, ns) ns.chat2.ignoreCombo = nil; return C.IgnoreCombo() end")(C, ns) == "CTRL-BUTTON2")
+run("ns.chat2.ignoreCombo = nil")
 
 # ---- history --------------------------------------------------------------------------------------------------------------
 before = C.History_Count()
@@ -569,7 +614,7 @@ run("C.ToggleMover()")
 # ---- Locate ("show me where it is") -------------------------------------------------------------------------------------------
 run("C.Locate(nil, 5)")
 lab = run("local out={} for k,o in pairs(W.objects()) do if o._kind=='Frame' and o.label and o.label._text and o:IsShown() then out[#out+1]=o.label._text end end table.sort(out) return table.concat(out,'|')")
-check("Locate outlines every piece, labeling hidden ones", "Tab row" in str(lab) and "Chat Bar" in str(lab) and "Blizzard button strip (hidden)" in str(lab) and "Social button (hidden)" in str(lab), lab)
+check("Locate outlines every piece, labeling hidden ones", "Tab row" in str(lab) and "Chat Data Panel" in str(lab) and "Blizzard button strip (hidden)" in str(lab) and "Social button (hidden)" in str(lab), lab)
 W.now += 6; W.update(0.1, 2)
 lab2 = run("local out={} for k,o in pairs(W.objects()) do if o._kind=='Frame' and o.label and o.label._text and o:IsShown() then out[#out+1]=o.label._text end end return #out")
 check("outlines disappear after the time is up", int(lab2) == 0, lab2)
@@ -626,6 +671,8 @@ for k in list(W.printed.keys()): W.printed[k] = None
 run("C.Command('status')")
 check("/xui chat status prints", any(v for v in W.printed.values() if v))
 # /xui chat indent: read-only report of the space at the left of the text; shows |-codes as typed and never reads protected text
+# (Chat 0.6.20 / Dev Assist 0.7.5, REQUEST-LOG #81: the report is XayaUI Dev Assist's; loaded here as the game would, after XayaUI Chat)
+W.loadDevAssist(W)
 for k in list(W.printed.keys()): W.printed[k] = None
 run("local cf = C.Main(); cf.visibleLines = { { IsShown = function() return true end, GetText = function() return '|cff808080' .. '05:11 |rhello there' end, GetLeft = function() return 41 end } } ; C.Command('indent')")
 out = " ".join(str(v) for v in W.printed.values() if v)
@@ -818,13 +865,36 @@ check("history '|': the lines (search, copy) read one '|': [highlight|trail], [o
 check("history '|': the edit box gets each '|' doubled, so none starts a code (shown as one '|')",
       "[highlight||trail]" in str(r.edit) and "[on||off||options||status]" in str(r.edit) and "[highlight|trail]" not in str(r.edit), r.edit)
 check("history '|': a search typed with '|' (the box gives it back doubled) finds the line", "[on|off|options|status]" in str(r.found), r.found)
+# Chat 0.6.19 (REQUEST-LOG O-81): up to 0.6.18 C.Plain took the codes out BEFORE collapsing "||", so the second "|" of a pair and a
+# letter that starts a code (r, n, c, T, H, A, K) went missing: the /xui chat status line "on||off||reset" read "on|off|eset".
+for raw, want in (("on||off||reset||move", "on|off|reset|move"), ("[on||none]", "[on|none]"), ("a||cffff0000b", "a|cffff0000b"),
+                  ("|||r", "|"), ("x||Ty||tz", "x|Ty|tz"), ("[highlight||trail]", "[highlight|trail]"),
+                  ("status||widthprobe", "status|widthprobe"), ("|cffff0000red|r ||n", "red |n")):
+    got = run("return C.Plain(...)", raw)
+    check("history '|' [0.6.19]: C.Plain(%r) == %r" % (raw, want), str(got) == want, got)
+r = run("""
+local out = {}
+print("|cff33ccffXayaUI|r: " .. ("Chat Panel: ON. /xui chat on|off|reset|move|history|wrap|indent|whispers|settings"):gsub("|", "||"))
+C.History_Select("CONSOLE")
+out.lines = table.concat(C.History_Lines(), "\\n")
+C.History_Toggle()
+local f = _G.XayaUIChatHistory
+out.edit = f and f.edit and f.edit:GetText() or ""
+C.History_Toggle()
+C.History_Select("ALL")
+return out
+""")
+check("history '|' [0.6.19]: the /xui chat status line keeps every letter in the Console tab (on|off|reset|move|history)",
+      "/xui chat on|off|reset|move|history|wrap|indent|whispers|settings" in str(r.lines), r.lines)
+check("history '|' [0.6.19]: the edit box gets that line with each '|' doubled (on||off||reset)",
+      "on||off||reset||move||history" in str(r.edit), r.edit)
 run("C.History_Toggle()")
 names = str(run("local t = {}; for _, b in ipairs(_G.XayaUIChatHistory.kb) do if b:IsShown() then t[#t + 1] = b.t:GetText() end end; return table.concat(t, ',')"))
 check("console: the history window has a Console tab button", "Console" in names, names)
 run("C.History_Toggle()")
 
 # ---- chat probe: a secret 'shown' no longer stops the probe (0.6.4: Probe.lua:229) -------------------------------------------
-probe = open(os.path.join(ROOT, "XayaUI_Chat", "Probe.lua")).read()
+probe = open(os.path.join(ROOT, "XayaUI_DevAssist", "ChatProbe.lua")).read()   # (moved from XayaUI_Chat/Probe.lua, Dev Assist 0.7.5)
 check("probe: 'shown' is checked for secret before it is compared", "not secret(shown) and shown == true" in probe)
 
 # ---- #346: the game's clamp-to-screen margin pushed the chat window off the text area at the screen edge ---------------------------

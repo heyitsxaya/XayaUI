@@ -116,7 +116,7 @@ C_UnitAuras.RemoveAuraSound = function(id) REMOVED[#REMOVED + 1] = id end
 rawset(Enum, "UnitAuraSoundTrigger", { Added = 0, ApplicationsIncreased = 1, Removed = 2 })
 local instanceReads = 0   -- map / instance reads made by the debug record (other core files read them for their own work)
 local rawGII = GetInstanceInfo
-GetInstanceInfo = function(...) if owner() == "XayaUI/DebugRecord.lua" then instanceReads = instanceReads + 1 end; if rawGII then return rawGII(...) end end
+GetInstanceInfo = function(...) local o = owner(); if o == "XayaUI/DebugRecord.lua" or o == "XayaUI_DevAssist/DevRecord.lua" then instanceReads = instanceReads + 1 end; if rawGII then return rawGII(...) end end
 
 -------------------------------------------------------------------------------------------------------------------------------------
 -- load and log in
@@ -377,7 +377,9 @@ def saved_for(mode):
 
 def world(mode):
     folders = H.find_addons()
-    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Media", "XayaUI_Reskin", "XayaUI_Options")]
+    # (core 0.6.56, REQUEST-LOG #82: the record's kinds of line are XayaUI Dev Assist's, so it is loaded here for the debug record's
+    # checks; what a player has without it is tests/devassist_debug_tools_run.py)
+    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Media", "XayaUI_Reskin", "XayaUI_Options", "XayaUI_DevAssist")]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     w = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)

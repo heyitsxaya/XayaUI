@@ -110,11 +110,11 @@ POWER_VALUES.runes = "Runes (Death Knight)"   -- not an Enum.PowerType read: cou
 POWER_ORDER[#POWER_ORDER + 1] = "runes"
 
 local STATE_VALUES = {
-    alive = "Alive", vehicle = "In a vehicle", pvp = "PvP flagged", pet = "Has a pet", moving = "Moving",
+    alive = "Alive", deadBody = "Dead, not released", vehicle = "In a vehicle", pvp = "PvP flagged", pet = "Has a pet", moving = "Moving",
     afk = "Away from keyboard", target = "Has a target", focus = "Has a focus target",
     stunned = "Stunned", incapacitated = "Feared / charmed / incapacitated", rooted = "Rooted", silenced = "Silenced",
 }
-local STATE_ORDER = { "alive", "vehicle", "pvp", "pet", "moving", "afk", "target", "focus", "stunned", "incapacitated", "rooted", "silenced" }
+local STATE_ORDER = { "alive", "deadBody", "vehicle", "pvp", "pet", "moving", "afk", "target", "focus", "stunned", "incapacitated", "rooted", "silenced" }
 
 -- Loss of control (stun, fear, root, silence ...) on YOU, from C_LossOfControl. true / false / nil (unreadable: API missing, secret values).
 -- locType names are Blizzard's own strings; the wiki only documents "SCHOOL_INTERRUPT" as an example, so the sets below are the
@@ -141,21 +141,6 @@ function ns.PlayerHasLossOfControl(what)
         end
     end
     return false
-end
--- /xui debug loc: prints what the game reports right now (to learn the real locType names)
-function ns.ProbeLossOfControl()
-    local LOC = C_LossOfControl
-    if not (LOC and LOC.GetActiveLossOfControlDataCount) then ns.Print("loss of control: API missing"); return end
-    local okc, n = pcall(LOC.GetActiveLossOfControlDataCount)
-    if not okc or issecret(n) then ns.Print("loss of control: count unreadable"); return end
-    ns.Print("loss of control effects on you: " .. tostring(n))
-    for i = 1, (tonumber(n) or 0) do
-        local ok, d = pcall(LOC.GetActiveLossOfControlData, i)
-        if ok and type(d) == "table" and not issecret(d) then
-            local lt = issecret(d.locType) and "<secret>" or tostring(d.locType)
-            ns.Print(("  %d: locType=%s spellID=%s text=%s"):format(i, lt, issecret(d.spellID) and "<secret>" or tostring(d.spellID), issecret(d.displayText) and "<secret>" or tostring(d.displayText)))
-        else ns.Print("  " .. i .. ": unreadable") end
-    end
 end
 
 -- true / false / nil: IsPlayerSpell and C_SpellBook.IsSpellKnown agree it is known (either one proves it)
@@ -273,7 +258,7 @@ Add("cooldown", {
         { key = "cdTimeOp", kind = "select", label = "Seconds left", width = "normal", default = "any", required = false,
           vals = { values = { any = "Any", [">="] = "At least", ["<="] = "At most", ["="] = "Exactly", [">"] = "More than", ["<"] = "Less than" },
                    order = { "any", ">=", "<=", "=", ">", "<" } },
-          desc = "Only true while the cooldown has this much time left. Exact when the game shows it; in combat the duration engine's estimate (see /xui debug timing); with no estimate yet the trigger is unknown." },
+          desc = "Only true while the cooldown has this much time left. Exact when the game shows it; in combat the duration engine's estimate; with no estimate yet the trigger is unknown." },
         { key = "cdTimeSec", kind = "number", label = "Seconds", required = false, showIf = function(t) return t.cdTimeOp ~= nil and t.cdTimeOp ~= "any" end },
         { key = "cdChargeOp", kind = "select", label = "Charges", width = "normal", default = "any", required = false,
           vals = { values = { any = "Any", [">="] = "At least", ["<="] = "At most", ["="] = "Exactly", [">"] = "More than", ["<"] = "Less than" },
@@ -709,7 +694,7 @@ Add("buffAura", {
         { key = "state", kind = "select", label = "State", required = true, vals = YN("Buff is present", "Buff is MISSING") },
         { key = "timeOp", kind = "select", label = "Seconds left", width = "normal", default = "any", required = false, showIf = function(t) return t.state ~= "no" end,
           vals = { values = { any = "Any time left", [">="] = "At least", ["<="] = "At most", [">"] = "More than", ["<"] = "Less than" }, order = { "any", ">=", "<=", ">", "<" } },
-          desc = "Only true while the buff has this much time left. In combat the time is exact when the game shows it, otherwise the duration engine's estimate (see /xui debug timing); with no estimate yet the trigger is unknown." },
+          desc = "Only true while the buff has this much time left. In combat the time is exact when the game shows it, otherwise the duration engine's estimate; with no estimate yet the trigger is unknown." },
         { key = "timeSec", kind = "number", label = "Seconds", required = false, showIf = function(t) return t.state ~= "no" and TimeOn(t) end },
     },
     check = function(t)
@@ -757,43 +742,6 @@ function ns.TriggerAuraNumbers(t)
 end
 
 -- 13. Player State
--- /xui debug debuffs [target|focus]: shows exactly what the game lets us read about your debuffs on that unit right now.
--- Fallback net for "a debuff I put on the target": look the aura up BY NAME with the engine-enforced ownership filter.
--- Returns "found" | "none" | "secret" | "error: <text>". Whether it works in combat is what /xui debug debuffs reports.
-function ns.TargetAuraByName(unit, id)
-    if not (C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName and C_Spell and C_Spell.GetSpellName) then return "api missing" end
-    local okn, nm = pcall(C_Spell.GetSpellName, id)
-    if not okn or type(nm) ~= "string" or issecret(nm) or nm == "" then return "no spell name" end
-    local ok, a = pcall(C_UnitAuras.GetAuraDataBySpellName, unit, nm, "HARMFUL|PLAYER")
-    if not ok then return "error: " .. tostring(a):gsub("^.-:%d+: ", "") end
-    if a == nil then return "none" end
-    if issecret(a) then return "secret" end
-    if type(a) == "table" then return "found" end
-    return "none"
-end
-function ns.ProbeDebuffs(arg)
-    -- "/xui debug debuffs", "/xui debug debuffs focus", "/xui debug debuffs 204598", "/xui debug debuffs target 204598"
-    local word, num = tostring(arg or ""):match("^%s*(%a*)%s*(%d*)")
-    if word == "" and num == "" then num = tostring(arg or ""):match("(%d+)") or "" end
-    local unit = (word == "focus") and "focus" or "target"
-    ns.probeDebuffID = tonumber(num)
-    ns.Print(("debuff probe: unit=%s exists=%s inCombat=%s"):format(unit, tostring(Bool(UnitExists, unit)), tostring(Bool(UnitAffectingCombat, "player"))))
-    if not (C_UnitAuras and C_UnitAuras.GetUnitAuras) then ns.Print("  C_UnitAuras.GetUnitAuras is missing") return end
-    local ok, err = pcall(function()
-        local list = C_UnitAuras.GetUnitAuras(unit, "HARMFUL|PLAYER")
-        if issecret(list) then ns.Print("  the returned list itself is SECRET (nothing readable)") return end
-        if type(list) ~= "table" then ns.Print("  returned " .. type(list)) return end
-        ns.Print("  entries returned: " .. #list)
-        for i = 1, math.min(#list, 12) do
-            local a = list[i]
-            local sid, nm, fp = Field(a, "spellId"), Field(a, "name"), Field(a, "isFromPlayerOrPlayerPet")
-            ns.Print(("  %d: spellId=%s name=%s fromPlayer=%s"):format(i, sid == nil and "SECRET" or tostring(sid), nm == nil and "SECRET" or tostring(nm), tostring(fp)))
-        end
-    end)
-    if not ok then ns.Print("  the call failed: " .. tostring(err)) end
-    ns.Print("  by-name lookup: use /xui debug debuffs <unit> <spellID>  ->  " .. (ns.probeDebuffID and tostring(ns.TargetAuraByName(unit, ns.probeDebuffID)) or "give a spell ID, e.g. /xui debug debuffs target 204598"))
-end
-
 -- 3b. Target Debuff (yours)
 -- Reads C_UnitAuras.GetUnitAuras(unit, "HARMFUL|PLAYER") and looks for the spell ID. FOUND is trusted. NOT found only counts
 -- as "absent" when nothing was hidden AND you are out of combat; otherwise the answer is unknown and the rule does not fire.
@@ -900,6 +848,12 @@ Add("playerState", {
     check = function(t)
         local w, v = t.what, nil
         if w == "alive" then local d = Bool(UnitIsDeadOrGhost, "player"); if d ~= nil then v = not d end
+        elseif w == "deadBody" then
+            -- D8 (core 0.6.56; Xaya: fires while dead and NOT released, hides as a ghost). UnitIsDead / UnitIsGhost (12.1.5 docs,
+            -- globals.md:632 / 638: -> result: bool, SecretArguments=AllowedWhenUntainted). Whether UnitIsDead is also true for a ghost is
+            -- not documented (INFERENCE), so a ghost is ruled out with UnitIsGhost; either one unreadable = unknown.
+            local d, g = Bool(UnitIsDead, "player"), Bool(UnitIsGhost, "player")
+            if d ~= nil and g ~= nil then v = d and not g end
         elseif w == "vehicle" then v = Bool(UnitInVehicle, "player")
         elseif w == "pvp" then v = Bool(UnitIsPVP, "player")
         elseif w == "pet" then v = Bool(UnitExists, "pet")
@@ -962,7 +916,7 @@ local function LossOfControlNow()
 end
 Add("lossOfControl", {
     label = "Loss of control on you", group = "Player",
-    note = "True while one of the ticked effects is on you. The effect names are the game's own and are not documented: if a tick box never reacts, use /xui debug loc while the effect is on you and report what it prints. 'Any effect' also catches names this list does not know.",
+    note = "True while one of the ticked effects is on you. The effect names are the game's own and are not documented: if a tick box never reacts, tell Xaya which effect it was. 'Any effect' also catches names this list does not know.",
     new = { state = "yes", any = true },
     combat = "loc",
     fields = {
@@ -1509,12 +1463,13 @@ function ns.CdmNeeds(rule)
 end
 -- The message for one entry of ns.CdmNeeds (the first sentence is Xaya's wording).
 function ns.CdmNeedText(e)
-    local what = (e.kind == "debuff") and "debuff" or "aura"
-    local label = (e.name and (e.name .. ", ") or "") .. tostring(e.id)
+    -- Xaya, 2026-11-06 (B1, B2, B3; core 0.6.52): "This aura / debuff (name) requires..." = the right word and the aura's name (her
+    -- answer: "Right word + name", no ID); the second sentence kept (B2); the not-offered case in her words, exactly (B3).
     if e.offered == false then
-        return ("This %s (%s) cannot be tracked in combat: the game hides it there, and Blizzard's Cooldown Manager does not offer it for "
-            .. "your current spec."):format(what, label)
+        return "Blizzard's Cooldown Manager does not offer in-combat tracking for this aura for your current spec. Rule might not work reliably."
     end
+    local what = (e.kind == "debuff") and "debuff" or "aura"
+    local label = e.name or tostring(e.id)   -- no readable name: the ID, so the line still says which one
     return ("This %s (%s) requires Blizzard's Cooldown Manager to track it before it can be tracked by the addon. In the Cooldown "
         .. "Manager's settings, move it to Tracked Buffs or Tracked Bars (the game hides it in combat, encounters, Mythic+ and PvP)."):format(what, label)
 end

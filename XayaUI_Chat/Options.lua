@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 -- Options.lua (XayaUI Chat) : the Chat Panel settings (Chat > Chat Panel). The Chat Panel node holds the panel-wide switches; its parts
--- are nodes under it in the left pane (Layout, Appearance, Chat Bar, Fade and hide, Filters, History, Sounds, Privacy), and each
+-- are nodes under it in the left pane (Layout, Appearance, Chat Data Panel, Fade and hide, Filters, History, Sounds, Privacy), and each
 -- part's sections are tabs (ns.SectionTabs, Modules.lua; Xaya, 2026-11-03). Every change applies at once. Own code. UNTESTED in game.
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
@@ -95,7 +95,7 @@ function ns.BuildChatTab(Notify)
         blocked = { type = "description", order = 1, width = "full", fontSize = "medium",
             hidden = function() return C.BlockedReason() == nil end,
             name = function() return "|cffff5555Blocked:|r " .. tostring(C.BlockedReason()) end },
-        intro = note("Chat Panel restyles Blizzard's own chat window in place and puts it in one block: the tabs, the text, and the line you type in are inside the pane, and the Chat Bar is part of the same block. /xui chat shows what ran and what failed.", 2),
+        intro = note("Chat Panel restyles Blizzard's own chat window in place and puts it in one block: the tabs, the text, and the line you type in are inside the pane, and the Chat Data Panel is part of the same block. /xui chat shows what ran and what failed.", 2),
         enabled = { type = "toggle", name = "Enable Chat Panel", order = 3, width = "full",
             desc = "Off gives Blizzard's chat back as the game draws it, and nothing of the Chat Panel runs. A few hooks it placed in the game's chat while it was on stay until you /reload, but they do nothing.",
             get = function() return S().enabled and true or false end,
@@ -104,8 +104,8 @@ function ns.BuildChatTab(Notify)
             "When on, the background, border, tabs, input line, bar, and the chat font follow your selected XayaUI theme (Appearance colors are then ignored; opacity sliders still apply)."),
 
         posHdr = hdr("Position and size", 10),
-        w = rng("Width (pixels)", "width", 11, 220, 1000, "The width of the whole block: pane and Chat Bar."),
-        h = rng("Height of the chat pane (pixels)", "height", 12, 90, 800, "Tabs, text and input line together. The Chat Bar is added to this."),
+        w = rng("Width (pixels)", "width", 11, 220, 1000, "The width of the chat pane (with the Chat Data Panel above or below, the whole block)."),
+        h = rng("Height of the chat pane (pixels)", "height", 12, 90, 800, "Tabs, text and input line together. A Chat Data Panel above or below is added to this."),
         move = { type = "execute", name = "Move or resize the chat", order = 13, desc = "Shows a box over the chat: drag it to move, drag its top-right corner to resize. Run it again (or /xui chat move) to finish.",
             func = function() C.ToggleMover() end },
         reset = { type = "execute", name = "Reset position and size", order = 14, func = function() C.Command("reset"); if Notify then Notify() end end },
@@ -204,13 +204,14 @@ function ns.BuildChatTab(Notify)
 
     -- 3. CHAT BAR -----------------------------------------------------------------------------------------------------------
     local barArgs = {
-        on = tog("Show the Chat Bar", "barOn", 1, "A row of data blocks that is part of the chat: as wide as the chat, snapped to it, and it collapses with it."),
+        on = tog("Show the Chat Data Panel", "barOn", 1, "Data blocks that are part of the chat: a row above or below it as wide as the chat, or a strip left or right of it as tall as the chat; snapped to it, and it collapses with it."),
         barHdr = hdr("Position", 5),
-        side = sel("Place the bar", "barSide", 6, { TOP = "Above the chat", BOTTOM = "Below the chat" }, { "BOTTOM", "TOP" }, nil, nil, "bar"),
+        side = sel("Place the panel", "barSide", 6, { TOP = "Above the chat", BOTTOM = "Below the chat", LEFT = "Left of the chat", RIGHT = "Right of the chat" }, { "BOTTOM", "TOP", "LEFT", "RIGHT" }, nil, nil, "bar"),
         sizing = sel("Block widths", "barSizing", 7, { EVEN = "Equal", AUTO = "Follow the text" }, { "EVEN", "AUTO" },
             "Equal: every block is the same width. Follow the text: each block is as wide as its text; blocks marked Fill take the space that is left."),
-        h = rng("Bar height (pixels)", "barH", 8, 14, 60, nil, 1, nil, "bar"),
-        gap = rng("Gap between the bar and the chat (pixels)", "barGap", 9, 0, 20, nil, 1, nil, "bar"),
+        h = rng("Panel height (pixels)", "barH", 8, 14, 60, nil, 1, function() local v = S().barSide; return v == "LEFT" or v == "RIGHT" end, "bar"),
+        w = (function() local o = rng("Panel width (pixels)", "barW", 8.5, 40, 200, "Left or right of the chat: the strip is as tall as the chat window.", 1, function() local v = S().barSide; return not (v == "LEFT" or v == "RIGHT") end, "bar"); o.get = function() return tonumber(S().barW) or 90 end; return o end)(),
+        gap = rng("Gap between the panel and the chat (pixels)", "barGap", 9, 0, 20, nil, 1, nil, "bar"),
 
         blocksHdr = hdr("Blocks", 10, "Each block shows one piece of data. Right-click a block on screen to open this page."),
         n = rng("Number of blocks", "barSlots", 11, 1, C.MAX_SLOTS),
@@ -240,22 +241,22 @@ function ns.BuildChatTab(Notify)
     barArgs.textSize = rng("Text size", "barTextSize", 41, 8, 30)
     barArgs.text = col3("Text color", "barText", 42)
     barArgs.value = col3("Number color (friends and similar)", "barValue", 43, "The color of the numbers in blocks such as Friends.")
-    barArgs.bg = tog("Bar background", "barBgOn", 44)
+    barArgs.bg = tog("Panel background", "barBgOn", 44)
     barArgs.bgCol = col("Background color", "barBg", 45)
-    barArgs.bd = tog("Bar border", "barBorderOn", 46)
+    barArgs.bd = tog("Panel border", "barBorderOn", 46)
     barArgs.bdCol = col("Border color", "barBorder", 47)
     barArgs.hover = tog("Highlight the block under the mouse", "barHover", 48)
     barArgs.dataHdr = hdr("Data options", 50)
     barArgs.c24 = tog("24-hour clock", "barClock24", 51)
     barArgs.loc = tog("Use the computer's time (off = the realm's time)", "barLocalTime", 52)
     barArgs.labels = tog("Put the name in front of the character stats", "barLabels", 53)
-    local bar = { type = "group", name = "Chat Bar", order = 3, args = barArgs }
+    local bar = { type = "group", name = "Chat Data Panel", order = 3, args = barArgs }
 
     -- 4. FADE AND HIDE ------------------------------------------------------------------------------------------------------
     local behavior = { type = "group", name = "Fade and hide", order = 4, args = {
         hideHdr = hdr("Hide the chat", 1),
         collapse = { type = "toggle", name = "Chat hidden (collapsed)", order = 2, width = "full",
-            desc = "Same as the arrow on the Chat Bar. Only the bar (or the small arrow) stays on screen.",
+            desc = "Same as the arrow on the Chat Data Panel. Only the panel (or the small arrow) stays on screen.",
             get = function() return S().collapsed and true or false end,
             set = function(_, v) C.SetCollapsed(v); if Notify then Notify() end end },
 
@@ -265,7 +266,8 @@ function ns.BuildChatTab(Notify)
         to = rng("Opacity when faded (%)", "fadeTo", 13, 0, 100, "0 hides it completely.", 5),
         secs = rng("Fade duration (seconds)", "fadeSeconds", 14, 0.1, 3, nil, 0.1),
         wake = tog("A new message brings the chat back", "fadeWake", 15),
-        bar = tog("Fade the Chat Bar too", "fadeBar", 16),
+        hoverWake = (function() local o = tog("The mouse over the chat brings it back", "fadeHover", 15.5); o.get = function() return S().fadeHover ~= false end; return o end)(),
+        bar = tog("Fade the Chat Data Panel too", "fadeBar", 16),
 
         textHdr = hdr("Old lines", 20),
         textFade = tog("Fade old lines away", "textFade", 21, "The game's own per-line fade. Off keeps every line visible until it scrolls out."),
@@ -286,7 +288,30 @@ function ns.BuildChatTab(Notify)
         word = tog("Match whole words only", "spamWord", 22, "'gold' would then not match 'golden'."),
         stats = { type = "description", order = 23, width = "full", name = function() return "Hidden this session: " .. tostring(C.stats.suppressed) end },
         clickHdr = hdr("Quick ignore", 30),
-        click = tog("Ctrl + right-click a player's name in chat to ignore them", "ignoreClick", 31),
+        click = tog("Click a player's name in chat to ignore them", "ignoreClick", 31, "With the click chosen below (Ctrl + right-click unless you change it)."),
+        -- (Chat 0.6.25; UI-12 / UI-17) the click: a right-click with modifiers the game has no key binding for, or one you record
+        clickCombo = { type = "select", name = "Click", order = 32, width = "normal",
+            desc = "Right-click combinations the game has no key binding for (checked each time this list opens). Record your own with the button beside it.",
+            hidden = function() return not S().ignoreClick end,
+            values = function()
+                local v = {}
+                for _, c in ipairs(C.FreeCombos and C.FreeCombos() or {}) do v[c] = C.ComboName(c) end
+                local cur = C.IgnoreCombo and C.IgnoreCombo()
+                if cur and not v[cur] then v[cur] = C.ComboName(cur) .. ((C.ComboBinding(cur) and " (also a key binding)") or " (recorded)") end
+                return v
+            end,
+            get = function() return C.IgnoreCombo and C.IgnoreCombo() end,
+            set = function(_, v) local s2 = ns.chat2; if s2 then s2.ignoreCombo = v end; Re() end },
+        clickRec = { type = "execute", name = "Record your own", order = 33, width = "normal",
+            desc = "Opens a small box: hold Alt, Ctrl, Shift (or Cmd on a Mac) and click it with the mouse button you want. At least one of those keys is needed.",
+            hidden = function() return not S().ignoreClick end,
+            func = function() if C.RecordCombo then C.RecordCombo(function() Re() end) end end },
+        clickNow = { type = "description", order = 34, width = "full", hidden = function() return not S().ignoreClick end,
+            name = function()
+                local cur = C.IgnoreCombo and C.IgnoreCombo() or "CTRL-BUTTON2"
+                local act = C.ComboBinding and C.ComboBinding(cur)
+                return "Now: " .. C.ComboName(cur) .. " on a player's name." .. (act and ("  |cffff8a3dThe game also has a key binding on it (" .. act .. ").|r") or "")
+            end },
         linkHdr = hdr("Links", 40),
         links = tog("Make web addresses clickable", "links", 41, "Click one to open a box with the address selected; press Ctrl+C to copy it."),
         linkCol = col3("Link color", "link", 42),
@@ -411,7 +436,7 @@ function ns.BuildChatTab(Notify)
     local switch = layout.args.enabled
     switch.order, switch.width = nil, nil
     switch.disabled = function() return not ns.ReskinTabOn() end
-    switch.desc = switch.desc .. " Greyed while All reskins (the top row of this tab) is off."
+    switch.desc = switch.desc .. " Greyed while Blizzard UI Reskin is off (this tab's Overview)."
     local overview = { blocked = layout.args.blocked, intro = layout.args.intro, theme = layout.args.theme }
     layout.args.blocked, layout.args.intro, layout.args.enabled, layout.args.theme = nil, nil, nil, nil
     local parts = { layout = layout, look = look, bar = bar, behavior = behavior, filters = filters, history = history, sounds = sounds, privacy = privacy }

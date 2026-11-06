@@ -414,6 +414,7 @@ assert(loadfile(BARCUE_PATH))("XayaUI", NS)
     block = (pre + block).replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI", "Combat", "AuraDisplay.lua")).replace("'", '"'))
     block = block.replace("BARCUE_PATH", repr(os.path.join(ROOT, "XayaUI", "BarCue.lua")).replace("'", '"'))
     block = block.replace("CUE_GATED_SRC", "[==[" + "local ns = NS\n" + cg.group(0) + "]==]")
+    block = block.replace("ENGINE_SUBS_SRC", "[==[ ]==]")   # (aura_display_run.py's /xuiengine subcommands: not needed for bars)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     check("B: the engine stand-in was found and extended", n0 >= 1)
     try:

@@ -284,7 +284,7 @@ local function EnsureToolbar(of)
         local rb = ToolButton(bar, "Interface\\AddOns\\XayaUI\\Media\\UI\\xui_recyclebin.tga", "Recycle Bin", function() if ns.UI and ns.UI.RecycleBin then ns.UI.RecycleBin() end end)
         rb:SetPoint("LEFT", ex, "RIGHT", 14, 0)
         -- no Cursor button here: the Cursor options live only on the QoL tab (Xaya, 2026-11-01)
-        local lk = ToolButton(bar, "Interface\\PetBattles\\PetBattle-LockIcon", "Lock Positions", function()
+        local lk = ToolButton(bar, "Interface\\AddOns\\XayaUI\\Media\\UI\\xui_lock.tga", "Lock Positions", function()
             if ns.ToggleUnlock then ns.ToggleUnlock() end
             if ns.UI and ns.UI.Notify then ns.UI.Notify() end
         end)
@@ -391,6 +391,25 @@ end
 local function PaneColors(frame, bg, border)
     if frame and frame.SetBackdropColor then frame:SetBackdropColor(bg[1], bg[2], bg[3], bg[4]); frame:SetBackdropBorderColor(border[1], border[2], border[3], 1) end
 end
+-- (Options 0.6.55; REQUEST-LOG UI-6 / UI-7; Xaya 2026-11-06: "we don't need to display double-nested boxes. replace the visual of the
+-- two column pane boxed display with a clean divider line and remove the frames otherwise", her answer "Borders go, fills stay".)
+-- The left pane, the right pane and the tab row's box keep their fill and lose their border line; one line divides the two panes.
+local function PaneFill(frame, bg)
+    if frame and frame.SetBackdropColor then frame:SetBackdropColor(bg[1], bg[2], bg[3], bg[4]); frame:SetBackdropBorderColor(0, 0, 0, 0) end
+end
+local function PaneDivider(w)
+    local tf = w and w.treeframe
+    if not (tf and w.frame and w.frame.CreateTexture) then return end
+    local d = w.xuiDivider
+    if not d then d = w.frame:CreateTexture(nil, "ARTWORK"); w.xuiDivider = d end
+    local c = TC("xui-pane", "border", { 0.3, 0.3, 0.3, 1 })
+    d:SetColorTexture(c[1], c[2], c[3], 1)
+    d:ClearAllPoints()
+    d:SetPoint("TOPLEFT", tf, "TOPRIGHT", 0, 0)
+    d:SetPoint("BOTTOMLEFT", tf, "BOTTOMRIGHT", 0, 0)
+    d:SetWidth(1)
+    d:Show()
+end
 
 -- /xui debug perf: time every pane / tab switch (OnGroupSelected) so the slow or late step can be named
 local function TraceGroupFire(w, what)
@@ -457,9 +476,61 @@ local function CompactRulesTabs(w)
     end
 end
 
+-- (Options 0.6.55; REQUEST-LOG UI-5 / UI-7; Xaya 2026-11-06: "Tabs at the highest level should be evenly distributed across the pane,
+-- wider, and thicker. their font should more clearly indicate parent-level functionality"; her answer "32 px, 14 pt, outlined".)
+-- The window's top tab row (Rules, QoL, Bonus Features, Blizzard UI Reskin): every tab the same width, side by side with no overlap,
+-- filling the row edge to edge; 32 px tall; the name in the theme's font at 14 pt with an outline (one font object per tab, so a hover
+-- or a click, which re-applies the button's font objects, keeps it). The box below starts under the taller row.
+local TOP_TAB_H, TOP_TAB_FONT = 32, 14
+local function IsTopRow(w)
+    local T = ns.OptionsApi and ns.OptionsApi.TABS
+    if not (T and w and w.tabs) then return false end
+    for _, tab in ipairs(w.tabs) do
+        if tab:IsShown() then for _, t in pairs(T) do if tab.value == t.key then return true end end end
+    end
+    return false
+end
+local function TopTabs(w)
+    if not (w and w.frame and IsTopRow(w)) then return end
+    local shown = {}
+    for _, tab in ipairs(w.tabs) do if tab:IsShown() then shown[#shown + 1] = tab end end
+    local n = #shown
+    local width = w.frame.width or w.frame:GetWidth() or 0
+    if n == 0 or width <= 0 then return end
+    local hastitle = w.titletext and w.titletext:GetText() and w.titletext:GetText() ~= ""
+    local top = hastitle and 14 or 7
+    local each = width / n
+    for i, tab in ipairs(shown) do
+        tab:ClearAllPoints()
+        tab:SetPoint("TOPLEFT", w.frame, "TOPLEFT", (i - 1) * each, -top)
+        tab:SetSize(each, TOP_TAB_H)
+        for _, k in ipairs({ "Middle", "MiddleDisabled" }) do if tab[k] then tab[k]:SetWidth(math.max(1, each - 20)) end end
+        tab.selectedTextY, tab.deselectedTextY, tab.selectedTextX, tab.deselectedTextX = 0, 0, 0, 0
+        local fs = tab:GetFontString()
+        if fs then
+            if fs.SetWidth then fs:SetWidth(math.max(1, each - 8)) end
+            fs:ClearAllPoints(); fs:SetPoint("CENTER", tab, "CENTER", 0, 0)
+            local path = fs:GetFont()
+            local c = TC(tab.selected and "xui-tab-selected" or "xui-tab", "text", GOLD)
+            local fo = tab.xuiTopFont
+            if not fo then fo = CreateFont((tab:GetName() or "XayaUITopTab") .. "XuiTopFont"); tab.xuiTopFont = fo end
+            if path then fo:SetFont(path, TOP_TAB_FONT, "OUTLINE") end
+            fo:SetTextColor(c[1], c[2], c[3], 1)
+            tab:SetNormalFontObject(fo); tab:SetHighlightFontObject(fo); tab:SetDisabledFontObject(fo)
+            fs:SetTextColor(c[1], c[2], c[3])
+        end
+        local tcl = tab.selected and "xui-tab-selected" or "xui-tab"
+        Flat(tab, TC(tcl, "bg", { 0.03, 0.03, 0.03, 0.7 }), TC(tcl, "border", { 0.22, 0.22, 0.22, 1 }), { 1, 1, 0, 0 })
+    end
+    w.borderoffset = top + TOP_TAB_H + 3
+    if w.border then w.border:SetPoint("TOPLEFT", 1, -w.borderoffset) end
+    if w.frame.height and w.OnHeightSet then pcall(w.OnHeightSet, w, w.frame.height) end
+    w.xuiTopRow = true
+end
+
 local function SkinTabGroup(w)
     TraceGroupFire(w, "tab")
-    do local pb, pd = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 }), TC("xui-pane", "border", { 0.3, 0.3, 0.3, 1 }); PaneColors(w.border, { pb[1], pb[2], pb[3], A() * 0.6 }, pd) end
+    do local pb = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 }); PaneFill(w.border, { pb[1], pb[2], pb[3], A() * 0.6 }) end
     for _, tab in ipairs(w.tabs or {}) do
         if tab:IsShown() then
             for _, k in ipairs({ "Left", "Middle", "Right", "LeftDisabled", "MiddleDisabled", "RightDisabled" }) do
@@ -481,6 +552,7 @@ local function SkinTabGroup(w)
         w.BuildTabs = function(self, ...)
             local r = orig(self, ...)
             pcall(CompactRulesTabs, self)
+            pcall(TopTabs, self)
             return r
         end
         AddRest(w, "compacttabs", function(self)
@@ -488,7 +560,18 @@ local function SkinTabGroup(w)
         end)
     end
     CompactRulesTabs(w)
+    pcall(TopTabs, w)
     OnRelease(w, function(self)
+        if self.xuiTopRow then
+            self.xuiTopRow = nil
+            for _, tab in ipairs(self.tabs or {}) do
+                tab.selectedTextY, tab.deselectedTextY, tab.selectedTextX, tab.deselectedTextX = nil, nil, nil, nil
+                if tab.xuiTopFont then
+                    tab:SetNormalFontObject(GameFontNormalSmall); tab:SetHighlightFontObject(GameFontHighlightSmall); tab:SetDisabledFontObject(GameFontHighlightSmall)
+                    tab:SetHeight(24)
+                end
+            end
+        end
         PaneColors(self.border, { 0.1, 0.1, 0.1, 0.5 }, { 0.4, 0.4, 0.4 })
         for _, tab in ipairs(self.tabs or {}) do
             for _, k in ipairs({ "Left", "Middle", "Right", "LeftDisabled", "MiddleDisabled", "RightDisabled" }) do
@@ -592,7 +675,7 @@ local function EnsureTreeSearch(w)
         sb:SetPoint("TOPRIGHT", w.treeframe, "TOPRIGHT", -12, -14)
         w.xuiSearchBox = sb
     end
-    -- multi-select bar: while rules are selected it replaces the search box with "Delete N" / "Clear" right where the list is
+    -- multi-select bar: while rules are selected it replaces the search box with "Delete (N)" / "Move (N)" / "Deselect (N)" right where the list is
     local nSel = (has and ns.MultiCount and ns.MultiCount()) or 0
     local bar = w.xuiSelBar
     if has and not bar and w.treeframe then
@@ -602,10 +685,10 @@ local function EnsureTreeSearch(w)
         bar:SetPoint("TOPLEFT", w.treeframe, "TOPLEFT", 12, -13)
         bar:SetPoint("TOPRIGHT", w.treeframe, "TOPRIGHT", -12, -13)
         bar.clr = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
-        bar.clr:SetSize(58, 22); bar.clr:SetPoint("RIGHT", 0, 0); bar.clr:SetText("Clear")
+        bar.clr:SetSize(84, 22); bar.clr:SetPoint("RIGHT", 0, 0)
         bar.clr:SetScript("OnClick", function() if ns.MultiClear then ns.MultiClear() end end)
         bar.mv = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
-        bar.mv:SetSize(64, 22); bar.mv:SetPoint("RIGHT", bar.clr, "LEFT", -4, 0); bar.mv:SetText("Move to...")
+        bar.mv:SetSize(70, 22); bar.mv:SetPoint("RIGHT", bar.clr, "LEFT", -4, 0)
         bar.mv:SetScript("OnClick", function(self) if ns.MultiMoveMenu then ns.MultiMoveMenu(self) end end)
         bar.del = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
         bar.del:SetHeight(22); bar.del:SetPoint("LEFT", 0, 0); bar.del:SetPoint("RIGHT", bar.mv, "LEFT", -4, 0)
@@ -632,7 +715,12 @@ local function EnsureTreeSearch(w)
             end
         end
         bar:SetShown(nSel > 0)
-        if nSel > 0 then bar.del:SetText(("Delete %d"):format(nSel)) end
+        -- Xaya, 2026-11-06: "clear should be "Deselect (#)"", "Delete should have (#) and Move to should be relabeled to say Move / Move (#)"
+        if nSel > 0 then
+            bar.del:SetText(("Delete (%d)"):format(nSel))
+            bar.mv:SetText(("Move (%d)"):format(nSel))
+            bar.clr:SetText(("Deselect (%d)"):format(nSel))
+        end
     end
     if sb then sb:SetShown(has and nSel == 0); RestoreSearchFocus() end
 end
@@ -683,7 +771,8 @@ end
 
 local function SkinTree(w)
     TraceGroupFire(w, "tree")
-    PaneColors(w.treeframe, { 0.03, 0.03, 0.03, A() * 0.6 }, { 0.3, 0.3, 0.3 })
+    PaneFill(w.treeframe, { 0.03, 0.03, 0.03, A() * 0.6 })
+    PaneDivider(w)
     -- Dragging the sidebar separator. AceGUI's own drag (StartSizing on the tree frame, then on release SetHeight(0) + ClearAllPoints +
     -- re-anchor + OnWidthSet + DoLayout) fights the skin: OnSizeChanged runs the skin's multi-pass RefreshTree on EVERY mouse move
     -- (it temporarily swaps tf.GetHeight), and the release re-anchors the frame the skin's band is anchored to. That blanked the window.
@@ -821,10 +910,14 @@ local function SkinTree(w)
             local avail = realH - reserve - TopPad(self) - 6
             local lines = math.max(1, self.xuiLines or math.floor((avail - 10) / 18))
             local total, cnt = run(lines)
-            -- grow while there is spare room and more rows exist than are drawn (a scrollbar max above 0 means rows are left over)
+            -- grow while there is spare room and more rows exist than are drawn. (Options 0.6.52) Before, this asked the scroll bar
+            -- with `local _, mx = self.scrollbar and self.scrollbar:GetMinMaxValues()`: an `and` keeps only a call's first value, so mx
+            -- was always nil and this loop never ran. The remembered count could then only shrink: one refresh that measured little
+            -- room (the window redrawn after a change in the right-hand pane, a short window) left the sidebar at a few rows for good
+            -- (Insivius: "will not show more than 4 lines"; Xaya: "clicking options in the right hand side panel still consistently
+            -- drops elements"). self.lines is AceGUI's list of every row the tree has now (RefreshTree builds it first).
             for _ = 1, 3 do
-                local _, mx = self.scrollbar and self.scrollbar:GetMinMaxValues()
-                if cnt > 0 and total < avail - 40 and (mx or 0) > 0 then
+                if cnt > 0 and total < avail - 40 and #(self.lines or {}) > cnt then
                     lines = lines + math.max(1, math.floor((avail - total) / (total / cnt)))
                     total, cnt = run(lines)
                 else break end
@@ -851,7 +944,7 @@ local function SkinTree(w)
         w.content:SetPoint("BOTTOMRIGHT", w.border, "BOTTOMRIGHT", -(UI_MARGIN + pad), UI_MARGIN + pad)
         w.xuiPadApplied = pad
     end
-    PaneColors(w.border, { 0.04, 0.04, 0.04, A() * 0.6 }, { 0.3, 0.3, 0.3 })
+    PaneFill(w.border, { 0.04, 0.04, 0.04, A() * 0.6 })
     for _, b in ipairs(w.buttons or {}) do
         local ht = b:GetHighlightTexture()
         if ht then
@@ -864,6 +957,7 @@ local function SkinTree(w)
     end
     OnRelease(w, function(self)
         self.xuiFadeTok = nil; self.xuiLastSel = nil
+        self.xuiLines = nil   -- (Options 0.6.52) AceGUI hands this widget to the next tree: it must not start from this tree's row count
         if self.xuiFadeFrame then self.xuiFadeFrame:SetScript("OnUpdate", nil) end
         if self.content and self.content.SetAlpha then self.content:SetAlpha(1) end
         if self.xuiSearchBox then self.xuiSearchBox:Hide() end
@@ -877,6 +971,7 @@ local function SkinTree(w)
         end
         PaneColors(self.treeframe, { 0.1, 0.1, 0.1, 0.5 }, { 0.4, 0.4, 0.4 })
         PaneColors(self.border, { 0.1, 0.1, 0.1, 0.5 }, { 0.4, 0.4, 0.4 })
+        if self.xuiDivider then self.xuiDivider:Hide() end
         for _, b in ipairs(self.buttons or {}) do
             local ht = b:GetHighlightTexture()
             if ht and b.xuiHT then ht:SetTexture(b.xuiHT[1]); ht:SetVertexColor(unpack(b.xuiHT[2])); ht:SetBlendMode(b.xuiHT[3]); ht:SetAlpha(1); b.xuiHT = nil end
@@ -1724,6 +1819,11 @@ end
 -- the whole label 2 px clear on each side (26 was 4 px short: even a well-measured label was cut by a few pixels, #368)
 local COMPACT_PAD, COMPACT_MIN = 34, 64
 local TAB_GAP = 2   -- between the tabs drawn as buttons (#370)
+-- Table cells (arg.xuiCell, Options 0.6.44: the auto-populate table, AutoPicker.lua). Controls with a relative width whose widths add up
+-- to 1 make one table row. They sit CELL_GAP apart instead of the grid's 30 px gutter, and each cell gives up its share of the gutters,
+-- so the row fills the pane exactly. A full row also makes AceGUI's Flow start the next table row on a new line (its first cell no
+-- longer fits beside it; true while that cell is wider than the row's gutters, e.g. 0.08 of a pane wider than 330 px).
+local CELL_GAP = 4
 function ns.IsCompactButton(ch)
     if ch.type ~= "Button" or not SkinOn() then return false end
     local o = ch.GetUserData and ch:GetUserData("option")
@@ -1781,11 +1881,29 @@ function ns.FlexPrepass(content, children, bw)
             -- The row-wrap check above already counts the gutter, so this never pushes a control past the edge.
             local g = (i > 1) and gap or nil
             if g and e.tab and row[i - 1].tab then g = TAB_GAP end   -- #370: tabs sit side by side like a real tab row
+            if g and e.cell and row[i - 1].cell then g = e.sub and 0 or CELL_GAP end   -- a sub-cell (arg.xuiSubCell) shares its cell: no gutter
             e.ch.xuiGapX = g
         end
         row, used = {}, 0
     end
+    local cells   -- the table row being collected (arg.xuiCell): { list, nom = the sum of its relative widths }
+    local function closeCells()
+        if not cells then return end
+        local n = 0   -- gutters sit between cells; a sub-cell (arg.xuiSubCell: the 2nd+ control of one table cell) adds none
+        for _, e in ipairs(cells.list) do if not e.sub then n = n + 1 end end
+        local scale = 1
+        if cells.nom > 0 then scale = math.min(1, (width - CELL_GAP * (n - 1)) / (cells.nom * width)) end
+        if scale < 0 then scale = 0 end
+        for _, e in ipairs(cells.list) do
+            e.ch.relWidth = math.max(0.001, e.nom * scale)
+            e.base = width * e.ch.relWidth
+        end
+        cells = nil
+    end
     for _, ch in ipairs(children) do
+        local oc = ch.GetUserData and ch:GetUserData("option")
+        local isCell = ch.width == "relative" and oc and type(oc.arg) == "table" and oc.arg.xuiCell
+        if cells and not isCell then closeCells(); flush() end   -- the table row ends: whatever follows starts its own
         if ns.IsCompactButton(ch) then   -- sized to its label, shares the row, never stretched
             if ch.width == "fill" or ch.width == "relative" then ch.width = nil end   -- (AceConfigDialog sets it again on the next build)
             local w = CompactWidth(ch, width)
@@ -1808,16 +1926,32 @@ function ns.FlexPrepass(content, children, bw)
                     end
                 end
                 w = width * (ch.relWidth or 1); flex = false
+                if isCell then
+                    local nom = (type(oc.relWidth) == "number") and oc.relWidth or (ch.relWidth or 0)   -- the option's own width, every pass
+                    if not cells or cells.nom >= 0.999 then
+                        closeCells(); flush()
+                        cells = { list = {}, nom = 0 }
+                    end
+                    local e = { ch = ch, base = width * nom, flex = false, cell = true, nom = nom, sub = oc.arg.xuiSubCell and true or nil }
+                    row[#row + 1] = e
+                    cells.list[#cells.list + 1] = e
+                    cells.nom = cells.nom + nom
+                    used = used + width * nom
+                    w = nil
+                end
             else
                 w = (bw or BaseW)(ch); flex = not NOFLEX[ch.type]
                 -- two-column grid: a control is either one column wide or spans both (when it cannot fit in a column)
                 if grid and flex then w = (w > colW + 0.5) and width or colW end
             end
-            if #row > 0 and used + gap + w > width then flush() end
-            row[#row + 1] = { ch = ch, base = w, flex = flex }
-            used = used + w
+            if w then   -- (nil: a table cell, placed above)
+                if #row > 0 and used + gap + w > width then flush() end
+                row[#row + 1] = { ch = ch, base = w, flex = flex }
+                used = used + w
+            end
         end
     end
+    closeCells()
     flush()
 end
 local function ApplyGaps(children)

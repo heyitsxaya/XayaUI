@@ -36,6 +36,11 @@ load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name)
 ns = L.eval("{}"); L.globals().NS = ns
 for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI/DebugRecord.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
+# (core 0.6.56, REQUEST-LOG #82: the kinds of line, their switches, the probe switch and the record's text are XayaUI Dev Assist's,
+# XayaUI_DevAssist/DevRecord.lua; loaded here as the game loads it, after XayaUI. Players without it keep errors and warnings with codes:
+# tests/devassist_debug_tools_run.py.)
+L.execute("XayaUI_NS = NS")
+load(open(os.path.join(ROOT, "XayaUI_DevAssist/DevRecord.lua"), encoding="utf-8").read(), "XayaUI_DevAssist/DevRecord.lua", ns)
 L.execute(r'''
 local ns = NS
 WINDOW = { open = false, calls = 0 }
@@ -104,7 +109,8 @@ L.execute("RESET(); NS.Print('after private')")
 check("an ordinary message after a private one is recorded again", E("HAS('msg', 'after private')"))
 # every message that can name another player goes through ns.PrintPrivate (wiring; the outcome is checked above)
 def src(p): return open(os.path.join(ROOT, p), encoding="utf-8").read()
-chatCore, chatProbe, notes, msgs = src("XayaUI_Chat/Core.lua"), src("XayaUI_Chat/Probe.lua"), src("XayaUI_Bonus/NotepadShare.lua"), src("XayaUI_Chat/Messages.lua")
+# (Dev Assist 0.7.5: /xui chat indent and /xui debug chatprobe moved to XayaUI Dev Assist, CoreDebug.lua and ChatProbe.lua)
+chatCore, chatProbe, notes, msgs = src("XayaUI_DevAssist/CoreDebug.lua"), src("XayaUI_DevAssist/ChatProbe.lua"), src("XayaUI_Bonus/NotepadShare.lua"), src("XayaUI_Chat/Messages.lua")
 check("wiring: /xui chat indent (prints the start of chat lines) is private",
       "local say = ns.PrintPrivate or ns.Print\n            say((\"  line %d: box left" in chatCore and "ns.Print((\"  line %d" not in chatCore)
 check("wiring: /xui debug chatprobe top-left frames (frame text can be a character name) are private",
@@ -124,7 +130,8 @@ check("a line reads 'time  Category  what happened'", E("REC():find('^%d%d:%d%d:
 
 # 5. XayaUI's own Lua errors
 L.execute("RESET(); HANDLER('Interface/AddOns/XayaUI/Engine.lua:12: boom')")
-check("an XayaUI error is recorded and shown in the console window (not chat)", E("HAS('error', 'boom') and #SINK == 1 and SINK[1]:find('error') ~= nil and #CHAT == 0"))
+# (core 0.6.56: an error is kept in the coded record, CueRulesDB.errorLog, XUI-E001 for a core file, not as a line of the detailed record)
+check("an XayaUI error is recorded (XUI-E001) and shown in the console window (not chat)", E("CueRulesDB.errorLog[1] ~= nil and CueRulesDB.errorLog[1].code == 'XUI-E001' and CueRulesDB.errorLog[1].msg:find('boom', 1, true) ~= nil and #SINK >= 1 and SINK[1]:find('error') ~= nil and #CHAT == 0"))   # (and a console line naming its code, from the record)
 
 # 6. size limit
 L.execute("for i = 1, 3300 do NS.RecordLine('log', 'filler ' .. i) end")
@@ -164,7 +171,13 @@ build = L.eval("function(src) local f, e = loadstring('local ns = ns\\n' .. src 
                " if not f then error(e) end; setfenv(f, OPTENV); return f() end")
 dbg = build(opt[i:j])["args"]["debug"]["args"]
 L.globals().DBG = dbg
-L.execute("function SET(k, v) DBG[k].set(nil, v) end; function GET(k) return DBG[k].get() end")
+# (Options 0.6.55: the probe switch and the detailed record's switches are XayaUI Dev Assist's settings, shown under "Dev Assist settings")
+L.execute("""function OPT(k)
+  if DBG[k] then return DBG[k] end
+  local dp = DBG.devPages and DBG.devPages.args or {}
+  for _, page in pairs(dp) do if type(page) == "table" and page.args and page.args[k] then return page.args[k] end end
+end
+function SET(k, v) OPT(k).set(nil, v) end; function GET(k) return OPT(k).get() end""")
 L.execute("UI().advancedDebug = nil; UI().debugProbe = nil; UI().probeByDebug = nil; PROBE.on = false; PROBE.ons = 0; PROBE.offs = 0")
 L.execute("SET('advancedDebug', true)")
 check("Settings: ticking Advanced Debugging switches it on (and the probe with it)", E("UI().advancedDebug == true and PROBE.on == true"))
@@ -181,7 +194,7 @@ check("Settings: unticking 'Also run the game-data probe' is saved and stops the
 L.execute("SET('debugProbe', true)")
 check("Settings: ticking it again starts the probe", E("UI().debugProbe == nil and GET('debugProbe') == true and PROBE.on == true"))
 L.execute("SET('recordOn', false); NS.RecordLine('log', 'should not be kept')")
-check("Settings: unticking 'Keep the debug record' stops recording", E("UI().recordOff == true and GET('recordOn') == false and not HAS('log', 'should not be kept')"))
+check("Settings: unticking 'Keep the detailed record' stops recording", E("UI().recordOff == true and GET('recordOn') == false and not HAS('log', 'should not be kept')"))
 L.execute("SET('recordOn', true); NS.RecordLine('log', 'kept again')")
 check("Settings: ticking it again records", E("UI().recordOff == nil and GET('recordOn') == true and HAS('log', 'kept again')"))
 L.execute("SET('msgDest', 'chat'); RESET(); NS.Print('to chat now')")
@@ -205,7 +218,7 @@ check("a setting equal to the default is not stored (the saved settings stay sma
 L.execute("NS.SetRecCat('messages', true); NS.SetRecCat('snapshots', true)")
 check("  ...and switching back to the default removes it", E("UI().recCats == nil"))
 L.execute("HANDLER('Interface/AddOns/XayaUI/Engine.lua:5: always kept'); NS.SetRecPreset('light')")
-check("errors are kept whatever the categories", E("HAS('error', 'always kept')"))
+check("errors are kept whatever the categories (in the coded record)", E("CueRulesDB.errorLog[1].msg:find('always kept', 1, true) ~= nil"))
 check("'Light set': rules, game state, messages only", E("NS.RecCatOn('rules') and NS.RecCatOn('game') and NS.RecCatOn('messages') and not NS.RecCatOn('auras') and not NS.RecCatOn('engine')"))
 L.execute("NS.SetRecPreset('all')")
 check("'Everything': every category", E("NS.RecCatOn('triggers') and NS.RecCatOn('displays') and NS.RecCatOn('perf') and NS.RecCatOn('auras')"))
@@ -232,7 +245,7 @@ C_ChallengeMode = { GetActiveKeystoneInfo = function() return 12, {}, true end }
 GetNumGroupMembers = function() return 5 end
 IsInRaid = function() return false end
 GetInventoryItemID = function(_, slot) return slot == 1 and 212345 or nil end
-local H = NS.DebugRecordInfo.handlers
+local H = NS.DebugRecordInfo.devHandlers
 H.ENCOUNTER_START(3012, 'Test Boss', 8, 5); H.ENCOUNTER_END(3012, 'Test Boss', 8, 5, 0)
 H.CHALLENGE_MODE_START(503); H.CHALLENGE_MODE_COMPLETED()
 H.GROUP_ROSTER_UPDATE(); H.GROUP_ROSTER_UPDATE()
@@ -246,14 +259,14 @@ check("gear, zone (instance type, difficulty, instance ID, map ID) and talent ch
       E("HAS('game', 'gear: slot 1 now item 212345') and HAS('game', 'zone: Test Dungeon (party, Mythic Keystone, difficulty 8, instance 2810), map 2339') and HAS('game', 'talents changed')"))
 L.execute("FIRE('PLAYER_REGEN_DISABLED')")
 check("combat start says where, and what the game hides from addons now", E("HAS('combat', 'starts | Test Dungeon') and HAS('combat', 'the game hides auras: yes, cooldowns: no')"))
-L.execute("FIRE('PLAYER_REGEN_ENABLED'); NS.SetRecCat('game', false); local H = NS.DebugRecordInfo.handlers; H.ENCOUNTER_START(9999, 'Hidden Boss', 8, 5)")
+L.execute("FIRE('PLAYER_REGEN_ENABLED'); NS.SetRecCat('game', false); local H = NS.DebugRecordInfo.devHandlers; H.ENCOUNTER_START(9999, 'Hidden Boss', 8, 5)")
 check("game state off: no game lines", E("not HAS('game', 'Hidden Boss')"))
 L.execute("NS.SetRecCat('game', true)")
 L.execute("C_AddOns = { GetNumAddOns = function() return 3 end, GetAddOnInfo = function(i) return ({ 'XayaUI', 'XayaUI_Options', 'SomeOtherAddon' })[i] end, "
           "IsAddOnLoaded = function(n) return true, n ~= 'XayaUI_Options' end, DoesAddOnHaveLoadError = function() return false end, "
           "GetAddOnMetadata = function(n) return n == 'XayaUI' and '0.6.22' or '0.6.17' end }; "
           "GetPhysicalScreenSize = function() return 2560, 1440 end; UIParent = { GetEffectiveScale = function() return 0.71 end }; "
-          "NS.DebugRecordInfo.handlers.PLAYER_ENTERING_WORLD(true, false)")
+          "NS.DebugRecordInfo.devHandlers.PLAYER_ENTERING_WORLD(true, false)")
 check("login: game version, every XayaUI addon with its version (and which is not loaded), screen, UI scale, rules",
       E("HAS('session', 'login | game 12.1.5 (build 70783)') and HAS('session', 'XayaUI 0.6.22, XayaUI_Options 0.6.17 (not loaded)') "
         "and HAS('session', 'screen 2560x1440, UI scale 0.710') and not HAS('session', 'SomeOtherAddon')"))
@@ -315,7 +328,8 @@ check("'View the debug record': what each label means, the lines, and what to se
 
 # 15. the real Settings > Debugging controls for the categories, presets, size, rule picker and "What to send" (Options.lua)
 L.execute("UI().advancedDebug = true; UI().recordOff = nil; UI().recCats = nil; UI().msgDest = 'console'; NS.DebugSettingsChanged(); CueRulesDB.debugRecord = nil")
-L.execute("W = DBG.recWhat.args; SEND = DBG.send.args")
+# (Options 0.6.55 / Dev Assist 0.7.5: the category boxes, presets, size and rule picker are Dev Assist's settings page "devrecord")
+L.execute("W = DBG.devPages.args.devrecord.args; SEND = DBG.send.args")
 check("Settings: one tick box per category, each with its cost in the label", E("W.cat_auras ~= nil and W.cat_perf ~= nil and W.cat_triggers ~= nil and W.cat_game ~= nil "
       "and W.cat_auras.name:find('(small)', 1, true) ~= nil and W.cat_perf.name:find('timer', 1, true) ~= nil"))
 L.execute("W.cat_messages.set(nil, false); RESET(); NS.Print('settings says no')")

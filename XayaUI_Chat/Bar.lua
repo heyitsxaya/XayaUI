@@ -243,9 +243,10 @@ local last
 local function Place()
     local bar, s = C.Bar(), S()
     if not (bar and s and last and s.barOn and C.active) then return end
-    B.Layout(bar, slots, { n = last.n, sizing = last.sizing, lead = C.ArrowLead(), get = last.get })
+    local vert = (s.barSide == "LEFT" or s.barSide == "RIGHT")   -- (Chat 0.6.23) a strip beside the chat: blocks top to bottom
+    B.Layout(bar, slots, { n = last.n, sizing = last.sizing, lead = C.ArrowLead(), get = last.get, vert = vert })
     -- AUTO sizing measures the text, so lay out again once the strings have their widths
-    if last.sizing == "AUTO" then B.Layout(bar, slots, { n = last.n, sizing = "AUTO", lead = C.ArrowLead(), get = last.get }) end
+    if last.sizing == "AUTO" then B.Layout(bar, slots, { n = last.n, sizing = "AUTO", lead = C.ArrowLead(), get = last.get, vert = vert }) end
 end
 
 local function Refresh(s)

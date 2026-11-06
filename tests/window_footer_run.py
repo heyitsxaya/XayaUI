@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""The settings window's bottom strip and the Acknowledgements page (Options 0.6.30; Xaya 2026-11-04): AceGUI's empty status bar left of Close is hidden while
+"""The settings window's bottom strip (Options 0.6.30; Xaya 2026-11-04): AceGUI's empty status bar left of Close is hidden while
 XayaUI uses the window ("bottom random bar left of close should be removed") and shown again when the window is handed back to
 AceGUI; the version is in the bottom-left corner ("addon version should be put in the bottom left"); since Options 0.6.39 the version
-text itself is the Addon Info link, in the theme's accent colors. Uses a real AceGUI Frame widget registered as the open settings window (the settings tree itself is not drawn), and the window
+text itself is the Addon Info link (since Options 0.6.56 it opens the version pane), in the theme's accent colors. Uses a real AceGUI Frame widget registered as the open settings window (the settings tree itself is not drawn), and the window
 driver that dresses it every 0.25 s.
 Run: python3 tests/window_footer_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, re, sys
@@ -21,17 +21,10 @@ local ns = rawget(_G, "XayaUI_NS")
 if ns and ns.LoadOptions then pcall(ns.LoadOptions) end; W.tick(0.1, 5)
 ns = rawget(_G, "XayaUI_NS")
 check("settings window addon loaded", ns and ns.BuildOptionsTable ~= nil)
--- Acknowledgements on their own page under Settings (Xaya 2026-11-04: "acknowledgements still needs to be put into settings into its
--- own tab"); Addon Info points there
+-- Addon Info and Settings > Acknowledgements moved into the version pane (Options 0.6.56; tests/info_pane_run.py covers the pane)
 local built = ns.BuildOptionsTable()
-local ack = built.args.set and built.args.set.args.credits
-local function has(t, key) return type(t) == "table" and type(t.args) == "table" and (t.args[key] ~= nil or (t.args.page and t.args.page.args and t.args.page.args[key] ~= nil)) end
-check("Settings has an Acknowledgements page with the credits", ack ~= nil and ack.name == "Acknowledgements" and has(ack, "creditsH1") and has(ack, "sec1"))
-check("the old single Settings tab (skin off) has it too", built.args.settings and built.args.settings.args.credits ~= nil)
-local info = built.args.info
-check("Addon Info no longer holds the credits, and says where they are",
-  info and not has(info, "creditsH1") and not has(info, "sec1") and has(info, "creditsWhere")
-  and tostring(info.args.page.args.creditsWhere.name):find("Settings > Acknowledgements", 1, true) ~= nil)
+check("no Addon Info page and no Settings > Acknowledgements in the settings tree any more",
+  built.args.info == nil and not (built.args.set and built.args.set.args.credits) and not (built.args.settings and built.args.settings.args.credits))
 local AceGUI, ACD = LibStub("AceGUI-3.0"), LibStub("AceConfigDialog-3.0")
 local of = AceGUI:Create("Frame")
 local sb = of.statustext and of.statustext:GetParent()
@@ -76,14 +69,9 @@ CueRulesDB.theme.tokens.accent = { 0.10, 0.90, 0.20, 1 }
 T.Resolve()
 check("a theme change repaints it", same(col(c.ver), { 0.10, 0.90, 0.20 }), table.concat(col(c.ver), ","))
 CueRulesDB.theme.tokens.accent = nil; T.Resolve()
-ns.infoOpen = false
-local picked
-local realSelect = ACD.SelectGroup
-ACD.SelectGroup = function(self, app, ...) picked = table.concat({ ... }, ">"); return true end
 link:Click()
-ACD.SelectGroup = realSelect
-check("clicking the version opens Addon Info", ns.infoOpen == true and picked == "info", tostring(picked))
-ns.infoOpen = false
+check("clicking the version opens the version pane (Options 0.6.56; until then Addon Info)", ns.InfoPane and ns.InfoPane.IsShown())
+ns.InfoPane.Close()
 sb:Show(); W.tick(0.3, 1)
 check("if anything shows the bar again while XayaUI has the window, it is hidden again", not sb:IsShown())
 ACD.OpenFrames["CueRules"] = nil
