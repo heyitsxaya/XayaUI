@@ -1,6 +1,6 @@
 -- XayaUI: aura instance ID probe (diagnostic only; changes no rule behaviour).
--- /xui probe ids        arm / disarm
--- /xui probe ids log    print the saved log lines again
+-- /xui debug probe ids        arm / disarm
+-- /xui debug probe ids log    print the saved log lines again
 --
 -- Question it answers: while in combat, can addon code (a) call
 -- C_UnitAuras.GetUnitAuraInstanceIDs("player"), (b) READ and COMPARE the IDs it returns,
@@ -391,7 +391,7 @@ local function Arm(on)
         do local s0 = Snap(); if not s0.err and not s0.combat then pcall(StreamHave, s0.ids) end end
         Poll()
         ticker = C_Timer.NewTicker(1, Poll)
-        Log("Now fight with a buff active: cast Metamorphosis (and Demon Spikes / Immolation Aura), let one fall off, then cancel one early. /xui probe ids to stop, then /reload to save.")
+        Log("Now fight with a buff active: cast Metamorphosis (and Demon Spikes / Immolation Aura), let one fall off, then cancel one early. /xui debug probe ids to stop, then /reload to save.")
         Log("0.5.27: out of combat the stream also records each aura added/removed (spell, name, duration, lifetime). For identity ground truth, run the same casts once with NO combat, then once in combat.")
     else
         f:UnregisterAllEvents()

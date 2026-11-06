@@ -6,14 +6,17 @@ What the player sees, checked here with the real addons in the stand-in game:
   1. /xui help lists only the player's commands (no diagnostic one), one of them /xui debug; no "|" is printed in it (the chat
      history window dropped a doubled pipe and the letter after it: "[highlighttrail]", "statusidthprobe" in her screenshot).
   2. /xui debug lists every diagnostic command as "/xui debug <name>"; each listed name runs; an unknown one says so and lists them.
-  3. Parity (V5): the old form (/xui status, /xui auras target) prints exactly what /xui debug status / auras target prints.
+  3. The old forms (/xui status, /xui auras, /xui chatprobe, /xui stats widthprobe ...) no longer run (Xaya 2026-11-06: "let's move
+     to /xui debug ____"): each prints /xui help instead. A feature's debug command whose addon is off says so as "/xui debug <name>".
   4. The console window has a command line inside it, under the log, clear of the resize grip. With XayaUI's messages set to the
      chat window (Xaya's case), a command typed there prints in the console window and not in chat; the typed line is echoed;
      "/xui ..." and "/xayaui ..." work typed in full; another addon's slash command is refused, not run; afterwards messages go
      to chat again; a command that errors shows the error in the window and leaves nothing switched on.
   5. An empty console window says what to type and where XayaUI's other messages go; the first line hides that; Clear shows it again.
+  6. Messages set to the chat window also show in the console window while it is open (Xaya 2026-11-06: "yes as long as it doesn't
+     negatively impact performance"), and not while it is closed; with it closed, nothing of the console is called for a message.
 Negative control: on core 0.6.48 (no command line, /xui debug was a one-line loader check, help listed 29 commands) checks in
-1, 2, 3 (debug forms), 4 and 5 fail.
+1, 2, 3, 4 and 5 fail; on 8ae717b (old forms still ran; chat messages never reached the console) the checks in 3 and 6 fail.
 Run: python3 tests/console_commands_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -90,17 +93,31 @@ check("debug: an unknown name says so, then lists them", unk[1] == 'there is no 
 local win = run("debug window")
 check("debug window: the old /xui debug loader check", win[1] ~= nil and win[1]:find("debug: ToggleUI=", 1, true) ~= nil, win[1])
 
--- 3. parity: the old form prints what the /xui debug form prints ------------------------------------------------------------------
-local function same(a, b)
-  if #a ~= #b or #a == 0 then return false, ("%d vs %d lines"):format(#a, #b) end
-  for i = 1, #a do if a[i] ~= b[i] then return false, a[i] .. " <> " .. b[i] end end
-  return true
+-- 3. the old forms no longer run: each prints /xui help ------------------------------------------------------------------------
+local helpLines = #help
+for _, old in ipairs({ "status", "auras target", "perf", "loc", "gamemenu", "chatprobe", "probe 203720", "mods", "seed", "stats widthprobe" }) do
+  local before = ns.rules and #ns.rules or 0
+  local probeCalls, realProbe = 0, ns.CharWidthProbe_Run
+  if realProbe then ns.CharWidthProbe_Run = function(...) probeCalls = probeCalls + 1 end end
+  local out = run(old)
+  ns.CharWidthProbe_Run = realProbe
+  local isHelp = out[1] == help[1] and #out == helpLines
+  -- (a /xui stats word it does not know toggles the panel, as before; it must not start the width probe)
+  if old == "stats widthprobe" then isHelp = realProbe ~= nil and probeCalls == 0 end
+  check(("old form /xui %s no longer runs (prints /xui help)"):format(old), isHelp and (ns.rules and #ns.rules or 0) == before, out[1])
 end
-for _, pair in ipairs({ { "status", "debug status" }, { "auras target", "debug auras target" }, { "perf", "debug perf" },
-                        { "loc", "debug loc" }, { "gamemenu", "debug gamemenu" } }) do
-  local ok, why = same(run(pair[1]), run(pair[2]))
-  check(("parity: /xui %s prints what /xui %s prints"):format(pair[1], pair[2]), ok, why)
-end
+check("/xui debug status still runs", (function() local o = run("debug status"); return o[1] ~= nil and o[1] ~= help[1] end)())
+-- a feature's debug command whose addon is off: worded as /xui debug <name> (Modules.lua ns.ModuleMissingText(cmd, true))
+local realState = ns.ModuleState
+ns.ModuleState = function(a) if a == "XayaUI_Chat" then return "disabled" end return realState(a) end
+local realRun = ns.RunDebugCommand
+ns.RunDebugCommand = function(c, a) if c == "chatprobe" then return false end return realRun(c, a) end
+local off = run("debug chatprobe")
+ns.ModuleState, ns.RunDebugCommand = realState, realRun
+check("/xui debug chatprobe with XayaUI Chat off says so, as /xui debug chatprobe", off[1] ~= nil
+  and off[1]:find("/xui debug chatprobe is part of XayaUI Chat, which is switched off", 1, true) ~= nil, off[1])
+local offTop = run("chatprobe")
+check("/xui chatprobe (old form) is not reported as 'never registered'", offTop[1] == help[1], offTop[1])
 
 -- 4. the console window's command line --------------------------------------------------------------------------------------------
 CueRulesDB.ui.msgDest = "chat"   -- Xaya's case: XayaUI's messages go to the chat window
@@ -192,6 +209,44 @@ check("a blank line runs nothing and keeps nothing", #history == hist0 + 1, #his
 -- 5 (rest). Clear shows the hint again
 if clearBtn then clearBtn:GetScript("OnClick")(clearBtn) end
 check("Clear: the hint shows again", empty and empty:IsShown())
+check("the hint says messages set to chat also show here while it is open", empty and (empty._text or ""):find("show here too while this window is open", 1, true) ~= nil,
+  empty and empty._text)
+
+-- 6. messages set to the chat window also show in the open console window ----------------------------------------------------------
+CueRulesDB.ui.msgDest = "chat"
+chat0, n0 = #W.printed, #(cw.log._lines or {})
+ns.Print("mirror test one")
+got = lines()
+check("chat setting, window open: the message is in chat", #W.printed == chat0 + 1 and W.printed[#W.printed]:find("mirror test one", 1, true) ~= nil)
+check("chat setting, window open: ...and in the console window", #got == n0 + 1 and got[#got]:find("mirror test one", 1, true) ~= nil, got[#got])
+check("chat setting, window open: ...and in the console's buffer (Copy, bug report)", has_({ (function() local t = {}; for i, l in ipairs(ns.logBuf) do t[i] = plain(l) end; return unpack(t) end)() }, "mirror test one") ~= nil)
+check("...the console window did not take the focus or open anything else", not cmd:HasFocus())
+ns.PrintPrivate("a private mirror line")
+got = lines()
+check("a private message: shown in the open window, never kept in the buffer", has_(got, "a private mirror line") ~= nil
+  and (function() for _, l in ipairs(ns.logBuf) do if l:find("a private mirror line", 1, true) then return false end end; return true end)())
+-- an error notice (Advanced Debugging on) goes the same way
+CueRulesDB.ui.advancedDebug = true
+CueRulesDB.ui.msgDest = "chat"
+n0 = #(cw.log._lines or {})
+pcall(geterrorhandler(), "Interface/AddOns/XayaUI/Test.lua:1: a test error notice")
+got = lines()
+-- (the notice line itself, "[XayaUI error] ..."; the error log's own "Lua error captured" line reaches the console through ns.Log anyway)
+check("chat setting, window open: a XayaUI error notice also shows in the console window", has_(got, "[XayaUI error] Interface/AddOns/XayaUI/Test.lua:1: a test error notice") ~= nil)
+-- closed: nothing of the console is called for a message
+if ns.ConsoleWindow then ns.ConsoleWindow(false) end
+local calls = 0
+local realCM = ns.ConsoleMessage
+ns.ConsoleMessage = function(...) calls = calls + 1; return realCM(...) end
+chat0 = #W.printed
+ns.Print("mirror test two")
+ns.ConsoleMessage = realCM
+check("chat setting, window closed: the message is in chat", #W.printed == chat0 + 1)
+check("chat setting, window closed: the console is not called (no cost, nothing buffered)", calls == 0, calls)
+check("chat setting, window closed: not in the buffer", (function() for _, l in ipairs(ns.logBuf) do if l:find("mirror test two", 1, true) then return false end end; return true end)())
+if ns.ConsoleWindow then ns.ConsoleWindow(true) end
+got = lines()
+check("reopened: the message from while it was closed is not drawn (only while it is open)", has_(got, "mirror test two") == nil)
 return R
 end
 '''
@@ -214,8 +269,8 @@ def main():
         if not ok:
             bad += 1
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
-    # (the test's own erroring command is expected in the error handler's list; any other error fails the run)
-    errs = [e for e in errs if "boom from a test command" not in str(e)]
+    # (the test's own erroring command and error notice are expected in the error handler's list; any other error fails the run)
+    errs = [e for e in errs if "boom from a test command" not in str(e) and "a test error notice" not in str(e)]
     for e in errs:
         print("ERROR in the game stand-in:", str(e)[:600])
     print("%d checks, %d failed, %d Lua errors" % (len(res), bad, len(errs)))

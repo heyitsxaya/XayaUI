@@ -504,7 +504,7 @@ function handlers.PLAYER_REGEN_DISABLED()
         combatT0 = GetTime and GetTime() or nil
         ns.RecordLine("combat", ("---------- combat %d starts | %s%s ----------"):format(combatN, Where(),
             ns.RecCatOn("game") and (" | " .. Hides()) or ""))
-        -- the engine's timer runs for this combat only, unless the player started it (/xui perf)
+        -- the engine's timer runs for this combat only, unless the player started it (/xui debug perf)
         if ns.RecCatOn("perf") and ns.PerfCommand and not ns.perfOn then
             ns.CaptureOutput(ns.PerfCommand, "on"); perfByDebug = true
         end

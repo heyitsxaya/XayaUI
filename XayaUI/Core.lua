@@ -42,6 +42,10 @@ function ns.Print(...)
     -- where messages go (DebugRecord.lua, Settings > Debugging): chat, the XayaUI console window, or both. A command typed in the
     -- console window prints there, whatever the setting (Console.lua ns.ConsoleRun sets ns.consoleRunning while it runs; core 0.6.50).
     local dest = ns.consoleRunning and "console" or (ns.MessageDest and ns.MessageDest() or "chat")
+    -- (core 0.6.50; Xaya 2026-11-06, of showing them in the console window too: "yes as long as it doesn't negatively impact
+    -- performance") set to the chat window, they also show in the console window while it is open. Cost per message: one function
+    -- call and, once the window exists, one IsShown; nothing per frame, and no frame, event or timer of its own (V14).
+    if dest == "chat" and ns.ConsoleWindowOn and ns.ConsoleWindowOn() then dest = "both" end
     if dest ~= "chat" and ns.ConsoleMessage and pcall(ns.ConsoleMessage, text, false, privateMsg) and dest == "console" then return end
     print("|cff33ccffXayaUI|r: " .. text)
 end
@@ -69,6 +73,7 @@ do
             if mine and ns.RecordLine then pcall(ns.RecordLine, "error", text) end
             -- the same place as XayaUI's messages (DebugRecord.lua): the console window, chat, or both
             local dest = typed and "console" or (ns.MessageDest and ns.MessageDest() or "chat")
+            if dest == "chat" and ns.ConsoleWindowOn and ns.ConsoleWindowOn() then dest = "both" end   -- (as ns.Print, core 0.6.50)
             local shown = dest ~= "chat" and ns.ConsoleMessage and pcall(ns.ConsoleMessage, text, true)
             if (dest ~= "console" or not shown) and DEFAULT_CHAT_FRAME then
                 DEFAULT_CHAT_FRAME:AddMessage("|cffff5555[XayaUI Error]|r " .. text, 1, 0.35, 0.35)
@@ -809,8 +814,8 @@ end
 -- Slash commands
 -- core 0.6.50 (Xaya 2026-11-05: "can't some of these be consolidated into a /xui debug _____ ? this is a LOT of noise"): /xui help
 -- lists only what a player uses (14 lines, was 29); the diagnostic commands are under /xui debug <name>, and /xui debug alone lists
--- them. Their old forms (/xui status, /xui perf ...) still run, without a help line. The old /xui debug (can the settings window
--- load) is /xui debug window.
+-- them. Their old forms (/xui status, /xui perf ...) no longer run (Xaya 2026-11-06: "let's move to /xui debug ____"): an unknown word
+-- prints /xui help, which names /xui debug. The old /xui debug (can the settings window load) is /xui debug window.
 -------------------------------------------------------------------------------
 -- the diagnostic commands core owns: { name, fn(arg), help }. help is "name [args] (what it does)", without "/xui debug".
 local CORE_DEBUG = {
@@ -897,7 +902,7 @@ local function RunDebug(arg)
     if sub == "" or sub == "help" then ns.PrintDebugHelp()
     elseif coreDebug[sub] then coreDebug[sub](rest)
     elseif ns.RunDebugCommand and ns.RunDebugCommand(sub, rest) then   -- a feature's own (Modules.lua ns.RegisterDebugCommand)
-    elseif ns.ModuleMissingText(sub) then ns.Print(ns.ModuleMissingText(sub))
+    elseif ns.ModuleMissingText(sub, true) then ns.Print(ns.ModuleMissingText(sub, true))   -- a feature's, whose addon is off
     else
         ns.Print(("there is no debug command \"%s\"."):format((sub:gsub("|", "/"))))
         ns.PrintDebugHelp()
@@ -919,8 +924,6 @@ SlashCmdList["XAYAUI"] = function(msg)
         if ns.ConsoleWindow then ns.ConsoleWindow() end
     elseif cmd == "bug" then
         if ns.ShowBugReport then ns.ShowBugReport() end
-    elseif coreDebug[cmd] then   -- the old form of a diagnostic command (/xui status ...): still runs, not in /xui help
-        coreDebug[cmd](arg)
     elseif ns.RunCommand(cmd, arg) then   -- a feature's own command (Modules.lua: ns.RegisterCommand)
     elseif ns.ModuleMissingText(cmd) then   -- a feature's command whose addon is off or failed to load
         ns.Print(ns.ModuleMissingText(cmd))

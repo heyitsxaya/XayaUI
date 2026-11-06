@@ -597,7 +597,7 @@ end
 Install()
 
 -------------------------------------------------------------------------------
--- /xui tracker
+-- /xui debug tracker
 -------------------------------------------------------------------------------
 local function P(...) if ns.Print then ns.Print(...) else print(...) end end
 
@@ -664,15 +664,15 @@ function ns.TrackerCommand(arg)
     elseif cmd == "id" then
         local v = rest:lower()
         if v == "on" or v == "off" then T.SetSetting("idDiff", v == "on"); P("ID diff " .. v:upper())
-        else P("usage: /xui tracker id on|off") end
+        else P("usage: /xui debug tracker id on|off") end
     elseif cmd == "shadow" then ShadowReport()
     elseif cmd == "reset" then ResetAll("manual"); cap.ids = nil; P("tracker state cleared")
     elseif cmd == "consumer" then
         local a, b = rest:match("^(%S+)%s*(%S*)")
         if a == "clear" and tonumber(b) then T.ClearConsumer(tonumber(b)); P("consumers cleared for cast " .. b)
         elseif tonumber(a) and tonumber(b) then T.AddConsumer(tonumber(a), tonumber(b)); P(("cast %s now ends aura %s"):format(a, b))
-        else P("usage: /xui tracker consumer <castSpellID> <auraID> | consumer clear <castSpellID>") end
+        else P("usage: /xui debug tracker consumer <castSpellID> <auraID> | consumer clear <castSpellID>") end
     else
-        P("commands: /xui tracker [status | on | off | id on|off | shadow | reset | consumer <cast> <aura>]")
+        P("commands: /xui debug tracker [status | on | off | id on|off | shadow | reset | consumer <cast> <aura>]")
     end
 end

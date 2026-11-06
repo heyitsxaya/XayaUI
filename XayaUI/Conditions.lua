@@ -38,7 +38,7 @@ end
 --   onCd   : main cooldown running (ignoring the GCD)
 --   atMax  : all charges available (charge spells) / off cooldown (others)
 --   empty  : no charges (EXPERIMENTAL for multi-charge spells)
---   why    : short note for /xui status
+--   why    : short note for /xui debug status
 -------------------------------------------------------------------------------
 local ReadCooldownRaw
 function ns.ReadCooldown(rule)
@@ -287,7 +287,7 @@ function ReadCooldownRaw(rule)
         local T = ns.Timing
         local ready, _, label
         if T then ready, _, label = T.CooldownEstimate(id) end
-        if not ready then r.why = "cooldown hidden in combat, no estimate yet (see /xui timing)"; return r end
+        if not ready then r.why = "cooldown hidden in combat, no estimate yet (see /xui debug timing)"; return r end
         r.onCd = GetTime() < ready
         r.readyAt, r.estimated = ready, true
         r.atMax, r.empty = not r.onCd, r.onCd
@@ -519,7 +519,7 @@ end
 -- Reference to a live aura for duration text, stacks and shield amount. Only READABLE values are kept: a secret instance id or
 -- stack count is useless to addon code anyway (12.1.5: the aura calls that take an instance id refuse secret arguments from
 -- addon code and need aura access, which combat withholds), and keeping it would hand a secret to every reader downstream.
--- ref.hiddenID marks "an aura is there, its id is hidden" for /xui status.
+-- ref.hiddenID marks "an aura is there, its id is hidden" for /xui debug status.
 local function CleanNum(t, k)
     if type(t) ~= "table" then return nil end
     local ok, v = pcall(Field, t, k)
@@ -548,7 +548,7 @@ local function MakeRef(aura, frame, unit)
     return ref
 end
 ns.MakeAuraRef = MakeRef
--- diagnostic detail for /xui status: what a Cooldown Manager frame reports (secret-safe, no arithmetic). File level so no closure is made
+-- diagnostic detail for /xui debug status: what a Cooldown Manager frame reports (secret-safe, no arithmetic). File level so no closure is made
 -- per read (#309).
 local function CDMDetail(fr)
     local iid = fr.auraInstanceID
@@ -571,7 +571,7 @@ local function BuffPresentRaw(id)
     if fr then
         local okA, active = pcall(FrameActive, fr)
         active = okA and active or false
-        -- diagnostic detail for /xui status: what the frame actually reports (secret-safe, no arithmetic)
+        -- diagnostic detail for /xui debug status: what the frame actually reports (secret-safe, no arithmetic)
         local okd, detail = pcall(CDMDetail, fr)
         return active and true or false, "CDM frame (" .. vname .. (okd and (": " .. detail) or "") .. ")", active and MakeRef(nil, fr) or nil
     end
@@ -988,7 +988,7 @@ function ns.BuffPresentAny(rule)
 end
 
 -- Advanced Debugging record (DebugRecord.lua): each aura's answer is written down when it changes (present / missing / unknown, and
--- which source gave it), so a combat can be followed afterwards without typing /xui status. Off: nothing is built or kept.
+-- which source gave it), so a combat can be followed afterwards without typing /xui debug status. Off: nothing is built or kept.
 local recLast, recP, recS = {}, {}, {}
 -- forget what was written, so every aura's current answer is written again (after Clear, or when recording starts)
 function ns.ResetRecordedAuras() wipe(recLast); wipe(recP); wipe(recS) end
@@ -1120,7 +1120,7 @@ function ns.ApplyBuffEstimate(rule, info)
         info.buffRef = own
         if ns.statusDetail then info.buffSource = tostring(info.buffSource):gsub(" | time: .*$", "") .. " | time: " .. label end
     elseif ns.statusDetail then
-        info.buffSource = tostring(info.buffSource) .. " | no time estimate yet (see /xui timing)"
+        info.buffSource = tostring(info.buffSource) .. " | no time estimate yet (see /xui debug timing)"
     end
 end
 
@@ -1815,7 +1815,7 @@ local function Remember(rule, ctx, res, info)
 end
 
 -- The result table a rule fills this step. During an engine step each rule reuses its own table (emptied first), so a few
--- hundred rules no longer make a few hundred tables of garbage per step; outside a step (options, /xui status) it is new.
+-- hundred rules no longer make a few hundred tables of garbage per step; outside a step (options, /xui debug status) it is new.
 -- Whoever keeps it (the runtime, a display's per-frame effects) always sees the rule's latest result.
 local infoPool = setmetatable({}, { __mode = "k" })
 function ns.InfoFor(rule)
@@ -1925,7 +1925,7 @@ local function Show(v)
 end
 
 function ns.Probe(spellID)
-    if not spellID then ns.Print("usage: /xui probe <spellID>") return end
+    if not spellID then ns.Print("usage: /xui debug probe <spellID>") return end
     ns.Print("probe spell " .. spellID
         .. "  (auras secret now? " .. Show(C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()) .. ")")
     local ok, cd = pcall(C_Spell.GetSpellCooldown, spellID)
@@ -1954,7 +1954,7 @@ function ns.Probe(spellID)
     end
 end
 
--- Same detail as /xui status, but written to the ring-buffer log (ns.Log) instead of chat, so it can be read
+-- Same detail as /xui debug status, but written to the ring-buffer log (ns.Log) instead of chat, so it can be read
 -- from the settings window's debug console tray AFTER a fight without typing anything while in combat.
 -- The periodic in-combat snapshot ("combat tick") logs only rules whose answer changed since the last snapshot, and reads the
 -- engine's own latest results instead of evaluating every rule a second time; combat start / end log everything.
@@ -1990,7 +1990,7 @@ end
 
 local PrintStatusRaw
 function ns.PrintStatus()
-    ns.statusDetail = true   -- readable time-source labels while /xui status runs (Timing.lua)
+    ns.statusDetail = true   -- readable time-source labels while /xui debug status runs (Timing.lua)
     local ok, err = pcall(PrintStatusRaw)
     ns.statusDetail = nil
     if not ok then ns.Print("status failed: " .. tostring(err)) end

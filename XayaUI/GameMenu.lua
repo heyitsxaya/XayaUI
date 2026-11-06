@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 -- GameMenu.lua : adds a "XayaUI" button to the Game Menu (the ESC menu) that opens the XayaUI settings window.
 -- Written against Blizzard's own GameMenuFrame only (no other addon's code). Settings > UI Options > Display >
--- "Menu button (ESC menu)": show toggle and style. /xui gamemenu prints diagnostics.
+-- "Menu button (ESC menu)": show toggle and style. /xui debug gamemenu prints diagnostics.
 --
 -- How it works (rewritten 0.5.41 after "Return to Game" showed Blizzard's red art):
 --   * Blizzard rebuilds the menu from a pool of recycled buttons on every open (GameMenuFrame:InitButtons), and other skins

@@ -81,11 +81,13 @@ W.tick(0.1, 20)
 
 -------------------------------------------------------------------------------
 step("slash commands")
-local commands = { "status", "debug", "icons", "debuffs", "debuffs target 1234", "probe 203720", "probe ids", "talents", "talents status", "model",
-  "model 203819", "tracker status", "mods", "groups", "loc", "timing", "perf", "perf on", "perf off", "perf ui", "perf ui", "unlock", "unlock", "media",
-  "console", "console", "bug", "chat", "chat status", "chat wrap", "chat history", "chat history", "chat move", "chat move", "panel", "chatprobe",
-  "privacy", "privacy", "data", "notes", "notes", "gamemenu", "cursor", "cursor highlight", "cursor trail", "chat settings", "panel",
-  "nonsense-command" }
+-- (core 0.6.50: the diagnostic commands are /xui debug <name>; "status" alone is the old form and now prints /xui help)
+local commands = { "debug status", "debug", "debug icons", "debug debuffs", "debug debuffs target 1234", "debug probe 203720", "debug probe ids",
+  "debug talents", "debug talents status", "debug model", "debug model 203819", "debug tracker status", "debug mods", "debug groups", "debug loc",
+  "debug timing", "debug perf", "debug perf on", "debug perf off", "debug perf ui", "debug perf ui", "unlock", "unlock", "debug media",
+  "console", "console", "bug", "chat", "chat status", "chat wrap", "chat history", "chat history", "chat move", "chat move", "panel", "debug chatprobe",
+  "privacy", "privacy", "data", "notes", "notes", "debug gamemenu", "cursor", "cursor highlight", "cursor trail", "chat settings", "panel",
+  "debug window", "debug auras", "debug widthprobe off", "status", "debug nosuch", "nonsense-command" }
 S.commands = 0
 local xui = SlashCmdList and SlashCmdList["XAYAUI"]
 if xui then

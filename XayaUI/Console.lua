@@ -187,7 +187,8 @@ local winShown = false   -- the window is up (OnShow / OnHide); while not, ns.Co
 local drawnSerial = 0    -- ns.logSerial when the window was last up to date (Core.lua counts every line put in ns.logBuf)
 local held = {}          -- { serial, line }: private lines that came while it was closed (they are never in ns.logBuf)
 -- the hint shown while the window has no lines (core 0.6.50): what to type, and where XayaUI's other messages go
-local DEST_WORDS = { chat = "the chat window", console = "this window", both = "this window and the chat window" }
+local DEST_WORDS = { chat = "the chat window, and show here too while this window is open", console = "this window",
+    both = "this window and the chat window" }
 local function HintText()
     local d = ns.MessageDest and ns.MessageDest() or "chat"
     return "Nothing here yet. Type a XayaUI command in the line below and press Enter: help lists them, debug lists the diagnostic ones."
@@ -352,7 +353,7 @@ function ns.ConsoleWindow(show, fromSettings)
 end
 function ns.ConsoleWindowOn() return (win and win:IsShown()) and true or false end
 
--- Run what was typed in the console's command line (core 0.6.50). "/xui status", "/xayaui status" and "status" all run /xui status;
+-- Run what was typed in the console's command line (core 0.6.50). "/xui debug status", "/xayaui status" and "status" all run /xui debug status;
 -- another addon's or the game's slash command is not run (only XayaUI's own handler is called). The typed line is echoed into the
 -- window; what the command prints goes to the window (ns.consoleRunning, read by Core.lua ns.Print), whatever "XayaUI's messages"
 -- says. Messages a command prints later (after a timer, at the end of combat) go where the setting says. Returns true when a

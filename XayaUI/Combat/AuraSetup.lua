@@ -8,7 +8,7 @@
 --   Step 2  Learn     cast your self-buffs out of combat; each cast->aura link and its real duration is recorded
 --   Step 3  Review    every ability with its duration, where the number came from, and a box to override it
 --
--- Opens from /xui model setup, from Settings > Advanced, or once automatically the first time a class/spec has
+-- Opens from /xui debug model setup, from Settings > Advanced, or once automatically the first time a class/spec has
 -- no saved setup.  It never opens in combat.
 -------------------------------------------------------------------------------
 local _, ns = ...; ns = XayaUI_NS or ns -- part of XayaUI core since 0.6.0 (Combat/); shares its namespace
@@ -285,13 +285,13 @@ local function Build()
         local p = M.Profile(true)
         if p then p.setupDone = (select(4, GetBuildInfo())) or true; p.skipped = nil end
         M.SetLearning(false); frame:Hide()
-        ns.Print("combat tracking setup saved for " .. tostring(M.ctx.key) .. ". Change it any time with /xui model setup.")
+        ns.Print("combat tracking setup saved for " .. tostring(M.ctx.key) .. ". Change it any time with /xui debug model setup.")
     end)
     frame.finish:SetPoint("BOTTOMRIGHT", -16, 14)
     local skip = Button(frame, "Skip for this spec", 140, function()
         local p = M.Profile(true); if p then p.skipped = true end
         M.SetLearning(false); frame:Hide()
-        ns.Print("skipped. Run /xui model setup whenever you want it.")
+        ns.Print("skipped. Run /xui debug model setup whenever you want it.")
     end)
     skip:SetPoint("BOTTOM", 0, 14)
 

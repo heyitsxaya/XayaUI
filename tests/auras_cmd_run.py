@@ -1,4 +1,4 @@
-# Test for /xui auras (XayaUI core 0.6.6, AuraList.lua; restores #335). Stand-in game calls only; the IDs and numbers below are
+# Test for /xui debug auras (XayaUI core 0.6.6, AuraList.lua; restores #335). Stand-in game calls only; the IDs and numbers below are
 # made up for the test, except the Enum values, which match the live client (docs/reference/api/enums.md).
 # Run from the repo root: python3 tests/auras_cmd_run.py   Needs: pip install lupa.
 import os, sys
@@ -58,8 +58,8 @@ UnitExists = function(u) return u == "target" end
 assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__AL__))("XayaUI", ns)
 
--- (core 0.6.50: a diagnostic command, listed by /xui debug; /xui auras still runs)
-check("registered as /xui auras, listed under /xui debug", ns.RunCommand("auras", "") and ns.RunDebugCommand("auras", "") and (function() for _, h in ipairs(ns.DebugCommandHelp()) do if h:find("auras [target", 1, true) then return true end end end)())
+-- (core 0.6.50: a diagnostic command, /xui debug auras only)
+check("registered as /xui debug auras, listed under /xui debug", ns.RunDebugCommand("auras", "") and ns.RunDebugCommand("auras", "") and (function() for _, h in ipairs(ns.DebugCommandHelp()) do if h:find("auras [target", 1, true) then return true end end end)())
 check("header: 3 buffs on player", any("3 buffs on player"), last(6))
 check("line: name, ID, stacks, time of total, caster", any("Divine Arbiter  ID 111  x3  12.5 / 30 s  [you]"))
 check("one stack is not printed as x1/x0", any("Immolation Aura  ID 222  4.0 / 6 s  [you]"))
@@ -73,62 +73,62 @@ check("Blizzard flags listed", any("Blizzard: important") and any("Blizzard: pri
 check("catalogue read with allowUnlearned = true (spec-wide, not only learned)", catCalls > 0)
 -- debuffs on target
 printed = {}
-ns.RunCommand("auras", "target debuffs")
+ns.RunDebugCommand("auras", "target debuffs")
 check("target debuffs listed", any("1 debuffs on target") and any("Fiery Brand  ID 444  5.0 / 10 s  [you]") and any("Blizzard: big defensive"))
 printed = {}
-ns.RunCommand("auras", "focus")
-check("missing unit said plainly", last() == "/xui auras: no focus.", last())
+ns.RunDebugCommand("auras", "focus")
+check("missing unit said plainly", last() == "/xui debug auras: no focus.", last())
 printed = {}
-ns.RunCommand("auras", "debuffs")
-check("no debuffs on player", last() == "/xui auras: no debuffs on player.", last())
+ns.RunDebugCommand("auras", "debuffs")
+check("no debuffs on player", last() == "/xui debug auras: no debuffs on player.", last())
 -- restricted: no live read at all
 restricted = true; readCalls = 0; printed = {}
-ns.RunCommand("auras", "")
+ns.RunDebugCommand("auras", "")
 check("restricted: refuses without calling the aura API", readCalls == 0 and last():find("hides aura details", 1, true) ~= nil, last())
 -- one spell works while restricted
 printed = {}
-ns.RunCommand("auras", "222")
+ns.RunDebugCommand("auras", "222")
 check("one spell by ID works in combat", last():find("Immolation Aura (ID 222): readable in combat: no", 1, true) ~= nil and readCalls == 0, last())
 printed = {}
-ns.RunCommand("auras", "divine arbiter")
+ns.RunDebugCommand("auras", "divine arbiter")
 check("one spell by (lower-case) name", last():find("Divine Arbiter (ID 111)", 1, true) ~= nil and last():find("offered (Tracked Buffs)", 1, true) ~= nil, last())
 printed = {}
-ns.RunCommand("auras", "|cff71d5ff|Hspell:333:0|h[Battle Shout]|h|r")
+ns.RunDebugCommand("auras", "|cff71d5ff|Hspell:333:0|h[Battle Shout]|h|r")
 check("one spell by link", last():find("Battle Shout (ID 333): readable in combat: yes", 1, true) ~= nil, last())
 printed = {}
-ns.RunCommand("auras", "|cff71d5ff|hspell:333:0|h[battle shout]|h|r")
+ns.RunDebugCommand("auras", "|cff71d5ff|hspell:333:0|h[battle shout]|h|r")
 check("one spell by a link /xui lower-cased", last():find("Battle Shout (ID 333)", 1, true) ~= nil, last())
 local savedInfo = C_Spell.GetSpellInfo
 C_Spell.GetSpellInfo = function(x) if x == "Fiery Brand" then return { spellID = 444 } end end   -- a case-sensitive game lookup
 C_SpellBook = { GetNumSpellBookSkillLines = function() return 1 end, GetSpellBookSkillLineInfo = function() return { itemIndexOffset = 0, numSpellBookItems = 1 } end,
   GetSpellBookItemInfo = function(j) if j == 1 then return { spellID = 444, name = "Fiery Brand" } end end }
 printed = {}
-ns.RunCommand("auras", "fiery brand")
+ns.RunDebugCommand("auras", "fiery brand")
 check("lower-case name found in the spellbook when the game lookup is case-sensitive", last():find("Fiery Brand (ID 444)", 1, true) ~= nil, last())
 printed = {}
-ns.RunCommand("auras", "immolation aura")
+ns.RunDebugCommand("auras", "immolation aura")
 check("lower-case name found in the Cooldown Manager list", last():find("Immolation Aura (ID 222)", 1, true) ~= nil, last())
 C_Spell.GetSpellInfo = savedInfo
 printed = {}
-ns.RunCommand("auras", "no such spell")
+ns.RunDebugCommand("auras", "no such spell")
 check("unknown spell said plainly", last():find("no spell found", 1, true) ~= nil, last())
 restricted = false
 -- secret data and refused reads
 auras.player.HELPFUL[2] = "SECRET"
 printed = {}
-ns.RunCommand("auras", "")
+ns.RunDebugCommand("auras", "")
 check("secret aura table: stops and says so, keeps what was read", any("Divine Arbiter  ID 111") and any("hidden aura data"))
 auras.player.HELPFUL[2] = { name = "SECRET", spellId = "SECRET", applications = "SECRET", duration = "SECRET", expirationTime = "SECRET", sourceUnit = "SECRET" }
 printed = {}
-ns.RunCommand("auras", "")
+ns.RunDebugCommand("auras", "")
 check("secret ID: listed as hidden, never compared", any("(hidden aura: the game keeps its ID secret)"))
 auras.player.HELPFUL[2] = { name = "Immolation Aura", spellId = 222, applications = "SECRET", duration = 6, expirationTime = "SECRET" }
 printed = {}
-ns.RunCommand("auras", "")
+ns.RunDebugCommand("auras", "")
 check("secret stacks / time: left out, not guessed", any("Immolation Aura  ID 222  ? / 6 s"))
 C_UnitAuras.GetAuraDataByIndex = function() error("blocked") end
 printed = {}
-ns.RunCommand("auras", "")
+ns.RunDebugCommand("auras", "")
 check("refused read reported", any("the game refused the aura read"))
 -- facts API used by the rule editor later
 local f = ns.AuraFacts(111)

@@ -300,7 +300,7 @@ function ns.MigrateCues()
     return made
 end
 
--- /xui mods: for every cue that a condition lists, print each step: which conditions list it and whether they are TRUE / FALSE / UNKNOWN right now,
+-- /xui debug mods: for every cue that a condition lists, print each step: which conditions list it and whether they are TRUE / FALSE / UNKNOWN right now,
 -- the modifiers each one stores, the merged result the engine hands to the visual, and what the cue's frame actually shows.
 function ns.ProbeMods()
     -- (core 0.6.50: through ns.Print, so /xui debug mods typed in the console window prints there; was print())
