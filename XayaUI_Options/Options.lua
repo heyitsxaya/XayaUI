@@ -4080,8 +4080,9 @@ function ns.FolderContainerGroup(f)
     -- (ns.GroupSortOf in Visual.lua; saved as cSort = nil for Manual, plus cSortRev; old "asc" / "desc" read as Name / Name reversed)
     local function sortOf() if ns.GroupSortOf then return ns.GroupSortOf(f) end return "manual", false end
     g.args.sort = { type = "select", name = "Sort", order = 2.05, hidden = function() return not isDyn() end,
-        values = { manual = "Manual (your order)", default = "Default", expiration = "Expiration", name = "Name", important = "Important" },
-        sorting = { "manual", "default", "expiration", "name", "important" },
+        -- (Options 0.6.47: her list as she wrote it, in her order and with her words; S1's cross-chat review B5)
+        values = { manual = "Manual", default = "Default", expiration = "Expiration", name = "Name", important = "Important" },
+        sorting = { "default", "expiration", "name", "important", "manual" },
         desc = "Manual: the order of the rules in this group in the sidebar (arrows or drag); each icon keeps its own size and look, and an aura that appears takes its place between the others, also in combat.\nDefault, Expiration, Name, Important: the game's own sorts (Important puts the auras the game marks important first).",
         get = function() return (sortOf()) end,
         set = function(_, v) local _, rev = sortOf(); f.cSort = (v ~= "manual") and v or nil; f.cSortRev = rev or nil; apply() end }

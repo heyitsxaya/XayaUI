@@ -2,12 +2,12 @@ a6b90f93be08b2134468e876fefd33d1  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-731dc296e5c13aecbfc639250f4bce08  QA-CHECKLIST.md
+07795ca2d55f2b76ae8c7eeff9eef2cf  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 ae35909dad7d2db6b3e50c1b0aeb96e5  ROADMAP.md
 8e26fa7260dfdd487f86249f75b6c9d2  SESSION-START-SUMMARY.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
-02b52faa8830531f32a78afb8cc1aaad  USER-GUIDE.md
+3e6888986e10bc090943234a289a7cda  USER-GUIDE.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
 d07a647b88bd89bf02993598850e63a3  XayaUI/AuraList.lua
 7bc5ab6899bc167c8fc5f3db72f3c9ff  XayaUI/AuraSound.lua
@@ -207,7 +207,7 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-d315d5ab87dce16c6e0db2ba8478572e  XayaUI_Options/Options.lua
+3815b5eb5b50a25e7ad9ad1564538411  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
 b2c1cb89c4059e3f328552f4253f4abc  XayaUI_Options/Skin.lua
@@ -484,7 +484,7 @@ dca56bc491930fdda05fb77349398fe2  debug-log/2026-11-05-2046-auto-populate-picker
 c54bd9d2d6be53369953c26744e65136  debug-log/2026-11-05-2141-history-whisper-tabs-by-realm-chat-0.6.16.md
 4ab5a364400ff14784d04d5af89b149b  debug-log/2026-11-05-2158-shopping-list-qol-0.7.25.md
 ef2aa95835015eb192e93bbbf709ddb0  debug-log/2026-11-05-2359-harness-enum-values-from-docs.md
-3baa89fdfab2b76ca64b27ffa0d1a0a1  debug-log/2026-11-06-0035-reskin-tab-switch-core-0.6.51-options-0.6.47-chat-0.6.18-reskin-0.6.4.md
+ca2c63495f7eac22785dfc0fc9cb1b0f  debug-log/2026-11-06-0035-reskin-tab-switch-core-0.6.51-options-0.6.47-chat-0.6.18-reskin-0.6.4.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -506,7 +506,7 @@ e80a5c2d309d09f70935f65abd599ec3  docs/plans/IDEA-UPGRADE-OPTIONS-2026-11-05.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 4951caf3d08972511c0552aaeba5f0f1  docs/process/ELVUI-STRUCTURE-REVIEW-2026-11-05.md
 d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
-1bcbefb03043a40d24d24c67bf1fa9cb  docs/process/REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md
+f13378ed074a9be5cdb1c7d29b370d63  docs/process/REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 26a30c6c53b808dbc12422b025aa395b  docs/process/VERIFICATION.md
 7af233aeafadc9bade62ce5da4b21189  docs/reference/README.md
@@ -602,7 +602,7 @@ a988d0843e5594fd1d2e777772e4b56a  tests/devassist_instance_run.py
 beb33f9fd927428616543fd8364aa1bf  tests/devassist_probe_run.py
 47ac71881f1f70410315e6d7142277a6  tests/devassist_rename_run.py
 35083b11f4eb421e42d452fce068a8ea  tests/disabled_tree_run.py
-e4af24c9daf9138d5a5778143e43addf  tests/display_tab_run.py
+42d76a64fcc6a616e48411baa66fe75d  tests/display_tab_run.py
 79340b1faeb574b0dd0dd28d6f8915e4  tests/drafts_run.py
 c368c3d4a0e31da169d5370dec0c7c3a  tests/drag_drop_run.py
 1dc5b3e89ca41f69f7eaf662e76da132  tests/engine_bench.py

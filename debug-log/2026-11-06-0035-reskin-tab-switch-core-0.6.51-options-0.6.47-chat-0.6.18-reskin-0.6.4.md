@@ -63,3 +63,12 @@ on 2026-11-06.
 - QoL 0.7.25: the Shopping List batch, which this rides with.
 - QA E2e. USER-GUIDE sections 0, 12 (Esc Menu, Chat Panel, Character Pane, Shopping List).
 - 00:50 UTC: Options relabelled 0.6.46 -> 0.6.47 (the coordinating session's correction: #409 took 0.6.46 at 246dc4f). Labels only.
+
+## Also in Options 0.6.47: the dynamic group's Sort list in her order (S1's cross-chat review B5)
+- Her words (2026-11-04, debug-log 2026-11-04-0350): "make sure to provide a sort order option for rules in a dynamic group: default,
+  expiration, name, important, manual (organize the group and force-save with a reload)".
+- Main listed "Manual (your order)" first. Now the list is Default, Expiration, Name, Important, Manual, with her words.
+- Manual stays the saved default. The "Save order and reload" button (her "force-save with a reload") is unchanged.
+- The "Reverse" tick box beside it stays until she answers S1's question about it.
+- Test: `tests/display_tab_run.py` gains one check (76 checks, 0 failed). It fails on the old list (1 failed).
+- QA E2f.
