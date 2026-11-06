@@ -23,7 +23,7 @@ Each feature addon has its own tab in the settings window (**QoL**, **Bonus Feat
 ## Contents
 
 - **Part 1: Rules**: how Load options, Triggers, Cues, Conditions, and Actions work (sections 1-11)
-- **Part 2: Features**: Class/Spec Rule Creator, Rule Drafts, Recycle Bin, Custom Data Panels and Bars, Notepad, Addon Theming, Minimap Button, Tooltips, Game Menu look, Chat Panel (section 12)
+- **Part 2: Features**: Class/Spec Rule Creator, Rule Drafts, Recycle Bin, Custom Data Panels and Bars, Notepad, Addon Theming, Minimap Button, Tooltips, Game Menu look, Chat Panel, Version pane (section 12)
 - **Maintaining this document** (section 13)
 
 ---
@@ -895,6 +895,19 @@ The newest 50 entries are kept in your settings file, newest first; the same err
 
 **The game-data probe:** its switch, "Also run the game-data probe", is one of XayaUI Dev Assist's own settings (12.13).
 
+### 12.15 Version pane: Patch Notes and Info
+
+Click the version text in the settings window's bottom-left corner. A pane opens in front of the settings window with two tabs, each listing its sections on the left:
+
+- **Patch Notes:** **What's New** (only new features, newest first, for each addon's current version line; an addon's list starts again at its next x.Y.0), then one entry per update with the full notes in the style of Blizzard's patch notes.
+- **Info:** **Version info** (version, last-updated date, author, license, commands, a copyable source code link), **Readme** (a short version of this guide), **Help (FAQ)** (common questions from Troubleshooting, Midnight limits and Known limitations), and **Credits + Acknowledgements**.
+
+The **?** in the settings window's title bar (left of the collapse arrow) and in the pane's own title bar opens Help (FAQ). Drag the pane by its title bar; it reopens where you left it. Its collapse button shrinks it to the title bar. Esc closes the pane first and the settings window on the next press (in combat the game lets Esc close both at once). Closing the settings window closes the pane.
+
+**Limits:** the pane's text is written into the addon when it is built (from PATCH-NOTES.md, docs/README-INGAME.md and docs/HELP-FAQ.md); it does not update itself. Help answers fixed questions only.
+
+---
+
 ## 13. Maintaining this document
 
 1. **Describe behavior, not history.** Write what a feature does today. No "added in", "now supports", "previously", dates, or version notes in the body.
@@ -904,3 +917,4 @@ The newest 50 entries are kept in your settings file, newest first; the same err
 5. **Keep the tables complete.** The trigger table (4.2), load toggles (3.2), comparison and check lists (6.1), and action list (7) must match the options in the game.
 6. **Update the "Applies to" line** when you re-check the guide against a new version.
 7. Use American English spelling and Oxford commas.
+8. **The in-game Readme and Help (FAQ)** are short versions of this guide (docs/README-INGAME.md, docs/HELP-FAQ.md). When a section they summarize changes, update them too and run `python3 tools/build_info_pane_data.py`.
