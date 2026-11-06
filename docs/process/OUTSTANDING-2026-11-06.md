@@ -111,8 +111,8 @@ These rows still read open or BRANCH, but `main` already carries the work. Not e
 - S3 log R61, R62, R64 (C8, C9, C10, C12), R66 read BRANCH: landed on `main` at d2ccacd (QoL 0.7.32). Its header still says `main` = `0ef9cb0`.
 - GitHub: 258 open issues; many describe work since landed (for example #380, #378, #381, #273, #351). They were not re-checked one by one. A triage pass is its own task.
 
-## 7. Handed over by retired chats (received 2026-11-06 17:06-17:11 UTC)
-Ten chats sent their outstanding items here at Xaya's request. Each claim below was checked against `main` `22abdeb` where marked "checked"; the rest is the sending session's word.
+## 7. Handed over by retired chats (received 2026-11-06 17:06-17:13 UTC)
+Eleven chats sent their outstanding items here at Xaya's request. Each claim below was checked against `main` `22abdeb` where marked "checked"; the rest is the sending session's word.
 
 | From | Item | Status here |
 |---|---|---|
@@ -139,6 +139,20 @@ Ten chats sent their outstanding items here at Xaya's request. Each claim below 
 | "New bugs review" (014bN6tSs9peLMW4F93tnQcj) | PR #418 (Options 0.6.52 sidebar rows regrow, Dev Assist 0.7.3 ilvlEquipped, core 0.6.54 theme names): built, full suite passed on cee59cf; held | Her answer (relayed by S2): "Wait, land all three": #418 lands in **one combined push with #409 and #417**, after she answers those PRs' questions; final versions set once on the merged commit (at least core 0.6.54 / Options 0.6.53). |
 | same | Questions for her (nothing built): **row 3** (Insivius) enchant text breaks after widening then narrowing the character window: S1's area, cause not looked into; **row 4** (Insivius) choose shown stats like DejaCharacterStats: per-stat show / hide is on `main` in settings; also tick boxes on the window itself?; **row 6** "character sheet reskin belongs in Blizzard UI Reskin": it is there already; does she mean the Character Toolkit parts still in QoL?; **row 7** a Stat Calculator row with its tick box under Bonus Features (today QoL > Character Toolkit > Panel): who builds it?; **row 9** gradient borders on cursor-trail themes, reversible: which borders, and is reverse its own setting or the trail's "Reverse colors"?; **row 10** more gradient colours across theme parts (text kept at 4.5:1 contrast): which parts? | Section 1 (her decisions). |
 | same | Next week's build, roadmap only (rows 11-15): RM-THEMEXFER, RM-CHARPANE-SCALE, -TEXT, -HIDE, -COLLAPSE | Section 5 (deferred). |
+| S2 "Outstanding build item selection" (014bN6tSy3HbUDWYQsk69naX) | Nothing unpushed (PR #386 merged). **Ownership moved here**: `XayaUI_DevAssist/` and QA section J; the version / QA number registry. Request rows S2-33..S2-35 added to REQUEST-LOG.md section A2. | See the registry below. |
+| same | **Combined landing #409 + #417 + #418** (her "Wait, land all three"): no lander named yet. #418's session is archived (no live owner; its last full suite was cee59cf, before `main` 22abdeb). #409: S2 says no open questions (her placement answer given), but the PR title still reads "proposals P1-P15 await her": **check before landing**. #417: blocked on her 9 choices (its request-log row S8-5). | Her decision: who lands the three, once all are ready (ask through the question flow, V19). The lander sets one version per addon on the merged commit and runs the full suite and `precheck --base origin/main` on it. |
+| same | In-game checks for her: F13 / F16 (Aura ID "via ..." lines only with Advanced Debugging on); E1y (cursor trail cost and feel; dot spacing 0.25 open until she plays); B98 (XayaUI_Options memory after `/xui` and a search, was 521.4 MB); J13-J15 (`/xuidev instance`); F6 (calculator); E1s (Enchant Slots default); Fiery Brand 207771 vs 207744 (cast on a dummy out of combat, then `/xuidev auras`) | Section 2. |
+
+**Version and QA number registry** (handed over by S2; taken on open branches beyond `main` core 0.6.51 / Options 0.6.50 / QoL 0.7.32 / Bonus 0.6.17 / QA B158 / F17; re-check branch .toc files before giving out a number, two clashes happened today):
+
+| Addon / QA | Taken | Next free |
+|---|---|---|
+| core | 0.6.52 #409, 0.6.53 #417, 0.6.54 #418, 0.6.55 group page round (S3, `claude/cool-ramanujan-ewx8e5`) | 0.6.56 |
+| Options | 0.6.51 #417, 0.6.52 #418, 0.6.53 #409, 0.6.54 group page round | 0.6.55 |
+| Dev Assist | 0.7.3 #418 | 0.7.4 |
+| Bonus | — | 0.6.18 |
+| QA B | B151-B155 + B159 #409 (B170 offered), B160-B167 #417, B168-B169 #418, B171-B185 group page round | B186 |
+| QA F | — | F18 |
 
 ---
 
