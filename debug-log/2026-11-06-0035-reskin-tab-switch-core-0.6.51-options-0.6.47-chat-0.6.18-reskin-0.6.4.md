@@ -78,3 +78,15 @@ on 2026-11-06.
 - QA E2f.
 
 - 2026-11-06 04:25 UTC: relabelled QoL 0.7.25 -> 0.7.29 (main reached 0.7.27 with S1's landings; S1's next bundle is 0.7.28). Labels only.
+
+## Her answer on C12 (2026-11-06): "Tick box on the tab itself"
+- The "All reskins" row is gone. The tab's switch is now a tick box on the Blizzard UI Reskin tab button (`ns.OptionsApi.TAB_SWITCHES`,
+  `ns.OptionsApi.PaintTabSwitches`, run on every decorate pass, i.e. each redraw and the window's 0.25 s tick).
+- The tab grows by the box (14 px + 2) and its text moves right by half of that (it is centred: `selectedTextX` / `deselectedTextX`,
+  AceGUI's own offsets), so the name is never covered. A tab button that showed a box for another tab group hides it and gives its
+  text offset back.
+- A click sets the switch (core `ns.SetReskinTab`) and asks for one redraw (`CONFIG_CHANGED`), so the reskins' row boxes repaint.
+- INFERENCE (not seen in game): with the XayaUI skin off, Blizzard's tab art is widened by the same amount (its Middle textures); the
+  look of that was not checked.
+- Tests: `reskin_tab_switch_run` (24) clicks the real box in the opened window; `reskin_tab_run` (22) and `sidebar_switches_run`
+  (88) no longer expect the row.

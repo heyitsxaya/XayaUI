@@ -58,38 +58,85 @@ function ns.OptionsApi.OpenOnSelect(tree, uv)
     end
 end
 function ns.SettingsTabOf(module) local t = ns.OptionsApi.TABS[module]; return t and t.key or "qol" end
--- The Blizzard UI Reskin tab's first row, "All reskins" (Options 0.6.47, S1 #48; Xaya 2026-11-05: "double: both enable/disable of reskin
--- at all; then individual toggles for individual reskins"). Its tick box (xuiSwitch, the same box as every feature row) is the tab's
--- own switch: off turns every reskin in the tab off at once (core ns.SetReskinTab); each reskin keeps its own box on its row, greyed
--- while this is off. Its page lists the reskins and the state of each one's own switch.
-function ns.OptionsApi.AllReskinsRow(pages, Notify)
-    local function state()
-        local list = {}
-        for key, ent in pairs(pages) do
-            local sw = type(ent) == "table" and ent.xuiSwitch
-            if key ~= "allreskin" and type(sw) == "table" and type(sw.get) == "function" then
-                local ok, on = pcall(sw.get, {})
-                list[#list + 1] = { n = tostring(ent.name), on = ok and on and true or false }
-            end
+-- The Blizzard UI Reskin tab's own switch (Options 0.6.47, S1 #48; Xaya 2026-11-05: "double: both enable/disable of reskin at all; then
+-- individual toggles for individual reskins"; 2026-11-06, where it goes: "Tick box on the tab itself"). A tick box on the tab button
+-- in the window's top tab row. Unticked, every reskin in the tab is off at once (core ns.SetReskinTab); each reskin keeps its own box on
+-- its row in the left pane, greyed while this is off.
+-- Painted by ns.OptionsApi.PaintTabSwitches on every decorate pass (each redraw, and the window's 0.25 s tick), so a re-layout of the
+-- tab row by AceGUI (a resize, a tab switch) is followed within a quarter second. The tab is made wider by the box, and its text moves
+-- right by the same amount, so the box never covers the name. Other tabs have no box (a recycled tab button hides its own).
+ns.OptionsApi.TAB_SWITCHES = {
+    reskin = { name = "All reskins",
+        desc = "Unticked: every reskin in this tab is off at once and Blizzard's own look is back. Each reskin keeps its own tick box (its row in the left pane, greyed while this is off) for when this is ticked again.",
+        get = function() return ns.ReskinTabOn() end,
+        set = function(v) ns.SetReskinTab(v and true or false) end },
+}
+ns.OptionsApi.TAB_BOX = 14   -- the tick box's size on the tab
+function ns.OptionsApi.PaintTabSwitches(root)
+    local function walk(w, d)
+        if not w or d > 3 then return end
+        if w.type == "TabGroup" and w.tabs then
+            for _, tab in ipairs(w.tabs) do ns.OptionsApi.PaintTabSwitch(tab) end
         end
-        table.sort(list, function(a, b) return a.n < b.n end)
-        local lines = {}
-        for _, e in ipairs(list) do lines[#lines + 1] = "  " .. e.n .. ": " .. (e.on and "on" or "off") .. " (its own tick box)" end
-        return table.concat(lines, "\n")
+        for _, c in ipairs(w.children or {}) do walk(c, d + 1) end
     end
-    return { type = "group", name = "All reskins", order = 0,
-        xuiSwitch = { type = "toggle", name = "All reskins",
-            desc = "Unticked: every reskin in this tab is off at once and Blizzard's own look is back. Each reskin keeps its own tick box for when this is ticked again.",
-            get = function() return ns.ReskinTabOn() end,
-            set = function(_, v) ns.SetReskinTab(v and true or false); if Notify then Notify() end end },
-        args = {
-            intro = { type = "description", order = 1, width = "full", fontSize = "medium", arg = { xuiKeep = true },
-                name = function()
-                    return (ns.ReskinTabOn() and "All reskins: |cff66dd66on|r. Each reskin below follows its own tick box."
-                        or "All reskins: |cffff6666off|r. Every reskin in this tab is off and Blizzard's own look shows; their own tick boxes are kept for when this is on again.")
-                        .. "\n\n" .. state()
-                end },
-        } }
+    walk(root, 0)
+end
+function ns.OptionsApi.PaintTabSwitch(tab)
+    local sw = tab:IsShown() and ns.OptionsApi.TAB_SWITCHES[tab.value or ""]
+    local box = tab.xuiTabBox
+    local fs = tab.GetFontString and tab:GetFontString()
+    if not sw then
+        if box then box:Hide() end
+        if tab.xuiTabShift then   -- this button showed a box for another tab group before: its text goes back to AceGUI's place
+            tab.selectedTextX, tab.deselectedTextX, tab.xuiTabShift = nil, nil, nil
+        end
+        return
+    end
+    local W = ns.OptionsApi.TAB_BOX
+    if not box then
+        box = CreateFrame("CheckButton", nil, tab, "UICheckButtonTemplate")
+        box:SetSize(W, W)
+        box:EnableMouse(true)   -- the box takes the click, not the tab under it
+        box:SetScript("OnClick", function(self)
+            local s = ns.OptionsApi.TAB_SWITCHES[(self:GetParent() or {}).value or ""]
+            if not s then return end
+            local ok, err = pcall(s.set, self:GetChecked() and true or false)
+            if not ok then local h = geterrorhandler and geterrorhandler(); if h then h(err) end end
+            if ns.Fire then ns.Fire("CONFIG_CHANGED") end   -- a redraw (the window's Notify): the reskins' row boxes repaint, greyed or not
+        end)
+        box:SetScript("OnEnter", function(self)
+            local s = ns.OptionsApi.TAB_SWITCHES[(self:GetParent() or {}).value or ""]
+            if not s then return end
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
+            GameTooltip:SetText(s.name)
+            GameTooltip:AddLine(s.desc, 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        box:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        tab.xuiTabBox = box
+    end
+    box:SetFrameLevel(tab:GetFrameLevel() + 3)
+    local ok, on = pcall(sw.get)
+    box:SetChecked((ok and on) and true or false)
+    -- room for the box: the tab grows by it (AceGUI sized it to its text) and the text moves right by half of it (it is centred)
+    local shift = W + 2
+    local tw = fs and fs.GetStringWidth and fs:GetStringWidth() or 0
+    local need = tw + 26 + shift
+    local cur = tab:GetWidth() or 0
+    if cur < need then
+        local grow = need - cur
+        tab:SetWidth(need)
+        for _, k in ipairs({ "Middle", "MiddleDisabled" }) do local t = tab[k]; if t and t.GetWidth then t:SetWidth((t:GetWidth() or 0) + grow) end end
+    end
+    tab.selectedTextX, tab.deselectedTextX, tab.xuiTabShift = shift / 2, shift / 2, true
+    if fs then
+        fs:ClearAllPoints()
+        fs:SetPoint("CENTER", tab, "CENTER", shift / 2, tab.selected and (tab.selectedTextY or -3) or (tab.deselectedTextY or 2))
+    end
+    box:ClearAllPoints()
+    box:SetPoint("LEFT", tab, "LEFT", 11, tab.selected and -3 or 1)
+    box:Show()
 end
 
 function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
@@ -97,14 +144,12 @@ function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
     for module, tab in pairs(ns.OptionsApi.TABS) do
         local args = ns.BuildSettingsPages(module, Notify)
         if module == "qol" and qolExtra then for k, v in pairs(qolExtra) do args[k] = v end end
-        if module == "reskin" and next(args) then args.allreskin = ns.OptionsApi.AllReskinsRow(args, Notify) end
         local list = {}
         for key, ent in pairs(args) do
             local nm = ent.name
             if type(nm) == "function" then local ok, v = pcall(nm); nm = ok and v or nil end
             nm = (type(nm) == "string" and nm ~= "") and nm:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") or key
             local old = (key == "allqol" or key == "allcursor" or key == "allbars") and 1 or 0
-            if key == "allreskin" then old = -1 end   -- the Reskin tab's own switch: the first row (S1 #48)
             list[#list + 1] = { key = key, name = nm:lower(), old = old }
         end
         table.sort(list, function(a, b)
@@ -7775,7 +7820,7 @@ end
 
 function ns.DecorateTrees(root)
     root = root or (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP])
-    if root then pcall(Walk, root, 0) end
+    if root then pcall(Walk, root, 0); pcall(ns.OptionsApi.PaintTabSwitches, root) end
 end
 -- decorate right after every (re)draw of the window, so left-aligned headers do not flash centered before the next 0.25 s pass
 do

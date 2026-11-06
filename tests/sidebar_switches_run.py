@@ -61,8 +61,8 @@ for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do collect(node(T, ta
 -- bonus>utilities>notepad is the whole Notepad now, #47)
 local WANT = { "qol>chartoolkit", "qol>chartoolkit>panelPart", "qol>chartoolkit>overlayPart", "qol>chartoolkit>spells",
   "qol>chartoolkit>tipsPart", "qol>cursor>highlight", "qol>cursor>trail", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad",
-  -- (S1 #48, Options 0.6.47: the Blizzard UI Reskin tab: its own switch on the All reskins row, and one per reskin)
-  "reskin>allreskin", "reskin>charreskin", "reskin>chatpanel", "reskin>gamemenu", "reskin>shoppinglist" }
+  -- (S1 #48, Options 0.6.47: one per reskin in the Blizzard UI Reskin tab; the tab's own switch is a box on the tab, not a row)
+  "reskin>charreskin", "reskin>chatpanel", "reskin>gamemenu", "reskin>shoppinglist" }
 for _, k in ipairs(WANT) do check("A: the row " .. k .. " has an on / off for its tick box", found[k] ~= nil) end
 check("A: no other row has one (Cursor, Utilities, Calculator have no single on / off)", foundN == #WANT, foundN)
 check("A: the switches' names: Enhanced Tooltips, Notepad, Tooltip lines (her words)", found["bonus>tooltips"] and found["bonus>tooltips"].name == "Enhanced Tooltips"
