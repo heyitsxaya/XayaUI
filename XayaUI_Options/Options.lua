@@ -8336,7 +8336,7 @@ function Tree.Closed()
     driver:SetScript("OnUpdate", nil)
     acc, sigAcc = 0, 0
     Tree.last, Tree.keep = nil, nil   -- the kept tree is let go
-    ns.optionsShown = nil
+    if ns.SetWindowOpen then ns.SetWindowOpen(false) end
     -- previews, the sidebar's movement unlocks, the preview pause and a window-made unlock end with the window (core ns.EndWindowState)
     if ns.EndWindowState then ns.EndWindowState() elseif ns.AnyPreview() then ns.ClearPreview() end
     if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
@@ -8373,7 +8373,7 @@ function Tree.Tick(_, e)
 end
 function Tree.DriverStart()
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
-    if of and of.frame and of.frame:IsShown() then ns.optionsShown = true end
+    if of and of.frame and of.frame:IsShown() and ns.SetWindowOpen then ns.SetWindowOpen(true) end
     if of and of.frame and of.frame:IsShown() and not driver:GetScript("OnUpdate") then driver:SetScript("OnUpdate", Tree.Tick) end
 end
 
