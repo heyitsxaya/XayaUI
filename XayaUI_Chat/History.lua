@@ -105,8 +105,8 @@ end
 --   "game" (default): follow the game's Options > Social > New Whispers (CVar whisperMode): "New Tab" or "Both" -> one tab per
 --                     conversation; "In-line" (or unreadable) -> no whisper tabs (whispers stay in the chat tabs that show them);
 --   "one":            every whisper in one "Whispers" tab.
--- A conversation is keyed by the other person: a character by name without realm, lowercased ("W:name"; INFERENCE: two people of the
--- same name on different realms share a tab); a Battle.net friend by the message's Battle.net ID ("B:id"). Own code. UNTESTED in game.
+-- A conversation is keyed by the other person: a character by "name-realm", lowercased ("W:ann-realm"; a name without a realm is on
+-- your realm, see CharKey); a Battle.net friend by the message's Battle.net ID ("B:id"). Own code. UNTESTED in game.
 local WHISPER_EV = { CHAT_MSG_WHISPER = "W", CHAT_MSG_WHISPER_INFORM = "W", CHAT_MSG_BN_WHISPER = "B", CHAT_MSG_BN_WHISPER_INFORM = "B" }
 function C.History_WhisperMode()
     local s = S()
@@ -118,10 +118,27 @@ function C.History_WhisperMode()
     end
     return "none"
 end
+-- the realm part as the game writes it in "Name-Realm" (no spaces), lowercased for the key
+local function RealmKey(r) return (r:gsub("[%s]", "")):lower() end
+local function OwnRealm()
+    local get = _G.GetNormalizedRealmName
+    if type(get) ~= "function" then return nil end
+    local ok, r = pcall(get)
+    if ok and type(r) == "string" and not issecret(r) and r ~= "" then return r end
+    return nil
+end
+-- Chat 0.6.16 (Xaya: "Server / realm names are typically only dropped in cases where the realm is identical to the player's"): a
+-- name with no realm is on your realm, so it gets your realm; "Name-Realm" keeps its own. Two people of the same name on different
+-- realms get two tabs. The tab shows the name alone for your realm, "Name-Realm" for another.
 local function CharKey(name)
     if type(name) ~= "string" or issecret(name) or name == "" then return nil end
-    local short = name:gsub("%-.+$", "")
-    return "W:" .. short:lower(), short
+    local short, realm = name:match("^([^%-]+)%-(.+)$")
+    if not short then short = name end
+    local own = OwnRealm()
+    realm = realm or own
+    if not realm then return "W:" .. short:lower(), short end   -- your realm unreadable: the name alone
+    local label = (own and RealmKey(realm) == RealmKey(own)) and short or (short .. "-" .. realm)
+    return "W:" .. short:lower() .. "-" .. RealmKey(realm), label
 end
 local function BNKey(id)
     if type(id) ~= "number" or issecret(id) then return nil end
