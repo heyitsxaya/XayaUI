@@ -158,14 +158,14 @@ Twelve chats (and engine session 2, partly) sent their outstanding items here at
 | Addon / QA | Taken | Next free |
 |---|---|---|
 | core | 0.6.52 #409, 0.6.53 #417, 0.6.54 #418, 0.6.55 group page round (S3, `claude/cool-ramanujan-ewx8e5`) | 0.6.56 |
-| Options | 0.6.51 #417, 0.6.52 #418, 0.6.53 #409, 0.6.54 group page round, 0.6.55 #423 | 0.6.56 |
+| Options | 0.6.51 #417, 0.6.52 #418, 0.6.53 #409, 0.6.54 group page round **and** #425 (clash: whichever lands second renumbers), 0.6.55 #423 | 0.6.56 |
 | Dev Assist | 0.7.3 #418 | 0.7.4 |
 | Bonus | 0.6.18 #423 | 0.6.19 |
-| Chat | 0.6.19 #420, 0.6.20-0.6.21 #423 | 0.6.22 |
+| Chat | 0.6.19 on `main` (4fa2150), 0.6.20-0.6.22 #423 | 0.6.23 |
 | QoL | 0.7.33-0.7.34 #423 | 0.7.35 |
 | Reskin | 0.6.5 #423 | 0.6.6 |
 | QA B | B151-B155 + B159 #409 (B170 offered), B160-B167 #417, B168-B169 #418, B171-B185 group page round, B186-B190 #423 | B191 |
-| QA D / E | D13 #420, D14 #423; E1z83 #423 | D15, E1z84 |
+| QA D / E | D13 on `main`, D14-D15 #423; E1z83 #423 | D16, E1z84 |
 | QA F | F18 on `main`, F19 `claude/dreamy-edison-pvb3i1` (#417), F20 #423 | F21 |
 
 ---
