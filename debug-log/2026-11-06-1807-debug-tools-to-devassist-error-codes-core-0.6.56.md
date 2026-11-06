@@ -81,7 +81,7 @@ F16 annotated. In-game walkthrough definitions for S3's framework: `XayaUI_DevAs
 framework lands. Not tested in game.
 
 ## Root documents moved into docs/ (FUS-6, her answer "All but README, THIRD_PARTY")
-Done last, after merging `claude/feature-update-summary` at 2c5ccc6 (docs only; no WHATS-NEW reorganisation there). `git mv` of
+Done last, after merging `claude/feature-update-summary` at 2c5ccc6 and then e1cae80 (docs only: REQUEST-LOG FUS-1..FUS-9 and the plan; no WHATS-NEW reorganisation there). `git mv` of
 WHATS-NEW.md, USER-GUIDE.md, QA-CHECKLIST.md, ROADMAP.md, SESSION-START-SUMMARY.md into `docs/`. Every reference rewritten to the
 `docs/` path (`git grep` of each name: SKILL.md, VERIFICATION.md, REQUEST-LOG.md, REQUEST-LOG-CROSS-CHAT.md, two plans, the ElvUI review,
 the summary and the roadmap themselves, tools/precheck.py, tests/precheck_run.py). Left as written: debug-log/ (history) and the
