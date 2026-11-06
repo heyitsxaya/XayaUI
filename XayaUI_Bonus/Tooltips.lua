@@ -260,8 +260,17 @@ function TT.AurasFor(kind, id, data)
     return out, same
 end
 
--- "via this tooltip, your casts" in TT.AURA_SOURCE_ORDER, grey; "" when the entry has no source
+-- Sources are shown only while Advanced Debugging is on (Bonus 0.6.15; Xaya 2026-11-06: "only offer this if debugging mode is
+-- enabled"). Advanced Debugging is core's one debugging mode (Settings > Debugging, CueRulesDB.ui.advancedDebug, ns.AdvancedDebugOn in
+-- DebugRecord.lua; on by default). Without core's reader the text is left out.
+function TT.SourcesOn()
+    local ok, on = pcall(function() return ns.AdvancedDebugOn and ns.AdvancedDebugOn() end)
+    return ok and on == true
+end
+
+-- "via this tooltip, your casts" in TT.AURA_SOURCE_ORDER, grey; "" when the entry has no source or Advanced Debugging is off
 function TT.SourceText(e)
+    if not TT.SourcesOn() then return "" end
     local t = {}
     for _, s in ipairs(TT.AURA_SOURCE_ORDER) do if type(e) == "table" and type(e.src) == "table" and e.src[s] then t[#t + 1] = s end end
     if #t == 0 then return "" end
