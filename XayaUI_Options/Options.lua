@@ -242,8 +242,6 @@ local CD_ORDER = { "none", "hasCharge", "ready", "notReady", "empty" }
 local BUFF_VALUES = { none = "(none - ignore buff)", missing = "Buff is MISSING", present = "Buff is present" }
 local BUFF_ORDER = { "none", "missing", "present" }
 local TRI_ORDER = { "none", "yes", "no" }
-local TALENT_STATE = { known = "must be KNOWN", notKnown = "must NOT be known" }
-local TALENT_STATE_ORDER = { "known", "notKnown" }
 local TALENT_MODE_USED = { all = "ALL listed talents must match", any = "ANY one listed talent is enough" }
 local TALENT_MODE_USED_ORDER = { "all", "any" }
 local TALENT_MODE = { none = "(none - ignore talents)", all = "ALL listed talents must match", any = "ANY one listed talent is enough" }
@@ -1847,7 +1845,23 @@ local function BuildRule(i, rule)
                 id = { type = "input", name = "Spell ID", order = 1, width = "half",
                     get = function() return tostring(t.id) end,
                     set = function(_, v) t.id = tonumber(v) or 0; Changed(rule); Notify() end },
-                state = Sel(t, "state", "Requirement", 2, TALENT_STATE, TALENT_STATE_ORDER, on),
+                -- #2 (Xaya: "three-click toggle (Known green / Not known red / not set)"): the same click pattern as the load conditions
+                -- below: click once Known (green), again Not known (red), a third time not set (no bearing on loading)
+                state = { type = "toggle", tristate = true, order = 2, width = 1.2, name = function()
+                        if t.state == "none" then return "Not set" end
+                        if t.state == "notKnown" then return "|cffff5555Not known|r" end
+                        return "|cff55ff55Known|r"
+                    end,
+                    desc = "Click: Known (green) -> Not known (red) -> Not set (this talent has no bearing on loading) -> Known.",
+                    get = function()
+                        if t.state == "none" then return false end
+                        if t.state == "notKnown" then return nil end
+                        return true
+                    end,
+                    set = function(_, v)
+                        if v == true then t.state = "known" elseif v == nil then t.state = "notKnown" else t.state = "none" end
+                        Changed(rule); Notify()
+                    end },
                 remove = { type = "execute", name = "Remove", order = 3, width = "half",
                     func = function() table.remove(rule.talents, j); Changed(rule); Notify() end },
             },

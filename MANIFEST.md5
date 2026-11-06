@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-1db301e020580c08ada72d26bfb90f9d  QA-CHECKLIST.md
+addbf53c94cf4f98abe635fba7752bd2  QA-CHECKLIST.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 1349642586deb40cd2d03db22168ce28  ROADMAP.md
 f25f0108f6fbee67e9948a3789ca22d0  SESSION-START-SUMMARY.md
@@ -21,7 +21,7 @@ b3f7cfb11e7ae6aaabb37f638ce42042  XayaUI/Combat/AuraIDProbe.lua
 e0495a5745257a858e14cbd77a715c0c  XayaUI/Combat/AuraTracker.lua
 e347531f81e7b1c81dfd3db3a4d5f6f2  XayaUI/Combat/README.md
 90a7c4511e2a3988040393f1c413a9b3  XayaUI/Compat.lua
-ebd7aa72eb0a6e85b587290f421e7741  XayaUI/Conditions.lua
+10747ffa55f06bc3c9dc4f013b1bcfe6  XayaUI/Conditions.lua
 11b9d4a7541715c2172a726e7279faeb  XayaUI/Console.lua
 dce0c976aa2a3a88c2faed9501c1cbf8  XayaUI/Core.lua
 db497422119cbfffd2eea19c785df167  XayaUI/Cues.lua
@@ -214,7 +214,7 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-b3ff52e3b603c89fcce1f72d264af1f4  XayaUI_Options/Options.lua
+9003ac05f1f141f90cec3e8cb90bd39e  XayaUI_Options/Options.lua
 a3b7c51d4dd3e29bb14129cad095deb4  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
 b62da2000da00c135f16e8aff9ba30a7  XayaUI_Options/Skin.lua
@@ -519,6 +519,7 @@ fe51de1c552b68fd8c3309e6c3a6871c  debug-log/2026-11-06-0520-character-pane-stat-
 d5302a5bc352146da2d333bd78d96906  debug-log/2026-11-06-2104-d7-disabled-rules-cost-nothing-core-0.6.56.md
 edfc9049418b68ab1cb0edc1a994ed1c  debug-log/2026-11-06-2117-player-state-dead-not-released-core-0.6.56.md
 da470104d689cf5e1d8deeb827454ffc  debug-log/2026-11-06-2120-issue-18-unset-load-no-bearing.md
+5686539801c178c90198f860292e84ea  debug-log/2026-11-06-2122-talent-three-click-toggle-core-0.6.56-options-0.6.55.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -708,6 +709,7 @@ a7a9f991777bc6b3ff0c21af327b23d4  tests/shopping_list_run.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
 2d82e30f220e19a9dfd2d9165907881f  tests/slash_words_run.py
 278c42a27cbbe21ebff29250f3f77e9c  tests/spell_search_scope_run.py
+34a9c57cf4cb86b0899475206d3e605c  tests/talent_tri_toggle_run.py
 6eb1a5187bb5677e2a2627788f3ba8df  tests/timing_run.py
 e24e5bd951f72f573ef3696a6864aedf  tests/tooltip_aura_source_run.py
 4ab5fd24ca1bb0910e3372c636868b5c  tests/tooltip_formulas_run.py
