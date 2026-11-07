@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
--- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.47): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.16 (BlizzardSkins.lua): Blizzard's
--- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts, pop-ups, loot rolls, menus, chat bubbles, status bars and minimap buttons in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
+-- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.48): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.17 (BlizzardSkins.lua): Blizzard's
+-- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts, pop-ups, loot rolls, menus, chat bubbles, status bars, minimap buttons and the buttons inside Blizzard's windows in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
 -- overnight order 2026-11-07: "I want everything I've requested ... implemented and pushed to main").
 -- Standing rule V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game
 -- qa test walk through with pre-fill confirmation options or data capturing". Every walkthrough sets prefill = true: the addon's own
@@ -313,5 +313,39 @@ QA.Register("reskin-mmbuttons", { title = "Reskin: minimap zone bar and tracking
     { text = "Click the tracking button and pick something; hover the zone name; click the calendar button.\n\n|cffffd100Expect:|r each works as before and reads well. Pass if so.",
         noVerdict = true },
     { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were (Blizzard's colours come back at once if Minimap Buttons was off).",
+        setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
+} })
+
+-------------------------------------------------------------------------------
+-- 11. Buttons inside Blizzard's windows (Reskin 0.6.17)
+-------------------------------------------------------------------------------
+local function CountButtons(f)   -- red panel buttons in a window: how many there are, how many carry the look
+    local s = BS(); if not (s and s.IsPanelButton and f) then return 0, 0 end
+    local all, done = 0, 0
+    local function walk(x, d)
+        if d > 8 or not x.GetChildren then return end
+        for _, c in ipairs({ x:GetChildren() }) do
+            if s.IsPanelButton(c) then all = all + 1; if Painted(c) then done = done + 1 end end
+            walk(c, d + 1)
+        end
+    end
+    walk(f, 1)
+    return all, done
+end
+QA.Register("reskin-buttons", { title = "Reskin: red buttons inside Blizzard's windows", area = "Reskin", qa = "RESKIN-U", order = 310, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Buttons|r is switched on.",
+        setup = function() Keep(); Set(function(c) c.buttons = true end) end,
+        check = function() local s, why = Need(); if not s then return false, why end; local on = s.Live().buttons; return on, on and "Buttons is on" or "Buttons did not switch on" end },
+    { text = "Type |cff88ccff/macro|r to open the Macros window, then press |cffffd100Check|r.\n\n|cffffd100Expect:|r its red buttons (New, Delete, Exit, Change Name/Icon, Save ...) have XayaUI's flat look: a dark background and a thin border instead of Blizzard's red art. Their text reads as before; a greyed-out button still reads greyed.",
+        check = function()
+            local f = rawget(_G, "MacroFrame")
+            if not (f and f:IsShown()) then return false, "the Macros window is not open: type /macro and press Check again" end
+            local all, done = CountButtons(f)
+            if all == 0 then return false, "no red panel buttons were found in the Macros window (reading: 0)" end
+            return done == all, ("%d of %d red buttons in the Macros window carry the flat look"):format(done, all)
+        end },
+    { text = "Use a few buttons in other windows you open (Mail's Send, the Auction House's Buy, a vendor's Buyback, Talents' Apply).\n\n|cffffd100Expect:|r each has the flat look and does what it did before. Buttons in other addons' windows keep their own look. Pass if so; Fail and name the button if not.",
+        noVerdict = true },
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were (Blizzard's red art comes back at once if Buttons was off).",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })

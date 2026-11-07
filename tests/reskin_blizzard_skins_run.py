@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""XayaUI Blizzard Reskin 0.6.16, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
+"""XayaUI Blizzard Reskin 0.6.17, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
 reskins). What the player sees, in the stand-in game:
   * off (a fresh install): nothing is made: no saved table, no watcher frame, Blizzard's art untouched (V14);
   * Blizzard Windows ticked: a window's frame art is faded (alpha 0), our background in the theme's window colour and a 1 px border
@@ -20,6 +20,7 @@ reskins). What the player sees, in the stand-in game:
   * Chat bubbles (0.6.14): bubbles on screen and those after a chat message take the theme colours, forbidden ones never asked for;
   * Status bars (0.6.15): the experience / reputation bars' frame art faded, our background and border; the fill untouched;
   * Minimap buttons (0.6.16): the zone bar and the tracking button's art tinted in the theme, their own colours given back;
+  * Buttons (0.6.17): red panel buttons inside listed windows (any depth) take the flat xui-button look; other addons' windows untouched;
   * the Blizzard UI Reskin tab's own switch turns every one of them off at once.
 Run: python3 tests/reskin_blizzard_skins_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
@@ -124,6 +125,14 @@ MC.BorderTop.GetCenterColor = function(self) local c = self._center or { 1, 1, 1
 MC.BorderTop.SetBorderColor = function(self, r, g, b, a) self._border = { r, g, b, a or 1 } end
 MC.BorderTop.GetBorderColor = function(self) local c = self._border or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
 MC.Tracking = CreateFrame("Frame", nil, MC); MC.Tracking.Background = MC.Tracking:CreateTexture(nil, "BACKGROUND")
+-- red panel buttons (UIPanelButtonNoTooltipTemplate: Left / Middle / Right textures) inside a listed window (Mail) and inside another
+-- addon's window (never touched); one nested two levels deep
+local function PanelButton(parent) local b = CreateFrame("Button", nil, parent); b.Left = b:CreateTexture(nil, "BACKGROUND"); b.Middle = b:CreateTexture(nil, "BACKGROUND"); b.Right = b:CreateTexture(nil, "BACKGROUND"); return b end
+local MAILF = Window("MailFrame")
+local mailSend = PanelButton(MAILF)
+local mailInner = CreateFrame("Frame", nil, MAILF); local mailDeep = PanelButton(CreateFrame("Frame", nil, mailInner))
+local OTHERW = Window("SomeOtherAddonFrame"); local otherBtn = PanelButton(OTHERW)
+local LOCKB = PanelButton(MAILF); LOCKB.IsProtected = function() return true, true end
 local function BuildMenu() local f = CreateFrame("Frame", nil, UIParent); f:CreateFontString(nil, "OVERLAY"); for k, v in pairs(MenuStyle1Mixin) do f[k] = v end; f:Generate(); return f end
 
 L.startup()
@@ -369,6 +378,36 @@ c = MC.BorderTop._center; tv = MC.Tracking.Background._vc
 check("minimap buttons off: the colours they had are back (white)", near(c[1], 1) and near(MC.BorderTop._border[1], 1) and near(tv[1], 1) and near(tv[4], 1) and not BS.Live().mmbuttons)
 mbp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
 check("Blizzard UI Reskin off: minimap buttons are Blizzard's", not BS.Live().mmbuttons and near(MC.BorderTop._center[1], 1))
+ns.SetReskinTab(true)
+-- 11. Buttons (Reskin 0.6.17)
+check("buttons page off: Blizzard's red button art untouched", mailSend.Left:GetAlpha() == 1 and not BS.Live().buttons and not BS.Live().buttonsLodWatch)
+local btp = BS.ButtonsPage(nil)
+btp.xuiSwitch.set(nil, true)
+local btnBg = ns.Theme.Col("xui-button", "bg", { 0.04, 0.04, 0.04, 0.7 })
+local bm = BS.memo[mailSend]
+check("buttons on: a red button in a listed window (Mail) loses Blizzard's red art", mailSend.Left:GetAlpha() == 0 and mailSend.Middle:GetAlpha() == 0 and mailSend.Right:GetAlpha() == 0)
+check("buttons on: it gets the flat look in the theme's xui-button colours", bm and bm.bg:IsShown() and near(bm.bg._color[1], btnBg[1]) and bm.edges and bm.edges[1]:IsShown(), bm and bm.bg and table.concat(bm.bg._color, ","))
+check("buttons on: a button nested deeper in the window too", mailDeep.Left:GetAlpha() == 0)
+check("buttons on: a button in another addon's window is never touched", otherBtn.Left:GetAlpha() == 1 and BS.memo[otherBtn] == nil)
+check("buttons on: the button's text colour is not changed (Blizzard's states stay)", BS.memo[mailSend].colors and next(BS.memo[mailSend].colors) == nil)
+check("buttons on: a window loaded later is waited for (ADDON_LOADED)", BS.Live().buttonsLodWatch)
+-- a protected button shown in combat waits
+BS.Restore(LOCKB); LOCKB.Left:SetAlpha(1)
+W.combat = true; MAILF:Hide(); MAILF:Show()
+check("a protected button is not painted in combat", LOCKB.Left:GetAlpha() == 1)
+W.combat = false; W.fire("PLAYER_REGEN_ENABLED")
+check("  ...it is painted when combat ends", LOCKB.Left:GetAlpha() == 0)
+-- a button made after the window was first shown is painted on the next show
+local later = PanelButton(MAILF)
+MAILF:Hide(); MAILF:Show()
+check("a button added later is painted when the window shows again", later.Left:GetAlpha() == 0)
+btp.xuiSwitch.set(nil, false)
+check("buttons off: Blizzard's red art is back and our pieces hide", mailSend.Left:GetAlpha() == 1 and mailDeep.Middle:GetAlpha() == 1 and later.Right:GetAlpha() == 1 and not BS.memo[mailSend].bg:IsShown())
+check("buttons off: the load watcher stops", not BS.Live().buttonsLodWatch)
+MAILF:Hide(); MAILF:Show()
+check("buttons off: showing the window again changes nothing", mailSend.Left:GetAlpha() == 1)
+btp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
+check("Blizzard UI Reskin off: buttons are Blizzard's", not BS.Live().buttons and mailSend.Left:GetAlpha() == 1)
 ns.SetReskinTab(true)
 return R
 end
