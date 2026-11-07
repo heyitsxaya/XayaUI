@@ -210,6 +210,8 @@ Added: a **scope** layer. Resolution, first match wins:
 - **Cost:** every painted element must pass its scope. That is why this belongs in P1: modules adopt scopes while their files move in
   P3 / P4, so their paint code is touched once. Resolved colors are cached per scope and dropped on `OnResolve`.
 
+Existing per-page overrides are folded in: Esc Menu's "Use my own colors" (six colors, font, outline, text color) and Chat Panel's on/off "Use the XayaUI theme" become that element's scope (copy, not move); every element gets the same controls.
+
 Decisions for her: section 9, Q7-Q9. Tracking issue: #472.
 
 ## 7. Options
@@ -274,8 +276,8 @@ their own characters, since a different class and setup catches what one setup m
 | Q5 | Character pane. Her answer (2026-11-07, verbatim): "The Advanced Character Stats pane window is a Bonus feature; a diminishing returns element is a either a bonus feature or a qol feature; the simple character/dressing room UI with the ability to customize stat display overhaul is a qol feature; and just a simple clean ui reskin that serves as the visual base is the reskin" | Settled except diminishing returns; section 4.2. Proposed: diminishing returns goes to Bonus, with the advanced stats it explains; waits for her pick |
 | Q6 | Freeze. Her answer (2026-11-07): "a freeze sounds fine — do you want this to include even my going through the qa walk throughs?" | **Approved.** Yes, it includes the 148-walkthrough backlog: she runs only the baseline (Q3) and anything that blocks her own play |
 | Q7 | Theme scopes: two levels (module, then element) or only per element? | Two levels: "all of Blizzard Reskin in theme X" is one change, and single elements can still differ |
-| Q8 | What an override can be: pick a whole theme, edit single colors, or both? | Both: pick a theme for the element, then adjust single colors on top |
-| Q9 | Where the controls live: only the central Blizzard Reskin > Theme table, or also a row on each element's page? | Both: the table for the overview, a row on each page to find it where you are |
+| Q8 | What an override can be: pick a whole theme, edit single colors, or both? | **Answered: Both** (Xaya, 2026-11-07) |
+| Q9 | Where the controls live: only the central Blizzard Reskin > Theme table, or also a row on each element's page? | **Answered: Both** (Xaya, 2026-11-07) |
 
 ## 10. Phases
 

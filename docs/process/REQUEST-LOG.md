@@ -603,6 +603,8 @@ lane, area context, CI gate) are in the "XayaUI Standing Process Rules (draft)" 
 | PS-31 | "UI overhauls typically require a reload and prompt a conflict issue (right now I have EUI on, so XayaUI should be detecting that clash and let me know one or the other needs to take priority)" | OPEN, roadmap (P1) | #469 |
 | PS-32 | "the border around the edges here for all other elements outside of the sidebar by default are a little ugly. let's make it so that only the sidebar has any color by default, and let's make it the accent color at full strength under an overlay of black at a set transparency" + answers: overlay "50% black"; borders "what's the default in EUI and ElvUI?"; timing "After the split" | OPEN; border choice pending | #470 |
 | PS-33 | Theme page screenshot; "correct on all fronts" (stock Accept button, misaligned Reset, clipped Delete saved, see-through window) | OPEN | #471 |
+| PS-34 | Theme scope answers: levels "unsure -- explain functional difference?"; override "Both (Recommended)"; controls "Both (Recommended)" | Q8, Q9 answered; Q7 explained, pending | #472 |
+| PS-35 | "so Chat Panel has a theme override option like Esc Menu does" / "these can't be clicked" (Esc Menu > Leave out of this menu) | OPEN: per-page overrides folded into #472; greyed boxes = #474 (decision: explain now, investigate later) | #472, #474 |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
