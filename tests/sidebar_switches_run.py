@@ -251,7 +251,7 @@ check("A: the box's hover: the feature's name, one sentence, Enabled / Disabled;
   tip.SetText, tip.AddLine = oS, oA
   local s = table.concat(said, " | ")
   local want = CueRulesDB.dataPanels and CueRulesDB.dataPanels.general and CueRulesDB.dataPanels.general.enabled and "Enabled" or "Disabled"
-  return #said == 3 and said[1] == "Data Panels" and said[2] == "Info panels for the screen." and said[3] == want and not s:find("Off", 1, true), s
+  return #said == 3 and said[1] == "Data Panels" and said[2] == "Shows info panels on your screen: time, gold, frame rate and more." and said[3] == want and not s:find("Off", 1, true), s
 end)())
 
 -- (Bonus 0.6.14) the Notepad's box is the whole feature: shown first with Show Notepad (its page), then the row unticked and ticked

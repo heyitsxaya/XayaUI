@@ -558,7 +558,7 @@ function ns.GameMenuSkin_Options(Notify)
     }
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; Reskin 0.6.4, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
-    local switch = { type = "toggle", name = "Use the XayaUI Game Menu look", tip = "XayaUI's own look for the ESC menu.", get = g("skin"), set = s("skin"),
+    local switch = { type = "toggle", name = "Use the XayaUI Game Menu look", tip = "Restyles the Esc menu in the XayaUI look.", get = g("skin"), set = s("skin"),
         disabled = function() return not ns.ReskinTabOn() end,
         desc = "Off: nothing of the look is made or runs. Switched off after it was on, Blizzard's menu comes back at once; the look's hooks on the menu stay until you /reload but do nothing. Greyed while Blizzard UI Reskin is off (this tab's Overview)." }
     return { type = "group", name = "Esc Menu", order = 3, xuiSwitch = switch, args = args }   -- (Reskin 0.6.1: a page of the Blizzard UI Reskin tab)

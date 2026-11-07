@@ -162,7 +162,7 @@ local function texts(x) if not x then return end
   if x.type == "Label" and x.label then said[#said + 1] = x.label:GetText() end
   for _, c in ipairs(x.children or {}) do texts(c) end end
 texts(ACD.OpenFrames["CueRules"])
-check("  ...the page shows its one sentence", table.concat(said, " | "):find("Info panels for the screen.", 1, true) ~= nil, table.concat(said, " | "):sub(1, 200))
+check("  ...the page shows its one sentence", table.concat(said, " | "):find("Shows info panels on your screen: time, gold, frame rate and more.", 1, true) ~= nil, table.concat(said, " | "):sub(1, 200))
 CueRulesDB.dataPanels.general.enabled = true
 ACD:SelectGroup("CueRules", "bonus", "datapanels"); W.tick(0.3, 3)
 tg = dpTabs()

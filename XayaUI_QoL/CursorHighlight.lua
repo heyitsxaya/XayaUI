@@ -278,7 +278,7 @@ function ns.BuildCursorHighlightTab(Notify)
     for _, k in ipairs(SHAPE_ORDER) do shapeValues[k] = SHAPES[k][1] end
     return {
         type = "group", name = "Cursor Highlight", order = 1, childGroups = "tab",
-        xuiSwitch = { type = "toggle", name = "Cursor highlight", tip = "A colored shape that follows your mouse cursor so you can find it at a glance.",
+        xuiSwitch = { type = "toggle", name = "Cursor highlight", tip = "Puts a colored shape around your cursor so you can always find it.",
             desc = "Turns the highlight on. While it is off nothing is drawn or polled.",
             get = function() return C().enabled and true or false end,
             set = function(_, v) C().enabled = v and true or false; Changed() end },

@@ -430,7 +430,7 @@ function ns.BuildCursorTab(Notify)
     custom.order = 5
     return {
         type = "group", name = "Gradient Cursor Trail", order = 2, childGroups = "tab",
-        xuiSwitch = { type = "toggle", name = "Gradient cursor trail", tip = "A gradient trail that follows your mouse cursor.",
+        xuiSwitch = { type = "toggle", name = "Gradient cursor trail", tip = "Draws a colored trail behind your cursor.",
             desc = "Turns the trail on. While it is off nothing is drawn or polled.",
             get = function() return C().enabled and true or false end,
             set = function(_, v) C().enabled = v and true or false; Changed() end },

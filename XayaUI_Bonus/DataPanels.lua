@@ -387,7 +387,7 @@ function ns.BuildDataPanelsTab(Notify)
 
     -- the master switch is the tick box on this page's row in the left pane (xuiSwitch on the page group below; Bonus 0.6.11; Xaya
     -- 2026-11-05: "move all enable/disable toggles onto the sidebar instead"); the same set as the page's old switch
-    local master = { type = "toggle", name = "Enable Data Panels", tip = "Info panels for the screen.",
+    local master = { type = "toggle", name = "Enable Data Panels", tip = "Shows info panels on your screen: time, gold, frame rate and more.",
         desc = "Master switch. Off: no panel is shown and the sections of this page are hidden (their settings are kept). On: each section then has its own Enable switch.",
         get = function() return db.general.enabled and true or false end,
         set = function(_, v) db.general.enabled = v and true or false; ns.DataPanels_Refresh(); ns.DataPanels_Sync(); if Notify then Notify() end end }
