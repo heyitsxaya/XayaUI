@@ -552,7 +552,7 @@ QA.Register("ui-short-hovers", { title = "Hover texts: a title and at most two s
     { text = "Your look: hover a few switches on pages you use (Chat Panel, Tooltips, a rule's trigger). Are they brief and clear now? Pass if yes; Fail and name the ones to redo.", noVerdict = true },
 } })
 
--- UI-51 / UI-52 slice 1 (core 0.6.73, Chat 0.6.39, Bonus 0.6.29; Dev Assist 0.7.46): the shared tooltip helper ns.Tip draws the
+-- UI-51 / UI-52 slice 1 (core 0.6.73, Chat 0.6.39, Bonus 0.6.29; Dev Assist 0.7.48): the shared tooltip helper ns.Tip draws the
 -- minimap button's hovers, the mover's group tags and the Chat privacy / history / collapse hovers (the same text as before), and the
 -- minimap list row says "Data Panels" (DISPLAY-RULES A7.2).
 QA.Register("ui-tooltip-helper", { title = "Hovers drawn by the shared helper; minimap row \"Data Panels\"", qa = "B279", order = 274, prefill = true, steps = {
