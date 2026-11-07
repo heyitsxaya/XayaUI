@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""XayaUI Blizzard Reskin 0.6.14, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
+"""XayaUI Blizzard Reskin 0.6.16, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
 reskins). What the player sees, in the stand-in game:
   * off (a fresh install): nothing is made: no saved table, no watcher frame, Blizzard's art untouched (V14);
   * Blizzard Windows ticked: a window's frame art is faded (alpha 0), our background in the theme's window colour and a 1 px border
@@ -18,6 +18,8 @@ reskins). What the player sees, in the stand-in game:
   * Menus (0.6.13): each menu Blizzard builds has its own background texture recoloured (post-hook on MenuStyle1Mixin.Generate,
     placed only when ticked); nothing added to the pooled menu frame;
   * Chat bubbles (0.6.14): bubbles on screen and those after a chat message take the theme colours, forbidden ones never asked for;
+  * Status bars (0.6.15): the experience / reputation bars' frame art faded, our background and border; the fill untouched;
+  * Minimap buttons (0.6.16): the zone bar and the tracking button's art tinted in the theme, their own colours given back;
   * the Blizzard UI Reskin tab's own switch turns every one of them off at once.
 Run: python3 tests/reskin_blizzard_skins_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
@@ -111,6 +113,17 @@ local function Bubble()
 end
 local BUB = { Bubble() }
 C_ChatBubbles = { GetAllChatBubbles = function(includeForbidden) if includeForbidden then error("forbidden bubbles asked for") end; return BUB end }
+-- status tracking bars: StatusTrackingBarContainerTemplate's only art is BarFrameTexture; the fill is a child bar (kept)
+local function BarC(name) local f = CreateFrame("Frame", name, UIParent); f.BarFrameTexture = f:CreateTexture(nil, "OVERLAY"); f.fill = f:CreateTexture(nil, "ARTWORK"); f.fill:SetVertexColor(0.58, 0, 0.55); return f end
+local MSB, SSB = BarC("MainStatusTrackingBarContainer"), BarC("SecondaryStatusTrackingBarContainer")
+-- minimap cluster: BorderTop (NineSlicePanel, zone bar) and Tracking.Background (round button art)
+local MC = CreateFrame("Frame", "MinimapCluster", UIParent)
+MC.BorderTop = CreateFrame("Frame", nil, MC)
+MC.BorderTop.SetCenterColor = function(self, r, g, b, a) self._center = { r, g, b, a or 1 } end
+MC.BorderTop.GetCenterColor = function(self) local c = self._center or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
+MC.BorderTop.SetBorderColor = function(self, r, g, b, a) self._border = { r, g, b, a or 1 } end
+MC.BorderTop.GetBorderColor = function(self) local c = self._border or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
+MC.Tracking = CreateFrame("Frame", nil, MC); MC.Tracking.Background = MC.Tracking:CreateTexture(nil, "BACKGROUND")
 local function BuildMenu() local f = CreateFrame("Frame", nil, UIParent); f:CreateFontString(nil, "OVERLAY"); for k, v in pairs(MenuStyle1Mixin) do f[k] = v end; f:Generate(); return f end
 
 L.startup()
@@ -329,6 +342,33 @@ W.fire("CHAT_MSG_SAY", "hi", "Someone"); W.tick(0.05, 2)
 check("bubbles off: a chat message paints nothing", b2.panel._center == nil)
 bbp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
 check("Blizzard UI Reskin off: bubbles stop and get Blizzard's colours back", not BS.Live().bubbles and near(b1.panel._center[1], 1))
+ns.SetReskinTab(true)
+-- 9. Status bars (Reskin 0.6.15)
+check("status bars page off: Blizzard's frame art untouched", MSB.BarFrameTexture:GetAlpha() == 1 and not BS.Live().statusbars)
+local sbp = BS.StatusBarsPage(nil)
+sbp.xuiSwitch.set(nil, true)
+check("status bars on: both bars' frame art is faded, our background and border show", MSB.BarFrameTexture:GetAlpha() == 0 and SSB.BarFrameTexture:GetAlpha() == 0 and BS.memo[MSB].bg:IsShown() and BS.memo[SSB].edges[1]:IsShown())
+check("status bars on: the bar's fill colour is Blizzard's (it carries information)", MSB.fill._vc and near(MSB.fill._vc[1], 0.58) and MSB.fill:GetAlpha() == 1)
+MSB.BarFrameTexture:SetAlpha(1); MSB:Hide(); MSB:Show()
+check("a bar shown again is faded again", MSB.BarFrameTexture:GetAlpha() == 0)
+sbp.xuiSwitch.set(nil, false)
+check("status bars off: Blizzard's frame art is back and our pieces hide", MSB.BarFrameTexture:GetAlpha() == 1 and SSB.BarFrameTexture:GetAlpha() == 1 and not BS.memo[MSB].bg:IsShown())
+sbp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
+check("Blizzard UI Reskin off: status bars are Blizzard's", not BS.Live().statusbars and MSB.BarFrameTexture:GetAlpha() == 1)
+ns.SetReskinTab(true)
+-- 10. Minimap buttons (Reskin 0.6.16)
+check("minimap buttons page off: zone bar and tracking button untouched", MC.BorderTop._center == nil and MC.Tracking.Background._vc == nil and not BS.Live().mmbuttons)
+local mbp = BS.MinimapButtonsPage(nil)
+mbp.xuiSwitch.set(nil, true)
+c = MC.BorderTop._center
+check("minimap buttons on: the zone bar's centre takes the window colour at the opacity, its border the border colour", c and near(c[1], bg[1]) and near(c[4], 0.7) and near(MC.BorderTop._border[1], bd[1]), c and table.concat(c, ","))
+local tv = MC.Tracking.Background._vc
+check("minimap buttons on: the tracking button's round art is tinted the window colour", tv and near(tv[1], bg[1]) and near(tv[3], bg[3]))
+mbp.xuiSwitch.set(nil, false)
+c = MC.BorderTop._center; tv = MC.Tracking.Background._vc
+check("minimap buttons off: the colours they had are back (white)", near(c[1], 1) and near(MC.BorderTop._border[1], 1) and near(tv[1], 1) and near(tv[4], 1) and not BS.Live().mmbuttons)
+mbp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
+check("Blizzard UI Reskin off: minimap buttons are Blizzard's", not BS.Live().mmbuttons and near(MC.BorderTop._center[1], 1))
 ns.SetReskinTab(true)
 return R
 end

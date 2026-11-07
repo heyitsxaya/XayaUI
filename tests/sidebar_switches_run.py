@@ -70,6 +70,8 @@ local WANT = { "qol>chartoolkit", "qol>chartoolkit>panelPart", "qol>chartoolkit>
   "reskin>rsktoasts",   -- (Reskin 0.6.11: Toasts and Pop-ups)
   "reskin>rskmenus",    -- (Reskin 0.6.13: Menus)
   "reskin>rskbubbles",  -- (Reskin 0.6.14: Chat Bubbles)
+  "reskin>rskstatusbars",  -- (Reskin 0.6.15: Status Bars)
+  "reskin>rskmmbuttons",   -- (Reskin 0.6.16: Minimap Buttons)
   -- (XayaUI_Nameplates 0.1.0: its page's row carries Target colour; the row exists only while that addon is enabled)
   "qol>nameplates",
   "qol>improvedchat",   -- (Chat 0.6.33, UI-18 / UI-19 / UI-21: QoL > Improved Chat, its own switch)

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""In-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.14's BlizzardSkins.lua (XayaUI_DevAssist 0.7.45, QAWalks-reskin.lua). Standing rule
+"""In-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.16's BlizzardSkins.lua (XayaUI_DevAssist 0.7.47, QAWalks-reskin.lua). Standing rule
 V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game qa test walk
 through with pre-fill confirmation options or data capturing".
-Checks, on the real addons in the stand-in game: the eight walkthroughs (windows, minimap, tooltips, tracker, toasts and pop-ups, loot rolls, menus, chat bubbles) are registered with prefill on
+Checks, on the real addons in the stand-in game: the ten walkthroughs (windows, minimap, tooltips, tracker, toasts and pop-ups, loot rolls, menus, chat bubbles, status bars, minimap buttons) are registered with prefill on
 and every step has a check or is a question (noVerdict); their own checks give the right verdict on the stand-in (a bag window skinned,
 then given back; the square minimap, then round; a tooltip in the theme's window colour; the tracker header in the label colour, then
 the Quests section given back); and her reskin settings are put back exactly as they were at the end of each walkthrough.
@@ -44,6 +44,10 @@ MenuStyle1Mixin = { Generate = function(self) local t = self:CreateTexture(nil, 
 local BP = CreateFrame("Frame", nil, CreateFrame("Frame", nil, UIParent)); BP.String = BP:CreateFontString(nil, "ARTWORK")
 BP.SetCenterColor = function(self, r, g, b, a) self._c = { r, g, b, a } end
 C_ChatBubbles = { GetAllChatBubbles = function() return {} end }
+local MC = CreateFrame("Frame", "MinimapCluster", UIParent); MC.BorderTop = CreateFrame("Frame", nil, MC)
+MC.BorderTop.SetCenterColor = function(self, r, g, b, a) self._c = { r, g, b, a } end
+MC.BorderTop.GetCenterColor = function(self) local c = self._c or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
+local MSB = CreateFrame("Frame", "MainStatusTrackingBarContainer", UIParent); MSB.BarFrameTexture = MSB:CreateTexture(nil, "OVERLAY"); MSB:Hide()
 local function BuildMenu() local f = CreateFrame("Frame", nil, UIParent); for k, v in pairs(MenuStyle1Mixin) do f[k] = v end; f:Generate(); return f end
 local GL = CreateFrame("Frame", "GroupLootFrame1", UIParent); GL.Background = GL:CreateTexture(nil, "BACKGROUND"); GL.Border = GL:CreateTexture(nil, "BORDER")
 GL:SetScript("OnShow", function(self) self.Border:SetVertexColor(0.64, 0.21, 0.93) end); GL:Hide()
@@ -62,7 +66,7 @@ CueRulesDB.ui.rsk = { tracker = true, winOff = { bank = true }, otOff = {} }
 local before = "tracker=true bank-out"
 local function Same() local r = CueRulesDB.ui.rsk; return r and r.tracker == true and r.winOff and r.winOff.bank == true and not r.windows and not r.minimap and not r.tooltips and not r.shape end
 
-local IDS = { "reskin-windows", "reskin-minimap", "reskin-tooltips", "reskin-tracker", "reskin-toasts", "reskin-lootroll", "reskin-menus", "reskin-bubbles" }
+local IDS = { "reskin-windows", "reskin-minimap", "reskin-tooltips", "reskin-tracker", "reskin-toasts", "reskin-lootroll", "reskin-menus", "reskin-bubbles", "reskin-statusbars", "reskin-mmbuttons" }
 for _, id in ipairs(IDS) do
   local w = QA.walks[id]
   local good = w ~= nil and w.prefill == true and w.area == "Reskin"
@@ -155,6 +159,21 @@ ok, why = run("reskin-bubbles", 2)
 check("bubbles 2: after /s the bubble took the look: the check counts it", ok and why:find("1 bubble", 1, true) and BP._c ~= nil, why)
 run("reskin-bubbles", 4)
 check("bubbles: her settings are put back", Same() and not CueRulesDB.ui.rsk.bubbles, before)
+
+-- status bars (Reskin 0.6.15)
+ok, why = run("reskin-statusbars", 1)
+check("statusbars 1: no bar shown: the check says so (not a pass)", ok == false and why:find("no status bar", 1, true), why)
+MSB:Show()
+ok, why = QA.walks["reskin-statusbars"].steps[1].check()
+check("statusbars 1: a shown bar carries the look", ok, why)
+run("reskin-statusbars", 3)
+check("statusbars: her settings are put back", Same() and not CueRulesDB.ui.rsk.statusbars and MSB.BarFrameTexture:GetAlpha() == 1, before)
+
+-- minimap buttons (Reskin 0.6.16)
+ok, why = run("reskin-mmbuttons", 1)
+check("mmbuttons 1: the zone bar is read in the theme's window colour", ok and why:find("zone bar centre", 1, true), why)
+run("reskin-mmbuttons", 3)
+check("mmbuttons: her settings are put back and the zone bar's colour is Blizzard's again", Same() and not CueRulesDB.ui.rsk.mmbuttons and MC.BorderTop._c[1] == 1, before)
 return R
 end
 '''
