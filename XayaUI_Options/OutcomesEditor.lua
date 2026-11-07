@@ -97,7 +97,12 @@ local function ConditionBody(rule, H)
         args["n" .. j] = { type = "input", order = o + 0.03, width = "relative", relWidth = 0.2, name = "",
             hidden = function() return collapsed() or not IsNumRef(t.ref) end,
             get = function() return tostring(t.num or 0) end,
-            set = function(_, v) t.num = tonumber(v) or 0; onN() end, disabled = locked }
+            set = function(_, v)   -- audit D45: text that is not a number keeps the old value (it used to store 0); an empty box is 0
+                v = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                local n = (v == "") and 0 or tonumber(v)
+                if n == nil then ns.Print("'" .. v .. "' is not a number: the value is unchanged"); (H.NotifyTwice or H.Notify)(); return end
+                t.num = n; onN()
+            end, disabled = locked }
         args["s" .. j] = { type = "description", order = o + 0.035, width = "relative", relWidth = 0.04, fontSize = "medium", hidden = collapsed,
             name = function()
                 local p = ns.FindParentRule(rule)
@@ -362,11 +367,15 @@ local function CopyOutcome(rule)
     ns.MarkDirty(); (ns.UI.NotifyTwice or ns.UI.Notify)()
 end
 local function RemoveOutcome(rule)
+    if ns.IsEditLocked and ns.IsEditLocked(rule) then return end
     local parent = ns.FindParentRule(rule)   -- only this cue / condition goes; its rule stays and stays open
-    if rule.isCue then ns.DeleteCue(rule)
-    else
-        for i, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, i); break end end
-        pcall(ns.DropVisual, rule)
+    -- FA-11 (Xaya: "Recycle Bin, no prompt (Recommended)"): the red X sends it to the Recycle Bin, restorable with Restore
+    if not (ns.RecycleChild and ns.RecycleChild(rule)) then
+        if rule.isCue then ns.DeleteCue(rule)
+        else
+            for i, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, i); break end end
+            pcall(ns.DropVisual, rule)
+        end
     end
     ns.MarkDirty()
     if parent and ns.ReselectRule then ns.ReselectRule(parent) end   -- before the rebuild, so the pane does not fall back to another page
@@ -376,7 +385,7 @@ end
 local OPEN = "|TInterface\\Buttons\\Arrow-Down-Up:16:16|t"
 local CLOSED = "|TInterface\\ChatFrame\\ChatFrameExpandArrow:16:16|t"
 local function Header(rule, titleFn, edit)
-    return { type = "execute", order = 0.05, width = "full",
+    local h = { type = "execute", order = 0.05, width = "full",
         arg = { xuiLeft = true, xuiHeadOut = ns.BODY_INDENT or 20, xuiEdit = edit, xuiChevron = function() return not rule.ocCollapsed end, xuiSub = (edit and edit.title) and function() return " " end or nil, xuiActions = function()
             local list, pos = SiblingList(rule), nil
             for i, r in ipairs(list) do if r == rule then pos = i end end
@@ -394,6 +403,9 @@ local function Header(rule, titleFn, edit)
         end,
         desc = "Expand or collapse.",
         func = function() rule.ocCollapsed = (not rule.ocCollapsed) or nil; ns.MarkDirty(); ns.UI.Notify() end }
+    -- audit D26 / D44: while the cue / condition (or its rule) is edit-locked, Move / Duplicate / Remove are grayed out and the name box refuses
+    if ns.LockHeaderArg then ns.LockHeaderArg(h.arg, function() return ns.IsEditLocked and ns.IsEditLocked(rule) or false end) end
+    return h
 end
 
 local function EmbedCondition(pg, rule, k)

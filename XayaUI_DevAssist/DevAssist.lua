@@ -771,7 +771,7 @@ function GD.Toggle()
     FlatButton(win, -242, "Clear recorder data",                        "Forget what the recorder has caught so far.", function() GD.RecorderClear() end)
     FlatButton(win, -288, "5.  API inventory (developer)",              "Every function, namespace, enum and widget method in this client.", function() if GD.CaptureAPI then GD.CaptureAPI() end end)
     FlatButton(win, -334, "6.  Character Toolkit checks (developer)",   "GCD, repair cost, item levels the game gives, gems, stat pane.", function() if GD.ProbeToolkit then GD.ProbeToolkit() end end)
-    FlatButton(win, -380, "7.  Aura catalogue (this season)",           "Every aura current content points to, every class. Out of combat; a few seconds.", function() if GD.CaptureCatalogue then GD.CaptureCatalogue() end end)
+    FlatButton(win, -380, "7.  Aura catalog (this season)",           "Every aura current content points to, every class. Out of combat; a few seconds.", function() if GD.CaptureCatalogue then GD.CaptureCatalogue() end end)
     seenBtn = FlatButton(win, -426, "8.  Aura log: auras you see while playing", "Turn on, play, turn off. Logs every aura on you, your target, focus and party.", function() if GD.SeenToggle then GD.SeenToggle() end end)
     local save = FlatButton(win, -472, "Save to disk now",              "Reloads the UI so the data reaches the disk.", function() ReloadUI() end)
     save.bar:SetColorTexture(0.35, 0.75, 0.45, 1)
@@ -845,13 +845,13 @@ SlashCmdList["XAYAUIDEV"] = function(msg)
         local probeOn, probeN = false, 0
         if GD.ProbeSummary then probeOn, probeN = GD.ProbeSummary() end
         local nCreatures = GD.InstanceSummary and GD.InstanceSummary() or 0
-        Say(("static: %s | char: %s | auras: %s | api: %s | toolkit checks: %s | recorder %s: %d spells, %d aura links, %d loadouts | catalogue: %s (Cooldown Manager of %d specs) | aura log: %s, %d auras | probe: %s, %d entries | instance: %d creatures"):format(
+        Say(("static: %s | char: %s | auras: %s | api: %s | toolkit checks: %s | recorder %s: %d spells, %d aura links, %d loadouts | catalog: %s (Cooldown Manager of %d specs) | aura log: %s, %d auras | probe: %s, %d entries | instance: %d creatures"):format(
             d.static and (d.static.built or "yes") or "none", d.char and d.char.at or "none", d.auras and d.auras.at or "none",
             d.api and d.api.at or "none", d.toolkitProbe and d.toolkitProbe.at or "none", R.on and "ON" or "off", nc, na, nl,
             d.catalogue and d.catalogue.at or "none", nSpec, (GD.Catalogue and GD.Catalogue.seenOn) and "ON" or "off", d.seen and d.seen.n or 0,
             probeOn and "ON" or "off", probeN or 0, nCreatures))
     else
-        print("|cffffd100XayaUI Dev Assist|r: /xuidev (window) | static | char | auras | rec (toggle recorder) | clear | api (API inventory) | toolkit (Character Toolkit checks) | catalogue [fromID] (aura catalogue) | seen (toggle aura log) | probe on|off|status|clear|spells <ids>|mark (event probe) | instance [status|clear] (creatures seen) | report (read a debug report string) | qa (QA walkthroughs) | review (what's new to test) | questions (open questions) | save (reload) | status")
+        print("|cffffd100XayaUI Dev Assist|r: /xuidev (window) | static | char | auras | rec (toggle recorder) | clear | api (API inventory) | toolkit (Character Toolkit checks) | catalog [fromID] (aura catalog) | seen (toggle aura log) | probe on|off|status|clear|spells <ids>|mark (event probe) | instance [status|clear] (creatures seen) | report (read a debug report string) | qa (QA walkthroughs) | review (what's new to test) | questions (open questions) | save (reload) | status")
     end
 end
 

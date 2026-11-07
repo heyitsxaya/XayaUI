@@ -79,7 +79,11 @@ function ns.ScanAllTalents(done)
         return false, "This game version has no talent view API, so there is nothing to scan."
     end
     if InCombatLockdown() then return false, "Cannot scan in combat." end
-    if ClassTalentFrame and ClassTalentFrame:IsShown() then return false, "Close the talent window first, then scan again." end
+    -- audit D9 (core 0.6.67): the talent window is PlayerSpellsFrame in this client (Dev Assist's scan checks the same); the older
+    -- ClassTalentFrame is checked too in case a client still has it.
+    for _, w in ipairs({ rawget(_G, "PlayerSpellsFrame"), rawget(_G, "ClassTalentFrame") }) do
+        if w and w.IsShown and w:IsShown() then return false, "Close the talent window first, then scan again." end
+    end
     scanning = true
     local classIDs = {}
     for id = 1, (GetNumClasses and GetNumClasses() or 13) do classIDs[#classIDs + 1] = id end
@@ -93,7 +97,9 @@ function ns.ScanAllTalents(done)
         if not classID then
             self:SetScript("OnUpdate", nil)
             scanning = false
-            XayaUITalentDB = db
+            -- audit D10 (core 0.6.67): a scan where every class failed keeps the last good scan (rule creation reads it)
+            local any = next(db.classes) ~= nil
+            if any or type(XayaUITalentDB) ~= "table" then XayaUITalentDB = db end
             local nC, nS, nN, nE = 0, 0, 0, 0
             for _, c in pairs(db.classes) do
                 nC = nC + 1
@@ -101,6 +107,7 @@ function ns.ScanAllTalents(done)
                 for _, n in pairs(c.nodes) do nN = nN + 1; nE = nE + #n.e end
             end
             local msg = ("talent scan done: %d classes, %d specs, %d talent nodes, %d talent entries (build %s). %d class(es) failed."):format(nC, nS, nN, nE, tostring(db.build), #db.errors)
+            if not any then msg = msg .. " Nothing was read, so the previous scan is kept." end
             if ns.Print then ns.Print(msg) end
             if done then pcall(done, true, msg) end
             return

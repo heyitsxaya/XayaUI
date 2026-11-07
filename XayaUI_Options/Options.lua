@@ -873,8 +873,10 @@ function ns.LoadIdRows(ld, changed, locked, searchBox)
     return args
 end
 
+-- Each choice cycles selected -> NOT -> cleared (AceGUI's tri-state goes true -> nil -> false). An unset choice reads false (unticked);
+-- "none ticked = any" is shown by the All box. Audit D20: an unset box read true, so the first click stored NOT and "selected" could never
+-- be stored.
 local function TriGroup(name, order, hiddenFn, getSet, choices, onChange)
-    local function hasOn(set) for _, v in pairs(set) do if v == true then return true end end return false end
     local args = {
         all = { type = "toggle", name = "All", order = 0, width = "double",
             desc = "No restriction. Click a box below once to select it, twice for NOT, a third time to clear it.",
@@ -893,7 +895,6 @@ local function TriGroup(name, order, hiddenFn, getSet, choices, onChange)
                 local st = set[ch.id]
                 if st == true then return true end
                 if st == "not" then return nil end
-                if not hasOn(set) then return true end
                 return false
             end,
             set = function(_, v)
@@ -1182,6 +1183,13 @@ end
 local function FolderRules(fid)
     local l = {}
     for _, r in ipairs(ns.rules or {}) do if r.folder and IsInFolder(r.folder, fid) then l[#l + 1] = r end end
+    return l
+end
+-- The rules of a group without the cues and conditions inside them (audit D42: the group's Enabled box and Enable / Disable All Rules
+-- Inside switched a condition the player had turned off back on; the Delete Group confirmation counted cue rows as rules).
+local function FolderTopRules(fid)
+    local l = {}
+    for _, r in ipairs(FolderRules(fid)) do if not r.parentUid then l[#l + 1] = r end end
     return l
 end
 -- Display / Sound / Hybrid / Advanced Cue Tracking default folders are sub-sections of Smart Categories inside All Rules
@@ -1922,6 +1930,8 @@ local function BuildRule(i, rule)
         desc = "Remove the Cooldown trigger: clears this rule's Cooldown spell, max charges, and state.",
         hidden = function() return not ns.CooldownUsed(rule) end,
         func = function()
+            if ns.IsEditLocked(rule) then return end
+            if ns.RecycleTrigger then ns.RecycleTrigger(rule, "cd") end   -- FA-11: to the Recycle Bin (no prompt), restorable
             rule.useCooldown = false; rule.spellID = 0; rule.maxCharges = 0; rule.cdState = nil
             rule.countGCD, rule.countLOC, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil, nil
             rule.exactSpell = nil
@@ -1930,7 +1940,13 @@ local function BuildRule(i, rule)
     trigger.args.buffRemove = { type = "execute", name = "Remove", order = 14, width = "half",
         desc = "Remove the Buff / Aura trigger: clears this rule's aura ID and state.",
         hidden = function() return not ns.BuffUsed(rule) end,
-        func = function() rule.useBuff = false; rule.buffID = 0; rule.buffAlt = nil; rule.buffState = nil; Changed(rule); Notify() end }
+        func = function()
+            if ns.IsEditLocked(rule) then return end
+            if ns.RecycleTrigger then ns.RecycleTrigger(rule, "buff") end   -- FA-11: to the Recycle Bin (no prompt), restorable
+            rule.useBuff = false; rule.buffID = 0; rule.buffAlt = nil; rule.buffState = nil
+            rule.buffTimeOp, rule.buffTimeSec = nil, nil   -- audit D25: re-adding the trigger no longer brings back an old "Seconds left" filter
+            Changed(rule); Notify()
+        end }
     -- Additional trigger rows (Triggers.lua). A failure there must never take the whole options tree down.
     if ns.BuildExtraTriggerArgs then
         local okx, xa = pcall(ns.BuildExtraTriggerArgs, rule, ns.UI)
@@ -2338,7 +2354,7 @@ local function BuildRule(i, rule)
             colorH = { type = "header", name = "Color & Blend", order = 20 },
             additive = Tog(V, "additive", "Additive blend", 21, on),
             desaturate = Tog(V, "desaturate", "Desaturate the base texture", 22, on,
-                { width = "double", desc = "Removes the art's own colors first. On its own this grays it; with a tint below it gives an even, precise recolor (the tint multiplies the gray art). Progress textures gray the base automatically whenever it's tinted (see Advanced customization under Opacity & Fill) and lock this control while that's on.",
+                { width = "double", desc = "Removes the art's own colors first. On its own this greys it; with a tint below it gives an even, precise recolor (the tint multiplies the grey art). Progress textures grey the base automatically whenever it's tinted (see Advanced customization under Opacity & Fill) and lock this control while that's on.",
                   disabled = function() return ProgLocked() end,
                   get = function() if ProgLocked() then return V.recolor and true or false end return V.desaturate and true or false end }),
             recolor = Tog(V, "recolor", "Tint the base texture", 23, on,
@@ -2347,7 +2363,7 @@ local function BuildRule(i, rule)
             fadeH = { type = "header", name = "Fade, Opacity & Flash as the Buff Runs Out", order = 30 },
             fadeGrey = Tog(V, "fadeGrey", "Fade gradually as the buff runs out", 31, on, { width = "double",
                 desc = "Uses the Aura spell ID from the Trigger tab. Uses readable aura times; when Blizzard hides them (combat) it tries Blizzard's duration-object curves (experimental). Needs the aura present, so set Show to 'While the buff is present'. Preview shows a sample cycle." }),
-            fadeMode = Sel(V, "fadeMode", "Fade to", 32, { none = "(none - gray)", color = "A color", transparent = "Transparent" }, { "none", "color", "transparent" }, on,
+            fadeMode = Sel(V, "fadeMode", "Fade to", 32, { none = "(none - grey)", color = "A color", transparent = "Transparent" }, { "none", "color", "transparent" }, on,
                 { disabled = function() return not V.fadeGrey end }),
             fadeColor = Col(V, "fadeColor", "Fade color", 33, on,
                 { disabled = function() return not (V.fadeGrey and ns.Val(V.fadeMode) == "color") end }),
@@ -2356,7 +2372,7 @@ local function BuildRule(i, rule)
                 { disabled = function() return not V.flash.enabled end }),
             flashSpeed = Rng(V.flash, "speed", "Flash speed (pulses per second)", 36, 1, 8, 0.5, on,
                 { disabled = function() return not V.flash.enabled end }),
-            desatOnCD = Tog(V, "desatOnCD", "Gray out while the spell is on cooldown", 37, on, { width = "double" }),
+            desatOnCD = Tog(V, "desatOnCD", "Grey out while the spell is on cooldown", 37, on, { width = "double" }),
             hoverTip = Tog(V, "hoverTip", "Show tooltip on hover", 9.6, on, { width = "double", hidden = true,   -- set on the rule's Display tab (0.6.3)
                 desc = "Hover this cue to see the tooltip of the spell or item it is about (the icon source chosen above, else the rule's first trigger). While on, the cue also sees the mouse pointer, but clicks still pass through to what is behind it." }),
             requireOnBar = Tog(V, "requireOnBar", "Only show while this ability is on an action bar", 9.5, on, { width = "double",
@@ -2452,7 +2468,7 @@ local function BuildRule(i, rule)
             oocAlpha = Rng(V, "oocAlpha", "Opacity multiplier out of combat", 4, 0, 1, 0.05, on, { width = "double", def = 1 }),
             fadeH = { type = "header", name = "Fade Opacity as the Buff Runs Out", order = 10 },
             fadeAlpha = Tog(V, "fadeAlpha", "Fade opacity", 11, on, { width = "double",
-                desc = "Opacity multiplier goes from the value at full duration to the value at expiry. Independent of the gray / color fade. Needs the aura present: set 'Show' to 'While the buff is present'." }),
+                desc = "Opacity multiplier goes from the value at full duration to the value at expiry. Independent of the grey / color fade. Needs the aura present: set 'Show' to 'While the buff is present'." }),
             fadeAlphaMax = Rng(V, "fadeAlphaMax", "Opacity at full duration", 12, 0, 1, 0.05, on,
                 { width = "double", disabled = function() return not V.fadeAlpha end }),
             fadeAlphaMin = Rng(V, "fadeAlphaMin", "Opacity at expiry", 13, 0, 1, 0.05, on,
@@ -2472,7 +2488,7 @@ local function BuildRule(i, rule)
             advanced = Tog(OV, "advanced", "Advanced customization (override the linked base/overlay opacity and tint defaults)", 30,
                 function() Changed(rule); Notify() end,
                 { width = "full", hidden = function() return not FL.enabled end,
-                  desc = "Progress textures default to a locked base+overlay layering: the base opens at a reduced opacity tied to Overlay opacity above, grays automatically only when tinted, and the overlay never grays or dims. Tick this to set the base opacity, base gray, and overlay gray independently instead." }),
+                  desc = "Progress textures default to a locked base+overlay layering: the base opens at a reduced opacity tied to Overlay opacity above, greys automatically only when tinted, and the overlay never greys or dims. Tick this to set the base opacity, base grey, and overlay grey independently instead." }),
         },
     }
     ns.GatePane(rule, opacity.args, "fadeAlpha", "Fade opacity options", 11.5, function() return V.fadeAlpha end, { "fadeAlphaMax", "fadeAlphaMin" })
@@ -2575,7 +2591,7 @@ local function BuildRule(i, rule)
     local sound = {
         type = "group", inline = true, name = "Sound", order = 3, args = {
             soundEnabled = { type = "toggle", name = "Play a sound", order = 1,
-                get = function() return rule.sound.enabled end, set = function(_, v) rule.sound.enabled = v end },
+                get = function() return rule.sound.enabled end, set = function(_, v) rule.sound.enabled = v; ns.MarkDirty() end },
             sound = {
                 type = "select", name = "Sound", order = 2, width = "double",
                 values = function() EnsureSounds(); return soundValues end,
@@ -2587,9 +2603,9 @@ local function BuildRule(i, rule)
                     end
                 end,
                 set = function(_, v)
-                    if v == "0" then rule.sound.value = ""; return end
+                    if v == "0" then rule.sound.value = ""; ns.MarkDirty(); return end
                     local it = soundList[tonumber(v)]
-                    if it then rule.sound.source, rule.sound.value = it.source, it.value end
+                    if it then rule.sound.source, rule.sound.value = it.source, it.value; ns.MarkDirty() end
                 end,
             },
             test = { type = "execute", name = "Test sound", order = 3, width = "half", func = function() ns.PlaySoundPreview(rule.sound) end },
@@ -2607,9 +2623,9 @@ local function BuildRule(i, rule)
                 end },
             repeatSec = { type = "range", name = "Repeat every (seconds, 0 = once)", order = 4, width = "double",
                 min = 0, max = 10, step = 0.1,
-                get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v end },
+                get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v; ns.MarkDirty() end },
             channel = { type = "select", name = "Sound channel", order = 5, values = CHANNEL_VALUES, sorting = CHANNEL_ORDER,
-                get = function() return rule.sound.channel end, set = function(_, v) rule.sound.channel = v end },
+                get = function() return rule.sound.channel end, set = function(_, v) rule.sound.channel = v; ns.MarkDirty() end },
             -- #334 (Insivius): a volume on the cue's own sound, like Speech volume. The game allows it only for its own sound kits.
             cueVolume = { type = "range", order = 5.5, width = "double", min = 0, max = 100, step = 5,
                 name = function()
@@ -2680,7 +2696,7 @@ local function BuildRule(i, rule)
         text = { type = "input", name = "Text to speak", order = 1, width = "full",
             desc = "Spoken when the cue fires. Plain text; no tokens yet.",
             get = function() return rule.sound.value or "" end,
-            set = function(_, v) rule.sound.source = "tts"; rule.sound.value = tostring(v or ""):sub(1, 200) end },
+            set = function(_, v) rule.sound.source = "tts"; rule.sound.value = tostring(v or ""):sub(1, 200); ns.MarkDirty() end },
         voice = { type = "select", name = "Voice", order = 2, width = "double",
             desc = "Voices come from the voice packs installed on this computer, so other players may see a different list.",
             values = function()
@@ -2694,14 +2710,14 @@ local function BuildRule(i, rule)
                 return s
             end,
             get = function() return tostring(rule.sound.voice or 0) end,
-            set = function(_, v) v = tonumber(v); rule.sound.voice = (v and v ~= 0) and v or nil end },
+            set = function(_, v) v = tonumber(v); rule.sound.voice = (v and v ~= 0) and v or nil; ns.MarkDirty() end },
         test = { type = "execute", name = "Test speech", order = 3, width = "half", func = function() ns.PlaySoundPreview(rule.sound) end },
         rate = { type = "range", name = "Speed", order = 4, width = "double", min = -10, max = 10, step = 1,
-            get = function() return rule.sound.rate or 0 end, set = function(_, v) rule.sound.rate = v end },
+            get = function() return rule.sound.rate or 0 end, set = function(_, v) rule.sound.rate = v; ns.MarkDirty() end },
         vol = { type = "range", name = "Speech volume", order = 5, width = "double", min = 0, max = 100, step = 5,
-            get = function() return rule.sound.ttsVolume or 100 end, set = function(_, v) rule.sound.ttsVolume = v end },
+            get = function() return rule.sound.ttsVolume or 100 end, set = function(_, v) rule.sound.ttsVolume = v; ns.MarkDirty() end },
         repeatSec = { type = "range", name = "Repeat every (seconds, 0 = once)", order = 6, width = "double", min = 0, max = 10, step = 0.1,
-            get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v end },
+            get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v; ns.MarkDirty() end },
         none = { type = "description", order = 7, fontSize = "small",
             hidden = function() return #ns.GetTtsVoices() > 0 end,
             name = "|cffff8800No text-to-speech voice is installed on this computer, so nothing will be spoken.|r" },
@@ -2874,16 +2890,16 @@ local function BuildRule(i, rule)
             dir = Sel(B, "dir", "Drains toward", 3.1, DIR, DIR_ORDER, bon, { width = "double" }),
             reverse = Tog(B, "reverse", "Fill up instead of draining", 3.2, bon, { width = "double", desc = "Time bars only. A stacks / charges bar always fills by the count." }),
             texture = { type = "select", name = "Bar texture", order = 3.3, width = "double",
-                desc = "Flat, Blizzard and Raid frame; the game's own power-bar art (Blizzard power: ...); every status-bar texture other addons share through LibSharedMedia; or your own file. A texture is listed once. Power-bar art is already coloured: the bar colour tints it (Colour = Fixed, white, shows it as drawn).",
+                desc = "Flat, Blizzard and Raid frame; the game's own power-bar art (Blizzard power: ...); every status-bar texture other addons share through LibSharedMedia; or your own file. A texture is listed once. Power-bar art is already colored: the bar color tints it (Color = Fixed, white, shows it as drawn).",
                 values = function() local vv = ns.BarTextureList(); return vv end,
                 sorting = function() local _, o = ns.BarTextureList(); return o end,
                 get = function() return B.texture or "flat" end, set = function(_, x) B.texture = x; bon() end },
             texFile = { type = "input", name = "Texture ID / path", order = 3.4, width = "double", hidden = function() return B.texture ~= "file" end,
                 get = function() return tostring(B.texFile or "") end, set = function(_, x) B.texFile = tostring(x or ""); bon() end },
-            colH = hdr("Colour", 4),
-            colorMode = Sel(B, "colorMode", "Colour", 4.1, { auto = "Automatic (the type the tooltip names, then the dispel type, then blue)", fixed = "Fixed colour" },
+            colH = hdr("Color", 4),
+            colorMode = Sel(B, "colorMode", "Color", 4.1, { auto = "Automatic (the type the tooltip names, then the dispel type, then blue)", fixed = "Fixed color" },
                 { "auto", "fixed" }, bon, { width = "double" }),
-            color = Col(B, "color", "Bar colour", 4.2, bon, { hidden = function() return B.colorMode ~= "fixed" end }),
+            color = Col(B, "color", "Bar color", 4.2, bon, { hidden = function() return B.colorMode ~= "fixed" end }),
             colorNow = { type = "description", order = 4.3, width = "full", fontSize = "medium", hidden = function() return B.colorMode == "fixed" end,
                 name = function()
                     local okc, r, g, b2, a, why, t, d = pcall(ns.BarCueColor, rule, nil)
@@ -2900,12 +2916,12 @@ local function BuildRule(i, rule)
                 hidden = function() local _, _, gf = ns.BarCueStyle(rule); return B.colorMode == "fixed" or gf == nil end,
                 name = function()
                     local st, _, gf = ns.BarCueStyle(rule)
-                    return gf and ("|cffffd100Colour style: " .. (ns.BAR_STYLE_LABEL[st] or st) .. ", forced by the group '" .. tostring(gf.name) .. "'.|r Untick 'Force on every bar in this group' on that group's Display tab to set this bar's own.") or ""
+                    return gf and ("|cffffd100Color style: " .. (ns.BAR_STYLE_LABEL[st] or st) .. ", forced by the group '" .. tostring(gf.name) .. "'.|r Untick 'Force on every bar in this group' on that group's Display tab to set this bar's own.") or ""
                 end },
-            style = Sel(B, "style", "Colour style", 4.5, ns.BAR_STYLE_LABEL, ns.BAR_STYLES, bon, { width = "double",
+            style = Sel(B, "style", "Color style", 4.5, ns.BAR_STYLE_LABEL, ns.BAR_STYLES, bon, { width = "double",
                 hidden = function() return B.colorMode == "fixed" end,
                 disabled = function() local _, _, gf = ns.BarCueStyle(rule); return gf ~= nil end,
-                desc = "Blizzard default: the game's own colours. Neon, Pastel and Muted / Dark keep each colour's family and change its saturation and brightness. Custom: pick each type's colour below." }),
+                desc = "Blizzard default: the game's own colors. Neon, Pastel and Muted / Dark keep each color's family and change its saturation and brightness. Custom: pick each type's color below." }),
             cusMagic = { type = "color", name = "Magic", order = 4.60, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Magic", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
@@ -2958,14 +2974,14 @@ local function BuildRule(i, rule)
             icon = Sel(B, "icon", "Icon", 5.1, { left = "Left", right = "Right", none = "None" }, { "left", "right", "none" }, bon,
                 { desc = "On a vertical bar, left is the top end and right the bottom end." }),
             spark = Tog(B.spark, "enabled", "Spark", 5.2, bon, { desc = "A bright mark on the moving edge of the fill." }),
-            sparkColor = Col(B.spark, "color", "Spark colour", 5.3, bon, { hidden = function() return not B.spark.enabled end }),
+            sparkColor = Col(B.spark, "color", "Spark color", 5.3, bon, { hidden = function() return not B.spark.enabled end }),
             sparkW = Rng(B.spark, "w", "Spark width", 5.4, 1, 64, 1, bon, { hidden = function() return not B.spark.enabled end }),
             bgH = hdr("Background and border", 6),
             bg = Tog(V.bg, "enabled", "Background", 6.1, bon),
-            bgColor = Col(V.bg, "color", "Background colour", 6.2, bon, { hidden = function() return not V.bg.enabled end }),
+            bgColor = Col(V.bg, "color", "Background color", 6.2, bon, { hidden = function() return not V.bg.enabled end }),
             border = Tog(V.border, "enabled", "Border", 6.3, bon),
             borderSize = Rng(V.border, "size", "Border size", 6.4, 1, 10, 1, bon, { hidden = function() return not V.border.enabled end }),
-            borderColor = Col(V.border, "color", "Border colour", 6.5, bon, { hidden = function() return not V.border.enabled end }),
+            borderColor = Col(V.border, "color", "Border color", 6.5, bon, { hidden = function() return not V.border.enabled end }),
             alpha = Rng(V, "alpha", "Opacity", 6.6, 0, 1, 0.05, bon),
         }
         local nameArgs = TextStyleArgs(B.name, bon, 10)
@@ -3086,6 +3102,7 @@ local function BuildRule(i, rule)
                 get = function() return rule.folder or "none" end,
                 set = function(_, v)
                     rule.folder = (v ~= "none") and v or nil
+                    ns.MarkDirty(); pcall(ns.RefreshAllVisuals)   -- audit D24: as right-click > Move To (an undo step; displays follow the new group)
                     Notify()
                     ns.SelectKeep(RulePath(rule))
                 end,
@@ -3156,9 +3173,14 @@ function ns.SelectRuleTab(tabKey)
     Notify()
 end
 
--- Edit lock: a rule (or a folder, which covers everything inside it) can be made read-only from the sidebar.
+-- Edit lock: a rule (or a folder, which covers everything inside it) can be made read-only from the sidebar. A cue or condition follows
+-- its rule's lock too (audit D41: the rule row's lock covers the rule and everything shown inside it).
 function ns.IsEditLocked(x)
     if x and x.editLocked then return true end
+    if x and x.parentUid and ns.FindParentRule then
+        local p = ns.FindParentRule(x)
+        if p and p ~= x and p.editLocked then return true end
+    end
     local id, guard = x and x.folder, 0
     while id and guard < 32 do
         local f = ns.FolderById(id)
@@ -3168,10 +3190,36 @@ function ns.IsEditLocked(x)
     end
     return false
 end
+-- A header's own controls (Skin.lua: arg.xuiActions = Move up / Move down / Duplicate / Remove, arg.xuiEdit = the name box) are not
+-- AceConfig options, so `disabled` never reached them (audit D26 / D44). While locked() is true the action icons are drawn grayed out
+-- (false) and do nothing, and the name box refuses the edit. Wrapping twice is harmless.
+function ns.LockHeaderArg(a, locked)
+    if type(a) ~= "table" then return end
+    local acts = a.xuiActions
+    if acts ~= nil and not a.xuiLockWrapped then
+        a.xuiLockWrapped = true
+        a.xuiActions = function(...)
+            local spec = acts
+            if type(spec) == "function" then spec = spec(...) end
+            if type(spec) ~= "table" or not locked() then return spec end
+            local out = {}
+            for k, v in pairs(spec) do if v ~= nil then out[k] = false end end
+            return out
+        end
+    end
+    local ed = a.xuiEdit
+    if type(ed) == "table" and not ed.xuiLockWrapped then
+        ed.xuiLockWrapped = true
+        local set = ed.set
+        ed.locked = locked
+        ed.set = function(...) if locked() then return end; if set then return set(...) end end
+    end
+end
 -- disables every leaf option while locked() is true (collapse / expand controls stay usable; groups are left alone
 -- because a disabled group would also disable those controls)
 function ns.LockArgs(args, locked)
     for _, o in pairs(args or {}) do
+        if type(o) == "table" and o.arg then ns.LockHeaderArg(o.arg, locked) end
         if o.type == "group" then
             ns.LockArgs(o.args, locked)
         elseif not (type(o.desc) == "string" and o.desc:find("^Expand or collapse")) then
@@ -4357,13 +4405,13 @@ function ns.FolderContainerGroup(f)
     g.args.boxH = { type = "header", name = "Border and background", order = 3.08 }
     g.args.border = { type = "toggle", name = "Border", order = 3.081, get = function() return f.cBorder and true or false end,
         set = function(_, v) f.cBorder = v and true or nil; apply() end }
-    g.args.borderColor = { type = "color", name = "Border colour", order = 3.082, hasAlpha = true, hidden = function() return not f.cBorder end,
+    g.args.borderColor = { type = "color", name = "Border color", order = 3.082, hasAlpha = true, hidden = function() return not f.cBorder end,
         get = col("cBdColor", { 0.6, 0.6, 0.65, 1 }), set = setCol("cBdColor") }
     g.args.bg = { type = "toggle", name = "Background", order = 3.083, get = function() return f.cBg and true or false end,
         set = function(_, v) f.cBg = v and true or nil; apply() end }
-    g.args.bgColor = { type = "color", name = "Background colour", order = 3.084, hasAlpha = true, hidden = function() return not f.cBg end,
+    g.args.bgColor = { type = "color", name = "Background color", order = 3.084, hasAlpha = true, hidden = function() return not f.cBg end,
         get = col("cBgColor", { 0, 0, 0, 0.45 }), set = setCol("cBgColor") }
-    g.args.bgTex = { type = "input", name = "Background texture (file path or ID; empty = the colour only)", order = 3.085, width = "full",
+    g.args.bgTex = { type = "input", name = "Background texture (file path or ID; empty = the color only)", order = 3.085, width = "full",
         hidden = function() return not f.cBg end,
         get = function() return f.cBgTex and tostring(f.cBgTex) or "" end,
         set = function(_, v) v = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", ""); f.cBgTex = (v ~= "") and (tonumber(v) or v) or nil; apply() end }
@@ -4507,9 +4555,9 @@ local function BuildFolder(k, f)
                     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(path))
                 end },
             enableAll = { type = "execute", name = "Enable all", order = 3, desc = "Switches on every rule in this group and its nested groups.",
-                func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = true; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
+                func = function() for _, r in ipairs(FolderTopRules(f.id)) do r.enabled = true; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
             disableAll = { type = "execute", name = "Disable all", order = 4, desc = "Switches off every rule in this group and its nested groups.",
-                func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
+                func = function() for _, r in ipairs(FolderTopRules(f.id)) do r.enabled = false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
             pausePv = { type = "toggle", name = "Pause preview animations", order = 4.5, width = "double",
                 hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end,
                 desc = "Freezes the sample countdown, the fades, and the flash in every preview while the images stay on screen. Untick to resume. This is the same switch as on Smart Categories and on each rule, so it pauses every preview, not only this group's.",
@@ -4546,10 +4594,10 @@ local function BuildFolder(k, f)
         desc = "Ticked: every rule in this group and its nested groups is on. Unticking switches them all off (ticking again switches them all on).",
         get = function()
             local any = false
-            for _, r in ipairs(FolderRules(f.id)) do any = true; if not r.enabled then return false end end
+            for _, r in ipairs(FolderTopRules(f.id)) do any = true; if not r.enabled then return false end end
             return any
         end,
-        set = function(_, v) for _, r in ipairs(FolderRules(f.id)) do r.enabled = v and true or false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end }
+        set = function(_, v) for _, r in ipairs(FolderTopRules(f.id)) do r.enabled = v and true or false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end }
     if container and container.args then
         local any = false
         for k, v in pairs(container.args) do
@@ -4944,11 +4992,19 @@ local function BuildOptions()
     -- Recycle Bin (#88; XayaUI/RecycleBin.lua): deleted rules and groups wait here for the chosen time, then go for good.
     local binArgs = {
         keep = { type = "select", order = 1, width = "normal", name = "Keep deleted items for",
-            desc = "How long a deleted rule or group stays here before it is removed for good. Checked at login and every 30 minutes.",
+            desc = "How long a deleted rule or group stays here before it is removed for good. Checked at login and every 30 minutes; a shorter time that would remove items now asks first.",
             values = function() local v = {}; for _, k in ipairs(ns.RECYCLE_KEEP) do v[k[1]] = k[2] end; return v end,
             sorting = function() local o = {}; for _, k in ipairs(ns.RECYCLE_KEEP) do o[#o + 1] = k[1] end; return o end,
             get = function() return ns.RecycleKeepHours() end,
-            set = function(_, v) ns.SetRecycleKeepHours(v); Notify() end },
+            -- FA-14 (Options 0.6.69; Xaya: "Ask first (Recommended)"): a shorter time that removes items for good now asks first
+            set = function(_, v)
+                local n = ns.RecycleWouldPurge and ns.RecycleWouldPurge(v) or 0
+                if n == 0 then ns.SetRecycleKeepHours(v); Notify(); return end
+                local label = v
+                for _, k in ipairs(ns.RECYCLE_KEEP) do if k[1] == v then label = k[2] end end
+                StaticPopup_Show("XAYAUI_CONFIRM", ("Keep deleted items for %s? %d item(s) in the Recycle Bin are older than that and will be removed for good now."):format(tostring(label), n),
+                    nil, { cb = function() ns.SetRecycleKeepHours(v); Notify() end })
+            end },
         empty = { type = "execute", order = 2, width = "normal", name = "Empty Recycle Bin",
             desc = "Removes everything in the Recycle Bin for good.",
             disabled = function() return #ns.RecycleItems() == 0 end,
@@ -4962,11 +5018,13 @@ local function BuildOptions()
     end
     local binItems = ns.RecycleItems and ns.RecycleItems() or {}
     binArgs.summary = { type = "description", order = 3, width = "full", fontSize = "medium",
-        name = (#binItems == 0) and "\nThe Recycle Bin is empty. Deleted rules and groups wait here so they can be restored."
+        name = (#binItems == 0) and "\nThe Recycle Bin is empty. Deleted rules and groups, and cues, conditions and triggers removed with the red X, wait here so they can be restored."
             or ("\n%d item(s). Each is removed for good %s after it was deleted."):format(#binItems, ns.RecycleKeepLabel()) }
     for i, it in ipairs(binItems) do
+        local KIND_WORD = { cue = "Cue", condition = "Condition", trigger = "Trigger" }   -- FA-11: removed with the red X in a rule
         local what = (it.kind == "rule") and "Rule"
             or (it.kind == "groupAll") and ("Group with its contents: %d rule(s), %d group(s)"):format(it.rules, it.groups)
+            or KIND_WORD[it.kind] and (KIND_WORD[it.kind] .. " of the rule '" .. tostring(it.owner or "?") .. "'")
             or "Group (its contents had moved up one level)"
         binArgs["item" .. i] = { type = "group", inline = true, order = 10 + i, name = tostring(it.name), args = {
             info = { type = "description", order = 1, width = "relative", relWidth = 0.7, fontSize = "medium",
@@ -6024,7 +6082,7 @@ drag.fail = function(err)
     drag.kind, drag.obj = nil, nil
     if dragFrame then dragFrame:Hide(); dragFrame:SetScript("OnUpdate", nil) end
     drag.ClearMarks()
-    ns.Print("moving a row failed and was cancelled: " .. tostring(err))
+    ns.Print("moving a row failed and was canceled: " .. tostring(err))
     if ns.CaptureError then pcall(ns.CaptureError, "XayaUI move: " .. tostring(err), debugstack and debugstack(2) or "", "XUI-E013") end
     pcall(Notify)
 end
@@ -6580,8 +6638,8 @@ local function RowMenu(button, root)
             end)
             root:CreateDivider()
         end
-        root:CreateButton("Enable All Rules Inside", function() for _, r in ipairs(FolderRules(fold.id)) do r.enabled = true; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
-        root:CreateButton("Disable All Rules Inside", function() for _, r in ipairs(FolderRules(fold.id)) do r.enabled = false; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
+        root:CreateButton("Enable All Rules Inside", function() for _, r in ipairs(FolderTopRules(fold.id)) do r.enabled = true; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
+        root:CreateButton("Disable All Rules Inside", function() for _, r in ipairs(FolderTopRules(fold.id)) do r.enabled = false; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
         root:CreateButton("Export Group", function() ns.UI.ExportFolder(fold) end)
         AddPasteMenu(root, "Paste Settings Into Rules Here", function() return FolderRules(fold.id) end,
             function() return "every rule in '" .. tostring(fold.name) .. "' (and its nested groups)" end)
@@ -6591,7 +6649,7 @@ local function RowMenu(button, root)
             AskConfirm("Delete the group '" .. fold.name .. "'? Its rules and nested groups are kept and move up one level. " .. ns.RecycleBinNote(), function() DeleteFolder(fold) end)
         end)
         root:CreateButton("|cffff6060Delete Group and All Contents|r", function()
-            local n = #FolderRules(fold.id)
+            local n = #FolderTopRules(fold.id)
             AskConfirm("Delete the group '" .. fold.name .. "' AND everything inside it: " .. n .. " rule(s) and all nested groups? They go to the Recycle Bin together as one item, for " .. ns.RecycleKeepLabel() .. ".", function() ns.DeleteFolderAll(fold) end)
         end)
         return true
@@ -7236,13 +7294,15 @@ do
     function ns.MultiMove(fid)
         local fo = fid and FolderById(fid)
         if fo and ns.IsCategoryRoot(fo) then ns.Print("rules cannot be placed into a Smart Category"); return end
-        local n = 0
+        local n, skipped = 0, 0
         for r in pairs(sel) do
-            if r.folder ~= fid then r.folder = fid; n = n + 1 end
+            if ns.IsEditLocked(r) then skipped = skipped + 1   -- audit D44: a locked rule stays where it is
+            elseif r.folder ~= fid then r.folder = fid; n = n + 1 end
             -- outcomes embedded in a rule follow their parent's group (same rule as the single-rule move)
         end
+        if skipped > 0 then ns.Print(("%d edit-locked rule(s) were not moved (unlock them in the sidebar to move them)."):format(skipped)) end
         local keep = {}
-        for r in pairs(sel) do keep[#keep + 1] = r end
+        for r in pairs(sel) do if not ns.IsEditLocked(r) then keep[#keep + 1] = r end end
         ns.MultiReset()
         ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()
         if ns.DecorateTrees then ns.DecorateTrees() end
@@ -7319,8 +7379,9 @@ do
         if button.xuiMultiTex then button.xuiMultiTex:SetShown(on and true or false) end
     end
     function ns.MultiDelete()
-        local list = {}
-        for r in pairs(sel) do list[#list + 1] = r end
+        local list, skipped = {}, 0
+        for r in pairs(sel) do if ns.IsEditLocked(r) then skipped = skipped + 1 else list[#list + 1] = r end end   -- audit D44
+        if skipped > 0 then ns.Print(("%d edit-locked rule(s) are left out (unlock them in the sidebar to delete them)."):format(skipped)) end
         if #list == 0 then return end
         StaticPopup_Show("XAYAUI_CONFIRM", ("Delete %d selected rule(s)? Each goes to the Recycle Bin for %s and can be restored on its own."):format(#list, ns.RecycleKeepLabel()), nil, { cb = function()
             ns.RecycleRules(list)
@@ -7340,7 +7401,7 @@ function ns.SidebarRename(button)
         rule = fk and FolderById(fk)
         isFolder = rule and true or nil
     end
-    if not rule or (not isFolder and ns.IsEditLocked and ns.IsEditLocked(rule)) then return end
+    if not rule or ns.IsEditLocked(isFolder and { folder = rule.id } or rule) then return end   -- audit D44: a locked group is not renamed either
     local eb = button.xuiRenameEB
     if not eb then
         eb = CreateFrame("EditBox", nil, button)
@@ -7361,6 +7422,7 @@ function ns.SidebarRename(button)
                     r.name = t
                     ns.MarkDirty(); Notify()
                 else
+                    if t:match("^%s*$") then return end   -- audit D46: an empty name keeps the old one (as a group and the Rename popup do)
                     r.name = t
                     pcall(ns.RefreshVisual, r); ns.MarkDirty(); Notify()
                 end
@@ -7627,6 +7689,14 @@ local function DecorateButton(button)
         local rules = {}
         for _, o in ipairs(rawObjs or {}) do if o.visual then rules[#rules + 1] = o end end
         local lastKey = tostring(button.uniquevalue or ""):match("([^\001]+)$") or ""
+        -- audit D41: a rule whose displays are its cues listed only the cues here, so its lock left the rule itself editable
+        local rn = lastKey:match("^rule(%d+)$")
+        local own = rn and ns.rules and ns.rules[tonumber(rn)]
+        if own then
+            local has = false
+            for _, o in ipairs(rules) do if o == own then has = true; break end end
+            if not has then table.insert(rules, 1, own) end
+        end
         local folder = lastKey:match("^f%d") and ns.FolderById(lastKey) or nil
         local vr = {}
         for _, o in ipairs(vis or {}) do if o.visual then vr[#vr + 1] = o end end
@@ -8383,6 +8453,10 @@ end
 function ns.DeleteKey()
     if ns.MultiCount() > 0 then ns.MultiDelete(); return true end
     local rule = SelectedRule()
+    if rule and ns.IsEditLocked(rule) then   -- audit D44: a locked rule is not deleted
+        ns.Print("'" .. tostring(rule.name) .. "' is edit-locked: unlock it in the sidebar to delete it.")
+        return true
+    end
     if rule then
         AskConfirm("Delete the rule '" .. tostring(rule.name) .. "'? " .. ns.RecycleBinNote(), function()
             ns.RecycleRule(rule)
@@ -8391,6 +8465,10 @@ function ns.DeleteKey()
         return true
     end
     local g = ns.SelectedGroup()
+    if g and ns.IsEditLocked({ folder = g.id }) then
+        ns.Print("the group '" .. tostring(g.name) .. "' is edit-locked: unlock it in the sidebar to delete it.")
+        return true
+    end
     if g then
         AskConfirm("Delete the group '" .. tostring(g.name) .. "'? Its rules and nested groups are kept and move up one level. " .. ns.RecycleBinNote(), function() ns.DeleteFolderById(g.id) end)
         return true
@@ -8688,7 +8766,10 @@ do
                     f.armed = false
                 end
                 local fn = ns[d[3]]
-                if fn then pcall(fn, r) end
+                if fn then   -- audit D47: a failure is reported (it used to vanish inside pcall)
+                    local ok, err = pcall(fn, r)
+                    if not ok then local h = geterrorhandler and geterrorhandler(); if h then h(err) end end
+                end
                 if ns.UI and ns.UI.Notify then ns.UI.Notify() end
             end)
         end
@@ -8840,3 +8921,25 @@ function ns.OptionsApi.IsOpen() return (AceConfigDialog.OpenFrames and AceConfig
 function ns.OptionsApi.LastTree() return Tree.last end
 function ns.OptionsApi.SkinOn() return (ns.SkinRows and ns.SkinRows()) and true or false end
 ns.Options = ns.OptionsApi
+
+-- Dev Assist QA walkthroughs (XayaUI_DevAssist/QAWalks-audit-options.lua) reach the editor only through this service: a fresh options
+-- tree's node for one rule or one group, and the Drafts page. Read-only helpers; nothing runs until a walkthrough calls them.
+do
+    local function FindKey(node, key, depth)
+        if type(node) ~= "table" or depth > 18 or type(node.args) ~= "table" then return nil end
+        if node.args[key] ~= nil then return node.args[key] end
+        for _, c in pairs(node.args) do local hit = FindKey(c, key, depth + 1); if hit then return hit end end
+    end
+    if ns.Provide then ns.Provide("optionsDebug", {
+        RuleNode = function(rule)
+            for i, r in ipairs(ns.rules or {}) do if r == rule then return FindKey(BuildOptions(), "rule" .. i, 0) end end
+        end,
+        FolderNode = function(f) return f and FindKey(BuildOptions(), f.id, 0) end,
+        Find = function(node, key) return FindKey(node, key, 0) end,
+        DraftsPage = function() return ns.BuildDraftsPage and ns.BuildDraftsPage() end,
+        IsEditLocked = function(x) return ns.IsEditLocked(x) end,
+        DraftsEnabled = function() return ns.DraftsEnabled and ns.DraftsEnabled() end,
+        DraftDirty = function(r) return ns.DraftDirty and ns.DraftDirty(r) end,
+        Notify = function() if ns.UI and ns.UI.Notify then pcall(ns.UI.Notify) end end,
+    }) end
+end

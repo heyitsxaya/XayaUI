@@ -97,9 +97,16 @@ SECTION("sums", function()
     { "15%", "0.15" }, { "200*15%", "30" }, { "7 \195\183 2", "3.5" }, { "6 \195\151 7", "42" }, { "3 \226\136\146 1", "2" },
     { ".5+.25", "0.75" }, { "0.1+0.2", "0.3" }, { "1234567.5", "1,234,567.5" }, { "-1234", "-1,234" }, { "  8 - 10 ", "-2" },
     { "1e3", "ERR: e3 is not something a sum can hold" },
+    -- D51 (function audit 2026-11-07): x after k / m / b is a multiply
+    { "12kx3", "36,000" }, { "2mX2", "4,000,000" }, { "1.5b x 2", "3,000,000,000" },
   }
   for _, c in ipairs(cases) do check("sum: " .. c[1] .. " = " .. c[2], ans(c[1]) == c[2], ans(c[1])) end
   check("answer: very large in e-notation", ans("10^16") == "1e+16", ans("10^16"))
+  -- D49: what the line keeps for the next sum reads back as the same number, never in e-notation
+  for _, v in ipairs({ 1/3, 1e-07, 1e16, -2.5, 0.1 + 0.2, 123456789012345678, 2/3 * 1e-9, -7e20, 42 }) do
+    local t = ns.CalcExact and ns.CalcExact(v) or "(none)"
+    check("D49: the line keeps " .. tostring(v) .. " as '" .. t .. "': no e-notation, reads back exactly", not t:find("[eE]") and ns.CalcEval(t) == v, ns.CalcEval(t))
+  end
 end)
 
 SECTION("wrong sums", function()
@@ -148,6 +155,19 @@ SECTION("keypad", function()
   for _, k in ipairs({ "8", "\195\183", "0", "=" }) do ns.Calculator_Press(k) end
   check("keypad: 8 / 0 shows the reason in the answer line", f.result.text == "cannot divide by zero", f.result.text)
   check("keypad: a wrong sum keeps the line for fixing", f.edit:GetText() == "8\195\1830")
+  -- D49 (function audit 2026-11-07): a chained sum works on the full answer, not the rounded one shown
+  ns.Calculator_Press("C")
+  for _, k in ipairs({ "1", "\195\183", "3", "=" }) do ns.Calculator_Press(k) end
+  check("D49: 1 / 3 shows 0.333333 in the answer line (as before)", f.result.text == "0.333333", f.result.text)
+  for _, k in ipairs({ "\195\151", "3", "=" }) do ns.Calculator_Press(k) end
+  check("D49: ... then x 3 = 1 (not 0.999999)", f.result.text == "1", f.result.text)
+  ns.Calculator_Press("C")
+  for _, k in ipairs({ "0", ".", "0", "0", "0", "0", "0", "0", "1", "=" }) do ns.Calculator_Press(k) end
+  check("D49: 0.0000001 shows 1e-07 in the answer line (as before)", f.result.text == "1e-07", f.result.text)
+  check("D49: ... the line keeps it in plain digits", not f.edit:GetText():find("e", 1, true), f.edit:GetText())
+  for _, k in ipairs({ "\195\151", "1", "0", "=" }) do ns.Calculator_Press(k) end
+  check("D49: ... then x 10 works (0.000001), no 'e is not something a sum can hold'", f.result.text == "0.000001", f.result.text)
+  ns.Calculator_Press("C")
   -- layout (V11): 20 keys in 4 columns, every key inside the window's width
   local keys, maxRight = 0, 0
   for _, b in ipairs(f.keys) do
@@ -223,7 +243,9 @@ MUTATIONS = [
     ("commas not checked", [("        if not okGroups then return", "        if false then return")]),
     ("no k / m / b", [("    if SUFFIX[suf] and", "    if false and SUFFIX[suf] and")]),
     ("percent ignored", [("        while peek() == \"%\" do take(); v = v / 100 end", "        while peek() == \"%\" do take() end")]),
-    ("answer not reused", [("    frame.edit:SetText((answer:gsub(\",\", \"\")))", "    frame.edit:SetText(\"\")")]),
+    ("answer not reused", [("    frame.edit:SetText(ns.CalcExact(v))", "    frame.edit:SetText(\"\")")]),
+    ("the rounded answer reused (D49)", [("    frame.edit:SetText(ns.CalcExact(v))", "    frame.edit:SetText((answer:gsub(\",\", \"\")))")]),
+    ("no x after a suffix (D51)", [(' or after == "x" or after == "X")', ')')]),
     ("history not capped", [("local HISTORY_LINES, HISTORY_KEPT = 3, 10", "local HISTORY_LINES, HISTORY_KEPT = 3, 1000")]),
     ("no grouping commas", [("    return Group(int) .. frac", "    return int .. frac")]),
 ]

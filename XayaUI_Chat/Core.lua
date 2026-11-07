@@ -336,9 +336,22 @@ end
 -- The game's own functions then lay the windows out again.
 -- (Chat 0.6.33) in two halves: the skin's (Blizzard's chat back where and how the game draws it) and Improved Chat's (collapse and
 -- fade alpha back, the block hidden). C.Teardown does both; the Chat Panel turned off with Improved Chat still on does the first only.
+-- audit D31 (Chat 0.6.33): the game's own fade of old lines, as it was before XayaUI set it. The fade is Improved Chat's (UI-18 / UI-21),
+-- so this runs when Improved Chat stops (Fade.lua) and at the full teardown, not when only the Chat Panel's look is taken off.
+function C.RestoreTextFade()
+    for _, f in ipairs(C.Frames()) do
+        local o = f._xuiFade
+        if o ~= nil then
+            if f.SetFading then pcall(f.SetFading, f, o[1] and true or false) end
+            if f.SetTimeVisible and type(o[2]) == "number" then pcall(f.SetTimeVisible, f, o[2]) end
+            f._xuiFade = nil
+        end
+    end
+end
 function C.Teardown()
     if not C.active then return end
     C.TeardownSkin()
+    C.RestoreTextFade()
     C.active = false
     C.master, C.fade = 1, 1
     for _, el in ipairs(C.alphaEls) do
@@ -453,7 +466,8 @@ function ns.Chat_OnDBReady()
     -- V14: the Chat Panel saved off (or the Reskin tab off) and Improved Chat saved off: nothing more is built, registered or run
     if not ((s.enabled and ns.ReskinTabOn()) or s.improvedOn ~= false) then return end
     -- the privacy defaults are merged here, at the same moment as before (INFERENCE: in the game this runs while this file loads, before
-    -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14)
+    -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14). Since
+    -- Chat 0.6.33 (audit D38) Privacy.lua's defaults match that: no border, no label unless ticked.
     ns.Merge(CueRulesDB.chat, ns.CHAT_DEFAULTS)
     C.EnsureDefaults()
     C.StartPart("panel", s)                                       -- the refresh events below; the first refresh starts the rest

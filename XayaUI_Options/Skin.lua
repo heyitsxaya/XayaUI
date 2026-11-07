@@ -1116,7 +1116,11 @@ local function PaintNameEdit(w, arg)
         do local c = TC("xui-pane", "border", { 0.35, 0.35, 0.35, 1 }); eb.line:SetColorTexture(c[1], c[2], c[3], 0.8) end
         eb:SetScript("OnEnter", function(self) local c = TC("xui-pane", "bg", { 0.1, 0.1, 0.1, 1 }); self.bg:SetColorTexture(c[1], c[2], c[3], 0.9) end)
         eb:SetScript("OnLeave", function(self) if not self:HasFocus() then self.bg:SetColorTexture(0, 0, 0, 0) end end)
-        eb:SetScript("OnEditFocusGained", function(self) local c = TC("xui-window", "bg", { 0, 0, 0, 1 }); self.bg:SetColorTexture(c[1], c[2], c[3], 1); self:HighlightText() end)
+        eb:SetScript("OnEditFocusGained", function(self)
+            local sp = self.xuiSpec
+            if sp and sp.locked and sp.locked() then self.xuiCancel = true; self:ClearFocus(); return end   -- edit-locked (audit D44): no typing
+            local c = TC("xui-window", "bg", { 0, 0, 0, 1 }); self.bg:SetColorTexture(c[1], c[2], c[3], 1); self:HighlightText()
+        end)
         eb:SetScript("OnEscapePressed", function(self) self.xuiCancel = true; self:ClearFocus() end)
         eb:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
         eb:SetScript("OnEditFocusLost", function(self)
@@ -1130,6 +1134,7 @@ local function PaintNameEdit(w, arg)
         do local c = TC("xui-text-muted", "text", { 0.45, 0.45, 0.45, 1 }); f.xuiNameHint:SetTextColor(c[1], c[2], c[3]) end
     end
     eb.xuiSpec = ed
+    eb:SetAlpha((ed.locked and ed.locked()) and 0.5 or 1)   -- grayed while edit-locked
     eb:SetFrameLevel(f:GetFrameLevel() + 3)
     eb:ClearAllPoints()
     if ed.title then   -- number is the header title; this box (the optional name) goes beneath it, smaller and gray

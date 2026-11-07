@@ -153,6 +153,9 @@ function proto:SetBackdropColor(r, g, b, a) self._bgc = { r, g, b, a } end
 function proto:SetMovable(v) self._movable = v end
 function proto:SetFading(v) self._fading = v end
 function proto:SetTimeVisible(v) self._timeVisible = v end
+-- the game's own values before anything set them (stand-in values: fading on, 120 s); GetFading / GetTimeVisible (widgets.md)
+function proto:GetFading() if self._fading == nil then return true end return self._fading end
+function proto:GetTimeVisible() return self._timeVisible or 120 end
 function proto:SetUserPlaced(v) self._userPlaced = v end
 function proto:StartMoving() self._moving = true end
 function proto:StartSizing() self._sizing = true end
@@ -216,7 +219,10 @@ GetNetStats = function() return 0, 0, 20, 35 end
 GetMoney = function() return 12345678 end
 GetZoneText = function() return "Dornogal" end
 GetSubZoneText = function() return "" end
-C_FriendList = { GetNumOnlineFriends = function() return 3 end, AddIgnore = function(n) W.ignored[#W.ignored + 1] = n end }
+C_FriendList = { GetNumOnlineFriends = function() return 3 end, AddIgnore = function(n)   -- returns added: bool (namespaces.md 1847); W.ignoreFull = the list is full
+    if W.ignoreFull then return false end
+    for _, x in ipairs(W.ignored) do if x == n then return false end end
+    W.ignored[#W.ignored + 1] = n; return true end }
 BNGetNumFriends = function() return 5, 2 end
 SOUNDKIT = { TELLMESSAGE = 3081 }
 issecretvalue = function(v) return v == "<<secret>>" end   -- test sentinel for a protected value
