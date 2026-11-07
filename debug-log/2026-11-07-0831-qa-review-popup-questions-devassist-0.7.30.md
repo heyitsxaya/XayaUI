@@ -34,8 +34,17 @@ know what you had to execute blindly and need feedback on."
     and a note. Back / Skip / Next (Next needs a choice or a note on an unanswered question), a count, and Copy answers (a selected
     multi-line box).
   - Commands: `/xui dev review`, `/xui dev questions` (also `/xuidev review`, `/xuidev questions`).
-- `QAQuestions.lua` (new): the ONE question data file. Seeded with REVIEW-1..4 (this build's own blind choices) and O-109 (wording
-  from the hub's brief). Other sessions' questions are added as their exact wording arrives.
+- `QAQuestions.lua` (new): the ONE question data file, 127 questions. They were transcribed from the entries that 15 sessions sent
+  between 08:26 and 08:31 UTC: D8 (first, per the hub: O-109), externals, the hub (H1/H2/H3 = O-128/O-139/O-146), performance, chat
+  review, chat follow-ups, rule generation, function audit, nameplates, S1, S8 bar cues, Additional Concepts, games/RPPM, roadmap
+  items, plus this build's REVIEW-1..4.
+  - Her words are copied exactly as sent.
+  - Entries with several parts are split into one question each (CHAT-3d, CHAT-5). Duplicates are merged: H4 = FA-16-scope,
+    H5 = D8-Q1, H7 = Q-PERF-3, Q-PERF-2 = EXT-Q3.
+  - A question with no words from her shows "(no words of yours: ...)". A question where nothing was decided yet has
+    `keep = "Leave it undecided for now"`.
+  - CHAT-3a says no bar display ships, which conflicts with S8's report that Bar cues are on main; its text says so.
+  - Not received yet: Reskin elements Q1-Q5 / Q13, Top tabs + Profiles UI-25, LFG / Wordle #429 combined or split.
 - `QAWalks-review.lua` (new, V22): three walkthroughs, all prefill = true (J19).
 - `QAWalk.lua`: `QA.Fingerprint`, `QA.StatusText`; a finished run's result keeps `fp`.
 - `DevAssist.lua`: `/xuidev review` and `/xuidev questions`; the help line lists qa / review / questions.

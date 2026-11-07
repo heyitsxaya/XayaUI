@@ -126,13 +126,15 @@ QA.questions, QA.questionByKey = {}, {}
 -- XayaUI_DevQA.RegisterQuestion{ key, area, words, did, choices = { "...", ... } (1-4 alternatives; "Keep it" comes first by itself),
 -- since = "<addon version it shipped in>", order (optional) }
 function QA.RegisterQuestion(q)
-    if type(q) ~= "table" or type(q.key) ~= "string" or q.key == "" or type(q.words) ~= "string" or type(q.did) ~= "string" then return end
-    local choices = { "Keep it" }
+    if type(q) ~= "table" or type(q.key) ~= "string" or q.key == "" or type(q.did) ~= "string" then return end
+    if q.words ~= nil and type(q.words) ~= "string" then return end
+    -- keep = the first choice's label when "Keep it" does not fit (a question where nothing was decided yet)
+    local choices = { type(q.keep) == "string" and q.keep ~= "" and q.keep or "Keep it" }
     for i, c in ipairs(type(q.choices) == "table" and q.choices or {}) do
         if i > 4 then break end
         if type(c) == "string" and c ~= "" then choices[#choices + 1] = c end
     end
-    local e = { key = q.key, area = tostring(q.area or "Other"), words = q.words, did = q.did, choices = choices,
+    local e = { key = q.key, area = tostring(q.area or "Other"), words = (q.words ~= "" and q.words) or nil, wordsNote = q.wordsNote, did = q.did, choices = choices, ask = q.ask,
         since = tostring(q.since or ""), order = tonumber(q.order) or (#QA.questions + 1) }
     if QA.questionByKey[q.key] then
         for i, x in ipairs(QA.questions) do if x.key == q.key then e.order = x.order; QA.questions[i] = e end end
@@ -382,8 +384,10 @@ function ShowQuestion()
     local done = 0
     for _, e in ipairs(QA.questions) do if a[e.key] then done = done + 1 end end
     QW.count:SetText(("Question %d of %d  (%d answered)%s"):format(qi, n, done, x and "  |cff60ff60answered|r" or ""))
-    QW.text:SetText(("|cffffd100Area:|r %s   |cff999999[%s]%s|r\n\n|cffffd100Your words:|r\n\"%s\"\n\n|cffffd100What we did without asking:|r\n%s"):format(
-        Esc(q.area), Esc(q.key), q.since ~= "" and ("  shipped in " .. Esc(q.since)) or "", Esc(q.words), Esc(q.did)))
+    local words = q.words and ("\"" .. Esc(q.words) .. "\"") or ("|cff999999(no words of yours: " .. Esc(q.wordsNote or "this came up during the work") .. ")|r")
+    QW.text:SetText(("|cffffd100Area:|r %s   |cff999999[%s]%s|r\n\n|cffffd100Your words:|r\n%s\n\n|cffffd100What we did without asking:|r\n%s%s"):format(
+        Esc(q.area), Esc(q.key), q.since ~= "" and ("  " .. Esc(q.since)) or "", words, Esc(q.did),
+        q.ask and ("\n\n|cffffd100The question:|r " .. Esc(q.ask)) or ""))
     QW.child:SetHeight(math.max(10, (QW.text.GetStringHeight and QW.text:GetStringHeight() or 0) + 4)); QW.scroll:SetVerticalScroll(0)
     for i, c in ipairs(QW.choices) do
         local label = q.choices[i]

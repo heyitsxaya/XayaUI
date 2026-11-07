@@ -72,8 +72,20 @@ local first = QA.questions[1]
 local txt = q.text:GetText()
 check("  ...shows the area, her words verbatim and what was done without asking", txt:find(first.area, 1, true) and txt:find(first.words:sub(1, 40), 1, true)
   and txt:find("What we did without asking", 1, true) and txt:find(first.did:sub(1, 40), 1, true))
-check("  ...\"Keep it\" is the first choice, then the alternatives", q.choices[1]:IsShown() and q.choices[1].label:GetText():find("Keep it", 1, true)
+check("  ...the keep choice first (\"Keep it\" unless the question names its own), then the alternatives", q.choices[1]:IsShown() and q.choices[1].label:GetText():find(first.choices[1], 1, true)
   and q.choices[#first.choices].label:GetText():find(first.choices[#first.choices]:sub(1, 20), 1, true) and not q.choices[#first.choices + 1]:IsShown())
+check("the first question is the held D8 load-condition changes (O-109)", first.key == "D8-Q1" and txt:find("Ship the held rule load-condition changes?", 1, true) ~= nil, first.key)
+local plain, wordless = 0, nil
+for i, x in ipairs(QA.questions) do
+  if x.choices[1] == "Keep it" then plain = plain + 1 end
+  if not x.words and not wordless then wordless = i end
+end
+check("every question has a keep choice and 0-4 alternatives", (function() for _, x in ipairs(QA.questions) do if #x.choices < 1 or #x.choices > 5 or x.did == "" then return false end end; return true end)() and plain > 10, plain)
+local keepQi = RV.State().qi
+for _ = 1, wordless - 1 do RV.Skip() end
+check("a question with no words of hers says so instead of quoting", RV.State().qi == wordless and q.text:GetText():find("no words of yours", 1, true) ~= nil, q.text:GetText():sub(1, 200))
+for _ = 1, wordless - 1 do RV.Back() end
+check("  ...and Back returns to question 1", RV.State().qi == keepQi)
 q.next:GetScript("OnClick")(q.next)
 check("Next with nothing picked asks for an answer and stays", RV.State().qi == 1 and q.hint:GetText():find("Pick an answer", 1, true) ~= nil
   and XayaUIDevAssistDB.questions.answers[first.key] == nil)

@@ -166,8 +166,8 @@ e1f89ddf0fdf2434ed0137a495095e90  XayaUI_DevAssist/DevAssist.lua
 4f406e5f61d664082acd91fcb9dcafdd  XayaUI_DevAssist/FORMULA-CAPTURE-WALKTHROUGH.md
 540e759425acffdcd2e04155ed259ae3  XayaUI_DevAssist/FormulaCapture.lua
 10a00a7f66ce081044f89e3d998619fd  XayaUI_DevAssist/Probe.lua
-d6693ca58a99498e8316121f4110b68e  XayaUI_DevAssist/QAQuestions.lua
-e65026be05d69f0e9e7229bc0cb042e7  XayaUI_DevAssist/QAReview.lua
+28c9bdf5dc0786ef2c973be81c817908  XayaUI_DevAssist/QAQuestions.lua
+8d70b074e2d0688b1773a410ecf6dfa3  XayaUI_DevAssist/QAReview.lua
 49161902be489ee62680632d44d25368  XayaUI_DevAssist/QAWalk.lua
 d4464e326d41a38d877b3f0bf7de9cad  XayaUI_DevAssist/QAWalks-Checklist.lua
 f54b7db2a69b6a507758d0220c71957f  XayaUI_DevAssist/QAWalks-chat.lua
@@ -570,7 +570,7 @@ a3a7006085abe2c2d45792e2a0dfdc4c  debug-log/2026-11-06-2350-chat-issue-qa-walks-
 6a016d1abd045d0c5139db55f57467d7  debug-log/2026-11-07-0022-m-plus-record-prompt-perf-meter-devassist-0.7.8.md
 9f306977e37ec5bb01d75a9510dda64e  debug-log/2026-11-07-0023-standard-gcd-calculation-qol-0.7.39.md
 f1e69afb494a02b2fafb34544eb14c98  debug-log/2026-11-07-0602-qa-walks-display-devassist-0.7.11.md
-b947ba0ff7fc30948a606a686c0288da  debug-log/2026-11-07-0831-qa-review-popup-questions-devassist-0.7.30.md
+2352a40f47a46df4bbb2b820ff9310ca  debug-log/2026-11-07-0831-qa-review-popup-questions-devassist-0.7.30.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
 0e3281ad9694fd73d03d78efb1ea5483  docs/QA-CHECKLIST.md
 8dba2b54e33cfc3e4a8f1a20a7cfbe6e  docs/README-INGAME.md
@@ -803,7 +803,7 @@ fb1c1f19da3520085ebcb7a94d35e7e8  tests/precheck_run.py
 e43831498bacdfeb4c158aa0147a9644  tests/preview_icons_run.py
 69c610cd804812db130140e9e506c453  tests/preview_layout_run.py
 cf93c863d353050305e5a15faf19d724  tests/qa_perf_walks_run.py
-f7bac2f736b48aca315e9299590a8e04  tests/qa_review_run.py
+249dbfbca1c4eed098197dfcc4b70fcd  tests/qa_review_run.py
 13d8e9af25cd13fee68d7ba6c4b165cc  tests/qa_walk_run.py
 af9c61485a8a24ffc2ac273ffbf48dc1  tests/qa_walks_chat_run.py
 15c2fad1e92c15d59b152b3f07541126  tests/qa_walks_display_run.py
