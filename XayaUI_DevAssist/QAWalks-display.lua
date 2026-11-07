@@ -302,3 +302,22 @@ QA.Register("ui-stat-gcd", { title = "Stat list labels and the GCD", qa = "E1z94
             return match, ("rule %s: %.2f s; the game: %.2f s%s"):format(tostring(why), calc, live.dur, match and "" or " (differs: a buff or talent may change it; say which in the note)")
         end },
 } })
+
+-------------------------------------------------------------------------------
+-- 7. Nesting in the left pane (UI-8 "Parent's name + 8 px"; UI-69, Xaya: "indents are now TOO large")
+-------------------------------------------------------------------------------
+local function ReskinRow(uv)
+    local tree = Find(function(w) local u = w.type == "TreeGroup" and w:GetUserDataTable(); return u and u.path and u.path[1] == "reskin" and #u.path == 1 end)
+    for _, b in ipairs(tree and tree.buttons or {}) do if b:IsShown() and b.uniquevalue == uv then return b end end
+end
+QA.Register("ui-nesting", { title = "Settings: parts nested 8 px under their feature", qa = "B218", order = 266, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the Blizzard UI Reskin tab opens on Chat Panel, with its parts listed.\n\n|cffffd100Expect:|r Layout, Appearance, Chat Data Panel ... start just a little right of where \"Chat Panel\" starts (8 px), with no wide gap; Stat list sits the same way under Character Pane.",
+        setup = function() Open("reskin", "chatpanel") end,
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local p, c = ReskinRow("chatpanel"), ReskinRow("chatpanel\001layout")
+            if not (p and c and p.xuiTextL and c.xuiTextL) then return false, "Chat Panel and its Layout row are not on screen (is the Blizzard UI Reskin tab on?)" end
+            local d = c.xuiTextL - p.xuiTextL
+            return math.abs(d - 8) < 0.5, ("Layout's name starts %d px right of Chat Panel's (want 8)"):format(d)
+        end },
+} })

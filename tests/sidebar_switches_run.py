@@ -192,7 +192,7 @@ local function box(tab, uv) local b = row(tab, uv); local x = b and b.xuiSwitchB
 local function selected(tab) local st = ACD:GetStatusTable("CueRules", { tab }); return st and st.groups and st.groups.selected end
 local function settle(steps)   -- a few frames, then what the game does when the tree frame gets its height (AceGUI's own OnSizeChanged:
   W.tick(0.05, steps or 6)       -- RefreshTree); the stand-in fires no OnSizeChanged, so without this a redrawn tree keeps one row
-  for _, tab in ipairs({ "bonus", "qol", "set" }) do
+  for _, tab in ipairs({ "bonus", "qol", "set", "reskin" }) do
     local t = tree(tab); local f = t and t.treeframe and t.treeframe:GetScript("OnSizeChanged")
     if f then t.xuiLines = nil; f(t.treeframe) end   -- (xuiLines: Skin.lua's fitted line count; see the header)
   end
@@ -447,6 +447,15 @@ local cx
 if cb then _, _, _, cx = cb:GetPoint(1) end
 check("G: a part's row starts 8 px right of where its parent's name starts (Calculator's box under Utilities)", u and u.xuiTextL and cx == u.xuiTextL + 8,
   ("Utilities name at %s, Calculator row %s box %s shown %s at %s"):format(tostring(u and u.xuiTextL), tostring(c ~= nil), tostring(cb ~= nil), tostring(cb and cb:IsShown()), tostring(cx)))
+-- (Options 0.6.63; UI-69, Xaya: "indents are now TOO large" [the Blizzard UI Reskin tab: Stat list under Character Pane, Layout ...
+-- under Chat Panel far to the right]) a part with no tick box and no open / close arrow keeps no empty slot: its NAME starts 8 px right
+-- of where its parent's name starts (UI-8, "Parent's name + 8 px"); before, the empty 16 px arrow slot + 3 put it 27 px in
+ACD:SelectGroup("CueRules", "reskin", "chatpanel"); settle()
+local cp, lay = row("reskin", "chatpanel"), row("reskin", "chatpanel\001layout")
+check("G: a part with no tick box (Chat Panel > Layout): its name starts 8 px right of its parent's name (UI-69)",
+  cp and lay and cp.xuiTextL and lay.xuiTextL == cp.xuiTextL + 8,
+  ("Chat Panel name at %s, Layout name at %s"):format(tostring(cp and cp.xuiTextL), tostring(lay and lay.xuiTextL)))
+ACD:SelectGroup("CueRules", "bonus", "tooltips"); settle()
 -- greying: Notepad off, then on
 click("bonus", "utilities\001notepad", false)
 local n = row("bonus", "utilities\001notepad")

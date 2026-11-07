@@ -6773,10 +6773,18 @@ function ns.MakeSideToggle(button, kind)
     return b
 end
 
+-- The rule list's right-hand columns, from the row's right edge (Options 0.6.63; REQUEST-LOG UI-70: "icons still not appropriately
+-- handled and display irregularly"; UI-72, her answer "copy the WA format w/ toggle being under group as previously suggested"): every
+-- row keeps the same slots, left to right [lock][note][preview][open / close], each empty where the row has nothing of that kind, so
+-- the icons line up; a header's open / close button is the far-right one with the preview just left of it (WeakAuras); a group's
+-- sits under its icon. Two-row rows (a rule with its type icon) keep their own: the preview on the top row, the locks under it.
+ns.OptionsApi.SIDE_COL = { expand = 4, preview = 4 + 19, note = 4 + 19 * 2, lock = 4 + 19 * 3 }
 function ns.PaintSide(button, rules, vis, folder)
     local showEdit = folder ~= nil or #rules > 0
     local showMove = vis and #vis > 0
     local off = 4
+    local fixed = not button.xuiTwoRow
+    local C = ns.OptionsApi.SIDE_COL
     if showEdit then
         if not button.xuiEdit then button.xuiEdit = ns.MakeSideToggle(button, "edit") end
         local b = button.xuiEdit
@@ -6790,9 +6798,9 @@ function ns.PaintSide(button, rules, vis, folder)
         b.slash:SetShown(locked)
         b.tex:SetDesaturated(locked)
         b.tex:SetAlpha(locked and 0.7 or 1)
-        b:ClearAllPoints(); b:SetPoint("RIGHT", button, "RIGHT", -off, button.xuiTwoRow and -9 or 0)
+        b:ClearAllPoints(); b:SetPoint("RIGHT", button, "RIGHT", -(fixed and C.note or off), button.xuiTwoRow and -9 or 0)
         b:Show()
-        off = off + 19
+        off = fixed and (C.note + 19) or (off + 19)
     elseif button.xuiEdit then button.xuiEdit:Hide() end
     if showMove then
         if not button.xuiMove then button.xuiMove = ns.MakeSideToggle(button, "move") end
@@ -6804,9 +6812,9 @@ function ns.PaintSide(button, rules, vis, folder)
         if folder and ns.IsGroupUnlocked then n = ns.IsGroupUnlocked(folder) and #vis or 0; b.xuiOn = (n == #vis) end
         b.tex:SetTexture(n == 0 and ns.LOCK_ICON or ns.MOVE_ICON)   -- our own flat icons (Xaya 2026-11-06: white lock, gold mover)
         b.tex:SetAlpha(n == 0 and 0.85 or (n == #vis and 1 or 0.6))
-        b:ClearAllPoints(); b:SetPoint("RIGHT", button, "RIGHT", -off, button.xuiTwoRow and -9 or 0)
+        b:ClearAllPoints(); b:SetPoint("RIGHT", button, "RIGHT", -(fixed and C.lock or off), button.xuiTwoRow and -9 or 0)
         b:Show()
-        off = off + 19
+        off = fixed and (C.lock + 19) or (off + 19)
     elseif button.xuiMove then button.xuiMove:Hide() end
     if button.text then button.text:SetPoint("RIGHT", button, "RIGHT", -math.max(off, button.xuiIconR or 0), 2) end
     button.xuiTextR = math.max(off, button.xuiIconR or 0)   -- #369: the name's right inset (Skin.lua ns.EnsureNameRoom)
@@ -7261,7 +7269,9 @@ local function DecorateButton(button)
         if isRootRow then          -- root headers: round toggle at the right end
             chevMode = "right"
             button.xuiChev:SetSize(16, 16)
-            button.xuiChev:SetPoint("RIGHT", button, "RIGHT", -(4 + 19 * 2 + 4), 0)
+            -- (Options 0.6.63; UI-70 / UI-72, her answer "copy the WA format": a header's open / close button at the far right end, the
+            -- preview just left of it; it sat 46 px in before, on top of the eye and headphone columns)
+            button.xuiChev:SetPoint("RIGHT", button, "RIGHT", -ns.OptionsApi.SIDE_COL.expand, 0)
         elseif tw > 0 then         -- groups: toggle sits under the group's icon
             chevMode = "icon"
             button.xuiChev:SetSize(14, 14)
@@ -7332,14 +7342,17 @@ local function DecorateButton(button)
             if vis and #vis > 0 then button.xuiHead:Hide() else paint(button.xuiHead, snd, "sound", 4 + 19 * 3) end
             button.xuiIconR = 4 + 17 + 3
         else
-            -- eye and headphone live in fixed columns on the RIGHT, just left of the movement / edit locks
-            paint(button.xuiEye, vis, "visual", 4 + 19 * 3)
-            paint(button.xuiHead, snd, "sound", 4 + 19 * 2)
-            button.xuiIconR = (vis and #vis > 0) and (4 + 19 * 3 + ICON_W + 3) or ((snd and #snd > 0) and (4 + 19 * 2 + ICON_W + 3) or 0)
+            -- (Options 0.6.63; UI-70 / UI-72, "copy the WA format") one preview column, just left of the open / close slot: the eye, or
+            -- the headphone when the row only plays sounds (as on two-row rows); every row keeps the same columns
+            local col = ns.OptionsApi.SIDE_COL.preview
+            paint(button.xuiEye, vis, "visual", col)
+            if vis and #vis > 0 then button.xuiHead:Hide() else paint(button.xuiHead, snd, "sound", col) end
+            button.xuiIconR = ((vis and #vis > 0) or (snd and #snd > 0)) and (col + ICON_W + 3) or 0
         end
     elseif button.xuiEye then
         button.xuiEye:Hide(); button.xuiHead:Hide()
     end
+    if chevMode == "right" then button.xuiIconR = math.max(button.xuiIconR or 0, ns.OptionsApi.SIDE_COL.expand + 16 + 3) end
     -- a feature's on / off as a tick box in the row's arrow slot, or right after the arrow (Options 0.6.40)
     local swShift = ns.OptionsApi.PaintRowSwitch(button, toggleCfg, x0, canExpand and chevMode == "left")
     do
