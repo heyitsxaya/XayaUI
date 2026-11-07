@@ -93,17 +93,17 @@ local function StepEnabled(rule, rt, ctx, now)
         rt.active, rt.lastPlay = true, now
         if not rule.parentUid then RunActionsSafe(rule, rt, "start") end
         if HasSound(rule) then PlaySoundSafe(rule, rt) end
-        ns.LogKind("rule", "|cff55ff55FIRED|r %s%s", tostring(rule.name), SoundNote(rule))
+        if ns.LogWanted("rule") then ns.LogKind("rule", "|cff55ff55FIRED|r %s%s", tostring(rule.name), SoundNote(rule)) end
     elseif result then
         local rep = rule.repeatSec or 0
         if rep > 0 and (now - rt.lastPlay) >= rep then
             rt.lastPlay = now
             if HasSound(rule) then PlaySoundSafe(rule, rt) end
-            ns.LogKind("rule", "repeat  %s", tostring(rule.name))
+            if ns.LogWanted("rule") then ns.LogKind("rule", "repeat  %s", tostring(rule.name)) end
         end
     else
         if rt.active then
-            ns.LogKind("rule", "cleared %s: %s", tostring(rule.name), info and ns.WhyNot(info) or "error")
+            if ns.LogWanted("rule") then ns.LogKind("rule", "cleared %s: %s", tostring(rule.name), info and ns.WhyNot(info) or "error") end
             if not rule.parentUid then RunActionsSafe(rule, rt, "finish") end
         end
         rt.active = false

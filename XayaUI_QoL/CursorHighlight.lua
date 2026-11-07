@@ -211,6 +211,7 @@ local function Layout(c)
 end
 
 local hiddenNow = false
+local lastCX, lastCY, lastCS   -- the cursor position and UI scale the anchor was last placed at (nil: place it on the next frame)
 local function OnUpdate()
     local c = CueRulesDB and CueRulesDB.cursorHighlight
     if not c then return end
@@ -224,6 +225,9 @@ local function OnUpdate()
     if hide then return end
     local x, y = GetCursorPosition()
     local s = UIParent:GetEffectiveScale()
+    -- a still cursor moves nothing (QoL 0.7.41, REQUEST-LOG A15 P-13: idle QoL showed 1% "now"; the anchor was re-set every frame)
+    if x == lastCX and y == lastCY and s == lastCS then return end
+    lastCX, lastCY, lastCS = x, y, s
     anchor:ClearAllPoints()
     anchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / s, y / s)
 end
@@ -260,6 +264,7 @@ function ns.CursorHighlight_Apply()
     ListenTheme(c.useThemeColor)
     hiddenNow = false
     frame:Show()
+    lastCX, lastCY, lastCS = nil, nil, nil   -- (placed again on the first frame)
     frame:SetScript("OnUpdate", OnUpdate)
 end
 
