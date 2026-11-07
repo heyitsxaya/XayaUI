@@ -1948,16 +1948,48 @@ function GearCompareSections(ctx, out)
             local n = Item(key, text, "note"); n.value, n.tone = "", tone
             chg.items[#chg.items + 1] = n
         end
-        local function Lines(who, t, key)
-            if not t then FNote(key, who .. ": the game's tooltip could not be read", "mute")
-            elseif #t.effects == 0 then FNote(key, who .. ": none", "mute")
-            else for j, e in ipairs(t.effects) do FNote(key .. "_" .. j, who .. ": " .. e) end end
+        -- (QoL 0.7.35; REQUEST-LOG UI-34 / UI-35, Xaya 2026-11-06: "this reads poorly. change it to Equipped: (item proc source) line
+        -- break tooltip"; compared items, her answer: "Compared: <item name>", line break, tooltip) the item the effect comes from on the
+        -- first line, the game's effect line under it
+        local function Lines(prefix, name, t, key)
+            local head = prefix .. ": " .. (name or "?") .. "\n"
+            if not t then FNote(key, head .. "the game's tooltip could not be read", "mute")
+            elseif #t.effects == 0 then FNote(key, head .. "none", "mute")
+            else for j, e in ipairs(t.effects) do FNote(key .. "_" .. j, head .. e) end end
         end
-        Lines("Equipped", eqTip, "gc_fx_eq")
+        local eqName = old and type(old.link) == "string" and old.link:match("%[(.-)%]") or nil
+        Lines("Equipped", eqName or "the equipped item", eqTip, "gc_fx_eq")
+        -- (QoL 0.7.35; UI-35 / UI-38, Xaya: "guillotine and a weapon share a set, and this should be indicated as part of the comparison";
+        -- her answer "Set line under each item") an item's set: C_Item.GetItemInfo(itemInfo) -> ..., setID: number? (16th return;
+        -- MayReturnNothing: nil until the item's data is in, then the line is simply left out); its name: C_Item.GetItemSetInfo(setID)
+        -- -> result: cstring (namespaces.md:2771, 2790)
+        local function SetOf(link)
+            if type(link) ~= "string" or not (C_Item and C_Item.GetItemInfo) then return nil end
+            local r = { R(C_Item.GetItemInfo, link) }
+            local id = r[16]
+            if not num(id) or id <= 0 then return nil end
+            local nm = C_Item.GetItemSetInfo and R(C_Item.GetItemSetInfo, id)
+            return id, (type(nm) == "string" and nm ~= "") and nm or nil
+        end
+        local eqSetID, eqSetName = SetOf(old and old.link)
+        if eqSetID and eqSetName then
+            local others = {}
+            for slot = 1, 19 do
+                if not (old and slot == old.slot) then
+                    local l = R(GetInventoryItemLink, "player", slot)
+                    if type(l) == "string" and SetOf(l) == eqSetID then others[#others + 1] = l:match("%[(.-)%]") or "?" end
+                end
+            end
+            FNote("gc_fx_eqset", "Set: " .. eqSetName .. ((#others > 0) and (" (with " .. table.concat(others, ", ") .. ")") or ""))
+        end
         local eqSet = {}
         for _, e in ipairs(eqTip and eqTip.effects or {}) do eqSet[e] = true end
         for i, cd in ipairs(cs) do
-            Lines(cd.name, tips[i], "gc_fx_" .. i)
+            Lines("Compared", cd.name, tips[i], "gc_fx_" .. i)
+            if eqSetID and eqSetName then
+                if SetOf(cd.link) == eqSetID then FNote("gc_fx_set_" .. i, "Also in " .. eqSetName, "good")
+                else FNote("gc_fx_set_" .. i, "Not in " .. eqSetName .. ": replacing the equipped item breaks the set", "warn") end
+            end
             local t = tips[i]
             if t and eqTip then
                 local same = #t.effects == #eqTip.effects
@@ -3075,7 +3107,14 @@ local function StatMapSections(ctx, out)
                 local v = N(ArmorVsTarget(), armor)
                 if num(v) then MapNote(it, "» Against your target", P(v * 100)) end
             end
-            if armorFromP then MapNote(it, "From " .. StatName(p) .. " (mastery)", Was(armorFromP, delta ~= 0 and armorFromPAfter or nil, SB), nil, "mastery", PerPoint(apct / 100)) end
+            -- (QoL 0.7.35; REQUEST-LOG UI-36 / UI-37, Xaya 2026-11-06: "unclear what this is supposed to convey to a user"; her answer
+            -- "why not just "from mastery: fel blood passive" in this case?") the label names the mastery spell the percent was read from
+            -- (its name as the game gives it, ArmorPerPrimary's second return; Fel Blood for Vengeance); "From mastery" if no name
+            if armorFromP then
+                local _, msrc = ArmorPerPrimary(ctx)
+                local lbl = (type(msrc) == "string" and msrc ~= "") and ("From mastery: " .. msrc .. " passive") or "From mastery"
+                MapNote(it, lbl, Was(armorFromP, delta ~= 0 and armorFromPAfter or nil, SB), nil, "mastery", PerPoint(apct / 100))
+            end
             local abase, _, _, abonus = R(UnitArmor, "player")
             if num(abase) then
                 -- the base is the value; buffs and talents and the bonus armor are its note (QoL 0.7.15)

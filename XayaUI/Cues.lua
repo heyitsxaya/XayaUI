@@ -3,10 +3,10 @@
 -- so the existing sound / display engine and editors are reused. A cue fires while ANY enabled condition that lists it is true.
 local addonName, ns = ...
 
-ns.CUE_KINDS = { "sound", "speech", "text", "texture", "icon", "custom" }
+ns.CUE_KINDS = { "sound", "speech", "text", "texture", "icon", "bar", "custom" }   -- bar: BarCue.lua (RM-BARS, Xaya 2026-11-06)
 local KIND_OK = {}
 for _, k in ipairs(ns.CUE_KINDS) do KIND_OK[k] = true end
-ns.CUE_KIND_LABEL = { sound = "Sound", speech = "Speech", text = "Text", texture = "Texture", icon = "Icon", custom = "Custom" }
+ns.CUE_KIND_LABEL = { sound = "Sound", speech = "Speech", text = "Text", texture = "Texture", icon = "Icon", bar = "Bar", custom = "Custom" }
 local MAX_CUES = 40
 -- Frame strata a condition may give a cue (low to high). TOOLTIP is left out on purpose: art there would sit above every window.
 ns.MOD_STRATA = { "BACKGROUND", "LOW", "MEDIUM", "HIGH", "DIALOG", "FULLSCREEN", "FULLSCREEN_DIALOG" }
@@ -104,6 +104,7 @@ function ns.NewCueRule(parent, kind)
     if kind == "sound" then n.sound.channel = "SFX" end
     n.visual.trigger = "condition"
     if kind == "icon" then n.visual.kind = "spellicon" end
+    if kind == "bar" and ns.InitBarCue then ns.InitBarCue(n) end   -- 220 x 22, background 20 %, 1 px border, flat, drains right to left
     ns.rules[#ns.rules + 1] = n
     pcall(ns.RefreshVisual, n)
     ns.MarkDirty()

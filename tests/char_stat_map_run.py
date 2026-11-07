@@ -102,8 +102,8 @@ check("Versatility card: » Damage and healing done (every ability) +2.61%, » D
   line("map_vers", "» Damage and healing done (every ability)") == "+2.61%" and cells("map_vers", "» Damage taken") == "-1.30%|92.0 / 1%|", cells("map_vers", "» Damage taken"))
 check("a stat you have no rating in shows only what it does (Avoidance: one line)", #card("map_avoidance").pairs == 1, #card("map_avoidance").pairs)
 check("Defense: Parry 14.01%, from Critical Strike +10.15% (note before DR); Armor from Agility +2,684 (Pt value 1.02); Dodge from Agility +5.00%",
-  card("map_parry").value == "14.01%" and cells("map_parry", "From Critical Strike") == "+10.15%||before DR" and cells("map_armor", "From Agility (mastery)") == "+2,684|1.02|"
-  and line("map_dodge", "From Agility") == "+5.00%", tostring(cells("map_parry", "From Critical Strike")) .. " / " .. tostring(cells("map_armor", "From Agility (mastery)")))
+  card("map_parry").value == "14.01%" and cells("map_parry", "From Critical Strike") == "+10.15%||before DR" and cells("map_armor", "From mastery: Fel Blood passive") == "+2,684|1.02|"
+  and line("map_dodge", "From Agility") == "+5.00%", tostring(cells("map_parry", "From Critical Strike")) .. " / " .. tostring(cells("map_armor", "From mastery: Fel Blood passive")))
 -- Offense and Defense details that used to sit under the Spells filters (B12: they move here, nothing is dropped)
 check("Offense: Attack Power 3,472, from Agility +2,637, » Damage per second +992.0 (3,472 / 3.5)", card("map_ap").value == "3,472"
   and line("map_ap", "From Agility") == "+2,637" and line("map_ap", "» Damage per second") == "+992.0", tostring(card("map_ap") and card("map_ap").value) .. " " .. tostring(line("map_ap", "» Damage per second")))

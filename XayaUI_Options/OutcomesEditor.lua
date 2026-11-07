@@ -465,7 +465,8 @@ local function EmbedCue(pg, og, rule, k)
             node.order = base + (tonumber(node.order) or 0) / 1000
         end
     end
-    if parts and (rule.cueKind == "sound" or rule.cueKind == "speech" or rule.cueKind == "text" or rule.cueKind == "texture" or rule.cueKind == "icon") then
+    if parts and (rule.cueKind == "sound" or rule.cueKind == "speech" or rule.cueKind == "text" or rule.cueKind == "texture" or rule.cueKind == "icon"
+        or (rule.cueKind == "bar" and parts.barArgs)) then
         -- a cue is always on: no "Show ..." tick box, no Options +/- and no "Show when" menu (that is what Conditions decides)
         if rule.cueKind == "sound" then
             rule.sound.enabled = true
@@ -478,6 +479,13 @@ local function EmbedCue(pg, og, rule, k)
             if rule.cueKind == "text" then
                 parts.ensureText()
                 flat("txt", 3, parts.textBody)
+            elseif rule.cueKind == "bar" then
+                -- a Bar cue (RM-BARS, Xaya 2026-11-06): its parts are the bar (size, what it tracks, fill, colour, icon, spark, background),
+                -- then its texts (name, time, stacks / charges count: her list, S8-2), then Position
+                box("bar", 3, "Bar Options", parts.barArgs)
+                local tb = parts.textBody or {}
+                box("bartext", 3.5, "Text: name, time, stacks / charges", { name = parts.barTextArgs and parts.barTextArgs.name, dur = tb.dur, cnt = tb.cnt })
+                sub("pos", 4, parts.posSub)
             else
                 -- Xaya 2026-11-04: "icon options should have their own nested text options to display things like progress /
                 -- duration; stacks; absorb values". Since 0.6.1 the cue's text options never reached Icon / Texture cues: this read

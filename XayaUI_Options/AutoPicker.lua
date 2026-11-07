@@ -31,7 +31,7 @@
 --     and GetCooldownViewerCooldownInfo; docs/reference/api/namespaces.md:1370-1371, structures.md:1798). An entry with hasAura = true is
 --     an aura: selfAura = true on you, selfAura = false on your target. INFERENCE (the documentation lists these fields without
 --     describing them). Its aura ID is its first linkedSpellIDs entry (else its spellID). The Cooldown Manager answers for the spec you
---     are in now only, so auras and debuffs are listed for that spec only.
+--     are in now only; another spec's auras and debuffs come from what the learner read while you last played it (C1, core 0.6.56).
 -- Choices per spec and row (CueRulesDB.ui.auto.picks[specID][key]): ticked, trigger, main cue, combat load, extra cues (Advanced), cue
 -- set-up (su: speech text, sound, art). Nothing is made until "Populate" is pressed.
 -------------------------------------------------------------------------------
@@ -120,41 +120,13 @@ local function ClassName() return tostring((UnitClass and UnitClass("player")) o
 -------------------------------------------------------------------------------
 -- Candidates
 -------------------------------------------------------------------------------
--- auras from the Cooldown Manager's catalogue for the current spec: { aura = { {id, cdmID, name}, ... }, debuff = { ... } }
-function AP.CdmAuras()
-    local out, seen = { aura = {}, debuff = {} }, { aura = {}, debuff = {} }
-    local CV = C_CooldownViewer
-    if not (CV and CV.GetCooldownViewerCategorySet and CV.GetCooldownViewerCooldownInfo) then return out end
-    local cats = (Enum and Enum.CooldownViewerCategory) or { Essential = 0, Utility = 1, TrackedBuff = 2, TrackedBar = 3 }
-    local values = {}
-    for _, v in pairs(cats) do if type(v) == "number" then values[#values + 1] = v end end
-    table.sort(values)
-    for _, cat in ipairs(values) do
-        local ok, ids = pcall(CV.GetCooldownViewerCategorySet, cat, true)
-        if ok and type(ids) == "table" and not issecret(ids) then
-            for _, cid in ipairs(ids) do
-                local okI, info = pcall(CV.GetCooldownViewerCooldownInfo, cid)
-                local kind = okI and type(info) == "table" and info.hasAura == true
-                    and ((info.selfAura == true and "aura") or (info.selfAura == false and "debuff")) or nil
-                if kind then
-                    local spell = Readable(info.spellID) and tonumber(info.spellID) or nil
-                    local linked = type(info.linkedSpellIDs) == "table" and info.linkedSpellIDs[1]
-                    local aura = (Readable(linked) and tonumber(linked)) or spell
-                    if aura and aura > 0 and not seen[kind][aura] then
-                        seen[kind][aura] = true
-                        local list = out[kind]
-                        list[#list + 1] = { id = aura, cdmID = (spell and spell ~= aura) and spell or nil, name = SpellName(aura) or (spell and SpellName(spell)) }
-                    end
-                end
-            end
-        end
-    end
-    return out
-end
+-- auras from the Cooldown Manager's catalogue for the current spec: core's reader (ClassLearn.lua ns.CdmAuraCatalogue, shared with the
+-- per-spec learner, C1)
+function AP.CdmAuras() return (ns.CdmAuraCatalogue and ns.CdmAuraCatalogue()) or { aura = {}, debuff = {} } end
 function AP.CdmDebuffs() return AP.CdmAuras().debuff end
 
--- every candidate for one spec: { key, kind = "cd" | "aura" | "debuff", id, cdmID, name, icon, talent, spec }. Auras and debuffs only
--- for the spec you are in now. A8 (Xaya: "depends on the button pressed -- spec or all dependent"; for another spec: show them all):
+-- every candidate for one spec: { key, kind = "cd" | "aura" | "debuff", id, cdmID, name, icon, talent, spec }. Auras and debuffs: live
+-- for the spec you are in now, learned for another spec (C1). A8 (Xaya: "depends on the button pressed -- spec or all dependent"; for another spec: show them all):
 -- includeUnpicked = false leaves out the talent cooldowns the game reads as not picked, for the spec you are in only. Another spec's
 -- talents are all listed (the game answers "known" for the active spec only, so they would all read as not picked).
 function AP.Candidates(specID, includeUnpicked)
@@ -184,6 +156,17 @@ function AP.Candidates(specID, includeUnpicked)
             for _, sp in ipairs(list) do
                 local id = tonumber(sp.id)
                 if id then add({ key = "cd:" .. id, kind = "cd", id = id, name = sp.name or SpellName(id), icon = SpellIcon(id), talent = sp.talent and true or nil }) end
+            end
+        end
+    end
+    -- C1 (core 0.6.56): another spec's auras and debuffs, as learned while you last played it (ClassLearn.lua); the spec you are in is
+    -- read live below
+    if not isCurrent and data and type(data.entries) == "table" then
+        for _, e in ipairs(data.entries) do
+            local id = tonumber(e.id)
+            if id and (e.kind == "aura" or e.kind == "debuff") then
+                add({ key = (e.kind == "aura" and "au:" or "db:") .. id, kind = e.kind, id = id, cdmID = tonumber(e.cdmID), name = SpellName(id) or e.name,
+                      icon = SpellIcon(id) or (e.cdmID and SpellIcon(e.cdmID)) })
             end
         end
     end

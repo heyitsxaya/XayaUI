@@ -1,0 +1,17 @@
+-------------------------------------------------------------------------------
+-- Threat.lua : OUTLINE ONLY (RM-MPLUS, 2026-11-06). No code. Proposed, not decided. Open questions: ../README.md section 4.
+-- Tank assist. Her words: "alert you if threat is lowering for a unit in combat so you can prioritize hitting it";
+-- "if threat is lost against an enemy, alert the player targeted that they may need to hit a big defensive in party chat
+--  (through whisper, party, say, yell toggles)".
+-- Reads (globals.md:582, 715-716): UnitDetailedThreatSituation, UnitThreatPercentageOfLead (SecretWhenUnitThreatValuesRestricted),
+--   UnitThreatSituation (SecretWhenUnitThreatStateRestricted); events UNIT_THREAT_LIST_UPDATE / UNIT_THREAT_SITUATION_UPDATE
+--   (events.md:1655-1656). Per nameplate mob. Probe P3: secret in a key in combat?
+-- "lowering": needs a compare with the last value -> impossible on a secret. When secret: the view shows the value, no alert.
+--   What counts as lowering (a percent, losing first place): Q7.
+-- "lost": UnitThreatSituation for me on that mob drops from tanking (3) to below. Who the mob now targets: its target unit's name;
+--   unit identity can be secret (SecretWhenUnitIdentityRestricted, e.g. globals.md:597). Unknown target -> no whisper.
+-- The alert to the targeted player goes through Announce.lua with her toggles: whisper, party, say, yell (default: Q8).
+--   A Mythic+ dungeon is an instance, so say / yell need no click there (warcraft.wiki.gg API_C_ChatInfo.SendChatMessage: the hardware
+--   event rule is for the outdoor world; INFERENCE that a keystone counts as an instance). Chat lockdown may still block it (P5).
+-- Only while I am the tank (my assigned role; probe whether readable). Off for other roles.
+-------------------------------------------------------------------------------

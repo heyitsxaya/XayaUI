@@ -303,6 +303,153 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
     bd.diff2 = DiffLine(9.1, "bg", { { "enabled", "Background fill" }, { "color", "Background color" } })
     args.border = Section("bd", "Every display: border and background", 5, bd)
 
+    -- Bar colour style (RM-BARS; Xaya 2026-11-06, REQUEST-LOG S8-10: "Cue sets it, group overrides if forcibly set; otherwise it shows
+    -- an indicator that multiple rules will be affected (refer to WA group options)"). Force ticked: the group's own style (f.barStyle,
+    -- f.barCustom) wins over every bar inside it (BarCue.lua ns.BarCueStyle). Unticked: a choice here is written to every Bar cue in the
+    -- group once, like every other control on this tab, and the label says how many bars it changes.
+    local function bars()
+        local out = {}
+        for _, d in ipairs(list()) do if type(d.visual) == "table" and d.visual.kind == "bar" then out[#out + 1] = d end end
+        return out
+    end
+    local function forced() return f.barStyleForce and true or false end
+    local function firstBar() local l = bars(); return l[1] and ns.BarCueSettings(l[1].visual) or nil end
+    local function styleNow()
+        if forced() then return ns.BAR_STYLE_LABEL[f.barStyle] and f.barStyle or "blizzard" end
+        local b = firstBar(); return b and b.style or "blizzard"
+    end
+    local function customNow() if forced() then return f.barCustom end local b = firstBar(); return b and b.custom end
+    local function writeAll(fn)
+        for _, d in ipairs(bars()) do fn(ns.BarCueSettings(d.visual)) end
+    end
+    local function nBars() return #bars() end
+    local bst = {
+        force = { type = "toggle", order = 1, width = "full", name = "Force on every bar in this group",
+            desc = "Ticked: every Bar cue in this group (and its nested groups) uses this group's colour style, whatever its own is set to. Unticked: each bar keeps its own style; a choice below is copied to every bar once.",
+            get = function() return forced() end,
+            set = function(_, v)
+                if v and not ns.BAR_STYLE_LABEL[f.barStyle] then f.barStyle = styleNow() end
+                f.barStyleForce = v and true or nil
+                on()
+            end },
+        style = { type = "select", order = 2, width = "double",
+            name = function()
+                local n = nBars()
+                return "Colour style  |cff999999(" .. (forced() and "forced on " or "changes ") .. n .. " bar" .. (n == 1 and "" or "s") .. ")|r"
+            end,
+            values = ns.BAR_STYLE_LABEL, sorting = ns.BAR_STYLES,
+            get = function() return styleNow() end,
+            set = function(_, v)
+                if forced() then f.barStyle = v else writeAll(function(b) b.style = v end) end
+                on()
+            end },
+    }
+    bst.cMagic = { type = "color", order = 3.00, hasAlpha = false, name = "Magic",
+        hidden = function() return styleNow() ~= "custom" end,
+        get = function() local r, g, b = ns.BarTypeColor("Magic", "custom", customNow()); if not r then local fb = ns.BAR_FALLBACK_COLOR; return fb[1], fb[2], fb[3], 1 end return r, g, b, 1 end,
+        set = function(_, r, g, b)
+            if forced() then f.barCustom = f.barCustom or {}; f.barCustom["Magic"] = { r, g, b, 1 }
+            else writeAll(function(bb) bb.custom = bb.custom or {}; bb.custom["Magic"] = { r, g, b, 1 } end) end
+            on()
+        end }
+    bst.cCurse = { type = "color", order = 3.01, hasAlpha = false, name = "Curse",
+        hidden = function() return styleNow() ~= "custom" end,
+        get = function() local r, g, b = ns.BarTypeColor("Curse", "custom", customNow()); if not r then local fb = ns.BAR_FALLBACK_COLOR; return fb[1], fb[2], fb[3], 1 end return r, g, b, 1 end,
+        set = function(_, r, g, b)
+            if forced() then f.barCustom = f.barCustom or {}; f.barCustom["Curse"] = { r, g, b, 1 }
+            else writeAll(function(bb) bb.custom = bb.custom or {}; bb.custom["Curse"] = { r, g, b, 1 } end) end
+            on()
+        end }
+    bst.cDisease = { type = "color", order = 3.02, hasAlpha = false, name = "Disease",
+        hidden = function() return styleNow() ~= "custom" end,
+        get = function() local r, g, b = ns.BarTypeColor("Disease", "custom", customNow()); if not r then local fb = ns.BAR_FALLBACK_COLOR; return fb[1], fb[2], fb[3], 1 end return r, g, b, 1 end,
+        set = function(_, r, g, b)
+            if forced() then f.barCustom = f.barCustom or {}; f.barCustom["Disease"] = { r, g, b, 1 }
+            else writeAll(function(bb) bb.custom = bb.custom or {}; bb.custom["Disease"] = { r, g, b, 1 } end) end
+            on()
+        end }
+    bst.cPoison = { type = "color", order = 3.03, hasAlpha = false, name = "Poison",
+        hidden = function() return styleNow() ~= "custom" end,
+        get = function() local r, g, b = ns.BarTypeColor("Poison", "custom", customNow()); if not r then local fb = ns.BAR_FALLBACK_COLOR; return fb[1], fb[2], fb[3], 1 end return r, g, b, 1 end,
+        set = function(_, r, g, b)
+            if forced() then f.barCustom = f.barCustom or {}; f.barCustom["Poison"] = { r, g, b, 1 }
+            else writeAll(function(bb) bb.custom = bb.custom or {}; bb.custom["Poison"] = { r, g, b, 1 } end) end
+            on()
+        end }
+    bst.cBleed = { type = "color", order = 3.04, hasAlpha = false, name = "Bleed",
+        hidden = function() return styleNow() ~= "custom" end,
+        get = function() local r, g, b = ns.BarTypeColor("Bleed", "custom", customNow()); if not r then local fb = ns.BAR_FALLBACK_COLOR; return fb[1], fb[2], fb[3], 1 end return r, g, b, 1 end,
+        set = function(_, r, g, b)
+            if forced() then f.barCustom = f.barCustom or {}; f.barCustom["Bleed"] = { r, g, b, 1 }
+            else writeAll(function(bb) bb.custom = bb.custom or {}; bb.custom["Bleed"] = { r, g, b, 1 } end) end
+            on()
+        end }
+    bst.cPhysical = { type = "color", order = 3.05, hasAlpha = false, name = "Physical",
+        hidden = function() return styleNow() ~= "custom" end,
+        get = function() local r, g, b = ns.BarTypeColor("Physical", "custom", customNow()); if not r then local fb = ns.BAR_FALLBACK_COLOR; return fb[1], fb[2], fb[3], 1 end return r, g, b, 1 end,
+        set = function(_, r, g, b)
+            if forced() then f.barCustom = f.barCustom or {}; f.barCustom["Physical"] = { r, g, b, 1 }
+            else writeAll(function(bb) bb.custom = bb.custom or {}; bb.custom["Physical"] = { r, g, b, 1 } end) end
+            on()
+        end }
+    bst.cHoly = { type = "color", order = 3.06, hasAlpha = false, name = "Holy",
+        hidden = function() return styleNow() ~= "custom" end,
+        get = function() local r, g, b = ns.BarTypeColor("Holy", "custom", customNow()); if not r then local fb = ns.BAR_FALLBACK_COLOR; return fb[1], fb[2], fb[3], 1 end return r, g, b, 1 end,
+        set = function(_, r, g, b)
+            if forced() then f.barCustom = f.barCustom or {}; f.barCustom["Holy"] = { r, g, b, 1 }
+            else writeAll(function(bb) bb.custom = bb.custom or {}; bb.custom["Holy"] = { r, g, b, 1 } end) end
+            on()
+        end }
+    bst.cFire = { type = "color", order = 3.07, hasAlpha = false, name = "Fire",
+        hidden = function() return styleNow() ~= "custom" end,
+        get = function() local r, g, b = ns.BarTypeColor("Fire", "custom", customNow()); if not r then local fb = ns.BAR_FALLBACK_COLOR; return fb[1], fb[2], fb[3], 1 end return r, g, b, 1 end,
+        set = function(_, r, g, b)
+            if forced() then f.barCustom = f.barCustom or {}; f.barCustom["Fire"] = { r, g, b, 1 }
+            else writeAll(function(bb) bb.custom = bb.custom or {}; bb.custom["Fire"] = { r, g, b, 1 } end) end
+            on()
+        end }
+    bst.cNature = { type = "color", order = 3.08, hasAlpha = false, name = "Nature",
+        hidden = function() return styleNow() ~= "custom" end,
+        get = function() local r, g, b = ns.BarTypeColor("Nature", "custom", customNow()); if not r then local fb = ns.BAR_FALLBACK_COLOR; return fb[1], fb[2], fb[3], 1 end return r, g, b, 1 end,
+        set = function(_, r, g, b)
+            if forced() then f.barCustom = f.barCustom or {}; f.barCustom["Nature"] = { r, g, b, 1 }
+            else writeAll(function(bb) bb.custom = bb.custom or {}; bb.custom["Nature"] = { r, g, b, 1 } end) end
+            on()
+        end }
+    bst.cFrost = { type = "color", order = 3.09, hasAlpha = false, name = "Frost",
+        hidden = function() return styleNow() ~= "custom" end,
+        get = function() local r, g, b = ns.BarTypeColor("Frost", "custom", customNow()); if not r then local fb = ns.BAR_FALLBACK_COLOR; return fb[1], fb[2], fb[3], 1 end return r, g, b, 1 end,
+        set = function(_, r, g, b)
+            if forced() then f.barCustom = f.barCustom or {}; f.barCustom["Frost"] = { r, g, b, 1 }
+            else writeAll(function(bb) bb.custom = bb.custom or {}; bb.custom["Frost"] = { r, g, b, 1 } end) end
+            on()
+        end }
+    bst.cShadow = { type = "color", order = 3.10, hasAlpha = false, name = "Shadow",
+        hidden = function() return styleNow() ~= "custom" end,
+        get = function() local r, g, b = ns.BarTypeColor("Shadow", "custom", customNow()); if not r then local fb = ns.BAR_FALLBACK_COLOR; return fb[1], fb[2], fb[3], 1 end return r, g, b, 1 end,
+        set = function(_, r, g, b)
+            if forced() then f.barCustom = f.barCustom or {}; f.barCustom["Shadow"] = { r, g, b, 1 }
+            else writeAll(function(bb) bb.custom = bb.custom or {}; bb.custom["Shadow"] = { r, g, b, 1 } end) end
+            on()
+        end }
+    bst.cArcane = { type = "color", order = 3.11, hasAlpha = false, name = "Arcane",
+        hidden = function() return styleNow() ~= "custom" end,
+        get = function() local r, g, b = ns.BarTypeColor("Arcane", "custom", customNow()); if not r then local fb = ns.BAR_FALLBACK_COLOR; return fb[1], fb[2], fb[3], 1 end return r, g, b, 1 end,
+        set = function(_, r, g, b)
+            if forced() then f.barCustom = f.barCustom or {}; f.barCustom["Arcane"] = { r, g, b, 1 }
+            else writeAll(function(bb) bb.custom = bb.custom or {}; bb.custom["Arcane"] = { r, g, b, 1 } end) end
+            on()
+        end }
+    bst.diff = { type = "description", order = 9, width = "full", fontSize = "small",
+        hidden = function()
+            if forced() then return true end
+            local l, first = bars(), nil
+            for i, d in ipairs(l) do local st = ns.BarCueSettings(d.visual).style; if i == 1 then first = st elseif st ~= first then return false end end
+            return true
+        end,
+        name = "|cff999999Differs between bars: Colour style. The control shows the first bar's style; a change makes them all the same.|r" }
+    args.barStyle = ns.GatedPane(f, "gdisp_barstyle", "Every bar: colour style", 5.5, function() return nBars() > 0 end, bst)
+
     -- the three text elements, each its own section (what to change is the section you open, not a tick list)
     local STYLE = { { "font", "Font" }, { "size", "Text size" }, { "outline", "Outline" }, { "color", "Text color" }, { "place", "Placement" },
         { "anchor", "Position" }, { "x", "X offset" }, { "y", "Y offset" } }
