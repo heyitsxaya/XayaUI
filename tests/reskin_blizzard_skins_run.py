@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""XayaUI Blizzard Reskin 0.6.9, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
+"""XayaUI Blizzard Reskin 0.6.10, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
 reskins). What the player sees, in the stand-in game:
   * off (a fresh install): nothing is made: no saved table, no watcher frame, Blizzard's art untouched (V14);
   * Blizzard Windows ticked: a window's frame art is faded (alpha 0), our background in the theme's window colour and a 1 px border
@@ -12,6 +12,8 @@ reskins). What the player sees, in the stand-in game:
   * Objective Tracker: the tracker header and a section header lose Blizzard's header art and take the label colour; a section's quest
     titles take the text colour after Blizzard's layout; a section left out is given back; the Professions section is left to the
     Shopping List while its tracker part is on; labels are the game's own heading strings;
+  * Toasts and Pop-ups (0.6.10): a Battle.net toast's backdrop takes the theme colours and gets its own back; a pop-up's BG art is
+    faded under our background; each part has its own box;
   * the Blizzard UI Reskin tab's own switch turns every one of them off at once.
 Run: python3 tests/reskin_blizzard_skins_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
@@ -79,6 +81,9 @@ end
 local QOT = Module("QuestObjectiveTracker")
 local PRT = Module("ProfessionsRecipeTracker")
 TRACKER_HEADER_QUESTS = "Quests (game string)"
+-- Battle.net toast (SocialToastTemplate: BackdropTemplate, no backdrop colour of its own) and a pop-up dialog (StaticPopup: art on child "BG")
+local BNT = CreateFrame("Frame", "BNToastFrame", UIParent); BNT:Hide()
+local SP1 = CreateFrame("Frame", "StaticPopup1", UIParent); SP1.BG = CreateFrame("Frame", nil, SP1); SP1:Hide()
 
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 3)
@@ -208,6 +213,31 @@ check("  ...windows, minimap and tracker have Blizzard's look back", SP.NineSlic
 check("  ...each keeps its own tick box", CueRulesDB.ui.rsk.windows == true and CueRulesDB.ui.rsk.tracker == true)
 ns.SetReskinTab(true)
 check("Blizzard UI Reskin on again: the ticked skins come back", SP.NineSlice:GetAlpha() == 0 and MM._mask == BS.SQUARE_MASK and OTF.Header.Background:GetAlpha() == 0)
+-- 6. Battle.net toasts and pop-up dialogs (Reskin 0.6.10)
+ns.SetReskinTab(true)
+check("toasts page off: the toast's colours and the pop-up's art are Blizzard's", BNT._bdcolor == nil and SP1.BG:GetAlpha() == 1 and not BS.Live().toasts)
+local tsp = BS.ToastsPage(nil)
+check("toasts page has a box per part (Battle.net toasts, pop-up dialogs)", tsp.args.list.args.bnet ~= nil and tsp.args.list.args.popups ~= nil)
+tsp.xuiSwitch.set(nil, true)
+c = BNT._bdcolor
+check("toasts on: the Battle.net toast takes the theme's window colour at the opacity", c and near(c[1], bg[1]) and near(c[3], bg[3]) and near(c[4], 0.7), c and table.concat(c, ","))
+check("toasts on: its border takes the theme's border colour", BNT._bdborder and near(BNT._bdborder[1], bd[1]) and near(BNT._bdborder[3], bd[3]))
+check("toasts on: the pop-up's art (BG) is faded and our background shows", SP1.BG:GetAlpha() == 0 and BS.memo[SP1].bg:IsShown() and BS.memo[SP1].edges[4]:IsShown())
+SP1.BG:SetAlpha(1); SP1:Show()
+check("a pop-up shown again is faded again", SP1.BG:GetAlpha() == 0)
+tsp.args.list.args.popups.set(nil, false)
+check("pop-ups left out: Blizzard's art back, the toast keeps the look", SP1.BG:GetAlpha() == 1 and not BS.memo[SP1].bg:IsShown() and near(BNT._bdcolor[1], bg[1]))
+check("  ...saved only as a leave-out", CueRulesDB.ui.rsk.toastOff.popups == true)
+tsp.args.list.args.popups.set(nil, true)
+tsp.xuiSwitch.set(nil, false)
+c = BNT._bdcolor
+check("toasts off: the toast's own colours are back (white tint, as Blizzard draws it)", near(c[1], 0) and near(c[4], 1) and near(BNT._bdborder[1], 1) and near(BNT._bdborder[4], 1), c and table.concat(c, ","))
+check("toasts off: the pop-up's art is back and our pieces hide", SP1.BG:GetAlpha() == 1 and not BS.memo[SP1].bg:IsShown())
+BNT:Show()
+check("toasts off: a toast shown again is not changed", near(BNT._bdcolor[1], 0) and not BS.Live().toasts)
+tsp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
+check("Blizzard UI Reskin off: the toast skin stops too", not BS.Live().toasts and SP1.BG:GetAlpha() == 1)
+ns.SetReskinTab(true)
 return R
 end
 '''

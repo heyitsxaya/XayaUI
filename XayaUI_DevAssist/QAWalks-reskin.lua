@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
--- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.40): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.9 (BlizzardSkins.lua): Blizzard's
--- windows, the minimap shape, tooltips and the objective tracker in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
+-- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.41): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.10 (BlizzardSkins.lua): Blizzard's
+-- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts and pop-ups in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
 -- overnight order 2026-11-07: "I want everything I've requested ... implemented and pushed to main").
 -- Standing rule V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game
 -- qa test walk through with pre-fill confirmation options or data capturing". Every walkthrough sets prefill = true: the addon's own
@@ -158,4 +158,53 @@ QA.Register("reskin-tracker", { title = "Reskin: objective tracker (one box, a b
         noVerdict = true },
     { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
+} })
+
+-------------------------------------------------------------------------------
+-- 5. Battle.net toasts and pop-up dialogs (Reskin 0.6.10)
+-------------------------------------------------------------------------------
+local POPUP = "XAYAUI_QA_RESKIN_POPUP"
+local function ShowPopup()   -- our own harmless dialog: text and one OK button; nothing happens on OK
+    local d = rawget(_G, "StaticPopupDialogs"); if type(d) ~= "table" or type(rawget(_G, "StaticPopup_Show")) ~= "function" then return end
+    d[POPUP] = d[POPUP] or { text = "XayaUI QA: this is a test pop-up. Look at it, then press OK.", button1 = rawget(_G, "OKAY") or "OK",
+        timeout = 0, whileDead = true, hideOnEscape = true }
+    pcall(StaticPopup_Show, POPUP)
+end
+local function OpenPopup()
+    for i = 1, 4 do local f = rawget(_G, "StaticPopup" .. i); if f and f:IsShown() and f.which == POPUP then return f end end
+    for i = 1, 4 do local f = rawget(_G, "StaticPopup" .. i); if f and f:IsShown() then return f end end
+end
+local function ThemeBg() local ns = NS(); return ns and ns.Theme and ns.Theme.Col and ns.Theme.Col("xui-window", "bg", { 0.06, 0.06, 0.06, 1 }) end
+QA.Register("reskin-toasts", { title = "Reskin: Battle.net toasts and pop-up dialogs", area = "Reskin", qa = "RESKIN-P", order = 304, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Toasts and Pop-ups|r is switched on (both parts).\n\n|cffffd100Expect:|r nothing on screen changes yet.",
+        setup = function() Keep(); Set(function(c) c.toasts = true end) end,
+        check = function() local s, why = Need(); if not s then return false, why end; local on = s.Live().toasts; return on, on and "Toasts and Pop-ups is on" or "Toasts and Pop-ups did not switch on" end },
+    { text = "Press |cffffd100Do it for me|r: a test pop-up from XayaUI opens (one OK button; pressing it does nothing else).\n\n|cffffd100Expect:|r the pop-up has a solid dark background in the theme's window colour and a thin border, with no Blizzard dialog art. Its text and OK button are as usual.",
+        setup = function() ShowPopup() end,
+        check = function()
+            local f = OpenPopup(); if not f then return false, "no pop-up is open" end
+            local ok = Painted(f) and Alpha(f.BG) == 0
+            return ok, ok and (f:GetName() .. " carries the XayaUI look (Blizzard's dialog art faded)") or (f:GetName() .. " still has Blizzard's art")
+        end },
+    { text = "Press the pop-up's |cffffd100OK|r. Then, over your next play, look at any pop-up the game opens (a group invite, Are you sure you want to delete, a ready-to-release prompt).\n\n|cffffd100Expect:|r each has the same look, its text is readable and its buttons work. Pass if so; Fail and name the pop-up if not.",
+        noVerdict = true },
+    { text = "Press |cffffd100Check|r to read the Battle.net toast's colours (no toast needs to be on screen).\n\n|cffffd100Expect:|r the check reports the theme's window colour. The next time a Battle.net friend comes online, the toast that slides in is dark with a thin border; its name and icon are as before.",
+        check = function()
+            local f = rawget(_G, "BNToastFrame"); local want = ThemeBg()
+            if not (f and f.GetBackdropColor and want) then return false, "the Battle.net toast could not be read" end
+            local ok, r, g, b = pcall(f.GetBackdropColor, f)
+            if not (ok and r) then return false, "the Battle.net toast's colour could not be read" end
+            local good = Near(r, want[1]) and Near(g, want[2]) and Near(b, want[3])
+            return good, ("toast colour %.2f %.2f %.2f, theme window colour %.2f %.2f %.2f"):format(r, g, b, want[1], want[2], want[3])
+        end },
+    { text = "Press |cffffd100Do it for me|r: Toasts and Pop-ups is switched off and the test pop-up opens again.\n\n|cffffd100Expect:|r the pop-up has Blizzard's own look back at once, without a /reload. Press its OK.",
+        setup = function() Set(function(c) c.toasts = nil end); ShowPopup() end,
+        check = function()
+            local f = OpenPopup(); if not f then return false, "no pop-up is open" end
+            local ok = (not Painted(f)) and Alpha(f.BG) ~= 0
+            return ok, ok and "Blizzard's art is back on the pop-up" or "the pop-up still carries the XayaUI look"
+        end },
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
+        setup = function() local h = rawget(_G, "StaticPopup_Hide"); if type(h) == "function" then pcall(h, POPUP) end; PutBack() end,
+        check = function() return BS() ~= nil, "your settings are back" end },
 } })

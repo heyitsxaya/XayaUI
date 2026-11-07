@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
--- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.9): XayaUI's look on Blizzard's own windows, the minimap, tooltips and the objective
--- tracker. Look only: art, colour, border, mask. Nothing is moved, resized, added or removed, and no Blizzard function is called to do
--- anything. Own code, Blizzard's frames only.
+-- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.10): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
+-- tracker, Battle.net toasts and pop-up dialogs. Look only: art, colour, border, mask. Nothing is moved, resized, added or removed,
+-- and no Blizzard function is called to do anything. Own code, Blizzard's frames only.
 --
 -- Xaya, 2026-11-06 (REQUEST-LOG A13 RESKIN-1 to RESKIN-4): "review what of blizzard's ui elements can be reskinned and generate a list
 -- of them (no functionality changes, just reskins of core blizzard UI)". Her lists named the windows below, "minimap (two options: square
@@ -102,7 +102,8 @@ BS.ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- Blizzard
 
 -------------------------------------------------------------------------------
 -- Saved settings: CueRulesDB.ui.rsk, made only when something is ticked (V14). Off by default.
---   windows / minimap / tooltips / tracker = true (a page ticked); winOff[key] / otOff[key] = true (left out); shape = "SQUARE";
+--   windows / minimap / tooltips / tracker / toasts = true (a page ticked); winOff[key] / otOff[key] / toastOff[key] = true (left out);
+--   shape = "SQUARE";
 --   bgAlpha = window background opacity (0.5 - 1, default 0.95)
 -------------------------------------------------------------------------------
 local function Saved() local ui = rawget(_G, "CueRulesDB") and CueRulesDB.ui; local r = ui and ui.rsk; return type(r) == "table" and r or nil end
@@ -112,6 +113,7 @@ local function Cfg()
     if type(r) ~= "table" then r = {}; CueRulesDB.ui.rsk = r end
     if type(r.winOff) ~= "table" then r.winOff = {} end
     if type(r.otOff) ~= "table" then r.otOff = {} end
+    if type(r.toastOff) ~= "table" then r.toastOff = {} end
     return r
 end
 BS.Saved, BS.Cfg = Saved, Cfg
@@ -175,6 +177,12 @@ local function Restore(owner)
     for r, a in pairs(m.faded) do pcall(r.SetAlpha, r, a) end
     for fs, c in pairs(m.colors) do pcall(fs.SetTextColor, fs, c[1], c[2], c[3], c[4]) end
     for _, t in ipairs(m.own) do if t.Hide then t:Hide() end end
+    if m.bd and type(owner) == "table" then   -- a backdrop's own colours, read before we changed them
+        local b = m.bd
+        if owner.SetBackdropColor then pcall(owner.SetBackdropColor, owner, b[1], b[2], b[3], b[4]) end
+        if owner.SetBackdropBorderColor then pcall(owner.SetBackdropBorderColor, owner, b[5], b[6], b[7], b[8]) end
+        m.bd = nil
+    end
     m.faded, m.colors = {}, {}
     m.painted = nil
     BS.diag.restored = BS.diag.restored + 1
@@ -229,15 +237,8 @@ local hookedWin = {}        -- [frame] = true: its OnShow hook is placed
 local entryOf = {}          -- [frame name] = window entry
 for _, e in ipairs(BS.WINDOWS) do for _, n in ipairs(e.frames) do entryOf[n] = e end end
 
-local function PaintWindow(f)
-    if type(f) ~= "table" or type(f.CreateTexture) ~= "function" then return end
-    if Blocked(f) then Later(function() if liveWin then PaintWindow(f) end end); return end
-    for _, part in ipairs({ f, f.BorderFrame }) do
-        if type(part) == "table" then
-            for _, k in ipairs(ART) do Fade(f, part[k]) end
-            if type(part.Inset) == "table" then Fade(f, part.Inset.Bg); Fade(f, part.Inset.NineSlice) end
-        end
-    end
+-- our own background (theme window colour at Background opacity) and a 1 px border, drawn on a frame whose art is faded
+local function OwnBg(f)
     local m = M(f)
     if not m.bg then
         m.bg = f:CreateTexture(nil, "BACKGROUND", nil, -8)
@@ -247,6 +248,19 @@ local function PaintWindow(f)
     local bg = WinBg()
     m.bg:SetColorTexture(bg[1], bg[2], bg[3], Alpha()); m.bg:Show()
     PaintEdges(Edges(f, f), WinBorder())
+    return m
+end
+
+local function PaintWindow(f)
+    if type(f) ~= "table" or type(f.CreateTexture) ~= "function" then return end
+    if Blocked(f) then Later(function() if liveWin then PaintWindow(f) end end); return end
+    for _, part in ipairs({ f, f.BorderFrame }) do
+        if type(part) == "table" then
+            for _, k in ipairs(ART) do Fade(f, part[k]) end
+            if type(part.Inset) == "table" then Fade(f, part.Inset.Bg); Fade(f, part.Inset.NineSlice) end
+        end
+    end
+    local m = OwnBg(f)
     local tc = f.TitleContainer or (type(f.BorderFrame) == "table" and f.BorderFrame.TitleContainer)
     local title = (type(tc) == "table" and tc.TitleText) or (f.GetName and f:GetName() and rawget(_G, f:GetName() .. "TitleText"))
     Recolor(f, title, TitleCol())
@@ -425,20 +439,82 @@ local function ApplyTracker()
 end
 
 -------------------------------------------------------------------------------
+-- 5. Battle.net toasts and pop-up dialogs (her "bnet alert toasts + popups"), a box each
+-------------------------------------------------------------------------------
+-- 12.1.5 source (Gethe/wow-ui-source 297d7aa, read as data): BNToastFrame and TimeAlertFrame (Blizzard_BNet/BNet.xml:3, 83) inherit
+-- SocialToastTemplate, which inherits BackdropTemplate (Blizzard_SocialToast/SocialToast.xml:44) with no backdrop colour of its own: the
+-- toast takes the theme's colours through SetBackdropColor / SetBackdropBorderColor; the colours it had are read first and given back.
+-- StaticPopup1-4 (Blizzard_StaticPopup_Game/GameDialog.xml:334-349) draw their art on a child frame "BG" (Top / Bottom textures,
+-- GameDialog.lua:25-28): BG is faded and our background and border are drawn, as on a window. Text and buttons are Blizzard's.
+BS.TOASTS = {
+    { key = "bnet",   label = "Battle.net toasts (friend online, broadcasts, time alerts)", frames = { "BNToastFrame", "TimeAlertFrame" }, kind = "backdrop" },
+    { key = "popups", label = "Pop-up dialogs (confirmations, invites, Are you sure?)",    frames = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }, kind = "dialog" },
+}
+local liveToast = false
+local hookedToast = {}
+local function ToastOn(e) local r = Saved(); return PageOn("toasts") and not (r.toastOff and r.toastOff[e.key]) end
+BS.ToastOn = ToastOn
+local function PaintToast(f, e)
+    if type(f) ~= "table" then return end
+    if Blocked(f) then Later(function() if liveToast and ToastOn(e) then PaintToast(f, e) end end); return end
+    local m = M(f)
+    if e.kind == "backdrop" then
+        if type(f.SetBackdropColor) ~= "function" then return end
+        if not m.bd then
+            local r, g, b, a, br, bg2, bb, ba
+            if f.GetBackdropColor then r, g, b, a = f:GetBackdropColor() end
+            if f.GetBackdropBorderColor then br, bg2, bb, ba = f:GetBackdropBorderColor() end
+            local function n(v) return num(v) and v or 1 end
+            m.bd = { n(r), n(g), n(b), n(a), n(br), n(bg2), n(bb), n(ba) }
+        end
+        local bg, bd = WinBg(), WinBorder()
+        f:SetBackdropColor(bg[1], bg[2], bg[3], Alpha())
+        if f.SetBackdropBorderColor then f:SetBackdropBorderColor(bd[1], bd[2], bd[3], bd[4] or 1) end
+    else
+        if type(f.CreateTexture) ~= "function" then return end
+        Fade(f, f.BG)
+        OwnBg(f)
+    end
+    m.painted = true
+    BS.diag.painted = BS.diag.painted + 1
+end
+BS.PaintToast = PaintToast
+local function ApplyToasts()
+    if PageOn("toasts") then
+        liveToast = true
+        for _, e in ipairs(BS.TOASTS) do
+            for _, n in ipairs(e.frames) do
+                local f = rawget(_G, n)
+                if type(f) == "table" then
+                    if not hookedToast[f] and type(f.HookScript) == "function" then
+                        hookedToast[f] = true
+                        f:HookScript("OnShow", function(self) if liveToast and ToastOn(e) then Safe(PaintToast, self, e) end end)
+                    end
+                    if ToastOn(e) then Safe(PaintToast, f, e) else Restore(f) end
+                end
+            end
+        end
+    elseif liveToast then
+        liveToast = false
+        for _, e in ipairs(BS.TOASTS) do for _, n in ipairs(e.frames) do local f = rawget(_G, n); if f then Restore(f) end end end
+    end
+end
+
+-------------------------------------------------------------------------------
 -- On / off: each page's tick box and the Blizzard UI Reskin tab's own switch call this
 -------------------------------------------------------------------------------
 function BS.Apply()
-    Safe(ApplyWindows); Safe(ApplyMinimap); Safe(ApplyTooltips); Safe(ApplyTracker)
+    Safe(ApplyWindows); Safe(ApplyMinimap); Safe(ApplyTooltips); Safe(ApplyTracker); Safe(ApplyToasts)
 end
-function BS.Live() return { windows = liveWin, minimap = liveMap, tooltips = liveTip, tracker = liveOT, lodWatch = lodOn, waitFrame = waitFrame ~= nil } end
+function BS.Live() return { windows = liveWin, minimap = liveMap, tooltips = liveTip, tracker = liveOT, toasts = liveToast, lodWatch = lodOn, waitFrame = waitFrame ~= nil } end
 ns.RegisterReskin("blizzardskins", BS.Apply)
 ns.Provide("blizzardSkins", { Apply = BS.Apply, Live = BS.Live, Saved = Saved, Cfg = Cfg, PageOn = PageOn, WinOn = WinOn, SecOn = SecOn,
-    WINDOWS = BS.WINDOWS, SECTIONS = BS.SECTIONS, SectionLabel = BS.SectionLabel, memo = memo, diag = BS.diag, OurShape = OurShape,
+    WINDOWS = BS.WINDOWS, SECTIONS = BS.SECTIONS, TOASTS = BS.TOASTS, ToastOn = ToastOn, SectionLabel = BS.SectionLabel, memo = memo, diag = BS.diag, OurShape = OurShape,
     SQUARE_MASK = BS.SQUARE_MASK, ROUND_MASK = BS.ROUND_MASK })
 -- at login, only when something is ticked (a saved table with a page on); nothing is made otherwise
 ns.WhenReady(function()
     local r = Saved()
-    if r and (r.windows or r.minimap or r.tooltips or r.tracker) and TabOn() then
+    if r and (r.windows or r.minimap or r.tooltips or r.tracker or r.toasts) and TabOn() then
         if ns.AtLogin then ns.AtLogin(BS.Apply) else BS.Apply() end
     end
 end)
@@ -516,7 +592,25 @@ function BS.TrackerPage(Notify)
             "Restyles the objective tracker; each section has its own box on this page." .. OFFNOTE, Notify) }
 end
 
+function BS.ToastsPage(Notify)
+    local off = function() return not PageOn("toasts") end
+    local args = {
+        note = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = "Battle.net toasts (the box that slides in when a friend comes online) and Blizzard's pop-up dialogs take the theme's window colour and a thin border in the theme's border colour, in place of Blizzard's art. What they say, their buttons and where they appear are unchanged. Opacity: Blizzard Windows' Background opacity." },
+        list = { type = "group", order = 10, inline = true, name = "Parts (untick one to leave it as Blizzard draws it)", args = {} },
+    }
+    for i, e in ipairs(BS.TOASTS) do
+        args.list.args[e.key] = { type = "toggle", order = i, name = e.label, disabled = off,
+            get = function() local r = Saved(); return not (r and r.toastOff and r.toastOff[e.key]) end,
+            set = function(_, v) Cfg().toastOff[e.key] = (not v) and true or nil; re(Notify) end }
+    end
+    return { type = "group", name = "Toasts and Pop-ups", order = 8, args = args,
+        xuiSwitch = PageSwitch("toasts", "Use the XayaUI look on toasts and pop-ups", "Battle.net toasts and pop-up dialogs in the theme's colours.",
+            "Restyles Battle.net toasts and Blizzard's pop-up dialogs; each has its own box on this page." .. OFFNOTE, Notify) }
+end
+
 ns.RegisterSettingsPage("reskin", "blizzwindows", BS.WindowsPage)
 ns.RegisterSettingsPage("reskin", "minimapshape", BS.MinimapPage)
 ns.RegisterSettingsPage("reskin", "rsktooltips", BS.TooltipsPage)   -- (not "tooltips": page keys are unique across tabs, and Bonus Features owns that one)
 ns.RegisterSettingsPage("reskin", "objtracker", BS.TrackerPage)
+ns.RegisterSettingsPage("reskin", "rsktoasts", BS.ToastsPage)

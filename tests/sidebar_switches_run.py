@@ -67,6 +67,7 @@ local WANT = { "qol>chartoolkit", "qol>chartoolkit>panelPart", "qol>chartoolkit>
   "reskin>charreskin", "reskin>chatpanel", "reskin>gamemenu", "reskin>shoppinglist",
   -- (Reskin 0.6.9, BlizzardSkins.lua: Blizzard Windows, Minimap, Tooltips, Objective Tracker)
   "reskin>blizzwindows", "reskin>minimapshape", "reskin>rsktooltips", "reskin>objtracker",
+  "reskin>rsktoasts",   -- (Reskin 0.6.10: Toasts and Pop-ups)
   -- (XayaUI_Nameplates 0.1.0: its page's row carries Target colour; the row exists only while that addon is enabled)
   "qol>nameplates",
   "qol>improvedchat",   -- (Chat 0.6.33, UI-18 / UI-19 / UI-21: QoL > Improved Chat, its own switch)
