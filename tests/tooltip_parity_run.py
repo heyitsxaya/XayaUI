@@ -97,6 +97,11 @@ COVERS = [
 ]
 
 
+# files whose every hover is drawn by ns.Tip (core Visual.lua is converted for its group tags only: its rule tag and the
+# spell / item tooltip stay direct, the first because no rule with a display exists in the stand-in to record it)
+CONVERTED = ["XayaUI/MinimapButton.lua", "XayaUI_Chat/Privacy.lua", "XayaUI_Chat/History.lua", "XayaUI_Chat/Frame.lua"]
+
+
 def record():
     folders = H.find_addons()
     enabled = [n for n in folders if n != "XayaUI_DevAssist"]
@@ -135,6 +140,10 @@ def main():
     for label, text in COVERS:
         check("the recording covers %s" % label, any(text in g for g in logs))
     check("core has the shared tooltip helper ns.Tip (Show, Hide)", tip)
+    root = os.path.abspath(os.path.join(HERE, ".."))
+    for rel in CONVERTED:
+        code = "\n".join(l.split("--", 1)[0] for l in open(os.path.join(root, rel), encoding="utf-8").read().split("\n"))
+        check("%s draws its hovers through ns.Tip only (no direct GameTooltip call left)" % rel, "GameTooltip" not in code)
     for e in errs:
         print("ERROR in the game stand-in:", e)
     check("no Lua errors", not errs, errs[:2])

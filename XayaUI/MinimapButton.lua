@@ -145,9 +145,9 @@ local function Rebuild()
             b:SetScript("OnShow", function(self) local st = self.entry and self.entry[5] and self.entry[5](); self.state:SetText(st and ("|cff888888" .. st .. "|r") or "") end)
             b:SetScript("OnEnter", function(self)
                 if not self.entry then return end
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:SetText(self.entry[2], 1, 0.82, 0); GameTooltip:AddLine(self.entry[3], 1, 1, 1, true); GameTooltip:Show()
+                ns.Tip.Show(self, "ANCHOR_RIGHT", { self.entry[2], 1, 0.82, 0 }, { { self.entry[3], 1, 1, 1, true } })
             end)
-            b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            b:SetScript("OnLeave", function() ns.Tip.Hide() end)
             p.rows[i] = b
         end
         b.entry = e
@@ -213,15 +213,13 @@ local function BuildButton()
         if ns.Minimap_Changed then ns.Minimap_Changed() end
     end)
     b:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText("XayaUI", 1, 0.82, 0)
-        GameTooltip:AddLine("Left-click: quick-access list", 1, 1, 1)
-        GameTooltip:AddLine("Right-click: settings", 1, 1, 1)
         local db = DB()
-        if db and not db.locked then GameTooltip:AddLine("Drag: move around the minimap", 0.6, 0.6, 0.6) end
-        GameTooltip:Show()
+        ns.Tip.Show(self, "ANCHOR_LEFT", { "XayaUI", 1, 0.82, 0 }, {
+            { "Left-click: quick-access list", 1, 1, 1 },
+            { "Right-click: settings", 1, 1, 1 },
+            (db and not db.locked) and { "Drag: move around the minimap", 0.6, 0.6, 0.6 } or nil })
     end)
-    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    b:SetScript("OnLeave", function() ns.Tip.Hide() end)
     button = b
     ApplySize(); ApplyIcon()
     return b
