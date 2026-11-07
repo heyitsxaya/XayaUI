@@ -78,7 +78,7 @@ function ns.SettingsTabOf(module) local t = ns.OptionsApi.TABS[module]; return t
 -- this settings addon loaded (it loads on the first open after a login or /reload), so they appear after a reload.
 ns.OptionsApi.TAB_SWITCHES = {}
 ns.OptionsApi.reskinAtLoad = ns.ReskinTabOn and ns.ReskinTabOn() or false   -- the switch as it was when this addon loaded
-ns.OptionsApi.RESKIN_SWITCH = "Enable Blizzard UI Reskin"
+ns.OptionsApi.RESKIN_SWITCH = "Enable Blizzard Reskin"
 function ns.OptionsApi.ReskinOverview(args)
     for key, page in pairs(args) do
         if type(page) == "table" then
@@ -111,7 +111,7 @@ end
 function ns.OptionsApi.ReloadPrompt()
     if type(StaticPopupDialogs) ~= "table" or type(StaticPopup_Show) ~= "function" then return end
     if not StaticPopupDialogs.XAYAUI_RESKIN_RELOAD then
-        StaticPopupDialogs.XAYAUI_RESKIN_RELOAD = { text = "Blizzard UI Reskin: reload now to list the reskins as they are now?",
+        StaticPopupDialogs.XAYAUI_RESKIN_RELOAD = { text = "Blizzard Reskin: reload now to list the reskins as they are now?",
             button1 = "Reload", button2 = "Later", OnAccept = function() local r = (C_UI and C_UI.Reload) or ReloadUI; if type(r) == "function" then r() end end,
             timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3 }
     end

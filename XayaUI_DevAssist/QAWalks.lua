@@ -98,8 +98,8 @@ QA.Register("sidebar-drag", { title = "Drag a rule row in the sidebar", qa = "B1
 } })
 
 -- E2e: the Blizzard UI Reskin tab's switches -------------------------------------------------------------------------------------
-QA.Register("reskin-switches", { title = "Blizzard UI Reskin: All reskins and each reskin's tick box", qa = "E2e", order = 120, steps = {
-    { text = "Press |cffffd100Do it for me|r: the settings window opens on the Blizzard UI Reskin tab.\n\n|cffffd100Expect:|r a tick box on the tab button itself, left of its name (All reskins, ticked), not covering the name; in the left pane each of Character Pane, Chat Panel, Esc Menu and Shopping List has its own tick box.",
+QA.Register("reskin-switches", { title = "Blizzard Reskin: All reskins and each reskin's tick box", qa = "E2e", order = 120, steps = {
+    { text = "Press |cffffd100Do it for me|r: the settings window opens on the Blizzard Reskin tab.\n\n|cffffd100Expect:|r a tick box on the tab button itself, left of its name (All reskins, ticked), not covering the name; in the left pane each of Character Pane, Chat Panel, Esc Menu and Shopping List has its own tick box.",
         setup = function() local ns = NS(); if ns.OpenSettingsPage then ns.OpenSettingsPage("reskin", "charreskin") end end,
         check = function() local ns = NS(); return ns.ReskinTabOn and ns.ReskinTabOn() == true, "All reskins is " .. ((ns.ReskinTabOn and ns.ReskinTabOn()) and "on" or "off") end },
     { text = "Untick |cffffd100All reskins|r on the tab (or press Do it for me).\n\n|cffffd100Expect:|r at once Blizzard's own chat comes back, the Esc menu (press Esc) and the character window (C) look like Blizzard's; the four tick boxes in the left pane stay ticked but greyed.",

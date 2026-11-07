@@ -204,7 +204,7 @@ local function GetRow(i)
             local src = ResolveSource(self)
             if not src then
                 diag.lastError = "no real button with the text '" .. tostring(self.label) .. "' - nothing was clicked"
-                if ns.Print then ns.Print("Game Menu skin: could not find the real '" .. tostring(self.label) .. "' button, so nothing was clicked. Turn on 'Match Blizzard's button positions' (XayaUI settings: Blizzard UI Reskin > Esc Menu).") end
+                if ns.Print then ns.Print("Game Menu skin: could not find the real '" .. tostring(self.label) .. "' button, so nothing was clicked. Turn on 'Match Blizzard's button positions' (XayaUI settings: Blizzard Reskin > Esc Menu).") end
                 return
             end
             local okE, en = pcall(src.IsEnabled, src)
@@ -560,7 +560,7 @@ function ns.GameMenuSkin_Options(Notify)
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
     local switch = { type = "toggle", name = "Use the XayaUI Game Menu look", tip = "Restyles the Esc menu in the XayaUI look.", get = g("skin"), set = s("skin"),
         disabled = function() return not ns.ReskinTabOn() end,
-        desc = "Off: nothing of the look is made or runs. Switched off after it was on, Blizzard's menu comes back at once; the look's hooks on the menu stay until you /reload but do nothing. Greyed while Blizzard UI Reskin is off (this tab's Overview)." }
+        desc = "Off: nothing of the look is made or runs. Switched off after it was on, Blizzard's menu comes back at once; the look's hooks on the menu stay until you /reload but do nothing. Greyed while Blizzard Reskin is off (this tab's Overview)." }
     return { type = "group", name = "Esc Menu", order = 3, xuiSwitch = switch, args = args }   -- (Reskin 0.6.1: a page of the Blizzard UI Reskin tab)
 end
 

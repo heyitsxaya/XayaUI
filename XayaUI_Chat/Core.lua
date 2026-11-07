@@ -457,7 +457,7 @@ function C.Command(arg)
     local s = ns.chat2
     if not s then ns.Print("Chat Panel: settings are not loaded yet."); return end
     if arg == "off" then s.enabled = false; C.Refresh(); ns.Print("Chat Panel OFF. Blizzard's chat is back as the game draws it.")
-    elseif arg == "on" then s.enabled = true; C.Refresh(); ns.Print("Chat Panel ON." .. (ns.ReskinTabOn() and "" or " It shows once Blizzard UI Reskin is on again (Blizzard UI Reskin > Overview, then /reload)."))
+    elseif arg == "on" then s.enabled = true; C.Refresh(); ns.Print("Chat Panel ON." .. (ns.ReskinTabOn() and "" or " It shows once Blizzard Reskin is on again (Blizzard Reskin > Overview, then /reload)."))
     elseif arg == "reset" then
         s.point, s.x, s.y, s.width, s.height = C.DEFAULTS.point, C.DEFAULTS.x, C.DEFAULTS.y, C.DEFAULTS.width, C.DEFAULTS.height
         C.Refresh(); ns.Print("Chat Panel: position and size reset.")
@@ -468,7 +468,7 @@ function C.Command(arg)
         -- (XayaUI Dev Assist's: wrap, indent, whispers; Chat 0.6.20)
     else
         local why = C.BlockedReason()
-        local state = not s.enabled and "OFF" or (not ns.ReskinTabOn() and "OFF (Blizzard UI Reskin is off: Blizzard UI Reskin > Overview)") or (why and ("blocked: " .. why)) or "ON"
+        local state = not s.enabled and "OFF" or (not ns.ReskinTabOn() and "OFF (Blizzard Reskin is off: Blizzard Reskin > Overview)") or (why and ("blocked: " .. why)) or "ON"
         local extra = {}
         for _, h in ipairs(ns.SubcommandHelp and ns.SubcommandHelp("chat") or {}) do extra[#extra + 1] = h:match("^(%S+)") end
         ns.Print((("Chat Panel: " .. state .. ". /xui chat on|off|reset|move|history|" .. (#extra > 0 and (table.concat(extra, "|") .. "|") or "") .. "settings"):gsub("|", "||")))

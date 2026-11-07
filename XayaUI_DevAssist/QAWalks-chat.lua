@@ -37,7 +37,7 @@ local function Fmt(rc) return rc and ("%d,%d %dx%d"):format(rc.l, rc.b, rc.w, rc
 local function Ready()
     local C = Ch()
     if not C then return false, "XayaUI Chat is not loaded" end
-    if not (C.On and C.On()) then return false, "the Chat Panel is off (Blizzard UI Reskin > Chat Panel tick box)" end
+    if not (C.On and C.On()) then return false, "the Chat Panel is off (Blizzard Reskin > Chat Panel tick box)" end
     if not (C.Container and C.Container()) then return false, "the Chat Panel has not been built yet" end
     return true
 end

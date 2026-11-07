@@ -89,7 +89,7 @@ end
 check("the tab's first row is Overview, then the reskins in name order", names(tab) == "Overview | Character Pane | Chat Panel | Esc Menu | Shopping List", names(tab))
 local ov = tab.args.reskinOverview
 local all = ov and ov.args and ov.args.enable
-check("  ...the switch is on the Overview page (right pane): Enable Blizzard UI Reskin", all ~= nil and all.type == "toggle" and all.name == "Enable Blizzard UI Reskin"
+check("  ...the switch is on the Overview page (right pane): Enable Blizzard Reskin (Options 0.6.72 name)", all ~= nil and all.type == "toggle" and all.name == "Enable Blizzard Reskin"
   and type(all.get) == "function" and type(all.set) == "function")
 if not all then return R end
 check("  ...no tab switch is defined for the tab row any more", next(ns.OptionsApi.TAB_SWITCHES) == nil)
@@ -164,7 +164,7 @@ ns.Print = function(m) said[#said + 1] = tostring(m) end
 ns.RunCommand("chat", "on"); ns.RunCommand("reskin", "status")
 ns.Print = rawPrint
 local joined = table.concat(said, " / ")
-check("/xui chat on and /xui reskin status say the reskins wait on Blizzard UI Reskin, and where its switch is (Overview)", select(2, joined:gsub("Blizzard UI Reskin > Overview", "")) >= 2, joined)
+check("/xui chat on and /xui reskin status say the reskins wait on Blizzard UI Reskin, and where its switch is (Overview)", select(2, joined:gsub("Blizzard Reskin > Overview", "")) >= 2, joined)
 return R
 end
 '''

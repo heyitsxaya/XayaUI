@@ -910,7 +910,7 @@ function Shop.Toggle()
     local c = Cfg()
     if not c then return end
     if not c.enabled then c.enabled, c.panel = true, true end
-    if not ns.ReskinTabOn() then ns.Print("Shopping List: Blizzard UI Reskin is off (Blizzard UI Reskin > Overview); it shows once that is on again."); return end
+    if not ns.ReskinTabOn() then ns.Print("Shopping List: Blizzard Reskin is off (Blizzard Reskin > Overview); it shows once that is on again."); return end
     if panel and panel:IsShown() then panel.userHidden = true; panel:Hide(); if popup then popup:Hide() end; return end
     if panel then panel.userHidden = nil end
     c.panel = true
@@ -966,7 +966,7 @@ function ns.BuildShoppingListPage(Notify)
     args.defDiamond = DefInput("diamond", 21, "One-per-character gem (diamond)")
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
-    local switch = { type = "toggle", name = "Shopping List", tip = "Lists what your tracked recipes and your gear still need.", desc = "Turns the shopping list on. While it is off nothing is created or read. Greyed while Blizzard UI Reskin is off (this tab's Overview).",
+    local switch = { type = "toggle", name = "Shopping List", tip = "Lists what your tracked recipes and your gear still need.", desc = "Turns the shopping list on. While it is off nothing is created or read. Greyed while Blizzard Reskin is off (this tab's Overview).",
         disabled = function() return not ns.ReskinTabOn() end,
         get = function() return C().enabled end, set = function(_, v) C().enabled = v and true or false; Changed() end }
     local g = { type = "group", name = "Shopping List", order = 5, xuiSwitch = switch, args = args }
@@ -980,7 +980,7 @@ ns.RegisterCommand("shop", function(arg)
         local c = Cfg()
         if not c then return end
         ns.Print(("Shopping List: %s%s; panel %s; Blizzard's list restyled %s; %d to buy; tracker hooked %s."):format(c.enabled and "on" or "off",
-            ns.ReskinTabOn() and "" or " (Blizzard UI Reskin is off: Blizzard UI Reskin > Overview, so it does not show)",
+            ns.ReskinTabOn() and "" or " (Blizzard Reskin is off: Blizzard Reskin > Overview, so it does not show)",
             c.panel and "on" or "off", c.tracker and "on" or "off", #c.buy, Shop.TrackerHooked() and "yes" or "no"))
         return
     end
