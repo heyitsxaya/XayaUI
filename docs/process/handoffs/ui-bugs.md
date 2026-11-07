@@ -14,7 +14,7 @@ section A8 (rows UI-1..UI-78, the full verbatim log with notes) and docs/design/
 - Versions on f8d88a6:
   - core 0.6.70, Options 0.6.71, QoL 0.7.44, Chat 0.6.34, Bonus 0.6.27, Reskin 0.6.8, Dev Assist 0.7.22;
   - the lander relabels clashes.
-- SUITE RESULT (29532e5): PENDING
+- SUITE RESULT (29532e5): PASS. Full suite on that exact commit, uncontended, 10:19-11:52 UTC: 180 ok, 0 FAIL, harness 33/33, "ALL CHECKS PASS", EXIT 0. Sent to the lander 11:53 UTC.
 - UI-65's old -> new list: docs/reference/HOVER-REWRITES-UI-65-2026-11-07.md. Bonus Notepad.lua's long texts were left out on purpose
   (the function-audit session owns that file); the walkthrough ui-short-hovers lists them.
 - Working tree clean; nothing uncommitted.
