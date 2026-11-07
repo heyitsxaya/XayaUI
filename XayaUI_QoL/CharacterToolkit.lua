@@ -19,8 +19,13 @@
 --   are Gear | Character | Elsewhere and Equipped | this item | Change. Other lines are label and value, with their detail pairs
 --   under them. Hovering a line shows where the number comes from (the conversion hover: rating through the game's converter, base
 --   and buffs, linked conversions such as crit to parry where the game reports them, thresholds).
---   Rating lines show a percent or a rating: the "%" / "rating" button in the title row sets it for every line, and clicking a
---   rating line flips that line alone.
+--   (Until QoL 0.7.39 rating lines could show a percent or a rating, by a title-row button, a click on one line or a setting; that
+--   toggle is gone since 0.7.40, REQUEST-LOG B2.)
+--   QoL 0.7.40 (Xaya 2026-11-06, REQUEST-LOG #87-#91): under each stat of the Stats tab, one row per contribution that feeds it with its
+--   number ("from Agility +2,616"); each stat folds (folded by default, remembered per stat), folded rows are in its hover; the
+--   Influences column is "Modifies" (names only). The picked compare items' frames show again (#89: named-colour links). The Gear
+--   "Changes" numbers are left-aligned with the difference in brackets beside them (#90). The header shows the equipped item level on
+--   the left and the max item level (in bags) on the right, no name, class or spec (#91).
 --   QoL 0.7.23 (Xaya 2026-11-05): the Stats tab is one "Character Stats" section (Core Stats > Primary / General / Offensive /
 --   Defensive, then Secondaries, Tertiaries and the Gear Summary, drawn as headings inside it) and the "Stat Weights" pane under it;
 --   the All ratings box and the Durability and repair section are gone. The window: a "Stat Calc" button on the character window
@@ -74,9 +79,9 @@ ns.CHARTOOLKIT_DEFAULTS = {
     gearSumStyle = "bars", -- the Gear Summary's look (QoL 0.7.28): bars | tiles | stacked | columns | share | table (CM.GEAR_SUM_STYLES)
     whatIf = 0,            -- (the All ratings amount; removed in QoL 0.7.23, always 0)
     whatIfStats = {},      -- What If: rating added to one stat, by stat key
-    valueMode = "percent", -- rating lines show their percent or their rating
-    lineModes = {},        -- one line flipped away from valueMode, by stat key
+    -- (valueMode and lineModes, the "% / rating" toggle, are gone since QoL 0.7.40: REQUEST-LOG B2; Cfg clears them from saved settings)
     collapsed = {},        -- folded section headers, by section key
+    statOpen = {},         -- (QoL 0.7.40, #88) the Stats tab's stats opened to show their rows, by card key; folded is the default
     overlays = false,      -- item level / socket / enchant marks on the character window's slots
     ovIlvl = true, ovSockets = true, ovEnchants = true,
     ovSize = 11,
@@ -104,7 +109,9 @@ local function Cfg()
     end
     if c.side ~= "left" then c.side = "right" end
     if c.detail ~= "short" then c.detail = "all" end
-    if c.valueMode ~= "rating" then c.valueMode = "percent" end
+    -- (QoL 0.7.40; REQUEST-LOG B2, reading taken: the "% / rating" toggle is removed in all three places, since the columns already show
+    -- rating, current value and Pt value side by side) its two saved keys are dropped; nothing reads them any more
+    c.valueMode, c.lineModes = nil, nil
     c.fontSize = math.max(8, math.min(16, tonumber(c.fontSize) or 11))
     c.ovSize = math.max(8, math.min(16, tonumber(c.ovSize) or 11))
     c.opacity = math.max(0, math.min(1, tonumber(c.opacity) or 0.92))
@@ -135,34 +142,34 @@ local function Cfg()
     c.gearSumStyle = CM.GearSumStyle(c)
     c.spellsAll = c.spellsAll == true
     c.whatIf = 0   -- (QoL 0.7.23; Xaya 2026-11-05: "remove "all ratings" as an entry option": a saved amount no longer applies)
-    for _, k in ipairs({ "whatIfStats", "lineModes", "collapsed", "enchantSlots" }) do
+    for _, k in ipairs({ "whatIfStats", "collapsed", "statOpen", "enchantSlots" }) do
         if type(c[k]) ~= "table" then c[k] = {} end
     end
+    for k, v in pairs(c.statOpen) do if v ~= true or type(k) ~= "string" then c.statOpen[k] = nil end end
     for k, v in pairs(c.whatIfStats) do
         local n = math.floor(tonumber(v) or 0)
         c.whatIfStats[k] = (n ~= 0) and math.max(-100000, math.min(100000, n)) or nil
     end
     do local n = math.floor(tonumber(c.whatIfPrimary) or 0); c.whatIfPrimary = (n ~= 0) and math.max(-100000, math.min(100000, n)) or nil end
-    for k, v in pairs(c.lineModes) do if v ~= "rating" and v ~= "percent" then c.lineModes[k] = nil end end
     if c.enchantSlotsSet ~= true then c.enchantSlotsSet = nil end
     return c
 end
 ns.CharToolkit_Cfg = Cfg
 
--- the value mode one rating line uses: its own flip, else the panel's setting
-local function ModeFor(c, key) return (c and c.lineModes[key]) or (c and c.valueMode) or "percent" end
-ns.CharToolkit_ModeFor = ModeFor
--- click on a rating line: flip that line; a flip back to the panel's setting clears it
-function ns.CharToolkit_FlipLine(key)
-    local c = Cfg(); if not c then return end
-    local nxt = ModeFor(c, key) == "rating" and "percent" or "rating"
-    c.lineModes[key] = (nxt ~= c.valueMode) and nxt or nil
+-- (QoL 0.7.40; REQUEST-LOG B2, reading taken) the value modes are gone: the "Show: % / rating" button in the title row, the click on a
+-- rating line that flipped it, and Settings > Panel > Layout "Rating lines" with Your numbers "Reset line flips". Every line shows its
+-- value; the columns give rating, current value and Pt value side by side.
+
+-- (QoL 0.7.40; Xaya 2026-11-06, REQUEST-LOG #88: "make each stat collapsible"; her answer "Collapsed (Recommended)") open or fold one stat
+-- of the Stats tab (its rows: what feeds it, with the number); remembered per stat in the saved settings (statOpen), folded by default
+function ns.CharToolkit_ToggleStat(key)
+    local c = Cfg(); if not (c and type(key) == "string") then return end
+    c.statOpen[key] = (not c.statOpen[key]) and true or nil
+    ns.CharToolkit_Render()
 end
--- the "%" / "rating" button: every line, and every single-line flip is cleared
-function ns.CharToolkit_SetValueMode(mode)
-    local c = Cfg(); if not c then return end
-    c.valueMode = (mode == "rating") and "rating" or "percent"
-    c.lineModes = {}
+function ns.CharToolkit_StatOpen(key)
+    local c = Cfg()
+    return (c and c.statOpen[key]) and true or false
 end
 
 -------------------------------------------------------------------------------
@@ -209,9 +216,10 @@ function ns.CharToolkit_TooltipLines(it, mode)
         out[#out + 1] = { " " }
         for _, l in ipairs(it.tip) do out[#out + 1] = { l } end
     end
-    if it.kind == "rating" then
+    -- (QoL 0.7.40, B2: no "Click: show the rating on this line" any more; #88: a stat with rows says what a click does)
+    if it.foldable ~= nil then
         out[#out + 1] = { " " }
-        out[#out + 1] = { mode == "rating" and "Click: show the percent on this line." or "Click: show the rating on this line.", hint = true }
+        out[#out + 1] = { it.foldable == "open" and "Click: fold its rows into this hover." or "Click: show these rows under the stat.", hint = true }
     end
     return out
 end
@@ -261,7 +269,9 @@ local panel, scroll, content
 -- spacing from core (#351 phase 2, XayaUI/Modules.lua): PAD = the margin inside the panel, GUT = the gutter between two controls
 local PANEL_W, PAD, GUT = 450, ns.UI_MARGIN, ns.UI_GUTTER   -- 450 (QoL 0.7.21, Xaya: "up to 450px" so every column fits; was 380)
 local TITLE_H = 18            -- the title row (the mode button is 18 tall)
-local NAME_H = 32             -- the header: name and item level (15), spec and class (11) under them (B2)
+-- the header (QoL 0.7.40, REQUEST-LOG #91): one line, the equipped item level on the left and the max item level (in bags) on the right
+-- (until 0.7.39: name and item level (15), spec and class (11) under them, 32 tall)
+local NAME_H = 18
 local HEADER = TITLE_H + GUT + NAME_H + GUT + 20 + GUT  -- title row, header, the tab row (20 tall), a gutter before the content
 local W = PANEL_W - 2 * PAD   -- content width (changes when the panel is resized: B10, #381)
 ns.CHARTOOLKIT_LAYOUT = { width = PANEL_W, pad = PAD, header = HEADER, content = W, minW = MIN_W, maxW = MAX_W, minH = MIN_H, maxH = MAX_H }
@@ -298,8 +308,7 @@ end
 
 local function ShowTooltip(owner, it)
     if not GameTooltip or not it then return end
-    local c = Cfg()
-    local mode = it.kind == "rating" and ModeFor(c, it.key) or nil
+    local mode = nil   -- (QoL 0.7.40, B2: no value modes)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     -- a spell: the game's own spell tooltip first (#377, Xaya: "hovering a spell name shows the spell's tooltip"), then our lines.
     -- GameTooltip:SetSpellByID is the tooltip's own method (not in the generated widget docs; INFERENCE until seen in game), with the
@@ -346,10 +355,8 @@ local function Btn()
             local it = self.item
             if self.spellKey then   -- (QoL 0.7.36, UI-39) a spell row of the Ability Scaling table: fold / open it
                 ns.CharToolkit_ToggleSpell(self.spellKey)
-            elseif it and it.kind == "rating" then
-                ns.CharToolkit_FlipLine(it.key)
-                ns.CharToolkit_Render()
-                if self.IsMouseOver and self:IsMouseOver() then ShowTooltip(self, self.item) end
+            elseif self.statKey then   -- (QoL 0.7.40, #88) a stat of the Stats tab with rows under it: open / fold it
+                ns.CharToolkit_ToggleStat(self.statKey)
             elseif it and it.kind == "action" and it.action then
                 ns.CharToolkit_Action(it.action)
             elseif it and it.kind == "choice" and it.pick then
@@ -363,6 +370,7 @@ local function Btn()
     end
     if b.bg then b.bg:Hide() end   -- (only an action row shows its background)
     b.spellKey = nil               -- (QoL 0.7.36: set again by the spell table for its rows)
+    b.statKey = nil                -- (QoL 0.7.40: set again by the Stats grid for a stat that has rows)
     b:Show()
     return b
 end
@@ -723,17 +731,15 @@ local function Build()
     panel.title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     panel.title:SetPoint("TOPLEFT", PAD, -PAD)
     panel.title:SetText("Stat Calculator")   -- Xaya 2026-11-04: the panel's title (the feature is still Character Toolkit in the settings)
-    -- the header (B2): name and item level on one line, spec and class in the class colour under the name, "equipped (overall)" under
-    -- the item level; a thin rule under it
+    -- the header (QoL 0.7.40; Xaya 2026-11-06, REQUEST-LOG #91, her words: "name, class, and spec not needed on stat calculator. Instead,
+    -- set this section to display currently equipped ilvl and on the right side max ilvl (in bags)"): one line, "Equipped 332.9" on the
+    -- left, "Max (bags) 334.6" on the right; a thin rule under it. (Before: the name, the spec and class in the class colour, the item
+    -- level with "item level (overall ...)" under it.)
     local hy = PAD + TITLE_H + GUT
-    panel.hName = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    panel.hName:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, -hy); panel.hName:SetJustifyH("LEFT")
-    panel.hSpec = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    panel.hSpec:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, -(hy + 17)); panel.hSpec:SetJustifyH("LEFT")
-    panel.hIlvl = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    panel.hIlvl:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PAD, -hy); panel.hIlvl:SetJustifyH("RIGHT")
-    panel.hIlvlSub = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    panel.hIlvlSub:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PAD, -(hy + 17)); panel.hIlvlSub:SetJustifyH("RIGHT")
+    panel.hEq = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    panel.hEq:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, -hy); panel.hEq:SetJustifyH("LEFT")
+    panel.hMax = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    panel.hMax:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PAD, -hy); panel.hMax:SetJustifyH("RIGHT")
     panel.hRule = panel:CreateTexture(nil, "BORDER")
     panel.hRule:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, -(hy + NAME_H + math.floor(GUT / 2)))
     panel.hRule:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PAD, -(hy + NAME_H + math.floor(GUT / 2)))
@@ -778,26 +784,7 @@ local function Build()
     close:SetSize(24, 24)   -- the template's own size (UIPanelCloseButtonNoScripts, SharedUIPanelTemplates.xml:135, live 12.1.5)
     close:SetPoint("TOPRIGHT", 2, 2)
     close:SetScript("OnClick", function() ns.CharToolkit_SetOpen(false) end)
-    -- the value mode button: every rating line shows its percent or its rating
-    local mb = CreateFrame("Button", nil, panel)
-    mb:SetSize(74, 18)
-    mb:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -(22 + GUT), -PAD)   -- a gutter left of the close button (24 wide, 2 px out: 22 px in)
-    mb.bg = mb:CreateTexture(nil, "BACKGROUND"); mb.bg:SetAllPoints(mb)
-    mb.text = mb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); mb.text:SetPoint("CENTER")
-    mb:SetScript("OnClick", function()
-        local c = Cfg(); if not c then return end
-        ns.CharToolkit_SetValueMode(c.valueMode == "rating" and "percent" or "rating")
-        ns.CharToolkit_Render()
-    end)
-    mb:SetScript("OnEnter", function(self)
-        if not GameTooltip then return end
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine("Rating lines show", 1, 0.82, 0)
-        GameTooltip:AddLine("Switches every rating line between its percent and its rating. Click one line to flip it alone.", 0.9, 0.9, 0.9, true)
-        GameTooltip:Show()
-    end)
-    mb:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    panel.modeBtn = mb
+    -- (QoL 0.7.40, REQUEST-LOG B2: the "Show: % / rating" value mode button, hidden since 0.7.14, is no longer made)
     -- the Min / Max button (QoL 0.7.23; Xaya 2026-11-05: "a min/max window toggle that toggles between two configured sizes -- one
     -- smaller and one larger (NOT full screen, just longer) -- as well as the free resize option in the bottom corner"): in the title
     -- row, a gutter left of the close button (where the hidden value-mode button sat). Max: the larger height; Min: the smaller one.
@@ -1037,7 +1024,7 @@ local function GridCols(hasBox, items, size)
     size = size or 11
     local hs = size - 1
     local function S(t) return { min = WordW(t, hs), line = TextW(t, hs), want = TextW(t, hs) } end
-    local spec = { S("Stat"), S("Rating"), S("Current value"), S("Pt value"), S("Influences") }
+    local spec = { S("Stat"), S("Rating"), S("Current value"), S("Pt value"), S("Modifies") }   -- ("Influences" until QoL 0.7.39, #88)
     local ind = INDENT or 12
     spec[1].min, spec[1].line = spec[1].min + ind, spec[1].line + ind
     local anyR = false
@@ -1055,7 +1042,7 @@ local function GridCols(hasBox, items, size)
             local psz = it.bigPairs and size or size - 1
             for _, p in ipairs(it.pairs or {}) do
                 local k, name = InflKind(p)
-                if k then
+                if k == "infl" then   -- (QoL 0.7.40, #88: only what the stat modifies is in the column; a "feed" is a row of its own)
                     spec[5].min = math.max(spec[5].min, WordW(name .. ",", psz))   -- (with the comma that follows it)
                     spec[5].want = math.max(spec[5].want, TextW(name .. ",", psz))
                 elseif not p.nested then
@@ -1230,11 +1217,19 @@ local function RenderGrid(c, items, y, hasBox)
             -- (QoL 0.7.28) what the stat feeds ("»" lines) and what feeds it ("From <stat>") are names in the Influences column on the card's
             -- own row, comma-separated, wrapping inside the column ("Names only, values on hover"); a line nested under a "»" line goes in
             -- that name's hover. Every other line stays a line of its own under the card (depth 2).
+            -- QoL 0.7.40 (Xaya 2026-11-06, REQUEST-LOG #87 / #88, her words: "changes "Modified By" column and "Modifies" columns to
+            -- separate the from and applies to elements"; "put the numerical contributions on a row for each stat -- make each stat
+            -- collapsible, in which case the rows bundle neatly into the tooltip"; her answers: rows "\"Modified By\" only", default
+            -- "Collapsed", columns "Only \"Modifies\" column"): the column holds only what the stat applies to ("»" lines, now headed
+            -- Modifies); what feeds it ("From Agility", "From Mastery") is a row under the stat with its number ("from Agility +2,616"),
+            -- with the stat's other lines. Each stat with rows folds: folded (the default) only its own row shows, with "+" in the indent
+            -- left of its name, and its rows are in its hover (CharToolkit_TooltipLines lists every line); a click on the stat opens it
+            -- ("-") and the choice is kept per stat (c.statOpen). A typed number's new value shows under a row's value as before.
             local infl, rows, last = {}, {}, nil
             for _, p in ipairs(it.pairs or {}) do
                 if (not short or p.short) and not CM.NoteOnly(p) then
                     local k, name = InflKind(p)
-                    if k then
+                    if k == "infl" then
                         last = { kind = k, name = name, p = p, nested = {} }
                         infl[#infl + 1] = last
                     elseif p.nested and last then
@@ -1245,6 +1240,12 @@ local function RenderGrid(c, items, y, hasBox)
                     end
                 end
             end
+            local open = c.statOpen[it.key] == true
+            if #rows > 0 then
+                it.foldable = open and "open" or "folded"
+                -- the fold mark: in the indent left of the stat's name (depth 0 of this row; nothing else is drawn there)
+                PlaceFS(FS(), 0, y, INDENT, size, open and "-" or "+", cMuted, "LEFT", false, "fold")
+            else it.foldable = nil end
             local ih, nameBtns = 0, {}
             if #infl > 0 then
                 local fx, fy, lineMax = 0, y, 0
@@ -1253,7 +1254,7 @@ local function RenderGrid(c, items, y, hasBox)
                     local text = e.name .. ((i < #infl) and "," or "")
                     local tw = math.min(g.iw, TextW(text, psz) + 1)
                     if fx > 0 and fx + tw > g.iw then fx = 0; fy = fy + lineMax + 1; lineMax = 0 end
-                    local nh = PlaceFS(FS(), g.ix + fx, fy, tw, psz, text, e.p.labelColor or pcol, "LEFT", true, (e.kind == "feed") and "feed" or "infl")
+                    local nh = PlaceFS(FS(), g.ix + fx, fy, tw, psz, text, e.p.labelColor or pcol, "LEFT", true, "infl")
                     lineMax = math.max(lineMax, nh)
                     local p = e.p
                     nameBtns[#nameBtns + 1] = { x = g.ix + fx, y = fy, w = tw, h = nh, item = { kind = "infl", key = it.key .. ":" .. tostring(p.label),
@@ -1265,9 +1266,11 @@ local function RenderGrid(c, items, y, hasBox)
             end
             y = y + math.max(h, ih) + 2
             local headEnd = y
-            for _, p in ipairs(rows) do
+            for _, p in ipairs(open and rows or {}) do
                 local pv = (p.value ~= nil) and tostring(p.value) or ""
-                local ph = GridLine(g, y, { x0 = 2 * INDENT, label = p.label, labelCol = p.labelColor or pcol, size = psz, value = pv,
+                -- (QoL 0.7.40) a contribution reads "from Agility" as in her words (the model's "From ..." with a small f)
+                local lbl = tostring(p.label or ""):gsub("^From ", "from ")
+                local ph = GridLine(g, y, { x0 = 2 * INDENT, label = lbl, labelCol = p.labelColor or pcol, size = psz, value = pv,
                     valueCol = ToneColor(p.tone, cText), per = p.per, perCol = pcol, kind = "pair", newValue = p.newValue })
                 y = y + ph + 1
             end
@@ -1275,6 +1278,7 @@ local function RenderGrid(c, items, y, hasBox)
             -- under it, and each name in Influences on its own: that line's value, Pt value and, with a typed number, the new value
             local lb = Btn()
             lb.item = it
+            if it.foldable then lb.statKey = it.key end   -- (QoL 0.7.40) a click on the stat opens / folds its rows
             lb:ClearAllPoints()
             lb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top)
             lb:SetSize(g.ix - GUT, headEnd - top)
@@ -1282,6 +1286,7 @@ local function RenderGrid(c, items, y, hasBox)
             if y > headEnd then
                 local pb = Btn()
                 pb.item = it
+                pb.statKey = lb.statKey   -- (a click on its rows folds them too)
                 pb:ClearAllPoints()
                 pb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -headEnd)
                 pb:SetSize(W, y - headEnd)
@@ -1528,15 +1533,36 @@ end
 -- size (3 at the default 450 panel up to text size 12; 2 at the narrowest panel or a larger text), never fewer than one; a line under
 -- the head says how many more are picked and that a wider panel shows them. Every cell wraps in its column; a cell's change (or the
 -- lost rating) is a second, smaller line under it.
-local function MultiCols(size, nv)
+-- QoL 0.7.40 (Xaya 2026-11-06, REQUEST-LOG #90: "+/- signs should be in () to the right of the compared values -- set the number values
+-- to left-align to make space"): every number starts at its column's left edge, and an item's difference from the equipped one follows
+-- it on the same line in brackets, "1,405 (-12)" (it was the second line under the number). need: the widest "number (difference)" of the
+-- table as the game measures it (TextW); a column is at least that wide where the panel allows, so fewer item columns may fit side by
+-- side (the line under the head says how many more are picked). Only where even one column is narrower than that (the narrowest panel at
+-- a large text size) does a difference go under its number. Other second lines (DR threshold's "crosses ...", True / lost's "L ...")
+-- stay under the number.
+local function MultiCols(size, nv, need, needEq)
     local g = { pt = math.ceil(size * 0.55 * 9.5), stat = math.max(64, math.floor(W * 0.22)) }
-    local minCol = math.ceil(size * 0.55 * 8)
+    local minCol = math.max(math.ceil(size * 0.55 * 8), need or 0)
     local avail = W - g.stat - g.pt - 2 * GUT
-    local fit = math.max(2, math.floor((avail + GUT) / (minCol + GUT)))
-    g.n = math.max(1, math.min(nv, fit))
-    g.col = math.min(120, math.floor((avail - (g.n - 1) * GUT) / g.n))
+    if needEq then
+        -- (QoL 0.7.40) the Equipped column has no difference beside its numbers: it takes only what they need (at most an item
+        -- column's width), so the room goes to the item columns
+        local eq = math.min(minCol, math.max(needEq, math.ceil(size * 0.55 * 5)))
+        local fitItems = math.max(1, math.floor((avail - eq) / (minCol + GUT)))
+        g.n = math.max(1, math.min(nv, 1 + fitItems))
+        local items = g.n - 1
+        g.col1 = eq
+        g.col = (items > 0) and math.min(math.max(120, need or 0), math.floor((avail - eq - items * GUT) / items)) or eq
+    else
+        local fit = math.max(2, math.floor((avail + GUT) / (minCol + GUT)))
+        g.n = math.max(1, math.min(nv, fit))
+        g.col = math.min(math.max(120, need or 0), math.floor((avail - (g.n - 1) * GUT) / g.n))
+        g.col1 = g.col
+    end
     g.px = g.stat + GUT
     g.vx = g.px + g.pt + GUT
+    g.CX = function(i) if i == 1 then return g.vx end; return g.vx + g.col1 + GUT + (i - 2) * (g.col + GUT) end
+    g.CW = function(i) return (i == 1) and g.col1 or g.col end
     return g
 end
 ns.CharToolkit_MultiCols = MultiCols   -- (tests)
@@ -1547,8 +1573,21 @@ local function RenderMulti(c, items, y)
     local cLabel = TC("xui-label", "text", { 1, 0.82, 0, 1 })
     local nv = 1
     for _, it in ipairs(items) do if it.kind == "mhead" then nv = math.max(1, #(it.cols or {}) - 2) end end
-    local g = MultiCols(size, nv)
-    local function CX(i) return g.vx + (i - 1) * (g.col + GUT) end
+    -- (QoL 0.7.40, #90) the widest number with its difference beside it, measured in the font the cells use
+    local need, needEq, space = 0, 0, TextW(" ", size)
+    local function DiffText(d) return "(" .. tostring(d) .. ")" end
+    for _, it in ipairs(items) do
+        if it.kind == "mrow" then
+            local lsz = it.sub and (size - 1) or size
+            for i, txt in pairs(it.cells or {}) do
+                local d = it.diffs and it.diffs[i]
+                local w = TextW(tostring(txt), lsz) + (d and (space + TextW(DiffText(d), lsz)) or 0)
+                if i == 1 then needEq = math.max(needEq, w) else need = math.max(need, w) end
+            end
+        end
+    end
+    local g = MultiCols(size, nv, need, needEq)
+    local CX, CW = g.CX, g.CW
     local function Hover(it, top, h)
         local b = Btn()
         b.item = it
@@ -1562,7 +1601,7 @@ local function RenderMulti(c, items, y)
             local h = PlaceFS(FS(), 0, y, g.stat, hs, cs[1] or "", cMuted, "LEFT", true, "mhead")
             h = math.max(h, PlaceFS(FS(), g.px, y, g.pt, hs, cs[2] or "", cMuted, "RIGHT", true, "mhead"))
             for i = 1, g.n do
-                h = math.max(h, PlaceFS(FS(), CX(i), y, g.col, hs, cs[i + 2] or "", (it.colColors and it.colColors[i + 2]) or cMuted, "RIGHT", true, "mhead"))
+                h = math.max(h, PlaceFS(FS(), CX(i), y, CW(i), hs, cs[i + 2] or "", (it.colColors and it.colColors[i + 2]) or cMuted, "RIGHT", true, "mhead"))
             end
             Hover(it, top, h + 1)
             y = y + h + 3
@@ -1583,9 +1622,22 @@ local function RenderMulti(c, items, y)
             for i = 1, g.n do
                 local txt = it.cells and it.cells[i]
                 if txt ~= nil then
-                    local ch = PlaceFS(FS(), CX(i), y, g.col, lsz, tostring(txt), ToneColor((it.cellTones and it.cellTones[i]) or it.tone, cText), "RIGHT", true, "mcell")
+                    -- (QoL 0.7.40, #90) the number from the column's left edge, as wide as it is (the whole column when it wraps), and its
+                    -- difference in brackets right after it on the same line, in the better / worse colour
+                    local t, cw = tostring(txt), CW(i)
+                    local d = it.diffs and it.diffs[i]
+                    local tw = math.min(cw, TextW(t, lsz))
+                    local dt = d and DiffText(d) or nil
+                    local dw = dt and TextW(dt, lsz) or 0
+                    local inline = dt and (tw + space + dw <= cw)
+                    local ch = PlaceFS(FS(), CX(i), y, inline and tw or cw, lsz, t, ToneColor((it.cellTones and it.cellTones[i]) or it.tone, cText), "LEFT", true, "mcell")
+                    if dt then
+                        local dc = ToneColor(it.diffTones and it.diffTones[i], cMuted)
+                        if inline then ch = math.max(ch, PlaceFS(FS(), CX(i) + tw + space, y, cw - tw - space, lsz, dt, dc, "LEFT", false, "mdiff"))
+                        else ch = ch + 1 + PlaceFS(FS(), CX(i), y + ch + 1, cw, lsz, dt, dc, "LEFT", true, "mdiff") end   -- (too narrow: under it)
+                    end
                     local sub = it.subs and it.subs[i]
-                    if sub then ch = ch + 1 + PlaceFS(FS(), CX(i), y + ch + 1, g.col, size - 1, sub, ToneColor(it.subTones and it.subTones[i], cMuted), "RIGHT", true, "msub") end
+                    if sub then ch = ch + 1 + PlaceFS(FS(), CX(i), y + ch + 1, cw, size - 1, sub, ToneColor(it.subTones and it.subTones[i], cMuted), "LEFT", true, "msub") end
                     h = math.max(h, ch)
                 end
             end
@@ -1810,8 +1862,7 @@ local function RenderSections(c, m, tab, y0)
                 for _, it in ipairs(sec.items) do if it.kind ~= "action" then list[#list + 1] = it end end
                 for _, it in ipairs(list) do
                     local top = y
-                    local mode = it.kind == "rating" and ModeFor(c, it.key) or nil
-                    local v, tone = CM.ValueFor(it, mode)
+                    local v, tone = CM.ValueFor(it, nil)   -- (QoL 0.7.40, B2: no value modes)
                     local rowH
                     if it.kind == "icons" then
                         local cols = math.max(1, math.floor(W / ICON_CELL))
@@ -2017,24 +2068,27 @@ local function ApplyWidth(c)
     end
 end
 
--- the header's text (B2)
+-- the header's text (QoL 0.7.40, REQUEST-LOG #91): "Equipped <equipped item level>" on the left, "Max (bags) <overall item level>" on
+-- the right (CM.HeaderInfo: GetAverageItemLevel's equipped and overall returns; reading taken: her "max ilvl (in bags)" is the overall
+-- one). Each half gets half the width less half a gutter, so the two never meet; a value the game does not give leaves its half empty.
+local HEADER_SIZE = 14
+ns.CharToolkit_HeaderText = function(h)
+    h = h or {}
+    return h.ilvlEquipped and ("Equipped %.1f"):format(h.ilvlEquipped) or "", h.ilvlOverall and ("Max (bags) %.1f"):format(h.ilvlOverall) or ""
+end
 local function RenderHeader(c)
     local h = CM.HeaderInfo()
-    local text = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
     local muted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
-    SetFont(panel.hName, 15, ""); panel.hName:SetText(h.name or ""); Paint(panel.hName, text)
-    local spec = table.concat({ h.spec or "", h.className or "" }, " "):gsub("^%s+", ""):gsub("%s+$", "")
-    SetFont(panel.hSpec, 11, ""); panel.hSpec:SetText(spec); Paint(panel.hSpec, h.color or text)
-    SetFont(panel.hIlvl, 15, "")
-    panel.hIlvl:SetText(h.ilvlEquipped and ("%.1f"):format(h.ilvlEquipped) or "")
-    Paint(panel.hIlvl, TC("xui-label", "text", { 1, 0.82, 0, 1 }))
-    SetFont(panel.hIlvlSub, 10, "")
-    panel.hIlvlSub:SetText(h.ilvlEquipped and ("item level" .. (h.ilvlOverall and (" (overall %.1f)"):format(h.ilvlOverall) or "")) or "")
-    Paint(panel.hIlvlSub, muted)
-    -- the name and spec stop short of the item level column
-    local right = 120
-    panel.hName:SetWidth(math.max(40, W - right - GUT)); panel.hSpec:SetWidth(math.max(40, W - right - GUT))
-    panel.hIlvl:SetWidth(right); panel.hIlvlSub:SetWidth(right)
+    local label = TC("xui-label", "text", { 1, 0.82, 0, 1 })
+    local left, right = ns.CharToolkit_HeaderText(h)
+    local half = math.floor((W - GUT) / 2)
+    for _, fs in ipairs({ panel.hEq, panel.hMax }) do
+        SetFont(fs, HEADER_SIZE, "")
+        if fs.SetWordWrap then fs:SetWordWrap(false) end
+        fs:SetWidth(half)
+        Paint(fs, label)
+    end
+    panel.hEq:SetText(left); panel.hMax:SetText(right)
     local rc = TC("xui-window", "border", { 0.35, 0.35, 0.4, 1 })
     panel.hRule:SetColorTexture(rc[1], rc[2], rc[3], 0.6)
     for _, l in ipairs(panel.grip and panel.grip.lines or {}) do l:SetColorTexture(muted[1], muted[2], muted[3], 0.9) end
@@ -2053,15 +2107,7 @@ function ns.CharToolkit_Render()
     SetFont(panel.title, c.fontSize + 2, "")
     Paint(panel.title, TC("xui-titlebar", "text", { 1, 0.82, 0, 1 }))
     layout = {}
-    local mb = panel.modeBtn
     local mbg, mbb = TC("xui-button", "bg", { 0.04, 0.04, 0.04, 0.7 }), TC("xui-button", "text", { 1, 0.82, 0, 1 })
-    mb.bg:SetColorTexture(mbg[1], mbg[2], mbg[3], mbg[4] or 1)
-    mb.text:SetText(c.valueMode == "rating" and "Show: rating" or "Show: %")
-    Paint(mb.text, mbb)
-    panel.modeText = mb.text:GetText()
-    -- (QoL 0.7.14) no tab draws rating lines any more (the stat map shows the percent and the rating together), so the "Show: %"
-    -- button would do nothing (#382: "the Show: % toggle doesn't do anything"): it is hidden
-    mb:Hide()
     local sb = panel.sizeBtn
     sb.bg:SetColorTexture(mbg[1], mbg[2], mbg[3], mbg[4] or 1)
     sb.text:SetText(c.sizeMode == "large" and "Min" or "Max")
@@ -2098,9 +2144,43 @@ end
 -- what the panel drew last: { model, layout records, mode button text }; for the tests
 function ns.CharToolkit_Drawn()
     if not panel then return nil end
-    return { model = panel.model, layout = panel.layoutRecs, modeText = panel.modeText, sizeText = panel.sizeText, buttons = btnPool, headers = hdrPool, boxes = boxes,
+    return { model = panel.model, layout = panel.layoutRecs, sizeText = panel.sizeText, buttons = btnPool, headers = hdrPool, boxes = boxes,
         fonts = fsPool, icons = iconBtns, spellBtn = panel.spellBtn, filterIcon = panel.filterIcon, filterMenu = panel.filterMenu,
         menuRecs = panel.menuRecs, textures = texPool }
+end
+
+-- (QoL 0.7.40) the Stat Calculator through core's service list (Modules.lua ns.Provide), for XayaUI Dev Assist's QA walkthroughs
+-- (QAWalks-statcalc.lua: REQUEST-LOG #88-#91, B2): they read what the panel drew and press its controls, never its own tables. Only a
+-- table of functions is registered when this file loads; nothing is built, registered or read until a walkthrough calls one (V14: with
+-- the Character Toolkit off, Open says so and does nothing).
+if ns.Provide then
+    ns.Provide("statCalc", {
+        Cfg = function() return Cfg() end,
+        -- open the panel on a tab ("stats" | "gear" | "spells"); false and why when the toolkit or its panel is off
+        Open = function(tab)
+            local c = Cfg()
+            if not c then return false, "no saved settings yet" end
+            if not c.enabled then return false, "Character Toolkit is off (QoL > Character Toolkit)" end
+            if not c.panel then return false, "the Stat Calculator panel is off (QoL > Character Toolkit > Panel)" end
+            if tab then c.tab = tab end
+            ns.CharToolkit_SetOpen(true)
+            return panel ~= nil and panel:IsShown()
+        end,
+        Shown = function() return panel ~= nil and panel:IsShown() end,
+        Close = function() if panel and panel:IsShown() then ns.CharToolkit_SetOpen(false) end end,
+        Drawn = function() return ns.CharToolkit_Drawn() end,
+        ToggleStat = function(key) ns.CharToolkit_ToggleStat(key) end,
+        SelectGearSlot = function(slot) ns.CharToolkit_SelectGearSlot(slot) end,
+        PickItem = function(link, slot) ns.CharToolkit_PickItem(link, slot) end,
+        -- the header as drawn: left text, right text, and the game's two item levels it came from
+        Header = function()
+            if not panel then return nil end
+            return panel.hEq:GetText(), panel.hMax:GetText(), CM.HeaderInfo()
+        end,
+        HasModeButton = function() return panel ~= nil and panel.modeBtn ~= nil end,
+        Page = function() return ns.BuildCharToolkitPage and ns.BuildCharToolkitPage(function() end) end,
+        TextW = function(text, size) return panel and TextW(text, size) or nil end,
+    })
 end
 
 -------------------------------------------------------------------------------
@@ -2579,10 +2659,7 @@ function ns.BuildCharToolkitPage(Notify)
                 detail = { type = "select", order = 3, name = "Detail", values = { all = "Every line", short = "Key lines" },
                     desc = "How many detail lines show under each stat. The hover always shows all of them.",
                     get = function() return C().detail end, set = function(_, v) C().detail = v; Changed() end },
-                valueMode = { type = "select", order = 4, name = "Rating lines", values = { percent = "Percent", rating = "Rating" },
-                    desc = "What every rating line shows (the % / rating button in the panel does the same). Clicking one line flips it alone.",
-                    get = function() return C().valueMode end,
-                    set = function(_, v) ns.CharToolkit_SetValueMode(v); Changed() end },
+                -- (QoL 0.7.40, REQUEST-LOG B2: "Rating lines", order 4, is gone with the % / rating toggle)
                 fontSize = { type = "range", order = 5, name = "Text size", min = 8, max = 16, step = 1,
                     get = function() return C().fontSize end, set = function(_, v) C().fontSize = v; Changed() end },
                 resetSize = { type = "execute", order = 5.5, name = "Reset size",
@@ -2616,9 +2693,7 @@ function ns.BuildCharToolkitPage(Notify)
                 clear = { type = "execute", order = 2, name = "Clear all",
                     desc = "Every number you typed in a Change box on the Stats tab goes back to yours.",
                     func = function() local c = C(); c.whatIf = 0; c.whatIfStats = {}; c.whatIfPrimary = nil; Changed() end },
-                resetLines = { type = "execute", order = 3, name = "Reset line flips",
-                    desc = "Every rating line goes back to the Rating lines setting.",
-                    func = function() C().lineModes = {}; Changed() end },
+                -- (QoL 0.7.40, B2: "Reset line flips" is gone with the per-line flip)
             } },
         },
     }

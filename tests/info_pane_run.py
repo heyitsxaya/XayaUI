@@ -66,11 +66,9 @@ local function shown(fsList)
   for _, o in ipairs(fsList) do if o:IsShown() and o.GetText and o:GetText() then out[#out + 1] = tostring(o:GetText()) end end
   return table.concat(out, "\n")
 end
+-- (Options 0.6.64: the credits' collapsible section rows, the only buttons in the content, are gone; REQUEST-LOG B6)
 local function contentText()
-  local btns = {}
-  for _, b in ipairs(f.btnPool.list) do btns[#btns + 1] = b.text end
-  for i, b in ipairs(f.btnPool.list) do if not b:IsShown() then btns[i] = { IsShown = function() return false end } end end
-  return shown(f.fsPool.list) .. "\n" .. shown(btns)
+  return shown(f.fsPool.list)
 end
 local function navLabels()
   local out = {}
@@ -123,17 +121,71 @@ txt = contentText()
 local missing = {}
 for _, n in ipairs({ __CREDITS__ }) do if not txt:find(n, 1, true) then missing[#missing + 1] = n end end
 check("Credits + Acknowledgements has every credit, as before", #missing == 0, table.concat(missing, "; "))
-check("...with its heading, intro and section counts", txt:find("Credits and attribution", 1, true) and txt:find("stands on other people's work", 1, true)
-  and txt:find("CODE", 1, true) and txt:find("(3)", 1, true))
-local hdr
-for _, b in ipairs(f.btnPool.list) do if b:IsShown() and tostring(b.text:GetText()):find("CODE", 1, true) then hdr = b end end
-check("a section header collapses its credits", hdr ~= nil)
-if hdr then
-  hdr:Click(); txt = contentText()
-  check("...collapsed: its credits are hidden, the others stay", not txt:find("LibStub", 1, true) and txt:find("EllesmereUI", 1, true))
-  for _, b in ipairs(f.btnPool.list) do if b:IsShown() and tostring(b.text:GetText()):find("CODE", 1, true) then b:Click() end end
-  check("...and opens again", contentText():find("LibStub", 1, true) ~= nil)
+-- (Options 0.6.64; REQUEST-LOG B6, reading taken; her words, ATTR-1: "increase the gutter by 10px / credits and attribution are h1 /
+-- subheaders (code, ideas and design, etc) h2 / each section under a subheader should have an unrounded box with rows (no columns) on a
+-- slightly less transparent background (10%)". Before: an intro paragraph, capitalised collapsible section rows with a count, one box
+-- per credit. Negative control: every check below fails on Options 0.6.63.)
+check("B6: the heading stays the h1, the intro paragraph is gone", txt:find("Credits and attribution", 1, true) ~= nil and txt:find("stands on other people's work", 1, true) == nil)
+local recs = f.recs or {}
+local function rk(kind) local o = {}; for _, r in ipairs(recs) do if r.kind == kind then o[#o + 1] = r end end; return o end
+local h2s, boxes, rows = rk("h2"), rk("box"), rk("row")
+local names = {}
+for _, r in ipairs(h2s) do names[#names + 1] = r.text end
+check("B6: each section's subheader is an h2 in normal case: Code | Ideas and design | Sounds | Game art (no capitals, no count)",
+  table.concat(names, " | ") == "Code | Ideas and design | Sounds | Game art" and txt:find("CODE", 1, true) == nil and txt:find("(3)", 1, true) == nil,
+  table.concat(names, " | "))
+local h2font, h2seen = true, 0
+for _, fs in ipairs(f.fsPool.list) do
+  if fs:IsShown() and (fs:GetText() == "Code" or fs:GetText() == "Sounds") then h2seen = h2seen + 1; if fs:GetFontObject() ~= "GameFontNormalLarge" then h2font = false end end
 end
+check("B6: ...drawn in the pane's h2 font (GameFontNormalLarge)", h2font and h2seen == 2, h2seen)
+check("B6: no section collapses any more (no arrow rows: the content has no buttons)", f.btnPool == nil)
+check("B6: one box per SECTION (4), not one per credit (" .. #rows .. " credits)", #boxes == 4 and #rows == __NCRED__,
+  #boxes .. " boxes, " .. #rows .. " rows")
+local inside, rowsOk = true, true
+for _, r in ipairs(rows) do
+  local bx
+  for _, b in ipairs(boxes) do if b.section == r.section then bx = b end end
+  if not (bx and r.y > bx.y and r.y < bx.y + bx.h and r.x > bx.x and r.x + r.w < bx.x + bx.w) then inside = false end
+end
+for _, b in ipairs(boxes) do
+  local n, lastY, sameX = 0, -1, nil
+  for _, r in ipairs(rows) do
+    if r.section == b.section then
+      n = n + 1
+      if r.y <= lastY then rowsOk = false end
+      lastY = r.y
+      sameX = sameX or r.x
+      if r.x ~= sameX then rowsOk = false end
+    end
+  end
+  if n ~= b.rows then rowsOk = false end
+end
+check("B6: ...every credit is a row inside its section's box", inside and #rows > 0)
+check("B6: ...rows one under the other at the same x (no columns)", rowsOk and #boxes > 0)
+local alphaOk = #boxes > 0
+for _, b in ipairs(boxes) do if math.abs(b.alpha - math.min(1, b.paneAlpha + 0.1)) > 1e-6 then alphaOk = false end end
+check("B6: ...each box's background is 10% more opaque than the pane's", alphaOk)
+-- no line under a subheader: between each h2 and the top of its box no 1 px rule is shown
+local rules = 0
+for _, bx in ipairs(f.boxPool.list) do
+  if bx.bg:IsShown() then
+    local _, hgt = bx.bg:GetSize()
+    if hgt == 1 then rules = rules + 1 end
+  end
+end
+check("(guard) B6: no line under any subheader (the only rule left is the one under the h1)", rules == 1, rules)
+local gapOk = #h2s == 4
+for i = 2, #h2s do
+  local prev
+  for _, b in ipairs(boxes) do if b.section == h2s[i - 1].text then prev = b end end
+  if not (prev and h2s[i].y - (prev.y + prev.h) == 30) then gapOk = false end
+end
+check("B6: the gutter between one section's box and the next section grows by 10 px (20 -> 30; core's gutter + 10 after the box)",
+  gapOk and P.CREDITS_GUTTER == ns.UI_GUTTER + 10, P.CREDITS_GUTTER)
+local corners = true
+for _, bx in ipairs(f.boxPool.list) do if bx.bg:IsShown() and bx.bg.mask ~= nil then corners = false end end
+check("(guard) B6: ...the boxes are square (flat textures, no rounded mask)", corners)
 
 -- the ? in the settings window's title bar, beside collapse and X: opens Info > Help (FAQ)
 check("the settings window has a ? in its title bar", c.help ~= nil and c.help:IsShown() and c.help:GetText() == "?")
@@ -196,10 +248,29 @@ check("reopened where it was left", pp == "CENTER" and prel == UIParent and px =
 ACD.OpenFrames["CueRules"] = nil
 AceGUI:Release(of)
 check("releasing the settings window closes the pane and hides the ?", not f:IsShown() and not c.help:IsShown())
+
+-- (Dev Assist 0.7.13, V20 / V22) the in-game walkthrough of the credits page (XayaUI_DevAssist/QAWalks-statcalc.lua, QA E1z200): its
+-- pre-fill checks give Pass on this code, reading the pane only through core's service list ("infoPane")
+-- (this run keeps XayaUI Dev Assist off; the walkthrough framework and this file are read on their own, as Dev Assist reads them)
+XayaUIDevAssistDB = XayaUIDevAssistDB or {}
+if not rawget(_G, "XayaUI_DevQA") then assert(loadfile(__ROOT__ .. "/XayaUI_DevAssist/QAWalk.lua"))() end
+local qf = loadfile(__ROOT__ .. "/XayaUI_DevAssist/QAWalks-statcalc.lua")   -- (absent before Dev Assist 0.7.13)
+if qf then qf() end
+local QA = rawget(_G, "XayaUI_DevQA")
+local wk = QA and QA.walks and QA.walks["credits-page"]
+check("the credits-page walkthrough is registered with pre-fill", wk ~= nil and wk.prefill == true and wk.qa == "E1z200")
+if wk then
+  wk.steps[1].setup()
+  local ok1, n1 = wk.steps[1].check()
+  local ok2, n2 = wk.steps[2].check()
+  check("  ...steps 1 and 2: the addon's own verdict is Pass (4 headings in normal case, 4 boxes, every credit a row, +10% opacity)", ok1 and ok2, tostring(n1) .. " / " .. tostring(n2))
+  wk.steps[3].setup()
+  check("  ...its last step closes the pane", wk.steps[3].check() and not f:IsShown())
+end
 return R
 end
 '''.replace("__N__", str(N_LANDINGS)).replace("__FIRST__", FIRST_DATE).replace(
-    "__CREDITS__", ", ".join('"%s"' % n for n in CREDIT_NAMES))   # already escaped as Lua source
+    "__CREDITS__", ", ".join('"%s"' % n for n in CREDIT_NAMES)).replace("__NCRED__", str(len(CREDIT_NAMES))).replace("__ROOT__", "'" + ROOT.replace("\\", "/") + "'")   # already escaped as Lua source
 
 
 def data_in_sync():
@@ -229,7 +300,7 @@ def main():
     enabled = [n for n in folders if n != "XayaUI_DevAssist"]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     kb, loaded = data_memory_kb(L)
-    results.append(("the generated text loads; it adds %.1f KB of Lua memory once the settings window addon loads" % kb, loaded and kb < 120))
+    results.append(("the generated text loads; it adds %.1f KB of Lua memory once the settings window addon loads" % kb, loaded and kb < 200))   # cap raised from 120 (2026-11-07): every patch note stays in game; only loaded with the settings window
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
