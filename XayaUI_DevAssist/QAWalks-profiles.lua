@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-profiles.lua (XayaUI_DevAssist 0.7.13): the in-game QA walkthrough for the settings window's new top level (Options 0.6.66;
+-- QAWalks-profiles.lua (XayaUI_DevAssist 0.7.31): the in-game QA walkthrough for the settings window's new top level (Options 0.6.71;
 -- REQUEST-LOG UI-23 to UI-27): the toolbar gone, the top tabs Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings,
 -- "+ New Rule" on the Rules row, Profiles > Import / Export with components and the Recycle Bin as a sub-tab (QA H6 to H9).
 -- Standing rule V22 (Xaya 2026-11-07): every step that the addon can judge offers its verdict (prefill = true; recorded only on her

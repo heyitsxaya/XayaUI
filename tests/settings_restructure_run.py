@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The settings window's new top level (Options 0.6.66; REQUEST-LOG UI-23 to UI-27, Xaya 2026-11-06, her words:
+"""The settings window's new top level (Options 0.6.71; REQUEST-LOG UI-23 to UI-27, Xaya 2026-11-06, her words:
   "I believe these almost exclusively belong to rules so they should be put under the rules tab and the Rules / QOL / Bonus Features /
   Reskin / Settings should be at the top level now instad"; tab label "Blizzard Reskin"; "Cog goes"; New Rule: "Rules tab's top row";
   Recycle Bin: "put into profiles instead as its own subtab"; the tab is "Profiles", "expanded as a category bucket to include all

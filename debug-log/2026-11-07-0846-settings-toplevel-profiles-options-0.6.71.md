@@ -1,4 +1,4 @@
-# Settings window: new top tabs, toolbar gone, Profiles with components (Options 0.6.66, Dev Assist 0.7.13)
+# Settings window: new top tabs, toolbar gone, Profiles with components (Options 0.6.71, Dev Assist 0.7.31)
 
 Session 014bN6tWsQ4qcob9VPKD7PV5, branch `claude/settings-restructure` (from `main` 7b830cf). REQUEST-LOG A8 UI-23 to UI-27, A16 SR-1 to SR-3.
 

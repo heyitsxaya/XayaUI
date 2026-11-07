@@ -169,7 +169,7 @@ local function AddRest(w, key, fn)
 end
 
 -------------------------------------------------------------------------------
--- Rule search box (filters the rule list by name). The toolbar that was here is gone (Options 0.6.66).
+-- Rule search box (filters the rule list by name). The toolbar that was here is gone (Options 0.6.71).
 -------------------------------------------------------------------------------
 ns.treeFilter = ""
 local filterStamp = 0
@@ -233,7 +233,7 @@ local function MakeSearchBox(parent)
     return sb
 end
 
--- (Options 0.6.66; REQUEST-LOG UI-23 to UI-27, Xaya 2026-11-06: "I believe these almost exclusively belong to rules so they should be
+-- (Options 0.6.71; REQUEST-LOG UI-23 to UI-27, Xaya 2026-11-06: "I believe these almost exclusively belong to rules so they should be
 -- put under the rules tab and the Rules / QOL / Bonus Features / Reskin / Settings should be at the top level now instad"; "Cog goes")
 -- The toolbar above the tabs (New Rule, Import, Export, Recycle Bin, the hidden Lock Positions, the Settings cog) is gone: "+ New Rule"
 -- is on the Rules tab's top row (CompactRulesTabs), Import / Export / Recycle Bin are sub-tabs of Profiles, Settings is a top tab.
@@ -314,7 +314,7 @@ local function SkinFrame(of)
     do local tt = TC("xui-titlebar", "text", GOLD); of.titletext:SetTextColor(tt[1], tt[2], tt[3]); TF(of.titletext) end
     -- (AceGUI's status bar under the content is hidden by Options.lua EnsureChrome: this window does not use it. A flat "band" that
     -- was meant to replace it here never ran: it looked for of.statusbg, which AceGUI's Frame widget does not keep.)
-    -- no toolbar any more (Options 0.6.66): the content starts right under the title strip, where the toolbar was
+    -- no toolbar any more (Options 0.6.71): the content starts right under the title strip, where the toolbar was
     if fr.xuiToolbar then fr.xuiToolbar:Hide() end
     local c = of.content
     local p1 = { c:GetPoint(1) }
@@ -445,7 +445,7 @@ local function CompactRulesTabs(w)
     local tf = SUB_TAB_FONT * ((TH and TH.Scale and TH.Scale()) or 1)   -- (UI-50: the name's size at the theme's text size)
     local cw = math.ceil(sw * tf / math.max(1, tonumber(cur) or tf)) + 24
     cw = math.min(cw, math.floor(width / 3))
-    -- (Options 0.6.66; UI-25, her words: New Rule goes on the "Rules tab's top row") "+ New Rule" is a flat button at the left end of
+    -- (Options 0.6.71; UI-25, her words: New Rule goes on the "Rules tab's top row") "+ New Rule" is a flat button at the left end of
     -- the row, as wide as its name plus 24 px, SUB_GAP before the tabs; the tabs share what is left evenly. (Where on the row was not
     -- given by her: left end chosen while she was away, 2026-11-07; in her QA question flow, key UI-25-newrule.)
     local nb = ns.RulesNewRuleButton(w)
@@ -504,7 +504,7 @@ local TOP_TAB_H, TOP_TAB_FONT = ns.Style.tabTop.h, ns.Style.tabTop.font   -- (co
 local function IsTopRow(w)
     local K = ns.OptionsApi and ns.OptionsApi.TOP_KEYS
     if not (K and w and w.tabs) then return false end
-    -- (Options 0.6.66) the top row holds Rules, the feature tabs, Profiles and Settings; a row whose tabs are all top keys is the top
+    -- (Options 0.6.71) the top row holds Rules, the feature tabs, Profiles and Settings; a row whose tabs are all top keys is the top
     -- row (Profiles' own sub-tabs, import / export / bin, are not top keys)
     local any = false
     for _, tab in ipairs(w.tabs) do

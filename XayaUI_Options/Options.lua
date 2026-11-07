@@ -28,7 +28,7 @@ ns.OptionsApi = {}
 function ns.OptionsApi.DeleteFolderAll(id) if ns.DeleteFolderAllById then return ns.DeleteFolderAllById(id) end end
 ns.OptionsApi.TABS = { chat = { key = "chat", name = "Chat", order = 5 }, qol = { key = "qol", name = "QoL", order = 5.1 },
     bonus = { key = "bonus", name = "Bonus Features", order = 5.2 }, reskin = { key = "reskin", name = "Blizzard Reskin", order = 5.3 } }
--- (Options 0.6.66; REQUEST-LOG UI-23 to UI-27, Xaya 2026-11-06: tab label "Blizzard Reskin"; the toolbar goes and the top row reads
+-- (Options 0.6.71; REQUEST-LOG UI-23 to UI-27, Xaya 2026-11-06: tab label "Blizzard Reskin"; the toolbar goes and the top row reads
 -- Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings.) Every top tab key, for the top-row layout (Skin.lua IsTopRow).
 ns.OptionsApi.TOP_KEYS = { cooldowns = true, chat = true, qol = true, bonus = true, reskin = true, profiles = true, set = true, settings = true }
 ns.OptionsApi.pageTab = {}   -- page key -> the top tab it is drawn in (filled by ModuleTabs), so a page that moved still opens
@@ -3324,7 +3324,7 @@ local exportInc = { rules = true, bars = true, qol = true }
 local exportText = ""
 local importText, importSnap, importErr = "", nil, nil
 local backupName, shareMsg = "", ""
--- (Options 0.6.66; UI-26 / UI-27) Profiles > Export: one tick box per component (Profiles.lua); Profiles > Import: the components the
+-- (Options 0.6.71; UI-26 / UI-27) Profiles > Export: one tick box per component (Profiles.lua); Profiles > Import: the components the
 -- pasted text holds, each ticked to start; rules are added as a new group or replace yours
 local profInc = { rules = true, themes = true, settings = true, qol = true, bonus = true, reskin = true }
 local importDef, importInc, importRulesMode = nil, {}, "add"
@@ -3353,7 +3353,7 @@ end
 -- Page switching (2026-10-31 UI pass): Class/Spec Rule Creator, Profiles (Export / Import) and Settings are not in the tab strip
 -- while the skin is on. The toolbar buttons open them (ns.pageOpen) and the tab goes away again as soon as another tab is picked.
 -- With the skin off (/xuiskin) they stay ordinary tabs, because the toolbar does not exist then.
--- (Options 0.6.66; UI-23 to UI-27) Settings and Profiles are ordinary top tabs and the Recycle Bin is a sub-tab of Profiles, so no
+-- (Options 0.6.71; UI-23 to UI-27) Settings and Profiles are ordinary top tabs and the Recycle Bin is a sub-tab of Profiles, so no
 -- page is hidden any more; kept so an older caller still gets a valid "hidden" function.
 function ns.PageHidden(key)
     return function() return false end
@@ -3934,7 +3934,7 @@ local function BuildProfiles(binTab)
         export = { type = "group", name = "Export", order = 2, args = e },
     }
     if binTab then binTab.order = 3; binTab.hidden = nil; args.bin = binTab end
-    -- (Options 0.6.66; UI-25 to UI-27) the Profiles top tab: Import, Export and the Recycle Bin as its sub-tabs
+    -- (Options 0.6.71; UI-25 to UI-27) the Profiles top tab: Import, Export and the Recycle Bin as its sub-tabs
     return { type = "group", name = "Profiles", order = 6, childGroups = "tab", args = args }
 end
 
@@ -4179,7 +4179,7 @@ local function PickType(typ)
     end
 end
 ns.UI.Import = function() PickType("import") end
--- (Options 0.6.66) the toolbar is gone; these stay for the right-click menus, /xui commands and the type picker: Import opens its own
+-- (Options 0.6.71) the toolbar is gone; these stay for the right-click menus, /xui commands and the type picker: Import opens its own
 -- window; Export opens Profiles > Export
 ns.UI.Export = function() PickType("profiles") end
 ns.UI.Refresh = Notify   -- redraw the options window in place (used by the Import window)
@@ -4193,7 +4193,7 @@ function ns.OpenPage(key)
     ns.pageOpen = nil; ns.infoOpen = false
     Notify()
     local skinned = ns.SkinRows and ns.SkinRows()
-    -- (Options 0.6.66; UI-25: the Recycle Bin is a sub-tab of Profiles; Import / Export are its other sub-tabs)
+    -- (Options 0.6.71; UI-25: the Recycle Bin is a sub-tab of Profiles; Import / Export are its other sub-tabs)
     if key == "recyclebin" then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "profiles", "bin"); return end
     if key == "import" or key == "export" then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "profiles", key); return end
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, (key == "settings" and skinned) and "set" or key)
@@ -4207,7 +4207,7 @@ function ns.OpenDraftSettings()
     else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "settings", "rules") end
 end
 ns.UI.Drafts = function() ns.OpenPage("drafts") end
-ns.UI.RecycleBin = function() ns.OpenPage("recyclebin") end   -- Profiles > Recycle Bin (Options 0.6.66; was a toolbar button)
+ns.UI.RecycleBin = function() ns.OpenPage("recyclebin") end   -- Profiles > Recycle Bin (Options 0.6.71; was a toolbar button)
 -- a page a feature registered (ns.RegisterSettingsPage), by module and key; sub = a tab inside the page. Used through
 -- ns.OpenSettingsPage (Modules.lua) by /xui chat settings, /xui data, right-click on a data strip, the Notepad's gear, and more.
 function ns.OptionsApi.OpenPage(module, key, ...)
@@ -4222,7 +4222,7 @@ function ns.OptionsApi.OpenPage(module, key, ...)
         pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, tab, key)
     end
 end
--- (Options 0.6.66; UI-24 "Cog goes") Settings is a top tab; this opens it (no longer a switch that swaps the feature tabs out)
+-- (Options 0.6.71; UI-24 "Cog goes") Settings is a top tab; this opens it (no longer a switch that swaps the feature tabs out)
 ns.UI.Settings = function() ns.OpenPage("settings") end
 
 local function FolderRuleCount(f)
@@ -5003,7 +5003,7 @@ local function BuildOptions()
                 func = function() ns.RecycleDeleteNow(it.id); Notify() end },
         } }
     end
-    local binTab = { type = "group", name = "Recycle Bin", order = 3, args = binArgs }   -- a sub-tab of Profiles (Options 0.6.66; UI-25)
+    local binTab = { type = "group", name = "Recycle Bin", order = 3, args = binArgs }   -- a sub-tab of Profiles (Options 0.6.71; UI-25)
     -- Class/Spec Rule Creator is the last sub-tab; Skin.lua pins it to the far right of the tab row (2026-11-01)
     local creatorTab = BuildClassCreator()
     creatorTab.order = 9; creatorTab.hidden = nil; creatorTab.name = "Auto-Generate Rules"   -- (Options 0.6.63, UI-45: her name; was "Class/Spec Rule Creator")
@@ -5231,7 +5231,7 @@ local function BuildOptions()
 
     -- Addon Info and Settings > Acknowledgements moved into the version pane (InfoPane.lua, Options 0.6.56; Xaya 2026-11-06: "Both
     -- move into the pane"): Info > Version info and Info > Credits + Acknowledgements. The version text opens the pane.
-    -- Settings (skin on): the last top tab (Options 0.6.66; UI-24 "Cog goes": before, a toolbar cog swapped the feature tabs out for it):
+    -- Settings (skin on): the last top tab (Options 0.6.71; UI-24 "Cog goes": before, a toolbar cog swapped the feature tabs out for it):
     --   Settings page = left sidebar: UI Options (Display | Rule Creation | Theme tabs), Minimap Button, Debugging
     local function SettingsOn() return (ns.SkinRows and ns.SkinRows()) and true or false end
     local settings = BuildAddonSettings()
@@ -5253,7 +5253,7 @@ local function BuildOptions()
         settings.args.minimap = minimapGroup   -- the old single Settings tab (skin rows off) gets it too
     end
     settings.hidden = function() return ns.SkinRows and ns.SkinRows() and true or false end   -- skin off: the old single Settings tab
-    -- (Options 0.6.66) the Rules and feature tabs stay beside Settings (they went away while the Settings pages were open, 2026-11-01)
+    -- (Options 0.6.71) the Rules and feature tabs stay beside Settings (they went away while the Settings pages were open, 2026-11-01)
     -- The Game Menu look (XayaUI_Reskin) was on this Display page until Options 0.6.38; it is the Esc Menu page of the Blizzard UI
     -- Reskin tab now (module "reskin", with the Chat Panel and the Character Pane). The XayaUI button in that menu stays here (it adds
     -- a button, it does not restyle the menu); one line says where the look went.
