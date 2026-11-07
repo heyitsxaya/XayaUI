@@ -112,7 +112,7 @@ function ns.SkinPlainButton(b, primary)
         HideRegions(b, nil)
         local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(0) end
         local fs = b:GetFontString(); if fs then fs:ClearAllPoints(); fs:SetPoint("CENTER") end
-        b:HookScript("OnEnter", function(self) local f = self:GetFontString(); if f and self.xuiFlatBtn then f:SetTextColor(1, 1, 1) end end)
+        b:HookScript("OnEnter", function(self) local f = self:GetFontString(); if f and self.xuiFlatBtn then local c = TC("xui-list-selected", "text", { 1, 1, 1, 1 }); f:SetTextColor(c[1], c[2], c[3]) end end)
         b:HookScript("OnLeave", function(self)
             local f = self:GetFontString()
             if f and self.xuiFlatBtn then local c = self.xuiBtnText or GOLD; f:SetTextColor(c[1], c[2], c[3]) end
@@ -407,7 +407,7 @@ local function PaneDivider(w)
     d:ClearAllPoints()
     d:SetPoint("TOPLEFT", tf, "TOPRIGHT", 0, 0)
     d:SetPoint("BOTTOMLEFT", tf, "BOTTOMRIGHT", 0, 0)
-    d:SetWidth(1)
+    d:SetWidth(ns.Style.divider.size)
     d:Show()
 end
 
@@ -443,37 +443,78 @@ local function TraceGroupFire(w, what)
     AddRest(w, "firetrace", function(self) rawset(self, "Fire", nil); self.xuiFireTraced = nil end)
 end
 
--- The Rules sub-tab row (Smart Categories | Enabled | Disabled | Drafts ... Class/Spec Rule Creator) in one compact layout whichever
--- sub-tab is selected (Options 0.6.39; Xaya 2026-11-05, screenshots: the tabs were compact with Smart Categories selected and stretched
--- across the row with Enabled, Disabled or Drafts selected). AceGUI's TabGroup (BuildTabs) pads every tab to fill the row once the
--- tabs take 75 % of it, measured from the text widths at that moment, so the same row came out compact or stretched. INFERENCE:
--- which sub-tab is selected moves those widths over the line (not seen in game). Here each tab gets its text width plus AceGUI's
--- own unpadded spacing (4 px, the padding it gives a row it does not stretch) and Class/Spec Rule Creator stays pinned to the far
--- right corner, away from the others (2026-11-01). Rows AceGUI wrapped stay wrapped. Other tab rows are left to AceGUI.
+-- One tab row drawn by hand (Options 0.6.55 top row; Options 0.6.63 the Rules row): each slot = { tab, x, width }; every tab H px tall,
+-- its name in the theme's font at SIZE pt with an outline (a font object per tab, so a hover or a click, which re-applies the button's
+-- font objects, keeps it); the box below starts under the row. Restored on release (SkinTabGroup's OnRelease, w.xuiTopRow).
+local function LayTabRow(w, slots, H, SIZE)
+    -- (Options 0.6.63; REQUEST-LOG UI-50, her answer "Scale with theme": her sizes are the theme's Medium text size; Small / Large
+    -- scale the tab's height and its name by the same factor, Theme.Scale(): 0.88 / 1 / 1.15)
+    local sc = (TH and TH.Scale and TH.Scale()) or 1
+    H = math.floor(H * sc + 0.5)
+    SIZE = math.floor(SIZE * sc * 10 + 0.5) / 10
+    local hastitle = w.titletext and w.titletext:GetText() and w.titletext:GetText() ~= ""
+    local top = hastitle and 14 or 7
+    for _, sl in ipairs(slots) do
+        local tab, x, each = sl[1], sl[2], sl[3]
+        tab:ClearAllPoints()
+        tab:SetPoint("TOPLEFT", w.frame, "TOPLEFT", x, -top)
+        tab:SetSize(each, H)
+        for _, k in ipairs({ "Middle", "MiddleDisabled" }) do if tab[k] then tab[k]:SetWidth(math.max(1, each - 20)) end end
+        tab.selectedTextY, tab.deselectedTextY, tab.selectedTextX, tab.deselectedTextX = 0, 0, 0, 0
+        local fs = tab:GetFontString()
+        if fs then
+            if fs.SetWidth then fs:SetWidth(math.max(1, each - 8)) end
+            fs:ClearAllPoints(); fs:SetPoint("CENTER", tab, "CENTER", 0, 0)
+            -- (Options 0.6.63; UI-49 "theme has to tie into the skin.lua") the theme's font when one is set (Theme > Font), else the font
+            -- the tab already has; a theme font file that will not load (new fonts need a game restart) falls back the same way
+            local path = TH and TH.FontPath and TH.FontPath()
+            if path then local ok, res = pcall(fs.SetFont, fs, path, SIZE, "OUTLINE"); if not ok or res == false then path = nil end end
+            path = path or fs:GetFont()
+            local c = TC(tab.selected and "xui-tab-selected" or "xui-tab", "text", GOLD)
+            local fo = tab.xuiTopFont
+            if not fo then fo = CreateFont((tab:GetName() or "XayaUITopTab") .. "XuiTopFont"); tab.xuiTopFont = fo end
+            if path then fo:SetFont(path, SIZE, "OUTLINE") end
+            fo:SetTextColor(c[1], c[2], c[3], 1)
+            tab:SetNormalFontObject(fo); tab:SetHighlightFontObject(fo); tab:SetDisabledFontObject(fo)
+            if path then fs:SetFont(path, SIZE, "OUTLINE") end   -- (the shown name at once, before the button re-applies its object)
+            fs:SetTextColor(c[1], c[2], c[3])
+        end
+        local tcl = tab.selected and "xui-tab-selected" or "xui-tab"
+        Flat(tab, TC(tcl, "bg", { 0.03, 0.03, 0.03, 0.7 }), TC(tcl, "border", { 0.22, 0.22, 0.22, 1 }), { 1, 1, 0, 0 })
+    end
+    w.borderoffset = top + H + 3
+    if w.border then w.border:SetPoint("TOPLEFT", 1, -w.borderoffset) end
+    if w.frame.height and w.OnHeightSet then pcall(w.OnHeightSet, w, w.frame.height) end
+    w.xuiTopRow = true
+end
+
+-- The Rules sub-tab row (Smart Categories | Enabled | Disabled | Drafts ... Auto-Generate Rules). (Options 0.6.63; REQUEST-LOG UI-43 to
+-- UI-45, Xaya 2026-11-06: "rule tabs are too tiny"; "tabs are still not reflecting proposed changes as requested in subsequent
+-- comments"; her answers "28 px, 12 pt, outlined" and, for the Creator tab, "2 + call it "Auto-Generate Rules"" (it stays apart at the
+-- far right): the other tabs share the rest of the row evenly; Auto-Generate Rules is as wide as its name at 12 pt plus 24 px (at most a
+-- third of the row), 16 px after the others. (Before: each tab as wide as its text, Options 0.6.39.)
+local SUB_TAB_H, SUB_TAB_FONT, SUB_GAP = ns.Style.tabSub.h, ns.Style.tabSub.font, ns.Style.tabSub.apartGap   -- (core ns.Style, UI-47)
 local function CompactRulesTabs(w)
     if not (w and w.tabs and w.frame) then return end
-    local creator
-    for _, tab in ipairs(w.tabs) do if tab:IsShown() and tab.value == "creatorTab" then creator = tab end end
-    if not creator then return end
+    local creator, others = nil, {}
     for _, tab in ipairs(w.tabs) do
-        local fs = tab:IsShown() and tab:GetFontString()
-        if fs then
-            local name = tab.GetName and tab:GetName()
-            local left = tab.Left or tab.leftTexture or (name and _G[name .. "Left"])
-            local side = (left and left.GetWidth and 2 * (left:GetWidth() or 0)) or 0
-            local inner = (fs:GetStringWidth() or 0) + 4
-            if tab.Middle then tab.Middle:SetWidth(inner) end
-            if tab.MiddleDisabled then tab.MiddleDisabled:SetWidth(inner) end
-            local text = tab.Text or fs
-            if text.SetWidth then text:SetWidth(0) end
-            tab:SetWidth(inner + side)
-        end
+        if tab:IsShown() then if tab.value == "creatorTab" then creator = tab else others[#others + 1] = tab end end
     end
-    local top, ftop = creator:GetTop(), w.frame:GetTop()
-    if top and ftop then
-        creator:ClearAllPoints()
-        creator:SetPoint("TOPRIGHT", w.frame, "TOPRIGHT", 0, top - ftop)
-    end
+    if not creator then return end
+    local width = w.frame.width or w.frame:GetWidth() or 0
+    if width <= 0 then return end
+    local fs = creator:GetFontString()
+    local sw = (fs and fs.GetStringWidth and fs:GetStringWidth()) or 120
+    local cur
+    if fs then cur = select(2, fs:GetFont()) end
+    local tf = SUB_TAB_FONT * ((TH and TH.Scale and TH.Scale()) or 1)   -- (UI-50: the name's size at the theme's text size)
+    local cw = math.ceil(sw * tf / math.max(1, tonumber(cur) or tf)) + 24
+    cw = math.min(cw, math.floor(width / 3))
+    local each = (#others > 0) and ((width - cw - SUB_GAP) / #others) or 0
+    local slots = {}
+    for i, tab in ipairs(others) do slots[#slots + 1] = { tab, (i - 1) * each, each } end
+    slots[#slots + 1] = { creator, width - cw, cw }
+    LayTabRow(w, slots, SUB_TAB_H, SUB_TAB_FONT)
 end
 
 -- (Options 0.6.55; REQUEST-LOG UI-5 / UI-7; Xaya 2026-11-06: "Tabs at the highest level should be evenly distributed across the pane,
@@ -481,7 +522,7 @@ end
 -- The window's top tab row (Rules, QoL, Bonus Features, Blizzard UI Reskin): every tab the same width, side by side with no overlap,
 -- filling the row edge to edge; 32 px tall; the name in the theme's font at 14 pt with an outline (one font object per tab, so a hover
 -- or a click, which re-applies the button's font objects, keeps it). The box below starts under the taller row.
-local TOP_TAB_H, TOP_TAB_FONT = 32, 14
+local TOP_TAB_H, TOP_TAB_FONT = ns.Style.tabTop.h, ns.Style.tabTop.font   -- (core ns.Style, UI-47)
 local function IsTopRow(w)
     local T = ns.OptionsApi and ns.OptionsApi.TABS
     if not (T and w and w.tabs) then return false end
@@ -490,6 +531,23 @@ local function IsTopRow(w)
     end
     return false
 end
+-- (Options 0.6.63; REQUEST-LOG UI-47 / UI-48, her answer for tabs inside a page: "24 px, 11 pt, even row") every other tab row (a
+-- page's section tabs, the rule editor's tabs): even widths, ns.Style.tabSection. A row too crowded for that (under 60 px a tab) keeps
+-- AceGUI's own layout, so no name is cut.
+local SECTION_MIN_W = ns.Style.tabSection.minW
+local function SectionTabs(w)
+    if not (w and w.frame and w.tabs) then return end
+    local shown = {}
+    for _, tab in ipairs(w.tabs) do if tab:IsShown() then shown[#shown + 1] = tab end end
+    local n = #shown
+    local width = w.frame.width or w.frame:GetWidth() or 0
+    if n == 0 or width <= 0 or width / n < SECTION_MIN_W then return end
+    local each = width / n
+    local slots = {}
+    for i, tab in ipairs(shown) do slots[#slots + 1] = { tab, (i - 1) * each, each } end
+    LayTabRow(w, slots, ns.Style.tabSection.h, ns.Style.tabSection.font)
+end
+
 local function TopTabs(w)
     if not (w and w.frame and IsTopRow(w)) then return end
     local shown = {}
@@ -497,40 +555,30 @@ local function TopTabs(w)
     local n = #shown
     local width = w.frame.width or w.frame:GetWidth() or 0
     if n == 0 or width <= 0 then return end
-    local hastitle = w.titletext and w.titletext:GetText() and w.titletext:GetText() ~= ""
-    local top = hastitle and 14 or 7
     local each = width / n
-    for i, tab in ipairs(shown) do
-        tab:ClearAllPoints()
-        tab:SetPoint("TOPLEFT", w.frame, "TOPLEFT", (i - 1) * each, -top)
-        tab:SetSize(each, TOP_TAB_H)
-        for _, k in ipairs({ "Middle", "MiddleDisabled" }) do if tab[k] then tab[k]:SetWidth(math.max(1, each - 20)) end end
-        tab.selectedTextY, tab.deselectedTextY, tab.selectedTextX, tab.deselectedTextX = 0, 0, 0, 0
-        local fs = tab:GetFontString()
-        if fs then
-            if fs.SetWidth then fs:SetWidth(math.max(1, each - 8)) end
-            fs:ClearAllPoints(); fs:SetPoint("CENTER", tab, "CENTER", 0, 0)
-            local path = fs:GetFont()
-            local c = TC(tab.selected and "xui-tab-selected" or "xui-tab", "text", GOLD)
-            local fo = tab.xuiTopFont
-            if not fo then fo = CreateFont((tab:GetName() or "XayaUITopTab") .. "XuiTopFont"); tab.xuiTopFont = fo end
-            if path then fo:SetFont(path, TOP_TAB_FONT, "OUTLINE") end
-            fo:SetTextColor(c[1], c[2], c[3], 1)
-            tab:SetNormalFontObject(fo); tab:SetHighlightFontObject(fo); tab:SetDisabledFontObject(fo)
-            fs:SetTextColor(c[1], c[2], c[3])
-        end
-        local tcl = tab.selected and "xui-tab-selected" or "xui-tab"
-        Flat(tab, TC(tcl, "bg", { 0.03, 0.03, 0.03, 0.7 }), TC(tcl, "border", { 0.22, 0.22, 0.22, 1 }), { 1, 1, 0, 0 })
-    end
-    w.borderoffset = top + TOP_TAB_H + 3
-    if w.border then w.border:SetPoint("TOPLEFT", 1, -w.borderoffset) end
-    if w.frame.height and w.OnHeightSet then pcall(w.OnHeightSet, w, w.frame.height) end
-    w.xuiTopRow = true
+    local slots = {}
+    for i, tab in ipairs(shown) do slots[#slots + 1] = { tab, (i - 1) * each, each } end
+    LayTabRow(w, slots, TOP_TAB_H, TOP_TAB_FONT)
+end
+
+-- which layout a tab row gets: the window's top row, the Rules row (it holds Auto-Generate Rules), or a section row
+function ns.SkinTabRow(w)
+    if IsTopRow(w) then return TopTabs(w) end
+    for _, tab in ipairs(w.tabs or {}) do if tab:IsShown() and tab.value == "creatorTab" then return CompactRulesTabs(w) end end
+    return SectionTabs(w)
 end
 
 local function SkinTabGroup(w)
     TraceGroupFire(w, "tab")
     do local pb = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 }); PaneFill(w.border, { pb[1], pb[2], pb[3], A() * 0.6 }) end
+    -- (Options 0.6.63; UI-46 "clicking on a deactivated item should just show the summary without a nested box"; UI-48 "If the item is
+    -- not enabled no additional fill should exist") a tab container with no tab shown (a switched-off feature hides its section tabs;
+    -- AceConfigDialog still draws the empty container): no fill and no border, so the page shows its summary only
+    do
+        local any = false
+        for _, tab in ipairs(w.tabs or {}) do if tab:IsShown() then any = true; break end end
+        if not any then PaneFill(w.border, { 0, 0, 0, 0 }) end
+    end
     for _, tab in ipairs(w.tabs or {}) do
         if tab:IsShown() then
             for _, k in ipairs({ "Left", "Middle", "Right", "LeftDisabled", "MiddleDisabled", "RightDisabled" }) do
@@ -551,16 +599,14 @@ local function SkinTabGroup(w)
         w.xuiCompactOrig = orig
         w.BuildTabs = function(self, ...)
             local r = orig(self, ...)
-            pcall(CompactRulesTabs, self)
-            pcall(TopTabs, self)
+            pcall(ns.SkinTabRow, self)
             return r
         end
         AddRest(w, "compacttabs", function(self)
             if self.xuiCompactOrig then self.BuildTabs = self.xuiCompactOrig; self.xuiCompactOrig = nil end
         end)
     end
-    CompactRulesTabs(w)
-    pcall(TopTabs, w)
+    pcall(ns.SkinTabRow, w)
     OnRelease(w, function(self)
         if self.xuiTopRow then
             self.xuiTopRow = nil
@@ -705,7 +751,7 @@ local function EnsureTreeSearch(w)
                     HideRegions(b, nil)
                     local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(0) end
                     local fs = b:GetFontString(); if fs then fs:ClearAllPoints(); fs:SetPoint("CENTER") end
-                    b:HookScript("OnEnter", function(self) local f = self:GetFontString(); if f then f:SetTextColor(1, 1, 1) end end)
+                    b:HookScript("OnEnter", function(self) local f = self:GetFontString(); if f then local c = HoverCol(); f:SetTextColor(c[1], c[2], c[3]) end end)
                     b:HookScript("OnLeave", function(self) local f = self:GetFontString(); if f then f:SetTextColor(GOLD[1], GOLD[2], GOLD[3]) end end)
                 end
                 local cl = (key == "del") and "xui-button-primary" or "xui-button"
@@ -949,7 +995,7 @@ local function SkinTree(w)
         local ht = b:GetHighlightTexture()
         if ht then
             if not b.xuiHT then b.xuiHT = { ht:GetTexture(), { ht:GetVertexColor() }, ht:GetBlendMode() } end
-            ht:SetTexture(WHITE8); ht:SetVertexColor(0.75, 0.25, 1, 0.35); ht:SetBlendMode("BLEND")
+            ht:SetTexture(WHITE8); do local c = TC("xui-list-selected", "bg", { 0.75, 0.25, 1, 1 }); ht:SetVertexColor(c[1], c[2], c[3], 0.35) end; ht:SetBlendMode("BLEND")
             -- AceGUI's highlight texture is both the mouse-over and the "selected" bar: neither is wanted (the selected row gets
             -- its own gradient or text color from Options.lua)
             ht:SetAlpha(0)
@@ -1002,11 +1048,11 @@ local function MakeAction(f, key)
             b.xuiCopyLines = {}
             local function square(x, y, sz, fill)
                 if fill then
-                    local f0 = b:CreateTexture(nil, "ARTWORK", nil, 1); f0:SetColorTexture(0.06, 0.06, 0.06, 1)
+                    local f0 = b:CreateTexture(nil, "ARTWORK", nil, 1); do local c = TC("xui-window", "bg", { 0.06, 0.06, 0.06, 1 }); f0:SetColorTexture(c[1], c[2], c[3], 1) end
                     f0:SetPoint("TOPLEFT", b, "CENTER", x, y); f0:SetSize(sz, sz)
                 end
                 local function line(px, py, w, h)
-                    local t = b:CreateTexture(nil, "ARTWORK", nil, 2); t:SetColorTexture(1, 0.82, 0, 1)
+                    local t = b:CreateTexture(nil, "ARTWORK", nil, 2); do local c = TC("xui-button", "text", GOLD); t:SetColorTexture(c[1], c[2], c[3], 1) end
                     t:SetPoint("TOPLEFT", b, "CENTER", px, py); t:SetSize(w, h)
                     b.xuiCopyLines[#b.xuiCopyLines + 1] = t
                 end
@@ -1067,10 +1113,10 @@ local function PaintNameEdit(w, arg)
         eb:SetFontObject(GameFontHighlight)
         eb.bg = eb:CreateTexture(nil, "BACKGROUND"); eb.bg:SetAllPoints(); eb.bg:SetColorTexture(0, 0, 0, 0)
         eb.line = eb:CreateTexture(nil, "ARTWORK"); eb.line:SetPoint("BOTTOMLEFT"); eb.line:SetPoint("BOTTOMRIGHT"); eb.line:SetHeight(1)
-        eb.line:SetColorTexture(0.35, 0.35, 0.35, 0.8)
-        eb:SetScript("OnEnter", function(self) self.bg:SetColorTexture(0.1, 0.1, 0.1, 0.9) end)
+        do local c = TC("xui-pane", "border", { 0.35, 0.35, 0.35, 1 }); eb.line:SetColorTexture(c[1], c[2], c[3], 0.8) end
+        eb:SetScript("OnEnter", function(self) local c = TC("xui-pane", "bg", { 0.1, 0.1, 0.1, 1 }); self.bg:SetColorTexture(c[1], c[2], c[3], 0.9) end)
         eb:SetScript("OnLeave", function(self) if not self:HasFocus() then self.bg:SetColorTexture(0, 0, 0, 0) end end)
-        eb:SetScript("OnEditFocusGained", function(self) self.bg:SetColorTexture(0, 0, 0, 1); self:HighlightText() end)
+        eb:SetScript("OnEditFocusGained", function(self) local c = TC("xui-window", "bg", { 0, 0, 0, 1 }); self.bg:SetColorTexture(c[1], c[2], c[3], 1); self:HighlightText() end)
         eb:SetScript("OnEscapePressed", function(self) self.xuiCancel = true; self:ClearFocus() end)
         eb:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
         eb:SetScript("OnEditFocusLost", function(self)
@@ -1081,13 +1127,13 @@ local function PaintNameEdit(w, arg)
         end)
         f.xuiNameEB = eb
         f.xuiNameHint = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        f.xuiNameHint:SetTextColor(0.45, 0.45, 0.45)
+        do local c = TC("xui-text-muted", "text", { 0.45, 0.45, 0.45, 1 }); f.xuiNameHint:SetTextColor(c[1], c[2], c[3]) end
     end
     eb.xuiSpec = ed
     eb:SetFrameLevel(f:GetFrameLevel() + 3)
     eb:ClearAllPoints()
     if ed.title then   -- number is the header title; this box (the optional name) goes beneath it, smaller and gray
-        eb:SetHeight(16); eb:SetFontObject(GameFontNormalSmall); eb:SetTextColor(0.65, 0.65, 0.65)
+        eb:SetHeight(16); eb:SetFontObject(GameFontNormalSmall); do local c = TC("xui-text-muted", "text", { 0.65, 0.65, 0.65, 1 }); eb:SetTextColor(c[1], c[2], c[3]) end
         -- start under the title TEXT: the title is "<arrow glyph>  Trigger 1:  Cooldown", so measure the glyph and its spaces
         local pre = 0
         do
@@ -1111,13 +1157,13 @@ local function PaintNameEdit(w, arg)
         eb:SetPoint("TOPLEFT", f, "TOPLEFT", f.xuiTitleX or (pre - (tonumber(arg and arg.xuiHeadOut) or 0)), -(3 + ns.H3_SIZE + 7)); eb:SetWidth(220)
         if not f.xuiNamePH then
             f.xuiNamePH = eb:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-            f.xuiNamePH:SetPoint("LEFT", eb, "LEFT", 0, 0); f.xuiNamePH:SetTextColor(0.4, 0.4, 0.4); f.xuiNamePH:SetText("name (optional)")
+            f.xuiNamePH:SetPoint("LEFT", eb, "LEFT", 0, 0); do local c = TC("xui-text-muted", "text", { 0.4, 0.4, 0.4, 1 }); f.xuiNamePH:SetTextColor(c[1], c[2], c[3]) end; f.xuiNamePH:SetText("name (optional)")
             eb:HookScript("OnTextChanged", function(self) if f.xuiNamePH then f.xuiNamePH:SetShown(self:GetText() == "" and not self:HasFocus()) end end)
             eb:HookScript("OnEditFocusGained", function() f.xuiNamePH:Hide() end)
             eb:HookScript("OnEditFocusLost", function(self) f.xuiNamePH:SetShown(self:GetText() == "") end)
         end
     else
-        eb:SetHeight(22); eb:SetFontObject(GameFontHighlight); eb:SetTextColor(1, 1, 1); eb:SetTextInsets(6, 6, 0, 0)
+        eb:SetHeight(22); eb:SetFontObject(GameFontHighlight); do local c = TC("xui-text", "text", { 1, 1, 1, 1 }); eb:SetTextColor(c[1], c[2], c[3]) end; eb:SetTextInsets(6, 6, 0, 0)
         eb:SetPoint("LEFT", f, "LEFT", f.xuiTitleX or (30 - (tonumber(arg and arg.xuiHeadOut) or 0)), 0); eb:SetWidth(220)
         if f.xuiNamePH then f.xuiNamePH:Hide() end
     end
@@ -1147,7 +1193,7 @@ local function MakeChevron(f)
     b.tex:SetPoint("CENTER"); b.tex:SetSize(16, 16)
     b:SetScript("OnClick", function(self) local w = self.xuiW; if w and w.Fire then w:Fire("OnClick", "LeftButton") end end)
     b:SetScript("OnEnter", function(self)
-        self.tex:SetVertexColor(1, 1, 0.6)
+        do local c = TC("xui-label", "text", { 1, 1, 0.6, 1 }); self.tex:SetVertexColor(c[1], c[2], c[3]) end
         GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(self.xuiOpen and "Collapse" or "Expand")
         GameTooltip:AddLine("Never changes any setting.", 1, 1, 1, true); GameTooltip:Show()
     end)
@@ -1175,7 +1221,7 @@ local function SkinButton(w)
             local font, size, flags = fs:GetFont()
             w.xuiFont = { font, size, flags }
             fs:SetFont(font, ns.H3_SIZE, flags)
-            fs:SetTextColor(1, 1, 1)
+            do local c = TC("xui-heading", "text", { 1, 1, 1, 1 }); fs:SetTextColor(c[1], c[2], c[3]) end
         end
         local arrowL = arg and arg.xuiArrowLeft and type(arg.xuiArrow) == "function"
         local subTxt = arg and type(arg.xuiSub) == "function" and select(2, pcall(arg.xuiSub)) or nil
@@ -1192,7 +1238,7 @@ local function SkinButton(w)
             if not f.xuiSubFS then f.xuiSubFS = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall") end
             local sf = f.xuiSubFS
             sf:ClearAllPoints(); sf:SetPoint("TOPLEFT", f, "TOPLEFT", lx, -3 - ns.H3_SIZE - 4)
-            sf:SetTextColor(0.6, 0.6, 0.6); sf:SetJustifyH("LEFT"); sf:SetText(subTxt); sf:Show()
+            do local c = TC("xui-text-muted", "text", { 0.6, 0.6, 0.6, 1 }); sf:SetTextColor(c[1], c[2], c[3]) end; sf:SetJustifyH("LEFT"); sf:SetText(subTxt); sf:Show()
         elseif f.xuiSubFS then f.xuiSubFS:Hide() end
         local wantH = subTxt and (ns.H3_SIZE + 30) or 24
         if math.abs((f:GetHeight() or 0) - wantH) > 0.5 and (subTxt or w.xuiSubH) then
@@ -1207,7 +1253,7 @@ local function SkinButton(w)
             at:ClearAllPoints()
             if arrowL then at:SetPoint("LEFT", f, "LEFT", 2, 0) else at:SetPoint("RIGHT", f, "RIGHT", -8, 0) end
             at:SetTexture((okOpen and open) and "Interface\\Buttons\\Arrow-Down-Up" or "Interface\\ChatFrame\\ChatFrameExpandArrow")
-            at:SetVertexColor(0.8, 0.5, 1); at:Show()
+            do local c = TC("xui-popup", "border", { 0.8, 0.5, 1, 1 }); at:SetVertexColor(c[1], c[2], c[3]) end; at:Show()
         elseif f.xuiArrowTex then f.xuiArrowTex:Hide() end
         if chev then
             local b = f.xuiChevBtn or MakeChevron(f)
@@ -1277,7 +1323,7 @@ local function SkinButton(w)
         end
         if fs then
             TF(fs)
-            if f:IsEnabled() then local c = TC(bcl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]) else fs:SetTextColor(0.5, 0.5, 0.5) end
+            if f:IsEnabled() then local c = TC(bcl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]) else local m = TC("xui-text-muted", "text", { 0.5, 0.5, 0.5, 1 }); fs:SetTextColor(m[1], m[2], m[3]) end
             LightFont(f, fs, TC(bcl, "text", GOLD))
         end
     end
@@ -1324,8 +1370,22 @@ local function SkinInline(w)
         if box then Flat(w.border, { 0.04, 0.04, 0.04, math.min(1, A() * 0.5 + 0.10) }, { 0.3, 0.3, 0.3, 1 }) else FlatHide(w.border) end
     else
         if w.border then FlatHide(w.border) end
-        do local pb, pd = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 }), TC("xui-pane", "border", { 0.25, 0.25, 0.25, 1 }); PaneColors(w.border, { pb[1], pb[2], pb[3], A() * 0.5 }, pd) end
+        -- (Options 0.6.63; UI-47 / UI-48, her answer for titled groups inside a page: "First try unbordered boxes (darker blocks) and
+        -- dividing lines") the group's darker fill without a border line, and a dividing line along the block's top edge
+        do local pb = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 }); PaneFill(w.border, { pb[1], pb[2], pb[3], A() * 0.5 }) end
+        if w.border and w.border.CreateTexture then
+            local ln = w.xuiTopLine
+            if not ln then ln = w.border:CreateTexture(nil, "ARTWORK"); w.xuiTopLine = ln end
+            local c = TC("xui-pane", "border", { 0.25, 0.25, 0.25, 1 })
+            ln:SetColorTexture(c[1], c[2], c[3], 1)
+            ln:ClearAllPoints()
+            ln:SetPoint("TOPLEFT", w.border, "TOPLEFT", 0, 0); ln:SetPoint("TOPRIGHT", w.border, "TOPRIGHT", 0, 0)
+            ln:SetHeight(ns.Style.divider.size)
+            ln:Show()
+            AddRest(w, "topline", function(self) if self.xuiTopLine then self.xuiTopLine:Hide() end end)
+        end
     end
+    if (flat or box) and w.xuiTopLine then w.xuiTopLine:Hide() end
     local title = w.titletext and w.titletext:GetText()
     if opt and opt.xuiInfo and title and title ~= "" and ns.GetInfoIcon then
         local ic = ns.GetInfoIcon(w.frame)
@@ -1373,7 +1433,7 @@ local function SkinRow(w, fn)
     f:SetScript("OnMouseUp", function(_, btn) if btn == "LeftButton" then fn() end end)
     if not f.xuiHL then
         f.xuiHL = f:CreateTexture(nil, "HIGHLIGHT")
-        f.xuiHL:SetAllPoints(); f.xuiHL:SetColorTexture(1, 0.82, 0, 0.12)
+        f.xuiHL:SetAllPoints(); do local c = TC("xui-label", "text", GOLD); f.xuiHL:SetColorTexture(c[1], c[2], c[3], 0.12) end
     end
     f.xuiHL:Show()
     Flat(f, { 0.04, 0.04, 0.04, 0.35 + A() * 0.4 }, { 0, 0, 0, 0 })   -- fill only: no outline around each row
@@ -1668,7 +1728,7 @@ local function ToggleInfoPop(ic)
         infoPop = CreateFrame("Frame", "XayaUIInfoPopup", UIParent, "BackdropTemplate")
         infoPop:SetFrameStrata("TOOLTIP"); infoPop:SetClampedToScreen(true); infoPop:EnableMouse(true)
         infoPop:SetBackdrop({ bgFile = WHITE8, edgeFile = WHITE8, edgeSize = 1, insets = { left = 1, right = 1, top = 1, bottom = 1 } })
-        infoPop:SetBackdropColor(0.04, 0.04, 0.05, 0.97); infoPop:SetBackdropBorderColor(0.8, 0.5, 1, 1)
+        do local bg, bd = TC("xui-popup", "bg", { 0.04, 0.04, 0.05, 1 }), TC("xui-popup", "border", { 0.8, 0.5, 1, 1 }); infoPop:SetBackdropColor(bg[1], bg[2], bg[3], 0.97); infoPop:SetBackdropBorderColor(bd[1], bd[2], bd[3], 1) end
         infoPop.title = infoPop:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         infoPop.title:SetPoint("TOPLEFT", 10, -8); infoPop.title:SetJustifyH("LEFT")
         infoPop.text = infoPop:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -1799,7 +1859,7 @@ end
 -- column gutter afterwards.
 ns.H3_SIZE = 16   -- the single header size (Heading widgets and collapsible section headers)
 ns.H2_SIZE = 14   -- inside trigger / cue / condition panes: "Description" and every yellow field label ("Sound", "State", "IF", "THEN") use this size
-ns.BODY_INDENT = 20   -- trigger / cue / condition panes: the header sits flush left and everything under it is indented by this much
+ns.BODY_INDENT = ns.Style.bodyIndent   -- (core ns.Style, UI-47; trigger / cue / condition panes: the header sits flush left and everything under it is indented by this much
 local NOFLEX = { Icon = true, Label = true, InteractiveLabel = true, Heading = true, ColorPicker = true, Image = true }
 local GAP = ns.UI_GUTTER or 10   -- gutter between two controls on a row (#351: every row, not only rows that stretch a control)
 local GRID_GAP = 30   -- gutter between the two columns of the grid (wide, so the two columns read as separate)
@@ -2184,6 +2244,14 @@ local function Walk(w, depth)
     elseif t == "TreeGroup" then SkinTree(w)
     elseif t == "Button" then SkinButton(w)
     elseif t == "InlineGroup" then SkinInline(w)
+    elseif t == "Icon" then
+        -- (UI-53) a page's info icon (core ns.InfoBox): the icon alone, no name under it (the name is its tooltip's title line);
+        -- the page is laid out again once, the first time, so no gap stays where the name was
+        local o = w.GetUserData and w:GetUserData("option")
+        if o and type(o.arg) == "table" and o.arg.xuiInfoToggle and w.label and w.label:IsShown() and w.SetLabel then
+            w:SetLabel(nil)
+            if w.parent and w.parent.DoLayout then pcall(w.parent.DoLayout, w.parent) end
+        end
     elseif t == "EditBox" then SideLabel(w, "EditBox")
     elseif t == "Dropdown" or t == "Dropdown-Pullout" then
         if t == "Dropdown" then
@@ -2264,11 +2332,11 @@ local function Walk(w, depth)
             pf:SetFrameStrata("TOOLTIP")
             if pf.SetBackdrop then pf:SetBackdrop(nil) end
             local bg = pf:CreateTexture(nil, "BACKGROUND", nil, -8)
-            bg:SetAllPoints(); bg:SetColorTexture(0.05, 0.05, 0.06, 1)
+            bg:SetAllPoints(); do local c = TC("xui-window", "bg", { 0.05, 0.05, 0.06, 1 }); bg:SetColorTexture(c[1], c[2], c[3], 1) end
             local edge = CreateFrame("Frame", nil, pf, "BackdropTemplate")
             edge:SetAllPoints(); edge:SetFrameLevel(pf:GetFrameLevel())
             edge:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-            edge:SetBackdropBorderColor(0.4, 0.4, 0.45, 1)
+            do local c = TC("xui-pane", "border", { 0.4, 0.4, 0.45, 1 }); edge:SetBackdropBorderColor(c[1], c[2], c[3], 1) end
         end
     elseif t == "Heading" then
         -- a header with arg.xuiCollapse gets the open / close button at its LEFT, before the title (0.6.4: was a red + / - at the far right),
@@ -2285,7 +2353,7 @@ local function Walk(w, depth)
                     b.tex = b:CreateTexture(nil, "ARTWORK"); b.tex:SetPoint("CENTER"); b.tex:SetSize(16, 16)
                     b:SetScript("OnClick", function(self) if self.fn then self.fn() end end)
                     b:SetScript("OnEnter", function(self)
-                        self.tex:SetVertexColor(1, 1, 0.6)
+                        do local c = TC("xui-label", "text", { 1, 1, 0.6, 1 }); self.tex:SetVertexColor(c[1], c[2], c[3]) end
                         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
                         GameTooltip:SetText("Collapse or expand this section")
                         GameTooltip:AddLine("Only hides the options below; nothing is changed.", 1, 1, 1, true)

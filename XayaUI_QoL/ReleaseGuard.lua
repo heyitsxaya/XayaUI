@@ -28,7 +28,9 @@ local FLAVORS = { "BAD MONKEY", "death comes for us all", "NOPE", "Disagree", "W
 ns.RELEASEGUARD_DEFAULTS = { enabled = false, text = "NO RELEASE", flavorOn = true, flavors = table.concat(FLAVORS, "\n"), modifier = "SHIFT",
     load = "raid", index = 0 }
 local MODS = { SHIFT = "Shift", CTRL = "Ctrl", ALT = "Alt" }
-local LOADS = { raid = "Raids only", group = "Raids and dungeons", all = "Everywhere" }
+-- (QoL 0.7.39; REQUEST-LOG UI-58, Xaya: "There also should not be an everywhere button") raids, or raids and dungeons; a saved
+-- "all" (Everywhere, QoL 0.7.31 to 0.7.36) becomes the default, raids only (Cfg below)
+local LOADS = { raid = "Raids only", group = "Raids and dungeons" }
 
 local function Cfg()
     if not CueRulesDB then return nil end
@@ -60,7 +62,6 @@ local function R(fn, ...) if type(fn) ~= "function" then return nil end; local o
 local function IsSecret(v) return type(issecretvalue) == "function" and issecretvalue(v) == true end
 -- where it loads (her "configurable, by default raid only")
 local function LoadsHere(c)
-    if c.load == "all" then return true end
     local inInst, kind = R(IsInInstance)
     if IsSecret(inInst) or IsSecret(kind) or not inInst then return false end
     if kind == "raid" then return true end
@@ -74,7 +75,8 @@ local function ModDown(c)
 end
 
 local box, ev, hooked
-local state = { dialog = nil, death = 0 }
+local STRATA = "FULLSCREEN_DIALOG"
+local state = { dialog = nil, death = 0, why = "no death seen yet" }
 ns.ReleaseGuardState = state   -- (tests)
 
 local function Hide()
@@ -90,7 +92,11 @@ end
 local function Build()
     if box then return box end
     box = CreateFrame("Button", "XayaUIReleaseGuard", UIParent)
-    box:SetFrameStrata("DIALOG")
+    -- (QoL 0.7.39; REQUEST-LOG UI-57, Insivius: "Release guard doesn't seem to work outside of instances") one strata above the game's
+    -- dialogs: StaticPopup_OnShow raises the death window to the top of the DIALOG strata (Blizzard_StaticPopup/StaticPopup.lua:582,
+    -- dialog:Raise()), and a frame level set beside it does not survive every raise, so in DIALOG the box could sit behind the window.
+    -- INFERENCE (not seen in the game): the cause is that layering; `/xui releaseguard` reports it after a death.
+    box:SetFrameStrata(STRATA)
     box:EnableMouse(true)
     if box.RegisterForClicks then box:RegisterForClicks("AnyUp", "AnyDown") end
     box:SetScript("OnClick", function() end)   -- the click lands here, not on Release
@@ -105,10 +111,13 @@ end
 -- the box over the shown DEATH dialog's Release button (the text: hers, and this death's flavour under it)
 local function Cover(dialog)
     local c = Cfg()
-    if not (c and c.enabled) or Ghost() or not LoadsHere(c) then Hide(); return end
+    if not (c and c.enabled) then Hide(); state.why = "off"; return end
+    if Ghost() then Hide(); state.why = "a ghost"; return end
+    if not LoadsHere(c) then Hide(); state.why = "not loaded here (Where: " .. tostring(LOADS[c.load]) .. ")"; return end
     local b1 = dialog and dialog.GetButton1 and dialog:GetButton1()
-    if type(b1) ~= "table" then Hide(); return end
+    if type(b1) ~= "table" then Hide(); state.why = "the death window has no Release button"; return end
     local f = Build()
+    f:SetFrameStrata(STRATA)
     f:ClearAllPoints()
     f:SetAllPoints(b1)
     if f.SetFrameLevel and dialog.GetFrameLevel then f:SetFrameLevel((dialog:GetFrameLevel() or 1) + 20) end
@@ -119,6 +128,7 @@ local function Cover(dialog)
     f.text:SetTextColor(col[1], col[2], col[3], 1)
     f.flavor = flav
     state.dialog = dialog
+    state.why = "covered"
     if ModDown(c) then f:Hide() else f:Show() end
     ev:RegisterEvent("MODIFIER_STATE_CHANGED")
     if dialog.HookScript and not dialog.xuiReleaseHooked then
@@ -127,6 +137,10 @@ local function Cover(dialog)
     end
 end
 local function FindDeath() return type(StaticPopup_FindVisible) == "function" and StaticPopup_FindVisible("DEATH") or nil end
+-- (QoL 0.7.39; standing rule V21: every change has an in-game QA walkthrough) read-only state for Dev Assist's walkthrough
+-- (XayaUI_DevAssist/QAWalks-display.lua), reached through core's services, never by name
+if ns.Provide then ns.Provide("releaseGuard", { Cfg = function() return Cfg() end, Loads = function() return LOADS end,
+    State = function() return state end, Box = function() return box end, Death = function() return FindDeath() end }) end
 
 local function OnEvent(_, event)
     local c = Cfg()
@@ -180,7 +194,7 @@ function ns.BuildReleaseGuardPage(Notify)
     local isOff = function() return not C().enabled end
     return {
         type = "group", name = "Release Guard", order = 5,
-        xuiSwitch = { type = "toggle", name = "Release Guard",
+        xuiSwitch = { type = "toggle", name = "Release Guard", tip = "Covers Release Spirit when you die, so a misclick can't release you.",
             desc = "A black box over the death window's Release Spirit button. While it is off nothing is created or listened to; once it has been on, a /reload removes its hook fully (while off it does nothing).",
             get = function() return C().enabled and true or false end,
             set = function(_, v) C().enabled = v and true or false; Changed() end },
@@ -196,9 +210,23 @@ function ns.BuildReleaseGuardPage(Notify)
             modifier = { type = "select", order = 4, name = "Key to click through", values = MODS, sorting = { "SHIFT", "CTRL", "ALT" }, disabled = isOff,
                 desc = "Hold it and the box steps aside so the click reaches Release Spirit.",
                 get = function() return C().modifier end, set = function(_, v) C().modifier = v; Changed() end },
-            load = { type = "select", order = 5, name = "Where", values = LOADS, sorting = { "raid", "group", "all" }, disabled = isOff,
+            load = { type = "select", order = 5, name = "Where", values = LOADS, sorting = { "raid", "group" }, disabled = isOff,
                 get = function() return C().load end, set = function(_, v) C().load = v; Changed() end },
         },
     }
 end
 ns.RegisterSettingsPage("qol", "releaseguard", ns.BuildReleaseGuardPage)
+
+-- /xui releaseguard: what it did at the last death and what the game shows now (UI-57: to settle the inference above in the game)
+ns.RegisterCommand({ "releaseguard", "rg" }, function()
+    local c = Cfg()
+    if not c then return end
+    local inInst, kind = R(IsInInstance)
+    local d = FindDeath()
+    local function lv(fr) if not fr then return "-" end; local ok, st = pcall(fr.GetFrameStrata, fr); local ok2, l = pcall(fr.GetFrameLevel, fr)
+        return ("%s %s"):format(ok and tostring(st) or "?", ok2 and tostring(l) or "?") end
+    ns.Print(("Release Guard: %s; where %s; here: %s; ghost %s; key %s held %s."):format(c.enabled and "on" or "off", tostring(LOADS[c.load]),
+        IsSecret(inInst) and "unknown" or (inInst and tostring(kind) or "not in an instance"), tostring(Ghost()), tostring(MODS[c.modifier]), tostring(ModDown(c))))
+    ns.Print(("  last death: %s; deaths seen %d; death window %s (%s); box %s (%s)."):format(tostring(state.why), state.death,
+        d and (d:IsShown() and "shown" or "hidden") or "not shown", lv(d), box and (box:IsVisible() and "visible" or "hidden") or "never made", lv(box)))
+end, "/xui releaseguard (Release Guard: what it did at the last death)")
