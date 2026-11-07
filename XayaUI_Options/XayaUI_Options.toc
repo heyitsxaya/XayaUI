@@ -2,7 +2,7 @@
 ## Title: XayaUI Options
 ## Notes: The XayaUI settings window. Loads the first time you open it (/xui, the minimap button, or the game's Options > AddOns > XayaUI), so it costs nothing until then.
 ## Author: Xaya
-## Version: 0.6.82
+## Version: 0.6.83
 ## X-Date: 2026-11-07
 ## Dependencies: XayaUI
 ## LoadOnDemand: 1
@@ -15,14 +15,22 @@ Libs\AceConfig-3.0\AceConfig-3.0.xml
 AddonInfo.lua
 InfoPaneData.lua
 InfoPane.lua
-Drafts.lua
+RuleEditor\Drafts.lua
 ImportWindow.lua
 Profiles.lua
-TriggersEditor.lua
-OutcomesEditor.lua
-DisplayTab.lua
+RuleEditor\TriggersEditor.lua
+RuleEditor\OutcomesEditor.lua
+RuleEditor\DisplayTab.lua
 ThemeEditor.lua
-RuleSearch.lua
-AutoPicker.lua
+RuleEditor\RuleSearch.lua
+RuleEditor\AutoPicker.lua
 Options.lua
+RuleEditor\TreeHelpers.lua
+RuleEditor\Editor.lua
+RuleEditor\ShelvedElements.lua
+RuleEditor\RulesTree.lua
+RuleEditor\Sidebar.lua
+RuleEditor\SpellSearch.lua
+RuleEditor\SaveBar.lua
+RuleEditor\RuleSettings.lua
 Skin.lua

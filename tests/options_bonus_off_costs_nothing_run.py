@@ -47,7 +47,7 @@ local function ncalls(name, file) return (calls[name] and calls[name][file]) or 
 meter(C_AddOns, "DoesAddOnExist", "DoesAddOnExist")
 meter(C_ChatInfo, "RegisterAddonMessagePrefix", "RegisterPrefix")
 local TT_, TTUI, DP, NP, NS, CALC, OPT, DR = "XayaUI_Bonus/Tooltips.lua", "XayaUI_Bonus/TooltipsUI.lua", "XayaUI_Bonus/DataPanels.lua",
-  "XayaUI_Bonus/Notepad.lua", "XayaUI_Bonus/NotepadShare.lua", "XayaUI_Bonus/Calculator.lua", "XayaUI_Options/Options.lua", "XayaUI_Options/Drafts.lua"
+  "XayaUI_Bonus/Notepad.lua", "XayaUI_Bonus/NotepadShare.lua", "XayaUI_Bonus/Calculator.lua", "XayaUI_Options/Options.lua", "XayaUI_Options/RuleEditor/Drafts.lua"
 local function owned(file) local l = {}; for _, o in ipairs(W.objects) do if rawget(o, "_owner") == file then l[#l + 1] = o end end; return l end
 local function frames(file) return #owned(file) end
 local function events(file)
