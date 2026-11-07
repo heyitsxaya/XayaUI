@@ -16,6 +16,8 @@
 --    addon cannot write the clipboard). Reopen: /xui dev questions.
 -- 3. (0.7.52; Xaya 2026-11-07, REQUEST-LOG PS-16..PS-18) the list is a table, Codes | Title | Area | Status | New | Open, with a search
 --    box, tag chips and sortable columns (QATable.lua, shared with All walkthroughs); the window is 900 x 560 for it.
+-- 4. (0.7.53) the intro line is measured and the search row placed below it (#466); the background is 0.95 opaque (#481); a walkthrough
+--    opened here gets the table's order for the runner's "Next in this list" (#465).
 -- V14: no window is made until one opens; at load only one small event frame exists, and it stops listening after the first
 -- PLAYER_ENTERING_WORLD (or after combat ends, when it had to wait). UNTESTED IN GAME.
 -------------------------------------------------------------------------------
@@ -202,11 +204,13 @@ local function Window(name, w, h)
     f:SetSize(w, h); f:SetPoint("CENTER"); f:SetFrameStrata("DIALOG"); f:SetClampedToScreen(true)
     f:EnableMouse(true); f:SetMovable(true); f:RegisterForDrag("LeftButton")
     f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
-    if f.SetBackdrop then
+    if QA.SolidBackground then QA.SolidBackground(f)   -- (0.7.53, #481: 0.95 opaque, provisional; QAWalk.lua)
+    elseif f.SetBackdrop then
         f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
         f:SetBackdropColor(0.05, 0.05, 0.07, 0.96); f:SetBackdropBorderColor(ACC[1], ACC[2], ACC[3], 1)
     end
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge"); f.title:SetPoint("TOPLEFT", 14, -12)
+    f.title:SetWidth(w - 14 - 36); f.title:SetJustifyH("LEFT"); f.title:SetWordWrap(true)
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton"); close:SetPoint("TOPRIGHT", 2, 2)
     if UISpecialFrames then UISpecialFrames[#UISpecialFrames + 1] = name end   -- (Escape closes it)
     f:Hide()
@@ -233,7 +237,7 @@ local function BuildReview()
     RW = Window("XayaUIDevReviewWindow", 900, 560)
     RW.sub = RW:CreateFontString(nil, "OVERLAY", "GameFontDisable"); RW.sub:SetPoint("TOPLEFT", 14, -36); RW.sub:SetWidth(870); RW.sub:SetJustifyH("LEFT")
     -- (0.7.52) the table with search, tag chips and sortable columns (QATable.lua, shared with All walkthroughs)
-    RW.tbl = QA.Table.Create(RW, { left = 14, top = 56, bottom = 70, width = 872, onOpen = function(id) RV.OpenWalk(id) end })
+    RW.tbl = QA.Table.Create(RW, { left = 14, top = 56, bottom = 70, width = 872, onOpen = function(id) RV.OpenWalk(id, RW.tbl:Ids()) end })
     RW.rows, RW.headers = RW.tbl.rows, RW.tbl.headers
     RW.dont = CreateFrame("CheckButton", nil, RW, "UICheckButtonTemplate"); RW.dont:SetSize(24, 24); RW.dont:SetPoint("BOTTOMLEFT", 10, 38)
     RW.dontLabel = RW:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); RW.dontLabel:SetPoint("LEFT", RW.dont, "RIGHT", 4, 0)
@@ -249,6 +253,13 @@ function RV.Fill()
     RW.title:SetText("Review: what's new to test")
     RW.sub:SetText(first and ("First time: every walkthrough is listed (%d). Tick the box below once you have looked, and the next update lists only what is new or changed."):format(#list)
         or (#list == 0 and "Nothing new or changed since the build you acknowledged." or ("%d walkthrough(s) new or changed since the build you acknowledged."):format(#list)))
+    -- (0.7.53, #466) the intro line can wrap (long text, a bigger text size): the title and the intro are measured and the search row
+    -- starts below them, so nothing overlaps
+    local subTop = QA.TitleBottom and QA.TitleBottom(RW.title) or 36
+    RW.sub:ClearAllPoints(); RW.sub:SetPoint("TOPLEFT", 14, -subTop)
+    local sh = RW.sub.GetStringHeight and RW.sub:GetStringHeight() or 12
+    if type(sh) ~= "number" or sh < 10 then sh = 12 end
+    RW.tbl:SetTop(math.max(56, subTop + math.ceil(sh) + 10))
     RW.tbl:SetEntries(list)
     RW.questions:SetText(("Questions (%d)"):format(RV.OpenCount()))
     RW.dont:SetChecked(RV.Acknowledged())
@@ -261,18 +272,22 @@ function RV.Show(why)
     r.lastShown = { when = Now(), sig = RV.Signature(), why = tostring(why or "command"), combat = InCombat() }
 end
 function RV.Toggle() if RW and RW:IsShown() then RW:Hide() else RV.Show("command") end end
-function RV.OpenWalk(id)
+-- order: the ids as the review's table showed them when Open was pressed (the runner's Next in this list follows it, 0.7.53)
+function RV.OpenWalk(id, order)
     if not (id and QA.walks[id]) then return end
     SV().review.lastOpened = id
     if RW then RW:Hide() end
     fromReview = true
-    QA.Start(id)
+    QA.Start(id, { order = order, from = "review" })
     local qw = QA.Window and QA.Window()
     if qw and not qw.xuiReviewHook then
         qw.xuiReviewHook = true
         qw:HookScript("OnHide", function() if fromReview then fromReview = false; RV.Show("back from a walkthrough") end end)
     end
 end
+-- (0.7.53) the runner went elsewhere on her click (All walkthroughs, Review list): closing it later does not bring the review back
+function RV.ForgetReturn() fromReview = false end
+RV.Returning = function() return fromReview end   -- (tests)
 function RV.Window() return RW end   -- (tests)
 
 -------------------------------------------------------------------------------

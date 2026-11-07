@@ -57,7 +57,7 @@ local function PutBack()
     saved = nil
 end
 local function PutBackStep(extra)
-    return { text = "Last step: press |cffffd100Do it for me|r to put the Stat Calculator back as it was before this walkthrough (its tab, open or closed, which stats were open" .. (extra or "") .. "). Then Accept or Pass.",
+    return { done = true, text = "Last step: press |cffffd100Do it for me|r to put the Stat Calculator back as it was before this walkthrough (its tab, open or closed, which stats were open" .. (extra or "") .. "). Then press |cffffd100Done|r.",
         setup = function() PutBack() end,
         check = function() return saved == nil, saved == nil and "put back" or "press Do it for me" end }
 end
@@ -285,7 +285,7 @@ QA.Register("credits-page", { title = "Credits + Acknowledgements: h1 / h2, one 
           local ok = #h2 > 0 and boxes == #h2 and rows >= boxes and not caps and alpha
           return ok, ("%d headings (%s), %d boxes, %d rows%s"):format(#h2, table.concat(h2, ", "), boxes, rows, alpha and "" or ", a box's background is not 10% more opaque")
       end },
-    { text = "Press |cffffd100Do it for me|r to close the version pane. Then Accept or Pass.",
+    { done = true, text = "Press |cffffd100Do it for me|r to close the version pane. Then press |cffffd100Done|r.",
       setup = function() local ip = Svc("infoPane"); if ip then ip.Close() end end,
       check = function() local ip = Svc("infoPane"); return not (ip and ip.IsShown()), "closed" end },
 } })

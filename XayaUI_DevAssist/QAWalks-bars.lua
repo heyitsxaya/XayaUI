@@ -9,6 +9,9 @@
 -- Enhanced Tooltips' Type colours. What only eyes can judge (how it looks, combat) says so and is a noVerdict step.
 -- "Do it for me" makes a test rule ("XayaUI QA: Bar test") on a buff you have right now, previews it, and the last step removes the
 -- rule, its cue and the test group again. Nothing else of yours is changed.
+-- (Dev Assist 0.7.53, issue #461) step 4 compares the drawn colour with the same bar in Blizzard default and fails when they are equal
+-- (a bar with no type colour can no longer pass); step 8 is a question for her (the addon cannot read the tooltip she hovered); step 9
+-- is a clean-up (Done) step whose check reads the open settings window: no Rules sidebar row and nothing in the editor shows the rule.
 -- Listed in XayaUI_DevAssist.toc after QAWalks-chat.lua; does nothing without the framework or XayaUI's Bar cues. UNTESTED IN GAME.
 -------------------------------------------------------------------------------
 local QA = rawget(_G, "XayaUI_DevQA")
@@ -85,6 +88,38 @@ local function DrawnColor(fr)
     return fr.barCR, fr.barCG, fr.barCB
 end
 
+-- (0.7.53) where the open settings window shows a text: sidebar rows (the Rules tree) and anything else drawn (the editor); nil, nil
+-- when the window is closed. Shared: QA.WindowMentions(text).
+function QA.WindowMentions(text)
+    local ACD = LibStub and LibStub("AceConfigDialog-3.0", true)
+    local root = ACD and ACD.OpenFrames and ACD.OpenFrames["CueRules"]
+    if not root then return nil, nil end
+    local function Txt(o)
+        if not (o and o.GetText) then return nil end
+        local ok, t = pcall(o.GetText, o)
+        return (ok and type(t) == "string") and t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") or nil
+    end
+    local function Vis(f) if not (f and f.IsVisible) then return true end local ok, v = pcall(f.IsVisible, f); return ok and v and true or false end
+    local rows, editor, seen = 0, 0, {}
+    local function walk(w, d)
+        if type(w) ~= "table" or d > 40 or seen[w] then return end
+        seen[w] = true
+        if w.type == "TreeGroup" and type(w.buttons) == "table" then
+            for _, b in ipairs(w.buttons) do
+                local t = Txt(b.text)
+                if b.IsShown and b:IsShown() and t and t:find(text, 1, true) then rows = rows + 1 end
+            end
+        elseif Vis(w.frame) then
+            for _, k in ipairs({ "label", "text", "editbox" }) do
+                local t = Txt(w[k]); if t and t:find(text, 1, true) then editor = editor + 1; break end
+            end
+        end
+        for _, c in ipairs(w.children or {}) do walk(c, d + 1) end
+    end
+    walk(root, 0)
+    return rows, editor
+end
+
 local steps = {
     { text = "Press |cffffd100Do it for me|r: it makes a test rule, \"" .. RULE_NAME .. "\", on a buff you have right now, with one |cffffd100Bar|r cue, and shows it as a preview. "
         .. "|cffffd100Expect:|r a bar 220 x 22 near the middle of the screen: a faint black background, a 1 px black border, the buff's icon at the left, its name at the left inside the bar, a time at the right.",
@@ -138,12 +173,17 @@ local steps = {
           local r, g, b, _, why, t = ns.BarCueColor(T.cue, nil)
           local dr, dg, db = DrawnColor(fr)
           if not (Near(dr, r, 0.02) and Near(dg, g, 0.02) and Near(db, b, 0.02)) then return false, "the bar was not repainted in the Neon color" end
-          if why == "tooltip" or why == "dispel" then
-              local br, bg, bb = ns.BarTypeColor(t, "blizzard")
-              if br and Near(br, r, 0.005) and Near(bg, g, 0.005) and Near(bb, b, 0.005) then return false, "Neon gives the same color as Blizzard default" end
-              return true, "Neon " .. tostring(t) .. " drawn"
+          -- (0.7.53, #461) the same bar in Blizzard default: its type's own color, or (no type, a fixed color) the color it already has.
+          -- A drawn color equal to that means no style changed the bar, whatever the reason: Fail, never a Pass by default.
+          local br, bg, bb
+          if why == "tooltip" or why == "dispel" then br, bg, bb = ns.BarTypeColor(t, "blizzard") else br, bg, bb = r, g, b end
+          local drawn = ("%.2f %.2f %.2f"):format(dr or 0, dg or 0, db or 0)
+          if not br then return false, "Blizzard default has no color for " .. tostring(t) .. ": nothing to compare the Neon bar with" end
+          if Near(br, dr, 0.005) and Near(bg, dg, 0.005) and Near(bb, db, 0.005) then
+              return false, ("no style changed the bar: drawn %s, the same as Blizzard default (%s)"):format(drawn,
+                  (why == "tooltip" or why == "dispel") and ("type " .. tostring(t)) or "this aura has no type color, so the bar keeps its fixed color")
           end
-          return true, "no type color on this aura: the fixed blue is kept (styles change type colors only)"
+          return true, ("Neon %s drawn %s; Blizzard default %.2f %.2f %.2f"):format(tostring(t), drawn, br, bg, bb)
       end },
     { text = "Press |cffffd100Do it for me|r: a test group, \"" .. GROUP_NAME .. "\", takes the test rule and forces |cffffd100Muted / Dark|r on every bar in it (the group's Display tab > Every bar: color style > Force). "
         .. "|cffffd100Expect:|r the bar turns duller and darker; on the bar's own Color section the style is greyed out and names the group.",
@@ -200,7 +240,10 @@ local steps = {
           return owns and true or false, owns and "the combat engine draws this bar" or "the combat engine does not draw this bar (see /xuiengine for the reason)"
       end },
     { text = "Hover a spell whose tooltip says \"... fire damage ...\" (for example on your action bars or in the spellbook), and a buff of yours that says \"Magic\" at the top right. "
-        .. "|cffffd100Expect:|r \"Fire Damage\" in the game's Fire color (orange), \"Magic\" in blue (Bonus Features > Enhanced Tooltips > Type colors; English game text only).",
+        .. "|cffffd100Expect:|r \"Fire Damage\" in the game's Fire color (orange), \"Magic\" in blue (Bonus Features > Enhanced Tooltips > Type colors; English game text only). |cffffd100Your call:|r Pass if both show in those colors; Fail and say what you saw.",
+      -- (0.7.53, #461) the addon cannot read the tooltip you hovered (it is gone once you move to this window), and coloring a sample
+      -- line of its own tests nothing you see: this is your call; the check only reports whether Type colors is switched on
+      noVerdict = true,
       check = function()
           local ns = NS()
           -- (XayaUI_Bonus is reached only through its service: Modules.lua ns.Service; Bonus Tooltips.lua provides "tooltipsDebug")
@@ -208,17 +251,27 @@ local steps = {
           local TT = sv and sv.TT
           if not (TT and TT.SectionOn) then return false, "XayaUI Bonus Features (Enhanced Tooltips) is not loaded" end
           if not TT.SectionOn("typeColors") then return false, "Type colors is switched off (or Enhanced Tooltips is off)" end
-          local s = ns.BarColorizeTypes and ns.BarColorizeTypes("Deals 10 fire damage.")
-          if not (s and s:find("|cff", 1, true) and s:find("Fire Damage", 1, true)) then return false, "the coloring does not work on a sample line" end
-          return true, "Type colors is on and colors a sample line"
+          return true, "Type colors is switched on; the colors in the tooltip you hovered are yours to judge"
       end },
-    { text = "Last step: press |cffffd100Do it for me|r to remove the test rule, its Bar cue and the test group. Nothing else was changed.",
-      setup = RemoveAll,
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to remove the test rule, its Bar cue and the test group. Nothing else was changed. Then press |cffffd100Done|r.",
+      setup = function()
+          RemoveAll()
+          -- the settings window (if open) is redrawn, so its Rules sidebar and editor show the rules as they are now
+          local ns = NS(); local od = ns and ns.Service and ns.Service("optionsDebug")
+          if od and od.Notify then pcall(od.Notify) end
+      end,
+      -- (0.7.53, #461) what you see, not only the data: the rule and group are gone from XayaUI's lists AND no row of the Rules sidebar
+      -- and nothing in the editor shows the test rule's name (read from the open settings window)
       check = function()
           local ns = NS()
-          for _, r in ipairs(ns.rules or {}) do if r.name == RULE_NAME then return false, "the test rule is still there" end end
+          for _, r in ipairs(ns.rules or {}) do if r.name == RULE_NAME then return false, "the test rule is still in your rules" end end
           for _, f in ipairs(ns.folders or {}) do if f.name == GROUP_NAME then return false, "the test group is still there" end end
-          return true, "removed"
+          local rows, editor = QA.WindowMentions(RULE_NAME)
+          if rows == nil then return nil, "gone from your rules; open the settings window (/xui) on the Rules tab and press Check again: the sidebar rows are read from it" end
+          if rows > 0 or editor > 0 then
+              return false, ("gone from your rules, but the settings window still shows it: %d sidebar row(s), %d place(s) in the editor"):format(rows, editor)
+          end
+          return true, "removed: not in your rules, no sidebar row and nothing in the editor shows it"
       end },
 }
 

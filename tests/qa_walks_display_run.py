@@ -86,6 +86,13 @@ do  -- (UI-65) only Bonus Notepad's two are left: Notepad.lua belongs to the fun
   rest = rest:gsub("Accept notes shared by other XayaUI users", ""):gsub("Formatting tools", ""):gsub("[,%s]", "")
   check("short hovers (UI-65): 500+ hover texts read, none over two sentences except Notepad's two  (" .. tostring(note) .. ")",
     tonumber(tostring(note):match("^(%d+) hover")) and tonumber(tostring(note):match("^(%d+) hover")) > 500 and rest == "", note)
+  -- (Dev Assist 0.7.53, B6) no hover text read is not "none too long"
+  local reg = LibStub("AceConfigRegistry-3.0", true)
+  local realGet = reg.GetOptionsTable
+  reg.GetOptionsTable = function() return { type = "group", args = { a = { type = "toggle", name = "x" } } } end
+  local okZ, nZ = QA.walks["ui-short-hovers"].steps[1].check()
+  reg.GetOptionsTable = realGet
+  check("B6 short hovers: no hover text read gives Fail, not a Pass", okZ == false, tostring(okZ) .. " " .. tostring(nZ))
 end
 return R
 end

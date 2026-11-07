@@ -235,7 +235,20 @@ P("audit-calculator", 3, "D51 12kx3")
 P("audit-calculator", 4, "calculator last step: put back")
 P("audit-data-panels-remove", 1, "D50 Remove block")
 P("audit-data-panels-remove", 2, "data panels last step: put back")
-P("audit-tooltips-aura-off", 1, "D52 Aura IDs off: no lookup (nothing hovered)")
+-- (Dev Assist 0.7.53, B6) with nothing hovered, "0 lookups" proves nothing: not tested (nil), never a Pass; after a spell and an item
+-- hover (through Enhanced Tooltips' own handler) with Aura IDs off: Pass, counting the hovers
+do
+  local r = verdict["audit-tooltips-aura-off"][1]
+  check("B6 D52 Aura IDs off, nothing hovered: not tested (nil), not a Pass", r and r[1] == nil and tostring(r[2]):find("no spell or item hover", 1, true) ~= nil, r and tostring(r[1]) .. " " .. tostring(r[2]))
+  local d = QA.walks["audit-tooltips-aura-off"]
+  pcall(d.steps[1].setup)
+  local TT2 = ns.Service("tooltipsDebug").TT
+  TT2.OnIDData(GameTooltip, { id = 133 }, { key = "spell", label = "Spell ID" })
+  TT2.OnIDData(GameTooltip, { id = 6948 }, { key = "item", label = "Item ID" })
+  local v, n = d.steps[1].check()
+  check("D52 Aura IDs off: no lookup for a spell and an item hover: verdict Pass", v == true and tostring(n):find("2 spell / item hover", 1, true) ~= nil, tostring(v) .. " " .. tostring(n))
+  pcall(d.steps[3].setup)
+end
 P("audit-tooltips-aura-off", 3, "tooltips last step: put back")
 P("audit-notepad-share", 1, "D53 the Share window keeps note A")
 P("audit-notepad-share", 3, "notepad share last step: put back")

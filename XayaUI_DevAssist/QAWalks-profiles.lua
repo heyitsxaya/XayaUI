@@ -123,7 +123,7 @@ QA.Register("settings-toplevel", { title = "Settings window: the new row of tabs
             local sel = st and st.groups and st.groups.selected
             return sel == "bin", "the Profiles sub-tab picked: " .. tostring(sel)
         end },
-    { text = "Last step: your Selection style is put back as it was. Anything look wrong in this walkthrough (a name, a size, where + New Rule sits)? Write it in the note.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put your Selection style back as it was. Anything look wrong in this walkthrough (a name, a size, where + New Rule sits)? Write it in the note. Then press |cffffd100Done|r (no verdict: a note is kept, nothing is recorded as Pass or Fail).",
         setup = function() local db = rawget(_G, "CueRulesDB"); if db and db.ui and saved then db.ui.selStyle = saved.sel end end,
         noVerdict = true },
 } })

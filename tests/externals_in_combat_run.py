@@ -188,6 +188,8 @@ pr = str(L.eval("XayaUI_DevQA.ProbeExternalFilters()"))
 check("F6 probe: readable and secret IDs are counted, the filter check is read", "2 IDs, 1 readable, 1 secret" in pr and "filter check readable (false)" in pr and "BIG_DEFENSIVE" in pr, pr)
 r = L.eval("(function() local ok, note = WALKS['externals-combat'].steps[1].check(); return tostring(ok) .. ' ' .. tostring(note) end)()")
 check("J26 step 1 captures the aura rules (data capture)", str(r).startswith("true") and "aura rules" in str(r), r)
+# (Dev Assist 0.7.53, B6) whether an ID should have been learned is not something the addon can know: step 4 is data capture, her call
+check("J26 step 4 (IDs learned) is a question for her (noVerdict), no automatic Pass", L.eval("WALKS['externals-combat'].steps[4].noVerdict == true"))
 
 print()
 print("FAILS: %d" % len(fails))

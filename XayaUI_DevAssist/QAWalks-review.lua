@@ -37,7 +37,7 @@ QA.Register("review-window", { title = "Review window and questions (part 1)", a
           local lines = select(2, t:gsub("\n", "")) or 0
           return Shown(w) and t:find("XayaUI QA answers", 1, true) ~= nil and NAnswers() > 0, ("the box holds %d line(s) for %d answer(s)"):format(lines, NAnswers())
       end },
-    { text = "Last step. Press |cffffd100Do it for me|r: the addon forgets which build you acknowledged (so the next load counts as an update) and remembers how many answers you have now.\n\nThen find a training dummy, attack it, and while you are |cffffd100in combat|r type |cffffd100/reload|r. Keep fighting for a few seconds after the loading screen, then stop.\n\n|cffffd100Expect:|r no review window while you are in combat; it opens a moment after combat ends. Then run \"Review window and questions (part 2)\".",
+    { done = true, text = "Last step. Press |cffffd100Do it for me|r: the addon forgets which build you acknowledged (so the next load counts as an update) and remembers how many answers you have now. Then press |cffffd100Done|r here (before the /reload, so this result is kept).\n\nThen find a training dummy, attack it, and while you are |cffffd100in combat|r type |cffffd100/reload|r. Keep fighting for a few seconds after the loading screen, then stop.\n\n|cffffd100Expect:|r no review window while you are in combat; it opens a moment after combat ends. Then run \"Review window and questions (part 2)\".",
       setup = function()
           local r = RV.SV().review
           r.ack, r.prev = nil, nil
@@ -180,4 +180,62 @@ QA.Register("review-search", { title = "Walkthrough list: search, tags and sorta
       end },
     { text = "Last step: look at the rows marked |cffffd100Baseline|r, then after this walkthrough open |cffffd100/xui dev qa|r (All walkthroughs): the same table, search and tags are there for every walkthrough. After a /reload the search box is empty and no tag is on (nothing of it is saved).\n\n|cffffd100Your call:|r are the Baseline titles plain words you understand? Pass = yes; Fail = no (name the ones that are not in the note).",
       noVerdict = true },
+} })
+
+
+-- (Dev Assist 0.7.53; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 15, P0.5; issues #461, #465, #484) the runner's own rules, tried on
+-- three walkthroughs in a row (J33): a step with Do it for me cannot be passed before it ran; a clean-up step has Done instead of Pass /
+-- Fail; a run with every step skipped reads Skipped; the Done page's Next in this list follows the list it was opened from, and the
+-- list keeps its search, tags and sort. The checks read the runner's own window and the saved results (prefill = true).
+local nav = {}   -- memory only: what the window showed when Do it for me was pressed
+local function QW() return QA.Window and QA.Window() end
+QA.Register("qa-runner-nav", { title = "Walkthrough runner: Do it for me first, Done steps, Skipped and the Done page (part 1 of 3)", area = "Dev Assist", qa = "J33", order = 303, prefill = true, steps = {
+    { text = "Start this from |cffffd100All walkthroughs|r: type |cffffd100J33|r in its Search box and press |cffffd100Open|r on this row (part 1). If you opened it another way, press All walkthroughs (bottom left), search J33 and Open it again.\n\nBefore you press anything else, look: |cffffd100Pass|r is greyed out and the line above the buttons says \"Press Do it for me first\". Then press |cffffd100Do it for me|r.\n\n|cffffd100Expect:|r after it, Pass works and the addon offers its verdict.",
+        setup = function()
+            local w, st = QW(), QA.State and QA.State()
+            nav.passBefore = w and w.pass:IsEnabled() and true or false
+            nav.checkBefore = w and tostring(w.check:GetText() or "") or ""
+            nav.order = st and st.order
+        end,
+        check = function()
+            if nav.passBefore == nil then return false, "press Do it for me" end
+            local gated = nav.passBefore == false and nav.checkBefore:find("Do it for me first", 1, true) ~= nil
+            local list, nextOk = nav.order, false
+            for i, id in ipairs(list or {}) do if id == "qa-runner-nav" and list[i + 1] == "qa-runner-skip" then nextOk = true end end
+            return (gated and nextOk) and true or false, ("before Do it for me: Pass %s, the check said \"%s\"; opened from a list with the sample next: %s"):format(
+                nav.passBefore and "ENABLED" or "greyed", nav.checkBefore:sub(1, 60), nextOk and "yes" or "NO (open this from All walkthroughs with J33 typed)")
+        end },
+    { done = true, text = "A clean-up kind of step: no Pass and no Fail, one |cffffd100Done|r button (greyed until Do it for me ran). Press |cffffd100Do it for me|r, then |cffffd100Done|r.\n\nOn the page that follows press |cffffd100Next in this list|r.\n\n|cffffd100Expect:|r that page has All walkthroughs, Review list and Next in this list; Next opens \"Walkthrough runner: a sample to skip (part 2 of 3)\".",
+        setup = function() nav.doneSeen = true end,
+        check = function()
+            local w = QW(); if not w then return false, "the runner window is not open" end
+            local ok = w.doneBtn:IsShown() and w.doneBtn:IsEnabled() and not w.pass:IsShown() and not w.fail:IsShown()
+            return ok and true or false, ("Done button %s; Pass / Fail %s"):format(w.doneBtn:IsShown() and "shown" or "NOT shown", (w.pass:IsShown() or w.fail:IsShown()) and "SHOWN" or "hidden")
+        end },
+} })
+QA.Register("qa-runner-skip", { title = "Walkthrough runner: a sample to skip (part 2 of 3)", area = "Dev Assist", qa = "J33", order = 303.01, prefill = true, steps = {
+    { text = "Press |cffffd100Skip|r on this step and the next. On the page that follows press |cffffd100Next in this list|r.\n\n|cffffd100Expect:|r the page says \"Skipped: no step was passed or failed\"; Next opens part 3." },
+    { text = "Press |cffffd100Skip|r." },
+} })
+QA.Register("qa-runner-nav-2", { title = "Walkthrough runner: Next in this list, Skipped and the list kept (part 3 of 3)", area = "Dev Assist", qa = "J33", order = 303.02, prefill = true, steps = {
+    { text = "You came here with |cffffd100Next in this list|r from part 2.\n\n|cffffd100Expect:|r this walkthrough opened straight from part 2's Done page.",
+        check = function()
+            local ln = QA.lastNext
+            local p1 = QA.DB().results["qa-runner-nav"]
+            local done = p1 and p1.steps and p1.steps[2] and p1.steps[2].r == "D"
+            local ok = ln and ln.from == "qa-runner-skip" and ln.to == "qa-runner-nav-2"
+            return (ok and done) and true or false, ("Next went from %s to %s; part 1's clean-up step recorded as Done: %s"):format(tostring(ln and ln.from), tostring(ln and ln.to), done and "yes" or "NO")
+        end },
+    { text = "Look at part 2's row in |cffffd100All walkthroughs|r or the review list after this walkthrough (or trust the check).\n\n|cffffd100Expect:|r its Status reads |cffffd100Skipped|r (not Passed): you skipped every step.",
+        check = function()
+            local st = QA.Table and QA.Table.Status("qa-runner-skip")
+            local txt = QA.StatusText and QA.StatusText("qa-runner-skip") or ""
+            return st == "skipped" and txt:find("Skipped", 1, true) ~= nil, ("part 2's status: %s (%s)"):format(tostring(st), txt:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+        end },
+    { done = true, text = "Last step: press |cffffd100Done|r, then on the page that follows press |cffffd100All walkthroughs|r.\n\n|cffffd100Expect:|r J33 is still typed in its Search box, and the tags and sort you had are as you left them (until you close the game). Its |cffffd100Review list|r button (top right) opens the review window with its own search and tags as you left them.",
+        check = function()
+            local w = QW(); local t = w and w.tbl
+            if not t then return false, "All walkthroughs has no table" end
+            return t.f.q == "j33", ("All walkthroughs still holds: search \"%s\", sorted by %s"):format(tostring(t.f.q), tostring(t.sortKey or "the default order"))
+        end },
 } })

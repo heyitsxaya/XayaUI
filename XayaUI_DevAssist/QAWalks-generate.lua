@@ -209,7 +209,7 @@ QA.Register("auto-generate-buttons", { title = "Auto-Generate Rules: Generate bu
             local rootW = Root() and Root().frame and Root().frame.GetWidth and Root().frame:GetWidth()
             return true, ("window %s px; %s"):format(rootW and ("%.0f"):format(rootW) or "?", table.concat(ws, "; "):sub(1, 400))
         end },
-    { text = "Last step: press |cffffd100Do it for me|r to untick everything the walkthrough ticked and close the list.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to untick everything the walkthrough ticked and close the list. Then press |cffffd100Done|r.",
         setup = function()
             local ap = AP(); if not ap then return end
             if ap.view then ap.TickAll(ap.view.rows, false) end

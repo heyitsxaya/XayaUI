@@ -78,9 +78,10 @@ QA.Register("audit-notepad-format", { title = "Notepad: format buttons keep high
                 if not (a and a ~= "" and d and d ~= "") then bad = bad + 1 end
                 if GameTooltip then GameTooltip:Hide() end
             end
+            if #f.fb.btns == 0 then return false, "the format bar has no buttons" end
             return bad == 0, bad == 0 and ("all %d buttons have a title and a short text"):format(#f.fb.btns) or (bad .. " button(s) without a title and text")
         end },
-    { text = "Last step: press |cffffd100Do it for me|r to delete the QA note (it goes to Deleted notes) and put the Notepad back as it was (shown or hidden, Formatting tools on or off, the note you had open). Then Accept or Pass.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to delete the QA note (it goes to Deleted notes) and put the Notepad back as it was (shown or hidden, Formatting tools on or off, the note you had open). Then press |cffffd100Done|r.",
         setup = function()
             local sv, db = NPS(), NDB(); if not (sv and db) then return end
             if np.noteId and db.current == np.noteId then sv.Delete() end
@@ -199,7 +200,7 @@ QA.Register("audit-groups", { title = "Groups: arrangement holds still, Snap, mo
         check = function() local f = tg.group; if not (f and tg.rules) then return false, "press Do it for me" end
             local inside = 0; for _, r in ipairs(tg.rules) do if r.folder == f.id then inside = inside + 1 end end
             return inside == #tg.rules, ("%d of %d rules are back inside the group"):format(inside, #tg.rules) end },
-    { text = "Last step: press |cffffd100Do it for me|r to delete \"QA audit group\" and its two sample rules (they go to the Recycle Bin). Then Accept or Pass.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to delete \"QA audit group\" and its two sample rules (they go to the Recycle Bin). Then press |cffffd100Done|r.",
         setup = RemoveGroup, check = GroupGone },
 } })
 
@@ -207,7 +208,7 @@ QA.Register("audit-groups", { title = "Groups: arrangement holds still, Snap, mo
 -- Backup Load (replace) keeps the built-in categories (D40): only checked, never run for you (it replaces your rules)
 -------------------------------------------------------------------------------
 QA.Register("audit-backup-replace", { title = "Backups: loading a backup in place of your rules keeps the built-in rule categories (D40)", qa = "B223", order = 304, prefill = true, steps = {
-    { text = "This one you do by hand, because Load (replace) swaps out all your rules. Settings > Import / Export > Backups: |cffffd100Save|r a backup, then |cffffd100Load (replace)|r that same backup. Press |cffffd100Check again|r.\n\n|cffffd100Expect:|r Display Cues, Sound Cues, Hybrid Cues, Advanced Cue Tracking and Mouse Cursor Cues are still the built-in categories (a rule in Display Cues has no sound options). The check counts the categories it finds.",
+    { text = "This one you do by hand, because Load (replace) swaps out all your rules. Profiles > Export > Backups saved on this computer: |cffffd100Save|r a backup, then |cffffd100Load (replace)|r that same backup. Press |cffffd100Check again|r.\n\n|cffffd100Expect:|r Display Cues, Sound Cues, Hybrid Cues, Advanced Cue Tracking and Mouse Cursor Cues are still the built-in categories (a rule in Display Cues has no sound options). The check counts the categories it finds.",
         check = function()
             local ns = NS(); if not ns then return false, "XayaUI is not loaded" end
             local have, names = 0, {}
@@ -256,11 +257,12 @@ QA.Register("audit-chat", { title = "Chat: fade given back, ignore message, whol
             C.Command("off"); if s then s.improvedOn = false; C.Refresh() end end,
         check = function() local cf = rawget(_G, "ChatFrame1"); if not (cf and cf.GetFading) then return false, "no chat window" end
             if not ch.wasOn then return false, "press Do it for me" end
-            if not ch.game then return true, "XayaUI never changed the fade this session, so there was nothing to give back" end
+            -- (0.7.53) nothing to give back means the give-back was not exercised: not tested (before: a Pass)
+            if not ch.game then return nil, "not tested: XayaUI had not changed Blizzard's fade of old lines this session, so there was nothing to give back (turn Improved Chat's fade of old lines on, /reload, and run this again)" end
             local f, t = cf:GetFading(), cf:GetTimeVisible()
             local ok = (f and true or false) == (ch.game[1] and true or false) and t == ch.game[2]
             return ok, ("Blizzard's fade now: %s, %s s (before XayaUI: %s, %s s)"):format(tostring(f), tostring(t), tostring(ch.game[1]), tostring(ch.game[2])) end },
-    { text = "Press |cffffd100Do it for me|r to turn the Chat Panel and Improved Chat back on (as they were). Then, if you have someone on your Ignore list, use the ignore click (Settings > Chat) on that player's name in chat.\n\n|cffffd100Expect:|r the Chat Panel is back. The ignore click on an already ignored player says \"Could not ignore <name>: the game did not add them ...\" (before: always \"Ignoring <name>\"). The addon cannot see the chat line, so you judge that part.",
+    { text = "Press |cffffd100Do it for me|r to turn the Chat Panel and Improved Chat back on (as they were). Then, if you have someone on your Ignore list, use the ignore click (QoL > Improved Chat > Filters > Quick ignore) on that player's name in chat.\n\n|cffffd100Expect:|r the Chat Panel is back. The ignore click on an already ignored player says \"Could not ignore <name>: the game did not add them ...\" (before: always \"Ignoring <name>\"). The addon cannot see the chat line, so you judge that part.",
         setup = function() local C = Chat(); local s = (NS() or {}).chat2
             if C and ch.wasOn then if s then s.improvedOn = ch.impWas end; if not (C.On and C.On()) then C.Command("on") else C.Refresh() end end; ch.wasOn, ch.impWas = nil, nil end,
         check = function() local C = Chat(); local on = C and C.On and C.On(); return on and true or false, on and "the Chat Panel is on again" or "the Chat Panel is still off" end },
@@ -285,6 +287,7 @@ QA.Register("audit-spelling", { title = "American spelling in the addon's texts 
             if ns and ns.LoadOptions then pcall(ns.LoadOptions) end
             local ip = ns and ns.Service and ns.Service("infoPaneData")   -- (XayaUI_Options InfoPane.lua)
             walk(ip and ip.Data(), 0)
+            if n == 0 then return nil, "no text could be read (the settings addon's texts were not found)" end
             return #found == 0, #found == 0 and ("%d texts read, none with a British spelling"):format(n) or (#found .. " found: " .. Short(table.concat(found, " | "), 160))
         end },
     { text = "Look around the settings window (Display tab of a bar cue, Character Pane > Stat list, Release Guard, Enhanced Tooltips) and the What's New pane.\n\n|cffffd100Expect:|r \"color\", \"center\", \"catalog\", \"flavor\", and \"grey\" everywhere. Note any word that still looks British.",
@@ -346,7 +349,7 @@ QA.Register("audit-theme", { title = "Theme: asks before throwing your colors aw
         end },
     { text = "Look at Settings > UI Options > Theme > |cffffd100Reset everything|r: hover it.\n\n|cffffd100Expect:|r it says \"Back to Class colors (the starting theme), ...\". The check reads the text.",
         check = function() local args = Page(); local d = args and args.resetPal and args.resetPal.desc; return type(d) == "string" and d:find("Class colors", 1, true) ~= nil, "Reset everything says: " .. Short(d, 80) end },
-    { text = "Last step: press |cffffd100Do it for me|r to delete the QA saved themes and put your theme back exactly as it was before this walkthrough. Then Accept or Pass.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to delete the QA saved themes and put your theme back exactly as it was before this walkthrough. Then press |cffffd100Done|r.",
         setup = function()
             local T = TH(); if not T then return end
             if AskDlg() then AskDlg():Hide() end
@@ -365,7 +368,7 @@ QA.Register("audit-theme", { title = "Theme: asks before throwing your colors aw
 -- Recycle Bin keep time asks first (FA-14); /xui words of a switched-off addon (D8)
 -------------------------------------------------------------------------------
 QA.Register("audit-bin-words", { title = "Recycle Bin keep time asks first; /xui words name their addon (FA-14, D8)", qa = "B262", order = 309, prefill = true, steps = {
-    { text = "Rules > Recycle Bin. If something is in it that is older than 36 hours (delete a test rule a day early, or Skip), pick |cffffd100Keep deleted items for: 36 hours|r.\n\n|cffffd100Expect:|r a question says how many items are older than that and will be removed for good, with Yes / No; No keeps them. With nothing older, it changes at once with no question. The check shows how many items 36 hours would remove now.",
+    { text = "Profiles > Recycle Bin. If something is in it that is older than 36 hours (delete a test rule a day early, or Skip), pick |cffffd100Keep deleted items for: 36 hours|r.\n\n|cffffd100Expect:|r a question says how many items are older than that and will be removed for good, with Yes / No; No keeps them. With nothing older, it changes at once with no question. The check shows how many items 36 hours would remove now.",
         noVerdict = true,
         check = function() local ns = NS(); if not (ns and ns.RecycleWouldPurge) then return false, "XayaUI is not loaded" end
             return true, ("keep time now: %s; items 36 hours would remove: %d"):format(ns.RecycleKeepLabel(), ns.RecycleWouldPurge(36)) end },
@@ -380,7 +383,7 @@ QA.Register("audit-bin-words", { title = "Recycle Bin keep time asks first; /xui
 -------------------------------------------------------------------------------
 -- Engine: estimate setting off means unknown (D28); a deleted active rule's glow stops (D56); errors recorded (D57)
 -------------------------------------------------------------------------------
-QA.Register("audit-engine", { title = "Combat tracking: hidden buffs are not guessed when that box is off, a glow stops when its rule is deleted, errors show in /xui report (D28, D56, D57)", qa = "B263, B264", order = 312, prefill = true, steps = {
+QA.Register("audit-engine", { title = "Combat tracking: hidden buffs are not guessed when that box is off; a glow stops when its rule is deleted; errors show in /xui report (D28, D56, D57)", qa = "B263, B264", order = 312, prefill = true, steps = {
     { text = "Press |cffffd100Check again|r: with Settings > UI Options > Rule Creation > Combat Tracking Setup > |cffffd100Estimate buffs the game hides in combat|r unticked, the tracker must leave a hidden buff unknown. The addon reads its setting and asks the tracker about a test aura it was told is up.\n\n|cffffd100Expect:|r with the box unticked: unknown. (Ticked: the check only reports.)",
         check = function()
             local ns = NS(); local T, M = ns and ns.AuraTracker, ns and ns.AuraModel
@@ -388,11 +391,12 @@ QA.Register("audit-engine", { title = "Combat tracking: hidden buffs are not gue
             local id = 987654321
             T.Observe(id, true, "qa", { expiration = GetTime() + 30, duration = 30, instanceID = 77 })
             local h, p = T.Resolve(id)
-            if M.PresenceEnabled() then return true, ("the box is ticked; the tracker answers %s (tick it off and check again)"):format(h and (p and "present" or "absent") or "unknown") end
+            -- (0.7.53) with the box ticked the thing under test (off = unknown) is not exercised: not tested (before: a Pass)
+            if M.PresenceEnabled() then return nil, ("the box is ticked, so this is not tested (the tracker answers %s): untick it and Check again"):format(h and (p and "present" or "absent") or "unknown") end
             return h == false, h == false and "the box is off and the hidden buff stays unknown" or "the box is off but the tracker still estimated it"
         end },
     { text = "Make a rule with an Actions tab |cffffd100During|r glow on an action button and make it active (its trigger true), so the button glows. Then delete the rule (it goes to the Recycle Bin).\n\n|cffffd100Expect:|r the glow stops at once (before: it stayed until /reload). Restore it from the Recycle Bin afterwards if you want it back. The addon cannot see a glow, so you judge.",
-        noVerdict = true, check = function() return true, "by eye" end },
+        noVerdict = true },   -- (0.7.53: the check said "by eye" and offered nothing; the step is yours to judge)
     { text = "Type |cffffd100/xui report|r and look at the errors part.\n\n|cffffd100Expect:|r a rule that failed shows there with code XUI-E010, and a cue migration problem with XUI-E011 (most players have none: then it lists none). The check counts what it finds in the error record.",
         noVerdict = true,
         check = function() local db = CueRulesDB and CueRulesDB.errors or (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.errors); local n = type(db) == "table" and #db or 0

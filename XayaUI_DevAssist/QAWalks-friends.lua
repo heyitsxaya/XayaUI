@@ -39,7 +39,7 @@ QA.Register("friend-class-colors", { title = "Friends list: online friends in cl
             if rows == 0 then return false, "no friend row was drawn yet: open the Friends tab" end
             return col > 0, ("%d friend rows drawn, %d re-colored%s"):format(rows, col, col == 0 and " (is a friend online in WoW?)" or "")
         end },
-    { text = "Last step: press |cffffd100Do it for me|r to put the setting back as it was.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put the setting back as it was. Then press |cffffd100Done|r.",
         setup = function()
             local ns = NS()
             if fcSaved and CueRulesDB.ui and CueRulesDB.ui.friendColors then CueRulesDB.ui.friendColors.on = fcSaved.on end

@@ -39,43 +39,70 @@ local function CondNode(od, node)
 end
 
 -- tagged test data: one group, a rule in it, a sound cue and a condition of that rule
-local D = {}
-local function MakeData()
-    local ns = Need()
-    local f = ns.NewFolder("QA audit options"); f.qaAuditOpt = true
-    local r = ns.NewRule(); r.name = "QA audit options rule"; r.folder = f.id; r.enabled = true; r.uid = ns.NewUID(); r.qaAuditOpt = true
-    r.useCooldown, r.spellID, r.cdState = true, 61304, "ready"
-    ns.NormalizeRule(r); ns.rules[#ns.rules + 1] = r
-    local c = ns.NewCueRule(r, "sound"); c.qaAuditOpt = true
-    local k = ns.NewRule(); k.name = "QA condition"; k.parentUid = r.uid; k.folder = f.id; k.uid = ns.NewUID(); k.qaAuditOpt = true
-    k.sound.enabled, k.visual.enabled = false, false
-    k.when = { list = { { ref = "cd", neg = false, op = "and", cmp = "==", num = 0 } } }; k.thenCues = { c.cueKey }
-    ns.NormalizeRule(k); ns.rules[#ns.rules + 1] = k
-    D.f, D.uid, D.cue, D.cond = f, r.uid, c.uid, k.uid
-    D.binBefore = {}
-    for _, it in ipairs(ns.RecycleItems()) do D.binBefore[it.id] = true end
-    ns.MarkDirty()
+-- (Dev Assist 0.7.53, issue #485) every step finds the test data by its tag (qaAuditOpt) and its names, never by something remembered
+-- in step 1, so later steps work after a /reload or after you deleted something by hand. A run starts by removing what earlier runs
+-- left (audit D35: only groups, rules and Recycle Bin items that carry this walkthrough's own tag; yours are never touched).
+local RULE_NAME, RULE2_NAME, COND_NAME, GROUP_NAME = "QA audit options rule", "QA audit options rule 2", "QA condition", "QA audit options"
+local D = {}   -- step-local data only (what a setup measured for its own check)
+local function Tagged(x) return type(x) == "table" and x.qaAuditOpt == true end
+local function TestFolder() local ns = NS(); for _, f in ipairs(ns and ns.folders or {}) do if Tagged(f) then return f end end end
+local function TaggedRule(name) local ns = NS(); for _, r in ipairs(ns and ns.rules or {}) do if Tagged(r) and not r.parentUid and r.name == name then return r end end end
+local function Rule() return TaggedRule(RULE_NAME) end
+local function Child(cue)
+    local ns, r = NS(), Rule()
+    if not r then return nil end
+    for _, x in ipairs(ns.rules or {}) do if Tagged(x) and x.parentUid == r.uid and (x.isCue and true or false) == cue then return x end end
 end
-local function Live(uid) local ns = NS(); for _, r in ipairs(ns and ns.rules or {}) do if r.uid == uid then return r end end end
-local function Rule() return D.uid and Live(D.uid) end
+local function TestCue() return Child(true) end
+local function TestCond() return Child(false) end
+-- a Recycle Bin item made from this walkthrough's test data (its rules or groups carry the tag, or it is a trigger of the test rule)
+local function BinItemTagged(it)
+    for _, r in ipairs(it.rules or {}) do if Tagged(r) then return true end end
+    for _, f in ipairs(it.folders or {}) do if Tagged(f) then return true end end
+    return it.kind == "trigger" and it.owner == RULE_NAME
+end
+local function BinCue()
+    local ns = NS(); local b = ns and ns.RecycleDB and ns.RecycleDB()
+    for _, it in ipairs(b and b.items or {}) do if it.kind == "cue" and BinItemTagged(it) then return it end end
+end
 local function Cleanup()
     local ns = NS(); if not ns then return end
     local list = {}
-    for _, r in ipairs(ns.rules or {}) do if r.qaAuditOpt and not r.parentUid then list[#list + 1] = r end end
+    for _, r in ipairs(ns.rules or {}) do if Tagged(r) and not r.parentUid then list[#list + 1] = r end end
     for _, r in ipairs(list) do ns.RecycleRule(r) end
-    for i = #(ns.folders or {}), 1, -1 do local f = ns.folders[i]; if f.qaAuditOpt then ns.RecycleFolder(f) end end
-    -- the bin items this walkthrough made go too (only those: everything that was in the bin before stays)
-    for _, it in ipairs(ns.RecycleItems()) do if not (D.binBefore and D.binBefore[it.id]) then ns.RecycleDeleteNow(it.id) end end
+    for i = #(ns.folders or {}), 1, -1 do local f = ns.folders[i]; if Tagged(f) then ns.RecycleFolder(f) end end
+    -- the Recycle Bin items made from this walkthrough's test data go too (only those: everything else in the bin stays)
+    local b = ns.RecycleDB and ns.RecycleDB()
+    local ids = {}
+    for _, it in ipairs(b and b.items or {}) do if BinItemTagged(it) then ids[#ids + 1] = it.id end end
+    for _, id in ipairs(ids) do ns.RecycleDeleteNow(id) end
     ns.MarkDirty(); D = {}
     local od = OD(); if od and od.Notify then od.Notify() end
 end
+local function MakeData()
+    local ns = Need()
+    Cleanup()   -- (leftovers of an earlier run: its tagged group, rules and bin items)
+    local f = ns.NewFolder(GROUP_NAME); f.qaAuditOpt = true
+    local r = ns.NewRule(); r.name = RULE_NAME; r.folder = f.id; r.enabled = true; r.uid = ns.NewUID(); r.qaAuditOpt = true
+    r.useCooldown, r.spellID, r.cdState = true, 61304, "ready"
+    ns.NormalizeRule(r); ns.rules[#ns.rules + 1] = r
+    local c = ns.NewCueRule(r, "sound"); c.qaAuditOpt = true
+    local k = ns.NewRule(); k.name = COND_NAME; k.parentUid = r.uid; k.folder = f.id; k.uid = ns.NewUID(); k.qaAuditOpt = true
+    k.sound.enabled, k.visual.enabled = false, false
+    k.when = { list = { { ref = "cd", neg = false, op = "and", cmp = "==", num = 0 } } }; k.thenCues = { c.cueKey }
+    ns.NormalizeRule(k); ns.rules[#ns.rules + 1] = k
+    ns.MarkDirty()
+end
+QA.AuditOptTest = { Rule = Rule, Cue = TestCue, Cond = TestCond, Folder = TestFolder, BinCue = BinCue, Cleanup = Cleanup }   -- (tests)
 local function CleanCheck()
     local ns = NS(); if not ns then return false, "XayaUI is not loaded" end
-    for _, r in ipairs(ns.rules or {}) do if r.qaAuditOpt then return false, "a QA test rule is still there" end end
-    for _, f in ipairs(ns.folders or {}) do if f.qaAuditOpt then return false, "the QA test group is still there" end end
-    return true, "the QA test rule, cue, condition and group are gone"
+    for _, r in ipairs(ns.rules or {}) do if Tagged(r) then return false, "a QA test rule is still there" end end
+    for _, f in ipairs(ns.folders or {}) do if Tagged(f) then return false, "the QA test group is still there" end end
+    local b = ns.RecycleDB and ns.RecycleDB()
+    for _, it in ipairs(b and b.items or {}) do if BinItemTagged(it) then return false, "a Recycle Bin item of the test data is still there" end end
+    return true, "the QA test rule, cue, condition, group and their Recycle Bin items are gone"
 end
-local LAST = { text = "Last step: press |cffffd100Do it for me|r to remove the QA test group, rule, cue and condition (and the Recycle Bin items this walkthrough made). Then Accept or Pass.",
+local LAST = { done = true, text = "Last step: press |cffffd100Do it for me|r to remove the QA test group, rule, cue and condition (and the Recycle Bin items this walkthrough made). Then press |cffffd100Done|r.",
     setup = Cleanup, check = CleanCheck }
 
 -------------------------------------------------------------------------------
@@ -97,7 +124,7 @@ QA.Register("audit-opt-load", { title = "Load tab: Instance Type clicks; opening
             return t[1] == "false" and t[2] == "true" and t[3] == "not" and t[4] == "nil",
                 "unset box read " .. t[1] .. "; after clicks 1 / 2 / 3 the stored value was " .. t[2] .. " / " .. t[3] .. " / " .. t[4] .. " (want true / not / nil)"
         end },
-    { text = "Turn drafts on (Settings > Rule Creation > Prompt for saving and enable drafts), open the settings window, click |cffffd100QA audit options rule|r in the sidebar and open its |cffffd100Load|r tab. Change nothing. Then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r no unsaved-changes bar under the window.",
+    { text = "Turn drafts on (Settings > UI Options > Rule Creation > Prompt for saving and enable drafts), open the settings window, click |cffffd100QA audit options rule|r in the sidebar and open its |cffffd100Load|r tab. Change nothing. Then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r no unsaved-changes bar under the window.",
         check = function()
             local ns = NS(); local r = Rule(); if not (ns and r) then return false, "press Do it for me on step 1" end
             local od = OD(); if not od then return false, "the settings window (XayaUI Options) is not loaded" end
@@ -114,7 +141,7 @@ QA.Register("audit-opt-lock", { title = "Edit lock holds everywhere (D26, D41, D
         setup = function() Need(); MakeData(); local ns = NS(); if ns.OptionsApi and ns.OptionsApi.EditRule then pcall(ns.OptionsApi.EditRule, Rule()) end end,
         check = function()
             local od, r = OD(), Rule(); if not (od and r) then return false, "press Do it for me" end
-            local cue = Live(D.cue)
+            local cue = TestCue()
             return od.IsEditLocked(r) and true or false, ("rule locked: %s; cue locked: %s"):format(tostring(od.IsEditLocked(r)), tostring(cue and od.IsEditLocked(cue)))
         end },
     { text = "With the rule locked, open its |cffffd100Cues|r and |cffffd100Conditions|r tabs. Press |cffffd100Check again|r: XayaUI reads the header icons it would draw.\n\n|cffffd100Expect:|r the Move / Duplicate / red X icons are greyed out and do nothing; the grey name box takes no typing. Also press Ctrl+Z and Delete in the window: chat says the rule is edit-locked and it stays.",
@@ -145,22 +172,21 @@ QA.Register("audit-opt-group", { title = "Group Enabled keeps a switched-off con
     { text = "Press |cffffd100Do it for me|r: XayaUI makes the test group, switches its condition off, then unticks and ticks the group's Enabled box (Config tab).\n\n|cffffd100Expect:|r the rule is on again; the condition stays off.",
         setup = function()
             local _, od = Need(); MakeData()
-            Live(D.cond).enabled = false
-            local en = GroupEnabled(od.FolderNode(D.f)); if not en then error("the group's Enabled box was not found") end
+            TestCond().enabled = false
+            local en = GroupEnabled(od.FolderNode(TestFolder())); if not en then error("the group's Enabled box was not found") end
             en.set(nil, false); en.set(nil, true)
         end,
         check = function()
-            local r, c = Rule(), Live(D.cond); if not (r and c) then return false, "press Do it for me" end
+            local r, c = Rule(), TestCond(); if not (r and c) then return false, "press Do it for me" end
             return r.enabled == true and c.enabled == false, ("rule on: %s; condition on: %s (want true / false)"):format(tostring(r.enabled), tostring(c.enabled))
         end },
     { text = "Press |cffffd100Do it for me|r: XayaUI adds a second rule to the group, gives the two displays a red and a blue border, then plays a color-picker drag to green followed by Cancel on the group's Border color.\n\n|cffffd100Expect:|r red and blue again. You can also try it by hand: group page > Display > Every display: border and background.",
         setup = function()
-            local ns, od = Need(); if not D.f then error("press Do it for me on step 1 first") end
-            local b = ns.NewRule(); b.name = "QA audit options rule 2"; b.folder = D.f.id; b.enabled = true; b.qaAuditOpt = true; ns.NormalizeRule(b); ns.rules[#ns.rules + 1] = b
+            local ns, od = Need(); local f = TestFolder(); if not (f and Rule()) then error("press Do it for me on step 1 first") end
+            local b = TaggedRule(RULE2_NAME) or ns.NewRule(); local new = b.name ~= RULE2_NAME; b.name = RULE2_NAME; b.folder = f.id; b.enabled = true; b.qaAuditOpt = true; ns.NormalizeRule(b); if new then ns.rules[#ns.rules + 1] = b end
             local a = Rule(); a.visual.enabled, b.visual.enabled = true, true
             a.visual.border = { enabled = true, size = 1, color = { 1, 0, 0, 1 } }; b.visual.border = { enabled = true, size = 1, color = { 0, 0, 1, 1 } }
-            D.b = b
-            local col = od.Find(od.FolderNode(D.f), "bdColor"); if not col then error("the group's Border color was not found") end
+            local col = od.Find(od.FolderNode(f), "bdColor"); if not col then error("the group's Border color was not found") end
             local r0, g0, b0, a0 = col.get()
             local P = rawget(_G, "ColorPickerFrame"); local was = P and P:IsShown()
             if P then P:Show() end; col.set(nil, 0, 1, 0, 1)
@@ -168,7 +194,7 @@ QA.Register("audit-opt-group", { title = "Group Enabled keeps a switched-off con
             if P and was then P:Show() end
         end,
         check = function()
-            local a, b = Rule(), D.b; if not (a and b) then return false, "press Do it for me" end
+            local a, b = Rule(), TaggedRule(RULE2_NAME); if not (a and b) then return false, "press Do it for me" end
             local ca, cb = a.visual.border.color, b.visual.border.color
             return ca[1] == 1 and ca[3] == 0 and cb[1] == 0 and cb[3] == 1, ("display 1: %s,%s,%s  display 2: %s,%s,%s (want red / blue)"):format(ca[1], ca[2], ca[3], cb[1], cb[2], cb[3])
         end },
@@ -177,7 +203,7 @@ QA.Register("audit-opt-group", { title = "Group Enabled keeps a switched-off con
 
 -------------------------------------------------------------------------------
 QA.Register("audit-opt-bin", { title = "A cue deleted with the red X goes to the Recycle Bin; removing a buff trigger also clears its time-left setting (FA-11, D25)", qa = "B278, B270", order = 313, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: XayaUI makes the test rule and presses the red X on its sound cue.\n\n|cffffd100Expect:|r the cue is gone with no question and Rules > Recycle Bin lists \"Cue of the rule 'QA audit options rule'\".",
+    { text = "Press |cffffd100Do it for me|r: XayaUI removes what earlier runs of this walkthrough left, makes the test rule and presses the red X on its sound cue.\n\n|cffffd100Expect:|r the cue is gone with no question and |cffffd100Profiles > Recycle Bin|r lists \"Cue of the rule 'QA audit options rule'\".",
         setup = function()
             local _, od = Need(); MakeData()
             local hdr = od.Find(od.Find(od.RuleNode(Rule()), "oq1"), "hdr")
@@ -185,15 +211,15 @@ QA.Register("audit-opt-bin", { title = "A cue deleted with the red X goes to the
             hdr.arg.xuiActions().del()
         end,
         check = function()
-            local ns = NS(); if not D.uid then return false, "press Do it for me" end
-            local it; for _, x in ipairs(ns.RecycleItems()) do if x.kind == "cue" and x.owner == "QA audit options rule" then it = x end end
-            D.item = it and it.id
-            return Live(D.cue) == nil and it ~= nil, ("cue still in the rule: %s; in the Recycle Bin: %s"):format(tostring(Live(D.cue) ~= nil), tostring(it ~= nil))
+            if not Rule() then return false, "no test rule (QA audit options rule): press Do it for me" end
+            local it = BinCue()
+            return TestCue() == nil and it ~= nil, ("cue still in the rule: %s; in the Recycle Bin: %s"):format(tostring(TestCue() ~= nil), it and ("yes (\"" .. tostring(it.name) .. "\")") or "no")
         end },
-    { text = "Open Rules > Recycle Bin and press |cffffd100Restore|r on that cue (or press |cffffd100Do it for me|r).\n\n|cffffd100Expect:|r the cue is back in the rule and its condition plays it again.",
-        setup = function() local ns = NS(); if D.item then ns.RecycleRestore(D.item) end end,
+    { text = "Open |cffffd100Profiles > Recycle Bin|r and press |cffffd100Restore|r on that cue, then press |cffffd100Do it for me|r (it restores the cue for you if you have not).\n\n|cffffd100Expect:|r the cue is back in the rule and its condition plays it again.",
+        setup = function() local ns = NS(); local it = BinCue(); if it and not TestCue() then ns.RecycleRestore(it.id) end end,
         check = function()
-            local c, k = Live(D.cue), Live(D.cond); if not (c and k) then return false, "the cue is not back yet" end
+            if not Rule() then return false, "no test rule (QA audit options rule): run step 1 again" end
+            local c, k = TestCue(), TestCond(); if not (c and k) then return false, "the cue is not back yet" end
             local linked = type(k.thenCues) == "table" and k.thenCues[1] == c.cueKey
             return linked, linked and "the cue is back and the condition plays it" or "the cue is back but the condition does not play it"
         end },
@@ -214,11 +240,11 @@ QA.Register("audit-opt-inputs", { title = "Typos keep values; Restore asks; soun
     { text = "Press |cffffd100Do it for me|r: XayaUI makes the test rule, sets its condition to compare a number with 5, then types |cffffd1001o|r into the value box.\n\n|cffffd100Expect:|r the value stays 5.",
         setup = function()
             local _, od = Need(); MakeData()
-            local k = Live(D.cond); k.when.list[1].ref = "n:cd"; k.when.list[1].num = 5
+            local k = TestCond(); k.when.list[1].ref = "n:cd"; k.when.list[1].num = 5
             local n1 = od.Find(CondNode(od, od.RuleNode(Rule())), "n1"); if not n1 then error("the value box was not found") end
             n1.set(nil, "1o")
         end,
-        check = function() local k = Live(D.cond); if not k then return false, "press Do it for me" end
+        check = function() local k = TestCond(); if not k then return false, "press Do it for me" end
             return k.when.list[1].num == 5, "the value is " .. tostring(k.when.list[1].num) .. " (want 5)" end },
     { text = "Drafts off. Press |cffffd100Do it for me|r: XayaUI stores a draft of the test rule. Open Rules > Drafts and press |cffffd100Restore|r on it.\n\n|cffffd100Expect:|r a question first that says it replaces the rule right away and keeps it. Press No. The check reads the question text.",
         setup = function()

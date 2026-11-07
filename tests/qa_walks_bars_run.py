@@ -69,6 +69,17 @@ local cr = fr.barCR; fr.barCR = (cr or 0) + 0.3
 rawset(fr.barF, "GetStatusBarColor", function() return fr.barCR, fr.barCG, fr.barCB, 1 end)
 check("negative: a bar drawn in another colour gives Fail", not chk(3))
 fr.barCR = cr
+-- 4 (Dev Assist 0.7.53, #461): first with NO type on the aura: Neon cannot change the fixed blue, so the drawn colour equals Blizzard
+-- default and the check must say Fail ("no style changed the bar"); before, it returned Pass without testing anything
+C_TooltipInfo = C_TooltipInfo or {}
+C_TooltipInfo.GetSpellByID = function() return { lines = { { leftText = "Demon Spikes" }, { leftText = "Increases your armor." } } } end
+ns.BarForgetTooltipTypes()
+do
+  local st4 = step(4); st4.setup(); W.tick(0.05, 3)
+  local okN, nN = st4.check()
+  check("step 4 with no type on the aura: Fail, the bar equals Blizzard default (no Pass by default)", okN == false and tostring(nN):find("no style changed the bar", 1, true) ~= nil, tostring(okN) .. " " .. tostring(nN))
+  ns.BarCueSettings(T.cue.visual).style = "blizzard"; pcall(ns.RefreshVisual, T.cue)
+end
 -- 4: give the cue a type colour (a tooltip that names Fire) so the style has something to change
 TEST_FIRE = { r = 0.9, g = 0.4, b = 0.1 }
 COMBATLOG_DEFAULT_COLORS = { schoolColoring = { [Enum.Damageclass.MaskFire] = TEST_FIRE } }
@@ -80,7 +91,8 @@ check("step 4: Neon repaints the bar in a Neon colour: Pass", ok4, n4)
 local realTransform = ns.BarStyleTransform
 ns.BarStyleTransform = function(style, r, g, b) return r, g, b end
 fr.barCR = nil; ns.UpdateVisualText(T.cue, nil)
-check("negative: a style that changes nothing gives Fail", not chk(4))
+local okT, nT = chk(4)
+check("negative: a style that changes nothing gives Fail (drawn = Blizzard default)", okT == false and tostring(nT):find("no style changed the bar", 1, true) ~= nil, tostring(okT) .. " " .. tostring(nT))
 ns.BarStyleTransform = realTransform; fr.barCR = nil; ns.UpdateVisualText(T.cue, nil)
 -- 5
 local ok5, n5 = run(5); check("step 5: a group forces Muted / Dark, the bar keeps its own Neon underneath: Pass", ok5, n5)
@@ -95,14 +107,48 @@ check("negative: a texture listed twice gives Fail", not chk(6))
 ns.BarTextureList = realList
 -- 7 (a question for the person; its check only says whether the engine took the bar)
 local ok7, n7 = run(7); check("step 7: preview off, rule out of the group; the check reports what the engine does", n7 ~= nil and T.rule.folder == nil and not ns.IsPreview(T.cue, "visual"), n7)
--- 8
-local ok8, n8 = chk(8); check("step 8: Type colours on and working: Pass", ok8, n8)
+-- 8 (Dev Assist 0.7.53, #461): a question for her (the addon cannot read the tooltip she hovered; coloring its own sample line tested
+-- nothing she sees); the check only reports the switch
+check("step 8 is a question for the person (noVerdict), with no sample-line test", def.steps[8].noVerdict == true)
+local ok8, n8 = chk(8); check("step 8: reports Type colours switched on", ok8 and not tostring(n8):find("sample", 1, true), n8)
 ns.TT.DB().typeColors.enabled = false
 check("negative: Type colours off gives Fail", not chk(8))
 ns.TT.DB().typeColors.enabled = true
--- 9
-local ok9, n9 = run(9); check("step 9: the test rule, its cue and the test group are removed: Pass", ok9, n9)
+-- 9 (Dev Assist 0.7.53, #461): what she sees: gone from the data AND from the Rules sidebar rows and the editor of the open window
+check("step 9 is a clean-up step (Done, no verdict)", def.steps[9].done == true)
+local ok9c, n9c = chk(9)
+check("step 9 before the clean-up: Fail (the rule is still there)", ok9c == false, n9c)
+pcall(ns.LoadOptions); W.tick(0.05, 2)
+local ACD = LibStub("AceConfigDialog-3.0")
+if not (ACD.OpenFrames and ACD.OpenFrames.CueRules) then pcall(ns.ToggleUI) end; W.tick(0.05, 6)
+ACD = LibStub("AceConfigDialog-3.0")
+pcall(ACD.SelectGroup, ACD, "CueRules", "cooldowns"); W.tick(0.05, 4)
+local rows0 = QA.WindowMentions("XayaUI QA: Bar test")
+check("(the settings window is open and its sidebar lists the test rule before the clean-up)", rows0 ~= nil and rows0 > 0, rows0)
+local ok9, n9 = run(9); W.tick(0.05, 6); ok9, n9 = chk(9)
+check("step 9: the test rule, its cue and the test group are gone from the data, the sidebar and the editor: Pass", ok9 == true, n9)
 check("...nothing else was added or left behind", #ns.rules == nRules0 and #ns.folders == nFolders0, #ns.rules .. "/" .. nRules0 .. " " .. #ns.folders .. "/" .. nFolders0)
+-- negative: the data is gone but a sidebar row still shows the name (a window that was not redrawn): Fail
+local function AnyRow()
+  local root = ACD.OpenFrames and ACD.OpenFrames.CueRules
+  local found
+  local function walk(w) if found or type(w) ~= "table" then return end
+    if w.type == "TreeGroup" and w.buttons then for _, b in ipairs(w.buttons) do if b:IsShown() and b.text then found = b; return end end end
+    for _, c in ipairs(w.children or {}) do walk(c) end end
+  walk(root); return found
+end
+local rb = AnyRow()
+if rb then
+  local was = rb.text:GetText(); rb.text:SetText("XayaUI QA: Bar test")
+  local okS, nS = chk(9)
+  check("negative: a sidebar row still showing the removed rule gives Fail", okS == false and tostring(nS):find("sidebar row", 1, true) ~= nil, tostring(okS) .. " " .. tostring(nS))
+  rb.text:SetText(was)
+else
+  check("negative: a sidebar row to test with", false, "no sidebar row found")
+end
+pcall(ns.ToggleUI); W.tick(0.05, 3)
+local okC, nC = chk(9)
+check("step 9 with the settings window closed: not tested (nil): the rows cannot be read", okC == nil, tostring(okC) .. " " .. tostring(nC))
 C_UnitAuras.GetAuraDataByIndex = realByIndex; PowerBarColor = nil; C_Texture = realCT
 return R
 end

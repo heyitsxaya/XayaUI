@@ -75,7 +75,7 @@ QA.Register("debug-report", { title = "Debug report: codes, summary and string",
               text:find("XUI-E001", 1, true) and "names XUI-E001" or "has no XUI-E001", #str)
       end },
     -- audit D36 (Dev Assist 0.7.19): the test error does not stay in your saved errors or later reports
-    { text = "Last step: press |cffffd100Do it for me|r to remove this walkthrough's test error from your saved errors (your real errors stay). Then Pass.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to remove this walkthrough's test error from your saved errors (your real errors stay). Then press |cffffd100Done|r.",
       setup = function()
           local l = type(CueRulesDB) == "table" and CueRulesDB.errorLog
           if type(l) == "table" then
