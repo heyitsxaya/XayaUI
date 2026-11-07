@@ -1221,6 +1221,15 @@ function ns.FixSelection()
     local segs = {}
     for seg in sel:gmatch("[^\001]+") do segs[#segs + 1] = seg end
     if segs[1] ~= "loaded" and segs[1] ~= "notloaded" and segs[1] ~= "disabled" then return end
+    if segs[#segs] == ns.RELEASE_GUARD_KEY then   -- D8: Release Guard's row follows its on / off and Load answer, like a rule's
+        local okg, ctxg = pcall(ns.ReadContext)
+        local now = ns.ReleaseGuardScope(okg and ctxg or nil)
+        if not now or now == segs[1] then return end
+        if now == "disabled" or segs[1] == "disabled" then
+            pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", now == "disabled" and "disabledTab" or "enabledTab", now, ns.RELEASE_GUARD_KEY)
+        else segs[1] = now; S.selected = table.concat(segs, "\001") end
+        return
+    end
     local rn = tostring(segs[#segs]):match("^rule(%d+)$")
     local r = rn and ns.rules and ns.rules[tonumber(rn)]
     if not r then return end
@@ -1717,6 +1726,262 @@ function ns.CollapsibleHeaders(rule, args, tag)
     end
 end
 
+-- The rule Load tab (D8, Options 0.6.64): one builder for a rule and for a built-in entry that uses the same tab (Release Guard
+-- under Rules > Raid Rules). rec holds the rule-style fields (load, talentMode, talents; folder only on a rule). onChange: what an
+-- edit calls instead of Changed(rule) (a built-in entry is not a cue rule: nothing to repaint).
+local function BuildLoadArgs(rule, onChange)
+    local Changed = onChange or Changed
+    ------------------------------------------------------------ Conditions
+    local function noMatch() return false end   -- every load option stays visible in every mode (0.5.77); Always / Never only decide whether they are used (note below)
+    local loadArgs = {
+        talentUse = { type = "toggle", name = "Talents", order = 1, width = "double",
+            desc = "Tick to require certain talents. Unticked = talents are ignored. The talent list appears below once ticked.",
+            get = function() return rule.talentMode == "all" or rule.talentMode == "any" end,
+            set = function(_, v)
+                if v then
+                    if rule.talentMode ~= "all" and rule.talentMode ~= "any" then rule.talentMode = "any" end
+                    bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].talents = nil   -- ticking shows the list
+                else
+                    rule.talentMode = "none"
+                end
+                Changed(rule); Notify()
+            end },
+        ctxHeader = { type = "header", name = "Match Conditions (Party, Raid, Instance, Resting...)", order = 20, hidden = noMatch },
+    }
+    -- Talent list: only rendered once Talents is ticked, as a collapsible attachment (starts collapsed)
+    local talentBody = {
+        talentAdd = {
+            type = "select", name = "Add a talent from your current build", order = 3, width = "double",
+            values = function()
+                local v = {}
+                for _, t in ipairs(ns.BuildTalentList()) do
+                    v[tostring(t.id)] = "|T" .. SpellTex(t.id) .. ":16|t " .. t.name .. (t.choice and "  (choice node)" or "") .. "  [" .. t.id .. "]"
+                end
+                return v
+            end,
+            sorting = function()
+                local o = {}
+                for _, t in ipairs(ns.BuildTalentList()) do o[#o + 1] = tostring(t.id) end
+                return o
+            end,
+            get = function() return nil end,
+            set = function(_, v)
+                rule.talents[#rule.talents + 1] = { id = tonumber(v) or 0, state = "known" }
+                Changed(rule); Notify()
+            end,
+        },
+        talentAddBlank = {
+            type = "execute", name = "Add an empty talent row (type an ID)", order = 4, width = "double",
+            func = function() rule.talents[#rule.talents + 1] = { id = 0, state = "known" }; Changed(rule); Notify() end,
+        },
+    }
+    AddSquareRadio(talentBody, "talentMode", 2, TALENT_MODE_USED, TALENT_MODE_USED_ORDER,
+        function() return rule.talentMode end,
+        function(v) rule.talentMode = v; Changed(rule); Notify() end,
+        { desc = "ALL: every listed talent must match. ANY: one match is enough. Add talents below." })
+    local function talentsOn() return rule.talentMode == "all" or rule.talentMode == "any" end
+    loadArgs.talents = { type = "group", inline = true, name = "Talent List", order = 1.5, hidden = function() return not talentsOn() end,
+        args = {
+            open = ns.ArrowToggle(rule, "talents", 1),
+            body = { type = "group", inline = true, name = "", order = 2,
+                hidden = function() return not ns.ArrowOpen(rule, "talents") end, args = talentBody },
+        } }
+    -- Hero talents: same pattern as Specialization / Role, sits right under the Talent List
+    do
+        local function heroSet() rule.load.heroes = rule.load.heroes or {}; return rule.load.heroes end
+        loadArgs.heroes = ns.RadioGroup("Hero Talents", 1.6, noMatch,
+            heroSet, ns.HeroChoices(), function() Changed(rule); Notify() end, function() return rule.load end, "heroUse", rule, "heroes")
+    end
+    loadArgs.loadHeader = { type = "header", name = "When Should This Rule Load?", order = 0 }
+    loadArgs.modeNote = { type = "description", order = 0.52, width = "full", fontSize = "medium",
+        hidden = function() local m = rule.load.mode; return m ~= "never" and m ~= "always" end,
+        name = function()
+            return rule.load.mode == "always"
+                and "|cffffd100Always load is ticked:|r the options below are kept but not used, except a Class or Specialization row whose \"Always load: only this ...\" box is ticked. Tick Match ALL or Match ANY to make them all count."
+                or "|cffffd100Never load is ticked:|r this rule does not load, so the options below are kept but not used. Tick Match ALL or Match ANY to make them count."
+        end }
+    local loadModeKeys = AddSquareRadio(loadArgs, "loadMode", 0.5, LOAD_MODE, LOAD_MODE_ORDER,
+        function() return rule.load.mode or "all" end,
+        function(v) rule.load.mode = v; Changed(rule); Notify() end,
+        { desc = "Never: the rule never loads. Always: ignore every load condition. Match: use the conditions below (ALL must be true, or ANY one is enough). Only conditions you set count." })
+    for j, t in ipairs(rule.talents) do
+        talentBody["talent" .. j] = {
+            type = "group", inline = true, order = 5 + j * 0.01,
+            name = function() return "Talent " .. j .. ": " .. SpellName(t.id) end,
+            args = {
+                icon = { type = "execute", name = "", order = 0, width = 0.35,
+                    image = function() return SpellTex(t.id) end,
+                    imageWidth = 28, imageHeight = 28,
+                    arg = { xuiSpell = t },   -- read by the widget walker below, which attaches the full Blizzard spell tooltip
+                    func = function() end },
+                id = { type = "input", name = "Spell ID", order = 1, width = "half",
+                    get = function() return tostring(t.id) end,
+                    set = function(_, v) t.id = tonumber(v) or 0; Changed(rule); Notify() end },
+                -- #2 (Xaya: "three-click toggle (Known green / Not known red / not set)"): the same click pattern as the load conditions
+                -- below: click once Known (green), again Not known (red), a third time not set (no bearing on loading)
+                state = { type = "toggle", tristate = true, order = 2, width = 1.2, name = function()
+                        if t.state == "none" then return "Not set" end
+                        if t.state == "notKnown" then return "|cffff5555Not known|r" end
+                        return "|cff55ff55Known|r"
+                    end,
+                    desc = "Click: Known (green) -> Not known (red) -> Not set (this talent has no bearing on loading) -> Known.",
+                    get = function()
+                        if t.state == "none" then return false end
+                        if t.state == "notKnown" then return nil end
+                        return true
+                    end,
+                    set = function(_, v)
+                        if v == true then t.state = "known" elseif v == nil then t.state = "notKnown" else t.state = "none" end
+                        Changed(rule); Notify()
+                    end },
+                remove = { type = "execute", name = "Remove", order = 3, width = "half",
+                    func = function() table.remove(rule.talents, j); Changed(rule); Notify() end },
+            },
+        }
+    end
+    -- One three-click toggle per condition: unselected (ignored) -> green "yes" text -> red "not" text -> unselected
+    local TRI_TEXT = {
+        combat     = { "In Combat", "Not In Combat" },
+        group      = { "In A Group", "Not In A Group" },
+        raid       = { "In A Raid Group", "Not In A Raid Group" },
+        instance   = { "In An Instance", "Not In An Instance" },
+        mythicPlus = { "In A Mythic+", "Not In A Mythic+" },
+        encounter  = { "In A Boss Encounter", "Not In A Boss Encounter" },
+        mounted    = { "Mounted", "Not Mounted" },
+        resting    = { "In A Resting Area", "Not In A Resting Area" },
+    }
+    for n, c in ipairs(ns.LOAD_TRI) do
+        local txt = TRI_TEXT[c.key] or { c.yes, c.no }
+        loadArgs["tri_" .. c.key] = {
+            type = "toggle", tristate = true, order = 30 + n, width = "double", hidden = noMatch,
+            desc = "Click once: " .. c.yes .. ". Click again: " .. c.no .. ". Click a third time: ignored (unselected).",
+            name = function()
+                local st = rule.load[c.key]
+                if st == "yes" then return "|cff55ff55" .. txt[1] .. "|r" end
+                if st == "no" then return "|cffff5555" .. txt[2] .. "|r" end
+                return c.label
+            end,
+            get = function()
+                local st = rule.load[c.key]
+                if st == "yes" then return true end
+                if st == "no" then return nil end
+                return false
+            end,
+            set = function(_, v)
+                if v == true then rule.load[c.key] = "yes"
+                elseif v == nil then rule.load[c.key] = "no"
+                else rule.load[c.key] = "none" end
+                Changed(rule)
+            end,
+        }
+    end
+    loadArgs.instTypeHeader = { type = "header", name = "Instance Type (None Ticked = Any)", order = 60, hidden = noMatch }
+    local instChoices = {}
+    for _, k in ipairs(ns.INSTANCE_TYPE_ORDER) do instChoices[#instChoices + 1] = { id = k, text = ns.INSTANCE_TYPES[k] } end
+    loadArgs.instanceTypes = TriGroup("Instance Type", 61, noMatch,
+        function() rule.load.instanceTypes = rule.load.instanceTypes or {}; return rule.load.instanceTypes end,
+        instChoices, function() Changed(rule); Notify() end)
+    -- D8 (core 0.6.62): people in my group, at least N (0 = any)
+    loadArgs.groupMin = { type = "range", order = 62, width = "double", min = 0, max = 40, step = 1, hidden = noMatch,
+        name = "People in my group: at least (0 = any)",
+        desc = "Loads only while your group has at least this many players (you included). 0: any group size, solo too.",
+        get = function() return tonumber(rule.load.groupMin) or 0 end,
+        set = function(_, v) rule.load.groupMin = (v and v > 1) and math.floor(v) or nil; Changed(rule); Notify() end }
+    loadArgs.classHeader = { type = "header", name = "Class / Specialization / Role", order = 0.55, hidden = noMatch }
+    local function LoadSet(field, legacy, legacyOK)
+        local ld = rule.load
+        ld[field] = ld[field] or {}
+        -- one-time migration of the old single-choice value
+        if next(ld[field]) == nil and ld[legacy] ~= nil and legacyOK(ld[legacy]) then
+            ld[field][tostring(ld[legacy])] = true
+        end
+        ld[legacy] = nil
+        return ld[field]
+    end
+    local function specSet() return LoadSet("specs", "specID", function(v) return type(v) == "number" and v > 0 end) end
+    local function roleSet() return LoadSet("roles", "role", function(v) return v ~= "none" and v ~= "" end) end
+    local function classSet() rule.load.classes = rule.load.classes or {}; return rule.load.classes end
+    local function onSpecRole() Changed(rule); Notify() end
+    -- Instance Options: types + Mythic+ + Boss encounter sit right under "Instance" and only show when Instance is
+    -- "Only inside an instance", or when any of them already holds a setting (so an active restriction is never hidden).
+    local function instSubActive()
+        local ld = rule.load
+        if next(ld.instanceTypes or {}) then return true end
+        return not ns.Ignored(ld.mythicPlus) or not ns.Ignored(ld.encounter)
+    end
+    local function instHidden()
+        return noMatch() or not (rule.load.instance == "yes" or instSubActive())
+    end
+    local instOrder
+    for n, c in ipairs(ns.LOAD_TRI) do if c.key == "instance" then instOrder = 30 + n end end
+    if instOrder then
+        -- mirror of the Talents attachment: a collapsible "Instance Options" group with a "Show options" tick
+        local instBody = { instanceTypes = loadArgs.instanceTypes, tri_mythicPlus = loadArgs.tri_mythicPlus, tri_encounter = loadArgs.tri_encounter }
+        loadArgs.instanceTypes, loadArgs.tri_mythicPlus, loadArgs.tri_encounter, loadArgs.instTypeHeader = nil, nil, nil, nil
+        instBody.instanceTypes.order = 1
+        instBody.tri_mythicPlus.order = 2
+        instBody.tri_encounter.order = 3
+        loadArgs.instanceOptions = { type = "group", inline = true, name = "Instance Options", order = instOrder + 0.1, hidden = instHidden,
+            args = {
+                open = ns.ArrowToggle(rule, "instance", 1),
+                body = { type = "group", inline = true, name = "", order = 2,
+                    hidden = function() return not ns.ArrowOpen(rule, "instance") end, args = instBody },
+            } }
+        -- ticking Instance (green "In An Instance") opens the group, like ticking Talents
+        local prevSet = loadArgs.tri_instance.set
+        loadArgs.tri_instance.set = function(info, v)
+            prevSet(info, v)
+            if rule.load.instance == "yes" then bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].instance = nil end
+        end
+    end
+    loadArgs.classes = ns.RadioGroup("Class", 0.57, noMatch, classSet, ns.ClassChoices(), onSpecRole, function() return rule.load end, "classUse", rule, "classes", true, "alwaysClass", "class")
+    loadArgs.specs = ns.RadioGroup("Specialization", 0.6, noMatch, specSet, SpecChoices(), onSpecRole, function() return rule.load end, "specUse", rule, "specs", true, "alwaysSpec", "spec")
+    loadArgs.roles = ns.RadioGroup("Role", 0.7, noMatch, roleSet, RoleChoices(), onSpecRole, function() return rule.load end, "roleUse", rule, "roles")
+    -- A folder's Never / Always overrides this rule's load mode and match conditions (talents still apply). Values stay stored.
+    local function folderLoadOv() return ns.FolderLoadOverride(rule) end
+    loadArgs.folderOv = { type = "description", order = 0.2, width = "full", fontSize = "medium",
+        hidden = function() return not folderLoadOv() end,
+        name = function()
+            local ov, of = folderLoadOv()
+            if not ov then return "" end
+            return "|cffffd100Overridden by group " .. tostring(of and of.name) .. "|r: " .. (ov == "never" and "Never" or "Always")
+                .. ". Your own load settings below are kept and apply again if this rule leaves the group. Talents still apply."
+        end }
+    -- Zones, instances, difficulties, sizes, boss encounters and equipped items (core 0.6.28): one ID list each, in a box that starts
+    -- closed unless a list holds IDs. A folder's Never / Always locks them like the other rows.
+    do
+        local ld = rule.load
+        local anyIds = false
+        for _, r in ipairs(ns.LOAD_ID_ROWS) do if ns.SetActive(ld[r.field]) then anyIds = true end end
+        bannerOpen[rule] = bannerOpen[rule] or {}
+        local bo = bannerOpen[rule]
+        if bo.loadIdsInit == nil then bo.loadIdsInit = true; if not anyIds then bo.loadIds = false end end
+        local body = ns.LoadIdRows(function() return rule.load end, function() Changed(rule); Notify() end,
+            function() return folderLoadOv() ~= nil end, SearchBox)
+        loadArgs.loadIds = { type = "group", inline = true, name = "Zones, Instances, Bosses and Items", order = 50, xuiRule = rule,
+            args = {
+                open = ns.ArrowToggle(rule, "loadIds", 1),
+                body = { type = "group", inline = true, name = "", order = 2,
+                    hidden = function() return not ns.ArrowOpen(rule, "loadIds") end, args = body },
+            } }
+    end
+    local lockKeys = { "instanceTypes", "groupMin", "classes", "specs", "roles", "heroes" }
+    for _, k in ipairs(loadModeKeys) do lockKeys[#lockKeys + 1] = k end
+    for _, c in ipairs(ns.LOAD_TRI) do lockKeys[#lockKeys + 1] = "tri_" .. c.key end
+    for _, k in ipairs(lockKeys) do
+        local a = loadArgs[k]
+        if a then
+            local prev = a.disabled
+            a.disabled = function(...)
+                if folderLoadOv() then return true end
+                if type(prev) == "function" then return prev(...) end
+                return prev
+            end
+        end
+    end
+    return loadArgs
+end
+
 local function BuildRule(i, rule)
     local V = rule.visual
     local function on() Changed(rule) end
@@ -1891,248 +2156,7 @@ local function BuildRule(i, rule)
         end
     end
 
-    ------------------------------------------------------------ Conditions
-    local function noMatch() return false end   -- every load option stays visible in every mode (0.5.77); Always / Never only decide whether they are used (note below)
-    local loadArgs = {
-        talentUse = { type = "toggle", name = "Talents", order = 1, width = "double",
-            desc = "Tick to require certain talents. Unticked = talents are ignored. The talent list appears below once ticked.",
-            get = function() return rule.talentMode == "all" or rule.talentMode == "any" end,
-            set = function(_, v)
-                if v then
-                    if rule.talentMode ~= "all" and rule.talentMode ~= "any" then rule.talentMode = "any" end
-                    bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].talents = nil   -- ticking shows the list
-                else
-                    rule.talentMode = "none"
-                end
-                Changed(rule); Notify()
-            end },
-        ctxHeader = { type = "header", name = "Match Conditions (Party, Raid, Instance, Resting...)", order = 20, hidden = noMatch },
-    }
-    -- Talent list: only rendered once Talents is ticked, as a collapsible attachment (starts collapsed)
-    local talentBody = {
-        talentAdd = {
-            type = "select", name = "Add a talent from your current build", order = 3, width = "double",
-            values = function()
-                local v = {}
-                for _, t in ipairs(ns.BuildTalentList()) do
-                    v[tostring(t.id)] = "|T" .. SpellTex(t.id) .. ":16|t " .. t.name .. (t.choice and "  (choice node)" or "") .. "  [" .. t.id .. "]"
-                end
-                return v
-            end,
-            sorting = function()
-                local o = {}
-                for _, t in ipairs(ns.BuildTalentList()) do o[#o + 1] = tostring(t.id) end
-                return o
-            end,
-            get = function() return nil end,
-            set = function(_, v)
-                rule.talents[#rule.talents + 1] = { id = tonumber(v) or 0, state = "known" }
-                Changed(rule); Notify()
-            end,
-        },
-        talentAddBlank = {
-            type = "execute", name = "Add an empty talent row (type an ID)", order = 4, width = "double",
-            func = function() rule.talents[#rule.talents + 1] = { id = 0, state = "known" }; Changed(rule); Notify() end,
-        },
-    }
-    AddSquareRadio(talentBody, "talentMode", 2, TALENT_MODE_USED, TALENT_MODE_USED_ORDER,
-        function() return rule.talentMode end,
-        function(v) rule.talentMode = v; Changed(rule); Notify() end,
-        { desc = "ALL: every listed talent must match. ANY: one match is enough. Add talents below." })
-    local function talentsOn() return rule.talentMode == "all" or rule.talentMode == "any" end
-    loadArgs.talents = { type = "group", inline = true, name = "Talent List", order = 1.5, hidden = function() return not talentsOn() end,
-        args = {
-            open = ns.ArrowToggle(rule, "talents", 1),
-            body = { type = "group", inline = true, name = "", order = 2,
-                hidden = function() return not ns.ArrowOpen(rule, "talents") end, args = talentBody },
-        } }
-    -- Hero talents: same pattern as Specialization / Role, sits right under the Talent List
-    do
-        local function heroSet() rule.load.heroes = rule.load.heroes or {}; return rule.load.heroes end
-        loadArgs.heroes = ns.RadioGroup("Hero Talents", 1.6, noMatch,
-            heroSet, ns.HeroChoices(), function() Changed(rule); Notify() end, function() return rule.load end, "heroUse", rule, "heroes")
-    end
-    loadArgs.loadHeader = { type = "header", name = "When Should This Rule Load?", order = 0 }
-    loadArgs.modeNote = { type = "description", order = 0.52, width = "full", fontSize = "medium",
-        hidden = function() local m = rule.load.mode; return m ~= "never" and m ~= "always" end,
-        name = function()
-            return rule.load.mode == "always"
-                and "|cffffd100Always load is ticked:|r the options below are kept but not used, except a Class or Specialization row whose \"Always load: only this ...\" box is ticked. Tick Match ALL or Match ANY to make them all count."
-                or "|cffffd100Never load is ticked:|r this rule does not load, so the options below are kept but not used. Tick Match ALL or Match ANY to make them count."
-        end }
-    local loadModeKeys = AddSquareRadio(loadArgs, "loadMode", 0.5, LOAD_MODE, LOAD_MODE_ORDER,
-        function() return rule.load.mode or "all" end,
-        function(v) rule.load.mode = v; Changed(rule); Notify() end,
-        { desc = "Never: the rule never loads. Always: ignore every load condition. Match: use the conditions below (ALL must be true, or ANY one is enough). Only conditions you set count." })
-    for j, t in ipairs(rule.talents) do
-        talentBody["talent" .. j] = {
-            type = "group", inline = true, order = 5 + j * 0.01,
-            name = function() return "Talent " .. j .. ": " .. SpellName(t.id) end,
-            args = {
-                icon = { type = "execute", name = "", order = 0, width = 0.35,
-                    image = function() return SpellTex(t.id) end,
-                    imageWidth = 28, imageHeight = 28,
-                    arg = { xuiSpell = t },   -- read by the widget walker below, which attaches the full Blizzard spell tooltip
-                    func = function() end },
-                id = { type = "input", name = "Spell ID", order = 1, width = "half",
-                    get = function() return tostring(t.id) end,
-                    set = function(_, v) t.id = tonumber(v) or 0; Changed(rule); Notify() end },
-                -- #2 (Xaya: "three-click toggle (Known green / Not known red / not set)"): the same click pattern as the load conditions
-                -- below: click once Known (green), again Not known (red), a third time not set (no bearing on loading)
-                state = { type = "toggle", tristate = true, order = 2, width = 1.2, name = function()
-                        if t.state == "none" then return "Not set" end
-                        if t.state == "notKnown" then return "|cffff5555Not known|r" end
-                        return "|cff55ff55Known|r"
-                    end,
-                    desc = "Click: Known (green) -> Not known (red) -> Not set (this talent has no bearing on loading) -> Known.",
-                    get = function()
-                        if t.state == "none" then return false end
-                        if t.state == "notKnown" then return nil end
-                        return true
-                    end,
-                    set = function(_, v)
-                        if v == true then t.state = "known" elseif v == nil then t.state = "notKnown" else t.state = "none" end
-                        Changed(rule); Notify()
-                    end },
-                remove = { type = "execute", name = "Remove", order = 3, width = "half",
-                    func = function() table.remove(rule.talents, j); Changed(rule); Notify() end },
-            },
-        }
-    end
-    -- One three-click toggle per condition: unselected (ignored) -> green "yes" text -> red "not" text -> unselected
-    local TRI_TEXT = {
-        combat     = { "In Combat", "Not In Combat" },
-        group      = { "In A Group", "Not In A Group" },
-        raid       = { "In A Raid Group", "Not In A Raid Group" },
-        instance   = { "In An Instance", "Not In An Instance" },
-        mythicPlus = { "In A Mythic+", "Not In A Mythic+" },
-        encounter  = { "In A Boss Encounter", "Not In A Boss Encounter" },
-        mounted    = { "Mounted", "Not Mounted" },
-        resting    = { "In A Resting Area", "Not In A Resting Area" },
-    }
-    for n, c in ipairs(ns.LOAD_TRI) do
-        local txt = TRI_TEXT[c.key] or { c.yes, c.no }
-        loadArgs["tri_" .. c.key] = {
-            type = "toggle", tristate = true, order = 30 + n, width = "double", hidden = noMatch,
-            desc = "Click once: " .. c.yes .. ". Click again: " .. c.no .. ". Click a third time: ignored (unselected).",
-            name = function()
-                local st = rule.load[c.key]
-                if st == "yes" then return "|cff55ff55" .. txt[1] .. "|r" end
-                if st == "no" then return "|cffff5555" .. txt[2] .. "|r" end
-                return c.label
-            end,
-            get = function()
-                local st = rule.load[c.key]
-                if st == "yes" then return true end
-                if st == "no" then return nil end
-                return false
-            end,
-            set = function(_, v)
-                if v == true then rule.load[c.key] = "yes"
-                elseif v == nil then rule.load[c.key] = "no"
-                else rule.load[c.key] = "none" end
-                Changed(rule)
-            end,
-        }
-    end
-    loadArgs.instTypeHeader = { type = "header", name = "Instance Type (None Ticked = Any)", order = 60, hidden = noMatch }
-    local instChoices = {}
-    for _, k in ipairs(ns.INSTANCE_TYPE_ORDER) do instChoices[#instChoices + 1] = { id = k, text = ns.INSTANCE_TYPES[k] } end
-    loadArgs.instanceTypes = TriGroup("Instance Type", 61, noMatch,
-        function() rule.load.instanceTypes = rule.load.instanceTypes or {}; return rule.load.instanceTypes end,
-        instChoices, function() Changed(rule); Notify() end)
-    loadArgs.classHeader = { type = "header", name = "Class / Specialization / Role", order = 0.55, hidden = noMatch }
-    local function LoadSet(field, legacy, legacyOK)
-        local ld = rule.load
-        ld[field] = ld[field] or {}
-        -- one-time migration of the old single-choice value
-        if next(ld[field]) == nil and ld[legacy] ~= nil and legacyOK(ld[legacy]) then
-            ld[field][tostring(ld[legacy])] = true
-        end
-        ld[legacy] = nil
-        return ld[field]
-    end
-    local function specSet() return LoadSet("specs", "specID", function(v) return type(v) == "number" and v > 0 end) end
-    local function roleSet() return LoadSet("roles", "role", function(v) return v ~= "none" and v ~= "" end) end
-    local function classSet() rule.load.classes = rule.load.classes or {}; return rule.load.classes end
-    local function onSpecRole() Changed(rule); Notify() end
-    -- Instance Options: types + Mythic+ + Boss encounter sit right under "Instance" and only show when Instance is
-    -- "Only inside an instance", or when any of them already holds a setting (so an active restriction is never hidden).
-    local function instSubActive()
-        local ld = rule.load
-        if next(ld.instanceTypes or {}) then return true end
-        return not ns.Ignored(ld.mythicPlus) or not ns.Ignored(ld.encounter)
-    end
-    local function instHidden()
-        return noMatch() or not (rule.load.instance == "yes" or instSubActive())
-    end
-    local instOrder
-    for n, c in ipairs(ns.LOAD_TRI) do if c.key == "instance" then instOrder = 30 + n end end
-    if instOrder then
-        -- mirror of the Talents attachment: a collapsible "Instance Options" group with a "Show options" tick
-        local instBody = { instanceTypes = loadArgs.instanceTypes, tri_mythicPlus = loadArgs.tri_mythicPlus, tri_encounter = loadArgs.tri_encounter }
-        loadArgs.instanceTypes, loadArgs.tri_mythicPlus, loadArgs.tri_encounter, loadArgs.instTypeHeader = nil, nil, nil, nil
-        instBody.instanceTypes.order = 1
-        instBody.tri_mythicPlus.order = 2
-        instBody.tri_encounter.order = 3
-        loadArgs.instanceOptions = { type = "group", inline = true, name = "Instance Options", order = instOrder + 0.1, hidden = instHidden,
-            args = {
-                open = ns.ArrowToggle(rule, "instance", 1),
-                body = { type = "group", inline = true, name = "", order = 2,
-                    hidden = function() return not ns.ArrowOpen(rule, "instance") end, args = instBody },
-            } }
-        -- ticking Instance (green "In An Instance") opens the group, like ticking Talents
-        local prevSet = loadArgs.tri_instance.set
-        loadArgs.tri_instance.set = function(info, v)
-            prevSet(info, v)
-            if rule.load.instance == "yes" then bannerOpen[rule] = bannerOpen[rule] or {}; bannerOpen[rule].instance = nil end
-        end
-    end
-    loadArgs.classes = ns.RadioGroup("Class", 0.57, noMatch, classSet, ns.ClassChoices(), onSpecRole, function() return rule.load end, "classUse", rule, "classes", true, "alwaysClass", "class")
-    loadArgs.specs = ns.RadioGroup("Specialization", 0.6, noMatch, specSet, SpecChoices(), onSpecRole, function() return rule.load end, "specUse", rule, "specs", true, "alwaysSpec", "spec")
-    loadArgs.roles = ns.RadioGroup("Role", 0.7, noMatch, roleSet, RoleChoices(), onSpecRole, function() return rule.load end, "roleUse", rule, "roles")
-    -- A folder's Never / Always overrides this rule's load mode and match conditions (talents still apply). Values stay stored.
-    local function folderLoadOv() return ns.FolderLoadOverride(rule) end
-    loadArgs.folderOv = { type = "description", order = 0.2, width = "full", fontSize = "medium",
-        hidden = function() return not folderLoadOv() end,
-        name = function()
-            local ov, of = folderLoadOv()
-            if not ov then return "" end
-            return "|cffffd100Overridden by group " .. tostring(of and of.name) .. "|r: " .. (ov == "never" and "Never" or "Always")
-                .. ". Your own load settings below are kept and apply again if this rule leaves the group. Talents still apply."
-        end }
-    -- Zones, instances, difficulties, sizes, boss encounters and equipped items (core 0.6.28): one ID list each, in a box that starts
-    -- closed unless a list holds IDs. A folder's Never / Always locks them like the other rows.
-    do
-        local ld = rule.load
-        local anyIds = false
-        for _, r in ipairs(ns.LOAD_ID_ROWS) do if ns.SetActive(ld[r.field]) then anyIds = true end end
-        bannerOpen[rule] = bannerOpen[rule] or {}
-        local bo = bannerOpen[rule]
-        if bo.loadIdsInit == nil then bo.loadIdsInit = true; if not anyIds then bo.loadIds = false end end
-        local body = ns.LoadIdRows(function() return rule.load end, function() Changed(rule); Notify() end,
-            function() return folderLoadOv() ~= nil end, SearchBox)
-        loadArgs.loadIds = { type = "group", inline = true, name = "Zones, Instances, Bosses and Items", order = 50, xuiRule = rule,
-            args = {
-                open = ns.ArrowToggle(rule, "loadIds", 1),
-                body = { type = "group", inline = true, name = "", order = 2,
-                    hidden = function() return not ns.ArrowOpen(rule, "loadIds") end, args = body },
-            } }
-    end
-    local lockKeys = { "instanceTypes", "classes", "specs", "roles", "heroes" }
-    for _, k in ipairs(loadModeKeys) do lockKeys[#lockKeys + 1] = k end
-    for _, c in ipairs(ns.LOAD_TRI) do lockKeys[#lockKeys + 1] = "tri_" .. c.key end
-    for _, k in ipairs(lockKeys) do
-        local a = loadArgs[k]
-        if a then
-            local prev = a.disabled
-            a.disabled = function(...)
-                if folderLoadOv() then return true end
-                if type(prev) == "function" then return prev(...) end
-                return prev
-            end
-        end
-    end
+    local loadArgs = BuildLoadArgs(rule)
     local load = { type = "group", name = "Load", order = 6, args = loadArgs }
 
     ---------------------------------------------------------------- Actions
@@ -4686,6 +4710,39 @@ function ns.ApplyTreeFilter(out)
     end
 end
 
+-- D8 (Options 0.6.64; Xaya: "Rule drives the cover", "It belongs in "Raid Rules" under rules", "A group in the sidebar", "Yes,
+-- built-in entry"): Release Guard is a fixed entry under a fixed "Raid Rules" group. It is not a cue rule: no record in ns.rules (the
+-- engine, export, profile export, delete, duplicate, multi-select and drag never see it; conservative reading, recorded in the D8
+-- spec), its settings stay in CueRulesDB.releaseGuard (XayaUI_QoL). Its row: no eye / headphone (Resolve knows no "releaseguard"
+-- key), a right-click menu with Enable / Disable only. Its page: Settings (on / off, text, flavour texts, key) and the rule Load tab
+-- (BuildLoadArgs on its own load table). Shown only while XayaUI_QoL is loaded (its code lives there).
+ns.RAID_RULES_KEY, ns.RELEASE_GUARD_KEY = "raidrules", "releaseguard"
+local function BuildReleaseGuardEntry()
+    local c = ns.ReleaseGuard_Cfg and ns.ReleaseGuard_Cfg()
+    if not (c and ns.BuildReleaseGuardPage) then return nil end
+    local settings = ns.BuildReleaseGuardPage(function() Notify() end)
+    local sw = settings.xuiSwitch
+    settings.xuiSwitch = nil
+    if type(sw) == "table" then
+        settings.args.enabled = { type = "toggle", order = -1, width = "full", name = "Enabled",
+            desc = "Release Guard's on / off. While it is off nothing of it is made or listened to. Once it is on, its Load tab decides where it covers the button.",
+            get = sw.get, set = function(info, v) sw.set(info, v); ns.MarkDirty(); Notify() end }
+    end
+    settings.order = 1
+    local loadArgs = BuildLoadArgs(c, function() ns.MarkDirty() end)
+    loadArgs.loadHeader = { type = "header", name = "Where Should Release Guard Work?", order = 0 }
+    return { type = "group", order = 1, childGroups = "tab", name = "Release Guard",
+        desc = "Covers the Release Spirit button when you die (built in: cannot be deleted or exported).",
+        args = { settings = settings, load = { type = "group", name = "Load", order = 2, args = loadArgs } } }
+end
+-- where the entry is listed (like a rule): "disabled" while it is off, else "loaded" / "notloaded" by its Load tab
+function ns.ReleaseGuardScope(ctx)
+    local c = ns.ReleaseGuard_Cfg and ns.ReleaseGuard_Cfg()
+    if not c then return nil end
+    if not c.enabled then return "disabled" end
+    return (ns.LoadAllows and ns.LoadAllows(c, ctx)) and "loaded" or "notloaded"
+end
+
 local function BuildOptions()
     ---------------------------------------------------------- Cooldown + Aura Tracking
     local all = {
@@ -4759,6 +4816,14 @@ local function BuildOptions()
                 if not oke and not ns.embedErr then ns.embedErr = true; ns.Print("outcome embed error: " .. tostring(err)) end
             end
         end
+    end
+    -- D8: Release Guard, listed like a rule (Enabled > Loaded / Not Loaded while on, Disabled while off) and in the fixed Raid Rules group
+    local rgEntry = BuildReleaseGuardEntry()
+    if rgEntry then
+        local sc = ns.ReleaseGuardScope(okc and ctx or nil)
+        if sc == "disabled" then disabledArgs[ns.RELEASE_GUARD_KEY] = rgEntry; nDisabled = nDisabled + 1
+        elseif sc == "loaded" then loadedArgs[ns.RELEASE_GUARD_KEY] = rgEntry; nLoaded = nLoaded + 1
+        else notArgs[ns.RELEASE_GUARD_KEY] = rgEntry; nNot = nNot + 1 end
     end
     loadedArgs.info = { type = "description", order = 0, width = "full", fontSize = "medium",
         name = "Rules that are enabled and whose load conditions and talents match right now (cooldown / buff state is not part of this). Same rules as under Smart Categories; this list updates as your situation changes." }
@@ -4839,6 +4904,12 @@ local function BuildOptions()
         -- AUTO-POPULATE RULES moved to the Class/Spec Rule Creator tab (2026-10-31)
         } }
     local smartTab = { type = "group", name = "Smart Categories", order = 1, childGroups = "tree", args = { all = all } }
+    if rgEntry then
+        smartTab.args[ns.RAID_RULES_KEY] = { type = "group", order = 4, childGroups = "tree", name = "RAID RULES",
+            args = { info = { type = "description", order = 0, width = "full", fontSize = "medium",
+                name = "Built-in raid features that work like rules: each has its own on / off and the same Load tab as a rule. They cannot be deleted or exported." },
+                [ns.RELEASE_GUARD_KEY] = rgEntry } }
+    end
     local draftsTab = ns.BuildDraftsPage and ns.BuildDraftsPage() or nil
     if draftsTab then
         draftsTab.order = 4; draftsTab.name = "Drafts"; ns.PickerInto(draftsTab.args)
@@ -6235,6 +6306,17 @@ end
 
 local function RowMenu(button, root)
     local last = LastKey(button.uniquevalue) or ""
+    if last == ns.RELEASE_GUARD_KEY then   -- D8: built in: on / off only (no rename, duplicate, export, move or delete)
+        local c = ns.ReleaseGuard_Cfg and ns.ReleaseGuard_Cfg()
+        if not c then return false end
+        root:CreateTitle("Release Guard")
+        root:CreateButton(c.enabled and "Disable" or "Enable", function()
+            c.enabled = not c.enabled
+            if ns.ReleaseGuard_Apply then pcall(ns.ReleaseGuard_Apply) end
+            ns.MarkDirty(); Notify()
+        end)
+        return true
+    end
     local n = last:match("^rule(%d+)$")
     local rule = n and ns.rules and ns.rules[tonumber(n)]
     if rule then
@@ -7175,7 +7257,7 @@ local function DecorateButton(button)
     local tw = ns.PaintTypeIcon and ns.PaintTypeIcon(button, x0) or 0   -- icon at the left of the row (0 = none)
     button.xuiTwoRow = (tw > 0 and not (ns.CondensedOn and ns.CondensedOn())) and true or false
     local rk0 = tostring(button.uniquevalue or ""):match("([^\001]+)$") or ""
-    local isRootRow = (rk0 == "all" or rk0 == "loaded" or rk0 == "notloaded" or rk0 == "disabled" or rk0 == "smart" or (inSC and rk0:match("^smart_") ~= nil))
+    local isRootRow = (rk0 == "all" or rk0 == "loaded" or rk0 == "notloaded" or rk0 == "disabled" or rk0 == "smart" or rk0 == ns.RAID_RULES_KEY or (inSC and rk0:match("^smart_") ~= nil))
     local chevMode = "left"
     if canExpand then
         if not button.xuiChev then button.xuiChev = MakeChevron(button) end
