@@ -2909,7 +2909,7 @@ local function StatMapSections(ctx, out)
     for _, it in ipairs(PowerItems(ptCur)) do Add(it) end
     local g = CM.gcd
     do
-        local it = Item("map_gcd", "Global cooldown")
+        local it = Item("map_gcd", "GCD")   -- (QoL 0.7.37; UI-62, Xaya: "Global Cooldown should be GCD")
         it.bigPairs = true
         if CM.gcdHidden then
             SetValue(it, HIDDEN)
@@ -2941,7 +2941,7 @@ local function StatMapSections(ctx, out)
         -- character window's own reading; constants.md)
         local cur, run = R(GetUnitSpeed, "player")
         local base = num(BASE_MOVEMENT_SPEED) and BASE_MOVEMENT_SPEED or 7
-        local it = Item("map_movespeed", "Movement speed")
+        local it = Item("map_movespeed", "Movement Speed")   -- (UI-62: every line in title case)
         it.bigPairs = true
         if cur == HIDDEN then SetValue(it, HIDDEN)
         elseif num(run) and run > 0 then
@@ -3065,7 +3065,7 @@ local function StatMapSections(ctx, out)
         Add(dmg)
     end
     do
-        local ce = Item("map_critfx", "Critical strike effectiveness")
+        local ce = Item("map_critfx", "Critical Strike Effectiveness")   -- (QoL 0.7.37; UI-62, Xaya: "title cased like every other line")
         ce.bigPairs = true
         local total, src = CritEffect()
         if total == nil then NotGiven(ce)
