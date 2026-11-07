@@ -208,6 +208,27 @@ Testing everything now and again after the split is double work, and every branc
 - **D8** (held, 28 files, touches the engine) is either released before the move or rebased after it (Q4).
 - The freeze is reviewed once phase P2 has a measured pace; if the split is going to take weeks, it is reconsidered.
 
+### 8.1 Baseline walkthroughs (picked 2026-11-07, run once on main before P1)
+
+Chosen to touch every part the split moves, all runnable solo outside a group (no step asks for a group, instance or the Auction
+House; checked by searching each walkthrough's steps). Open each from `/xui dev qa` > All walkthroughs.
+
+| # | Walkthrough id | What it covers in the split |
+|---|---|---|
+| 1 | settings-toplevel | Settings window top tabs and Profiles (Options platform part, profile parts) |
+| 2 | perf-settings-click (J31) | Settings click speed: the number to compare after Options.lua is cut |
+| 3 | audit-engine | Engine: hidden-buff estimate, glow on delete, errors in the report (rule module, error handling) |
+| 4 | audit-opt-bin | Red X to the Recycle Bin (bin kinds) |
+| 5 | audit-backup-replace | Backups: Load (replace) (the backup the rules migration relies on) |
+| 6 | bars-cues | Bar cues (engine plus visuals) |
+| 7 | chat-improved-split | Chat Panel and Improved Chat on and off apart (modules switch independently) |
+| 8 | reskin-switches | All reskins and each reskin's tick box (Reskin module) |
+| 9 | audit-shopping-list | Shopping List per-character settings (QoL saved data) |
+| 10 | statcalc-rows | Stat Calculator rows (the character pane that splits across Bonus / QoL / Reskin) |
+
+Friends who test (2026-11-07): the same freeze applies. They skip the backlog; if they want to help now, they run these same 10 on
+their own characters, since a different class and setup catches what one setup misses.
+
 ## 9. Open questions for Xaya
 
 | Q | Question | Recommendation |

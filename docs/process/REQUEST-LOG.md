@@ -583,6 +583,8 @@ lane, area context, CI gate) are in the "XayaUI Standing Process Rules (draft)" 
 | PS-11 | "unsure what this refers to" (Q3, baseline) / "also unsure, since I'm not in the weeds and still am not at my computer. I'm thinking top down, not bottom-up." (Q4, D8) | ANSWERED / re-asked top-down | Q3, Q4 |
 | PS-12 | "The Advanced Character Stats pane window is a Bonus feature; a diminishing returns element is a either a bonus feature or a qol feature; the simple character/dressing room UI with the ability to customize stat display overhaul is a qol feature; and just a simple clean ui reskin that serves as the visual base is the reskin" | DESIGN; diminishing returns needs her pick | section 4.2, Q5 |
 | PS-13 | "a freeze sounds fine — do you want this to include even my going through the qa walk throughs? You said I should do that" | APPROVED (freeze); backlog walkthroughs paused, baseline only | section 8, Q6 |
+| PS-14 | "pause on that briefly. I just opened up the game. Should I open a new session ... and do any of this, or should I hold entirely?" / "sure" (to picking the baseline) | ANSWERED: hold; baseline list picked | PLATFORM-SPLIT section 8.1 |
+| PS-15 | "should I tell my friends willing to do QA to hold as well?" | ANSWERED: yes for the backlog; they may run the same baseline 10 | section 8.1 |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
