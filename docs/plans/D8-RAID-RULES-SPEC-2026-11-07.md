@@ -21,8 +21,8 @@ question prompt). Read docs/process/VERIFICATION.md (V1-V21) and the xayaui-chan
 
 ## Already built (engine session 2; reaches main with the next combined push or after it)
 - Player State trigger "Dead, not released" (Triggers.lua; UnitIsDead and not UnitIsGhost; unreadable = unknown).
-- (HELD, not on main: Xaya 2026-11-07 "Hold the rule load condition changes"; code on branch claude/d8-raid-rules 0f3151b, version numbers to be retaken) Load condition "People in my group: at least N" (Conditions.lua ReadContext ctx.groupSize, CheckContextRaw load.groupMin; Options rule
-  Load tab slider; test tests/load_group_size_run.py; QA B213; core 0.6.59 / Options 0.6.60 on this branch).
+- Load condition "People in my group: at least N" (renumbered core 0.6.62 / Options 0.6.64 / QA B237; ships with D8 on claude/d8-raid-rules-main) (Conditions.lua ReadContext ctx.groupSize, CheckContextRaw load.groupMin; Options rule
+  Load tab slider; test tests/load_group_size_run.py; QA B213; first built as core 0.6.59 / Options 0.6.60).
 
 ## To build
 1. Storage and migration. Release Guard today: XayaUI_QoL/ReleaseGuard.lua (S1's; S1 agreed this session changes it: "please do the whole
@@ -57,3 +57,16 @@ question prompt). Read docs/process/VERIFICATION.md (V1-V21) and the xayaui-chan
 ## Coordination
 - S1 (session_014bN6tWZxqCW85vMEyHdfnt) owns QoL; agreed this change; QoL version numbers agreed at landing.
 - Combined pushes to main go through the collecting session of the moment (ask "Outstanding items 11-06", session_014bN6tSStpdmmCXviFAqPdQ).
+
+## Conservative readings (D8 session, 2026-11-07; built without asking: her "stop asking me questions until everything that is more than
+6h old is completed and on main"). Each is open to her correction; none loses a saved setting.
+1. Migration of the old "Where": a value she changed keeps exactly its behaviour ("group" = in an instance, Raid or Dungeon, any size; "all"
+   = no conditions). "raid" was the default and cannot be told from untouched: it takes her stated default (Raid, at least 20). The old
+   value is kept in c.loadOld.
+2. Virtual row, not a record in ns.rules: settings stay in CueRulesDB.releaseGuard; the engine, export, delete, duplicate, multi-select and
+   drag never see it.
+3. The RAID RULES group holds Release Guard only (her "for now"); her own rules cannot be moved into it.
+4. The group sits in the Smart Categories sub-tab (where the fixed categories are); the entry is also listed like a rule under Enabled
+   (Loaded / Not Loaded) or Disabled, and counted there.
+5. The QoL tab's Release Guard row is removed (her "These move out of the QoL tab"), not left as a pointer.
+6. Its row's right-click menu: Enable / Disable only. Its Load tab is the full rule Load tab, talents included.

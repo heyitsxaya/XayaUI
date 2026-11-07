@@ -6,6 +6,8 @@
 # GameDialogDefs.lua:183; a stand-in dialog with GetButton1 here), its text, where a click lands (the box while it shows and takes the
 # mouse; Release when it has stepped aside), hidden as a ghost, not outside a raid by default; V14: nothing made or registered while off.
 # Negative control (V1): every check fails on the session branch head before this change (29a2f85: no Release Guard), except "(guard)".
+# D8 (QoL 0.7.40): where it works is a rule Load table decided by core ns.LoadAllows (not in this stand-in world: stubbed by LOADOK
+# here; the real decision, the migration and the Raid Rules entry are tested with the whole addon in tests/raid_rules_run.py).
 # Run from the repo root: python3 tests/release_guard_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -57,6 +59,8 @@ end
 __DB__
 assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)
+LOADOK = true
+ns.LoadAllows = function(rec) return LOADOK end   -- (core's answer for its Load table; stand-in)
 local before = #created
 local rg = loadfile(__RG__)   -- (missing on the code before it: every check then fails, the run goes on)
 if rg then rg("XayaUI_QoL", ns) end
@@ -92,9 +96,11 @@ lua = LuaRuntime()
 lua.execute(world("CueRulesDB = { releaseGuard = { enabled = true } }"))
 lua.execute(r'''
 local c = ns.ReleaseGuard_Cfg and ns.ReleaseGuard_Cfg() or {}
-checkp("the defaults: \"NO RELEASE\", her five flavour texts in order, Shift, raids only", function()
+checkp("the defaults: \"NO RELEASE\", her five flavour texts in order, Shift; Load: in an instance, Raid, at least 20 in the group", function()
   local f = ns.ReleaseGuard_Flavors(c)
-  return c.text == "NO RELEASE" and table.concat(f, "|") == "BAD MONKEY|death comes for us all|NOPE|Disagree|WTB Rez" and c.modifier == "SHIFT" and c.load == "raid" end)
+  local L = c.load
+  return c.text == "NO RELEASE" and table.concat(f, "|") == "BAD MONKEY|death comes for us all|NOPE|Disagree|WTB Rez" and c.modifier == "SHIFT"
+    and type(L) == "table" and L.instance == "yes" and L.instanceTypes and L.instanceTypes.raid == true and L.groupMin == 20 end)
 die()
 local b = box() or mk("Button")
 checkp("dead in a raid: a black box over the DEATH window's Release button (its size and place), above the window", function()
@@ -128,26 +134,21 @@ c.text = "STAY DOWN"; c.flavors = "one\ntwo"; c.index = 0
 die()
 checkp("her own text and flavour list (one per line), from the first again", function() return b.text.text == "STAY DOWN\none", b.text.text end)
 DIALOG:Hide(); fire("PLAYER_UNGHOST")
-INST = { true, "party" }
+LOADOK = false
 die()
-checkp("dead in a dungeon, raids only (the default): no box, the click reaches Release", function() return box() ~= nil and not b.shown and clickRelease() == "release" end)
-DIALOG:Hide(); c.load = "group"; die()
-checkp("  ...set to raids and dungeons: the box shows", function() return b.shown end)
-DIALOG:Hide(); INST = { false, "none" }; die()
-checkp("  ...outside an instance: no box; set to everywhere: the box shows", function()
-  local off = not b.shown
-  DIALOG:Hide(); c.load = "all"; die()
-  return off and b.shown end)
+checkp("its Load tab says no (e.g. a dungeon): no box, the click reaches Release", function() return box() ~= nil and not b.shown and clickRelease() == "release" end)
+DIALOG:Hide(); LOADOK = true; die()
+checkp("  ...its Load tab says yes: the box shows", function() return b.shown end)
 DIALOG:Hide()
 c.enabled = false; if ns.ReleaseGuard_Apply then ns.ReleaseGuard_Apply() end
 local reg = 0
 for _, f in ipairs(created) do for _ in pairs(f.events) do reg = reg + 1 end end
 checkp("switched off: nothing registered, no box when she dies", function() die(); return box() ~= nil and reg == 0 and not b.shown, reg end)
 local pg = ns.BuildReleaseGuardPage and ns.BuildReleaseGuardPage(function() end) or { args = {} }
-checkp("its settings page: the row's tick box, the box's text, flavour on / off and the list, the key (Shift / Ctrl / Alt), where (raids / raids and dungeons / everywhere)", function()
+checkp("its settings page: the on / off, the box's text, flavour on / off and the list, the key (Shift / Ctrl / Alt); no old 'Where' list (D8: the Load tab)", function()
   local a = pg.args
   return pg.xuiSwitch and a.text and a.flavorOn and a.flavors and a.modifier and a.modifier.values.SHIFT == "Shift" and a.modifier.values.CTRL == "Ctrl" and a.modifier.values.ALT == "Alt"
-    and a.load and a.load.values.raid and a.load.values.group and a.load.values.all end)
+    and a.load == nil end)
 ''')
 totals.append((lua.eval("n"), lua.eval("fails")))
 n = sum(t[0] for t in totals); fails = sum(t[1] for t in totals)
