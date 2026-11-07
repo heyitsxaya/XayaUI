@@ -87,7 +87,7 @@ function BTN(text) for b in pairs(pool.active) do if b._text == text then return
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{ Print = function(...) PRINTED[#PRINTED + 1] = table.concat({ ... }, ' ') end }"); L.globals().NS = ns
 load(open(os.path.join(ROOT, "XayaUI/Modules.lua"), encoding="utf-8").read(), "XayaUI/Modules.lua", ns)   # core contract (0.5.108)
-load(open(os.path.join(ROOT, "XayaUI/GameMenu.lua"), encoding="utf-8").read(), "XayaUI/GameMenu.lua", ns)
+load(open(os.path.join(ROOT, "XayaUI/GameMenuButton.lua"), encoding="utf-8").read(), "XayaUI/GameMenuButton.lua", ns)
 load(open(os.path.join(ROOT, "XayaUI_Reskin/GameMenuSkin.lua"), encoding="utf-8").read(), "XayaUI_Reskin/GameMenuSkin.lua", ns)
 lua = lambda s: L.execute(s)
 lua("NS.GameMenuSkin_Hook()")

@@ -223,7 +223,7 @@ end
 
 def main():
     folders = H.find_addons()
-    enabled = ["XayaUI", "XayaUI_Media", "XayaUI_Options"]
+    enabled = ["XayaUI", "XayaUI_Rules", "XayaUI_Media", "XayaUI_Options"]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), H.to_lua(L, {}))
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(

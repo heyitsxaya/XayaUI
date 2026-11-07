@@ -4,7 +4,7 @@ import os, re
 from lupa.lua51 import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 L = LuaRuntime(unpack_returned_tuples=True)
-core = open(os.path.join(ROOT, "XayaUI/Core.lua")).read()
+core = open(os.path.join(ROOT, "XayaUI_Rules/RuleDefaults.lua")).read()   # (P4) the rule half of the old Core.lua
 m = re.search(r"-- Rename every group whose id.*?\nend\n", core, re.S)
 fix = m.group(0)
 L.globals().FIXSRC = fix
@@ -22,6 +22,7 @@ assert(loadfile("''' + os.path.join(ROOT, "XayaUI/Modules.lua").replace("\\", "/
 -- load Profile.lua with the addon vararg
 local f = assert(loadfile("''' + os.path.join(ROOT, "XayaUI/Share.lua").replace("\\", "/") + r'''"))
 f("XayaUI", ns)
+assert(loadfile("''' + os.path.join(ROOT, "XayaUI_Rules/RuleShare.lua").replace("\\", "/") + r'''"))("XayaUI_Rules", ns)   -- (P4) the rules side of sharing
 ns.rules = { { name = "mine", folder = "f111" } }
 ns.folders = { { id = "f111", name = "Mine" } }
 ns.qolBoxes = {}; ns.bars = {}

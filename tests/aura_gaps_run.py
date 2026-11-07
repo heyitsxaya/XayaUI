@@ -8,10 +8,11 @@ and stand-in game calls. Outcomes only: what a trigger answers, what a rule read
   gap 20  C_Secrets.ShouldSpellAuraBeSecret is reported, never used to decide (semantics undocumented);
   gap 21  the opt-in game-played aura sound (C_UnitAuras.AddAuraSound, decision D2), and the per-rule "readable in combat" line.
 
-Spell IDs: Rime 59052 -> Howling Blast 49184 and Brain Freeze 190446 -> Flurry 44614 are rows of XayaUI/ProcGlows.lua (generated
+Spell IDs: Rime 59052 -> Howling Blast 49184 and Brain Freeze 190446 -> Flurry 44614 are rows of XayaUI_Rules/ProcGlows.lua (generated
 from the game's SpellActivationOverlay table, build 12.1.5.70783). Everything else is a stand-in.
 Run: python3 tests/aura_gaps_run.py   (needs: pip install lupa)"""
 import os, sys
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.abspath(__file__))); import xui_paths as XP  # (P4) core = XayaUI + XayaUI_Rules
 from lupa.lua51 import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 bench = open(os.path.join(ROOT, "tests", "engine_bench.py")).read()
@@ -79,7 +80,7 @@ C_Item.GetItemInfo = function(id)
 end
 C_Item.GetItemSetInfo = function(id) return "Set " .. id end
 ''')
-toc = [l.strip() for l in open(os.path.join(ROOT, "XayaUI", "XayaUI.toc")) if l.strip() and not l.startswith("#")]
+toc = XP.core_toc_lines(ROOT)
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
 skip = ("Libs", "Console.lua", "GameMenu", "MinimapButton", "AuraSources", "Combat/")
@@ -89,7 +90,7 @@ for f in toc:
     if f.startswith(skip) or not f.endswith(".lua"):
         continue
     try:
-        load(open(os.path.join(ROOT, "XayaUI", f), encoding="utf-8").read(), f, ns); loaded.append(f)
+        load(open(XP.core_file(ROOT, f), encoding="utf-8").read(), f, ns); loaded.append(f)
     except Exception as e:
         failed.append((f, str(e)[:200]))
 
@@ -363,7 +364,7 @@ NS._WatchCharges()
 check("a Cooldown (any spell) row's charges are read with the rule's own spell", L.eval("WATCHED[22001]") is True)
 
 # ---------------------------------------------------------------- built into aura tracking (core 0.6.20): tier-set auras and the glow line
-# 1241227 "Arcanoweave Audacity": in XayaUI/SetBonusAuras.lua, from set 1958's 2-piece bonus, any specialization (game data)
+# 1241227 "Arcanoweave Audacity": in XayaUI_Rules/SetBonusAuras.lua, from set 1958's 2-piece bonus, any specialization (game data)
 check("SetBonusAuras.lua is loaded and lists 1241227 (set 1958, 2 pieces)", L.eval("NS.SET_BONUS_AURAS and NS.SET_BONUS_AURAS[1241227] and NS.SET_BONUS_AURAS[1241227].set == 1958 and NS.SET_BONUS_AURAS[1241227].pieces == 2") is True)
 L.execute(r'''
 COMBAT = true; NIL_IN_COMBAT = {}

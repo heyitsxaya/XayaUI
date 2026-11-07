@@ -21,7 +21,7 @@ ns.Profile = P
 -- that is switched off registers nothing: its part is not offered under Export, and Import keeps it in the pasted profile, shows
 -- "needs <addon title>" and skips it. Who registers what today (the keys are unchanged, so a profile string is byte-for-byte what it
 -- was before for the same setup; tests/profile_parts_run.py):
---   Rules and groups  core Share.lua (the rule-tracking side)     Themes          core Theme.lua (theme, themes; also theme scopes)
+--   Rules and groups  XayaUI_Rules/RuleShare.lua (P4)              Themes          core Theme.lua (theme, themes; also theme scopes)
 --   Settings          core Modules.lua (ui, minimap)              QoL             XayaUI_QoL/ProfilePart.lua
 --   Bonus Features    XayaUI_Bonus/ProfilePart.lua                Blizzard Reskin core Modules.lua (chat2, chat, characterReskin,
 --   Nameplates        XayaUI_Nameplates/Core.lua (new)                            reskinTabOff: three modules' keys, kept as one part)
@@ -37,7 +37,8 @@ P.NEVER = setmetatable({}, { __index = function(_, k) local c = P.BY_KEY[k]; ret
 -- (data.partInfo[key] = { v = version, module = folder, title = addon title, label = label }); these six carry none, so their
 -- strings stay exactly as before.
 P.LEGACY = {
-    rules = { module = "XayaUI", title = "XayaUI", label = "Rules and groups" },
+    -- (P4) the rules part is XayaUI Rules' (XayaUI_Rules/RuleShare.lua): with it switched off, Import says it needs that addon
+    rules = { module = "XayaUI_Rules", title = ns.AddonTitle and ns.AddonTitle("XayaUI_Rules") or "XayaUI_Rules", label = "Rules and groups" },
     themes = { module = "XayaUI", title = "XayaUI", label = "Themes" },
     settings = { module = "XayaUI", title = "XayaUI", label = "Settings" },
     qol = { module = "XayaUI_QoL", title = "XayaUI QoL", label = "QoL" },

@@ -385,7 +385,7 @@ def part_b():
         check("B: the engine stand-in was found in tests/aura_display_run.py", False)
         return
     block = m.group(1)
-    cues = open(os.path.join(ROOT, "XayaUI", "Cues.lua"), encoding="utf-8").read()
+    cues = open(os.path.join(ROOT, "XayaUI_Rules", "Cues.lua"), encoding="utf-8").read()
     cg = re.search(r"^function ns\.CueGated\(p, cue\)\n.*?^end\n", cues, re.S | re.M)
     # the aura button setters a Bar uses (Blizzard_CustomAuraButton.lua 12.1.5: object types as the game checks them)
     extra = r'''
@@ -411,8 +411,8 @@ function NS.AuraMaxStacks() return nil end
 assert(loadfile(BARCUE_PATH))("XayaUI", NS)
 '''
     block = block.replace("local f = assert(loadfile(AURA_DISPLAY_PATH))", post_env + "local f = assert(loadfile(AURA_DISPLAY_PATH))", 1)
-    block = (pre + block).replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI", "Combat", "AuraDisplay.lua")).replace("'", '"'))
-    block = block.replace("BARCUE_PATH", repr(os.path.join(ROOT, "XayaUI", "BarCue.lua")).replace("'", '"'))
+    block = (pre + block).replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI_Rules", "Combat", "AuraDisplay.lua")).replace("'", '"'))
+    block = block.replace("BARCUE_PATH", repr(os.path.join(ROOT, "XayaUI_Rules", "BarCue.lua")).replace("'", '"'))
     block = block.replace("MODULES_PATH", repr(os.path.join(ROOT, "XayaUI", "Modules.lua")).replace("'", '"'))
     block = block.replace("CUE_GATED_SRC", "[==[" + "local ns = NS\n" + cg.group(0) + "]==]")
     block = block.replace("ENGINE_SUBS_SRC", "[==[ ]==]")   # (aura_display_run.py's /xuiengine subcommands: not needed for bars)

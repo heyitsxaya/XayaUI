@@ -16,7 +16,7 @@ L.execute("CueRulesDB = { rules = {}, folders = {} }")
 L.execute(bench[a:b])
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
-for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI/Conditions.lua", "XayaUI/Timing.lua", "XayaUI/Triggers.lua", "XayaUI/Outcomes.lua"):
+for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI_Rules/RuleDefaults.lua", "XayaUI_Rules/Conditions.lua", "XayaUI_Rules/Timing.lua", "XayaUI_Rules/Triggers.lua", "XayaUI_Rules/Outcomes.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 fails = []
 def check(name, ok, extra=""):

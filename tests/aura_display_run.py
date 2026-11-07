@@ -13,7 +13,7 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 L = LuaRuntime(unpack_returned_tuples=True)
 
 import re as _re
-_cues = open(os.path.join(ROOT, "XayaUI", "Cues.lua"), encoding="utf-8").read()
+_cues = open(os.path.join(ROOT, "XayaUI_Rules", "Cues.lua"), encoding="utf-8").read()
 _m = _re.search(r"^function ns\.CueGated\(p, cue\)\n.*?^end\n", _cues, _re.S | _re.M)
 assert _m, "ns.CueGated not found in Cues.lua"
 CUE_GATED_LUA = "[==[" + "local ns = NS\n" + _m.group(0) + "]==]"
@@ -199,7 +199,7 @@ do   -- the stand-in of Modules.lua's subcommand list, and Dev Assist's /xuiengi
     ns.DevAssistOn = function() return true end
     assert(loadstring(ENGINE_SUBS_SRC))()
 end
-'''.replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI", "Combat", "AuraDisplay.lua")).replace("'", '"')).replace("MODULES_PATH", repr(os.path.join(ROOT, "XayaUI", "Modules.lua")).replace("'", '"')).replace("CUE_GATED_SRC", CUE_GATED_LUA).replace("ENGINE_SUBS_SRC", ENGINE_SUBS_LUA))
+'''.replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI_Rules", "Combat", "AuraDisplay.lua")).replace("'", '"')).replace("MODULES_PATH", repr(os.path.join(ROOT, "XayaUI", "Modules.lua")).replace("'", '"')).replace("CUE_GATED_SRC", CUE_GATED_LUA).replace("ENGINE_SUBS_SRC", ENGINE_SUBS_LUA))
 
 
 fails = []
@@ -622,7 +622,7 @@ lua('GCc.thenCues = { "q1" }')
 # The game hides these auras from XayaUI's reading in combat, but its container may match spell IDs on the player's buffs
 # (Blizzard_CustomAuraContainer.lua). (a) a buff learned in game under another ID (AuraAlias.lua: same name, seen out of combat) is in
 # the include list too; (b) the status screens can ask who draws a rule's display, and why not.
-_alias_path = repr(os.path.join(ROOT, "XayaUI", "AuraAlias.lua")).replace("'", '"')
+_alias_path = repr(os.path.join(ROOT, "XayaUI_Rules", "AuraAlias.lua")).replace("'", '"')
 L.execute(r'''local cf = CreateFrame; CreateFrame = nil; local f = assert(loadfile(PATH)); f("XayaUI", NS); CreateFrame = cf'''.replace("PATH", _alias_path))
 lua(r"""
 EXT, EXTc = P("Power Word: Barrier (cast ID)", nil, 62618)
@@ -644,7 +644,7 @@ check("externals: without a learned alias the include list is the rule's own ID 
 
 # 10. loaded twice (XayaUI loads the engine files and the separate XayaUI_CombatEngine folder is installed too): one copy only
 lua('BEFORE_D = NS.AuraDisplay; BEFORE_SLASH = SlashCmdList["XUIENGINE"]')
-L.execute(r'''local f = assert(loadfile(PATH)); f("XayaUI_CombatEngine", NS)'''.replace("PATH", repr(os.path.join(ROOT, "XayaUI", "Combat", "AuraDisplay.lua")).replace("'", '"')))
+L.execute(r'''local f = assert(loadfile(PATH)); f("XayaUI_CombatEngine", NS)'''.replace("PATH", repr(os.path.join(ROOT, "XayaUI_Rules", "Combat", "AuraDisplay.lua")).replace("'", '"')))
 check("second copy steps aside (same module, same command, no second set of hooks)", lua("return NS.AuraDisplay == BEFORE_D and SlashCmdList['XUIENGINE'] == BEFORE_SLASH"))
 
 print()

@@ -3,7 +3,7 @@
 -- SkillLineAbility, TraitDefinition), current sets from docs/reference/spells/spells.json; built by docs/reference/build_set_auras.py
 -- on 2026-11-04. Facts only (IDs, counts). The aura-to-bonus link is the community's reading of SpellEffect (see the builder's header).
 -- Fields: set = item set ID, pieces = pieces needed, specs = specializations the bonus is for (0 = any), bonus = the bonus spell.
-local _, ns = ...
+local _, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 ns.SET_BONUS_BUILD = "12.1.5.70783"
 ns.SET_BONUS_AURAS = {
     [1241227] = { set = 1958, pieces = 2, specs = { 0 }, bonus = 1241262 },   -- Arcanoweave Trappings <- Arcanoweave Trappings (Arcanoweave Trappings, 2 pc)

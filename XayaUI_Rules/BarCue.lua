@@ -20,7 +20,7 @@
 -- AuraUtil.GetAuraBorderColor (Blizzard_FrameXMLUtil), schools from COMBATLOG_DEFAULT_COLORS.schoolColoring (Blizzard_CombatLogBase,
 -- load on demand; loaded only when a bar needs a school colour). Missing in the client = that type falls back to the fixed blue.
 -------------------------------------------------------------------------------
-local addonName, ns = ...
+local addonName, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 
 local issecret = ns.IsSecret or rawget(_G, "issecretvalue") or function() return false end
 local function clamp(x, a, b) if x < a then return a elseif x > b then return b end return x end

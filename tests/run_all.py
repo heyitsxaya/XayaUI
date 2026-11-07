@@ -18,12 +18,12 @@ for t in sorted(glob.glob(os.path.join(HERE, "*_run.py"))):
     print(("ok   " if ok else "FAIL ") + os.path.basename(t) + "  " + last[:90])
 harness = [sys.executable, os.path.join(HERE, "harness", "run.py"), "--fresh-only"]
 if quick:
-    harness += ["--only", "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options"]
+    harness += ["--only", "XayaUI_Rules", "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options"]
 r = subprocess.run(harness)
 bad += 0 if r.returncode == 0 else 1
 if saved:
     r = subprocess.run([sys.executable, os.path.join(HERE, "harness", "run.py"), "--saved", saved, "--only",
-                        "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options"])
+                        "XayaUI_Rules", "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options"])
     bad += 0 if r.returncode == 0 else 1
 print("ALL CHECKS PASS" if bad == 0 else "%d CHECK GROUP(S) FAILED" % bad)
 sys.exit(1 if bad else 0)

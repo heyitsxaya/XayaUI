@@ -6,7 +6,7 @@
 -- Stored per class: specs = { [specID] = name }, nodes = { [nodeID] = { t = node type, max = max ranks, choice = true when the node is a
 --   pick-one, scope = "class" | "spec" | "hero" (class/spec is INFERRED from how many specs see the node), hero = subTreeID, specs = {[specID]=true},
 --   e = { { entry, spell, name, passive = true|nil, cd = base cooldown seconds|nil, sub = subTreeID (hero tree pick) } } } }
-local _, ns = ...
+local _, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local MAX_LEVEL = 100          -- the library notes too-low values break the view; too-high is fine
 local scanning
 

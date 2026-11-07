@@ -1,0 +1,35 @@
+## Interface: 120100
+## Title: XayaUI Rules
+## Notes: XayaUI's rule-based sound cues and on-screen alerts (buff, cooldown, talent, load conditions) and combat aura tracking. Switch it off if you make no rules: none of its files load then. Needs XayaUI.
+## Author: Xaya
+## Version: 0.6.76
+## X-Date: 2026-11-07
+## Dependencies: XayaUI
+## SavedVariables: XayaUITalentDB
+## Group: XayaUI
+
+RuleDefaults.lua
+TextureList.lua
+ProcGlows.lua
+SetBonusAuras.lua
+Conditions.lua
+AuraAlias.lua
+Timing.lua
+ClassLearn.lua
+TalentDump.lua
+Triggers.lua
+Outcomes.lua
+Cues.lua
+RuleBin.lua
+Actions.lua
+Visual.lua
+BarCue.lua
+RuleShare.lua
+Engine.lua
+AuraSound.lua
+AuraSources.lua
+AuraList.lua
+Combat\AuraModel.lua
+Combat\AuraTracker.lua
+Combat\AuraSetup.lua
+Combat\AuraDisplay.lua

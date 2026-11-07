@@ -839,7 +839,11 @@ end
 -- Registration: XayaUI's lists (Modules.lua). Help lines read as before.
 -------------------------------------------------------------------------------
 local R = ns.RegisterDebugCommand
-R("probe", function(arg)
+-- (Dev Assist 0.7.57, P4) the diagnostics of rules and combat auras exist only while XayaUI Rules is loaded (its "rules" service; this
+-- addon loads after it: ## OptionalDeps). Off: they and their help lines are not registered, as for any other module that is off.
+local RulesOn = Svc("rules") ~= nil
+local function RR(...) if RulesOn then R(...) end end
+RR("probe", function(arg)
     arg = tostring(arg or "")
     if arg:match("^ids") then
         if ns.IDProbe then ns.IDProbe((arg:gsub("^ids%s*", ""))) end
@@ -851,15 +855,15 @@ R("perf", function()
     ns.perf = ns.perf or { n = 0 }; ns.perf.show = not ns.perf.show
     ns.Print("rebuild timing " .. (ns.perf.show and "ON: every window rebuild prints build + skin milliseconds" or "OFF"))
 end, "perf ui (settings window rebuild timing)")
-R("timing", function() if ns.Timing then TimingReport() end end, "timing (how every cue gets its time in combat)")
-R("model", function(arg) if ns.AuraModel then GDD.ModelCommand(arg) end end, "model [setup|<spellID>] (the combat aura duration model)")
-R("tracker", function(arg) if ns.AuraTracker then GDD.TrackerCommand(arg) end end, "tracker [shadow|status] (the combat aura tracker)")
+RR("timing", function() if ns.Timing then TimingReport() end end, "timing (how every cue gets its time in combat)")
+RR("model", function(arg) if ns.AuraModel then GDD.ModelCommand(arg) end end, "model [setup|<spellID>] (the combat aura duration model)")
+RR("tracker", function(arg) if ns.AuraTracker then GDD.TrackerCommand(arg) end end, "tracker [shadow|status] (the combat aura tracker)")
 R("loc", function() ProbeLossOfControl() end, "loc (loss of control the game reports right now)")
 R("media", function() UserMediaReport() end, "media (how many pictures and sounds XayaUI_Media lists)")
-R("mods", function() ProbeMods() end, "mods (each cue's modifiers, step by step)")
-R("groups", function() if ns.VisualProbeState then ProbeGroups() end end, "groups (each group and where its displays hang)")
+RR("mods", function() ProbeMods() end, "mods (each cue's modifiers, step by step)")
+RR("groups", function() if ns.VisualProbeState then ProbeGroups() end end, "groups (each group and where its displays hang)")
 R("icons", function() if ns.LoadOptions() and ns.Options.IconReport then ns.Options.IconReport() end end, "icons (which eye and headphone icons the settings window uses)")
-R("seed", function() if ns.rules then SeedRules() end end, "seed (add three Vengeance Demon Hunter test rules)")
+RR("seed", function() if ns.rules then SeedRules() end end, "seed (add three Vengeance Demon Hunter test rules)")
 R("map", function() MapReport() end, "map (why the world map opens full screen: its settings and size)")
 R("gamemenu", function() GameMenuDiagnostics(); GameMenuSkinDiagnostics() end, "gamemenu (the ESC menu button and skin)")
 R("widthprobe", function(arg) if ns.CharWidthProbe_Run then ns.CharWidthProbe_Run(arg or "") end end,

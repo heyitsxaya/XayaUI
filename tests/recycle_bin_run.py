@@ -27,6 +27,7 @@ function ns.NormalizeRule(r) r.normalized = true end
 # (core 0.6.74) the bin's kinds are registered through the Platform's contract (Modules.lua ns.RegisterBinKind), which core loads first
 lua.execute('local fn = assert(loadfile(...)); fn("XayaUI", ns)'.replace("...", repr(os.path.join(ROOT, "XayaUI/Modules.lua")).replace("'", '"')))
 lua.execute('local fn = assert(loadfile(...)); fn("XayaUI", ns)'.replace("...", repr(os.path.join(ROOT, "XayaUI/RecycleBin.lua")).replace("'", '"')))
+lua.execute('local fn = assert(loadfile(...)); fn("XayaUI_Rules", ns)'.replace("...", repr(os.path.join(ROOT, "XayaUI_Rules/RuleBin.lua")).replace("'", '"')))   # (P4) the rule kinds
 out = lua.execute(r'''
 local fails, n, lines = 0, 0, {}
 local function check(name, cond, extra)

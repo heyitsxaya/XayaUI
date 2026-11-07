@@ -23,7 +23,9 @@ import lupa.lua51 as lua51
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 CORE = "XayaUI"
-FEATURES = ["XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options"]
+# (P4) XayaUI Rules (rule and aura tracking) is a module a player switches on and off like the others: every combination is run with it
+# on and with it off (the Platform and every other module must load and work without it)
+FEATURES = ["XayaUI_Rules", "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options"]
 ALWAYS = ["XayaUI_Media"]
 
 
@@ -241,11 +243,25 @@ def static_checks(folders):
 PUBLISHED = {"Options", "OptionsApi"}
 
 
+def toc_deps(folders, name):
+    """The addons a .toc names under ## Dependencies (or RequiredDeps) and ## OptionalDeps."""
+    deps = set()
+    toc = open(os.path.join(folders[name], name + ".toc"), encoding="utf-8").read()
+    for line in toc.splitlines():
+        m = re.match(r"^##\s*(Dependencies|RequiredDeps|Dependancies|OptionalDeps)\s*:\s*(.*)$", line)
+        if m:
+            deps |= {x for x in re.split(r"[,\s]+", m.group(2)) if x}
+    return deps
+
+
 def boundary_checks(folders):
-    """Every addon may use its own names and XayaUI core's; reaching into another feature addon's names is a failure (they talk
-    through Modules.lua: registrations, messages, services). A name counts as an addon's when one of its files defines it
-    (function ns.X(...) or ns.X = ...)."""
+    """Every addon may use its own names, the Platform's (XayaUI) and those of the addons its .toc names as a dependency or optional
+    dependency (P4: XayaUI Options and XayaUI Dev Assist name XayaUI Rules as an optional dependency; the harness runs every
+    combination with XayaUI Rules off, so a use that is not guarded fails there); reaching into any other addon's names is a failure
+    (they talk through Modules.lua: registrations, messages, services). The Platform may use no other addon's names. A name counts as
+    an addon's when one of its files defines it (function ns.X(...) or ns.X = ...)."""
     files = addon_lua_files(folders)
+    allowed = {a: toc_deps(folders, a) for a in files}
     owner, code = {}, {}
     for addon, fl in files.items():
         for f in fl:
@@ -261,7 +277,7 @@ def boundary_checks(folders):
             for m in re.finditer(r"\bns\.([A-Za-z_]\w*)", line):
                 n = m.group(1)
                 o = owner.get(n)
-                if not o or addon in o or CORE in o or n in PUBLISHED:
+                if not o or addon in o or CORE in o or n in PUBLISHED or (o & allowed[addon]):
                     continue
                 out.append("%s:%d (%s) uses ns.%s, which belongs to %s; go through Modules.lua instead" % (
                     os.path.relpath(f, ROOT), i, addon, n, "/".join(sorted(o))))
@@ -293,6 +309,9 @@ def main():
     else:
         combos = [tuple(always) + c for r in range(len(features) + 1) for c in itertools.combinations(features, r)]
         combos.append(tuple(always) + tuple(features) + tuple(tools))
+        # (P4) and everything with XayaUI Rules off: Dev Assist and Nameplates too (Dev Assist names XayaUI Rules as an optional dependency)
+        if "XayaUI_Rules" in features:
+            combos.append(tuple(always) + tuple(f for f in features if f != "XayaUI_Rules") + tuple(tools))
     datasets = [("fresh install", {})]
     if args.saved:
         real = read_saved(args.saved)

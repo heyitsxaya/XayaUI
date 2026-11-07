@@ -5,7 +5,7 @@
 -- buff runs out, desaturate on cooldown, buff-duration text, stacks/charges text.
 -- Drag-to-position while unlocked (/xui unlock).
 -------------------------------------------------------------------------------
-local addonName, ns = ...
+local addonName, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local CoreS, PlatS = ns.Settings("core"), ns.Settings("platform")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local frames = setmetatable({}, { __mode = "k" }) -- rule -> frame

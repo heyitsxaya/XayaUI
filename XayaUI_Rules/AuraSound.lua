@@ -14,7 +14,7 @@
 -- registrations (the QA step checks for a doubled sound). Registration is done out of combat only ("HasRestrictions": what is
 -- restricted is not documented; a refused call is reported and XayaUI keeps playing the sound itself).
 -------------------------------------------------------------------------------
-local _, ns = ...
+local _, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local issecret = ns.IsSecret or issecretvalue or function() return false end
 
 local A = {}
@@ -230,5 +230,5 @@ end
 A.OnEdited = OnEdited
 if ns.On then ns.On("EDITED", OnEdited) end
 -- at login: start only if a rule ticks it (the first sync waits for PLAYER_ENTERING_WORLD, as before)
-if ns.WhenReady then ns.WhenReady(function() if Users() then Start() end end) end
+if ns.WhenRulesReady then ns.WhenRulesReady(function() if Users() then Start() end end) end   -- (P4: was ns.WhenReady, which now fires before this addon loads; RuleDefaults.lua)
 A._registered = registered

@@ -2177,7 +2177,8 @@ function CM.SpellList(c, primary)
         end
     end
     local okL, list = false, nil
-    if type(ns.BuildSpellList) == "function" then okL, list = pcall(ns.BuildSpellList) end
+    local RS = ns.Service and ns.Service("rules")   -- (QoL 0.7.48, P4) XayaUI Rules' "rules" service; nil while it is switched off
+    if RS then okL, list = pcall(RS.BuildSpellList) end
     if okL and type(list) == "table" then
         local base = (primary == 4) and "sp" or "ap"
         for _, sp in ipairs(list) do
@@ -2346,7 +2347,8 @@ end
 local talentScan, talentFor
 function CM.Talents()
     local ok, key = false, nil
-    if type(ns.BuildTalentList) == "function" then ok, key = pcall(ns.BuildTalentList) end
+    local RS = ns.Service and ns.Service("rules")   -- (QoL 0.7.48, P4) XayaUI Rules' "rules" service; nil while it is switched off
+    if RS then ok, key = pcall(RS.BuildTalentList) end
     if not ok then key = nil end
     if talentScan and key ~= nil and talentFor == key then return talentScan end
     local out, seen = {}, {}
@@ -3309,7 +3311,8 @@ local function StatMapSections(ctx, out)
             -- abilities whose own text mentions Haste (English word match; the game has no list of what haste shortens), with their
             -- recharge now where they have charges (C_Spell.GetSpellCharges; secret while cooldowns are restricted)
             local okL, list = false, nil
-            if type(ns.BuildSpellList) == "function" then okL, list = pcall(ns.BuildSpellList) end
+            local RS = ns.Service and ns.Service("rules")   -- (QoL 0.7.48, P4) XayaUI Rules' "rules" service; nil while it is switched off
+            if RS then okL, list = pcall(RS.BuildSpellList) end
             local names = {}
             for _, sp in ipairs((okL and type(list) == "table") and list or {}) do
                 local d = num(sp.id) and SpellDesc(sp.id)

@@ -38,7 +38,7 @@ C_Spell = {
 function reset() lines = {} end
 ''')
 L.execute("XayaUI_NS = {}; CueRulesDB = {}")
-for f in ("XayaUI/Modules.lua", "XayaUI_Bonus/Tooltips.lua", "XayaUI/AuraSources.lua", "XayaUI_Bonus/TooltipsUI.lua"):
+for f in ("XayaUI/Modules.lua", "XayaUI_Bonus/Tooltips.lua", "XayaUI_Rules/AuraSources.lua", "XayaUI_Bonus/TooltipsUI.lua"):
     L.eval('function(src,n) return (load(src,n)) end')(open(os.path.join(ROOT, f), encoding='utf-8').read(), f)("XayaUI", L.eval("XayaUI_NS"))
 L.execute("XayaUI_NS.TT.DB(); XayaUI_NS.TT.Init(); XayaUI_NS.TT.DB().ids.enabled = false")   # IDs off: only formula lines
 fails = 0

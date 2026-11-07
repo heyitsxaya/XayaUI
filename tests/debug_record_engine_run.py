@@ -7,6 +7,7 @@ and checks what lands in the record: rules firing and clearing, snapshots, sound
 detail for a chosen rule (once per change), displays shown and hidden, and that an aura whose answer did not change costs no string work.
 Spell / aura IDs are stand-ins. Run: python3 tests/debug_record_engine_run.py   (needs: pip install lupa)"""
 import os, sys
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.abspath(__file__))); import xui_paths as XP  # (P4) core = XayaUI + XayaUI_Rules
 from lupa.lua51 import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 bench = open(os.path.join(ROOT, "tests", "engine_bench.py")).read()
@@ -28,7 +29,7 @@ PlaySound = function(id) PLAYED[#PLAYED + 1] = "kit:" .. tostring(id); return tr
 C_Timer.After = function() end
 date = function(fmt) return fmt == "%H:%M:%S" and "12:00:00" or "2026-11-04 12:00:00" end
 ''')
-toc = [l.strip() for l in open(os.path.join(ROOT, "XayaUI", "XayaUI.toc")) if l.strip() and not l.startswith("#")]
+toc = XP.core_toc_lines(ROOT)
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
 skip = ("Libs", "Console.lua", "GameMenu", "MinimapButton", "AuraSources", "Combat/")
@@ -38,7 +39,7 @@ for f in toc:
     if f.startswith(skip) or not f.endswith(".lua"):
         continue
     try:
-        load(open(os.path.join(ROOT, "XayaUI", f), encoding="utf-8").read(), f, ns)
+        load(open(XP.core_file(ROOT, f), encoding="utf-8").read(), f, ns)
     except Exception as e:
         failed.append((f, str(e)[:200]))
 # (core 0.6.56, REQUEST-LOG #82: these kinds of line are XayaUI Dev Assist's; it is loaded as the game loads it, after XayaUI, finding

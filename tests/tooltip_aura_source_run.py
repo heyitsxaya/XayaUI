@@ -51,7 +51,7 @@ def make(src):
     L = LuaRuntime(unpack_returned_tuples=True)
     L.execute(WORLD)
     # (Bonus 0.6.18 / Dev Assist 0.7.5, REQUEST-LOG #81: /xuitt is XayaUI Dev Assist's, loaded last as the game loads it)
-    files = [("XayaUI/Modules.lua", None), ("XayaUI_Bonus/Tooltips.lua", src), ("XayaUI/AuraSources.lua", None), ("XayaUI_Bonus/TooltipsUI.lua", None),
+    files = [("XayaUI/Modules.lua", None), ("XayaUI_Bonus/Tooltips.lua", src), ("XayaUI_Rules/AuraSources.lua", None), ("XayaUI_Bonus/TooltipsUI.lua", None),
              ("XayaUI_DevAssist/CoreDebug.lua", None)]
     for f, text in files:
         text = text if text is not None else open(os.path.join(ROOT, f), encoding="utf-8").read()

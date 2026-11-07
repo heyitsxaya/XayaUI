@@ -13,7 +13,7 @@
 --
 -- Saved data is plain tables of strings / numbers only: no code, so profile import stays data-only.
 -------------------------------------------------------------------------------
-local addonName, ns = ...
+local addonName, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 -- #309: the scratch rule each "Cooldown (any spell)" row reuses (weak keys: a deleted row takes its scratch table with it)
 local cdRowPseudo = setmetatable({}, { __mode = "k" })
 

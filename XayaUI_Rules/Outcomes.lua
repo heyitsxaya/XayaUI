@@ -13,7 +13,7 @@
 --
 -- Saved data: plain strings / booleans only (no code), so profile import stays data-only.
 -------------------------------------------------------------------------------
-local addonName, ns = ...
+local addonName, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 
 local MAX_TERMS = 24
 local issecret = issecretvalue or function() return false end   -- (was missing: numeric checks on cooldowns / stacks threw)

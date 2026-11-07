@@ -44,7 +44,7 @@ function reset() lines = {} end
 L.execute("XayaUI_NS = {}; CueRulesDB = {}")
 # (Bonus 0.6.18 / Dev Assist 0.7.5, REQUEST-LOG #81: /xuitt is XayaUI Dev Assist's, XayaUI_DevAssist/CoreDebug.lua, loaded last as the game
 # loads it)
-for f in ("XayaUI/Modules.lua","XayaUI_Bonus/Tooltips.lua","XayaUI/AuraSources.lua","XayaUI_Bonus/TooltipsUI.lua","XayaUI_DevAssist/CoreDebug.lua"):   # 0.5.108: core contract + the embedded-aura reader now in core
+for f in ("XayaUI/Modules.lua","XayaUI_Bonus/Tooltips.lua","XayaUI_Rules/AuraSources.lua","XayaUI_Bonus/TooltipsUI.lua","XayaUI_DevAssist/CoreDebug.lua"):   # 0.5.108: core contract + the embedded-aura reader now in core
     L.eval('function(src,n) return (load(src,n)) end')(open(os.path.join(ROOT, f)).read(), f)("XayaUI", L.eval("XayaUI_NS"))
 # (Bonus 0.6.30 reads AuraSources / AuraModel through ns.Service; this test sets ns.AuraSources / ns.AuraModel directly, so the lookup answers with them)
 L.execute('local real = XayaUI_NS.Service; XayaUI_NS.Service = function(n) if n == "AuraSources" then return XayaUI_NS.AuraSources elseif n == "AuraModel" then return XayaUI_NS.AuraModel end return real(n) end')

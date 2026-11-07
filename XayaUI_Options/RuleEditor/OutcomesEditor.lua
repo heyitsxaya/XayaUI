@@ -7,6 +7,7 @@
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
 local S = ns.OutcomeShared
+if not S then return end   -- (Options 0.6.84, P4) XayaUI Rules is switched off: no rule editor is built, so this file defines nothing
 local CheckValue, EvalWhen, IsNumRef, MAX_TERMS, NumRef, RefChoices = S.CheckValue, S.EvalWhen, S.IsNumRef, S.MAX_TERMS, S.NumRef, S.RefChoices
 
 -- On the parent (Conditions tab): the intro and the Add button. Each condition itself is added by EmbedOutcome below.

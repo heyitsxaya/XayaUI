@@ -13,6 +13,7 @@ says.
 Spell IDs are those of the capture (docs/reference/spells/spells.json); every game answer is a stand-in.
 Run: python3 tests/externals_in_combat_run.py   (needs: pip install lupa)"""
 import os, sys
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.abspath(__file__))); import xui_paths as XP  # (P4) core = XayaUI + XayaUI_Rules
 from lupa.lua51 import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 bench = open(os.path.join(ROOT, "tests", "engine_bench.py")).read()
@@ -50,7 +51,7 @@ C_UnitAuras.GetAuraDataByIndex = function(unit, i, filter)
 end
 function AURA(id, dur) return { spellId = id, name = NAMES[id], duration = dur or 10, expirationTime = 100 + (dur or 10), applications = 0, auraInstanceID = id * 10, isHelpful = true } end
 ''')
-toc = [l.strip() for l in open(os.path.join(ROOT, "XayaUI", "XayaUI.toc")) if l.strip() and not l.startswith("#")]
+toc = XP.core_toc_lines(ROOT)
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
 skip = ("Libs", "Console.lua", "GameMenu", "MinimapButton", "AuraSources", "Combat/")
@@ -60,7 +61,7 @@ for f in toc:
     if f.startswith(skip) or not f.endswith(".lua"):
         continue
     try:
-        load(open(os.path.join(ROOT, "XayaUI", f), encoding="utf-8").read(), f, ns); loaded.append(f)
+        load(open(XP.core_file(ROOT, f), encoding="utf-8").read(), f, ns); loaded.append(f)
     except Exception as e:
         failed.append((f, str(e)[:200]))
 

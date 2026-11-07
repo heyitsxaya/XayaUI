@@ -50,13 +50,14 @@ check("help text collects what features registered", lua("return #ns.CommandHelp
 
 # 3. why a command did nothing
 check("owner of a feature command is known", lua('return ns.ModuleOfCommand("chat").addon') == "XayaUI_Chat")
-check("core commands have no owner", lua('return ns.ModuleOfCommand("status")') is None)
+check("core commands have no owner", lua('return ns.ModuleOfCommand("bug")') is None)   # (P4: status is XayaUI Rules' now, checked below)
+check("(P4) /xui status belongs to XayaUI Rules", lua('return ns.ModuleOfCommand("status").addon') == "XayaUI_Rules")
 check("missing addon is reported as not installed", "not installed" in lua('return ns.ModuleMissingText("chat")'))
 lua('addonState.XayaUI_Chat = "disabled"')
 check("disabled addon is reported as switched off", "switched off" in lua('return ns.ModuleMissingText("chat")'))
 lua('addonState.XayaUI_Chat = "loaded"')
 check("loaded addon without the command says so", "never registered" in lua('return ns.ModuleMissingText("chat")'))
-check("no text for a core command", lua('return ns.ModuleMissingText("status")') is None)
+check("no text for a core command", lua('return ns.ModuleMissingText("bug")') is None)
 
 # 4. launchers
 lua('ns.RegisterLauncher({ "chat", "Chat", "", function() end, order = 40 }); ns.RegisterLauncher({ "notes", "Notes", "", function() end, order = 10 }); ns.RegisterLauncher({ "settings", "Settings", "", function() end, order = 20 })')

@@ -1,4 +1,4 @@
-"""docs/reference/build_set_auras.py (the builder of XayaUI/SetBonusAuras.lua) on small made-up tables, written to a temporary folder.
+"""docs/reference/build_set_auras.py (the builder of XayaUI_Rules/SetBonusAuras.lua) on small made-up tables, written to a temporary folder.
 Checks the rules that keep XayaUI from saying "missing" while a set aura is up: an aura linked from several bonuses of its set is "off"
 only when all of them are off (fewest pieces, every spec), and an aura anything else can apply is left out.
 The IDs below are invented for the test; they are not game data. Run: python3 tests/build_set_auras_run.py (standard library only)."""

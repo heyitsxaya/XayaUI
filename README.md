@@ -31,7 +31,8 @@ XayaUI is a group of addons; every folder at the top of this repository is one o
 
 | Folder | In the AddOns list | What it holds |
 |---|---|---|
-| `XayaUI` | XayaUI | Core: rules, cues, conditions, actions, combat aura tracking (`Combat/`), sharing and backups, themes, console, minimap and ESC-menu buttons. Every other XayaUI addon needs it. |
+| `XayaUI` | XayaUI Platform | The platform every XayaUI addon runs on: saved settings, themes, sharing, Recycle Bin, profiles, sound and media lists, console, error report, minimap and ESC-menu buttons. Every other XayaUI addon needs it. |
+| `XayaUI_Rules` | XayaUI Rules | Rules, cues, conditions, actions, combat aura tracking (`Combat/`), rule sharing and backups (since 0.6.76; was part of `XayaUI`). Switch it off if you make no rules. |
 | `XayaUI_Options` | XayaUI Options | The settings window, loaded the first time it opens. |
 | `XayaUI_Chat` | XayaUI Chat | Chat Panel, Chat Bar, filters, sounds, history, privacy cover. |
 | `XayaUI_QoL` | XayaUI QoL | Cursor highlight and trail; Character Toolkit stat panel (friends and bags later). |
@@ -44,7 +45,7 @@ Everything else in the repository (`tests/`, `debug-log/`, `shelved/`, the docum
 
 ## Install
 
-1. Copy each `XayaUI*` folder above into `World of Warcraft\_retail_\Interface\AddOns\`, so that you have `AddOns\XayaUI`, `AddOns\XayaUI_Options`, `AddOns\XayaUI_Chat`, and so on, side by side. Only `XayaUI` is required; leave out (or switch off in the AddOns list) any feature you do not want.
+1. Copy each `XayaUI*` folder above into `World of Warcraft\_retail_\Interface\AddOns\`, so that you have `AddOns\XayaUI`, `AddOns\XayaUI_Options`, `AddOns\XayaUI_Chat`, and so on, side by side. Only `XayaUI` is required (with `XayaUI_Rules` for rules and cues); leave out (or switch off in the AddOns list) any feature you do not want.
 2. Coming from 0.5.x: an old `AddOns\XayaUI_CombatEngine` folder is no longer used (the combat tracking is inside XayaUI now); switch it off or delete it. Old files left inside `AddOns\XayaUI` from the one-folder layout (`Chat\`, `Notepad.lua`, `Options.lua` ...) are ignored by the game, but replacing the whole `XayaUI` folder is cleaner.
 3. In the game, type `/reload` (the game can stay open while you copy). Your settings carry over unchanged.
 

@@ -318,6 +318,9 @@ ns.MODULES = {
     { addon = "XayaUI_Bonus",   title = "XayaUI Bonus Features",  commands = { "notes", "notepad", "note", "data", "calc", "calculator" } },
     { addon = "XayaUI_Reskin",  title = "XayaUI Blizzard Reskin", commands = {} },
     { addon = "XayaUI_Options", title = "XayaUI Options",         commands = {} },
+    -- (P4) rule and aura tracking: the commands Core.lua keeps for it (unlock, status, perf, talents) and AuraList.lua's auras
+    { addon = "XayaUI_Rules",   title = "XayaUI Rules",           commands = { "unlock", "status", "auras" }, debug = { "status", "perf", "talents", "auras" },
+      sharePrefixes = { "XUI1" } },   -- (its share kind: a rules string pasted while it is off says it needs this addon; Share.lua)
 }
 
 -- isDebug: look in the /xui debug names (m.debug) instead of the /xui names (core 0.6.50)
@@ -616,7 +619,7 @@ end
 
 -------------------------------------------------------------------------------
 -- 8. Services: a feature that answers questions for others registers an object under a name; the asker gets nil when that feature
--- is switched off. Today: "gameMenuSkin" (XayaUI_Reskin) answers Active() and MatchReal() for the ESC-menu button (GameMenu.lua);
+-- is switched off. Today: "gameMenuSkin" (XayaUI_Reskin) answers Active() and MatchReal() for the ESC-menu button (GameMenuButton.lua);
 -- (UI-77, core 0.6.68: the "buttonSkin" service is gone; the flat button look is core's own, Core.lua ns.PaintFlatButton.)
 -------------------------------------------------------------------------------
 local services = {}

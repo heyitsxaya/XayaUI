@@ -26,7 +26,7 @@
 -- place when it loads; without it they are nil, and every caller tests that first (one nil test, no text built).
 -------------------------------------------------------------------------------
 local _, ns = ...
-local issecret = ns.IsSecret or issecretvalue or function() return false end
+local issecret = issecretvalue or function() return false end   -- (P4: was ns.IsSecret first, which is this same function, from XayaUI Rules)
 
 local MAX_ENTRIES = 50   -- (her design asked for "a capped list (e.g. last 50)"; the cap is one of the questions in the report)
 local DR = {}
@@ -64,7 +64,8 @@ end
 -- The codes. One line each says what it means (the same list is in the USER-GUIDE, "Debug report").
 -------------------------------------------------------------------------------
 ns.ERROR_CODES = {
-    { code = "XUI-E001", kind = "error", folder = "XayaUI",          text = "Lua error in XayaUI (core: rules, displays, sounds, the combat engine)" },
+    -- (P4) the rules, displays, sounds and the combat engine are the folder XayaUI_Rules now: their errors keep this code
+    { code = "XUI-E001", kind = "error", folder = "XayaUI", alsoFolders = { "XayaUI_Rules" }, text = "Lua error in XayaUI (core: rules, displays, sounds, the combat engine)" },
     { code = "XUI-E002", kind = "error", folder = "XayaUI_Options",  text = "Lua error in the settings window (XayaUI Options)" },
     { code = "XUI-E003", kind = "error", folder = "XayaUI_Chat",     text = "Lua error in XayaUI Chat" },
     { code = "XUI-E004", kind = "error", folder = "XayaUI_QoL",      text = "Lua error in XayaUI QoL (Character Toolkit, Shopping List, cursor)" },
@@ -88,6 +89,7 @@ local CODE, FOLDER_CODE = {}, {}
 for _, c in ipairs(ns.ERROR_CODES) do
     CODE[c.code] = c
     if c.folder then FOLDER_CODE[c.folder] = c.code end
+    for _, f in ipairs(c.alsoFolders or {}) do FOLDER_CODE[f] = c.code end
 end
 function ns.ErrorCodeInfo(code) return CODE[code] end
 -- the code of a Lua error from this XayaUI folder

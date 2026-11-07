@@ -3,10 +3,10 @@
 ## Notes: Developer and debugging tool for XayaUI (formerly XayaUI Game Data Capture / XayaUI_GameDump). Pulls every class, spec, talent, spell description, spellbook entry, gear and set-bonus line the game will give an addon, and records which auras each cast causes (with observed durations). Developer captures: a full inventory of the game's API in this client, live checks for the Character Toolkit, a catalogue of every aura current content points to, an aura log, an event probe (/xuidev probe) that records what the game lets an addon read in combat and a per-creature summary of instances (/xuidev instance). Also holds XayaUI's developer diagnostics (the /xui debug probe, timing, model, tracker ... commands, /xuitt, /xui chat wrap / indent / whispers, /xuiskin pad / alpha, /xuiengine auto / on / off / reset), the detailed debug record and the reader for a player's debug report string (/xuidev report). Opens from XayaUI > Settings > Debugging or with /xuidev (/xuidump still works).
 ## Author: Xaya
 ## Group: XayaUI
-## Version: 0.7.56
+## Version: 0.7.57
 ## X-Date: 2026-11-07
 ## SavedVariables: XayaUIDevAssistDB
-## OptionalDeps: XayaUI, XayaUI_Chat, XayaUI_QoL, XayaUI_Bonus, XayaUI_Reskin
+## OptionalDeps: XayaUI, XayaUI_Rules, XayaUI_Chat, XayaUI_QoL, XayaUI_Bonus, XayaUI_Reskin
 
 DevAssist.lua
 ApiInventory.lua
@@ -43,3 +43,4 @@ QAWalks-reskin.lua
 QAWalks-platform.lua
 QAWalks-settings-seam.lua
 QAWalks-options-split.lua
+QAWalks-code-move.lua

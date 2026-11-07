@@ -34,7 +34,7 @@ GetBuildInfo = function() return "12.1.5", "70783" end
 ''')
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
-for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI/DebugRecord.lua"):
+for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI_Rules/RuleDefaults.lua", "XayaUI/DebugRecord.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 # (core 0.6.56, REQUEST-LOG #82: the kinds of line, their switches, the probe switch and the record's text are XayaUI Dev Assist's,
 # XayaUI_DevAssist/DevRecord.lua; loaded here as the game loads it, after XayaUI. Players without it keep errors and warnings with codes:
@@ -129,7 +129,7 @@ check("each combat is marked, and its end records the engine's status (what /xui
 check("a line reads 'time  Category  what happened'", E("REC():find('^%d%d:%d%d:%d%d  Engine   Engine draws') ~= nil"), E("tostring(REC())"))
 
 # 5. XayaUI's own Lua errors
-L.execute("RESET(); HANDLER('Interface/AddOns/XayaUI/Engine.lua:12: boom')")
+L.execute("RESET(); HANDLER('Interface/AddOns/XayaUI_Rules/Engine.lua:12: boom')")
 # (core 0.6.56: an error is kept in the coded record, CueRulesDB.errorLog, XUI-E001 for a core file, not as a line of the detailed record)
 check("an XayaUI error is recorded (XUI-E001) and shown in the console window (not chat)", E("CueRulesDB.errorLog[1] ~= nil and CueRulesDB.errorLog[1].code == 'XUI-E001' and CueRulesDB.errorLog[1].msg:find('boom', 1, true) ~= nil and #SINK >= 1 and SINK[1]:find('error') ~= nil and #CHAT == 0"))   # (and a console line naming its code, from the record)
 
@@ -221,7 +221,7 @@ check("snapshots off: snapshot lines go; a plain console line counts as a rule l
 check("a setting equal to the default is not stored (the saved settings stay small)", E("UI().recCats.messages == false and UI().recCats.rules == nil"))
 L.execute("NS.SetRecCat('messages', true); NS.SetRecCat('snapshots', true)")
 check("  ...and switching back to the default removes it", E("UI().recCats == nil"))
-L.execute("HANDLER('Interface/AddOns/XayaUI/Engine.lua:5: always kept'); NS.SetRecPreset('light')")
+L.execute("HANDLER('Interface/AddOns/XayaUI_Rules/Engine.lua:5: always kept'); NS.SetRecPreset('light')")
 check("errors are kept whatever the categories (in the coded record)", E("CueRulesDB.errorLog[1].msg:find('always kept', 1, true) ~= nil"))
 check("'Light set': rules, game state, messages only", E("NS.RecCatOn('rules') and NS.RecCatOn('game') and NS.RecCatOn('messages') and not NS.RecCatOn('auras') and not NS.RecCatOn('engine')"))
 L.execute("NS.SetRecPreset('all')")
