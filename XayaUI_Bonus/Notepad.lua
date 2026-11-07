@@ -740,22 +740,55 @@ function ns.Notepad_ToggleFormat()
 end
 
 local function ToEdit() if mode.list or mode.view then mode.list, mode.view = false, false; ApplyMode() end end
-local function Ins(text, back)   -- insert at the cursor, then step back so the cursor sits inside the pair
+-- UI-59 (Bonus 0.6.20): the game's EditBox:Insert replaces highlighted text, and the API has no way to read the highlighted
+-- range (docs/reference/api: HighlightText / ClearHighlightText only). So Wrap lets Insert put `open` in place of the
+-- selection, works out from the text before and after what it replaced, and puts that text back between open and close.
+-- With nothing highlighted it is the old insert: open + close at the cursor, cursor between them.
+local function Wrap(open, close, lineStart)
     local db = DB(); if not (db and frame and db.format) then return end
     ToEdit()
     local eb = frame.eb
     UndoBreak()
-    eb:SetFocus(); eb:Insert(text)
-    if back and back > 0 then eb:SetCursorPosition(math.max(0, eb:GetCursorPosition() - back)) end
+    eb:SetFocus()
+    local before = eb:GetText() or ""
+    if #before + #open + #close + 1 > MAX_CHARS then   -- the edit box would cut the end off: change nothing
+        if ns.Print then ns.Print("Notepad: this note is full, so the format button did nothing.") end
+        return
+    end
+    eb:Insert(open)
+    local after = eb:GetText() or ""
+    local L = #before - #after + #open                 -- bytes the insert replaced (the highlighted text)
+    local p = 0
+    while p < #before and p < #after and before:byte(p + 1) == after:byte(p + 1) do p = p + 1 end
+    local s
+    if L >= 0 then
+        for i = p, 0, -1 do
+            if after:sub(i + 1, i + #open) == open and after:sub(i + #open + 1) == before:sub(i + L + 1) then s = i; break end
+        end
+    end
+    if not s then   -- could not tell what was replaced: put the note back exactly as it was
+        frame.eb:SetText(before)
+        if ns.Print then ns.Print("Notepad: could not apply the format, the note was left unchanged.") end
+        return
+    end
+    local sel = before:sub(s + 1, s + L)
+    local nl = (lineStart and s > 0 and before:sub(s, s) ~= "\n") and "\n" or ""
+    if L == 0 and nl == "" then   -- nothing highlighted: the old behaviour
+        eb:Insert(close)
+        if #close > 0 then eb:SetCursorPosition(math.max(0, eb:GetCursorPosition() - CharCount(close))) end
+        return
+    end
+    local head = before:sub(1, s) .. nl .. open .. sel .. close
+    local text = head .. before:sub(s + L + 1)
+    eb:SetText(text)                                   -- fires OnTextChanged: the note and the undo steps follow it
+    eb:SetCursorPosition(L == 0 and (CharCount(head) - CharCount(close)) or CharCount(head))
 end
-local function LineStart(prefix)
-    local db = DB(); if not (db and frame and db.format) then return end
-    ToEdit()
-    local eb = frame.eb
-    local pos = eb:GetCursorPosition()
-    local before = CharBefore(eb:GetText(), pos)
-    Ins(((pos == 0 or before == "\n") and "" or "\n") .. prefix)
+local function Ins(text, back)   -- kept for callers that insert one piece: back = characters to step back into it
+    back = back or 0
+    local cut = #text - back
+    Wrap(text:sub(1, cut), text:sub(cut + 1))
 end
+local function LineStart(prefix) Wrap(prefix, "", true) end
 ns.Notepad_LineStart, ns.Notepad_Insert = LineStart, Ins
 
 local FMT = {
@@ -763,11 +796,11 @@ local FMT = {
     { w = 24, label = "H", tip = "Heading: starts the line with # (gold in the formatted view).", act = function() LineStart("# ") end },
     { w = 24, label = "|cff99ccff-|r", tip = "Bullet: starts the line with - (a bullet in the formatted view).", act = function() LineStart("- ") end },
     { w = 24, label = "[ ]", tip = "Checkbox: starts the line with [ ]. Change it to [x] when done (grey with a green mark in the formatted view).", act = function() LineStart("[ ] ") end },
-    { w = 24, label = "|cffff5555R|r", tip = "Red text: type between the color code and the closing ||r.", act = function() Ins("|cffff5555|r", 2) end },
-    { w = 24, label = "|cffffd100Y|r", tip = "Yellow text: type between the color code and the closing ||r.", act = function() Ins("|cffffd100|r", 2) end },
-    { w = 24, label = "|cff55dd55G|r", tip = "Green text: type between the color code and the closing ||r.", act = function() Ins("|cff55dd55|r", 2) end },
-    { w = 24, label = "|cff66b3ffB|r", tip = "Blue text: type between the color code and the closing ||r.", act = function() Ins("|cff66b3ff|r", 2) end },
-    { w = 34, label = "Spell", tip = "Inserts {spell:} - type a spell ID, a spell name, or paste a spell link between the braces; the formatted view shows its icon and name.", act = function() Ins("{spell:}", 1) end },
+    { w = 24, label = "|cffff5555R|r", tip = "Red text: colours the highlighted text, or type between the color code and the closing ||r.", act = function() Wrap("|cffff5555", "|r") end },
+    { w = 24, label = "|cffffd100Y|r", tip = "Yellow text: colours the highlighted text, or type between the color code and the closing ||r.", act = function() Wrap("|cffffd100", "|r") end },
+    { w = 24, label = "|cff55dd55G|r", tip = "Green text: colours the highlighted text, or type between the color code and the closing ||r.", act = function() Wrap("|cff55dd55", "|r") end },
+    { w = 24, label = "|cff66b3ffB|r", tip = "Blue text: colours the highlighted text, or type between the color code and the closing ||r.", act = function() Wrap("|cff66b3ff", "|r") end },
+    { w = 34, label = "Spell", tip = "Inserts {spell:} - type a spell ID, a spell name, or paste a spell link between the braces; the formatted view shows its icon and name.", act = function() Wrap("{spell:", "}") end },
 }
 
 BuildFormatBar = function(f)
