@@ -12,6 +12,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 -- Circle: our own anti-aliased circle / ring pictures (Media\\Cursor\\CircleHD.tga and HLRing_01..20.tga). A square cut with a mask, or a ring built
 -- from straight Line pieces, shows jagged edges and corners; the pictures are smooth. The 20 rings go from a hairline to a full disc; the one whose
@@ -78,9 +79,9 @@ local function CopyVal(v)
     return t
 end
 local function Ensure()
-    if not CueRulesDB then return nil end
-    local c = CueRulesDB.cursorHighlight
-    if type(c) ~= "table" then c = {}; CueRulesDB.cursorHighlight = c end
+    if not ns.SettingsReady() then return nil end
+    local c = QolS.cursorHighlight
+    if type(c) ~= "table" then c = {}; QolS.cursorHighlight = c end
     for k, v in pairs(ns.CURSORHIGHLIGHT_DEFAULTS) do
         if c[k] == nil then c[k] = CopyVal(v) end
     end
@@ -212,8 +213,10 @@ end
 
 local hiddenNow = false
 local lastCX, lastCY, lastCS   -- the cursor position and UI scale the anchor was last placed at (nil: place it on the next frame)
+local hlT, hlEp   -- (P2) the saved table, read again only when the settings epoch moves: no metamethod per frame
 local function OnUpdate()
-    local c = CueRulesDB and CueRulesDB.cursorHighlight
+    if hlEp ~= ns.settingsEpoch then hlT, hlEp = QolS.cursorHighlight, ns.settingsEpoch end
+    local c = hlT
     if not c then return end
     local hide = (c.hideMouselook and IsMouselooking and IsMouselooking())
         or (c.combatOnly and not (UnitAffectingCombat and UnitAffectingCombat("player")))
@@ -236,7 +239,7 @@ end
 -- while the highlight is on AND that option is on; otherwise it is taken out (Theme.OffResolve): no work on a theme change (rule V14).
 local themeListening = false
 local function OnThemeResolved()
-    local c = CueRulesDB and CueRulesDB.cursorHighlight
+    local c = QolS.cursorHighlight
     if not (frame and c and c.enabled and c.useThemeColor) then return end
     Layout(c)
     if hiddenNow then frame:SetAlpha(0) end   -- Layout sets the shape's opacity; keep it hidden while it should be (combat only, turning)

@@ -6,6 +6,7 @@
 -- Drag-to-position while unlocked (/xui unlock).
 -------------------------------------------------------------------------------
 local addonName, ns = ...
+local CoreS, PlatS = ns.Settings("core"), ns.Settings("platform")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local frames = setmetatable({}, { __mode = "k" }) -- rule -> frame
 ns.unlocked = false
@@ -1384,7 +1385,7 @@ function ns.GroupTagFor(fid) return groupTags[fid] end   -- (tests)
 -- through this (read-only; nothing runs until it is typed).
 function ns.VisualProbeState() return frames, containers, DynAncestor end
 
-local function SnapMode() return (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.snapMode) or "free" end
+local function SnapMode() return (PlatS.ui and PlatS.ui.snapMode) or "free" end
 
 -- x, y are offsets of the frame center from the screen center (UI units). Returns the snapped offsets.
 function ns.SnapPosition(rule, fr, x, y)
@@ -1826,8 +1827,8 @@ function ns.ShowVisualMenu(rule, anchor)
         root:CreateDivider()
         local function radio(parent, mode)
             parent:CreateRadio(SNAP_LABELS[mode], function() return SnapMode() == mode end, function()
-                CueRulesDB.ui = CueRulesDB.ui or {}
-                CueRulesDB.ui.snapMode = mode
+                PlatS.ui = PlatS.ui or {}
+                PlatS.ui.snapMode = mode
                 ns.Print("aura positioning: " .. SNAP_LABELS[mode])
             end)
         end
@@ -3048,7 +3049,7 @@ local function DraftRule(e)   -- the rule a draft entry is about (same place in 
 end
 -- what moved since the draft was taken: a list of { kind = "display" / "group", obj, entry }
 function ns.MoverChanges(d)
-    d = d or (CueRulesDB and CueRulesDB.moverDraft)
+    d = d or (CoreS.moverDraft)
     local out = {}
     if type(d) ~= "table" then return out end
     for _, e in ipairs(d.rules or {}) do
@@ -3080,9 +3081,9 @@ local function Restore(d)
     end
 end
 local function EndSession(save)
-    local d = CueRulesDB and CueRulesDB.moverDraft
+    local d = CoreS.moverDraft
     if d and not save then Restore(d) end
-    if CueRulesDB then CueRulesDB.moverDraft = nil end
+    if ns.SettingsReady() then CoreS.moverDraft = nil end
     wipe(mover.tempLock); mover.sel = nil
     if ns.MarkDirty then ns.MarkDirty() end
     ns.Fire("CONFIG_CHANGED")
@@ -3174,10 +3175,10 @@ function ns.MoverExit(choice)
 end
 -- at login: a draft left by a /reload or logout without Save
 function ns.MoverCheckDraft()
-    local d = CueRulesDB and CueRulesDB.moverDraft
+    local d = CoreS.moverDraft
     if not d or ns.unlocked then return end
     local n = #ns.MoverChanges(d)
-    if n == 0 then CueRulesDB.moverDraft = nil; return end
+    if n == 0 then CoreS.moverDraft = nil; return end
     local when = (date and d.at and d.at > 0) and date("%Y-%m-%d %H:%M", d.at) or "earlier"
     PromptAndThen("XAYAUI_MOVER_DRAFT", ("XayaUI: the mover view was left without Save (%s): %d display(s) or group(s) were moved. Keep these moves?"):format(when, n),
         function() mover.prompt = nil; EndSession(true) end,
@@ -3197,7 +3198,7 @@ function ns.ToggleUnlock()
         ns.MoverExit("save")
         return
     end
-    if CueRulesDB then CueRulesDB.moverDraft = TakeDraft() end
+    if ns.SettingsReady() then CoreS.moverDraft = TakeDraft() end
     wipe(mover.tempLock); mover.sel = nil
     KeyFrame():Show()
     ns.unlocked = true

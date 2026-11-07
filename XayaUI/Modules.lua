@@ -31,6 +31,108 @@ local function Call(fn, ...)
     return ok
 end
 
+-------------------------------------------------------------------------------
+-- 0b. Settings seam (core 0.6.75; P2, docs/plans/PLATFORM-SPLIT-2026-11-07.md section 5 step 1, PS-7, Xaya 2026-11-07: "I imagine
+-- we want individual modules to hold their own settings, correct?"). First in this file, so every file loaded after Modules.lua (and
+-- every feature addon) has it. ns.Settings(module) returns that module's settings view:
+--   local S = ns.Settings("qol"); local c = S.cursorTrail; S.cursorTrail = c or {}
+-- module = "platform", "core" (rule tracking), "qol", "chat", "bonus", "reskin" or "devassist" (XayaUI Nameplates keeps its own
+-- XayaUINameplatesDB). Nothing moves yet: every read and write of a view lands in the same CueRulesDB key as before, so saved files
+-- stay byte-for-byte the same. Later (P5) only the backing behind a view changes, never the call sites.
+--   * A view holds no data: each access looks up the current CueRulesDB, so a view kept in an upvalue still sees new data after
+--     anything replaces CueRulesDB or one of its keys (the loader setting the saved variables, a profile import, Reset all, a restore).
+--   * Reads never create anything; a write creates only the key written (and CueRulesDB itself when it does not exist yet, as the
+--     sites that wrote it did). ns.SettingsReady() says whether the backing exists (the old "type(CueRulesDB) == 'table'" guard).
+--   * The views are made once, here, when this file loads: calling ns.Settings, for any module, on or off, creates nothing (V14).
+--   * Each module reads its OWN keys through its own view; another module's keys go through that owner's view
+--     (ns.Settings("chat").chat, never a QoL view). A key no list below names still reads and writes through (nothing breaks in
+--     game); it is counted in ns.SettingsUnknownKeys() and, with ns.SettingsStrict(true) (tests), raises an error.
+--   * Hot paths (per frame, per aura event, per tooltip) keep the table in an upvalue and re-read it only when ns.settingsEpoch
+--     changes: no metamethod per frame. The epoch moves on every view write of a key, on ns.SettingsChanged() (the Platform calls it
+--     after the saved settings are set up and after a profile part is applied) and when CueRulesDB itself is a different table.
+-------------------------------------------------------------------------------
+
+-- Key owners, confirmed against the code (the plan's section 5 table was an inference; the differences are in the P2 debug-log entry).
+local SETTINGS_KEYS = {
+    platform  = { "theme", "themes", "ui", "minimap", "profiles", "recycleBin", "errorLog", "errors", "lastBugReport", "debugRecord",
+                  "version", "reskinTabOff" },
+    core      = { "rules", "folders", "bars", "barGroup", "drafts", "moverDraft", "auraAlias", "auraModel", "auraSources", "auraTracker",
+                  "classLearn", "learnedAuraDur", "learnedAuraStacks", "learnedCooldown", "procGlowSeen", "engineDisplay", "cuesVer",
+                  "backupPreCues", "setupBuildError", "setupShowError", "perfLog" },
+    qol       = { "qol", "cursor", "cursorHighlight", "cursorTrail", "characterToolkit", "characterReskin", "shoppingList", "releaseGuard" },
+    chat      = { "chat", "chat2" },
+    bonus     = { "dataPanels", "tooltips", "calculator", "notepad" },
+    -- rsk / gm / friendColors are kept inside CueRulesDB.ui today (SETTINGS_UNDER_UI); characterReskin is QoL's key (the file that
+    -- writes it is XayaUI_QoL/CharacterReskin.lua) and is also readable here until the character pane split (plan 4.2) settles it.
+    reskin    = { "rsk", "gm", "friendColors", "characterReskin" },
+    devassist = { "idProbe", "idProbeStream", "chatProbe" },
+}
+local SETTINGS_UNDER_UI = { reskin = { rsk = true, gm = true, friendColors = true } }
+
+ns.settingsEpoch = 0
+local settingsUnknown, settingsStrict, lastBacking = {}, false, nil
+local function Backing()
+    local db = rawget(_G, "CueRulesDB")
+    if db ~= lastBacking then lastBacking = db; ns.settingsEpoch = ns.settingsEpoch + 1 end
+    if type(db) == "table" then return db end
+    return nil
+end
+function ns.SettingsChanged() ns.settingsEpoch = ns.settingsEpoch + 1 end
+function ns.SettingsReady() return Backing() ~= nil end
+function ns.SettingsStrict(on) settingsStrict = on and true or false end
+function ns.SettingsUnknownKeys() return settingsUnknown end
+
+local settingsViews, settingsOwned = {}, {}
+local function MakeView(module)
+    local owned, underUi = {}, SETTINGS_UNDER_UI[module] or {}
+    for _, k in ipairs(SETTINGS_KEYS[module]) do owned[k] = true end
+    settingsOwned[module] = owned
+    local function Check(k)
+        if owned[k] then return end
+        local id = module .. "." .. tostring(k)
+        settingsUnknown[id] = (settingsUnknown[id] or 0) + 1
+        if settingsStrict then error("XayaUI settings: " .. module .. " does not own the key " .. tostring(k), 3) end
+    end
+    return setmetatable({}, {
+        __index = function(_, k)
+            Check(k)
+            local db = Backing()
+            if not db then return nil end
+            if underUi[k] then local ui = db.ui; return type(ui) == "table" and ui[k] or nil end
+            return db[k]
+        end,
+        __newindex = function(_, k, v)
+            Check(k)
+            local db = Backing()
+            if not db then db = {}; _G.CueRulesDB = db; Backing() end
+            local t = db
+            if underUi[k] then
+                if type(db.ui) ~= "table" then db.ui = {} end
+                t = db.ui
+            end
+            if t[k] ~= v then   -- "S.x = S.x or {}" writes the same table back: no epoch move for that
+                t[k] = v
+                ns.settingsEpoch = ns.settingsEpoch + 1
+            end
+        end,
+        __metatable = false,
+    })
+end
+for module in pairs(SETTINGS_KEYS) do settingsViews[module] = MakeView(module) end
+
+-- the module's settings view, or nil for a name that is not a module
+function ns.Settings(module) return settingsViews[module] end
+-- (tests) the keys a module owns, in list order, and the key a view key is stored under ("ui.rsk" for Reskin's rsk)
+function ns.SettingsKeys(module)
+    local out = {}
+    for _, k in ipairs(SETTINGS_KEYS[module] or {}) do out[#out + 1] = k end
+    return out
+end
+function ns.SettingsStoredAt(module, k)
+    if not (settingsOwned[module] and settingsOwned[module][k]) then return nil end
+    return ((SETTINGS_UNDER_UI[module] or {})[k] and "ui." or "") .. k
+end
+
 -- 0. Spacing every XayaUI window and pane uses (#351; Xaya, 2026-11-03: "set a standard gutter and margin so that all elements are
 -- not smushed directly into their container bounds"). UI_MARGIN: the least space between a container's edge (below its title row)
 -- and what is inside it. UI_GUTTER: the least space between two controls side by side. Defined here once, in core, so every addon
@@ -84,6 +186,7 @@ end
 function ns.FireReady()
     if isReady then return end
     isReady = true
+    ns.SettingsChanged()   -- (Modules.lua section 0b) hot-path caches of settings tables re-read them once the saved settings are set up
     local queue = readyQueue
     readyQueue = {}
     for _, fn in ipairs(queue) do Call(fn) end
@@ -674,6 +777,7 @@ local function DbPart(def)
                 for kk, vv in pairs(v) do mine[kk] = ns.Copy(vv) end
             end
         end
+        ns.SettingsChanged()   -- (Modules.lua section 0b) a key may be a new table now: hot-path caches re-read it
         return { reload = true }
     end
     return def

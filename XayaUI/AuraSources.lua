@@ -12,6 +12,7 @@
 -- Midnight: every tooltip read is pcall'd and secret values are skipped; the pass pauses in combat.
 -------------------------------------------------------------------------------
 local _, ns = ...
+local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
 ns = _G.XayaUI_NS or ns
 local AS = {}
 ns.AuraSources = AS
@@ -51,8 +52,8 @@ end
 local MAX_PER_AURA = 3     -- sources remembered per aura (the first is shown; the rest only count)
 
 local function DB()
-    local root = _G.CueRulesDB
-    if type(root) ~= "table" then return nil end
+    if not ns.SettingsReady() then return nil end
+    local root = CoreS
     local okB, _, bn = pcall(GetBuildInfo)
     local build = okB and bn or "?"
     local a = root.auraSources

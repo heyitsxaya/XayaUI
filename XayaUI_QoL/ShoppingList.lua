@@ -23,6 +23,7 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
+local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 local CM = ns.CharModel
 local Shop = {}
 ns.Shop = Shop
@@ -61,9 +62,9 @@ local DEFAULTS = {
 ns.SHOPPING_DEFAULTS = DEFAULTS
 local function Copy(v) if type(v) ~= "table" then return v end; local t = {}; for k, x in pairs(v) do t[k] = Copy(x) end; return t end
 local function Cfg()
-    if not CueRulesDB then return nil end
-    local c = CueRulesDB.shoppingList
-    if type(c) ~= "table" then c = {}; CueRulesDB.shoppingList = c end
+    if not ns.SettingsReady() then return nil end
+    local c = QolS.shoppingList
+    if type(c) ~= "table" then c = {}; QolS.shoppingList = c end
     for k, v in pairs(DEFAULTS) do if c[k] == nil then c[k] = Copy(v) end end
     for _, k in ipairs({ "enabled", "panel", "tracker", "closedTillAH" }) do c[k] = c[k] == true end
     c.fontSize = math.max(8, math.min(16, tonumber(c.fontSize) or 11))
@@ -988,7 +989,7 @@ end
 ns.RegisterReskin("shoppinglist", function() Shop.Apply() end)   -- (the Reskin tab's switch: core ns.SetReskinTab walks these)
 function Shop.Drawn() return { panel = panel, popup = popup, layout = panel and panel.layout, buttons = btnPool, fonts = fsPool } end
 -- (read without Cfg: off, no saved table is made either, V14)
-ns.WhenReady(function() local raw = CueRulesDB and CueRulesDB.shoppingList; if type(raw) == "table" and raw.enabled == true and ns.ReskinTabOn() then Shop.Apply() end end)
+ns.WhenReady(function() local raw = QolS.shoppingList; if type(raw) == "table" and raw.enabled == true and ns.ReskinTabOn() then Shop.Apply() end end)
 
 -------------------------------------------------------------------------------
 -- Settings page: Blizzard UI Reskin > Shopping List

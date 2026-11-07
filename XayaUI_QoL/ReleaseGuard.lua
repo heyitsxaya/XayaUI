@@ -23,6 +23,7 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
+local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local FLAVORS = { "BAD MONKEY", "death comes for us all", "NOPE", "Disagree", "WTB Rez" }
 ns.RELEASEGUARD_DEFAULTS = { enabled = false, text = "NO RELEASE", flavorOn = true, flavors = table.concat(FLAVORS, "\n"), modifier = "SHIFT",
@@ -33,9 +34,9 @@ local MODS = { SHIFT = "Shift", CTRL = "Ctrl", ALT = "Alt" }
 local LOADS = { raid = "Raids only", group = "Raids and dungeons" }
 
 local function Cfg()
-    if not CueRulesDB then return nil end
-    local c = CueRulesDB.releaseGuard
-    if type(c) ~= "table" then c = {}; CueRulesDB.releaseGuard = c end
+    if not ns.SettingsReady() then return nil end
+    local c = QolS.releaseGuard
+    if type(c) ~= "table" then c = {}; QolS.releaseGuard = c end
     for k, v in pairs(ns.RELEASEGUARD_DEFAULTS) do if c[k] == nil then c[k] = v end end
     c.enabled, c.flavorOn = c.enabled == true, c.flavorOn ~= false
     if not MODS[c.modifier] then c.modifier = "SHIFT" end

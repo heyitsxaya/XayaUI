@@ -168,6 +168,7 @@ C_UnitAuras = { GetPlayerAuraBySpellID = function(id) ARG(id)
   if s == "secret" then return SECRET("table") elseif s == "error" then error("aura is secret (stand-in)") elseif s then return { spellId = id } end
 end }
 XayaUI_NS = { PROC_GLOW_AURAS = { [1265968] = { 50842 }, [1306161] = { 53385 }, [1310461] = { 53385, 85256, 383328 } } }
+assert(loadfile(MODULES_PATH))("XayaUI", XayaUI_NS)   -- (core 0.6.75) the real settings seam Probe.lua reads the rules through
 
 -- units (made up). nameplate4 is another player's nameplate.
 UNITS = {
@@ -655,6 +656,7 @@ def run(src):
     g = lua.globals()
     g.PROBE_SRC = src
     g.GD_PATH = GD_PATH
+    g.MODULES_PATH = os.path.join(ROOT, "XayaUI", "Modules.lua").replace("\\", "/")
     t = lua.table()
     for e in DOC_EVENTS:
         t[e] = True

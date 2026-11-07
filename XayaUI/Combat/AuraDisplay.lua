@@ -32,6 +32,7 @@
 -- changes drawn on a single slot (not inside a dynamic group; glow and strata not at all). includeSpellIDs is real in Blizzard's code but
 -- absent from the generated API docs: every container call is pcall'd and a failure hands the display back to XayaUI (no gap).
 local _, ns = ...
+local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
 ns = XayaUI_NS or ns
 
 -- Loaded once: XayaUI itself loads the engine files (XayaUI.toc), so pulling the repo is enough; an old separate
@@ -65,8 +66,8 @@ local TO_CENTER = {
 }
 
 local function DB()
-    local db = CueRulesDB
-    if not db then return nil end
+    if not ns.SettingsReady() then return nil end
+    local db = CoreS
     db.engineDisplay = db.engineDisplay or {}
     local e = db.engineDisplay
     e.groups = e.groups or {}   -- [folderId] = true (forced on) / false (kept with XayaUI)

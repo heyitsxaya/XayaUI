@@ -188,6 +188,7 @@ profilerMs = 0.2
 C_AddOnProfiler = { GetAddOnMetric = function(name, metric) assert(metric == 1); if name == "XayaUI" then return profilerMs end if name == "Blizzard_AuraContainer" then return blizzMs or 0 end end }
 _G.NS = ns
 assert(loadstring(CUE_GATED_SRC))()   -- the real ns.CueGated from Cues.lua (which cues a condition decides), not a copy
+assert(loadfile(MODULES_PATH))("XayaUI", ns)   -- (core 0.6.75) the settings seam the engine reads its saved data through
 local f = assert(loadfile(AURA_DISPLAY_PATH))
 f("XayaUI_CombatEngine", ns)
 do   -- the stand-in of Modules.lua's subcommand list, and Dev Assist's /xuiengine words in it
@@ -198,7 +199,7 @@ do   -- the stand-in of Modules.lua's subcommand list, and Dev Assist's /xuiengi
     ns.DevAssistOn = function() return true end
     assert(loadstring(ENGINE_SUBS_SRC))()
 end
-'''.replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI", "Combat", "AuraDisplay.lua")).replace("'", '"')).replace("CUE_GATED_SRC", CUE_GATED_LUA).replace("ENGINE_SUBS_SRC", ENGINE_SUBS_LUA))
+'''.replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI", "Combat", "AuraDisplay.lua")).replace("'", '"')).replace("MODULES_PATH", repr(os.path.join(ROOT, "XayaUI", "Modules.lua")).replace("'", '"')).replace("CUE_GATED_SRC", CUE_GATED_LUA).replace("ENGINE_SUBS_SRC", ENGINE_SUBS_LUA))
 
 
 fails = []
@@ -626,7 +627,7 @@ L.execute(r'''local cf = CreateFrame; CreateFrame = nil; local f = assert(loadfi
 lua(r"""
 EXT, EXTc = P("Power Word: Barrier (cast ID)", nil, 62618)
 EXTM = P("external MISSING", nil, 33206, { buffState = "missing" })
-CueRulesDB.auraAlias = { [62618] = { [81782] = true } }
+NS.Settings("core").auraAlias = { [62618] = { [81782] = true } }
 NS.AuraDisplay.Build()
 """)
 check("externals: the buff learned under another ID (81782 for 62618) is in the container's include list",
@@ -638,7 +639,7 @@ check("externals: OwnerOf gives the reason a display stays with XayaUI", lua("lo
 check("externals: OwnerOf a cooldown-only display is nil (not an aura display)", lua("return NS.AuraDisplay.OwnerOf(CDONLY) == nil"))
 lua('CueRulesDB.engineDisplay.auto = false; NS.AuraDisplay.Build()')
 check("externals: automatic drawing switched off: OwnerOf says so", lua("local o, w = NS.AuraDisplay.OwnerOf(EXT); return o == false and w:find('off') ~= nil"))
-lua('CueRulesDB.engineDisplay.auto = true; CueRulesDB.auraAlias = nil; NS.AuraDisplay.Build()')
+lua('CueRulesDB.engineDisplay.auto = true; NS.Settings("core").auraAlias = nil; NS.AuraDisplay.Build()')
 check("externals: without a learned alias the include list is the rule's own ID only", lua("local ids = NS.AuraDisplay._singles[EXT].frame.groups.main.filters.includeSpellIDs; return ids[62618] and not ids[81782]"))
 
 # 10. loaded twice (XayaUI loads the engine files and the separate XayaUI_CombatEngine folder is installed too): one copy only

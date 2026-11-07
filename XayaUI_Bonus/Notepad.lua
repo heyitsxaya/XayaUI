@@ -16,6 +16,7 @@
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+local BonusS = ns.Settings("bonus")   -- (Bonus 0.6.31, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local TITLE_H = 20
 local TB_H, TB_W, BTN_W = 20, 38, 26   -- toolbar thickness (horizontal), width (vertical), button width (horizontal)
@@ -105,8 +106,8 @@ local function Flush()
 end
 
 function ns.Notepad_OnDBReady()
-    CueRulesDB.notepad = CueRulesDB.notepad or {}
-    local db = CueRulesDB.notepad
+    BonusS.notepad = BonusS.notepad or {}
+    local db = BonusS.notepad
     ns.Merge(db, ns.NOTEPAD_DEFAULTS)
     db.notes = db.notes or {}
     db.trash = db.trash or {}

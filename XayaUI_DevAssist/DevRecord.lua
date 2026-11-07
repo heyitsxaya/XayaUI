@@ -12,6 +12,7 @@
 -------------------------------------------------------------------------------
 local ns = rawget(_G, "XayaUI_NS")
 if type(ns) ~= "table" or type(ns.DebugRecordInfo) ~= "table" or type(ns.SetDebugHooks) ~= "function" then return end   -- XayaUI is off or older than 0.6.56
+local PlatS = ns.Settings("platform")   -- (Dev Assist 0.7.55, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 local DR = ns.DebugRecordInfo
 local issecret = ns.IsSecret or issecretvalue or function() return false end
 local Plain, Version = DR.Plain, DR.Version
@@ -54,10 +55,18 @@ local LABEL = { rule = "Rule", log = "Rule", snapshot = "Snapshot", aura = "Aura
     error = "ERROR", blocked = "BLOCKED", combat = "Combat", note = "Note" }
 DR.KIND_CAT, DR.LABEL = KIND_CAT, LABEL
 
+-- (Dev Assist 0.7.55, P2 settings seam) CueRulesDB.ui and .debugRecord through the Platform's settings view; asked on every recorded
+-- line, so each table is kept in an upvalue and looked up again only when the settings epoch moves (core Modules.lua section 0b)
+local uiT, uiEp
 local function Ui()
-    if type(CueRulesDB) ~= "table" then return {} end
-    CueRulesDB.ui = CueRulesDB.ui or {}
-    return CueRulesDB.ui
+    local u = uiT
+    if uiEp ~= ns.settingsEpoch or type(u) ~= "table" then
+        if not ns.SettingsReady() then return {} end
+        PlatS.ui = PlatS.ui or {}
+        u = PlatS.ui
+        uiT, uiEp = u, ns.settingsEpoch
+    end
+    return u
 end
 local function S(v)   -- any game value as text; a hidden (secret) one says so instead of erroring
     if v == nil then return "?" end
@@ -114,13 +123,18 @@ function DR.MaxLines()
     local n = tonumber(Ui().recordMax)
     return (n and SIZES[n]) and n or DEFAULT_MAX
 end
+local recT, recEp
 local function Rec()
-    if type(CueRulesDB) ~= "table" then return nil end
-    local r = CueRulesDB.debugRecord
+    local r = recT
+    if recEp ~= ns.settingsEpoch or type(r) ~= "table" then
+        if not ns.SettingsReady() then return nil end
+        r = PlatS.debugRecord
+    end
     if type(r) ~= "table" or type(r.lines) ~= "table" then
         r = { lines = {}, dropped = 0, started = date and date("%Y-%m-%d %H:%M:%S") or "?" }
-        CueRulesDB.debugRecord = r
+        PlatS.debugRecord = r
     end
+    recT, recEp = r, ns.settingsEpoch
     return r
 end
 -- kind: a short word (see LABEL); text: one line (colours are dropped). Each line reads "HH:MM:SS  Category  text".
@@ -139,11 +153,11 @@ local function RecordLine(kind, text)
     end
 end
 function ns.ClearRecord()
-    if type(CueRulesDB) == "table" then CueRulesDB.debugRecord = nil end
+    if ns.SettingsReady() then PlatS.debugRecord = nil end
     if ns.ResetRecordedAuras then ns.ResetRecordedAuras() end
 end
 local function RecordSummary()
-    local r = type(CueRulesDB) == "table" and CueRulesDB.debugRecord
+    local r = PlatS.debugRecord
     if type(r) ~= "table" or type(r.lines) ~= "table" then return 0, 0, nil end
     return #r.lines, r.dropped or 0, r.started
 end
@@ -159,7 +173,7 @@ function ns.RecordText()
     add("  BLOCKED  an action the game refused XayaUI;  Combat  combat start and end;  Session  login and /reload")
     add("  (XayaUI's errors and warnings, with their codes, are in /xui report)")
     add("")
-    local r = type(CueRulesDB) == "table" and CueRulesDB.debugRecord
+    local r = PlatS.debugRecord
     if type(r) == "table" and type(r.lines) == "table" and #r.lines > 0 then
         for _, l in ipairs(r.lines) do add(l) end
     else

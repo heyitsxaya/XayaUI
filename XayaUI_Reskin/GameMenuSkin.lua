@@ -17,6 +17,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns
+local ReskinS = ns.Settings("reskin")   -- (Reskin 0.6.21, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local LABEL = "XayaUI"
 local diag = { built = 0, rows = 0, groups = 0, lastError = nil, failed = false, titleFound = false }
@@ -46,19 +47,18 @@ local DEFAULTS = {
 }
 ns.GameMenuSkinDefaults = DEFAULTS
 
-local function Ui() CueRulesDB = CueRulesDB or {}; CueRulesDB.ui = CueRulesDB.ui or {}; return CueRulesDB.ui end
 local function Cfg()
-    local ui = Ui()
-    ui.gm = ui.gm or {}
+    ReskinS.gm = ReskinS.gm or {}   -- (kept in CueRulesDB.ui.gm, as before: Modules.lua section 0b)
+    local gm = ReskinS.gm
     for k, v in pairs(DEFAULTS) do
-        if ui.gm[k] == nil then ui.gm[k] = (type(v) == "table") and {} or v end
+        if gm[k] == nil then gm[k] = (type(v) == "table") and {} or v end
     end
-    return ui.gm
+    return gm
 end
 ns.GameMenuSkin_Cfg = Cfg
 
 -- The saved switch, read without filling in the defaults (Cfg does that): V14, a look that is off builds no data either.
-local function Saved() local ui = CueRulesDB and CueRulesDB.ui; local gm = ui and ui.gm; return type(gm) == "table" and gm or nil end
+local function Saved() local gm = ReskinS.gm; return type(gm) == "table" and gm or nil end
 -- (and the Blizzard UI Reskin tab's own switch: off there turns this look off too; Reskin 0.6.4, S1 #48)
 local function SavedOn() local gm = Saved(); return gm and gm.skin and ns.ReskinTabOn() and true or false end
 function ns.GameMenuSkin_Active() return SavedOn() and not diag.failed end
@@ -554,7 +554,7 @@ function ns.GameMenuSkin_Options(Notify)
                 set = function(_, v) Cfg().hide[GAMEMENU_SUPPORT or "Support"] = v or nil; re() end, disabled = ownOnly },
         } },
         reset = { type = "execute", order = 50, name = "Reset Game Menu settings", disabled = off,
-            func = function() Ui().gm = nil; Cfg().skin = true; re() end },
+            func = function() ReskinS.gm = nil; Cfg().skin = true; re() end },
     }
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; Reskin 0.6.4, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off

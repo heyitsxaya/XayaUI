@@ -17,6 +17,7 @@ local addonName, ns = ...
 -- Inside XayaUI core this file receives the shared namespace itself; the XayaUI_NS lookup keeps the stub tests (and any standalone use) working.
 local integrated = _G.XayaUI_NS ~= nil
 ns = _G.XayaUI_NS or ns
+local BonusS = integrated and ns.Settings("bonus") or nil   -- (Bonus 0.6.31, P2 settings seam: the same CueRulesDB.tooltips; Modules.lua section 0b)
 ns.TT = ns.TT or {}
 local TT = ns.TT
 TT.integrated = integrated
@@ -54,17 +55,24 @@ end
 
 -- Saved data: XayaUI's CueRulesDB.tooltips when integrated, XayaUITooltipsDB.tooltips alone. Call after login.
 -- The defaults are filled in once per saved table (Bonus 0.6.12): up to 0.6.11 every call, so every tooltip, ran the recursive merge.
-local filled
+-- (Bonus 0.6.31, P2) integrated: read through the Bonus settings view, and once filled the table is handed back without a lookup until
+-- the settings epoch moves (Modules.lua section 0b: no metamethod per tooltip).
+local filled, filledEp
 function TT.DB()
+    if integrated and filled and filledEp == ns.settingsEpoch then return filled end
     local root
-    if integrated then CueRulesDB = CueRulesDB or {}; root = CueRulesDB
+    if integrated then root = BonusS
     else XayaUITooltipsDB = XayaUITooltipsDB or {}; root = XayaUITooltipsDB end
     local t = root.tooltips
-    if t ~= nil and t == filled then return t end
+    if t ~= nil and t == filled then
+        if integrated then filledEp = ns.settingsEpoch end
+        return t
+    end
     t = t or {}
     root.tooltips = t
     fill(t, TT.DEFAULTS)
     filled = t
+    if integrated then filledEp = ns.settingsEpoch end
     return t
 end
 

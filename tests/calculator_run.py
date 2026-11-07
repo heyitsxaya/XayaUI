@@ -18,6 +18,7 @@ from lua51 import runtime as LuaRuntime
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 SRC_PATH = os.path.join(ROOT, "XayaUI_Bonus", "Calculator.lua")
+MODULES_SRC = open(os.path.join(ROOT, "XayaUI", "Modules.lua"), encoding="utf-8").read()
 SRC = open(SRC_PATH, encoding="utf-8").read() if os.path.exists(SRC_PATH) else None
 
 WORLD = r'''
@@ -67,6 +68,11 @@ XayaUI_NS = {
   RegisterCommand = function(names, fn) for _, n in ipairs(type(names) == "table" and names or { names }) do COMMANDS[n] = fn end end,
   RegisterLauncher = function(e) LAUNCHERS[e[1]] = e end,
 }
+do   -- (core 0.6.75) the real settings seam (XayaUI/Modules.lua section 0b), behind the stand-ins above (they still answer first)
+  local core = {}
+  assert(loadstring(MODULES_SRC, "@Modules.lua"))("XayaUI", core)
+  setmetatable(XayaUI_NS, { __index = core })
+end
 LOADSTRING_CALLS = 0
 local realLoadstring = loadstring
 loadstring = function(...) LOADSTRING_CALLS = LOADSTRING_CALLS + 1; return realLoadstring(...) end
@@ -255,6 +261,7 @@ def run(src):
     lua = LuaRuntime()
     g = lua.globals()
     g.CALC_SRC = src
+    g.MODULES_SRC = MODULES_SRC
     try:
         lua.execute("loadstring_real_for_test = loadstring\n" + WORLD + CHECKS)
     except Exception as e:
@@ -265,6 +272,7 @@ def run(src):
     # V14: saved off at login; every way of asking for it builds nothing (a fresh Lua state)
     lua2 = LuaRuntime()
     lua2.globals().CALC_SRC = src
+    lua2.globals().MODULES_SRC = MODULES_SRC
     try:
         lua2.execute("loadstring_real_for_test = loadstring\n" + WORLD + OFF_AT_LOGIN)
         for i in range(1, int(lua2.eval("#ORDER")) + 1):

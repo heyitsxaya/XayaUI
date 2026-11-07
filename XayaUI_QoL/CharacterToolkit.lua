@@ -51,6 +51,7 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
+local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 local CM = ns.CharModel
 
 local function num(v) return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge end
@@ -99,9 +100,9 @@ local function CopyVal(v)
     return t
 end
 local function Cfg()
-    if not CueRulesDB then return nil end
-    local c = CueRulesDB.characterToolkit
-    if type(c) ~= "table" then c = {}; CueRulesDB.characterToolkit = c end
+    if not ns.SettingsReady() then return nil end
+    local c = QolS.characterToolkit
+    if type(c) ~= "table" then c = {}; QolS.characterToolkit = c end
     -- (QoL 0.7.23) a height dragged before the Min / Max heights existed becomes the smaller one
     if c.heightSmall == nil and type(c.size) == "table" and num(c.size.h) then c.heightSmall = c.size.h end
     for k, v in pairs(ns.CHARTOOLKIT_DEFAULTS) do

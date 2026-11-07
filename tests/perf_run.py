@@ -8,6 +8,7 @@ from lua51 import runtime as LuaRuntime   # Lua 5.1, like the game (tests/lua51.
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 old_src = open(os.path.join(ROOT, "tests", "Conditions.pre-0.5.83.lua")).read()   # the 0.5.82 evaluator, kept for the comparison
 new_src = open(os.path.join(ROOT, "XayaUI/Conditions.lua")).read()
+MODULES_SRC = open(os.path.join(ROOT, "XayaUI/Modules.lua")).read()
 assert "local function FrameMatches" in old_src, "need the pre-0.5.83 Conditions.lua (git HEAD before the change)"
 passed = failed = 0
 def check(name, cond):
@@ -42,6 +43,7 @@ def load(src):
     lua.execute("table.unpack = table.unpack or unpack; unpack = unpack or table.unpack")
     lua.execute(SETUP, 4, 24) if False else None
     lua.execute("ns = { tickID = 1 }")
+    lua.eval("function(src) assert(load(src, '=Modules'))('XayaUI', ns) end")(MODULES_SRC)   # (core 0.6.75) the settings seam
     lua.execute(SETUP.replace("local nviews, nkids = ...", "local nviews, nkids = 4, 24"))
     fn = lua.eval("function(src) local f = assert(load(src, '=Conditions')); return f('XayaUI', ns) end")
     fn(src)

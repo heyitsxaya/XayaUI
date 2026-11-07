@@ -15,6 +15,7 @@
 -------------------------------------------------------------------------------
 local ns = rawget(_G, "XayaUI_NS")
 if type(ns) ~= "table" or type(ns.RegisterDebugCommand) ~= "function" then return end   -- XayaUI is off or too old: nothing to add to
+local PlatS = ns.Settings("platform")   -- (Dev Assist 0.7.55, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 local GDD = {}
 ns.DevAssistDebug = GDD   -- (tests)
 local issecret = issecretvalue or function() return false end
@@ -870,14 +871,14 @@ if Sub then
     Sub("xuiskin", "pad", function(rest)
         local pd = tostring(rest or ""):match("^(%d+)")
         if not pd then print("|cffffd100XayaUI|r usage: /xuiskin pad N (0-30)") return end
-        CueRulesDB.ui.skinPad = math.max(0, math.min(30, tonumber(pd)))
-        print("|cffffd100XayaUI|r right-pane gutter " .. CueRulesDB.ui.skinPad .. "px (reopen the window to apply).")
+        PlatS.ui.skinPad = math.max(0, math.min(30, tonumber(pd)))
+        print("|cffffd100XayaUI|r right-pane gutter " .. PlatS.ui.skinPad .. "px (reopen the window to apply).")
     end, "pad N (the settings window's right-pane gutter, 0-30 px)")
     Sub("xuiskin", "alpha", function(rest)
         local v = tostring(rest or ""):match("^([%d%.]+)")
         if not v then print("|cffffd100XayaUI|r usage: /xuiskin alpha X (0.1-1)") return end
         v = math.max(0.1, math.min(1, tonumber(v) or 0.5))
-        CueRulesDB.ui.skinAlpha = v
+        PlatS.ui.skinAlpha = v
         print("|cffffd100XayaUI|r window opacity " .. v .. " (reopen the window to apply).")
     end, "alpha X (the settings window's opacity, 0.1-1)")
     Sub("xuiengine", "auto", EngineAuto, "auto on / off (automatic engine drawing)")

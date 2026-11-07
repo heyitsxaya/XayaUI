@@ -12,6 +12,7 @@
 -- no saved setup.  It never opens in combat.
 -------------------------------------------------------------------------------
 local _, ns = ...; ns = XayaUI_NS or ns -- part of XayaUI core since 0.6.0 (Combat/); shares its namespace
+local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
 
 -- Loaded once: XayaUI itself loads the engine files (XayaUI.toc), so pulling the repo is enough; an old separate
 -- XayaUI_CombatEngine folder (installed before 0.6.0) finds this and steps aside (no double load).
@@ -315,8 +316,8 @@ function ns.AuraSetup_Open()
             ns.Print("setup window failed to build: " .. tostring(err))
             if frame then frame:Hide() end
             frame = nil; wipe(stepPanels); wipe(stepTabs)
-            local db = _G.CueRulesDB
-            if type(db) == "table" then db.setupBuildError = (date and date("%Y-%m-%d %H:%M:%S ") or "") .. tostring(err) end
+            local db = ns.SettingsReady() and CoreS
+            if db then db.setupBuildError = (date and date("%Y-%m-%d %H:%M:%S ") or "") .. tostring(err) end
             return
         end
     end
@@ -325,8 +326,8 @@ function ns.AuraSetup_Open()
     local okS, errS = pcall(ShowStep, 1)
     if not okS then
         ns.Print("setup window error: " .. tostring(errS))
-        local db = _G.CueRulesDB
-        if type(db) == "table" then db.setupShowError = (date and date("%Y-%m-%d %H:%M:%S ") or "") .. tostring(errS) end
+        local db = ns.SettingsReady() and CoreS
+        if db then db.setupShowError = (date and date("%Y-%m-%d %H:%M:%S ") or "") .. tostring(errS) end
     end
     -- spell text arrives asynchronously: scan again shortly so the first view is not half-empty
     if C_Timer then C_Timer.After(1.5, function() if frame:IsShown() then ns.AuraSetup_Refresh() end end) end
