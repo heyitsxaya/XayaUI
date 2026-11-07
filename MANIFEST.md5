@@ -169,7 +169,7 @@ e1f89ddf0fdf2434ed0137a495095e90  XayaUI_DevAssist/DevAssist.lua
 4f406e5f61d664082acd91fcb9dcafdd  XayaUI_DevAssist/FORMULA-CAPTURE-WALKTHROUGH.md
 540e759425acffdcd2e04155ed259ae3  XayaUI_DevAssist/FormulaCapture.lua
 10a00a7f66ce081044f89e3d998619fd  XayaUI_DevAssist/Probe.lua
-3f5b4b8f41a18b11fe2cb79764d2b575  XayaUI_DevAssist/QAQuestions.lua
+f3ae111783d169602ebf00f904d8f0eb  XayaUI_DevAssist/QAQuestions.lua
 8d70b074e2d0688b1773a410ecf6dfa3  XayaUI_DevAssist/QAReview.lua
 49161902be489ee62680632d44d25368  XayaUI_DevAssist/QAWalk.lua
 a1658685084bed3925f5017209a837e2  XayaUI_DevAssist/QAWalks-Checklist.lua
@@ -606,7 +606,7 @@ ae2e62984bd5bfd45f9d6f8263d3c7ff  debug-log/2026-11-07-0800-externals-in-combat-
 7a44089cac704a89629f49d42e7a57d5  debug-log/2026-11-07-0839-friend-class-colors-reskin-0.6.8.md
 0eab928fdd0dc3ec40072ff2d5413250  debug-log/2026-11-07-0902-settings-window-one-build-options-0.6.68.md
 9d9fba6ecf478eef1ca84b0a9af34fc7  debug-log/2026-11-07-1053-settings-window-click-options-0.6.69.md
-3f397cafaf9f92a397a4eb1861a76e34  debug-log/2026-11-07-1237-qa-questions-final-data-devassist-0.7.34.md
+ea037aee07428ed123556c965767597e  debug-log/2026-11-07-1237-qa-questions-final-data-devassist-0.7.34.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
 df9716b8478755ee0402da9e38939c16  docs/QA-CHECKLIST.md
 8dba2b54e33cfc3e4a8f1a20a7cfbe6e  docs/README-INGAME.md
