@@ -621,5 +621,6 @@ end
 -------------------------------------------------------------------------------
 ns.WhenReady(ns.DataPanels_OnDBReady)
 ns.RegisterCommand("data", function() ns.DataPanels_OpenSettings() end, "/xui data (custom data panels and bars)")
-ns.RegisterLauncher({ "data", "Custom data panels", "Open the custom data panels settings (also /xui data)", function() ns.DataPanels_OpenSettings() end, order = 30 })
+-- O-100 (Bonus 0.6.23): the row carries the feature's name ("Data Panels" since Bonus 0.6.18)
+ns.RegisterLauncher({ "data", "Data Panels", "Open the Data Panels settings (also /xui data)", function() ns.DataPanels_OpenSettings() end, order = 30 })
 ns.RegisterSettingsPage("bonus", "datapanels", ns.BuildDataPanelsTab)

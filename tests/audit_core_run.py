@@ -87,6 +87,17 @@ do
   if not row and ns.launchers then for _, e in ipairs(ns.launchers) do if e[1] == "settings" then row = e end end end
   check("D11 minimap row named XayaUI Settings, tooltip says open or close", row and row[2] == "XayaUI Settings" and tostring(row[3]):find("Open or close", 1, true), row and row[2])
 end
+-- O-100 / FA-15 (Bonus 0.6.23, QoL 0.7.38; her answer "No word at all"): Notes, Calculator, Stat Calculator rows carry no on / off text;
+-- the data panels row is named "Data Panels"
+do
+  local by = {}
+  for _, e in ipairs(ns.Launchers()) do by[e[1]] = e end
+  for _, k in ipairs({ "notes", "calc", "stats" }) do
+    local e = by[k]
+    check("O-100 minimap row '" .. k .. "' has no on / off text", e ~= nil and e[5] == nil, e and (e[5] and tostring(e[5]()) or "nil") or "no row")
+  end
+  check("O-100 minimap row 'data' is named Data Panels", by.data and by.data[2] == "Data Panels", by.data and by.data[2])
+end
 return R
 end
 '''

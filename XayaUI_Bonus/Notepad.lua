@@ -406,7 +406,9 @@ Populate = function()
         Add(("%s  %s"):format(date("%b %d %H:%M:%S", h.t), Preview(h.text, 40)), h.text, "Version from " .. date("%b %d %H:%M:%S", h.t), function()
             Flush(); Snapshot(n)   -- what is there now stays recoverable too
             n.text = h.text; n.modified = time()
-            SetEditText(n.text); UpdateTitle(); Populate()
+            -- audit D48 (Bonus 0.6.23): the Restore list opens from the settings page before the box was ever shown (no frame yet)
+            if frame then SetEditText(n.text) end
+            UpdateTitle(); Populate()
         end)
     end
     Add("|cffffd100Deleted notes|r", nil, nil, nil, true)
@@ -1182,7 +1184,9 @@ end
 -------------------------------------------------------------------------------
 ns.WhenReady(ns.Notepad_OnDBReady)
 ns.RegisterCommand({ "notes", "notepad", "note" }, function() ns.Notepad_Toggle() end, "/xui notes (show / hide the notepad)")
+-- O-100 (Bonus 0.6.23; Xaya: "calculator isn't "off" -- it's just not displayed. same with stat calculator and notes", her answer "No
+-- word at all"): no state text; the row exists only while the Notepad is on, and a click shows / hides the box.
 ns.RegisterLauncher({ "notes", "Notes", "Show or hide the notepad (also /xui notes)", function() ns.Notepad_Toggle() end,
-    function() local d = ns.notepadDB; return d and d.shown and "on" or "off" end, order = 10,
+    nil, order = 10,
     available = function() return On() end })   -- (Bonus 0.6.14) no row while the Notepad is off (core 0.6.49: available())
 -- its settings page is a part of Bonus Features > Utilities (registered by Utilities.lua, Bonus 0.6.11), not a page of its own
