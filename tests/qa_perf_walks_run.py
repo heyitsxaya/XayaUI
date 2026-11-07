@@ -1,8 +1,9 @@
-"""V22 walkthroughs for the performance test (XayaUI_DevAssist/QAWalks-perf.lua; REQUEST-LOG A15, standing rule V22): J17 (two
-walkthroughs: the prompt, then after Confirm's reload) and J18 (what the record holds; the upload question). Loads the real QAWalk.lua
-framework, DevRecord.lua and RunRecord.lua with the stand-ins of tests/run_record_run.py, plays a run and asks each step's check what
-it would pre-fill: Pass when the step was done, Fail when it was not (each check is tried both ways), and the counts in J18's note.
-J17 parts go with RunRecord.lua (one push); J18 stays.
+"""V22 walkthroughs for the performance test (XayaUI_DevAssist/QAWalks-perf.lua; REQUEST-LOG A15, standing rule V22): J18 (what the
+record holds; the upload question), J19 (settings window memory: four readings), J20 (rule log only while read), J21 (memory growth in
+combat), J22 (other addons' errors), J23 (rules that are not loaded). Loads the real QAWalk.lua framework, core Core / Modules /
+DebugRecord and Dev Assist's DevRecord.lua with stand-in game calls (the stand-ins first written for the removed run prompt's test),
+and asks each step's check what it would pre-fill: Pass when the step was done, Fail when it was not (each check is tried both ways),
+and the counts in the notes. Also checks that the removed J17 walkthroughs are gone.
 Run: python3 tests/qa_perf_walks_run.py   (needs: pip install lupa)"""
 import os, sys
 from lupa.lua51 import LuaRuntime
@@ -62,7 +63,7 @@ ns = L.eval("{}"); L.globals().NS = ns
 for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI/DebugRecord.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 L.execute("XayaUI_NS = NS")
-for f in ("XayaUI_DevAssist/DevRecord.lua", "XayaUI_DevAssist/RunRecord.lua", "XayaUI_DevAssist/QAWalk.lua", "XayaUI_DevAssist/QAWalks-perf.lua"):
+for f in ("XayaUI_DevAssist/DevRecord.lua", "XayaUI_DevAssist/QAWalk.lua", "XayaUI_DevAssist/QAWalks-perf.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 L.execute(r'''
 local ns = NS
@@ -75,10 +76,6 @@ PROBE = { on = false, starts = 0 }
 ns.Service = function(n) if n == "gameDataProbe" then return { On = function() PROBE.on = true; PROBE.starts = PROBE.starts + 1 end,
   Off = function() PROBE.on = false end, Active = function() return PROBE.on end } end end
 function UI() CueRulesDB.ui = CueRulesDB.ui or {}; return CueRulesDB.ui end
-RR = ns.DebugRecordInfo.RunRecord
-function WIN() return RR.Window() end
-function SHOWN() local w = WIN(); return w ~= nil and w:IsShown() == true end
-function TITLE() local w = WIN(); return w and w:IsShown() and w.title:GetText() or nil end
 function HASLINE(text) local r = CueRulesDB.debugRecord; if not r then return false end
   for _, l in ipairs(r.lines) do if l:find(text, 1, true) then return true end end return false end
 function GO(place, ev) PLACE = place; FIRE(ev or "PLAYER_ENTERING_WORLD", false, false) end
@@ -103,44 +100,95 @@ def step(wid, i):
     r = L.eval("function(a, b) return STEP(a, b) end")(wid, i)
     return r[0], r[1]
 
-check("three walkthroughs registered with prefill: J17, J17 part 2, J18",
-      E("XayaUI_DevQA.walks['perf-run-prompt'].prefill and XayaUI_DevQA.walks['perf-run-prompt-after'].prefill and XayaUI_DevQA.walks['perf-run-data'].prefill and XayaUI_DevQA.walks['perf-run-prompt'].qa == 'J17' and XayaUI_DevQA.walks['perf-run-data'].qa == 'J18'") == True)
-L.execute("XayaUIDevAssistDB = {}; UI().advancedDebug = false; UI().recordOff = true; GO(OUTSIDE)")
-W = "perf-run-prompt"
-r = step(W, 1); check("J17.1 before Do it for me: Fail", r[0] == "F")
-L.execute("SETUP('perf-run-prompt', 1)")
-r = step(W, 1); check("J17.1 after Do it for me: Pass, names what it remembered", r[0] == "P" and "Advanced Debugging false" in r[1])
-r = step(W, 2); check("J17.2 outside a dungeon: Fail, says why", r[0] == "F" and "not in a Mythic 0" in r[1])
-L.execute("GO(M0)")
-r = step(W, 2); check("J17.2 in Mythic 0 with the window up: Pass", r[0] == "P" and "Skyreach (Mythic 0)" in r[1])
-r = step(W, 3); check("J17.3 before Not now: Fail (window still up)", r[0] == "F")
-L.execute("WIN().no._s_OnClick()")
-r = step(W, 3); check("J17.3 after Not now: Pass", r[0] == "P")
-r = step(W, 4); check("J17.4 before Accept: Fail", r[0] == "F" and "no run" in r[1])
-L.execute("GO(OUTSIDE); GO(M0); WIN().yes._s_OnClick(); WIN().yes._s_OnClick()")
-r = step(W, 4); check("J17.4 after Accept: Pass, probe off", r[0] == "P" and "probe off" in r[1])
-L.execute("NS.SetRecCat('perf', false)")
-r = step(W, 4); check("J17.4 with a kind switched off again: Fail naming it", r[0] == "F" and "perf" in r[1])
-L.execute("NS.SetRecCat('perf', true)")
-r = step(W, 5); check("J17.5 before any fight: Fail (no meter line)", r[0] == "F")
-L.execute("COMBAT = true; FIRE('PLAYER_REGEN_DISABLED'); FIRE('ENCOUNTER_START', 1698, 'Ranjit', 23, 5); FIRE('ENCOUNTER_END', 1698, 'Ranjit', 23, 5, 1); COMBAT = false; FIRE('PLAYER_REGEN_ENABLED')")
-r = step(W, 5); check("J17.5 after a boss fight: Pass with the counts (data capture)", r[0] == "P" and "1 fight(s), 1 boss(es) ended, 1 meter reading(s) after fights, 1 after bosses" in r[1])
-L.execute("GO(OUTSIDE)")
-r = step(W, 6); check("J17.6 with \"Done with instance?\" up: Fail (press Not yet)", r[0] == "F")
-L.execute("WIN().no._s_OnClick()")
-r = step(W, 6); check("J17.6 after Not yet: Pass", r[0] == "P")
-A = "perf-run-prompt-after"
-r = step(A, 1); check("J17 part 2 before Confirm: Fail", r[0] == "F" and "still recording" in r[1])
-L.execute("FIRE('ZONE_CHANGED_NEW_AREA'); WIN().yes._s_OnClick()")
-r = step(A, 1); check("J17 part 2 after Confirm: Pass, settings back, end marker", r[0] == "P" and E("RELOADS") == 1)
-L.execute("UI().recordMax = 1000")
-r = step(A, 1); check("J17 part 2 with a setting not back: Fail naming it", r[0] == "F" and "recordMax 1000 (was nil)" in r[1])
-L.execute("UI().recordMax = nil")
+check("J18 registered with prefill; the removed J17 walkthroughs are gone",
+      E("XayaUI_DevQA.walks['perf-run-data'].prefill == true and XayaUI_DevQA.walks['perf-run-data'].qa == 'J18' and XayaUI_DevQA.walks['perf-run-prompt'] == nil and XayaUI_DevQA.walks['perf-run-prompt-after'] == nil"))
+L.execute("XayaUIDevAssistDB = {}; UI().advancedDebug = true; UI().recordOff = nil; UI().recCats = { perf = true }; NS.DebugSettingsChanged()")
 D = "perf-run-data"
-r = step(D, 1); check("J18.1: Pass with the record's counts in the note", r[0] == "P" and "has a start marker, 1 fight(s), 1 boss(es) ended, 4 meter reading(s)" in r[1] and "has an end marker" in r[1])
+r = step(D, 1); check("J18.1 before any fight: Fail (no meter reading)", r[0] == "F")
+L.execute("COMBAT = true; FIRE('PLAYER_REGEN_DISABLED'); FIRE('ENCOUNTER_START', 1698, 'Ranjit', 23, 5); FIRE('ENCOUNTER_END', 1698, 'Ranjit', 23, 5, 1); COMBAT = false; FIRE('PLAYER_REGEN_ENABLED')")
+r = step(D, 1); check("J18.1 after a boss fight: Pass with the record's counts in the note (data capture)", r[0] == "P" and "no start marker, 1 fight(s), 1 boss(es) ended, 2 meter reading(s)" in r[1])
 check("J18.2 upload step is a question (no verdict)", E("XayaUI_DevQA.walks['perf-run-data'].steps[2].noVerdict == true and XayaUI_DevQA.walks['perf-run-data'].steps[2].check == nil"))
 L.execute("CueRulesDB.debugRecord = nil")
 r = step(D, 1); check("J18.1 with an empty record: Fail", r[0] == "F" and "empty" in r[1])
+
+# J19: settings window memory (stand-ins: the Options addon loaded or not, its memory in KB, Lua's total, a cleanup that frees garbage)
+L.execute("""
+OPT_LOADED, OPT_KB, LUA_KB, GARBAGE = false, 0, 50000, 0
+local realIsLoaded = C_AddOns.IsAddOnLoaded
+C_AddOns.IsAddOnLoaded = function(n) if n == 'XayaUI_Options' then return OPT_LOADED, OPT_LOADED end return realIsLoaded(n) end
+UPDATES = 0
+UpdateAddOnMemoryUsage = function() UPDATES = UPDATES + 1 end
+GetAddOnMemoryUsage = function(n) if n == 'XayaUI_Options' then return OPT_KB end return 0 end
+collectgarbage = function(opt) if opt == 'count' then return LUA_KB end if opt == 'collect' then OPT_KB = OPT_KB - GARBAGE; LUA_KB = LUA_KB - GARBAGE; GARBAGE = 0 end return 0 end
+""")
+M = "perf-options-memory"
+r = step(M, 1); check("J19.1 after /reload, settings not loaded: Pass, total Lua kept", r[0] == "P" and "XayaUI_Options not loaded" in r[1] and "48.8 MB" in r[1])
+L.execute("OPT_LOADED = true; OPT_KB = 1024 * 300; LUA_KB = 50000 + 1024 * 300; GARBAGE = 1024 * 250")
+r = step(M, 1); check("J19.1 with the settings addon already loaded: Fail (reload first)", r[0] == "F" and "/reload first" in r[1])
+r = step(M, 2); check("J19.2 window used: Pass with the reading (300.0 MB)", r[0] == "P" and "XayaUI_Options 300.0 MB" in r[1] and E("UPDATES") >= 1)
+r = step(M, 3); check("J19.3 closed: Pass with the reading", r[0] == "P" and "3 closed 30 s: XayaUI_Options 300.0 MB" in r[1])
+r = step(M, 5); check("J19.5 before the cleanup step: Fail (a reading is missing)", r[0] == "F" and "missing" in r[1])
+L.execute("SETUP('perf-options-memory', 4)")
+r = step(M, 4); check("J19.4 after Do it for me (cleanup): Pass, 50.0 MB left", r[0] == "P" and "XayaUI_Options 50.0 MB" in r[1])
+r = step(M, 5); check("J19.5 summary: leftover garbage 250.0 MB (300 - 50), kept 50.0 MB", r[0] == "P" and "leftover garbage 250.0 MB (3 - 4), kept 50.0 MB (4)" in r[1])
+check("J19 readings saved for upload (XayaUIDevAssistDB.qa.optionsMem)", E("XayaUIDevAssistDB.qa.optionsMem.d.kb == 51200 and XayaUIDevAssistDB.qa.optionsMem.b.kb == 307200 and XayaUIDevAssistDB.qa.optionsMem.c.kb == 307200"))
+L.execute("OPT_LOADED = false")
+r = step(M, 2); check("J19.2 with the settings addon not loaded: Fail (open it first)", r[0] == "F" and "open the settings window first" in r[1])
+
+# J20: rule log only while read (core ns.LogWanted). Readers: console window (stand-in), Dev Assist's record (real DevRecord.lua)
+G = "perf-log-gate"
+L.execute("UI().advancedDebug = true; UI().recordOff = nil; UI().recCats = nil; NS.ConsoleWindowOn = function() return CONSOLE_OPEN == true end")
+r = step(G, 1); check("J20.1 with Dev Assist's record keeping snapshots and rule lines (its defaults): Fail naming them", r[0] == "F" and "Rule snapshots in combat" in r[1] and "Rules firing and clearing" in r[1])
+L.execute("NS.SetRecCat('snapshots', false); NS.SetRecCat('rules', false)")
+r = step(G, 1); check("J20.1 with both unticked and nothing open: Pass", r[0] == "P")
+r = step(G, 2); check("J20.2 before Do it for me: Fail", r[0] == "F" and "Do it for me" in r[1])
+L.execute("SETUP('perf-log-gate', 2); NS.Print('a message'); if NS.LogWanted('snapshot') then NS.LogKind('snapshot', '-- status snapshot (combat start) --') end")
+r = step(G, 2); check("J20.2 a fight with no reader: Pass, counts the lines (no snapshot line)", r[0] == "P" and "0 snapshot line(s), 0 FIRED" in r[1])
+L.execute("SETUP('perf-log-gate', 2); NS.LogKind('snapshot', '-- status snapshot (combat start) --'); NS.LogKind('rule', 'FIRED x')")
+r = step(G, 2); check("J20.2 if a snapshot line still reaches the log: Fail with the counts", r[0] == "F" and "1 snapshot line(s), 1 FIRED" in r[1])
+L.execute("CONSOLE_OPEN = true; SETUP('perf-log-gate', 3); if NS.LogWanted('snapshot') then NS.LogKind('snapshot', '-- status snapshot (combat end) --') end")
+r = step(G, 3); check("J20.3 console open: the snapshot is back, Pass", r[0] == "P" and "1 snapshot line(s)" in r[1])
+L.execute("CONSOLE_OPEN = false")
+
+# J21: memory growth in combat (stand-in GetTime and memory figures)
+L.execute("CORE_KB = 40000; GetAddOnMemoryUsage = function(n) if n == 'XayaUI' then return CORE_KB end if n == 'XayaUI_Options' then return OPT_KB end return 0 end; LUA_KB = 90000")
+R21 = "perf-combat-memory"
+r = step(R21, 1); check("J21 before Do it for me: Fail", r[0] == "F" and "Do it for me" in r[1])
+L.execute("NOW = NOW or 0; GetTime = function() return NOW end; SETUP('perf-combat-memory', 1); NOW = NOW + 5")
+r = step(R21, 1); check("J21 after 5 s: Fail (fight about 30 s)", r[0] == "F" and "only 5 s" in r[1])
+L.execute("NOW = NOW + 25; CORE_KB = CORE_KB + 1500; LUA_KB = LUA_KB + 3000")
+r = step(R21, 1); check("J21 after 30 s: Pass with the rates (+50.0 core, +100.0 all)", r[0] == "P" and "XayaUI core +50.0 KB/s, all Lua +100.0 KB/s" in r[1])
+L.execute("SETUP('perf-combat-memory', 1); NOW = NOW + 30; CORE_KB = CORE_KB - 30000")
+r = step(R21, 1); check("J21 when a collection ran in between: Fail, says why", r[0] == "F" and "garbage collection ran" in r[1])
+
+# J22: other addons' errors (core counts them; the report's entries must not hold another addon's error)
+L.execute("NS.otherErrors = 7; ENTRIES = {}; NS.DebugReportData = function() return { entries = ENTRIES } end")
+r = step("perf-other-errors", 1); check("J22 with 7 other addons' errors and a clean record: Pass, gives the count", r[0] == "P" and "this session: 7" in r[1])
+L.execute("ENTRIES = { { msg = 'Interface/AddOns/Plater/Plater.lua:1: boom' }, { msg = 'Interface/AddOns/XayaUI/Engine.lua:2: mine' } }")
+r = step("perf-other-errors", 1); check("J22 when the record holds another addon's error: Fail naming it", r[0] == "F" and "1 recorded entries" in r[1])
+
+# J23: rules that are not loaded (stand-in engine timer: its two lines as /xui debug perf prints them)
+L.execute("""
+NS.perfOn = false
+NS.PerfCommand = function(arg)
+  if arg == 'on' then NS.perfOn = true return end
+  if arg == 'off' then NS.perfOn = false return end
+  if not NS.perfOn then NS.Print('perf: not measuring.') return end
+  NS.Print('perf over 30s: 150 steps (5.0/s), 0.58 ms avg, 1.20 ms worst, 0.1% of one frame budget at 60 fps (229 rules, 229 on)')
+  NS.Print('perf: Lua memory 2048 KB now, +3 KB/s since start (a high number means garbage)')
+end
+NS.rules = { { name = 'a', enabled = true }, { name = 'b', enabled = true }, { name = 'c', enabled = false } }
+NS.IsLoaded = function(r) return r.name == 'a' end
+NS.ReadContext = function() return {} end
+""")
+P = "perf-load-first"
+r = step(P, 1); check("J23.1 before Do it for me: Fail (timer not running), counts rules", r[0] == "F" and "2 rules switched on, 1 loaded" in r[1])
+L.execute("SETUP('perf-load-first', 1)")
+r = step(P, 1); check("J23.1 after Do it for me: Pass, timer running", r[0] == "P" and "timer running" in r[1])
+r = step(P, 2); check("J23.2 after the fight: Pass with ms per step and KB/s from the timer's own lines", r[0] == "P" and "0.58 ms per step on average, 1.20 ms worst; Lua memory +3 KB/s" in r[1])
+L.execute("SETUP('perf-load-first', 3)")
+check("J23.3 stops the timer it started", E("NS.perfOn") == False)
+r = step(P, 2); check("J23.2 with the timer off: Fail (no timing)", r[0] == "F" and "no timing" in r[1])
 
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)
