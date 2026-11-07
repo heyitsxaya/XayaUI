@@ -1,6 +1,6 @@
 # What's new in XayaUI
 
-**Updated 2026-11-06 evening:** sections 3 to 8 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
+**Updated 2026-11-06 evening:** sections 3 to 9 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
 
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
 Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
@@ -426,6 +426,19 @@ Read from that session's debug logs on `main` (Chat 0.6.20 to 0.6.27, QoL 0.7.33
 - **Stat Calculator** (7 Nov, QoL 0.7.35 / 0.7.36): proc lines read "Equipped: <item>" / "Compared: <item>"; set lines under each item; the armor
   row reads "From mastery: <spell> passive"; the Ability Scaling table is Spell Name | Talent Modifiers | % PSV | Computed Value, with
   dividers and foldable spells.
+
+## 9. Chat QA walkthroughs (chat-issue review session; main 6b25c9b, Dev Assist 0.7.10)
+
+Not tested in game.
+
+- Four new walkthroughs in `/xui dev qa` (also `/xui qa test`, `/xui qatest`; Dev Assist on) for the old chat issues: "Chat: move, resize and hide the
+  chat (#210)", "Chat: arrow, button strip, panel, bottom edge (#229 items 1-4)", "Chat: hiding it keeps the panel's size, no outlines
+  (#250)" and "Chat: one arrow; the panel follows the chat (#296)". "Do it for me" does the setup, the addon reads the chat's real frames,
+  and the last step puts your chat back as it was.
+- **Pre-filled answer:** after the check, these four offer an "Accept: Pass" or "Accept: Fail" button with the addon's verdict. Nothing is
+  recorded until it is clicked; Pass / Fail / Skip still work, and Accept puts the addon's reading in the note unless one was typed.
+  #296's last step is your decision on what "inherit the same behavior of the chat" should mean, and has no Accept. All other
+  walkthroughs are unchanged: you still decide.
 
 *Not in this list yet:* Reskin 0.6.6 (its debug log was not found), and the Info pane / Patch Notes feature itself (its session sends its own note).
 They are added here only once they arrive and are checked against `main`.

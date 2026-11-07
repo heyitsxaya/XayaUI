@@ -120,19 +120,33 @@ function T.BuildArgs(refresh)
         values = { S = "Small", M = "Medium", L = "Large" }, sorting = { "S", "M", "L" },
         get = function() local th = DB(); return th and th.size or "M" end,
         set = function(_, v) T.SetSize(v); refresh() end }
+    args.advanced = { type = "toggle", order = nx(), width = "full", name = "Advanced customization",
+        desc = "Offers more theme options: the tab colours, the tree bars and per-class colour overrides. Off (the default): they are not offered and the theme's own colours are used.",
+        get = function() return T.Advanced() end,
+        set = function(_, v)
+            if not CueRulesDB then return end
+            CueRulesDB.ui = CueRulesDB.ui or {}
+            CueRulesDB.ui.themeAdvanced = v and true or nil
+            T.Changed(); refresh()
+        end }
 
     -- palette
     args.palHdr = { type = "header", order = nx(), name = "Palette" }
     local lastGroup
     for _, t in ipairs(T.TOKENS) do
         local key, label, grp, _, hint = t[1], t[2], t[3], t[4], t[5]
-        if not T.PARKED[key] then
+        do   -- (UI-50) a parked token is listed but hidden until Advanced customization is on
+        local parked = T.PARKED[key]
         if grp ~= lastGroup then
             lastGroup = grp
-            args["grp_" .. grp] = { type = "description", order = nx(), width = "full", fontSize = "medium", hidden = function() local th = DB(); return grp == "Surfaces" and th and th.base == "custom" or false end, name = function() local c = T.Col("xui-label", "text", { 1, 0.82, 0, 1 }); return ("|cff%02x%02x%02x"):format(floor(c[1] * 255 + 0.5), floor(c[2] * 255 + 0.5), floor(c[3] * 255 + 0.5)) .. grp .. "|r" end }
+            args["grp_" .. grp] = { type = "description", order = nx(), width = "full", fontSize = "medium", hidden = function()
+                    local open = false   -- (UI-50) a group whose colours are all parked shows no heading until Advanced customization is on
+                    for _, t2 in ipairs(T.TOKENS) do if t2[3] == grp and not T.Parked(t2[1]) then open = true; break end end
+                    if not open then return true end
+                    local th = DB(); return grp == "Surfaces" and th and th.base == "custom" or false end, name = function() local c = T.Col("xui-label", "text", { 1, 0.82, 0, 1 }); return ("|cff%02x%02x%02x"):format(floor(c[1] * 255 + 0.5), floor(c[2] * 255 + 0.5), floor(c[3] * 255 + 0.5)) .. grp .. "|r" end }
         end
         args["tok_" .. key] = { type = "color", order = nx(), width = "normal", name = label, desc = hint, hasAlpha = true,
-            hidden = function() local th = DB(); return grp == "Surfaces" and th and th.base == "custom" or false end,
+            hidden = function() if parked and T.Parked(key) then return true end local th = DB(); return grp == "Surfaces" and th and th.base == "custom" or false end,
             get = function() local c = T.cur[key]; return c[1], c[2], c[3], c[4] end,
             set = function(_, r, g, b, a)
                 local th = DB(); local was = th and th.base ~= "custom"
@@ -156,10 +170,12 @@ function T.BuildArgs(refresh)
         local a = { type = "group", order = po, name = label .. "  |cff888888(" .. cls .. ")|r", inline = true, args = {} }
         local io = 0
         for _, prop in ipairs({ "bg", "border", "text" }) do
-            if map[prop] and not T.PARKED[map[prop]] then
+            if map[prop] then
                 io = io + 1
                 local pname = (prop == "bg") and "Background" or (prop == "border" and "Border" or "Text")
+                local tok = map[prop]
                 a.args[prop] = { type = "color", order = io, width = "normal", name = pname, hasAlpha = true,
+                    hidden = function() return T.Parked(tok) end,
                     get = function() local col = T.Col(cls, prop); return col[1], col[2], col[3], col[4] end,
                     set = function(_, r, g, b, al) T.SetClassColor(cls, prop, { r, g, b, al }); refresh() end }
             end
@@ -172,7 +188,9 @@ function T.BuildArgs(refresh)
     end
     -- Class overrides are parked (Xaya, 2026-11-01): every box duplicated a palette swatch. The code and any saved overrides stay
     -- (they still apply); only the editor is hidden. Flip T.SHOW_OVERRIDES to bring the editor back for the redesign.
-    if T.SHOW_OVERRIDES then args.overrides = ov end
+    -- (UI-50) Advanced customization offers them again ("opens up them and more as options")
+    ov.hidden = function() return not (T.SHOW_OVERRIDES or T.Advanced()) end
+    args.overrides = ov
 
     -- save / import / export
     args.shareHdr = { type = "header", order = nx(), name = "Save, import, and export" }

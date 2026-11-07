@@ -16,8 +16,10 @@ def check(name, ok, extra=""):
 # #351 phase 2: the values are defined once in core (XayaUI/Modules.lua); Skin.lua reads them (its 10s are only the fallback for
 # stand-in tests that load Skin.lua without core)
 modules = open(os.path.join(ROOT, "XayaUI", "Modules.lua"), encoding="utf-8").read()
-m = re.search(r"^ns\.UI_MARGIN, ns\.UI_GUTTER = (\d+), (\d+)$", modules, re.M)
-check("the margin and the gutter are defined once, in core (XayaUI/Modules.lua: ns.UI_MARGIN, ns.UI_GUTTER)", m is not None)
+# (core 0.6.61, UI-47) they live in core's ns.Style table (margin, gutter); ns.UI_MARGIN / ns.UI_GUTTER read from it
+m = re.search(r"^ns\.Style = \{.*?\bmargin = (\d+),.*?\bgutter = (\d+),", modules, re.S | re.M)
+check("the margin and the gutter are defined once, in core (XayaUI/Modules.lua: ns.Style, read by ns.UI_MARGIN / ns.UI_GUTTER)", m is not None
+      and re.search(r"^ns\.UI_MARGIN, ns\.UI_GUTTER = ns\.Style\.margin, ns\.Style\.gutter\b", modules, re.M) is not None)
 check("Skin.lua reads them from core", re.search(r"^local UI_MARGIN, UI_GUTTER = ns\.UI_MARGIN or 10, ns\.UI_GUTTER or 10$", skin, re.M) is not None
       and "ns.UI_MARGIN, ns.UI_GUTTER = UI_MARGIN" not in skin)
 MARGIN, GUTTER = (int(m.group(1)), int(m.group(2))) if m else (10, 10)
@@ -43,6 +45,9 @@ function W(kind, width, opt)
   return c
 end
 '''.replace("__G__", str(GUTTER)))
+ms = re.search(r"^ns\.Style = \{.*?^\}\n", modules, re.S | re.M)   # (UI-47: the slice reads core's ns.Style)
+assert ms, "ns.Style not found in XayaUI/Modules.lua"
+L.execute("local ns = ns\n" + ms.group(0))
 L.execute("local ns = ns\n" + skin[a:a + mm.end()])
 def gaps(lua_rows, width=640):
     return L.eval('''(function(width)
