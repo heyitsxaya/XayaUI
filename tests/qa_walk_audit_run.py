@@ -79,6 +79,30 @@ do
   local ve, ne = QA.walks["audit-engine"].steps[1].check(); check("D28 engine walkthrough with the box off: verdict Pass", ve == true, ne)
   M.SetSetting("presence", was)
 end
+-- audit D36 (Dev Assist 0.7.13): the debug-report walkthrough leaves no test error behind, and raises nothing through the game's handler
+do
+  local d = QA.walks["debug-report"]
+  if d then
+    if ns.RecordError then ns.RecordError("a real XayaUI error that must stay", nil, "XayaUI", "XUI-E001") end
+    local handled = 0
+    local origH = geterrorhandler; local h0 = origH and origH()
+    local spy = function(e) if tostring(e):find("not XayaUI", 1, true) then handled = handled + 1 end; if h0 then return h0(e) end end
+    if seterrorhandler and origH then seterrorhandler(spy) end
+    for i = 1, #d.steps do local st = d.steps[i]; if st.setup then pcall(st.setup) end; W.tick(0.05, 2) end
+    if seterrorhandler and h0 then seterrorhandler(h0) end
+    local left, real = false, false
+    for _, e in ipairs(ns.ErrorEntries()) do
+      if tostring(e.msg):find("QA walkthrough test error", 1, true) then left = true end
+      if tostring(e.msg):find("a real XayaUI error that must stay", 1, true) then real = true end
+    end
+    check("D36 debug-report walkthrough: its test error is gone after the last step, your real errors stay", not left and real, tostring(left) .. "/" .. tostring(real))
+    check("D36 ...and the \"not XayaUI\" case is never raised through the game's error handler", handled == 0, handled)
+    local v2, n2 = d.steps[2].check()
+    check("D36 the classification check still answers (XayaUI file recorded, other folder not)", n2 ~= nil, n2)
+  else
+    check("D36 debug-report walkthrough is registered", false)
+  end
+end
 -- the Notepad walkthrough's last step puts the Notepad back
 local db = ns.notepadDB
 if db then
@@ -109,7 +133,8 @@ def main():
         print(("PASS " if ok else "FAIL ") + name)
         if not ok:
             bad += 1
-    errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
+    # the debug-report walkthrough raises its own XayaUI test error on purpose (that is what its step checks): not a failure here
+    errs = [world.errors[i] for i in range(1, len(world.errors) + 1) if "QA walkthrough test error" not in str(world.errors[i])]
     for e in errs:
         print("ERROR in the game stand-in:", str(e)[:600])
     print("%d checks, %d failed, %d Lua errors" % (len(res), bad, len(errs)))

@@ -596,6 +596,11 @@ check("cover does not touch the bar", cr_[1] >= br_[1] + br_[3] - 0.01, (cr_, br
 check("cover is above the edit box strata", cover.GetFrameStrata(cover) == "DIALOG" and cover.GetFrameLevel(cover) >= 100)
 bb = rect(btn); cc = rect(cont)
 check("privacy button beside the block", bb[0] >= cc[0] + cc[2] - 0.01 and btn.IsShown(btn), (bb, cc))
+# audit D38 (Chat 0.6.31): the defaults say what players have always seen (no label, no border); a ticked label with no text reads "Chat hidden"
+check("D38 privacy defaults: no border and no label (what players see)", run("return ns.CHAT_DEFAULTS.privBorder == false and ns.CHAT_DEFAULTS.privShowText == false") is True)
+run("ns.chatDB.privShowText = true; ns.chatDB.privText = nil; ns.ChatPrivacy_Refresh()")
+check("D38 a ticked label with no text typed reads Chat hidden", str(cover.label._text) == "Chat hidden", cover.label._text)
+run("ns.chatDB.privShowText = nil; ns.ChatPrivacy_Refresh()")
 # tab row under the cover (Xaya: "can't click on tabs if the privacy panel is active"; her setting had cover-tabs and reveal on)
 run("ns.chatDB.privCoverTabs=true; ns.ChatPrivacy_Set(false); ns.ChatPrivacy_Set(true)")
 W.update(0.3, 3)

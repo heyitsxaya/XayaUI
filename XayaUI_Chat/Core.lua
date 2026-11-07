@@ -427,7 +427,8 @@ function ns.Chat_OnDBReady()
     if ns.chatDB.privStartHidden then ns.chatDB.privOn = true end
     if not (s.enabled and ns.ReskinTabOn()) then return end       -- V14: saved off (or the Reskin tab off), nothing more is built, registered or run
     -- the privacy defaults are merged here, at the same moment as before (INFERENCE: in the game this runs while this file loads, before
-    -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14)
+    -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14). Since
+    -- Chat 0.6.31 (audit D38) Privacy.lua's defaults match that: no border, no label unless ticked.
     ns.Merge(CueRulesDB.chat, ns.CHAT_DEFAULTS)
     C.EnsureDefaults()
     C.StartPart("panel", s)                                       -- the refresh events below; the first refresh starts the rest
