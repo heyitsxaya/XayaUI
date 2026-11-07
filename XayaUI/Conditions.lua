@@ -561,6 +561,8 @@ local function CDMDetail(fr)
         tostring(fr.wasSetFromAura == true), tostring(fr:IsShown() and true or false),
         issecret(u) and "secret" or tostring(u))
 end
+local HIDDEN_PREFIX = "hidden by the game right now (auras are secret, as in combat): aura "
+ns.HIDDEN_AURA_PREFIX = HIDDEN_PREFIX
 local function BuffPresentRaw(id)
     if not id or id == 0 then return nil, "no buff" end
     -- A real aura table proves presence, in any context.
@@ -568,6 +570,19 @@ local function BuffPresentRaw(id)
     if api == "found" then
         if ns.LearnStacks then pcall(ns.LearnStacks, id, aura) end   -- what the stack count can be (#300; CountSupport below)
         return true, "aura API", MakeRef(aura)
+    end
+    -- The same buff under another spell ID, learned in this player's own game (AuraAlias.lua: a buff with this aura's name seen on
+    -- the player while readable, e.g. a cast ID whose buff carries its own ID). Readable only while the game shows auras.
+    if ns.AuraAliasesOf then
+        local al = ns.AuraAliasesOf(id)
+        if al then
+            for aid in pairs(al) do
+                local a2, aura2 = ReadAuraAPI(aid)
+                if a2 == "found" then
+                    return true, "aura " .. tostring(aid) .. " (same name as " .. tostring(id) .. ", learned in game)", MakeRef(aura2)
+                end
+            end
+        end
     end
     -- Cooldown Manager frame: authoritative when the buff is tracked there.
     local fr, vname = FindCDMFrame(id)
@@ -589,8 +604,11 @@ local function BuffPresentRaw(id)
             local okS, v = pcall(C_Secrets.ShouldSpellAuraBeSecret, id)
             if okS and not issecret(v) and type(v) == "boolean" then note = v and " (game: aura secret now)" or " (game: aura NOT secret now)" end
         end
-        return nil, "unknown: restricted + spell not readable + not in CDM" .. note
+        -- Said plainly (Xaya 2026-11-07, externals): the game withholds this aura in combat; XayaUI does not guess. ns.HiddenAuraNote adds,
+        -- on the status screens, whether the game's own aura container still draws the rule's display.
+        return nil, HIDDEN_PREFIX .. tostring(id) .. " cannot be read and is not in your Cooldown Manager" .. note
     end
+    if api == "secret" then return nil, HIDDEN_PREFIX .. tostring(id) .. " is secret and is not in your Cooldown Manager" end
     return nil, "unreadable (" .. api .. ")"
 end
 
@@ -992,6 +1010,33 @@ end
 function ns.BuffPresentAny(rule)
     if not rule then return nil, "no rule" end
     return ns.AuraPresence(rule.buffID, rule.buffAlt, rule.spellID)
+end
+
+-- Status screens only (built on demand, never per engine step): when the game hides a rule's aura (combat), say in plain words what
+-- the player will see. Blizzard's own aura container (Combat/AuraDisplay.lua) may still draw the display: it matches spell IDs in the
+-- game's secure code, which the game permits for buffs on the player (Blizzard_CustomAuraContainer.lua, includeSpellIDs). XayaUI's
+-- own reading stays unknown, so sounds, conditions and "missing" displays wait until auras are readable again (never a guess).
+-- Returns nil when the rule's aura is readable (or the rule has no aura).
+function ns.HiddenAuraNote(rule, info)
+    if type(rule) ~= "table" then return nil end
+    local p = rule.parentUid and ns.FindParentRule and ns.FindParentRule(rule) or rule
+    if not info then
+        local rt = ns.runtime and ns.runtime[p]
+        info = rt and rt.info
+    end
+    if not (info and info.present == nil and type(info.buffSource) == "string") then return nil end
+    if info.buffSource:sub(1, #HIDDEN_PREFIX) ~= HIDDEN_PREFIX then return nil end
+    local D = ns.AuraDisplay
+    local own, why
+    if D and D.OwnerOf then own, why = D.OwnerOf(p) end
+    if own == true then
+        return "the game hides this aura now; the game's own aura container still draws this display (" .. tostring(why)
+            .. "). Sounds, conditions and 'missing' wait until the game shows auras again."
+    elseif own == false then
+        return "the game hides this aura now, so XayaUI cannot show this display: the game's aura container does not draw it ("
+            .. tostring(why) .. ")."
+    end
+    return "the game hides this aura now, so XayaUI cannot show this display (no display drawn by the game's aura container)."
 end
 
 -- Advanced Debugging record (DebugRecord.lua): each aura's answer is written down when it changes (present / missing / unknown, and
