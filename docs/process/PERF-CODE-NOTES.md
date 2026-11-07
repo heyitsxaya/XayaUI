@@ -27,3 +27,6 @@ session's reading (INFERENCE) of what the M+ capture or the audit must cover. Sa
 | 11-07 00:47 | function audit | claude/function-audit a7d8ece | no | core 0.6.60 | Engine.lua: one more field read (info.talentOK) per rule per step in the On Initialization check; a loop over ns.runtime on the player's own spec change; OnEvent takes arg1 | combat path (per rule per step, tiny); re-measure the engine step after it lands |
 | 11-07 00:59 | function audit | claude/function-audit fefca6d | no | core 0.6.60 | mover view group name tab: two calls on mouse down; its OnUpdate (mover view open only) checks one more field | none in combat (mover view is out of combat) |
 | 11-07 01:07 | function audit | claude/function-audit f5dcf59 | no | Dev Assist 0.7.9 | QAWalks.lua walkthrough steps only | none |
+| 11-07 02:53 | UI bugs | claude/ui-bugs-focused f9e4c9a (to main via lander, b51d3b9) | landing | Options / QoL tips, Release Guard help text | notes 897d675 ... 104974e as above; 64f2c1e, f9e4c9a text only | none |
+| 11-07 03:10 | lander | main 6b25c9b | yes | Dev Assist 0.7.10 | QAWalks-chat.lua via the chatDebug service; QAWalk.lua | none in combat |
+| 11-07 03:10 | chat-issue review | claude/chat-qa-walks bc45de8 -> main 6b25c9b | yes | Dev Assist 0.7.10 | as its first note; reaches Chat through the chatDebug service | none |
