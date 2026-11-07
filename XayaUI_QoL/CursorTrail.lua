@@ -129,6 +129,9 @@ local lastX, lastY
 local midX, midY             -- smooth line: the midpoint the last curve piece ended on
 local lastDropX, lastDropY   -- the dot dropped most recently
 local ringN, nDots = 0, 0    -- dots are reused in ring order, so the next slot is always the oldest
+-- live dots and whether the head is shown (QoL 0.7.41, REQUEST-LOG A15 P-13): with nothing live the per-frame loop over the pool and the
+-- head's Hide are skipped, so a still cursor costs a position read per frame (Xaya, idle: QoL 1% "now")
+local liveDots, capOn = 0, false
 local capT = 0               -- smooth line: when the cursor last moved (the round head fades from then)
 local curSh = SHAPES.star
 local curPath = SHAPES.star[2]   -- the texture of the current shape (the typed path for "game")
@@ -164,6 +167,7 @@ end
 -- does not use. Every hide goes through Off, so the flags cannot drift from what is on screen. (QoL 0.7.13: with Xaya's smooth line
 -- the loop made about 1,600 texture calls a frame at speed, four per live dot; tests/cursor_trail_cost_run.py measures it.)
 local function Off(d)
+    if d.on then liveDots = liveDots - 1 end
     d.on = false
     if d.shown then d.tex:Hide(); d.shown = false end
     if d.line and d.lineShown then d.line:Hide(); d.lineShown = false end
@@ -184,7 +188,9 @@ end
 local function ClearAll()
     if not dots then return end
     for i = 1, nDots do Off(dots[i]) end
+    liveDots = 0
     if cap then cap:Hide() end
+    capOn = false
     ringN, lastX, lastY, lastDropX, lastDropY, midX, midY = 0, nil, nil, nil, nil, nil, nil
     capT = 0
 end
@@ -193,6 +199,7 @@ end
 local function Drop(x, y, limit, blend)
     ringN = ringN % limit + 1
     local d = dots[ringN] or NewDot(ringN)
+    if not d.on then liveDots = liveDots + 1 end
     d.on = true; d.born = GetTime(); d.x, d.y = x, y
     local t = d.tex
     t:ClearAllPoints()
@@ -260,7 +267,7 @@ local function OnUpdate()
 
     -- age, color, fade and place every live dot
     local rev = c.reverse
-    for i = 1, nDots do
+    for i = 1, (liveDots > 0) and nDots or 0 do
         local d = dots[i]
         if d.on then
             local f = (now - d.born) / life
@@ -306,7 +313,7 @@ local function OnUpdate()
     if cap then
         local f = ribbon and not hidden and capT > 0 and (now - capT) / life or 1
         if f >= 1 then
-            cap:Hide()
+            if capOn then cap:Hide(); capOn = false end
         else
             local r, g, b = Grad(stops, rev and (1 - f) or f)
             local sz = size * (1 - 0.45 * f)
@@ -316,7 +323,7 @@ local function OnUpdate()
             cap:SetSize(sz, sz)
             cap:ClearAllPoints()
             cap:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
-            cap:Show()
+            cap:Show(); capOn = true
         end
     end
 end
