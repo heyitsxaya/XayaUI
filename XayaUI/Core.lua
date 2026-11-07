@@ -83,10 +83,11 @@ function ns.PaintFlatButton(b, primary)
         local T = ns.Theme; if T and T.Style then pcall(T.Style, fs, nil) end
     end
 end
--- the flat buttons made so far (weak keys: a button that is gone is not held) -> primary; repainted when the theme resolves, so a
--- window built before the theme was applied at login (the console reopened after a /reload) takes the theme's colors at once
-local flatButtons, flatListening = setmetatable({}, { __mode = "k" }), false
-local function RepaintFlatButtons()
+-- the flat buttons made so far (weak keys: a button that is gone is not held) -> primary; Theme.lua T.Resolve calls
+-- ns.RepaintFlatButtons, so a window built before the theme was applied at login (the console reopened after a /reload) takes the
+-- theme's colors at once. A direct call, not a theme listener: with no flat button it is an empty loop, and the listener list is unchanged.
+local flatButtons = setmetatable({}, { __mode = "k" })
+function ns.RepaintFlatButtons()
     for b, primary in pairs(flatButtons) do
         if b.IsShown and b:IsShown() then pcall(ns.PaintFlatButton, b, primary) end   -- hidden ones repaint on their next show
     end
@@ -97,7 +98,6 @@ function ns.FlatButton(b, primary)
     apply(b)
     if b.HookScript then b:HookScript("OnShow", apply) end
     flatButtons[b] = primary and true or false
-    if not flatListening and ns.Theme and ns.Theme.OnResolve then flatListening = true; ns.Theme.OnResolve(RepaintFlatButtons) end
     return b
 end
 ns.rules = nil -- set at ADDON_LOADED to CueRulesDB.rules

@@ -31,7 +31,7 @@ if m:
       return b end
     ''')
     pre = core[:m.start()]
-    lst = re.search(r"^local flatButtons.*?^end\n", pre, re.S | re.M)
+    lst = re.search(r"^local flatButtons.*?^end\n", pre, re.S | re.M)   # the list and ns.RepaintFlatButtons
     L.execute((lst.group(0) if lst else "") + m.group(0))
     L.execute("B = NewButton(); ns.FlatButton(B)")
     check("styled at once by core's own look (no settings addon needed)", L.eval("#PAINTED == 1 and PAINTED[1].b == B"))

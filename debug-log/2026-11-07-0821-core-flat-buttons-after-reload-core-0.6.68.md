@@ -14,8 +14,9 @@ finding no service, so the buttons stayed red until the settings window was open
 ## Change
 - Core.lua: the look itself is core's own (ns.PaintFlatButton: Blizzard art hidden, theme "xui-button" / "xui-button-primary" box and
   text, white on hover, Blizzard's look back with /xuiskin off). ns.FlatButton paints at once, on every show, and keeps a weak list of
-  its buttons that one theme listener (ns.Theme.OnResolve, added on the first flat button) repaints when the theme resolves, so a window
-  built before the theme is applied at login takes the theme's colours at once.
+  its buttons; Theme.lua T.Resolve calls ns.RepaintFlatButtons, so a window built before the theme is applied at login takes the
+  theme's colours at once. (First built as a theme listener added on the first flat button: the full suite on c3eee1f caught it in
+  cursor_ui_themes_run, whose V14 checks count theme listeners and saw one appear mid-session. A direct call leaves the list unchanged.)
 - Skin.lua: ns.SkinPlainButton calls core's ns.PaintFlatButton (one copy of the look); the "buttonSkin" service is gone (Modules.lua
   services comment updated). Settings-window callers (ImportWindow, the multi-select bar) are unchanged.
 - Not changed, flagged (O-108: no questions): the close X keeps Blizzard's red X, as before the reload and as the settings window's and
