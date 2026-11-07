@@ -166,9 +166,10 @@ the QA steps above in game.
   sorted into filters by English words; listed spells use spell power for Intellect specs, attack power otherwise.
 
 Backlog in Xaya's priority order (work the first one not blocked; see the rule in section 2):
-- A. **Progress bars as a display kind** (rules, both engines, every texture type in groups, several bars in a dynamic group;
-  bars in engine-drawn dynamic groups are not drawn today, AuraDisplay.lua:247). BLOCKED on Xaya: a new bar kind or extend progress
-  textures?
+- A. **Progress bars as a display kind:** SHIPPED. The bar cues session (S8, session_014bN6tX7AoZQrGX246YSXjC, PR #417) built a new
+  "bar" cue kind (`XayaUI/BarCue.lua`), on main at 28380a9. The engine draws bar buttons in single slots and in dynamic-group members
+  (`Combat/AuraDisplay.lua`); cooldown / charges bars are drawn by XayaUI. Gaps are tracked in S8's log (for example the "progress drain"
+  on single displays only); S8 owns bars.
 - B. **Spell trigger options:** B1-B3 done (count GCD, remaining / charge comparisons, lockout). Open: exact spell ID (memo key and
   charge-watcher design first), track auto / charges / cooldown, track if not known. Not blocked.
 - C. **Load conditions:** done on rules (core 0.6.28) and groups (core 0.6.33). Raid role (MT / MA) dropped (Xaya, 2026-11-04:

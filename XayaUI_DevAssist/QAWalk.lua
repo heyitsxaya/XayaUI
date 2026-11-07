@@ -80,7 +80,7 @@ function QA.ExportCode(id)
     for i, s in ipairs(r.steps or {}) do
         lines[#lines + 1] = ("%d=%s:%s"):format(i, Clean(s.r, 1), Clean(s.note, 160))
         if s.k then lines[#lines + 1] = ("k%d=%s"):format(i, Clean(s.k, 20)) end   -- (the checklist item: steps shift when the list changes)
-        if s.a then lines[#lines + 1] = ("a%d=%s:%s"):format(i, Clean(s.a, 1), Clean(s.d, 200)) end   -- (what the addon saw: V21)
+        if s.a then lines[#lines + 1] = ("a%d=%s:%s"):format(i, Clean(s.a, 1), Clean(s.d, 200)) end   -- (what the addon saw: V22)
     end
     return "XUIQA1:" .. enc64(table.concat(lines, "\n"))
 end
@@ -242,7 +242,7 @@ function QA.RunCheck()
     local st = def and def.steps[run.i]
     if not (st and st.check) then W.check:SetText(""); return end
     local ok, good, note = pcall(st.check)
-    -- V21 (Xaya 2026-11-07: "... in game qa test walk through with pre-fill confirmation options or data capturing"): what the addon
+    -- V22 (Xaya 2026-11-07: "... in game qa test walk through with pre-fill confirmation options or data capturing"): what the addon
     -- saw is kept with the answer (its verdict and its note), so a result carries the data, not only Pass / Fail
     run.seen = run.seen or {}
     run.seen[run.i] = { a = (not ok) and "?" or (good and "Y" or "N"), d = Clean(ok and note or good, 200) }

@@ -209,7 +209,7 @@ QA.Register("dynamic-limit-align", { title = "Dynamic group: Limit and Align", q
 
 -- R31 / task #30 (Xaya: "rule sidebar continues to bug out and clip itself after any rule change is made"): not reproduced in the
 -- stand-in game on 0.6.57 (the sidebar keeps its width and every name keeps at least 80 px across renames and enable / disable). This
--- walkthrough measures it on her screen before and after a change; the numbers are saved with her answers (V21 data capture).
+-- walkthrough measures it on her screen before and after a change; the numbers are saved with her answers (V22 data capture).
 local function SidebarRoom()
     local ACD = LibStub and LibStub("AceConfigDialog-3.0", true)
     local root = ACD and ACD.OpenFrames and ACD.OpenFrames["CueRules"]

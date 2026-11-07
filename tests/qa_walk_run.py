@@ -119,9 +119,9 @@ for _, id in ipairs({ "display-points", "mover-session", "group-arrange", "group
   end
   check("walkthrough " .. id .. ": every step's Do it for me and check run, and it cleans up", okAll, why)
 end
--- V21 data capture: what the addon's check saw is saved with each answer and travels in the export code
+-- V22 data capture: what the addon's check saw is saved with each answer and travels in the export code
 local sres = QA.DB().results["sidebar-names"]
-check("V21: each answer keeps the addon's own verdict and data (sidebar width, tightest name)", sres and sres.steps[1].a ~= nil and type(sres.steps[1].d) == "string"
+check("V22: each answer keeps the addon's own verdict and data (sidebar width, tightest name)", sres and sres.steps[1].a ~= nil and type(sres.steps[1].d) == "string"
   and sres.steps[1].d:find("sidebar", 1, true) ~= nil, sres and sres.steps[1].d)
 local sback = QA.ImportCode(QA.ExportCode("sidebar-names"))
 check("  ...and the export code carries it", sback and sback.steps[1].a == sres.steps[1].a and sback.steps[1].d == sres.steps[1].d, sback and sback.steps[1].d)

@@ -1,9 +1,9 @@
-# R31 sidebar names after a rule change; V21 data capture (Dev Assist 0.7.6)
+# R31 sidebar names after a rule change; V22 data capture (Dev Assist 0.7.6)
 Logged 2026-11-07 06:40 UTC. Branch `claude/cool-ramanujan-ewx8e5`. Nothing here has run in the game.
 
 ## Her words
 - R31: "rule sidebar continues to bug out and clip itself after any rule change is made" [screenshot, not visible to this session].
-- V21 (relayed 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game qa test
+- V22 (relayed 2026-11-07; the coordinator numbers it V22, V21 being the issue labels): "make sure every feature or significant change to the codebase / bug report fixes have an in game qa test
   walk through with pre-fill confirmation options or data capturing".
 
 ## R31: what was tried
@@ -17,7 +17,7 @@ Logged 2026-11-07 06:40 UTC. Branch `claude/cool-ramanujan-ewx8e5`. Nothing here
 - Next: the walkthrough "Rules sidebar: names after a rule change" (QA B179d) measures her sidebar before and after a change and
   saves the numbers with her answers.
 
-## V21 data capture
+## V22 data capture
 - `QAWalk.lua`: each check's result is kept with the answer:
   - `a` = the addon's verdict (Y / N / ?);
   - `d` = what it saw (up to 200 characters, plain text).
