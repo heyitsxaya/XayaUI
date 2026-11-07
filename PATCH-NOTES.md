@@ -24,7 +24,11 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 
 ## 2026-11-07 — What Changed Overnight
 
-### XayaUI 0.6.72
+### XayaUI 0.6.73
+
+**Commands**
+- /xui help now lists "/xui data (Data Panels)" in place of "custom data panels and bars".
+  *Developers' notes: The hovers of the minimap button, the mover's group tabs and the chat's privacy, history and collapse buttons now share one helper; they read and look as before (QA B279). Not yet tested in game.*
 
 **Engine and Performance**
 - Rule and snapshot log lines are now built only while something reads them (the console window, the debug strip, or the record).
@@ -43,7 +47,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - The settings window now responds faster to clicks when there are many rules: only the rule on screen is built, and a click no longer rebuilds every rule's editor.
   *Developers' notes: Offline measurement only (313 rules, a click from 1,715 ms to about 100-200 ms of Lua). The window's narrowest width now follows only the dropdowns of rules you have opened (Q-PERF-8).*
 
-### Chat 0.6.38
+### Chat 0.6.39
 
 **Improved Chat (new)**
 - Added QoL > Improved Chat, with its own tick box. It holds what the addon adds to how chat behaves: the slow-scrolling bar, fade and hide, history and whisper tabs, timestamps and links, filters, sounds, privacy cover, Chat Data Panel and sidebar. It works with the Chat Panel off.
