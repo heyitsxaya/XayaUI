@@ -87,7 +87,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
   *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: no combat frames (action bars, unit frames, nameplates) tonight, no game-wide font change, and one look that follows the XayaUI theme. Walkthroughs in /xui dev qa (QA G4 to G8).*
 
 **Friend Colors (new)**
-- Added Blizzard Reskin > Friend Colors: online friends in the classic friends list show their name in their class colour. The new Social friends list is not coloured yet.
+- Added Blizzard Reskin > Friend Colors: online friends in the classic friends list show their name in their class color. The new Social friends list is not colored yet.
 
 ### Nameplates 0.2.1
 
