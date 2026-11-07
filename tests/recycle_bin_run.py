@@ -1,10 +1,15 @@
 # tests/recycle_bin_run.py: the Recycle Bin (#88, XayaUI/RecycleBin.lua) and the delete paths in XayaUI_Options/Options.lua.
 # Checks what ends up where: which rules and groups are live, which are in the bin, and what comes back on Restore.
 # Run from the repo root: python3 tests/recycle_bin_run.py   Needs: pip install lupa.
-import os, re, sys
+import glob, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lua51 import runtime as LuaRuntime   # Lua 5.1, like the game (tests/lua51.py)
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+
+def window_src():   # (P3 options split) the settings window's code: Options.lua and the rule editor's files (XayaUI_Options/RuleEditor/)
+    d = os.path.join(ROOT, "XayaUI_Options")
+    return "\n".join(open(p, encoding="utf-8").read() for p in [os.path.join(d, "Options.lua")] + sorted(glob.glob(os.path.join(d, "RuleEditor", "*.lua"))))
+
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(r'''
 NOW = 1793660000
@@ -187,7 +192,7 @@ if body.strip():
     print(body)
 
 # Wiring: every user delete path in Options.lua goes through the bin, and none removes rules or groups itself.
-src = open(os.path.join(ROOT, "XayaUI_Options/Options.lua"), encoding="utf-8").read()
+src = window_src()
 wiring_fail, wiring_n = 0, 0
 
 

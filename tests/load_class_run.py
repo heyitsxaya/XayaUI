@@ -80,7 +80,7 @@ lua("NS.folders[1].loadClasses = { PALADIN = true, DEATHKNIGHT = true }")
 check("group allowing Paladin: rule loads", lua("local r = R({ mode = 'all' }); r.folder = 'f1'; return (loads(r))"))
 
 # the lists: the block in Options.lua, run against a stand-in class API (13 classes, 3 specs each; the character is a Paladin)
-src = open(os.path.join(ROOT, "XayaUI_Options/Options.lua"), encoding="utf-8").read()
+src = open(os.path.join(ROOT, "XayaUI_Options/RuleEditor/Editor.lua"), encoding="utf-8").read()
 i = src.index("local SpecChoices   --"); j = src.index("-- Hero talent specializations of the character's class")
 L.globals().BLOCK = src[i:j]
 L.execute(r'''

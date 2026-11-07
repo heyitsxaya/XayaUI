@@ -5,9 +5,14 @@ unticked (default) the global cooldown is ignored, as before. SpellCooldownInfo.
 calls (the stand-in reports isActive = true while on the GCD, as the game does: the GCD starts the spell's cooldown display).
 The shared cooldown reading is cached per spell for every rule (ns.ReadCooldown): two rules on one spell must still answer apart.
 Run: python3 tests/count_gcd_run.py   (needs: pip install lupa)"""
-import os, sys, re
+import glob, os, sys, re
 from lupa.lua51 import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+
+def window_src():   # (P3 options split) the settings window's code: Options.lua and the rule editor's files (XayaUI_Options/RuleEditor/)
+    d = os.path.join(ROOT, "XayaUI_Options")
+    return "\n".join(open(p, encoding="utf-8").read() for p in [os.path.join(d, "Options.lua")] + sorted(glob.glob(os.path.join(d, "RuleEditor", "*.lua"))))
+
 bench = open(os.path.join(ROOT, "tests", "engine_bench.py")).read()
 a = bench.index("L.execute(r'''") + len("L.execute(r'''"); b = bench.index("''')", a)
 L = LuaRuntime(unpack_returned_tuples=True)
@@ -101,7 +106,7 @@ lua("SP[7001].gcd = false")
 check("trigger row, off the GCD, countGCD on: true", ev("(select(1, NS.CheckTrigger(ROWG)))") is True)
 # 5. the options: the built-in section and the trigger row both offer it
 trig = open(os.path.join(ROOT, "XayaUI", "Triggers.lua"), encoding="utf-8").read()
-opts = open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
+opts = window_src()
 check("the 'Cooldown (any spell)' row has a 'Count the global cooldown' tick box", 'key = "countGCD", kind = "toggle", label = "Count the global cooldown"' in trig)
 check("the built-in Cooldown section has a 'Count the global cooldown' tick box", 'countGCD = Tog(rule, "countGCD", "Count the global cooldown"' in opts)
 # ===== B2: "Seconds left" and "Charges" comparisons on the cooldown trigger itself =====
@@ -134,7 +139,7 @@ check("trigger row, 1 charge, 'Charges at least 2': false", ev("(select(1, NS.Ch
 lua("SP[7004].cur = 3; SP[7004].recharging = false")
 check("trigger row, 3 charges: true", ev("(select(1, NS.CheckTrigger(ROWT)))") is True)
 # the options: shown only with the Cooldown section, cleared by Remove, carried by 'copy section'
-opts = open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
+opts = window_src()
 check("the Cooldown section hides countGCD / Seconds left / Charges with the section",
       '"cdState", "countGCD", "countLOC", "exactSpell", "cdTimeOp", "cdChargeOp", "maxCharges"' in opts)
 check("Remove clears countGCD and the comparisons", "rule.countGCD, rule.countLOC, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil, nil" in opts)
@@ -152,9 +157,9 @@ lua("COMBAT = false")
 lua("""ROWL = { type = 'cooldown', spellID = 7005, state = 'ready', countLOC = true }; SP[7005].loc = true""")
 check("trigger row, locked out, countLOC on: false", ev("(select(1, NS.CheckTrigger(ROWL)))") is False)
 lua("SP[7005].loc = false")
-check("Remove / copy / hide cover countLOC", '"countGCD", "countLOC", "exactSpell", "cdTimeOp"' in open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
-      and "rule.countGCD, rule.countLOC, rule.cdTimeOp" in open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
-      and "dst.countLOC = src.cdState, src.countGCD, src.countLOC" in open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read())
+check("Remove / copy / hide cover countLOC", '"countGCD", "countLOC", "exactSpell", "cdTimeOp"' in window_src()
+      and "rule.countGCD, rule.countLOC, rule.cdTimeOp" in window_src()
+      and "dst.countLOC = src.cdState, src.countGCD, src.countLOC" in window_src())
 
 # ===== B4: "Exact spell ID" (core 0.6.35): a talent replacement on the bar is not followed =====
 # made-up 7010 (base) replaced on the bar by 7011; 7011 is on cooldown, 7010 is not (the game reads each ID on its own)
@@ -177,7 +182,7 @@ lua("SP[7011].cd = false")
 lua("SPELL(7012, 2); SPELL(7013, 1); OVR[7012] = 7013; CX = RULE(7012, 'hasCharge'); CX.exactSpell = true; NS.rules = { CX }; WATCH()")
 check("B4: an exact rule on a 2-charge spell counts that spell's charges (2), not the replacement's", ev("COUNT(CX)") == 2, ev("COUNT(CX)"))
 lua("OVR[7010] = nil; OVR[7012] = nil")
-optsB4 = open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
+optsB4 = window_src()
 check("B4: the tick box is in the Cooldown section, cleared by Remove, copied with the spell",
       'exactSpell = Tog(rule, "exactSpell", "Exact spell ID"' in optsB4 and "rule.exactSpell = nil" in optsB4 and "dst.exactSpell = src.exactSpell" in optsB4)
 print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)

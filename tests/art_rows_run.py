@@ -1,11 +1,11 @@
 """#336 (Options 0.6.13): art picker rows. The preview's width followed each picture's proportions (8 to 112 px), so the text started
 at a different place in every row. Every preview now sits in one fixed column, two icons wide, padded with a transparent image.
-Runs the real PickRow (XayaUI_Options/Options.lua) and the closed box's `small` (Skin.lua), and checks the spacer file.
+Runs the real PickRow (XayaUI_Options/RuleEditor/Editor.lua; Options.lua until P3) and the closed box's `small` (Skin.lua), and checks the spacer file.
 Run: python3 tests/art_rows_run.py   (needs: pip install lupa)"""
 import os, re, struct, sys
 from lupa.lua51 import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-opt = open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
+opt = open(os.path.join(ROOT, "XayaUI_Options", "RuleEditor", "Editor.lua"), encoding="utf-8").read()
 skin = open(os.path.join(ROOT, "XayaUI_Options", "Skin.lua"), encoding="utf-8").read()
 fails = []
 def check(name, ok, extra=""):
