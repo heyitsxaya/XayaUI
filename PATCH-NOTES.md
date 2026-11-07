@@ -37,6 +37,12 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
   - In combat, aura-time and stacks bars are drawn by the game's own aura buttons and keep moving while the game hides aura numbers. Cooldown bars are driven by the game from the cooldown's duration.
   *Developers' notes: Not yet tested in game (QA B200-B210). The combat drawing is built from Blizzard's 12.1.5 source and tested on a stand-in only.*
 
+**Engine**
+- Cooldown and aura cues now react one frame after the change instead of up to 58 ms later, and only the rules that read what changed are re-checked.
+  *Developers' notes: Measured on a stand-in only (worst delay 58 ms to 8.3 ms, about 12% fewer rule checks), not in game (QA B199, B211, B212).*
+- Reworked how closing the settings window ends the previews and unlocks it started (a structure fix to the earlier change).
+- Once you have played a spec, its Auto-populate list shows that spec's Cooldown Manager auras and debuffs.
+
 ### Options 0.6.59
 
 **Bar Cues (new)**

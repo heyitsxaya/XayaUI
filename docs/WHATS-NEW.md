@@ -397,9 +397,16 @@ From the bar cues session (PR #417). Not run in game yet (QA B200-B210 and F21, 
 - *Developers' notes:* the weakest part is the combat drawing (built from Blizzard's 12.1.5 source, tested on a stand-in only).
   Tooltip words are matched in English only.
 
+**Engine changes in the same push** (core 0.6.58; from engine session 2's draft, not seen in game; QA B199, B211, B212):
+- **Closing the settings window: structure fix** to the window-close handling in section 6.
+- **Auto-populate for another spec:** once you have played a spec, its Auto-populate list shows that spec's Cooldown Manager auras and
+  debuffs (the Cooldown Manager only answers for the spec you are in, so they are remembered per spec).
+- **Faster cooldown and aura cues:** they now react one frame after the change instead of up to 58 ms later, and the rules that did not
+  change are not re-checked. Measured in the test setup only (stand-in: worst delay 58 ms down to 8.3 ms, about 12% fewer rule
+  checks); not measured in game.
+
 **Also landed in that push, details not received yet:** QoL 0.7.35 and 0.7.36 (Stat Calculator proc and set lines, the Ability Scaling
-table), Chat 0.6.26 and 0.6.27 (whisper tabs per kind, a combine box), and engine changes in core 0.6.58 (each spec's Cooldown Manager
-auras and debuffs remembered for the Rule Creator, event routing, window-close handling).
+table) and Chat 0.6.26 and 0.6.27 (whisper tabs per kind, a combine box).
 
 *Not in this list yet:* Chat 0.6.25, Bonus 0.6.19, Reskin 0.6.6, and the Info pane / Patch Notes, chat changes and settings window look from
 other sessions. Their sessions send their own notes; they are added here only once they arrive and are checked against `main`.

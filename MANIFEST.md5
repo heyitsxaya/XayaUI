@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-2eae48b6ce0e3eda7490815c164cec2f  PATCH-NOTES.md
+f16a64cd1468ea7009d83b3a564c2e23  PATCH-NOTES.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
@@ -184,7 +184,7 @@ a7618f47b1dcc3424834ce73878ebfa4  XayaUI_Options/AutoPicker.lua
 d6254cdbc4c4e62855c3d5ec727d3373  XayaUI_Options/Drafts.lua
 659930de4dfc6f25822d9a3575c1f350  XayaUI_Options/ImportWindow.lua
 a4e3768100dcd843a512a4c769765a3d  XayaUI_Options/InfoPane.lua
-d7bb5957b36248223cccffb5d2549c39  XayaUI_Options/InfoPaneData.lua
+3ade4b856e9c686aa391312259482af9  XayaUI_Options/InfoPaneData.lua
 5f8b46e28f1aed575cec1896b7b15682  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.lua
 a4a2d67f0604952ce505c211b2d893be  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.xml
 6d69859bd0080855044f65962f77fe75  XayaUI_Options/Libs/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua
@@ -562,7 +562,7 @@ e85f7300e5f944da7cb819071632d600  docs/QA-CHECKLIST.md
 df0b0db8c4ec95be10546f6a19bef400  docs/ROADMAP.md
 83b0df21d9813f58d0a4290b48e16cd5  docs/SESSION-START-SUMMARY.md
 afcc38a3ac15d7ea9f3c2511eb714955  docs/USER-GUIDE.md
-7eaf1624d55ca88d49ad0d9d10df4bed  docs/WHATS-NEW.md
+060cfc01fc61901eabf437275d10a698  docs/WHATS-NEW.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
