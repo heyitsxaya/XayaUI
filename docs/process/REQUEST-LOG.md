@@ -465,6 +465,20 @@ Opened at her request through the "Repository branch cleanup" session (CLEAN-7, 
 | P-5 | Her answers (question prompt, 2026-11-07 ~00:15 UTC): stage 1: "Yes, as proposed (Recommended)"; transfer: "File + report tool (Recommended)"; record size: "10,000 lines (Recommended)"; probe / after: "Probe off; keep yours (Recommended)" | Recorded; building | this session, branch `claude/perf-test-m-plus` | Builds P-1 (audit doc + baseline on existing Perf / C_AddOnProfiler), P-4 (Accept sets 10,000 lines, probe stays off, Done turns off only what Accept turned on), `tools/perf_report.py` reading the uploaded SavedVariables file. |
 
 
+## A16. QA review popup session (opened 2026-11-07 by session_014bN6tSStpdmmCXviFAqPdQ; branch `qa-review-popup`)
+Her words relayed verbatim by the hub's brief.
+
+| # | Her words (verbatim; [screenshot]) | Status | Where / what | Notes |
+|---|---|---|---|---|
+| QR-1 | (2026-11-07 ~08:25 UTC) "I want a qa review checklist pushed and displayed as a popup for everything that needs review when I first load into the game and I want all outstanding questions to be nested within a qa question prompt flow so I know what you had to execute blindly and need feedback on." | BRANCH `qa-review-popup` (Dev Assist 0.7.30) | XayaUI_DevAssist/QAReview.lua (window + flow), QAQuestions.lua (the one question data file), QAWalks-review.lua (J30 walkthroughs); tests/qa_review_run.py | The choices made without asking her are themselves questions REVIEW-1..4 in the flow. Other sessions' questions are added to QAQuestions.lua as their exact wording arrives (none invented). |
+
+## A17. Externals engine session (was A16 on its branch; A16 is the QA review popup) (opened 2026-11-07 by session_014bN6tSStpdmmCXviFAqPdQ; branch `claude/externals-in-combat`, based on `claude/perf-load-first`)
+Her words relayed verbatim by the hub. O-108: no questions to her; conservative readings are flagged in the what's-new.
+
+| # | Her words (verbatim; [screenshot]) | Status | Where / what | Notes |
+|---|---|---|---|---|
+| X-1 | (relayed by the hub, 2026-11-07) "I turned EUI ones on because XUI isn't reliably performing" [context from the hub: externals and raid defensives; her "Externals (36)" group sits in the Disabled tab; EllesmereUI's "External, Raid + Misc" aura bar tracks 51052, 48707, 207400, 22812, 1044, 196718, 62618, 235450, 97462, 363534, 98008, 374227, 1283344] | BRANCH (claude/externals-in-combat; core 0.6.69, Options 0.6.66, Dev Assist 0.7.26; QA J26) | XayaUI/Conditions.lua (plain status for an aura the game hides; same-name IDs read), XayaUI/AuraAlias.lua (new: same-name buff IDs learned out of combat), Combat/AuraDisplay.lua (learned IDs in the container's include list; OwnerOf; the performance guard no longer switches drawing off when the cost is the game's own frames), Outcomes.lua / Options.lua (status lines), walkthrough J26 | The game hides these auras from addon code in combat (all 12 captured spells: aura secrecy "secret in some situations"); XayaUI's reading stays unknown there (never a guess). Blizzard's own aura container can still draw them (its code matches spell IDs on the player's buffs). Not built: telling WHICH external is up for sounds / conditions in combat (the game withholds it). Unverified in game. |
+
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
 a single instance. do this across all chats."

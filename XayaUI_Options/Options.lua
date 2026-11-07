@@ -971,7 +971,8 @@ local function StatusText(rule)
     return warn .. table.concat({
         (info.result and "|cff55ff55FIRING|r" or "idle") .. "   " .. rule.name,
         "cooldown " .. tf(info.cdOK) .. "  (" .. cdWhy .. ")",
-        "buff " .. tf(info.buffOK) .. "  present=" .. tostring(info.present) .. "  via " .. tostring(info.buffSource),
+        "buff " .. tf(info.buffOK) .. "  present=" .. tostring(info.present) .. "  via " .. tostring(info.buffSource)
+            .. ((ns.HiddenAuraNote and ns.HiddenAuraNote(rule, info)) and ("\n|cffffaa00" .. ns.HiddenAuraNote(rule, info) .. "|r") or ""),
         "talent " .. tf(info.talentOK) .. "  (" .. tostring(info.talentDetail) .. ")   load " .. tf(info.ctxOK)
             .. (info.ctxFail and ("  failed: " .. info.ctxFail) or ""),
         ("ctx: combat=%s group=%s raid=%s instance=%s(%s) M+=%s encounter=%s mounted=%s spec=%s role=%s"):format(
