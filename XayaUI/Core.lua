@@ -122,6 +122,9 @@ ns.logBuf = {}
 -- detailed record keeps that kind (ns.RecordOn). Otherwise the engine builds no such line (REQUEST-LOG A15 P-9; Xaya 2026-11-07, her
 -- console showed hundreds of these lines: "why do I have so much already in it?"; she was not asked, by her 06:00 rule: READING, the
 -- conservative one: nothing is lost that was being read). /xui debug status still prints every rule's state on demand.
+-- (the settings window's debug strip: XayaUI_Options replaces this when it loads; core's default says no strip is shown, so core never
+-- reaches into the other addon by name: the harness boundary rule)
+function ns.LogTrayOn() return false end
 function ns.LogWanted(kind)
     if ns.ConsoleWindowOn and ns.ConsoleWindowOn() then return true end
     if ns.LogTrayOn and ns.LogTrayOn() then return true end
