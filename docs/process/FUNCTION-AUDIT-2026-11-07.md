@@ -76,11 +76,11 @@ Session 014bN6tSfFULX4BSXzmZ1yCx, branch `claude/function-audit` (from `origin/m
 ## Unclear (questions for Xaya)
 | # | Feature | Question |
 |---|---|---|
-| Q1 | Notepad, Spell button with text highlighted | Built: the highlighted text goes inside the braces ({spell:Fireball}). Alternative: keep the text and insert {spell:} after it. |
-| Q2 | Theme Save with an existing name | Ask before replacing, or refuse the name? |
-| Q3 | Theme base picker | Picking another base clears your custom colours (deliberate in the code, not said anywhere). Ask "Discard your custom colours?" first, or keep them until Clear? |
+| Q1 | Notepad, Spell button | ANSWERED (REQUEST-LOG FA-9, FA-10): highlighted text becomes the spell; the formatted view shows the game's spell link, "[Name] in link colour", no icon. Built. |
+| Q2 | Theme Save / Import with an existing name | ANSWERED (FA-5, FA-8): a prompt with "Replace", "Save As Copy" (first free "Name (1)", "Name (2)", ...), "Cancel"; Import checks before touching the current theme. To build. |
+| Q3 | Theme base picker | ANSWERED (FA-4): "Ask first": with custom colours, picking another theme asks before discarding them. To build. |
 | Q4 | Minimap right-click / Settings row | Open only (as the tooltip and guide say), or toggle (as the code does; then the texts change)? |
-| Q5 | Shopping List defaults | Per character (like the history) or account-wide (as now; then the texts say so)? |
+| Q5 | Shopping List defaults | ANSWERED (FA-7): per character. To build. |
 | Q7 | Chat docs | USER-GUIDE says "Hide repeated messages" also hides repeated whispers; the code and the option text skip whispers. Correct the guide (recommended), or include whispers? |
 | Q6 | Theme "Reset everything" | It sets Class colors, which is what a new install starts with (Theme.lua 87, her 2026-11-01 choice), but its description says "Back to the XUI default theme". Reword the description to "Back to Class colors ..." (recommended), or reset to the purple "default"? |
 | Q8 | Cue / condition / trigger red X | Removes at once, no confirmation, not in the Recycle Bin (OutcomesEditor.lua 364-374, TriggersEditor.lua 357-369); only Undo / Drafts bring it back. Ask first, send to the Recycle Bin, or keep as is? |

@@ -6,7 +6,7 @@
 --     Toolbar history (clock) button (or the options page) opens the Restore list: earlier versions of this note + deleted notes.
 --   * List: the toolbar's list button shows every note in the box (click one to open it).
 --   * Formatting (toolbar underlined-A button, off by default): a format bar (heading, bullet, checkbox, colors, spell icon) and a formatted view.
---     Markup is plain text: '# heading', '- bullet', '[ ] / [x] checkbox', |cffRRGGBBtext|r colors, {spell:ID} icon + name.
+--     Markup is plain text: '# heading', '- bullet', '[ ] / [x] checkbox', |cffRRGGBBtext|r colors, {spell:ID} -> the spell's link ([Name] in the link colour).
 --   * Toolbar: at the top, bottom, left, or right of the box; always visible, or only while the mouse is over the box.
 --   * On / off (Bonus 0.6.14; Xaya 2026-11-06: "It should only enable or disable notepad functionality in its entirety"): the tick box on
 --     its row in Bonus Features > Utilities. Off: nothing of the Notepad is built or runs, its sharing included (V14).
@@ -161,10 +161,16 @@ local function SpellInfo(arg)
     return id, name, icon
 end
 ns.Notepad_SpellInfo = SpellInfo
+-- FA-9 (Bonus 0.6.22; Xaya 2026-11-07: "[Name] in link colour", like a spell shift-clicked into chat): the game's own spell link
+-- (C_Spell.GetSpellLink, the same text a shift-click puts in chat: [Name] in the link colour). No icon. Without a link: plain [Name].
 local function SpellToken(arg)
-    local id, name, icon = SpellInfo(arg)
+    local id, name = SpellInfo(arg)
     if not id then return nil end
-    return ("|T%s:14|t %s"):format(tostring(icon or 134400), name)
+    if C_Spell and C_Spell.GetSpellLink then
+        local ok, link = pcall(C_Spell.GetSpellLink, id)
+        if ok and type(link) == "string" and link ~= "" then return link end
+    end
+    return "[" .. name .. "]"
 end
 local function RenderLine(line)
     line = line:gsub("{spell:([^}]*)}", function(a) return SpellToken(a) or ("|cff888888{spell:" .. a .. "}|r") end)
@@ -800,7 +806,7 @@ local FMT = {
     { w = 24, label = "|cffffd100Y|r", tip = "Yellow text: colours the highlighted text, or type between the color code and the closing ||r.", act = function() Wrap("|cffffd100", "|r") end },
     { w = 24, label = "|cff55dd55G|r", tip = "Green text: colours the highlighted text, or type between the color code and the closing ||r.", act = function() Wrap("|cff55dd55", "|r") end },
     { w = 24, label = "|cff66b3ffB|r", tip = "Blue text: colours the highlighted text, or type between the color code and the closing ||r.", act = function() Wrap("|cff66b3ff", "|r") end },
-    { w = 34, label = "Spell", tip = "Inserts {spell:} - type a spell ID, a spell name, or paste a spell link between the braces; the formatted view shows its icon and name.", act = function() Wrap("{spell:", "}") end },
+    { w = 34, label = "Spell", tip = "Inserts {spell:} - type a spell ID, a spell name, or paste a spell link between the braces; the formatted view shows it as a spell link, [Name] in the link colour. With text highlighted, that text becomes the spell.", act = function() Wrap("{spell:", "}") end },
 }
 
 BuildFormatBar = function(f)
