@@ -5331,6 +5331,8 @@ ns.On("LOG", function(line)
     tray.log:AddMessage(line)
     Tree.trayDrawn = ns.logSerial or 0
 end)
+-- (core Core.lua ns.LogWanted: rule and snapshot lines are built only while the strip, the console window or the record can take them)
+function ns.LogTrayOn() return (tray and tray:IsShown()) and true or false end
 function Tree.TrayCatchUp()
     local now, buf = ns.logSerial or 0, ns.logBuf or {}
     local n = #buf

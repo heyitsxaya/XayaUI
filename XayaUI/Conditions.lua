@@ -1929,6 +1929,8 @@ end
 local snapLast = setmetatable({}, { __mode = "k" })
 function ns.LogStatusSnapshot(tag)
     if not ns.rules or #ns.rules == 0 then return end
+    -- built only while someone can read it (Core.lua ns.LogWanted; A15 P-9): no context read, no per-rule key strings otherwise
+    if not (ns.LogWanted and ns.LogWanted("snapshot")) then return end
     local ctx = ns.ReadContext()
     local changesOnly = tag == "combat tick"
     ns.LogKind("snapshot", "-- status snapshot (%s) -- spec=%s role=%s combat=%s%s", tostring(tag or "?"),

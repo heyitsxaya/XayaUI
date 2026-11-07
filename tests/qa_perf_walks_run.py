@@ -1,5 +1,5 @@
 """V22 walkthroughs for the performance test (XayaUI_DevAssist/QAWalks-perf.lua; REQUEST-LOG A15, standing rule V22): J17 (two
-walkthroughs: the prompt, then after Confirm's reload) and J18 (what the record holds; the upload question), J19 (settings window memory: four readings). Loads the real QAWalk.lua
+walkthroughs: the prompt, then after Confirm's reload) and J18 (what the record holds; the upload question), J19 (settings window memory: four readings), J20 (rule log only while read). Loads the real QAWalk.lua
 framework, DevRecord.lua and RunRecord.lua with the stand-ins of tests/run_record_run.py, plays a run and asks each step's check what
 it would pre-fill: Pass when the step was done, Fail when it was not (each check is tried both ways), and the counts in J18's note.
 J17 parts go with RunRecord.lua (one push); J18 stays.
@@ -165,6 +165,21 @@ r = step(M, 5); check("J19.5 summary: leftover garbage 250.0 MB (300 - 50), kept
 check("J19 readings saved for upload (XayaUIDevAssistDB.qa.optionsMem)", E("XayaUIDevAssistDB.qa.optionsMem.d.kb == 51200 and XayaUIDevAssistDB.qa.optionsMem.b.kb == 307200 and XayaUIDevAssistDB.qa.optionsMem.c.kb == 307200"))
 L.execute("OPT_LOADED = false")
 r = step(M, 2); check("J19.2 with the settings addon not loaded: Fail (open it first)", r[0] == "F" and "open the settings window first" in r[1])
+
+# J20: rule log only while read (core ns.LogWanted). Readers: console window (stand-in), Dev Assist's record (real DevRecord.lua)
+G = "perf-log-gate"
+L.execute("UI().advancedDebug = true; UI().recordOff = nil; UI().recCats = nil; NS.ConsoleWindowOn = function() return CONSOLE_OPEN == true end")
+r = step(G, 1); check("J20.1 with Dev Assist's record keeping snapshots and rule lines (its defaults): Fail naming them", r[0] == "F" and "Rule snapshots in combat" in r[1] and "Rules firing and clearing" in r[1])
+L.execute("NS.SetRecCat('snapshots', false); NS.SetRecCat('rules', false)")
+r = step(G, 1); check("J20.1 with both unticked and nothing open: Pass", r[0] == "P")
+r = step(G, 2); check("J20.2 before Do it for me: Fail", r[0] == "F" and "Do it for me" in r[1])
+L.execute("SETUP('perf-log-gate', 2); NS.Print('a message'); if NS.LogWanted('snapshot') then NS.LogKind('snapshot', '-- status snapshot (combat start) --') end")
+r = step(G, 2); check("J20.2 a fight with no reader: Pass, counts the lines (no snapshot line)", r[0] == "P" and "0 snapshot line(s), 0 FIRED" in r[1])
+L.execute("SETUP('perf-log-gate', 2); NS.LogKind('snapshot', '-- status snapshot (combat start) --'); NS.LogKind('rule', 'FIRED x')")
+r = step(G, 2); check("J20.2 if a snapshot line still reaches the log: Fail with the counts", r[0] == "F" and "1 snapshot line(s), 1 FIRED" in r[1])
+L.execute("CONSOLE_OPEN = true; SETUP('perf-log-gate', 3); if NS.LogWanted('snapshot') then NS.LogKind('snapshot', '-- status snapshot (combat end) --') end")
+r = step(G, 3); check("J20.3 console open: the snapshot is back, Pass", r[0] == "P" and "1 snapshot line(s)" in r[1])
+L.execute("CONSOLE_OPEN = false")
 
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)

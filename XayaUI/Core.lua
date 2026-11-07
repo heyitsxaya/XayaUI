@@ -106,6 +106,17 @@ end
 
 -- In-game event log (shown in the settings window's debug console tray).
 ns.logBuf = {}
+-- ns.LogWanted(kind): is a "rule" (fired / repeat / cleared) or "snapshot" line wanted now? Only while something shows or keeps it:
+-- the console window is open, the settings window's debug strip is shown (XayaUI_Options sets ns.LogTrayOn), or XayaUI Dev Assist's
+-- detailed record keeps that kind (ns.RecordOn). Otherwise the engine builds no such line (REQUEST-LOG A15 P-9; Xaya 2026-11-07, her
+-- console showed hundreds of these lines: "why do I have so much already in it?"; she was not asked, by her 06:00 rule: READING, the
+-- conservative one: nothing is lost that was being read). /xui debug status still prints every rule's state on demand.
+function ns.LogWanted(kind)
+    if ns.ConsoleWindowOn and ns.ConsoleWindowOn() then return true end
+    if ns.LogTrayOn and ns.LogTrayOn() then return true end
+    if ns.RecordOn and ns.RecordOn(kind) then return true end
+    return false
+end
 -- ns.LogKind(kind, fmt, ...): the same, with the debug record's category for the line ("rule", "snapshot" ...; DebugRecord.lua)
 local logKind = "log"
 function ns.LogKind(kind, fmt, ...)

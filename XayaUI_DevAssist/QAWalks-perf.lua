@@ -1,9 +1,10 @@
 -------------------------------------------------------------------------------
--- QAWalks-perf.lua (XayaUI_DevAssist 0.7.13): in-game QA walkthroughs for the performance test, stage 1 (REQUEST-LOG A15 P-1, P-4, P-5).
+-- QAWalks-perf.lua (XayaUI_DevAssist 0.7.14): in-game QA walkthroughs for the performance test, stage 1 (REQUEST-LOG A15 P-1, P-4, P-5).
 -- Standing rule V22 (Xaya, 2026-11-07, her words): "As a standing rule, make sure every feature or significant change to the codebase /
 -- bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing".
 --   J17 "Record this run?" (RunRecord.lua), in two walkthroughs (the second runs after Confirm's reload): prefill = true. Each check reads the prompt window, the run state and the settings, and offers
 --       its verdict on Accept; nothing is recorded without her click. ONE-PUSH: remove both J17 walkthroughs with RunRecord.lua.
+--   J20 rule log only while read (core 0.6.63 ns.LogWanted): counts the lines that reached the log, before and after the console opens.
 --   J19 settings window memory (below): four readings of XayaUI_Options memory, data capture.
 --   J18 what the run recorded (DevRecord.lua meter lines; tools/perf_report.py): prefill = true; the check counts what is in the saved
 --       record (fights, boss lines, meter lines, dropped lines) and writes the counts into the note (data capture). The upload step is a
@@ -202,5 +203,57 @@ QA.Register("perf-options-memory", { title = "Performance: settings window memor
             return (b.kb and c.kb and d.kb) and true or false,
                 ("Options: used %s, closed 30 s %s, after cleanup %s; leftover garbage %s (3 - 4), kept %s (4). All Lua: %s -> %s -> %s -> %s")
                     :format(MB(b.kb), MB(c.kb), MB(d.kb), MB(garbage), MB(d.kb), MB(a.allKB), MB(b.allKB), MB(c.allKB), MB(d.allKB))
+        end },
+} })
+
+-------------------------------------------------------------------------------
+-- J20: rule and snapshot log lines only while read (core 0.6.63 ns.LogWanted; REQUEST-LOG A15 P-9). Data capture: each check counts
+-- the "status snapshot" and FIRED / cleared lines that reached the log since its mark (ns.logSerial counts every line ns.logBuf takes).
+-------------------------------------------------------------------------------
+local function LogNS() return NS() or {} end
+local function Since(mark)
+    local n = LogNS()
+    local buf, now = n.logBuf or {}, n.logSerial or 0
+    local new = math.min(now - (mark or now), #buf)
+    local snap, rule = 0, 0
+    for i = #buf - new + 1, #buf do
+        local l = buf[i] or ""
+        if l:find("status snapshot", 1, true) then snap = snap + 1 end
+        if l:find("FIRED", 1, true) or l:find("cleared ", 1, true) or l:find("repeat  ", 1, true) then rule = rule + 1 end
+    end
+    return snap, rule, new
+end
+local function Readers()
+    local n, on = LogNS(), {}
+    if n.ConsoleWindowOn and n.ConsoleWindowOn() then on[#on + 1] = "the console window" end
+    if n.LogTrayOn and n.LogTrayOn() then on[#on + 1] = "the settings window's debug strip" end
+    if n.RecordOn and n.RecordOn("snapshot") then on[#on + 1] = "Dev Assist's record (Rule snapshots in combat)" end
+    if n.RecordOn and n.RecordOn("rule") then on[#on + 1] = "Dev Assist's record (Rules firing and clearing)" end
+    return on
+end
+local logMark
+QA.Register("perf-log-gate", { title = "Performance: rule log only while it is read (J20)", area = "Dev Assist", qa = "J20", order = 303, prefill = true, steps = {
+    { text = "Close the console window and XayaUI's settings window. In Settings > Debugging (Dev Assist settings), untick |cffffd100Rule snapshots in combat|r and |cffffd100Rules firing and clearing|r for this check (tick them again after). Press |cffffd100Check again|r.\n\n|cffffd100Expect:|r nothing reads the rule log now.",
+        check = function()
+            local n = LogNS(); if not n.LogWanted then return false, "this XayaUI is older than core 0.6.63" end
+            local on = Readers()
+            if #on > 0 then return false, "still read by: " .. table.concat(on, ", ") end
+            return true, "nothing reads the rule log: rule and snapshot lines are not built"
+        end },
+    { text = "Press |cffffd100Do it for me|r (marks the log), then fight a training dummy or a mob for about 15 seconds and leave combat. Press |cffffd100Check again|r.\n\n|cffffd100Expect:|r no snapshot and no FIRED / cleared lines were added.",
+        setup = function() logMark = LogNS().logSerial or 0 end,
+        check = function()
+            if not logMark then return false, "press Do it for me first" end
+            local snap, rule, new = Since(logMark)
+            local note = ("since the mark: %d log line(s), %d snapshot line(s), %d FIRED / cleared line(s)"):format(new, snap, rule)
+            return (snap == 0 and rule == 0), note
+        end },
+    { text = "Open the console window (|cff88ccff/xui console|r), press |cffffd100Do it for me|r here, fight again for about 15 seconds and leave combat. Press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the snapshot lines are back (combat start and end), and FIRED / cleared lines if a rule fired.",
+        setup = function() logMark = LogNS().logSerial or 0 end,
+        check = function()
+            if not logMark then return false, "press Do it for me first" end
+            local snap, rule, new = Since(logMark)
+            local note = ("console open, since the mark: %d log line(s), %d snapshot line(s), %d FIRED / cleared line(s)"):format(new, snap, rule)
+            return snap > 0, note
         end },
 } })
