@@ -101,7 +101,11 @@ checks the tree after rename / delete / move, and a walkthrough. Sent to the QA 
 
 externals 318c8b2 (J26, based on perf-landing-2, PR #444); chat round (Chat 0.6.33-0.6.36, Sidebar.lua, PR #443, #449);
 nameplates 2b1bbb6; UI bugs 5ce2d2b (RepaintFlatButtons); function audit fc702c2; S3 5c093e2; reskin 6225059;
-settings-restructure 8558687; generate-buttons 90c7c043. The successor reads each commit and adds a row with its test impact.
+settings-restructure 8558687; generate-buttons 90c7c043.
+Received at handoff (09:05-09:19 UTC): function audit claude/function-audit-land 44ad9a67 (QoL CharacterToolkit events only
+while "Show the panel" is on; Bonus Tooltips aura lookup only while "Aura IDs" is on; ShoppingList reads AH results only for its
+own query; *Debug service tables at load); lander: main = bfc79ef (QoL 0.7.40 Stat Calculator rows, Options 0.6.64 credits page,
+Dev Assist 0.7.13 QAWalks-statcalc.lua). The lander will merge 11ad2da onto bfc79ef and relabel versions. The successor reads each commit and adds a row with its test impact.
 
 ## 8. Commands
 
