@@ -71,10 +71,12 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 - **Wording to Xaya:** truth first; flag inferences; no unearned compliments; state what is not verified in game.
 - **Roadmap feature branches (Xaya, 2026-11-05, her words):** "Rough scaffolding and proposed code structure (outline only) in a
   dedicated “roadmap features: ______” brand per feature"; then "Branch, not brand". Applied as:
-  - one branch per roadmap feature, `roadmap-features/<feature>` (git refuses a colon or spaces in a branch name);
-  - the scaffold sits under `roadmap-features/<feature>/` (never a top-level `XayaUI*` folder, which the tools treat as shipping);
-  - comments only, no code that runs; a draft PR that is not for merging.
-  First one: `roadmap-features/games` (RM-GAMES).
+  - **one branch for all roadmap features**, `roadmap-features/combined` (Xaya, 2026-11-06, her words: "Combine them into one
+    roadmap on one branch — the other branches get marked as stale if no code is on them"; draft PR #429). Before that it was one
+    branch per feature (games, rppm, layout-profiles); those three are stale (PRs #397, #398, #421 closed);
+  - each scaffold sits in its own folder `roadmap-features/<feature>/` on that branch (never a top-level `XayaUI*` folder, which the
+    tools treat as shipping); `roadmap-features/README.md` indexes them; a new feature adds a folder, not a branch;
+  - comments only, no code that runs; the branch is not for merging.
   Its detail is read only when that feature's work starts; it is not repeated here.
 
 ## 3. Addons (versions from the .toc files on `main` a859028, 2026-11-05 16:45 UTC)
@@ -166,9 +168,9 @@ the QA steps above in game.
   sorted into filters by English words; listed spells use spell power for Intellect specs, attack power otherwise.
 
 Backlog in Xaya's priority order (work the first one not blocked; see the rule in section 2):
-- A. **Progress bars as a display kind** (rules, both engines, every texture type in groups, several bars in a dynamic group;
-  bars in engine-drawn dynamic groups are not drawn today, AuraDisplay.lua:247). BLOCKED on Xaya: a new bar kind or extend progress
-  textures?
+- A. **Progress bars as a display kind**: BUILT 2026-11-06 by session 014bN6tX7AoZQrGX246YSXjC on `claude/dreamy-edison-pvb3i1`
+  (core 0.6.58 / Options 0.6.59, `XayaUI/BarCue.lua`, QA B200-B207, debug-log 2026-11-06-0615). Her answers: REQUEST-LOG S8-1 to S8-4.
+  Waits on: landing on `main` with the next bundle, her CONFIRM items (S8-5), and in-game checks (engine bars, dispel colouring).
 - B. **Spell trigger options:** B1-B3 done (count GCD, remaining / charge comparisons, lockout). Open: exact spell ID (memo key and
   charge-watcher design first), track auto / charges / cooldown, track if not known. Not blocked.
 - C. **Load conditions:** done on rules (core 0.6.28) and groups (core 0.6.33). Raid role (MT / MA) dropped (Xaya, 2026-11-04:

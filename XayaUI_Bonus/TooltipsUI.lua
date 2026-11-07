@@ -21,7 +21,7 @@ function ns.BuildTooltipsTab(Notify)
                  get = get(path), set = set(path), disabled = disabled }
     end
     -- (V14, Bonus 0.6.12) said under each of the four main switches
-    local OFF = " With Enhanced Tooltips off (the tick box on its row on the left), or IDs, Item level, Enemy forces and Formulas all off, nothing of the tooltip features is installed or runs. Once one was on, its tooltip hooks stay until you /reload but do nothing."
+    local OFF = " With Enhanced Tooltips off (the tick box on its row on the left), or IDs, Item level, Enemy forces, Formulas and Type colours all off, nothing of the tooltip features is installed or runs. Once one was on, its tooltip hooks stay until you /reload but do nothing."
     local idsOff = function() return not TT.DB().ids.enabled end
     local ids = {
         enabled = toggle(1, "Show IDs on tooltips", "Master switch for the ID lines below." .. OFF, { "ids", "enabled" }),
@@ -37,7 +37,7 @@ function ns.BuildTooltipsTab(Notify)
     return {
         type = "group", name = "Enhanced Tooltips", order = 2, childGroups = "tab",
         xuiSwitch = { type = "toggle", name = "Enhanced Tooltips",
-            desc = "Turns the enhanced tooltips on or off as a whole (IDs, Item level, Enemy forces, Formulas). Off: nothing of them is installed or runs, whatever their own switches say; their settings are kept. Once it was on, its tooltip hooks stay until you /reload but do nothing.",
+            desc = "Turns the enhanced tooltips on or off as a whole (IDs, Item level, Enemy forces, Formulas, Type colours). Off: nothing of them is installed or runs, whatever their own switches say; their settings are kept. Once it was on, its tooltip hooks stay until you /reload but do nothing.",
             get = get({ "enabled" }), set = set({ "enabled" }) },
         args = {
             ids = { type = "group", name = "IDs", order = 1, args = ids },
@@ -64,6 +64,10 @@ function ns.BuildTooltipsTab(Notify)
                 damage = toggle(3, "Damage ratio", "Each damage number in the spell's text divided by your attack power (strength and agility characters) or spell power (intellect). The ratio already holds every bonus in that number (versatility, talents, auras), so it is not Blizzard's own coefficient. English game text only.", { "formulas", "damage" },
                     function() return not TT.DB().formulas.enabled end),
                 note = { type = "description", order = 9, name = "Built only from numbers the game reports while you play. Blizzard's own spell coefficients are not readable by addons." },
+            } },
+            -- (Bonus 0.6.20; Xaya 2026-11-06, REQUEST-LOG S8-10) damage school and dispel type words coloured
+            typeColors = { type = "group", name = "Type colours", order = 5, args = {
+                enabled = toggle(1, "Colour damage schools and dispel types", "On spell and aura tooltips: \"fire damage\" becomes \"Fire Damage\" in the game's Fire colour, a dispel type in brackets after it (\"(Magic)\") or at an aura tooltip's top right in its dispel colour. The game's own colours. English game text only." .. OFF, { "typeColors", "enabled" }),
             } },
         },
     }
