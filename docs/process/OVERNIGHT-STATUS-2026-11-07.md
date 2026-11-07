@@ -12,6 +12,7 @@ First snapshot ~08:35 UTC by the 11-06 hub; kept current by the overnight hub se
 - 08:40 UTC: archived Additional Concepts, Chat follow-ups, Roadmap Features, Chat (each confirmed all on main; hashes checked as ancestors of origin/main; questions in flow). Feature summary all on main 7405738 (kept; writes "What changed overnight" after the last landing, ~14:30+). Externals F1-F6 done, 318c8b2 #444, full suite running. Branch cleanup list at adoring-goldberg-19dcfq@407f308 (docs/process/BRANCHES-2026-11-07.md). Lander landing 1 = bfc79ef (S1 Stat Calculator + info_pane cap), landing 2 = e83b488 (#439, bar cues walk, docs).
 
 - 08:45-09:20 UTC: handoffs received from bar cues, D8, Character Pane, UI bugs, New Features + Reskins, chat issue review, perf; nameplates and function audit write theirs after their landing hash. Successors needed: UI bugs (UI-47 step 3, UI-51/52 after perf baseline) and perf (editor-only click build < 100 ms, O-135), each started after the old session's last hashes reach the lander. No successor (nothing buildable without her answers): bar cues, D8, Character Pane, New Features + Reskins, chat issue review. R24/R62 (older than 16 h) sent to the flow as S3-Q13/Q14, not built. QA id range B260-B299 given to function audit. Top tabs took the "Blizzard UI Reskin" -> "Blizzard Reskin" string rename (Chat 0.6.37, QoL 0.7.45, Bonus 0.6.27, Reskin 0.6.30, Options 0.6.72, Dev Assist 0.7.33). LFG-Q1 (#429 combined vs split) registered by the hub. QA flow: 127 questions at 08:45. Perf known gap: settings click ~0.5 s (target < 100 ms), Q-PERF-5.
+- 09:20-10:05 UTC: Character Pane archived (e0a408c on main bfc79ef verified). DANGER caught: branch cleanup listed determined-cerf-981pn8 as contained/deletable while reskin elements had pushed unlanded commits (f09cf2b); corrected doc adoring-goldberg-19dcfq@220c6f1 (PR #447) now lists 23 deletions, each as `git push origin --force-with-lease=refs/heads/<b>:<sha> :refs/heads/<b>` so a moved branch is refused (dry-run tested). Uncorrected 407f308 is in landing 2; the fix lands in landing 3. Reskin questions were in the flow all along (RSK-Q1..Q10). QA flow: 180 questions (PR #448 9212d9a), LFG-Q1 included. Function audit: 55/58 rows built, D29/D30/D33 wait on answers; two landings function-audit-land d79f4b44 and -land-2 c88048d9 (handoff inside); no successor. Top tabs: 1906ad6 withdrawn (2 real fails); candidate now settings-restructure ddd2917 (UI-23..27 + rename); lands AFTER the UI bugs chain (both edit Skin.lua CompactRulesTabs / SkinPlainButton). 10:05 check-in: main still bfc79ef, landing 2 suite running; nudged nameplates (suite due 09:10), rule generation (walkthrough due 09:10), D8 (suite result).
 
 ## O-152 migration
 | Old session | Scope | Handoff file | Successor | Archived |
@@ -20,10 +21,10 @@ First snapshot ~08:35 UTC by the 11-06 hub; kept current by the overnight hub se
 | session_014bN6tTxYo6enpkMGsVkMqm | Perf | handoffs/perf-test.md on perf-handoff@ce583ac | to start after landing-2 fix + 11ad2da results reach the lander | no |
 | session_014bN6tSjceDcH6FdJCeukZG | Chat issue review | handoffs/chat-issue-review.md on chatrev-landed@27d0b15 (in landing 2) | none needed | after landing 2 |
 | session_014bN6tTZroPi49dAYwBbeGp | D8 raid rules | handoffs/d8-raid-rules.md on d8-raid-rules-ready@248de57 (held code 91e8701, PR #446 HELD); nothing to land | none: all held for D8-Q1 (file is the restart point) | after its full-suite result |
-| session_014bN6tSfFULX4BSXzmZ1yCx | Function audit | after its landing hash (agents finishing remaining rows) | only if rows remain | no |
+| session_014bN6tSfFULX4BSXzmZ1yCx | Function audit | handoffs/function-audit.md on function-audit-land-2@c88048d9 | none (3 rows wait on answers) | after both landings |
 | session_014bN6tUt2Da7LiGNYKgtM7R | Nameplates | after 2b1bbb6 suite (drafted) | TBD from file | no |
 | session_014bN6tX7AoZQrGX246YSXjC | Progress bar cues | handoffs/bar-cues.md (in landing 2); 4cc2c221 suite PASS | none needed | after landing 2 |
-| session_014bN6tUPG6SDvkoa3i3tMu5 | Reskin elements | requested; no reply yet; Q1-Q5/Q13 missing from flow (chased) | — | no |
+| session_014bN6tUPG6SDvkoa3i3tMu5 | Reskin elements | drafted; committed after f09cf2b suite; questions RSK-Q1..Q10 in flow | TBD from file | no |
 | session_014bN6tSRsJgz4JWyawQp5gk | LFG / Wordle: PAUSED by her words; RMG-Q0 in flow; her requests are rows 1-10 in REQUEST-LOG; nothing to land | none, by her pause | 08:45 (it said archive any time; unarchive to resume) | — | no |
 | session_014bN6tSZh6UFB2WcRuyXqBZ | Lander (last, between landings) | not yet | — | no |
 
@@ -34,7 +35,7 @@ First snapshot ~08:35 UTC by the 11-06 hub; kept current by the overnight hub se
 | session_014bN6tTRFsCmBvVCUDVtrds | Rule generation | GEN-1..4 on main 687b624; walkthrough claude/generate-buttons-qa-walk ETA ~09:10 to lander; 5 questions in flow | no |
 | session_014bN6tV7wcxBdJHNGwnMXZP | Chat follow-ups | all on main (1834e68, da28a1f verified); questions in flow | 08:40 |
 | session_014bN6tSiDK8R3ZHPmcK9QHR | Additional Concepts | all on main (7426e7f verified); 11 questions in flow | 08:40 |
-| session_014bN6tWZxqCW85vMEyHdfnt | Character Pane | e0a408c on main bfc79ef; handoffs/character-pane.md in landing 2; unbuilt items wait on flow answers | after landing 2 |
+| session_014bN6tWZxqCW85vMEyHdfnt | Character Pane | e0a408c on main bfc79ef; handoffs/character-pane.md in landing 2; unbuilt items wait on flow answers | 09:20 |
 | session_014bN6tStyDJVemzE9tX7F38 | New Features + Reskins | cool-ramanujan@549298f (code + handoff), suite running; S3-Q1..Q14 in flow | after cool-ramanujan lands |
 | session_014bN6tSuhd4nhS3kubHR58K | Chat | all on main (67c26a0, dc897ec verified) | 08:40 |
 
